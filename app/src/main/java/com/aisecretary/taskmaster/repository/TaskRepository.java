@@ -6,7 +6,9 @@ import com.aisecretary.taskmaster.database.CompletionHistoryDao;
 import com.aisecretary.taskmaster.database.CompletionHistoryEntity;
 import com.aisecretary.taskmaster.database.TaskDao;
 import com.aisecretary.taskmaster.database.TaskEntity;
+import com.aisecretary.taskmaster.utils.StreakManager;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -195,37 +197,10 @@ public class TaskRepository {
 
     /**
      * Update task streak
+     * Phase 4.1: Now uses StreakManager for centralized logic
      */
     private void updateStreak(TaskEntity task) {
-        if (!task.isRecurring) {
-            return; // Only recurring tasks have streaks
-        }
-
-        long now = System.currentTimeMillis();
-        long dayInMillis = 86400000; // 24 hours
-        long lastUpdate = task.streakLastUpdated;
-
-        // Check if completed on consecutive days
-        if (lastUpdate > 0) {
-            long daysSinceLastUpdate = (now - lastUpdate) / dayInMillis;
-
-            if (daysSinceLastUpdate <= 1) {
-                // Completed on time - increment streak
-                task.currentStreak++;
-                if (task.currentStreak > task.longestStreak) {
-                    task.longestStreak = task.currentStreak;
-                }
-            } else {
-                // Missed a day - reset streak
-                task.currentStreak = 1;
-            }
-        } else {
-            // First completion
-            task.currentStreak = 1;
-            task.longestStreak = 1;
-        }
-
-        task.streakLastUpdated = now;
+        StreakManager.updateStreak(task);
     }
 
     /**
@@ -383,5 +358,52 @@ public class TaskRepository {
      */
     public int getMostCommonCompletionHour(long taskId) {
         return historyDao.getMostCommonTimeOfDay(taskId);
+    }
+
+    // ==================== Phase 4.1: Streak Management Methods ====================
+
+    /**
+     * Check if a task's streak is at risk
+     */
+    public boolean isStreakAtRisk(long taskId) {
+        TaskEntity task = taskDao.getById(taskId);
+        if (task == null) return false;
+        return StreakManager.isStreakAtRisk(task);
+    }
+
+    /**
+     * Get days until streak expires for a task
+     */
+    public int getDaysUntilStreakExpires(long taskId) {
+        TaskEntity task = taskDao.getById(taskId);
+        if (task == null) return -1;
+        return StreakManager.getDaysUntilStreakExpires(task);
+    }
+
+    /**
+     * Get all tasks with streaks at risk
+     */
+    public List<TaskEntity> getTasksWithStreaksAtRisk() {
+        List<TaskEntity> allTasks = taskDao.getTasksWithStreaks();
+        List<TaskEntity> atRisk = new ArrayList<>();
+
+        for (TaskEntity task : allTasks) {
+            if (StreakManager.isStreakAtRisk(task)) {
+                atRisk.add(task);
+            }
+        }
+
+        return atRisk;
+    }
+
+    /**
+     * Reset streak for a task (when manually uncompleted or missed)
+     */
+    public void resetStreak(long taskId) {
+        TaskEntity task = taskDao.getById(taskId);
+        if (task == null) return;
+
+        StreakManager.resetStreak(task);
+        taskDao.update(task);
     }
 }

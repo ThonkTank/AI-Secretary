@@ -17,6 +17,7 @@ import com.aisecretary.taskmaster.adapter.TaskAdapter;
 import com.aisecretary.taskmaster.database.TaskEntity;
 import com.aisecretary.taskmaster.dialogs.CompletionDialog;
 import com.aisecretary.taskmaster.repository.TaskRepository;
+import com.aisecretary.taskmaster.utils.StreakManager;
 import com.aisecretary.taskmaster.utils.SwipeHelper;
 
 import java.util.List;
@@ -203,6 +204,7 @@ public class MainActivity extends Activity
 
     /**
      * Update statistics display
+     * Phase 4.1: Enhanced with StreakManager features
      */
     private void updateStats() {
         int completedToday = repository.getCompletedTodayCount();
@@ -212,17 +214,31 @@ public class MainActivity extends Activity
                 completedToday, totalToday + completedToday);
         statsTextView.setText(statsText);
 
-        // Find highest streak
+        // Find highest streak and check for at-risk streaks
         List<TaskEntity> streakTasks = repository.getTasksWithStreaks();
         int maxStreak = 0;
+        int streaksAtRisk = 0;
+
         for (TaskEntity task : streakTasks) {
             if (task.currentStreak > maxStreak) {
                 maxStreak = task.currentStreak;
             }
+            if (StreakManager.isStreakAtRisk(task)) {
+                streaksAtRisk++;
+            }
         }
 
+        // Build streak display text with emoji levels
         if (maxStreak > 0) {
-            streakTextView.setText("🔥 Streak: " + maxStreak);
+            String streakEmoji = StreakManager.getStreakEmoji(maxStreak);
+            String streakText = streakEmoji + " " + maxStreak;
+
+            // Add warning if streaks are at risk
+            if (streaksAtRisk > 0) {
+                streakText += " (⚠️ " + streaksAtRisk + " at risk)";
+            }
+
+            streakTextView.setText(streakText);
         } else {
             streakTextView.setText("Streak: 0");
         }
