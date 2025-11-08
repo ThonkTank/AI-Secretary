@@ -26,7 +26,7 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 - [x] Entwicklungsumgebung in Termux eingerichtet
 - [x] DESIGN.md mit umfassender UX/UI-Vision erstellt
 
-**Phase 1: Grundlagen & Datenbank** 🟢 75% abgeschlossen
+**Phase 1: Grundlagen & Datenbank** ✅ Abgeschlossen
 - [x] Task-Datenmodell (TaskEntity.java) mit ALLEN Taskmaster-Features
   - Basis-Properties (id, title, description, priority, completed)
   - Tracking-Properties (createdAt, completedAt, dueAt, completionCount, lastCompletedAt)
@@ -58,11 +58,20 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
   - Streak-Badges (🔥 Streak: X)
   - Überfälligkeits-Warnungen (⚠️ OVERDUE)
   - Stats: Heute-Counter + Höchste Streak
-- [ ] **RecyclerView + TaskAdapter** ⬅️ Nächster Schritt
-- [ ] **Swipe-Gesten** (Right: Complete, Left: Delete)
-- [ ] **Verbessertes Task-Item-Layout** (list_item_task.xml)
+- [x] **RecyclerView + TaskAdapter**
+  - RecyclerView mit LinearLayoutManager
+  - TaskAdapter extends RecyclerView.Adapter
+  - ViewHolder-Pattern für Performance
+- [x] **Swipe-Gesten** (Right: Complete, Left: Delete)
+  - SwipeHelper mit ItemTouchHelper
+  - Visuelle Feedback (Grün/Rot)
+  - Bestätigungsdialog beim Löschen
+- [x] **Verbessertes Task-Item-Layout** (list_item_task.xml)
+  - Prioritäts-Sterne, Beschreibung, Due-Date
+  - Streak-Badge, Überdue-Warnung
+  - Quick-Actions (Edit/Delete) on long press
 
-**Gesamt-Fortschritt:** ~25% der Taskmaster Feature Suite
+**Gesamt-Fortschritt:** ~30% der Taskmaster Feature Suite
 
 ---
 
@@ -115,26 +124,27 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 **Dateien aktualisiert/erstellt:** 3 Resource-Dateien
 **Status:** ✅ Design System v1.0 komplett
 
-#### 1.3 Verbesserte UI (gemäß DESIGN.md)
-- [ ] **Design-System implementieren**
-  - Farbpalette aus DESIGN.md in colors.xml
-  - Typografie-Styles in styles.xml
-  - Icon-Set zusammenstellen
-- [ ] **Task-Item-Layout** (list_item_task.xml)
-  - Titel + Beschreibung
-  - Prioritäts-Sterne (⭐⭐⭐)
-  - Completion-Checkbox rechts
-  - Due-Date mit Icon
-  - Überfälligkeits-Warnung (⚠️ rot)
-  - Quick-Actions: [✓] [✎] [🗑️]
-  - Streak-Badge für wiederkehrende Tasks
-- [ ] RecyclerView für Task-Liste
-- [ ] TaskAdapter mit ViewHolder
-- [ ] **Swipe-Gesten** (Right: Complete, Left: Delete)
+#### 1.3 Verbesserte UI (gemäß DESIGN.md) ✅ ABGESCHLOSSEN
+- [x] **Design-System implementieren**
+  - Farbpalette aus DESIGN.md in colors.xml ✅
+  - Typografie-Styles in styles.xml ✅
+  - Icon-Set zusammenstellen ✅
+- [x] **Task-Item-Layout** (list_item_task.xml)
+  - Titel + Beschreibung ✅
+  - Prioritäts-Sterne (⭐⭐⭐) ✅
+  - Completion-Checkbox rechts ✅
+  - Due-Date mit Icon ✅
+  - Überfälligkeits-Warnung (⚠️ rot) ✅
+  - Quick-Actions: [✓] [✎] [🗑️] ✅
+  - Streak-Badge für wiederkehrende Tasks ✅
+- [x] RecyclerView für Task-Liste ✅
+- [x] TaskAdapter mit ViewHolder ✅
+- [x] **Swipe-Gesten** (Right: Complete, Left: Delete) ✅
 
-**Geschätzte Dateien:** 3-4 neue Dateien
+**Dateien erstellt:** 4 neue Dateien (list_item_task.xml, TaskAdapter.java, SwipeHelper.java, activity_main.xml aktualisiert)
 **Komplexität:** Mittel
 **Design-Referenz:** DESIGN.md - Main App Section
+**Status:** ✅ Vollständig implementiert
 
 ---
 
@@ -571,12 +581,22 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - Detaillierte UI-Spezifikationen für alle Features
   - Entwicklungszeit neu geschätzt: 18-23 Tage für Widget-First MVP
   - Nächste Schritte um Design-Focus erweitert
-- 2025-11-08 (v2.1): Phase 1 Implementierung abgeschlossen
+- 2025-11-08 (v2.1): Phase 1.1 & 1.2 Implementierung abgeschlossen
   - ✅ Design System v1.0 vollständig implementiert (colors, styles, dimens)
   - ✅ Datenbank-Layer komplett (TaskEntity, TaskDao, TaskRepository)
   - ✅ MainActivity auf Datenbank umgestellt mit Sample-Tasks
   - Fortschritt: 25% der Taskmaster Feature Suite
   - Nächstes: RecyclerView + Swipe-Gesten
+- 2025-11-08 (v2.2): Phase 1.3 abgeschlossen - RecyclerView + Improved UI
+  - ✅ list_item_task.xml: Vollständiges Task-Item-Layout mit allen Design-Elementen
+  - ✅ TaskAdapter: RecyclerView.Adapter Implementation mit ViewHolder-Pattern
+  - ✅ SwipeHelper: ItemTouchHelper für Swipe-Gesten (Right: Complete, Left: Delete)
+  - ✅ MainActivity: RecyclerView-Integration mit LinearLayoutManager
+  - ✅ Visuelle Feedback beim Swipen (Grün/Rot Hintergründe)
+  - ✅ Bestätigungsdialoge mit Cancel-Handling
+  - **Phase 1 vollständig abgeschlossen! 🎉**
+  - Fortschritt: 30% der Taskmaster Feature Suite
+  - Nächstes: Phase 2.1 - Task-Erstellungs-Dialog
 
 ---
 
