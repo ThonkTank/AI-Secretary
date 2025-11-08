@@ -71,7 +71,7 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
   - Streak-Badge, Überdue-Warnung
   - Quick-Actions (Edit/Delete) on long press
 
-**Phase 2: Task-Erstellung & -Verwaltung** 🟢 67% abgeschlossen
+**Phase 2: Task-Erstellung & -Verwaltung** ✅ 100% abgeschlossen
 - [x] **AddTaskActivity mit Tab-Layout** (Phase 2.1)
   - Tab 1: Basis (Titel, Beschreibung, Priorität, Fälligkeit)
   - Tab 2: Wiederholung (x pro y, alle x y, geplant)
@@ -90,7 +90,10 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 - [x] **Task-Löschung** bereits in Phase 1.3 implementiert
   - Swipe-Left → Delete mit Bestätigung
   - Quick-Actions → Delete-Button
-- [ ] Wiederkehrende Tasks - Erweitert (Phase 2.3) ⬅️ Nächster Schritt
+- [x] **Wiederkehrende Tasks - Erweitert** (Phase 2.3)
+  - RecurrenceManager mit vollständiger Recurrence-Logik
+  - RecurringTaskService für automatische Task-Resets
+  - Background-Scheduling mit AlarmManager
 
 **Phase 3: Tracking & Performance-Daten** 🟢 67% abgeschlossen
 - [x] **Task-Completion Dialog** (Phase 3.1)
@@ -273,19 +276,30 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 **Komplexität:** Mittel
 **Status:** ✅ Vollständig implementiert
 
-#### 2.3 Wiederkehrende Tasks - Basis
-- [ ] UI für Recurrence-Konfiguration
-  - Task-Typ Auswahl: "Einmalig", "x pro y", "alle x y", "Geplant"
-  - x/y Input-Felder (z.B. "3 mal pro Woche")
-  - Zeiteinheit-Auswahl (Tag, Woche, Monat)
-- [ ] RecurrenceManager Klasse
-  - `calculateNextDueDate(Task)` - Berechne nächstes Fälligkeitsdatum
-  - `shouldResetTask(Task)` - Prüfe ob Task zurückgesetzt werden soll
-  - `resetTask(Task)` - Setze Task auf "unerledigt" zurück
-- [ ] Hintergrund-Service für automatisches Zurücksetzen
+#### 2.3 Wiederkehrende Tasks - Erweitert ✅ ABGESCHLOSSEN
+- [x] UI für Recurrence-Konfiguration ✅ (bereits in Phase 2.1)
+  - Task-Typ Auswahl: "Einmalig", "x pro y", "alle x y", "Geplant" ✅
+  - x/y Input-Felder (z.B. "3 mal pro Woche") ✅
+  - Zeiteinheit-Auswahl (Tag, Woche, Monat) ✅
+- [x] **RecurrenceManager** Klasse ✅
+  - `calculateNextDueDate(Task)` - Berechnet nächstes Fälligkeitsdatum ✅
+  - `shouldResetTask(Task)` - Prüft ob Task zurückgesetzt werden soll ✅
+  - `resetTask(Task)` - Setzt Task auf "unerledigt" zurück ✅
+  - `calculateRecurrenceInterval()` - Intervall-Berechnung ✅
+  - `getRecurrenceDescription()` - Human-readable Beschreibung ✅
+  - `isDueSoon()`, `getHoursUntilDue()` - Due-Date Helpers ✅
+- [x] **RecurringTaskService** - Hintergrund-Service ✅
+  - AlarmManager-basiertes Scheduling (stündlich) ✅
+  - Automatisches Task-Reset nach Recurrence-Pattern ✅
+  - scheduleNextCheck() mit setExactAndAllowWhileIdle ✅
+  - Integration in MainActivity (startService) ✅
+- [x] **TaskRepository** Erweiterungen ✅
+  - checkAndResetRecurringTasks() refactored ✅
+  - Neue Methoden: getRecurrenceDescription(), getTasksDueSoon() ✅
 
-**Geschätzte Dateien:** 3-4 neue Dateien
+**Dateien erstellt/aktualisiert:** 5 Dateien (2 neu, 3 aktualisiert, +446 Zeilen)
 **Komplexität:** Hoch
+**Status:** ✅ Vollständig implementiert
 
 ---
 
@@ -907,6 +921,42 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - Fortschritt: 70% der Taskmaster Feature Suite
   - Vorteile: Widget-First-Philosophie erfüllt, Homescreen-Sichtbarkeit, Quick-Actions ohne App öffnen
   - Nächstes: Phase 4.5.2 - Medium & Small Widgets oder Phase 2.3 - Wiederkehrende Tasks Erweitert
+- 2025-11-08 (v3.0): Phase 2.3 abgeschlossen - Wiederkehrende Tasks - Erweitert
+  - ✅ RecurrenceManager Utility-Klasse: Zentralisierte Recurrence-Logik
+    - calculateNextDueDate() - Berechnet nächstes Fälligkeitsdatum für alle Recurrence-Typen
+      - every_x_y: Feste Intervalle (alle x Tage/Wochen/Monate)
+      - x_per_y: Flexible Verteilung (x mal pro y) mit gleichmäßigen Abständen
+      - scheduled: Geplante Tasks mit bestimmter Uhrzeit (preferredHour)
+    - shouldResetTask() - Prüft ob Task zurückgesetzt werden soll
+    - resetTask() - Setzt Task auf incomplete mit neuem Due Date
+    - calculateRecurrenceInterval() - Intervall-Berechnung (day/week/month)
+    - getRecurrenceDescription() - Human-readable ("Alle 2 Tage", "3 mal pro Woche", "Jeden Tag")
+    - getNextResetTime() - Timestamp wann Task wieder incomplete wird
+    - isDueSoon() - Prüft ob Task innerhalb 24h fällig
+    - getHoursUntilDue() - Stunden bis Fälligkeit
+  - ✅ RecurringTaskService: Background Service für automatische Task-Resets
+    - AlarmManager-basiertes Scheduling (stündlich, jede volle Stunde)
+    - onStartCommand() ruft checkAndResetTasks() auf
+    - scheduleNextCheck() - Scheduling mit setExactAndAllowWhileIdle
+    - Fallback auf inexact alarm wenn SCHEDULE_EXACT_ALARM Permission fehlt
+    - startService() - Initialisierung beim App-Start
+    - cancelScheduledChecks() - Deaktivierung möglich
+  - ✅ TaskRepository: Refactored & erweitert
+    - checkAndResetRecurringTasks() - Jetzt mit RecurrenceManager (DRY-Prinzip)
+    - Removed calculateRecurrenceInterval() - Delegiert zu RecurrenceManager
+    - Widget-Update nach jedem Task-Reset
+    - Neue Methoden: getRecurrenceDescription(), getNextResetTime(), isTaskDueSoon(),
+      getHoursUntilDue(), getTasksDueSoon()
+  - ✅ MainActivity: RecurringTaskService Integration
+    - RecurringTaskService.startService() in onCreate()
+    - Automatische Background-Checks für alle wiederkehrenden Tasks aktiviert
+  - ✅ AndroidManifest.xml: RecurringTaskService registriert
+  - 5 Dateien (2 neu, 3 aktualisiert, +446 Zeilen, -37 gelöscht)
+  - **Phase 2.3 vollständig abgeschlossen! 🎉**
+  - **Phase 2 vollständig abgeschlossen! ✅** (100%)
+  - Fortschritt: 75% der Taskmaster Feature Suite
+  - Vorteile: Vollautomatische Recurrence, keine manuellen Resets, alle Typen unterstützt, Background-Service
+  - Nächstes: Phase 3.3 - Zeitpunkt-Analyse oder Phase 5 - Intelligente Sortierung
 
 ---
 
