@@ -6,9 +6,11 @@
     <color name="colorAccent">#FF6B00</color> <!-- Orange for Streaks & Important Elements -->
 
     <!-- Background colors -->
+    <color name="background">#F5F5F5</color> <!-- Default background -->
     <color name="backgroundColor">#FFFFFF</color>
     <color name="backgroundDark">#121212</color>
     <color name="backgroundLight">#F5F5F5</color>
+    <color name="warningBackground">#FFF3E0</color> <!-- Light orange for warnings -->
 
     <!-- Text colors -->
     <color name="textPrimary">#000000</color>
@@ -16,6 +18,7 @@
     <color name="textTertiary">#BDBDBD</color>
     <color name="textOnPrimary">#FFFFFF</color>
     <color name="textOnAccent">#FFFFFF</color>
+    <color name="textWarning">#E65100</color> <!-- Dark orange for warning text -->
 
     <!-- Status colors -->
     <color name="statusOverdue">#F44336</color> <!-- Red -->

@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/padding_screen">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Statistiken"
+            android:textAppearance="@style/TextAppearance.Header"
+            android:textColor="@color/colorPrimary"
+            android:paddingBottom="@dimen/padding_card" />
+
+        <!-- Today's Progress Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/cardBackground"
+            android:padding="@dimen/padding_card"
+            android:layout_marginBottom="@dimen/margin_between_cards">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📊 Heute"
+                android:textAppearance="@style/TextAppearance.TaskTitle"
+                android:paddingBottom="8dp" />
+
+            <TextView
+                android:id="@+id/stats_today_count"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="0/0 Tasks"
+                android:textAppearance="@style/TextAppearance.TaskDetails"
+                android:textColor="@color/textPrimary"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:paddingBottom="8dp" />
+
+            <TextView
+                android:id="@+id/stats_today_percentage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="0%"
+                android:textAppearance="@style/TextAppearance.TaskDetails"
+                android:textColor="@color/textSecondary"
+                android:paddingBottom="8dp" />
+
+            <TextView
+                android:id="@+id/stats_today_motivational"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📋 Zeit anzufangen!"
+                android:textAppearance="@style/TextAppearance.TaskDetails"
+                android:textColor="@color/colorAccent" />
+
+        </LinearLayout>
+
+        <!-- Weekly Stats Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/cardBackground"
+            android:padding="@dimen/padding_card"
+            android:layout_marginBottom="@dimen/margin_between_cards">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📅 Letzte 7 Tage"
+                android:textAppearance="@style/TextAppearance.TaskTitle"
+                android:paddingBottom="8dp" />
+
+            <TextView
+                android:id="@+id/stats_week_total"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="0 Tasks erledigt"
+                android:textAppearance="@style/TextAppearance.TaskDetails"
+                android:textColor="@color/textPrimary"
+                android:paddingBottom="4dp" />
+
+            <TextView
+                android:id="@+id/stats_week_average"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="⌀ 0.0 Tasks/Tag"
+                android:textAppearance="@style/TextAppearance.TaskDetails"
+                android:textColor="@color/textSecondary" />
+
+        </LinearLayout>
+
+        <!-- Productivity Score Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/cardBackground"
+            android:padding="@dimen/padding_card"
+            android:layout_marginBottom="@dimen/margin_between_cards">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📈 Produktivität"
+                android:textAppearance="@style/TextAppearance.TaskTitle"
+                android:paddingBottom="8dp" />
+
+            <TextView
+                android:id="@+id/stats_productivity_score"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="0/100"
+                android:textAppearance="@style/TextAppearance.TaskDetails"
+                android:textColor="@color/textPrimary"
+                android:textSize="32sp"
+                android:textStyle="bold"
+                android:paddingBottom="8dp" />
+
+            <TextView
+                android:id="@+id/stats_productivity_level"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🔰 Anfang"
+                android:textAppearance="@style/TextAppearance.TaskDetails"
+                android:textColor="@color/colorAccent" />
+
+        </LinearLayout>
+
+        <!-- Top Streaks Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🔥 Deine Streaks"
+            android:textAppearance="@style/TextAppearance.TaskTitle"
+            android:textColor="@color/colorPrimary"
+            android:paddingTop="@dimen/padding_card"
+            android:paddingBottom="8dp" />
+
+        <!-- Streaks Container (will be populated programmatically) -->
+        <LinearLayout
+            android:id="@+id/stats_streaks_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <!-- At-Risk Streaks Section -->
+        <TextView
+            android:id="@+id/stats_at_risk_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⚠️ Streaks in Gefahr"
+            android:textAppearance="@style/TextAppearance.TaskTitle"
+            android:textColor="@color/textWarning"
+            android:paddingTop="@dimen/padding_card"
+            android:paddingBottom="8dp"
+            android:visibility="gone" />
+
+        <!-- At-Risk Streaks Container -->
+        <LinearLayout
+            android:id="@+id/stats_at_risk_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone" />
+
+        <!-- Best Streak Ever -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/cardBackground"
+            android:padding="@dimen/padding_card"
+            android:layout_marginTop="@dimen/margin_between_cards">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🏆 Bester Streak (All-Time)"
+                android:textAppearance="@style/TextAppearance.TaskTitle"
+                android:paddingBottom="8dp" />
+
+            <TextView
+                android:id="@+id/stats_best_streak"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="0 Tage"
+                android:textAppearance="@style/TextAppearance.TaskDetails"
+                android:textColor="@color/textPrimary"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

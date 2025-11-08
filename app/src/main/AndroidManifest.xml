@@ -35,6 +35,12 @@
             android:exported="false"
             android:label="Neue Aufgabe" />
 
+        <!-- StatisticsActivity - Statistics Dashboard -->
+        <activity
+            android:name=".StatisticsActivity"
+            android:exported="false"
+            android:label="Statistiken" />
+
         <!-- Widget Provider -->
         <receiver
             android:name=".widget.TaskWidgetProvider"
