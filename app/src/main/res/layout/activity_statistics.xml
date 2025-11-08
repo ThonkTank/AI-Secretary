@@ -202,6 +202,52 @@
 
         </LinearLayout>
 
+        <!-- Time Analysis Section -->
+        <LinearLayout
+            android:id="@+id/stats_time_analysis_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/cardBackground"
+            android:padding="@dimen/card_padding"
+            android:layout_marginTop="@dimen/spacing_medium">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="⏰ Zeitanalyse"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/textPrimary"
+                android:paddingBottom="@dimen/spacing_small" />
+
+            <TextView
+                android:id="@+id/stats_time_recommendation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Lade Daten..."
+                android:textSize="14sp"
+                android:textColor="@color/textSecondary"
+                android:paddingBottom="@dimen/spacing_small" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Tageszeit-Verteilung:"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/textPrimary"
+                android:paddingTop="@dimen/spacing_small"
+                android:paddingBottom="4dp" />
+
+            <LinearLayout
+                android:id="@+id/stats_time_of_day_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
 </ScrollView>
