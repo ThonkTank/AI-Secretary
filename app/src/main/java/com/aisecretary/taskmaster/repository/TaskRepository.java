@@ -48,7 +48,7 @@ public class TaskRepository {
     /**
      * Create a new task
      */
-    public long createTask(String title, String description, int priority) {
+    public synchronized long createTask(String title, String description, int priority) {
         TaskEntity task = new TaskEntity(title, description, priority);
         return taskDao.insert(task);
     }
@@ -56,7 +56,7 @@ public class TaskRepository {
     /**
      * Create a new task with due date
      */
-    public long createTask(String title, String description, int priority, long dueAt) {
+    public synchronized long createTask(String title, String description, int priority, long dueAt) {
         TaskEntity task = new TaskEntity(title, description, priority);
         task.dueAt = dueAt;
         return taskDao.insert(task);
@@ -65,14 +65,14 @@ public class TaskRepository {
     /**
      * Update an existing task
      */
-    public void updateTask(TaskEntity task) {
+    public synchronized void updateTask(TaskEntity task) {
         taskDao.update(task);
     }
 
     /**
      * Delete a task
      */
-    public void deleteTask(long taskId) {
+    public synchronized void deleteTask(long taskId) {
         taskDao.delete(taskId);
 
         // Cancel any pending notifications for this task (Phase 8.1)
@@ -120,7 +120,7 @@ public class TaskRepository {
      * Complete a task with tracking data
      * Phase 3.2: Now saves to completion history and calculates averages from history
      */
-    public void completeTask(long taskId, long completionTime, float difficulty) {
+    public synchronized void completeTask(long taskId, long completionTime, float difficulty) {
         TaskEntity task = taskDao.getById(taskId);
         if (task == null) return;
 
@@ -174,7 +174,7 @@ public class TaskRepository {
      * Complete a task (simple version without tracking)
      * Phase 3.2: Also saves to completion history (with default values)
      */
-    public void completeTask(long taskId) {
+    public synchronized void completeTask(long taskId) {
         TaskEntity task = taskDao.getById(taskId);
         if (task == null) return;
 
@@ -206,7 +206,7 @@ public class TaskRepository {
     /**
      * Uncomplete a task (mark as incomplete)
      */
-    public void uncompleteTask(long taskId) {
+    public synchronized void uncompleteTask(long taskId) {
         TaskEntity task = taskDao.getById(taskId);
         if (task == null) return;
 
@@ -256,7 +256,7 @@ public class TaskRepository {
     /**
      * Check and update overdue tasks
      */
-    public void updateOverdueStatus() {
+    public synchronized void updateOverdueStatus() {
         List<TaskEntity> allTasks = taskDao.getAll();
         long now = System.currentTimeMillis();
 
@@ -274,7 +274,7 @@ public class TaskRepository {
      * Reset recurring tasks if needed
      * Phase 2.3: Now uses RecurrenceManager for centralized logic
      */
-    public void checkAndResetRecurringTasks() {
+    public synchronized void checkAndResetRecurringTasks() {
         List<TaskEntity> allTasks = taskDao.getAll();
 
         for (TaskEntity task : allTasks) {
@@ -394,7 +394,7 @@ public class TaskRepository {
     /**
      * Reset streak for a task (when manually uncompleted or missed)
      */
-    public void resetStreak(long taskId) {
+    public synchronized void resetStreak(long taskId) {
         TaskEntity task = taskDao.getById(taskId);
         if (task == null) return;
 
@@ -569,7 +569,7 @@ public class TaskRepository {
     /**
      * Reset chain (mark all as incomplete)
      */
-    public List<TaskEntity> resetChain(String chainId) {
+    public synchronized List<TaskEntity> resetChain(String chainId) {
         List<TaskEntity> allTasks = taskDao.getAll();
         List<TaskEntity> resetTasks = ChainManager.resetChain(allTasks, chainId);
 

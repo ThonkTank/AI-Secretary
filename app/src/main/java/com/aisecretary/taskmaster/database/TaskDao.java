@@ -125,7 +125,7 @@ public class TaskDao extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = taskToContentValues(task);
         long id = db.insert(TABLE_TASKS, null, values);
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return id;
     }
 
@@ -137,7 +137,7 @@ public class TaskDao extends SQLiteOpenHelper {
         ContentValues values = taskToContentValues(task);
         int rowsAffected = db.update(TABLE_TASKS, values, COL_ID + " = ?",
                 new String[]{String.valueOf(task.id)});
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return rowsAffected;
     }
 
@@ -147,7 +147,7 @@ public class TaskDao extends SQLiteOpenHelper {
     public void delete(long taskId) {
         SQLiteDatabase db = this.getWritableDatabase();
         db.delete(TABLE_TASKS, COL_ID + " = ?", new String[]{String.valueOf(taskId)});
-        db.close();
+        // Don't close db - it's a cached singleton instance
     }
 
     /**
@@ -163,7 +163,7 @@ public class TaskDao extends SQLiteOpenHelper {
             task = cursorToTask(cursor);
             cursor.close();
         }
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return task;
     }
 
@@ -183,7 +183,7 @@ public class TaskDao extends SQLiteOpenHelper {
             } while (cursor.moveToNext());
         }
         cursor.close();
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return tasks;
     }
 
@@ -211,7 +211,7 @@ public class TaskDao extends SQLiteOpenHelper {
             } while (cursor.moveToNext());
         }
         cursor.close();
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return tasks;
     }
 
@@ -237,7 +237,7 @@ public class TaskDao extends SQLiteOpenHelper {
             } while (cursor.moveToNext());
         }
         cursor.close();
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return tasks;
     }
 
@@ -260,7 +260,7 @@ public class TaskDao extends SQLiteOpenHelper {
             } while (cursor.moveToNext());
         }
         cursor.close();
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return tasks;
     }
 
@@ -279,7 +279,7 @@ public class TaskDao extends SQLiteOpenHelper {
             count = cursor.getInt(0);
         }
         cursor.close();
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return count;
     }
 

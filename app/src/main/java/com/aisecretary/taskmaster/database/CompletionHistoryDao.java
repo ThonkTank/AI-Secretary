@@ -136,7 +136,7 @@ public class CompletionHistoryDao extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = entryToContentValues(entry);
         long id = db.insert(TABLE_COMPLETION_HISTORY, null, values);
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return id;
     }
 
@@ -157,7 +157,7 @@ public class CompletionHistoryDao extends SQLiteOpenHelper {
             } while (cursor.moveToNext());
         }
         cursor.close();
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return history;
     }
 
@@ -178,7 +178,7 @@ public class CompletionHistoryDao extends SQLiteOpenHelper {
             } while (cursor.moveToNext());
         }
         cursor.close();
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return history;
     }
 
@@ -206,7 +206,7 @@ public class CompletionHistoryDao extends SQLiteOpenHelper {
             } while (cursor.moveToNext());
         }
         cursor.close();
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return history;
     }
 
@@ -225,7 +225,7 @@ public class CompletionHistoryDao extends SQLiteOpenHelper {
             average = cursor.getLong(0);
         }
         cursor.close();
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return average;
     }
 
@@ -244,7 +244,7 @@ public class CompletionHistoryDao extends SQLiteOpenHelper {
             average = cursor.getFloat(0);
         }
         cursor.close();
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return average;
     }
 
@@ -265,7 +265,7 @@ public class CompletionHistoryDao extends SQLiteOpenHelper {
             mostCommonHour = cursor.getInt(0);
         }
         cursor.close();
-        db.close();
+        // Don't close db - it's a cached singleton instance
         return mostCommonHour;
     }
 
@@ -275,7 +275,7 @@ public class CompletionHistoryDao extends SQLiteOpenHelper {
     public void deleteByTaskId(long taskId) {
         SQLiteDatabase db = this.getWritableDatabase();
         db.delete(TABLE_COMPLETION_HISTORY, COL_TASK_ID + " = ?", new String[]{String.valueOf(taskId)});
-        db.close();
+        // Don't close db - it's a cached singleton instance
     }
 
     /**

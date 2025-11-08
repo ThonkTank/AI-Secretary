@@ -9,7 +9,7 @@ import android.content.Intent;
 import android.os.IBinder;
 
 import com.aisecretary.taskmaster.database.TaskEntity;
-import com.aisecretary.taskmaster.database.TaskRepository;
+import com.aisecretary.taskmaster.repository.TaskRepository;
 import com.aisecretary.taskmaster.util.NotificationManager;
 import com.aisecretary.taskmaster.util.StatsManager;
 
