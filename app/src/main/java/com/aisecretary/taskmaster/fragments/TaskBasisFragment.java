@@ -195,4 +195,57 @@ public class TaskBasisFragment extends Fragment {
     public long getDueDate() {
         return selectedDueDate;
     }
+
+    // Setter methods for Edit Mode
+
+    public void setTitle(String title) {
+        if (inputTitle != null) {
+            inputTitle.setText(title);
+        }
+    }
+
+    public void setDescription(String description) {
+        if (inputDescription != null) {
+            inputDescription.setText(description);
+        }
+    }
+
+    public void setPriority(int priority) {
+        selectPriority(priority);
+    }
+
+    public void setDueDate(long dueDate) {
+        selectedDueDate = dueDate;
+
+        // Determine if it's today, tomorrow, or custom
+        Calendar now = Calendar.getInstance();
+        now.set(Calendar.HOUR_OF_DAY, 0);
+        now.set(Calendar.MINUTE, 0);
+        now.set(Calendar.SECOND, 0);
+        now.set(Calendar.MILLISECOND, 0);
+        long todayStart = now.getTimeInMillis();
+        long tomorrowStart = todayStart + 86400000;
+        long dayAfterTomorrowStart = tomorrowStart + 86400000;
+
+        if (dueDate >= todayStart && dueDate < tomorrowStart) {
+            // Today
+            selectDueDate(0);
+        } else if (dueDate >= tomorrowStart && dueDate < dayAfterTomorrowStart) {
+            // Tomorrow
+            selectDueDate(1);
+        } else {
+            // Custom date
+            if (dueCustom != null) {
+                dueToday.setBackgroundColor(getResources().getColor(R.color.cardBackground, null));
+                dueToday.setTextColor(getResources().getColor(R.color.textPrimary, null));
+                dueTomorrow.setBackgroundColor(getResources().getColor(R.color.cardBackground, null));
+                dueTomorrow.setTextColor(getResources().getColor(R.color.textPrimary, null));
+                dueCustom.setBackgroundColor(getResources().getColor(R.color.colorPrimary, null));
+                dueCustom.setTextColor(getResources().getColor(R.color.textOnPrimary, null));
+
+                SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+                selectedDueDateText.setText("📅 " + sdf.format(new Date(dueDate)));
+            }
+        }
+    }
 }

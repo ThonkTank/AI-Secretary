@@ -19,24 +19,36 @@ import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
 /**
- * AddTaskActivity - Task-Erstellungs-Dialog mit Tab-Layout
+ * AddTaskActivity - Task-Erstellungs/Bearbeitungs-Dialog mit Tab-Layout
  *
- * Implementiert Phase 2.1 der Roadmap:
+ * Implementiert Phase 2.1 & 2.2 der Roadmap:
  * - Tab 1: Basis (Titel, Beschreibung, Priorität, Fälligkeit)
  * - Tab 2: Wiederholung (Recurrence-Konfiguration)
  * - Tab 3: Details (Dauer, Zeit, Kategorie)
+ *
+ * Unterstützt sowohl Add- als auch Edit-Modus:
+ * - Add-Modus: Neue Aufgabe erstellen
+ * - Edit-Modus: Bestehende Aufgabe bearbeiten (via EXTRA_TASK_ID)
  */
 public class AddTaskActivity extends Activity {
+
+    public static final String EXTRA_TASK_ID = "task_id";
 
     private TabLayout tabLayout;
     private ViewPager2 viewPager;
     private TaskPagerAdapter pagerAdapter;
 
+    private TextView headerTitle;
     private TextView cancelButtonTop;
     private Button cancelButtonBottom;
     private Button saveButton;
 
     private TaskRepository repository;
+
+    // Edit mode
+    private boolean isEditMode = false;
+    private long editingTaskId = -1;
+    private TaskEntity editingTask = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,12 +58,29 @@ public class AddTaskActivity extends Activity {
         // Initialize repository
         repository = TaskRepository.getInstance(this);
 
+        // Check for edit mode
+        if (getIntent().hasExtra(EXTRA_TASK_ID)) {
+            isEditMode = true;
+            editingTaskId = getIntent().getLongExtra(EXTRA_TASK_ID, -1);
+            editingTask = repository.getTask(editingTaskId);
+        }
+
         // Find views
+        headerTitle = findViewById(R.id.header_title);
         tabLayout = findViewById(R.id.tab_layout);
         viewPager = findViewById(R.id.view_pager);
         cancelButtonTop = findViewById(R.id.cancel_button);
         cancelButtonBottom = findViewById(R.id.cancel_button_bottom);
         saveButton = findViewById(R.id.save_button);
+
+        // Set header title
+        if (isEditMode) {
+            headerTitle.setText("Aufgabe bearbeiten");
+            saveButton.setText("Aktualisieren");
+        } else {
+            headerTitle.setText("Neue Aufgabe");
+            saveButton.setText("Speichern");
+        }
 
         // Set up ViewPager2 with adapter
         pagerAdapter = new TaskPagerAdapter(this);
@@ -70,6 +99,12 @@ public class AddTaskActivity extends Activity {
 
         // Set up button listeners
         setupButtons();
+
+        // If edit mode, populate fragments with existing data
+        if (isEditMode && editingTask != null) {
+            // Delay to ensure fragments are created
+            viewPager.post(() -> populateFragments());
+        }
     }
 
     private void setupButtons() {
@@ -79,6 +114,39 @@ public class AddTaskActivity extends Activity {
 
         // Save button
         saveButton.setOnClickListener(v -> saveTask());
+    }
+
+    /**
+     * Populate fragments with existing task data (Edit Mode)
+     */
+    private void populateFragments() {
+        if (editingTask == null) return;
+
+        TaskBasisFragment basisFragment = pagerAdapter.getBasisFragment();
+        TaskRecurrenceFragment recurrenceFragment = pagerAdapter.getRecurrenceFragment();
+        TaskDetailsFragment detailsFragment = pagerAdapter.getDetailsFragment();
+
+        // Populate Basis tab
+        if (basisFragment != null) {
+            basisFragment.setTitle(editingTask.title);
+            basisFragment.setDescription(editingTask.description);
+            basisFragment.setPriority(editingTask.priority);
+            basisFragment.setDueDate(editingTask.dueAt);
+        }
+
+        // Populate Recurrence tab
+        if (recurrenceFragment != null) {
+            recurrenceFragment.setRecurrenceType(editingTask.recurrenceType);
+            recurrenceFragment.setRecurrenceX(editingTask.recurrenceX);
+            recurrenceFragment.setRecurrenceY(editingTask.recurrenceY);
+        }
+
+        // Populate Details tab
+        if (detailsFragment != null) {
+            detailsFragment.setEstimatedDuration(editingTask.averageCompletionTime);
+            detailsFragment.setPreferredTimeOfDay(editingTask.preferredTimeOfDay);
+            detailsFragment.setCategory(editingTask.category);
+        }
     }
 
     private void saveTask() {
@@ -109,44 +177,52 @@ public class AddTaskActivity extends Activity {
         String preferredTimeOfDay = detailsFragment.getPreferredTimeOfDay();
         String category = detailsFragment.getCategory();
 
-        // Create TaskEntity
-        TaskEntity task = new TaskEntity(title, description, priority);
-        task.dueAt = dueDate;
-        task.isRecurring = isRecurring;
-        task.recurrenceType = recurrenceType;
-        task.recurrenceX = recurrenceX;
-        task.recurrenceY = recurrenceY;
-        task.averageCompletionTime = estimatedDuration;
-        task.preferredTimeOfDay = preferredTimeOfDay;
-        task.category = category;
+        if (isEditMode) {
+            // Update existing task
+            editingTask.title = title;
+            editingTask.description = description;
+            editingTask.priority = priority;
+            editingTask.dueAt = dueDate;
+            editingTask.isRecurring = isRecurring;
+            editingTask.recurrenceType = recurrenceType;
+            editingTask.recurrenceX = recurrenceX;
+            editingTask.recurrenceY = recurrenceY;
+            editingTask.averageCompletionTime = estimatedDuration;
+            editingTask.preferredTimeOfDay = preferredTimeOfDay;
+            editingTask.category = category;
 
-        // Save to database
-        long taskId = repository.createTask(title, description, priority, dueDate);
+            repository.updateTask(editingTask);
 
-        // Update with additional data
-        TaskEntity savedTask = repository.getTask(taskId);
-        if (savedTask != null) {
-            savedTask.isRecurring = isRecurring;
-            savedTask.recurrenceType = recurrenceType;
-            savedTask.recurrenceX = recurrenceX;
-            savedTask.recurrenceY = recurrenceY;
-            savedTask.averageCompletionTime = estimatedDuration;
-            savedTask.preferredTimeOfDay = preferredTimeOfDay;
-            savedTask.category = category;
+            Toast.makeText(this, "Aufgabe aktualisiert!", Toast.LENGTH_SHORT).show();
+        } else {
+            // Create new task
+            long taskId = repository.createTask(title, description, priority, dueDate);
 
-            repository.updateTask(savedTask);
-        }
+            // Update with additional data
+            TaskEntity savedTask = repository.getTask(taskId);
+            if (savedTask != null) {
+                savedTask.isRecurring = isRecurring;
+                savedTask.recurrenceType = recurrenceType;
+                savedTask.recurrenceX = recurrenceX;
+                savedTask.recurrenceY = recurrenceY;
+                savedTask.averageCompletionTime = estimatedDuration;
+                savedTask.preferredTimeOfDay = preferredTimeOfDay;
+                savedTask.category = category;
 
-        // Show success message
-        String message = "Aufgabe erstellt!";
-        if (isRecurring) {
-            if (recurrenceType.equals("x_per_y")) {
-                message += " (" + recurrenceX + " mal pro " + getYDisplayName(recurrenceY) + ")";
-            } else if (recurrenceType.equals("every_x_y")) {
-                message += " (Alle " + recurrenceX + " " + getYDisplayName(recurrenceY) + ")";
+                repository.updateTask(savedTask);
             }
+
+            // Show success message
+            String message = "Aufgabe erstellt!";
+            if (isRecurring) {
+                if (recurrenceType.equals("x_per_y")) {
+                    message += " (" + recurrenceX + " mal pro " + getYDisplayName(recurrenceY) + ")";
+                } else if (recurrenceType.equals("every_x_y")) {
+                    message += " (Alle " + recurrenceX + " " + getYDisplayName(recurrenceY) + ")";
+                }
+            }
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
         }
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
 
         // Close activity and return to MainActivity
         finish();

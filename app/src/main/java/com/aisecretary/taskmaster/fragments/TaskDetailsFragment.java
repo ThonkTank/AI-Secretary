@@ -150,4 +150,63 @@ public class TaskDetailsFragment extends Fragment {
     public String getCategory() {
         return inputCategory.getText().toString().trim();
     }
+
+    // Setter methods for Edit Mode
+
+    public void setEstimatedDuration(long durationMillis) {
+        if (durationMillis == 0) return;
+
+        estimatedDuration = durationMillis;
+
+        // Select appropriate button and update display
+        if (durationMillis == 5 * 60 * 1000) {
+            selectDuration(durationMillis, "5 Min");
+        } else if (durationMillis == 15 * 60 * 1000) {
+            selectDuration(durationMillis, "15 Min");
+        } else if (durationMillis == 30 * 60 * 1000) {
+            selectDuration(durationMillis, "30 Min");
+        } else if (durationMillis == 60 * 60 * 1000) {
+            selectDuration(durationMillis, "1 Std");
+        } else if (durationMillis == 2 * 60 * 60 * 1000) {
+            selectDuration(durationMillis, "2 Std");
+        } else {
+            // Custom duration
+            long minutes = durationMillis / (60 * 1000);
+            long hours = minutes / 60;
+            long remainingMinutes = minutes % 60;
+
+            String displayText;
+            if (hours > 0) {
+                displayText = hours + " Std " + (remainingMinutes > 0 ? remainingMinutes + " Min" : "");
+            } else {
+                displayText = minutes + " Min";
+            }
+            selectedDurationText.setText("⏱️ " + displayText);
+        }
+    }
+
+    public void setPreferredTimeOfDay(String time) {
+        if (time == null || time.isEmpty()) return;
+
+        preferredTimeOfDay = time;
+
+        String displayText = "";
+        if ("morning".equals(time)) {
+            displayText = "🌅 Morgen";
+        } else if ("afternoon".equals(time)) {
+            displayText = "☀️ Mittag";
+        } else if ("evening".equals(time)) {
+            displayText = "🌙 Abend";
+        }
+
+        if (!displayText.isEmpty()) {
+            selectTimeOfDay(time, displayText);
+        }
+    }
+
+    public void setCategory(String category) {
+        if (inputCategory != null && category != null) {
+            inputCategory.setText(category);
+        }
+    }
 }

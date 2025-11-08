@@ -173,4 +173,44 @@ public class TaskRecurrenceFragment extends Fragment {
         }
         return "day";
     }
+
+    // Setter methods for Edit Mode
+
+    public void setRecurrenceType(String recurrenceType) {
+        selectedRecurrenceType = recurrenceType;
+
+        // Select appropriate radio button
+        if ("once".equals(recurrenceType)) {
+            radioOnce.setChecked(true);
+        } else if ("x_per_y".equals(recurrenceType)) {
+            radioXPerY.setChecked(true);
+        } else if ("every_x_y".equals(recurrenceType)) {
+            radioEveryXY.setChecked(true);
+        } else if ("scheduled".equals(recurrenceType)) {
+            radioScheduled.setChecked(true);
+        }
+    }
+
+    public void setRecurrenceX(int x) {
+        if (selectedRecurrenceType.equals("x_per_y") && inputXCount != null) {
+            inputXCount.setText(String.valueOf(x));
+        } else if (selectedRecurrenceType.equals("every_x_y") && inputXInterval != null) {
+            inputXInterval.setText(String.valueOf(x));
+        }
+    }
+
+    public void setRecurrenceY(String y) {
+        int position = 0;
+        switch (y) {
+            case "day": position = 0; break;
+            case "week": position = 1; break;
+            case "month": position = 2; break;
+        }
+
+        if (selectedRecurrenceType.equals("x_per_y") && spinnerYPeriod != null) {
+            spinnerYPeriod.setSelection(position);
+        } else if (selectedRecurrenceType.equals("every_x_y") && spinnerYUnit != null) {
+            spinnerYUnit.setSelection(position);
+        }
+    }
 }

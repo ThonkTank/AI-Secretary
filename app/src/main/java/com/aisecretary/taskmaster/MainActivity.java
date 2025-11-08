@@ -240,8 +240,8 @@ public class MainActivity extends Activity
 
     @Override
     public void onTaskClick(TaskEntity task) {
-        // TODO: Open task detail view in Phase 2
-        Toast.makeText(this, "Task details coming in Phase 2!", Toast.LENGTH_SHORT).show();
+        // Open edit dialog
+        openEditDialog(task);
     }
 
     @Override
@@ -271,8 +271,17 @@ public class MainActivity extends Activity
 
     @Override
     public void onTaskEditClick(TaskEntity task) {
-        // TODO: Open edit task dialog in Phase 2
-        Toast.makeText(this, "Edit feature coming in Phase 2!", Toast.LENGTH_SHORT).show();
+        // Open edit dialog
+        openEditDialog(task);
+    }
+
+    /**
+     * Open AddTaskActivity in edit mode
+     */
+    private void openEditDialog(TaskEntity task) {
+        Intent intent = new Intent(this, AddTaskActivity.class);
+        intent.putExtra(AddTaskActivity.EXTRA_TASK_ID, task.id);
+        startActivity(intent);
     }
 
     @Override
