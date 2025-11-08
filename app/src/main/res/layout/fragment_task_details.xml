@@ -164,17 +164,23 @@
             android:paddingTop="16dp"
             android:paddingBottom="8dp" />
 
-        <EditText
-            android:id="@+id/input_category"
+        <!-- Category Selection Buttons (Phase 8.2) -->
+        <LinearLayout
+            android:id="@+id/category_buttons_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="z.B. Arbeit, Gesundheit, Haushalt..."
-            android:inputType="text"
-            android:maxLines="1"
-            android:padding="12dp"
-            android:background="@color/cardBackground"
-            android:textColor="@color/textPrimary"
-            android:textColorHint="@color/textSecondary" />
+            android:orientation="vertical" />
+
+        <!-- Selected Category Display -->
+        <TextView
+            android:id="@+id/selected_category"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📂 Keine Kategorie"
+            android:textAppearance="@style/TextAppearance.TaskDetails"
+            android:textColor="@color/textSecondary"
+            android:paddingTop="4dp"
+            android:gravity="center" />
 
         <!-- Verkettung (Phase 6) -->
         <TextView

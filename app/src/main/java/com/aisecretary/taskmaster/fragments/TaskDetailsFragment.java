@@ -1,11 +1,12 @@
 package com.aisecretary.taskmaster.fragments;
 
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -14,6 +15,9 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.aisecretary.taskmaster.R;
+import com.aisecretary.taskmaster.utils.CategoryManager;
+
+import java.util.List;
 
 /**
  * TaskDetailsFragment - Tab 3: Detail-Informationen
@@ -23,7 +27,8 @@ import com.aisecretary.taskmaster.R;
 public class TaskDetailsFragment extends Fragment {
 
     private TextView selectedDurationText;
-    private EditText inputCategory;
+    private TextView selectedCategoryText;
+    private LinearLayout categoryButtonsContainer;
 
     private Button duration5min, duration15min, duration30min;
     private Button duration1h, duration2h, durationCustom;
@@ -31,7 +36,8 @@ public class TaskDetailsFragment extends Fragment {
 
     private long estimatedDuration = 0; // In milliseconds, 0 = not set
     private String preferredTimeOfDay = ""; // Empty = not set
-    private String category = "";
+    private String category = ""; // Category ID
+    private List<CategoryManager.Category> categories;
 
     @Nullable
     @Override
@@ -46,7 +52,8 @@ public class TaskDetailsFragment extends Fragment {
 
         // Find views
         selectedDurationText = view.findViewById(R.id.selected_duration);
-        inputCategory = view.findViewById(R.id.input_category);
+        selectedCategoryText = view.findViewById(R.id.selected_category);
+        categoryButtonsContainer = view.findViewById(R.id.category_buttons_container);
 
         // Duration buttons
         duration5min = view.findViewById(R.id.duration_5min);
@@ -66,6 +73,9 @@ public class TaskDetailsFragment extends Fragment {
 
         // Set up time buttons
         setupTimeButtons();
+
+        // Set up category buttons (Phase 8.2)
+        setupCategoryButtons();
     }
 
     private void setupDurationButtons() {
@@ -138,6 +148,87 @@ public class TaskDetailsFragment extends Fragment {
         button.setTextColor(getResources().getColor(R.color.textPrimary, null));
     }
 
+    /**
+     * Setup category buttons (Phase 8.2)
+     */
+    private void setupCategoryButtons() {
+        categories = CategoryManager.getAllCategories();
+
+        // Create rows of 3 buttons each
+        LinearLayout currentRow = null;
+        int buttonsInRow = 0;
+
+        for (int i = 0; i < categories.size(); i++) {
+            CategoryManager.Category cat = categories.get(i);
+
+            // Create new row every 3 buttons
+            if (buttonsInRow == 0) {
+                currentRow = new LinearLayout(requireContext());
+                currentRow.setOrientation(LinearLayout.HORIZONTAL);
+                currentRow.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ));
+                categoryButtonsContainer.addView(currentRow);
+            }
+
+            // Create button
+            Button categoryButton = new Button(requireContext());
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1.0f
+            );
+            params.setMargins(8, 8, 8, 8);
+            categoryButton.setLayoutParams(params);
+            categoryButton.setText(cat.getDisplayName());
+            categoryButton.setTextSize(12);
+            categoryButton.setBackgroundColor(getResources().getColor(R.color.cardBackground, null));
+            categoryButton.setTextColor(getResources().getColor(R.color.textPrimary, null));
+            categoryButton.setTag(cat.id);
+
+            categoryButton.setOnClickListener(v -> selectCategory(cat));
+
+            currentRow.addView(categoryButton);
+            buttonsInRow++;
+
+            // Reset counter after 3 buttons
+            if (buttonsInRow >= 3) {
+                buttonsInRow = 0;
+            }
+        }
+    }
+
+    /**
+     * Select a category
+     */
+    private void selectCategory(CategoryManager.Category cat) {
+        category = cat.id;
+
+        // Reset all category buttons
+        for (int i = 0; i < categoryButtonsContainer.getChildCount(); i++) {
+            LinearLayout row = (LinearLayout) categoryButtonsContainer.getChildAt(i);
+            for (int j = 0; j < row.getChildCount(); j++) {
+                Button button = (Button) row.getChildAt(j);
+                resetButtonColor(button);
+            }
+        }
+
+        // Highlight selected button
+        for (int i = 0; i < categoryButtonsContainer.getChildCount(); i++) {
+            LinearLayout row = (LinearLayout) categoryButtonsContainer.getChildAt(i);
+            for (int j = 0; j < row.getChildCount(); j++) {
+                Button button = (Button) row.getChildAt(j);
+                if (cat.id.equals(button.getTag())) {
+                    button.setBackgroundColor(getResources().getColor(R.color.colorAccent, null));
+                    button.setTextColor(getResources().getColor(R.color.textOnPrimary, null));
+                }
+            }
+        }
+
+        selectedCategoryText.setText(cat.getDisplayName());
+    }
+
     // Public getters for data
     public long getEstimatedDuration() {
         return estimatedDuration;
@@ -148,7 +239,7 @@ public class TaskDetailsFragment extends Fragment {
     }
 
     public String getCategory() {
-        return inputCategory.getText().toString().trim();
+        return category;
     }
 
     // Setter methods for Edit Mode
@@ -204,9 +295,17 @@ public class TaskDetailsFragment extends Fragment {
         }
     }
 
-    public void setCategory(String category) {
-        if (inputCategory != null && category != null) {
-            inputCategory.setText(category);
+    public void setCategory(String categoryId) {
+        if (categoryId == null || categoryId.isEmpty()) {
+            return;
+        }
+
+        this.category = categoryId;
+
+        // Find and select the category
+        CategoryManager.Category cat = CategoryManager.getCategoryById(categoryId);
+        if (cat != null) {
+            selectCategory(cat);
         }
     }
 }

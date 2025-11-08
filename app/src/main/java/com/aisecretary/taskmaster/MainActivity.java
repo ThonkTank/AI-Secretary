@@ -5,7 +5,10 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,10 +22,12 @@ import com.aisecretary.taskmaster.dialogs.CompletionDialog;
 import com.aisecretary.taskmaster.repository.TaskRepository;
 import com.aisecretary.taskmaster.service.NotificationService;
 import com.aisecretary.taskmaster.service.RecurringTaskService;
+import com.aisecretary.taskmaster.utils.CategoryManager;
 import com.aisecretary.taskmaster.utils.StatsManager;
 import com.aisecretary.taskmaster.utils.StreakManager;
 import com.aisecretary.taskmaster.utils.SwipeHelper;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -40,10 +45,13 @@ public class MainActivity extends Activity
     private Button addTaskButton;
     private Button statisticsButton;
     private Button dailyPlanButton;
+    private Spinner categoryFilterSpinner;
 
     private TaskRepository repository;
     private TaskAdapter adapter;
     private List<TaskEntity> tasks;
+    private List<TaskEntity> allTasks; // Unfiltered list
+    private String selectedCategoryId = "all"; // Current filter
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +69,7 @@ public class MainActivity extends Activity
         addTaskButton = findViewById(R.id.add_task_button);
         statisticsButton = findViewById(R.id.statistics_button);
         dailyPlanButton = findViewById(R.id.daily_plan_button);
+        categoryFilterSpinner = findViewById(R.id.category_filter_spinner);
 
         // Set up RecyclerView
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -70,6 +79,9 @@ public class MainActivity extends Activity
         SwipeHelper swipeHelper = new SwipeHelper(adapter, this);
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(swipeHelper);
         itemTouchHelper.attachToRecyclerView(recyclerView);
+
+        // Set up category filter (Phase 8.2)
+        setupCategoryFilter();
 
         // Set up button listeners
         addTaskButton.setOnClickListener(new View.OnClickListener() {
@@ -218,9 +230,18 @@ public class MainActivity extends Activity
     /**
      * Load tasks from repository
      * Phase 5: Now uses intelligent sorting algorithm
+     * Phase 8.2: Now supports category filtering
      */
     private void loadTasks() {
-        tasks = repository.getTodaysSortedTasks();
+        allTasks = repository.getTodaysSortedTasks();
+
+        // Apply category filter
+        if (selectedCategoryId != null && !selectedCategoryId.equals("all")) {
+            tasks = CategoryManager.filterByCategory(allTasks, selectedCategoryId);
+        } else {
+            tasks = allTasks;
+        }
+
         adapter.setTasks(tasks);
     }
 
@@ -404,6 +425,55 @@ public class MainActivity extends Activity
     private void openDailyPlan() {
         Intent intent = new Intent(this, DailyPlanActivity.class);
         startActivity(intent);
+    }
+
+    /**
+     * Setup category filter spinner
+     * Phase 8.2: Category filtering
+     */
+    private void setupCategoryFilter() {
+        // Build category list (All + predefined categories)
+        List<String> categoryNames = new ArrayList<>();
+        categoryNames.add("📁 Alle");
+
+        List<CategoryManager.Category> categories = CategoryManager.getAllCategories();
+        for (CategoryManager.Category category : categories) {
+            categoryNames.add(category.getDisplayName());
+        }
+
+        // Create adapter
+        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_item,
+                categoryNames
+        );
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        categoryFilterSpinner.setAdapter(spinnerAdapter);
+
+        // Set listener
+        categoryFilterSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position == 0) {
+                    // "All" selected
+                    selectedCategoryId = "all";
+                } else {
+                    // Category selected
+                    CategoryManager.Category category = categories.get(position - 1);
+                    selectedCategoryId = category.id;
+                }
+
+                // Reload tasks with new filter
+                loadTasks();
+                updateStats();
+                displayTasks();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Do nothing
+            }
+        });
     }
 
     // SwipeHelper.SwipeListener implementations
