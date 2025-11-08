@@ -41,6 +41,12 @@
             android:exported="false"
             android:label="Statistiken" />
 
+        <!-- DailyPlanActivity - Daily Timeline Plan -->
+        <activity
+            android:name=".DailyPlanActivity"
+            android:exported="false"
+            android:label="Tagesplan" />
+
         <!-- Widget Provider - Large (4x4) -->
         <receiver
             android:name=".widget.TaskWidgetProvider"

@@ -38,6 +38,8 @@ public class MainActivity extends Activity
     private TextView statsTextView;
     private TextView streakTextView;
     private Button addTaskButton;
+    private Button statisticsButton;
+    private Button dailyPlanButton;
 
     private TaskRepository repository;
     private TaskAdapter adapter;
@@ -57,6 +59,8 @@ public class MainActivity extends Activity
         statsTextView = findViewById(R.id.stats_text);
         streakTextView = findViewById(R.id.streak_text);
         addTaskButton = findViewById(R.id.add_task_button);
+        statisticsButton = findViewById(R.id.statistics_button);
+        dailyPlanButton = findViewById(R.id.daily_plan_button);
 
         // Set up RecyclerView
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -67,11 +71,25 @@ public class MainActivity extends Activity
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(swipeHelper);
         itemTouchHelper.attachToRecyclerView(recyclerView);
 
-        // Set up button listener
+        // Set up button listeners
         addTaskButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 onAddTaskClicked();
+            }
+        });
+
+        statisticsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openStatistics();
+            }
+        });
+
+        dailyPlanButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openDailyPlan();
             }
         });
 
@@ -369,6 +387,23 @@ public class MainActivity extends Activity
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    /**
+     * Open Statistics Activity
+     */
+    private void openStatistics() {
+        Intent intent = new Intent(this, StatisticsActivity.class);
+        startActivity(intent);
+    }
+
+    /**
+     * Open Daily Plan Activity
+     * Phase 5.2: Timeline-based daily task plan
+     */
+    private void openDailyPlan() {
+        Intent intent = new Intent(this, DailyPlanActivity.class);
+        startActivity(intent);
     }
 
     // SwipeHelper.SwipeListener implementations
