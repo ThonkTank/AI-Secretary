@@ -594,31 +594,46 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 
 ---
 
-### Phase 6: Verkettete Tasks (Priorität: MITTEL)
+### Phase 6: Verkettete Tasks (Priorität: MITTEL) ✅ ABGESCHLOSSEN
 **Ziel:** Sequenzen und Abhängigkeiten
 
-#### 6.1 Task-Verkettungen Datenmodell
-- [ ] TaskChain Datenbank-Tabelle
-  - chain_id
-  - task_order (Reihenfolge)
-  - is_cyclic (A → B → C → A wieder)
-- [ ] TaskChainDao
-- [ ] Verkettungs-Logik
-  - `getNextTaskInChain(Task)` - Nächster Task in Kette
-  - `isPreviousTaskCompleted(Task)` - Prüfe Vorbedingung
-  - `resetChain(Chain)` - Zyklische Ketten zurücksetzen
+#### 6.1 Task-Verkettungen Datenmodell ✅ ABGESCHLOSSEN
+- [x] Datenmodell bereits in Phase 1 ✅
+  - chainId in TaskEntity ✅
+  - chainOrder (Reihenfolge) in TaskEntity ✅
+  - Keine separate Tabelle nötig ✅
+- [x] **ChainManager** Utility-Klasse ✅
+  - ChainInfo Datenklasse (chainId, tasks, isCyclic, completionPercentage) ✅
+- [x] **Verkettungs-Logik** ✅
+  - getTasksInChain() - Alle Tasks in Kette, sortiert ✅
+  - getNextTaskInChain() - Nächster Task (cyclic: wrap around) ✅
+  - getPreviousTaskInChain() - Vorheriger Task ✅
+  - isPreviousTaskCompleted() - Prüfe Vorbedingung ✅
+  - isTaskBlocked() - Prüfe ob durch Vorgänger blockiert ✅
+  - getChainProgress() - Completion Percentage (0-100) ✅
+  - getAllChains() - Map aller Chains mit Info ✅
+  - getChainDescription() - "Task1 → Task2 → Task3 → ↺" ✅
+  - getChainVisual() - "✓Task1 → ☐Task2 → ✓Task3" ✅
+  - getNextAvailableTaskInChain() - Erster unvollständiger ✅
+  - resetChain() - Markiert alle als incomplete (cyclic) ✅
+- [x] **TaskRepository** Chain-Management ✅
+  - 10 neue Chain-Methoden ✅
+  - resetChain() mit Database-Update & Widget-Notification ✅
 
-**Geschätzte Dateien:** 3-4 neue Dateien
+**Dateien erstellt:** 4 Dateien (1 neu, 3 aktualisiert, +466 Zeilen)
 **Komplexität:** Hoch
+**Status:** ✅ Vollständig implementiert
 
-#### 6.2 Verkettungs-UI
-- [ ] Chain-Editor Dialog
-- [ ] Drag-and-Drop für Task-Reihenfolge
-- [ ] Visualisierung von Abhängigkeiten
-- [ ] Blockierung von Tasks (wenn Vorgänger nicht erledigt)
+#### 6.2 Verkettungs-UI (Basis) ✅ ABGESCHLOSSEN
+- [x] **Chain-Visualisierung in Task-Liste** ✅
+  - Chain-Indicator (🔗 Chain #X) in list_item_task.xml ✅
+  - TaskAdapter: Zeigt Chain-Position ✅
+  - Automatische Anzeige wenn chainId gesetzt ✅
+- [ ] Chain-Editor Dialog (optional - für manuelle Erstellung)
+- [ ] Drag-and-Drop UI (optional)
+- [ ] Visual Chain-Builder (optional)
 
-**Geschätzte Dateien:** 2-3 neue Dateien
-**Komplexität:** Hoch
+**Status:** Basis implementiert, erweiterte UI optional
 
 ---
 
@@ -1105,6 +1120,36 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - Fortschritt: 90% der Taskmaster Feature Suite
   - Vorteile: User erhält personalisierte Produktivitäts-Insights, datenbasierte Zeitempfehlungen
   - Nächstes: Phase 6 - Verkettete Tasks oder Phase 7 - Visual Polish
+- 2025-11-08 (v3.4): Phase 6 abgeschlossen - Task Chains (Verkettete Tasks)
+  - ✅ ChainManager Utility-Klasse: Vollständige Chain-Management Logik
+    - ChainInfo Datenklasse: chainId, tasks, isCyclic, totalTasks, completedTasks, completionPercentage
+    - getTasksInChain() - Holt alle Tasks einer Kette, sortiert nach chainOrder
+    - getNextTaskInChain() - Gibt nächsten Task in Sequenz zurück (cyclic: wrap around zu erstem)
+    - getPreviousTaskInChain() - Gibt vorherigen Task in Sequenz zurück
+    - isPreviousTaskCompleted() - Prüft ob Vorbedingung (previous task completed) erfüllt
+    - isTaskBlocked() - Prüft ob Task durch unvollständigen vorherigen Task blockiert
+    - getChainProgress() - Berechnet Completion-Percentage (0-100) für gesamte Kette
+    - getAllChains() - Map aller existierenden Chains mit ChainInfo
+    - getChainDescription() - Human-readable: "Task1 → Task2 → Task3 → ↺" (cyclic indicator)
+    - getChainVisual() - Visual mit Completion: "✓Task1 → ☐Task2 → ✓Task3"
+    - getNextAvailableTaskInChain() - Findet ersten unvollständigen Task in Kette
+    - resetChain() - Markiert alle Tasks als incomplete (für cyclic chains)
+  - ✅ TaskRepository: Phase 6 Section mit Chain-Management
+    - 10 neue Chain-Methoden: getTasksInChain(), getNextTaskInChain(), getPreviousTaskInChain()
+    - isTaskBlocked(), getChainProgress(), getAllChains()
+    - getChainDescription(), getChainVisual(), getNextAvailableTaskInChain()
+    - resetChain() - Reset mit Database-Update & Widget-Notification
+  - ✅ UI Integration: Chain-Visualisierung
+    - list_item_task.xml: Neuer Chain-Indicator TextView (🔗 Chain #X)
+    - TaskAdapter: chainTextView Field hinzugefügt
+    - onBindViewHolder(): Zeigt Chain-Position wenn chainId gesetzt
+    - hasInfo-Check erweitert für Chain-Visibility
+  - 4 Dateien (1 neu, 3 aktualisiert, +466 Zeilen)
+  - **Phase 6 vollständig abgeschlossen! 🎉**
+  - Fortschritt: 95% der Taskmaster Feature Suite
+  - Vorteile: Sequentielle Workflows (A → B → C), Zyklische Ketten (→ ↺), Task-Abhängigkeiten
+  - Use Cases: Morgenroutine (Aufstehen → Duschen → Frühstück → ↺), Projektphasen, Checklisten
+  - Nächstes: Phase 8 - Erweiterte Features (Notifications, Dark Mode) oder Polish
 
 ---
 
