@@ -11,7 +11,9 @@
 
     <!-- Padding -->
     <dimen name="padding_card">16dp</dimen>
+    <dimen name="card_padding">16dp</dimen>
     <dimen name="padding_widget">12dp</dimen>
+    <dimen name="widget_padding">12dp</dimen>
     <dimen name="padding_button">16dp</dimen>
     <dimen name="padding_dialog">24dp</dimen>
     <dimen name="padding_screen">16dp</dimen>

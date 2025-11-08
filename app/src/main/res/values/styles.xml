@@ -24,4 +24,9 @@
         <item name="android:textSize">14sp</item>
         <item name="android:textColor">@color/textSecondary</item>
     </style>
+
+    <style name="TextAppearance.Caption" parent="android:TextAppearance.Material.Small">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/textSecondary</item>
+    </style>
 </resources>
