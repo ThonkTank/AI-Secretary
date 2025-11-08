@@ -14,11 +14,13 @@
     <dimen name="padding_widget">12dp</dimen>
     <dimen name="padding_button">16dp</dimen>
     <dimen name="padding_dialog">24dp</dimen>
+    <dimen name="padding_screen">16dp</dimen>
 
     <!-- Margins -->
     <dimen name="margin_element">8dp</dimen>
     <dimen name="margin_section">16dp</dimen>
     <dimen name="margin_screen">16dp</dimen>
+    <dimen name="margin_between_cards">12dp</dimen>
 
     <!-- Elevation -->
     <dimen name="elevation_card">2dp</dimen>
