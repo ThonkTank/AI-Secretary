@@ -26,24 +26,43 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 - [x] Entwicklungsumgebung in Termux eingerichtet
 - [x] DESIGN.md mit umfassender UX/UI-Vision erstellt
 
-**Phase 1: Grundlagen** 🟡 In Arbeit (40% abgeschlossen)
-- [x] Task-Datenmodell (Task.java) mit allen geplanten Eigenschaften
+**Phase 1: Grundlagen & Datenbank** 🟢 75% abgeschlossen
+- [x] Task-Datenmodell (TaskEntity.java) mit ALLEN Taskmaster-Features
   - Basis-Properties (id, title, description, priority, completed)
-  - Tracking-Properties (createdAt, completedAt, dueAt, completionCount)
-  - Recurrence-Properties (isRecurring, recurrenceType, recurrenceX/Y)
-  - Performance-Properties (averageCompletionTime, averageDifficulty, streak)
-- [x] MainActivity mit Basis-UI
-  - Task-Liste Anzeige
-  - Task-Completion Toggle
-  - Basis-Statistiken (erledigte/gesamt)
-  - Add-Task Button (Platzhalter)
-- [x] XML-Layouts (activity_main.xml)
-- [x] Resource-Dateien (strings.xml, colors.xml, styles.xml)
-- [ ] **Room Datenbank-Schema** ⬅️ Nächster Schritt
-- [ ] **TaskRepository für Datenzugriff**
-- [ ] **ViewModel-Architektur (MVVM)**
+  - Tracking-Properties (createdAt, completedAt, dueAt, completionCount, lastCompletedAt)
+  - Recurrence-Properties (isRecurring, recurrenceType, recurrenceX/Y, startDate, endDate)
+  - Performance-Properties (averageCompletionTime, averageDifficulty)
+  - Streak-Properties (currentStreak, longestStreak, streakLastUpdated)
+  - Scheduling-Properties (preferredTimeOfDay, preferredHour)
+  - Chain-Properties (chainId, chainOrder)
+  - Category support
+- [x] **Design System v1.0** vollständig implementiert
+  - colors.xml: Komplette Farbpalette aus DESIGN.md
+  - styles.xml: Typografie, Buttons, Cards, Spacing
+  - dimens.xml: Spacing-System (8dp/16dp/24dp)
+- [x] **TaskDao** (SQLite Datenbank)
+  - Vollständiges CRUD
+  - Queries: getAll, getTodayTasks, getOverdueTasks, getTasksWithStreaks
+  - Completion counts für Statistiken
+- [x] **TaskRepository** implementiert
+  - Singleton-Pattern
+  - Business-Logic für Task-Completion
+  - Automatische Streak-Berechnung
+  - Stats-Methoden (heute, 7 Tage, Durchschnitt)
+  - Recurring-Task Reset-Logic
+- [x] MainActivity aktualisiert
+  - Verwendet jetzt TaskRepository (echte Datenbank)
+  - Sample-Tasks mit Streaks beim ersten Start
+  - Task-Anzeige mit Design-System-Farben
+  - Prioritäts-Sterne (⭐⭐⭐)
+  - Streak-Badges (🔥 Streak: X)
+  - Überfälligkeits-Warnungen (⚠️ OVERDUE)
+  - Stats: Heute-Counter + Höchste Streak
+- [ ] **RecyclerView + TaskAdapter** ⬅️ Nächster Schritt
+- [ ] **Swipe-Gesten** (Right: Complete, Left: Delete)
+- [ ] **Verbessertes Task-Item-Layout** (list_item_task.xml)
 
-**Gesamt-Fortschritt:** ~15% der Taskmaster Feature Suite
+**Gesamt-Fortschritt:** ~25% der Taskmaster Feature Suite
 
 ---
 
@@ -52,31 +71,49 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 ### Phase 1: Grundlagen & Datenbank (Priorität: HOCH)
 **Ziel:** Persistente Datenspeicherung und solide Architektur
 
-#### 1.1 Datenbank-Integration
-- [ ] Room-Dependencies einrichten
-- [ ] TaskEntity erstellen (Datenbank-Modell)
-- [ ] TaskDao erstellen (Datenzugriff-Interface)
-  - `insert(Task)` - Task hinzufügen
-  - `update(Task)` - Task aktualisieren
-  - `delete(Task)` - Task löschen
-  - `getAll()` - Alle Tasks laden
-  - `getById(id)` - Task nach ID
-  - `getByDate(date)` - Tasks für bestimmtes Datum
-  - `getOverdue()` - Überfällige Tasks
-- [ ] AppDatabase erstellen (Room-Datenbank)
-- [ ] TaskRepository erstellen (Abstraktionsschicht)
+#### 1.1 Datenbank-Integration ✅ ABGESCHLOSSEN
+- [x] SQLite-basierte Implementierung (statt Room wegen Termux)
+- [x] TaskEntity erstellt (Vollständiges Datenbank-Modell)
+- [x] TaskDao erstellt (SQLiteOpenHelper mit allen Queries)
+  - `insert(Task)` - Task hinzufügen ✅
+  - `update(Task)` - Task aktualisieren ✅
+  - `delete(Task)` - Task löschen ✅
+  - `getAll()` - Alle Tasks laden ✅
+  - `getById(id)` - Task nach ID ✅
+  - `getTasksForToday()` - Heutige + überfällige Tasks ✅
+  - `getOverdueTasks()` - Überfällige Tasks ✅
+  - `getTasksWithStreaks()` - Tasks mit Streaks ✅
+  - `getCompletedCount()` - Erledigte Tasks für Zeitraum ✅
+- [x] TaskRepository erstellt (Repository-Pattern)
+  - Singleton-Pattern ✅
+  - Complete/Uncomplete mit Streak-Update ✅
+  - Stats-Methoden (heute, 7 Tage, Durchschnitt) ✅
+  - Recurring-Task Logic ✅
 
-**Geschätzte Dateien:** 4-5 neue Java-Klassen
+**Dateien erstellt:** 3 neue Java-Klassen (TaskEntity, TaskDao, TaskRepository)
 **Komplexität:** Mittel
+**Status:** ✅ Vollständig implementiert
 
-#### 1.2 MVVM-Architektur
-- [ ] TaskViewModel erstellen
-- [ ] LiveData für Task-Liste
-- [ ] MainActivity auf ViewModel umstellen
-- [ ] Observer-Pattern für UI-Updates
+#### 1.2 Design-System Implementation ✅ ABGESCHLOSSEN
+- [x] colors.xml mit vollständiger Farbpalette aus DESIGN.md
+  - Primary/Accent Colors ✅
+  - Status Colors (Overdue, Completed, Due Today) ✅
+  - Priority Colors (1-4) ✅
+  - Streak Colors ✅
+  - Widget/Card/Interactive Colors ✅
+- [x] styles.xml mit Typografie und Komponenten-Styles
+  - Text Appearances (Title, Subtitle, Body, Caption) ✅
+  - Task-Specific Styles ✅
+  - Streak Number Style ✅
+  - Button/Card Styles ✅
+- [x] dimens.xml für Spacing-System
+  - Spacing (8dp/16dp/24dp) ✅
+  - Padding (Cards, Widgets, Buttons) ✅
+  - Elevation (2dp/4dp/8dp) ✅
+  - Corner Radius ✅
 
-**Geschätzte Dateien:** 2 neue Java-Klassen
-**Komplexität:** Mittel
+**Dateien aktualisiert/erstellt:** 3 Resource-Dateien
+**Status:** ✅ Design System v1.0 komplett
 
 #### 1.3 Verbesserte UI (gemäß DESIGN.md)
 - [ ] **Design-System implementieren**
@@ -534,6 +571,12 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - Detaillierte UI-Spezifikationen für alle Features
   - Entwicklungszeit neu geschätzt: 18-23 Tage für Widget-First MVP
   - Nächste Schritte um Design-Focus erweitert
+- 2025-11-08 (v2.1): Phase 1 Implementierung abgeschlossen
+  - ✅ Design System v1.0 vollständig implementiert (colors, styles, dimens)
+  - ✅ Datenbank-Layer komplett (TaskEntity, TaskDao, TaskRepository)
+  - ✅ MainActivity auf Datenbank umgestellt mit Sample-Tasks
+  - Fortschritt: 25% der Taskmaster Feature Suite
+  - Nächstes: RecyclerView + Swipe-Gesten
 
 ---
 
