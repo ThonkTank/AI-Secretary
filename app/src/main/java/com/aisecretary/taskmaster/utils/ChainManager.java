@@ -59,7 +59,7 @@ public class ChainManager {
 
         List<TaskEntity> chainTasks = new ArrayList<>();
         for (TaskEntity task : allTasks) {
-            if (chainId.equals(task.chainId)) {
+            if (chainId.equals(String.valueOf(task.chainId))) {
                 chainTasks.add(task);
             }
         }
@@ -83,11 +83,11 @@ public class ChainManager {
      * @return Next task in chain, or null if none
      */
     public static TaskEntity getNextTaskInChain(List<TaskEntity> allTasks, TaskEntity currentTask) {
-        if (currentTask.chainId == null || currentTask.chainId.isEmpty()) {
+        if (currentTask.chainId == 0) {
             return null;
         }
 
-        List<TaskEntity> chainTasks = getTasksInChain(allTasks, currentTask.chainId);
+        List<TaskEntity> chainTasks = getTasksInChain(allTasks, String.valueOf(currentTask.chainId));
         if (chainTasks.isEmpty()) {
             return null;
         }
@@ -118,11 +118,11 @@ public class ChainManager {
      * @return Previous task in chain, or null if none
      */
     public static TaskEntity getPreviousTaskInChain(List<TaskEntity> allTasks, TaskEntity currentTask) {
-        if (currentTask.chainId == null || currentTask.chainId.isEmpty()) {
+        if (currentTask.chainId == 0) {
             return null;
         }
 
-        List<TaskEntity> chainTasks = getTasksInChain(allTasks, currentTask.chainId);
+        List<TaskEntity> chainTasks = getTasksInChain(allTasks, String.valueOf(currentTask.chainId));
         if (chainTasks.isEmpty() || chainTasks.size() == 1) {
             return null;
         }
@@ -166,7 +166,7 @@ public class ChainManager {
      * @return true if task is blocked
      */
     public static boolean isTaskBlocked(List<TaskEntity> allTasks, TaskEntity task) {
-        if (task.chainId == null || task.chainId.isEmpty()) {
+        if (task.chainId == 0) {
             return false; // Not in a chain = not blocked
         }
 
@@ -206,11 +206,12 @@ public class ChainManager {
         Map<String, List<TaskEntity>> chainMap = new HashMap<>();
 
         for (TaskEntity task : allTasks) {
-            if (task.chainId != null && !task.chainId.isEmpty()) {
-                if (!chainMap.containsKey(task.chainId)) {
-                    chainMap.put(task.chainId, new ArrayList<TaskEntity>());
+            if (task.chainId != 0) {
+                String chainIdStr = String.valueOf(task.chainId);
+                if (!chainMap.containsKey(chainIdStr)) {
+                    chainMap.put(chainIdStr, new ArrayList<TaskEntity>());
                 }
-                chainMap.get(task.chainId).add(task);
+                chainMap.get(chainIdStr).add(task);
             }
         }
 

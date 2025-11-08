@@ -7,7 +7,7 @@ import com.aisecretary.taskmaster.database.CompletionHistoryEntity;
 import com.aisecretary.taskmaster.database.TaskDao;
 import com.aisecretary.taskmaster.database.TaskEntity;
 import com.aisecretary.taskmaster.utils.ChainManager;
-import com.aisecretary.taskmaster.utils.NotificationManager;
+import com.aisecretary.taskmaster.util.NotificationManager;
 import com.aisecretary.taskmaster.utils.RecurrenceManager;
 import com.aisecretary.taskmaster.utils.StreakManager;
 import com.aisecretary.taskmaster.utils.TaskScheduler;
