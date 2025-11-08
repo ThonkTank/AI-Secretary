@@ -1,6 +1,6 @@
 package com.aisecretary.taskmaster;
 
-import android.app.Activity;
+import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -30,7 +30,7 @@ import com.google.android.material.tabs.TabLayoutMediator;
  * - Add-Modus: Neue Aufgabe erstellen
  * - Edit-Modus: Bestehende Aufgabe bearbeiten (via EXTRA_TASK_ID)
  */
-public class AddTaskActivity extends Activity {
+public class AddTaskActivity extends AppCompatActivity {
 
     public static final String EXTRA_TASK_ID = "task_id";
 

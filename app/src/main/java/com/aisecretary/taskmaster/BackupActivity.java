@@ -1,6 +1,6 @@
 package com.aisecretary.taskmaster;
 
-import android.app.Activity;
+import androidx.appcompat.app.AppCompatActivity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
@@ -23,7 +23,7 @@ import java.io.File;
  * - Backup info display
  * - Phase 8.3
  */
-public class BackupActivity extends Activity {
+public class BackupActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE_EXPORT = 1001;
     private static final int REQUEST_CODE_IMPORT = 1002;

@@ -1,6 +1,6 @@
 package com.aisecretary.taskmaster;
 
-import android.app.Activity;
+import androidx.appcompat.app.AppCompatActivity;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -30,7 +30,7 @@ import java.util.Locale;
  * - Highlights next task
  * - Phase 5.2
  */
-public class DailyPlanActivity extends Activity {
+public class DailyPlanActivity extends AppCompatActivity {
 
     private LinearLayout timelineContainer;
     private TextView headerText;

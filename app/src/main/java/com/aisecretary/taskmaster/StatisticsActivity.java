@@ -1,6 +1,6 @@
 package com.aisecretary.taskmaster;
 
-import android.app.Activity;
+import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -21,7 +21,7 @@ import java.util.List;
  * Phase 4.2: Statistik-Dashboard
  * Displays comprehensive statistics about task completion and streaks.
  */
-public class StatisticsActivity extends Activity {
+public class StatisticsActivity extends AppCompatActivity {
 
     private TaskRepository repository;
 

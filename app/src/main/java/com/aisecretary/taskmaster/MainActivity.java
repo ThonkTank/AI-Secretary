@@ -1,6 +1,6 @@
 package com.aisecretary.taskmaster;
 
-import android.app.Activity;
+import androidx.appcompat.app.AppCompatActivity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
@@ -36,7 +36,7 @@ import java.util.List;
  * Uses RecyclerView with SwipeHelper for efficient task list rendering.
  * Implements Design System v1.0 with swipe gestures (Right: Complete, Left: Delete).
  */
-public class MainActivity extends Activity
+public class MainActivity extends AppCompatActivity
         implements TaskAdapter.TaskClickListener, SwipeHelper.SwipeListener {
 
     private RecyclerView recyclerView;
