@@ -7,6 +7,7 @@ import com.aisecretary.taskmaster.database.CompletionHistoryEntity;
 import com.aisecretary.taskmaster.database.TaskDao;
 import com.aisecretary.taskmaster.database.TaskEntity;
 import com.aisecretary.taskmaster.utils.ChainManager;
+import com.aisecretary.taskmaster.utils.NotificationManager;
 import com.aisecretary.taskmaster.utils.RecurrenceManager;
 import com.aisecretary.taskmaster.utils.StreakManager;
 import com.aisecretary.taskmaster.utils.TaskScheduler;
@@ -73,6 +74,10 @@ public class TaskRepository {
      */
     public void deleteTask(long taskId) {
         taskDao.delete(taskId);
+
+        // Cancel any pending notifications for this task (Phase 8.1)
+        NotificationManager.cancelTaskReminder(context, (int) taskId);
+
         notifyWidgetUpdate();
     }
 
@@ -158,6 +163,10 @@ public class TaskRepository {
         updateStreak(task);
 
         taskDao.update(task);
+
+        // Cancel any pending notifications for this task (Phase 8.1)
+        NotificationManager.cancelTaskReminder(context, (int) taskId);
+
         notifyWidgetUpdate();
     }
 
@@ -187,6 +196,10 @@ public class TaskRepository {
 
         updateStreak(task);
         taskDao.update(task);
+
+        // Cancel any pending notifications for this task (Phase 8.1)
+        NotificationManager.cancelTaskReminder(context, (int) taskId);
+
         notifyWidgetUpdate();
     }
 

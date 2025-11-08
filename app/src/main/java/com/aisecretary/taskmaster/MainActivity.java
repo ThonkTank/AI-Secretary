@@ -17,6 +17,7 @@ import com.aisecretary.taskmaster.adapter.TaskAdapter;
 import com.aisecretary.taskmaster.database.TaskEntity;
 import com.aisecretary.taskmaster.dialogs.CompletionDialog;
 import com.aisecretary.taskmaster.repository.TaskRepository;
+import com.aisecretary.taskmaster.service.NotificationService;
 import com.aisecretary.taskmaster.service.RecurringTaskService;
 import com.aisecretary.taskmaster.utils.StatsManager;
 import com.aisecretary.taskmaster.utils.StreakManager;
@@ -80,6 +81,10 @@ public class MainActivity extends Activity
         // Start recurring task service for automatic task resets
         // Phase 2.3: Background service for recurring tasks
         RecurringTaskService.startService(this);
+
+        // Start notification service for reminders and summaries
+        // Phase 8.1: Notification system
+        NotificationService.startService(this);
 
         // Load and display data
         refreshData();

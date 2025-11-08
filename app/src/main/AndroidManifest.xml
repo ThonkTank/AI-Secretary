@@ -94,6 +94,22 @@
             android:name=".service.RecurringTaskService"
             android:exported="false" />
 
+        <!-- Notification Service -->
+        <service
+            android:name=".service.NotificationService"
+            android:exported="false" />
+
+        <!-- Notification Receiver - Handles scheduled notifications -->
+        <receiver
+            android:name=".service.NotificationService$NotificationReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.aisecretary.taskmaster.ACTION_CHECK_TASKS" />
+                <action android:name="com.aisecretary.taskmaster.ACTION_DAILY_SUMMARY" />
+                <action android:name="com.aisecretary.taskmaster.ACTION_STREAK_WARNING" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>
