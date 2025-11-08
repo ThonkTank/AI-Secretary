@@ -91,9 +91,15 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 1. Öffne: https://github.com/ThonkTank/AI-Secretary/actions
 2. Klicke neuesten Workflow-Run ("Phase 9.1: Critical Bug Fixes...")
 3. Download "app-debug" Artifact
-4. Installiere APK auf Gerät
+4. APK-Größe prüfen (erwartet: 5-8MB)
+5. Installiere APK auf Gerät
 
 #### 9.3 APK-Installation & Testing 🧪 PENDING
+
+**Installation:**
+- [ ] APK nach Downloads kopieren: `cp app-debug.apk ~/storage/downloads/`
+- [ ] APK installieren (Dateimanager oder `termux-open`)
+- [ ] "Installation aus unbekannten Quellen" erlauben (Android-Einstellung falls nötig)
 
 **Smoke-Tests nach Installation:**
 - [ ] App öffnet ohne Crash
@@ -113,6 +119,35 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 - ✅ ROADMAP.md erweitert mit Phase 9
 - [ ] README.md aktualisieren mit Build-Status
 - [ ] BUILD_INSTRUCTIONS.md aktualisieren
+- [ ] BUILD_STATUS.md aktualisieren mit neuem Status
+
+#### 9.5 Alternative Build-Methoden Setup 🔄 OPTIONAL
+
+- [ ] **Option A:** AIDE installieren & Projekt importieren testen
+- [ ] **Option B:** apkc installieren & konfigurieren
+- [ ] **Option C:** GitHub Actions verifizieren (bereits funktioniert)
+
+**Geschätzter Aufwand:** 30 Min | **Priorität:** NIEDRIG (Backup-Methoden)
+
+---
+
+### Timeline: Was als nächstes
+
+**Sofort (heute):**
+1. ✅ Build-System analysiert
+2. ✅ Lösungen dokumentiert
+3. ✅ Critical Bug-Fixes durchgeführt (9.1)
+4. ⏳ GitHub Actions Build abwarten & APK testen (9.2 + 9.3)
+
+**Diese Woche:**
+5. Testing durchführen (9.3 Smoke-Tests)
+6. Dokumentation finalisieren (9.4)
+7. Code-Qualitäts-Fixes aus Analyse starten
+
+**Nächste Woche:**
+8. MVVM-Refactoring (Architecture-Fixes)
+9. Dependencies updaten
+10. Unit Tests schreiben
 
 ---
 
