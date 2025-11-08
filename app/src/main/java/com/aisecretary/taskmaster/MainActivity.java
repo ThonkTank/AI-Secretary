@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.aisecretary.taskmaster.adapter.TaskAdapter;
 import com.aisecretary.taskmaster.database.TaskEntity;
+import com.aisecretary.taskmaster.dialogs.CompletionDialog;
 import com.aisecretary.taskmaster.repository.TaskRepository;
 import com.aisecretary.taskmaster.utils.SwipeHelper;
 
@@ -250,23 +251,66 @@ public class MainActivity extends Activity
             // Uncomplete task
             repository.uncompleteTask(task.id);
             Toast.makeText(this, "Task marked as incomplete", Toast.LENGTH_SHORT).show();
+            refreshData();
         } else {
-            // Complete task
-            repository.completeTask(task.id);
+            // Show completion dialog
+            showCompletionDialog(task);
+        }
+    }
 
-            String message = "Task completed!";
-            if (task.isRecurring) {
-                // Reload task to get updated streak
-                TaskEntity updatedTask = repository.getTask(task.id);
-                if (updatedTask != null && updatedTask.currentStreak > 0) {
-                    message = "Task completed! 🔥 Streak: " + updatedTask.currentStreak;
+    /**
+     * Show completion dialog for task tracking
+     */
+    private void showCompletionDialog(TaskEntity task) {
+        CompletionDialog dialog = new CompletionDialog(this, task, new CompletionDialog.CompletionListener() {
+            @Override
+            public void onCompleteWithTracking(TaskEntity task, long duration, float difficulty) {
+                // Complete task with tracking data
+                repository.completeTask(task.id, duration, difficulty);
+
+                // Show success message with streak info
+                String message = "Task completed!";
+                if (task.isRecurring) {
+                    TaskEntity updatedTask = repository.getTask(task.id);
+                    if (updatedTask != null && updatedTask.currentStreak > 0) {
+                        message = "🔥 Streak: " + updatedTask.currentStreak + " Tage!";
+
+                        // Check for milestone
+                        int streak = updatedTask.currentStreak;
+                        if (streak == 10 || streak == 25 || streak == 50 || streak == 100) {
+                            message = "🎉 " + streak + " Tage Streak! 🎉";
+                        }
+                    }
                 }
+
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                refreshData();
             }
 
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-        }
+            @Override
+            public void onCompleteWithoutTracking(TaskEntity task) {
+                // Complete task without tracking (quick complete)
+                repository.completeTask(task.id);
 
-        refreshData();
+                String message = "Task completed!";
+                if (task.isRecurring) {
+                    TaskEntity updatedTask = repository.getTask(task.id);
+                    if (updatedTask != null && updatedTask.currentStreak > 0) {
+                        message = "Task completed! 🔥 Streak: " + updatedTask.currentStreak;
+                    }
+                }
+
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+                refreshData();
+            }
+
+            @Override
+            public void onCancel() {
+                // User cancelled - do nothing
+            }
+        });
+
+        dialog.show();
     }
 
     @Override
@@ -307,21 +351,11 @@ public class MainActivity extends Activity
         if (task.completed) {
             repository.uncompleteTask(task.id);
             Toast.makeText(this, "Task marked as incomplete", Toast.LENGTH_SHORT).show();
+            refreshData();
         } else {
-            repository.completeTask(task.id);
-
-            String message = "Task completed!";
-            if (task.isRecurring) {
-                TaskEntity updatedTask = repository.getTask(task.id);
-                if (updatedTask != null && updatedTask.currentStreak > 0) {
-                    message = "Task completed! 🔥 Streak: " + updatedTask.currentStreak;
-                }
-            }
-
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+            // Show completion dialog
+            showCompletionDialog(task);
         }
-
-        refreshData();
     }
 
     @Override
