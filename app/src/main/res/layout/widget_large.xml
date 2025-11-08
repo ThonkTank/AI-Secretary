@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/widgetBackground"
+    android:padding="8dp">
+
+    <!-- Header: Streak + Today Counter -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@color/widgetHeaderBackground"
+        android:padding="12dp"
+        android:gravity="center_vertical">
+
+        <!-- Streak Display -->
+        <TextView
+            android:id="@+id/widget_streak_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🔥 0"
+            android:textColor="@color/textOnPrimary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <!-- Today Counter -->
+        <TextView
+            android:id="@+id/widget_today_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0/0"
+            android:textColor="@color/textOnPrimary"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Next Task Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:background="@color/cardBackground"
+        android:padding="12dp"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="NÄCHSTE AUFGABE"
+            android:textColor="@color/textSecondary"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:paddingBottom="8dp" />
+
+        <!-- Next Task Title -->
+        <TextView
+            android:id="@+id/widget_next_task_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Keine Aufgaben"
+            android:textColor="@color/textPrimary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+        <!-- Next Task Details -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingTop="4dp">
+
+            <!-- Priority Stars -->
+            <TextView
+                android:id="@+id/widget_next_task_priority"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⭐⭐"
+                android:textColor="@color/colorAccent"
+                android:textSize="12sp" />
+
+            <!-- Due Time -->
+            <TextView
+                android:id="@+id/widget_next_task_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="in 2h"
+                android:textColor="@color/textSecondary"
+                android:textSize="12sp"
+                android:paddingStart="8dp" />
+
+            <!-- Streak Badge -->
+            <TextView
+                android:id="@+id/widget_next_task_streak"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔥 12"
+                android:textColor="@color/streakFire"
+                android:textSize="12sp"
+                android:paddingStart="8dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- Checkbox for Next Task -->
+        <TextView
+            android:id="@+id/widget_next_task_checkbox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="☐ Als erledigt markieren"
+            android:textColor="@color/colorPrimary"
+            android:textSize="14sp"
+            android:paddingTop="8dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+    </LinearLayout>
+
+    <!-- Today's Tasks Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1.5"
+        android:orientation="vertical"
+        android:background="@color/cardBackground"
+        android:padding="12dp"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="HEUTE"
+            android:textColor="@color/textSecondary"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:paddingBottom="8dp" />
+
+        <!-- Today's Tasks List (will be populated via RemoteViews) -->
+        <ListView
+            android:id="@+id/widget_today_list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:divider="@android:color/transparent"
+            android:dividerHeight="4dp" />
+
+    </LinearLayout>
+
+    <!-- Footer: Action Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="8dp"
+        android:gravity="center">
+
+        <!-- Add Task Button -->
+        <TextView
+            android:id="@+id/widget_add_task_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="➕ Neue Aufgabe"
+            android:textColor="@color/colorPrimary"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:padding="8dp"
+            android:background="@color/cardBackground"
+            android:layout_marginEnd="4dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- Open App Button -->
+        <TextView
+            android:id="@+id/widget_open_app_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="📱 App öffnen"
+            android:textColor="@color/colorPrimary"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:padding="8dp"
+            android:background="@color/cardBackground"
+            android:layout_marginStart="4dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+    </LinearLayout>
+
+</LinearLayout>

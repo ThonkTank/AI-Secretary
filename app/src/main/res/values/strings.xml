@@ -20,4 +20,5 @@
     <!-- Widget strings -->
     <string name="widget_next_task">Next Task</string>
     <string name="widget_no_tasks">No tasks for today</string>
+    <string name="widget_description">Zeigt deine nächste Aufgabe, heutige Tasks und Streaks</string>
 </resources>

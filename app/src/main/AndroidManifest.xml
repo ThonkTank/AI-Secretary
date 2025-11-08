@@ -47,11 +47,19 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.aisecretary.taskmaster.ACTION_COMPLETE_TASK" />
+                <action android:name="com.aisecretary.taskmaster.ACTION_REFRESH_WIDGET" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/task_widget_info" />
         </receiver>
+
+        <!-- Widget List Service -->
+        <service
+            android:name=".widget.WidgetListService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
 
     </application>
 

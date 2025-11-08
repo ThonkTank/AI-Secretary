@@ -22,9 +22,11 @@ public class TaskRepository {
 
     private TaskDao taskDao;
     private CompletionHistoryDao historyDao;
+    private Context context;
     private static TaskRepository instance;
 
     private TaskRepository(Context context) {
+        this.context = context.getApplicationContext();
         taskDao = new TaskDao(context.getApplicationContext());
         historyDao = new CompletionHistoryDao(context.getApplicationContext());
     }
@@ -68,6 +70,7 @@ public class TaskRepository {
      */
     public void deleteTask(long taskId) {
         taskDao.delete(taskId);
+        notifyWidgetUpdate();
     }
 
     /**
@@ -152,6 +155,7 @@ public class TaskRepository {
         updateStreak(task);
 
         taskDao.update(task);
+        notifyWidgetUpdate();
     }
 
     /**
@@ -180,6 +184,7 @@ public class TaskRepository {
 
         updateStreak(task);
         taskDao.update(task);
+        notifyWidgetUpdate();
     }
 
     /**
@@ -405,5 +410,23 @@ public class TaskRepository {
 
         StreakManager.resetStreak(task);
         taskDao.update(task);
+    }
+
+    // ==================== Phase 4.5: Widget Integration ====================
+
+    /**
+     * Notify widget to update after data changes
+     * Phase 4.5: Widget Update Integration
+     */
+    private void notifyWidgetUpdate() {
+        try {
+            // Use reflection to avoid hard dependency on widget package
+            Class<?> widgetClass = Class.forName("com.aisecretary.taskmaster.widget.TaskWidgetProvider");
+            java.lang.reflect.Method updateMethod = widgetClass.getMethod("updateAllWidgets", Context.class);
+            updateMethod.invoke(null, context);
+        } catch (Exception e) {
+            // Widget not available or error - silently ignore
+            // This allows the app to work even if widget classes are removed
+        }
     }
 }

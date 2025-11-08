@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    android:background="@color/backgroundColor"
+    android:gravity="center_vertical">
+
+    <!-- Checkbox -->
+    <TextView
+        android:id="@+id/widget_task_checkbox"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:text="☐"
+        android:textSize="18sp"
+        android:textColor="@color/colorPrimary"
+        android:gravity="center" />
+
+    <!-- Task Info -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="8dp">
+
+        <!-- Task Title -->
+        <TextView
+            android:id="@+id/widget_task_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Task Title"
+            android:textColor="@color/textPrimary"
+            android:textSize="12sp"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <!-- Task Details (Time + Priority) -->
+        <TextView
+            android:id="@+id/widget_task_details"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⭐⭐ • 15:00"
+            android:textColor="@color/textSecondary"
+            android:textSize="10sp"
+            android:paddingTop="2dp" />
+
+    </LinearLayout>
+
+    <!-- Streak Badge (optional) -->
+    <TextView
+        android:id="@+id/widget_task_streak"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🔥5"
+        android:textColor="@color/streakFire"
+        android:textSize="10sp"
+        android:paddingStart="4dp"
+        android:visibility="gone" />
+
+</LinearLayout>
