@@ -2,6 +2,8 @@ package com.aisecretary.taskmaster.repository;
 
 import android.content.Context;
 
+import com.aisecretary.taskmaster.database.CompletionHistoryDao;
+import com.aisecretary.taskmaster.database.CompletionHistoryEntity;
 import com.aisecretary.taskmaster.database.TaskDao;
 import com.aisecretary.taskmaster.database.TaskEntity;
 
@@ -12,14 +14,17 @@ import java.util.List;
  *
  * Provides a clean API for the UI layer to interact with task data.
  * Abstracts database details and provides business logic.
+ * Phase 3.2: Added completion history tracking
  */
 public class TaskRepository {
 
     private TaskDao taskDao;
+    private CompletionHistoryDao historyDao;
     private static TaskRepository instance;
 
     private TaskRepository(Context context) {
         taskDao = new TaskDao(context.getApplicationContext());
+        historyDao = new CompletionHistoryDao(context.getApplicationContext());
     }
 
     /**
@@ -100,28 +105,45 @@ public class TaskRepository {
 
     /**
      * Complete a task with tracking data
+     * Phase 3.2: Now saves to completion history and calculates averages from history
      */
     public void completeTask(long taskId, long completionTime, float difficulty) {
         TaskEntity task = taskDao.getById(taskId);
         if (task == null) return;
 
+        long now = System.currentTimeMillis();
+
+        // Save completion to history (Phase 3.2)
+        CompletionHistoryEntity historyEntry = new CompletionHistoryEntity(
+                taskId,
+                now,
+                completionTime,
+                difficulty
+        );
+        historyDao.insert(historyEntry);
+
+        // Update task completion status
         task.completed = true;
-        task.completedAt = System.currentTimeMillis();
+        task.completedAt = now;
         task.completionCount++;
-        task.lastCompletedAt = task.completedAt;
+        task.lastCompletedAt = now;
 
-        // Update average completion time
-        if (task.averageCompletionTime == 0) {
-            task.averageCompletionTime = completionTime;
-        } else {
-            task.averageCompletionTime = (task.averageCompletionTime + completionTime) / 2;
-        }
+        // Calculate averages from history (Phase 3.2)
+        task.averageCompletionTime = historyDao.getAverageCompletionTime(taskId);
+        task.averageDifficulty = historyDao.getAverageDifficulty(taskId);
 
-        // Update average difficulty
-        if (task.averageDifficulty == 0) {
-            task.averageDifficulty = difficulty;
-        } else {
-            task.averageDifficulty = (task.averageDifficulty + difficulty) / 2;
+        // Update preferred time from history
+        int mostCommonHour = historyDao.getMostCommonTimeOfDay(taskId);
+        if (mostCommonHour >= 0) {
+            task.preferredHour = mostCommonHour;
+            // Set preferredTimeOfDay based on hour
+            if (mostCommonHour >= 5 && mostCommonHour < 12) {
+                task.preferredTimeOfDay = "morning";
+            } else if (mostCommonHour >= 12 && mostCommonHour < 18) {
+                task.preferredTimeOfDay = "afternoon";
+            } else {
+                task.preferredTimeOfDay = "evening";
+            }
         }
 
         // Update streak
@@ -132,15 +154,27 @@ public class TaskRepository {
 
     /**
      * Complete a task (simple version without tracking)
+     * Phase 3.2: Also saves to completion history (with default values)
      */
     public void completeTask(long taskId) {
         TaskEntity task = taskDao.getById(taskId);
         if (task == null) return;
 
+        long now = System.currentTimeMillis();
+
+        // Save completion to history without tracking data (Phase 3.2)
+        CompletionHistoryEntity historyEntry = new CompletionHistoryEntity(
+                taskId,
+                now,
+                0, // No completion time tracked
+                0  // No difficulty tracked
+        );
+        historyDao.insert(historyEntry);
+
         task.completed = true;
-        task.completedAt = System.currentTimeMillis();
+        task.completedAt = now;
         task.completionCount++;
-        task.lastCompletedAt = task.completedAt;
+        task.lastCompletedAt = now;
 
         updateStreak(task);
         taskDao.update(task);
@@ -305,5 +339,49 @@ public class TaskRepository {
         }
 
         return null;
+    }
+
+    // ==================== Phase 3.2: Completion History Methods ====================
+
+    /**
+     * Get completion history for a task
+     */
+    public List<CompletionHistoryEntity> getTaskHistory(long taskId) {
+        return historyDao.getByTaskId(taskId);
+    }
+
+    /**
+     * Get recent completion history (last N entries)
+     */
+    public List<CompletionHistoryEntity> getRecentTaskHistory(long taskId, int limit) {
+        return historyDao.getRecentByTaskId(taskId, limit);
+    }
+
+    /**
+     * Get completion history for a date range
+     */
+    public List<CompletionHistoryEntity> getTaskHistoryByDateRange(long taskId, long startTime, long endTime) {
+        return historyDao.getByDateRange(taskId, startTime, endTime);
+    }
+
+    /**
+     * Get average completion time from history
+     */
+    public long getAverageCompletionTimeFromHistory(long taskId) {
+        return historyDao.getAverageCompletionTime(taskId);
+    }
+
+    /**
+     * Get average difficulty from history
+     */
+    public float getAverageDifficultyFromHistory(long taskId) {
+        return historyDao.getAverageDifficulty(taskId);
+    }
+
+    /**
+     * Get most common time of day for task completion
+     */
+    public int getMostCommonCompletionHour(long taskId) {
+        return historyDao.getMostCommonTimeOfDay(taskId);
     }
 }

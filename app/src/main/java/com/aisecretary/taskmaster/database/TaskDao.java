@@ -18,8 +18,9 @@ import java.util.List;
 public class TaskDao extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "taskmaster.db";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2; // Updated for completion_history table
     private static final String TABLE_TASKS = "tasks";
+    private static final String TABLE_COMPLETION_HISTORY = "completion_history";
 
     // Column names
     private static final String COL_ID = "id";
@@ -86,13 +87,35 @@ public class TaskDao extends SQLiteOpenHelper {
                 + COL_OVERDUE_SINCE + " INTEGER DEFAULT 0"
                 + ")";
 
+        String CREATE_COMPLETION_HISTORY_TABLE = "CREATE TABLE " + TABLE_COMPLETION_HISTORY + " ("
+                + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + "task_id INTEGER NOT NULL, "
+                + "completed_at INTEGER NOT NULL, "
+                + "completion_time INTEGER DEFAULT 0, "
+                + "difficulty_rating REAL DEFAULT 0, "
+                + "time_of_day INTEGER DEFAULT 0, "
+                + "FOREIGN KEY(task_id) REFERENCES " + TABLE_TASKS + "(" + COL_ID + ") ON DELETE CASCADE"
+                + ")";
+
         db.execSQL(CREATE_TASKS_TABLE);
+        db.execSQL(CREATE_COMPLETION_HISTORY_TABLE);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_TASKS);
-        onCreate(db);
+        if (oldVersion < 2) {
+            // Add completion_history table for Phase 3.2
+            String CREATE_COMPLETION_HISTORY_TABLE = "CREATE TABLE IF NOT EXISTS " + TABLE_COMPLETION_HISTORY + " ("
+                    + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    + "task_id INTEGER NOT NULL, "
+                    + "completed_at INTEGER NOT NULL, "
+                    + "completion_time INTEGER DEFAULT 0, "
+                    + "difficulty_rating REAL DEFAULT 0, "
+                    + "time_of_day INTEGER DEFAULT 0, "
+                    + "FOREIGN KEY(task_id) REFERENCES " + TABLE_TASKS + "(" + COL_ID + ") ON DELETE CASCADE"
+                    + ")";
+            db.execSQL(CREATE_COMPLETION_HISTORY_TABLE);
+        }
     }
 
     /**
