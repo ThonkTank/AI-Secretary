@@ -479,16 +479,35 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 **Status:** ✅ Vollständig implementiert
 **Design-Referenz:** DESIGN.md - Home Screen Widget
 
-#### 4.5.2 Medium & Small Widgets
-- [ ] **Medium Widget** (4x2) Layout (widget_medium.xml)
-  - Kompakte Version: Streak + Counter + Top 3 Tasks
-- [ ] **Small Widget** (2x2) Layout (widget_small.xml)
-  - Mini-Version: Streak + Counter + Nächste Aufgabe
-- [ ] Widget-Size-Handling
-- [ ] Responsive Layouts für verschiedene Displaygrößen
+#### 4.5.2 Medium & Small Widgets ✅ ABGESCHLOSSEN
+- [x] **Medium Widget** (4x2) Layout (widget_medium.xml) ✅
+  - Header: Streak + Today Count ✅
+  - Next Task mit Priority, Due Time, Streak Badge ✅
+  - Quick Complete Checkbox ✅
+  - Footer: ➕ Neu, 📱 App Buttons ✅
+- [x] **Small Widget** (2x2) Layout (widget_small.xml) ✅
+  - Minimal: Streak + Today Count (kompakt) ✅
+  - Next Task: Title, Priority, Due Time (3 Zeilen max) ✅
+  - Quick Complete Button ✅
+  - Container-Click öffnet App ✅
+- [x] **Widget-Provider** für beide Größen ✅
+  - TaskWidgetProviderMedium.java ✅
+  - TaskWidgetProviderSmall.java ✅
+  - Separate ACTION_COMPLETE_TASK Actions ✅
+  - formatDueTime() kompakt für kleine Displays ✅
+- [x] **Widget-Configuration** XMLs ✅
+  - task_widget_info_medium.xml (4x2, 250x110dp) ✅
+  - task_widget_info_small.xml (2x2, 110x110dp) ✅
+  - Beide resizable (horizontal|vertical) ✅
+- [x] **AndroidManifest** Integration ✅
+  - Medium & Small Provider registriert ✅
+  - Intent-Filter für alle Actions ✅
+- [x] **TaskRepository** Multi-Widget-Update ✅
+  - notifyWidgetUpdate() updatet alle 3 Größen ✅
 
-**Geschätzte Dateien:** 2-3 neue Dateien
+**Dateien erstellt:** 8 Dateien (6 neu, 2 aktualisiert, +654 Zeilen)
 **Komplexität:** Mittel
+**Status:** ✅ Vollständig implementiert
 
 #### 4.5.3 Widget-Interaktivität
 - [ ] **Completion-Dialog aus Widget** (Overlay)
@@ -997,6 +1016,42 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - Fortschritt: 80% der Taskmaster Feature Suite
   - Vorteile: Kontext-aware Task-Priorisierung, Streak-Preservation, Produktivitäts-Optimierung
   - Nächstes: Phase 5.2 - Tagesplan-Generierung oder Phase 3.3 - Zeitpunkt-Analyse
+- 2025-11-08 (v3.2): Phase 4.5.2 abgeschlossen - Medium & Small Widgets
+  - ✅ widget_medium.xml (4x2): Kompaktes Widget-Layout
+    - Header: Streak + Today Count
+    - Next Task Section: Title, Priority Stars, Due Time, Streak Badge
+    - Quick Complete Checkbox
+    - Footer: ➕ Neu + 📱 App Buttons
+  - ✅ widget_small.xml (2x2): Minimales Widget-Layout
+    - Kompakter Header: Streak + Today Count
+    - Next Task: Title (3 Zeilen max), Priority, Due Time
+    - Quick Complete Button (volle Breite)
+    - Container-Click öffnet MainActivity
+  - ✅ TaskWidgetProviderMedium.java: AppWidgetProvider für 4x2
+    - updateWidget() mit RemoteViews für Medium Layout
+    - ACTION_COMPLETE_TASK_MEDIUM für separate Task-Completion
+    - formatDueTime() mit kompakter Darstellung
+    - updateAllWidgets() für Broadcast-Updates
+  - ✅ TaskWidgetProviderSmall.java: AppWidgetProvider für 2x2
+    - Minimale Essential-Info Darstellung
+    - ACTION_COMPLETE_TASK_SMALL
+    - Ultra-kompakte Due-Time (⚠️ Xd, Xh, Xd statt "in X Tagen")
+    - Container-Click für App-Öffnung
+  - ✅ Widget-Configuration XMLs:
+    - task_widget_info_medium.xml: 4x2 (250x110dp), 30min update, resizable
+    - task_widget_info_small.xml: 2x2 (110x110dp), 30min update, resizable
+  - ✅ AndroidManifest.xml: Medium & Small Provider registriert
+    - 3 Intent-Filter pro Provider (UPDATE, COMPLETE, REFRESH)
+    - Separate Actions vermeiden Konflikte
+  - ✅ TaskRepository: Multi-Widget-Update
+    - notifyWidgetUpdate() erweitert → updatet alle 3 Widget-Größen (Large, Medium, Small)
+    - Reflection-basiert für alle Provider
+  - 8 Dateien (6 neu, 2 aktualisiert, +654 Zeilen)
+  - **Phase 4.5.2 vollständig abgeschlossen! 🎉**
+  - **Phase 4.5 Widget-Suite komplett!** (Large 4x4, Medium 4x2, Small 2x2)
+  - Fortschritt: 85% der Taskmaster Feature Suite
+  - Vorteile: Flexible Widget-Größen, User kann optimale Größe wählen, alle Widgets synchronisiert
+  - Nächstes: Phase 4.5.3 - Widget-Interaktivität (optional) oder Phase 3.3 - Zeitpunkt-Analyse
 
 ---
 
