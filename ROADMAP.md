@@ -108,7 +108,7 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
   - PreferredTimeOfDay Auto-Detection
 - [ ] Zeitpunkt-Analyse (Phase 3.3)
 
-**Phase 4: Statistiken & Motivation** 🟢 25% abgeschlossen
+**Phase 4: Statistiken & Motivation** 🟢 50% abgeschlossen
 - [x] **Streak-Berechnung** (Phase 4.1)
   - StreakManager Utility-Klasse
   - Grace Period Support für flexible Habits
@@ -117,9 +117,16 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
   - Emoji-Visualisierung (🔥 bis 🔥🔥🔥🔥🔥)
   - Milestone-Tracking (10, 25, 50, 100, 250, 500, 1000)
   - MainActivity: Enhanced Streak Display mit Warnings
-- [ ] Statistik-Dashboard (Phase 4.2) ⬅️ Nächster Schritt
+- [x] **Statistik-Dashboard** (Phase 4.2)
+  - StatsManager mit umfangreichen Analytics-Methoden
+  - StatisticsActivity: Vollständiger Stats-Screen
+  - Produktivitäts-Score (0-100) mit 6 Levels
+  - Motivational Messages System
+  - Top Streaks & At-Risk Warnings
+  - Today/Weekly/All-Time Statistics
+- [ ] Home-Screen Widget (Phase 4.5) ⬅️ Nächster Schritt (SEHR HOCH Priorität)
 
-**Gesamt-Fortschritt:** ~60% der Taskmaster Feature Suite
+**Gesamt-Fortschritt:** ~65% der Taskmaster Feature Suite
 
 ---
 
@@ -375,26 +382,35 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 **Komplexität:** Mittel-Hoch
 **Status:** ✅ Vollständig implementiert
 
-#### 4.2 Statistik-Dashboard (gemäß DESIGN.md)
-- [ ] StatsManager Klasse
-  - `getTasksCompletedToday()` - Heutige erledigte Tasks
-  - `getTasksCompletedLast7Days()` - Letzte 7 Tage
-  - `getAverageTasksPerDay()` - Durchschnitt/Tag
-  - `getLongestStreak()` - Längste Streak
-- [ ] **Erweiterte Stats-Anzeige in MainActivity**
-  - Streak-Karten horizontal scrollbar (oberhalb der Task-Liste)
-  - Jede Karte: Task-Name, Feuer-Emojis (🔥🔥🔥), Streak-Zahl
-  - Progress-Bar für Tagesfortschritt (3/8 Tasks = 37%)
-  - Karten-Layout für Statistiken
-- [ ] **Statistics-Screen** (stats_activity.xml)
-  - "Deine Leistung" Übersicht (Heute/Woche/Durchschnitt)
-  - Liste aktiver Streaks mit Visualisierung
-  - "Streaks in Gefahr"-Warnung (⚠️)
-  - Historische Best-Streak
-- [ ] Mini-Wochengraph für Aktivität
+#### 4.2 Statistik-Dashboard (gemäß DESIGN.md) ✅ ABGESCHLOSSEN
+- [x] StatsManager Utility-Klasse ✅
+  - TodayStats, WeeklyStats, StreakSummary Datenklassen ✅
+  - getTopStreaks() - Top N Streaks sortiert ✅
+  - getStreaksAtRisk() - Gefährdete Streaks filtern ✅
+  - getLongestStreakEver() - Best All-Time Streak ✅
+  - formatCompletionPercentage() - "75% (3/4)" Formatierung ✅
+  - getMotivationalMessage() - Kontext-basierte Motivation ✅
+  - calculateProductivityScore() - 0-100 Punktesystem ✅
+  - getProductivityLevel() - 6 Level (🔰 Anfang → 🏆 Herausragend) ✅
+  - formatDuration(), formatDifficulty() - Utility-Methoden ✅
+- [x] **Erweiterte Stats-Anzeige in MainActivity** ✅
+  - Completion-Percentage mit Motivational-Message ✅
+  - Multi-line Display: "Today: 75% (3/4)\n💪 Super!" ✅
+  - Streak-Summary Integration ✅
+- [x] **Statistics-Screen** (StatisticsActivity + activity_statistics.xml) ✅
+  - "Deine Leistung" Übersicht (Heute/Woche/Durchschnitt) ✅
+  - Produktivitäts-Score mit Level-Beschreibung ✅
+  - Top 5 Streaks als Karten-Liste ✅
+  - "Streaks in Gefahr" Section mit Dringlichkeits-Sortierung ✅
+  - Historischer Best-Streak (All-Time Record) ✅
+  - Dynamische Card-Generierung ✅
+  - Farbcodierte Warnings (warningBackground, textWarning) ✅
+- [x] Colors.xml erweitert mit Warning-Farben ✅
+- [x] AndroidManifest: StatisticsActivity registriert ✅
 
-**Geschätzte Dateien:** 3-4 neue Dateien
+**Dateien erstellt:** 6 Dateien (3 neu, 3 aktualisiert, +780 Zeilen)
 **Komplexität:** Mittel
+**Status:** ✅ Vollständig implementiert
 **Design-Referenz:** DESIGN.md - Main App & Statistics View
 
 ---
@@ -801,6 +817,43 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - Fortschritt: 60% der Taskmaster Feature Suite
   - Vorteile: DRY-Prinzip, bessere UX, proaktive Warnungen, Grace Period, Gamification
   - Nächstes: Phase 4.2 - Statistik-Dashboard
+- 2025-11-08 (v2.8): Phase 4.2 abgeschlossen - Statistik-Dashboard (Statistics & Motivation)
+  - ✅ StatsManager Utility-Klasse: Umfassende Statistik-Berechnungen
+    - TodayStats, WeeklyStats, StreakSummary - Datenklassen für strukturierte Stats
+    - getTopStreaks() - Sortiert Top N Streaks absteigend
+    - getStreaksAtRisk() - Filtert & sortiert gefährdete Streaks nach Dringlichkeit
+    - getLongestStreakEver() - Findet besten All-Time Streak
+    - formatCompletionPercentage() - "75% (3/4)" Formatierung
+    - getMotivationalMessage() - Kontext-basierte Motivation (6 Level: 🎉, 💪, 👍, 📈, 🚀, 📋)
+    - calculateProductivityScore() - 0-100 Score aus Today/Weekly/Streak (3 Faktoren)
+    - getProductivityLevel() - 6 Stufen (🔰 Anfang → 🏆 Herausragend)
+    - formatDuration() - Human-readable (2h 30m)
+    - formatDifficulty() - Star rating (★★★☆☆)
+  - ✅ StatisticsActivity: Vollständiger Statistik-Screen
+    - Today's Progress: Count, Percentage, Motivational Message
+    - Weekly Stats: Total last 7 days, Average per day
+    - Productivity Score: 0-100 mit Level-Beschreibung
+    - Top 5 Streaks: Dynamische Karten-Liste
+    - At-Risk Streaks: Warning-Cards mit Dringlichkeits-Sortierung (heute → morgen → später)
+    - Best Streak Ever: All-Time Record Display
+    - Dynamische UI: Cards programmatisch generiert
+  - ✅ activity_statistics.xml: Vollständiges Stats-Layout
+    - ScrollView für Full-Page Stats
+    - Card-basiertes Design (Design System v1.0)
+    - Emoji-reiche Header (📊, 📅, 📈, 🔥, ⚠️, 🏆)
+    - Container für dynamischen Content
+  - ✅ MainActivity: Enhanced Stats mit StatsManager
+    - Multi-line Stats: "Today: 75% (3/4)\n💪 Super! Fast geschafft!"
+    - Percentage + Motivational Message
+    - StreakSummary Integration
+  - ✅ colors.xml: Warning-Farben hinzugefügt
+    - background (#F5F5F5), warningBackground (#FFF3E0), textWarning (#E65100)
+  - ✅ AndroidManifest.xml: StatisticsActivity registriert
+  - 6 Dateien (3 neu, 3 aktualisiert, +780 Zeilen)
+  - **Phase 4.2 vollständig abgeschlossen! 🎉**
+  - Fortschritt: 65% der Taskmaster Feature Suite
+  - Vorteile: Reichhaltige Insights, Motivationsfeedback, Gamification, Frühwarnung, Foundation für Phase 5
+  - Nächstes: Phase 4.5 - Home-Screen Widget (SEHR HOCH Priorität)
 
 ---
 
