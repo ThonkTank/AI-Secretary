@@ -512,22 +512,34 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 ### Phase 5: Intelligente Sortierung & Tagesplan (Priorität: HOCH)
 **Ziel:** Automatische, intelligente Task-Sortierung
 
-#### 5.1 Sortier-Algorithmus
-- [ ] TaskScheduler Klasse
-  - Eingabe: Liste aller offenen Tasks
-  - Ausgabe: Sortierte Liste für optimalen Tagesplan
-- [ ] Gewichtungs-Faktoren implementieren:
-  - **Priorität:** Numerischer Wert (höher = wichtiger)
-  - **Fälligkeit:** Überfällig > Heute fällig > Bald fällig
-  - **Geschätzte Dauer:** Basierend auf `averageCompletionTime`
-  - **Übliche Zeit:** Präferierte Tageszeit für Task
-  - **Schwierigkeit:** Schwere Tasks früh am Tag (optional)
-  - **Verkettungen:** Abhängigkeiten berücksichtigen
-- [ ] Scoring-System: Berechne Score für jeden Task
-- [ ] Sortierung nach Score
+#### 5.1 Sortier-Algorithmus ✅ ABGESCHLOSSEN
+- [x] **TaskScheduler** Klasse ✅
+  - Eingabe: Liste aller offenen Tasks ✅
+  - Ausgabe: Sortierte Liste für optimalen Tagesplan ✅
+  - ScoredTask Datenklasse mit score & scoreBreakdown ✅
+- [x] **Gewichtungs-Faktoren** implementiert (Total: 100 Punkte) ✅
+  - **Priorität (25%):** P4=25, P3=18.75, P2=12.5, P1=6.25 ✅
+  - **Fälligkeit (30%):** Overdue=30, Today=25, Tomorrow=20, Within 3d=15, Within 7d=10 ✅
+  - **Streak (20%):** At-risk=20, Active=15, Recurring without=5, Non-recurring=0 ✅
+  - **Zeit-Präferenz (10%):** Matches time of day=10, Different=0 ✅
+  - **Schwierigkeit (10%):** Hard morning=10, Easy evening=10 (kontext-abhängig) ✅
+  - **Dauer (5%):** Short tasks (≤15min)=5, Medium (≤60min)=3, Long=1 ✅
+- [x] **Scoring-System** mit detailliertem Breakdown ✅
+  - scoreTask() berechnet Gesamt-Score (0-100) ✅
+  - Score-Breakdown für Debugging: "P:25.0 D:30.0 S:20.0 T:10.0 Df:8.0 Du:5.0 = 98.0" ✅
+- [x] **Sortierung** nach Score (absteigend) ✅
+  - sortTasks() - Sortiert alle Tasks ✅
+  - getTodaysSortedTasks() - Filtert & sortiert heutige Tasks ✅
+  - getNextTask() - Gibt höchst-priorisierten Task zurück ✅
+- [x] **TaskRepository Integration** ✅
+  - getSortedTasks(), getTodaysSortedTasks(), getTaskScoreExplanation() ✅
+  - getNextTask() refactored mit TaskScheduler ✅
+- [x] **MainActivity Integration** ✅
+  - loadTasks() verwendet getTodaysSortedTasks() ✅
 
-**Geschätzte Dateien:** 1-2 neue Dateien
+**Dateien erstellt/aktualisiert:** 3 Dateien (1 neu, 2 aktualisiert, +342 Zeilen)
 **Komplexität:** Hoch
+**Status:** ✅ Vollständig implementiert
 
 #### 5.2 Tagesplan-Generierung
 - [ ] `generateDailyPlan()` Methode
@@ -957,6 +969,34 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - Fortschritt: 75% der Taskmaster Feature Suite
   - Vorteile: Vollautomatische Recurrence, keine manuellen Resets, alle Typen unterstützt, Background-Service
   - Nächstes: Phase 3.3 - Zeitpunkt-Analyse oder Phase 5 - Intelligente Sortierung
+- 2025-11-08 (v3.1): Phase 5.1 abgeschlossen - Intelligente Task-Sortierung
+  - ✅ TaskScheduler Utility-Klasse: Multi-Faktor Scoring-Algorithmus
+    - scoreTask() - Berechnet 0-100 Punkte Score basierend auf 6 Faktoren
+    - Priority Score (25%): P4=25, P3=18.75, P2=12.5, P1=6.25
+    - Due Date Score (30%): Overdue=30, Today=25, Tomorrow=20, Within 3d=15, Later=5-10
+    - Streak Score (20%): At-risk=20 (höchste Prio!), Active=15, Recurring=5, None=0
+    - Time Preference Score (10%): Matches current time of day (morning/afternoon/evening)
+    - Difficulty Score (10%): Hard tasks morning (fresh mind), easy tasks evening
+    - Duration Score (5%): Short tasks preferred (≤15min=5, ≤60min=3, >60min=1)
+  - ✅ Sortier-Methoden:
+    - sortTasks() - Sortiert alle Tasks nach Score (absteigend)
+    - getTodaysSortedTasks() - Filtert heute's Tasks & sortiert intelligent
+    - getNextTask() - Gibt höchst-priorisierten Task zurück
+    - getScoreExplanation() - Score-Breakdown für Debugging/UI
+  - ✅ ScoredTask Datenklasse: task + score + scoreBreakdown
+  - ✅ TaskRepository: Integration & neue Methoden
+    - getNextTask() refactored → verwendet TaskScheduler statt naive Sortierung
+    - getSortedTasks(), getTodaysSortedTasks() - Wrapper-Methoden
+    - getTaskScoreExplanation() - Score-Details abrufen
+    - getIncompleteTasks() - Helper für unfertige Tasks
+  - ✅ MainActivity: Intelligent Sorting aktiv
+    - loadTasks() verwendet getTodaysSortedTasks() statt getTodayTasks()
+    - Tasks werden automatisch optimal sortiert
+  - 3 Dateien (1 neu, 2 aktualisiert, +342 Zeilen)
+  - **Phase 5.1 vollständig abgeschlossen! 🎉**
+  - Fortschritt: 80% der Taskmaster Feature Suite
+  - Vorteile: Kontext-aware Task-Priorisierung, Streak-Preservation, Produktivitäts-Optimierung
+  - Nächstes: Phase 5.2 - Tagesplan-Generierung oder Phase 3.3 - Zeitpunkt-Analyse
 
 ---
 
