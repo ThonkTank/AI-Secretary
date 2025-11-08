@@ -17,6 +17,7 @@ import com.aisecretary.taskmaster.adapter.TaskAdapter;
 import com.aisecretary.taskmaster.database.TaskEntity;
 import com.aisecretary.taskmaster.dialogs.CompletionDialog;
 import com.aisecretary.taskmaster.repository.TaskRepository;
+import com.aisecretary.taskmaster.service.RecurringTaskService;
 import com.aisecretary.taskmaster.utils.StatsManager;
 import com.aisecretary.taskmaster.utils.StreakManager;
 import com.aisecretary.taskmaster.utils.SwipeHelper;
@@ -75,6 +76,10 @@ public class MainActivity extends Activity
 
         // Initialize database with sample tasks if empty
         initializeSampleTasks();
+
+        // Start recurring task service for automatic task resets
+        // Phase 2.3: Background service for recurring tasks
+        RecurringTaskService.startService(this);
 
         // Load and display data
         refreshData();

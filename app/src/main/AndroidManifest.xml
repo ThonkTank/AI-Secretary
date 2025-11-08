@@ -61,6 +61,11 @@
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false" />
 
+        <!-- Recurring Task Service -->
+        <service
+            android:name=".service.RecurringTaskService"
+            android:exported="false" />
+
     </application>
 
 </manifest>

@@ -6,6 +6,7 @@ import com.aisecretary.taskmaster.database.CompletionHistoryDao;
 import com.aisecretary.taskmaster.database.CompletionHistoryEntity;
 import com.aisecretary.taskmaster.database.TaskDao;
 import com.aisecretary.taskmaster.database.TaskEntity;
+import com.aisecretary.taskmaster.utils.RecurrenceManager;
 import com.aisecretary.taskmaster.utils.StreakManager;
 
 import java.util.ArrayList;
@@ -256,49 +257,17 @@ public class TaskRepository {
 
     /**
      * Reset recurring tasks if needed
+     * Phase 2.3: Now uses RecurrenceManager for centralized logic
      */
     public void checkAndResetRecurringTasks() {
         List<TaskEntity> allTasks = taskDao.getAll();
-        long now = System.currentTimeMillis();
 
         for (TaskEntity task : allTasks) {
-            if (task.isRecurring && task.completed) {
-                boolean shouldReset = false;
-
-                // Check based on recurrence type
-                if ("every_x_y".equals(task.recurrenceType)) {
-                    long interval = calculateRecurrenceInterval(task.recurrenceX, task.recurrenceY);
-                    if (now - task.completedAt >= interval) {
-                        shouldReset = true;
-                    }
-                }
-                // TODO: Add logic for other recurrence types (x_per_y, scheduled)
-
-                if (shouldReset) {
-                    task.completed = false;
-                    task.completedAt = 0;
-                    task.dueAt = now + calculateRecurrenceInterval(task.recurrenceX, task.recurrenceY);
-                    taskDao.update(task);
-                }
+            if (RecurrenceManager.shouldResetTask(task)) {
+                RecurrenceManager.resetTask(task);
+                taskDao.update(task);
+                notifyWidgetUpdate();
             }
-        }
-    }
-
-    /**
-     * Calculate recurrence interval in milliseconds
-     */
-    private long calculateRecurrenceInterval(int x, String y) {
-        long dayInMillis = 86400000;
-
-        switch (y) {
-            case "day":
-                return x * dayInMillis;
-            case "week":
-                return x * 7 * dayInMillis;
-            case "month":
-                return x * 30 * dayInMillis; // Approximate
-            default:
-                return dayInMillis;
         }
     }
 
@@ -410,6 +379,60 @@ public class TaskRepository {
 
         StreakManager.resetStreak(task);
         taskDao.update(task);
+    }
+
+    // ==================== Phase 2.3: Recurrence Management Methods ====================
+
+    /**
+     * Get recurrence description for a task
+     */
+    public String getRecurrenceDescription(long taskId) {
+        TaskEntity task = taskDao.getById(taskId);
+        if (task == null) return "Einmalig";
+        return RecurrenceManager.getRecurrenceDescription(task);
+    }
+
+    /**
+     * Get next reset time for a recurring task
+     */
+    public long getNextResetTime(long taskId) {
+        TaskEntity task = taskDao.getById(taskId);
+        if (task == null) return 0;
+        return RecurrenceManager.getNextResetTime(task);
+    }
+
+    /**
+     * Check if a task is due soon (within 24 hours)
+     */
+    public boolean isTaskDueSoon(long taskId) {
+        TaskEntity task = taskDao.getById(taskId);
+        if (task == null) return false;
+        return RecurrenceManager.isDueSoon(task);
+    }
+
+    /**
+     * Get hours until task is due
+     */
+    public int getHoursUntilDue(long taskId) {
+        TaskEntity task = taskDao.getById(taskId);
+        if (task == null) return -1;
+        return RecurrenceManager.getHoursUntilDue(task);
+    }
+
+    /**
+     * Get all tasks that are due soon (within 24 hours)
+     */
+    public List<TaskEntity> getTasksDueSoon() {
+        List<TaskEntity> allTasks = taskDao.getAll();
+        List<TaskEntity> dueSoon = new ArrayList<>();
+
+        for (TaskEntity task : allTasks) {
+            if (RecurrenceManager.isDueSoon(task)) {
+                dueSoon.add(task);
+            }
+        }
+
+        return dueSoon;
     }
 
     // ==================== Phase 4.5: Widget Integration ====================
