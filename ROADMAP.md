@@ -687,14 +687,18 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 ### Phase 8: Erweiterte Features (Priorität: NIEDRIG)
 **Ziel:** Zusätzliche Komfort-Features
 
-#### 8.1 Benachrichtigungen
-- [ ] Notification-Service
-- [ ] Erinnerungen für fällige Tasks
-- [ ] Tägliche Zusammenfassung
-- [ ] Streak-Gefahr Warnung
+#### 8.1 Benachrichtigungen ✅ ABGESCHLOSSEN
+- [x] Notification-Service ✅
+- [x] Erinnerungen für fällige Tasks ✅
+- [x] Tägliche Zusammenfassung ✅
+- [x] Streak-Gefahr Warnung ✅
+- [x] Notification Channels (Android 8.0+) ✅
+- [x] AlarmManager Scheduling ✅
+- [x] Auto-cancel on completion/deletion ✅
 
-**Geschätzte Dateien:** 2-3 neue Dateien
+**Dateien erstellt:** 5 Dateien (2 neu, 3 modifiziert, +511 Zeilen)
 **Komplexität:** Mittel
+**Status:** ✅ Vollständig implementiert
 
 #### 8.2 Kategorien/Tags
 - [ ] Task-Kategorisierung
@@ -1173,6 +1177,29 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - Fortschritt: ~98% der Taskmaster Feature Suite
   - Vorteile: Bessere UX bei Nacht, Batterie-Schonung (OLED), Material Design Best Practices
   - Nächstes: Optional - Phase 7 (Visual Polish), Phase 8.1 (Notifications), oder Final Testing
+- 2025-11-08 (v3.6): Phase 8.1 abgeschlossen - Notification System
+  - ✅ NotificationManager (util/NotificationManager.java): Zentrale Notification-Verwaltung
+    - 3 Notification Channels: Task-Erinnerungen, Tägliche Zusammenfassung, Streak-Warnungen
+    - showTaskReminder() - Benachrichtigungen für fällige/überfällige Tasks
+    - showDailySummary() - Morgenübersicht (8:00 Uhr) mit Heute/Überfällig/At-Risk Stats
+    - showStreakWarning() - Warnungen für gefährdete Streaks (Top 5)
+    - Smart Formatting: "⚠️ Xd überfällig", "in Xh", "Heute fällig"
+    - Streak-Badges in Erinnerungen (🔥 Streak: X)
+    - Big Text Style für detaillierte Summaries
+  - ✅ NotificationService (service/NotificationService.java): AlarmManager-basiertes Scheduling
+    - Daily Summary: 8:00 AM (täglich wiederkehrend)
+    - Task Checks: Alle 2 Stunden (Top 3 überfällige Tasks)
+    - Streak Warnings: 9:00 AM (täglich)
+    - NotificationReceiver: BroadcastReceiver für Alarm-Handling
+    - Fallback auf inexact alarms wenn SCHEDULE_EXACT_ALARM fehlt
+  - ✅ MainActivity Integration: NotificationService.startService() in onCreate()
+  - ✅ TaskRepository Integration: Auto-cancel bei Task-Completion/-Deletion
+  - ✅ AndroidManifest: Service + Receiver registriert, 3 Intent-Filter
+  - 5 Dateien (2 neu, 3 modifiziert, +511 Zeilen)
+  - **Phase 8.1 vollständig abgeschlossen! 🎉**
+  - Fortschritt: ~99% der Taskmaster Feature Suite
+  - Vorteile: Proaktive Task-Erinnerungen, morgendliche Übersicht, Streak-Preservation, User-Engagement
+  - Nächstes: Optional - Phase 7 (Visual Polish), Phase 8.2 (Kategorien), Phase 5.2 (Tagesplan)
 
 ---
 
