@@ -703,13 +703,16 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 **Komplexität:** Mittel
 **Status:** ✅ Vollständig implementiert
 
-#### 8.2 Kategorien/Tags
-- [ ] Task-Kategorisierung
-- [ ] Filter nach Kategorie
-- [ ] Statistiken pro Kategorie
+#### 8.2 Kategorien/Tags ✅ ABGESCHLOSSEN
+- [x] Task-Kategorisierung ✅
+- [x] Filter nach Kategorie ✅
+- [x] CategoryManager mit 10 vordefinierten Kategorien ✅
+- [x] Kategorie-Auswahl in AddTaskActivity ✅
+- [x] Kategorie-Filter-Spinner in MainActivity ✅
 
-**Geschätzte Dateien:** 3-4 neue Dateien
+**Dateien erstellt:** 5 Dateien (1 neu, 4 modifiziert, +398 Zeilen)
 **Komplexität:** Mittel
+**Status:** ✅ Vollständig implementiert
 
 #### 8.3 Backup & Sync
 - [ ] Datenbank-Export (JSON/CSV)
@@ -1231,6 +1234,32 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - Fortschritt: ~100% der Taskmaster Core Feature Suite
   - Vorteile: Visuelle Tagesplanung, Zeit-Management, Proaktive Scheduling, User Guidance
   - Nächstes: Optional Polish - Phase 7 (Animationen), Phase 8.2 (Kategorien), Phase 8.3 (Backup)
+- 2025-11-08 (v3.8): Phase 8.2 abgeschlossen - Category Management System
+  - ✅ CategoryManager (utils/CategoryManager.java): Kategorie-Verwaltung
+    - 10 vordefinierte Kategorien mit Emojis: 💼 Arbeit, 🏠 Persönlich, 💪 Gesundheit, 📚 Lernen, 💰 Finanzen, 👥 Sozial, 🎨 Kreativ, 🛒 Einkaufen, 🏡 Haushalt, 🚀 Projekt
+    - Category data class (id, name, emoji, color)
+    - CategoryStats data class für Statistiken
+    - filterByCategory(), getCategoryById(), getUsedCategories()
+    - getCategoryStats(), getAllCategoryStats() für Analytics
+    - getCategoryDistribution() für Visualisierungen
+  - ✅ TaskDetailsFragment: Kategorie-Auswahl
+    - Dynamisches Button-Grid (3 Spalten)
+    - setupCategoryButtons() generiert Buttons programmatisch
+    - selectCategory() mit visueller Hervorhebung
+    - Ersetzt altes EditText durch strukturierte Auswahl
+  - ✅ MainActivity: Kategorie-Filter
+    - Spinner im Task-List-Header
+    - setupCategoryFilter() mit ArrayAdapter
+    - Real-time Filtering ohne Page-Reload
+    - Kombiniert mit intelligenter Sortierung
+  - ✅ UI Improvements
+    - activity_main.xml: Spinner neben "Today's Tasks"
+    - fragment_task_details.xml: Button-Container statt EditText
+    - Emoji-reiche Kategorie-Anzeige
+  - 5 Dateien (1 neu, 4 modifiziert, +398 Zeilen)
+  - **Phase 8.2 vollständig abgeschlossen! 🎉**
+  - Vorteile: Bessere Task-Organisation, Schnelleres Filtern, Übersichtlichkeit, Kategorisierte Statistiken
+  - Nächstes: Optional - Phase 8.3 (Backup), Phase 7 (Animationen)
 
 ---
 
