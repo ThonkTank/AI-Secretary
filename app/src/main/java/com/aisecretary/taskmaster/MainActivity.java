@@ -45,6 +45,7 @@ public class MainActivity extends Activity
     private Button addTaskButton;
     private Button statisticsButton;
     private Button dailyPlanButton;
+    private Button backupButton;
     private Spinner categoryFilterSpinner;
 
     private TaskRepository repository;
@@ -69,6 +70,7 @@ public class MainActivity extends Activity
         addTaskButton = findViewById(R.id.add_task_button);
         statisticsButton = findViewById(R.id.statistics_button);
         dailyPlanButton = findViewById(R.id.daily_plan_button);
+        backupButton = findViewById(R.id.backup_button);
         categoryFilterSpinner = findViewById(R.id.category_filter_spinner);
 
         // Set up RecyclerView
@@ -102,6 +104,13 @@ public class MainActivity extends Activity
             @Override
             public void onClick(View v) {
                 openDailyPlan();
+            }
+        });
+
+        backupButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openBackup();
             }
         });
 
@@ -424,6 +433,15 @@ public class MainActivity extends Activity
      */
     private void openDailyPlan() {
         Intent intent = new Intent(this, DailyPlanActivity.class);
+        startActivity(intent);
+    }
+
+    /**
+     * Open Backup Activity
+     * Phase 8.3: Backup & Restore
+     */
+    private void openBackup() {
+        Intent intent = new Intent(this, BackupActivity.class);
         startActivity(intent);
     }
 

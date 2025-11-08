@@ -47,6 +47,12 @@
             android:exported="false"
             android:label="Tagesplan" />
 
+        <!-- BackupActivity - Backup & Restore -->
+        <activity
+            android:name=".BackupActivity"
+            android:exported="false"
+            android:label="Backup &amp; Restore" />
+
         <!-- Widget Provider - Large (4x4) -->
         <receiver
             android:name=".widget.TaskWidgetProvider"

@@ -58,22 +58,34 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="📊 Statistiken"
+            android:text="📊 Stats"
             android:textColor="@color/textPrimary"
             android:background="@color/backgroundLight"
             android:padding="12dp"
-            android:layout_marginEnd="8dp" />
+            android:layout_marginEnd="4dp" />
 
         <Button
             android:id="@+id/daily_plan_button"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="📅 Tagesplan"
+            android:text="📅 Plan"
             android:textColor="@color/textPrimary"
             android:background="@color/backgroundLight"
             android:padding="12dp"
-            android:layout_marginStart="8dp" />
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/backup_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="💾 Backup"
+            android:textColor="@color/textPrimary"
+            android:background="@color/backgroundLight"
+            android:padding="12dp"
+            android:layout_marginStart="4dp" />
 
     </LinearLayout>
 
