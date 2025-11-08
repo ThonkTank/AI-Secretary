@@ -1,32 +1,40 @@
 package com.aisecretary.taskmaster;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.aisecretary.taskmaster.adapter.TaskAdapter;
 import com.aisecretary.taskmaster.database.TaskEntity;
 import com.aisecretary.taskmaster.repository.TaskRepository;
+import com.aisecretary.taskmaster.utils.SwipeHelper;
 
 import java.util.List;
 
 /**
  * MainActivity - Entry point for AI Secretary Taskmaster
  *
- * Updated to use TaskRepository for database operations.
- * Implements Design System v1.0 colors and styles.
+ * Uses RecyclerView with SwipeHelper for efficient task list rendering.
+ * Implements Design System v1.0 with swipe gestures (Right: Complete, Left: Delete).
  */
-public class MainActivity extends Activity {
+public class MainActivity extends Activity
+        implements TaskAdapter.TaskClickListener, SwipeHelper.SwipeListener {
 
-    private LinearLayout taskListContainer;
+    private RecyclerView recyclerView;
     private TextView statsTextView;
     private TextView streakTextView;
     private Button addTaskButton;
 
     private TaskRepository repository;
+    private TaskAdapter adapter;
     private List<TaskEntity> tasks;
 
     @Override
@@ -34,14 +42,24 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Initialize repository
+        // Initialize repository and adapter
         repository = TaskRepository.getInstance(this);
+        adapter = new TaskAdapter(this);
 
         // Find views
-        taskListContainer = findViewById(R.id.task_list_container);
+        recyclerView = findViewById(R.id.task_list_recycler);
         statsTextView = findViewById(R.id.stats_text);
         streakTextView = findViewById(R.id.streak_text);
         addTaskButton = findViewById(R.id.add_task_button);
+
+        // Set up RecyclerView
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setAdapter(adapter);
+
+        // Set up swipe gestures
+        SwipeHelper swipeHelper = new SwipeHelper(adapter, this);
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(swipeHelper);
+        itemTouchHelper.attachToRecyclerView(recyclerView);
 
         // Set up button listener
         addTaskButton.setOnClickListener(new View.OnClickListener() {
@@ -55,15 +73,20 @@ public class MainActivity extends Activity {
         initializeSampleTasks();
 
         // Load and display data
-        loadTasks();
-        updateStats();
-        displayTasks();
+        refreshData();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         // Refresh data when returning to activity
+        refreshData();
+    }
+
+    /**
+     * Refresh all data and UI
+     */
+    private void refreshData() {
         loadTasks();
         updateStats();
         displayTasks();
@@ -76,7 +99,6 @@ public class MainActivity extends Activity {
         List<TaskEntity> existingTasks = repository.getAllTasks();
 
         if (existingTasks.isEmpty()) {
-            // Create sample tasks with streaks
             long now = System.currentTimeMillis();
             long dayInMillis = 86400000;
 
@@ -93,32 +115,42 @@ public class MainActivity extends Activity {
             morningRoutine.currentStreak = 12;
             morningRoutine.longestStreak = 18;
             morningRoutine.dueAt = now + (3 * 3600000); // Due in 3 hours
-            repository.createTask(morningRoutine.title, morningRoutine.description, morningRoutine.priority);
+            long id1 = repository.createTask(morningRoutine.title, morningRoutine.description, morningRoutine.priority);
+
+            // Update with recurring data
+            TaskEntity task1 = repository.getTask(id1);
+            if (task1 != null) {
+                task1.isRecurring = morningRoutine.isRecurring;
+                task1.recurrenceType = morningRoutine.recurrenceType;
+                task1.recurrenceX = morningRoutine.recurrenceX;
+                task1.recurrenceY = morningRoutine.recurrenceY;
+                task1.currentStreak = morningRoutine.currentStreak;
+                task1.longestStreak = morningRoutine.longestStreak;
+                task1.dueAt = morningRoutine.dueAt;
+                repository.updateTask(task1);
+            }
 
             // Sample Task 2: Team Meeting (today)
-            TaskEntity meeting = new TaskEntity(
+            long id2 = repository.createTask(
                     "Team Meeting",
                     "Weekly sync with development team",
-                    2 // Medium priority
+                    2,
+                    now + (6 * 3600000) // Due in 6 hours
             );
-            meeting.dueAt = now + (6 * 3600000); // Due in 6 hours (15:00)
-            repository.createTask(meeting.title, meeting.description, meeting.priority);
 
             // Sample Task 3: Pay Bills (OVERDUE)
-            TaskEntity bills = new TaskEntity(
+            long id3 = repository.createTask(
                     "Pay Electricity Bill",
                     "Overdue by 2 days!",
-                    4 // Critical priority
+                    4,
+                    now - (2 * dayInMillis) // Overdue by 2 days
             );
-            bills.dueAt = now - (2 * dayInMillis); // Overdue by 2 days
-            bills.overdueSince = now - (2 * dayInMillis);
-            repository.createTask(bills.title, bills.description, bills.priority);
 
             // Sample Task 4: Read Book (recurring with small streak)
             TaskEntity reading = new TaskEntity(
                     "Read for 30 minutes",
                     "Continue reading current book",
-                    1 // Low priority
+                    1
             );
             reading.isRecurring = true;
             reading.recurrenceType = "x_per_y";
@@ -126,16 +158,26 @@ public class MainActivity extends Activity {
             reading.recurrenceY = "week";
             reading.currentStreak = 3;
             reading.longestStreak = 7;
-            repository.createTask(reading.title, reading.description, reading.priority);
+            long id4 = repository.createTask(reading.title, reading.description, reading.priority);
+
+            TaskEntity task4 = repository.getTask(id4);
+            if (task4 != null) {
+                task4.isRecurring = reading.isRecurring;
+                task4.recurrenceType = reading.recurrenceType;
+                task4.recurrenceX = reading.recurrenceX;
+                task4.recurrenceY = reading.recurrenceY;
+                task4.currentStreak = reading.currentStreak;
+                task4.longestStreak = reading.longestStreak;
+                repository.updateTask(task4);
+            }
 
             // Sample Task 5: Grocery Shopping
-            TaskEntity groceries = new TaskEntity(
+            repository.createTask(
                     "Buy groceries",
                     "Milk, eggs, bread, vegetables",
-                    2
+                    2,
+                    now + dayInMillis // Tomorrow
             );
-            groceries.dueAt = now + dayInMillis; // Tomorrow
-            repository.createTask(groceries.title, groceries.description, groceries.priority);
 
             Toast.makeText(this, "Sample tasks created!", Toast.LENGTH_SHORT).show();
         }
@@ -145,145 +187,16 @@ public class MainActivity extends Activity {
      * Load tasks from repository
      */
     private void loadTasks() {
-        // Load today's tasks (including overdue)
         tasks = repository.getTodayTasks();
+        adapter.setTasks(tasks);
     }
 
     /**
-     * Display all tasks in the UI
+     * Display all tasks using RecyclerView
      */
     private void displayTasks() {
-        taskListContainer.removeAllViews();
-
-        if (tasks.isEmpty()) {
-            TextView emptyView = new TextView(this);
-            emptyView.setText("No tasks for today! 🎉");
-            emptyView.setTextSize(16);
-            emptyView.setPadding(16, 32, 16, 32);
-            taskListContainer.addView(emptyView);
-            return;
-        }
-
-        for (TaskEntity task : tasks) {
-            View taskView = createTaskView(task);
-            taskListContainer.addView(taskView);
-        }
-    }
-
-    /**
-     * Create a view for a single task
-     */
-    private View createTaskView(TaskEntity task) {
-        // Create container
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.HORIZONTAL);
-        container.setPadding(16, 12, 16, 12);
-
-        // Task content (left side)
-        LinearLayout contentLayout = new LinearLayout(this);
-        contentLayout.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams contentParams = new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
-        contentLayout.setLayoutParams(contentParams);
-
-        // Title with priority stars
-        TextView titleView = new TextView(this);
-        String titleText = task.getPriorityStars() + " " + task.title;
-        titleView.setText(titleText);
-        titleView.setTextSize(16);
-
-        // Set color based on status
-        if (task.isOverdue()) {
-            titleView.setTextColor(0xFFF44336); // Red
-        } else if (task.completed) {
-            titleView.setTextColor(0xFF4CAF50); // Green
-            titleView.setPaintFlags(titleView.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
-        } else {
-            titleView.setTextColor(0xFF000000); // Black
-        }
-
-        contentLayout.addView(titleView);
-
-        // Description/Details
-        if (task.description != null && !task.description.isEmpty()) {
-            TextView descView = new TextView(this);
-            descView.setText(task.description);
-            descView.setTextSize(12);
-            descView.setTextColor(0xFF757575);
-            contentLayout.addView(descView);
-        }
-
-        // Streak badge for recurring tasks
-        if (task.isRecurring && task.currentStreak > 0) {
-            TextView streakBadge = new TextView(this);
-            streakBadge.setText("🔥 Streak: " + task.currentStreak);
-            streakBadge.setTextSize(11);
-            streakBadge.setTextColor(0xFFFF6B00);
-            contentLayout.addView(streakBadge);
-        }
-
-        // Overdue warning
-        if (task.isOverdue()) {
-            TextView overdueView = new TextView(this);
-            long daysOverdue = task.getOverdueDuration() / 86400000;
-            overdueView.setText("⚠️ OVERDUE (" + daysOverdue + " days)");
-            overdueView.setTextSize(11);
-            overdueView.setTextColor(0xFFF44336);
-            overdueView.setTextStyle(android.graphics.Typeface.BOLD);
-            contentLayout.addView(overdueView);
-        }
-
-        container.addView(contentLayout);
-
-        // Checkbox (right side)
-        TextView checkbox = new TextView(this);
-        checkbox.setText(task.completed ? "✓" : "[ ]");
-        checkbox.setTextSize(24);
-        checkbox.setTextColor(task.completed ? 0xFF4CAF50 : 0xFF757575);
-        checkbox.setPadding(16, 0, 0, 0);
-
-        checkbox.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                toggleTaskCompletion(task);
-            }
-        });
-
-        container.addView(checkbox);
-
-        // Click listener for whole task (for future detail view)
-        container.setClickable(true);
-        container.setBackgroundResource(android.R.drawable.list_selector_background);
-
-        return container;
-    }
-
-    /**
-     * Toggle task completion status
-     */
-    private void toggleTaskCompletion(TaskEntity task) {
-        if (task.completed) {
-            // Uncomplete task
-            repository.uncompleteTask(task.id);
-            Toast.makeText(this, "Task marked as incomplete", Toast.LENGTH_SHORT).show();
-        } else {
-            // Complete task (simple version - later we'll add completion dialog)
-            repository.completeTask(task.id);
-
-            String message = "Task completed!";
-            if (task.isRecurring && task.currentStreak > 0) {
-                // Reload task to get updated streak
-                task = repository.getTask(task.id);
-                message = "Task completed! 🔥 Streak: " + task.currentStreak;
-            }
-
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-        }
-
-        // Refresh UI
-        loadTasks();
-        updateStats();
-        displayTasks();
+        // RecyclerView automatically handles empty state and updates via adapter
+        // No need to manually create/remove views
     }
 
     /**
@@ -293,7 +206,8 @@ public class MainActivity extends Activity {
         int completedToday = repository.getCompletedTodayCount();
         int totalToday = tasks != null ? tasks.size() : 0;
 
-        String statsText = String.format("Today: %d/%d tasks completed", completedToday, totalToday + completedToday);
+        String statsText = String.format("Today: %d/%d tasks completed",
+                completedToday, totalToday + completedToday);
         statsTextView.setText(statsText);
 
         // Find highest streak
@@ -321,16 +235,113 @@ public class MainActivity extends Activity {
 
         // For testing: Add a quick sample task
         long taskId = repository.createTask(
-                "New Task " + System.currentTimeMillis(),
+                "New Task",
                 "Created at " + new java.util.Date(),
                 2
         );
 
-        Toast.makeText(this, "Test task created with ID: " + taskId, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Test task created!", Toast.LENGTH_SHORT).show();
+        refreshData();
+    }
 
-        // Refresh UI
-        loadTasks();
-        updateStats();
-        displayTasks();
+    // TaskAdapter.TaskClickListener implementations
+
+    @Override
+    public void onTaskClick(TaskEntity task) {
+        // TODO: Open task detail view in Phase 2
+        Toast.makeText(this, "Task details coming in Phase 2!", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onTaskCheckboxClick(TaskEntity task) {
+        if (task.completed) {
+            // Uncomplete task
+            repository.uncompleteTask(task.id);
+            Toast.makeText(this, "Task marked as incomplete", Toast.LENGTH_SHORT).show();
+        } else {
+            // Complete task
+            repository.completeTask(task.id);
+
+            String message = "Task completed!";
+            if (task.isRecurring) {
+                // Reload task to get updated streak
+                TaskEntity updatedTask = repository.getTask(task.id);
+                if (updatedTask != null && updatedTask.currentStreak > 0) {
+                    message = "Task completed! 🔥 Streak: " + updatedTask.currentStreak;
+                }
+            }
+
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        }
+
+        refreshData();
+    }
+
+    @Override
+    public void onTaskEditClick(TaskEntity task) {
+        // TODO: Open edit task dialog in Phase 2
+        Toast.makeText(this, "Edit feature coming in Phase 2!", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onTaskDeleteClick(TaskEntity task) {
+        // Show confirmation dialog
+        new AlertDialog.Builder(this)
+                .setTitle("Delete Task")
+                .setMessage("Are you sure you want to delete \"" + task.title + "\"?")
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    repository.deleteTask(task.id);
+                    Toast.makeText(this, "Task deleted", Toast.LENGTH_SHORT).show();
+                    refreshData();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    // SwipeHelper.SwipeListener implementations
+
+    @Override
+    public void onSwipeRight(TaskEntity task, int position) {
+        // Right swipe: Complete/Uncomplete task
+        if (task.completed) {
+            repository.uncompleteTask(task.id);
+            Toast.makeText(this, "Task marked as incomplete", Toast.LENGTH_SHORT).show();
+        } else {
+            repository.completeTask(task.id);
+
+            String message = "Task completed!";
+            if (task.isRecurring) {
+                TaskEntity updatedTask = repository.getTask(task.id);
+                if (updatedTask != null && updatedTask.currentStreak > 0) {
+                    message = "Task completed! 🔥 Streak: " + updatedTask.currentStreak;
+                }
+            }
+
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        }
+
+        refreshData();
+    }
+
+    @Override
+    public void onSwipeLeft(TaskEntity task, int position) {
+        // Left swipe: Delete task (with confirmation)
+        new AlertDialog.Builder(this)
+                .setTitle("Delete Task")
+                .setMessage("Are you sure you want to delete \"" + task.title + "\"?")
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    repository.deleteTask(task.id);
+                    Toast.makeText(this, "Task deleted", Toast.LENGTH_SHORT).show();
+                    refreshData();
+                })
+                .setNegativeButton("Cancel", (dialog, which) -> {
+                    // User cancelled - refresh to restore the swiped item
+                    refreshData();
+                })
+                .setOnCancelListener(dialog -> {
+                    // User dismissed - refresh to restore the swiped item
+                    refreshData();
+                })
+                .show();
     }
 }
