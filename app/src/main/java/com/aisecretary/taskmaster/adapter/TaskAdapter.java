@@ -53,6 +53,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         public TextView descriptionTextView;
         public TextView dueDateTextView;
         public TextView streakTextView;
+        public TextView chainTextView;
         public TextView overdueWarningTextView;
         public TextView checkboxTextView;
         public LinearLayout infoContainer;
@@ -66,6 +67,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             descriptionTextView = view.findViewById(R.id.task_description);
             dueDateTextView = view.findViewById(R.id.task_due_date);
             streakTextView = view.findViewById(R.id.task_streak);
+            chainTextView = view.findViewById(R.id.task_chain);
             overdueWarningTextView = view.findViewById(R.id.task_overdue_warning);
             checkboxTextView = view.findViewById(R.id.task_checkbox);
             infoContainer = view.findViewById(R.id.info_container);
@@ -146,9 +148,18 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             holder.streakTextView.setVisibility(View.GONE);
         }
 
+        // Chain Indicator (Phase 6)
+        if (task.chainId != null && !task.chainId.isEmpty()) {
+            holder.chainTextView.setText("🔗 Chain #" + task.chainOrder);
+            holder.chainTextView.setVisibility(View.VISIBLE);
+        } else {
+            holder.chainTextView.setVisibility(View.GONE);
+        }
+
         // Show info container if any info is visible
         boolean hasInfo = holder.dueDateTextView.getVisibility() == View.VISIBLE ||
-                holder.streakTextView.getVisibility() == View.VISIBLE;
+                holder.streakTextView.getVisibility() == View.VISIBLE ||
+                holder.chainTextView.getVisibility() == View.VISIBLE;
         holder.infoContainer.setVisibility(hasInfo ? View.VISIBLE : View.GONE);
 
         // Overdue Warning

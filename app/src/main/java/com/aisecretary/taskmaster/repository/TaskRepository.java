@@ -6,6 +6,7 @@ import com.aisecretary.taskmaster.database.CompletionHistoryDao;
 import com.aisecretary.taskmaster.database.CompletionHistoryEntity;
 import com.aisecretary.taskmaster.database.TaskDao;
 import com.aisecretary.taskmaster.database.TaskEntity;
+import com.aisecretary.taskmaster.utils.ChainManager;
 import com.aisecretary.taskmaster.utils.RecurrenceManager;
 import com.aisecretary.taskmaster.utils.StreakManager;
 import com.aisecretary.taskmaster.utils.TaskScheduler;
@@ -467,6 +468,105 @@ public class TaskRepository {
         TaskEntity task = taskDao.getById(taskId);
         if (task == null) return "Task not found";
         return TaskScheduler.getScoreExplanation(task);
+    }
+
+    // ==================== Phase 6: Task Chain Management ====================
+
+    /**
+     * Get all tasks in a chain
+     */
+    public List<TaskEntity> getTasksInChain(String chainId) {
+        List<TaskEntity> allTasks = taskDao.getAll();
+        return ChainManager.getTasksInChain(allTasks, chainId);
+    }
+
+    /**
+     * Get next task in chain
+     */
+    public TaskEntity getNextTaskInChain(long taskId) {
+        TaskEntity task = taskDao.getById(taskId);
+        if (task == null) return null;
+
+        List<TaskEntity> allTasks = taskDao.getAll();
+        return ChainManager.getNextTaskInChain(allTasks, task);
+    }
+
+    /**
+     * Get previous task in chain
+     */
+    public TaskEntity getPreviousTaskInChain(long taskId) {
+        TaskEntity task = taskDao.getById(taskId);
+        if (task == null) return null;
+
+        List<TaskEntity> allTasks = taskDao.getAll();
+        return ChainManager.getPreviousTaskInChain(allTasks, task);
+    }
+
+    /**
+     * Check if task is blocked by previous uncompleted task
+     */
+    public boolean isTaskBlocked(long taskId) {
+        TaskEntity task = taskDao.getById(taskId);
+        if (task == null) return false;
+
+        List<TaskEntity> allTasks = taskDao.getAll();
+        return ChainManager.isTaskBlocked(allTasks, task);
+    }
+
+    /**
+     * Get chain progress percentage
+     */
+    public float getChainProgress(String chainId) {
+        List<TaskEntity> allTasks = taskDao.getAll();
+        return ChainManager.getChainProgress(allTasks, chainId);
+    }
+
+    /**
+     * Get all chains
+     */
+    public java.util.Map<String, ChainManager.ChainInfo> getAllChains() {
+        List<TaskEntity> allTasks = taskDao.getAll();
+        return ChainManager.getAllChains(allTasks);
+    }
+
+    /**
+     * Get chain description
+     */
+    public String getChainDescription(String chainId) {
+        List<TaskEntity> allTasks = taskDao.getAll();
+        return ChainManager.getChainDescription(allTasks, chainId);
+    }
+
+    /**
+     * Get chain visual representation
+     */
+    public String getChainVisual(String chainId) {
+        List<TaskEntity> allTasks = taskDao.getAll();
+        return ChainManager.getChainVisual(allTasks, chainId);
+    }
+
+    /**
+     * Get next available task in chain (first uncompleted)
+     */
+    public TaskEntity getNextAvailableTaskInChain(String chainId) {
+        List<TaskEntity> allTasks = taskDao.getAll();
+        return ChainManager.getNextAvailableTaskInChain(allTasks, chainId);
+    }
+
+    /**
+     * Reset chain (mark all as incomplete)
+     */
+    public List<TaskEntity> resetChain(String chainId) {
+        List<TaskEntity> allTasks = taskDao.getAll();
+        List<TaskEntity> resetTasks = ChainManager.resetChain(allTasks, chainId);
+
+        // Update database
+        for (TaskEntity task : resetTasks) {
+            taskDao.update(task);
+        }
+
+        notifyWidgetUpdate();
+        return resetTasks;
     }
 
     // ==================== Phase 4.5: Widget Integration ====================

@@ -80,6 +80,18 @@
                     android:layout_marginStart="12dp"
                     android:visibility="gone" />
 
+                <!-- Chain Indicator (Phase 6) -->
+                <TextView
+                    android:id="@+id/task_chain"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.Caption"
+                    android:textColor="@color/primary"
+                    android:textStyle="bold"
+                    android:text="🔗 Chain"
+                    android:layout_marginStart="12dp"
+                    android:visibility="gone" />
+
             </LinearLayout>
 
             <!-- Overdue Warning -->
