@@ -21,13 +21,6 @@ android {
     }
 
     signingConfigs {
-        debug {
-            storeFile file("${System.getProperty('user.home')}/.android/debug.keystore")
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
-
         release {
             // For production builds, configure signing via environment variables
             // or use Android Studio signing UI
@@ -44,9 +37,9 @@ android {
         debug {
             debuggable true
             minifyEnabled false
-            signingConfig signingConfigs.debug
             applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
+            // Debug signing is handled automatically by Gradle
         }
 
         release {
@@ -56,10 +49,8 @@ android {
 
             if (signingConfigs.release.storeFile != null) {
                 signingConfig signingConfigs.release
-            } else {
-                // Fallback to debug signing for local release builds
-                signingConfig signingConfigs.debug
             }
+            // If no release keystore, use auto-generated debug keystore
 
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
