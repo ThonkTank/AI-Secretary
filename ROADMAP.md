@@ -71,7 +71,19 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
   - Streak-Badge, Überdue-Warnung
   - Quick-Actions (Edit/Delete) on long press
 
-**Gesamt-Fortschritt:** ~30% der Taskmaster Feature Suite
+**Phase 2: Task-Erstellung & -Verwaltung** 🟢 33% abgeschlossen
+- [x] **AddTaskActivity mit Tab-Layout** (Phase 2.1)
+  - Tab 1: Basis (Titel, Beschreibung, Priorität, Fälligkeit)
+  - Tab 2: Wiederholung (x pro y, alle x y, geplant)
+  - Tab 3: Details (Dauer, Zeit, Kategorie)
+  - Validierung (Titel erforderlich)
+  - Smart-Defaults (Priorität 2, Heute, Einmalig)
+  - TaskPagerAdapter für ViewPager2
+  - 3 Fragments (TaskBasisFragment, TaskRecurrenceFragment, TaskDetailsFragment)
+- [ ] Task-Bearbeitung & -Löschung (Phase 2.2) ⬅️ Nächster Schritt
+- [ ] Wiederkehrende Tasks - Erweitert (Phase 2.3)
+
+**Gesamt-Fortschritt:** ~40% der Taskmaster Feature Suite
 
 ---
 
@@ -151,29 +163,37 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 ### Phase 2: Task-Erstellung & -Verwaltung (Priorität: HOCH)
 **Ziel:** Vollständige CRUD-Funktionalität für Tasks
 
-#### 2.1 Task-Erstellungs-Dialog (gemäß DESIGN.md)
-- [ ] **AddTaskActivity mit Tab-Layout** erstellen
-- [ ] **Tab 1: Basis** (add_task_basis.xml)
-  - Titel-Input
-  - Beschreibung-Input (mehrzeilig, optional)
-  - Priorität-Auswahl (⭐ Buttons 1-4)
-  - Fälligkeit (Quick-Buttons: Heute, Morgen, Datum...)
-- [ ] **Tab 2: Wiederholung** (add_task_recurrence.xml)
-  - Radio-Buttons: Einmalig / x pro y / alle x y / Geplant
-  - Dynamische Inputs basierend auf Auswahl
-  - Start-/End-Datum
-- [ ] **Tab 3: Details** (add_task_details.xml)
-  - Geschätzte Dauer (Quick-Select)
-  - Bevorzugte Zeit (Morgen/Mittag/Abend)
-  - Verkettung (Optional)
-  - Kategorie (Optional)
-- [ ] Validierung (Titel erforderlich)
-- [ ] Smart-Defaults: Heute, Priorität 2, Einmalig
-- [ ] Speichern in Datenbank über Repository
+#### 2.1 Task-Erstellungs-Dialog (gemäß DESIGN.md) ✅ ABGESCHLOSSEN
+- [x] **AddTaskActivity mit Tab-Layout** erstellen ✅
+- [x] **Tab 1: Basis** (fragment_task_basis.xml)
+  - Titel-Input ✅
+  - Beschreibung-Input (mehrzeilig, optional) ✅
+  - Priorität-Auswahl (⭐ Buttons 1-4) ✅
+  - Fälligkeit (Quick-Buttons: Heute, Morgen, Datum...) ✅
+  - DatePickerDialog für Custom-Datum ✅
+- [x] **Tab 2: Wiederholung** (fragment_task_recurrence.xml)
+  - Radio-Buttons: Einmalig / x pro y / alle x y / Geplant ✅
+  - Dynamische Inputs basierend auf Auswahl ✅
+  - x pro y Container mit Number-Input + Spinner ✅
+  - Alle x y Container mit Interval-Input + Spinner ✅
+  - Info-Text zeigt aktuelle Konfiguration ✅
+- [x] **Tab 3: Details** (fragment_task_details.xml)
+  - Geschätzte Dauer (Quick-Select: 5/15/30 Min, 1/2 Std) ✅
+  - Bevorzugte Zeit (🌅 Morgen, ☀️ Mittag, 🌙 Abend) ✅
+  - Kategorie (Optional) ✅
+  - Verkettungs-Hinweis (Phase 6) ✅
+- [x] Validierung (Titel erforderlich) ✅
+- [x] Smart-Defaults: Heute, Priorität 2, Einmalig ✅
+- [x] Speichern in Datenbank über Repository ✅
+- [x] TaskPagerAdapter für ViewPager2 ✅
+- [x] 3 Fragment-Klassen (TaskBasisFragment, TaskRecurrenceFragment, TaskDetailsFragment) ✅
+- [x] MainActivity-Integration (AddTaskButton öffnet Dialog) ✅
+- [x] AndroidManifest-Registrierung ✅
 
-**Geschätzte Dateien:** 4-5 neue Dateien
+**Dateien erstellt:** 11 neue Dateien (4 Layouts, 4 Fragments, 1 Adapter, 1 Activity, 1 Manifest-Update)
 **Komplexität:** Mittel-Hoch
 **Design-Referenz:** DESIGN.md - Add/Edit Task Screen
+**Status:** ✅ Vollständig implementiert
 
 #### 2.2 Task-Bearbeitung & -Löschung
 - [ ] EditTaskActivity oder Dialog
@@ -597,6 +617,21 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - **Phase 1 vollständig abgeschlossen! 🎉**
   - Fortschritt: 30% der Taskmaster Feature Suite
   - Nächstes: Phase 2.1 - Task-Erstellungs-Dialog
+- 2025-11-08 (v2.3): Phase 2.1 abgeschlossen - Task-Erstellungs-Dialog
+  - ✅ AddTaskActivity: Tab-basierter Dialog mit TabLayout + ViewPager2
+  - ✅ Tab 1 (Basis): Titel, Beschreibung, Priorität (⭐ Buttons), Fälligkeit (Quick-Select + DatePicker)
+  - ✅ Tab 2 (Wiederholung): Radio-Buttons für Recurrence-Typen, dynamische UI, x pro y / alle x y
+  - ✅ Tab 3 (Details): Geschätzte Dauer, Bevorzugte Tageszeit, Kategorie
+  - ✅ TaskBasisFragment, TaskRecurrenceFragment, TaskDetailsFragment
+  - ✅ TaskPagerAdapter für Fragment-Management
+  - ✅ Validierung: Titel erforderlich, Tab-Navigation bei Fehler
+  - ✅ Smart-Defaults: Priorität 2, Heute, Einmalig
+  - ✅ Repository-Integration für Speicherung
+  - ✅ Success-Message mit Recurrence-Info
+  - 11 neue Dateien (4 Layouts, 7 Java-Klassen)
+  - **Phase 2.1 vollständig abgeschlossen! 🎉**
+  - Fortschritt: 40% der Taskmaster Feature Suite
+  - Nächstes: Phase 2.2 - Task-Bearbeitung & -Löschung
 
 ---
 
