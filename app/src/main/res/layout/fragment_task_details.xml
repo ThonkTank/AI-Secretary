@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/padding_screen">
+
+        <!-- Geschätzte Dauer -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Geschätzte Dauer (optional)"
+            android:textAppearance="@style/TextAppearance.TaskDetails"
+            android:textColor="@color/textPrimary"
+            android:textStyle="bold"
+            android:paddingBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/duration_5min"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="5 Min"
+                android:textColor="@color/textPrimary"
+                android:background="@color/cardBackground"
+                android:layout_margin="4dp" />
+
+            <Button
+                android:id="@+id/duration_15min"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="15 Min"
+                android:textColor="@color/textPrimary"
+                android:background="@color/cardBackground"
+                android:layout_margin="4dp" />
+
+            <Button
+                android:id="@+id/duration_30min"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="30 Min"
+                android:textColor="@color/textPrimary"
+                android:background="@color/cardBackground"
+                android:layout_margin="4dp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/duration_1h"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="1 Std"
+                android:textColor="@color/textPrimary"
+                android:background="@color/cardBackground"
+                android:layout_margin="4dp" />
+
+            <Button
+                android:id="@+id/duration_2h"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="2 Std"
+                android:textColor="@color/textPrimary"
+                android:background="@color/cardBackground"
+                android:layout_margin="4dp" />
+
+            <Button
+                android:id="@+id/duration_custom"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Andere..."
+                android:textColor="@color/textPrimary"
+                android:background="@color/cardBackground"
+                android:layout_margin="4dp" />
+
+        </LinearLayout>
+
+        <!-- Selected Duration Display -->
+        <TextView
+            android:id="@+id/selected_duration"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⏱️ Keine Zeitschätzung"
+            android:textAppearance="@style/TextAppearance.TaskDetails"
+            android:textColor="@color/textSecondary"
+            android:paddingTop="4dp"
+            android:gravity="center" />
+
+        <!-- Bevorzugte Tageszeit -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Bevorzugte Tageszeit (optional)"
+            android:textAppearance="@style/TextAppearance.TaskDetails"
+            android:textColor="@color/textPrimary"
+            android:textStyle="bold"
+            android:paddingTop="16dp"
+            android:paddingBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/time_morning"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="🌅 Morgen"
+                android:textColor="@color/textPrimary"
+                android:background="@color/cardBackground"
+                android:layout_margin="4dp" />
+
+            <Button
+                android:id="@+id/time_afternoon"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="☀️ Mittag"
+                android:textColor="@color/textPrimary"
+                android:background="@color/cardBackground"
+                android:layout_margin="4dp" />
+
+            <Button
+                android:id="@+id/time_evening"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="🌙 Abend"
+                android:textColor="@color/textPrimary"
+                android:background="@color/cardBackground"
+                android:layout_margin="4dp" />
+
+        </LinearLayout>
+
+        <!-- Kategorie -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Kategorie (optional)"
+            android:textAppearance="@style/TextAppearance.TaskDetails"
+            android:textColor="@color/textPrimary"
+            android:textStyle="bold"
+            android:paddingTop="16dp"
+            android:paddingBottom="8dp" />
+
+        <EditText
+            android:id="@+id/input_category"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="z.B. Arbeit, Gesundheit, Haushalt..."
+            android:inputType="text"
+            android:maxLines="1"
+            android:padding="12dp"
+            android:background="@color/cardBackground"
+            android:textColor="@color/textPrimary"
+            android:textColorHint="@color/textSecondary" />
+
+        <!-- Verkettung (Phase 6) -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Verkettung (Phase 6)"
+            android:textAppearance="@style/TextAppearance.TaskDetails"
+            android:textColor="@color/textSecondary"
+            android:textStyle="italic"
+            android:paddingTop="24dp"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Task-Verkettungen (z.B. A → B → C) werden in Phase 6 implementiert."
+            android:textColor="@color/textSecondary"
+            android:padding="12dp"
+            android:background="@color/cardBackground" />
+
+        <!-- Info Text -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="💡 Diese Details helfen bei der intelligenten Tagesplanung"
+            android:textAppearance="@style/TextAppearance.Caption"
+            android:textColor="@color/textSecondary"
+            android:paddingTop="16dp"
+            android:gravity="center" />
+
+    </LinearLayout>
+
+</ScrollView>

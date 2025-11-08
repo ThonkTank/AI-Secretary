@@ -2,6 +2,7 @@ package com.aisecretary.taskmaster;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -230,18 +231,9 @@ public class MainActivity extends Activity
      * Handle add task button click
      */
     private void onAddTaskClicked() {
-        // TODO: Implement AddTaskActivity/Dialog in Phase 2
-        Toast.makeText(this, "Add task feature coming in Phase 2!", Toast.LENGTH_SHORT).show();
-
-        // For testing: Add a quick sample task
-        long taskId = repository.createTask(
-                "New Task",
-                "Created at " + new java.util.Date(),
-                2
-        );
-
-        Toast.makeText(this, "Test task created!", Toast.LENGTH_SHORT).show();
-        refreshData();
+        // Open AddTaskActivity
+        Intent intent = new Intent(this, AddTaskActivity.class);
+        startActivity(intent);
     }
 
     // TaskAdapter.TaskClickListener implementations

@@ -29,6 +29,12 @@
             </intent-filter>
         </activity>
 
+        <!-- AddTaskActivity - Task Creation Dialog -->
+        <activity
+            android:name=".AddTaskActivity"
+            android:exported="false"
+            android:label="Neue Aufgabe" />
+
         <!-- Widget Provider -->
         <receiver
             android:name=".widget.TaskWidgetProvider"
