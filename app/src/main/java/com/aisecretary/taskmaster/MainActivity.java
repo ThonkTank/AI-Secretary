@@ -194,9 +194,10 @@ public class MainActivity extends Activity
 
     /**
      * Load tasks from repository
+     * Phase 5: Now uses intelligent sorting algorithm
      */
     private void loadTasks() {
-        tasks = repository.getTodayTasks();
+        tasks = repository.getTodaysSortedTasks();
         adapter.setTasks(tasks);
     }
 

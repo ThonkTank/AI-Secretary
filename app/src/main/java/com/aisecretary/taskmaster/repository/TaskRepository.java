@@ -8,6 +8,7 @@ import com.aisecretary.taskmaster.database.TaskDao;
 import com.aisecretary.taskmaster.database.TaskEntity;
 import com.aisecretary.taskmaster.utils.RecurrenceManager;
 import com.aisecretary.taskmaster.utils.StreakManager;
+import com.aisecretary.taskmaster.utils.TaskScheduler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -272,22 +273,28 @@ public class TaskRepository {
     }
 
     /**
-     * Get next task to do (highest priority, due soonest)
+     * Get next task to do using intelligent scheduling
+     * Phase 5: Now uses TaskScheduler for optimal task selection
      */
     public TaskEntity getNextTask() {
-        List<TaskEntity> todayTasks = getTodayTasks();
-        if (todayTasks.isEmpty()) {
-            return null;
-        }
+        List<TaskEntity> incompleteTasks = getIncompleteTasks();
+        return TaskScheduler.getNextTask(incompleteTasks);
+    }
 
-        // First incomplete task is the next one (already sorted by priority and due date)
-        for (TaskEntity task : todayTasks) {
+    /**
+     * Get incomplete tasks
+     */
+    public List<TaskEntity> getIncompleteTasks() {
+        List<TaskEntity> allTasks = taskDao.getAll();
+        List<TaskEntity> incomplete = new ArrayList<>();
+
+        for (TaskEntity task : allTasks) {
             if (!task.completed) {
-                return task;
+                incomplete.add(task);
             }
         }
 
-        return null;
+        return incomplete;
     }
 
     // ==================== Phase 3.2: Completion History Methods ====================
@@ -433,6 +440,33 @@ public class TaskRepository {
         }
 
         return dueSoon;
+    }
+
+    // ==================== Phase 5: Intelligent Scheduling Methods ====================
+
+    /**
+     * Get intelligently sorted task list (all incomplete tasks)
+     */
+    public List<TaskEntity> getSortedTasks() {
+        List<TaskEntity> incompleteTasks = getIncompleteTasks();
+        return TaskScheduler.sortTasks(incompleteTasks);
+    }
+
+    /**
+     * Get today's tasks sorted intelligently
+     */
+    public List<TaskEntity> getTodaysSortedTasks() {
+        List<TaskEntity> allTasks = taskDao.getAll();
+        return TaskScheduler.getTodaysSortedTasks(allTasks);
+    }
+
+    /**
+     * Get score explanation for a task (for debugging/display)
+     */
+    public String getTaskScoreExplanation(long taskId) {
+        TaskEntity task = taskDao.getById(taskId);
+        if (task == null) return "Task not found";
+        return TaskScheduler.getScoreExplanation(task);
     }
 
     // ==================== Phase 4.5: Widget Integration ====================
