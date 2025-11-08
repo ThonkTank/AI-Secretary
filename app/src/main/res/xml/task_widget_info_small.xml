@@ -8,5 +8,4 @@
     android:initialLayout="@layout/widget_small"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
-    android:description="Kompakte Ansicht deiner nächsten Aufgabe"
-    android:previewImage="@mipmap/ic_launcher" />
+    android:description="@string/widget_description" />

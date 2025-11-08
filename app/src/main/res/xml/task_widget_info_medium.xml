@@ -8,5 +8,4 @@
     android:initialLayout="@layout/widget_medium"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
-    android:description="Zeigt deine nächste Aufgabe und heutigen Fortschritt"
-    android:previewImage="@mipmap/ic_launcher" />
+    android:description="@string/widget_description" />
