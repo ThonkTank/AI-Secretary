@@ -11,7 +11,7 @@ import android.os.IBinder;
 import com.aisecretary.taskmaster.database.TaskEntity;
 import com.aisecretary.taskmaster.repository.TaskRepository;
 import com.aisecretary.taskmaster.util.NotificationManager;
-import com.aisecretary.taskmaster.util.StatsManager;
+import com.aisecretary.taskmaster.utils.StatsManager;
 
 import java.util.Calendar;
 import java.util.List;
