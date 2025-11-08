@@ -2,7 +2,7 @@
 
 **Projekt:** AI Secretary - Native Android App
 **Feature Suite 1:** Taskmaster
-**Letzte Aktualisierung:** 8. November 2025
+**Letzte Aktualisierung:** 9. November 2025 (Phase 10 Architektur-Cleanup hinzugefügt)
 **Design Dokument:** [DESIGN.md](./DESIGN.md) | [BUILD_FIX_GUIDE.md](./BUILD_FIX_GUIDE.md)
 
 ---
@@ -137,17 +137,26 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 1. ✅ Build-System analysiert
 2. ✅ Lösungen dokumentiert
 3. ✅ Critical Bug-Fixes durchgeführt (9.1)
-4. ⏳ GitHub Actions Build abwarten & APK testen (9.2 + 9.3)
+4. ✅ Phase 10 Cleanup-Tasks in ROADMAP aufgenommen
+5. ⏳ R.java Generation Problem debuggen (10.4 BLOCKING)
+6. ⏳ GitHub Actions Build fixen
 
 **Diese Woche:**
-5. Testing durchführen (9.3 Smoke-Tests)
-6. Dokumentation finalisieren (9.4)
-7. Code-Qualitäts-Fixes aus Analyse starten
+7. R.java Problem lösen (10.4)
+8. Ersten erfolgreichen Build durchführen (9.2)
+9. APK Testing (9.3 Smoke-Tests)
+10. Comprehensive Code Audit starten (10.3)
 
 **Nächste Woche:**
-8. MVVM-Refactoring (Architecture-Fixes)
-9. Dependencies updaten
-10. Unit Tests schreiben
+11. Package-Struktur Cleanup (10.1)
+12. ChainId Type Consistency Fix (10.2)
+13. Code Audit finalisieren (10.3)
+14. Dokumentation vervollständigen (9.4)
+
+**Danach:**
+15. Security & Stability Fixes (Phase 11)
+16. MVVM-Refactoring (Phase 12)
+17. Testing & I18n (Phase 13)
 
 ---
 
@@ -159,8 +168,11 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 - ✅ **FIXED:** db.close() in DAOs (15x entfernt)
 - ✅ **FIXED:** NotificationService.java Import
 - ✅ **FIXED:** Repository Thread-Safety (11 Methoden synchronized)
-- ⚠️ **OFFEN:** Widget Security (Context-Injection möglich)
-- ⚠️ **OFFEN:** MainActivity God-Object (533 LOC → refactoring nötig)
+- ⚠️ **QUICK PATCH:** util/ vs utils/ Package-Inkonsistenz → **Phase 10.1** (Proper Fix geplant)
+- ⚠️ **QUICK PATCH:** chainId long/String Type-Mismatch → **Phase 10.2** (Proper Fix geplant)
+- 🔥 **BLOCKING:** R.java Generation Failure → **Phase 10.4** (In Investigation)
+- ⚠️ **OFFEN:** Widget Security (Context-Injection möglich) → **Phase 11**
+- ⚠️ **OFFEN:** MainActivity God-Object (533 LOC → refactoring nötig) → **Phase 12**
 
 ### High-Priority Verbesserungen
 - Database Transactions fehlen (Race-Conditions bei Multi-Threading)
@@ -185,30 +197,166 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 
 ## 📋 Nächste Phasen (Post-Build)
 
-### Phase 10: Security & Stability (1-2 Wochen)
+### Phase 10: Architektur-Cleanup & Investigation (KRITISCH) 🔍
+
+**Status:** PENDING | **Priorität:** HOCH
+**Kontext:** Während Phase 9 wurden strukturelle Probleme mit "quick patches" gelöst. Diese benötigen gründliche Refactorings.
+
+#### 10.1 Package-Struktur Cleanup ⚠️ HIGH
+
+**Problem:** Inkonsistente Benennung util/ vs utils/
+- `util/` (singular) - nur NotificationManager.java
+- `utils/` (plural) - alle anderen Manager (ChainManager, StatsManager, StreakManager, RecurrenceManager, TaskScheduler)
+
+**Quick Patch (Phase 9.1):** Imports überall manuell korrigiert
+**Proper Fix Optionen:**
+- [ ] **Option A:** Alles nach `utils/` (plural) verschieben
+  - NotificationManager.java → utils/ verschieben
+  - Alle Imports von `util.NotificationManager` → `utils.NotificationManager`
+- [ ] **Option B:** Alles nach `util/` (singular) verschieben
+  - Alle 5 Manager von utils/ → util/ verschieben
+  - Alle Imports anpassen
+
+**Empfehlung:** Option A (utils/ ist Mehrheit)
+**Geschätzter Aufwand:** 1 Stunde | **Blocker:** Keine
+
+#### 10.2 ChainId Type Consistency ⚠️ CRITICAL
+
+**Problem:** Fundamentaler Type-Mismatch
+- **TaskEntity.chainId:** `long` (DB: INTEGER, Line 51)
+- **ChainManager Methoden:** erwarten `String chainId` Parameter
+- **Aktuelle Lösung:** String.valueOf(task.chainId) überall + null checks → 0 checks
+
+**Quick Patch (Phase 9.1):**
+```java
+// Überall String.valueOf() Konvertierungen eingefügt:
+getTasksInChain(allTasks, String.valueOf(currentTask.chainId))
+if (currentTask.chainId == 0) { // statt == null
+```
+
+**Proper Fix - Option A (String überall):**
+- [ ] TaskEntity.chainId: `long` → `String`
+- [ ] DB-Schema ändern: `INTEGER` → `TEXT`
+- [ ] DB-Migration schreiben (v2 → v3)
+- [ ] Alle String.valueOf() entfernen
+- [ ] Default: `0` → `""`
+
+**Proper Fix - Option B (long überall):**
+- [ ] ChainManager Methoden: `String chainId` → `long chainId`
+- [ ] ChainInfo.chainId: `String` → `long`
+- [ ] Alle Vergleiche: `chainId.equals(...)` → `chainId == ...`
+- [ ] Alle String.valueOf() entfernen
+
+**Empfehlung:** Option B (long ist effizienter, keine DB-Migration nötig)
+**Geschätzter Aufwand:** 2-3 Stunden | **Blocker:** Build muss erst funktionieren
+
+#### 10.3 Comprehensive Code Structure Audit 🔍 CRITICAL
+
+**Ziel:** ALLE ähnlichen Architektur-Probleme finden BEVOR sie zu Bugs werden
+
+**Untersuchungsbereiche:**
+
+**A) Package-Naming Audit:**
+- [ ] Prüfe alle 34 Java-Klassen auf Package-Zuordnung
+- [ ] Suche nach singular/plural Inkonsistenzen
+- [ ] Dokumentiere Package-Struktur (was gehört wo?)
+- [ ] Erstelle Package-Richtlinien für neue Klassen
+
+**B) Type-Mismatch Audit (Entity ↔ Manager):**
+- [ ] TaskEntity Properties vs Manager Parameter-Typen
+  - chainId (long vs String) ✅ bekannt
+  - Andere Properties prüfen: priority, category, recurrenceInterval, etc.
+- [ ] CompletionHistoryEntity prüfen
+- [ ] Alle 6 Manager durchgehen (ChainManager, StatsManager, StreakManager, RecurrenceManager, TaskScheduler, NotificationManager)
+
+**C) Database Schema Consistency:**
+- [ ] Vergleiche DB-Schema (TaskDao.java CREATE TABLE) mit Entity-Properties
+- [ ] INTEGER vs long, TEXT vs String, REAL vs float, BOOLEAN vs boolean
+- [ ] Prüfe auf fehlende/zusätzliche Spalten
+- [ ] Dokumentiere Type-Mapping
+
+**D) Import-Probleme & Dependencies:**
+- [ ] Suche potenzielle "cannot find symbol" Kandidaten
+- [ ] Prüfe zirkuläre Dependencies
+- [ ] Validiere alle Import-Paths gegen tatsächliche Dateistruktur
+- [ ] Erstelle Dependency-Graph
+
+**E) Manager Responsibilities Audit:**
+- [ ] Sind Manager-Grenzen klar definiert?
+- [ ] Gibt es überlappende Responsibilities?
+- [ ] Sollte NotificationManager in utils/ sein?
+- [ ] Brauchen wir neue Manager oder Merger?
+
+**Methode:**
+1. Erstelle vollständige Klassen-Inventur (Excel/Markdown)
+2. Prüfe jeden Entity-Manager Pair auf Type-Konsistenz
+3. Dokumentiere ALLE gefundenen Inkonsistenzen
+4. Priorisiere Fixes (Critical/High/Medium/Low)
+5. Erstelle detaillierten Cleanup-Backlog
+6. Schätze Aufwand pro Fix
+
+**Deliverables:**
+- `ARCHITECTURE_AUDIT.md` (Findings-Report)
+- `CLEANUP_BACKLOG.md` (priorisierte Fix-Liste)
+
+**Geschätzter Aufwand:** 4-6 Stunden | **Priorität:** CRITICAL
+
+#### 10.4 R.java Generation Problem Lösung 🐛 BLOCKING
+
+**Problem:** Layout-Ressourcen existieren, aber R.java wird nicht generiert
+- `activity_add_task.xml` ✅ existiert (3.4KB)
+- Compilation error: `cannot find symbol: variable activity_add_task` ❌
+
+**Mögliche Ursachen:**
+- [ ] **Malformed XML** in Layout-Dateien (fehlende Tags, ungültige Attribute)
+- [ ] **AndroidManifest.xml** Syntax-Fehler oder fehlende Activity-Deklaration
+- [ ] **Resource ID Duplikate** (gleiche IDs in verschiedenen Layouts)
+- [ ] **Theme/Style Referenzen** auf nicht existierende Styles
+- [ ] **Gradle Resource Processing** Config-Problem
+- [ ] **Namespace-Probleme** (xmlns:android falsch)
+
+**Debugging-Schritte:**
+1. [ ] Validiere alle Layout XMLs: `xmllint --noout app/src/main/res/layout/*.xml`
+2. [ ] Prüfe AndroidManifest.xml: `xmllint --noout app/src/main/AndroidManifest.xml`
+3. [ ] Suche nach doppelten IDs: `grep -r 'android:id="@+id/' app/src/main/res/layout/ | sort`
+4. [ ] Prüfe Theme-Referenzen in styles.xml
+5. [ ] Teste Build mit minimalem Layout (nur TextView)
+6. [ ] Vergleiche mit funktionierendem Android-Projekt (GitHub Template)
+
+**Geschätzter Aufwand:** 2-4 Stunden | **Priorität:** BLOCKING (verhindert alle Builds)
+
+---
+
+**Gesamt-Aufwand Phase 10:** 10-15 Stunden
+**Muss vor Production:** JA - kritische Architektur-Fundamente
+**Kann parallel zu Testing:** TEILWEISE (10.3 Audit kann parallel laufen)
+
+---
+
+### Phase 11: Security & Stability (1-2 Wochen)
 - Widget Context-Injection fixen
 - Database Transactions hinzufügen
 - Weitere Critical Bugs aus Code-Analyse
 
-### Phase 11: Architecture Refactoring (2-3 Wochen)
+### Phase 12: Architecture Refactoring (2-3 Wochen)
 - MVVM einführen (ViewModels)
 - MainActivity aufbrechen (Fragments)
 - Dependencies updaten
 - JavaDoc schreiben
 
-### Phase 12: Quality & Testing (2-3 Wochen)
+### Phase 13: Quality & Testing (2-3 Wochen)
 - Unit Tests (TaskRepository, Managers)
 - Instrumented Tests (UI-Tests)
 - Performance-Optimierung
 - I18n (Deutsch/Englisch)
 
-### Phase 13: Production Release (1 Woche)
+### Phase 14: Production Release (1 Woche)
 - Release-Build konfigurieren
 - APK signieren (Release-Keystore)
 - Google Play Store Vorbereitung (optional)
 - Final Testing
 
-**Geschätzter Aufwand bis Production:** 6-9 Wochen
+**Geschätzter Aufwand bis Production:** 7-11 Wochen
 
 ---
 
