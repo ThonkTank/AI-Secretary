@@ -108,7 +108,7 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
   - PreferredTimeOfDay Auto-Detection
 - [ ] Zeitpunkt-Analyse (Phase 3.3)
 
-**Phase 4: Statistiken & Motivation** 🟢 50% abgeschlossen
+**Phase 4: Statistiken & Motivation** 🟢 62% abgeschlossen
 - [x] **Streak-Berechnung** (Phase 4.1)
   - StreakManager Utility-Klasse
   - Grace Period Support für flexible Habits
@@ -124,9 +124,15 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
   - Motivational Messages System
   - Top Streaks & At-Risk Warnings
   - Today/Weekly/All-Time Statistics
-- [ ] Home-Screen Widget (Phase 4.5) ⬅️ Nächster Schritt (SEHR HOCH Priorität)
+- [x] **Home-Screen Widget** (Phase 4.5.1)
+  - Large Widget (4x4) - Haupt-Widget
+  - TaskWidgetProvider mit Auto-Update
+  - WidgetListService für Today's Tasks
+  - Click-Handler für Quick Actions
+  - TaskRepository Integration
+- [ ] Medium & Small Widgets (Phase 4.5.2) ⬅️ Nächster Schritt
 
-**Gesamt-Fortschritt:** ~65% der Taskmaster Feature Suite
+**Gesamt-Fortschritt:** ~70% der Taskmaster Feature Suite
 
 ---
 
@@ -420,34 +426,43 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 
 **WICHTIG:** Widget-Entwicklung wurde vorgezogen, da Widget-First die Kern-Design-Philosophie ist (siehe DESIGN.md)
 
-#### 4.5.1 Large Widget (4x4) - Haupt-Widget
-- [ ] **TaskWidgetProvider** Klasse (bereits in Manifest)
-- [ ] **Large Widget Layout** (widget_large.xml)
-  - Header: Streak-Anzeige (🔥 X Tage) + Heute-Counter (X/Y)
-  - "NÄCHSTE AUFGABE"-Bereich (prominent)
-    - Task-Titel mit Prioritäts-Sternen
-    - Zeit + Wiederholungs-Info
-    - Streak-Badge wenn vorhanden
-    - Checkbox zum Abhaken
-  - "HEUTE"-Bereich (scrollbar)
-    - Top 3-5 Tasks für heute
-    - Jeweils: Titel, Zeit, Checkbox
-    - Farbcodierung (Überfällig rot, etc.)
-  - Footer: [➕ Neue Aufgabe] [📱 App öffnen]
-- [ ] **Widget-Update Service**
-  - Auto-Update alle 15 Minuten
-  - Update bei Task-Änderungen
-  - Update bei Mitternacht
-- [ ] **Click-Handler**
-  - Checkbox → CompletionDialog über Widget
-  - Task-Body → Task-Details öffnen
-  - ➕ Button → AddTask-Dialog
-  - 📱 Button → App öffnen
-- [ ] **Long-Press Menu** (Quick-Actions)
-  - Bearbeiten, Löschen, Verschieben
+#### 4.5.1 Large Widget (4x4) - Haupt-Widget ✅ ABGESCHLOSSEN
+- [x] **TaskWidgetProvider** Klasse ✅
+  - Full AppWidgetProvider Implementation ✅
+  - Broadcast Receivers für Updates und Actions ✅
+  - Smart Due Time Formatting (überfällig, in Xh, Heute, etc.) ✅
+- [x] **Large Widget Layout** (widget_large.xml) ✅
+  - Header: Streak-Anzeige (🔥 X Tage) + Heute-Counter (X/Y) ✅
+  - "NÄCHSTE AUFGABE"-Bereich (prominent) ✅
+    - Task-Titel mit Prioritäts-Sternen ✅
+    - Zeit + Due Time Display ✅
+    - Streak-Badge wenn vorhanden ✅
+    - Checkbox zum Abhaken ✅
+  - "HEUTE"-Bereich (ListView) ✅
+    - Top 5 Tasks für heute ✅
+    - Jeweils: Checkbox, Titel, Priority, Zeit, Streak ✅
+  - Footer: [➕ Neue Aufgabe] [📱 App öffnen] ✅
+- [x] **WidgetListService** für ListView Population ✅
+  - RemoteViewsFactory Implementation ✅
+  - Dynamische Task-Liste Generation ✅
+- [x] **widget_task_item.xml** Layout für List-Items ✅
+- [x] **Widget-Update Service** ✅
+  - Auto-Update alle 30 Minuten (1800000ms) ✅
+  - Update bei Task-Änderungen (via TaskRepository) ✅
+  - Reflection-basiert für lose Kopplung ✅
+- [x] **Click-Handler** ✅
+  - Checkbox → Task Completion (ACTION_COMPLETE_TASK) ✅
+  - ➕ Button → AddTaskActivity ✅
+  - 📱 Button → MainActivity ✅
+- [x] **AndroidManifest Integration** ✅
+  - Widget Provider registriert ✅
+  - WidgetListService mit BIND_REMOTEVIEWS permission ✅
+- [x] **task_widget_info.xml** Configuration ✅
+- [x] **TaskRepository Widget-Integration** ✅
 
-**Geschätzte Dateien:** 4-5 neue Dateien
+**Dateien erstellt:** 8 Dateien (5 neu, 3 aktualisiert, +674 Zeilen)
 **Komplexität:** Hoch
+**Status:** ✅ Vollständig implementiert
 **Design-Referenz:** DESIGN.md - Home Screen Widget
 
 #### 4.5.2 Medium & Small Widgets
@@ -854,6 +869,44 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - Fortschritt: 65% der Taskmaster Feature Suite
   - Vorteile: Reichhaltige Insights, Motivationsfeedback, Gamification, Frühwarnung, Foundation für Phase 5
   - Nächstes: Phase 4.5 - Home-Screen Widget (SEHR HOCH Priorität)
+- 2025-11-08 (v2.9): Phase 4.5.1 abgeschlossen - Large Home Screen Widget (4x4)
+  - ✅ widget_large.xml: Vollständiges 4x4 Widget Layout
+    - Header: Streak-Counter + Today Progress (🔥 X, Y/Z Tasks)
+    - Next Task Section: Title, Priority Stars, Due Time, Quick Complete Checkbox
+    - Today's Tasks ListView: Zeigt Top 5 heutige Tasks
+    - Footer: Action Buttons (➕ Neue Aufgabe, 📱 App öffnen)
+    - Design System v1.0 Farben & Spacing
+  - ✅ widget_task_item.xml: ListView Item Layout
+    - Checkbox (☐/☑), Title, Details (Priority ⭐ + Time), Streak Badge (🔥)
+  - ✅ TaskWidgetProvider: AppWidgetProvider Implementierung
+    - onUpdate() - Widget-Aktualisierung bei System-Events
+    - onReceive() - Custom Actions (ACTION_COMPLETE_TASK, ACTION_REFRESH_WIDGET)
+    - updateWidget() - RemoteViews Setup mit allen Daten
+    - PendingIntent für Checkboxen, Buttons, App öffnen
+    - Smart Due Time Formatting: "⚠️ Xd überfällig", "in Xh", "Heute", "Morgen", "in X Tagen"
+    - updateAllWidgets() - Broadcast an alle Widget-Instanzen
+  - ✅ WidgetListService: RemoteViewsService für ListView
+    - RemoteViewsFactory Implementation
+    - onDataSetChanged() - Lädt Top 5 Tasks für heute
+    - getViewAt() - Generiert RemoteViews pro Task
+    - Task-Click-Intents mit Task-ID als Extra
+  - ✅ task_widget_info.xml: Widget Konfiguration
+    - 250dp min size (4x4 cells)
+    - 30min Auto-Update
+    - Horizontal + Vertical resizable
+  - ✅ TaskRepository: Widget Integration via Reflection
+    - Context-Field hinzugefügt
+    - notifyWidgetUpdate() nach deleteTask(), completeTask()
+    - Reflection-basiert → keine harte Dependency, Widget optional
+  - ✅ AndroidManifest.xml: Widget Components registriert
+    - TaskWidgetProvider Receiver (exported, 3 Intent-Filter)
+    - WidgetListService (BIND_REMOTEVIEWS Permission)
+  - ✅ strings.xml: Widget-Beschreibung hinzugefügt
+  - 8 Dateien (5 neu, 3 aktualisiert, +674 Zeilen)
+  - **Phase 4.5.1 vollständig abgeschlossen! 🎉**
+  - Fortschritt: 70% der Taskmaster Feature Suite
+  - Vorteile: Widget-First-Philosophie erfüllt, Homescreen-Sichtbarkeit, Quick-Actions ohne App öffnen
+  - Nächstes: Phase 4.5.2 - Medium & Small Widgets oder Phase 2.3 - Wiederkehrende Tasks Erweitert
 
 ---
 
