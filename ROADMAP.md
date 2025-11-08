@@ -106,9 +106,20 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
   - Automatische History-Erfassung bei jeder Completion
   - Durchschnitts-Berechnung aus gesamter Historie
   - PreferredTimeOfDay Auto-Detection
-- [ ] Zeitpunkt-Analyse (Phase 3.3) ⬅️ Nächster Schritt
+- [ ] Zeitpunkt-Analyse (Phase 3.3)
 
-**Gesamt-Fortschritt:** ~55% der Taskmaster Feature Suite
+**Phase 4: Statistiken & Motivation** 🟢 25% abgeschlossen
+- [x] **Streak-Berechnung** (Phase 4.1)
+  - StreakManager Utility-Klasse
+  - Grace Period Support für flexible Habits
+  - Streak-at-Risk Detection & Warnings
+  - 6-Level Streak-System (Anfänger bis Meister)
+  - Emoji-Visualisierung (🔥 bis 🔥🔥🔥🔥🔥)
+  - Milestone-Tracking (10, 25, 50, 100, 250, 500, 1000)
+  - MainActivity: Enhanced Streak Display mit Warnings
+- [ ] Statistik-Dashboard (Phase 4.2) ⬅️ Nächster Schritt
+
+**Gesamt-Fortschritt:** ~60% der Taskmaster Feature Suite
 
 ---
 
@@ -342,16 +353,27 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 ### Phase 4: Statistiken & Motivation (Priorität: HOCH)
 **Ziel:** Streak-Tracking und motivierende Statistiken
 
-#### 4.1 Streak-Berechnung
-- [ ] StreakManager Klasse
-  - `calculateStreak(Task)` - Berechne aktuelle Streak
-  - `updateStreak(Task, completed)` - Update Streak bei Completion
-  - `resetStreak(Task)` - Reset bei verpasstem Task
-- [ ] Streak-Persistierung in Datenbank
-- [ ] Streak-Anzeige in UI (Feuer-Icon 🔥)
+#### 4.1 Streak-Berechnung ✅ ABGESCHLOSSEN
+- [x] StreakManager Klasse ✅
+  - `calculateStreak(Task)` - Berechne aktuelle Streak ✅
+  - `updateStreak(Task)` - Update Streak bei Completion (mit Grace Period) ✅
+  - `resetStreak(Task)` - Reset bei verpasstem Task (behält longestStreak) ✅
+  - `isStreakAtRisk(Task)` - Erkenne gefährdete Streaks ✅
+  - `getDaysUntilStreakExpires(Task)` - Zeit bis Streak-Verlust ✅
+  - `getStreakLevel(streak)` - 6 Level-System (0-5) ✅
+  - `getStreakEmoji(streak)` - Emoji-Visualisierung (🔥 bis 🔥🔥🔥🔥🔥) ✅
+  - `isMilestoneReached()` - Milestone-Detection (10, 25, 50, 100, 250, 500, 1000) ✅
+- [x] Streak-Persistierung in Datenbank ✅ (bereits in Phase 1)
+- [x] Streak-Anzeige in UI (Feuer-Icon 🔥) ✅
+  - MainActivity: Emoji-Level-Anzeige ✅
+  - "At Risk" Warnung: "🔥🔥 25 (⚠️ 2 at risk)" ✅
+- [x] TaskRepository Integration ✅
+  - isStreakAtRisk(), getDaysUntilStreakExpires(), getTasksWithStreaksAtRisk() ✅
+  - Refactored updateStreak() to use StreakManager ✅
 
-**Geschätzte Dateien:** 1-2 neue Dateien
+**Dateien erstellt:** 3 Dateien (1 neu, 2 aktualisiert, +313 Zeilen)
 **Komplexität:** Mittel-Hoch
+**Status:** ✅ Vollständig implementiert
 
 #### 4.2 Statistik-Dashboard (gemäß DESIGN.md)
 - [ ] StatsManager Klasse
@@ -757,6 +779,28 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - Fortschritt: 55% der Taskmaster Feature Suite
   - Vorteile: Vollständige Audit-Trail, präzise Averages, Zeitanalyse, Foundation für Phase 5
   - Nächstes: Phase 3.3 - Zeitpunkt-Analyse (Visualisierung) oder Phase 4 - Statistiken
+- 2025-11-08 (v2.7): Phase 4.1 abgeschlossen - Streak-Berechnung (Advanced Streak Management)
+  - ✅ StreakManager Utility-Klasse: Zentralisierte Streak-Logik
+    - updateStreak() mit Grace Period Support (x_per_y erlaubt 1 Tag Spielraum)
+    - resetStreak() - Reset mit Erhaltung von longestStreak
+    - isStreakAtRisk() - Erkenne gefährdete Streaks bei überfälligen Tasks
+    - getDaysUntilStreakExpires() - Berechne verbleibende Zeit
+    - getStreakLevel() - 6-Level-System (0=none, 1=beginner, 2=intermediate, 3=advanced, 4=expert, 5=master)
+    - getStreakEmoji() - Visuelle Darstellung (🔥 bis 🔥🔥🔥🔥🔥)
+    - getStreakDescription() - Level-Namen ("Anfänger", "Meister", etc.)
+    - isMilestoneReached() & getMilestone() - Milestone-Detection (10, 25, 50, 100, 250, 500, 1000)
+  - ✅ TaskRepository: Refactored & erweitert
+    - updateStreak() delegiert zu StreakManager
+    - Neue Methoden: isStreakAtRisk(), getDaysUntilStreakExpires(), getTasksWithStreaksAtRisk(), resetStreak()
+  - ✅ MainActivity: Enhanced Streak Display
+    - Emoji-Level-Anzeige basierend auf Streak-Höhe
+    - "At Risk" Warnung: "🔥🔥 25 (⚠️ 2 at risk)"
+    - Visuelle Feedback für Streak-Achievements
+  - 3 Dateien (1 neu, 2 aktualisiert, +313 Zeilen)
+  - **Phase 4.1 vollständig abgeschlossen! ✅**
+  - Fortschritt: 60% der Taskmaster Feature Suite
+  - Vorteile: DRY-Prinzip, bessere UX, proaktive Warnungen, Grace Period, Gamification
+  - Nächstes: Phase 4.2 - Statistik-Dashboard
 
 ---
 
