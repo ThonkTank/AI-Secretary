@@ -92,7 +92,7 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
   - Quick-Actions → Delete-Button
 - [ ] Wiederkehrende Tasks - Erweitert (Phase 2.3) ⬅️ Nächster Schritt
 
-**Phase 3: Tracking & Performance-Daten** 🟢 33% abgeschlossen
+**Phase 3: Tracking & Performance-Daten** 🟢 67% abgeschlossen
 - [x] **Task-Completion Dialog** (Phase 3.1)
   - CompletionDialog mit Zeit/Schwierigkeits-Input
   - Quick-Select Buttons (5/15/30 Min, 1 Std)
@@ -100,10 +100,15 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
   - Streak-Feedback mit Meilenstein-Erkennung
   - Überspringen-Button für Quick-Complete
   - MainActivity-Integration (Checkbox + Swipe)
-- [ ] Erledigungs-Zeit Tracking erweitert (Phase 3.2) ⬅️ Nächster Schritt
-- [ ] Zeitpunkt-Analyse (Phase 3.3)
+- [x] **Erledigungs-Zeit Tracking** (Phase 3.2)
+  - CompletionHistory Datenbank-Tabelle
+  - CompletionHistoryDao mit Analytics-Methoden
+  - Automatische History-Erfassung bei jeder Completion
+  - Durchschnitts-Berechnung aus gesamter Historie
+  - PreferredTimeOfDay Auto-Detection
+- [ ] Zeitpunkt-Analyse (Phase 3.3) ⬅️ Nächster Schritt
 
-**Gesamt-Fortschritt:** ~50% der Taskmaster Feature Suite
+**Gesamt-Fortschritt:** ~55% der Taskmaster Feature Suite
 
 ---
 
@@ -299,19 +304,30 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 **Design-Referenz:** DESIGN.md - Task Completion Dialog
 **Status:** ✅ Vollständig implementiert
 
-#### 3.2 Erledigungs-Zeit Tracking
-- [ ] CompletionHistory Datenbank-Tabelle
-  - task_id (Foreign Key)
-  - completed_at (Timestamp)
-  - completion_time (Millisekunden)
-  - difficulty_rating (1-5)
-  - time_of_day (Uhrzeit)
-- [ ] CompletionHistoryDao
-- [ ] Historien-Datenerfassung bei Task-Completion
-- [ ] Durchschnitts-Berechnung
+#### 3.2 Erledigungs-Zeit Tracking ✅ ABGESCHLOSSEN
+- [x] CompletionHistory Datenbank-Tabelle ✅
+  - task_id (Foreign Key) ✅
+  - completed_at (Timestamp) ✅
+  - completion_time (Millisekunden) ✅
+  - difficulty_rating (1-5) ✅
+  - time_of_day (Uhrzeit - auto-extracted hour 0-23) ✅
+- [x] CompletionHistoryDao ✅
+  - insert(), getByTaskId(), getRecentByTaskId(), getByDateRange() ✅
+  - getAverageCompletionTime(), getAverageDifficulty() ✅
+  - getMostCommonTimeOfDay() für intelligente Zeitplanung ✅
+- [x] Historien-Datenerfassung bei Task-Completion ✅
+  - Bei completeTask(with tracking): volle Daten gespeichert ✅
+  - Bei completeTask(simple): auch gespeichert mit Defaults ✅
+- [x] Durchschnitts-Berechnung ✅
+  - Averages berechnet aus gesamter History (nicht nur 2-Werte-Avg) ✅
+  - preferredTimeOfDay auto-detected aus häufigster Uhrzeiten ✅
+- [x] TaskDao & TaskRepository Integration ✅
+  - Database Version 2 mit onUpgrade-Migration ✅
+  - Repository-Methoden für History-Zugriff ✅
 
-**Geschätzte Dateien:** 3 neue Dateien
+**Dateien erstellt:** 4 Dateien (2 neu, 2 aktualisiert, +494 Zeilen)
 **Komplexität:** Mittel
+**Status:** ✅ Vollständig implementiert
 
 #### 3.3 Zeitpunkt-Analyse
 - [ ] Analyse häufigster Erledigungs-Uhrzeiten
@@ -719,6 +735,28 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - **Phase 3.1 vollständig abgeschlossen! 🎉**
   - Fortschritt: 50% der Taskmaster Feature Suite
   - Nächstes: Phase 3.2 - Erledigungs-Zeit Tracking (History)
+- 2025-11-08 (v2.6): Phase 3.2 abgeschlossen - Erledigungs-Zeit Tracking (Completion History)
+  - ✅ CompletionHistoryEntity: Neue Entity für individuelle Completion-Erfassung
+    - Fields: id, taskId, completedAt, completionTime, difficultyRating, timeOfDay
+    - Auto-Extraktion der Stunde (0-23) aus Timestamp für Zeitanalyse
+  - ✅ CompletionHistoryDao: Vollständiger DAO mit CRUD und Analytics
+    - insert(), getByTaskId(), getRecentByTaskId(), getByDateRange()
+    - getAverageCompletionTime(), getAverageDifficulty()
+    - getMostCommonTimeOfDay() für intelligente Zeitplanung
+  - ✅ TaskDao: Update auf Database Version 2
+    - onCreate: Erstellt beide Tabellen (tasks + completion_history)
+    - onUpgrade: Migriert von v1 zu v2 (fügt completion_history hinzu)
+  - ✅ TaskRepository: Integrierte History-Tracking
+    - completeTask(with tracking): Speichert volle Daten in History
+    - completeTask(simple): Speichert auch History-Eintrag mit Defaults
+    - Averages jetzt aus gesamter History berechnet (nicht nur 2-Werte-Durchschnitt)
+    - Auto-Detection von preferredTimeOfDay aus häufigsten Completion-Zeiten
+  - ✅ Repository History-Methoden: getTaskHistory(), getAverageCompletionTimeFromHistory(), etc.
+  - 4 Dateien (2 neu, 2 aktualisiert, +494 Zeilen)
+  - **Phase 3.2 vollständig abgeschlossen! ✅**
+  - Fortschritt: 55% der Taskmaster Feature Suite
+  - Vorteile: Vollständige Audit-Trail, präzise Averages, Zeitanalyse, Foundation für Phase 5
+  - Nächstes: Phase 3.3 - Zeitpunkt-Analyse (Visualisierung) oder Phase 4 - Statistiken
 
 ---
 
