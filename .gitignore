@@ -18,8 +18,8 @@ build/
 # Gradle files
 .gradle/
 gradle/
-gradlew
-gradlew.bat
+!gradle/wrapper/
+!gradle-wrapper.jar
 
 # Local configuration file (sdk path, etc)
 local.properties
@@ -39,6 +39,9 @@ captures/
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild
 .cxx/
+
+# Build tools (should be downloaded by SDK Manager)
+build-tools/
 
 # OS-specific files
 .DS_Store

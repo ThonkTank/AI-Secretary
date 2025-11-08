@@ -132,6 +132,30 @@ Automatische, intelligente Sortierung und Vorschläge für einen optimalen Tages
 
 ---
 
+## Build-System & Deployment
+
+### Entscheidung: GitHub Actions für CI/CD (08.11.2024)
+
+**Problem:** Gradle funktioniert nicht in Termux (JVM libiconv-Fehler)
+
+**Lösung:** GitHub Actions Cloud-Build
+- Automatischer APK-Build bei jedem Git Push
+- Workflow: `.github/workflows/android-build.yml`
+- Kein lokaler Gradle-Build erforderlich
+- APK via GitHub Actions Artifacts verfügbar
+
+**Implementierung:**
+- Vollständige Gradle-Konfiguration erstellt (`app/build.gradle`, `settings.gradle`, `gradle.properties`)
+- ProGuard-Regeln für Release-Builds (`app/proguard-rules.pro`)
+- Debug-Keystore generiert (`~/.android/debug.keystore`)
+- Material Design Themes (Holo → Material Migration)
+
+**Status:** ✅ Produktionsreif - Bereit für GitHub Push
+
+**Details:** Siehe `BUILD_INSTRUCTIONS.md`
+
+---
+
 ## Notizen für Claude Code Agenten
 
 - **Geschützte Bereiche:** Alle mit 🔒 markierten Sektionen nur mit expliziter User-Erlaubnis ändern
