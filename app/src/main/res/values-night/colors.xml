@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary colors - Design System v1.0 Dark Theme -->
+    <color name="colorPrimary">#BB86FC</color> <!-- Lighter purple for dark mode -->
+    <color name="colorPrimaryDark">#3700B3</color>
+    <color name="colorAccent">#FF9800</color> <!-- Slightly brighter orange for dark mode -->
+
+    <!-- Background colors -->
+    <color name="background">#121212</color> <!-- Dark background -->
+    <color name="backgroundColor">#121212</color>
+    <color name="backgroundDark">#000000</color>
+    <color name="backgroundLight">#1E1E1E</color>
+    <color name="warningBackground">#332200</color> <!-- Dark orange-brown for warnings -->
+
+    <!-- Text colors -->
+    <color name="textPrimary">#FFFFFF</color> <!-- White text -->
+    <color name="textSecondary">#B0B0B0</color> <!-- Light grey -->
+    <color name="textTertiary">#757575</color> <!-- Medium grey -->
+    <color name="textOnPrimary">#000000</color>
+    <color name="textOnAccent">#000000</color>
+    <color name="textWarning">#FFB74D</color> <!-- Light orange for warning text -->
+
+    <!-- Status colors (slightly adjusted for dark mode visibility) -->
+    <color name="statusOverdue">#EF5350</color> <!-- Lighter red -->
+    <color name="statusCompleted">#66BB6A</color> <!-- Lighter green -->
+    <color name="statusDueToday">#FFCA28</color> <!-- Lighter yellow -->
+    <color name="statusPending">#BDBDBD</color> <!-- Lighter grey -->
+    <color name="statusInfo">#42A5F5</color> <!-- Lighter blue -->
+
+    <!-- Priority colors (adjusted for dark mode) -->
+    <color name="priority1">#42A5F5</color> <!-- Lighter Blue - Low Priority -->
+    <color name="priority2">#FFCA28</color> <!-- Lighter Yellow - Medium Priority -->
+    <color name="priority3">#FFA726</color> <!-- Lighter Orange - High Priority -->
+    <color name="priority4">#EF5350</color> <!-- Lighter Red - Critical Priority -->
+
+    <!-- Streak & Motivation colors -->
+    <color name="streakFire">#FF9800</color> <!-- Brighter orange for dark mode -->
+    <color name="streakDanger">#EF5350</color> <!-- Lighter red -->
+    <color name="streakSafe">#66BB6A</color> <!-- Lighter green -->
+
+    <!-- Widget colors -->
+    <color name="widgetBackground">#1E1E1E</color>
+    <color name="widgetBackgroundDark">#121212</color>
+    <color name="widgetHeaderBackground">#BB86FC</color>
+
+    <!-- Card & Elevation -->
+    <color name="cardBackground">#1E1E1E</color> <!-- Dark cards -->
+    <color name="cardElevation">#33FFFFFF</color> <!-- 20% white for shadow/elevation -->
+    <color name="divider">#2C2C2C</color> <!-- Dark divider -->
+
+    <!-- Interactive states -->
+    <color name="rippleLight">#33FFFFFF</color> <!-- 20% white -->
+    <color name="rippleDark">#1F000000</color> <!-- 12% black -->
+
+    <!-- Additional colors for better dark mode support -->
+    <color name="primary">#BB86FC</color>
+    <color name="buttonBackground">#2C2C2C</color>
+</resources>
