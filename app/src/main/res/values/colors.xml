@@ -1,26 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Primary colors -->
+    <!-- Primary colors - Design System v1.0 -->
     <color name="colorPrimary">#6200EE</color>
     <color name="colorPrimaryDark">#3700B3</color>
-    <color name="colorAccent">#03DAC5</color>
+    <color name="colorAccent">#FF6B00</color> <!-- Orange for Streaks & Important Elements -->
 
     <!-- Background colors -->
     <color name="backgroundColor">#FFFFFF</color>
     <color name="backgroundDark">#121212</color>
+    <color name="backgroundLight">#F5F5F5</color>
 
     <!-- Text colors -->
     <color name="textPrimary">#000000</color>
     <color name="textSecondary">#757575</color>
+    <color name="textTertiary">#BDBDBD</color>
     <color name="textOnPrimary">#FFFFFF</color>
+    <color name="textOnAccent">#FFFFFF</color>
 
     <!-- Status colors -->
-    <color name="statusOverdue">#F44336</color>
-    <color name="statusCompleted">#4CAF50</color>
-    <color name="statusPending">#FFC107</color>
+    <color name="statusOverdue">#F44336</color> <!-- Red -->
+    <color name="statusCompleted">#4CAF50</color> <!-- Green -->
+    <color name="statusDueToday">#FFC107</color> <!-- Yellow/Orange -->
+    <color name="statusPending">#9E9E9E</color> <!-- Grey -->
+    <color name="statusInfo">#2196F3</color> <!-- Blue -->
 
-    <!-- Priority colors -->
-    <color name="priorityHigh">#F44336</color>
-    <color name="priorityMedium">#FF9800</color>
-    <color name="priorityLow">#2196F3</color>
+    <!-- Priority colors (1-4 stars) -->
+    <color name="priority1">#2196F3</color> <!-- Blue - Low Priority -->
+    <color name="priority2">#FFC107</color> <!-- Yellow - Medium Priority -->
+    <color name="priority3">#FF9800</color> <!-- Orange - High Priority -->
+    <color name="priority4">#F44336</color> <!-- Red - Critical Priority -->
+
+    <!-- Streak & Motivation colors -->
+    <color name="streakFire">#FF6B00</color> <!-- Orange-Red for Fire emoji -->
+    <color name="streakDanger">#F44336</color> <!-- Red for streak in danger -->
+    <color name="streakSafe">#4CAF50</color> <!-- Green for streak safe -->
+
+    <!-- Widget colors -->
+    <color name="widgetBackground">#FFFFFF</color>
+    <color name="widgetBackgroundDark">#263238</color>
+    <color name="widgetHeaderBackground">#6200EE</color>
+
+    <!-- Card & Elevation -->
+    <color name="cardBackground">#FFFFFF</color>
+    <color name="cardElevation">#1F000000</color> <!-- 12% black for shadow -->
+    <color name="divider">#E0E0E0</color>
+
+    <!-- Interactive states -->
+    <color name="rippleLight">#1F000000</color> <!-- 12% black -->
+    <color name="rippleDark">#33FFFFFF</color> <!-- 20% white -->
 </resources>

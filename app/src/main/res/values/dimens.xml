@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Design System v1.0 - Spacing & Dimensions -->
+
+    <!-- Spacing -->
+    <dimen name="spacing_tiny">4dp</dimen>
+    <dimen name="spacing_small">8dp</dimen>
+    <dimen name="spacing_medium">16dp</dimen>
+    <dimen name="spacing_large">24dp</dimen>
+    <dimen name="spacing_xlarge">32dp</dimen>
+
+    <!-- Padding -->
+    <dimen name="padding_card">16dp</dimen>
+    <dimen name="padding_widget">12dp</dimen>
+    <dimen name="padding_button">16dp</dimen>
+    <dimen name="padding_dialog">24dp</dimen>
+
+    <!-- Margins -->
+    <dimen name="margin_element">8dp</dimen>
+    <dimen name="margin_section">16dp</dimen>
+    <dimen name="margin_screen">16dp</dimen>
+
+    <!-- Elevation -->
+    <dimen name="elevation_card">2dp</dimen>
+    <dimen name="elevation_card_hover">4dp</dimen>
+    <dimen name="elevation_dialog">8dp</dimen>
+    <dimen name="elevation_widget">1dp</dimen>
+
+    <!-- Corner Radius -->
+    <dimen name="corner_radius_card">12dp</dimen>
+    <dimen name="corner_radius_button">8dp</dimen>
+    <dimen name="corner_radius_chip">16dp</dimen>
+    <dimen name="corner_radius_small">4dp</dimen>
+
+    <!-- Icon Sizes -->
+    <dimen name="icon_size_small">16dp</dimen>
+    <dimen name="icon_size_medium">24dp</dimen>
+    <dimen name="icon_size_large">32dp</dimen>
+    <dimen name="icon_size_xlarge">48dp</dimen>
+
+    <!-- Touch Targets (Minimum 48dp for accessibility) -->
+    <dimen name="touch_target_min">48dp</dimen>
+    <dimen name="touch_target_comfortable">56dp</dimen>
+
+    <!-- Widget Dimensions -->
+    <dimen name="widget_padding_horizontal">12dp</dimen>
+    <dimen name="widget_padding_vertical">12dp</dimen>
+    <dimen name="widget_item_height">56dp</dimen>
+    <dimen name="widget_header_height">48dp</dimen>
+
+    <!-- Task Item Dimensions -->
+    <dimen name="task_item_min_height">72dp</dimen>
+    <dimen name="task_item_padding">16dp</dimen>
+    <dimen name="task_checkbox_size">24dp</dimen>
+    <dimen name="task_priority_star_size">16dp</dimen>
+
+    <!-- Streak Card Dimensions -->
+    <dimen name="streak_card_width">120dp</dimen>
+    <dimen name="streak_card_height">100dp</dimen>
+    <dimen name="streak_number_size">48sp</dimen>
+
+    <!-- Progress Bar -->
+    <dimen name="progress_bar_height">8dp</dimen>
+    <dimen name="progress_bar_corner_radius">4dp</dimen>
+</resources>
