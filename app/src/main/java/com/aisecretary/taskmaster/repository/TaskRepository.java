@@ -474,16 +474,34 @@ public class TaskRepository {
     /**
      * Notify widget to update after data changes
      * Phase 4.5: Widget Update Integration
+     * Phase 4.5.2: Extended to update all widget sizes
      */
     private void notifyWidgetUpdate() {
+        // Update Large Widget
         try {
-            // Use reflection to avoid hard dependency on widget package
             Class<?> widgetClass = Class.forName("com.aisecretary.taskmaster.widget.TaskWidgetProvider");
             java.lang.reflect.Method updateMethod = widgetClass.getMethod("updateAllWidgets", Context.class);
             updateMethod.invoke(null, context);
         } catch (Exception e) {
-            // Widget not available or error - silently ignore
-            // This allows the app to work even if widget classes are removed
+            // Silently ignore
+        }
+
+        // Update Medium Widget
+        try {
+            Class<?> widgetClass = Class.forName("com.aisecretary.taskmaster.widget.TaskWidgetProviderMedium");
+            java.lang.reflect.Method updateMethod = widgetClass.getMethod("updateAllWidgets", Context.class);
+            updateMethod.invoke(null, context);
+        } catch (Exception e) {
+            // Silently ignore
+        }
+
+        // Update Small Widget
+        try {
+            Class<?> widgetClass = Class.forName("com.aisecretary.taskmaster.widget.TaskWidgetProviderSmall");
+            java.lang.reflect.Method updateMethod = widgetClass.getMethod("updateAllWidgets", Context.class);
+            updateMethod.invoke(null, context);
+        } catch (Exception e) {
+            // Silently ignore
         }
     }
 }

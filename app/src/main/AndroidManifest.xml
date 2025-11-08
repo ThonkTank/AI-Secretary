@@ -41,7 +41,7 @@
             android:exported="false"
             android:label="Statistiken" />
 
-        <!-- Widget Provider -->
+        <!-- Widget Provider - Large (4x4) -->
         <receiver
             android:name=".widget.TaskWidgetProvider"
             android:exported="true">
@@ -53,6 +53,34 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/task_widget_info" />
+        </receiver>
+
+        <!-- Widget Provider - Medium (4x2) -->
+        <receiver
+            android:name=".widget.TaskWidgetProviderMedium"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.aisecretary.taskmaster.ACTION_COMPLETE_TASK_MEDIUM" />
+                <action android:name="com.aisecretary.taskmaster.ACTION_REFRESH_WIDGET_MEDIUM" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/task_widget_info_medium" />
+        </receiver>
+
+        <!-- Widget Provider - Small (2x2) -->
+        <receiver
+            android:name=".widget.TaskWidgetProviderSmall"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.aisecretary.taskmaster.ACTION_COMPLETE_TASK_SMALL" />
+                <action android:name="com.aisecretary.taskmaster.ACTION_REFRESH_WIDGET_SMALL" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/task_widget_info_small" />
         </receiver>
 
         <!-- Widget List Service -->
