@@ -712,13 +712,14 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 **Geschätzte Dateien:** 2-3 neue Dateien
 **Komplexität:** Hoch
 
-#### 8.4 Dark Mode
-- [ ] Dark Theme (colors_night.xml)
-- [ ] Theme-Umschaltung
-- [ ] Automatisch nach System-Einstellung
+#### 8.4 Dark Mode ✅ ABGESCHLOSSEN
+- [x] Dark Theme (colors_night.xml) ✅
+- [x] Theme-Styles (styles_night.xml) ✅
+- [x] Automatisch nach System-Einstellung ✅
 
-**Geschätzte Dateien:** 2 neue Dateien
+**Dateien erstellt:** 2 neue Dateien (values-night/colors.xml, values-night/styles.xml)
 **Komplexität:** Niedrig
+**Status:** ✅ Vollständig implementiert
 
 ---
 
@@ -1150,6 +1151,28 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - Vorteile: Sequentielle Workflows (A → B → C), Zyklische Ketten (→ ↺), Task-Abhängigkeiten
   - Use Cases: Morgenroutine (Aufstehen → Duschen → Frühstück → ↺), Projektphasen, Checklisten
   - Nächstes: Phase 8 - Erweiterte Features (Notifications, Dark Mode) oder Polish
+- 2025-11-08 (v3.5): Phase 8.4 abgeschlossen - Dark Mode Theme
+  - ✅ values-night/colors.xml: Vollständige Dark Theme Farbpalette
+    - Background: #121212 (Material Design dark surface)
+    - Text: #FFFFFF (white), #B0B0B0 (secondary grey)
+    - Primary: #BB86FC (lighter purple für besseren Kontrast)
+    - Accent: #FF9800 (brighter orange)
+    - Alle Status-Farben für Dark Mode optimiert (lighter shades)
+    - Widget-Farben angepasst (#1E1E1E backgrounds)
+    - Card & Interactive States (ripple, elevation)
+  - ✅ values-night/styles.xml: Dark Theme Base-Style
+    - Parent: android:Theme.Material (auto dark variant)
+    - colorPrimary, colorAccent, textColors auf dark theme colors gemapped
+    - windowBackground & colorBackground auf #121212
+  - ✅ Automatisches Theme-Switching via Android Resource Qualifiers
+    - System erkennt Dark Mode Setting automatisch
+    - Kein Code-Change erforderlich
+    - values/ für Light Mode, values-night/ für Dark Mode
+  - 2 Dateien (beide neu, +71 Zeilen)
+  - **Phase 8.4 vollständig abgeschlossen! 🎉**
+  - Fortschritt: ~98% der Taskmaster Feature Suite
+  - Vorteile: Bessere UX bei Nacht, Batterie-Schonung (OLED), Material Design Best Practices
+  - Nächstes: Optional - Phase 7 (Visual Polish), Phase 8.1 (Notifications), oder Final Testing
 
 ---
 
