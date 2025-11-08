@@ -1260,6 +1260,36 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - **Phase 8.2 vollständig abgeschlossen! 🎉**
   - Vorteile: Bessere Task-Organisation, Schnelleres Filtern, Übersichtlichkeit, Kategorisierte Statistiken
   - Nächstes: Optional - Phase 8.3 (Backup), Phase 7 (Animationen)
+- 2025-11-08 (v3.9): Phase 8.3 abgeschlossen - Backup & Restore System
+  - ✅ BackupManager (utils/BackupManager.java): JSON-basierte Backup-Verwaltung
+    - exportToJson() - Exportiert alle Tasks + History zu JSON-Datei (Downloads-Ordner)
+    - importFromJson() - Importiert von JSON mit optional Replace-Mode
+    - taskToJson() / jsonToTask() - Vollständige Serialisierung aller 30+ Task-Fields
+    - historyToJson() / jsonToHistory() - Completion History Serialisierung
+    - ExportResult & ImportResult data classes für detailliertes Feedback
+    - generateBackupFilename() - Auto-Timestamp: taskmaster_backup_YYYY-MM-DD_HH-mm-ss.json
+    - Backup-Format v1.0 mit Version-Tracking
+  - ✅ BackupActivity (BackupActivity.java): Backup UI
+    - Export-Button: Speichert in Downloads-Ordner
+    - Import-Button: Fügt Backup-Daten zu existierenden Tasks hinzu
+    - Import & Replace-Button: Löscht existierende Daten vor Import (mit Warnung)
+    - File-Picker Integration (ACTION_OPEN_DOCUMENT)
+    - Success/Error-Dialogs mit Statistiken (X Tasks, Y History-Einträge)
+    - Auto-Reload nach erfolgreicher Wiederherstellung
+  - ✅ MainActivity Integration
+    - Backup-Button in Quick Actions Row (📊 Stats | 📅 Plan | 💾 Backup)
+    - openBackup() Methode
+    - Button-Text verkürzt für 3-Spalten-Layout
+  - ✅ UI Improvements
+    - activity_backup.xml: Übersichtliches Backup-Layout mit Info-Sektion
+    - activity_main.xml: 3-Button Quick Actions (Stats/Plan/Backup)
+    - Button-Margins angepasst (4dp für gleichmäßiges Spacing)
+  - ✅ AndroidManifest: BackupActivity registriert
+  - 6 Dateien (3 neu, 3 modifiziert, +725 Zeilen)
+  - **Phase 8.3 vollständig abgeschlossen! 🎉**
+  - **Phase 8 vollständig abgeschlossen! ✅** (100%)
+  - Vorteile: Datensicherheit, Portabilität, Gerätewechsel-Support, Vollständige Wiederherstellung
+  - Nächstes: Optional - Phase 7 (Visual Polish & Animationen)
 
 ---
 
