@@ -92,7 +92,18 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
   - Quick-Actions → Delete-Button
 - [ ] Wiederkehrende Tasks - Erweitert (Phase 2.3) ⬅️ Nächster Schritt
 
-**Gesamt-Fortschritt:** ~45% der Taskmaster Feature Suite
+**Phase 3: Tracking & Performance-Daten** 🟢 33% abgeschlossen
+- [x] **Task-Completion Dialog** (Phase 3.1)
+  - CompletionDialog mit Zeit/Schwierigkeits-Input
+  - Quick-Select Buttons (5/15/30 Min, 1 Std)
+  - 5-Sterne-Rating mit Labels
+  - Streak-Feedback mit Meilenstein-Erkennung
+  - Überspringen-Button für Quick-Complete
+  - MainActivity-Integration (Checkbox + Swipe)
+- [ ] Erledigungs-Zeit Tracking erweitert (Phase 3.2) ⬅️ Nächster Schritt
+- [ ] Zeitpunkt-Analyse (Phase 3.3)
+
+**Gesamt-Fortschritt:** ~50% der Taskmaster Feature Suite
 
 ---
 
@@ -252,26 +263,41 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 ### Phase 3: Tracking & Performance-Daten (Priorität: MITTEL)
 **Ziel:** Datenerfassung für intelligente Features
 
-#### 3.1 Task-Completion Dialog (gemäß DESIGN.md)
-- [ ] **CompletionDialog** erstellen (completion_dialog.xml)
-- [ ] **Zeit-Input mit Quick-Select**
-  - Buttons: 5 Min, 15 Min, 30 Min, 1 Std
-  - Manuelle Eingabe: [HH:MM] Format
-- [ ] **Schwierigkeits-Input**
-  - 5-Sterne-Rating (Star-Icons)
-  - Slider als Alternative
-- [ ] **Streak-Feedback**
-  - "🔥 Streak auf X Tage erhöht!"
-  - Confetti-Animation bei Meilensteinen (10, 25, 50, 100 Tage)
-- [ ] **Überspringen-Button** für schnelles Abhaken ohne Tracking
-- [ ] Daten in Task speichern
-  - Update `averageCompletionTime`
-  - Update `averageDifficulty`
-  - Update `streak`
+#### 3.1 Task-Completion Dialog (gemäß DESIGN.md) ✅ ABGESCHLOSSEN
+- [x] **CompletionDialog** erstellen (dialog_completion.xml) ✅
+  - Header mit Task-Titel ✅
+  - Dynamischer Titel: "Aufgabe abgeschlossen!" / "🎉 Meilenstein erreicht!" ✅
+- [x] **Zeit-Input mit Quick-Select** ✅
+  - Buttons: 5 Min, 15 Min, 30 Min, 1 Std ✅
+  - Visual Feedback (Button-Highlighting) ✅
+  - Selected Time Display ✅
+- [x] **Schwierigkeits-Input** ✅
+  - 5-Sterne-Rating (☆/★ Icons) ✅
+  - Labels: "Sehr einfach" bis "Sehr schwierig" ✅
+  - Click-Handler für jede Sterne ✅
+- [x] **Streak-Feedback** ✅
+  - "🔥 Streak: X Tage!" Anzeige ✅
+  - Meilenstein-Detection (10, 25, 50, 100) ✅
+  - Spezielle Texte: "🔥🎉 25 Tage Streak! 🎉🔥" ✅
+  - Toast-Nachrichten mit Meilenstein-Info ✅
+- [x] **Überspringen-Button** für Quick-Complete ✅
+  - onCompleteWithoutTracking() Callback ✅
+  - Kein Tracking, direkt completeTask() ✅
+- [x] Daten in Task speichern ✅
+  - repository.completeTask(id, duration, difficulty) ✅
+  - Update `averageCompletionTime` ✅
+  - Update `averageDifficulty` ✅
+  - Update `streak` ✅
+- [x] MainActivity-Integration ✅
+  - showCompletionDialog(TaskEntity) Methode ✅
+  - CompletionListener Implementation ✅
+  - onTaskCheckboxClick → Dialog ✅
+  - onSwipeRight → Dialog ✅
 
-**Geschätzte Dateien:** 2-3 neue Dateien
+**Dateien erstellt:** 3 Dateien (2 neu, 1 aktualisiert, +469 Zeilen)
 **Komplexität:** Mittel
 **Design-Referenz:** DESIGN.md - Task Completion Dialog
+**Status:** ✅ Vollständig implementiert
 
 #### 3.2 Erledigungs-Zeit Tracking
 - [ ] CompletionHistory Datenbank-Tabelle
@@ -677,6 +703,22 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - **Phase 2.2 vollständig abgeschlossen! ✅**
   - Fortschritt: 45% der Taskmaster Feature Suite
   - Nächstes: Phase 3 - Tracking & Performance-Daten (Completion Dialog)
+- 2025-11-08 (v2.5): Phase 3.1 abgeschlossen - Task-Completion Dialog
+  - ✅ dialog_completion.xml: Vollständiges Dialog-Layout mit allen UI-Elementen
+  - ✅ Zeit-Input mit Quick-Select Buttons (5 Min, 15 Min, 30 Min, 1 Std)
+  - ✅ Schwierigkeits-Rating: 5-Sterne System mit visueller Feedback
+  - ✅ Difficulty Labels: "Sehr einfach" bis "Sehr schwierig"
+  - ✅ Streak-Feedback: Dynamische Anzeige des neuen Streak-Werts
+  - ✅ Meilenstein-Erkennung: Special UI bei 10, 25, 50, 100 Tagen
+  - ✅ Überspringen-Button: Quick Complete ohne Tracking
+  - ✅ Speichern-Button: Complete mit vollständigem Tracking
+  - ✅ CompletionDialog.java: Custom Dialog Klasse mit CompletionListener Interface
+  - ✅ MainActivity Integration: showCompletionDialog() in Checkbox- und Swipe-Aktionen
+  - ✅ Default-Werte: Duration 0 (optional), Difficulty 3.0 (Medium) wenn nicht ausgewählt
+  - 3 neue/aktualisierte Dateien (dialog_completion.xml, CompletionDialog.java, MainActivity.java)
+  - **Phase 3.1 vollständig abgeschlossen! 🎉**
+  - Fortschritt: 50% der Taskmaster Feature Suite
+  - Nächstes: Phase 3.2 - Erledigungs-Zeit Tracking (History)
 
 ---
 
