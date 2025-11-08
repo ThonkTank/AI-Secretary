@@ -71,7 +71,7 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
   - Streak-Badge, Überdue-Warnung
   - Quick-Actions (Edit/Delete) on long press
 
-**Phase 2: Task-Erstellung & -Verwaltung** 🟢 33% abgeschlossen
+**Phase 2: Task-Erstellung & -Verwaltung** 🟢 67% abgeschlossen
 - [x] **AddTaskActivity mit Tab-Layout** (Phase 2.1)
   - Tab 1: Basis (Titel, Beschreibung, Priorität, Fälligkeit)
   - Tab 2: Wiederholung (x pro y, alle x y, geplant)
@@ -80,10 +80,19 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
   - Smart-Defaults (Priorität 2, Heute, Einmalig)
   - TaskPagerAdapter für ViewPager2
   - 3 Fragments (TaskBasisFragment, TaskRecurrenceFragment, TaskDetailsFragment)
-- [ ] Task-Bearbeitung & -Löschung (Phase 2.2) ⬅️ Nächster Schritt
-- [ ] Wiederkehrende Tasks - Erweitert (Phase 2.3)
+- [x] **Task-Bearbeitung** (Phase 2.2)
+  - AddTaskActivity erweitert um Edit-Modus (EXTRA_TASK_ID)
+  - Fragment Setter-Methoden für Daten-Vorausfüllung
+  - populateFragments() auto-befüllt alle Tabs
+  - saveTask() unterscheidet Create vs Update
+  - MainActivity: onTaskClick + onTaskEditClick → Edit-Dialog
+  - Dynamischer Header + Button-Text
+- [x] **Task-Löschung** bereits in Phase 1.3 implementiert
+  - Swipe-Left → Delete mit Bestätigung
+  - Quick-Actions → Delete-Button
+- [ ] Wiederkehrende Tasks - Erweitert (Phase 2.3) ⬅️ Nächster Schritt
 
-**Gesamt-Fortschritt:** ~40% der Taskmaster Feature Suite
+**Gesamt-Fortschritt:** ~45% der Taskmaster Feature Suite
 
 ---
 
@@ -195,14 +204,34 @@ Ein umfassendes Alltags-Planungstool mit intelligenter Aufgabenverwaltung, Track
 **Design-Referenz:** DESIGN.md - Add/Edit Task Screen
 **Status:** ✅ Vollständig implementiert
 
-#### 2.2 Task-Bearbeitung & -Löschung
-- [ ] EditTaskActivity oder Dialog
-- [ ] Task-Details-Ansicht
-- [ ] Löschen-Funktionalität mit Bestätigung
-- [ ] Swipe-to-Delete Geste
+#### 2.2 Task-Bearbeitung & -Löschung ✅ ABGESCHLOSSEN
+- [x] Edit-Modus in AddTaskActivity implementiert ✅
+  - EXTRA_TASK_ID Intent-Parameter ✅
+  - isEditMode, editingTaskId, editingTask Variablen ✅
+  - Dynamischer Header ("Neue Aufgabe" vs "Aufgabe bearbeiten") ✅
+  - Dynamischer Save-Button ("Speichern" vs "Aktualisieren") ✅
+- [x] Fragment Setter-Methoden für Daten-Vorausfüllung ✅
+  - TaskBasisFragment: setTitle, setDescription, setPriority, setDueDate ✅
+  - TaskRecurrenceFragment: setRecurrenceType, setRecurrenceX, setRecurrenceY ✅
+  - TaskDetailsFragment: setEstimatedDuration, setPreferredTimeOfDay, setCategory ✅
+- [x] populateFragments() Methode ✅
+  - Automatisches Befüllen aller Tabs mit vorhandenen Daten ✅
+  - Timing via viewPager.post() ✅
+- [x] saveTask() erweitert ✅
+  - Unterscheidung zwischen Create und Update ✅
+  - Toast: "Aufgabe erstellt!" vs "Aufgabe aktualisiert!" ✅
+- [x] MainActivity-Integration ✅
+  - onTaskClick() → öffnet Edit-Dialog ✅
+  - onTaskEditClick() → öffnet Edit-Dialog ✅
+  - openEditDialog(TaskEntity) Methode ✅
+- [x] Löschen-Funktionalität ✅ (bereits in Phase 1.3)
+  - Swipe-Left → Delete mit Bestätigung ✅
+  - Quick-Actions Delete-Button ✅
+  - AlertDialog mit Cancel-Handling ✅
 
-**Geschätzte Dateien:** 1-2 neue Dateien
-**Komplexität:** Niedrig-Mittel
+**Dateien aktualisiert:** 6 Dateien (+228 Zeilen Code)
+**Komplexität:** Mittel
+**Status:** ✅ Vollständig implementiert
 
 #### 2.3 Wiederkehrende Tasks - Basis
 - [ ] UI für Recurrence-Konfiguration
@@ -632,6 +661,22 @@ Diese Roadmap wird regelmäßig aktualisiert bei:
   - **Phase 2.1 vollständig abgeschlossen! 🎉**
   - Fortschritt: 40% der Taskmaster Feature Suite
   - Nächstes: Phase 2.2 - Task-Bearbeitung & -Löschung
+- 2025-11-08 (v2.4): Phase 2.2 abgeschlossen - Task-Bearbeitung
+  - ✅ AddTaskActivity: Edit-Modus Support via EXTRA_TASK_ID
+  - ✅ isEditMode, editingTaskId, editingTask Variablen
+  - ✅ Dynamischer Header + Button-Text (Neue/Bearbeiten, Speichern/Aktualisieren)
+  - ✅ populateFragments() Methode zum Auto-Befüllen aller Tabs
+  - ✅ saveTask() unterscheidet Create vs Update
+  - ✅ Fragment Setter-Methoden:
+    - TaskBasisFragment: setTitle, setDescription, setPriority, setDueDate (mit Auto-Erkennung)
+    - TaskRecurrenceFragment: setRecurrenceType, setRecurrenceX, setRecurrenceY
+    - TaskDetailsFragment: setEstimatedDuration, setPreferredTimeOfDay, setCategory
+  - ✅ MainActivity: onTaskClick + onTaskEditClick → openEditDialog()
+  - ✅ Intent-basierte Navigation mit Task-ID
+  - 6 Dateien aktualisiert (+228 Zeilen)
+  - **Phase 2.2 vollständig abgeschlossen! ✅**
+  - Fortschritt: 45% der Taskmaster Feature Suite
+  - Nächstes: Phase 3 - Tracking & Performance-Daten (Completion Dialog)
 
 ---
 
