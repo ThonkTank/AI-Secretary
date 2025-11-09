@@ -51,6 +51,7 @@ jobs:
           res/layout/activity_main.xml \
           res/layout/dialog_settings.xml \
           res/layout/dialog_logs.xml \
+          res/menu/main_menu.xml \
           -o compiled_res/
 
         # Ressourcen verlinken

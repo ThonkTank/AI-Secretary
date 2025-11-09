@@ -10,6 +10,8 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -40,34 +42,9 @@ public class MainActivity extends Activity {
             logger.error(TAG, "Could not get package info", e);
         }
 
-        // Settings Button ZUERST initialisieren
-        Button settingsButton = findViewById(R.id.settingsButton);
-        if (settingsButton != null) {
-            settingsButton.setOnClickListener(v -> {
-                logger.info(TAG, "Settings button clicked");
-                showSettingsDialog();
-            });
+        logger.info(TAG, "Settings menu will be in Action Bar");
 
-            // WICHTIG: Button-Details loggen um zu sehen warum er nicht sichtbar ist
-            settingsButton.post(() -> {
-                int width = settingsButton.getWidth();
-                int height = settingsButton.getHeight();
-                int visibility = settingsButton.getVisibility();
-                float alpha = settingsButton.getAlpha();
-                String visText = visibility == 0 ? "VISIBLE" : (visibility == 4 ? "INVISIBLE" : "GONE");
-
-                logger.info(TAG, "Button found! Width=" + width + " Height=" + height + " Visibility=" + visText + " Alpha=" + alpha);
-                Log.i(TAG, "Button found! Width=" + width + " Height=" + height + " Visibility=" + visText + " Alpha=" + alpha);
-            });
-
-            Log.i(TAG, "Settings button initialized successfully");
-            logger.info(TAG, "Settings button initialized successfully");
-        } else {
-            Log.e(TAG, "Settings button NOT FOUND in layout!");
-            logger.error(TAG, "Settings button NOT FOUND in layout!");
-        }
-
-        // LOGS ALS LETZTES ANZEIGEN (damit alle vorherigen Logs dabei sind)
+        // LOGS ANZEIGEN
         TextView mainLogsTextView = findViewById(R.id.mainLogsTextView);
         if (mainLogsTextView != null) {
             // Logs sofort anzeigen
@@ -96,6 +73,23 @@ public class MainActivity extends Activity {
             }
             textView.setText(logText.toString());
         }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_menu, menu);
+        logger.info(TAG, "Action Bar menu created");
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_settings) {
+            logger.info(TAG, "Settings menu item clicked");
+            showSettingsDialog();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private void showSettingsDialog() {
