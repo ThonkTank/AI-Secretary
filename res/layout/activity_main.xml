@@ -6,14 +6,15 @@
     <!-- Settings Button (Top Right) -->
     <Button
         android:id="@+id/settingsButton"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
         android:layout_margin="8dp"
         android:text="⚙"
-        android:textSize="20sp"
-        style="?android:attr/borderlessButtonStyle" />
+        android:textSize="24sp"
+        android:textColor="#000000"
+        android:background="#E0E0E0" />
 
     <!-- Main Content -->
     <LinearLayout
