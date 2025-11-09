@@ -39,6 +39,9 @@ jobs:
         export ANDROID_SDK_ROOT=$HOME/android-sdk
         export ANDROID_JAR=$ANDROID_SDK_ROOT/platforms/android-33/android.jar
 
+        # Build-Verzeichnisse erstellen
+        mkdir -p compiled_res gen classes
+
         # Ressourcen kompilieren
         $ANDROID_SDK_ROOT/build-tools/33.0.2/aapt2 compile \
           res/values/strings.xml \
@@ -72,7 +75,7 @@ jobs:
           classes/com/secretary/helloworld/*.class
 
         # DEX zur APK hinzufügen
-        cd app_unsigned.apk && zip -uj ../app_unsigned.apk ../classes.dex && cd ..
+        zip -uj app_unsigned.apk classes.dex
 
         # APK alignieren
         $ANDROID_SDK_ROOT/build-tools/33.0.2/zipalign -v -p 4 \
