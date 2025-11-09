@@ -3,19 +3,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Settings Button (Top Right) -->
-    <Button
-        android:id="@+id/settingsButton"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:layout_margin="8dp"
-        android:text="⚙"
-        android:textSize="24sp"
-        android:textColor="#000000"
-        android:background="#E0E0E0" />
-
     <!-- Main Content -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -41,5 +28,19 @@
             android:layout_marginTop="8dp" />
 
     </LinearLayout>
+
+    <!-- Settings Button (Top Right) - Defined AFTER LinearLayout so it draws on top -->
+    <Button
+        android:id="@+id/settingsButton"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="8dp"
+        android:text="⚙"
+        android:textSize="24sp"
+        android:textColor="#000000"
+        android:background="#E0E0E0"
+        android:elevation="4dp" />
 
 </RelativeLayout>
