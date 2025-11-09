@@ -2,6 +2,9 @@ package com.secretary.helloworld;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -11,6 +14,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import java.util.List;
 
 public class MainActivity extends Activity {
     private static final String TAG = "MainActivity";
@@ -121,11 +125,57 @@ public class MainActivity extends Activity {
             });
         });
 
+        // View Logs Button
+        Button viewLogsButton = dialogView.findViewById(R.id.settingsViewLogsButton);
+        viewLogsButton.setOnClickListener(v -> {
+            logger.info(TAG, "User opened log viewer");
+            showLogsDialog();
+        });
+
         // Close Button
         closeButton.setOnClickListener(v -> {
             logger.info(TAG, "Settings dialog closed");
             dialog.dismiss();
         });
+
+        dialog.show();
+    }
+
+    private void showLogsDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_logs, null);
+        builder.setView(dialogView);
+
+        AlertDialog dialog = builder.create();
+
+        // Views im Dialog
+        TextView logsTextView = dialogView.findViewById(R.id.logsTextView);
+        Button copyButton = dialogView.findViewById(R.id.logsCopyButton);
+        Button closeButton = dialogView.findViewById(R.id.logsCloseButton);
+
+        // Logs laden und anzeigen
+        List<String> logs = logger.readLogs();
+        if (logs.isEmpty()) {
+            logsTextView.setText("No logs available yet.\n\nLog file path: " + logger.getLogFilePath());
+        } else {
+            StringBuilder logText = new StringBuilder();
+            for (String line : logs) {
+                logText.append(line).append("\n");
+            }
+            logsTextView.setText(logText.toString());
+        }
+
+        // Copy Button
+        copyButton.setOnClickListener(v -> {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText("App Logs", logsTextView.getText().toString());
+            clipboard.setPrimaryClip(clip);
+            Toast.makeText(this, "Logs copied to clipboard", Toast.LENGTH_SHORT).show();
+            logger.info(TAG, "User copied logs to clipboard");
+        });
+
+        // Close Button
+        closeButton.setOnClickListener(v -> dialog.dismiss());
 
         dialog.show();
     }

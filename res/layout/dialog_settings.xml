@@ -60,6 +60,23 @@
             android:text="Check for Updates"
             android:layout_marginBottom="16dp" />
 
+        <!-- Debug Section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Debug"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#666666"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/settingsViewLogsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="View Logs"
+            android:layout_marginBottom="16dp" />
+
         <!-- Close Button -->
         <Button
             android:id="@+id/settingsCloseButton"
