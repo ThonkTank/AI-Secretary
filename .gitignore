@@ -1,0 +1,17 @@
+# Build artifacts
+*.apk
+*.apk.idsig
+*.dex
+app_*.apk
+classes/
+compiled_res/
+gen/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+*~
