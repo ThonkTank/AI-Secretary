@@ -49,6 +49,7 @@ jobs:
         $ANDROID_SDK_ROOT/build-tools/33.0.2/aapt2 compile \
           res/values/strings.xml \
           res/layout/activity_main.xml \
+          res/layout/dialog_settings.xml \
           -o compiled_res/
 
         # Ressourcen verlinken
