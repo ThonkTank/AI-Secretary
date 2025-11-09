@@ -24,12 +24,13 @@ public class UpdateChecker {
 
     public static void checkForUpdates(Context context, UpdateListener listener) {
         new Thread(() -> {
+            AppLogger logger = AppLogger.getInstance(context);
             try {
                 // Aktuelle Version ermitteln
                 int currentVersionCode = getCurrentVersionCode(context);
                 String currentVersionName = getCurrentVersionName(context);
 
-                Log.d(TAG, "Current version: " + currentVersionName + " (code: " + currentVersionCode + ")");
+                logger.info(TAG, "Starting update check. Current version: " + currentVersionName + " (code: " + currentVersionCode + ")");
 
                 // GitHub Releases API abfragen
                 URL url = new URL(GITHUB_API_URL);
@@ -41,6 +42,8 @@ public class UpdateChecker {
                 conn.setReadTimeout(10000);
 
                 int responseCode = conn.getResponseCode();
+                logger.debug(TAG, "GitHub API response code: " + responseCode);
+
                 if (responseCode == 200) {
                     BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                     StringBuilder response = new StringBuilder();
@@ -55,15 +58,19 @@ public class UpdateChecker {
                     String latestVersionName = release.getString("tag_name").replace("v", "");
                     String changelog = release.optString("body", "Keine Changelog-Information verfügbar");
 
+                    logger.info(TAG, "Latest version from GitHub: " + latestVersionName);
+
                     // APK Asset finden
                     String downloadUrl = null;
                     if (release.has("assets")) {
                         org.json.JSONArray assets = release.getJSONArray("assets");
+                        logger.debug(TAG, "Found " + assets.length() + " assets in release");
                         for (int i = 0; i < assets.length(); i++) {
                             JSONObject asset = assets.getJSONObject(i);
                             String name = asset.getString("name");
                             if (name.endsWith(".apk")) {
                                 downloadUrl = asset.getString("browser_download_url");
+                                logger.info(TAG, "Found APK asset: " + name);
                                 break;
                             }
                         }
@@ -71,27 +78,27 @@ public class UpdateChecker {
 
                     // Version vergleichen
                     if (downloadUrl != null && !latestVersionName.equals(currentVersionName)) {
-                        Log.d(TAG, "Update available: " + latestVersionName);
+                        logger.info(TAG, "Update available! " + currentVersionName + " -> " + latestVersionName);
                         String finalDownloadUrl = downloadUrl;
                         String finalChangelog = changelog;
                         ((android.app.Activity) context).runOnUiThread(() ->
                             listener.onUpdateAvailable(latestVersionName, finalDownloadUrl, finalChangelog)
                         );
                     } else {
-                        Log.d(TAG, "No update available");
+                        logger.info(TAG, "No update available. Current version is up to date.");
                         ((android.app.Activity) context).runOnUiThread(() ->
                             listener.onNoUpdateAvailable()
                         );
                     }
                 } else {
                     String error = "GitHub API returned " + responseCode;
-                    Log.e(TAG, error);
+                    logger.error(TAG, error);
                     ((android.app.Activity) context).runOnUiThread(() ->
                         listener.onError(error)
                     );
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Error checking for updates", e);
+                logger.error(TAG, "Error checking for updates", e);
                 ((android.app.Activity) context).runOnUiThread(() ->
                     listener.onError(e.getMessage())
                 );
