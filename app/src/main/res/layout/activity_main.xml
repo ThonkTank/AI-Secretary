@@ -3,134 +3,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:background="@color/backgroundColor">
+    android:gravity="center"
+    android:padding="16dp">
 
-    <!-- Header Section -->
     <TextView
-        android:id="@+id/header_title"
-        android:layout_width="match_parent"
+        android:id="@+id/text_hello"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/taskmaster_title"
+        android:text="Hello World"
         android:textSize="24sp"
-        android:textStyle="bold"
-        android:textColor="@color/colorPrimary"
-        android:paddingBottom="16dp" />
-
-    <!-- Statistics Section -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:background="@color/colorPrimary"
-        android:padding="16dp"
-        android:layout_marginBottom="16dp">
-
-        <TextView
-            android:id="@+id/stats_text"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Today: 0/0 tasks completed"
-            android:textColor="@color/textOnPrimary"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/streak_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Streak: 0"
-            android:textColor="@color/textOnPrimary"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-    </LinearLayout>
-
-    <!-- Quick Action Buttons -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="16dp">
-
-        <Button
-            android:id="@+id/statistics_button"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="📊 Stats"
-            android:textColor="@color/textPrimary"
-            android:background="@color/backgroundLight"
-            android:padding="12dp"
-            android:layout_marginEnd="4dp" />
-
-        <Button
-            android:id="@+id/daily_plan_button"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="📅 Plan"
-            android:textColor="@color/textPrimary"
-            android:background="@color/backgroundLight"
-            android:padding="12dp"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="4dp" />
-
-        <Button
-            android:id="@+id/backup_button"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="💾 Backup"
-            android:textColor="@color/textPrimary"
-            android:background="@color/backgroundLight"
-            android:padding="12dp"
-            android:layout_marginStart="4dp" />
-
-    </LinearLayout>
-
-    <!-- Task List Section -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingBottom="8dp">
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Today's Tasks"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="@color/textPrimary" />
-
-        <Spinner
-            android:id="@+id/category_filter_spinner"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minWidth="150dp"
-            android:background="@color/cardBackground"
-            android:padding="8dp" />
-
-    </LinearLayout>
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/task_list_recycler"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
-
-    <!-- Add Task Button -->
-    <Button
-        android:id="@+id/add_task_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/task_new"
-        android:textColor="@color/textOnPrimary"
-        android:background="@color/colorAccent"
-        android:layout_marginTop="16dp"
-        android:padding="16dp" />
+        android:textAlignment="center" />
 
 </LinearLayout>

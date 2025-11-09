@@ -1,118 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme"
-        android:supportsRtl="true">
+        android:theme="@style/AppTheme">
 
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:label="@string/app_name">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- AddTaskActivity - Task Creation Dialog -->
-        <activity
-            android:name=".AddTaskActivity"
-            android:exported="false"
-            android:label="Neue Aufgabe" />
-
-        <!-- StatisticsActivity - Statistics Dashboard -->
-        <activity
-            android:name=".StatisticsActivity"
-            android:exported="false"
-            android:label="Statistiken" />
-
-        <!-- DailyPlanActivity - Daily Timeline Plan -->
-        <activity
-            android:name=".DailyPlanActivity"
-            android:exported="false"
-            android:label="Tagesplan" />
-
-        <!-- BackupActivity - Backup & Restore -->
-        <activity
-            android:name=".BackupActivity"
-            android:exported="false"
-            android:label="Backup &amp; Restore" />
-
-        <!-- Widget Provider - Large (4x4) -->
-        <receiver
-            android:name=".widget.TaskWidgetProvider"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.aisecretary.taskmaster.ACTION_COMPLETE_TASK" />
-                <action android:name="com.aisecretary.taskmaster.ACTION_REFRESH_WIDGET" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/task_widget_info" />
-        </receiver>
-
-        <!-- Widget Provider - Medium (4x2) -->
-        <receiver
-            android:name=".widget.TaskWidgetProviderMedium"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.aisecretary.taskmaster.ACTION_COMPLETE_TASK_MEDIUM" />
-                <action android:name="com.aisecretary.taskmaster.ACTION_REFRESH_WIDGET_MEDIUM" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/task_widget_info_medium" />
-        </receiver>
-
-        <!-- Widget Provider - Small (2x2) -->
-        <receiver
-            android:name=".widget.TaskWidgetProviderSmall"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.aisecretary.taskmaster.ACTION_COMPLETE_TASK_SMALL" />
-                <action android:name="com.aisecretary.taskmaster.ACTION_REFRESH_WIDGET_SMALL" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/task_widget_info_small" />
-        </receiver>
-
-        <!-- Widget List Service -->
-        <service
-            android:name=".widget.WidgetListService"
-            android:permission="android.permission.BIND_REMOTEVIEWS"
-            android:exported="false" />
-
-        <!-- Recurring Task Service -->
-        <service
-            android:name=".service.RecurringTaskService"
-            android:exported="false" />
-
-        <!-- Notification Service -->
-        <service
-            android:name=".service.NotificationService"
-            android:exported="false" />
-
-        <!-- Notification Receiver - Handles scheduled notifications -->
-        <receiver
-            android:name=".service.NotificationService$NotificationReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.aisecretary.taskmaster.ACTION_CHECK_TASKS" />
-                <action android:name="com.aisecretary.taskmaster.ACTION_DAILY_SUMMARY" />
-                <action android:name="com.aisecretary.taskmaster.ACTION_STREAK_WARNING" />
-            </intent-filter>
-        </receiver>
 
     </application>
 
