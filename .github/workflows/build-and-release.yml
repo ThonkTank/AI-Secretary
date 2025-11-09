@@ -84,6 +84,8 @@ jobs:
 
     - name: Sign APK
       run: |
+        export ANDROID_SDK_ROOT=$HOME/android-sdk
+
         # Debug Keystore generieren
         keytool -genkey -v \
           -keystore debug.keystore \
