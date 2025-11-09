@@ -58,7 +58,7 @@ public class UpdateChecker {
                     // APK Asset finden
                     String downloadUrl = null;
                     if (release.has("assets")) {
-                        var assets = release.getJSONArray("assets");
+                        org.json.JSONArray assets = release.getJSONArray("assets");
                         for (int i = 0; i < assets.length(); i++) {
                             JSONObject asset = assets.getJSONObject(i);
                             String name = asset.getString("name");
