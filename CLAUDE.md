@@ -6,6 +6,37 @@
 
 ---
 
+## Projektstruktur
+
+```
+AI-Secretary/
+├── .github/
+│   └── workflows/
+│       └── build-and-release.yml    # GitHub Actions CI/CD Pipeline
+├── docs/
+│   ├── LOGGING_SYSTEM.md            # Detaillierte Logging-Dokumentation
+│   └── UPDATE_SYSTEM.md             # Detaillierte Update-System-Dokumentation
+├── res/
+│   ├── layout/
+│   │   ├── activity_main.xml        # Haupt-UI Layout
+│   │   └── dialog_settings.xml      # Settings-Dialog Layout
+│   └── values/
+│       └── strings.xml              # String-Ressourcen
+├── src/com/secretary/
+│   ├── MainActivity.java            # Haupt-Activity
+│   ├── AppLogger.java               # Logging-System
+│   ├── UpdateChecker.java           # GitHub Releases API Integration
+│   └── UpdateInstaller.java         # APK Download & Installation
+├── AndroidManifest.xml              # App-Metadaten & Permissions
+├── build.sh                         # Lokales Build-Script (Termux)
+├── CLAUDE.md                        # Projekt-Dokumentation (dieses Dokument)
+└── README.md                        # GitHub Repository README
+```
+
+**Hinweis:** Build-Artefakte (`compiled_res/`, `gen/`, `classes/`, `*.apk`, `*.dex`) werden nicht ins Repository committed.
+
+---
+
 ## 🔒 Gesamtkonzept
 
 AI-Secretary ist als umfassendes Alltags-Planungstool konzipiert. Die App soll Nutzern helfen, ihre täglichen Aufgaben intelligent zu organisieren, zu tracken und zu priorisieren.
@@ -486,338 +517,41 @@ logcat | grep Secretary
 
 ## Auto-Update System (Version 1.0+)
 
-### Übersicht
+Die App nutzt GitHub Releases für automatische Updates. User können über den Settings-Dialog nach Updates suchen und diese mit einem Klick installieren.
 
-Die App verfügt über ein vollautomatisches Update-System, das GitHub Releases nutzt um neue Versionen zu erkennen und zu installieren.
+**Komponenten:**
+- **UpdateChecker:** Prüft GitHub Releases API
+- **UpdateInstaller:** Lädt APK herunter und startet Installation
+- **GitHub Actions:** Automatischer Build bei jedem Push
 
-### Komponenten
+**User Flow:**
+Settings → "Check for Updates" → Update-Dialog → Download & Install
 
-#### 1. UpdateChecker.java
-**Zweck:** Prüft GitHub Releases API nach neuen Versionen
+**Versionierung:** Semantic Versioning (Major.Minor)
+- versionCode: Integer (inkrementell)
+- versionName: String (z.B. "1.2")
 
-**Funktionsweise:**
-- Verbindet zu: `https://api.github.com/repos/ThonkTank/AI-Secretary/releases/latest`
-- Verwendet GitHub Personal Access Token für API-Zugriff
-- Vergleicht aktuelle App-Version mit neuester Release-Version
-- Sucht nach `.apk` Assets im Release
-
-**Key Features:**
-- Asynchrone Ausführung (eigener Thread)
-- Listener-Pattern für UI-Updates
-- Umfangreiches Logging aller Schritte
-- Fehlerbehandlung mit detaillierten Fehlermeldungen
-
-**Verwendung:**
-```java
-UpdateChecker.checkForUpdates(context, new UpdateChecker.UpdateListener() {
-    @Override
-    public void onUpdateAvailable(String version, String downloadUrl, String changelog) {
-        // Zeige Update-Dialog
-    }
-
-    @Override
-    public void onNoUpdateAvailable() {
-        // Informiere User
-    }
-
-    @Override
-    public void onError(String error) {
-        // Fehlerbehandlung
-    }
-});
-```
-
-#### 2. UpdateInstaller.java
-**Zweck:** Lädt APK herunter und startet Installation
-
-**Funktionsweise:**
-- Nutzt Android DownloadManager für APK-Download
-- Speichert APK in öffentlichem Downloads-Ordner
-- BroadcastReceiver wartet auf Download-Abschluss
-- Startet Package Installer automatisch
-
-**Key Features:**
-- System-Benachrichtigung während Download
-- Automatische Installation nach Download
-- Logging des gesamten Flows
-- Fehlerbehandlung bei Download-Problemen
-
-**Permissions erforderlich:**
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-```
-
-#### 3. MainActivity Integration
-**Version 1.0-1.1:** Auto-Check beim App-Start
-**Version 1.2+:** Manueller Check über Settings-Dialog
-
-**User Flow (Version 1.2):**
-1. User öffnet App
-2. Klickt auf Settings-Button (⚙ oben rechts)
-3. Klickt auf "Check for Updates"
-4. Bei verfügbarem Update: Dialog mit Changelog
-5. "Download & Install" startet Download
-6. System-Notification zeigt Fortschritt
-7. Nach Download: Automatische Installation
-
-### GitHub Actions Workflow
-
-**Datei:** `.github/workflows/build-and-release.yml`
-
-**Trigger:** Jeder Push auf main-Branch
-
-**Build-Schritte:**
-1. Checkout Code
-2. Setup JDK 17
-3. Android SDK Installation
-4. AAPT2 Ressourcen-Kompilierung
-5. Java-Kompilierung (Source 8, Target 8)
-6. DEX-Erstellung mit d8
-7. APK Alignment
-8. APK Signierung (Debug-Keystore)
-9. GitHub Release Erstellung
-10. APK Upload als Release Asset
-
-**Release-Format:**
-- Tag: `v{version}` (z.B. v1.2)
-- Asset: `AISecretary-signed.apk`
-- Body: Automatisch generiert mit Commit-Message und Build-Info
-
-### Versionierung
-
-**Schema:** Semantic Versioning (Major.Minor)
-- **Major:** Breaking Changes oder größere Feature-Suites
-- **Minor:** Neue Features, UI-Änderungen, Bugfixes
-
-**Tracking:**
-- `android:versionCode` - Integer, inkrementell (für Android)
-- `android:versionName` - String, für User sichtbar
-
-**Beispiel:**
-```xml
-<manifest
-    android:versionCode="3"
-    android:versionName="1.2">
-```
-
-### API Rate Limits
-
-**GitHub API:**
-- Mit Token: 5000 Requests/Stunde
-- Ohne Token: 60 Requests/Stunde
-
-**In der App:** Token ist im Code eingebettet (für Entwicklung OK, für Production sollte Token server-side sein)
-
-### Update-Flow Debugging
-
-**Typische Log-Sequenz:**
-```
-[INFO] [MainActivity] === Application started ===
-[INFO] [MainActivity] App version: 1.1 (code: 2)
-[INFO] [MainActivity] Settings button clicked
-[INFO] [MainActivity] User initiated update check from settings
-[INFO] [UpdateChecker] Starting update check. Current version: 1.1 (code: 2)
-[DEBUG] [UpdateChecker] GitHub API response code: 200
-[INFO] [UpdateChecker] Latest version from GitHub: 1.2
-[DEBUG] [UpdateChecker] Found 1 assets in release
-[INFO] [UpdateChecker] Found APK asset: AISecretary-signed.apk
-[INFO] [UpdateChecker] Update available! 1.1 -> 1.2
-[INFO] [MainActivity] Update dialog shown to user for version 1.2
-[INFO] [MainActivity] User accepted update download
-[INFO] [UpdateInstaller] Starting download for version 1.2
-[INFO] [UpdateInstaller] Download enqueued with ID: 12345
-[INFO] [UpdateInstaller] Download completed for ID: 12345
-[INFO] [UpdateInstaller] Starting installation for: file:///...
-[INFO] [UpdateInstaller] APK installer intent launched successfully
-```
-
-### Bekannte Limitierungen
-
-1. **Automatischer Download kann fehlschlagen:**
-   - Permissions-Probleme
-   - Netzwerk-Issues
-   - Storage-Probleme
-   - **Workaround:** Manuelle APK-Installation aus Downloads
-
-2. **Keine Delta-Updates:**
-   - Jedes Update lädt vollständige APK
-   - Für kleine App (20KB) akzeptabel
-
-3. **Keine Rollback-Funktion:**
-   - Kein automatisches Rollback bei Problemen
-   - User muss manuell alte Version installieren
-
-### Zukünftige Verbesserungen
-
-**Geplant:**
-- [ ] In-App Update API (Google Play Core Library)
-- [ ] Changelog-Formatierung (Markdown-Rendering)
-- [ ] Update-Häufigkeit begrenzen (max. 1x pro Tag prüfen)
-- [ ] Background-Updates (WorkManager)
-- [ ] Delta-Updates für größere APKs
+**Detaillierte Dokumentation:** Siehe `docs/UPDATE_SYSTEM.md`
 
 ---
 
 ## Logging-System (Version 1.1+)
 
-### Übersicht
-
-Umfassendes Logging-System für Debugging und Fehleranalyse durch Claude Code.
-
-### Komponente: AppLogger.java
-
-**Zweck:** Zentrale Logging-Klasse mit automatischer Log-Rotation
+Umfassendes Logging für Debugging durch Claude Code. Alle wichtigen App-Events werden automatisch geloggt.
 
 **Features:**
-- Thread-safe Singleton-Pattern
-- Automatische Log-Bereinigung (max. 500 Zeilen)
+- Automatische Log-Rotation (max. 500 Zeilen)
 - Drei Log-Level: INFO, DEBUG, ERROR
-- Timestamp für jeden Eintrag
-- Parallel-Logging zu Android Logcat
+- Timestamps für alle Einträge
 
-**Log-Format:**
-```
-[YYYY-MM-DD HH:mm:ss] [LEVEL] [TAG] Message
-```
+**Log-Speicherort:** `/data/data/com.secretary.helloworld/files/app_logs.txt`
 
-**Beispiel:**
-```
-[2025-11-09 14:05:32] [INFO] [MainActivity] === Application started ===
-[2025-11-09 14:05:32] [DEBUG] [UpdateChecker] GitHub API response code: 200
-[2025-11-09 14:05:33] [ERROR] [UpdateInstaller] Download failed with status: 403
-```
-
-### Log-Speicherort
-
-**Pfad:** `/data/data/com.secretary.helloworld/files/app_logs.txt`
-
-**Zugriff:**
-- Für App: Interner Storage (volle Rechte)
-- Für Claude Code: Lesbar via Read tool
-- Für User: Nicht direkt sichtbar (nur via Settings möglich)
-
-### Log-Rotation
-
-**Mechanismus:**
-- Maximale Zeilen: 500
-- Bereinigung: ~2% Chance bei jedem Log (statistisch)
-- Alternatativ: Manuelle Bereinigung über Logger-Methode
-
-**Bereinigungsprozess:**
-1. Alle Logs lesen
-2. Nur letzte 500 Zeilen behalten
-3. Datei neu schreiben mit Header
-4. Header: `=== Logs automatisch bereinigt ===`
-
-### Verwendung in Code
-
-**Initialisierung:**
-```java
-AppLogger logger = AppLogger.getInstance(context);
-```
-
-**Logging:**
-```java
-// Info-Level
-logger.info("TAG", "Normal information message");
-
-// Debug-Level (für detaillierte Infos)
-logger.debug("TAG", "Detailed debug information");
-
-// Error-Level
-logger.error("TAG", "Error message");
-logger.error("TAG", "Error with exception", exception);
-```
-
-### Log-Kategorien
-
-**MainActivity:**
-- App-Starts
-- User-Interaktionen (Button-Clicks)
-- Dialog-Events
-- Versionsinformationen
-
-**UpdateChecker:**
-- Update-Check Start
-- GitHub API Requests/Responses
-- Version-Vergleiche
-- Asset-Suche
-- Erfolg/Fehler bei Update-Erkennung
-
-**UpdateInstaller:**
-- Download-Start
-- Download-IDs
-- Download-Completion
-- Installation-Start
-- Fehler bei Download/Installation
-
-### Logs auslesen (für Claude Code)
-
-**Befehl:**
+**Logs auslesen:**
 ```bash
 cat /data/data/com.secretary.helloworld/files/app_logs.txt
 ```
 
-**Oder via Read tool:**
-```
-Read tool mit file_path: /data/data/com.secretary.helloworld/files/app_logs.txt
-```
-
-**Log-Analyse:**
-1. Chronologische Reihenfolge beachten
-2. Nach ERROR-Einträgen suchen
-3. Flow zwischen Komponenten nachvollziehen
-4. Timestamps für Performance-Analyse
-
-### Best Practices
-
-**DO:**
-- ✅ Jede wichtige User-Aktion loggen
-- ✅ API-Responses loggen
-- ✅ Fehler mit Context loggen
-- ✅ Start/Ende von Operationen markieren
-
-**DON'T:**
-- ❌ Passwörter oder sensible Daten loggen
-- ❌ Excessive Logging in Loops
-- ❌ User-identifizierbare Informationen
-- ❌ Vollständige API-Responses (nur Status)
-
-### Debugging-Workflow
-
-**Typischer Ablauf:**
-1. User meldet Problem
-2. User reproduziert Problem in App
-3. Claude liest Logs aus
-4. Analyse der Log-Sequenz
-5. Identifikation der Fehlerursache
-6. Fix implementieren
-
-**Beispiel-Session:**
-```bash
-# Logs lesen
-cat /data/data/com.secretary.helloworld/files/app_logs.txt
-
-# Nach Fehlern suchen
-grep "ERROR" /data/data/com.secretary.helloworld/files/app_logs.txt
-
-# Bestimmten Zeitraum analysieren
-grep "14:05" /data/data/com.secretary.helloworld/files/app_logs.txt
-```
-
-### Performance-Überlegungen
-
-**Impact:**
-- File I/O: Minimal (gepuffert)
-- Memory: ~50KB für 500 Zeilen
-- CPU: Vernachlässigbar
-- Battery: Keine messbare Auswirkung
-
-**Optimierungen:**
-- Asynchrones Schreiben (nicht implementiert, aber möglich)
-- Batch-Writing (nicht notwendig bei aktueller Größe)
-- Kompression (nicht notwendig)
+**Detaillierte Dokumentation:** Siehe `docs/LOGGING_SYSTEM.md`
 
 ---
 
