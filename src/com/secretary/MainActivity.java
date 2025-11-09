@@ -40,17 +40,24 @@ public class MainActivity extends Activity {
             logger.error(TAG, "Could not get package info", e);
         }
 
-        // View Logs Button (DIREKT in Main View)
-        Button viewLogsButton = findViewById(R.id.viewLogsButton);
-        if (viewLogsButton != null) {
-            viewLogsButton.setOnClickListener(v -> {
-                logger.info(TAG, "View Logs button clicked from main view");
-                showLogsDialog();
-            });
-            Log.i(TAG, "View Logs button initialized successfully");
+        // LOGS DIREKT ANZEIGEN - kein Button, einfach sofort sichtbar
+        TextView mainLogsTextView = findViewById(R.id.mainLogsTextView);
+        if (mainLogsTextView != null) {
+            List<String> logs = logger.readLogs();
+            if (logs.isEmpty()) {
+                mainLogsTextView.setText("=== NO LOGS YET ===\n\nLog file path: " + logger.getLogFilePath() + "\n\nIf you see this, the app started successfully but no logs were written.");
+            } else {
+                StringBuilder logText = new StringBuilder();
+                logText.append("=== APP LOGS ===\n\n");
+                for (String line : logs) {
+                    logText.append(line).append("\n");
+                }
+                mainLogsTextView.setText(logText.toString());
+            }
+            Log.i(TAG, "Main logs display initialized with " + logs.size() + " lines");
         } else {
-            Log.e(TAG, "View Logs button NOT FOUND in layout!");
-            logger.error(TAG, "View Logs button NOT FOUND in layout!");
+            Log.e(TAG, "Main logs TextView NOT FOUND!");
+            logger.error(TAG, "Main logs TextView NOT FOUND!");
         }
 
         // Settings Button

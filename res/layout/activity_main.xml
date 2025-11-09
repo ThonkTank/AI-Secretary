@@ -23,41 +23,24 @@
 
     </LinearLayout>
 
-    <!-- Main Content Area -->
-    <LinearLayout
+    <!-- Main Content Area - LOGS DIRECT DISPLAY -->
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:padding="24dp">
+        android:padding="8dp"
+        android:background="#F5F5F5">
 
         <TextView
-            android:layout_width="wrap_content"
+            android:id="@+id/mainLogsTextView"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textSize="32sp"
-            android:textStyle="bold"
-            android:textColor="#000000" />
+            android:text="Loading logs..."
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:textColor="#000000"
+            android:textIsSelectable="true" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Your intelligent task assistant"
-            android:textSize="16sp"
-            android:textColor="#666666"
-            android:layout_marginTop="8dp" />
-
-        <Button
-            android:id="@+id/viewLogsButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="VIEW LOGS"
-            android:textSize="16sp"
-            android:layout_marginTop="32dp"
-            android:paddingStart="24dp"
-            android:paddingEnd="24dp" />
-
-    </LinearLayout>
+    </ScrollView>
 
 </LinearLayout>
