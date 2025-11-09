@@ -47,6 +47,19 @@ public class MainActivity extends Activity {
                 logger.info(TAG, "Settings button clicked");
                 showSettingsDialog();
             });
+
+            // WICHTIG: Button-Details loggen um zu sehen warum er nicht sichtbar ist
+            settingsButton.post(() -> {
+                int width = settingsButton.getWidth();
+                int height = settingsButton.getHeight();
+                int visibility = settingsButton.getVisibility();
+                float alpha = settingsButton.getAlpha();
+                String visText = visibility == 0 ? "VISIBLE" : (visibility == 4 ? "INVISIBLE" : "GONE");
+
+                logger.info(TAG, "Button found! Width=" + width + " Height=" + height + " Visibility=" + visText + " Alpha=" + alpha);
+                Log.i(TAG, "Button found! Width=" + width + " Height=" + height + " Visibility=" + visText + " Alpha=" + alpha);
+            });
+
             Log.i(TAG, "Settings button initialized successfully");
             logger.info(TAG, "Settings button initialized successfully");
         } else {
@@ -57,22 +70,31 @@ public class MainActivity extends Activity {
         // LOGS ALS LETZTES ANZEIGEN (damit alle vorherigen Logs dabei sind)
         TextView mainLogsTextView = findViewById(R.id.mainLogsTextView);
         if (mainLogsTextView != null) {
-            List<String> logs = logger.readLogs();
-            if (logs.isEmpty()) {
-                mainLogsTextView.setText("=== NO LOGS YET ===\n\nLog file path: " + logger.getLogFilePath() + "\n\nIf you see this, the app started successfully but no logs were written.");
-            } else {
-                StringBuilder logText = new StringBuilder();
-                logText.append("=== APP LOGS ===\n\n");
-                for (String line : logs) {
-                    logText.append(line).append("\n");
-                }
-                mainLogsTextView.setText(logText.toString());
-            }
-            Log.i(TAG, "Main logs display initialized with " + logs.size() + " lines");
-            logger.info(TAG, "Main logs display initialized with " + logs.size() + " lines");
+            // Logs sofort anzeigen
+            updateLogsDisplay(mainLogsTextView);
+
+            // Logs nach 1 Sekunde nochmal aktualisieren (für Button-Details)
+            mainLogsTextView.postDelayed(() -> updateLogsDisplay(mainLogsTextView), 1000);
+
+            Log.i(TAG, "Main logs display initialized");
+            logger.info(TAG, "Main logs display initialized");
         } else {
             Log.e(TAG, "Main logs TextView NOT FOUND!");
             logger.error(TAG, "Main logs TextView NOT FOUND!");
+        }
+    }
+
+    private void updateLogsDisplay(TextView textView) {
+        List<String> logs = logger.readLogs();
+        if (logs.isEmpty()) {
+            textView.setText("=== NO LOGS YET ===\n\nIf you see this, the app started but no logs were written.");
+        } else {
+            StringBuilder logText = new StringBuilder();
+            logText.append("=== APP LOGS (Auto-refresh) ===\n\n");
+            for (String line : logs) {
+                logText.append(line).append("\n");
+            }
+            textView.setText(logText.toString());
         }
     }
 
