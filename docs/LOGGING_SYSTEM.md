@@ -26,12 +26,12 @@
 
 ## Log-Speicherort
 
-**Pfad:** `/data/data/com.secretary.helloworld/files/app_logs.txt`
+**Pfad:** `/sdcard/AISecretary/app_logs.txt`
 
 **Zugriff:**
-- Für App: Interner Storage (volle Rechte)
-- Für Claude Code: Lesbar via Read tool
-- Für User: Nicht direkt sichtbar
+- Für App: External Storage (Permissions erforderlich)
+- Für Claude Code: Direkt lesbar
+- Für User: Sichtbar in Datei-Manager
 
 ## Verwendung in Code
 
@@ -86,7 +86,7 @@ logger.error("TAG", "Error with exception", exception);
 
 **Befehl:**
 ```bash
-cat /data/data/com.secretary.helloworld/files/app_logs.txt
+cat /sdcard/AISecretary/app_logs.txt
 ```
 
 **Log-Analyse:**

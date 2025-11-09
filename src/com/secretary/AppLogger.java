@@ -1,6 +1,7 @@
 package com.secretary.helloworld;
 
 import android.content.Context;
+import android.os.Environment;
 import android.util.Log;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -16,18 +17,26 @@ import java.util.Locale;
 
 public class AppLogger {
     private static final String TAG = "AppLogger";
+    private static final String LOG_DIR = "AISecretary";
     private static final String LOG_FILE_NAME = "app_logs.txt";
-    private static final int MAX_LOG_LINES = 500; // Maximal 500 Zeilen behalten
+    private static final int MAX_LOG_LINES = 500;
     private static AppLogger instance;
     private File logFile;
     private SimpleDateFormat dateFormat;
 
     private AppLogger(Context context) {
-        logFile = new File(context.getFilesDir(), LOG_FILE_NAME);
+        // Logs auf external storage schreiben (/sdcard/AISecretary/app_logs.txt)
+        // Das ist für Claude Code lesbar
+        File logDir = new File(Environment.getExternalStorageDirectory(), LOG_DIR);
+        if (!logDir.exists()) {
+            logDir.mkdirs();
+        }
+
+        logFile = new File(logDir, LOG_FILE_NAME);
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
 
-        // Initiale Bereinigung
-        cleanupLogs();
+        // Initiale Log-Nachricht
+        info(TAG, "AppLogger initialized. Log file: " + logFile.getAbsolutePath());
     }
 
     public static synchronized AppLogger getInstance(Context context) {
@@ -50,7 +59,8 @@ public class AppLogger {
     }
 
     public void error(String tag, String message, Throwable throwable) {
-        writeLog("ERROR", tag, message + " | Exception: " + throwable.getMessage());
+        String stackTrace = Log.getStackTraceString(throwable);
+        writeLog("ERROR", tag, message + "\n" + stackTrace);
     }
 
     private synchronized void writeLog(String level, String tag, String message) {
