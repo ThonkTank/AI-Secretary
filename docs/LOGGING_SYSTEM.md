@@ -26,14 +26,14 @@
 
 ## Log-Speicherort
 
-**Pfad:** `/sdcard/Download/AISecretary/app_logs.txt`
+**Pfad:** `/sdcard/Download/AISecretary_app_logs.txt`
 
 **Zugriff:**
 - Für App: Public Downloads folder (KEINE Permissions erforderlich!)
 - Für Claude Code: Direkt lesbar (auch auf Android 11+)
-- Für User: Sichtbar in Datei-Manager unter Downloads/AISecretary/
+- Für User: Sichtbar in Datei-Manager unter Downloads/
 
-**Wichtig:** Ab Android 11+ ist `/sdcard/Android/data/` nicht mehr für Termux zugänglich. Daher wurde der Log-Pfad zu Downloads verschoben.
+**Wichtig:** Die Log-Datei liegt DIREKT im Downloads-Root (ohne Unterordner), da auch Unterordner in Downloads auf Android 11+ Zugriffs-Einschränkungen für Termux haben.
 
 ## Verwendung in Code
 
@@ -88,7 +88,7 @@ logger.error("TAG", "Error with exception", exception);
 
 **Befehl:**
 ```bash
-cat /sdcard/Download/AISecretary/app_logs.txt
+cat /sdcard/Download/AISecretary_app_logs.txt
 ```
 
 **Log-Analyse:**

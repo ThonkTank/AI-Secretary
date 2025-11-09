@@ -25,19 +25,15 @@ public class AppLogger {
     private SimpleDateFormat dateFormat;
 
     private AppLogger(Context context) {
-        // Logs in public Downloads folder schreiben
-        // KEINE Permissions erforderlich für Downloads-Ordner
-        // Für Claude Code lesbar unter /sdcard/Download/AISecretary/
+        // Logs DIREKT im Downloads-Root schreiben (ohne Unterordner!)
+        // KEINE Permissions erforderlich
+        // Für Claude Code lesbar unter /sdcard/Download/
         // Funktioniert auf ALLEN Android-Versionen (auch 11+)
+        // Unterordner in Downloads sind auf Android 11+ nicht lesbar für Termux!
         File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File logDir = new File(downloadsDir, LOG_DIR);
 
-        // Verzeichnis erstellen falls nicht vorhanden
-        if (!logDir.exists()) {
-            logDir.mkdirs();
-        }
-
-        logFile = new File(logDir, LOG_FILE_NAME);
+        // Dateiname: AISecretary_app_logs.txt (direkt im Downloads-Root)
+        logFile = new File(downloadsDir, "AISecretary_app_logs.txt");
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
 
         // Initiale Log-Nachricht
