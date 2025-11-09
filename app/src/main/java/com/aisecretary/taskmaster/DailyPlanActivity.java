@@ -9,6 +9,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.aisecretary.taskmaster.R;
 import com.aisecretary.taskmaster.database.TaskEntity;
 import com.aisecretary.taskmaster.repository.TaskRepository;
 import com.aisecretary.taskmaster.utils.TaskScheduler;

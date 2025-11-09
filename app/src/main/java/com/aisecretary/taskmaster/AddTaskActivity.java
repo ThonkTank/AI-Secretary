@@ -9,6 +9,7 @@ import android.widget.Toast;
 
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.aisecretary.taskmaster.R;
 import com.aisecretary.taskmaster.adapter.TaskPagerAdapter;
 import com.aisecretary.taskmaster.database.TaskEntity;
 import com.aisecretary.taskmaster.fragments.TaskBasisFragment;

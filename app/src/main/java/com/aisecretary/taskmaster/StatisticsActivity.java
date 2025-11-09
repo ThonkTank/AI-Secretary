@@ -6,6 +6,7 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.aisecretary.taskmaster.R;
 import com.aisecretary.taskmaster.database.CompletionHistoryEntity;
 import com.aisecretary.taskmaster.database.TaskEntity;
 import com.aisecretary.taskmaster.repository.TaskRepository;
