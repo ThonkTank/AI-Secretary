@@ -48,6 +48,16 @@
             android:textColor="#666666"
             android:layout_marginTop="8dp" />
 
+        <Button
+            android:id="@+id/viewLogsButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="VIEW LOGS"
+            android:textSize="16sp"
+            android:layout_marginTop="32dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp" />
+
     </LinearLayout>
 
 </LinearLayout>

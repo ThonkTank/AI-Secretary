@@ -40,6 +40,19 @@ public class MainActivity extends Activity {
             logger.error(TAG, "Could not get package info", e);
         }
 
+        // View Logs Button (DIREKT in Main View)
+        Button viewLogsButton = findViewById(R.id.viewLogsButton);
+        if (viewLogsButton != null) {
+            viewLogsButton.setOnClickListener(v -> {
+                logger.info(TAG, "View Logs button clicked from main view");
+                showLogsDialog();
+            });
+            Log.i(TAG, "View Logs button initialized successfully");
+        } else {
+            Log.e(TAG, "View Logs button NOT FOUND in layout!");
+            logger.error(TAG, "View Logs button NOT FOUND in layout!");
+        }
+
         // Settings Button
         Button settingsButton = findViewById(R.id.settingsButton);
         if (settingsButton != null) {
