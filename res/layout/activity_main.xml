@@ -5,18 +5,7 @@
     android:orientation="vertical"
     android:background="#FFFFFF">
 
-    <!-- SETTINGS BUTTON - Ultra simpel, oben, sichtbar -->
-    <Button
-        android:id="@+id/settingsButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="SETTINGS"
-        android:textSize="18sp"
-        android:background="#2196F3"
-        android:textColor="#FFFFFF"
-        android:padding="16dp" />
-
-    <!-- LOGS DISPLAY -->
+    <!-- LOGS DISPLAY - OBEN -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -35,5 +24,17 @@
             android:textIsSelectable="true" />
 
     </ScrollView>
+
+    <!-- SETTINGS BUTTON - UNTEN (kann nicht verdeckt werden!) -->
+    <Button
+        android:id="@+id/settingsButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="⚙ SETTINGS ⚙"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:background="#FF5722"
+        android:textColor="#FFFFFF"
+        android:padding="24dp" />
 
 </LinearLayout>
