@@ -1,7 +1,6 @@
 package com.secretary.helloworld;
 
 import android.content.Context;
-import android.os.Environment;
 import android.util.Log;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -25,12 +24,10 @@ public class AppLogger {
     private SimpleDateFormat dateFormat;
 
     private AppLogger(Context context) {
-        // Logs auf external storage schreiben (/sdcard/AISecretary/app_logs.txt)
-        // Das ist für Claude Code lesbar
-        File logDir = new File(Environment.getExternalStorageDirectory(), LOG_DIR);
-        if (!logDir.exists()) {
-            logDir.mkdirs();
-        }
+        // Logs auf app-specific external storage schreiben
+        // KEINE Permissions erforderlich (ab Android 4.4)
+        // Für Claude Code lesbar unter /sdcard/Android/data/com.secretary.helloworld/files/
+        File logDir = context.getExternalFilesDir(null);
 
         logFile = new File(logDir, LOG_FILE_NAME);
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);

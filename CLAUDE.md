@@ -544,11 +544,11 @@ Umfassendes Logging für Debugging durch Claude Code. Alle wichtigen App-Events 
 - Drei Log-Level: INFO, DEBUG, ERROR
 - Timestamps für alle Einträge
 
-**Log-Speicherort:** `/sdcard/AISecretary/app_logs.txt`
+**Log-Speicherort:** `/sdcard/Android/data/com.secretary.helloworld/files/app_logs.txt`
 
 **Logs auslesen:**
 ```bash
-cat /sdcard/AISecretary/app_logs.txt
+cat /sdcard/Android/data/com.secretary.helloworld/files/app_logs.txt
 ```
 
 **Detaillierte Dokumentation:** Siehe `docs/LOGGING_SYSTEM.md`
