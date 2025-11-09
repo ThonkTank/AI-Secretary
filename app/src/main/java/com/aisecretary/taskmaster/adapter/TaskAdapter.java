@@ -149,7 +149,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         }
 
         // Chain Indicator (Phase 6)
-        if (task.chainId != null && !task.chainId.isEmpty()) {
+        if (task.chainId != 0) {
             holder.chainTextView.setText("🔗 Chain #" + task.chainOrder);
             holder.chainTextView.setVisibility(View.VISIBLE);
         } else {

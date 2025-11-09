@@ -244,15 +244,12 @@ public class BackupManager {
         json.put("recurrenceType", task.recurrenceType);
         json.put("recurrenceX", task.recurrenceX);
         json.put("recurrenceY", task.recurrenceY);
-        json.put("recurrenceUnit", task.recurrenceUnit);
-        json.put("startDate", task.startDate);
-        json.put("endDate", task.endDate);
-        json.put("gracePeriodHours", task.gracePeriodHours);
+        json.put("recurrenceStartDate", task.recurrenceStartDate);
+        json.put("recurrenceEndDate", task.recurrenceEndDate);
 
         // Performance
         json.put("averageCompletionTime", task.averageCompletionTime);
         json.put("averageDifficulty", task.averageDifficulty);
-        json.put("estimatedDuration", task.estimatedDuration);
 
         // Streak
         json.put("currentStreak", task.currentStreak);
@@ -266,7 +263,6 @@ public class BackupManager {
         // Chain
         json.put("chainId", task.chainId);
         json.put("chainOrder", task.chainOrder);
-        json.put("isCyclic", task.isCyclic);
 
         // Category
         json.put("category", task.category);
@@ -296,16 +292,13 @@ public class BackupManager {
         task.isRecurring = json.optBoolean("isRecurring", false);
         task.recurrenceType = json.optString("recurrenceType", "");
         task.recurrenceX = json.optInt("recurrenceX", 0);
-        task.recurrenceY = json.optInt("recurrenceY", 0);
-        task.recurrenceUnit = json.optString("recurrenceUnit", "");
-        task.startDate = json.optLong("startDate", 0);
-        task.endDate = json.optLong("endDate", 0);
-        task.gracePeriodHours = json.optInt("gracePeriodHours", 0);
+        task.recurrenceY = json.optString("recurrenceY", null);
+        task.recurrenceStartDate = json.optLong("recurrenceStartDate", 0);
+        task.recurrenceEndDate = json.optLong("recurrenceEndDate", 0);
 
         // Performance
         task.averageCompletionTime = json.optLong("averageCompletionTime", 0);
         task.averageDifficulty = (float) json.optDouble("averageDifficulty", 0.0);
-        task.estimatedDuration = json.optLong("estimatedDuration", 0);
 
         // Streak
         task.currentStreak = json.optInt("currentStreak", 0);
@@ -317,9 +310,8 @@ public class BackupManager {
         task.preferredHour = json.optInt("preferredHour", -1);
 
         // Chain
-        task.chainId = json.optString("chainId", "");
+        task.chainId = json.optLong("chainId", 0);
         task.chainOrder = json.optInt("chainOrder", 0);
-        task.isCyclic = json.optBoolean("isCyclic", false);
 
         // Category
         task.category = json.optString("category", "");
@@ -367,14 +359,11 @@ public class BackupManager {
         target.recurrenceType = source.recurrenceType;
         target.recurrenceX = source.recurrenceX;
         target.recurrenceY = source.recurrenceY;
-        target.recurrenceUnit = source.recurrenceUnit;
-        target.startDate = source.startDate;
-        target.endDate = source.endDate;
-        target.gracePeriodHours = source.gracePeriodHours;
+        target.recurrenceStartDate = source.recurrenceStartDate;
+        target.recurrenceEndDate = source.recurrenceEndDate;
 
         target.averageCompletionTime = source.averageCompletionTime;
         target.averageDifficulty = source.averageDifficulty;
-        target.estimatedDuration = source.estimatedDuration;
 
         target.currentStreak = source.currentStreak;
         target.longestStreak = source.longestStreak;
@@ -385,7 +374,6 @@ public class BackupManager {
 
         target.chainId = source.chainId;
         target.chainOrder = source.chainOrder;
-        target.isCyclic = source.isCyclic;
 
         target.category = source.category;
     }
