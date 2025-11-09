@@ -89,9 +89,9 @@ public class WidgetListService extends RemoteViewsService {
             // Streak badge
             if (task.isRecurring && task.currentStreak > 0) {
                 views.setTextViewText(R.id.widget_task_streak, "🔥" + task.currentStreak);
-                views.setViewVisibility(R.id.widget_task_streak, RemoteViews.VISIBLE);
+                views.setViewVisibility(R.id.widget_task_streak, View.VISIBLE);
             } else {
-                views.setViewVisibility(R.id.widget_task_streak, RemoteViews.GONE);
+                views.setViewVisibility(R.id.widget_task_streak, View.GONE);
             }
 
             // Click handling - fill in Intent for the item

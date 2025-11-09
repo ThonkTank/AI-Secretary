@@ -132,9 +132,9 @@ public class DailyPlanActivity extends AppCompatActivity {
 
                 entry.startTime = suggestedStart;
 
-                // Calculate end time based on estimated duration
-                long duration = task.estimatedDuration > 0
-                        ? task.estimatedDuration
+                // Calculate end time based on average completion time
+                long duration = task.averageCompletionTime > 0
+                        ? task.averageCompletionTime
                         : 1800000; // Default 30 minutes
 
                 entry.endTime = suggestedStart + duration;
@@ -288,9 +288,9 @@ public class DailyPlanActivity extends AppCompatActivity {
         }
 
         // Duration estimate
-        if (entry.task.estimatedDuration > 0) {
+        if (entry.task.averageCompletionTime > 0) {
             TextView durationText = new TextView(this);
-            long minutes = entry.task.estimatedDuration / 60000;
+            long minutes = entry.task.averageCompletionTime / 60000;
             durationText.setText("⏱️ ~" + minutes + " Min");
             durationText.setTextSize(12);
             durationText.setTextColor(Color.parseColor("#9E9E9E"));

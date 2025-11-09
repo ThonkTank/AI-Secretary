@@ -98,9 +98,9 @@ public class TaskWidgetProviderMedium extends AppWidgetProvider {
             // Streak badge
             if (nextTask.currentStreak > 0) {
                 views.setTextViewText(R.id.widget_next_task_streak, "🔥" + nextTask.currentStreak);
-                views.setViewVisibility(R.id.widget_next_task_streak, RemoteViews.VISIBLE);
+                views.setViewVisibility(R.id.widget_next_task_streak, View.VISIBLE);
             } else {
-                views.setViewVisibility(R.id.widget_next_task_streak, RemoteViews.GONE);
+                views.setViewVisibility(R.id.widget_next_task_streak, View.GONE);
             }
 
             // Complete button click
@@ -116,7 +116,7 @@ public class TaskWidgetProviderMedium extends AppWidgetProvider {
             views.setTextViewText(R.id.widget_next_task_title, "Keine Aufgaben für heute 🎉");
             views.setTextViewText(R.id.widget_next_task_priority, "");
             views.setTextViewText(R.id.widget_next_task_time, "");
-            views.setViewVisibility(R.id.widget_next_task_streak, RemoteViews.GONE);
+            views.setViewVisibility(R.id.widget_next_task_streak, View.GONE);
         }
 
         // Add task button

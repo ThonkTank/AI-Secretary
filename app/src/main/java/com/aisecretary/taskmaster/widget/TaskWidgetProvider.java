@@ -108,9 +108,9 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             // Streak badge
             if (nextTask.isRecurring && nextTask.currentStreak > 0) {
                 views.setTextViewText(R.id.widget_next_task_streak, "🔥 " + nextTask.currentStreak);
-                views.setViewVisibility(R.id.widget_next_task_streak, RemoteViews.VISIBLE);
+                views.setViewVisibility(R.id.widget_next_task_streak, View.VISIBLE);
             } else {
-                views.setViewVisibility(R.id.widget_next_task_streak, RemoteViews.GONE);
+                views.setViewVisibility(R.id.widget_next_task_streak, View.GONE);
             }
 
             // Checkbox click to complete
@@ -127,7 +127,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             views.setTextViewText(R.id.widget_next_task_title, "Keine Aufgaben 🎉");
             views.setTextViewText(R.id.widget_next_task_priority, "");
             views.setTextViewText(R.id.widget_next_task_time, "");
-            views.setViewVisibility(R.id.widget_next_task_streak, RemoteViews.GONE);
+            views.setViewVisibility(R.id.widget_next_task_streak, View.GONE);
         }
 
         // Setup today's tasks list
