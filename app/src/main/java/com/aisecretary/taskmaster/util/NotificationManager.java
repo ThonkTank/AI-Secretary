@@ -92,7 +92,7 @@ public class NotificationManager {
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
             context,
-            task.id,
+            (int) task.id,
             intent,
             PendingIntent.FLAG_IMMUTABLE
         );
@@ -126,7 +126,7 @@ public class NotificationManager {
         // Show notification
         android.app.NotificationManager manager =
             (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        manager.notify(NOTIFICATION_ID_TASK_REMINDER_BASE + task.id, builder.build());
+        manager.notify(NOTIFICATION_ID_TASK_REMINDER_BASE + (int) task.id, builder.build());
     }
 
     /**
