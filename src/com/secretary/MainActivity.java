@@ -40,7 +40,21 @@ public class MainActivity extends Activity {
             logger.error(TAG, "Could not get package info", e);
         }
 
-        // LOGS DIREKT ANZEIGEN - kein Button, einfach sofort sichtbar
+        // Settings Button ZUERST initialisieren
+        Button settingsButton = findViewById(R.id.settingsButton);
+        if (settingsButton != null) {
+            settingsButton.setOnClickListener(v -> {
+                logger.info(TAG, "Settings button clicked");
+                showSettingsDialog();
+            });
+            Log.i(TAG, "Settings button initialized successfully");
+            logger.info(TAG, "Settings button initialized successfully");
+        } else {
+            Log.e(TAG, "Settings button NOT FOUND in layout!");
+            logger.error(TAG, "Settings button NOT FOUND in layout!");
+        }
+
+        // LOGS ALS LETZTES ANZEIGEN (damit alle vorherigen Logs dabei sind)
         TextView mainLogsTextView = findViewById(R.id.mainLogsTextView);
         if (mainLogsTextView != null) {
             List<String> logs = logger.readLogs();
@@ -55,22 +69,10 @@ public class MainActivity extends Activity {
                 mainLogsTextView.setText(logText.toString());
             }
             Log.i(TAG, "Main logs display initialized with " + logs.size() + " lines");
+            logger.info(TAG, "Main logs display initialized with " + logs.size() + " lines");
         } else {
             Log.e(TAG, "Main logs TextView NOT FOUND!");
             logger.error(TAG, "Main logs TextView NOT FOUND!");
-        }
-
-        // Settings Button
-        Button settingsButton = findViewById(R.id.settingsButton);
-        if (settingsButton != null) {
-            settingsButton.setOnClickListener(v -> {
-                logger.info(TAG, "Settings button clicked");
-                showSettingsDialog();
-            });
-            Log.i(TAG, "Settings button initialized successfully");
-        } else {
-            Log.e(TAG, "Settings button NOT FOUND in layout!");
-            logger.error(TAG, "Settings button NOT FOUND in layout!");
         }
     }
 
