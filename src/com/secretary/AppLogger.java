@@ -1,7 +1,11 @@
 package com.secretary.helloworld;
 
 import android.content.Context;
+import android.os.Environment;
 import android.util.Log;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -13,16 +17,21 @@ public class AppLogger {
     private static final int MAX_LOG_LINES = 500;
     private static AppLogger instance;
     private SimpleDateFormat dateFormat;
-    private List<String> logLines;  // In-Memory Logs - KEINE Datei!
+    private List<String> logLines;  // In-Memory Logs
+    private File logFile;  // Persistent file
 
     private AppLogger(Context context) {
-        // KEINE Datei! Logs nur im RAM speichern
-        // 100% robust, keine Permissions nötig
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
         logLines = new ArrayList<>();
 
+        // Versuche Logs DIREKT im /sdcard/ Root zu speichern
+        // Keine Unterordner, keine Permissions nötig (hoffentlich!)
+        File sdcard = Environment.getExternalStorageDirectory();
+        logFile = new File(sdcard, "AISecretary_logs.txt");
+
         // Initiale Log-Nachricht
         info(TAG, "AppLogger initialized (in-memory mode)");
+        info(TAG, "Log file path: " + logFile.getAbsolutePath());
     }
 
     public static synchronized AppLogger getInstance(Context context) {
@@ -74,6 +83,20 @@ public class AppLogger {
             // Nur die letzten MAX_LOG_LINES behalten
             logLines = new ArrayList<>(logLines.subList(logLines.size() - MAX_LOG_LINES, logLines.size()));
         }
+
+        // In Datei schreiben (für Claude Code Zugriff)
+        writeToFile(logEntry);
+    }
+
+    private void writeToFile(String logEntry) {
+        try {
+            BufferedWriter writer = new BufferedWriter(new FileWriter(logFile, true));
+            writer.write(logEntry);
+            writer.newLine();
+            writer.close();
+        } catch (Exception e) {
+            // Fehler beim Schreiben ignorieren (kein Log.e hier um Rekursion zu vermeiden)
+        }
     }
 
     public synchronized List<String> readLogs() {
@@ -82,7 +105,7 @@ public class AppLogger {
     }
 
     public String getLogFilePath() {
-        return "IN-MEMORY (no file)";
+        return logFile.getAbsolutePath();
     }
 
     public synchronized void clearLogs() {
