@@ -231,14 +231,10 @@ public class TaskActivity extends Activity {
         TextView recurrenceLabel = dialogView.findViewById(R.id.recurrenceLabel);
         Spinner recurrenceUnitSpinner = dialogView.findViewById(R.id.recurrenceUnitSpinner);
 
-        // Update dialog title
-        TextView dialogTitle = dialogView.findViewById(R.id.dialogTitleText);
-        if (dialogTitle == null) {
-            // If no specific title view, update the first TextView
-            TextView titleView = (TextView) ((LinearLayout) dialogView).getChildAt(0);
-            if (titleView != null) {
-                titleView.setText("Edit Task");
-            }
+        // Update dialog title - the first TextView in the dialog layout
+        TextView titleView = (TextView) ((LinearLayout) dialogView).getChildAt(0);
+        if (titleView != null) {
+            titleView.setText("Edit Task");
         }
 
         // Setup priority spinner
