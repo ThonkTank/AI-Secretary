@@ -2,8 +2,8 @@
 
 **Erstellt:** 12.11.2025
 **Letzte Analyse:** Version 0.3.4 (Build 304)
-**Status:** Phase 1 - Taskmaster 🚀 IN PROGRESS (70%)
-**Letzte Aktualisierung:** 12.11.2025 - Recurrence Feature implementiert!
+**Status:** Phase 1 - Taskmaster 🚀 IN PROGRESS (75%)
+**Letzte Aktualisierung:** 12.11.2025 - Edit-Funktion implementiert!
 
 ---
 
@@ -75,7 +75,7 @@ Die grundlegenden Infrastruktur-Features sind vollständig implementiert und fun
 - HTTP Server für externe Zugriff (`SimpleHttpServer.java`) - **FUNKTIONIERT**
 - ✅ **Claude Code kann Logs via `curl http://localhost:8080/logs` lesen**
 
-### 🚀 Phase 1: Taskmaster Foundation - IN PROGRESS (70%)
+### 🚀 Phase 1: Taskmaster Foundation - IN PROGRESS (75%)
 
 **Phase 1 ist bereits weit fortgeschritten!**
 
@@ -94,7 +94,7 @@ Die grundlegenden Infrastruktur-Features sind vollständig implementiert und fun
   - ✅ Progress-Tracking für Frequency-Tasks
 
 **Noch zu implementieren:**
-- [ ] Task bearbeiten (Edit-Dialog)
+- ✅ Task bearbeiten (Edit-Dialog) - FERTIG! (v0.3.5)
 - [ ] Task-Suche/Filter
 - [ ] Task-Kategorien
 - [ ] Due Date Picker
@@ -1597,6 +1597,19 @@ Diese Roadmap kombiniert technische Verbesserungen mit Feature-Entwicklung.
 ---
 
 ## CHANGELOG
+
+### 2025-11-12 (Update 7 - Edit-Funktion implementiert!)
+- **Phase 1 Status: 75% COMPLETE**
+  - ✅ Task-Edit-Funktion vollständig implementiert (v0.3.5)
+  - Edit-Button zu jedem Task in der Liste hinzugefügt
+  - Dialog zeigt vorhandene Task-Daten an
+  - Alle Felder können bearbeitet werden (Titel, Beschreibung, Priorität, Recurrence)
+  - Tasks werden erfolgreich in der Datenbank aktualisiert
+- **Nächste Schritte:**
+  - Task-Suche/Filter-Funktionalität
+  - Task-Kategorien
+  - Due Date Picker
+  - Längere Task-Notizen
 
 ### 2025-11-12 (Update 6 - Phase 0 COMPLETE! 🎉)
 - **Phase 0 Status: 100% COMPLETE**

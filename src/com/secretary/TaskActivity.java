@@ -17,6 +17,8 @@ import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.text.Editable;
+import android.text.TextWatcher;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -30,9 +32,18 @@ public class TaskActivity extends Activity {
     private ListView taskListView;
     private TextView emptyTasksText;
     private Button addTaskButton;
+    private EditText searchEditText;
+    private Spinner statusFilterSpinner;
+    private Spinner priorityFilterSpinner;
     private TaskListAdapter adapter;
     private List<Task> taskList;
+    private List<Task> filteredTaskList;
     private AppLogger logger;
+
+    // Filter states
+    private String searchQuery = "";
+    private int statusFilter = 0; // 0=All, 1=Active, 2=Completed
+    private int priorityFilter = -1; // -1=All, 0=Low, 1=Medium, 2=High, 3=Urgent
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,13 +60,23 @@ public class TaskActivity extends Activity {
         taskListView = findViewById(R.id.taskListView);
         emptyTasksText = findViewById(R.id.emptyTasksText);
         addTaskButton = findViewById(R.id.addTaskButton);
+        searchEditText = findViewById(R.id.searchEditText);
+        statusFilterSpinner = findViewById(R.id.statusFilterSpinner);
+        priorityFilterSpinner = findViewById(R.id.priorityFilterSpinner);
 
-        // Initialize task list
+        // Initialize task lists
         taskList = new ArrayList<>();
+        filteredTaskList = new ArrayList<>();
 
         // Setup adapter
         adapter = new TaskListAdapter();
         taskListView.setAdapter(adapter);
+
+        // Setup spinners
+        setupFilterSpinners();
+
+        // Setup search
+        setupSearch();
 
         // Setup add button
         addTaskButton.setOnClickListener(v -> showAddTaskDialog());
@@ -66,19 +87,103 @@ public class TaskActivity extends Activity {
         logger.info(TAG, "TaskActivity initialized");
     }
 
-    private void loadTasks() {
-        taskList.clear();
-        taskList.addAll(dbHelper.getAllTasks());
+    private void setupFilterSpinners() {
+        // Status filter spinner
+        String[] statusOptions = {"All Tasks", "Active", "Completed"};
+        ArrayAdapter<String> statusAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, statusOptions);
+        statusAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        statusFilterSpinner.setAdapter(statusAdapter);
+        statusFilterSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                statusFilter = position;
+                applyFilters();
+            }
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+
+        // Priority filter spinner
+        String[] priorityOptions = {"All Priorities", "Low", "Medium", "High", "Urgent"};
+        ArrayAdapter<String> priorityAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, priorityOptions);
+        priorityAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        priorityFilterSpinner.setAdapter(priorityAdapter);
+        priorityFilterSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                priorityFilter = position - 1; // -1 for All, 0-3 for specific priorities
+                applyFilters();
+            }
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+    }
+
+    private void setupSearch() {
+        searchEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                searchQuery = s.toString().toLowerCase();
+                applyFilters();
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+    }
+
+    private void applyFilters() {
+        filteredTaskList.clear();
+
+        for (Task task : taskList) {
+            // Check status filter
+            if (statusFilter == 1 && task.isCompleted()) continue; // Active filter, skip completed
+            if (statusFilter == 2 && !task.isCompleted()) continue; // Completed filter, skip active
+
+            // Check priority filter
+            if (priorityFilter >= 0 && task.getPriority() != priorityFilter) continue;
+
+            // Check search query
+            if (!searchQuery.isEmpty()) {
+                String title = task.getTitle().toLowerCase();
+                String description = task.getDescription() != null ? task.getDescription().toLowerCase() : "";
+                if (!title.contains(searchQuery) && !description.contains(searchQuery)) {
+                    continue;
+                }
+            }
+
+            // Task passes all filters
+            filteredTaskList.add(task);
+        }
+
         adapter.notifyDataSetChanged();
 
         // Show/hide empty view
-        if (taskList.isEmpty()) {
+        if (filteredTaskList.isEmpty()) {
             taskListView.setVisibility(View.GONE);
             emptyTasksText.setVisibility(View.VISIBLE);
+            if (!searchQuery.isEmpty() || statusFilter > 0 || priorityFilter >= 0) {
+                emptyTasksText.setText("No tasks match your filters.");
+            } else {
+                emptyTasksText.setText("No tasks yet.\nTap + to add a task.");
+            }
         } else {
             taskListView.setVisibility(View.VISIBLE);
             emptyTasksText.setVisibility(View.GONE);
         }
+
+        logger.info(TAG, "Filters applied: " + filteredTaskList.size() + " tasks shown");
+    }
+
+    private void loadTasks() {
+        taskList.clear();
+        taskList.addAll(dbHelper.getAllTasks());
+        applyFilters(); // Apply filters after loading
 
         logger.info(TAG, "Loaded " + taskList.size() + " tasks");
     }
@@ -381,17 +486,17 @@ public class TaskActivity extends Activity {
 
         @Override
         public int getCount() {
-            return taskList.size();
+            return filteredTaskList.size();
         }
 
         @Override
         public Task getItem(int position) {
-            return taskList.get(position);
+            return filteredTaskList.get(position);
         }
 
         @Override
         public long getItemId(int position) {
-            return taskList.get(position).getId();
+            return filteredTaskList.get(position).getId();
         }
 
         @Override
