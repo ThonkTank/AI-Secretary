@@ -83,6 +83,7 @@ jobs:
           src/com/secretary/TaskStatistics.java \
           src/com/secretary/TaskDatabaseHelper.java \
           src/com/secretary/TaskListAdapter.java \
+          src/com/secretary/TaskFilterManager.java \
           src/com/secretary/TaskActivity.java \
           gen/com/secretary/helloworld/R.java
 
