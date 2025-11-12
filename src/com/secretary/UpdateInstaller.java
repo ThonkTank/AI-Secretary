@@ -55,17 +55,22 @@ public class UpdateInstaller {
                             case DownloadManager.STATUS_SUCCESSFUL:
                                 logger.info(TAG, "Download completed successfully");
 
-                                // Get APK URI
-                                String uriString = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI));
-                                Uri apkUri = Uri.parse(uriString);
+                                // Get download URI from DownloadManager (content:// URI, not file://)
+                                Uri downloadUri = downloadManager.getUriForDownloadedFile(downloadId);
 
-                                logger.info(TAG, "Starting installation for: " + uriString);
-                                Toast.makeText(context, "Download complete! Starting installation...", Toast.LENGTH_LONG).show();
+                                if (downloadUri != null) {
+                                    logger.info(TAG, "Starting installation with URI: " + downloadUri.toString());
+                                    Toast.makeText(context, "Download complete! Starting installation...", Toast.LENGTH_LONG).show();
 
-                                cursor.close();
+                                    cursor.close();
 
-                                // Install APK
-                                installApk(context, apkUri);
+                                    // Install APK using content URI
+                                    installApk(context, downloadUri);
+                                } else {
+                                    logger.error(TAG, "Failed to get download URI");
+                                    Toast.makeText(context, "Installation failed. Please install manually from Downloads.", Toast.LENGTH_LONG).show();
+                                    cursor.close();
+                                }
                                 break;
 
                             case DownloadManager.STATUS_FAILED:
@@ -118,15 +123,24 @@ public class UpdateInstaller {
     private static void installApk(Context context, Uri apkUri) {
         AppLogger logger = AppLogger.getInstance(context);
         try {
-            logger.info(TAG, "Launching APK installer intent");
+            logger.info(TAG, "Launching APK installer with URI: " + apkUri.toString());
+
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            // For Android 7+ (API 24+), must use content:// URIs
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                // URI should already be a content:// URI from DownloadManager
+                logger.info(TAG, "Using content URI for Android 7+");
+            }
+
             context.startActivity(intent);
             logger.info(TAG, "APK installer intent launched successfully");
+            Toast.makeText(context, "Opening installer...", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             logger.error(TAG, "Error installing APK", e);
+            Toast.makeText(context, "Failed to open installer. Please install manually from Downloads.", Toast.LENGTH_LONG).show();
         }
     }
 }
