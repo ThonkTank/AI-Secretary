@@ -31,21 +31,35 @@ Gradle does NOT work in Termux (JVM libiconv error). Use GitHub Actions for all 
 
 ### Production Build (REQUIRED)
 ```bash
-# 1. Make code changes
+# 1. Update version in AndroidManifest.xml (versionCode and versionName)
+
 # 2. Commit and push to GitHub
 git add .
 git commit -m "Your message"
 git push origin main
 
-# 3. GitHub Actions automatically:
-#    - Builds APK with d8/aapt2
-#    - Signs with debug keystore
-#    - Creates GitHub Release with version from AndroidManifest.xml
-#    - Uploads AISecretary-signed.apk as release asset
+# 3. Wait for GitHub Actions build (takes ~45 seconds)
+export GH_TOKEN=$(cat ~/.github_token)
+gh run list --limit 1  # Check if build completed
 
-# 4. Download from GitHub Releases
-# 5. Install on device
+# 4. Download APK from GitHub Releases
+VERSION="0.0.23"  # Use current version
+ASSET_ID=$(curl -s -H "Authorization: token $GH_TOKEN" \
+  https://api.github.com/repos/ThonkTank/AI-Secretary/releases/tags/v$VERSION \
+  | grep -o '"id": [0-9]*' | head -1 | cut -d' ' -f2)
+
+cd ~/storage/downloads
+curl -L -H "Accept: application/octet-stream" \
+  -H "Authorization: token $GH_TOKEN" \
+  -o AISecretary-v$VERSION.apk \
+  https://api.github.com/repos/ThonkTank/AI-Secretary/releases/assets/$ASSET_ID
+
+# 5. Make file visible to Android and install
+termux-media-scan AISecretary-v$VERSION.apk
+termux-open AISecretary-v$VERSION.apk
 ```
+
+**GitHub Token:** Stored in `~/.github_token` (readable with `cat ~/.github_token`)
 
 **Workflow:** `.github/workflows/build-and-release.yml`
 - Triggers on push to main or manual dispatch
@@ -106,10 +120,11 @@ res/
 
 **AppLogger.java**
 - Singleton pattern for centralized logging
-- In-memory storage (max 500 lines, auto-rotates)
+- Triple redundancy: In-memory (max 500 lines) + File + Logcat
 - Three levels: INFO, DEBUG, ERROR
-- Also logs to Android Logcat in parallel
-- ⚠️ Contains unused `logFile` variable (dead code)
+- File location: `/sdcard/Android/data/com.secretary.helloworld/files/AISecretary_logs.txt`
+- Uses app-specific external storage (no permissions needed)
+- Fallback to internal storage if external unavailable
 
 **MainActivity.java**
 - Single Activity app
@@ -367,11 +382,12 @@ apksigner verify -v app_signed.apk
 ## Next Steps for Development
 
 **Immediate (Phase 0 Completion):**
-1. Debug Update System - identify why GitHub API calls fail
-2. Debug Logging System - identify why logs aren't displayed
-3. Fix GitHub token security issue
-4. Change package name to `com.secretary`
-5. Fix resource/memory leaks
+1. ✅ Logging System - file-based logging implemented (v0.0.23)
+2. Test and verify Claude Code can read log file at app-specific storage path
+3. Debug Update System - test if app can check GitHub for updates
+4. Fix GitHub token security issue (currently hardcoded in UpdateChecker.java)
+5. Change package name to `com.secretary`
+6. Fix resource/memory leaks
 
 **After Phase 0 Works:**
 1. Decide: More tech debt cleanup OR start Taskmaster Phase 1
@@ -382,5 +398,5 @@ apksigner verify -v app_signed.apk
 ---
 
 **Last Updated:** 2025-11-12
-**Current Version:** v0.0.22 (Build 22)
-**Status:** Phase 0 - File-based logging implemented
+**Current Version:** v0.0.23 (Build 23)
+**Status:** Phase 0 - File-based logging to app-specific storage
