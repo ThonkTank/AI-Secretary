@@ -37,31 +37,11 @@ aapt2 link \
 
 # Schritt 3: Java kompilieren
 echo "[4/8] Kompiliere Java-Code..."
-echo "Current directory: $(pwd)"
-echo "First file exists: $(ls -la src/com/secretary/AppLogger.java 2>/dev/null | wc -l)"
 javac -source 8 -target 8 \
   -d classes/ \
   -classpath "$ANDROID_JAR" \
   -sourcepath src/:gen/ \
-  src/com/secretary/AppLogger.java \
-  src/com/secretary/LogProvider.java \
-  src/com/secretary/LogServer.java \
-  src/com/secretary/MainActivity.java \
-  src/com/secretary/NanoHTTPD.java \
-  src/com/secretary/SimpleHttpServer.java \
-  src/com/secretary/Task.java \
-  src/com/secretary/TaskActivity.java \
-  src/com/secretary/TaskDatabaseHelper.java \
-  src/com/secretary/UpdateChecker.java \
-  src/com/secretary/UpdateInstaller.java \
-  src/com/secretary/helloworld/data/dao/CompletionDao.java \
-  src/com/secretary/helloworld/data/dao/TaskDao.java \
-  src/com/secretary/helloworld/data/database/TaskDatabaseHelper.java \
-  src/com/secretary/helloworld/ui/activities/TaskActivity.java \
-  src/com/secretary/helloworld/ui/adapters/TaskListAdapter.java \
-  src/com/secretary/helloworld/ui/dialogs/CompletionDialog.java \
-  src/com/secretary/helloworld/ui/dialogs/TaskEditDialog.java \
-  src/com/secretary/helloworld/utils/StatsManager.java \
+  src/com/secretary/*.java \
   gen/com/secretary/helloworld/R.java
 
 # Schritt 4: DEX erstellen
