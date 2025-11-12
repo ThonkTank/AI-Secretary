@@ -73,7 +73,19 @@ public class UpdateInstaller {
             };
 
             // Use application context to survive dialog dismissal
-            context.getApplicationContext().registerReceiver(onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+            // For Android 14+ (API 34+), must specify RECEIVER_NOT_EXPORTED
+            // RECEIVER_NOT_EXPORTED = 2 (constant from API 33+)
+            if (Build.VERSION.SDK_INT >= 34) {
+                logger.info(TAG, "Registering BroadcastReceiver for Android 14+ (API " + Build.VERSION.SDK_INT + ")");
+                context.getApplicationContext().registerReceiver(onComplete,
+                    new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+                    2); // RECEIVER_NOT_EXPORTED
+            } else {
+                logger.info(TAG, "Registering BroadcastReceiver for older Android (API " + Build.VERSION.SDK_INT + ")");
+                context.getApplicationContext().registerReceiver(onComplete,
+                    new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+            }
+            logger.info(TAG, "BroadcastReceiver registered successfully");
 
         } catch (Exception e) {
             logger.error(TAG, "Error downloading update", e);
