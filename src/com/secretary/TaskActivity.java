@@ -33,11 +33,13 @@ public class TaskActivity extends Activity {
     private TaskDatabaseHelper dbHelper;
     private ListView taskListView;
     private TextView emptyTasksText;
+    private TextView statisticsText;
     private Button addTaskButton;
     private EditText searchEditText;
     private Spinner statusFilterSpinner;
     private Spinner priorityFilterSpinner;
     private Spinner categoryFilterSpinner;
+    private Spinner sortBySpinner;
     private TaskListAdapter adapter;
     private List<Task> taskList;
     private List<Task> filteredTaskList;
@@ -49,6 +51,7 @@ public class TaskActivity extends Activity {
     private int statusFilter = 0; // 0=All, 1=Active, 2=Completed
     private int priorityFilter = -1; // -1=All, 0=Low, 1=Medium, 2=High, 3=Urgent
     private String categoryFilter = null; // null=All categories
+    private int sortOption = 0; // 0=Priority, 1=Due Date, 2=Category, 3=Created Date, 4=Title
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,11 +67,13 @@ public class TaskActivity extends Activity {
         // Find views
         taskListView = findViewById(R.id.taskListView);
         emptyTasksText = findViewById(R.id.emptyTasksText);
+        statisticsText = findViewById(R.id.taskStatisticsText);
         addTaskButton = findViewById(R.id.addTaskButton);
         searchEditText = findViewById(R.id.searchEditText);
         statusFilterSpinner = findViewById(R.id.statusFilterSpinner);
         priorityFilterSpinner = findViewById(R.id.priorityFilterSpinner);
         categoryFilterSpinner = findViewById(R.id.categoryFilterSpinner);
+        sortBySpinner = findViewById(R.id.sortBySpinner);
 
         // Initialize task lists
         taskList = new ArrayList<>();
@@ -129,6 +134,34 @@ public class TaskActivity extends Activity {
 
         // Load categories and setup category filter
         updateCategoryFilter();
+
+        // Setup sort spinner
+        setupSortSpinner();
+    }
+
+    private void setupSortSpinner() {
+        String[] sortOptions = {
+            "Priority (High to Low)",
+            "Due Date (Nearest First)",
+            "Category (A to Z)",
+            "Created Date (Newest First)",
+            "Title (A to Z)"
+        };
+
+        ArrayAdapter<String> sortAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, sortOptions);
+        sortAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        sortBySpinner.setAdapter(sortAdapter);
+
+        sortBySpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                sortOption = position;
+                applySorting();
+            }
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
     }
 
     private void setupSearch() {
@@ -174,7 +207,8 @@ public class TaskActivity extends Activity {
             filteredTaskList.add(task);
         }
 
-        adapter.notifyDataSetChanged();
+        // Apply sorting after filtering
+        applySorting();
 
         // Show/hide empty view
         if (filteredTaskList.isEmpty()) {
@@ -193,13 +227,74 @@ public class TaskActivity extends Activity {
         logger.info(TAG, "Filters applied: " + filteredTaskList.size() + " tasks shown");
     }
 
+    private void applySorting() {
+        if (filteredTaskList == null || filteredTaskList.isEmpty()) {
+            return;
+        }
+
+        java.util.Collections.sort(filteredTaskList, (task1, task2) -> {
+            switch (sortOption) {
+                case 0: // Priority (High to Low)
+                    // First by completion status, then by priority
+                    if (task1.isCompleted() != task2.isCompleted()) {
+                        return task1.isCompleted() ? 1 : -1;
+                    }
+                    return Integer.compare(task2.getPriority(), task1.getPriority());
+
+                case 1: // Due Date (Nearest First)
+                    // Tasks without due date go to the end
+                    if (task1.getDueDate() == 0 && task2.getDueDate() == 0) {
+                        return 0;
+                    }
+                    if (task1.getDueDate() == 0) return 1;
+                    if (task2.getDueDate() == 0) return -1;
+                    return Long.compare(task1.getDueDate(), task2.getDueDate());
+
+                case 2: // Category (A to Z)
+                    String cat1 = task1.getCategory() != null ? task1.getCategory() : "";
+                    String cat2 = task2.getCategory() != null ? task2.getCategory() : "";
+                    return cat1.compareToIgnoreCase(cat2);
+
+                case 3: // Created Date (Newest First)
+                    return Long.compare(task2.getCreatedAt(), task1.getCreatedAt());
+
+                case 4: // Title (A to Z)
+                    return task1.getTitle().compareToIgnoreCase(task2.getTitle());
+
+                default:
+                    return 0;
+            }
+        });
+
+        adapter.notifyDataSetChanged();
+    }
+
     private void loadTasks() {
         taskList.clear();
         taskList.addAll(dbHelper.getAllTasks());
         updateCategoryFilter(); // Update category filter with any new categories
+        updateStatistics(); // Update statistics display
         applyFilters(); // Apply filters after loading
 
         logger.info(TAG, "Loaded " + taskList.size() + " tasks");
+    }
+
+    private void updateStatistics() {
+        int todayCount = dbHelper.getTasksCompletedToday();
+        int weekCount = dbHelper.getTasksCompletedLast7Days();
+        int overdueCount = dbHelper.getOverdueTasksCount();
+
+        String statsText = String.format("Today: %d | Week: %d | Overdue: %d",
+                todayCount, weekCount, overdueCount);
+
+        statisticsText.setText(statsText);
+
+        // Highlight if there are overdue tasks
+        if (overdueCount > 0) {
+            statisticsText.setTextColor(0xFFFFAA00); // Orange for warning
+        } else {
+            statisticsText.setTextColor(0xFFFFFFFF); // White
+        }
     }
 
     private void updateCategoryFilter() {

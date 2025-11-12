@@ -5,16 +5,35 @@
     android:orientation="vertical">
 
     <!-- Header -->
-    <TextView
-        android:id="@+id/taskHeaderText"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Tasks"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:padding="16dp"
-        android:background="?android:attr/colorPrimary"
-        android:textColor="#FFFFFF" />
+        android:orientation="vertical"
+        android:background="?android:attr/colorPrimary">
+
+        <TextView
+            android:id="@+id/taskHeaderText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tasks"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:padding="16dp"
+            android:paddingBottom="8dp"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:id="@+id/taskStatisticsText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Today: 0 | Week: 0 | Overdue: 0"
+            android:textSize="14sp"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:paddingBottom="12dp"
+            android:textColor="#FFFFFF" />
+
+    </LinearLayout>
 
     <!-- Search and Filter Section -->
     <LinearLayout
@@ -72,6 +91,31 @@
             android:layout_marginTop="8dp"
             android:background="#FFFFFF"
             android:padding="8dp" />
+
+        <!-- Sort Options -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sort by:"
+                android:textSize="14sp"
+                android:padding="8dp"
+                android:layout_gravity="center_vertical" />
+
+            <Spinner
+                android:id="@+id/sortBySpinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="#FFFFFF"
+                android:padding="8dp" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

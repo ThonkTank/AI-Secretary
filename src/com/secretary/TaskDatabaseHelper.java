@@ -604,6 +604,83 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
+     * Get statistics for today
+     */
+    public int getTasksCompletedToday() {
+        String todayStart = String.valueOf(getTodayStart());
+        String query = "SELECT COUNT(*) FROM " + TABLE_TASKS +
+                      " WHERE " + COLUMN_LAST_COMPLETED_DATE + " >= " + todayStart;
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(query, null);
+
+        int count = 0;
+        if (cursor.moveToFirst()) {
+            count = cursor.getInt(0);
+        }
+
+        cursor.close();
+        db.close();
+
+        return count;
+    }
+
+    /**
+     * Get statistics for last 7 days
+     */
+    public int getTasksCompletedLast7Days() {
+        long sevenDaysAgo = System.currentTimeMillis() - (7L * 24 * 60 * 60 * 1000);
+        String query = "SELECT COUNT(*) FROM " + TABLE_TASKS +
+                      " WHERE " + COLUMN_LAST_COMPLETED_DATE + " >= " + sevenDaysAgo;
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(query, null);
+
+        int count = 0;
+        if (cursor.moveToFirst()) {
+            count = cursor.getInt(0);
+        }
+
+        cursor.close();
+        db.close();
+
+        return count;
+    }
+
+    /**
+     * Get overdue tasks count
+     */
+    public int getOverdueTasksCount() {
+        long now = System.currentTimeMillis();
+        String query = "SELECT COUNT(*) FROM " + TABLE_TASKS +
+                      " WHERE " + COLUMN_DUE_DATE + " > 0" +
+                      " AND " + COLUMN_DUE_DATE + " < " + now +
+                      " AND " + COLUMN_IS_COMPLETED + " = 0";
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(query, null);
+
+        int count = 0;
+        if (cursor.moveToFirst()) {
+            count = cursor.getInt(0);
+        }
+
+        cursor.close();
+        db.close();
+
+        return count;
+    }
+
+    private long getTodayStart() {
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        return cal.getTimeInMillis();
+    }
+
+    /**
      * Get all unique categories used in tasks
      */
     public List<String> getAllCategories() {
