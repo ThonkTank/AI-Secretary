@@ -346,35 +346,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         return rowsDeleted;
     }
 
-    /**
-     * Mark a task as completed and handle recurrence
-     */
-    public void markTaskCompleted(long taskId, boolean completed) {
-        SQLiteDatabase db = this.getWritableDatabase();
-
-        // First, get the task to check if it's recurring
-        Task task = getTaskWithDb(db, taskId);
-        if (task == null) {
-            db.close();
-            return;
-        }
-
-        if (completed && task.isRecurring()) {
-            handleRecurringTaskCompletion(db, task);
-        } else {
-            // Non-recurring task or unchecking - just update status
-            ContentValues values = new ContentValues();
-            values.put(COLUMN_IS_COMPLETED, completed ? 1 : 0);
-
-            db.update(TABLE_TASKS, values,
-                     COLUMN_ID + " = ?",
-                     new String[]{String.valueOf(taskId)});
-        }
-
-        db.close();
-        logger.info(TAG, "Task " + taskId + " marked as " + (completed ? "completed" : "active") +
-                   (task.isRecurring() ? " (Recurring task handled)" : ""));
-    }
+    // Removed - merged with the newer version below that includes streak tracking
 
     /**
      * Handle completion of a recurring task
@@ -470,6 +442,14 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
             task.setLastCompletedDate(cursor.getLong(cursor.getColumnIndex(COLUMN_LAST_COMPLETED_DATE)));
             task.setCompletionsThisPeriod(cursor.getInt(cursor.getColumnIndex(COLUMN_COMPLETIONS_THIS_PERIOD)));
             task.setCurrentPeriodStart(cursor.getLong(cursor.getColumnIndex(COLUMN_CURRENT_PERIOD_START)));
+
+            // Streak fields - check if columns exist
+            int streakIndex = cursor.getColumnIndex(COLUMN_CURRENT_STREAK);
+            if (streakIndex >= 0) {
+                task.setCurrentStreak(cursor.getInt(streakIndex));
+                task.setLongestStreak(cursor.getInt(cursor.getColumnIndex(COLUMN_LONGEST_STREAK)));
+                task.setLastStreakDate(cursor.getLong(cursor.getColumnIndex(COLUMN_LAST_STREAK_DATE)));
+            }
         }
 
         cursor.close();
@@ -828,28 +808,45 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * Mark a task as completed or not completed
+     * Mark a task as completed or not completed (with recurrence and streak support)
      */
     public void markTaskCompleted(long taskId, boolean isCompleted) {
         SQLiteDatabase db = this.getWritableDatabase();
 
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_IS_COMPLETED, isCompleted ? 1 : 0);
-
-        if (isCompleted) {
-            values.put(COLUMN_LAST_COMPLETED_DATE, System.currentTimeMillis());
-
-            // Update streak when marking as complete
-            updateStreak(taskId);
+        // First, get the task to check if it's recurring
+        Task task = getTaskWithDb(db, taskId);
+        if (task == null) {
+            db.close();
+            return;
         }
 
-        int rowsAffected = db.update(TABLE_TASKS, values, COLUMN_ID + " = ?",
-                                     new String[]{String.valueOf(taskId)});
+        if (isCompleted && task.isRecurring()) {
+            // Handle recurring task completion
+            handleRecurringTaskCompletion(db, task);
+
+            // Update streak for recurring tasks too
+            updateStreak(taskId);
+        } else {
+            // Non-recurring task or unchecking - just update status
+            ContentValues values = new ContentValues();
+            values.put(COLUMN_IS_COMPLETED, isCompleted ? 1 : 0);
+
+            if (isCompleted) {
+                values.put(COLUMN_LAST_COMPLETED_DATE, System.currentTimeMillis());
+
+                // Update streak when marking as complete
+                updateStreak(taskId);
+            }
+
+            db.update(TABLE_TASKS, values, COLUMN_ID + " = ?",
+                     new String[]{String.valueOf(taskId)});
+        }
+
         db.close();
 
         logger.info(TAG, "Task " + taskId + " marked as " +
                    (isCompleted ? "completed" : "active") +
-                   " (" + rowsAffected + " rows affected)");
+                   (task.isRecurring() ? " (Recurring task handled)" : ""));
     }
 
     /**
@@ -900,35 +897,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
-    /**
-     * Get a single task by ID
-     */
-    private Task getTask(long taskId) {
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(TABLE_TASKS, null,
-                                COLUMN_ID + " = ?",
-                                new String[]{String.valueOf(taskId)},
-                                null, null, null);
-
-        Task task = null;
-        if (cursor != null && cursor.moveToFirst()) {
-            task = new Task();
-            task.setId(cursor.getLong(cursor.getColumnIndex(COLUMN_ID)));
-            task.setTitle(cursor.getString(cursor.getColumnIndex(COLUMN_TITLE)));
-
-            // Get streak fields if they exist
-            int streakIndex = cursor.getColumnIndex(COLUMN_CURRENT_STREAK);
-            if (streakIndex >= 0) {
-                task.setCurrentStreak(cursor.getInt(streakIndex));
-                task.setLongestStreak(cursor.getInt(cursor.getColumnIndex(COLUMN_LONGEST_STREAK)));
-                task.setLastStreakDate(cursor.getLong(cursor.getColumnIndex(COLUMN_LAST_STREAK_DATE)));
-            }
-            cursor.close();
-        }
-        db.close();
-
-        return task;
-    }
+    // Removed duplicate - using the first getTask method instead
 
     /**
      * Get all unique categories used in tasks
