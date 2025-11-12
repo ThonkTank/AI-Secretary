@@ -159,60 +159,58 @@ res/
 
 ## Accessing Logs
 
-**Solution: Android Logcat** - Direct access to app logs via built-in Android logging
+**Solution: HTTP Server on Port 8080** - Direct access to app logs via HTTP
 
-The app already logs everything via `AppLogger.java` using Android's standard logging system. Claude Code can read these logs directly using the `logcat` command in Termux - no special implementation needed!
+The app runs a SimpleHttpServer on localhost:8080 that provides REST endpoints for log access. This enables Claude Code and Termux to read logs with a simple curl command.
 
 ### How to Read Logs
 
 ```bash
-# Read all app logs (recommended)
-logcat -d -s AppLogger:* MainActivity:* UpdateChecker:*
+# Get all logs (primary method - WORKS!)
+curl http://localhost:8080/logs
 
-# Monitor logs in real-time
-logcat -s AppLogger:* MainActivity:* UpdateChecker:*
+# Get server status
+curl http://localhost:8080/
 
-# Save logs to file for analysis
-logcat -d -s AppLogger:* > ~/secretary_logs.txt
+# Save logs to file
+curl http://localhost:8080/logs > ~/secretary_logs.txt
 
-# View last 50 lines
-logcat -d -s AppLogger:* | tail -50
+# View last 20 lines
+curl -s http://localhost:8080/logs | tail -20
 
-# Search for errors only
-logcat -d -s AppLogger:E MainActivity:E UpdateChecker:E
+# Search for errors
+curl -s http://localhost:8080/logs | grep ERROR
 
-# Clear old logs and start fresh
-logcat -c && logcat -s AppLogger:*
-
-# With timestamps
-logcat -v time -s AppLogger:* MainActivity:*
+# Monitor logs (refresh every 2 seconds)
+while true; do clear; curl -s http://localhost:8080/logs | tail -20; sleep 2; done
 ```
 
 ### Helper Script
 
-A helper script `~/secretary_logs.sh` is available with common commands:
+A helper script `~/secretary_log_access.sh` is available:
 ```bash
-./secretary_logs.sh          # Show usage
-./secretary_logs.sh view     # View recent logs
-./secretary_logs.sh monitor  # Real-time monitoring
-./secretary_logs.sh clear    # Clear and restart
-./secretary_logs.sh errors   # Show errors only
+./secretary_log_access.sh         # Show usage
+./secretary_log_access.sh logs    # Get all logs
+./secretary_log_access.sh latest  # Last 10 entries
+./secretary_log_access.sh errors  # ERROR logs only
+./secretary_log_access.sh watch   # Live monitoring
 ```
 
 ### When to Read Logs
 
-- **After app crashes:** Logs persist in logcat buffer even after crash
+- **After app crashes:** HTTP server may stop, but logs from before crash are visible after restart
 - **During development:** Monitor real-time while testing features
 - **Debugging issues:** See actual execution flow and error messages
 - **Before commits:** Verify changes work as expected
 
 ### Technical Details
 
-- **Method:** Android's built-in logcat system
-- **Tags:** AppLogger, MainActivity, UpdateChecker, UpdateInstaller
-- **Levels:** I (Info), D (Debug), E (Error)
-- **Buffer:** ~256KB circular buffer (survives crashes, clears on reboot)
-- **Performance:** Minimal overhead, designed for production use
+- **Method:** Embedded HTTP server (SimpleHttpServer.java)
+- **Port:** 8080 (localhost only)
+- **Endpoints:** /logs (all logs), /status (server info), / (help)
+- **Format:** Plain text, one log entry per line
+- **Buffer:** 500 log entries in memory (AppLogger)
+- **Performance:** Minimal overhead, synchronous single-threaded server
 
 ---
 
@@ -221,19 +219,19 @@ A helper script `~/secretary_logs.sh` is available with common commands:
 **Location:** `AndroidManifest.xml`
 
 **Versioning Scheme (Phase-based):**
-- **0.0.x** = Phase 0 (Foundation Systems - Update & Logging)
-- **0.1.x** = Phase 1 (Taskmaster Foundation & Database)
-- **0.2.x** = Phase 2 (Core Task Management)
-- **0.3.x** = Phase 3 (Tracking & Analytics)
-- **0.4.x** = Phase 4 (Motivation & Statistics)
-- **0.5.x** = Phase 5 (Intelligent Planning)
-- **0.6.x** = Phase 6 (Widget & Polish)
+- **0.0.x - 0.1.x** = Phase 0 (Foundation Systems - Update & Logging) ← CURRENT
+- **0.2.x** = Phase 1 (Taskmaster Foundation & Database)
+- **0.3.x** = Phase 2 (Core Task Management)
+- **0.4.x** = Phase 3 (Tracking & Analytics)
+- **0.5.x** = Phase 4 (Motivation & Statistics)
+- **0.6.x** = Phase 5 (Intelligent Planning)
+- **0.7.x** = Phase 6 (Widget & Polish)
 - **1.0.0** = Taskmaster MVP Release
 
 ```xml
 <manifest package="com.secretary.helloworld"
-    android:versionCode="25"
-    android:versionName="0.0.25">
+    android:versionCode="101"
+    android:versionName="0.1.1">
 ```
 
 **Update Version:**
@@ -476,5 +474,5 @@ apksigner verify -v app_signed.apk
 ---
 
 **Last Updated:** 2025-11-12
-**Current Version:** v0.0.25 (Build 25)
-**Status:** Phase 0 - ContentProvider logging system implemented
+**Current Version:** v0.1.1 (Build 101)
+**Status:** Phase 0 (50% Complete) - Logging ✅ funktioniert, Update-System ❌ nicht getestet

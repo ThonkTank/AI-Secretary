@@ -14,7 +14,7 @@ public class UpdateChecker {
     private static final String TAG = "UpdateChecker";
     private static final String GITHUB_REPO = "ThonkTank/AI-Secretary";
     private static final String GITHUB_API_URL = "https://api.github.com/repos/" + GITHUB_REPO + "/releases/latest";
-    private static final String GITHUB_TOKEN = "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";
+    // No token needed for public repositories
 
     public interface UpdateListener {
         void onUpdateAvailable(String version, String downloadUrl, String changelog);
@@ -37,7 +37,7 @@ public class UpdateChecker {
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("Accept", "application/vnd.github.v3+json");
-                conn.setRequestProperty("Authorization", "Bearer " + GITHUB_TOKEN);
+                // No Authorization header needed for public repos
                 conn.setConnectTimeout(10000);
                 conn.setReadTimeout(10000);
 

@@ -1,9 +1,9 @@
 # AI Secretary - Technical Debt & Improvement Roadmap
 
 **Erstellt:** 12.11.2025
-**Letzte Analyse:** Version 3.0 (Build 21)
-**Status:** Early Development Phase
-**Letzte Aktualisierung:** 12.11.2025 - Feature Development Roadmap hinzugefügt
+**Letzte Analyse:** Version 0.1.1 (Build 101)
+**Status:** Phase 0 - Foundation Systems (50% Complete)
+**Letzte Aktualisierung:** 12.11.2025 - HTTP Log Server funktioniert!
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### Part 1: Overview
 - [Executive Summary](#executive-summary)
-- [🔴 Phase 0: Foundation Systems (NICHT FUNKTIONSFÄHIG)](#-phase-0-foundation-systems-implementiert-aber-nicht-funktionsfähig)
+- [🟡 Phase 0: Foundation Systems (50% COMPLETE)](#-phase-0-foundation-systems-50-complete)
 - [Current Status & Timeline](#-tracking)
 
 ### Part 2: Technical Debt (Code Quality)
@@ -55,41 +55,46 @@ Diese Roadmap ist das zentrale Planungsdokument für das AI Secretary Projekt. S
 3. **Feature Development:** Detaillierte Entwicklungsphasen für Taskmaster (Feature Suite 1)
 4. **Timeline:** Realistische Zeitschätzungen und Dependencies
 
-### 🔴 Phase 0: Foundation Systems (IN ARBEIT - NICHT FUNKTIONSFÄHIG)
+### 🟡 Phase 0: Foundation Systems (50% COMPLETE)
 
-Die grundlegenden Infrastruktur-Features sind implementiert, aber **funktionieren aktuell NICHT**:
+Die grundlegenden Infrastruktur-Features - aktueller Status:
 
-**1. Auto-Update System** ❌ IMPLEMENTIERT, ABER NICHT FUNKTIONSFÄHIG
+**1. Auto-Update System** ❌ NICHT GETESTET
 - GitHub Releases API Integration (`UpdateChecker.java`) - Code vorhanden
 - Automatische Version-Erkennung und -Vergleich - Code vorhanden
 - APK-Download via DownloadManager (`UpdateInstaller.java`) - Code vorhanden
-- ❌ **FUNKTIONIERT NICHT** - muss debugged/gefixt werden
+- ❌ **STATUS UNBEKANNT** - muss getestet/debugged werden
+- ⚠️ **SECURITY ISSUE:** GitHub Token hardcoded in UpdateChecker.java
 
-**2. Logging System** ❌ IMPLEMENTIERT, ABER NICHT FUNKTIONSFÄHIG
-- In-Memory Logging (`AppLogger.java`) - Code vorhanden
-- Automatisches Log-Trimming (max. 500 Zeilen) - Code vorhanden
-- Drei Log-Level: INFO, DEBUG, ERROR - Code vorhanden
-- ❌ **FUNKTIONIERT NICHT** - muss debugged/gefixt werden
+**2. Logging System** ✅ FUNKTIONIERT!
+- In-Memory Logging (`AppLogger.java`) - **FUNKTIONIERT**
+- Automatisches Log-Trimming (max. 500 Zeilen) - **FUNKTIONIERT**
+- Drei Log-Level: INFO, DEBUG, ERROR - **FUNKTIONIERT**
+- HTTP Server für externe Zugriff (`SimpleHttpServer.java`) - **FUNKTIONIERT**
+- ✅ **Claude Code kann Logs via `curl http://localhost:8080/logs` lesen**
 
-### 🔴 SOFORTIGE PRIORITÄT: Phase 0 zum Laufen bringen
+### 🔴 NÄCHSTE SCHRITTE: Phase 0 Completion
 
-**Bevor Taskmaster Phase 1 starten kann, MUSS Phase 0 funktionieren:**
+**Verbleibende Tasks für Phase 0 Abschluss:**
 
-1. **Update-System debuggen und fixen**
-   - Warum funktioniert UpdateChecker nicht?
-   - Warum funktioniert UpdateInstaller nicht?
-   - GitHub API Requests testen
-   - Download-Mechanismus testen
+1. **Update-System testen und fixen** (PRIORITÄT 1)
+   - [ ] UpdateChecker.java testen (prüft GitHub für neue Versionen)
+   - [ ] UpdateInstaller.java testen (lädt APK herunter und installiert)
+   - [ ] Settings Dialog Update-Check Button testen
+   - [ ] Auto-Update beim App-Start implementieren?
+   - [ ] Logs analysieren um Fehler zu identifizieren
 
-2. **Logging-System debuggen und fixen**
-   - Warum funktioniert AppLogger nicht?
-   - Logs werden nicht gespeichert/angezeigt?
-   - In-Memory Storage testen
+2. **Security Issues beheben** (PRIORITÄT 2)
+   - [ ] GitHub Token aus UpdateChecker.java entfernen
+   - [ ] Token entweder weglassen oder in Environment Variable
+   - [ ] Alten Token revoken (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)
+   - [ ] Public repository nutzt keinen Token für Releases API
 
-3. **Kritische Security-Fixes (parallel)**
-   - GitHub Token revoken und neu generieren
-   - Token aus Code entfernen
-   - Package-Name ändern
+3. **Package Name Migration** (PRIORITÄT 3)
+   - [ ] Von `com.secretary.helloworld` zu `com.secretary`
+   - [ ] Alle Java-Imports anpassen
+   - [ ] AndroidManifest.xml anpassen
+   - [ ] Build-Scripts anpassen
 
 **Technical Debt (Code Quality Issues):**
 - 🔴 1 kritisches Sicherheitsproblem (GitHub Token hardcoded)
@@ -1588,6 +1593,20 @@ Diese Roadmap kombiniert technische Verbesserungen mit Feature-Entwicklung.
 ---
 
 ## CHANGELOG
+
+### 2025-11-12 (Update 5 - HTTP Log Server funktioniert!)
+- **Phase 0 Status: 50% COMPLETE**
+  - Logging System ✅ FUNKTIONIERT via HTTP Server auf Port 8080
+  - Claude Code kann Logs lesen mit: `curl http://localhost:8080/logs`
+  - Auto-Update System ❌ noch nicht getestet
+- **Implementiert in v0.1.1:**
+  - SimpleHttpServer.java ersetzt komplexes NanoHTTPD
+  - HTTP Endpoints: /logs, /status, /
+  - Helper Script: secretary_log_access.sh
+- **Nächste Schritte:**
+  - Update-System testen und debuggen
+  - Security Issues beheben (GitHub Token)
+  - Package Name Migration
 
 ### 2025-11-12 (Update 4 - Status Korrektur)
 - **Phase 0 Status korrigiert: NICHT FUNKTIONSFÄHIG**
