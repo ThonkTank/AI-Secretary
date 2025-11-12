@@ -28,7 +28,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-public class TaskActivity extends Activity {
+public class TaskActivity extends Activity implements TaskListAdapter.TaskActionListener {
     private static final String TAG = "TaskActivity";
 
     private TaskDatabaseHelper dbHelper;
@@ -42,12 +42,13 @@ public class TaskActivity extends Activity {
     private Spinner categoryFilterSpinner;
     private Spinner sortBySpinner;
     private TaskListAdapter adapter;
+    private TaskFilterManager filterManager;
     private List<Task> taskList;
     private List<Task> filteredTaskList;
     private List<String> allCategories;
     private AppLogger logger;
 
-    // Filter states
+    // Filter states (will be managed by TaskFilterManager)
     private String searchQuery = "";
     private int statusFilter = 0; // 0=All, 1=Active, 2=Completed
     private int priorityFilter = -1; // -1=All, 0=Low, 1=Medium, 2=High, 3=Urgent
@@ -81,8 +82,11 @@ public class TaskActivity extends Activity {
         filteredTaskList = new ArrayList<>();
         allCategories = new ArrayList<>();
 
-        // Setup adapter
-        adapter = new TaskListAdapter();
+        // Initialize filter manager
+        filterManager = new TaskFilterManager();
+
+        // Setup adapter with the new external class
+        adapter = new TaskListAdapter(this, filteredTaskList, this);
         taskListView.setAdapter(adapter);
 
         // Setup spinners
@@ -182,34 +186,27 @@ public class TaskActivity extends Activity {
     }
 
     private void applyFilters() {
-        filteredTaskList.clear();
+        // Configure filter manager based on current UI state
+        filterManager.setSearchQuery(searchQuery);
+        filterManager.setCategoryFilter(categoryFilter);
 
-        for (Task task : taskList) {
-            // Check status filter
-            if (statusFilter == 1 && task.isCompleted()) continue; // Active filter, skip completed
-            if (statusFilter == 2 && !task.isCompleted()) continue; // Completed filter, skip active
+        // Convert status filter to enum
+        TaskFilterManager.CompletionFilter completionFilter =
+            statusFilter == 1 ? TaskFilterManager.CompletionFilter.ACTIVE_ONLY :
+            statusFilter == 2 ? TaskFilterManager.CompletionFilter.COMPLETED_ONLY :
+            TaskFilterManager.CompletionFilter.ALL;
+        filterManager.setCompletionFilter(completionFilter);
 
-            // Check priority filter
-            if (priorityFilter >= 0 && task.getPriority() != priorityFilter) continue;
-
-            // Check category filter
-            if (categoryFilter != null && !task.getCategory().equals(categoryFilter)) continue;
-
-            // Check search query
-            if (!searchQuery.isEmpty()) {
-                String title = task.getTitle().toLowerCase();
-                String description = task.getDescription() != null ? task.getDescription().toLowerCase() : "";
-                if (!title.contains(searchQuery) && !description.contains(searchQuery)) {
-                    continue;
-                }
-            }
-
-            // Task passes all filters
-            filteredTaskList.add(task);
+        // Convert sort option to enum
+        TaskFilterManager.SortOption[] sortOptions = TaskFilterManager.SortOption.values();
+        if (sortOption >= 0 && sortOption < sortOptions.length) {
+            filterManager.setSortOption(sortOptions[sortOption]);
         }
 
-        // Apply sorting after filtering
-        applySorting();
+        // Apply filters and sorting
+        filteredTaskList.clear();
+        filteredTaskList.addAll(filterManager.applyFilters(taskList));
+        filterManager.sortTasks(filteredTaskList);
 
         // Show/hide empty view
         if (filteredTaskList.isEmpty()) {
@@ -225,50 +222,10 @@ public class TaskActivity extends Activity {
             emptyTasksText.setVisibility(View.GONE);
         }
 
+        adapter.notifyDataSetChanged();
         logger.info(TAG, "Filters applied: " + filteredTaskList.size() + " tasks shown");
     }
 
-    private void applySorting() {
-        if (filteredTaskList == null || filteredTaskList.isEmpty()) {
-            return;
-        }
-
-        java.util.Collections.sort(filteredTaskList, (task1, task2) -> {
-            switch (sortOption) {
-                case 0: // Priority (High to Low)
-                    // First by completion status, then by priority
-                    if (task1.isCompleted() != task2.isCompleted()) {
-                        return task1.isCompleted() ? 1 : -1;
-                    }
-                    return Integer.compare(task2.getPriority(), task1.getPriority());
-
-                case 1: // Due Date (Nearest First)
-                    // Tasks without due date go to the end
-                    if (task1.getDueDate() == 0 && task2.getDueDate() == 0) {
-                        return 0;
-                    }
-                    if (task1.getDueDate() == 0) return 1;
-                    if (task2.getDueDate() == 0) return -1;
-                    return Long.compare(task1.getDueDate(), task2.getDueDate());
-
-                case 2: // Category (A to Z)
-                    String cat1 = task1.getCategory() != null ? task1.getCategory() : "";
-                    String cat2 = task2.getCategory() != null ? task2.getCategory() : "";
-                    return cat1.compareToIgnoreCase(cat2);
-
-                case 3: // Created Date (Newest First)
-                    return Long.compare(task2.getCreatedAt(), task1.getCreatedAt());
-
-                case 4: // Title (A to Z)
-                    return task1.getTitle().compareToIgnoreCase(task2.getTitle());
-
-                default:
-                    return 0;
-            }
-        });
-
-        adapter.notifyDataSetChanged();
-    }
 
     private void loadTasks() {
         taskList.clear();
@@ -743,133 +700,37 @@ public class TaskActivity extends Activity {
         dialog.show();
     }
 
-    // Custom adapter for task list
-    private class TaskListAdapter extends BaseAdapter {
-
-        @Override
-        public int getCount() {
-            return filteredTaskList.size();
-        }
-
-        @Override
-        public Task getItem(int position) {
-            return filteredTaskList.get(position);
-        }
-
-        @Override
-        public long getItemId(int position) {
-            return filteredTaskList.get(position).getId();
-        }
-
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            if (convertView == null) {
-                convertView = LayoutInflater.from(TaskActivity.this)
-                        .inflate(R.layout.task_list_item, parent, false);
-            }
-
-            Task task = getItem(position);
-
-            // Find views
-            CheckBox checkBox = convertView.findViewById(R.id.taskCheckBox);
-            TextView titleText = convertView.findViewById(R.id.taskTitleText);
-            TextView descriptionText = convertView.findViewById(R.id.taskDescriptionText);
-            TextView priorityText = convertView.findViewById(R.id.taskPriorityText);
-            Button editButton = convertView.findViewById(R.id.editTaskButton);
-            Button deleteButton = convertView.findViewById(R.id.deleteTaskButton);
-
-            // Set data
-            checkBox.setChecked(task.isCompleted());
-            titleText.setText(task.getTitle());
-
-            // Strike through if completed
-            if (task.isCompleted()) {
-                titleText.setPaintFlags(titleText.getPaintFlags() |
-                                       android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
-            } else {
-                titleText.setPaintFlags(titleText.getPaintFlags() &
-                                       (~android.graphics.Paint.STRIKE_THRU_TEXT_FLAG));
-            }
-
-            // Description
-            if (task.getDescription() != null && !task.getDescription().isEmpty()) {
-                descriptionText.setText(task.getDescription());
-                descriptionText.setVisibility(View.VISIBLE);
-            } else {
-                descriptionText.setVisibility(View.GONE);
-            }
-
-            // Category, Priority, Streak, Due Date and Recurrence
-            String info = task.getCategory() + " | Priority: " + task.getPriorityString();
-
-            // Add streak if > 0
-            if (task.getCurrentStreak() > 0) {
-                info += " | 🔥 " + task.getCurrentStreak() + " day" +
-                       (task.getCurrentStreak() > 1 ? "s" : "");
-            }
-
-            // Add due date if set
-            if (task.getDueDate() > 0) {
-                SimpleDateFormat sdf = new SimpleDateFormat("MMM dd", Locale.getDefault());
-                info += " | Due: " + sdf.format(new Date(task.getDueDate()));
-
-                // Check if overdue
-                if (!task.isCompleted() && task.getDueDate() < System.currentTimeMillis()) {
-                    info += " (OVERDUE)";
-                }
-            }
-
-            if (task.isRecurring()) {
-                info += " | 🔁 " + task.getRecurrenceString();
-                // Add progress for frequency tasks
-                if (task.getRecurrenceType() == Task.RECURRENCE_FREQUENCY) {
-                    info += " " + task.getProgressString();
-                }
-                // Show when interval tasks will reappear
-                if (task.getRecurrenceType() == Task.RECURRENCE_INTERVAL && task.isCompleted()) {
-                    info += task.getNextAppearanceString();
-                }
-            }
-            priorityText.setText(info);
-
-            // Checkbox listener
-            checkBox.setOnClickListener(v -> {
-                if (checkBox.isChecked()) {
-                    // Show completion dialog when marking as complete
-                    showCompletionDialog(task);
-                } else {
-                    // Direct uncheck (no dialog needed)
-                    task.setCompleted(false);
-                    dbHelper.markTaskCompleted(task.getId(), false);
-                    logger.info(TAG, "Task " + task.getTitle() + " marked as active");
-                    loadTasks();
-                }
-            });
-
-            // Edit button
-            editButton.setOnClickListener(v -> {
-                showEditTaskDialog(task);
-            });
-
-            // Delete button
-            deleteButton.setOnClickListener(v -> {
-                new AlertDialog.Builder(TaskActivity.this)
-                        .setTitle("Delete Task")
-                        .setMessage("Are you sure you want to delete this task?")
-                        .setPositiveButton("Delete", (dialog, which) -> {
-                            dbHelper.deleteTask(task.getId());
-                            logger.info(TAG, "Task deleted: " + task.getTitle());
-                            Toast.makeText(TaskActivity.this, "Task deleted",
-                                         Toast.LENGTH_SHORT).show();
-                            loadTasks();
-                        })
-                        .setNegativeButton("Cancel", null)
-                        .show();
-            });
-
-            return convertView;
+    // Implementation of TaskListAdapter.TaskActionListener interface
+    @Override
+    public void onTaskCheckChanged(Task task, boolean isChecked) {
+        if (isChecked) {
+            showCompletionDialog(task);
+        } else {
+            task.setCompleted(false);
+            dbHelper.markTaskCompleted(task.getId(), false);
+            logger.info(TAG, "Task " + task.getTitle() + " marked as active");
+            loadTasks();
         }
     }
+
+    @Override
+    public void onTaskEdit(Task task) {
+        showEditTaskDialog(task);
+    }
+
+    @Override
+    public void onTaskDelete(Task task) {
+        dbHelper.deleteTask(task.getId());
+        logger.info(TAG, "Task deleted: " + task.getTitle());
+        Toast.makeText(this, "Task deleted", Toast.LENGTH_SHORT).show();
+        loadTasks();
+    }
+
+    @Override
+    public void onTasksChanged() {
+        loadTasks();
+    }
+
 
     private void showCompletionDialog(Task task) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
