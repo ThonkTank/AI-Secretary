@@ -213,6 +213,35 @@ public class Task {
     }
 
     /**
+     * Get next appearance info for completed interval tasks
+     */
+    public String getNextAppearanceString() {
+        if (recurrenceType != RECURRENCE_INTERVAL || !isCompleted || dueDate <= 0) {
+            return "";
+        }
+
+        long now = System.currentTimeMillis();
+        long timeUntilDue = dueDate - now;
+
+        if (timeUntilDue <= 0) {
+            return " (due now)";
+        }
+
+        // Convert to readable format
+        long hours = timeUntilDue / (1000 * 60 * 60);
+        long days = hours / 24;
+
+        if (days > 0) {
+            return " (reappears in " + days + " day" + (days > 1 ? "s" : "") + ")";
+        } else if (hours > 0) {
+            return " (reappears in " + hours + " hour" + (hours > 1 ? "s" : "") + ")";
+        } else {
+            long minutes = timeUntilDue / (1000 * 60);
+            return " (reappears in " + minutes + " minute" + (minutes > 1 ? "s" : "") + ")";
+        }
+    }
+
+    /**
      * Check if this frequency task needs more completions
      */
     public boolean needsMoreCompletions() {

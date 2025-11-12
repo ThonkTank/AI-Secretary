@@ -126,6 +126,9 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
      * Get all tasks from the database
      */
     public List<Task> getAllTasks() {
+        // First, check and reset any due recurring tasks
+        resetDueRecurringTasks();
+
         List<Task> tasks = new ArrayList<>();
 
         String selectQuery = "SELECT * FROM " + TABLE_TASKS +
@@ -290,24 +293,24 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         long now = System.currentTimeMillis();
 
         if (task.getRecurrenceType() == Task.RECURRENCE_INTERVAL) {
-            // INTERVAL type: Reset task for next interval
+            // INTERVAL type: Mark as completed and set next due date
             ContentValues values = new ContentValues();
-            values.put(COLUMN_IS_COMPLETED, 0); // Reset to uncompleted
+            values.put(COLUMN_IS_COMPLETED, 1); // Keep as completed
             values.put(COLUMN_LAST_COMPLETED_DATE, now);
 
-            // Calculate next due date if there was a previous due date
-            if (task.getDueDate() > 0) {
-                long nextDueDate = calculateNextDueDate(task.getDueDate(),
-                                                       task.getRecurrenceAmount(),
-                                                       task.getRecurrenceUnit());
-                values.put(COLUMN_DUE_DATE, nextDueDate);
-            }
+            // Calculate next due date based on current time
+            long nextDueDate = calculateNextDueDate(now,
+                                                   task.getRecurrenceAmount(),
+                                                   task.getRecurrenceUnit());
+            values.put(COLUMN_DUE_DATE, nextDueDate);
 
             db.update(TABLE_TASKS, values,
                      COLUMN_ID + " = ?",
                      new String[]{String.valueOf(task.getId())});
 
-            logger.info(TAG, "Interval recurring task reset: " + task.getTitle());
+            logger.info(TAG, "Interval recurring task completed, next due: " +
+                       new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(nextDueDate)) +
+                       " - " + task.getTitle());
 
         } else if (task.getRecurrenceType() == Task.RECURRENCE_FREQUENCY) {
             // FREQUENCY type: Track completions within period
@@ -476,6 +479,84 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         }
 
         return cal.getTimeInMillis();
+    }
+
+    /**
+     * Reset recurring tasks that are due to reappear
+     */
+    private void resetDueRecurringTasks() {
+        long now = System.currentTimeMillis();
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        // Query for completed interval recurring tasks
+        String query = "SELECT * FROM " + TABLE_TASKS +
+                      " WHERE " + COLUMN_IS_COMPLETED + " = 1" +
+                      " AND " + COLUMN_RECURRENCE_TYPE + " = " + Task.RECURRENCE_INTERVAL +
+                      " AND " + COLUMN_DUE_DATE + " > 0" +
+                      " AND " + COLUMN_DUE_DATE + " <= " + now;
+
+        Cursor cursor = db.rawQuery(query, null);
+
+        if (cursor.moveToFirst()) {
+            do {
+                long taskId = cursor.getLong(cursor.getColumnIndex(COLUMN_ID));
+                String taskTitle = cursor.getString(cursor.getColumnIndex(COLUMN_TITLE));
+
+                // Reset task to uncompleted
+                ContentValues values = new ContentValues();
+                values.put(COLUMN_IS_COMPLETED, 0);
+                values.put(COLUMN_DUE_DATE, 0); // Clear due date until next completion
+
+                db.update(TABLE_TASKS, values,
+                         COLUMN_ID + " = ?",
+                         new String[]{String.valueOf(taskId)});
+
+                logger.info(TAG, "Recurring task reset (due): " + taskTitle);
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
+
+        // Also check frequency tasks for period resets
+        checkFrequencyTaskPeriods(db, now);
+
+        db.close();
+    }
+
+    /**
+     * Check and reset frequency tasks if their period has expired
+     */
+    private void checkFrequencyTaskPeriods(SQLiteDatabase db, long now) {
+        String query = "SELECT * FROM " + TABLE_TASKS +
+                      " WHERE " + COLUMN_RECURRENCE_TYPE + " = " + Task.RECURRENCE_FREQUENCY;
+
+        Cursor cursor = db.rawQuery(query, null);
+
+        if (cursor.moveToFirst()) {
+            do {
+                long taskId = cursor.getLong(cursor.getColumnIndex(COLUMN_ID));
+                String taskTitle = cursor.getString(cursor.getColumnIndex(COLUMN_TITLE));
+                int unit = cursor.getInt(cursor.getColumnIndex(COLUMN_RECURRENCE_UNIT));
+                long periodStart = cursor.getLong(cursor.getColumnIndex(COLUMN_CURRENT_PERIOD_START));
+                int completions = cursor.getInt(cursor.getColumnIndex(COLUMN_COMPLETIONS_THIS_PERIOD));
+
+                // Check if we're in a new period
+                if (periodStart > 0 && !isInCurrentPeriod(periodStart, unit, now)) {
+                    // New period - reset counters
+                    ContentValues values = new ContentValues();
+                    values.put(COLUMN_COMPLETIONS_THIS_PERIOD, 0);
+                    values.put(COLUMN_CURRENT_PERIOD_START, getPeriodStart(now, unit));
+                    values.put(COLUMN_IS_COMPLETED, 0); // Reset to uncompleted for new period
+
+                    db.update(TABLE_TASKS, values,
+                             COLUMN_ID + " = ?",
+                             new String[]{String.valueOf(taskId)});
+
+                    logger.info(TAG, "Frequency task period reset: " + taskTitle +
+                               " (had " + completions + " completions last period)");
+                }
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
     }
 
     /**

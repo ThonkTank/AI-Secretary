@@ -272,6 +272,10 @@ public class TaskActivity extends Activity {
                 if (task.getRecurrenceType() == Task.RECURRENCE_FREQUENCY) {
                     info += " " + task.getProgressString();
                 }
+                // Show when interval tasks will reappear
+                if (task.getRecurrenceType() == Task.RECURRENCE_INTERVAL && task.isCompleted()) {
+                    info += task.getNextAppearanceString();
+                }
             }
             priorityText.setText(info);
 
