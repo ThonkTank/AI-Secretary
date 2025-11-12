@@ -17,7 +17,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     // Database configuration
     private static final String DATABASE_NAME = "taskmaster.db";
-    private static final int DATABASE_VERSION = 4; // Incremented for completion tracking
+    private static final int DATABASE_VERSION = 5; // Incremented for streak tracking
 
     // Table and column names
     private static final String TABLE_TASKS = "tasks";
@@ -47,6 +47,11 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_COMPLETIONS_THIS_PERIOD = "completions_this_period";
     private static final String COLUMN_CURRENT_PERIOD_START = "current_period_start";
 
+    // Streak columns
+    private static final String COLUMN_CURRENT_STREAK = "current_streak";
+    private static final String COLUMN_LONGEST_STREAK = "longest_streak";
+    private static final String COLUMN_LAST_STREAK_DATE = "last_streak_date";
+
     private AppLogger logger;
 
     // SQL statement to create tasks table
@@ -65,7 +70,10 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
             COLUMN_RECURRENCE_UNIT + " INTEGER DEFAULT 0, " +
             COLUMN_LAST_COMPLETED_DATE + " INTEGER DEFAULT 0, " +
             COLUMN_COMPLETIONS_THIS_PERIOD + " INTEGER DEFAULT 0, " +
-            COLUMN_CURRENT_PERIOD_START + " INTEGER DEFAULT 0" +
+            COLUMN_CURRENT_PERIOD_START + " INTEGER DEFAULT 0, " +
+            COLUMN_CURRENT_STREAK + " INTEGER DEFAULT 0, " +
+            COLUMN_LONGEST_STREAK + " INTEGER DEFAULT 0, " +
+            COLUMN_LAST_STREAK_DATE + " INTEGER DEFAULT 0" +
             ");";
 
     // SQL statement to create completions table
@@ -133,6 +141,18 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 logger.error(TAG, "Error creating completions table", e);
             }
         }
+
+        if (oldVersion < 5) {
+            // Add streak tracking columns
+            try {
+                db.execSQL("ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COLUMN_CURRENT_STREAK + " INTEGER DEFAULT 0");
+                db.execSQL("ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COLUMN_LONGEST_STREAK + " INTEGER DEFAULT 0");
+                db.execSQL("ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COLUMN_LAST_STREAK_DATE + " INTEGER DEFAULT 0");
+                logger.info(TAG, "Successfully added streak tracking columns");
+            } catch (Exception e) {
+                logger.error(TAG, "Error adding streak columns", e);
+            }
+        }
     }
 
     // CRUD Operations
@@ -159,6 +179,9 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_LAST_COMPLETED_DATE, task.getLastCompletedDate());
         values.put(COLUMN_COMPLETIONS_THIS_PERIOD, task.getCompletionsThisPeriod());
         values.put(COLUMN_CURRENT_PERIOD_START, task.getCurrentPeriodStart());
+        values.put(COLUMN_CURRENT_STREAK, task.getCurrentStreak());
+        values.put(COLUMN_LONGEST_STREAK, task.getLongestStreak());
+        values.put(COLUMN_LAST_STREAK_DATE, task.getLastStreakDate());
 
         long id = db.insert(TABLE_TASKS, null, values);
         db.close();
@@ -203,6 +226,14 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 task.setLastCompletedDate(cursor.getLong(cursor.getColumnIndex(COLUMN_LAST_COMPLETED_DATE)));
                 task.setCompletionsThisPeriod(cursor.getInt(cursor.getColumnIndex(COLUMN_COMPLETIONS_THIS_PERIOD)));
                 task.setCurrentPeriodStart(cursor.getLong(cursor.getColumnIndex(COLUMN_CURRENT_PERIOD_START)));
+
+                // Streak fields - check if columns exist
+                int streakIndex = cursor.getColumnIndex(COLUMN_CURRENT_STREAK);
+                if (streakIndex >= 0) {
+                    task.setCurrentStreak(cursor.getInt(streakIndex));
+                    task.setLongestStreak(cursor.getInt(cursor.getColumnIndex(COLUMN_LONGEST_STREAK)));
+                    task.setLastStreakDate(cursor.getLong(cursor.getColumnIndex(COLUMN_LAST_STREAK_DATE)));
+                }
 
                 tasks.add(task);
             } while (cursor.moveToNext());
@@ -249,6 +280,14 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 task.setCompletionsThisPeriod(cursor.getInt(cursor.getColumnIndex(COLUMN_COMPLETIONS_THIS_PERIOD)));
                 task.setCurrentPeriodStart(cursor.getLong(cursor.getColumnIndex(COLUMN_CURRENT_PERIOD_START)));
 
+                // Streak fields - check if columns exist
+                int streakIndex = cursor.getColumnIndex(COLUMN_CURRENT_STREAK);
+                if (streakIndex >= 0) {
+                    task.setCurrentStreak(cursor.getInt(streakIndex));
+                    task.setLongestStreak(cursor.getInt(cursor.getColumnIndex(COLUMN_LONGEST_STREAK)));
+                    task.setLastStreakDate(cursor.getLong(cursor.getColumnIndex(COLUMN_LAST_STREAK_DATE)));
+                }
+
                 tasks.add(task);
             } while (cursor.moveToNext());
         }
@@ -280,6 +319,9 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_LAST_COMPLETED_DATE, task.getLastCompletedDate());
         values.put(COLUMN_COMPLETIONS_THIS_PERIOD, task.getCompletionsThisPeriod());
         values.put(COLUMN_CURRENT_PERIOD_START, task.getCurrentPeriodStart());
+        values.put(COLUMN_CURRENT_STREAK, task.getCurrentStreak());
+        values.put(COLUMN_LONGEST_STREAK, task.getLongestStreak());
+        values.put(COLUMN_LAST_STREAK_DATE, task.getLastStreakDate());
 
         int rowsAffected = db.update(TABLE_TASKS, values,
                                      COLUMN_ID + " = ?",
@@ -783,6 +825,109 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         db.close();
 
         return average;
+    }
+
+    /**
+     * Mark a task as completed or not completed
+     */
+    public void markTaskCompleted(long taskId, boolean isCompleted) {
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_IS_COMPLETED, isCompleted ? 1 : 0);
+
+        if (isCompleted) {
+            values.put(COLUMN_LAST_COMPLETED_DATE, System.currentTimeMillis());
+
+            // Update streak when marking as complete
+            updateStreak(taskId);
+        }
+
+        int rowsAffected = db.update(TABLE_TASKS, values, COLUMN_ID + " = ?",
+                                     new String[]{String.valueOf(taskId)});
+        db.close();
+
+        logger.info(TAG, "Task " + taskId + " marked as " +
+                   (isCompleted ? "completed" : "active") +
+                   " (" + rowsAffected + " rows affected)");
+    }
+
+    /**
+     * Update streak when marking task as complete
+     */
+    private void updateStreak(long taskId) {
+        Task task = getTask(taskId);
+        if (task == null) return;
+
+        long today = getTodayStart();
+        long lastStreakDate = task.getLastStreakDate();
+
+        // Check if this is a new day's completion
+        if (lastStreakDate < today) {
+            // Calculate if this continues the streak or starts a new one
+            long yesterday = today - (24 * 60 * 60 * 1000);
+
+            if (lastStreakDate >= yesterday && lastStreakDate < today) {
+                // Continues the streak from yesterday
+                task.setCurrentStreak(task.getCurrentStreak() + 1);
+            } else {
+                // Breaks the streak, start new one
+                task.setCurrentStreak(1);
+            }
+
+            // Update longest streak if needed
+            if (task.getCurrentStreak() > task.getLongestStreak()) {
+                task.setLongestStreak(task.getCurrentStreak());
+            }
+
+            // Update last streak date to today
+            task.setLastStreakDate(today);
+
+            // Update in database
+            SQLiteDatabase db = this.getWritableDatabase();
+            ContentValues values = new ContentValues();
+            values.put(COLUMN_CURRENT_STREAK, task.getCurrentStreak());
+            values.put(COLUMN_LONGEST_STREAK, task.getLongestStreak());
+            values.put(COLUMN_LAST_STREAK_DATE, task.getLastStreakDate());
+
+            db.update(TABLE_TASKS, values, COLUMN_ID + " = ?",
+                     new String[]{String.valueOf(taskId)});
+            db.close();
+
+            logger.info(TAG, "Updated streak for task " + taskId +
+                       " - Current: " + task.getCurrentStreak() +
+                       ", Longest: " + task.getLongestStreak());
+        }
+    }
+
+    /**
+     * Get a single task by ID
+     */
+    private Task getTask(long taskId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(TABLE_TASKS, null,
+                                COLUMN_ID + " = ?",
+                                new String[]{String.valueOf(taskId)},
+                                null, null, null);
+
+        Task task = null;
+        if (cursor != null && cursor.moveToFirst()) {
+            task = new Task();
+            task.setId(cursor.getLong(cursor.getColumnIndex(COLUMN_ID)));
+            task.setTitle(cursor.getString(cursor.getColumnIndex(COLUMN_TITLE)));
+
+            // Get streak fields if they exist
+            int streakIndex = cursor.getColumnIndex(COLUMN_CURRENT_STREAK);
+            if (streakIndex >= 0) {
+                task.setCurrentStreak(cursor.getInt(streakIndex));
+                task.setLongestStreak(cursor.getInt(cursor.getColumnIndex(COLUMN_LONGEST_STREAK)));
+                task.setLastStreakDate(cursor.getLong(cursor.getColumnIndex(COLUMN_LAST_STREAK_DATE)));
+            }
+            cursor.close();
+        }
+        db.close();
+
+        return task;
     }
 
     /**

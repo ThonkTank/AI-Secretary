@@ -799,8 +799,14 @@ public class TaskActivity extends Activity {
                 descriptionText.setVisibility(View.GONE);
             }
 
-            // Category, Priority, Due Date and Recurrence
+            // Category, Priority, Streak, Due Date and Recurrence
             String info = task.getCategory() + " | Priority: " + task.getPriorityString();
+
+            // Add streak if > 0
+            if (task.getCurrentStreak() > 0) {
+                info += " | 🔥 " + task.getCurrentStreak() + " day" +
+                       (task.getCurrentStreak() > 1 ? "s" : "");
+            }
 
             // Add due date if set
             if (task.getDueDate() > 0) {

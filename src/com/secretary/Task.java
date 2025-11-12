@@ -33,6 +33,11 @@ public class Task {
     private int completionsThisPeriod = 0; // For FREQUENCY type tracking
     private long currentPeriodStart = 0; // When current period started
 
+    // Streak tracking
+    private int currentStreak = 0; // Current consecutive completions
+    private int longestStreak = 0; // Best streak ever
+    private long lastStreakDate = 0; // Last date counted for streak
+
     // Constructors
     public Task() {
         this.createdAt = System.currentTimeMillis();
@@ -159,6 +164,31 @@ public class Task {
 
     public void setCurrentPeriodStart(long currentPeriodStart) {
         this.currentPeriodStart = currentPeriodStart;
+    }
+
+    // Streak Getters and Setters
+    public int getCurrentStreak() {
+        return currentStreak;
+    }
+
+    public void setCurrentStreak(int currentStreak) {
+        this.currentStreak = currentStreak;
+    }
+
+    public int getLongestStreak() {
+        return longestStreak;
+    }
+
+    public void setLongestStreak(int longestStreak) {
+        this.longestStreak = longestStreak;
+    }
+
+    public long getLastStreakDate() {
+        return lastStreakDate;
+    }
+
+    public void setLastStreakDate(long lastStreakDate) {
+        this.lastStreakDate = lastStreakDate;
     }
 
     // Utility methods
