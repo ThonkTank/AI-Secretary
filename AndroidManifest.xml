@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.secretary.helloworld"
-    android:versionCode="24"
-    android:versionName="0.0.24">
+    android:versionCode="25"
+    android:versionName="0.0.25">
 
     <uses-sdk
         android:minSdkVersion="28"
@@ -24,5 +24,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- ContentProvider für Log-Zugriff durch Claude Code / Termux -->
+        <provider
+            android:name=".LogProvider"
+            android:authorities="com.secretary.helloworld.logs"
+            android:exported="true"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>

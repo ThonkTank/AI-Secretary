@@ -29,7 +29,7 @@ public class MainActivity extends Activity {
 
         Log.i(TAG, "=== Application onCreate started ===");
 
-        // Logger initialisieren (keine Permissions mehr nötig!)
+        // Logger initialisieren
         logger = AppLogger.getInstance(this);
         logger.info(TAG, "=== Application started ===");
 

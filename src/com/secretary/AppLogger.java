@@ -24,14 +24,13 @@ public class AppLogger {
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
         logLines = new ArrayList<>();
 
-        // Public Download folder - accessible to Termux and other apps
-        // Pfad: /sdcard/Download/AISecretary_logs.txt
-        File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        logFile = new File(downloadDir, "AISecretary_logs.txt");
+        // Internal storage backup (optional, für manuellen Zugriff)
+        // Hauptzugriff erfolgt über ContentProvider (content://com.secretary.helloworld.logs/file)
+        logFile = new File(context.getFilesDir(), "AISecretary_logs.txt");
 
         // Initiale Log-Nachricht
         info(TAG, "AppLogger initialized");
-        info(TAG, "Log file path: " + logFile.getAbsolutePath());
+        info(TAG, "Logs accessible via ContentProvider: content://com.secretary.helloworld.logs/file");
     }
 
     public static synchronized AppLogger getInstance(Context context) {

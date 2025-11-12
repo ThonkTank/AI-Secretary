@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **AI Secretary** is a native Android task management app developed in Termux on Android. The project is currently in Phase 0 (Foundation Systems), implementing auto-update and logging infrastructure before building the main Taskmaster feature suite.
 
+**Scope:** Personal use only - not intended for Google Play distribution.
+
 **Current Status:** Phase 0 code implemented but not yet functional - requires debugging.
 
 **Repository:** https://github.com/ThonkTank/AI-Secretary
@@ -17,10 +19,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Environment
 
 ### Hardware & System
-- **Primary:** Google Pixel 8 (aarch64), Android 16
+- **Primary:** Google Pixel 8 (aarch64)
+- **Android Version:** Android 16 (API Level 36)
 - **Development:** Termux (googleplay.2025.10.05)
 - **Java:** OpenJDK 21.0.9
-- **Android SDK:** API 33 (compile), API 28-35 (runtime)
+- **Android SDK:** API 33 (compile), API 28-36 (runtime)
+
+### Android 16 Storage Constraints
+- **Scoped Storage:** Fully enforced (since API 29)
+- **WRITE_EXTERNAL_STORAGE:** Deprecated, no longer works
+- **File Access:** Apps cannot read files created by other apps in shared storage
+- **Impact:** Termux cannot read log files created by AI Secretary in Download folder
+- **Solution Required:** MANAGE_EXTERNAL_STORAGE permission or ContentProvider
 
 ### Critical Constraint: No Local Gradle
 Gradle does NOT work in Termux (JVM libiconv error). Use GitHub Actions for all builds.
@@ -93,7 +103,8 @@ src/com/secretary/
 ├── MainActivity.java        # Main UI, Settings dialog, Update UI
 ├── UpdateChecker.java       # GitHub Releases API client
 ├── UpdateInstaller.java     # APK download via DownloadManager
-└── AppLogger.java           # In-memory logging (500 line buffer)
+├── AppLogger.java           # In-memory logging (500 line buffer)
+└── LogProvider.java         # ContentProvider for log access
 
 res/
 ├── layout/
@@ -120,11 +131,19 @@ res/
 
 **AppLogger.java**
 - Singleton pattern for centralized logging
-- Triple redundancy: In-memory (max 500 lines) + File + Logcat
+- Triple redundancy: In-memory (max 500 lines) + File (backup) + Logcat
 - Three levels: INFO, DEBUG, ERROR
-- File location: `/sdcard/Android/data/com.secretary.helloworld/files/AISecretary_logs.txt`
-- Uses app-specific external storage (no permissions needed)
-- Fallback to internal storage if external unavailable
+- **Purpose:** Enable Claude Code to read logs for informed development decisions
+- User can view logs in-app (Settings → View Logs)
+- **Access:** Via LogProvider ContentProvider (see "Accessing Logs" section below)
+
+**LogProvider.java**
+- ContentProvider that exports logs to external tools
+- URI: `content://com.secretary.helloworld.logs/file`
+- Reads in-memory logs from AppLogger
+- Creates temporary file in cache for each access
+- Exported without permissions (personal use, no security risk)
+- Enables Claude Code to read logs with `content read --uri ...`
 
 **MainActivity.java**
 - Single Activity app
@@ -135,6 +154,45 @@ res/
 ### Package Structure
 - **Current:** Flat structure in `com.secretary.helloworld`
 - **Planned:** Migrate to `com.secretary` and layer-based structure (data/domain/presentation)
+
+---
+
+## Accessing Logs
+
+**LogProvider.java** - ContentProvider for log access
+
+The app exposes logs via a ContentProvider that Claude Code can read without any permissions. This enables informed debugging and development decisions based on real app behavior.
+
+### How to Read Logs
+
+```bash
+# Read current logs (recommended method)
+content read --uri content://com.secretary.helloworld.logs/file
+
+# Save logs to file for analysis
+content read --uri content://com.secretary.helloworld.logs/file > ~/app_logs.txt
+
+# View last 20 lines
+content read --uri content://com.secretary.helloworld.logs/file | tail -20
+
+# Search for errors
+content read --uri content://com.secretary.helloworld.logs/file | grep ERROR
+```
+
+### When to Read Logs
+
+- **After app crashes:** Understand what happened before crash
+- **After feature implementation:** Verify feature is working correctly
+- **When debugging issues:** See actual execution flow and errors
+- **Before planning next steps:** Base decisions on real behavior, not assumptions
+
+### Technical Details
+
+- **Provider:** LogProvider.java exports in-memory logs
+- **URI:** `content://com.secretary.helloworld.logs/file`
+- **Format:** Plain text, one log line per line
+- **Access:** No permissions required (exported provider)
+- **Availability:** Works even if app crashes (last 500 lines preserved in memory)
 
 ---
 
@@ -154,8 +212,8 @@ res/
 
 ```xml
 <manifest package="com.secretary.helloworld"
-    android:versionCode="22"
-    android:versionName="0.0.22">
+    android:versionCode="25"
+    android:versionName="0.0.25">
 ```
 
 **Update Version:**
@@ -166,7 +224,7 @@ res/
    - patch = build number within phase
 3. Commit and push - GitHub Actions will create release with tag `v{versionName}`
 
-**Current:** v0.0.22 (Build 22) - Phase 0 Development
+**Current:** v0.0.25 (Build 25) - Phase 0 Development
 
 ---
 
@@ -382,8 +440,8 @@ apksigner verify -v app_signed.apk
 ## Next Steps for Development
 
 **Immediate (Phase 0 Completion):**
-1. ✅ Logging System - file-based logging implemented (v0.0.23)
-2. Test and verify Claude Code can read log file at app-specific storage path
+1. ✅ Logging System - ContentProvider implemented (v0.0.25)
+2. ✅ Claude Code can read logs via `content read --uri content://...`
 3. Debug Update System - test if app can check GitHub for updates
 4. Fix GitHub token security issue (currently hardcoded in UpdateChecker.java)
 5. Change package name to `com.secretary`
@@ -398,5 +456,5 @@ apksigner verify -v app_signed.apk
 ---
 
 **Last Updated:** 2025-11-12
-**Current Version:** v0.0.23 (Build 23)
-**Status:** Phase 0 - File-based logging to app-specific storage
+**Current Version:** v0.0.25 (Build 25)
+**Status:** Phase 0 - ContentProvider logging system implemented
