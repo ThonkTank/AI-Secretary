@@ -105,3 +105,4 @@ Siehe `../CLAUDE.md` für Details zum Produktions-Workflow.
 ---
 
 **Status:** ✅ Erfolgreich gebaut und getestet
+# Trigger GitHub Actions build
