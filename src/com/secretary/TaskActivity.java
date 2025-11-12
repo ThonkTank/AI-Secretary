@@ -16,6 +16,7 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -827,11 +828,16 @@ public class TaskActivity extends Activity {
 
             // Checkbox listener
             checkBox.setOnClickListener(v -> {
-                task.setCompleted(checkBox.isChecked());
-                dbHelper.markTaskCompleted(task.getId(), checkBox.isChecked());
-                logger.info(TAG, "Task " + task.getTitle() + " marked as " +
-                          (checkBox.isChecked() ? "completed" : "active"));
-                loadTasks();
+                if (checkBox.isChecked()) {
+                    // Show completion dialog when marking as complete
+                    showCompletionDialog(task);
+                } else {
+                    // Direct uncheck (no dialog needed)
+                    task.setCompleted(false);
+                    dbHelper.markTaskCompleted(task.getId(), false);
+                    logger.info(TAG, "Task " + task.getTitle() + " marked as active");
+                    loadTasks();
+                }
             });
 
             // Edit button
@@ -857,6 +863,91 @@ public class TaskActivity extends Activity {
 
             return convertView;
         }
+    }
+
+    private void showCompletionDialog(Task task) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_completion, null);
+        builder.setView(dialogView);
+
+        AlertDialog dialog = builder.create();
+
+        // Find dialog views
+        TextView taskTitleText = dialogView.findViewById(R.id.completionTaskTitle);
+        EditText timeSpentInput = dialogView.findViewById(R.id.timeSpentInput);
+        TextView averageTimeText = dialogView.findViewById(R.id.averageTimeText);
+        SeekBar difficultySeekBar = dialogView.findViewById(R.id.difficultySeekBar);
+        TextView difficultyValueText = dialogView.findViewById(R.id.difficultyValueText);
+        EditText notesInput = dialogView.findViewById(R.id.completionNotesInput);
+        CheckBox quickCompleteCheckBox = dialogView.findViewById(R.id.quickCompleteCheckBox);
+        Button skipButton = dialogView.findViewById(R.id.skipDetailsButton);
+        Button saveButton = dialogView.findViewById(R.id.saveCompletionButton);
+
+        // Set task title
+        taskTitleText.setText(task.getTitle());
+
+        // Show average time if available
+        int avgTime = dbHelper.getAverageCompletionTime(task.getId());
+        if (avgTime > 0) {
+            averageTimeText.setText("(Avg: " + avgTime + " min)");
+            timeSpentInput.setText(String.valueOf(avgTime));
+        }
+
+        // Setup difficulty seekbar
+        difficultySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                difficultyValueText.setText("Difficulty: " + progress + "/10");
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        // Skip button (complete without details)
+        skipButton.setOnClickListener(v -> {
+            task.setCompleted(true);
+            dbHelper.markTaskCompleted(task.getId(), true);
+            logger.info(TAG, "Task " + task.getTitle() + " completed (quick)");
+            dialog.dismiss();
+            loadTasks();
+        });
+
+        // Save button (complete with details)
+        saveButton.setOnClickListener(v -> {
+            int timeSpent = 0;
+            try {
+                timeSpent = Integer.parseInt(timeSpentInput.getText().toString());
+            } catch (NumberFormatException e) {
+                // Default to 0 if invalid
+            }
+
+            int difficulty = difficultySeekBar.getProgress();
+            String notes = notesInput.getText().toString().trim();
+
+            // Save completion details
+            dbHelper.saveCompletion(task.getId(), timeSpent, difficulty, notes);
+
+            // Mark task as completed
+            task.setCompleted(true);
+            dbHelper.markTaskCompleted(task.getId(), true);
+
+            logger.info(TAG, "Task " + task.getTitle() + " completed with details " +
+                       "(time: " + timeSpent + " min, difficulty: " + difficulty + ")");
+
+            // Save quick complete preference if checked
+            if (quickCompleteCheckBox.isChecked()) {
+                // TODO: Save preference for this task
+            }
+
+            dialog.dismiss();
+            loadTasks();
+        });
+
+        dialog.show();
     }
 
     @Override

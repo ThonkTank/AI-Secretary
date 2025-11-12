@@ -17,7 +17,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     // Database configuration
     private static final String DATABASE_NAME = "taskmaster.db";
-    private static final int DATABASE_VERSION = 3; // Incremented for category support
+    private static final int DATABASE_VERSION = 4; // Incremented for completion tracking
 
     // Table and column names
     private static final String TABLE_TASKS = "tasks";
@@ -29,6 +29,15 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_DUE_DATE = "due_date";
     private static final String COLUMN_IS_COMPLETED = "is_completed";
     private static final String COLUMN_PRIORITY = "priority";
+
+    // Completion history table
+    private static final String TABLE_COMPLETIONS = "completions";
+    private static final String COLUMN_COMPLETION_ID = "completion_id";
+    private static final String COLUMN_TASK_ID = "task_id";
+    private static final String COLUMN_COMPLETED_AT = "completed_at";
+    private static final String COLUMN_TIME_SPENT = "time_spent_minutes";
+    private static final String COLUMN_DIFFICULTY = "difficulty";
+    private static final String COLUMN_NOTES = "notes";
 
     // Recurrence columns
     private static final String COLUMN_RECURRENCE_TYPE = "recurrence_type";
@@ -59,6 +68,18 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
             COLUMN_CURRENT_PERIOD_START + " INTEGER DEFAULT 0" +
             ");";
 
+    // SQL statement to create completions table
+    private static final String CREATE_TABLE_COMPLETIONS =
+            "CREATE TABLE " + TABLE_COMPLETIONS + " (" +
+            COLUMN_COMPLETION_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+            COLUMN_TASK_ID + " INTEGER NOT NULL, " +
+            COLUMN_COMPLETED_AT + " INTEGER NOT NULL, " +
+            COLUMN_TIME_SPENT + " INTEGER DEFAULT 0, " +
+            COLUMN_DIFFICULTY + " INTEGER DEFAULT 5, " +
+            COLUMN_NOTES + " TEXT, " +
+            "FOREIGN KEY(" + COLUMN_TASK_ID + ") REFERENCES " + TABLE_TASKS + "(" + COLUMN_ID + ")" +
+            ");";
+
     public TaskDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
         this.logger = AppLogger.getInstance(context);
@@ -68,7 +89,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(CREATE_TABLE_TASKS);
-        logger.info(TAG, "Database created with tasks table");
+        db.execSQL(CREATE_TABLE_COMPLETIONS);
+        logger.info(TAG, "Database created with tasks and completions tables");
     }
 
     @Override
@@ -99,6 +121,16 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 logger.info(TAG, "Successfully added category column");
             } catch (Exception e) {
                 logger.error(TAG, "Error adding category column", e);
+            }
+        }
+
+        if (oldVersion < 4) {
+            // Add completions table for tracking history
+            try {
+                db.execSQL(CREATE_TABLE_COMPLETIONS);
+                logger.info(TAG, "Successfully created completions table");
+            } catch (Exception e) {
+                logger.error(TAG, "Error creating completions table", e);
             }
         }
     }
@@ -678,6 +710,79 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         cal.set(java.util.Calendar.SECOND, 0);
         cal.set(java.util.Calendar.MILLISECOND, 0);
         return cal.getTimeInMillis();
+    }
+
+    /**
+     * Save task completion with details
+     */
+    public long saveCompletion(long taskId, int timeSpentMinutes, int difficulty, String notes) {
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_TASK_ID, taskId);
+        values.put(COLUMN_COMPLETED_AT, System.currentTimeMillis());
+        values.put(COLUMN_TIME_SPENT, timeSpentMinutes);
+        values.put(COLUMN_DIFFICULTY, difficulty);
+        values.put(COLUMN_NOTES, notes);
+
+        long id = db.insert(TABLE_COMPLETIONS, null, values);
+        db.close();
+
+        logger.info(TAG, "Completion saved for task " + taskId + " (time: " + timeSpentMinutes +
+                   " min, difficulty: " + difficulty + ")");
+        return id;
+    }
+
+    /**
+     * Get completion history for a task
+     */
+    public List<ContentValues> getTaskCompletionHistory(long taskId) {
+        List<ContentValues> history = new ArrayList<>();
+
+        String query = "SELECT * FROM " + TABLE_COMPLETIONS +
+                      " WHERE " + COLUMN_TASK_ID + " = " + taskId +
+                      " ORDER BY " + COLUMN_COMPLETED_AT + " DESC";
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(query, null);
+
+        if (cursor.moveToFirst()) {
+            do {
+                ContentValues completion = new ContentValues();
+                completion.put(COLUMN_COMPLETION_ID, cursor.getLong(cursor.getColumnIndex(COLUMN_COMPLETION_ID)));
+                completion.put(COLUMN_COMPLETED_AT, cursor.getLong(cursor.getColumnIndex(COLUMN_COMPLETED_AT)));
+                completion.put(COLUMN_TIME_SPENT, cursor.getInt(cursor.getColumnIndex(COLUMN_TIME_SPENT)));
+                completion.put(COLUMN_DIFFICULTY, cursor.getInt(cursor.getColumnIndex(COLUMN_DIFFICULTY)));
+                completion.put(COLUMN_NOTES, cursor.getString(cursor.getColumnIndex(COLUMN_NOTES)));
+                history.add(completion);
+            } while (cursor.moveToNext());
+        }
+
+        cursor.close();
+        db.close();
+
+        return history;
+    }
+
+    /**
+     * Get average completion time for a task
+     */
+    public int getAverageCompletionTime(long taskId) {
+        String query = "SELECT AVG(" + COLUMN_TIME_SPENT + ") FROM " + TABLE_COMPLETIONS +
+                      " WHERE " + COLUMN_TASK_ID + " = " + taskId;
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(query, null);
+
+        int average = 0;
+        if (cursor.moveToFirst()) {
+            average = cursor.getInt(0);
+        }
+
+        cursor.close();
+        db.close();
+
+        return average;
     }
 
     /**

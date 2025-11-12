@@ -54,6 +54,7 @@ jobs:
           res/layout/activity_tasks.xml \
           res/layout/task_list_item.xml \
           res/layout/dialog_add_task.xml \
+          res/layout/dialog_completion.xml \
           res/menu/main_menu.xml \
           -o compiled_res/
 

@@ -1,9 +1,9 @@
 # AI Secretary - Technical Debt & Improvement Roadmap
 
 **Erstellt:** 12.11.2025
-**Letzte Analyse:** Version 0.3.8 (Build 308)
-**Status:** Phase 1 - Taskmaster 🚀 COMPLETE (100%) ✅ | Phase 2 - Core Task Management 🚧 IN PROGRESS
-**Letzte Aktualisierung:** 12.11.2025 - v0.3.8 Released! Kategorien als Freitext mit Autocomplete
+**Letzte Analyse:** Version 0.3.9 (Build 309)
+**Status:** Phase 1 - Taskmaster 🚀 COMPLETE (100%) ✅ | Phase 2 - Core Task Management 🚧 IN PROGRESS (60%)
+**Letzte Aktualisierung:** 12.11.2025 - v0.3.9 Released! Sortierung und Statistiken implementiert
 
 ---
 
@@ -1610,6 +1610,21 @@ Diese Roadmap kombiniert technische Verbesserungen mit Feature-Entwicklung.
 ---
 
 ## CHANGELOG
+
+### 2025-11-12 (Update 11 - v0.3.9 Released mit Sortierung und Statistiken)
+- **Version 0.3.9 veröffentlicht - Phase 2 zu 60% fertig**
+  - ✅ Task-Sortierung mit 5 Optionen implementiert
+    - Priorität (Hoch zu Niedrig)
+    - Fälligkeitsdatum (Nächste zuerst)
+    - Kategorie (A-Z)
+    - Erstellungsdatum (Neueste zuerst)
+    - Titel (A-Z)
+  - ✅ Task-Statistiken implementiert
+    - Heute erledigte Tasks
+    - In den letzten 7 Tagen erledigte Tasks
+    - Anzahl überfälliger Tasks
+  - ✅ Statistik-Header über der Task-Liste
+  - ✅ Erweiterte Datenbank-Methoden für Statistiken
 
 ### 2025-11-12 (Update 10 - v0.3.8 Released mit Freitext-Kategorien)
 - **Version 0.3.8 erfolgreich veröffentlicht**
