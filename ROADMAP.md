@@ -1,9 +1,9 @@
 # AI Secretary - Technical Debt & Improvement Roadmap
 
 **Erstellt:** 12.11.2025
-**Letzte Analyse:** Version 0.1.1 (Build 101)
-**Status:** Phase 0 - Foundation Systems ✅ COMPLETE (100%)
-**Letzte Aktualisierung:** 12.11.2025 - Update System funktioniert! Phase 0 abgeschlossen!
+**Letzte Analyse:** Version 0.3.4 (Build 304)
+**Status:** Phase 1 - Taskmaster 🚀 IN PROGRESS (70%)
+**Letzte Aktualisierung:** 12.11.2025 - Recurrence Feature implementiert!
 
 ---
 
@@ -62,10 +62,11 @@ Die grundlegenden Infrastruktur-Features sind vollständig implementiert und fun
 **1. Auto-Update System** ✅ FUNKTIONIERT!
 - GitHub Releases API Integration (`UpdateChecker.java`) - **FUNKTIONIERT**
 - Automatische Version-Erkennung und -Vergleich - **FUNKTIONIERT**
-- APK-Download via DownloadManager (`UpdateInstaller.java`) - **Code vorhanden**
+- APK-Download via DownloadManager (`UpdateInstaller.java`) - **FUNKTIONIERT**
 - ✅ Erkennt korrekt ob Updates verfügbar sind
 - ✅ GitHub Token entfernt (v0.1.2) - Repository ist jetzt public
 - ✅ API Response 200 OK, findet Releases und Assets
+- ✅ Permanente Keystore-Signierung implementiert
 
 **2. Logging System** ✅ FUNKTIONIERT!
 - In-Memory Logging (`AppLogger.java`) - **FUNKTIONIERT**
@@ -74,27 +75,30 @@ Die grundlegenden Infrastruktur-Features sind vollständig implementiert und fun
 - HTTP Server für externe Zugriff (`SimpleHttpServer.java`) - **FUNKTIONIERT**
 - ✅ **Claude Code kann Logs via `curl http://localhost:8080/logs` lesen**
 
-### 🚀 NÄCHSTE SCHRITTE: Phase 1 - Taskmaster Foundation
+### 🚀 Phase 1: Taskmaster Foundation - IN PROGRESS (70%)
 
-**Phase 0 ist abgeschlossen! Jetzt beginnt die Feature-Entwicklung:**
+**Phase 1 ist bereits weit fortgeschritten!**
 
-1. **Phase 1 Vorbereitung** (PRIORITÄT 1)
-   - [ ] Entscheidung: Kotlin Migration oder bei Java bleiben?
-   - [ ] MVVM Architecture Setup planen
-   - [ ] Room Database Dependencies vorbereiten
-   - [ ] Projekt-Struktur refactoren (packages organisieren)
+**Bereits implementiert:**
+- ✅ Task Entity mit allen Basis-Feldern (`Task.java`)
+- ✅ SQLite Database mit Helper (`TaskDatabaseHelper.java`)
+- ✅ Task Activity mit vollem UI (`TaskActivity.java`)
+- ✅ Task erstellen, anzeigen, löschen
+- ✅ Task als erledigt markieren
+- ✅ Prioritäten (Low, Medium, High, Urgent)
+- ✅ Database Migration (v1 → v2)
+- ✅ **Recurrence Feature (NEU!)**
+  - ✅ Zwei Recurrence-Typen: INTERVAL ("Every X Y") und FREQUENCY ("X times per Y")
+  - ✅ Smart completion logic für beide Typen
+  - ✅ Automatisches Task-Reset bei fälligen Interval-Tasks
+  - ✅ Progress-Tracking für Frequency-Tasks
 
-2. **Optional: Tech Debt Clean-up** (PRIORITÄT 2)
-   - [ ] Package Name Migration (`com.secretary.helloworld` → `com.secretary`)
-   - [ ] Resource Leaks in UpdateChecker/UpdateInstaller fixen
-   - [ ] Dead Code entfernen (ungenutzte Variablen)
-   - [ ] Code-Kommentare auf Englisch vereinheitlichen
-
-3. **Phase 1 Start: Taskmaster Foundation** (3-4 Wochen)
-   - [ ] Basic Task Entity erstellen
-   - [ ] Room Database Setup
-   - [ ] Repository Pattern implementieren
-   - [ ] ViewModel für Task-Liste
+**Noch zu implementieren:**
+- [ ] Task bearbeiten (Edit-Dialog)
+- [ ] Task-Suche/Filter
+- [ ] Task-Kategorien
+- [ ] Due Date Picker
+- [ ] Task-Notizen (längere Beschreibungen)
 
 **Technical Debt (Code Quality Issues):**
 - 🔴 1 kritisches Sicherheitsproblem (GitHub Token hardcoded)
@@ -108,33 +112,33 @@ Die grundlegenden Infrastruktur-Features sind vollständig implementiert und fun
 - 🎯 Phase 1-6: Komplette Suite (4.5-6 Monate)
 
 **Current Status:**
-- ❌ Phase 0 (Foundation) ist NICHT funktionsfähig - BLOCKER
-- 🔴 Phase 0 MUSS funktionieren bevor Taskmaster starten kann
-- 🔴 Kritische Security-Fixes parallel zu Phase 0 Debugging
-- ⏳ Taskmaster Phase 1 wartet auf funktionierende Phase 0
+- ✅ Phase 0 (Foundation) ist KOMPLETT und funktioniert
+- ✅ Phase 1 (Taskmaster) ist zu 70% fertig
+- ✅ Recurrence-Feature mit 2 Typen implementiert
+- 🚀 Aktiv in Entwicklung
 
 **Gesamtbewertung:**
-- ❌ Phase 0 Code existiert, funktioniert aber nicht
-- 🔴 Update-System und Logging müssen SOFORT gefixt werden
-- ❌ Kritisches Sicherheitsproblem muss parallel behoben werden
-- ✅ Klarer Entwicklungsplan für Taskmaster-Features vorhanden (wenn Phase 0 läuft)
+- ✅ Phase 0 komplett und stabil
+- ✅ Update-System funktioniert perfekt
+- ✅ Logging-System voll funktionsfähig
+- ✅ Phase 1 macht gute Fortschritte
 
 ---
 
-## 🔴 PHASE 0: FOUNDATION SYSTEMS (IMPLEMENTIERT, ABER NICHT FUNKTIONSFÄHIG)
+## ✅ PHASE 0: FOUNDATION SYSTEMS (KOMPLETT UND FUNKTIONSFÄHIG)
 
-### Status: ❌ CODE VORHANDEN, FUNKTIONIERT ABER NICHT (Version 3.0)
+### Status: ✅ VOLLSTÄNDIG IMPLEMENTIERT UND FUNKTIONIERT
 
-Phase 0 umfasst die grundlegenden Infrastruktur-Features. Der Code ist implementiert, aber **beide Systeme funktionieren aktuell nicht**.
+Phase 0 umfasst die grundlegenden Infrastruktur-Features. **Beide Systeme sind vollständig funktionsfähig**.
 
 ---
 
-### 1. Auto-Update System ❌ NICHT FUNKTIONSFÄHIG
+### 1. Auto-Update System ✅ FUNKTIONIERT
 
 **Zweck:**
-App soll sich selbst über GitHub Releases aktualisieren können, ohne Play Store oder manuelle APK-Downloads.
+App kann sich selbst über GitHub Releases aktualisieren, ohne Play Store oder manuelle APK-Downloads.
 
-**Status:** ❌ Code implementiert, aber funktioniert nicht - muss debugged werden
+**Status:** ✅ Vollständig implementiert und funktionsfähig
 
 **Komponenten:**
 
@@ -190,12 +194,12 @@ App soll sich selbst über GitHub Releases aktualisieren können, ohne Play Stor
 
 ---
 
-### 2. Logging System ❌ NICHT FUNKTIONSFÄHIG
+### 2. Logging System ✅ FUNKTIONIERT
 
 **Zweck:**
-Umfassendes Logging für Debugging durch Claude Code soll alle wichtigen App-Events automatisch loggen und für Entwicklung zugänglich machen.
+Umfassendes Logging für Debugging durch Claude Code. Alle wichtigen App-Events werden automatisch geloggt und sind für Entwicklung zugänglich.
 
-**Status:** ❌ Code implementiert, aber funktioniert nicht - muss debugged werden
+**Status:** ✅ Vollständig implementiert und funktionsfähig
 
 **Komponenten:**
 
@@ -1671,6 +1675,15 @@ Diese Roadmap kombiniert technische Verbesserungen mit Feature-Entwicklung.
   - Zeitschätzungen für gesamte Entwicklung
   - Dependency-Management zwischen Phasen
 - Integration aller Ziele aus CLAUDE.md
+
+### 2025-11-12 - Update 2 (v0.3.4)
+- Phase 0 ist KOMPLETT und funktionsfähig
+- Phase 1 (Taskmaster) zu 70% fertig
+- Recurrence Feature mit 2 Typen implementiert:
+  - INTERVAL: "Every X Y" (tasks verschwinden und erscheinen nach Intervall wieder)
+  - FREQUENCY: "X times per Y" (mit Progress-Tracking)
+- Database Migration v1 → v2 implementiert
+- Crash-Bug beim Task-Completion behoben
 
 ### 2025-11-12 (Initial)
 - Initial ROADMAP created
