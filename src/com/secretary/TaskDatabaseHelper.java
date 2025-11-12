@@ -8,49 +8,15 @@ import android.database.sqlite.SQLiteOpenHelper;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.secretary.helloworld.DatabaseConstants.*;
+
 /**
  * Database helper for Task management.
  * Handles all database operations for tasks.
  */
 public class TaskDatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "TaskDatabaseHelper";
-
-    // Database configuration
-    private static final String DATABASE_NAME = "taskmaster.db";
-    private static final int DATABASE_VERSION = 5; // Incremented for streak tracking
-
-    // Table and column names
-    private static final String TABLE_TASKS = "tasks";
-    private static final String COLUMN_ID = "id";
-    private static final String COLUMN_TITLE = "title";
-    private static final String COLUMN_DESCRIPTION = "description";
-    private static final String COLUMN_CATEGORY = "category";
-    private static final String COLUMN_CREATED_AT = "created_at";
-    private static final String COLUMN_DUE_DATE = "due_date";
-    private static final String COLUMN_IS_COMPLETED = "is_completed";
-    private static final String COLUMN_PRIORITY = "priority";
-
-    // Completion history table
-    private static final String TABLE_COMPLETIONS = "completions";
-    private static final String COLUMN_COMPLETION_ID = "completion_id";
-    private static final String COLUMN_TASK_ID = "task_id";
-    private static final String COLUMN_COMPLETED_AT = "completed_at";
-    private static final String COLUMN_TIME_SPENT = "time_spent_minutes";
-    private static final String COLUMN_DIFFICULTY = "difficulty";
-    private static final String COLUMN_NOTES = "notes";
-
-    // Recurrence columns
-    private static final String COLUMN_RECURRENCE_TYPE = "recurrence_type";
-    private static final String COLUMN_RECURRENCE_AMOUNT = "recurrence_amount";
-    private static final String COLUMN_RECURRENCE_UNIT = "recurrence_unit";
-    private static final String COLUMN_LAST_COMPLETED_DATE = "last_completed_date";
-    private static final String COLUMN_COMPLETIONS_THIS_PERIOD = "completions_this_period";
-    private static final String COLUMN_CURRENT_PERIOD_START = "current_period_start";
-
-    // Streak columns
-    private static final String COLUMN_CURRENT_STREAK = "current_streak";
-    private static final String COLUMN_LONGEST_STREAK = "longest_streak";
-    private static final String COLUMN_LAST_STREAK_DATE = "last_streak_date";
+    // All database constants are now imported from DatabaseConstants class
 
     private AppLogger logger;
 
