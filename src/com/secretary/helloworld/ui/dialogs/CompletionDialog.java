@@ -105,9 +105,9 @@ public class CompletionDialog {
             notesInput.setVisibility(visibility);
 
             // Find the parent layouts and hide/show them
-            View timeLayout = dialogView.findViewById(R.id.timeSpentInput).getParent();
-            View difficultyLayout = dialogView.findViewById(R.id.difficultySeekBar).getParent();
-            View notesLayout = dialogView.findViewById(R.id.completionNotesInput).getParent();
+            View timeLayout = (View) dialogView.findViewById(R.id.timeSpentInput).getParent();
+            View difficultyLayout = (View) dialogView.findViewById(R.id.difficultySeekBar).getParent();
+            View notesLayout = (View) dialogView.findViewById(R.id.completionNotesInput).getParent();
 
             if (timeLayout instanceof View) {
                 ((View) timeLayout).setVisibility(visibility);
