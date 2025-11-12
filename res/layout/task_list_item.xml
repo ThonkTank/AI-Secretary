@@ -46,6 +46,15 @@
 
     </LinearLayout>
 
+    <!-- Edit Button -->
+    <Button
+        android:id="@+id/editTaskButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="✏"
+        android:minWidth="48dp"
+        android:layout_marginStart="8dp" />
+
     <!-- Delete Button -->
     <Button
         android:id="@+id/deleteTaskButton"

@@ -209,6 +209,177 @@ public class TaskActivity extends Activity {
         dialog.show();
     }
 
+    private void showEditTaskDialog(Task existingTask) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_task, null);
+        builder.setView(dialogView);
+
+        AlertDialog dialog = builder.create();
+
+        // Find dialog views
+        EditText titleInput = dialogView.findViewById(R.id.taskTitleInput);
+        EditText descriptionInput = dialogView.findViewById(R.id.taskDescriptionInput);
+        Spinner prioritySpinner = dialogView.findViewById(R.id.taskPrioritySpinner);
+        Button cancelButton = dialogView.findViewById(R.id.cancelButton);
+        Button saveButton = dialogView.findViewById(R.id.saveTaskButton);
+
+        // Recurrence views
+        CheckBox recurrenceCheckBox = dialogView.findViewById(R.id.recurrenceCheckBox);
+        LinearLayout recurrenceOptionsLayout = dialogView.findViewById(R.id.recurrenceOptionsLayout);
+        Spinner recurrenceTypeSpinner = dialogView.findViewById(R.id.recurrenceTypeSpinner);
+        EditText recurrenceAmountInput = dialogView.findViewById(R.id.recurrenceAmountInput);
+        TextView recurrenceLabel = dialogView.findViewById(R.id.recurrenceLabel);
+        Spinner recurrenceUnitSpinner = dialogView.findViewById(R.id.recurrenceUnitSpinner);
+
+        // Update dialog title
+        TextView dialogTitle = dialogView.findViewById(R.id.dialogTitleText);
+        if (dialogTitle == null) {
+            // If no specific title view, update the first TextView
+            TextView titleView = (TextView) ((LinearLayout) dialogView).getChildAt(0);
+            if (titleView != null) {
+                titleView.setText("Edit Task");
+            }
+        }
+
+        // Setup priority spinner
+        String[] priorities = {"Low", "Medium", "High", "Urgent"};
+        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, priorities);
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        prioritySpinner.setAdapter(spinnerAdapter);
+
+        // Setup recurrence type spinner
+        String[] recurrenceTypes = {"Every X Y", "X times per Y"};
+        ArrayAdapter<String> recTypeAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, recurrenceTypes);
+        recTypeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        recurrenceTypeSpinner.setAdapter(recTypeAdapter);
+
+        // Setup recurrence unit spinner
+        String[] recurrenceUnits = {"Day", "Week", "Month", "Year"};
+        ArrayAdapter<String> recUnitAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, recurrenceUnits);
+        recUnitAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        recurrenceUnitSpinner.setAdapter(recUnitAdapter);
+
+        // Pre-populate with existing task data
+        titleInput.setText(existingTask.getTitle());
+        descriptionInput.setText(existingTask.getDescription());
+        prioritySpinner.setSelection(existingTask.getPriority());
+
+        // Pre-populate recurrence if task is recurring
+        if (existingTask.isRecurring()) {
+            recurrenceCheckBox.setChecked(true);
+            recurrenceOptionsLayout.setVisibility(View.VISIBLE);
+
+            // Set recurrence type
+            if (existingTask.getRecurrenceType() == Task.RECURRENCE_INTERVAL) {
+                recurrenceTypeSpinner.setSelection(0);
+                recurrenceLabel.setText(" ");
+            } else {
+                recurrenceTypeSpinner.setSelection(1);
+                recurrenceLabel.setText(" times per ");
+            }
+
+            // Set amount and unit
+            recurrenceAmountInput.setText(String.valueOf(existingTask.getRecurrenceAmount()));
+            recurrenceUnitSpinner.setSelection(existingTask.getRecurrenceUnit());
+        }
+
+        // Handle recurrence checkbox
+        recurrenceCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            recurrenceOptionsLayout.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+        });
+
+        // Handle recurrence type selection
+        recurrenceTypeSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                if (position == 0) {
+                    // "Every X Y" selected
+                    recurrenceLabel.setText(" ");
+                } else {
+                    // "X times per Y" selected
+                    recurrenceLabel.setText(" times per ");
+                }
+            }
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+
+        // Update save button text
+        saveButton.setText("Update");
+
+        // Cancel button
+        cancelButton.setOnClickListener(v -> dialog.dismiss());
+
+        // Save button
+        saveButton.setOnClickListener(v -> {
+            String title = titleInput.getText().toString().trim();
+            String description = descriptionInput.getText().toString().trim();
+            int priority = prioritySpinner.getSelectedItemPosition();
+
+            if (title.isEmpty()) {
+                Toast.makeText(this, "Please enter a title", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Update existing task
+            existingTask.setTitle(title);
+            existingTask.setDescription(description);
+            existingTask.setPriority(priority);
+
+            // Handle recurrence
+            if (recurrenceCheckBox.isChecked()) {
+                String amountStr = recurrenceAmountInput.getText().toString().trim();
+                int amount = 1;
+                try {
+                    amount = Integer.parseInt(amountStr);
+                    if (amount < 1) amount = 1;
+                } catch (NumberFormatException e) {
+                    amount = 1;
+                }
+
+                int recurrenceType = recurrenceTypeSpinner.getSelectedItemPosition() == 0 ?
+                    Task.RECURRENCE_INTERVAL : Task.RECURRENCE_FREQUENCY;
+
+                existingTask.setRecurrenceType(recurrenceType);
+                existingTask.setRecurrenceAmount(amount);
+                existingTask.setRecurrenceUnit(recurrenceUnitSpinner.getSelectedItemPosition());
+
+                // If changing to frequency type and not already tracking, initialize period
+                if (recurrenceType == Task.RECURRENCE_FREQUENCY &&
+                    existingTask.getCurrentPeriodStart() == 0) {
+                    existingTask.setCurrentPeriodStart(System.currentTimeMillis());
+                    existingTask.setCompletionsThisPeriod(0);
+                }
+            } else {
+                // Remove recurrence
+                existingTask.setRecurrenceType(Task.RECURRENCE_NONE);
+                existingTask.setRecurrenceAmount(0);
+                existingTask.setRecurrenceUnit(Task.UNIT_DAY);
+                existingTask.setCompletionsThisPeriod(0);
+                existingTask.setCurrentPeriodStart(0);
+            }
+
+            // Update in database
+            dbHelper.updateTask(existingTask);
+
+            String message = "Task updated";
+            if (existingTask.isRecurring()) {
+                message += " - " + existingTask.getRecurrenceString();
+            }
+
+            logger.info(TAG, "Task updated: " + title + " (Recurring: " + existingTask.isRecurring() + ")");
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+
+            dialog.dismiss();
+            loadTasks();
+        });
+
+        dialog.show();
+    }
+
     // Custom adapter for task list
     private class TaskListAdapter extends BaseAdapter {
 
@@ -241,6 +412,7 @@ public class TaskActivity extends Activity {
             TextView titleText = convertView.findViewById(R.id.taskTitleText);
             TextView descriptionText = convertView.findViewById(R.id.taskDescriptionText);
             TextView priorityText = convertView.findViewById(R.id.taskPriorityText);
+            Button editButton = convertView.findViewById(R.id.editTaskButton);
             Button deleteButton = convertView.findViewById(R.id.deleteTaskButton);
 
             // Set data
@@ -286,6 +458,11 @@ public class TaskActivity extends Activity {
                 logger.info(TAG, "Task " + task.getTitle() + " marked as " +
                           (checkBox.isChecked() ? "completed" : "active"));
                 loadTasks();
+            });
+
+            // Edit button
+            editButton.setOnClickListener(v -> {
+                showEditTaskDialog(task);
             });
 
             // Delete button
