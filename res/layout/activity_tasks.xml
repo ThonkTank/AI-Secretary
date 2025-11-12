@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- Header -->
+    <TextView
+        android:id="@+id/taskHeaderText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tasks"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:padding="16dp"
+        android:background="?android:attr/colorPrimary"
+        android:textColor="#FFFFFF" />
+
+    <!-- Task List -->
+    <ListView
+        android:id="@+id/taskListView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp" />
+
+    <!-- Empty View -->
+    <TextView
+        android:id="@+id/emptyTasksText"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:text="No tasks yet.\nTap + to add a task."
+        android:gravity="center"
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+    <!-- Add Button -->
+    <Button
+        android:id="@+id/addTaskButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="+ Add Task"
+        android:textSize="18sp"
+        android:padding="16dp"
+        android:layout_margin="8dp" />
+
+</LinearLayout>

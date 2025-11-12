@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.secretary.helloworld"
-    android:versionCode="102"
-    android:versionName="0.1.2">
+    android:versionCode="200"
+    android:versionName="0.2.0">
 
     <uses-sdk
         android:minSdkVersion="28"
@@ -24,6 +24,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".TaskActivity"
+            android:label="Tasks"
+            android:exported="false" />
 
         <!-- ContentProvider für Log-Zugriff durch Claude Code / Termux -->
         <provider

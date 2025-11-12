@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -54,6 +55,17 @@ public class MainActivity extends Activity {
             logger.info(TAG, "Access logs from Termux: curl http://localhost:8080/logs");
         } catch (Exception e) {
             logger.error(TAG, "Failed to start HTTP Log Server", e);
+        }
+
+        // Setup Tasks button
+        Button openTasksButton = findViewById(R.id.openTasksButton);
+        if (openTasksButton != null) {
+            openTasksButton.setOnClickListener(v -> {
+                logger.info(TAG, "Opening Tasks activity");
+                Intent intent = new Intent(this, TaskActivity.class);
+                startActivity(intent);
+            });
+            logger.info(TAG, "Tasks button initialized");
         }
 
         // LOGS ANZEIGEN
