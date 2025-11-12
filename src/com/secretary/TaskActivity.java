@@ -162,7 +162,7 @@ public class TaskActivity extends Activity implements TaskListAdapter.TaskAction
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
                 sortOption = position;
-                applySorting();
+                applyFilters(); // Use applyFilters which includes sorting
             }
             @Override
             public void onNothingSelected(android.widget.AdapterView<?> parent) {}
