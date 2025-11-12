@@ -12,6 +12,7 @@ import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -96,6 +97,14 @@ public class TaskActivity extends Activity {
         Button cancelButton = dialogView.findViewById(R.id.cancelButton);
         Button saveButton = dialogView.findViewById(R.id.saveTaskButton);
 
+        // Recurrence views
+        CheckBox recurrenceCheckBox = dialogView.findViewById(R.id.recurrenceCheckBox);
+        LinearLayout recurrenceOptionsLayout = dialogView.findViewById(R.id.recurrenceOptionsLayout);
+        Spinner recurrenceTypeSpinner = dialogView.findViewById(R.id.recurrenceTypeSpinner);
+        EditText recurrenceAmountInput = dialogView.findViewById(R.id.recurrenceAmountInput);
+        TextView recurrenceLabel = dialogView.findViewById(R.id.recurrenceLabel);
+        Spinner recurrenceUnitSpinner = dialogView.findViewById(R.id.recurrenceUnitSpinner);
+
         // Setup priority spinner
         String[] priorities = {"Low", "Medium", "High", "Urgent"};
         ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this,
@@ -103,6 +112,41 @@ public class TaskActivity extends Activity {
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         prioritySpinner.setAdapter(spinnerAdapter);
         prioritySpinner.setSelection(1); // Default to Medium
+
+        // Setup recurrence type spinner
+        String[] recurrenceTypes = {"Every X Y", "X times per Y"};
+        ArrayAdapter<String> recTypeAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, recurrenceTypes);
+        recTypeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        recurrenceTypeSpinner.setAdapter(recTypeAdapter);
+
+        // Setup recurrence unit spinner
+        String[] recurrenceUnits = {"Day", "Week", "Month", "Year"};
+        ArrayAdapter<String> recUnitAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, recurrenceUnits);
+        recUnitAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        recurrenceUnitSpinner.setAdapter(recUnitAdapter);
+
+        // Handle recurrence checkbox
+        recurrenceCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            recurrenceOptionsLayout.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+        });
+
+        // Handle recurrence type selection
+        recurrenceTypeSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                if (position == 0) {
+                    // "Every X Y" selected
+                    recurrenceLabel.setText(" ");
+                } else {
+                    // "X times per Y" selected
+                    recurrenceLabel.setText(" times per ");
+                }
+            }
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
 
         // Cancel button
         cancelButton.setOnClickListener(v -> dialog.dismiss());
@@ -122,11 +166,41 @@ public class TaskActivity extends Activity {
             Task task = new Task(title, description);
             task.setPriority(priority);
 
+            // Handle recurrence
+            if (recurrenceCheckBox.isChecked()) {
+                String amountStr = recurrenceAmountInput.getText().toString().trim();
+                int amount = 1;
+                try {
+                    amount = Integer.parseInt(amountStr);
+                    if (amount < 1) amount = 1;
+                } catch (NumberFormatException e) {
+                    amount = 1;
+                }
+
+                int recurrenceType = recurrenceTypeSpinner.getSelectedItemPosition() == 0 ?
+                    Task.RECURRENCE_INTERVAL : Task.RECURRENCE_FREQUENCY;
+
+                task.setRecurrenceType(recurrenceType);
+                task.setRecurrenceAmount(amount);
+                task.setRecurrenceUnit(recurrenceUnitSpinner.getSelectedItemPosition());
+
+                // Initialize period tracking for frequency type
+                if (recurrenceType == Task.RECURRENCE_FREQUENCY) {
+                    task.setCurrentPeriodStart(System.currentTimeMillis());
+                    task.setCompletionsThisPeriod(0);
+                }
+            }
+
             long id = dbHelper.insertTask(task);
             task.setId(id);
 
-            logger.info(TAG, "Task created: " + title);
-            Toast.makeText(this, "Task added", Toast.LENGTH_SHORT).show();
+            String message = "Task added";
+            if (task.isRecurring()) {
+                message += " - " + task.getRecurrenceString();
+            }
+
+            logger.info(TAG, "Task created: " + title + " (Recurring: " + task.isRecurring() + ")");
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
 
             dialog.dismiss();
             loadTasks();
@@ -190,8 +264,16 @@ public class TaskActivity extends Activity {
                 descriptionText.setVisibility(View.GONE);
             }
 
-            // Priority
-            priorityText.setText("Priority: " + task.getPriorityString());
+            // Priority and Recurrence
+            String info = "Priority: " + task.getPriorityString();
+            if (task.isRecurring()) {
+                info += " | 🔁 " + task.getRecurrenceString();
+                // Add progress for frequency tasks
+                if (task.getRecurrenceType() == Task.RECURRENCE_FREQUENCY) {
+                    info += " " + task.getProgressString();
+                }
+            }
+            priorityText.setText(info);
 
             // Checkbox listener
             checkBox.setOnClickListener(v -> {

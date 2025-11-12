@@ -60,6 +60,72 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp" />
 
+    <!-- Recurrence Section -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Repeat"
+        android:textSize="14sp"
+        android:layout_marginTop="16dp" />
+
+    <CheckBox
+        android:id="@+id/recurrenceCheckBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Make this a recurring task"
+        android:layout_marginTop="8dp" />
+
+    <!-- Recurrence Options (initially hidden) -->
+    <LinearLayout
+        android:id="@+id/recurrenceOptionsLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:layout_marginTop="8dp">
+
+        <!-- Recurrence Type Selection -->
+        <Spinner
+            android:id="@+id/recurrenceTypeSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
+
+        <!-- Amount and Unit -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <EditText
+                android:id="@+id/recurrenceAmountInput"
+                android:layout_width="80dp"
+                android:layout_height="wrap_content"
+                android:hint="3"
+                android:inputType="number"
+                android:text="1"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/recurrenceLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" times per "
+                android:layout_gravity="center_vertical"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
+
+            <Spinner
+                android:id="@+id/recurrenceUnitSpinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
     <!-- Buttons -->
     <LinearLayout
         android:layout_width="match_parent"
