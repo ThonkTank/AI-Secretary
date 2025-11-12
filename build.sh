@@ -9,10 +9,10 @@ echo "===== AI Secretary Hello World Build ====="
 echo ""
 
 # Verzeichnisse
-PROJECT_DIR="/data/data/com.termux/files/home/AI-Secretary/hello-world"
-ANDROID_JAR="/data/data/com.termux/files/usr/lib/android-sdk/platforms/android-33.jar"
+PROJECT_DIR="$(pwd)"
+ANDROID_JAR="$PREFIX/share/android-sdk/platforms/android-33/android.jar"
 
-cd "$PROJECT_DIR"
+# Bleibe im aktuellen Verzeichnis
 
 # Aufräumen
 echo "[1/8] Aufräumen vorheriger Builds..."
@@ -37,11 +37,31 @@ aapt2 link \
 
 # Schritt 3: Java kompilieren
 echo "[4/8] Kompiliere Java-Code..."
+echo "Current directory: $(pwd)"
+echo "First file exists: $(ls -la src/com/secretary/AppLogger.java 2>/dev/null | wc -l)"
 javac -source 8 -target 8 \
   -d classes/ \
   -classpath "$ANDROID_JAR" \
   -sourcepath src/:gen/ \
+  src/com/secretary/AppLogger.java \
+  src/com/secretary/LogProvider.java \
+  src/com/secretary/LogServer.java \
   src/com/secretary/MainActivity.java \
+  src/com/secretary/NanoHTTPD.java \
+  src/com/secretary/SimpleHttpServer.java \
+  src/com/secretary/Task.java \
+  src/com/secretary/TaskActivity.java \
+  src/com/secretary/TaskDatabaseHelper.java \
+  src/com/secretary/UpdateChecker.java \
+  src/com/secretary/UpdateInstaller.java \
+  src/com/secretary/helloworld/data/dao/CompletionDao.java \
+  src/com/secretary/helloworld/data/dao/TaskDao.java \
+  src/com/secretary/helloworld/data/database/TaskDatabaseHelper.java \
+  src/com/secretary/helloworld/ui/activities/TaskActivity.java \
+  src/com/secretary/helloworld/ui/adapters/TaskListAdapter.java \
+  src/com/secretary/helloworld/ui/dialogs/CompletionDialog.java \
+  src/com/secretary/helloworld/ui/dialogs/TaskEditDialog.java \
+  src/com/secretary/helloworld/utils/StatsManager.java \
   gen/com/secretary/helloworld/R.java
 
 # Schritt 4: DEX erstellen

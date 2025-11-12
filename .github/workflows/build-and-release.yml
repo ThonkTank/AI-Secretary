@@ -67,20 +67,13 @@ jobs:
           --java gen/ \
           --auto-add-overlay
 
-        # Java kompilieren
+        # Java kompilieren - alle Dateien in der neuen Struktur
         javac -source 8 -target 8 \
           -d classes/ \
           -classpath $ANDROID_JAR \
           -sourcepath src/:gen/ \
-          src/com/secretary/MainActivity.java \
-          src/com/secretary/UpdateChecker.java \
-          src/com/secretary/UpdateInstaller.java \
-          src/com/secretary/AppLogger.java \
-          src/com/secretary/LogProvider.java \
-          src/com/secretary/SimpleHttpServer.java \
-          src/com/secretary/Task.java \
-          src/com/secretary/TaskDatabaseHelper.java \
-          src/com/secretary/TaskActivity.java \
+          $(find src/com/secretary -name "*.java" -type f) \
+          $(find src/com/secretary/helloworld -name "*.java" -type f) \
           gen/com/secretary/helloworld/R.java
 
         # DEX erstellen
