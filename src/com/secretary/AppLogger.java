@@ -24,13 +24,18 @@ public class AppLogger {
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
         logLines = new ArrayList<>();
 
-        // Versuche Logs DIREKT im /sdcard/ Root zu speichern
-        // Keine Unterordner, keine Permissions nötig (hoffentlich!)
-        File sdcard = Environment.getExternalStorageDirectory();
-        logFile = new File(sdcard, "AISecretary_logs.txt");
+        // App-spezifischer External Storage - keine Permissions nötig!
+        // Pfad: /sdcard/Android/data/com.secretary.helloworld/files/
+        File externalFilesDir = context.getExternalFilesDir(null);
+        if (externalFilesDir != null) {
+            logFile = new File(externalFilesDir, "AISecretary_logs.txt");
+        } else {
+            // Fallback zu internem Speicher falls External Storage nicht verfügbar
+            logFile = new File(context.getFilesDir(), "AISecretary_logs.txt");
+        }
 
         // Initiale Log-Nachricht
-        info(TAG, "AppLogger initialized (in-memory mode)");
+        info(TAG, "AppLogger initialized");
         info(TAG, "Log file path: " + logFile.getAbsolutePath());
     }
 
