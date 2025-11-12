@@ -1,585 +1,386 @@
-# AI Secretary - Native Android App
+# CLAUDE.md
 
-## 🔒 Projektvision
-
-**WICHTIG:** Sektionen, die mit dem 🔒 Emoji markiert sind, dürfen nur mit ausdrücklicher Erlaubnis des Projektinhabers editiert werden.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ---
 
-## Projektstruktur
+## Project Overview
 
-```
-AI-Secretary/
-├── .github/
-│   └── workflows/
-│       └── build-and-release.yml    # GitHub Actions CI/CD Pipeline
-├── docs/
-│   ├── LOGGING_SYSTEM.md            # Detaillierte Logging-Dokumentation
-│   └── UPDATE_SYSTEM.md             # Detaillierte Update-System-Dokumentation
-├── res/
-│   ├── layout/
-│   │   ├── activity_main.xml        # Haupt-UI Layout
-│   │   └── dialog_settings.xml      # Settings-Dialog Layout
-│   └── values/
-│       └── strings.xml              # String-Ressourcen
-├── src/com/secretary/
-│   ├── MainActivity.java            # Haupt-Activity
-│   ├── AppLogger.java               # Logging-System
-│   ├── UpdateChecker.java           # GitHub Releases API Integration
-│   └── UpdateInstaller.java         # APK Download & Installation
-├── AndroidManifest.xml              # App-Metadaten & Permissions
-├── build.sh                         # Lokales Build-Script (Termux)
-├── CLAUDE.md                        # Projekt-Dokumentation (dieses Dokument)
-└── README.md                        # GitHub Repository README
-```
+**AI Secretary** is a native Android task management app developed in Termux on Android. The project is currently in Phase 0 (Foundation Systems), implementing auto-update and logging infrastructure before building the main Taskmaster feature suite.
 
-**Hinweis:** Build-Artefakte (`compiled_res/`, `gen/`, `classes/`, `*.apk`, `*.dex`) werden nicht ins Repository committed.
+**Current Status:** Phase 0 code implemented but not yet functional - requires debugging.
+
+**Repository:** https://github.com/ThonkTank/AI-Secretary
 
 ---
 
-## 🔒 Gesamtkonzept
-
-AI-Secretary ist als umfassendes Alltags-Planungstool konzipiert. Die App soll Nutzern helfen, ihre täglichen Aufgaben intelligent zu organisieren, zu tracken und zu priorisieren.
-
-### Technische Entscheidung
-- **Ursprünglicher Prototyp:** Hybrid-App (Capacitor + Web-Technologien)
-- **Aktuelle Entwicklung:** Native Android-App (bessere Performance, System-Integration, kleinere APK)
-- Der Hybrid-Prototyp dient als Proof of Concept
-
----
-
-## 🔒 Feature Suite 1: "Taskmaster"
-
-### Übersicht
-Taskmaster ist die erste Feature-Suite der AI-Secretary App und bildet das Kernstück der Aufgabenverwaltung.
-
-### 1. Umfassende Todo-Organisation
-
-#### Task-Typen
-- **Einzelne Tasks:** Einmalige Aufgaben
-- **Wiederkehrende Tasks:**
-  - `x pro y`: z.B. "3 mal pro Woche" (flexible Verteilung innerhalb des Zeitraums)
-  - `alle x y`: z.B. "alle 2 Tage" (festes Intervall)
-  - Zu bestimmten Zeitpunkten: z.B. "Jeden Montag 09:00 Uhr"
-- **Verkettete Tasks:** Sequenzen wie A → B → C → A (zyklische Abhängigkeiten)
-
-#### Task-Eigenschaften
-- **Titel:** Kurze Beschreibung der Aufgabe
-- **Beschreibung:** Ausführliche Details (optional)
-- **Numerische Priorität:** Zahlenwert zur Priorisierung
-
-### 2. Intelligentes Tracking
-
-Die App trackt folgende Daten pro Task:
-- **Erledigungsstatus:** Erledigt / Unerledigt / Überfällig
-- **Erledigungs-Häufigkeit:** Wie oft wurde die Aufgabe erledigt?
-- **Erledigungs-Historie:** Wann wurde sie die letzten Male erledigt?
-- **Wiederholungs-Logik:** Wann wird eine wiederkehrende Aufgabe wieder auf "unerledigt" gesetzt?
-- **Überfälligkeit:** Wie lange ist die Aufgabe bereits überfällig?
-
-#### Zusätzliche Tracking-Daten beim Erledigen
-- **Benötigte Zeit:** Wie lange hat die Erledigung gedauert?
-- **Schwierigkeitsgrad:** Wie einfach/schwer war die Aufgabe? (User-Input)
-- **Übliche Erledigungs-Uhrzeiten:** Zu welchen Tageszeiten wird die Aufgabe typischerweise erledigt?
-
-### 3. Motivations-Features
-
-#### Streak-Tracking
-- Anzeige von "Streaks": Wie oft wurde eine Aufgabe rechtzeitig in Folge erledigt?
-- Visualisierung der Streak-Länge
-
-#### Statistiken
-- **Heute:** Anzahl erledigter Aufgaben heute
-- **Letzte 7 Tage:** Anzahl erledigter Aufgaben in den letzten 7 Tagen
-- **Durchschnitt (7 Tage):** Durchschnittliche Anzahl erledigter Aufgaben pro Tag (letzten 7 Tage)
-
-### 4. UI/UX-Features
-
-#### App-Ansichten
-- **Nächste Aufgabe:** Prominent angezeigte, wichtigste nächste Aufgabe
-- **Aufgaben für heute:** Liste aller für heute geplanten Aufgaben
-- **Statistik-Dashboard:** Streaks und Erledigungs-Statistiken
-
-#### Home-Screen Widget
-Das Widget zeigt auf dem Android-Homescreen:
-- Nächste Aufgabe
-- Aufgaben für heute
-- Streak- und Statistik-Zusammenfassung
-
-### 5. Intelligente Tagesplanung
-
-Basierend auf allen gesammelten Daten soll die App einen intelligenten Tagesplan generieren:
-
-#### Berücksichtigte Faktoren
-- **Priorität:** Numerische Task-Priorität
-- **Fälligkeit:** Überfällige und heute fällige Tasks
-- **Geschätzte Dauer:** Basierend auf historischen Zeiterfassungen
-- **Übliche Erledigungs-Zeit:** Zeitpunkt, zu dem die Aufgabe normalerweise erledigt wird
-- **Schwierigkeitsgrad:** Historische Schwierigkeits-Bewertungen
-- **Verkettungen:** Abhängigkeiten zwischen Tasks
-
-#### Ziel
-Automatische, intelligente Sortierung und Vorschläge für einen optimalen Tagesablauf.
-
----
-
-## Entwicklungs-Roadmap
-
-### Phase 1: Grundlagen (aktuell)
-- [ ] Native Android Projekt-Setup
-- [ ] Datenbank-Schema (Room)
-- [ ] Basis-UI (MainActivity, Task-Liste)
-
-### Phase 2: Core Taskmaster Features
-- [ ] Task-Erstellung (alle Typen)
-- [ ] Task-Tracking
-- [ ] Erledigungs-Workflow (Zeit, Schwierigkeit)
-
-### Phase 3: Intelligenz & Motivation
-- [ ] Streak-Berechnung
-- [ ] Statistiken
-- [ ] Intelligente Sortierung
-
-### Phase 4: Widget & Polish
-- [ ] Home-Screen Widget
-- [ ] UI/UX-Verbesserungen
-- [ ] Testing & Optimierung
-
----
-
-## Technologie-Stack
-
-### Geplant
-- **Sprache:** Kotlin (empfohlen) oder Java
-- **UI-Framework:** Jetpack Compose oder XML-Layouts
-- **Datenbank:** Room (SQLite)
-- **Architektur:** MVVM (Model-View-ViewModel)
-- **Build-System:** Gradle
-
-### Entwicklungsumgebung
-- **Primär:** Termux auf Android
-- **Synchronisation:** Git (GitHub/GitLab)
-- **Backup-Entwicklung:** Optional auf Laptop
-
----
-
-## Build-System & Deployment
-
-### Entscheidung: GitHub Actions für CI/CD (08.11.2024)
-
-**Problem:** Gradle funktioniert nicht in Termux (JVM libiconv-Fehler)
-
-**Lösung:** GitHub Actions Cloud-Build
-- Automatischer APK-Build bei jedem Git Push
-- Workflow: `.github/workflows/android-build.yml`
-- Kein lokaler Gradle-Build erforderlich
-- APK via GitHub Actions Artifacts verfügbar
-
-**Implementierung:**
-- Vollständige Gradle-Konfiguration erstellt (`app/build.gradle`, `settings.gradle`, `gradle.properties`)
-- ProGuard-Regeln für Release-Builds (`app/proguard-rules.pro`)
-- Debug-Keystore generiert (`~/.android/debug.keystore`)
-- Material Design Themes (Holo → Material Migration)
-
-**Status:** ✅ Produktionsreif - Bereit für GitHub Push
-
-**Details:** Siehe `BUILD_INSTRUCTIONS.md`
-
----
-
-## Notizen für Claude Code Agenten
-
-- **Geschützte Bereiche:** Alle mit 🔒 markierten Sektionen nur mit expliziter User-Erlaubnis ändern
-- **Feature-Requests:** Neue Features in "Entwicklungs-Roadmap" ergänzen
-- **Design-Entscheidungen:** Bei Unklarheiten nachfragen, nicht annehmen
-
----
-
-## Arbeitsumgebung - Detaillierte Analyse (09.11.2025)
+## Development Environment
 
 ### Hardware & System
-- **Gerät:** Google Pixel 8 (aarch64)
-- **Android Version:** 16
-- **Kernel:** Linux 6.1.134-android14-11-g66e758f7d0c0-ab13748739
-- **Termux Version:** googleplay.2025.10.05
-- **Termux Tools:** 3.0.8
+- **Primary:** Google Pixel 8 (aarch64), Android 16
+- **Development:** Termux (googleplay.2025.10.05)
+- **Java:** OpenJDK 21.0.9
+- **Android SDK:** API 33 (compile), API 28-35 (runtime)
 
-### Installierte Entwicklungswerkzeuge
-
-#### Java Entwicklung
-- **OpenJDK:** 21.0.9 (Termux Build)
-- **Gradle:** 9.0.0
-  - Kotlin: 2.2.0
-  - Groovy: 4.0.27
-  - Ant: 1.10.15
-  - ⚠️ **Problem:** JVM libiconv-Fehler in Termux (bekanntes Issue)
-
-#### Android Build-Tools
-- **AAPT2:** 2.19
-- **AAPT:** 13.0.0.6-22
-- **Android Tools:** 35.0.2-5
-- **dx:** ✅ Verfügbar
-- **d8:** ❌ Nicht verfügbar (Alternative: dx)
-- **zipalign:** ✅ Verfügbar
-- **apksigner:** ✅ Verfügbar
-
-#### Android SDK
-- **Pfad:** `/data/data/com.termux/files/usr/lib/android-sdk`
-- **Verfügbare Plattformen:**
-  - Android API 28 (android.jar: 44.6 MB)
-  - Android API 33 (android.jar: 25.9 MB)
-  - Android API 35 (android.jar: 25.8 MB) ✅ **Empfohlen**
-
-#### Zusätzliche Tools
-- **Git:** 2.51.0 (Update verfügbar: 2.51.2)
-- **Node.js:** (falls erforderlich)
-- **npm:** (falls erforderlich)
+### Critical Constraint: No Local Gradle
+Gradle does NOT work in Termux (JVM libiconv error). Use GitHub Actions for all builds.
 
 ---
 
-## Funktionierende Build-Workflows für Termux
+## Build & Deployment
 
-### Option 1: GitHub Actions (Aktuell implementiert) ✅ **EMPFOHLEN**
-
-**Vorteile:**
-- Keine lokalen Gradle-Probleme
-- Automatisierte Builds bei jedem Push
-- Professionelle CI/CD-Pipeline
-- APK-Download via GitHub Artifacts
-
-**Status:** Produktionsreif, bereits konfiguriert
-
-**Workflow:**
-1. Code lokal in Termux bearbeiten
-2. Git commit & push zu GitHub
-3. GitHub Actions baut APK automatisch
-4. APK herunterladen und auf Gerät installieren
-
----
-
-### Option 2: Manueller AAPT2-Build (Alternative) 🔧
-
-Für lokale Entwicklung ohne GitHub Actions ist ein manueller Build-Prozess möglich:
-
-#### Vollständiger Build-Prozess
-
-**1. Projektstruktur erstellen:**
-```
-project/
-├── AndroidManifest.xml
-├── res/
-│   ├── values/
-│   │   └── strings.xml
-│   ├── layout/
-│   │   └── activity_main.xml
-│   └── drawable/
-└── src/
-    └── com/
-        └── example/
-            └── MainActivity.java
-```
-
-**2. Ressourcen kompilieren:**
+### Production Build (REQUIRED)
 ```bash
-aapt2 compile \
-  res/values/strings.xml \
-  res/layout/activity_main.xml \
+# 1. Make code changes
+# 2. Commit and push to GitHub
+git add .
+git commit -m "Your message"
+git push origin main
+
+# 3. GitHub Actions automatically:
+#    - Builds APK with d8/aapt2
+#    - Signs with debug keystore
+#    - Creates GitHub Release with version from AndroidManifest.xml
+#    - Uploads AISecretary-signed.apk as release asset
+
+# 4. Download from GitHub Releases
+# 5. Install on device
+```
+
+**Workflow:** `.github/workflows/build-and-release.yml`
+- Triggers on push to main or manual dispatch
+- Uses Android SDK 33, Build Tools 33.0.2
+- Java source/target: 8 (for compatibility)
+- Extracts version from `AndroidManifest.xml` for release tagging
+
+### Local Development Build (Learning Only)
+```bash
+# Only for simple testing - NOT for production
+./build.sh
+
+# Installs:
+cp app_signed.apk ~/storage/downloads/
+termux-open ~/storage/downloads/app_signed.apk
+```
+
+**Limitations:**
+- No support for external libraries (AppCompat, Room, etc.)
+- Manual resource compilation
+- No dependency management
+- Use only for quick local tests
+
+---
+
+## Architecture
+
+### Current Structure (Phase 0)
+```
+src/com/secretary/
+├── MainActivity.java        # Main UI, Settings dialog, Update UI
+├── UpdateChecker.java       # GitHub Releases API client
+├── UpdateInstaller.java     # APK download via DownloadManager
+└── AppLogger.java           # In-memory logging (500 line buffer)
+
+res/
+├── layout/
+│   ├── activity_main.xml        # Main screen (displays logs)
+│   ├── dialog_settings.xml      # Settings with update check
+│   └── dialog_logs.xml          # Log viewer dialog
+├── menu/main_menu.xml           # Action bar (Settings icon)
+└── values/strings.xml
+```
+
+### Key Components
+
+**UpdateChecker.java**
+- Checks GitHub Releases API for latest version
+- Compares with current app version
+- Returns update info via callback interface
+- ⚠️ Contains hardcoded GitHub token (security issue - must fix)
+
+**UpdateInstaller.java**
+- Downloads APK using Android DownloadManager
+- Registers BroadcastReceiver for download completion
+- Launches installation prompt
+- ⚠️ Potential memory leak (receiver not always unregistered)
+
+**AppLogger.java**
+- Singleton pattern for centralized logging
+- In-memory storage (max 500 lines, auto-rotates)
+- Three levels: INFO, DEBUG, ERROR
+- Also logs to Android Logcat in parallel
+- ⚠️ Contains unused `logFile` variable (dead code)
+
+**MainActivity.java**
+- Single Activity app
+- Action bar with Settings menu
+- Main screen shows app logs (for debugging)
+- Settings dialog with version info and update check
+
+### Package Structure
+- **Current:** Flat structure in `com.secretary.helloworld`
+- **Planned:** Migrate to `com.secretary` and layer-based structure (data/domain/presentation)
+
+---
+
+## Version Management
+
+**Location:** `AndroidManifest.xml`
+
+**Versioning Scheme (Phase-based):**
+- **0.0.x** = Phase 0 (Foundation Systems - Update & Logging)
+- **0.1.x** = Phase 1 (Taskmaster Foundation & Database)
+- **0.2.x** = Phase 2 (Core Task Management)
+- **0.3.x** = Phase 3 (Tracking & Analytics)
+- **0.4.x** = Phase 4 (Motivation & Statistics)
+- **0.5.x** = Phase 5 (Intelligent Planning)
+- **0.6.x** = Phase 6 (Widget & Polish)
+- **1.0.0** = Taskmaster MVP Release
+
+```xml
+<manifest package="com.secretary.helloworld"
+    android:versionCode="22"
+    android:versionName="0.0.22">
+```
+
+**Update Version:**
+1. Increment `versionCode` (integer, sequential)
+2. Update `versionName` (phase-based: major.minor.patch)
+   - major = 0 until Taskmaster v1.0
+   - minor = development phase (0-6)
+   - patch = build number within phase
+3. Commit and push - GitHub Actions will create release with tag `v{versionName}`
+
+**Current:** v0.0.22 (Build 22) - Phase 0 Development
+
+---
+
+## Debugging & Testing
+
+### View Logs
+```bash
+# Real-time logcat filtering
+logcat | grep Secretary
+
+# Or filter by specific tags
+logcat | grep -E "(MainActivity|UpdateChecker|AppLogger)"
+
+# Check for errors
+logcat | grep -E "ERROR|Exception"
+```
+
+### Install and Test App
+```bash
+# Install from local build
+pm install -r app_signed.apk
+
+# Or from GitHub release
+pm install -r ~/storage/downloads/AISecretary-signed.apk
+
+# Launch app
+am start -n com.secretary.helloworld/.MainActivity
+
+# Check app info
+pm dump com.secretary.helloworld | grep -A5 "version"
+```
+
+### Common Issues
+
+**Update System Not Working:**
+- Check GitHub API response in logcat
+- Verify internet permission in manifest
+- Check for JSON parsing errors
+- Verify GitHub token is valid (UpdateChecker.java:17)
+
+**Logging System Not Working:**
+- Check AppLogger initialization in MainActivity
+- Verify logs are being written (check logcat)
+- Check TextView display logic in MainActivity
+
+---
+
+## Critical Known Issues (See ROADMAP.md)
+
+### Security
+1. **Hardcoded GitHub Token** (UpdateChecker.java:17)
+   - CRITICAL: Must be revoked and regenerated
+   - Move to GitHub Secrets
+   - Use environment variable or remove if not needed
+
+### Code Quality
+2. **Resource Leaks** (UpdateChecker.java:36-54)
+   - HttpURLConnection not closed
+   - BufferedReader not closed
+
+3. **Memory Leak** (UpdateInstaller.java:38-70)
+   - BroadcastReceiver may not be unregistered if download fails
+   - Should unregister in Activity.onDestroy()
+
+4. **Dead Code** (AppLogger.java:21, 30, 94)
+   - `logFile` variable created but never used
+   - Remove or implement file logging
+
+5. **Package Name** (AndroidManifest.xml:3)
+   - Change from `com.secretary.helloworld` to `com.secretary`
+   - Requires refactoring all imports
+
+---
+
+## Project Roadmap
+
+See `ROADMAP.md` for complete development plan.
+
+### Phase 0: Foundation Systems (Current - Not Functional)
+- ❌ Auto-Update System - implemented, needs debugging
+- ❌ Logging System - implemented, needs debugging
+- Next: Debug both systems and fix critical security issues
+
+### Future Phases (Blocked until Phase 0 works)
+- **Phase 1:** Kotlin migration, MVVM architecture, Room database
+- **Phase 2:** Task creation, display, CRUD operations
+- **Phase 3:** Completion tracking, recurrence logic
+- **Phase 4:** Streaks, statistics, motivation
+- **Phase 5:** Intelligent planning algorithm
+- **Phase 6:** Home screen widget, polish
+
+**Estimated Timeline:** 12-16 weeks for MVP (Phases 1-4)
+
+---
+
+## Code Style
+
+### Current Conventions
+- **Language:** Java (planned migration to Kotlin)
+- **Comments:** Mixed German/English (should migrate to English)
+- **Logging:** Use AppLogger.getInstance(context).info/debug/error()
+- **Threading:** Manual Thread creation (should use ExecutorService)
+
+### Java Compilation
+```bash
+# Source/target compatibility
+javac -source 8 -target 8 ...
+
+# Classpath
+-classpath $ANDROID_SDK_ROOT/platforms/android-33/android.jar
+```
+
+---
+
+## Git Workflow
+
+```bash
+# Standard workflow
+git status
+git add .
+git commit -m "feat: description"
+git push origin main
+
+# GitHub Actions will:
+# 1. Build APK
+# 2. Create release with version from manifest
+# 3. Upload APK as release asset
+
+# View build logs
+# Go to GitHub → Actions tab
+```
+
+**Commit Message Format:**
+- Use descriptive messages
+- GitHub Actions uses commit message in release notes
+
+---
+
+## Accessing Logs in App
+
+1. Install and launch app
+2. Tap Settings icon (⚙) in action bar
+3. Tap "View Logs" button
+4. Logs displayed in scrollable dialog
+5. Use "Copy to Clipboard" to share logs
+
+**Main Screen:** Also displays logs automatically (activity_main.xml)
+
+---
+
+## Working with Resources
+
+### Adding New Layouts
+```xml
+<!-- res/layout/your_layout.xml -->
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout ...>
+    ...
+</LinearLayout>
+```
+
+Update GitHub Actions workflow to compile new resource:
+```yaml
+# In build-and-release.yml
+$ANDROID_SDK_ROOT/build-tools/33.0.2/aapt2 compile \
+  res/layout/your_layout.xml \
   -o compiled_res/
 ```
 
-**3. Ressourcen verlinken (APK erstellen):**
-```bash
-aapt2 link \
-  -o app_unsigned.apk \
-  -I $PREFIX/lib/android-sdk/platforms/android-35/android.jar \
-  --manifest AndroidManifest.xml \
-  -R compiled_res/*.flat \
-  --java gen/ \
-  --auto-add-overlay
+### Adding New Java Files
+Update GitHub Actions workflow:
+```yaml
+javac ... \
+  src/com/secretary/YourNewClass.java \
+  ...
 ```
-
-**4. Java-Code kompilieren:**
-```bash
-javac -d classes/ \
-  -classpath $PREFIX/lib/android-sdk/platforms/android-35/android.jar \
-  -sourcepath src/ \
-  src/com/example/MainActivity.java \
-  gen/com/example/R.java
-```
-
-**5. DEX erstellen (Bytecode konvertieren):**
-```bash
-dx --dex \
-  --output=classes.dex \
-  classes/
-```
-
-**6. DEX zur APK hinzufügen:**
-```bash
-# AAPT2 unterstützt kein DEX-Hinzufügen, daher manuell:
-cd app_unsigned.apk  # APK ist ein ZIP
-zip -uj app_unsigned.apk classes.dex
-```
-
-**7. APK alignieren:**
-```bash
-zipalign -v -p 4 \
-  app_unsigned.apk \
-  app_aligned.apk
-```
-
-**8. APK signieren:**
-```bash
-# Debug-Keystore (wenn vorhanden)
-apksigner sign \
-  --ks ~/.android/debug.keystore \
-  --ks-key-alias androiddebugkey \
-  --ks-pass pass:android \
-  --key-pass pass:android \
-  --out app_signed.apk \
-  app_aligned.apk
-```
-
-**9. APK installieren:**
-```bash
-# Über Termux API
-termux-media-scan app_signed.apk
-# Dann manuell installieren oder:
-pm install app_signed.apk
-```
-
-#### Limitierungen des manuellen Builds
-
-⚠️ **Wichtige Einschränkungen:**
-- **Keine Support-Bibliotheken:** AppCompat, Material Components etc. sind schwer zu integrieren
-- **Manuelle Dependency-Verwaltung:** Keine automatische AAR-Auflösung
-- **Fehleranfällig:** Viele manuelle Schritte
-- **Zeitaufwändig:** Jeder Build erfordert alle Schritte
-
-**Empfehlung:** Nur für einfache "Hello World"-Apps oder Learning. Für echte Apps GitHub Actions nutzen.
 
 ---
 
-### Option 3: Hybrid-Ansatz (Optimal für Entwicklung) 🎯
+## Protected Sections (🔒 in CLAUDE.md)
 
-**Kombination beider Ansätze:**
+Do NOT modify these without explicit user permission:
+- Project vision (Gesamtkonzept)
+- Feature Suite 1: Taskmaster specifications
+- Development roadmap phases
 
-1. **Lokale Entwicklung:**
-   - Code in Termux schreiben/editieren
-   - Schnelle Syntax-Checks
-   - Git für Versionskontrolle
-
-2. **Build & Test:**
-   - Push zu GitHub
-   - GitHub Actions baut APK
-   - Lokale Installation & Test
-
-3. **Debugging:**
-   - Logs via `adb logcat` (wenn USB-Debugging)
-   - Oder Termux-basierte Log-Tools
-
-**Vorteile:**
-- Beste Developer Experience
-- Professioneller Workflow
-- Keine Gradle-Probleme
-- Schnelle Iterationen möglich
+**Ask first** before changing architecture decisions or feature specifications.
 
 ---
 
-## Empfehlungen für AI-Secretary Projekt
+## Useful Termux Commands
 
-### Kurzfristig (Hello World Phase)
-
-1. **Einfache App ohne Dependencies:**
-   - Nutze Standard-Android-Klassen (`Activity` statt `AppCompatActivity`)
-   - Nutze System-Themes (`Theme.Material3.DayNight`)
-   - Vermeide externe Libraries
-
-2. **Build-Strategie:**
-   - **Für Lernen:** Manueller AAPT2-Build zum Verständnis
-   - **Für Produktion:** GitHub Actions (bereits konfiguriert)
-
-3. **Test-APK erstellen:**
-   - Minimale `AndroidManifest.xml`
-   - Eine `MainActivity.java`
-   - Ein Layout mit TextView "Hello World"
-
-### Mittelfristig (Feature-Entwicklung)
-
-1. **Dependency-Management:**
-   - GitHub Actions erlaubt Gradle → voller Zugriff auf Maven-Dependencies
-   - Room, Material Components, etc. problemlos nutzbar
-
-2. **Entwicklungsumgebung:**
-   - Code-Editing in Termux (Claude Code, vim, nano)
-   - Commits via Git
-   - Builds via GitHub Actions
-
-3. **Testing:**
-   - Unit Tests in GitHub Actions
-   - Manuelle Tests auf dem Pixel 8
-   - Optional: Firebase Test Lab
-
-### Langfristig (Produktion)
-
-1. **CI/CD-Pipeline erweitern:**
-   - Automatische Tests
-   - Release-Builds
-   - Play Store Deployment (optional)
-
-2. **Code-Qualität:**
-   - Linting (ktlint für Kotlin)
-   - Static Analysis
-   - Code Coverage
-
----
-
-## Nächste Schritte für Hello World App
-
-1. **Projektstruktur erstellen:**
-   ```
-   AI-Secretary/
-   ├── app/
-   │   ├── src/main/
-   │   │   ├── AndroidManifest.xml
-   │   │   ├── java/com/secretary/
-   │   │   │   └── MainActivity.java
-   │   │   └── res/
-   │   │       ├── layout/activity_main.xml
-   │   │       └── values/strings.xml
-   │   └── build.gradle
-   ├── build.gradle
-   └── settings.gradle
-   ```
-
-2. **Minimale Dateien erstellen:**
-   - AndroidManifest.xml (targetSdk 35)
-   - MainActivity.java (einfache Activity)
-   - Layout mit "Hello World" TextView
-
-3. **Build-Methode wählen:**
-   - [ ] Manueller AAPT2-Build für lokales Lernen
-   - [ ] GitHub Actions Push für produktive APK
-
-4. **Installation & Test:**
-   - APK auf Pixel 8 installieren
-   - App öffnen und Funktionalität prüfen
-
----
-
-## Termux-Spezifische Notizen
-
-### Bekannte Probleme
-- **Gradle libiconv-Fehler:** Gradle kann nicht lokal in Termux ausgeführt werden
-- **D8 nicht verfügbar:** Alternative `dx` verwenden
-- **LD_PRELOAD:** Wird für libtermux-exec.so gesetzt
-
-### Workarounds
-- GitHub Actions für Gradle-Builds
-- `dx` statt `d8` für DEX-Konvertierung
-- Manual zip für DEX-Integration in APK
-
-### Hilfreiche Befehle
 ```bash
-# Geräteinformationen
+# Environment info
 termux-info
-getprop ro.build.version.release  # Android Version
-getprop ro.product.model          # Gerätemodell
+getprop ro.build.version.release  # Android version
+getprop ro.product.model          # Device model
 
-# Package-Verwaltung
+# Package management
 pkg list-installed | grep android
-pkg search aapt
+pkg install openjdk-17  # If needed
 
-# APK-Installation
-pm install app.apk
-am start -n com.secretary/.MainActivity
+# File permissions
+chmod +x build.sh
 
-# Logs
-logcat | grep Secretary
+# APK analysis
+aapt dump badging app_signed.apk
+apksigner verify -v app_signed.apk
 ```
 
 ---
 
-## Ressourcen & Referenzen
+## Next Steps for Development
 
-- **Termux Wiki:** https://wiki.termux.com/wiki/Main_Page
-- **AAPT2 Docs:** https://developer.android.com/tools/aapt2
-- **Android CLI Build:** https://developer.android.com/tools/building
-- **Stack Overflow:** Zahlreiche Threads zu "build APK without Gradle"
+**Immediate (Phase 0 Completion):**
+1. Debug Update System - identify why GitHub API calls fail
+2. Debug Logging System - identify why logs aren't displayed
+3. Fix GitHub token security issue
+4. Change package name to `com.secretary`
+5. Fix resource/memory leaks
 
----
+**After Phase 0 Works:**
+1. Decide: More tech debt cleanup OR start Taskmaster Phase 1
+2. If Phase 1: Migrate to Kotlin, implement MVVM, set up Room database
 
-**Analyse durchgeführt:** 09.11.2025
-**Analysiert von:** Claude Code Agent
-**Status:** ✅ Umgebung vollständig analysiert und dokumentiert
-
----
-
-## Auto-Update System (Version 1.0+)
-
-Die App nutzt GitHub Releases für automatische Updates. User können über den Settings-Dialog nach Updates suchen und diese mit einem Klick installieren.
-
-**Komponenten:**
-- **UpdateChecker:** Prüft GitHub Releases API
-- **UpdateInstaller:** Lädt APK herunter und startet Installation
-- **GitHub Actions:** Automatischer Build bei jedem Push
-
-**User Flow:**
-Settings → "Check for Updates" → Update-Dialog → Download & Install
-
-**Versionierung:** Semantic Versioning (Major.Minor)
-- versionCode: Integer (inkrementell)
-- versionName: String (z.B. "1.2")
-
-**Detaillierte Dokumentation:** Siehe `docs/UPDATE_SYSTEM.md`
+**Reference:** See `ROADMAP.md` for detailed task breakdowns and time estimates.
 
 ---
 
-## Logging-System (Version 1.1+)
-
-Umfassendes Logging für Debugging durch Claude Code. Alle wichtigen App-Events werden automatisch geloggt.
-
-**Features:**
-- Automatische Log-Rotation (max. 500 Zeilen)
-- Drei Log-Level: INFO, DEBUG, ERROR
-- Timestamps für alle Einträge
-
-**Log-Speicherort:** `/sdcard/Android/data/com.secretary.helloworld/files/app_logs.txt`
-
-**Logs auslesen:**
-```bash
-cat /sdcard/Android/data/com.secretary.helloworld/files/app_logs.txt
-```
-
-**Detaillierte Dokumentation:** Siehe `docs/LOGGING_SYSTEM.md`
-
----
-
-## Version History
-
-### v1.2 (Build 3) - 09.11.2025
-**UI Overhaul with Settings Menu**
-- Removed "Hello World" message
-- Added Settings button (⚙) top-right
-- Settings dialog with version info and update controls
-- No automatic update check on startup
-- Clean main screen design
-
-### v1.1 (Build 2) - 09.11.2025
-**Comprehensive Logging System**
-- Added AppLogger class
-- Automatic log rotation (500 lines)
-- Logging integrated in all components
-- Logs accessible for debugging
-
-### v1.0 (Build 1) - 09.11.2025
-**Initial Release with Auto-Update**
-- GitHub Releases integration
-- Automatic update detection
-- One-click download & install
-- Basic UI with update status
-
----
-
-**Dokumentation aktualisiert:** 09.11.2025
-**Status:** ✅ Update-System und Logging vollständig dokumentiert
+**Last Updated:** 2025-11-12
+**Current Version:** v0.0.22 (Build 22)
+**Status:** Phase 0 - File-based logging implemented
