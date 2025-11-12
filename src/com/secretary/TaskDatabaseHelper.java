@@ -602,4 +602,33 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
         return count;
     }
+
+    /**
+     * Get all unique categories used in tasks
+     */
+    public List<String> getAllCategories() {
+        List<String> categories = new ArrayList<>();
+
+        String query = "SELECT DISTINCT " + COLUMN_CATEGORY + " FROM " + TABLE_TASKS +
+                      " WHERE " + COLUMN_CATEGORY + " IS NOT NULL" +
+                      " ORDER BY " + COLUMN_CATEGORY + " ASC";
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(query, null);
+
+        if (cursor.moveToFirst()) {
+            do {
+                String category = cursor.getString(0);
+                if (category != null && !category.isEmpty()) {
+                    categories.add(category);
+                }
+            } while (cursor.moveToNext());
+        }
+
+        cursor.close();
+        db.close();
+
+        logger.debug(TAG, "Retrieved " + categories.size() + " unique categories");
+        return categories;
+    }
 }

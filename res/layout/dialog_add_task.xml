@@ -29,11 +29,11 @@
         android:inputType="text"
         android:maxLines="1" />
 
-    <!-- Description Input -->
+    <!-- Description/Notes Input -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Description (optional)"
+        android:text="Notes (optional)"
         android:textSize="14sp"
         android:layout_marginTop="16dp" />
 
@@ -41,10 +41,14 @@
         android:id="@+id/taskDescriptionInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Enter task description"
+        android:hint="Enter task notes, details, or instructions..."
         android:inputType="textMultiLine"
-        android:minLines="2"
-        android:maxLines="4" />
+        android:minLines="3"
+        android:maxLines="8"
+        android:gravity="top"
+        android:padding="8dp"
+        android:background="#F0F0F0"
+        android:scrollbars="vertical" />
 
     <!-- Category Selection -->
     <TextView
@@ -54,26 +58,56 @@
         android:textSize="14sp"
         android:layout_marginTop="16dp" />
 
+    <AutoCompleteTextView
+        android:id="@+id/taskCategoryInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter or select category"
+        android:inputType="text"
+        android:maxLines="1"
+        android:layout_marginTop="8dp"
+        android:completionThreshold="1"
+        android:padding="12dp"
+        android:background="#FFFFFF" />
+
+    <!-- Due Date Selection -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Due Date (optional)"
+        android:textSize="14sp"
+        android:layout_marginTop="16dp" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:layout_marginTop="8dp">
 
-        <Spinner
-            android:id="@+id/taskCategorySpinner"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1" />
-
-        <EditText
-            android:id="@+id/taskCustomCategoryInput"
+        <TextView
+            android:id="@+id/taskDueDateText"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Or new category"
-            android:visibility="gone"
+            android:text="No due date set"
+            android:textSize="16sp"
+            android:padding="12dp"
+            android:background="#F0F0F0" />
+
+        <Button
+            android:id="@+id/selectDueDateButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Select"
             android:layout_marginStart="8dp" />
+
+        <Button
+            android:id="@+id/clearDueDateButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Clear"
+            android:layout_marginStart="8dp"
+            android:visibility="gone" />
 
     </LinearLayout>
 

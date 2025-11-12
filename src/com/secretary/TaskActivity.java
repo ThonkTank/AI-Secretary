@@ -2,12 +2,14 @@ package com.secretary.helloworld;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -35,15 +37,18 @@ public class TaskActivity extends Activity {
     private EditText searchEditText;
     private Spinner statusFilterSpinner;
     private Spinner priorityFilterSpinner;
+    private Spinner categoryFilterSpinner;
     private TaskListAdapter adapter;
     private List<Task> taskList;
     private List<Task> filteredTaskList;
+    private List<String> allCategories;
     private AppLogger logger;
 
     // Filter states
     private String searchQuery = "";
     private int statusFilter = 0; // 0=All, 1=Active, 2=Completed
     private int priorityFilter = -1; // -1=All, 0=Low, 1=Medium, 2=High, 3=Urgent
+    private String categoryFilter = null; // null=All categories
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,10 +68,12 @@ public class TaskActivity extends Activity {
         searchEditText = findViewById(R.id.searchEditText);
         statusFilterSpinner = findViewById(R.id.statusFilterSpinner);
         priorityFilterSpinner = findViewById(R.id.priorityFilterSpinner);
+        categoryFilterSpinner = findViewById(R.id.categoryFilterSpinner);
 
         // Initialize task lists
         taskList = new ArrayList<>();
         filteredTaskList = new ArrayList<>();
+        allCategories = new ArrayList<>();
 
         // Setup adapter
         adapter = new TaskListAdapter();
@@ -119,6 +126,9 @@ public class TaskActivity extends Activity {
             @Override
             public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
+
+        // Load categories and setup category filter
+        updateCategoryFilter();
     }
 
     private void setupSearch() {
@@ -147,6 +157,9 @@ public class TaskActivity extends Activity {
 
             // Check priority filter
             if (priorityFilter >= 0 && task.getPriority() != priorityFilter) continue;
+
+            // Check category filter
+            if (categoryFilter != null && !task.getCategory().equals(categoryFilter)) continue;
 
             // Check search query
             if (!searchQuery.isEmpty()) {
@@ -183,9 +196,49 @@ public class TaskActivity extends Activity {
     private void loadTasks() {
         taskList.clear();
         taskList.addAll(dbHelper.getAllTasks());
+        updateCategoryFilter(); // Update category filter with any new categories
         applyFilters(); // Apply filters after loading
 
         logger.info(TAG, "Loaded " + taskList.size() + " tasks");
+    }
+
+    private void updateCategoryFilter() {
+        // Get all unique categories from database
+        allCategories = dbHelper.getAllCategories();
+
+        // Build options for category filter spinner
+        String[] categoryOptions = new String[allCategories.size() + 1];
+        categoryOptions[0] = "All Categories";
+        for (int i = 0; i < allCategories.size(); i++) {
+            categoryOptions[i + 1] = allCategories.get(i);
+        }
+
+        ArrayAdapter<String> categoryAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, categoryOptions);
+        categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        categoryFilterSpinner.setAdapter(categoryAdapter);
+
+        // Restore previous selection if possible
+        if (categoryFilter != null) {
+            int index = allCategories.indexOf(categoryFilter) + 1;
+            if (index > 0 && index < categoryOptions.length) {
+                categoryFilterSpinner.setSelection(index);
+            }
+        }
+
+        categoryFilterSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                if (position == 0) {
+                    categoryFilter = null; // All categories
+                } else {
+                    categoryFilter = allCategories.get(position - 1);
+                }
+                applyFilters();
+            }
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
     }
 
     private void showAddTaskDialog() {
@@ -198,9 +251,16 @@ public class TaskActivity extends Activity {
         // Find dialog views
         EditText titleInput = dialogView.findViewById(R.id.taskTitleInput);
         EditText descriptionInput = dialogView.findViewById(R.id.taskDescriptionInput);
+        AutoCompleteTextView categoryInput = dialogView.findViewById(R.id.taskCategoryInput);
+        TextView dueDateText = dialogView.findViewById(R.id.taskDueDateText);
+        Button selectDueDateButton = dialogView.findViewById(R.id.selectDueDateButton);
+        Button clearDueDateButton = dialogView.findViewById(R.id.clearDueDateButton);
         Spinner prioritySpinner = dialogView.findViewById(R.id.taskPrioritySpinner);
         Button cancelButton = dialogView.findViewById(R.id.cancelButton);
         Button saveButton = dialogView.findViewById(R.id.saveTaskButton);
+
+        // Variables to track selected due date
+        final long[] selectedDueDate = {0};
 
         // Recurrence views
         CheckBox recurrenceCheckBox = dialogView.findViewById(R.id.recurrenceCheckBox);
@@ -209,6 +269,45 @@ public class TaskActivity extends Activity {
         EditText recurrenceAmountInput = dialogView.findViewById(R.id.recurrenceAmountInput);
         TextView recurrenceLabel = dialogView.findViewById(R.id.recurrenceLabel);
         Spinner recurrenceUnitSpinner = dialogView.findViewById(R.id.recurrenceUnitSpinner);
+
+        // Setup category autocomplete
+        ArrayAdapter<String> categoryAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_dropdown_item_1line, allCategories);
+        categoryInput.setAdapter(categoryAdapter);
+        categoryInput.setText("General"); // Default to General
+
+        // Setup due date picker
+        selectDueDateButton.setOnClickListener(v -> {
+            java.util.Calendar calendar = java.util.Calendar.getInstance();
+            if (selectedDueDate[0] > 0) {
+                calendar.setTimeInMillis(selectedDueDate[0]);
+            }
+
+            DatePickerDialog datePickerDialog = new DatePickerDialog(this,
+                (view, year, month, dayOfMonth) -> {
+                    calendar.set(year, month, dayOfMonth);
+                    selectedDueDate[0] = calendar.getTimeInMillis();
+
+                    // Format and display the date
+                    SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
+                    dueDateText.setText(sdf.format(calendar.getTime()));
+                    clearDueDateButton.setVisibility(View.VISIBLE);
+                },
+                calendar.get(java.util.Calendar.YEAR),
+                calendar.get(java.util.Calendar.MONTH),
+                calendar.get(java.util.Calendar.DAY_OF_MONTH));
+
+            // Set minimum date to today
+            datePickerDialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
+            datePickerDialog.show();
+        });
+
+        // Clear due date button
+        clearDueDateButton.setOnClickListener(v -> {
+            selectedDueDate[0] = 0;
+            dueDateText.setText("No due date set");
+            clearDueDateButton.setVisibility(View.GONE);
+        });
 
         // Setup priority spinner
         String[] priorities = {"Low", "Medium", "High", "Urgent"};
@@ -260,6 +359,10 @@ public class TaskActivity extends Activity {
         saveButton.setOnClickListener(v -> {
             String title = titleInput.getText().toString().trim();
             String description = descriptionInput.getText().toString().trim();
+            String category = categoryInput.getText().toString().trim();
+            if (category.isEmpty()) {
+                category = "General"; // Default if no category entered
+            }
             int priority = prioritySpinner.getSelectedItemPosition();
 
             if (title.isEmpty()) {
@@ -269,7 +372,9 @@ public class TaskActivity extends Activity {
 
             // Create and save task
             Task task = new Task(title, description);
+            task.setCategory(category);
             task.setPriority(priority);
+            task.setDueDate(selectedDueDate[0]);
 
             // Handle recurrence
             if (recurrenceCheckBox.isChecked()) {
@@ -324,9 +429,16 @@ public class TaskActivity extends Activity {
         // Find dialog views
         EditText titleInput = dialogView.findViewById(R.id.taskTitleInput);
         EditText descriptionInput = dialogView.findViewById(R.id.taskDescriptionInput);
+        AutoCompleteTextView categoryInput = dialogView.findViewById(R.id.taskCategoryInput);
+        TextView dueDateText = dialogView.findViewById(R.id.taskDueDateText);
+        Button selectDueDateButton = dialogView.findViewById(R.id.selectDueDateButton);
+        Button clearDueDateButton = dialogView.findViewById(R.id.clearDueDateButton);
         Spinner prioritySpinner = dialogView.findViewById(R.id.taskPrioritySpinner);
         Button cancelButton = dialogView.findViewById(R.id.cancelButton);
         Button saveButton = dialogView.findViewById(R.id.saveTaskButton);
+
+        // Variables to track selected due date
+        final long[] selectedDueDate = {0};
 
         // Recurrence views
         CheckBox recurrenceCheckBox = dialogView.findViewById(R.id.recurrenceCheckBox);
@@ -341,6 +453,44 @@ public class TaskActivity extends Activity {
         if (titleView != null) {
             titleView.setText("Edit Task");
         }
+
+        // Setup category autocomplete
+        ArrayAdapter<String> categoryAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_dropdown_item_1line, allCategories);
+        categoryInput.setAdapter(categoryAdapter);
+
+        // Setup due date picker
+        selectDueDateButton.setOnClickListener(v -> {
+            java.util.Calendar calendar = java.util.Calendar.getInstance();
+            if (selectedDueDate[0] > 0) {
+                calendar.setTimeInMillis(selectedDueDate[0]);
+            }
+
+            DatePickerDialog datePickerDialog = new DatePickerDialog(this,
+                (view, year, month, dayOfMonth) -> {
+                    calendar.set(year, month, dayOfMonth);
+                    selectedDueDate[0] = calendar.getTimeInMillis();
+
+                    // Format and display the date
+                    SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
+                    dueDateText.setText(sdf.format(calendar.getTime()));
+                    clearDueDateButton.setVisibility(View.VISIBLE);
+                },
+                calendar.get(java.util.Calendar.YEAR),
+                calendar.get(java.util.Calendar.MONTH),
+                calendar.get(java.util.Calendar.DAY_OF_MONTH));
+
+            // Set minimum date to today
+            datePickerDialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
+            datePickerDialog.show();
+        });
+
+        // Clear due date button
+        clearDueDateButton.setOnClickListener(v -> {
+            selectedDueDate[0] = 0;
+            dueDateText.setText("No due date set");
+            clearDueDateButton.setVisibility(View.GONE);
+        });
 
         // Setup priority spinner
         String[] priorities = {"Low", "Medium", "High", "Urgent"};
@@ -366,6 +516,16 @@ public class TaskActivity extends Activity {
         // Pre-populate with existing task data
         titleInput.setText(existingTask.getTitle());
         descriptionInput.setText(existingTask.getDescription());
+        categoryInput.setText(existingTask.getCategory());
+
+        // Set due date if exists
+        if (existingTask.getDueDate() > 0) {
+            selectedDueDate[0] = existingTask.getDueDate();
+            SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
+            dueDateText.setText(sdf.format(new Date(selectedDueDate[0])));
+            clearDueDateButton.setVisibility(View.VISIBLE);
+        }
+
         prioritySpinner.setSelection(existingTask.getPriority());
 
         // Pre-populate recurrence if task is recurring
@@ -418,6 +578,10 @@ public class TaskActivity extends Activity {
         saveButton.setOnClickListener(v -> {
             String title = titleInput.getText().toString().trim();
             String description = descriptionInput.getText().toString().trim();
+            String category = categoryInput.getText().toString().trim();
+            if (category.isEmpty()) {
+                category = "General"; // Default if no category entered
+            }
             int priority = prioritySpinner.getSelectedItemPosition();
 
             if (title.isEmpty()) {
@@ -428,7 +592,9 @@ public class TaskActivity extends Activity {
             // Update existing task
             existingTask.setTitle(title);
             existingTask.setDescription(description);
+            existingTask.setCategory(category);
             existingTask.setPriority(priority);
+            existingTask.setDueDate(selectedDueDate[0]);
 
             // Handle recurrence
             if (recurrenceCheckBox.isChecked()) {
@@ -537,8 +703,20 @@ public class TaskActivity extends Activity {
                 descriptionText.setVisibility(View.GONE);
             }
 
-            // Priority and Recurrence
-            String info = "Priority: " + task.getPriorityString();
+            // Category, Priority, Due Date and Recurrence
+            String info = task.getCategory() + " | Priority: " + task.getPriorityString();
+
+            // Add due date if set
+            if (task.getDueDate() > 0) {
+                SimpleDateFormat sdf = new SimpleDateFormat("MMM dd", Locale.getDefault());
+                info += " | Due: " + sdf.format(new Date(task.getDueDate()));
+
+                // Check if overdue
+                if (!task.isCompleted() && task.getDueDate() < System.currentTimeMillis()) {
+                    info += " (OVERDUE)";
+                }
+            }
+
             if (task.isRecurring()) {
                 info += " | 🔁 " + task.getRecurrenceString();
                 // Add progress for frequency tasks
