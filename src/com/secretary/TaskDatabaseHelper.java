@@ -17,13 +17,14 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     // Database configuration
     private static final String DATABASE_NAME = "taskmaster.db";
-    private static final int DATABASE_VERSION = 2; // Incremented for recurrence support
+    private static final int DATABASE_VERSION = 3; // Incremented for category support
 
     // Table and column names
     private static final String TABLE_TASKS = "tasks";
     private static final String COLUMN_ID = "id";
     private static final String COLUMN_TITLE = "title";
     private static final String COLUMN_DESCRIPTION = "description";
+    private static final String COLUMN_CATEGORY = "category";
     private static final String COLUMN_CREATED_AT = "created_at";
     private static final String COLUMN_DUE_DATE = "due_date";
     private static final String COLUMN_IS_COMPLETED = "is_completed";
@@ -45,6 +46,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
             COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
             COLUMN_TITLE + " TEXT NOT NULL, " +
             COLUMN_DESCRIPTION + " TEXT, " +
+            COLUMN_CATEGORY + " TEXT DEFAULT 'General', " +
             COLUMN_CREATED_AT + " INTEGER NOT NULL, " +
             COLUMN_DUE_DATE + " INTEGER, " +
             COLUMN_IS_COMPLETED + " INTEGER DEFAULT 0, " +
@@ -89,6 +91,16 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 onCreate(db);
             }
         }
+
+        if (oldVersion < 3) {
+            // Add category column for existing database
+            try {
+                db.execSQL("ALTER TABLE " + TABLE_TASKS + " ADD COLUMN " + COLUMN_CATEGORY + " TEXT DEFAULT 'General'");
+                logger.info(TAG, "Successfully added category column");
+            } catch (Exception e) {
+                logger.error(TAG, "Error adding category column", e);
+            }
+        }
     }
 
     // CRUD Operations
@@ -102,6 +114,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put(COLUMN_TITLE, task.getTitle());
         values.put(COLUMN_DESCRIPTION, task.getDescription());
+        values.put(COLUMN_CATEGORY, task.getCategory());
         values.put(COLUMN_CREATED_AT, task.getCreatedAt());
         values.put(COLUMN_DUE_DATE, task.getDueDate());
         values.put(COLUMN_IS_COMPLETED, task.isCompleted() ? 1 : 0);
@@ -145,6 +158,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 task.setId(cursor.getLong(cursor.getColumnIndex(COLUMN_ID)));
                 task.setTitle(cursor.getString(cursor.getColumnIndex(COLUMN_TITLE)));
                 task.setDescription(cursor.getString(cursor.getColumnIndex(COLUMN_DESCRIPTION)));
+                task.setCategory(cursor.getString(cursor.getColumnIndex(COLUMN_CATEGORY)));
                 task.setCreatedAt(cursor.getLong(cursor.getColumnIndex(COLUMN_CREATED_AT)));
                 task.setDueDate(cursor.getLong(cursor.getColumnIndex(COLUMN_DUE_DATE)));
                 task.setCompleted(cursor.getInt(cursor.getColumnIndex(COLUMN_IS_COMPLETED)) == 1);
@@ -189,6 +203,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
                 task.setId(cursor.getLong(cursor.getColumnIndex(COLUMN_ID)));
                 task.setTitle(cursor.getString(cursor.getColumnIndex(COLUMN_TITLE)));
                 task.setDescription(cursor.getString(cursor.getColumnIndex(COLUMN_DESCRIPTION)));
+                task.setCategory(cursor.getString(cursor.getColumnIndex(COLUMN_CATEGORY)));
                 task.setCreatedAt(cursor.getLong(cursor.getColumnIndex(COLUMN_CREATED_AT)));
                 task.setDueDate(cursor.getLong(cursor.getColumnIndex(COLUMN_DUE_DATE)));
                 task.setCompleted(false);
@@ -221,6 +236,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put(COLUMN_TITLE, task.getTitle());
         values.put(COLUMN_DESCRIPTION, task.getDescription());
+        values.put(COLUMN_CATEGORY, task.getCategory());
         values.put(COLUMN_DUE_DATE, task.getDueDate());
         values.put(COLUMN_IS_COMPLETED, task.isCompleted() ? 1 : 0);
         values.put(COLUMN_PRIORITY, task.getPriority());
@@ -367,6 +383,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
             task.setId(cursor.getLong(cursor.getColumnIndex(COLUMN_ID)));
             task.setTitle(cursor.getString(cursor.getColumnIndex(COLUMN_TITLE)));
             task.setDescription(cursor.getString(cursor.getColumnIndex(COLUMN_DESCRIPTION)));
+            task.setCategory(cursor.getString(cursor.getColumnIndex(COLUMN_CATEGORY)));
             task.setCreatedAt(cursor.getLong(cursor.getColumnIndex(COLUMN_CREATED_AT)));
             task.setDueDate(cursor.getLong(cursor.getColumnIndex(COLUMN_DUE_DATE)));
             task.setCompleted(cursor.getInt(cursor.getColumnIndex(COLUMN_IS_COMPLETED)) == 1);

@@ -46,6 +46,37 @@
         android:minLines="2"
         android:maxLines="4" />
 
+    <!-- Category Selection -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Category"
+        android:textSize="14sp"
+        android:layout_marginTop="16dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <Spinner
+            android:id="@+id/taskCategorySpinner"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <EditText
+            android:id="@+id/taskCustomCategoryInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Or new category"
+            android:visibility="gone"
+            android:layout_marginStart="8dp" />
+
+    </LinearLayout>
+
     <!-- Priority Selection -->
     <TextView
         android:layout_width="match_parent"

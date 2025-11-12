@@ -19,6 +19,7 @@ public class Task {
     private long id;
     private String title;
     private String description;
+    private String category;
     private long createdAt;
     private long dueDate;
     private boolean isCompleted;
@@ -37,6 +38,7 @@ public class Task {
         this.createdAt = System.currentTimeMillis();
         this.isCompleted = false;
         this.priority = 1; // Default to Medium
+        this.category = "General"; // Default category
     }
 
     public Task(String title, String description) {
@@ -68,6 +70,14 @@ public class Task {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     public long getCreatedAt() {

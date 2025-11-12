@@ -2,8 +2,8 @@
 
 **Erstellt:** 12.11.2025
 **Letzte Analyse:** Version 0.3.4 (Build 304)
-**Status:** Phase 1 - Taskmaster 🚀 IN PROGRESS (75%)
-**Letzte Aktualisierung:** 12.11.2025 - Edit-Funktion implementiert!
+**Status:** Phase 1 - Taskmaster 🚀 IN PROGRESS (80%)
+**Letzte Aktualisierung:** 12.11.2025 - Such- und Filter-Funktion implementiert!
 
 ---
 
@@ -75,7 +75,7 @@ Die grundlegenden Infrastruktur-Features sind vollständig implementiert und fun
 - HTTP Server für externe Zugriff (`SimpleHttpServer.java`) - **FUNKTIONIERT**
 - ✅ **Claude Code kann Logs via `curl http://localhost:8080/logs` lesen**
 
-### 🚀 Phase 1: Taskmaster Foundation - IN PROGRESS (75%)
+### 🚀 Phase 1: Taskmaster Foundation - IN PROGRESS (80%)
 
 **Phase 1 ist bereits weit fortgeschritten!**
 
@@ -95,7 +95,7 @@ Die grundlegenden Infrastruktur-Features sind vollständig implementiert und fun
 
 **Noch zu implementieren:**
 - ✅ Task bearbeiten (Edit-Dialog) - FERTIG! (v0.3.5)
-- [ ] Task-Suche/Filter
+- ✅ Task-Suche/Filter - FERTIG! (v0.3.6)
 - [ ] Task-Kategorien
 - [ ] Due Date Picker
 - [ ] Task-Notizen (längere Beschreibungen)
@@ -1597,6 +1597,19 @@ Diese Roadmap kombiniert technische Verbesserungen mit Feature-Entwicklung.
 ---
 
 ## CHANGELOG
+
+### 2025-11-12 (Update 8 - Such- und Filter-Funktion implementiert!)
+- **Phase 1 Status: 80% COMPLETE**
+  - ✅ Task-Such- und Filter-Funktion vollständig implementiert (v0.3.6)
+  - Suchleiste für Titel und Beschreibung
+  - Status-Filter (Alle/Aktiv/Erledigt)
+  - Prioritäts-Filter (Alle/Low/Medium/High/Urgent)
+  - Live-Suche bei Eingabe
+  - Kombinierte Filter möglich
+- **Verbleibende Features für Phase 1:**
+  - Task-Kategorien (noch 3 Features)
+  - Due Date Picker
+  - Längere Task-Notizen
 
 ### 2025-11-12 (Update 7 - Edit-Funktion implementiert!)
 - **Phase 1 Status: 75% COMPLETE**
