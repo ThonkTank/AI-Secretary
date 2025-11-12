@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
+import android.widget.Toast;
 import java.io.File;
 
 public class UpdateInstaller {
@@ -39,7 +40,9 @@ public class UpdateInstaller {
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     AppLogger logger = AppLogger.getInstance(context);
+                    logger.info(TAG, "BroadcastReceiver triggered - ACTION_DOWNLOAD_COMPLETE");
                     long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                    logger.info(TAG, "Received download ID: " + id + " (expected: " + downloadId + ")");
                     if (id == downloadId) {
                         logger.info(TAG, "Download completed for ID: " + id);
 
@@ -55,19 +58,22 @@ public class UpdateInstaller {
                                 Uri apkUri = Uri.parse(uriString);
 
                                 logger.info(TAG, "Starting installation for: " + uriString);
+                                Toast.makeText(context, "Download complete! Starting installation...", Toast.LENGTH_LONG).show();
                                 // Installation starten
                                 installApk(context, apkUri);
                             } else {
                                 logger.error(TAG, "Download failed with status: " + cursor.getInt(columnIndex));
+                                Toast.makeText(context, "Download failed. Please try again.", Toast.LENGTH_LONG).show();
                             }
                         }
                         cursor.close();
-                        context.unregisterReceiver(this);
+                        context.getApplicationContext().unregisterReceiver(this);
                     }
                 }
             };
 
-            context.registerReceiver(onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+            // Use application context to survive dialog dismissal
+            context.getApplicationContext().registerReceiver(onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
 
         } catch (Exception e) {
             logger.error(TAG, "Error downloading update", e);
