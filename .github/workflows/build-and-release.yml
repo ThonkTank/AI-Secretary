@@ -73,6 +73,8 @@ jobs:
           src/com/secretary/UpdateInstaller.java \
           src/com/secretary/AppLogger.java \
           src/com/secretary/LogProvider.java \
+          src/com/secretary/NanoHTTPD.java \
+          src/com/secretary/LogServer.java \
           gen/com/secretary/helloworld/R.java
 
         # DEX erstellen

@@ -16,11 +16,13 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import java.io.IOException;
 import java.util.List;
 
 public class MainActivity extends Activity {
     private static final String TAG = "MainActivity";
     private AppLogger logger;
+    private LogServer logServer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +45,15 @@ public class MainActivity extends Activity {
         }
 
         logger.info(TAG, "Settings menu will be in Action Bar");
+
+        // Start HTTP Log Server
+        try {
+            logServer = new LogServer(this);
+            logger.info(TAG, "HTTP Log Server started successfully");
+            logger.info(TAG, "Access logs from Termux: curl http://localhost:8080/logs");
+        } catch (Exception e) {
+            logger.error(TAG, "Failed to start HTTP Log Server", e);
+        }
 
         // LOGS ANZEIGEN
         TextView mainLogsTextView = findViewById(R.id.mainLogsTextView);
@@ -216,5 +227,15 @@ public class MainActivity extends Activity {
         closeButton.setOnClickListener(v -> dialog.dismiss());
 
         dialog.show();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Shutdown HTTP server
+        if (logServer != null) {
+            logServer.shutdown();
+            logger.info(TAG, "HTTP Log Server stopped");
+        }
     }
 }

@@ -159,40 +159,60 @@ res/
 
 ## Accessing Logs
 
-**LogProvider.java** - ContentProvider for log access
+**Solution: Android Logcat** - Direct access to app logs via built-in Android logging
 
-The app exposes logs via a ContentProvider that Claude Code can read without any permissions. This enables informed debugging and development decisions based on real app behavior.
+The app already logs everything via `AppLogger.java` using Android's standard logging system. Claude Code can read these logs directly using the `logcat` command in Termux - no special implementation needed!
 
 ### How to Read Logs
 
 ```bash
-# Read current logs (recommended method)
-content read --uri content://com.secretary.helloworld.logs/file
+# Read all app logs (recommended)
+logcat -d -s AppLogger:* MainActivity:* UpdateChecker:*
+
+# Monitor logs in real-time
+logcat -s AppLogger:* MainActivity:* UpdateChecker:*
 
 # Save logs to file for analysis
-content read --uri content://com.secretary.helloworld.logs/file > ~/app_logs.txt
+logcat -d -s AppLogger:* > ~/secretary_logs.txt
 
-# View last 20 lines
-content read --uri content://com.secretary.helloworld.logs/file | tail -20
+# View last 50 lines
+logcat -d -s AppLogger:* | tail -50
 
-# Search for errors
-content read --uri content://com.secretary.helloworld.logs/file | grep ERROR
+# Search for errors only
+logcat -d -s AppLogger:E MainActivity:E UpdateChecker:E
+
+# Clear old logs and start fresh
+logcat -c && logcat -s AppLogger:*
+
+# With timestamps
+logcat -v time -s AppLogger:* MainActivity:*
+```
+
+### Helper Script
+
+A helper script `~/secretary_logs.sh` is available with common commands:
+```bash
+./secretary_logs.sh          # Show usage
+./secretary_logs.sh view     # View recent logs
+./secretary_logs.sh monitor  # Real-time monitoring
+./secretary_logs.sh clear    # Clear and restart
+./secretary_logs.sh errors   # Show errors only
 ```
 
 ### When to Read Logs
 
-- **After app crashes:** Understand what happened before crash
-- **After feature implementation:** Verify feature is working correctly
-- **When debugging issues:** See actual execution flow and errors
-- **Before planning next steps:** Base decisions on real behavior, not assumptions
+- **After app crashes:** Logs persist in logcat buffer even after crash
+- **During development:** Monitor real-time while testing features
+- **Debugging issues:** See actual execution flow and error messages
+- **Before commits:** Verify changes work as expected
 
 ### Technical Details
 
-- **Provider:** LogProvider.java exports in-memory logs
-- **URI:** `content://com.secretary.helloworld.logs/file`
-- **Format:** Plain text, one log line per line
-- **Access:** No permissions required (exported provider)
-- **Availability:** Works even if app crashes (last 500 lines preserved in memory)
+- **Method:** Android's built-in logcat system
+- **Tags:** AppLogger, MainActivity, UpdateChecker, UpdateInstaller
+- **Levels:** I (Info), D (Debug), E (Error)
+- **Buffer:** ~256KB circular buffer (survives crashes, clears on reboot)
+- **Performance:** Minimal overhead, designed for production use
 
 ---
 
