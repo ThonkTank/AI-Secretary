@@ -263,7 +263,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
 
         // First, get the task to check if it's recurring
-        Task task = getTask(taskId);
+        Task task = getTaskWithDb(db, taskId);
         if (task == null) {
             db.close();
             return;
@@ -352,11 +352,9 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * Get a single task by ID
+     * Get a single task by ID using provided database connection
      */
-    private Task getTask(long taskId) {
-        SQLiteDatabase db = this.getReadableDatabase();
-
+    private Task getTaskWithDb(SQLiteDatabase db, long taskId) {
         Cursor cursor = db.query(TABLE_TASKS,
                                 null,
                                 COLUMN_ID + " = ?",
@@ -384,8 +382,18 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         }
 
         cursor.close();
-        db.close();
+        // Do NOT close the database connection here - caller manages it
 
+        return task;
+    }
+
+    /**
+     * Get a single task by ID (opens own database connection)
+     */
+    private Task getTask(long taskId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Task task = getTaskWithDb(db, taskId);
+        db.close();
         return task;
     }
 
