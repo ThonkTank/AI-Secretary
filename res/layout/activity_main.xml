@@ -10,7 +10,7 @@
         android:id="@+id/openTasksButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="🎉 Tasks (v0.2.6 - Update Works!)"
+        android:text="🔐 Open Tasks v0.3.0"
         android:textSize="18sp"
         android:padding="16dp"
         android:layout_margin="8dp" />

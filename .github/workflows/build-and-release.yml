@@ -101,23 +101,15 @@ jobs:
       run: |
         export ANDROID_SDK_ROOT=$HOME/android-sdk
 
-        # Debug Keystore generieren
-        keytool -genkey -v \
-          -keystore debug.keystore \
-          -alias androiddebugkey \
-          -keyalg RSA \
-          -keysize 2048 \
-          -validity 10000 \
-          -storepass android \
-          -keypass android \
-          -dname "CN=Android Debug,O=Android,C=US"
+        # Decode keystore from GitHub secret
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
 
-        # APK signieren
+        # APK signieren mit permanentem Keystore
         $ANDROID_SDK_ROOT/build-tools/33.0.2/apksigner sign \
-          --ks debug.keystore \
-          --ks-key-alias androiddebugkey \
-          --ks-pass pass:android \
-          --key-pass pass:android \
+          --ks release.keystore \
+          --ks-key-alias release \
+          --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
+          --key-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
           --out AISecretary-signed.apk \
           app_aligned.apk
 
