@@ -22,7 +22,7 @@ import java.util.List;
 public class MainActivity extends Activity {
     private static final String TAG = "MainActivity";
     private AppLogger logger;
-    private LogServer logServer;
+    private SimpleHttpServer httpServer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,7 +48,8 @@ public class MainActivity extends Activity {
 
         // Start HTTP Log Server
         try {
-            logServer = new LogServer(this);
+            httpServer = new SimpleHttpServer(this);
+            httpServer.start();
             logger.info(TAG, "HTTP Log Server started successfully");
             logger.info(TAG, "Access logs from Termux: curl http://localhost:8080/logs");
         } catch (Exception e) {
@@ -233,8 +234,8 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         // Shutdown HTTP server
-        if (logServer != null) {
-            logServer.shutdown();
+        if (httpServer != null) {
+            httpServer.stop();
             logger.info(TAG, "HTTP Log Server stopped");
         }
     }
