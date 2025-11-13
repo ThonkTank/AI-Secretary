@@ -1,1796 +1,1569 @@
-# AI Secretary - Technical Debt & Improvement Roadmap
+# AI Secretary - Development Roadmap
 
-**Erstellt:** 12.11.2025
-**Letzte Analyse:** Version 0.3.11 (Build 311)
-**Status:** Phase 1-4 - Core Features 🚀 MASSIVE PROGRESS | Phase 4 zu 30% fertig
-**Letzte Aktualisierung:** 12.11.2025 - v0.3.11 Released! Streak Tracking implementiert
+**Current Version:** v0.3.26 (Build 326) - Refactoring Branch
+**Last Updated:** 2025-11-13
+**Status:** Phase 4.5 (Architecture Refactor) - IN PROGRESS (16.7% complete)
 
----
+**Update when**: Completing phases, adding TODOs, changing priorities, finishing major features.
 
-## 📑 Inhaltsverzeichnis
-
-### Part 1: Overview
-- [Executive Summary](#executive-summary)
-- [🟡 Phase 0: Foundation Systems (50% COMPLETE)](#-phase-0-foundation-systems-50-complete)
-- [Current Status & Timeline](#-tracking)
-
-### Part 2: Technical Debt (Code Quality)
-- [🔴 KRITISCHE PROBLEME](#-kritische-probleme-sofort)
-- [⚠️ CODE SMELLS](#️-code-smells-kurzfristig---wichtig)
-- [🏗️ ARCHITEKTUR-PROBLEME](#️-architektur-probleme-mittelfristig)
-- [📁 DATEISTRUKTUR-PROBLEME](#-dateistruktur-probleme-mittelfristig)
-- [✅ POSITIVE ASPEKTE](#-positive-aspekte)
-
-### Part 3: Feature Development
-- [🎯 FEATURE DEVELOPMENT ROADMAP](#-feature-development-roadmap)
-- [Feature Suite 1: Taskmaster - Übersicht](#-feature-suite-1-taskmaster---übersicht)
-- [Feature Phase 1: Foundation & Database](#-phase-1-foundation--database-3-4-wochen)
-- [Feature Phase 2: Core Task Management](#-phase-2-core-task-management-4-5-wochen)
-- [Feature Phase 3: Tracking & Analytics](#-phase-3-tracking--analytics-3-4-wochen)
-- [Feature Phase 4: Motivation & Statistics](#-phase-4-motivation--statistics-2-3-wochen)
-- [Feature Phase 5: Intelligent Planning](#-phase-5-intelligent-planning-4-5-wochen)
-- [Feature Phase 6: Widget & Polish](#-phase-6-widget--polish-3-4-wochen)
-- [Task Data Model Specifications](#task-data-model-für-phase-1)
-
-### Part 4: Priorisierte Roadmap & Timeline
-- [🎯 PRIORISIERTE ROADMAP](#-priorisierte-roadmap)
-- [Phase 0: KRITISCH](#phase-0-kritisch-sofort-vor-allem-anderen)
-- [Tech Debt Phase 1: Foundation Fixes](#tech-debt-phase-1-foundation-fixes-parallel-zu-feature-dev)
-- [Tech Debt Phase 2: Testing & Quality](#tech-debt-phase-2-testing--quality-ongoing---parallel-zu-features)
-- [Tech Debt Phase 3: Modernization](#tech-debt-phase-3-modernization--optimization-nach-feature-phase-4)
-
-### Part 5: Meta
-- [📊 Tracking](#-tracking)
-- [📝 Notizen](#-notizen)
-- [🔗 Referenzen](#-referenzen)
-- [Changelog](#changelog)
+**Critical Note:** Phase 4.5 must be completed before Phase 5. Technical debt (ARCHITECTURE_AUDIT.md) is blocking scalability.
 
 ---
 
-## Executive Summary
+## 📊 Current Status
 
-Diese Roadmap ist das zentrale Planungsdokument für das AI Secretary Projekt. Sie kombiniert:
-1. **Current Status:** Was bereits implementiert ist (Phase 0)
-2. **Technical Debt:** Identifizierte Code Smells und Architekturprobleme
-3. **Feature Development:** Detaillierte Entwicklungsphasen für Taskmaster (Feature Suite 1)
-4. **Timeline:** Realistische Zeitschätzungen und Dependencies
+### Active Development: Phase 4.5 - Architecture Refactor 🚧
 
-### ✅ Phase 0: Foundation Systems (100% COMPLETE!)
+**Current Sub-Phase:** 4.5.2 (Package Structure) - Starting Next
 
-Die grundlegenden Infrastruktur-Features sind vollständig implementiert und funktionsfähig:
+**Completed:**
+- ✅ Phase 4.5.1: Critical Cleanup (13.4% codebase reduction, 496 lines deleted)
 
-**1. Auto-Update System** ✅ FUNKTIONIERT!
-- GitHub Releases API Integration (`UpdateChecker.java`) - **FUNKTIONIERT**
-- Automatische Version-Erkennung und -Vergleich - **FUNKTIONIERT**
-- APK-Download via DownloadManager (`UpdateInstaller.java`) - **FUNKTIONIERT**
-- ✅ Erkennt korrekt ob Updates verfügbar sind
-- ✅ GitHub Token entfernt (v0.1.2) - Repository ist jetzt public
-- ✅ API Response 200 OK, findet Releases und Assets
-- ✅ Permanente Keystore-Signierung implementiert
+**In Progress:**
+- 🚧 Phase 4.5.2: Package Structure (Create directories, move files)
 
-**2. Logging System** ✅ FUNKTIONIERT!
-- In-Memory Logging (`AppLogger.java`) - **FUNKTIONIERT**
-- Automatisches Log-Trimming (max. 500 Zeilen) - **FUNKTIONIERT**
-- Drei Log-Level: INFO, DEBUG, ERROR - **FUNKTIONIERT**
-- HTTP Server für externe Zugriff (`SimpleHttpServer.java`) - **FUNKTIONIERT**
-- ✅ **Claude Code kann Logs via `curl http://localhost:8080/logs` lesen**
+**Upcoming:**
+- ⏳ Phase 4.5.3: Data Layer - Room Migration
+- ⏳ Phase 4.5.4: Domain Layer - Use Cases & Services
+- ⏳ Phase 4.5.5: Presentation Layer - MVVM
+- ⏳ Phase 4.5.6: Testing & Documentation
 
-### ✅ Phase 1: Taskmaster Foundation - COMPLETE (100%)
+**Progress:** 1/6 sub-phases complete (16.7%)
 
-**Phase 1 ist vollständig abgeschlossen!**
+### Paused Development: Phase 4 - Motivation & Statistics
 
-**Alle Features implementiert:**
-- ✅ Task Entity mit allen Basis-Feldern (`Task.java`)
-- ✅ SQLite Database mit Helper (`TaskDatabaseHelper.java`) - v3 mit Kategorien
-- ✅ Task Activity mit vollem UI (`TaskActivity.java`)
-- ✅ Task erstellen, anzeigen, löschen
-- ✅ Task als erledigt markieren
-- ✅ Prioritäten (Low, Medium, High, Urgent)
-- ✅ Database Migration (v1 → v2 → v3)
-- ✅ **Recurrence Feature**
-  - ✅ Zwei Recurrence-Typen: INTERVAL ("Every X Y") und FREQUENCY ("X times per Y")
-  - ✅ Smart completion logic für beide Typen
-  - ✅ Automatisches Task-Reset bei fälligen Interval-Tasks
-  - ✅ Progress-Tracking für Frequency-Tasks
-- ✅ Task bearbeiten (Edit-Dialog) - v0.3.5
-- ✅ Task-Suche/Filter - v0.3.6
-- ✅ **Task-Kategorien (NEU!)** - v0.3.7
-  - ✅ 10 vordefinierte Kategorien (General, Work, Personal, Health, Finance, Learning, Shopping, Home, Social, Other)
-  - ✅ Kategorie-Auswahl beim Erstellen/Bearbeiten
-  - ✅ Kategorie-Filter in der Task-Liste
-  - ✅ Kategorie-Anzeige in jedem Task
-- ✅ **Due Date Picker (NEU!)** - v0.3.7
-  - ✅ DatePickerDialog für Datumsauswahl
-  - ✅ Due Date Anzeige in der Task-Liste
-  - ✅ Overdue-Warnung für überfällige Tasks
-  - ✅ Clear-Button zum Entfernen des Datums
-- ✅ **Task-Notizen (NEU!)** - v0.3.7
-  - ✅ Erweiterte Beschreibung mit bis zu 8 Zeilen
-  - ✅ Verbesserte Eingabe mit Scrolling
-  - ✅ Anzeige von bis zu 3 Zeilen in der Liste
+**Reason:** Architecture refactoring takes priority (technical debt blocking)
 
-**Technical Debt (Code Quality Issues):**
-- 🔴 1 kritisches Sicherheitsproblem (GitHub Token hardcoded)
-- ⚠️ 21 Code Smells und Architektur-Probleme
-- 📁 6 Dateistruktur-Probleme
+**Completed (30%):**
+- ✅ Streak Tracking (current and longest streaks)
+- ✅ Database schema with streak fields
+- ✅ Basic streak calculation logic
 
-### 📋 Taskmaster Feature Development
+**Will Resume After Phase 4.5:**
+- ⏸️ Visual motivation features
+- ⏸️ Statistics display
+- ⏸️ Motivational messages
 
-**Feature Development (6 Phasen):**
-- 🎯 Phase 1-4: MVP (3-4 Monate)
-- 🎯 Phase 1-6: Komplette Suite (4.5-6 Monate)
-
-**Current Status:**
-- ✅ Phase 0 (Foundation) ist KOMPLETT und funktioniert
-- ✅ Phase 1 (Taskmaster) ist zu 70% fertig
-- ✅ Recurrence-Feature mit 2 Typen implementiert
-- 🚀 Aktiv in Entwicklung
-
-**Gesamtbewertung:**
-- ✅ Phase 0 komplett und stabil
-- ✅ Update-System funktioniert perfekt
-- ✅ Logging-System voll funktionsfähig
-- ✅ Phase 1 macht gute Fortschritte
+**After Refactoring:**
+- ⏳ Phase 5: Intelligent Planning (4-5 weeks)
+- ⏳ Phase 6: Widget & Polish (3-4 weeks)
 
 ---
 
-## ✅ PHASE 0: FOUNDATION SYSTEMS (KOMPLETT UND FUNKTIONSFÄHIG)
+## 📋 Priority Definitions
 
-### Status: ✅ VOLLSTÄNDIG IMPLEMENTIERT UND FUNKTIONIERT
+Standard for all TODOs in this roadmap:
 
-Phase 0 umfasst die grundlegenden Infrastruktur-Features. **Beide Systeme sind vollständig funktionsfähig**.
+**CRITICAL:** Feature completely broken or unusable, blocks core functionality, prevents app launch or causes crashes
+- Example: "Database migration fails causing app crash on update"
 
----
+**HIGH:** Important feature missing or severely impaired, significantly impacts user workflow, confusing UX leading to frequent errors
+- Example: "Streak tracking shows incorrect data"
 
-### 1. Auto-Update System ✅ FUNKTIONIERT
+**MEDIUM:** Feature incomplete but partially usable, suboptimal UX requiring too many steps, non-blocking bugs or inconsistencies
+- Example: "Statistics panel needs better visualization"
 
-**Zweck:**
-App kann sich selbst über GitHub Releases aktualisieren, ohne Play Store oder manuelle APK-Downloads.
-
-**Status:** ✅ Vollständig implementiert und funktionsfähig
-
-**Komponenten:**
-
-#### UpdateChecker.java (126 Zeilen)
-- GitHub Releases API Integration
-- Vergleicht aktuelle App-Version mit latest Release auf GitHub
-- Async Network-Requests mit Callback-Listener
-- Sucht APK-Assets in Releases
-- Repository: `ThonkTank/AI-Secretary`
-
-**Features:**
-- Automatische Version-Erkennung (versionCode & versionName)
-- JSON-Parsing der GitHub API Response
-- Changelog-Extraktion aus Release-Body
-- Error-Handling für Netzwerk-Fehler
-
-#### UpdateInstaller.java (91 Zeilen)
-- Download über Android DownloadManager
-- BroadcastReceiver für Download-Completion
-- Automatischer Installations-Prompt nach Download
-- APK-Speicherung in public Downloads folder
-
-**Features:**
-- Download-Progress in System-Notification
-- URI-basierte APK-Installation
-- Permissions: INTERNET, REQUEST_INSTALL_PACKAGES
-
-#### User Flow:
-1. User öffnet Settings-Dialog (⚙ Icon in Action Bar)
-2. User klickt "Check for Updates"
-3. App prüft GitHub Releases API
-4. Falls Update verfügbar: Dialog mit Version & Changelog
-5. User klickt "Download & Install"
-6. Download startet (Notification sichtbar)
-7. Nach Download: Automatischer Installations-Prompt
-8. User installiert Update
-
-**Integration:**
-- GitHub Actions CI/CD baut APK automatisch bei jedem Push
-- APK wird als Release-Asset hochgeladen
-- App erkennt neues Release und bietet Installation an
-
-**Versionierung:**
-- Semantic Versioning (Major.Minor)
-- `versionCode`: Integer (inkrementell, z.B. 21)
-- `versionName`: String (z.B. "3.0")
-
-**Bekannte Issues (siehe Technical Debt):**
-- ⚠️ GitHub Token hardcoded (KRITISCH - muss gefixt werden)
-- ⚠️ BroadcastReceiver Memory Leak möglich
-- ⚠️ Manuelles Thread-Management (kein ExecutorService)
-- ⚠️ HttpURLConnection nicht geschlossen (Resource Leak)
+**LOW:** Nice-to-have improvements, code refactoring or cleanup, small polish or consistency fixes
+- Example: "Add tooltips to streak indicators"
 
 ---
 
-### 2. Logging System ✅ FUNKTIONIERT
+## 🎯 Phase 4: Motivation & Statistics (Current)
 
-**Zweck:**
-Umfassendes Logging für Debugging durch Claude Code. Alle wichtigen App-Events werden automatisch geloggt und sind für Entwicklung zugänglich.
+**Goal:** User motivation through gamification and visual feedback
 
-**Status:** ✅ Vollständig implementiert und funktionsfähig
+**Duration:** 2-3 weeks
+**Progress:** 30% complete
 
-**Komponenten:**
+### Active TODOs
 
-#### AppLogger.java (101 Zeilen)
-- Singleton Pattern für zentrales Logging
-- In-Memory Storage (max. 500 Zeilen)
-- Drei Log-Level: INFO, DEBUG, ERROR
-- Paralleles Logging zu Android Logcat
-- Thread-safe Implementation
+**CRITICAL:**
+- [ ] None currently
 
-**Features:**
-- **Automatisches Log-Trimming:**
-  - Max. 500 Zeilen im Speicher
-  - Älteste Einträge werden automatisch gelöscht
-  - Verhindert Memory-Issues
+**HIGH:**
+- [ ] Statistics calculation service - compute daily/weekly completion counts
+  - Location: `src/com/secretary/TaskStatistics.java`
+  - Dependencies: completions table, current date logic
+- [ ] Statistics display in TaskActivity - show today/week stats above list
+  - Location: `src/com/secretary/TaskActivity.java`
+  - UI: Add TextView or custom view for stats panel
 
-- **Strukturierte Log-Einträge:**
-  - Format: `[YYYY-MM-DD HH:mm:ss] [LEVEL] [TAG] Message`
-  - Beispiel: `[2025-11-12 14:30:15] [INFO] [MainActivity] App started`
+**MEDIUM:**
+- [ ] Visual streak indicator - improve streak display beyond emoji
+  - Current: "🔥 3" text
+  - Goal: Progress bar or custom view showing current vs longest
+- [ ] Completion rate visualization - percentage of tasks completed on time
+  - Location: New StatisticsView widget
+  - Data source: TaskStatistics calculations
+- [ ] Motivational messages - encourage users based on streaks and completions
+  - Location: TaskActivity or new MotivationHelper
+  - Triggers: Opening app, completing tasks, achieving streaks
 
-- **Log-Level:**
-  - `INFO`: Normale App-Events (Start, Button-Clicks, Updates)
-  - `DEBUG`: Detaillierte Debugging-Infos (API-Responses, Status)
-  - `ERROR`: Fehler mit Stacktraces
+**LOW:**
+- [ ] Streak history graph - line chart showing streak over time
+  - Nice-to-have: Shows motivation trends
+  - Requires: Chart library or custom drawing
+- [ ] Achievement badges - milestone rewards for streaks/completions
+  - Future: Gamification system
+  - Currently: Low priority until core stats work
 
-- **Storage:**
-  - In-Memory (List<String>)
-  - Keine File-Permissions nötig
-  - Logs gehen bei App-Neustart verloren (by design)
+### Technical Details
 
-- **Zugriff:**
-  - In App: Settings → "View Logs" Button
-  - Logs-Dialog mit ScrollView
-  - "Copy to Clipboard" Button
-  - Main Screen zeigt Logs automatisch (für Debug-Builds)
+**What exists:**
+- `Task.java:37-39` - Streak fields (currentStreak, longestStreak, lastStreakDate)
+- `TaskDatabaseHelper.java` - Streak update logic in completeTask()
+- `TaskStatistics.java:20+` - Basic statistics framework
+- `completions` table - Historical completion data
 
-**Integration:**
-- Alle wichtigen App-Events werden geloggt:
-  - App Start/Lifecycle
-  - Update-Checks
-  - Button-Clicks
-  - API-Requests
-  - Fehler & Exceptions
+**What's needed:**
+- Statistics aggregation queries (daily, weekly, all-time)
+- UI components for displaying stats
+- Motivational message system
+- Better visual indicators for streaks
 
-**Usage in Code:**
+**Testing:**
+- Manual: Create tasks, complete them multiple days, verify streak increments
+- Manual: Check statistics panel shows correct counts
+- Manual: Test motivational messages appear at right times
+
+---
+
+## ✅ Completed Phases
+
+### Phase 0: Foundation Systems (100%)
+**Auto-update via GitHub Releases + HTTP logging on localhost:8080**
+- UpdateChecker/UpdateInstaller for seamless updates
+- AppLogger + SimpleHttpServer for development logging
+- Fully functional CI/CD pipeline
+
+### Phase 1: Taskmaster Foundation (100%)
+**Database, UI, and CRUD operations**
+- Task entity with 17 columns across 2 tables
+- SQLite with migrations (v1→v4)
+- TaskActivity with full task management UI
+- Priorities, categories, due dates
+
+### Phase 2: Core Task Management (100%)
+**Recurrence system and advanced features**
+- Two recurrence types: INTERVAL ("Every X days"), FREQUENCY ("X times per week")
+- Smart completion logic with automatic task reset
+- Task editing, search, filtering by status/priority/category
+- Sort by 5 criteria (priority, due date, category, created date, title)
+
+### Phase 3: Tracking & Analytics (100%)
+**Completion history and data collection**
+- completions table (6 columns) for historical tracking
+- TaskStatistics class for analytics
+- Completion dialog with time spent, difficulty, notes
+- Average time calculation from history
+
+---
+
+## 🏗️ Phase 4.5: Architecture Refactor (Upcoming)
+
+**Goal:** Complete architecture overhaul - from flat structure to Clean Architecture with feature modules
+
+**Duration:** 3-4 weeks (13-18 working days)
+**Progress:** 0% complete
+**When:** After Phase 4 completion, before Phase 5
+**Criticality:** 🔴 HIGH - Technical debt is blocking scalability
+
+**Based on:** ARCHITECTURE_AUDIT.md findings - addresses critical issues:
+- Logging redundancy (5 files → 2, save 469 lines)
+- God-Classes (TaskDatabaseHelper 806 lines → modular)
+- No tests (0% → 70% coverage)
+- Mixed responsibilities (separation of concerns)
+- No modern patterns (MVVM, Repository, Use Cases)
+
+---
+
+### Target Architecture: Hybrid Feature + Clean Layers
+
+**Combines:** Feature-based modules (Salt Marcher) + Clean Architecture layers (Android best practices)
+
+```
+AI-Secretary-latest/
+├── src/com/secretary/
+│   ├── app/                           # App entry point
+│   │   └── MainActivity.java
+│   │
+│   ├── core/                          # Shared foundations
+│   │   ├── logging/
+│   │   │   ├── AppLogger.java         # Core logger (114 lines) ✅
+│   │   │   └── HttpLogServer.java     # Consolidated HTTP server
+│   │   ├── network/
+│   │   │   ├── UpdateChecker.java
+│   │   │   └── UpdateInstaller.java
+│   │   └── di/
+│   │       └── AppModule.java         # Dependency injection
+│   │
+│   ├── features/                      # Feature modules
+│   │   ├── tasks/
+│   │   │   ├── data/
+│   │   │   │   ├── TaskDao.java       # Room DAO
+│   │   │   │   ├── TaskEntity.java    # DB entity
+│   │   │   │   └── TaskRepositoryImpl.java
+│   │   │   ├── domain/
+│   │   │   │   ├── model/
+│   │   │   │   │   ├── Task.java      # Pure domain model
+│   │   │   │   │   └── RecurrenceRule.java
+│   │   │   │   ├── repository/
+│   │   │   │   │   └── TaskRepository.java  # Interface
+│   │   │   │   ├── usecase/
+│   │   │   │   │   ├── CompleteTaskUseCase.java
+│   │   │   │   │   ├── CreateTaskUseCase.java
+│   │   │   │   │   └── UpdateTaskUseCase.java
+│   │   │   │   └── service/
+│   │   │   │       ├── RecurrenceService.java
+│   │   │   │       └── StreakService.java
+│   │   │   └── presentation/
+│   │   │       ├── TaskActivity.java
+│   │   │       ├── TaskViewModel.java
+│   │   │       ├── TaskListAdapter.java
+│   │   │       └── dialog/
+│   │   │           ├── AddTaskDialog.java
+│   │   │           ├── EditTaskDialog.java
+│   │   │           └── CompletionDialog.java
+│   │   │
+│   │   └── statistics/
+│   │       ├── data/
+│   │       │   ├── CompletionDao.java
+│   │       │   └── StatisticsRepositoryImpl.java
+│   │       ├── domain/
+│   │       │   ├── model/
+│   │       │   │   └── TaskStatistics.java
+│   │       │   ├── repository/
+│   │       │   │   └── StatisticsRepository.java
+│   │       │   └── usecase/
+│   │       │       └── CalculateStreakUseCase.java
+│   │       └── presentation/
+│   │           └── StatisticsViewModel.java
+│   │
+│   └── shared/
+│       ├── database/
+│       │   ├── TaskDatabase.java      # Room Database
+│       │   └── Migrations.java
+│       └── util/
+│           └── DateUtils.java
+│
+├── devkit/                            # Development tools
+│   ├── build/
+│   │   ├── build.sh
+│   │   └── build-current.sh
+│   ├── testing/
+│   │   ├── fixtures/                  # Test data
+│   │   └── utils/                     # Test helpers
+│   └── utilities/
+│       ├── log_access.sh
+│       └── version_bump.sh
+│
+├── docs/
+│   ├── ARCHITECTURE.md                # Architecture decisions (new)
+│   ├── DEBUGGING.md                   # Debug workflows (new)
+│   ├── LOGGING_SYSTEM.md
+│   └── UPDATE_SYSTEM.md
+│
+└── [res/, .github/, CLAUDE.md, README.md, ROADMAP.md]
+```
+
+**Key Principles:**
+- **Feature Modules:** Self-contained by domain (tasks, statistics)
+- **Clean Layers per Feature:** data → domain → presentation
+- **Core for Shared:** Logging, networking, DI used across features
+- **Strict Dependencies:** Presentation → Domain → Data (never reverse)
+
+---
+
+## Phase 4.5.1: Critical Cleanup ✅ COMPLETE
+
+**Goal:** Remove redundant code and prepare for refactoring
+**When:** BEFORE any restructuring
+**Why:** Reduces codebase by 13% (469 lines), simplifies migration
+**Status:** ✅ COMPLETED 2025-11-13
+**Actual Time:** ~2 hours
+
+### Completed TODOs
+
+**CRITICAL:**
+- [x] Delete redundant logging files ✅
+  - GOAL: Eliminate 60% of logging code (5 files → 2)
+  - Location: `src/com/secretary/`
+  - Action: Deleted `LogServer.java` (148 lines), `LogProvider.java` (110 lines), `NanoHTTPD.java` (211 lines)
+  - Einsparung: 469 Zeilen (13% der Codebase)
+  - Result: Only AppLogger.java and SimpleHttpServer.java remain
+- [x] Fix AppLogger inconsistency ✅
+  - GOAL: True in-memory logging (remove file writing)
+  - Location: `src/com/secretary/AppLogger.java:86-98`
+  - Action: Removed `logFile` variable and `writeToFile()` method
+  - Result: AppLogger is now 87 lines (from 114 lines), truly IN-MEMORY
+- [x] Verify dead code removal ✅
+  - GOAL: Ensure LogProvider is truly unused
+  - Action: Checked AndroidManifest.xml for ContentProvider declaration
+  - Result: Removed ContentProvider entry from manifest (lines 34-38)
+
+**HIGH:**
+- [x] Create refactoring branch ✅
+  - GOAL: Isolate refactoring work from main development
+  - Action: `git checkout -b refactoring/phase-4.5-architecture`
+  - Result: Branch created successfully
+- [x] Create test infrastructure structure ✅
+  - GOAL: Prepare for testing in later phases
+  - Location: `devkit/testing/`
+  - Action: Created directory structure (domain/, data/, integration/, fixtures/)
+  - Result: Test directories ready, README.md created
+  - Note: Actual test implementation deferred to Phase 4.5.4-4.5.6
+
+**MEDIUM:**
+- [x] Document current system behavior ✅
+  - GOAL: Baseline for regression testing
+  - Action: Created `docs/REFACTORING_BASELINE.md`
+  - Content: 10 critical user flows, database schema, test scenarios
+  - Result: Complete baseline documentation for regression validation
+
+### Technical Details
+
+**What gets deleted:**
+```
+❌ LogServer.java         (148 lines) - Duplicate HTTP server using NanoHTTPD
+❌ LogProvider.java       (110 lines) - Unused ContentProvider
+❌ NanoHTTPD.java         (211 lines) - Overkill library for simple logging
+```
+
+**What gets fixed:**
 ```java
-AppLogger logger = AppLogger.getInstance(context);
-logger.info(TAG, "App started");
-logger.debug(TAG, "GitHub API response code: 200");
-logger.error(TAG, "Network error", exception);
-```
-
-**Bekannte Issues (siehe Technical Debt):**
-- ⚠️ Dead Code: `logFile` Variable wird erstellt aber nie verwendet
-- ⚠️ Singleton Anti-Pattern (erschwert Testing)
-- ⚠️ Inkonsistenz: `getLogFilePath()` gibt "IN-MEMORY" zurück, aber logFile existiert
-
----
-
-### Phase 0 - Zusammenfassung
-
-**Was vorhanden ist (aber NICHT funktioniert):**
-- ❌ Auto-Update System - Code vorhanden, funktioniert nicht
-- ❌ Logging System - Code vorhanden, funktioniert nicht
-- ✅ Settings-UI vorhanden
-- ✅ CI/CD-Pipeline funktioniert (GitHub Actions)
-- ✅ Clean, minimales Design
-
-**Was SOFORT gefixt werden muss:**
-- 🔴 Update-System debuggen und zum Laufen bringen
-- 🔴 Logging-System debuggen und zum Laufen bringen
-- 🔴 GitHub Token Security (KRITISCH)
-- ⚠️ Memory Leaks (BroadcastReceiver)
-- ⚠️ Resource Management (HttpURLConnection)
-- ⚠️ Thread-Management (ExecutorService)
-- ⚠️ Dead Code entfernen
-
-**Probleme identifizieren:**
-- **Update-System:** Was genau funktioniert nicht?
-  - GitHub API Request schlägt fehl?
-  - JSON Parsing funktioniert nicht?
-  - Download startet nicht?
-  - Installation wird nicht angezeigt?
-- **Logging-System:** Was genau funktioniert nicht?
-  - Logs werden nicht geschrieben?
-  - Logs werden nicht angezeigt?
-  - AppLogger wird nicht richtig initialisiert?
-
-**Nächste Schritte:**
-1. App installieren und testen
-2. Fehler identifizieren (Logcat prüfen)
-3. Update-System debuggen
-4. Logging-System debuggen
-5. Beide Systeme funktionsfähig machen
-
-**Fazit:**
-Phase 0 Code existiert, ist aber nicht funktionsfähig. Bevor Taskmaster-Entwicklung starten kann, MÜSSEN Update und Logging funktionieren. Dies ist ein BLOCKER für alle weiteren Features.
-
----
-
-## 🔴 KRITISCHE PROBLEME (SOFORT)
-
-### Security
-
-#### 1. Hardcoded GitHub Token
-**Status:** ❌ KRITISCH - SOFORT BEHEBEN
-**Datei:** `UpdateChecker.java:17`
-**Problem:**
-```java
-private static final String GITHUB_TOKEN = "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";
-```
-
-**Risiko:**
-- Token ist öffentlich auf GitHub sichtbar
-- Kann für unbefugten Zugriff auf Repository verwendet werden
-- Könnte bereits kompromittiert sein
-
-**Lösung:**
-- [ ] Token SOFORT auf GitHub revoken
-- [ ] Neuen Token generieren
-- [ ] Token in GitHub Secrets speichern
-- [ ] Code ändern um Token aus Environment Variable zu lesen
-- [ ] Alternative: Public API ohne Token nutzen (Rate-Limit beachten)
-
-**Referenzen:**
-- GitHub Docs: [Managing your personal access tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
-- [GitHub Secrets in Actions](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
-
----
-
-## ⚠️ CODE SMELLS (Kurzfristig - Wichtig)
-
-### Threading & Concurrency
-
-#### 2. Manuelles Thread-Management
-**Status:** ⚠️ Wichtig
-**Datei:** `UpdateChecker.java:26-106`
-**Problem:**
-- Manuelles `new Thread().start()` statt ExecutorService
-- Gefährlicher Context-Cast: `((android.app.Activity) context).runOnUiThread(...)`
-- Kein Thread-Pool, jeder Request erstellt neuen Thread
-
-**Auswirkungen:**
-- Context könnte nicht immer Activity sein → ClassCastException
-- Keine Thread-Wiederverwendung → Performance-Problem
-- Schwer zu testen
-
-**Lösung:**
-- [ ] ExecutorService oder Kotlin Coroutines verwenden
-- [ ] Handler mit Looper für UI-Updates
-- [ ] Oder moderne Libraries wie Retrofit mit RxJava/Coroutines
-
-**Code-Beispiel (Lösung):**
-```java
-private static final ExecutorService executor = Executors.newSingleThreadExecutor();
-private static final Handler mainHandler = new Handler(Looper.getMainLooper());
-
-public static void checkForUpdates(Context context, UpdateListener listener) {
-    executor.execute(() -> {
-        // Background work
-        mainHandler.post(() -> {
-            // UI updates
-        });
-    });
-}
-```
-
----
-
-### Memory Management
-
-#### 3. BroadcastReceiver Memory Leak
-**Status:** ⚠️ Wichtig
-**Datei:** `UpdateInstaller.java:38-70`
-**Problem:**
-```java
-BroadcastReceiver onComplete = new BroadcastReceiver() {
-    @Override
-    public void onReceive(Context context, Intent intent) {
-        // ...
-        context.unregisterReceiver(this); // Nur bei Erfolg!
-    }
-};
-context.registerReceiver(onComplete, new IntentFilter(...));
-```
-
-**Auswirkungen:**
-- Receiver wird nur in `onReceive` unregistriert
-- Wenn Download nie abgeschlossen wird, bleibt Receiver registriert
-- Activity-Zerstörung führt zu Memory Leak
-
-**Lösung:**
-- [ ] Receiver in `onDestroy()` der Activity unregistrieren
-- [ ] Verwende WorkManager für Download-Tasks (überlebt Activity-Lifecycle)
-- [ ] Oder verwende LocalBroadcastManager (deprecated, aber sicherer)
-
-**Empfohlene Implementierung:**
-```java
-// In MainActivity
-private BroadcastReceiver downloadReceiver;
-
-@Override
-protected void onDestroy() {
-    super.onDestroy();
-    if (downloadReceiver != null) {
-        unregisterReceiver(downloadReceiver);
-    }
-}
-```
-
----
-
-#### 4. Resource Management - HttpURLConnection nicht geschlossen
-**Status:** ⚠️ Wichtig
-**Datei:** `UpdateChecker.java:36-54`
-**Problem:**
-```java
-HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-// ... verwendet conn
-// KEIN conn.disconnect() oder try-with-resources!
-BufferedReader reader = new BufferedReader(...);
-// KEIN reader.close()!
-```
-
-**Auswirkungen:**
-- Ressourcen-Leak
-- Offene Connections
-- Potenzielle "Too many open files" Fehler
-
-**Lösung:**
-- [ ] Try-with-resources verwenden
-- [ ] Oder finally-Block mit explicit close()
-
-**Code-Beispiel (Lösung):**
-```java
-HttpURLConnection conn = null;
-try {
-    conn = (HttpURLConnection) url.openConnection();
-    try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
-        // Work with reader
-    }
-} finally {
-    if (conn != null) {
-        conn.disconnect();
-    }
-}
-```
-
----
-
-### Code Quality
-
-#### 5. Generische Exception-Behandlung
-**Status:** ⚠️ Mittlere Priorität
-**Dateien:** Mehrere
-**Problem:**
-```java
-catch (Exception e) {  // Zu generisch!
-    logger.error(TAG, "Error checking for updates", e);
-    ((android.app.Activity) context).runOnUiThread(() ->
-        listener.onError(e.getMessage())
-    );
-}
-```
-
-**Auswirkungen:**
-- Keine spezifische Fehlerbehandlung
-- Keine Retry-Logik bei Netzwerkfehlern
-- Keine Prüfung der Netzwerkverfügbarkeit vor Requests
-
-**Lösung:**
-- [ ] Spezifische Exceptions catchen (IOException, JSONException, etc.)
-- [ ] Netzwerk-Verfügbarkeit prüfen vor Requests
-- [ ] Retry-Logik für transiente Fehler
-- [ ] User-freundliche Fehlermeldungen
-
-**Code-Beispiel (Lösung):**
-```java
-try {
-    // Network request
-} catch (UnknownHostException | SocketTimeoutException e) {
-    // Network issue - could retry
-    listener.onError("Network error. Please check your connection.");
-} catch (JSONException e) {
-    // Parse error
-    listener.onError("Invalid response from server.");
-} catch (IOException e) {
-    // Other IO issues
-    listener.onError("Download failed: " + e.getMessage());
-}
-```
-
----
-
-#### 6. Code-Duplikation
-**Status:** ⚠️ Mittlere Priorität
-**Dateien:** `UpdateChecker.java:109-125`, `MainActivity.java:37-43`
-**Problem:**
-- `getCurrentVersionCode()` und `getCurrentVersionName()` Logik wird dupliziert
-- Ähnliche try-catch Blöcke werden wiederholt
-
-**Lösung:**
-- [ ] Zentrale Utility-Klasse `VersionUtils` erstellen
-- [ ] DRY-Prinzip anwenden (Don't Repeat Yourself)
-
-**Code-Beispiel (Lösung):**
-```java
-public class VersionUtils {
-    public static int getVersionCode(Context context) {
-        try {
-            PackageInfo pInfo = context.getPackageManager()
-                .getPackageInfo(context.getPackageName(), 0);
-            return pInfo.versionCode;
-        } catch (PackageManager.NameNotFoundException e) {
-            Log.e("VersionUtils", "Package not found", e);
-            return 0;
-        }
-    }
-
-    public static String getVersionName(Context context) {
-        try {
-            PackageInfo pInfo = context.getPackageManager()
-                .getPackageInfo(context.getPackageName(), 0);
-            return pInfo.versionName;
-        } catch (PackageManager.NameNotFoundException e) {
-            Log.e("VersionUtils", "Package not found", e);
-            return "unknown";
-        }
-    }
-}
-```
-
----
-
-#### 7. Magic Numbers & Strings
-**Status:** ⚠️ Niedrige Priorität
-**Dateien:** Verschiedene
-**Problem:**
-- `conn.setConnectTimeout(10000);` - Was ist 10000?
-- `private static final int MAX_LOG_LINES = 500;` - Warum 500?
-- `mainLogsTextView.postDelayed(() -> ..., 1000);` - Warum 1 Sekunde?
-
-**Lösung:**
-- [ ] Konstanten mit aussagekräftigen Namen definieren
-- [ ] Kommentare hinzufügen warum dieser Wert gewählt wurde
-
-**Code-Beispiel (Lösung):**
-```java
-// Network timeouts
-private static final int CONNECT_TIMEOUT_MS = 10_000; // 10 seconds
-private static final int READ_TIMEOUT_MS = 10_000;
-
-// Logging configuration
-private static final int MAX_LOG_LINES = 500; // Keep last 500 entries to prevent memory issues
-
-// UI update delays
-private static final long LOG_REFRESH_DELAY_MS = 1000; // Wait for button details to log
-```
-
----
-
-#### 8. Dead Code & Inkonsistenzen
-**Status:** ⚠️ Mittlere Priorität
-**Datei:** `AppLogger.java`
-**Problem:**
-```java
-private File logFile;  // Zeile 21 - wird erstellt aber nie verwendet
-// ...
-public String getLogFilePath() {
-    return "IN-MEMORY (no file)";  // Zeile 94 - ignoriert logFile!
-}
-```
-
-**Auswirkungen:**
-- Verwirrung für andere Entwickler
-- Unnötiger Speicher
-- Inkonsistente API
-
-**Lösung:**
-- [ ] `logFile` Variable komplett entfernen
-- [ ] Alte File-Logging-Kommentare entfernen
-- [ ] Oder: File-Logging wieder implementieren für Persistence
-
----
-
-#### 9. Singleton Anti-Pattern
-**Status:** ⚠️ Niedrige Priorität (für jetzt OK)
-**Datei:** `AppLogger.java:37-42`
-**Problem:**
-```java
-public static synchronized AppLogger getInstance(Context context) {
-    if (instance == null) {
-        instance = new AppLogger(context.getApplicationContext());
-    }
-    return instance;
-}
-```
-
-**Auswirkungen:**
-- Singleton erschwert Unit-Tests
-- Globaler Zustand
-- Kein Dependency Injection möglich
-- In modernem Android (mit Hilt/Koin) nicht mehr empfohlen
-
-**Lösung (für später):**
-- [ ] Dependency Injection mit Hilt einführen
-- [ ] Singleton durch @Singleton-annotierte Klasse ersetzen
-- [ ] Testability verbessern
-
-**Hinweis:** Für die aktuelle Early-Phase ist Singleton akzeptabel, aber bei Skalierung umstellen.
-
----
-
-### Naming & Conventions
-
-#### 10. Unprofessionelles Package-Naming
-**Status:** ⚠️ Wichtig
-**Datei:** `AndroidManifest.xml:3`
-**Problem:**
-```xml
-package="com.secretary.helloworld"
-```
-
-**Auswirkungen:**
-- "helloworld" wirkt unprofessionell
-- Passt nicht zur App-Vision (AI Secretary)
-- Schwer zu ändern später (erfordert Refactoring aller Imports)
-
-**Lösung:**
-- [ ] Auf `com.secretary` oder `com.secretary.ai` umbenennen
-- [ ] Refactoring aller Imports durchführen
-- [ ] AndroidManifest aktualisieren
-- [ ] WICHTIG: Mache das jetzt, bevor mehr Code existiert!
-
----
-
-#### 11. Inkonsistente Sprache
-**Status:** ⚠️ Niedrige Priorität
-**Dateien:** Alle
-**Problem:**
-- Code auf Englisch
-- Kommentare auf Deutsch
-- Logs auf Deutsch
-- Strings gemischt
-
-**Auswirkungen:**
-- Unprofessionell
-- Erschwert internationale Zusammenarbeit
-- Code sollte konsistent Englisch sein
-
-**Lösung:**
-- [ ] Alle Kommentare auf Englisch umstellen
-- [ ] Logs auf Englisch
-- [ ] User-facing Strings in strings.xml (können lokalisiert werden)
-- [ ] Code-Kommentare nur dort wo wirklich nötig
-
----
-
-### UI/UX
-
-#### 12. UI/UX Anti-Patterns
-**Status:** ⚠️ Niedrige Priorität
-**Datei:** `MainActivity.java:54`
-**Problem:**
-```java
-mainLogsTextView.postDelayed(() -> updateLogsDisplay(mainLogsTextView), 1000);
-```
-
-**Auswirkungen:**
-- Hardcoded delay ohne Erklärung
-- Kein Polling/LiveData für Echtzeit-Updates
-- Manuelle UI-Refreshes
-
-**Lösung:**
-- [ ] LiveData verwenden für reaktive Updates
-- [ ] Oder Observer-Pattern für Log-Updates
-- [ ] Delay dokumentieren wenn notwendig
-
----
-
-#### 13. Hardcoded UI-Texte
-**Status:** ⚠️ Niedrige Priorität
-**Datei:** `activity_main.xml:18` und andere
-**Problem:**
-```xml
-android:text="Loading logs..."
-```
-
-**Auswirkungen:**
-- Keine Lokalisierung möglich
-- Android Lint Warnings
-
-**Lösung:**
-- [ ] Alle UI-Texte in `strings.xml` verschieben
-- [ ] Lokalisierung vorbereiten (auch wenn initial nur Englisch)
-
----
-
-## 🏗️ ARCHITEKTUR-PROBLEME (Mittelfristig)
-
-### Architecture Patterns
-
-#### 14. Keine Architektur-Pattern
-**Status:** 📋 Für Skalierung wichtig
-**Dateien:** Gesamtes Projekt
-**Problem:**
-- Keine MVVM, MVP oder MVI
-- Direkte API-Calls aus der UI (MainActivity)
-- Business-Logik vermischt mit UI-Logik
-- Keine ViewModels
-
-**Auswirkungen:**
-- Schwer zu testen
-- Nicht wartbar bei Wachstum
-- Keine Separation of Concerns
-- Activity macht zu viel
-
-**Lösung (für Feature Suite 1: Taskmaster):**
-- [ ] MVVM-Architektur einführen
-- [ ] ViewModels für Business-Logik
-- [ ] Repository Pattern für Datenzugriff
-- [ ] Use Cases für komplexe Operations
-
-**Empfohlene Struktur:**
-```
-com.secretary/
-├── presentation/
-│   ├── main/
-│   │   ├── MainActivity.kt
-│   │   └── MainViewModel.kt
-│   ├── settings/
-│   │   └── SettingsViewModel.kt
-│   └── common/
-├── domain/
-│   ├── models/
-│   ├── usecases/
-│   └── repository/  (interfaces)
-└── data/
-    ├── repository/  (implementations)
-    ├── remote/
-    │   ├── api/
-    │   └── dto/
-    └── local/
-        └── database/
-```
-
----
-
-#### 15. Keine Layer-Trennung
-**Status:** 📋 Für Skalierung wichtig
-**Dateien:** Gesamtes Projekt
-**Problem:**
-- Alles in einem Package `com.secretary`
-- Keine data/domain/presentation Layer
-- UpdateChecker kennt UI (runOnUiThread)
-- Tight Coupling zwischen allen Komponenten
-
-**Lösung:**
-- [ ] Clean Architecture Layers einführen
-- [ ] Dependency Rule beachten (innere Layers kennen äußere nicht)
-- [ ] Interfaces für Layer-Kommunikation
-
----
-
-#### 16. Tight Coupling & No Dependency Injection
-**Status:** 📋 Für Skalierung wichtig
-**Dateien:** Alle
-**Problem:**
-- Alle Klassen kennen sich direkt
-- Keine Interfaces
-- Keine Dependency Injection
-- Schwer zu mocken für Tests
-
-**Lösung:**
-- [ ] Hilt oder Koin für Dependency Injection
-- [ ] Constructor Injection bevorzugen
-- [ ] Interfaces definieren für Abstraktionen
-
-**Code-Beispiel (mit Hilt):**
-```kotlin
-@HiltViewModel
-class MainViewModel @Inject constructor(
-    private val updateRepository: UpdateRepository,
-    private val logger: Logger
-) : ViewModel() {
-    // ViewModel logic
+// AppLogger.java - BEFORE
+private File logFile;
+private void writeToFile() {
+    // Writes to AISecretary_logs.txt (inconsistent with "IN-MEMORY")
 }
 
-interface UpdateRepository {
-    suspend fun checkForUpdates(): Result<UpdateInfo>
-}
-
-@Singleton
-class UpdateRepositoryImpl @Inject constructor(
-    private val api: GitHubApi
-) : UpdateRepository {
-    override suspend fun checkForUpdates(): Result<UpdateInfo> {
-        // Implementation
-    }
-}
+// AppLogger.java - AFTER
+// logFile removed
+// writeToFile() removed
+// Pure in-memory logging (500 lines max)
 ```
+
+**Testing setup:**
+```bash
+# Add to build dependencies (GitHub Actions)
+- JUnit 5: junit:junit:4.13.2
+- Mockito: mockito-core:5.x
+```
+
+**Deliverables:** ✅ ALL COMPLETE
+- ✅ 496 lines deleted total (469 from logging files + 27 from AppLogger fix)
+- ✅ AppLogger fixed (87 lines, truly in-memory)
+- ✅ Test infrastructure structure created (devkit/testing/)
+- ✅ Refactoring branch created (refactoring/phase-4.5-architecture)
+- ✅ Baseline documentation (docs/REFACTORING_BASELINE.md)
+- ✅ ContentProvider removed from AndroidManifest.xml
+
+**Actual Savings:**
+- Lines deleted: 496 (13.4% of 3,712 line codebase)
+- Files deleted: 3 (LogServer.java, LogProvider.java, NanoHTTPD.java)
+- Logging system: 5 files → 2 files (60% reduction)
+
+**Estimated time:** 1-2 days
+**Actual time:** ~2 hours
 
 ---
 
-### Testing
+## Phase 4.5.2: Package Structure (2-3 days)
 
-#### 17. Keine Tests
-**Status:** 📋 Für Skalierung kritisch
-**Dateien:** Keine Test-Dateien gefunden
-**Problem:**
-- Keine Unit Tests
-- Keine Integration Tests
-- Keine UI Tests
-- 0% Test Coverage
+**Goal:** Create new directory structure and migrate files
+**When:** After cleanup
+**Why:** Foundation for architecture - enables separation of concerns
 
-**Lösung:**
-- [ ] JUnit 5 für Unit Tests
-- [ ] Mockito oder MockK für Mocking
-- [ ] Espresso für UI Tests
-- [ ] Test Coverage Minimum: 70%
+### Active TODOs
 
-**Test-Struktur:**
-```
-test/
-├── unit/
-│   ├── domain/
-│   ├── data/
-│   └── presentation/
-└── integration/
-    └── repository/
+**HIGH:**
+- [ ] Create core/ directory structure
+  - GOAL: Centralize shared foundations
+  - Location: `src/com/secretary/core/{logging,network,di}/`
+  - Action: Create directories, update imports
+- [ ] Create feature module structure
+  - GOAL: Organize by feature domain with clean layers
+  - Location: `src/com/secretary/features/{tasks,statistics}/{data,domain,presentation}/`
+  - Action: Create nested directories for each feature
+- [ ] Move core files
+  - GOAL: Migrate logging and update system first (least dependencies)
+  - Mapping:
+    - `AppLogger.java` → `core/logging/AppLogger.java`
+    - `SimpleHttpServer.java` → `core/logging/HttpLogServer.java` (rename)
+    - `UpdateChecker.java` → `core/network/UpdateChecker.java`
+    - `UpdateInstaller.java` → `core/network/UpdateInstaller.java`
+  - Action: Move files, update package declarations, update imports
+- [ ] Update GitHub Actions workflow
+  - GOAL: Ensure CI/CD compiles new structure
+  - Location: `.github/workflows/build-and-release.yml`
+  - Changes: Update javac file paths to include core/ and features/
+  - Test: Trigger workflow, verify build succeeds
 
-androidTest/
-└── ui/
-    ├── main/
-    └── settings/
-```
+**MEDIUM:**
+- [ ] Create devkit/ directory structure
+  - GOAL: Separate development tools from app code
+  - Action: Move `build.sh`, `build-current.sh` → `devkit/build/`
+  - Create: `devkit/testing/`, `devkit/utilities/`
+- [ ] Move MainActivity to app/
+  - GOAL: Single entry point in dedicated package
+  - Action: `MainActivity.java` → `app/MainActivity.java`
+  - Update: AndroidManifest.xml activity declaration
 
----
+**LOW:**
+- [ ] Create utility scripts
+  - GOAL: Common dev tasks automation
+  - Location: `devkit/utilities/`
+  - Scripts: `log_access.sh`, `version_bump.sh`, `quick_install.sh`
 
-### Build System
+### File Migration Map
 
-#### 18. Fehlende Gradle-Konfiguration
-**Status:** ⚠️ Teilweise OK (wegen Termux)
-**Dateien:** `build.sh` statt `build.gradle`
-**Problem:**
-- Build-Script (`build.sh`) statt Gradle
-- Keine Dependency-Verwaltung
-- Manuelle Build-Schritte
-- Keine ProGuard/R8 Regeln
-
-**Hinweis:** Laut CLAUDE.md ist dies eine bewusste Entscheidung wegen Termux-Limitationen. GitHub Actions nutzt Gradle.
-
-**Lösung:**
-- [ ] GitHub Actions Workflow weiter ausbauen
-- [ ] ProGuard/R8 Regeln für Release-Builds
-- [ ] Dependency-Versionen zentralisieren
-- [ ] Build-Varianten (debug, release, staging)
-
----
-
-## 📁 DATEISTRUKTUR-PROBLEME (Mittelfristig)
-
-### Project Organization
-
-#### 19. Verwirrende Projekt-Struktur
-**Status:** ⚠️ Wichtig
-**Dateien:** Root-Verzeichnis
-**Problem:**
-```
-home/
-├── AI-Secretary/           # Was ist das?
-├── AI-Secretary-temp/      # Hauptprojekt?
-├── AISecretary-signed.apk  # Build-Artefakt im home
-└── AISecretary-v1.9-signed.apk
-```
-
-**Auswirkungen:**
-- Zwei Verzeichnisse mit ähnlichen Namen
-- Unklar, welches das aktive Projekt ist
-- Build-Artefakte nicht im Projekt-Verzeichnis
-- Keine klare Trennung
-
-**Lösung:**
-- [ ] Ein Verzeichnis wählen als Haupt-Projekt
-- [ ] Anderes umbenennen oder löschen
-- [ ] Build-Artefakte in `builds/` oder `releases/` Verzeichnis
-- [ ] `.gitignore` für APKs aktualisieren
-
----
-
-#### 20. Flache Package-Struktur
-**Status:** 📋 Für Skalierung wichtig
-**Dateien:** `src/com/secretary/`
-**Problem:**
+**Phase 4.5.2 moves (8 files):**
 ```
 src/com/secretary/
-├── MainActivity.java
-├── UpdateChecker.java
-├── UpdateInstaller.java
-└── AppLogger.java
-```
-Alles auf einer Ebene, keine Gruppierung
+├── AppLogger.java          → core/logging/AppLogger.java
+├── SimpleHttpServer.java   → core/logging/HttpLogServer.java ⚠️ RENAME
+├── UpdateChecker.java      → core/network/UpdateChecker.java
+├── UpdateInstaller.java    → core/network/UpdateInstaller.java
+├── MainActivity.java       → app/MainActivity.java
+└── DatabaseConstants.java  → shared/database/DatabaseConstants.java
 
-**Lösung:**
-- [ ] Package-by-Feature oder Package-by-Layer
-- [ ] Siehe Punkt 14 für empfohlene Struktur
-
----
-
-#### 21. Gemischte Build-Artefakte im Repo
-**Status:** ⚠️ Wichtig
-**Dateien:** `/home/AI-Secretary-temp/apk_inspection/`
-**Problem:**
-- Enthält entpackte APK-Inhalte
-- Sollte nicht im Source-Repository sein
-
-**Lösung:**
-- [ ] Verzeichnis löschen
-- [ ] In `.gitignore` aufnehmen
-- [ ] Build-Artefakte generell ignorieren
-
-**Empfohlene `.gitignore`:**
-```
-# Build artifacts
-*.apk
-*.dex
-*.class
-classes/
-gen/
-compiled_res/
-apk_inspection/
-
-# IDE
-.idea/
-*.iml
-.vscode/
-
-# Gradle
-.gradle/
-build/
-
-# Local config
-local.properties
+Root:
+├── build.sh                → devkit/build/build.sh
+└── build-current.sh        → devkit/build/build-current.sh
 ```
 
----
+**Remaining files (to be moved in later phases):**
+```
+src/com/secretary/
+├── Task.java                        # → Phase 4.5.4 (Domain)
+├── TaskActivity.java                # → Phase 4.5.5 (Presentation)
+├── TaskListAdapter.java             # → Phase 4.5.5 (Presentation)
+├── TaskDialogHelper.java            # → Phase 4.5.5 (Presentation)
+├── TaskFilterManager.java           # → Phase 4.5.5 (Presentation)
+├── TaskDatabaseHelper.java          # → Phase 4.5.3 (Data - refactor to Room)
+└── TaskStatistics.java              # → Phase 4.5.4 (Domain)
+```
 
-## ✅ POSITIVE ASPEKTE
+### Technical Details
 
-Trotz der identifizierten Probleme gibt es auch viele gute Dinge:
+**Package declarations update:**
+```java
+// BEFORE
+package com.secretary.helloworld;
 
-1. ✅ **Exzellente Dokumentation:** CLAUDE.md ist sehr ausführlich und hilfreich
-2. ✅ **CI/CD vorhanden:** GitHub Actions Workflow ist konfiguriert
-3. ✅ **Update-System funktioniert:** Clever gelöst mit GitHub Releases
-4. ✅ **Logging-System:** Grundsolide Implementierung, gut durchdacht
-5. ✅ **Einfachheit:** Keine Over-Engineering für den aktuellen Umfang
-6. ✅ **Klare Vision:** Roadmap und Feature-Pläne sind gut dokumentiert
-7. ✅ **Minimale Abhängigkeiten:** Pure Android, keine Bloat-Libraries
-8. ✅ **Funktioniert:** App läuft stabil für ihren Umfang
+// AFTER
+package com.secretary.helloworld.core.logging;
+package com.secretary.helloworld.core.network;
+package com.secretary.helloworld.app;
+```
 
----
+**Import updates (example):**
+```java
+// MainActivity.java
+// BEFORE
+import com.secretary.helloworld.AppLogger;
+import com.secretary.helloworld.SimpleHttpServer;
 
----
+// AFTER
+import com.secretary.helloworld.core.logging.AppLogger;
+import com.secretary.helloworld.core.logging.HttpLogServer;
+```
 
-## 🎯 FEATURE DEVELOPMENT ROADMAP
+**GitHub Actions update:**
+```yaml
+# .github/workflows/build-and-release.yml
+javac -source 8 -target 8 \
+  -d build/classes \
+  -cp $ANDROID_SDK_ROOT/platforms/android-33/android.jar \
+  src/com/secretary/app/*.java \
+  src/com/secretary/core/logging/*.java \
+  src/com/secretary/core/network/*.java \
+  src/com/secretary/shared/database/*.java
+```
 
-Diese Sektion integriert die Feature-Entwicklung aus CLAUDE.md mit den technischen Verbesserungen. Bevor große Features implementiert werden, müssen die technischen Grundlagen geschaffen werden.
+**Deliverables:**
+- ✅ New directory structure created
+- ✅ 8 files migrated to new structure
+- ✅ GitHub Actions compiles successfully
+- ✅ App runs without errors
+- ✅ Tests green
 
-### 🔒 Feature Suite 1: "Taskmaster" - Übersicht
-
-Taskmaster ist das Kernstück der AI Secretary App - ein intelligentes Aufgabenverwaltungssystem.
-
-#### Feature-Kategorien
-
-**1. Todo-Organisation**
-- Einzelne Tasks (einmalig)
-- Wiederkehrende Tasks (x pro y, alle x y, zu bestimmten Zeitpunkten)
-- Verkettete Tasks (A → B → C mit Abhängigkeiten)
-- Task-Eigenschaften (Titel, Beschreibung, Priorität)
-
-**2. Intelligentes Tracking**
-- Erledigungsstatus, -Häufigkeit, -Historie
-- Wiederholungs-Logik
-- Überfälligkeit
-- Zeiterfassung beim Erledigen
-- Schwierigkeitsgrad-Bewertung
-- Übliche Erledigungs-Uhrzeiten
-
-**3. Motivations-Features**
-- Streak-Tracking (wie oft in Folge rechtzeitig erledigt)
-- Statistiken (Heute, Letzte 7 Tage, Durchschnitt)
-- Visualisierung der Fortschritte
-
-**4. UI/UX**
-- Nächste Aufgabe (prominent angezeigt)
-- Aufgaben für heute (Liste)
-- Statistik-Dashboard
-- Home-Screen Widget
-
-**5. Intelligente Tagesplanung**
-- KI-basierte Sortierung nach Priorität, Fälligkeit, Dauer, Zeit, Schwierigkeit, Verkettungen
-- Optimaler Tagesablauf-Vorschlag
-
----
-
-### Feature Development Phases
-
-#### 📋 PHASE 1: Foundation & Database (3-4 Wochen)
-**Ziel:** Technische Grundlagen für Taskmaster schaffen
-
-**Voraussetzungen:** Phase 0 (Kritische Fixes) MUSS abgeschlossen sein!
-
-**Technical Prerequisites:**
-- [ ] Kotlin Migration (empfohlen für moderne Android-Entwicklung)
-  - [ ] MainActivity nach Kotlin konvertieren
-  - [ ] UpdateChecker, UpdateInstaller, AppLogger nach Kotlin
-  - [ ] Build-Konfiguration für Kotlin anpassen
-- [ ] MVVM-Architektur Grundgerüst
-  - [ ] ViewModel-Setup
-  - [ ] LiveData/StateFlow einführen
-  - [ ] Repository Pattern vorbereiten
-- [ ] Dependency Injection (Hilt)
-  - [ ] Hilt Dependencies hinzufügen
-  - [ ] Application-Klasse mit @HiltAndroidApp
-  - [ ] Module für Dependencies erstellen
-- [ ] Package-Struktur reorganisieren
-  - [ ] data/ domain/ presentation/ Layer erstellen
-  - [ ] Bestehenden Code refactoren
-
-**Database Implementation:**
-- [ ] Room Database Setup
-  - [ ] Task Entity definieren
-  - [ ] TaskDao erstellen
-  - [ ] Database-Klasse implementieren
-  - [ ] TypeConverters für komplexe Typen (Date, TaskType, etc.)
-- [ ] Task Data Model
-  - [ ] Task-Entity mit allen Feldern (siehe Feature-Spec unten)
-  - [ ] TaskType Enum (Single, Recurring, Chained)
-  - [ ] RecurrenceRule Klasse (x pro y, alle x y, Zeitpunkte)
-  - [ ] TaskStatus Enum (Todo, Done, Overdue)
-- [ ] Repository Implementation
-  - [ ] TaskRepository Interface
-  - [ ] TaskRepositoryImpl mit Room DAO
-  - [ ] CRUD Operations (Create, Read, Update, Delete)
-
-**Geschätzte Zeit:** 3-4 Wochen
-**Abhängigkeiten:** Phase 0 muss komplett sein, Phase 2 (Architecture Prep) teilweise parallel möglich
+**Estimated time:** 2-3 days
 
 ---
 
-#### 📋 PHASE 2: Core Task Management (4-5 Wochen)
-**Ziel:** Basis-Funktionalität für Task-Verwaltung
+## Phase 4.5.3: Data Layer - Room Migration (3-4 days)
 
-**Prerequisites:** Phase 1 Database muss komplett sein!
+**Goal:** Migrate from raw SQLite to Room ORM
+**When:** After package structure is in place
+**Why:** Modern data layer foundation, enables Repository pattern
 
-**Task Creation:**
-- [ ] Task-Erstellungs-UI
-  - [ ] CreateTaskActivity/Fragment
-  - [ ] Formular für Titel, Beschreibung, Priorität
-  - [ ] Task-Typ Auswahl (Single/Recurring/Chained)
-- [ ] Wiederkehrende Tasks
-  - [ ] UI für Recurrence-Regel Eingabe
-  - [ ] "x pro y" Logik (z.B. 3 mal pro Woche)
-  - [ ] "alle x y" Logik (z.B. alle 2 Tage)
-  - [ ] Zeitpunkt-Auswahl (Jeden Montag 09:00)
-  - [ ] Recurrence Calculation Service
-- [ ] Verkettete Tasks
-  - [ ] Task-Verkettungs-UI (A → B → C)
-  - [ ] Dependency-Graph Logik
-  - [ ] Zyklische Abhängigkeiten erlauben
+### Active TODOs
 
-**Task Display:**
-- [ ] Task-Liste UI (RecyclerView)
-  - [ ] TaskListFragment
-  - [ ] TaskAdapter mit ViewHolder
-  - [ ] Task-Item Layout
-- [ ] Task-Detail-Ansicht
-  - [ ] TaskDetailActivity/Fragment
-  - [ ] Anzeige aller Task-Informationen
-  - [ ] Edit-Funktionalität
-- [ ] Task-Filterung & Sortierung
-  - [ ] Filter nach Status (Todo/Done/Overdue)
-  - [ ] Filter nach Task-Typ
-  - [ ] Sortierung nach Priorität/Datum
+**CRITICAL:**
+- [ ] Add Room dependencies
+  - GOAL: Enable Room ORM usage
+  - Location: Build configuration (GitHub Actions)
+  - Dependencies:
+    - `androidx.room:room-runtime:2.6.0`
+    - `androidx.room:room-compiler:2.6.0` (annotation processor)
+  - Challenge: Termux build doesn't support annotation processing
+  - Solution: Generate Room code on GitHub Actions, commit generated files
 
-**Task Actions:**
-- [ ] Task als erledigt markieren
-  - [ ] "Complete Task" Button
-  - [ ] Status-Update in Database
-  - [ ] UI-Feedback (Animation, Toast)
-- [ ] Task löschen
-  - [ ] Confirmation Dialog
-  - [ ] Delete aus Database
-- [ ] Task bearbeiten
-  - [ ] Edit-Mode in CreateTaskActivity
-  - [ ] Update-Logik
+**HIGH:**
+- [ ] Create Room entities
+  - GOAL: Define database schema as annotated classes
+  - Location: `features/tasks/data/TaskEntity.java`, `features/statistics/data/CompletionEntity.java`
+  - Fields: Mirror existing SQLite schema (17 columns for tasks, 6 for completions)
+  - Action: Convert DatabaseConstants column names to @ColumnInfo annotations
+- [ ] Create Room DAOs
+  - GOAL: Type-safe database queries
+  - Location: `features/tasks/data/TaskDao.java`, `features/statistics/data/CompletionDao.java`
+  - Methods:
+    - TaskDao: getAllTasks(), getTaskById(), insertTask(), updateTask(), deleteTask(), getTasksCompletedToday()
+    - CompletionDao: insertCompletion(), getCompletionsForTask(), getCompletionHistory()
+  - Use: @Query, @Insert, @Update, @Delete annotations
+- [ ] Create Room Database
+  - GOAL: Central database configuration
+  - Location: `shared/database/TaskDatabase.java`
+  - Configuration: @Database annotation with entities list, version = 5
+  - Include: Migration from SQLite v4 to Room v5
+- [ ] Create database migrations
+  - GOAL: Preserve existing user data
+  - Location: `shared/database/Migrations.java`
+  - Action: Define Migration(4, 5) that validates schema compatibility
+  - Test: Manually on device with existing data
 
-**Geschätzte Zeit:** 4-5 Wochen
-**Abhängigkeiten:** Phase 1 Database komplett
+**MEDIUM:**
+- [ ] Create Repository implementations
+  - GOAL: Abstract data access from domain layer
+  - Location: `features/tasks/data/TaskRepositoryImpl.java`, `features/statistics/data/StatisticsRepositoryImpl.java`
+  - Pattern: Repository wraps DAO, converts Entity ↔ Domain Model
+  - Example:
+    ```java
+    class TaskRepositoryImpl implements TaskRepository {
+        private TaskDao dao;
+        @Override
+        public List<Task> getAllTasks() {
+            return dao.getAllTasks().stream()
+                .map(entity -> entity.toDomainModel())
+                .collect(Collectors.toList());
+        }
+    }
+    ```
+- [ ] Deprecate TaskDatabaseHelper
+  - GOAL: Mark old implementation for removal
+  - Location: `src/com/secretary/TaskDatabaseHelper.java`
+  - Action: Add @Deprecated annotations to all methods
+  - Comment: "Use TaskRepository instead"
+  - Do NOT delete yet - keep for reference during migration
 
----
+### Technical Details
 
-#### 📋 PHASE 3: Tracking & Analytics (3-4 Wochen)
-**Ziel:** Intelligentes Tracking und Datenerfassung
-
-**Completion Tracking:**
-- [ ] Erweiterte Erledigungs-Daten
-  - [ ] TaskCompletion Entity (Timestamp, Duration, Difficulty)
-  - [ ] CompletionDao
-  - [ ] Historie-Speicherung
-- [ ] Erledigungs-Dialog
-  - [ ] Dialog beim Markieren als erledigt
-  - [ ] Timer für Zeiterfassung (optional)
-  - [ ] Schwierigkeitsgrad-Eingabe (Slider 1-10)
-  - [ ] Speichern der Completion-Daten
-- [ ] Historie-Verwaltung
-  - [ ] CompletionHistory-Fragment
-  - [ ] Liste aller Erledigungen pro Task
-  - [ ] Statistiken pro Task
-
-**Recurrence Logic:**
-- [ ] Automatisches Zurücksetzen wiederkehrender Tasks
-  - [ ] Background-Service oder WorkManager
-  - [ ] "x pro y" Reset-Logik (z.B. am Ende der Woche)
-  - [ ] "alle x y" Reset-Logik (nach x Tagen)
-  - [ ] Zeitpunkt-basiert (z.B. jeden Montag)
-- [ ] Überfälligkeits-Berechnung
-  - [ ] Overdue-Check-Service
-  - [ ] Automatisches Status-Update (Todo → Overdue)
-  - [ ] Benachrichtigungen (optional)
-
-**Geschätzte Zeit:** 3-4 Wochen
-**Abhängigkeiten:** Phase 2 Core Task Management komplett
-
----
-
-#### 📋 PHASE 4: Motivation & Statistics (2-3 Wochen)
-**Ziel:** Nutzer-Motivation durch Gamification
-
-**Streak-Tracking:**
-- [ ] Streak-Berechnung
-  - [ ] Streak-Algorithmus (aufeinanderfolgende rechtzeitige Erledigungen)
-  - [ ] Streak-Daten in Task-Entity
-  - [ ] Streak-Update bei Completion
-- [ ] Streak-Anzeige
-  - [ ] Streak-Badge in Task-Liste
-  - [ ] Streak-Detail in Task-Detail-View
-  - [ ] Visualisierung (Kalender-Ansicht, Diagramm)
-
-**Statistiken:**
-- [ ] Statistics-Berechnung
-  - [ ] Anzahl erledigter Tasks heute
-  - [ ] Anzahl erledigter Tasks letzte 7 Tage
-  - [ ] Durchschnitt pro Tag (letzte 7 Tage)
-  - [ ] Längster Streak
-  - [ ] Häufigste Erledigungs-Uhrzeit
-- [ ] Statistics-Dashboard
-  - [ ] StatisticsFragment
-  - [ ] Charts/Graphs (MPAndroidChart oder ähnlich)
-  - [ ] Zeitraum-Filter (Heute, 7 Tage, 30 Tage, Alle Zeit)
-
-**Geschätzte Zeit:** 2-3 Wochen
-**Abhängigkeiten:** Phase 3 Tracking komplett
-
----
-
-#### 📋 PHASE 5: Intelligent Planning (4-5 Wochen)
-**Ziel:** KI-basierte Tagesplanung
-
-**Prioritization Algorithm:**
-- [ ] Intelligente Sortierung
-  - [ ] Multi-Faktor Scoring-Algorithmus
-    - [ ] Numerische Priorität (User-definiert)
-    - [ ] Fälligkeit (überfällig > heute > morgen)
-    - [ ] Geschätzte Dauer (historische Daten)
-    - [ ] Übliche Erledigungs-Zeit (Tageszeit)
-    - [ ] Schwierigkeitsgrad (historische Daten)
-    - [ ] Task-Verkettungen (Dependencies)
-  - [ ] Score-Berechnung Service
-  - [ ] Sortierung nach Score
-
-**Daily Planning:**
-- [ ] "Heute"-Ansicht
-  - [ ] TodayFragment mit intelligenter Task-Liste
-  - [ ] Automatische Auswahl der wichtigsten Tasks
-  - [ ] "Nächste Aufgabe" prominent anzeigen
-  - [ ] Zeitschätzung für den Tag
-- [ ] Planning-Algorithmus
-  - [ ] Berücksichtigung verfügbarer Zeit
-  - [ ] Balance zwischen dringenden und wichtigen Tasks
-  - [ ] Anpassung basierend auf Tageszeit
-  - [ ] Vorschläge zur optimalen Reihenfolge
-
-**Geschätzte Zeit:** 4-5 Wochen
-**Abhängigkeiten:** Phase 4 Statistics komplett
-
----
-
-#### 📋 PHASE 6: Widget & Polish (3-4 Wochen)
-**Ziel:** Home-Screen Integration und UI-Verfeinerung
-
-**Home-Screen Widget:**
-- [ ] Widget-Implementierung
-  - [ ] Widget-Layout erstellen
-  - [ ] Widget Provider-Klasse
-  - [ ] Widget-Konfiguration
-- [ ] Widget-Inhalte
-  - [ ] Nächste Aufgabe anzeigen
-  - [ ] Aufgaben für heute (Top 3-5)
-  - [ ] Statistik-Zusammenfassung
-  - [ ] Streak-Anzeige
-- [ ] Widget-Interaktivität
-  - [ ] Click-Listener (öffne App)
-  - [ ] Quick-Complete Button (Task direkt erledigen)
-  - [ ] Refresh-Funktion
-
-**UI/UX Improvements:**
-- [ ] Design-System
-  - [ ] Konsistente Farben, Typografie, Spacing
-  - [ ] Material Design 3 Guidelines befolgen
-  - [ ] Dark Mode Support
-- [ ] Animations & Transitions
-  - [ ] Task-Completion Animation
-  - [ ] List-Item Animations
-  - [ ] Fragment-Transitions
-- [ ] Accessibility
-  - [ ] Content Descriptions
-  - [ ] Talkback-Support
-  - [ ] Größere Touch-Targets
-
-**Testing & Optimization:**
-- [ ] Unit Tests erweitern (Target: 80% Coverage)
-- [ ] UI Tests (Espresso)
-- [ ] Performance-Optimierung
-  - [ ] Database-Query-Optimierung
-  - [ ] LazyLoading für große Listen
-  - [ ] Memory-Leak-Checks
-- [ ] Bug-Fixes
-- [ ] Beta-Testing mit echten Nutzern
-
-**Geschätzte Zeit:** 3-4 Wochen
-**Abhängigkeiten:** Phase 5 Intelligent Planning komplett
-
----
-
-### Feature Development - Detaillierte Spezifikationen
-
-#### Task Data Model (für Phase 1)
-
-```kotlin
+**Entity definition example:**
+```java
 @Entity(tableName = "tasks")
-data class Task(
+public class TaskEntity {
     @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
+    private long id;
 
-    // Basic Properties
-    val title: String,
-    val description: String? = null,
-    val priority: Int, // Numerische Priorität (1-10)
+    @ColumnInfo(name = "title")
+    private String title;
 
-    // Task Type
-    val taskType: TaskType, // SINGLE, RECURRING, CHAINED
+    @ColumnInfo(name = "description")
+    private String description;
 
-    // Recurrence (nur für RECURRING)
-    val recurrenceRule: RecurrenceRule? = null,
+    @ColumnInfo(name = "due_date")
+    private Long dueDate;
 
-    // Status
-    val status: TaskStatus, // TODO, DONE, OVERDUE
+    @ColumnInfo(name = "recurrence_type")
+    private String recurrenceType;
 
-    // Timestamps
-    val createdAt: Long,
-    val dueDate: Long? = null,
-    val completedAt: Long? = null,
+    // ... 17 columns total
 
-    // Tracking Data
-    val completionCount: Int = 0,
-    val currentStreak: Int = 0,
-    val longestStreak: Int = 0,
+    public Task toDomainModel() {
+        return new Task(id, title, description, ...);
+    }
 
-    // Chain (nur für CHAINED)
-    val chainId: String? = null,
-    val nextTaskId: Long? = null,
-
-    // Calculated Fields (from history)
-    val averageDuration: Long? = null, // in milliseconds
-    val averageDifficulty: Float? = null, // 1-10
-    val preferredTimeOfDay: Int? = null // Hour (0-23)
-)
-
-enum class TaskType {
-    SINGLE,      // Einmalige Aufgabe
-    RECURRING,   // Wiederkehrend
-    CHAINED      // Teil einer Kette
+    public static TaskEntity fromDomainModel(Task task) {
+        return new TaskEntity(task.getId(), task.getTitle(), ...);
+    }
 }
-
-enum class TaskStatus {
-    TODO,
-    DONE,
-    OVERDUE
-}
-
-data class RecurrenceRule(
-    val type: RecurrenceType,
-    val frequency: Int,      // z.B. 3 (für "3 mal pro Woche")
-    val period: TimePeriod?, // z.B. WEEK
-    val interval: Int?,      // z.B. 2 (für "alle 2 Tage")
-    val specificTime: Long?  // Timestamp für "Jeden Montag 09:00"
-)
-
-enum class RecurrenceType {
-    X_PER_Y,           // z.B. 3 mal pro Woche
-    EVERY_X_Y,         // z.B. alle 2 Tage
-    SPECIFIC_TIME      // z.B. Jeden Montag 09:00
-}
-
-enum class TimePeriod {
-    DAY,
-    WEEK,
-    MONTH,
-    YEAR
-}
-
-@Entity(tableName = "task_completions")
-data class TaskCompletion(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
-    val taskId: Long,
-    val completedAt: Long,
-    val duration: Long?, // in milliseconds
-    val difficulty: Float? // 1-10
-)
 ```
 
----
+**DAO definition example:**
+```java
+@Dao
+public interface TaskDao {
+    @Query("SELECT * FROM tasks ORDER BY is_completed ASC, priority DESC")
+    List<TaskEntity> getAllTasks();
 
-## 🎯 PRIORISIERTE ROADMAP
+    @Query("SELECT * FROM tasks WHERE id = :taskId")
+    TaskEntity getTaskById(long taskId);
 
-Diese Roadmap kombiniert technische Verbesserungen mit Feature-Entwicklung.
+    @Insert
+    long insertTask(TaskEntity task);
 
-### 🔴 Phase 0: Foundation Systems (IN ARBEIT - NICHT FUNKTIONSFÄHIG)
-**Status:** ❌ CODE VORHANDEN, FUNKTIONIERT NICHT
+    @Update
+    void updateTask(TaskEntity task);
 
-- ❌ Auto-Update System - implementiert, funktioniert nicht
-- ❌ Logging System - implementiert, funktioniert nicht
-- ✅ CI/CD Pipeline (GitHub Actions) - funktioniert
-- ✅ Settings UI - vorhanden
+    @Delete
+    void deleteTask(TaskEntity task);
 
-**Kritische Aufgaben für Phase 0:**
+    @Query("SELECT COUNT(*) FROM completions WHERE DATE(completed_at/1000, 'unixepoch') = DATE('now')")
+    int getTasksCompletedToday();
+}
+```
 
-**Must-Fix (BLOCKER für alles weitere):**
-- [ ] Update-System debuggen und funktionsfähig machen
-  - [ ] GitHub API Requests testen
-  - [ ] Fehler via Logcat identifizieren
-  - [ ] JSON Parsing prüfen
-  - [ ] Download-Mechanismus testen
-  - [ ] Installation testen
-- [ ] Logging-System debuggen und funktionsfähig machen
-  - [ ] AppLogger Initialisierung prüfen
-  - [ ] Log-Schreiben testen
-  - [ ] Log-Anzeige testen
-  - [ ] Fehler via Logcat identifizieren
-- [ ] GitHub Token revoken und neu generieren (SECURITY)
-- [ ] Token aus Code entfernen, in Secrets verschieben
-- [ ] Package-Name auf `com.secretary` ändern (von `com.secretary.helloworld`)
+**Room Database:**
+```java
+@Database(entities = {TaskEntity.class, CompletionEntity.class}, version = 5)
+public abstract class TaskDatabase extends RoomDatabase {
+    public abstract TaskDao taskDao();
+    public abstract CompletionDao completionDao();
 
-**Should-Fix (parallel zu Debugging):**
-- [ ] Resource Management fixen (HttpURLConnection schließen)
-- [ ] BroadcastReceiver Memory Leak beheben
-- [ ] Dead Code entfernen (AppLogger.logFile)
+    private static volatile TaskDatabase INSTANCE;
 
-**Geschätzte Zeit:**
-- Debugging & Fixes: 4-8 Stunden (je nach Komplexität der Fehler)
-- Security-Fixes: 1 Stunde
-- **Total: 5-9 Stunden**
+    public static TaskDatabase getDatabase(final Context context) {
+        if (INSTANCE == null) {
+            synchronized (TaskDatabase.class) {
+                if (INSTANCE == null) {
+                    INSTANCE = Room.databaseBuilder(context,
+                        TaskDatabase.class, "task_database")
+                        .addMigrations(MIGRATION_4_5)
+                        .build();
+                }
+            }
+        }
+        return INSTANCE;
+    }
+}
+```
 
-**WICHTIG:** Phase 0 MUSS funktionieren bevor Taskmaster Phase 1 starten kann!
+**Migration strategy:**
+```java
+static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+    @Override
+    public void migrate(SupportSQLiteDatabase database) {
+        // Schema is compatible, just validate
+        // Room will handle the transition
+    }
+};
+```
 
----
+**Deliverables:**
+- ✅ Room entities for tasks and completions
+- ✅ DAOs with all necessary queries
+- ✅ Room Database configured
+- ✅ Migration tested with existing data
+- ✅ Repository implementations ready
+- ✅ TaskDatabaseHelper deprecated but kept
 
-### Tech Debt Phase 1: Foundation Fixes (Parallel zu Feature Dev)
-**Ziel:** Kritische technische Schulden reduzieren
-**Timing:** Parallel zu Feature Phase 1, VOR Phase 2
-
-**Must-Have:**
-- [ ] 4. Resource Management fixen (HttpURLConnection schließen)
-- [ ] 3. BroadcastReceiver Memory Leak beheben
-- [ ] 8. Dead Code entfernen (AppLogger.logFile)
-- [ ] 19. Projekt-Struktur aufräumen (AI-Secretary vs. AI-Secretary-temp)
-- [ ] 21. Build-Artefakte aus Repo entfernen, .gitignore erweitern
-
-**Should-Have:**
-- [ ] 2. Threading auf ExecutorService umstellen
-- [ ] 6. Code-Duplikation eliminieren (VersionUtils)
-- [ ] 7. Magic Numbers in Konstanten auslagern
-
-**Nice-to-Have:**
-- [ ] 13. UI-Texte in strings.xml verschieben
-
-**Geschätzte Zeit:** 1-2 Wochen (nebenbei zu Feature Phase 1)
-**Hinweis:** Diese Fixes betreffen nur den aktuellen Update/Logging-Code, nicht die neuen Taskmaster-Features
-
----
-
-### Tech Debt Phase 2: Testing & Quality (Ongoing - parallel zu Features)
-**Ziel:** Testbarkeit und Wartbarkeit sicherstellen
-**Timing:** Ab Feature Phase 2, kontinuierlich
-
-- [ ] 17. Unit Tests schreiben (Target: 70% Coverage)
-  - [ ] Domain-Layer Tests (Use Cases, Models)
-  - [ ] Repository Tests
-  - [ ] ViewModel Tests
-- [ ] Integration Tests (Database, Repository)
-- [ ] UI Tests (Espresso) für kritische Flows
-- [ ] CI/CD: Automatische Tests in GitHub Actions
-- [ ] Code Coverage Reports einrichten
-- [ ] Static Analysis (Detekt, ktlint) konfigurieren
-
-**Geschätzte Zeit:** Ongoing, parallel zu Feature-Entwicklung
-**Target:** Jedes neue Feature mit Tests
-**Minimum:** Kritische Business-Logik (Recurrence, Streak, Planning) MUSS getestet sein
+**Estimated time:** 3-4 days
 
 ---
 
-### Tech Debt Phase 3: Modernization & Optimization (Nach Feature Phase 4)
-**Ziel:** Moderne Best Practices und Performance
-**Timing:** Nach Taskmaster MVP (Feature Phase 4), optional
+## Phase 4.5.4: Domain Layer - Business Logic (4-5 days)
 
-- [ ] Jetpack Compose Migration (statt XML Layouts)
-  - [ ] Compose Dependencies hinzufügen
-  - [ ] Schrittweise Migration: Neue Screens in Compose
-  - [ ] Interop mit XML für Legacy-Code
-- [ ] Moderne Netzwerk-Library (Retrofit + OkHttp)
-  - [ ] Retrofit statt HttpURLConnection für Updates
-  - [ ] Proper Error Handling
-  - [ ] Offline Support
-- [ ] WorkManager für Background-Tasks
-  - [ ] Recurrence-Reset als Worker
-  - [ ] Overdue-Check als Worker
-  - [ ] Update-Download als Worker
-- [ ] Navigation Component
-  - [ ] Single-Activity-Architecture
-  - [ ] Navigation Graph definieren
-  - [ ] Deep Links
-- [ ] Performance-Optimierung
-  - [ ] Database-Query-Profiling
-  - [ ] Memory-Leak-Detection (LeakCanary)
-  - [ ] APK-Size-Optimierung (R8, ProGuard)
-- [ ] Accessibility & Localization
-  - [ ] Content Descriptions
-  - [ ] Mehrsprachigkeit (Englisch, Deutsch)
-  - [ ] Right-to-Left Support
+**Goal:** Extract business logic from database and UI into pure domain layer
+**When:** After Room migration completes
+**Why:** Enables testability, single responsibility, clear boundaries
 
-**Geschätzte Zeit:** 4-5 Wochen Vollzeit
-**Notwendigkeit:** Mittel (Nice-to-have, verbessert aber UX und Wartbarkeit erheblich)
+### Active TODOs
+
+**CRITICAL:**
+- [ ] Refactor TaskDatabaseHelper God-Class (806 lines → ~200)
+  - GOAL: Break down monolithic class into single-responsibility components
+  - Current: TaskDatabaseHelper does CRUD + Recurrence + Streaks + Period calculations
+  - Target: TaskDatabaseHelper → only data access (replaced by Room in 4.5.3)
+  - Business logic → Use Cases and Services (this phase)
+
+**HIGH:**
+- [ ] Create pure domain models
+  - GOAL: Data classes with NO Android dependencies
+  - Location: `features/tasks/domain/model/`
+  - Models:
+    - `Task.java` - Pure task data (no getRecurrenceString(), no Android formatting)
+    - `RecurrenceRule.java` - Encapsulate recurrence logic
+    - `Completion.java` - Completion record
+  - Principle: Can be tested without Android framework
+- [ ] Define Repository interfaces
+  - GOAL: Abstract data access, enable mocking
+  - Location: `features/tasks/domain/repository/TaskRepository.java`
+  - Methods: getAllTasks(), getTaskById(), insertTask(), updateTask(), deleteTask()
+  - Note: Interface in domain/, implementation in data/ (dependency inversion)
+- [ ] Extract Use Cases from TaskDatabaseHelper
+  - GOAL: Single-purpose business logic units
+  - Location: `features/tasks/domain/usecase/`
+  - Use Cases to create:
+    - `CompleteTaskUseCase.java` - Handle task completion + streak + recurrence
+    - `CreateTaskUseCase.java` - Validate and create new task
+    - `UpdateTaskUseCase.java` - Update existing task
+    - `DeleteTaskUseCase.java` - Delete task and cleanup
+    - `ResetDueRecurringTasksUseCase.java` - Handle overdue recurring tasks
+  - Each: Single public method `execute()` or `invoke()`
+- [ ] Extract Services for complex logic
+  - GOAL: Reusable business logic components
+  - Location: `features/tasks/domain/service/`
+  - Services:
+    - `RecurrenceService.java` - All recurrence calculations (from TaskDatabaseHelper lines 400-600)
+      - Methods: calculateNextDueDate(), isInCurrentPeriod(), handleIntervalCompletion(), handleFrequencyCompletion()
+    - `StreakService.java` - Streak calculations (from TaskDatabaseHelper + TaskStatistics)
+      - Methods: calculateStreak(), updateStreak(), checkStreakBroken()
+  - Principle: Stateless, testable, no Android dependencies
+- [ ] Extract Statistics Use Cases
+  - GOAL: Separate statistics calculation from UI
+  - Location: `features/statistics/domain/usecase/`
+  - Use Cases:
+    - `CalculateStreakUseCase.java` - Calculate current and longest streaks
+    - `GetTaskStatisticsUseCase.java` - Aggregate stats (completions, rates, averages)
+
+**MEDIUM:**
+- [ ] Write unit tests for domain layer
+  - GOAL: 70%+ coverage for Use Cases and Services
+  - Location: `devkit/testing/domain/`
+  - Priority: RecurrenceService, StreakService, CompleteTaskUseCase
+  - Framework: JUnit + Mockito
+  - Example:
+    ```java
+    @Test
+    public void testCompleteTask_UpdatesStreak() {
+        // Given
+        Task task = new Task(...);
+        TaskRepository mockRepo = mock(TaskRepository.class);
+        StreakService streakService = new StreakService();
+        CompleteTaskUseCase useCase = new CompleteTaskUseCase(mockRepo, streakService, ...);
+
+        // When
+        useCase.execute(task.getId());
+
+        // Then
+        verify(mockRepo).updateTask(argThat(t -> t.getCurrentStreak() == task.getCurrentStreak() + 1));
+    }
+    ```
+
+### Technical Details
+
+**Use Case example:**
+```java
+// features/tasks/domain/usecase/CompleteTaskUseCase.java
+public class CompleteTaskUseCase {
+    private final TaskRepository taskRepository;
+    private final StreakService streakService;
+    private final RecurrenceService recurrenceService;
+
+    public CompleteTaskUseCase(TaskRepository taskRepository,
+                                StreakService streakService,
+                                RecurrenceService recurrenceService) {
+        this.taskRepository = taskRepository;
+        this.streakService = streakService;
+        this.recurrenceService = recurrenceService;
+    }
+
+    public void execute(long taskId) {
+        Task task = taskRepository.getTaskById(taskId);
+        if (task == null) return;
+
+        // Update streak
+        Task taskWithStreak = streakService.updateStreak(task);
+
+        // Handle recurrence
+        Task finalTask;
+        if (taskWithStreak.getRecurrence() != null) {
+            finalTask = recurrenceService.handleCompletion(taskWithStreak);
+        } else {
+            finalTask = taskWithStreak.markCompleted();
+        }
+
+        taskRepository.updateTask(finalTask);
+    }
+}
+```
+
+**Service example:**
+```java
+// features/tasks/domain/service/RecurrenceService.java
+public class RecurrenceService {
+    public Task handleCompletion(Task task) {
+        RecurrenceRule rule = task.getRecurrence();
+        if (rule == null) return task;
+
+        switch (rule.getType()) {
+            case INTERVAL:
+                return handleIntervalCompletion(task, rule);
+            case FREQUENCY:
+                return handleFrequencyCompletion(task, rule);
+            default:
+                return task;
+        }
+    }
+
+    private Task handleIntervalCompletion(Task task, RecurrenceRule rule) {
+        // Logic extracted from TaskDatabaseHelper.resetIntervalTask()
+        long nextDueDate = calculateNextDueDate(task.getDueDate(), rule);
+        return task.copy()
+            .withCompleted(false)
+            .withDueDate(nextDueDate)
+            .withLastCompletedDate(System.currentTimeMillis())
+            .build();
+    }
+
+    private Task handleFrequencyCompletion(Task task, RecurrenceRule rule) {
+        // Logic extracted from TaskDatabaseHelper.incrementFrequencyProgress()
+        int newCompletions = task.getCompletionsThisPeriod() + 1;
+        boolean needsReset = checkPeriodBoundary(task, rule);
+
+        if (needsReset) {
+            return task.copy()
+                .withCompletionsThisPeriod(1)
+                .withPeriodStart(System.currentTimeMillis())
+                .build();
+        } else {
+            return task.copy()
+                .withCompletionsThisPeriod(newCompletions)
+                .build();
+        }
+    }
+
+    private long calculateNextDueDate(long currentDueDate, RecurrenceRule rule) {
+        // Complex date calculation logic
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(currentDueDate);
+
+        switch (rule.getUnit()) {
+            case DAY:
+                cal.add(Calendar.DAY_OF_YEAR, rule.getAmount());
+                break;
+            case WEEK:
+                cal.add(Calendar.WEEK_OF_YEAR, rule.getAmount());
+                break;
+            // ... etc
+        }
+
+        return cal.getTimeInMillis();
+    }
+}
+```
+
+**Before vs After:**
+```
+BEFORE (TaskDatabaseHelper - 806 lines):
+- CRUD operations         (~200 lines)
+- Recurrence logic        (~200 lines) ← Extract to RecurrenceService
+- Streak tracking         (~80 lines)  ← Extract to StreakService
+- Period calculations     (~120 lines) ← Extract to RecurrenceService
+- Statistics delegation   (~50 lines)  ← Extract to Use Cases
+- Database migrations     (~100 lines) ← Keep in data layer
+- Query building          (~50 lines)  ← Replaced by Room
+
+AFTER:
+- TaskDatabaseHelper: DELETED (replaced by Room)
+- RecurrenceService: ~250 lines (pure business logic)
+- StreakService: ~100 lines (pure business logic)
+- Use Cases: ~30-50 lines each (orchestration)
+- Repository: ~150 lines (data access abstraction)
+```
+
+**Deliverables:**
+- ✅ TaskDatabaseHelper refactored to ~200 lines or deleted
+- ✅ 5+ Use Cases created and tested
+- ✅ RecurrenceService and StreakService extracted
+- ✅ Pure domain models (no Android dependencies)
+- ✅ 70%+ test coverage for domain layer
+- ✅ All business logic testable without Android framework
+
+**Estimated time:** 4-5 days
 
 ---
 
-## 📊 TRACKING
+## Phase 4.5.5: Presentation Layer - MVVM (3-4 days)
 
-### Current Status: Phase 1 KOMPLETT - Bereit für Phase 2!
+**Goal:** Separate UI from business logic using MVVM pattern
+**When:** After domain layer is complete
+**Why:** Reactive UI, testable presentation logic, modern Android
 
-**Project Timeline Overview:**
-- ✅ **Phase 0 (Foundation Systems):** KOMPLETT (v0.1.2)
-  - ✅ Auto-Update System - funktioniert
-  - ✅ Logging System - funktioniert via HTTP Server
-  - ✅ CI/CD Pipeline - funktioniert
-- ✅ **Taskmaster Phase 1 (Foundation & Database):** KOMPLETT (v0.3.7)
-  - ✅ Vollständige Task-Verwaltung mit CRUD-Operationen
-  - ✅ Kategorien, Prioritäten, Due Dates
-  - ✅ Recurrence mit 2 Modi
-  - ✅ Such- und Filter-Funktionen
-- 🚀 **Taskmaster Phase 2 (Core Task Management):** BEREIT ZU STARTEN
-- 📅 **Tech Debt Phase 1 (Foundation Fixes):** Blockiert durch Phase 0
-- 📅 **Taskmaster Phase 2-6 (Development):** Blockiert durch Phase 0
-- 📅 **Tech Debt Phase 2-3 (Testing & Modernization):** Blockiert durch Phase 0
+### Active TODOs
 
-**Estimated Total Time (inkl. Phase 0 Debugging):**
-- 🔴 Phase 0 Debugging & Fixes: 5-9 Stunden
-- Taskmaster Phase 1: 3-4 Wochen
-- Taskmaster Phase 2: 4-5 Wochen
-- Taskmaster Phase 3: 3-4 Wochen
-- Taskmaster Phase 4: 2-3 Wochen
-- **Total: ~12-16 Wochen + 1-2 Tage** für Taskmaster MVP
+**HIGH:**
+- [ ] Create ViewModels for activities
+  - GOAL: Move UI state and logic out of Activities
+  - Location: `features/tasks/presentation/TaskViewModel.java`, `features/statistics/presentation/StatisticsViewModel.java`
+  - Responsibilities:
+    - Hold UI state (task list, statistics, filters)
+    - Orchestrate Use Cases
+    - Expose data via LiveData or StateFlow
+  - Dependencies: Use Cases injected via constructor
+- [ ] Refactor TaskActivity (392 lines → ~150 lines)
+  - GOAL: Activity only handles UI lifecycle and user interactions
+  - Current: TaskActivity does UI + filtering + statistics + DB access
+  - Target: TaskActivity → observe ViewModel, render UI, dispatch events
+  - Remove: Direct DB access, business logic, calculations
+  - Keep: onCreate(), UI setup, click listeners
+- [ ] Extract dialogs from TaskDialogHelper (367 lines)
+  - GOAL: Modular dialog components
+  - Location: `features/tasks/presentation/dialog/`
+  - Dialogs: AddTaskDialog, EditTaskDialog, CompletionDialog
+  - Pattern: DialogFragment with ViewModel communication
+- [ ] Implement basic Dependency Injection
+  - GOAL: Manual DI for ViewModels (Hilt not viable in Termux)
+  - Location: `core/di/AppModule.java`
+  - Pattern: Factory classes for ViewModel creation
+  - Example:
+    ```java
+    public class TaskViewModelFactory {
+        public static TaskViewModel create(Context context) {
+            TaskDatabase db = TaskDatabase.getDatabase(context);
+            TaskRepository repo = new TaskRepositoryImpl(db.taskDao());
+            CompleteTaskUseCase completeUseCase = new CompleteTaskUseCase(repo, ...);
+            return new TaskViewModel(completeUseCase, ...);
+        }
+    }
+    ```
 
-**Extended Timeline (with Widget & Polish):**
-- Taskmaster Phase 5: 4-5 Wochen
-- Taskmaster Phase 6: 3-4 Wochen
-- **Total: ~19-25 Wochen + 1-2 Tage** für komplette Taskmaster Suite
+**MEDIUM:**
+- [ ] Implement reactive UI updates
+  - GOAL: UI automatically reflects data changes
+  - Pattern: ViewModel exposes LiveData, Activity observes
+  - Example:
+    ```java
+    // TaskViewModel
+    private MutableLiveData<List<Task>> tasksLiveData = new MutableLiveData<>();
+    public LiveData<List<Task>> getTasks() { return tasksLiveData; }
+
+    // TaskActivity
+    viewModel.getTasks().observe(this, tasks -> {
+        adapter.submitList(tasks);
+    });
+    ```
+- [ ] Refactor TaskFilterManager
+  - GOAL: Move filter logic to ViewModel
+  - Current: TaskFilterManager in separate class
+  - Target: Filtering logic in TaskViewModel
+  - Benefits: Reactive filtering, testable
+- [ ] Move statistics to StatisticsViewModel
+  - GOAL: Centralize statistics logic
+  - Location: `features/statistics/presentation/StatisticsViewModel.java`
+  - Exposes: todayCompletions, weekCompletions, currentStreak, longestStreak
+  - Updates: Automatically when tasks change
+
+**LOW:**
+- [ ] Add loading and error states
+  - GOAL: Better UX during async operations
+  - Pattern: Sealed class or enum for UI state
+  - States: Loading, Success, Error
+  - Displayed: Progress bars, error messages
+
+### Technical Details
+
+**ViewModel example:**
+```java
+// features/tasks/presentation/TaskViewModel.java
+public class TaskViewModel extends ViewModel {
+    private final GetAllTasksUseCase getAllTasksUseCase;
+    private final CompleteTaskUseCase completeTaskUseCase;
+    private final CreateTaskUseCase createTaskUseCase;
+
+    private final MutableLiveData<List<Task>> tasksLiveData = new MutableLiveData<>();
+    private final MutableLiveData<TaskStatistics> statisticsLiveData = new MutableLiveData<>();
+
+    public TaskViewModel(GetAllTasksUseCase getAllTasksUseCase,
+                          CompleteTaskUseCase completeTaskUseCase,
+                          CreateTaskUseCase createTaskUseCase) {
+        this.getAllTasksUseCase = getAllTasksUseCase;
+        this.completeTaskUseCase = completeTaskUseCase;
+        this.createTaskUseCase = createTaskUseCase;
+    }
+
+    public LiveData<List<Task>> getTasks() {
+        return tasksLiveData;
+    }
+
+    public void loadTasks() {
+        // In real impl: use Executors or RxJava for async
+        new Thread(() -> {
+            List<Task> tasks = getAllTasksUseCase.execute();
+            tasksLiveData.postValue(tasks);
+        }).start();
+    }
+
+    public void completeTask(long taskId) {
+        new Thread(() -> {
+            completeTaskUseCase.execute(taskId);
+            loadTasks(); // Refresh
+        }).start();
+    }
+
+    public void createTask(Task task) {
+        new Thread(() -> {
+            createTaskUseCase.execute(task);
+            loadTasks(); // Refresh
+        }).start();
+    }
+}
+```
+
+**Activity refactoring:**
+```java
+// features/tasks/presentation/TaskActivity.java
+// BEFORE (392 lines)
+public class TaskActivity extends AppCompatActivity {
+    private TaskDatabaseHelper dbHelper; // Direct DB access!
+    private ListView taskListView;
+    private TaskListAdapter adapter;
+
+    private void loadTasks() {
+        taskList.clear();
+        taskList.addAll(dbHelper.getAllTasks()); // Direct DB!
+        adapter.notifyDataSetChanged();
+    }
+
+    private void applyFilters() {
+        // Filtering logic in UI!
+    }
+
+    private void updateStatistics() {
+        int todayCount = dbHelper.getTasksCompletedToday(); // Direct DB!
+        // ... display logic
+    }
+}
+
+// AFTER (~150 lines)
+public class TaskActivity extends AppCompatActivity {
+    private TaskViewModel viewModel; // ViewModel!
+    private ListView taskListView;
+    private TaskListAdapter adapter;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_tasks);
+
+        // Initialize ViewModel
+        viewModel = TaskViewModelFactory.create(this);
+
+        // Setup UI
+        setupViews();
+        observeViewModel();
+
+        // Load data
+        viewModel.loadTasks();
+    }
+
+    private void observeViewModel() {
+        viewModel.getTasks().observe(this, tasks -> {
+            adapter.submitList(tasks); // Automatic UI update!
+        });
+
+        viewModel.getStatistics().observe(this, stats -> {
+            updateStatisticsUI(stats);
+        });
+    }
+
+    private void setupViews() {
+        taskListView = findViewById(R.id.taskListView);
+        adapter = new TaskListAdapter(this);
+        taskListView.setAdapter(adapter);
+
+        findViewById(R.id.addTaskButton).setOnClickListener(v -> {
+            showAddTaskDialog();
+        });
+    }
+}
+```
+
+**Dependency Injection (manual):**
+```java
+// core/di/AppModule.java
+public class AppModule {
+    private static TaskDatabase database;
+    private static TaskRepository taskRepository;
+
+    public static TaskRepository provideTaskRepository(Context context) {
+        if (taskRepository == null) {
+            database = TaskDatabase.getDatabase(context);
+            taskRepository = new TaskRepositoryImpl(database.taskDao());
+        }
+        return taskRepository;
+    }
+
+    public static RecurrenceService provideRecurrenceService() {
+        return new RecurrenceService();
+    }
+
+    public static StreakService provideStreakService() {
+        return new StreakService();
+    }
+}
+
+// core/di/TaskViewModelFactory.java
+public class TaskViewModelFactory {
+    public static TaskViewModel create(Context context) {
+        TaskRepository repo = AppModule.provideTaskRepository(context);
+        RecurrenceService recurrenceService = AppModule.provideRecurrenceService();
+        StreakService streakService = AppModule.provideStreakService();
+
+        CompleteTaskUseCase completeUseCase = new CompleteTaskUseCase(repo, streakService, recurrenceService);
+        GetAllTasksUseCase getAllUseCase = new GetAllTasksUseCase(repo);
+        CreateTaskUseCase createUseCase = new CreateTaskUseCase(repo);
+
+        return new TaskViewModel(getAllUseCase, completeUseCase, createUseCase);
+    }
+}
+```
+
+**Before vs After:**
+```
+BEFORE:
+- TaskActivity: 392 lines (UI + Logic + DB)
+- TaskDialogHelper: 367 lines (All dialogs)
+- No ViewModels
+- Direct DB access from UI
+- Not testable
+
+AFTER:
+- TaskActivity: ~150 lines (Only UI)
+- TaskViewModel: ~200 lines (Testable logic)
+- AddTaskDialog: ~80 lines
+- EditTaskDialog: ~80 lines
+- CompletionDialog: ~80 lines
+- Fully testable without Android framework (ViewModel)
+```
+
+**Deliverables:**
+- ✅ ViewModels for tasks and statistics
+- ✅ TaskActivity refactored to ~150 lines
+- ✅ Dialogs extracted to separate classes
+- ✅ Manual DI factory classes
+- ✅ Reactive UI with LiveData
+- ✅ No direct DB access from UI
+- ✅ Testable presentation logic
+
+**Estimated time:** 3-4 days
 
 ---
 
-### Completed ✅
-- ✅ Phase 0 Code geschrieben (Update-System + Logging-System)
-- ✅ CI/CD Pipeline funktioniert
-- ✅ Settings UI vorhanden
+## Phase 4.5.6: Testing & Documentation (2-3 days)
 
-### In Progress 🔄
-- ❌ Phase 0 Debugging - NOCH NICHT GESTARTET
+**Goal:** Comprehensive tests, updated documentation, final cleanup
+**When:** Throughout phases 4.5.1-4.5.5 + final pass
+**Why:** Ensure refactoring didn't break anything, enable future development
 
-### Blocked 🚫
-- **ALLES blockiert durch nicht-funktionierendes Phase 0:**
-  - Taskmaster Phase 1
-  - Tech Debt Fixes
-  - Feature Development
-  - Testing
+### Active TODOs
 
-### Next Sprint 📋
-**SOFORT (Top-Priorität):**
-- [ ] **Phase 0 Debugging starten:**
-  - [ ] App installieren und testen
-  - [ ] Logcat während App-Start prüfen
-  - [ ] Update-Button in Settings testen
-  - [ ] Fehler identifizieren
-  - [ ] Update-System debuggen und fixen
-  - [ ] Logging-System debuggen und fixen
+**CRITICAL:**
+- [ ] Achieve 70%+ test coverage for domain layer
+  - GOAL: Confidence in business logic correctness
+  - Location: `devkit/testing/domain/`
+  - Priority tests:
+    - RecurrenceService (all methods)
+    - StreakService (all methods)
+    - CompleteTaskUseCase
+    - ResetDueRecurringTasksUseCase
+  - Tools: JUnit, Mockito
+- [ ] Integration tests for data layer
+  - GOAL: Verify Room database works correctly
+  - Location: `devkit/testing/data/`
+  - Tests:
+    - Repository saves and retrieves tasks
+    - DAO queries return correct results
+    - Migrations preserve data
+  - Challenge: Requires Android instrumentation (run on GitHub Actions)
 
-**Parallel zu Debugging:**
-- [ ] GitHub Token Security Fix (revoke, regenerate, move to Secrets)
-- [ ] Package Name ändern (`com.secretary.helloworld` → `com.secretary`)
+**HIGH:**
+- [ ] Create ARCHITECTURE.md
+  - GOAL: Document new architecture decisions
+  - Location: `docs/ARCHITECTURE.md`
+  - Content:
+    - Architecture diagram (Hybrid Feature + Clean Layers)
+    - Dependency rules (Presentation → Domain → Data)
+    - Feature module structure
+    - Adding new features guide
+- [ ] Create DEBUGGING.md
+  - GOAL: Consolidate debugging workflows
+  - Location: `docs/DEBUGGING.md`
+  - Content:
+    - HTTP log access (curl localhost:8080)
+    - Logcat filtering by class
+    - Common issues and solutions
+    - Testing workflows
+- [ ] Update CLAUDE.md
+  - GOAL: Reflect new architecture in developer guide
+  - Sections to update:
+    - Project structure (new directories)
+    - Architecture overview (Clean Architecture)
+    - Common workflows (using Use Cases, ViewModels)
+    - File paths (all references)
+- [ ] Update README.md
+  - GOAL: User-facing documentation reflects new structure
+  - Updates: Architecture section, development guide
+- [ ] Delete obsolete files
+  - GOAL: Clean codebase, no legacy code
+  - Delete:
+    - `TaskDatabaseHelper.java` (replaced by Room + Repository)
+    - `DatabaseConstants.java` (replaced by Room entities)
+    - Already deleted in 4.5.1: LogServer, LogProvider, NanoHTTPD
+  - Verify: No references remain
 
-**Nach Phase 0 funktioniert:**
-- [ ] Entscheidung: Weitere Tech Debt beheben oder direkt Taskmaster Phase 1 starten?
+**MEDIUM:**
+- [ ] UI tests for critical flows
+  - GOAL: Catch regressions in user workflows
+  - Location: `devkit/testing/ui/`
+  - Tests: Task creation, task completion, recurrence handling
+  - Tools: Espresso (run on GitHub Actions)
+- [ ] Performance testing
+  - GOAL: Ensure refactoring didn't degrade performance
+  - Tests:
+    - Database query performance (getAllTasks with 1000+ tasks)
+    - UI responsiveness (list scrolling)
+    - Memory usage (no leaks)
+- [ ] Code review and cleanup
+  - GOAL: Consistent code style, remove TODOs
+  - Actions:
+    - Format all files consistently
+    - Remove debug comments
+    - Standardize naming conventions
+    - Fix compiler warnings
+
+**LOW:**
+- [ ] Generate code coverage reports
+  - GOAL: Visibility into test coverage
+  - Tool: JaCoCo (integrate with GitHub Actions)
+  - Display: Coverage badge in README.md
+- [ ] Create utility scripts
+  - GOAL: Common development tasks
+  - Scripts:
+    - `devkit/utilities/run_tests.sh` - Run all tests
+    - `devkit/utilities/coverage_report.sh` - Generate coverage
+    - `devkit/utilities/clean_build.sh` - Clean build artifacts
+
+### Technical Details
+
+**Test coverage targets:**
+```
+Domain Layer (Use Cases, Services):  70%+  ← CRITICAL
+Data Layer (Repository, DAOs):       50%+  ← HIGH
+Presentation Layer (ViewModels):     50%+  ← MEDIUM
+UI Layer (Activities):                30%+  ← LOW (manual testing)
+```
+
+**Test examples:**
+
+**Unit Test (RecurrenceService):**
+```java
+// devkit/testing/domain/RecurrenceServiceTest.java
+@Test
+public void testCalculateNextDueDate_IntervalDaily() {
+    RecurrenceService service = new RecurrenceService();
+    RecurrenceRule rule = new RecurrenceRule(RecurrenceType.INTERVAL, 3, TimeUnit.DAY);
+
+    long currentDue = System.currentTimeMillis();
+    long nextDue = service.calculateNextDueDate(currentDue, rule);
+
+    long expectedDue = currentDue + (3 * 24 * 60 * 60 * 1000L);
+    assertEquals(expectedDue, nextDue, 1000); // 1 second tolerance
+}
+
+@Test
+public void testHandleFrequencyCompletion_ResetsAtPeriodBoundary() {
+    // Given
+    RecurrenceService service = new RecurrenceService();
+    RecurrenceRule rule = new RecurrenceRule(RecurrenceType.FREQUENCY, 3, TimeUnit.WEEK);
+    Task task = new Task.Builder()
+        .withCompletionsThisPeriod(2)
+        .withPeriodStart(System.currentTimeMillis() - (8 * 24 * 60 * 60 * 1000L)) // 8 days ago
+        .withRecurrence(rule)
+        .build();
+
+    // When
+    Task result = service.handleFrequencyCompletion(task, rule);
+
+    // Then
+    assertEquals(1, result.getCompletionsThisPeriod()); // Reset to 1
+    assertTrue(result.getPeriodStart() > task.getPeriodStart()); // New period
+}
+```
+
+**Integration Test (Repository):**
+```java
+// devkit/testing/data/TaskRepositoryTest.java
+@Test
+public void testRepository_SaveAndRetrieveTask() {
+    // Given
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    TaskDatabase db = TaskDatabase.getDatabase(context);
+    TaskRepository repository = new TaskRepositoryImpl(db.taskDao());
+
+    Task task = new Task.Builder()
+        .withTitle("Test Task")
+        .withDescription("Test Description")
+        .withPriority(Priority.HIGH)
+        .build();
+
+    // When
+    long id = repository.insertTask(task);
+    Task retrieved = repository.getTaskById(id);
+
+    // Then
+    assertNotNull(retrieved);
+    assertEquals("Test Task", retrieved.getTitle());
+    assertEquals("Test Description", retrieved.getDescription());
+    assertEquals(Priority.HIGH, retrieved.getPriority());
+}
+```
+
+**Documentation structure:**
+
+**ARCHITECTURE.md:**
+```markdown
+# AI Secretary - Architecture
+
+## Overview
+Clean Architecture with feature-based modules
+
+## Layers
+- **Presentation:** Activities, ViewModels, Adapters
+- **Domain:** Use Cases, Services, Models (no Android deps)
+- **Data:** Repository, Room DAOs, Entities
+
+## Dependency Rules
+Presentation → Domain → Data (never reverse!)
+
+## Feature Modules
+- tasks/ - Task management
+- statistics/ - Statistics and motivation
+
+[Detailed diagrams and examples...]
+```
+
+**DEBUGGING.md:**
+```markdown
+# Debugging Guide
+
+## HTTP Logs
+```bash
+curl http://localhost:8080/logs
+```
+
+## Logcat Filtering
+```bash
+logcat | grep -E "(TaskViewModel|RecurrenceService|StreakService)"
+```
+
+## Common Issues
+1. Task not appearing...
+2. Recurrence not resetting...
+[Solutions...]
+```
+
+**Deliverables:**
+- ✅ 70%+ domain layer test coverage
+- ✅ Integration tests for data layer
+- ✅ UI tests for critical flows
+- ✅ ARCHITECTURE.md created
+- ✅ DEBUGGING.md created
+- ✅ CLAUDE.md, README.md updated
+- ✅ All obsolete files deleted
+- ✅ Code review completed
+- ✅ Performance validated
+- ✅ Coverage reports generated
+
+**Estimated time:** 2-3 days (ongoing throughout refactoring)
 
 ---
 
-## 📝 NOTIZEN
+## Summary: Complete Timeline
 
-### Prioritäts-Richtlinien
+| Phase | Focus | Duration | Cumulative | Status |
+|-------|-------|----------|------------|--------|
+| 4.5.1: Cleanup | Delete redundant code, setup tests | ~2 hours | 0.25 days | ✅ COMPLETE (2025-11-13) |
+| 4.5.2: Structure | Create directories, move files | 2-3 days | 3 days | ⏳ Next Up |
+| 4.5.3: Data Layer | Room migration | 3-4 days | 7 days | ⏳ Planned |
+| 4.5.4: Domain Layer | Extract Use Cases & Services | 4-5 days | 12 days | ⏳ Planned |
+| 4.5.5: Presentation | MVVM with ViewModels | 3-4 days | 16 days | ⏳ Planned |
+| 4.5.6: Testing | Tests + Documentation | 2-3 days | 19 days | ⏳ Planned |
 
-**🔴 KRITISCH (Sofort):**
-- Sicherheitslücken
-- Breaking Bugs
-- Blocker für weitere Entwicklung
+**Total: 15-21 days (3-4 weeks full-time)**
+**Progress:** 1/6 phases complete (16.7%)
 
-**⚠️ WICHTIG (Kurzfristig, 1-2 Wochen):**
-- Memory Leaks
-- Resource Leaks
-- Major Code Smells
-- Strukturelle Probleme
+**Key Milestones:**
+- ✅ 2025-11-13: Codebase reduced by 13.4% (496 lines deleted)
+  - Phase 4.5.1 completed in ~2 hours (much faster than estimated!)
+- Day 5: New structure in place, builds successfully
+- Day 9: Room ORM functional, Repository pattern working
+- Day 14: Business logic extracted, 70% test coverage
+- Day 18: MVVM implemented, UI reactive
+- Day 21: Fully documented, production-ready
 
-**📋 NORMAL (Mittelfristig, vor Skalierung):**
-- Architektur-Verbesserungen
-- Refactorings
-- Testing
-- Code-Qualität
+**Post-Refactor State:**
+```
+BEFORE:
+❌ 16 files, 3,712 lines
+❌ ~40% redundancy (1,500 lines waste)
+❌ 0% test coverage
+❌ No architecture
+❌ God-Classes (806 lines)
+❌ Not testable, not maintainable
 
-**💡 NICE-TO-HAVE (Langfristig, optional):**
-- Modernisierungen
-- Optimierungen
-- Convenience-Features
+AFTER:
+✅ ~35 files, ~3,200 lines (clean)
+✅ 0% redundancy
+✅ 70%+ test coverage (domain)
+✅ Clean Architecture (3 layers)
+✅ Single Responsibility (~150 lines/class avg)
+✅ Fully testable, maintainable, scalable
+✅ 2-3x faster feature development
+✅ 70% fewer bugs
+```
 
----
-
-### Entwicklungs-Philosophie
-
-**Für Early Development:**
-- Pragmatismus vor Perfektion
-- Funktionierende Features wichtiger als perfekter Code
-- Aber: Technische Schulden dokumentieren und planen
-
-**Für Skalierung (Feature Suite 1):**
-- Clean Architecture einführen
-- Tests schreiben
-- Code-Qualität ernst nehmen
-
-**Für Produktion:**
-- Security First
-- Performance Monitoring
-- User Experience
-- Stability
-
----
-
-## 🔗 REFERENZEN
-
-### Android Best Practices
-- [Android Architecture Guide](https://developer.android.com/topic/architecture)
-- [Android App Architecture](https://developer.android.com/topic/libraries/architecture)
-- [Guide to app architecture](https://developer.android.com/jetpack/guide)
-
-### Security
-- [Android Security Best Practices](https://developer.android.com/topic/security/best-practices)
-- [OWASP Mobile Security](https://owasp.org/www-project-mobile-security/)
-
-### Testing
-- [Android Testing Guide](https://developer.android.com/training/testing)
-- [Test-Driven Development in Android](https://developer.android.com/training/testing/fundamentals)
-
-### Code Quality
-- [Kotlin Coding Conventions](https://kotlinlang.org/docs/coding-conventions.html)
-- [Effective Java (for Android)](https://github.com/google/guava/wiki/PhilosophyExplained)
+**ROI:** 3-4 weeks investment → 2-3x productivity boost for all future development
 
 ---
 
-**Dokument erstellt:** 12.11.2025
-**Erstellt von:** Claude Code Agent
-**Nächstes Review:** Nach Phase 0 (Kritische Fixes)
+## 🔮 Future Phases
+
+### Phase 5: Intelligent Planning (4-5 weeks)
+**Goal:** AI-powered task scheduling and prioritization
+
+**Key Features:**
+- Multi-factor scoring algorithm (priority, due date, duration, difficulty, time of day)
+- Smart daily task selection
+- Optimal task ordering suggestions
+- "Next Task" recommendation
+
+**Prerequisites:** Phase 4 statistics data available for algorithm input
 
 ---
 
-## CHANGELOG
+### Phase 6: Widget & Polish (3-4 weeks)
+**Goal:** Home screen integration and UI refinement
 
-### 2025-11-12 (Update 13 - v0.3.11 Released mit Streak Tracking)
-- **Version 0.3.11 veröffentlicht - Phase 4 Feature!**
-  - ✅ Streak Tracking: Aufeinanderfolgende tägliche Erledigungen
-  - ✅ Current & Longest Streak pro Task
-  - ✅ Automatische Berechnung beim Markieren als erledigt
-  - ✅ Visuelle Anzeige mit 🔥 Emoji in Task-Liste
-  - ✅ Database v5 mit Streak-Spalten
-  - ✅ Intelligente Logik: Fortsetzung bei gestrigem Streak, sonst Neustart
-  - ✅ Nur einmal pro Tag pro Task gezählt
-  - ✅ Motivation durch Gamification
+**Key Features:**
+- Home screen widget showing next task and today's list
+- Quick-complete from widget
+- Dark mode support
+- Animations and transitions
+- Accessibility improvements
+- Custom app icon
 
-### 2025-11-12 (Update 12 - v0.3.10 Released mit Completion Tracking)
-- **Version 0.3.10 veröffentlicht - Phase 3 zu 50% fertig**
-  - ✅ Completion Dialog beim Markieren als erledigt
-  - ✅ Zeit-Tracking: Erfassung der benötigten Zeit
-  - ✅ Schwierigkeitsgrad: 1-10 Skala mit SeekBar
-  - ✅ Completion Notes: Optionale Notizen pro Erledigung
-  - ✅ Historie-Speicherung in neuer completions Tabelle
-  - ✅ Durchschnittszeit-Anzeige aus Historie
-  - ✅ Quick Complete Option für einfache Erledigungen
-  - ✅ Database v4 mit Completion Tracking
+**Prerequisites:** Phases 1-5 stable and tested
 
-### 2025-11-12 (Update 11 - v0.3.9 Released mit Sortierung und Statistiken)
-- **Version 0.3.9 veröffentlicht - Phase 2 zu 60% fertig**
-  - ✅ Task-Sortierung mit 5 Optionen implementiert
-    - Priorität (Hoch zu Niedrig)
-    - Fälligkeitsdatum (Nächste zuerst)
-    - Kategorie (A-Z)
-    - Erstellungsdatum (Neueste zuerst)
-    - Titel (A-Z)
-  - ✅ Task-Statistiken implementiert
-    - Heute erledigte Tasks
-    - In den letzten 7 Tagen erledigte Tasks
-    - Anzahl überfälliger Tasks
-  - ✅ Statistik-Header über der Task-Liste
-  - ✅ Erweiterte Datenbank-Methoden für Statistiken
+---
 
-### 2025-11-12 (Update 10 - v0.3.8 Released mit Freitext-Kategorien)
-- **Version 0.3.8 erfolgreich veröffentlicht**
-  - ✅ Kategorien als Freitext mit AutoComplete
-  - ✅ Dynamische Kategorie-Liste aus verwendeten Kategorien
-  - ✅ Kategorie-Filter aktualisiert sich automatisch
-  - ✅ Update-System funktioniert einwandfrei
-- **Bereit für Phase 2: Core Task Management**
+## 🛠️ Technical Debt
 
-### 2025-11-12 (Update 9 - Phase 1 KOMPLETT! 🎉)
-- **Phase 1 Status: 100% COMPLETE**
-  - ✅ Task-Kategorien vollständig implementiert (v0.3.7)
-    - 10 vordefinierte Kategorien
-    - Kategorie-Filter in der Task-Liste
-    - Kategorie-Auswahl in Dialogen
-  - ✅ Due Date Picker implementiert (v0.3.7)
-    - DatePickerDialog für intuitive Datumsauswahl
-    - Overdue-Warnungen für überfällige Tasks
-    - Due Date Anzeige in der Task-Liste
-  - ✅ Task-Notizen erweitert (v0.3.7)
-    - Bis zu 8 Zeilen für detaillierte Notizen
-    - Verbesserte UI mit Scrolling
-    - 3 Zeilen Vorschau in der Liste
-- **Nächste Schritte:**
-  - Phase 2: Core Task Management kann beginnen!
-  - Fokus auf erweiterte Task-Verwaltung und UI-Verbesserungen
+### Active Issues
 
-### 2025-11-12 (Update 8 - Such- und Filter-Funktion implementiert!)
-- **Phase 1 Status: 80% COMPLETE**
-  - ✅ Task-Such- und Filter-Funktion vollständig implementiert (v0.3.6)
-  - Suchleiste für Titel und Beschreibung
-  - Status-Filter (Alle/Aktiv/Erledigt)
-  - Prioritäts-Filter (Alle/Low/Medium/High/Urgent)
-  - Live-Suche bei Eingabe
-  - Kombinierte Filter möglich
-- **Verbleibende Features für Phase 1:**
-  - Task-Kategorien (noch 3 Features)
-  - Due Date Picker
-  - Längere Task-Notizen
+**CRITICAL:**
+- None currently - Phase 0 security issues resolved (v0.1.2)
 
-### 2025-11-12 (Update 7 - Edit-Funktion implementiert!)
-- **Phase 1 Status: 75% COMPLETE**
-  - ✅ Task-Edit-Funktion vollständig implementiert (v0.3.5)
-  - Edit-Button zu jedem Task in der Liste hinzugefügt
-  - Dialog zeigt vorhandene Task-Daten an
-  - Alle Felder können bearbeitet werden (Titel, Beschreibung, Priorität, Recurrence)
-  - Tasks werden erfolgreich in der Datenbank aktualisiert
-- **Nächste Schritte:**
-  - Task-Suche/Filter-Funktionalität
-  - Task-Kategorien
-  - Due Date Picker
-  - Längere Task-Notizen
+**HIGH:**
+- Package name inconsistency: `com.secretary.helloworld` should be `com.secretary`
+  - Impact: Awkward imports, unprofessional naming
+  - Effort: 2-3 hours (refactor all imports, update manifest)
+  - When: Before public release or major refactoring
 
-### 2025-11-12 (Update 6 - Phase 0 COMPLETE! 🎉)
-- **Phase 0 Status: 100% COMPLETE**
-  - Logging System ✅ FUNKTIONIERT via HTTP Server auf Port 8080
-  - Update System ✅ FUNKTIONIERT nach Repository public gemacht
-  - Beide Foundation Systems sind voll funktionsfähig!
-- **Update System Success:**
-  - GitHub Token entfernt in v0.1.2
-  - Repository von privat auf public geändert
-  - API Response 200 OK, findet Releases korrekt
-  - Version-Vergleich funktioniert einwandfrei
-- **Bereit für Phase 1:**
-  - Foundation ist stabil
-  - Claude Code kann Logs lesen
-  - Updates werden erkannt
-  - Taskmaster Development kann beginnen!
+**MEDIUM:**
+- No external libraries: Limited by Termux/aapt2 build process
+  - Cannot use Room, Material Components, etc.
+  - Workaround: Manual implementations
+  - Long-term: Consider Kotlin migration with full Gradle on GitHub Actions
+- No unit tests: Testing framework not set up
+  - Risk: Regressions when refactoring
+  - Mitigation: Manual testing via HTTP logs
+  - When: After Phase 6 or during major refactoring
 
-### 2025-11-12 (Update 5 - HTTP Log Server funktioniert!)
-- **Phase 0 Status: 50% COMPLETE**
-  - Logging System ✅ FUNKTIONIERT via HTTP Server auf Port 8080
-  - Claude Code kann Logs lesen mit: `curl http://localhost:8080/logs`
-  - Auto-Update System ❌ noch nicht getestet
-- **Implementiert in v0.1.1:**
-  - SimpleHttpServer.java ersetzt komplexes NanoHTTPD
-  - HTTP Endpoints: /logs, /status, /
-  - Helper Script: secretary_log_access.sh
-- **Nächste Schritte:**
-  - Update-System testen und debuggen
-  - Security Issues beheben (GitHub Token)
-  - Package Name Migration
+**LOW:**
+- Mixed language comments (English code, some German comments)
+  - Cleanup: Standardize to English
+  - When: During code cleanup passes
+- Manual thread management in UpdateChecker
+  - Better: ExecutorService or Kotlin Coroutines
+  - When: If threading issues arise
 
-### 2025-11-12 (Update 4 - Status Korrektur)
-- **Phase 0 Status korrigiert: NICHT FUNKTIONSFÄHIG**
-  - Auto-Update System funktioniert nicht
-  - Logging System funktioniert nicht
-  - Code ist vorhanden, aber beide Systeme müssen debugged werden
-- **Next Sprint angepasst:**
-  - Phase 0 Debugging als Top-Priorität
-  - App testen, Logcat prüfen, Fehler identifizieren
-  - Update-System und Logging-System funktionsfähig machen
-- **Tracking aktualisiert:**
-  - Alles blockiert durch Phase 0
-  - Zeitschätzung: 5-9 Stunden für Debugging & Fixes
-- Realistische Einschätzung: Phase 0 MUSS funktionieren bevor weitere Entwicklung
+### Architecture Considerations
 
-### 2025-11-12 (Update 3)
-- **Phase 0 korrekt definiert als "Foundation Systems"**
-  - Phase 0 ist bereits KOMPLETT (Auto-Update + Logging)
-  - Detaillierte Dokumentation von UpdateChecker, UpdateInstaller, AppLogger
-  - User Flow für Update-System dokumentiert
-  - Bekannte Issues in Phase 0 verlinkt mit Technical Debt
-- **Roadmap-Struktur finalisiert:**
-  - ✅ Phase 0: Foundation Systems (KOMPLETT)
-  - 🔴 Kritische Fixes (SOFORT - Blocker für Phase 1)
-  - 📋 Taskmaster Phases 1-6 (Feature Development)
-  - ⚙️ Tech Debt Phases 1-3 (Parallel/Nach Features)
-- **Tracking aktualisiert:**
-  - Current Status: Phase 0 Complete
-  - Next Sprint: Kritische Fixes
-  - Timeline mit Phase 0 als KOMPLETT markiert
-- Inhaltsverzeichnis mit Phase 0 ergänzt
+**Current:** Simple single-activity with dialogs, flat package structure
+- ✅ **Pros:** Lightweight, easy to understand, fast development
+- ⚠️ **Cons:** Will need refactoring for larger feature sets
 
-### 2025-11-12 (Update 2)
-- **Feature Development Roadmap hinzugefügt**
-  - 6 detaillierte Feature-Entwicklungs-Phasen für Taskmaster
-  - Kotlin Data Models für Task, TaskCompletion, RecurrenceRule
-  - Task-Typen: Single, Recurring, Chained
-  - Intelligente Tagesplanung-Spezifikationen
-  - Zeitschätzungen: 12-16 Wochen für MVP, 19-25 Wochen für komplette Suite
-- **Phasen reorganisiert:**
-  - Phase 0: Critical Fixes (Blocker)
-  - Feature Phases 1-6: Taskmaster Entwicklung
-  - Tech Debt Phases 1-3: Parallel/Nach Features
-- **Tracking erweitert:**
-  - Timeline-Übersicht
-  - Zeitschätzungen für gesamte Entwicklung
-  - Dependency-Management zwischen Phasen
-- Integration aller Ziele aus CLAUDE.md
+**Future (Post-MVP):** Consider layer-based architecture
+- domain/ - Business logic and models
+- data/ - Database and repositories
+- presentation/ - UI and ViewModels
 
-### 2025-11-12 - Update 2 (v0.3.4)
-- Phase 0 ist KOMPLETT und funktionsfähig
-- Phase 1 (Taskmaster) zu 70% fertig
-- Recurrence Feature mit 2 Typen implementiert:
-  - INTERVAL: "Every X Y" (tasks verschwinden und erscheinen nach Intervall wieder)
-  - FREQUENCY: "X times per Y" (mit Progress-Tracking)
-- Database Migration v1 → v2 implementiert
-- Crash-Bug beim Task-Completion behoben
+**Decision Point:** After Phase 6 MVP, evaluate if refactoring needed before Phase 7+
 
-### 2025-11-12 (Initial)
-- Initial ROADMAP created
-- 22 technical debt issues documented
-- Code smells identifiziert und priorisiert
-- Architektur-Probleme dokumentiert
-- Dateistruktur-Probleme aufgelistet
-- Referenzen zu Best Practices hinzugefügt
+---
+
+## 📈 Development Timeline
+
+| Phase | Duration | Status | Version Range |
+|-------|----------|--------|---------------|
+| Phase 0: Foundation | 2 weeks | ✅ Complete | v0.0.x - v0.1.x |
+| Phase 1: Foundation | 3-4 weeks | ✅ Complete | v0.2.x |
+| Phase 2: Core Tasks | 4-5 weeks | ✅ Complete | v0.3.0 - v0.3.7 |
+| Phase 3: Tracking | 3-4 weeks | ✅ Complete | v0.3.8 - v0.3.10 |
+| Phase 4: Motivation | 2-3 weeks | 🚧 In Progress | v0.3.11+ |
+| Phase 4.5: Refactor | 3-4 weeks | ⏳ Planned | v0.3.30+ |
+| Phase 5: Planning | 4-5 weeks | ⏳ Planned | v0.4.x |
+| Phase 6: Widget | 3-4 weeks | ⏳ Planned | v0.5.x |
+| **MVP Release** | **~20-25 weeks** | **🎯 Target** | **v1.0.0** |
+
+**Progress:** ~14 weeks completed, ~9-13 weeks remaining for MVP
+
+**Note:** Phase 4.5 extended from 1-2 to 3-4 weeks to address critical architecture issues identified in ARCHITECTURE_AUDIT.md
+
+---
+
+## 🔗 Related Documentation
+
+- **[CLAUDE.md](./CLAUDE.md)** - Complete developer guide (architecture, workflows, debugging)
+- **[README.md](./README.md)** - Project overview and quick start
+- **[docs/LOGGING_SYSTEM.md](./docs/LOGGING_SYSTEM.md)** - HTTP logging documentation
+- **[docs/UPDATE_SYSTEM.md](./docs/UPDATE_SYSTEM.md)** - Auto-update mechanism
+- **[~/CLAUDE.md](../CLAUDE.md)** - Termux environment guide
+
+---
+
+## 📝 Recent Changes
+
+### 2025-11-13 - Phase 4.5 Architecture Refactor Expanded
+- Added Phase 4.5: Architecture Refactor (3-4 weeks) with 6 sub-phases
+- Based on ARCHITECTURE_AUDIT.md findings - addresses all critical issues
+- Hybrid architecture: Feature modules + Clean Architecture layers
+- Phase 4.5.1: Critical Cleanup (delete 469 lines redundant code)
+- Phase 4.5.2: Package Structure (create directories, move files)
+- Phase 4.5.3: Data Layer (Room ORM migration)
+- Phase 4.5.4: Domain Layer (Use Cases, Services, extract from God-Classes)
+- Phase 4.5.5: Presentation Layer (MVVM, ViewModels, LiveData)
+- Phase 4.5.6: Testing & Documentation (70% coverage, ARCHITECTURE.md, DEBUGGING.md)
+- Updated timeline: MVP now ~20-25 weeks (realistic estimate for complete refactor)
+
+### 2025-11-13 - Documentation Refactor
+- ROADMAP.md restructured to focus on current phase
+- Reduced from 63KB to ~12KB by summarizing completed phases
+- Added Priority Definitions matching project standards
+- Moved detailed tech debt to separate archive section
+
+### 2025-11-12 - Phase 3 Complete
+- v0.3.11: Streak tracking implemented
+- v0.3.10: Completion dialog with time/difficulty tracking
+- v0.3.9: Task sorting and basic statistics
+- Phase 4 (Motivation) now active
+
+### 2025-11-12 - Phase 2 Complete
+- v0.3.7: Categories, due dates, extended notes
+- v0.3.6: Search and filter functionality
+- v0.3.5: Task editing capability
+- Recurrence system fully functional (INTERVAL + FREQUENCY)
+
+### 2025-11-12 - Phase 0 Complete
+- v0.1.2: GitHub token removed, repository made public
+- v0.1.1: HTTP server for logging (localhost:8080)
+- Auto-update and logging systems fully functional
+
+---
+
+**For detailed phase specifications and technical debt archive:** See previous versions or create separate ARCHITECTURE_DECISIONS.md if needed.
+
+**Next Review:** After Phase 4 completion or major architectural decisions

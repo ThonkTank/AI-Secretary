@@ -6,171 +6,303 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**AI Secretary** is a native Android task management app developed in Termux on Android. The project is currently in Phase 0 (Foundation Systems), implementing auto-update and logging infrastructure before building the main Taskmaster feature suite.
+**AI Secretary** is a native Android task management app with recurring task support, developed entirely in Termux on Android. This is a personal productivity app focused on the "Taskmaster" feature suite - a comprehensive system for managing daily, weekly, and long-term recurring tasks with intelligent planning and streak tracking.
 
-**Scope:** Personal use only - not intended for Google Play distribution.
-
-**Current Status:** Phase 0 code implemented but not yet functional - requires debugging.
+**Current Status:** Phase 4.5 - Architecture Refactor (v0.3.26 - Build 326 - Refactoring Branch)
+- ✅ Phase 0: Foundation Systems (100% complete)
+- ✅ Phase 1: Taskmaster Foundation (100% complete)
+- ✅ Phase 2: Core Task Management (100% complete)
+- ✅ Phase 3: Tracking & Analytics (100% complete)
+- ⏸️ Phase 4: Motivation & Statistics (30% complete - PAUSED for refactoring)
+- 🚧 **Phase 4.5: Architecture Refactor (16.7% complete - IN PROGRESS)**
+  - ✅ Phase 4.5.1: Critical Cleanup (COMPLETE - 496 lines deleted)
+  - 🚧 Phase 4.5.2: Package Structure (Next up)
 
 **Repository:** https://github.com/ThonkTank/AI-Secretary
+**Branch:** `refactoring/phase-4.5-architecture` (active development)
 
 ---
 
 ## Development Environment
 
 ### Hardware & System
-- **Primary:** Google Pixel 8 (aarch64)
+- **Device:** Google Pixel 8 (aarch64)
 - **Android Version:** Android 16 (API Level 36)
 - **Development:** Termux (googleplay.2025.10.05)
 - **Java:** OpenJDK 21.0.9
-- **Android SDK:** API 33 (compile), API 28-36 (runtime)
-
-### Android 16 Storage Constraints
-- **Scoped Storage:** Fully enforced (since API 29)
-- **WRITE_EXTERNAL_STORAGE:** Deprecated, no longer works
-- **File Access:** Apps cannot read files created by other apps in shared storage
-- **Impact:** Termux cannot read log files created by AI Secretary in Download folder
-- **Solution Required:** MANAGE_EXTERNAL_STORAGE permission or ContentProvider
+- **Android SDK:** API 33 (compile), API 28-35 (runtime)
 
 ### Critical Constraint: No Local Gradle
-Gradle does NOT work in Termux (JVM libiconv error). Use GitHub Actions for all builds.
+**Gradle does NOT work in Termux** (JVM libiconv error). All production builds MUST use GitHub Actions. Local builds with `build.sh` are only for quick testing and have severe limitations (no external libraries, manual compilation).
 
 ---
 
 ## Build & Deployment
 
-### Production Build (REQUIRED)
-```bash
-# 1. Update version in AndroidManifest.xml (versionCode and versionName)
+### Production Build (REQUIRED for all real work)
 
-# 2. Commit and push to GitHub
+```bash
+# 1. Update version in AndroidManifest.xml
+#    - Increment versionCode (e.g., 325 → 326)
+#    - Update versionName following phase-based scheme (e.g., 0.3.25 → 0.3.26)
+
+# 2. Commit and push to trigger GitHub Actions
 git add .
-git commit -m "Your message"
+git commit -m "feat: your feature description"
 git push origin main
 
-# 3. Wait for GitHub Actions build (takes ~45 seconds)
+# 3. Monitor build status (takes ~45 seconds)
 export GH_TOKEN=$(cat ~/.github_token)
-gh run list --limit 1  # Check if build completed
+gh run list --limit 1
+gh run view --log  # If build fails
 
-# 4. Download APK from GitHub Releases
-VERSION="0.0.23"  # Use current version
-ASSET_ID=$(curl -s -H "Authorization: token $GH_TOKEN" \
-  https://api.github.com/repos/ThonkTank/AI-Secretary/releases/tags/v$VERSION \
-  | grep -o '"id": [0-9]*' | head -1 | cut -d' ' -f2)
+# 4. Download APK when build completes
+VERSION="0.3.26"  # Use your new version
+gh release download "v$VERSION" -p "AISecretary-signed.apk" -D ~/storage/downloads/
 
+# 5. Install APK
 cd ~/storage/downloads
-curl -L -H "Accept: application/octet-stream" \
-  -H "Authorization: token $GH_TOKEN" \
-  -o AISecretary-v$VERSION.apk \
-  https://api.github.com/repos/ThonkTank/AI-Secretary/releases/assets/$ASSET_ID
-
-# 5. Make file visible to Android and install
-termux-media-scan AISecretary-v$VERSION.apk
-termux-open AISecretary-v$VERSION.apk
+termux-media-scan AISecretary-signed.apk
+termux-open AISecretary-signed.apk
 ```
 
-**GitHub Token:** Stored in `~/.github_token` (readable with `cat ~/.github_token`)
+**GitHub Workflow:** `.github/workflows/build-and-release.yml`
+- Triggers: push to main or manual dispatch
+- SDK: Android 33, Build Tools 33.0.2
+- Java: Source/target 8 for compatibility
+- Auto-creates releases with version tag from AndroidManifest.xml
 
-**Workflow:** `.github/workflows/build-and-release.yml`
-- Triggers on push to main or manual dispatch
-- Uses Android SDK 33, Build Tools 33.0.2
-- Java source/target: 8 (for compatibility)
-- Extracts version from `AndroidManifest.xml` for release tagging
+### Local Development Build (Testing Only)
 
-### Local Development Build (Learning Only)
 ```bash
-# Only for simple testing - NOT for production
+# For quick local testing - very limited capabilities
 ./build.sh
 
-# Installs:
+# Install
 cp app_signed.apk ~/storage/downloads/
 termux-open ~/storage/downloads/app_signed.apk
 ```
 
-**Limitations:**
-- No support for external libraries (AppCompat, Room, etc.)
-- Manual resource compilation
-- No dependency management
-- Use only for quick local tests
+**Limitations:** No support for external libraries, manual resource compilation, no dependency management. Use only for quick tests.
 
 ---
 
 ## Architecture
 
-### Current Structure (Phase 0)
-```
-src/com/secretary/
-├── MainActivity.java        # Main UI, Settings dialog, Update UI
-├── UpdateChecker.java       # GitHub Releases API client
-├── UpdateInstaller.java     # APK download via DownloadManager
-├── AppLogger.java           # In-memory logging (500 line buffer)
-└── LogProvider.java         # ContentProvider for log access
+**⚠️ ARCHITECTURE REFACTORING IN PROGRESS (Phase 4.5)**
 
-res/
-├── layout/
-│   ├── activity_main.xml        # Main screen (displays logs)
-│   ├── dialog_settings.xml      # Settings with update check
-│   └── dialog_logs.xml          # Log viewer dialog
-├── menu/main_menu.xml           # Action bar (Settings icon)
-└── values/strings.xml
+**Current State:** Flat structure (all files in one package)
+**Target State:** Clean Architecture with Presentation → Domain → Data layers
+
+See [ROADMAP.md](ROADMAP.md) Phase 4.5 for detailed refactoring plan.
+
+### Project Structure (BEFORE Phase 4.5.1 - Baseline)
+
 ```
+AI-Secretary-latest/
+├── src/com/secretary/          # 16 Java files (BEFORE cleanup)
+│   ├── MainActivity.java              # Landing page with Settings menu
+│   ├── TaskActivity.java              # Main task management UI
+│   ├── Task.java                      # Task entity with recurrence logic
+│   ├── TaskDatabaseHelper.java        # SQLite database (v4, two tables)
+│   ├── TaskListAdapter.java           # ListView adapter for tasks
+│   ├── TaskDialogHelper.java          # Task creation/edit dialogs
+│   ├── TaskFilterManager.java         # Search/filter/sort logic
+│   ├── TaskStatistics.java            # Analytics and streak calculations
+│   ├── DatabaseConstants.java         # DB schema constants
+│   ├── AppLogger.java                 # In-memory logging (500 lines)
+│   ├── SimpleHttpServer.java          # HTTP server for log access
+│   ├── ❌ LogProvider.java            # DELETED in Phase 4.5.1
+│   ├── ❌ LogServer.java              # DELETED in Phase 4.5.1
+│   ├── ❌ NanoHTTPD.java              # DELETED in Phase 4.5.1
+│   ├── UpdateChecker.java             # GitHub Releases API client
+│   └── UpdateInstaller.java           # APK download via DownloadManager
+├── res/
+│   ├── layout/
+│   │   ├── activity_main.xml          # Landing page
+│   │   ├── activity_tasks.xml         # Task list with filters
+│   │   ├── task_list_item.xml         # Individual task item
+│   │   ├── dialog_add_task.xml        # Task creation dialog
+│   │   ├── dialog_completion.xml      # Task completion dialog
+│   │   ├── dialog_settings.xml        # Settings with update check
+│   │   └── dialog_logs.xml            # Log viewer dialog
+│   ├── menu/main_menu.xml             # Action bar menu
+│   └── values/strings.xml             # String resources
+├── devkit/                        # Development tools (NEW in Phase 4.5.1)
+│   ├── testing/                      # Test infrastructure
+│   │   ├── domain/                   # Unit tests (future)
+│   │   ├── data/                     # Integration tests (future)
+│   │   ├── integration/              # E2E tests (future)
+│   │   ├── fixtures/                 # Test data (future)
+│   │   └── README.md                 # Testing documentation
+│   ├── build/                        # Build scripts (future)
+│   └── utilities/                    # Dev utilities (future)
+├── docs/                          # Technical documentation
+│   ├── REFACTORING_BASELINE.md       # System behavior baseline (NEW in 4.5.1)
+│   ├── LOGGING_SYSTEM.md             # HTTP logging details
+│   └── UPDATE_SYSTEM.md              # Auto-update mechanism
+├── AndroidManifest.xml            # App manifest (ContentProvider removed in 4.5.1)
+├── build.sh                       # Local build script (limited)
+└── .github/workflows/
+    └── build-and-release.yml      # Production build workflow
+```
+
+### Phase 4.5.1 Changes (Completed 2025-11-13)
+
+**Files Deleted (496 lines total):**
+- ❌ `LogServer.java` (148 lines) - Duplicate HTTP server using NanoHTTPD
+- ❌ `LogProvider.java` (110 lines) - Unused ContentProvider
+- ❌ `NanoHTTPD.java` (211 lines) - Overkill library for simple logging
+- ❌ ContentProvider entry removed from AndroidManifest.xml
+
+**Files Modified:**
+- ✅ `AppLogger.java` - Now truly IN-MEMORY (87 lines, from 114 lines)
+  - Removed `logFile` variable and `writeToFile()` method
+  - Removed file-I/O imports (BufferedWriter, File, FileWriter, Environment)
+  - Updated comments to reflect HTTP server access
+
+**New Documentation:**
+- ✅ `docs/REFACTORING_BASELINE.md` - System behavior baseline for regression testing
+- ✅ `devkit/testing/README.md` - Testing infrastructure documentation
+
+**Result:** 13.4% codebase reduction (496/3,712 lines), logging system simplified (5 files → 2 files)
 
 ### Key Components
 
-**UpdateChecker.java**
-- Checks GitHub Releases API for latest version
-- Compares with current app version
-- Returns update info via callback interface
-- ⚠️ Contains hardcoded GitHub token (security issue - must fix)
+#### Task Management Core
 
-**UpdateInstaller.java**
-- Downloads APK using Android DownloadManager
-- Registers BroadcastReceiver for download completion
-- Launches installation prompt
-- ⚠️ Potential memory leak (receiver not always unregistered)
+**Task.java** - Task entity with comprehensive fields
+- Basic: id, title, description, category, createdAt, dueDate, isCompleted, priority
+- Recurrence: Two types (INTERVAL and FREQUENCY), smart completion logic
+- Streak Tracking: currentStreak, longestStreak, lastStreakDate
+- ~320 lines with getters/setters and recurrence logic methods
 
-**AppLogger.java**
-- Singleton pattern for centralized logging
-- Triple redundancy: In-memory (max 500 lines) + File (backup) + Logcat
+**TaskDatabaseHelper.java** - SQLite database management (v4)
+- Two tables: `tasks` (17 columns) and `completions` (6 columns)
+- CRUD operations for tasks
+- Recurrence handling: resetIntervalTask(), incrementFrequencyProgress()
+- Database migrations from v1→v2→v3→v4
+- Integrated with TaskStatistics for analytics
+
+**TaskActivity.java** - Main task management UI
+- Task list with priority-based display
+- Filter controls: search, status, priority, category, sort
+- Add/Edit/Delete/Complete task operations
+- Statistics display (total, completed, active tasks)
+- ~500+ lines including lifecycle management
+
+**TaskDialogHelper.java** - Manages task dialogs
+- Task creation dialog with all fields
+- Task edit dialog (pre-filled)
+- Task completion dialog with metadata
+- Recurrence configuration UI
+- Category selection spinner
+
+**TaskFilterManager.java** - Search and filter logic
+- Search by title/description
+- Filter by status (all/active/completed)
+- Filter by priority (Low/Medium/High/Urgent)
+- Filter by category (10 categories)
+- Sort by: priority, due date, category, created date, title
+
+**TaskStatistics.java** - Analytics and calculations
+- Completion tracking via `completions` table
+- Streak calculation logic (currentStreak, longestStreak)
+- Task completion statistics
+- Time-based analytics
+
+#### Foundation Systems (Phase 0)
+
+**AppLogger.java** - Centralized logging system
+- Singleton pattern with in-memory buffer (500 lines max)
 - Three levels: INFO, DEBUG, ERROR
-- **Purpose:** Enable Claude Code to read logs for informed development decisions
-- User can view logs in-app (Settings → View Logs)
-- **Access:** Via LogProvider ContentProvider (see "Accessing Logs" section below)
+- Auto-trimming when buffer exceeds 500 entries
+- Triple redundancy: memory + logcat + HTTP server
+- Purpose: Enable Claude Code to monitor app behavior
 
-**LogProvider.java**
-- ContentProvider that exports logs to external tools
-- URI: `content://com.secretary.helloworld.logs/file`
-- Reads in-memory logs from AppLogger
-- Creates temporary file in cache for each access
-- Exported without permissions (personal use, no security risk)
-- Enables Claude Code to read logs with `content read --uri ...`
+**SimpleHttpServer.java** - HTTP server for log access
+- Runs on localhost:8080
+- Endpoints: `/logs` (all logs), `/` (help)
+- Enables Claude Code to read logs via curl
+- Single-threaded, synchronous request handling
 
-**MainActivity.java**
-- Single Activity app
-- Action bar with Settings menu
-- Main screen shows app logs (for debugging)
-- Settings dialog with version info and update check
+**UpdateChecker.java** - GitHub Releases API integration
+- Checks for new versions on GitHub
+- Parses release JSON and extracts latest version
+- Compares with current app version
+- Callback interface for update availability
 
-### Package Structure
-- **Current:** Flat structure in `com.secretary.helloworld`
-- **Planned:** Migrate to `com.secretary` and layer-based structure (data/domain/presentation)
+**UpdateInstaller.java** - APK download and installation
+- Uses Android DownloadManager for APK download
+- BroadcastReceiver for download completion
+- Launches installation prompt when download completes
+
+### Database Schema
+
+**tasks table** (17 columns):
+- id, title, description, category, created_at, due_date, is_completed, priority
+- recurrence_type, recurrence_amount, recurrence_unit, last_completed_date
+- completions_this_period, current_period_start
+- current_streak, longest_streak, last_streak_date
+
+**completions table** (6 columns):
+- completion_id, task_id (FK), completed_at, time_spent, difficulty, notes
+
+### Recurrence System
+
+**Two Recurrence Types:**
+
+1. **INTERVAL** ("Every X Y")
+   - Examples: "Every 3 days", "Every 1 week"
+   - Logic: Task resets when X time units pass since last completion
+   - Implementation: `resetIntervalTask()` - uncompletes task and sets new due date
+
+2. **FREQUENCY** ("X times per Y")
+   - Examples: "3 times per week", "5 times per month"
+   - Logic: Track completions within period; reset at period end
+   - Implementation: `incrementFrequencyProgress()` - increments counter, resets at period boundary
+
+**Time Units:** DAY, WEEK, MONTH, YEAR
+
+### Categories System
+
+10 predefined categories:
+- General, Work, Personal, Health, Finance, Learning, Shopping, Home, Social, Other
+
+Users can assign categories when creating/editing tasks and filter task list by category.
+
+---
+
+## Version Management
+
+**Location:** `AndroidManifest.xml`
+
+**Phase-based Versioning Scheme:**
+- **0.0.x - 0.1.x** = Phase 0 (Foundation - Update & Logging)
+- **0.2.x** = Phase 1 (Taskmaster Foundation & Database)
+- **0.3.x** = Phase 2-4 (Core Features Development) ← CURRENT
+- **0.4.x** = Phase 5 (Intelligent Planning)
+- **0.5.x** = Phase 6 (Widget & Polish)
+- **1.0.0** = Taskmaster MVP Release
+
+**Current Version:** v0.3.25 (Build 325)
+
+**How to Update:**
+1. Increment `versionCode` (integer, sequential: 325 → 326)
+2. Update `versionName` (semantic: 0.3.25 → 0.3.26)
+3. Commit and push - GitHub Actions creates release with tag `v{versionName}`
 
 ---
 
 ## Accessing Logs
 
-**Solution: HTTP Server on Port 8080** - Direct access to app logs via HTTP
+**Primary Method: HTTP Server on localhost:8080**
 
-The app runs a SimpleHttpServer on localhost:8080 that provides REST endpoints for log access. This enables Claude Code and Termux to read logs with a simple curl command.
-
-### How to Read Logs
+The app runs a SimpleHttpServer that provides direct access to in-memory logs.
 
 ```bash
-# Get all logs (primary method - WORKS!)
+# Get all logs (use this!)
 curl http://localhost:8080/logs
-
-# Get server status
-curl http://localhost:8080/
 
 # Save logs to file
 curl http://localhost:8080/logs > ~/secretary_logs.txt
@@ -181,269 +313,332 @@ curl -s http://localhost:8080/logs | tail -20
 # Search for errors
 curl -s http://localhost:8080/logs | grep ERROR
 
-# Monitor logs (refresh every 2 seconds)
+# Live monitoring (refresh every 2 seconds)
 while true; do clear; curl -s http://localhost:8080/logs | tail -20; sleep 2; done
 ```
 
-### Helper Script
-
-A helper script `~/secretary_log_access.sh` is available:
+**Helper Script:** `~/secretary_log_access.sh` (if available)
 ```bash
-./secretary_log_access.sh         # Show usage
 ./secretary_log_access.sh logs    # Get all logs
 ./secretary_log_access.sh latest  # Last 10 entries
 ./secretary_log_access.sh errors  # ERROR logs only
 ./secretary_log_access.sh watch   # Live monitoring
 ```
 
-### When to Read Logs
+**When to Read Logs:**
+- After crashes: See error stack traces and last operations
+- During development: Monitor feature implementation in real-time
+- Before commits: Verify changes work correctly
+- Debugging: Understand actual execution flow vs expected
 
-- **After app crashes:** HTTP server may stop, but logs from before crash are visible after restart
-- **During development:** Monitor real-time while testing features
-- **Debugging issues:** See actual execution flow and error messages
-- **Before commits:** Verify changes work as expected
-
-### Technical Details
-
-- **Method:** Embedded HTTP server (SimpleHttpServer.java)
-- **Port:** 8080 (localhost only)
-- **Endpoints:** /logs (all logs), /status (server info), / (help)
-- **Format:** Plain text, one log entry per line
-- **Buffer:** 500 log entries in memory (AppLogger)
-- **Performance:** Minimal overhead, synchronous single-threaded server
+**Technical Details:**
+- Server starts automatically in MainActivity
+- Buffer: 500 log entries max (auto-trimmed)
+- Format: Plain text, one entry per line
+- Port: 8080 (localhost only, no external access)
 
 ---
 
-## Version Management
+## Testing & Debugging
 
-**Location:** `AndroidManifest.xml`
+### Install and Launch App
 
-**Versioning Scheme (Phase-based):**
-- **0.0.x - 0.1.x** = Phase 0 (Foundation Systems - Update & Logging) ← CURRENT
-- **0.2.x** = Phase 1 (Taskmaster Foundation & Database)
-- **0.3.x** = Phase 2 (Core Task Management)
-- **0.4.x** = Phase 3 (Tracking & Analytics)
-- **0.5.x** = Phase 4 (Motivation & Statistics)
-- **0.6.x** = Phase 5 (Intelligent Planning)
-- **0.7.x** = Phase 6 (Widget & Polish)
-- **1.0.0** = Taskmaster MVP Release
-
-```xml
-<manifest package="com.secretary.helloworld"
-    android:versionCode="101"
-    android:versionName="0.1.1">
-```
-
-**Update Version:**
-1. Increment `versionCode` (integer, sequential)
-2. Update `versionName` (phase-based: major.minor.patch)
-   - major = 0 until Taskmaster v1.0
-   - minor = development phase (0-6)
-   - patch = build number within phase
-3. Commit and push - GitHub Actions will create release with tag `v{versionName}`
-
-**Current:** v0.0.25 (Build 25) - Phase 0 Development
-
----
-
-## Debugging & Testing
-
-### View Logs
 ```bash
-# Real-time logcat filtering
-logcat | grep Secretary
-
-# Or filter by specific tags
-logcat | grep -E "(MainActivity|UpdateChecker|AppLogger)"
-
-# Check for errors
-logcat | grep -E "ERROR|Exception"
-```
-
-### Install and Test App
-```bash
-# Install from local build
-pm install -r app_signed.apk
-
-# Or from GitHub release
+# Install APK (replace or reinstall)
 pm install -r ~/storage/downloads/AISecretary-signed.apk
 
 # Launch app
 am start -n com.secretary.helloworld/.MainActivity
 
-# Check app info
-pm dump com.secretary.helloworld | grep -A5 "version"
+# Check installed version
+pm dump com.secretary.helloworld | grep -E "versionCode|versionName"
 ```
 
-### Common Issues
+### View Logcat
 
-**Update System Not Working:**
-- Check GitHub API response in logcat
-- Verify internet permission in manifest
-- Check for JSON parsing errors
-- Verify GitHub token is valid (UpdateChecker.java:17)
+```bash
+# Real-time filtering by package
+logcat | grep Secretary
 
-**Logging System Not Working:**
-- Check AppLogger initialization in MainActivity
-- Verify logs are being written (check logcat)
-- Check TextView display logic in MainActivity
+# Filter by specific classes
+logcat | grep -E "(MainActivity|TaskActivity|TaskDatabaseHelper)"
 
----
+# Check for errors
+logcat | grep -E "ERROR|Exception|FATAL"
 
-## Critical Known Issues (See ROADMAP.md)
+# Clear logcat before testing
+logcat -c
+```
 
-### Security
-1. **Hardcoded GitHub Token** (UpdateChecker.java:17)
-   - CRITICAL: Must be revoked and regenerated
-   - Move to GitHub Secrets
-   - Use environment variable or remove if not needed
+### Common Debugging Scenarios
 
-### Code Quality
-2. **Resource Leaks** (UpdateChecker.java:36-54)
-   - HttpURLConnection not closed
-   - BufferedReader not closed
+**Task not appearing in list:**
+- Check logs for database insertion errors
+- Verify filters aren't hiding the task (check status/priority/category filters)
+- Confirm task creation dialog saved all fields
 
-3. **Memory Leak** (UpdateInstaller.java:38-70)
-   - BroadcastReceiver may not be unregistered if download fails
-   - Should unregister in Activity.onDestroy()
+**Recurrence not working:**
+- Check logs for recurrence logic execution
+- Verify recurrence fields are set correctly in database
+- Test both INTERVAL and FREQUENCY types separately
 
-4. **Dead Code** (AppLogger.java:21, 30, 94)
-   - `logFile` variable created but never used
-   - Remove or implement file logging
+**App crashes on launch:**
+- Check logcat for stack trace
+- Look for database migration errors
+- Verify all required resources are compiled in GitHub Actions workflow
 
-5. **Package Name** (AndroidManifest.xml:3)
-   - Change from `com.secretary.helloworld` to `com.secretary`
-   - Requires refactoring all imports
+**Update system not working:**
+- Check internet permission in manifest
+- Verify GitHub repository is public (no token needed)
+- Check logs for GitHub API response
 
 ---
 
-## Project Roadmap
+## Development Workflow
 
-See `ROADMAP.md` for complete development plan.
+### Standard Feature Development
 
-### Phase 0: Foundation Systems (Current - Not Functional)
-- ❌ Auto-Update System - implemented, needs debugging
-- ❌ Logging System - implemented, needs debugging
-- Next: Debug both systems and fix critical security issues
+1. **Plan:** Review ROADMAP.md for current phase and tasks
+2. **Read Logs:** Check app state before making changes
+3. **Code:** Make changes to Java files and resources
+4. **Update Workflow:** If adding new files, update `.github/workflows/build-and-release.yml`
+5. **Test Locally:** Quick validation with `./build.sh` (if feasible)
+6. **Commit:** Descriptive commit message
+7. **Push:** Triggers GitHub Actions build
+8. **Monitor Build:** Use `gh run list` and `gh run view`
+9. **Download & Install:** Test full build on device
+10. **Verify Logs:** Confirm feature works as expected
 
-### Future Phases (Blocked until Phase 0 works)
-- **Phase 1:** Kotlin migration, MVVM architecture, Room database
-- **Phase 2:** Task creation, display, CRUD operations
-- **Phase 3:** Completion tracking, recurrence logic
-- **Phase 4:** Streaks, statistics, motivation
-- **Phase 5:** Intelligent planning algorithm
-- **Phase 6:** Home screen widget, polish
+### Adding New Java Class
 
-**Estimated Timeline:** 12-16 weeks for MVP (Phases 1-4)
+1. Create file in `src/com/secretary/YourClass.java`
+2. Update `.github/workflows/build-and-release.yml`:
+   ```yaml
+   javac -source 8 -target 8 \
+     ...
+     src/com/secretary/YourClass.java \
+   ```
+3. Import in other classes: `import com.secretary.helloworld.YourClass;`
+4. Remember package name is `com.secretary.helloworld` (not just `com.secretary`)
+
+### Adding New Layout Resource
+
+1. Create file in `res/layout/your_layout.xml`
+2. Update `.github/workflows/build-and-release.yml`:
+   ```yaml
+   $ANDROID_SDK_ROOT/build-tools/33.0.2/aapt2 compile \
+     ...
+     res/layout/your_layout.xml \
+     -o compiled_res/
+   ```
+3. Reference in Java: `R.layout.your_layout`
+
+### Database Schema Changes
+
+1. Increment `DATABASE_VERSION` in `DatabaseConstants.java`
+2. Add migration logic in `TaskDatabaseHelper.onUpgrade()`:
+   ```java
+   if (oldVersion < NEW_VERSION) {
+       db.execSQL("ALTER TABLE tasks ADD COLUMN your_column TYPE");
+       // ... migration logic
+   }
+   ```
+3. Update table creation SQL
+4. Test with existing database (app should migrate automatically)
 
 ---
 
-## Code Style
+## Code Style & Conventions
 
-### Current Conventions
-- **Language:** Java (planned migration to Kotlin)
-- **Comments:** Mixed German/English (should migrate to English)
-- **Logging:** Use AppLogger.getInstance(context).info/debug/error()
-- **Threading:** Manual Thread creation (should use ExecutorService)
+### Current Standards
+- **Language:** Java (Kotlin migration planned for future)
+- **Comments:** Primarily English (some legacy German comments)
+- **Logging:** Always use `AppLogger.getInstance(context).info/debug/error(TAG, message)`
+- **Package:** `com.secretary.helloworld` (legacy name, consider migrating to `com.secretary`)
+
+### Logging Best Practices
+```java
+private static final String TAG = "YourClassName";
+private AppLogger logger;
+
+// In onCreate() or constructor:
+logger = AppLogger.getInstance(context);
+
+// Usage:
+logger.info(TAG, "Operation started");
+logger.debug(TAG, "Variable value: " + value);
+logger.error(TAG, "Operation failed", exception);
+```
 
 ### Java Compilation
-```bash
-# Source/target compatibility
-javac -source 8 -target 8 ...
-
-# Classpath
--classpath $ANDROID_SDK_ROOT/platforms/android-33/android.jar
-```
+- **Source/Target:** Java 8 (for compatibility)
+- **Classpath:** `$ANDROID_SDK_ROOT/platforms/android-33/android.jar`
+- **No external libraries** (limited by Termux/aapt2 build process)
 
 ---
 
-## Git Workflow
+## Git & GitHub
+
+### Commit Workflow
 
 ```bash
-# Standard workflow
-git status
-git add .
-git commit -m "feat: description"
-git push origin main
-
-# GitHub Actions will:
-# 1. Build APK
-# 2. Create release with version from manifest
-# 3. Upload APK as release asset
-
-# View build logs
-# Go to GitHub → Actions tab
+git status                                    # Check changes
+git add .                                     # Stage all
+git commit -m "feat: description"            # Commit
+git push origin main                          # Push (triggers build)
 ```
 
-**Commit Message Format:**
-- Use descriptive messages
-- GitHub Actions uses commit message in release notes
+### Commit Message Format
+- Use descriptive messages (appears in release notes)
+- Prefixes: `feat:`, `fix:`, `refactor:`, `docs:`
+- Examples:
+  - `feat: add category filter to task list`
+  - `fix: resolve database migration crash`
+  - `refactor: extract task dialog logic to helper class`
 
----
-
-## Accessing Logs in App
-
-1. Install and launch app
-2. Tap Settings icon (⚙) in action bar
-3. Tap "View Logs" button
-4. Logs displayed in scrollable dialog
-5. Use "Copy to Clipboard" to share logs
-
-**Main Screen:** Also displays logs automatically (activity_main.xml)
-
----
-
-## Working with Resources
-
-### Adding New Layouts
-```xml
-<!-- res/layout/your_layout.xml -->
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout ...>
-    ...
-</LinearLayout>
-```
-
-Update GitHub Actions workflow to compile new resource:
-```yaml
-# In build-and-release.yml
-$ANDROID_SDK_ROOT/build-tools/33.0.2/aapt2 compile \
-  res/layout/your_layout.xml \
-  -o compiled_res/
-```
-
-### Adding New Java Files
-Update GitHub Actions workflow:
-```yaml
-javac ... \
-  src/com/secretary/YourNewClass.java \
-  ...
-```
-
----
-
-## Protected Sections (🔒 in CLAUDE.md)
-
-Do NOT modify these without explicit user permission:
-- Project vision (Gesamtkonzept)
-- Feature Suite 1: Taskmaster specifications
-- Development roadmap phases
-
-**Ask first** before changing architecture decisions or feature specifications.
-
----
-
-## Useful Termux Commands
+### Viewing Build Status
 
 ```bash
-# Environment info
-termux-info
-getprop ro.build.version.release  # Android version
-getprop ro.product.model          # Device model
+# List recent builds
+export GH_TOKEN=$(cat ~/.github_token)
+gh run list --limit 5
 
-# Package management
+# View specific build logs
+gh run view <run-id> --log
+
+# View failed build logs
+gh run view <run-id> --log-failed
+
+# Watch current build
+gh run watch
+```
+
+### Release Management
+
+GitHub Actions automatically:
+1. Builds APK from source
+2. Extracts version from AndroidManifest.xml
+3. Creates GitHub Release with tag `v{versionName}`
+4. Uploads `AISecretary-signed.apk` as release asset
+5. Includes commit message in release notes
+
+---
+
+## Roadmap & Feature Development
+
+**See ROADMAP.md for complete details.**
+
+### Completed Phases
+
+**Phase 0: Foundation Systems** ✅
+- Auto-update system via GitHub Releases
+- Logging system with HTTP server access
+
+**Phase 1: Taskmaster Foundation** ✅
+- Task entity with all basic fields
+- SQLite database with migrations
+- Task Activity UI with CRUD operations
+
+**Phase 2: Core Task Management** ✅
+- Recurrence system (INTERVAL and FREQUENCY types)
+- Smart completion logic
+- Task edit functionality
+- Search and filter system
+- Categories (10 predefined)
+
+**Phase 3: Tracking & Analytics** ✅
+- Completions table for historical data
+- TaskStatistics class for analytics
+
+**Phase 4: Motivation & Statistics** 🚧 30%
+- ✅ Streak tracking (current and longest)
+- ⏳ Visual motivation features (pending)
+- ⏳ Daily completion stats (pending)
+
+### Next Steps
+
+**Immediate (Phase 4 Completion):**
+1. Visual motivation features (progress bars, achievement badges)
+2. Daily/weekly completion statistics display
+3. Streak visualization in UI
+4. Motivational messages/encouragement system
+
+**Future Phases:**
+- **Phase 5:** Intelligent planning algorithm
+- **Phase 6:** Home screen widget, UI polish, app icon
+- **Phase 7:** Public release preparation (if desired)
+
+---
+
+## Known Issues & Technical Debt
+
+### Active Issues
+
+1. **Package Name Inconsistency**
+   - Manifest: `com.secretary.helloworld`
+   - Should be: `com.secretary`
+   - Impact: Awkward imports and naming
+   - Fix: Requires full refactor of package structure
+
+2. **No External Libraries**
+   - Limitation: Cannot use Room, WorkManager, Material Components, etc.
+   - Cause: Termux build process can't handle AAR dependencies
+   - Workaround: Manual implementations or wait for Kotlin migration
+
+3. **Memory Leaks (Potential)**
+   - UpdateInstaller: BroadcastReceiver may not unregister if download fails
+   - SimpleHttpServer: Long-running background thread
+   - Recommendation: Add lifecycle management and proper cleanup
+
+4. **No Unit Tests**
+   - Risk: Regressions when refactoring
+   - Challenge: Testing framework setup in Termux
+   - Priority: Medium (for post-MVP)
+
+### Architecture Considerations
+
+**Current:** Single Activity with Dialogs (simple, lightweight)
+**Future:** Consider multi-Activity or Fragment-based navigation for scalability
+
+**Current:** SQLite with manual queries
+**Future:** Migrate to Room ORM when Kotlin migration happens
+
+**Current:** Java 8
+**Future:** Kotlin with Coroutines, Flow, modern architecture
+
+---
+
+## Important Notes for Claude Code
+
+### Required Patterns
+
+1. **Always use AppLogger for logging** - enables monitoring and debugging
+2. **Update GitHub Actions workflow** when adding files - critical for builds
+3. **Test version increment** before pushing - avoids duplicate version conflicts
+4. **Read logs before and after changes** - understand impact of modifications
+5. **Check ROADMAP.md** before feature work - ensure alignment with plan
+
+### Protected Sections
+
+Do NOT modify without explicit user approval:
+- Feature specifications in ROADMAP.md
+- Database schema (requires careful migration)
+- Version numbering scheme
+- GitHub Actions workflow (unless adding resources)
+
+**Always ask first** before changing:
+- Project architecture decisions
+- Feature priorities or scope
+- Database structure
+- Build process
+
+### Common Termux Commands
+
+```bash
+# Package info
 pkg list-installed | grep android
-pkg install openjdk-17  # If needed
+pkg search <package>
+pkg install <package>
 
 # File permissions
 chmod +x build.sh
@@ -451,28 +646,90 @@ chmod +x build.sh
 # APK analysis
 aapt dump badging app_signed.apk
 apksigner verify -v app_signed.apk
+
+# Environment
+echo $PREFIX                      # /data/data/com.termux/files/usr
+echo $ANDROID_SDK_ROOT           # Android SDK location
 ```
 
 ---
 
-## Next Steps for Development
+## Quick Reference
 
-**Immediate (Phase 0 Completion):**
-1. ✅ Logging System - ContentProvider implemented (v0.0.25)
-2. ✅ Claude Code can read logs via `content read --uri content://...`
-3. Debug Update System - test if app can check GitHub for updates
-4. Fix GitHub token security issue (currently hardcoded in UpdateChecker.java)
-5. Change package name to `com.secretary`
-6. Fix resource/memory leaks
+### Common Development Commands
 
-**After Phase 0 Works:**
-1. Decide: More tech debt cleanup OR start Taskmaster Phase 1
-2. If Phase 1: Migrate to Kotlin, implement MVVM, set up Room database
+```bash
+# Read logs
+curl http://localhost:8080/logs
 
-**Reference:** See `ROADMAP.md` for detailed task breakdowns and time estimates.
+# Build (local test only)
+cd ~/AI-Secretary-latest
+./build.sh
+
+# Commit and deploy
+git add . && git commit -m "feat: description" && git push origin main
+
+# Monitor build
+export GH_TOKEN=$(cat ~/.github_token)
+gh run watch
+
+# Download and install
+VERSION="0.3.26"  # Update this
+gh release download "v$VERSION" -p "AISecretary-signed.apk" -D ~/storage/downloads/
+cd ~/storage/downloads && termux-media-scan AISecretary-signed.apk && termux-open AISecretary-signed.apk
+
+# Check installed version
+pm dump com.secretary.helloworld | grep version
+
+# View live logs
+logcat | grep Secretary
+```
+
+### File Paths
+
+- **Project:** `~/AI-Secretary-latest/`
+- **Source:** `~/AI-Secretary-latest/src/com/secretary/`
+- **Resources:** `~/AI-Secretary-latest/res/`
+- **Manifest:** `~/AI-Secretary-latest/AndroidManifest.xml`
+- **GitHub Token:** `~/.github_token`
+- **Downloads:** `~/storage/downloads/`
 
 ---
 
-**Last Updated:** 2025-11-12
-**Current Version:** v0.1.2 (Build 102)
-**Status:** Phase 0 ✅ COMPLETE (100%) - Beide Foundation Systems funktionieren! Bereit für Phase 1
+## Related Documentation
+
+### Main Documentation Files
+
+- **[README.md](./README.md)** - Project overview, quick start guide, and user-facing documentation
+- **[ROADMAP.md](./ROADMAP.md)** - Detailed feature roadmap, technical debt, and development phases
+- **[~/CLAUDE.md](../CLAUDE.md)** - Home directory guide for Termux environment (beginner-friendly entry point)
+
+### System Documentation
+
+- **[docs/LOGGING_SYSTEM.md](./docs/LOGGING_SYSTEM.md)** - HTTP logging system (localhost:8080)
+  - AppLogger.java - In-memory logging with auto-trimming
+  - SimpleHttpServer.java - HTTP server for log access
+  - Usage patterns, debugging workflows, troubleshooting
+
+- **[docs/UPDATE_SYSTEM.md](./docs/UPDATE_SYSTEM.md)** - Auto-update mechanism
+  - UpdateChecker.java - GitHub Releases API integration
+  - UpdateInstaller.java - APK download and installation
+  - Version management, GitHub Actions workflow
+
+### Source Code Reference
+
+**Core Components:**
+- Task Management: [`src/com/secretary/Task.java`](./src/com/secretary/Task.java), [`TaskDatabaseHelper.java`](./src/com/secretary/TaskDatabaseHelper.java), [`TaskActivity.java`](./src/com/secretary/TaskActivity.java)
+- Logging: [`src/com/secretary/AppLogger.java`](./src/com/secretary/AppLogger.java), [`SimpleHttpServer.java`](./src/com/secretary/SimpleHttpServer.java)
+- Updates: [`src/com/secretary/UpdateChecker.java`](./src/com/secretary/UpdateChecker.java), [`UpdateInstaller.java`](./src/com/secretary/UpdateInstaller.java)
+
+**Build Configuration:**
+- Local: [`build.sh`](./build.sh) - Limited testing only
+- Production: [`.github/workflows/build-and-release.yml`](./.github/workflows/build-and-release.yml) - Full build with GitHub Actions
+- Manifest: [`AndroidManifest.xml`](./AndroidManifest.xml) - App configuration and versioning
+
+---
+
+**Last Updated:** 2025-11-13
+**Current Version:** v0.3.25 (Build 325)
+**Status:** Phase 4 in progress - Motivation & Statistics (30% complete)

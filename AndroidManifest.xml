@@ -29,12 +29,5 @@
             android:name=".TaskActivity"
             android:label="Tasks"
             android:exported="false" />
-
-        <!-- ContentProvider für Log-Zugriff durch Claude Code / Termux -->
-        <provider
-            android:name=".LogProvider"
-            android:authorities="com.secretary.helloworld.logs"
-            android:exported="true"
-            android:grantUriPermissions="true" />
     </application>
 </manifest>

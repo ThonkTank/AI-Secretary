@@ -1,11 +1,7 @@
 package com.secretary.helloworld;
 
 import android.content.Context;
-import android.os.Environment;
 import android.util.Log;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -17,20 +13,15 @@ public class AppLogger {
     private static final int MAX_LOG_LINES = 500;
     private static AppLogger instance;
     private SimpleDateFormat dateFormat;
-    private List<String> logLines;  // In-Memory Logs
-    private File logFile;  // Persistent file
+    private List<String> logLines;  // In-Memory Logs (HTTP server access via localhost:8080)
 
     private AppLogger(Context context) {
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
         logLines = new ArrayList<>();
 
-        // Internal storage backup (optional, für manuellen Zugriff)
-        // Hauptzugriff erfolgt über ContentProvider (content://com.secretary.helloworld.logs/file)
-        logFile = new File(context.getFilesDir(), "AISecretary_logs.txt");
-
         // Initiale Log-Nachricht
-        info(TAG, "AppLogger initialized");
-        info(TAG, "Logs accessible via ContentProvider: content://com.secretary.helloworld.logs/file");
+        info(TAG, "AppLogger initialized (IN-MEMORY ONLY)");
+        info(TAG, "Logs accessible via HTTP server: curl http://localhost:8080/logs");
     }
 
     public static synchronized AppLogger getInstance(Context context) {
@@ -82,29 +73,11 @@ public class AppLogger {
             // Nur die letzten MAX_LOG_LINES behalten
             logLines = new ArrayList<>(logLines.subList(logLines.size() - MAX_LOG_LINES, logLines.size()));
         }
-
-        // In Datei schreiben (für Claude Code Zugriff)
-        writeToFile(logEntry);
-    }
-
-    private void writeToFile(String logEntry) {
-        try {
-            BufferedWriter writer = new BufferedWriter(new FileWriter(logFile, true));
-            writer.write(logEntry);
-            writer.newLine();
-            writer.close();
-        } catch (Exception e) {
-            // Fehler beim Schreiben ignorieren (kein Log.e hier um Rekursion zu vermeiden)
-        }
     }
 
     public synchronized List<String> readLogs() {
         // Direkt aus dem Speicher zurückgeben
         return new ArrayList<>(logLines);
-    }
-
-    public String getLogFilePath() {
-        return logFile.getAbsolutePath();
     }
 
     public synchronized void clearLogs() {
