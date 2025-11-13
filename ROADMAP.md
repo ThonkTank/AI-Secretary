@@ -6,7 +6,7 @@
 
 **Update when**: Completing phases, adding TODOs, changing priorities, finishing major features.
 
-**Critical Note:** Phase 4.5.3-4.5.5 (Room, Use Cases, MVVM) deferred to Kotlin migration. Clean Architecture foundation (Phase 4.5.1-4.5.2) is complete.
+**Critical Note:** Kotlin migration moved forward to Phase 4.5.3. After Java→Kotlin conversion and Gradle setup, Phase 4.5.4-4.5.5 (Room, Use Cases, MVVM) will be completed with proper tooling. Clean Architecture foundation (Phase 4.5.1-4.5.2) is complete.
 
 ---
 
@@ -36,17 +36,17 @@
 - ✅ Phase 4.5.1: Critical Cleanup (13.4% codebase reduction, 496 lines deleted)
 - ✅ Phase 4.5.2: Package Structure (Clean Architecture foundation established)
 
-**Deferred to Kotlin Migration:**
-- ⏸️ Phase 4.5.3: Data Layer - Room ORM (Room entities created as reference)
-- ⏸️ Phase 4.5.4: Domain Layer - Use Cases & Services
-- ⏸️ Phase 4.5.5: Presentation Layer - MVVM
+**Next Steps:**
+- 🚧 Phase 4.5.3: Kotlin Migration + Gradle Setup (ACTIVE - moved forward)
+- ⏳ Phase 4.5.4: Domain Layer - Use Cases & Services (after Kotlin)
+- ⏳ Phase 4.5.5: Presentation Layer - MVVM (after Kotlin)
 
-**Result:** Clean codebase + package structure ready for future Kotlin migration.
+**Result:** Clean codebase + package structure ready for Kotlin migration NOW.
 
-**After Phase 4:**
+**After Phase 4.5:**
 - ⏳ Phase 5: Intelligent Planning (4-5 weeks)
 - ⏳ Phase 6: Widget & Polish (3-4 weeks)
-- ⏳ Phase 7: Kotlin Migration + Room + MVVM (complete Phase 4.5.3-4.5.5)
+- ⏳ Phase 7: Public Release Preparation
 
 ---
 
@@ -495,174 +495,609 @@ javac -source 8 -target 8 \
 
 ---
 
-## Phase 4.5.3: Data Layer - Room Migration (3-4 days)
+## Phase 4.5.3: Kotlin Migration + Gradle Setup (5-7 days)
 
-**Goal:** Migrate from raw SQLite to Room ORM
-**When:** After package structure is in place
-**Why:** Modern data layer foundation, enables Repository pattern
+**Goal:** Migrate entire Java codebase to Kotlin and establish Gradle build system
+**When:** NOW - Moved forward from Phase 7 (after Phase 4.5.1-4.5.2 completion)
+**Why:** Room, MVVM, and modern Android tools require Gradle. Doing this now avoids building temporary Java structures that would be obsolete in days.
+
+### Overview
+
+**Decision Rationale:**
+- Attempting Room with Java + javac = dependency hell (transitive dependencies nightmare)
+- Small codebase (18 files, 3,907 lines) = perfect migration window
+- Clean Architecture foundation (Phase 4.5.1-4.5.2) complete = ready for migration
+- Postponing makes migration harder (more code to convert later)
+- Kotlin + Gradle unlocks: Room with KSP, Hilt, Coroutines, modern architecture
+
+**Migration Approach:**
+- **Incremental file-by-file conversion** (not "big bang" rewrite)
+- **Small files first** (DatabaseConstants, AppLogger) → easier testing
+- **Test after each conversion** → catch issues early
+- **Preserve existing behavior** → no feature changes during migration
+- **Gradle build on GitHub Actions** → Termux limitation workaround
 
 ### Active TODOs
 
 **CRITICAL:**
-- [ ] Add Room dependencies
-  - GOAL: Enable Room ORM usage
-  - Location: Build configuration (GitHub Actions)
-  - Dependencies:
-    - `androidx.room:room-runtime:2.6.0`
-    - `androidx.room:room-compiler:2.6.0` (annotation processor)
-  - Challenge: Termux build doesn't support annotation processing
-  - Solution: Generate Room code on GitHub Actions, commit generated files
+- [ ] Setup Gradle build configuration
+  - GOAL: Replace manual aapt2/javac/d8 build with Gradle
+  - Location: Create `build.gradle.kts` in project root
+  - Configuration:
+    - Android Gradle Plugin 8.2.0+
+    - Kotlin 1.9.20+ (latest stable)
+    - compileSdk 35, minSdk 28, targetSdk 35
+    - buildToolsVersion "35.0.0"
+  - Files to create:
+    - `build.gradle.kts` (project root)
+    - `app/build.gradle.kts` (app module)
+    - `settings.gradle.kts`
+    - `gradle.properties`
+    - `gradle/wrapper/gradle-wrapper.properties`
+- [ ] Configure GitHub Actions for Gradle
+  - GOAL: Automated Gradle builds on push
+  - Location: `.github/workflows/build-and-release.yml`
+  - Changes:
+    - Replace manual compilation with `./gradlew assembleRelease`
+    - Add JDK 21 setup (required for AGP 8.2+)
+    - Add Gradle caching (~/.gradle/caches)
+    - Keep signing and release steps
+  - Action: Use `gradle/actions/setup-gradle@v3`
+- [ ] Move source to Gradle structure
+  - GOAL: Standard Android project layout
+  - Current: `src/com/secretary/` (Java package-based)
+  - Target: `app/src/main/java/com/secretary/` (Gradle standard)
+  - Also move: `res/` → `app/src/main/res/`
+  - Keep: `AndroidManifest.xml` → `app/src/main/AndroidManifest.xml`
 
 **HIGH:**
-- [ ] Create Room entities
-  - GOAL: Define database schema as annotated classes
-  - Location: `features/tasks/data/TaskEntity.java`, `features/statistics/data/CompletionEntity.java`
-  - Fields: Mirror existing SQLite schema (17 columns for tasks, 6 for completions)
-  - Action: Convert DatabaseConstants column names to @ColumnInfo annotations
-- [ ] Create Room DAOs
-  - GOAL: Type-safe database queries
-  - Location: `features/tasks/data/TaskDao.java`, `features/statistics/data/CompletionDao.java`
-  - Methods:
-    - TaskDao: getAllTasks(), getTaskById(), insertTask(), updateTask(), deleteTask(), getTasksCompletedToday()
-    - CompletionDao: insertCompletion(), getCompletionsForTask(), getCompletionHistory()
-  - Use: @Query, @Insert, @Update, @Delete annotations
-- [ ] Create Room Database
-  - GOAL: Central database configuration
-  - Location: `shared/database/TaskDatabase.java`
-  - Configuration: @Database annotation with entities list, version = 5
-  - Include: Migration from SQLite v4 to Room v5
-- [ ] Create database migrations
-  - GOAL: Preserve existing user data
-  - Location: `shared/database/Migrations.java`
-  - Action: Define Migration(4, 5) that validates schema compatibility
-  - Test: Manually on device with existing data
+- [ ] Convert small utility files first (Wave 1: 3 files, ~235 lines)
+  - GOAL: Practice conversion on simple files
+  - Order:
+    1. `DatabaseConstants.java` (48 lines) → `DatabaseConstants.kt`
+       - Object instead of class with static fields
+       - Const val instead of public static final
+    2. `AppLogger.java` (87 lines) → `AppLogger.kt`
+       - Convert to Kotlin singleton
+       - Use lazy delegate for instance
+    3. `CompletionEntity.java` (100 lines) → `CompletionEntity.kt`
+       - Data class with Room annotations
+       - Reference for future Room files
+  - Method: Use IDE auto-convert, then refactor to idiomatic Kotlin
+  - Verify: Build succeeds after each file
+- [ ] Convert domain models (Wave 2: 2 files, ~397 lines)
+  - GOAL: Core data structures to Kotlin
+  - Order:
+    1. `Task.java` (297 lines) → `Task.kt`
+       - Data class for immutability
+       - Sealed class for RecurrenceType enum
+       - Copy method for updates (free with data class)
+    2. `TaskStatistics.java` (100 lines) → `TaskStatistics.kt`
+       - Kotlin properties
+       - Extension functions for calculations
+  - Test: Verify task CRUD still works
+- [ ] Convert logging system (Wave 3: 2 files, ~232 lines)
+  - GOAL: Core infrastructure to Kotlin
+  - Order:
+    1. `HttpLogServer.java` (145 lines) → `HttpLogServer.kt`
+       - Coroutine-based server (replace Thread)
+       - Use Kotlin's use{} for resource management
+    2. Updated `AppLogger.kt` integration
+  - Test: Verify logs still accessible via curl
+- [ ] Convert update system (Wave 4: 2 files, ~274 lines)
+  - GOAL: Auto-update system to Kotlin
+  - Order:
+    1. `UpdateChecker.java` (127 lines) → `UpdateChecker.kt`
+       - Coroutines for network calls
+       - Sealed class for UpdateResult
+    2. `UpdateInstaller.java` (147 lines) → `UpdateInstaller.kt`
+       - Flow for download progress
+  - Test: Verify update check works
+- [ ] Convert database layer (Wave 5: 1 file, ~806 lines)
+  - GOAL: Database to Kotlin (preparation for Room)
+  - Order:
+    1. `TaskDatabaseHelper.java` (806 lines) → `TaskDatabaseHelper.kt`
+       - Break into smaller Kotlin files during conversion:
+         - `TaskDatabaseHelper.kt` (~200 lines) - Core DB operations
+         - `RecurrenceHelper.kt` (~200 lines) - Recurrence logic
+         - `StreakHelper.kt` (~100 lines) - Streak calculations
+       - Use Kotlin extensions for cleaner code
+       - Prepare for Room migration (Phase 4.5.4)
+  - Test: All database operations still work
+- [ ] Convert UI layer (Wave 6: 5 files, ~1,490 lines)
+  - GOAL: Activities and UI helpers to Kotlin
+  - Order:
+    1. `MainActivity.java` (277 lines) → `MainActivity.kt`
+    2. `TaskFilterManager.java` (205 lines) → `TaskFilterManager.kt`
+    3. `TaskListAdapter.java` (172 lines) → `TaskListAdapter.kt`
+    4. `TaskDialogHelper.java` (368 lines) → `TaskDialogHelper.kt`
+    5. `TaskActivity.java` (393 lines) → `TaskActivity.kt`
+       - Largest file, convert last
+       - Consider splitting into smaller files
+  - Test: All UI interactions work correctly
+- [ ] Convert Room reference entities (Wave 7: 3 files, ~464 lines)
+  - GOAL: Room entities in Kotlin (will be used in Phase 4.5.4)
+  - Order:
+    1. `TaskEntity.java` (211 lines) → `TaskEntity.kt`
+       - Data class with Room annotations
+    2. `TaskDao.java` (153 lines) → `TaskDao.kt`
+       - Interface with suspend functions
+    3. `TaskDatabase.java` (100 lines) → `TaskDatabase.kt`
+       - Abstract class with companion object
+  - Note: These are reference implementations, will be refined in Phase 4.5.4
 
 **MEDIUM:**
-- [ ] Create Repository implementations
-  - GOAL: Abstract data access from domain layer
-  - Location: `features/tasks/data/TaskRepositoryImpl.java`, `features/statistics/data/StatisticsRepositoryImpl.java`
-  - Pattern: Repository wraps DAO, converts Entity ↔ Domain Model
-  - Example:
-    ```java
-    class TaskRepositoryImpl implements TaskRepository {
-        private TaskDao dao;
-        @Override
-        public List<Task> getAllTasks() {
-            return dao.getAllTasks().stream()
-                .map(entity -> entity.toDomainModel())
-                .collect(Collectors.toList());
-        }
+- [ ] Add Kotlin dependencies
+  - Location: `app/build.gradle.kts`
+  - Dependencies:
+    ```kotlin
+    dependencies {
+        // Kotlin
+        implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.20")
+
+        // Coroutines
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+        // AndroidX Core
+        implementation("androidx.core:core-ktx:1.12.0")
+        implementation("androidx.appcompat:appcompat:1.6.1")
+
+        // Room (for Phase 4.5.4)
+        implementation("androidx.room:room-runtime:2.6.1")
+        implementation("androidx.room:room-ktx:2.6.1")
+        ksp("androidx.room:room-compiler:2.6.1")
+
+        // Testing
+        testImplementation("junit:junit:4.13.2")
+        testImplementation("org.mockito:mockito-core:5.7.0")
+        testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     }
     ```
-- [ ] Deprecate TaskDatabaseHelper
-  - GOAL: Mark old implementation for removal
-  - Location: `src/com/secretary/TaskDatabaseHelper.java`
-  - Action: Add @Deprecated annotations to all methods
-  - Comment: "Use TaskRepository instead"
-  - Do NOT delete yet - keep for reference during migration
+- [ ] Setup KSP for Room annotation processing
+  - GOAL: Modern annotation processing (2x faster than KAPT)
+  - Location: `app/build.gradle.kts`
+  - Plugin: `id("com.google.devtools.ksp") version "1.9.20-1.0.14"`
+  - Note: KSP version must match Kotlin version (1.9.20)
+- [ ] Configure proguard rules for Kotlin
+  - Location: `app/proguard-rules.pro`
+  - Rules: Keep Kotlin reflection, Room annotations
+- [ ] Update documentation
+  - GOAL: Reflect Kotlin in all docs
+  - Files to update:
+    - `CLAUDE.md` - Build process, architecture
+    - `README.md` - Tech stack
+    - `docs/LOGGING_SYSTEM.md` - Kotlin examples
+    - `docs/UPDATE_SYSTEM.md` - Kotlin examples
 
 ### Technical Details
 
-**Entity definition example:**
-```java
-@Entity(tableName = "tasks")
-public class TaskEntity {
-    @PrimaryKey(autoGenerate = true)
+**Gradle configuration (build.gradle.kts):**
+```kotlin
+plugins {
+    id("com.android.application") version "8.2.0"
+    id("org.jetbrains.kotlin.android") version "1.9.20"
+    id("com.google.devtools.ksp") version "1.9.20-1.0.14"
+}
+
+android {
+    namespace = "com.secretary.helloworld"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "com.secretary.helloworld"
+        minSdk = 28
+        targetSdk = 35
+        versionCode = 327
+        versionName = "0.3.27"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+        freeCompilerArgs += listOf(
+            "-opt-in=kotlin.RequiresOptIn"
+        )
+    }
+
+    buildFeatures {
+        viewBinding = true
+    }
+}
+
+dependencies {
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.20")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+
+    // Room
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
+}
+```
+
+**GitHub Actions workflow update:**
+```yaml
+name: Build and Release APK
+
+on:
+  push:
+    branches: [ main, refactoring/phase-4.5-architecture ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: wrapper
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x ./gradlew
+
+    - name: Build APK with Gradle
+      run: ./gradlew assembleRelease
+
+    - name: Sign APK
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+
+        $ANDROID_HOME/build-tools/35.0.0/apksigner sign \
+          --ks release.keystore \
+          --ks-key-alias release \
+          --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
+          --key-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
+          --out AISecretary-signed.apk \
+          app/build/outputs/apk/release/app-release-unsigned.apk
+
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=$(grep 'versionName' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.version.outputs.version }}
+        name: AI Secretary v${{ steps.version.outputs.version }}
+        body: |
+          Automated build of AI Secretary (Kotlin)
+
+          Version: ${{ steps.version.outputs.version }}
+          Built with Gradle + Kotlin
+        files: AISecretary-signed.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**Kotlin conversion example (DatabaseConstants):**
+```kotlin
+// BEFORE (Java)
+public class DatabaseConstants {
+    public static final String DATABASE_NAME = "task_database.db";
+    public static final int DATABASE_VERSION = 4;
+
+    public static final String TABLE_TASKS = "tasks";
+    public static final String COLUMN_ID = "id";
+    public static final String COLUMN_TITLE = "title";
+}
+
+// AFTER (Kotlin - idiomatic)
+object DatabaseConstants {
+    const val DATABASE_NAME = "task_database.db"
+    const val DATABASE_VERSION = 4
+
+    const val TABLE_TASKS = "tasks"
+    const val COLUMN_ID = "id"
+    const val COLUMN_TITLE = "title"
+}
+```
+
+**Kotlin conversion example (Task entity):**
+```kotlin
+// BEFORE (Java)
+public class Task {
     private long id;
+    private String title;
+    private String description;
+    private boolean isCompleted;
+
+    public Task(long id, String title, String description, boolean isCompleted) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.isCompleted = isCompleted;
+    }
+
+    // 20+ getters and setters...
+
+    public Task copy() {
+        return new Task(id, title, description, isCompleted);
+    }
+}
+
+// AFTER (Kotlin - data class)
+data class Task(
+    val id: Long = 0,
+    val title: String,
+    val description: String? = null,
+    val isCompleted: Boolean = false,
+    val category: String? = null,
+    val priority: Int = 0,
+    val dueDate: Long? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val recurrenceType: RecurrenceType? = null,
+    val recurrenceAmount: Int? = null,
+    val recurrenceUnit: RecurrenceUnit? = null,
+    val currentStreak: Int = 0,
+    val longestStreak: Int = 0
+) {
+    // copy() method is FREE with data class!
+    // equals(), hashCode(), toString() also free!
+}
+
+sealed class RecurrenceType {
+    object INTERVAL : RecurrenceType()
+    object FREQUENCY : RecurrenceType()
+}
+```
+
+**Room with Kotlin + KSP:**
+```kotlin
+@Entity(tableName = "tasks")
+data class TaskEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
 
     @ColumnInfo(name = "title")
-    private String title;
+    val title: String,
 
     @ColumnInfo(name = "description")
-    private String description;
+    val description: String? = null,
 
-    @ColumnInfo(name = "due_date")
-    private Long dueDate;
+    @ColumnInfo(name = "is_completed")
+    val isCompleted: Boolean = false,
 
-    @ColumnInfo(name = "recurrence_type")
-    private String recurrenceType;
+    // ... 17 fields total
+)
 
-    // ... 17 columns total
-
-    public Task toDomainModel() {
-        return new Task(id, title, description, ...);
-    }
-
-    public static TaskEntity fromDomainModel(Task task) {
-        return new TaskEntity(task.getId(), task.getTitle(), ...);
-    }
-}
-```
-
-**DAO definition example:**
-```java
 @Dao
-public interface TaskDao {
+interface TaskDao {
     @Query("SELECT * FROM tasks ORDER BY is_completed ASC, priority DESC")
-    List<TaskEntity> getAllTasks();
+    suspend fun getAllTasks(): List<TaskEntity>
 
     @Query("SELECT * FROM tasks WHERE id = :taskId")
-    TaskEntity getTaskById(long taskId);
+    suspend fun getTaskById(taskId: Long): TaskEntity?
 
     @Insert
-    long insertTask(TaskEntity task);
+    suspend fun insertTask(task: TaskEntity): Long
 
     @Update
-    void updateTask(TaskEntity task);
+    suspend fun updateTask(task: TaskEntity)
 
     @Delete
-    void deleteTask(TaskEntity task);
-
-    @Query("SELECT COUNT(*) FROM completions WHERE DATE(completed_at/1000, 'unixepoch') = DATE('now')")
-    int getTasksCompletedToday();
+    suspend fun deleteTask(task: TaskEntity)
 }
-```
 
-**Room Database:**
-```java
-@Database(entities = {TaskEntity.class, CompletionEntity.class}, version = 5)
-public abstract class TaskDatabase extends RoomDatabase {
-    public abstract TaskDao taskDao();
-    public abstract CompletionDao completionDao();
+@Database(entities = [TaskEntity::class, CompletionEntity::class], version = 5)
+abstract class TaskDatabase : RoomDatabase() {
+    abstract fun taskDao(): TaskDao
+    abstract fun completionDao(): CompletionDao
 
-    private static volatile TaskDatabase INSTANCE;
+    companion object {
+        @Volatile
+        private var INSTANCE: TaskDatabase? = null
 
-    public static TaskDatabase getDatabase(final Context context) {
-        if (INSTANCE == null) {
-            synchronized (TaskDatabase.class) {
-                if (INSTANCE == null) {
-                    INSTANCE = Room.databaseBuilder(context,
-                        TaskDatabase.class, "task_database")
-                        .addMigrations(MIGRATION_4_5)
-                        .build();
-                }
+        fun getDatabase(context: Context): TaskDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
+                    context.applicationContext,
+                    TaskDatabase::class.java,
+                    "task_database"
+                )
+                .addMigrations(MIGRATION_4_5)
+                .build()
+                INSTANCE = instance
+                instance
             }
         }
-        return INSTANCE;
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Schema compatible, no changes needed
+            }
+        }
     }
 }
 ```
 
-**Migration strategy:**
-```java
-static final Migration MIGRATION_4_5 = new Migration(4, 5) {
-    @Override
-    public void migrate(SupportSQLiteDatabase database) {
-        // Schema is compatible, just validate
-        // Room will handle the transition
-    }
-};
+### Conversion Order & File Map
+
+**Wave 1: Utilities (3 files, 235 lines)**
+```
+src/com/secretary/shared/database/DatabaseConstants.java (48 lines)
+  → app/src/main/java/com/secretary/helloworld/shared/database/DatabaseConstants.kt
+
+src/com/secretary/core/logging/AppLogger.java (87 lines)
+  → app/src/main/java/com/secretary/helloworld/core/logging/AppLogger.kt
+
+src/com/secretary/features/statistics/data/CompletionEntity.java (100 lines)
+  → app/src/main/java/com/secretary/helloworld/features/statistics/data/CompletionEntity.kt
 ```
 
-**Deliverables:**
-- ✅ Room entities for tasks and completions
-- ✅ DAOs with all necessary queries
-- ✅ Room Database configured
-- ✅ Migration tested with existing data
-- ✅ Repository implementations ready
-- ✅ TaskDatabaseHelper deprecated but kept
+**Wave 2: Domain Models (2 files, 397 lines)**
+```
+src/com/secretary/Task.java (297 lines)
+  → app/src/main/java/com/secretary/helloworld/features/tasks/domain/model/Task.kt
 
-**Estimated time:** 3-4 days
+src/com/secretary/TaskStatistics.java (100 lines)
+  → app/src/main/java/com/secretary/helloworld/features/statistics/domain/model/TaskStatistics.kt
+```
+
+**Wave 3: Logging System (2 files, 232 lines)**
+```
+src/com/secretary/core/logging/HttpLogServer.java (145 lines)
+  → app/src/main/java/com/secretary/helloworld/core/logging/HttpLogServer.kt
+
+Updated AppLogger.kt integration
+```
+
+**Wave 4: Update System (2 files, 274 lines)**
+```
+src/com/secretary/core/network/UpdateChecker.java (127 lines)
+  → app/src/main/java/com/secretary/helloworld/core/network/UpdateChecker.kt
+
+src/com/secretary/core/network/UpdateInstaller.java (147 lines)
+  → app/src/main/java/com/secretary/helloworld/core/network/UpdateInstaller.kt
+```
+
+**Wave 5: Database Layer (1→3 files, 806 lines)**
+```
+src/com/secretary/TaskDatabaseHelper.java (806 lines)
+  → Split into:
+    - TaskDatabaseHelper.kt (~200 lines) - Core operations
+    - RecurrenceHelper.kt (~200 lines) - Recurrence logic
+    - StreakHelper.kt (~100 lines) - Streak calculations
+    - Remaining ~300 lines refactored/removed
+```
+
+**Wave 6: UI Layer (5 files, 1,490 lines)**
+```
+src/com/secretary/app/MainActivity.java (277 lines)
+  → app/src/main/java/com/secretary/helloworld/app/MainActivity.kt
+
+src/com/secretary/TaskFilterManager.java (205 lines)
+  → app/src/main/java/com/secretary/helloworld/features/tasks/presentation/TaskFilterManager.kt
+
+src/com/secretary/TaskListAdapter.java (172 lines)
+  → app/src/main/java/com/secretary/helloworld/features/tasks/presentation/TaskListAdapter.kt
+
+src/com/secretary/TaskDialogHelper.java (368 lines)
+  → app/src/main/java/com/secretary/helloworld/features/tasks/presentation/dialog/TaskDialogHelper.kt
+
+src/com/secretary/TaskActivity.java (393 lines)
+  → app/src/main/java/com/secretary/helloworld/features/tasks/presentation/TaskActivity.kt
+    (Consider splitting into multiple files)
+```
+
+**Wave 7: Room Reference (3 files, 464 lines)**
+```
+src/com/secretary/features/tasks/data/TaskEntity.java (211 lines)
+  → app/src/main/java/com/secretary/helloworld/features/tasks/data/TaskEntity.kt
+
+src/com/secretary/features/tasks/data/TaskDao.java (153 lines)
+  → app/src/main/java/com/secretary/helloworld/features/tasks/data/TaskDao.kt
+
+src/com/secretary/shared/database/TaskDatabase.java (100 lines)
+  → app/src/main/java/com/secretary/helloworld/shared/database/TaskDatabase.kt
+```
+
+**Total: 18 files, 3,907 lines → ~20 Kotlin files, ~3,500 lines** (20% reduction expected with Kotlin's conciseness)
+
+### Testing Strategy
+
+**After Each Wave:**
+1. Build APK with Gradle on GitHub Actions
+2. Install on device and test functionality
+3. Read logs via `curl http://localhost:8080/logs`
+4. Verify no regressions in baseline behavior (see `docs/REFACTORING_BASELINE.md`)
+
+**Critical Test Cases (All Waves):**
+- Task CRUD operations (create, read, update, delete)
+- Task completion with recurrence (INTERVAL and FREQUENCY)
+- Streak calculation and updates
+- Search and filtering
+- Statistics display
+- Update check functionality
+- HTTP log server accessibility
+
+**Automated Tests (After conversion complete):**
+- Unit tests for domain models (Task, TaskStatistics)
+- Unit tests for services (RecurrenceHelper, StreakHelper)
+- Integration tests for database operations
+- UI tests for critical flows (task creation, completion)
+
+### Deliverables
+
+**Phase 4.5.3 Complete When:**
+- ✅ Gradle build system configured and working on GitHub Actions
+- ✅ All 18 Java files converted to Kotlin (~20 Kotlin files)
+- ✅ Project structure matches Gradle standard (`app/src/main/java/`)
+- ✅ All functionality working (no regressions)
+- ✅ Logs accessible via HTTP server
+- ✅ KSP configured for Room annotation processing
+- ✅ Documentation updated (CLAUDE.md, README.md, docs/)
+- ✅ Build time: <2 minutes on GitHub Actions
+- ✅ Codebase ready for Room migration (Phase 4.5.4)
+
+**Artifacts:**
+- `build.gradle.kts` (project and app module)
+- `settings.gradle.kts`
+- `gradle.properties`
+- `app/src/main/` directory structure
+- Updated GitHub Actions workflow
+- All Kotlin source files
+- Updated documentation
+
+**Success Criteria:**
+- App launches without crashes
+- All features work as before migration
+- Logs show no errors during normal operations
+- GitHub Actions build succeeds
+- APK size similar or smaller than Java version
+- Ready for Room + Use Cases + MVVM (Phase 4.5.4-4.5.5)
+
+**Estimated time:** 5-7 days
+- Gradle setup: 1 day
+- Wave 1-2 (utilities, models): 1 day
+- Wave 3-4 (logging, updates): 1 day
+- Wave 5 (database): 2 days
+- Wave 6 (UI): 2 days
+- Wave 7 (Room reference): 0.5 days
+- Testing & documentation: 0.5 days
+
+**Risk Mitigation:**
+- Incremental approach allows reverting to last working state
+- Each wave tested independently
+- GitHub Actions ensures build always works
+- Existing Java code kept until Kotlin version verified
+- No deadline pressure (personal project, no users)
 
 ---
 
