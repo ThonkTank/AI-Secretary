@@ -54,6 +54,15 @@ data class Task(
             const val MONTH = 2
             const val YEAR = 3
         }
+
+        // Backward compatibility with Java code (to be removed in Wave 5)
+        @JvmField val RECURRENCE_NONE = RecurrenceType.NONE
+        @JvmField val RECURRENCE_INTERVAL = RecurrenceType.INTERVAL
+        @JvmField val RECURRENCE_FREQUENCY = RecurrenceType.FREQUENCY
+        @JvmField val UNIT_DAY = TimeUnit.DAY
+        @JvmField val UNIT_WEEK = TimeUnit.WEEK
+        @JvmField val UNIT_MONTH = TimeUnit.MONTH
+        @JvmField val UNIT_YEAR = TimeUnit.YEAR
     }
 
     /**
