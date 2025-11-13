@@ -1,5 +1,6 @@
 # Logging System - Technical Documentation
 
+**Created:** 2025-11-09 (Phase 0)
 **Component:** AppLogger.java & SimpleHttpServer.java
 **Status:** Phase 0 Complete - HTTP Server Implementation
 **Last Updated:** 2025-11-13
@@ -17,6 +18,27 @@ The AI Secretary logging system provides real-time access to application logs vi
 - ✅ Thread-safe singleton pattern
 - ✅ Parallel logging to Android Logcat
 - ✅ Zero file I/O (no storage permissions needed)
+
+---
+
+## Problem Statement
+
+Traditional file-based logging has several limitations for Android development in Termux:
+
+**Problems with file-based logging:**
+- Requires storage permissions (WRITE_EXTERNAL_STORAGE)
+- Subject to Scoped Storage restrictions on Android 10+
+- Difficult to access files from Termux shell
+- File I/O overhead impacts performance
+- Log files can grow indefinitely without management
+
+**Requirements:**
+- Real-time log access from Termux/Claude Code
+- No storage permissions needed
+- Works on all Android versions (API 28+)
+- Automatic log rotation/cleanup
+- Minimal performance impact
+- Parallel logging to Logcat for debugging
 
 ---
 

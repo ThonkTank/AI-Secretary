@@ -1,5 +1,6 @@
 # Auto-Update System - Technical Documentation
 
+**Created:** 2025-11-09 (Phase 0)
 **Components:** UpdateChecker.java & UpdateInstaller.java
 **Status:** Phase 0 Complete - GitHub Releases Integration
 **Last Updated:** 2025-11-13
@@ -18,6 +19,26 @@ The AI Secretary auto-update system enables seamless app updates via GitHub Rele
 - ✅ Changelog display
 - ✅ Background download via DownloadManager
 - ✅ No Google Play dependency
+
+---
+
+## Problem Statement
+
+This app is developed entirely in Termux without Google Play distribution:
+
+**Why Google Play is not an option:**
+- No Google Play developer account ($25 fee)
+- Development happens entirely on-device in Termux
+- Want direct APK distribution to users
+- Avoid app review process during active development
+
+**Requirements:**
+- Seamless update experience without app store
+- One-tap update process
+- Automatic version checking
+- Changelog display
+- Direct APK installation from GitHub Releases
+- No server infrastructure needed
 
 ---
 
