@@ -12,8 +12,8 @@ android {
         applicationId = "com.secretary.helloworld"
         minSdk = 28
         targetSdk = 35
-        versionCode = 329
-        versionName = "0.3.29"
+        versionCode = 330
+        versionName = "0.3.30"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -26,9 +26,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Explicitly disable signing - APK will be unsigned
-            // Signing happens post-build in GitHub Actions with apksigner
-            signingConfig = null
+            // APK will be signed with debug key, then re-signed in GitHub Actions
+            // Signing happens post-build in GitHub Actions with proper release keystore
         }
         debug {
             isMinifyEnabled = false
