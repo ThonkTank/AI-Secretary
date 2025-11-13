@@ -48,6 +48,10 @@ jobs:
         wget -q https://dl.google.com/dl/android/maven2/androidx/room/room-compiler/2.6.0/room-compiler-2.6.0.jar \
           -O libs/room-compiler.jar
 
+        # Room compiler-processing (JAR - required by room-compiler)
+        wget -q https://dl.google.com/dl/android/maven2/androidx/room/room-compiler-processing/2.6.0/room-compiler-processing-2.6.0.jar \
+          -O libs/room-compiler-processing.jar
+
         # Room common (JAR - shared interfaces)
         wget -q https://dl.google.com/dl/android/maven2/androidx/room/room-common/2.6.0/room-common-2.6.0.jar \
           -O libs/room-common.jar
@@ -78,7 +82,7 @@ jobs:
         export ANDROID_SDK_ROOT=$HOME/android-sdk
         export ANDROID_JAR=$ANDROID_SDK_ROOT/platforms/android-33/android.jar
         export ROOM_CLASSPATH="libs/room-runtime.jar:libs/room-common.jar:libs/androidx-annotation.jar:libs/androidx-sqlite.jar"
-        export ROOM_PROCESSOR="libs/room-compiler.jar"
+        export ROOM_PROCESSOR="libs/room-compiler.jar:libs/room-compiler-processing.jar:libs/room-common.jar"
 
         # Build-Verzeichnisse erstellen
         mkdir -p compiled_res gen classes generated
