@@ -21,12 +21,14 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // No signingConfig - APK will be unsigned
-            // Signing happens in GitHub Actions with apksigner
+            // Explicitly disable signing - APK will be unsigned
+            // Signing happens post-build in GitHub Actions with apksigner
+            signingConfig = null
         }
         debug {
             isMinifyEnabled = false
