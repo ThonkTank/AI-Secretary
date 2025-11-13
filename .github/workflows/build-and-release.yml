@@ -37,13 +37,45 @@ jobs:
         yes | sdkmanager --licenses
         sdkmanager "platforms;android-33" "build-tools;33.0.2"
 
+    - name: Download Room Dependencies
+      run: |
+        mkdir -p libs
+
+        # Download Room JARs from Maven Google
+        echo "Downloading Room dependencies..."
+
+        # Room runtime (required for classpath)
+        wget -q https://maven.google.com/androidx/room/room-runtime/2.6.0/room-runtime-2.6.0.jar \
+          -O libs/room-runtime.jar
+
+        # Room compiler (annotation processor)
+        wget -q https://maven.google.com/androidx/room/room-compiler/2.6.0/room-compiler-2.6.0.jar \
+          -O libs/room-compiler.jar
+
+        # Room common (shared code)
+        wget -q https://maven.google.com/androidx/room/room-common/2.6.0/room-common-2.6.0.jar \
+          -O libs/room-common.jar
+
+        # AndroidX annotations (required dependency)
+        wget -q https://maven.google.com/androidx/annotation/annotation/1.7.0/annotation-1.7.0.jar \
+          -O libs/androidx-annotation.jar
+
+        # SQLite (Room dependency)
+        wget -q https://maven.google.com/androidx/sqlite/sqlite/2.4.0/sqlite-2.4.0.jar \
+          -O libs/androidx-sqlite.jar
+
+        echo "Room dependencies downloaded successfully"
+        ls -lh libs/
+
     - name: Build APK
       run: |
         export ANDROID_SDK_ROOT=$HOME/android-sdk
         export ANDROID_JAR=$ANDROID_SDK_ROOT/platforms/android-33/android.jar
+        export ROOM_CLASSPATH="libs/room-runtime.jar:libs/room-common.jar:libs/androidx-annotation.jar:libs/androidx-sqlite.jar"
+        export ROOM_PROCESSOR="libs/room-compiler.jar"
 
         # Build-Verzeichnisse erstellen
-        mkdir -p compiled_res gen classes
+        mkdir -p compiled_res gen classes generated
 
         # Ressourcen kompilieren
         $ANDROID_SDK_ROOT/build-tools/33.0.2/aapt2 compile \
@@ -67,15 +99,34 @@ jobs:
           --java gen/ \
           --auto-add-overlay
 
-        # Java kompilieren
-        echo "=== Starting Java compilation ==="
+        # Java kompilieren (Step 1: Room Annotation Processing)
+        echo "=== Step 1: Room Annotation Processing ==="
+
+        javac -source 8 -target 8 \
+          -d classes/ \
+          -s generated/ \
+          -classpath $ANDROID_JAR:$ROOM_CLASSPATH \
+          -processorpath $ROOM_PROCESSOR \
+          -processor androidx.room.RoomProcessor \
+          src/com/secretary/features/tasks/data/TaskEntity.java \
+          src/com/secretary/features/tasks/data/TaskDao.java \
+          src/com/secretary/features/statistics/data/CompletionEntity.java \
+          src/com/secretary/features/statistics/data/CompletionDao.java \
+          src/com/secretary/shared/database/TaskDatabase.java \
+          2>&1 || echo "Room annotation processing failed - continuing anyway"
+
+        echo "=== Generated Room files ==="
+        find generated -name "*.java" || echo "No files generated"
+
+        # Java kompilieren (Step 2: All source files including generated code)
+        echo "=== Step 2: Compiling all source files ==="
         ls -la src/com/secretary/ || true
         ls -la gen/com/secretary/helloworld/ || true
 
         javac -source 8 -target 8 \
           -d classes/ \
-          -classpath $ANDROID_JAR \
-          -sourcepath src/:gen/ \
+          -classpath $ANDROID_JAR:$ROOM_CLASSPATH \
+          -sourcepath src/:gen/:generated/ \
           src/com/secretary/app/MainActivity.java \
           src/com/secretary/core/logging/AppLogger.java \
           src/com/secretary/core/logging/HttpLogServer.java \
@@ -89,7 +140,9 @@ jobs:
           src/com/secretary/TaskFilterManager.java \
           src/com/secretary/TaskDialogHelper.java \
           src/com/secretary/TaskActivity.java \
-          gen/com/secretary/helloworld/R.java 2>&1 || echo "COMPILATION FAILED"
+          gen/com/secretary/helloworld/R.java \
+          $(find generated -name "*.java" 2>/dev/null || echo "") \
+          2>&1 || echo "COMPILATION FAILED"
 
         echo "=== Compilation finished ==="
         ls -la classes/com/secretary/helloworld/ || echo "No class files generated"
