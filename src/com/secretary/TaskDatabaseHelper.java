@@ -710,27 +710,6 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * Get average completion time for a task
-     */
-    public int getAverageCompletionTime(long taskId) {
-        String query = "SELECT AVG(" + COLUMN_TIME_SPENT + ") FROM " + TABLE_COMPLETIONS +
-                      " WHERE " + COLUMN_TASK_ID + " = " + taskId;
-
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery(query, null);
-
-        int average = 0;
-        if (cursor.moveToFirst()) {
-            average = cursor.getInt(0);
-        }
-
-        cursor.close();
-        db.close();
-
-        return average;
-    }
-
-    /**
      * Mark a task as completed or not completed (with recurrence and streak support)
      */
     public void markTaskCompleted(long taskId, boolean isCompleted) {
