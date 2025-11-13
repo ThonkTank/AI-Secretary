@@ -1,6 +1,7 @@
 package com.secretary.helloworld.app;
 
 import com.secretary.helloworld.R;
+import com.secretary.helloworld.TaskActivity;
 import com.secretary.helloworld.core.logging.AppLogger;
 import com.secretary.helloworld.core.logging.HttpLogServer;
 import com.secretary.helloworld.core.network.UpdateChecker;
