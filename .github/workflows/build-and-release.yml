@@ -68,6 +68,10 @@ jobs:
           --auto-add-overlay
 
         # Java kompilieren
+        echo "=== Starting Java compilation ==="
+        ls -la src/com/secretary/ || true
+        ls -la gen/com/secretary/helloworld/ || true
+
         javac -source 8 -target 8 \
           -d classes/ \
           -classpath $ANDROID_JAR \
@@ -87,7 +91,10 @@ jobs:
           src/com/secretary/TaskDialogHelper.java \
           src/com/secretary/TaskActivity.java \
           src/com/secretary/*.java \
-          gen/com/secretary/helloworld/R.java
+          gen/com/secretary/helloworld/R.java 2>&1 || echo "COMPILATION FAILED"
+
+        echo "=== Compilation finished ==="
+        ls -la classes/com/secretary/helloworld/ || echo "No class files generated"
 
         # DEX erstellen
         $ANDROID_SDK_ROOT/build-tools/33.0.2/d8 \
