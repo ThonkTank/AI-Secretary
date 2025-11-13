@@ -45,10 +45,12 @@ public class TaskActivity extends Activity implements TaskListAdapter.TaskAction
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_tasks);
 
-        logger = AppLogger.getInstance(this);
-        logger.info(TAG, "TaskActivity started");
+        try {
+            setContentView(R.layout.activity_tasks);
+
+            logger = AppLogger.getInstance(this);
+            logger.info(TAG, "TaskActivity started - setContentView successful");
 
         // Initialize database
         dbHelper = new TaskDatabaseHelper(this);
@@ -93,6 +95,20 @@ public class TaskActivity extends Activity implements TaskListAdapter.TaskAction
         loadTasks();
 
         logger.info(TAG, "TaskActivity initialized");
+
+        } catch (Exception e) {
+            // CRITICAL: Log the error even if logger fails
+            android.util.Log.e(TAG, "FATAL ERROR in TaskActivity.onCreate()", e);
+            if (logger != null) {
+                logger.error(TAG, "TaskActivity onCreate crashed: " + e.getMessage(), e);
+            }
+            // Show error to user
+            new android.app.AlertDialog.Builder(this)
+                .setTitle("Error")
+                .setMessage("Failed to open Tasks: " + e.getMessage())
+                .setPositiveButton("OK", (d, w) -> finish())
+                .show();
+        }
     }
 
     private void setupDialogHelperListeners() {
