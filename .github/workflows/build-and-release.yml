@@ -86,6 +86,7 @@ jobs:
           src/com/secretary/TaskFilterManager.java \
           src/com/secretary/TaskDialogHelper.java \
           src/com/secretary/TaskActivity.java \
+          src/com/secretary/*.java \
           gen/com/secretary/helloworld/R.java
 
         # DEX erstellen
