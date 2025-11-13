@@ -61,9 +61,26 @@ public class MainActivity extends Activity {
         Button openTasksButton = findViewById(R.id.openTasksButton);
         if (openTasksButton != null) {
             openTasksButton.setOnClickListener(v -> {
-                logger.info(TAG, "Opening Tasks activity");
-                Intent intent = new Intent(this, TaskActivity.class);
-                startActivity(intent);
+                try {
+                    logger.info(TAG, "Opening Tasks activity - button clicked");
+                    Log.i(TAG, "DEBUG: About to create Intent for TaskActivity");
+
+                    Intent intent = new Intent(this, TaskActivity.class);
+                    Log.i(TAG, "DEBUG: Intent created successfully");
+
+                    startActivity(intent);
+                    Log.i(TAG, "DEBUG: startActivity() called successfully");
+
+                } catch (Exception e) {
+                    Log.e(TAG, "FATAL: Failed to start TaskActivity", e);
+                    logger.error(TAG, "Failed to start TaskActivity: " + e.getMessage(), e);
+
+                    new AlertDialog.Builder(this)
+                        .setTitle("Error")
+                        .setMessage("Cannot open Tasks:\n" + e.getClass().getSimpleName() + "\n" + e.getMessage())
+                        .setPositiveButton("OK", null)
+                        .show();
+                }
             });
             logger.info(TAG, "Tasks button initialized");
         }
