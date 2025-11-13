@@ -1,7 +1,38 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-# Hello World APK Build Script für Termux
-# Erstellt von Claude Code Agent am 09.11.2025
+# ========================================
+# AI Secretary - Local Build Script
+# ========================================
+#
+# PURPOSE:
+#   Quick local APK build for testing. Compiles resources, Java code, creates DEX,
+#   and signs APK with debug keystore. TESTING ONLY - no external library support.
+#
+# USAGE:
+#   cd ~/AI-Secretary-latest
+#   ./build.sh
+#
+# OUTPUT:
+#   - app_signed.apk in project root
+#   - Compiled artifacts in compiled_res/, gen/, classes/
+#
+# INTEGRATION:
+#   Used for quick local testing only. Production builds MUST use GitHub Actions
+#   (.github/workflows/build-and-release.yml) which has full Gradle support.
+#
+# LIMITATIONS:
+#   - No external libraries (AAR dependencies not supported)
+#   - Manual resource compilation (only basic layouts)
+#   - Debug signing only (not suitable for release)
+#
+# DOCUMENTATION:
+#   - Project guide: ~/AI-Secretary-latest/CLAUDE.md
+#   - Build workflow: ~/AI-Secretary-latest/.github/workflows/build-and-release.yml
+#   - Home guide: ~/CLAUDE.md
+#
+# CREATED: 2025-11-09
+# LAST UPDATED: 2025-11-13
+# ========================================
 
 set -e  # Bei Fehlern abbrechen
 
