@@ -151,7 +151,7 @@ class TaskListAdapter(
         }
 
         // Recurrence info
-        if (task.recurrenceType != Task.RecurrenceType.NONE) {
+        if (task.recurrenceType != Task.RECURRENCE_NONE) {
             parts.add("🔁 ${getRecurrenceText(task)}")
         }
 
@@ -163,16 +163,16 @@ class TaskListAdapter(
      */
     private fun getRecurrenceText(task: Task): String {
         val unit = when (task.recurrenceUnit) {
-            Task.TimeUnit.DAY -> if (task.recurrenceAmount == 1) "day" else "days"
-            Task.TimeUnit.WEEK -> if (task.recurrenceAmount == 1) "week" else "weeks"
-            Task.TimeUnit.MONTH -> if (task.recurrenceAmount == 1) "month" else "months"
-            Task.TimeUnit.YEAR -> if (task.recurrenceAmount == 1) "year" else "years"
+            Task.UNIT_DAY -> if (task.recurrenceAmount == 1) "day" else "days"
+            Task.UNIT_WEEK -> if (task.recurrenceAmount == 1) "week" else "weeks"
+            Task.UNIT_MONTH -> if (task.recurrenceAmount == 1) "month" else "months"
+            Task.UNIT_YEAR -> if (task.recurrenceAmount == 1) "year" else "years"
             else -> "?"
         }
 
         return when (task.recurrenceType) {
-            Task.RecurrenceType.INTERVAL -> "Every ${task.recurrenceAmount} $unit"
-            Task.RecurrenceType.FREQUENCY -> "${task.recurrenceAmount} times per $unit"
+            Task.RECURRENCE_INTERVAL -> "Every ${task.recurrenceAmount} $unit"
+            Task.RECURRENCE_FREQUENCY -> "${task.recurrenceAmount} times per $unit"
             else -> ""
         }
     }
