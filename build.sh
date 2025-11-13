@@ -20,9 +20,17 @@ rm -rf compiled_res/*.flat gen/com classes/com *.apk *.dex 2>/dev/null || true
 
 # Schritt 1: Ressourcen kompilieren
 echo "[2/8] Kompiliere Ressourcen mit AAPT2..."
+mkdir -p compiled_res
 aapt2 compile \
   res/values/strings.xml \
   res/layout/activity_main.xml \
+  res/layout/dialog_settings.xml \
+  res/layout/dialog_logs.xml \
+  res/layout/activity_tasks.xml \
+  res/layout/task_list_item.xml \
+  res/layout/dialog_add_task.xml \
+  res/layout/dialog_completion.xml \
+  res/menu/main_menu.xml \
   -o compiled_res/
 
 # Schritt 2: Ressourcen verlinken

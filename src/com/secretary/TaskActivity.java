@@ -43,6 +43,7 @@ public class TaskActivity extends Activity implements TaskListAdapter.TaskAction
     private Spinner sortBySpinner;
     private TaskListAdapter adapter;
     private TaskFilterManager filterManager;
+    private TaskDialogHelper dialogHelper;
     private List<Task> taskList;
     private List<Task> filteredTaskList;
     private List<String> allCategories;
@@ -84,6 +85,10 @@ public class TaskActivity extends Activity implements TaskListAdapter.TaskAction
 
         // Initialize filter manager
         filterManager = new TaskFilterManager();
+
+        // Initialize dialog helper
+        dialogHelper = new TaskDialogHelper(this, dbHelper);
+        setupDialogListeners();
 
         // Setup adapter with the new external class
         adapter = new TaskListAdapter(this, filteredTaskList, this);
@@ -294,182 +299,39 @@ public class TaskActivity extends Activity implements TaskListAdapter.TaskAction
         });
     }
 
+    private void setupDialogListeners() {
+        // Set up listeners for TaskDialogHelper callbacks
+        dialogHelper.setOnTaskSavedListener(new TaskDialogHelper.OnTaskSavedListener() {
+            @Override
+            public void onTaskSaved(Task task) {
+                loadTasks(); // Reload the task list after saving
+            }
+
+            @Override
+            public void onTasksNeedReload() {
+                loadTasks();
+            }
+        });
+
+        dialogHelper.setOnTaskCompletedListener(new TaskDialogHelper.OnTaskCompletedListener() {
+            @Override
+            public void onTaskCompleted(Task task) {
+                loadTasks(); // Reload after completion
+            }
+
+            @Override
+            public void onCompletionCancelled(Task task) {
+                // Task was toggled but user cancelled completion dialog
+                // Need to revert the completion status
+                task.setCompleted(false);
+                adapter.notifyDataSetChanged();
+            }
+        });
+    }
+
     private void showAddTaskDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_task, null);
-        builder.setView(dialogView);
-
-        AlertDialog dialog = builder.create();
-
-        // Find dialog views
-        EditText titleInput = dialogView.findViewById(R.id.taskTitleInput);
-        EditText descriptionInput = dialogView.findViewById(R.id.taskDescriptionInput);
-        AutoCompleteTextView categoryInput = dialogView.findViewById(R.id.taskCategoryInput);
-        TextView dueDateText = dialogView.findViewById(R.id.taskDueDateText);
-        Button selectDueDateButton = dialogView.findViewById(R.id.selectDueDateButton);
-        Button clearDueDateButton = dialogView.findViewById(R.id.clearDueDateButton);
-        Spinner prioritySpinner = dialogView.findViewById(R.id.taskPrioritySpinner);
-        Button cancelButton = dialogView.findViewById(R.id.cancelButton);
-        Button saveButton = dialogView.findViewById(R.id.saveTaskButton);
-
-        // Variables to track selected due date
-        final long[] selectedDueDate = {0};
-
-        // Recurrence views
-        CheckBox recurrenceCheckBox = dialogView.findViewById(R.id.recurrenceCheckBox);
-        LinearLayout recurrenceOptionsLayout = dialogView.findViewById(R.id.recurrenceOptionsLayout);
-        Spinner recurrenceTypeSpinner = dialogView.findViewById(R.id.recurrenceTypeSpinner);
-        EditText recurrenceAmountInput = dialogView.findViewById(R.id.recurrenceAmountInput);
-        TextView recurrenceLabel = dialogView.findViewById(R.id.recurrenceLabel);
-        Spinner recurrenceUnitSpinner = dialogView.findViewById(R.id.recurrenceUnitSpinner);
-
-        // Setup category autocomplete
-        ArrayAdapter<String> categoryAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_dropdown_item_1line, allCategories);
-        categoryInput.setAdapter(categoryAdapter);
-        categoryInput.setText("General"); // Default to General
-
-        // Setup due date picker
-        selectDueDateButton.setOnClickListener(v -> {
-            java.util.Calendar calendar = java.util.Calendar.getInstance();
-            if (selectedDueDate[0] > 0) {
-                calendar.setTimeInMillis(selectedDueDate[0]);
-            }
-
-            DatePickerDialog datePickerDialog = new DatePickerDialog(this,
-                (view, year, month, dayOfMonth) -> {
-                    calendar.set(year, month, dayOfMonth);
-                    selectedDueDate[0] = calendar.getTimeInMillis();
-
-                    // Format and display the date
-                    SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
-                    dueDateText.setText(sdf.format(calendar.getTime()));
-                    clearDueDateButton.setVisibility(View.VISIBLE);
-                },
-                calendar.get(java.util.Calendar.YEAR),
-                calendar.get(java.util.Calendar.MONTH),
-                calendar.get(java.util.Calendar.DAY_OF_MONTH));
-
-            // Set minimum date to today
-            datePickerDialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
-            datePickerDialog.show();
-        });
-
-        // Clear due date button
-        clearDueDateButton.setOnClickListener(v -> {
-            selectedDueDate[0] = 0;
-            dueDateText.setText("No due date set");
-            clearDueDateButton.setVisibility(View.GONE);
-        });
-
-        // Setup priority spinner
-        String[] priorities = {"Low", "Medium", "High", "Urgent"};
-        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, priorities);
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        prioritySpinner.setAdapter(spinnerAdapter);
-        prioritySpinner.setSelection(1); // Default to Medium
-
-        // Setup recurrence type spinner
-        String[] recurrenceTypes = {"Every X Y", "X times per Y"};
-        ArrayAdapter<String> recTypeAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, recurrenceTypes);
-        recTypeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        recurrenceTypeSpinner.setAdapter(recTypeAdapter);
-
-        // Setup recurrence unit spinner
-        String[] recurrenceUnits = {"Day", "Week", "Month", "Year"};
-        ArrayAdapter<String> recUnitAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, recurrenceUnits);
-        recUnitAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        recurrenceUnitSpinner.setAdapter(recUnitAdapter);
-
-        // Handle recurrence checkbox
-        recurrenceCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            recurrenceOptionsLayout.setVisibility(isChecked ? View.VISIBLE : View.GONE);
-        });
-
-        // Handle recurrence type selection
-        recurrenceTypeSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                if (position == 0) {
-                    // "Every X Y" selected
-                    recurrenceLabel.setText(" ");
-                } else {
-                    // "X times per Y" selected
-                    recurrenceLabel.setText(" times per ");
-                }
-            }
-            @Override
-            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
-        });
-
-        // Cancel button
-        cancelButton.setOnClickListener(v -> dialog.dismiss());
-
-        // Save button
-        saveButton.setOnClickListener(v -> {
-            String title = titleInput.getText().toString().trim();
-            String description = descriptionInput.getText().toString().trim();
-            String category = categoryInput.getText().toString().trim();
-            if (category.isEmpty()) {
-                category = "General"; // Default if no category entered
-            }
-            int priority = prioritySpinner.getSelectedItemPosition();
-
-            if (title.isEmpty()) {
-                Toast.makeText(this, "Please enter a title", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            // Create and save task
-            Task task = new Task(title, description);
-            task.setCategory(category);
-            task.setPriority(priority);
-            task.setDueDate(selectedDueDate[0]);
-
-            // Handle recurrence
-            if (recurrenceCheckBox.isChecked()) {
-                String amountStr = recurrenceAmountInput.getText().toString().trim();
-                int amount = 1;
-                try {
-                    amount = Integer.parseInt(amountStr);
-                    if (amount < 1) amount = 1;
-                } catch (NumberFormatException e) {
-                    amount = 1;
-                }
-
-                int recurrenceType = recurrenceTypeSpinner.getSelectedItemPosition() == 0 ?
-                    Task.RECURRENCE_INTERVAL : Task.RECURRENCE_FREQUENCY;
-
-                task.setRecurrenceType(recurrenceType);
-                task.setRecurrenceAmount(amount);
-                task.setRecurrenceUnit(recurrenceUnitSpinner.getSelectedItemPosition());
-
-                // Initialize period tracking for frequency type
-                if (recurrenceType == Task.RECURRENCE_FREQUENCY) {
-                    task.setCurrentPeriodStart(System.currentTimeMillis());
-                    task.setCompletionsThisPeriod(0);
-                }
-            }
-
-            long id = dbHelper.insertTask(task);
-            task.setId(id);
-
-            String message = "Task added";
-            if (task.isRecurring()) {
-                message += " - " + task.getRecurrenceString();
-            }
-
-            logger.info(TAG, "Task created: " + title + " (Recurring: " + task.isRecurring() + ")");
-            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
-
-            dialog.dismiss();
-            loadTasks();
-        });
-
-        dialog.show();
+        // Delegate to TaskDialogHelper
+        dialogHelper.showAddTaskDialog(allCategories);
     }
 
     private void showEditTaskDialog(Task existingTask) {
@@ -733,88 +595,8 @@ public class TaskActivity extends Activity implements TaskListAdapter.TaskAction
 
 
     private void showCompletionDialog(Task task) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_completion, null);
-        builder.setView(dialogView);
-
-        AlertDialog dialog = builder.create();
-
-        // Find dialog views
-        TextView taskTitleText = dialogView.findViewById(R.id.completionTaskTitle);
-        EditText timeSpentInput = dialogView.findViewById(R.id.timeSpentInput);
-        TextView averageTimeText = dialogView.findViewById(R.id.averageTimeText);
-        SeekBar difficultySeekBar = dialogView.findViewById(R.id.difficultySeekBar);
-        TextView difficultyValueText = dialogView.findViewById(R.id.difficultyValueText);
-        EditText notesInput = dialogView.findViewById(R.id.completionNotesInput);
-        CheckBox quickCompleteCheckBox = dialogView.findViewById(R.id.quickCompleteCheckBox);
-        Button skipButton = dialogView.findViewById(R.id.skipDetailsButton);
-        Button saveButton = dialogView.findViewById(R.id.saveCompletionButton);
-
-        // Set task title
-        taskTitleText.setText(task.getTitle());
-
-        // Show average time if available
-        int avgTime = dbHelper.getAverageCompletionTime(task.getId());
-        if (avgTime > 0) {
-            averageTimeText.setText("(Avg: " + avgTime + " min)");
-            timeSpentInput.setText(String.valueOf(avgTime));
-        }
-
-        // Setup difficulty seekbar
-        difficultySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                difficultyValueText.setText("Difficulty: " + progress + "/10");
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
-
-        // Skip button (complete without details)
-        skipButton.setOnClickListener(v -> {
-            task.setCompleted(true);
-            dbHelper.markTaskCompleted(task.getId(), true);
-            logger.info(TAG, "Task " + task.getTitle() + " completed (quick)");
-            dialog.dismiss();
-            loadTasks();
-        });
-
-        // Save button (complete with details)
-        saveButton.setOnClickListener(v -> {
-            int timeSpent = 0;
-            try {
-                timeSpent = Integer.parseInt(timeSpentInput.getText().toString());
-            } catch (NumberFormatException e) {
-                // Default to 0 if invalid
-            }
-
-            int difficulty = difficultySeekBar.getProgress();
-            String notes = notesInput.getText().toString().trim();
-
-            // Save completion details
-            dbHelper.saveCompletion(task.getId(), timeSpent, difficulty, notes);
-
-            // Mark task as completed
-            task.setCompleted(true);
-            dbHelper.markTaskCompleted(task.getId(), true);
-
-            logger.info(TAG, "Task " + task.getTitle() + " completed with details " +
-                       "(time: " + timeSpent + " min, difficulty: " + difficulty + ")");
-
-            // Save quick complete preference if checked
-            if (quickCompleteCheckBox.isChecked()) {
-                // TODO: Save preference for this task
-            }
-
-            dialog.dismiss();
-            loadTasks();
-        });
-
-        dialog.show();
+        // Delegate to TaskDialogHelper
+        dialogHelper.showCompletionDialog(task);
     }
 
     @Override
