@@ -338,4 +338,40 @@ public class TaskActivity extends Activity implements TaskListAdapter.TaskAction
             dbHelper.close();
         }
     }
+
+    // === TaskActionListener Interface Implementation ===
+
+    @Override
+    public void onTaskCheckChanged(Task task, boolean isChecked) {
+        logger.info(TAG, "Task checkbox changed: " + task.getTitle() + " -> " + isChecked);
+
+        if (isChecked) {
+            // Show completion dialog
+            showCompletionDialog(task);
+        } else {
+            // Unchecked - mark as incomplete
+            task.setCompleted(false);
+            dbHelper.updateTask(task);
+            loadTasks();
+        }
+    }
+
+    @Override
+    public void onTaskEdit(Task task) {
+        logger.info(TAG, "Edit task: " + task.getTitle());
+        showEditTaskDialog(task);
+    }
+
+    @Override
+    public void onTaskDelete(Task task) {
+        logger.info(TAG, "Delete task: " + task.getTitle());
+        dbHelper.deleteTask(task.getId());
+        loadTasks();
+    }
+
+    @Override
+    public void onTasksChanged() {
+        logger.info(TAG, "Tasks changed - reloading");
+        loadTasks();
+    }
 }
