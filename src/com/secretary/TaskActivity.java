@@ -321,7 +321,6 @@ public class TaskActivity extends Activity implements TaskListAdapter.TaskAction
         dialogHelper.showEditTaskDialog(existingTask, allCategories);
     }
 
-
     private void showCompletionDialog(Task task) {
         dialogHelper.showCompletionDialog(task);
     }
