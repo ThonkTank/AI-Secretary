@@ -1102,7 +1102,165 @@ src/com/secretary/shared/database/TaskDatabase.java (100 lines)
 
 ---
 
-## Phase 4.5.4: Domain Layer - Business Logic (4-5 days)
+## Phase 4.5.4: Package Renaming (1-2 days)
+
+**Goal:** Simplify package structure by removing legacy "helloworld" suffix
+**When:** After Kotlin migration completes (Phase 4.5.3)
+**Why:** Reduces path depth by 2 levels, removes legacy naming confusion
+
+### Problem
+
+**Current Package:** `com.secretary.helloworld`
+**Current Path:** `app/src/main/java/com/secretary/helloworld/shared/database/CLAUDE.md` (8 levels deep!)
+
+**Target Package:** `com.secretary`
+**Target Path:** `app/src/main/java/com/secretary/shared/database/CLAUDE.md` (6 levels deep)
+
+**Savings:** 2 directory levels removed, cleaner imports, shorter paths
+
+**Origin:** "helloworld" was a placeholder when project started, never changed
+
+### Active TODOs
+
+**CRITICAL:**
+- [ ] Update package declarations in all Kotlin files
+  - GOAL: Change `package com.secretary.helloworld.*` → `package com.secretary.*`
+  - Location: All 18+ Kotlin files (after Phase 4.5.3 completion)
+  - Action: Find/replace in all .kt files
+  - Files affected: All files in core/, shared/, features/, app/
+
+- [ ] Update namespace in build.gradle.kts
+  - GOAL: Change `namespace = "com.secretary.helloworld"` → `namespace = "com.secretary"`
+  - Location: `app/build.gradle.kts:8`
+  - Action: Single line change
+
+- [ ] Update applicationId in build.gradle.kts
+  - GOAL: Change `applicationId = "com.secretary.helloworld"` → `applicationId = "com.secretary"`
+  - Location: `app/build.gradle.kts:12`
+  - Action: Single line change
+  - **IMPORTANT:** This changes the package name users see in app store
+
+- [ ] Update AndroidManifest.xml package reference
+  - GOAL: Remove or verify package attribute (should use namespace from build.gradle.kts)
+  - Location: `app/src/main/AndroidManifest.xml`
+  - Action: Remove legacy `package="com.secretary.helloworld"` attribute
+
+- [ ] Move directory structure
+  - GOAL: Physically move files to new package path
+  - Current: `app/src/main/java/com/secretary/helloworld/`
+  - Target: `app/src/main/java/com/secretary/`
+  - Action: `mv app/src/main/java/com/secretary/helloworld/* app/src/main/java/com/secretary/`
+  - Then: `rmdir app/src/main/java/com/secretary/helloworld`
+
+**HIGH:**
+- [ ] Update all import statements
+  - GOAL: Change all imports from `com.secretary.helloworld.*` → `com.secretary.*`
+  - Location: All .kt files
+  - Action: Find/replace across entire codebase
+  - Estimate: 50-100 import statements
+
+- [ ] Test build after renaming
+  - GOAL: Verify Gradle build succeeds with new package
+  - Action: `./gradlew assembleDebug`
+  - Expected: Clean build, no import errors
+
+- [ ] Update documentation
+  - GOAL: Update all code references in CLAUDE.md files
+  - Files: All CLAUDE.md files showing package examples
+  - Action: Replace package examples throughout docs
+
+**MEDIUM:**
+- [ ] Update testing references (if tests exist)
+  - GOAL: Update test package structure
+  - Location: `app/src/test/` and `app/src/androidTest/`
+  - Action: Mirror main source package changes
+
+- [ ] Clean up legacy package references in comments
+  - GOAL: Remove any stale "helloworld" mentions in comments
+  - Action: Grep for "helloworld" and verify no code references remain
+
+### Technical Details
+
+**Before:**
+```kotlin
+// File: app/src/main/java/com/secretary/helloworld/core/logging/AppLogger.kt
+package com.secretary.helloworld.core.logging
+
+// File: app/src/main/java/com/secretary/helloworld/app/MainActivity.kt
+import com.secretary.helloworld.core.logging.AppLogger
+```
+
+**After:**
+```kotlin
+// File: app/src/main/java/com/secretary/core/logging/AppLogger.kt
+package com.secretary.core.logging
+
+// File: app/src/main/java/com/secretary/app/MainActivity.kt
+import com.secretary.core.logging.AppLogger
+```
+
+**build.gradle.kts changes:**
+```kotlin
+// BEFORE
+android {
+    namespace = "com.secretary.helloworld"
+
+    defaultConfig {
+        applicationId = "com.secretary.helloworld"
+    }
+}
+
+// AFTER
+android {
+    namespace = "com.secretary"
+
+    defaultConfig {
+        applicationId = "com.secretary"
+    }
+}
+```
+
+### Migration Strategy
+
+**Option 1: All-at-once (RECOMMENDED)**
+1. Create git branch `refactoring/package-rename`
+2. Use IDE refactoring: Right-click package → Refactor → Rename
+3. Manually update build.gradle.kts namespace + applicationId
+4. Move directory structure
+5. Build and verify
+6. Commit and push
+
+**Option 2: Gradual (NOT recommended)**
+- Complex due to package name changes affecting entire codebase
+- High risk of missed imports
+
+**Rollback Plan:**
+- Git revert if build fails
+- Package rename is atomic - either all works or none
+
+### Deliverables
+
+- [ ] Package renamed: `com.secretary.helloworld` → `com.secretary`
+- [ ] Directory structure simplified (2 levels removed)
+- [ ] All imports updated
+- [ ] build.gradle.kts updated (namespace + applicationId)
+- [ ] AndroidManifest.xml cleaned up
+- [ ] Build verified: `./gradlew assembleRelease` succeeds
+- [ ] Documentation updated (all CLAUDE.md files)
+- [ ] APK tested: App installs and runs correctly
+
+**Estimated time:** 1-2 days (mostly testing and verification)
+
+**Dependencies:** Phase 4.5.3 (Kotlin Migration) must be 100% complete
+
+**Risks:**
+- Low: IDE refactoring handles most work
+- Medium: Testing required to catch any missed references
+- Low: Can revert via git if issues arise
+
+---
+
+## Phase 4.5.5: Domain Layer - Business Logic (4-5 days)
 
 **Goal:** Extract business logic from database and UI into pure domain layer
 **When:** After Room migration completes
@@ -1315,7 +1473,7 @@ AFTER:
 
 ---
 
-## Phase 4.5.5: Presentation Layer - MVVM (3-4 days)
+## Phase 4.5.6: Presentation Layer - MVVM (3-4 days)
 
 **Goal:** Separate UI from business logic using MVVM pattern
 **When:** After domain layer is complete
@@ -1581,7 +1739,7 @@ AFTER:
 
 ---
 
-## Phase 4.5.6: Testing & Documentation (2-3 days)
+## Phase 4.5.7: Testing & Documentation (2-3 days)
 
 **Goal:** Comprehensive tests, updated documentation, final cleanup
 **When:** Throughout phases 4.5.1-4.5.5 + final pass
