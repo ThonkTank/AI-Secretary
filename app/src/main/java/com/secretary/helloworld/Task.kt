@@ -10,29 +10,34 @@ package com.secretary.helloworld
  * - Due dates and completion tracking
  * - Recurring tasks (INTERVAL and FREQUENCY patterns)
  * - Streak tracking for consistency
+ *
+ * NOTE: Properties are currently 'var' (mutable) instead of 'val' (immutable)
+ * to maintain compatibility with TaskDatabaseHelper.java which uses setters.
+ * This will be reverted to 'val' in Wave 5 when TaskDatabaseHelper is converted
+ * to Kotlin with Room ORM using builder pattern.
  */
 data class Task(
-    val id: Long = 0,
-    val title: String = "",
-    val description: String? = null,
-    val category: String = "General",
-    val createdAt: Long = System.currentTimeMillis(),
-    val dueDate: Long = 0,
-    val isCompleted: Boolean = false,
-    val priority: Int = 1, // 0=Low, 1=Medium, 2=High, 3=Urgent
+    var id: Long = 0,
+    var title: String = "",
+    var description: String? = null,
+    var category: String = "General",
+    var createdAt: Long = System.currentTimeMillis(),
+    var dueDate: Long = 0,
+    var isCompleted: Boolean = false,
+    var priority: Int = 1, // 0=Low, 1=Medium, 2=High, 3=Urgent
 
     // Recurrence fields
-    val recurrenceType: Int = RecurrenceType.NONE,
-    val recurrenceAmount: Int = 0, // The "X" in both patterns
-    val recurrenceUnit: Int = TimeUnit.DAY, // The "Y" time unit
-    val lastCompletedDate: Long = 0, // For tracking
-    val completionsThisPeriod: Int = 0, // For FREQUENCY type tracking
-    val currentPeriodStart: Long = 0, // When current period started
+    var recurrenceType: Int = RecurrenceType.NONE,
+    var recurrenceAmount: Int = 0, // The "X" in both patterns
+    var recurrenceUnit: Int = TimeUnit.DAY, // The "Y" time unit
+    var lastCompletedDate: Long = 0, // For tracking
+    var completionsThisPeriod: Int = 0, // For FREQUENCY type tracking
+    var currentPeriodStart: Long = 0, // When current period started
 
     // Streak tracking
-    val currentStreak: Int = 0, // Current consecutive completions
-    val longestStreak: Int = 0, // Best streak ever
-    val lastStreakDate: Long = 0 // Last date counted for streak
+    var currentStreak: Int = 0, // Current consecutive completions
+    var longestStreak: Int = 0, // Best streak ever
+    var lastStreakDate: Long = 0 // Last date counted for streak
 ) {
     companion object {
         // Recurrence Types
