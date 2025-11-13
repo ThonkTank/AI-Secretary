@@ -1,4 +1,4 @@
-package com.secretary.helloworld;
+package com.secretary.helloworld.shared.database;
 
 /**
  * Database constants extracted from TaskDatabaseHelper

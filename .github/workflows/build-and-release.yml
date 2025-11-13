@@ -76,32 +76,31 @@ jobs:
           -d classes/ \
           -classpath $ANDROID_JAR \
           -sourcepath src/:gen/ \
-          src/com/secretary/MainActivity.java \
-          src/com/secretary/UpdateChecker.java \
-          src/com/secretary/UpdateInstaller.java \
-          src/com/secretary/AppLogger.java \
-          src/com/secretary/LogProvider.java \
-          src/com/secretary/SimpleHttpServer.java \
+          src/com/secretary/app/MainActivity.java \
+          src/com/secretary/core/logging/AppLogger.java \
+          src/com/secretary/core/logging/HttpLogServer.java \
+          src/com/secretary/core/network/UpdateChecker.java \
+          src/com/secretary/core/network/UpdateInstaller.java \
+          src/com/secretary/shared/database/DatabaseConstants.java \
           src/com/secretary/Task.java \
-          src/com/secretary/DatabaseConstants.java \
           src/com/secretary/TaskStatistics.java \
           src/com/secretary/TaskDatabaseHelper.java \
           src/com/secretary/TaskListAdapter.java \
           src/com/secretary/TaskFilterManager.java \
           src/com/secretary/TaskDialogHelper.java \
           src/com/secretary/TaskActivity.java \
-          src/com/secretary/*.java \
           gen/com/secretary/helloworld/R.java 2>&1 || echo "COMPILATION FAILED"
 
         echo "=== Compilation finished ==="
         ls -la classes/com/secretary/helloworld/ || echo "No class files generated"
 
         # DEX erstellen
+        find classes -name "*.class" -print
         $ANDROID_SDK_ROOT/build-tools/33.0.2/d8 \
           --lib $ANDROID_JAR \
           --release \
           --output . \
-          classes/com/secretary/helloworld/*.class
+          $(find classes -name "*.class")
 
         # DEX zur APK hinzufügen
         zip -uj app_unsigned.apk classes.dex

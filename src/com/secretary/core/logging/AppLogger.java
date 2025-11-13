@@ -1,4 +1,4 @@
-package com.secretary.helloworld;
+package com.secretary.helloworld.core.logging;
 
 import android.content.Context;
 import android.util.Log;

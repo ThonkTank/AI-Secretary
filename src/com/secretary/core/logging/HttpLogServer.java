@@ -1,5 +1,6 @@
-package com.secretary.helloworld;
+package com.secretary.helloworld.core.logging;
 
+import com.secretary.helloworld.core.logging.AppLogger;
 import android.content.Context;
 import android.util.Log;
 import java.io.*;
@@ -7,11 +8,11 @@ import java.net.*;
 import java.util.List;
 
 /**
- * Simplified HTTP Server for serving logs.
- * Minimal implementation focused on reliability.
+ * HTTP server for serving logs via localhost:8080.
+ * Renamed from SimpleHttpServer during Phase 4.5.2 refactoring.
  */
-public class SimpleHttpServer {
-    private static final String TAG = "SimpleHttpServer";
+public class HttpLogServer {
+    private static final String TAG = "HttpLogServer";
     private static final int PORT = 8080;
     private Context context;
     private AppLogger logger;
@@ -19,7 +20,7 @@ public class SimpleHttpServer {
     private Thread serverThread;
     private volatile boolean running = false;
 
-    public SimpleHttpServer(Context context) {
+    public HttpLogServer(Context context) {
         this.context = context;
         this.logger = AppLogger.getInstance(context);
     }

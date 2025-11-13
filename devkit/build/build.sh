@@ -10,7 +10,7 @@
 #
 # USAGE:
 #   cd ~/AI-Secretary-latest
-#   ./build.sh
+#   devkit/build/build.sh
 #
 # OUTPUT:
 #   - app_signed.apk in project root
@@ -68,11 +68,12 @@ aapt2 link \
 
 # Schritt 3: Java kompilieren
 echo "[4/8] Kompiliere Java-Code..."
+# Note: build.sh is in devkit/build/, called from project root: devkit/build/build.sh
 javac -source 8 -target 8 \
   -d classes/ \
   -classpath "$ANDROID_JAR" \
   -sourcepath src/:gen/ \
-  src/com/secretary/*.java \
+  $(find src/com/secretary -name "*.java") \
   gen/com/secretary/helloworld/R.java
 
 # Schritt 4: DEX erstellen

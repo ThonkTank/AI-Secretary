@@ -1,5 +1,6 @@
-package com.secretary.helloworld;
+package com.secretary.helloworld.core.network;
 
+import com.secretary.helloworld.core.logging.AppLogger;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;

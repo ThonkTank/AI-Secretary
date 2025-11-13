@@ -1,5 +1,8 @@
-package com.secretary.helloworld;
+package com.secretary.helloworld.app;
 
+import com.secretary.helloworld.core.logging.AppLogger;
+import com.secretary.helloworld.core.logging.HttpLogServer;
+import com.secretary.helloworld.core.network.UpdateChecker;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
@@ -23,7 +26,7 @@ import java.util.List;
 public class MainActivity extends Activity {
     private static final String TAG = "MainActivity";
     private AppLogger logger;
-    private SimpleHttpServer httpServer;
+    private HttpLogServer httpServer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,7 +52,7 @@ public class MainActivity extends Activity {
 
         // Start HTTP Log Server
         try {
-            httpServer = new SimpleHttpServer(this);
+            httpServer = new HttpLogServer(this);
             httpServer.start();
             logger.info(TAG, "HTTP Log Server started successfully");
             logger.info(TAG, "Access logs from Termux: curl http://localhost:8080/logs");
