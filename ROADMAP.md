@@ -1,8 +1,8 @@
 # AI Secretary - Development Roadmap
 
-**Current Version:** v0.3.28 (Build 328) - Kotlin Migration in Progress
+**Current Version:** v0.3.30 (Build 330) - Kotlin Migration in Progress
 **Last Updated:** 2025-11-13
-**Status:** Phase 4.5.3 (Kotlin Migration + Gradle Setup) - Wave 1 Complete (14% of phase)
+**Status:** Phase 4.5.3 (Kotlin Migration + Gradle Setup) - Wave 1-3 Complete (28% of phase)
 
 **Update when**: Completing phases, adding TODOs, changing priorities, finishing major features.
 
@@ -546,25 +546,30 @@ javac -source 8 -target 8 \
     3. `CompletionEntity.java` (100 lines) → `CompletionEntity.kt` (50 lines) ✅
        - data class with Room annotations (-50% lines!)
   - Result: 235 lines Java → 218 lines Kotlin (-7%), successful build
-- [ ] Convert domain models (Wave 2: 2 files, ~397 lines)
+- [x] Convert domain models (Wave 2: 2 files, ~453 lines) ✅ COMPLETE (2025-11-13)
   - GOAL: Core data structures to Kotlin
-  - Order:
-    1. `Task.java` (297 lines) → `Task.kt`
-       - Data class for immutability
-       - Sealed class for RecurrenceType enum
-       - Copy method for updates (free with data class)
-    2. `TaskStatistics.java` (100 lines) → `TaskStatistics.kt`
-       - Kotlin properties
-       - Extension functions for calculations
-  - Test: Verify task CRUD still works
-- [ ] Convert logging system (Wave 3: 2 files, ~232 lines)
+  - Completed:
+    1. `Task.java` (297 lines) → `Task.kt` (166 lines) ✅
+       - Data class with nested objects for constants
+       - Temporarily mutable (var) for Java interop (Wave 5 will fix)
+       - Backward-compatible constants for Java switch statements
+       - -44% line reduction
+    2. `TaskStatistics.java` (156 lines) → `TaskStatistics.kt` (139 lines) ✅
+       - Cleaner with use{} for cursor management
+       - -11% line reduction
+  - Result: 453 lines Java → 305 lines Kotlin (-33%)
+  - Challenges: Java interop issues (setters, constants), all resolved
+- [x] Convert logging system (Wave 3: 1 file, ~145 lines) ✅ COMPLETE (2025-11-13)
   - GOAL: Core infrastructure to Kotlin
-  - Order:
-    1. `HttpLogServer.java` (145 lines) → `HttpLogServer.kt`
-       - Coroutine-based server (replace Thread)
-       - Use Kotlin's use{} for resource management
-    2. Updated `AppLogger.kt` integration
-  - Test: Verify logs still accessible via curl
+  - Completed:
+    1. `HttpLogServer.java` (145 lines) → `HttpLogServer.kt` (153 lines) ✅
+       - use{} for resource management
+       - Kotlin nullable types (ServerSocket?)
+       - when expressions for routing
+       - String templates for responses
+       - +5% lines (better clarity)
+  - Result: 145 lines Java → 153 lines Kotlin (+5%)
+  - Test: Verified logs accessible via curl, server working
 - [ ] Convert update system (Wave 4: 2 files, ~274 lines)
   - GOAL: Auto-update system to Kotlin
   - Order:
