@@ -19,6 +19,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     // All database constants are now imported from DatabaseConstants class
 
     private AppLogger logger;
+    private TaskStatistics statistics;
 
     // SQL statement to create tasks table
     private static final String CREATE_TABLE_TASKS =
@@ -57,7 +58,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     public TaskDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
         this.logger = AppLogger.getInstance(context);
-        logger.info(TAG, "TaskDatabaseHelper initialized");
+        this.statistics = new TaskStatistics(this.getReadableDatabase());
+        logger.info(TAG, "TaskDatabaseHelper initialized with TaskStatistics");
     }
 
     @Override
@@ -892,5 +894,55 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
         logger.debug(TAG, "Retrieved " + categories.size() + " unique categories");
         return categories;
+    }
+
+    // ==================== Statistics Methods (Delegated to TaskStatistics) ====================
+
+    /**
+     * Get total task count
+     * Delegates to TaskStatistics
+     */
+    public int getTaskCount() {
+        return statistics.getTaskCount();
+    }
+
+    /**
+     * Get count of tasks completed today
+     * Delegates to TaskStatistics
+     */
+    public int getTasksCompletedToday() {
+        return statistics.getTasksCompletedToday();
+    }
+
+    /**
+     * Get count of tasks completed in last 7 days
+     * Delegates to TaskStatistics
+     */
+    public int getTasksCompletedLast7Days() {
+        return statistics.getTasksCompletedLast7Days();
+    }
+
+    /**
+     * Get count of overdue tasks
+     * Delegates to TaskStatistics
+     */
+    public int getOverdueTasksCount() {
+        return statistics.getOverdueTasksCount();
+    }
+
+    /**
+     * Get average completion time for a task
+     * Delegates to TaskStatistics
+     */
+    public int getAverageCompletionTime(long taskId) {
+        return statistics.getAverageCompletionTime(taskId);
+    }
+
+    /**
+     * Get task completion history
+     * Delegates to TaskStatistics
+     */
+    public List<ContentValues> getTaskCompletionHistory(long taskId) {
+        return statistics.getTaskCompletionHistory(taskId);
     }
 }
