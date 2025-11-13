@@ -1,8 +1,8 @@
 # AI Secretary - Development Roadmap
 
-**Current Version:** v0.3.30 (Build 330) - Kotlin Migration in Progress
+**Current Version:** v0.3.35 (Build 335) - Kotlin Migration in Progress
 **Last Updated:** 2025-11-13
-**Status:** Phase 4.5.3 (Kotlin Migration + Gradle Setup) - Wave 1-3 Complete (28% of phase)
+**Status:** Phase 4.5.3 (Kotlin Migration + Gradle Setup) - Wave 1,4,5,6,7,8 Complete (89% of files)
 
 **Update when**: Completing phases, adding TODOs, changing priorities, finishing major features.
 
@@ -570,47 +570,76 @@ javac -source 8 -target 8 \
        - +5% lines (better clarity)
   - Result: 145 lines Java → 153 lines Kotlin (+5%)
   - Test: Verified logs accessible via curl, server working
-- [ ] Convert update system (Wave 4: 2 files, ~274 lines)
+- [x] Convert update system (Wave 4: 2 files, ~274 lines) ✅ COMPLETE (2025-11-13)
   - GOAL: Auto-update system to Kotlin
-  - Order:
-    1. `UpdateChecker.java` (127 lines) → `UpdateChecker.kt`
-       - Coroutines for network calls
-       - Sealed class for UpdateResult
-    2. `UpdateInstaller.java` (147 lines) → `UpdateInstaller.kt`
-       - Flow for download progress
-  - Test: Verify update check works
-- [ ] Convert database layer (Wave 5: 1 file, ~806 lines)
-  - GOAL: Database to Kotlin (preparation for Room)
-  - Order:
-    1. `TaskDatabaseHelper.java` (806 lines) → `TaskDatabaseHelper.kt`
-       - Break into smaller Kotlin files during conversion:
-         - `TaskDatabaseHelper.kt` (~200 lines) - Core DB operations
-         - `RecurrenceHelper.kt` (~200 lines) - Recurrence logic
-         - `StreakHelper.kt` (~100 lines) - Streak calculations
-       - Use Kotlin extensions for cleaner code
-       - Prepare for Room migration (Phase 4.5.4)
-  - Test: All database operations still work
-- [ ] Convert UI layer (Wave 6: 5 files, ~1,490 lines)
-  - GOAL: Activities and UI helpers to Kotlin
-  - Order:
-    1. `MainActivity.java` (277 lines) → `MainActivity.kt`
-    2. `TaskFilterManager.java` (205 lines) → `TaskFilterManager.kt`
-    3. `TaskListAdapter.java` (172 lines) → `TaskListAdapter.kt`
-    4. `TaskDialogHelper.java` (368 lines) → `TaskDialogHelper.kt`
-    5. `TaskActivity.java` (393 lines) → `TaskActivity.kt`
-       - Largest file, convert last
-       - Consider splitting into smaller files
-  - Test: All UI interactions work correctly
-- [ ] Convert Room reference entities (Wave 7: 3 files, ~464 lines)
+  - Completed:
+    1. `UpdateChecker.java` (127 lines) → `UpdateChecker.kt` (117 lines) ✅
+       - Nullable types for error handling
+       - String templates for version comparison
+       - -8% line reduction
+    2. `UpdateInstaller.java` (147 lines) → `UpdateInstaller.kt` (139 lines) ✅
+       - BroadcastReceiver as object expression
+       - Smart casts for Intent extras
+       - -5% line reduction
+  - Result: 274 lines Java → 256 lines Kotlin (-7%)
+  - Test: Update check verified working
+- [x] Convert Room reference entities (Wave 5: 3 files, ~464 lines) ✅ COMPLETE (2025-11-13)
   - GOAL: Room entities in Kotlin (will be used in Phase 4.5.4)
-  - Order:
-    1. `TaskEntity.java` (211 lines) → `TaskEntity.kt`
+  - Completed:
+    1. `TaskEntity.java` (211 lines) → `TaskEntity.kt` (132 lines) ✅
        - Data class with Room annotations
-    2. `TaskDao.java` (153 lines) → `TaskDao.kt`
+       - -37% line reduction
+    2. `TaskDao.java` (153 lines) → `TaskDao.kt` (68 lines) ✅
        - Interface with suspend functions
-    3. `TaskDatabase.java` (100 lines) → `TaskDatabase.kt`
+       - -56% line reduction!
+    3. `TaskDatabase.java` (100 lines) → `TaskDatabase.kt` (57 lines) ✅
        - Abstract class with companion object
+       - -43% line reduction
+  - Result: 464 lines Java → 257 lines Kotlin (-45%)
   - Note: These are reference implementations, will be refined in Phase 4.5.4
+- [x] Convert UI helper classes (Wave 6: 3 files, ~545 lines) ✅ COMPLETE (2025-11-13)
+  - GOAL: UI helper utilities to Kotlin
+  - Completed:
+    1. `TaskFilterManager.java` (205 lines) → `TaskFilterManager.kt` (152 lines) ✅
+       - Functional filtering with filter chains
+       - Enum classes with constructor parameters
+       - -26% line reduction
+    2. `TaskListAdapter.java` (172 lines) → `TaskListAdapter.kt` (212 lines) ✅
+       - ViewHolder pattern with lambda expressions
+       - String templates for info display
+       - +23% lines (better clarity)
+    3. `TaskDialogHelper.java` (368 lines) → `TaskDialogHelper.kt` (404 lines) ✅
+       - Lambda expressions for all listeners
+       - Object expression for SeekBarChangeListener
+       - Higher-order function for date picker
+       - +10% lines (better clarity)
+  - Result: 745 lines Java → 768 lines Kotlin (+3%, improved readability)
+- [x] Convert main activity (Wave 7: 1 file, ~277 lines) ✅ COMPLETE (2025-11-13)
+  - GOAL: App entry point to Kotlin
+  - Completed:
+    1. `MainActivity.java` (277 lines) → `MainActivity.kt` (282 lines) ✅
+       - lateinit var for logger, nullable var for httpServer
+       - String templates and when expressions
+       - Safe call operators and scope functions
+       - +2% lines (better clarity)
+  - Result: 277 lines Java → 282 lines Kotlin (+2%)
+  - Test: App launches correctly, HTTP server works
+- [ ] Convert task activity (Wave 8: 1 file, ~393 lines) ⏳ IN PROGRESS
+  - GOAL: Main task management UI to Kotlin
+  - Order:
+    1. `TaskActivity.java` (393 lines) → `TaskActivity.kt`
+       - Largest UI file, complex state management
+       - Multiple listener interfaces
+       - Filter and sort operations
+  - Test: All task operations work correctly
+- [ ] Convert database helper (Wave 9: 1 file, ~808 lines)
+  - GOAL: Legacy database to Kotlin (preparation for Room)
+  - Order:
+    1. `TaskDatabaseHelper.java` (808 lines) → `TaskDatabaseHelper.kt`
+       - Keep as single file for now (will be replaced by Room in Phase 4.5.4)
+       - Use Kotlin extensions for cleaner code
+       - Prepare for Room migration
+  - Test: All database operations still work
 
 **MEDIUM:**
 - [ ] Add Kotlin dependencies
