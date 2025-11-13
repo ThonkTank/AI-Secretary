@@ -24,6 +24,7 @@ object UpdateInstaller {
     /**
      * Download APK and install when complete
      */
+    @JvmStatic
     fun downloadAndInstall(context: Context, downloadUrl: String, version: String) {
         try {
             AppLogger.info(TAG, "Starting download for version $version")

@@ -40,6 +40,30 @@ object UpdateChecker {
     }
 
     /**
+     * Java-compatible callback interface
+     */
+    interface UpdateListener {
+        fun onUpdateAvailable(version: String, downloadUrl: String, changelog: String)
+        fun onNoUpdateAvailable()
+        fun onError(error: String)
+    }
+
+    /**
+     * Java-compatible wrapper method with callback
+     * Launches coroutine internally and converts sealed class results to callbacks
+     */
+    @JvmStatic
+    fun checkForUpdates(context: Context, listener: UpdateListener) {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+            when (val result = checkForUpdates(context)) {
+                is UpdateResult.Available -> listener.onUpdateAvailable(result.version, result.downloadUrl, result.changelog)
+                is UpdateResult.NoUpdate -> listener.onNoUpdateAvailable()
+                is UpdateResult.Error -> listener.onError(result.message)
+            }
+        }
+    }
+
+    /**
      * Check for updates on GitHub Releases
      * Uses coroutines for async network call
      */
