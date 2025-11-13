@@ -18,13 +18,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    signingConfigs {
-        create("release") {
-            // Signing config will be set via environment variables in GitHub Actions
-            // For local builds, this can be left empty
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -32,7 +25,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            // No signingConfig - APK will be unsigned
+            // Signing happens in GitHub Actions with apksigner
         }
         debug {
             isMinifyEnabled = false
