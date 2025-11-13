@@ -37,55 +37,13 @@ jobs:
         yes | sdkmanager --licenses
         sdkmanager "platforms;android-33" "build-tools;33.0.2"
 
-    - name: Download Room Dependencies
-      run: |
-        mkdir -p libs
-
-        # Download Room libraries from Google Maven
-        echo "Downloading Room dependencies from dl.google.com..."
-
-        # Room compiler (JAR - annotation processor)
-        wget -q https://dl.google.com/dl/android/maven2/androidx/room/room-compiler/2.6.0/room-compiler-2.6.0.jar \
-          -O libs/room-compiler.jar
-
-        # Room compiler-processing (JAR - required by room-compiler)
-        wget -q https://dl.google.com/dl/android/maven2/androidx/room/room-compiler-processing/2.6.0/room-compiler-processing-2.6.0.jar \
-          -O libs/room-compiler-processing.jar
-
-        # Room common (JAR - shared interfaces)
-        wget -q https://dl.google.com/dl/android/maven2/androidx/room/room-common/2.6.0/room-common-2.6.0.jar \
-          -O libs/room-common.jar
-
-        # Room runtime (AAR - need to extract classes.jar)
-        wget -q https://dl.google.com/dl/android/maven2/androidx/room/room-runtime/2.6.0/room-runtime-2.6.0.aar \
-          -O libs/room-runtime.aar
-        unzip -q libs/room-runtime.aar -d libs/room-runtime-extracted
-        mv libs/room-runtime-extracted/classes.jar libs/room-runtime.jar
-        rm -rf libs/room-runtime.aar libs/room-runtime-extracted
-
-        # AndroidX annotation (JAR)
-        wget -q https://dl.google.com/dl/android/maven2/androidx/annotation/annotation/1.7.0/annotation-1.7.0.jar \
-          -O libs/androidx-annotation.jar
-
-        # AndroidX SQLite (AAR - need to extract classes.jar)
-        wget -q https://dl.google.com/dl/android/maven2/androidx/sqlite/sqlite/2.4.0/sqlite-2.4.0.aar \
-          -O libs/androidx-sqlite.aar
-        unzip -q libs/androidx-sqlite.aar -d libs/sqlite-extracted
-        mv libs/sqlite-extracted/classes.jar libs/androidx-sqlite.jar
-        rm -rf libs/androidx-sqlite.aar libs/sqlite-extracted
-
-        echo "Room dependencies downloaded and extracted successfully"
-        ls -lh libs/*.jar
-
     - name: Build APK
       run: |
         export ANDROID_SDK_ROOT=$HOME/android-sdk
         export ANDROID_JAR=$ANDROID_SDK_ROOT/platforms/android-33/android.jar
-        export ROOM_CLASSPATH="libs/room-runtime.jar:libs/room-common.jar:libs/androidx-annotation.jar:libs/androidx-sqlite.jar"
-        export ROOM_PROCESSOR="libs/room-compiler.jar:libs/room-compiler-processing.jar:libs/room-common.jar"
 
         # Build-Verzeichnisse erstellen
-        mkdir -p compiled_res gen classes generated
+        mkdir -p compiled_res gen classes
 
         # Ressourcen kompilieren
         $ANDROID_SDK_ROOT/build-tools/33.0.2/aapt2 compile \
@@ -109,34 +67,15 @@ jobs:
           --java gen/ \
           --auto-add-overlay
 
-        # Java kompilieren (Step 1: Room Annotation Processing)
-        echo "=== Step 1: Room Annotation Processing ==="
-
-        javac -source 8 -target 8 \
-          -d classes/ \
-          -s generated/ \
-          -classpath $ANDROID_JAR:$ROOM_CLASSPATH \
-          -processorpath $ROOM_PROCESSOR \
-          -processor androidx.room.RoomProcessor \
-          src/com/secretary/features/tasks/data/TaskEntity.java \
-          src/com/secretary/features/tasks/data/TaskDao.java \
-          src/com/secretary/features/statistics/data/CompletionEntity.java \
-          src/com/secretary/features/statistics/data/CompletionDao.java \
-          src/com/secretary/shared/database/TaskDatabase.java \
-          2>&1 || echo "Room annotation processing failed - continuing anyway"
-
-        echo "=== Generated Room files ==="
-        find generated -name "*.java" || echo "No files generated"
-
-        # Java kompilieren (Step 2: All source files including generated code)
-        echo "=== Step 2: Compiling all source files ==="
+        # Java kompilieren
+        echo "=== Starting Java compilation ==="
         ls -la src/com/secretary/ || true
         ls -la gen/com/secretary/helloworld/ || true
 
         javac -source 8 -target 8 \
           -d classes/ \
-          -classpath $ANDROID_JAR:$ROOM_CLASSPATH \
-          -sourcepath src/:gen/:generated/ \
+          -classpath $ANDROID_JAR \
+          -sourcepath src/:gen/ \
           src/com/secretary/app/MainActivity.java \
           src/com/secretary/core/logging/AppLogger.java \
           src/com/secretary/core/logging/HttpLogServer.java \
@@ -151,7 +90,6 @@ jobs:
           src/com/secretary/TaskDialogHelper.java \
           src/com/secretary/TaskActivity.java \
           gen/com/secretary/helloworld/R.java \
-          $(find generated -name "*.java" 2>/dev/null || echo "") \
           2>&1 || echo "COMPILATION FAILED"
 
         echo "=== Compilation finished ==="
