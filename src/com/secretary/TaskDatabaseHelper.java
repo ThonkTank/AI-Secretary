@@ -1,5 +1,7 @@
 package com.secretary.helloworld;
 
+import com.secretary.helloworld.core.logging.AppLogger;
+import com.secretary.helloworld.shared.database.DatabaseConstants;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -8,7 +10,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.secretary.helloworld.DatabaseConstants.*;
+import static com.secretary.helloworld.shared.database.DatabaseConstants.*;
 
 /**
  * Database helper for Task management.

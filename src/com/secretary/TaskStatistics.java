@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
-import static com.secretary.helloworld.DatabaseConstants.*;
+import static com.secretary.helloworld.shared.database.DatabaseConstants.*;
 
 /**
  * Helper class for task statistics and analytics.

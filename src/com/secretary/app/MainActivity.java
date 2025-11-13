@@ -1,8 +1,10 @@
 package com.secretary.helloworld.app;
 
+import com.secretary.helloworld.R;
 import com.secretary.helloworld.core.logging.AppLogger;
 import com.secretary.helloworld.core.logging.HttpLogServer;
 import com.secretary.helloworld.core.network.UpdateChecker;
+import com.secretary.helloworld.core.network.UpdateInstaller;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
@@ -238,7 +240,7 @@ public class MainActivity extends Activity {
         // Logs laden und anzeigen
         List<String> logs = logger.readLogs();
         if (logs.isEmpty()) {
-            logsTextView.setText("No logs available yet.\n\nLog file path: " + logger.getLogFilePath());
+            logsTextView.setText("No logs available yet.\n\nLogs are stored in-memory and accessible via HTTP server:\ncurl http://localhost:8080/logs");
         } else {
             StringBuilder logText = new StringBuilder();
             for (String line : logs) {
