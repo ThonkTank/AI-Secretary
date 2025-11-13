@@ -131,7 +131,7 @@ object UpdateChecker {
      */
     private fun Context.getVersionName(): String {
         return try {
-            packageManager.getPackageInfo(packageName, 0).versionName
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "unknown"
         } catch (e: PackageManager.NameNotFoundException) {
             "unknown"
         }

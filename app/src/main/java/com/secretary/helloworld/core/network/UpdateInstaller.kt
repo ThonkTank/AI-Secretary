@@ -101,6 +101,12 @@ object UpdateInstaller {
                                     // Check again in 500ms
                                     handler.postDelayed(this, 500)
                                 }
+
+                                else -> {
+                                    AppLogger.debug(TAG, "Unknown download status: $status")
+                                    // Check again in 500ms
+                                    handler.postDelayed(this, 500)
+                                }
                             }
                         } else {
                             AppLogger.error(TAG, "Download cursor is null or empty")
