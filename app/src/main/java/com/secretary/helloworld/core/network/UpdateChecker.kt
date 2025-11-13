@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import com.secretary.helloworld.core.logging.AppLogger
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -54,8 +56,8 @@ object UpdateChecker {
      */
     @JvmStatic
     fun checkForUpdates(context: Context, listener: UpdateListener) {
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-            when (val result = checkForUpdates(context)) {
+        CoroutineScope(Dispatchers.Main).launch {
+            when (val result = checkForUpdatesInternal(context)) {
                 is UpdateResult.Available -> listener.onUpdateAvailable(result.version, result.downloadUrl, result.changelog)
                 is UpdateResult.NoUpdate -> listener.onNoUpdateAvailable()
                 is UpdateResult.Error -> listener.onError(result.message)
@@ -66,8 +68,9 @@ object UpdateChecker {
     /**
      * Check for updates on GitHub Releases
      * Uses coroutines for async network call
+     * Internal suspend function used by Java-compatible wrapper
      */
-    suspend fun checkForUpdates(context: Context): UpdateResult = withContext(Dispatchers.IO) {
+    private suspend fun checkForUpdatesInternal(context: Context): UpdateResult = withContext(Dispatchers.IO) {
         try {
             // Get current version
             val currentVersionCode = context.getVersionCode()
