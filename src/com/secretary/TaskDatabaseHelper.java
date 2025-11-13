@@ -608,89 +608,34 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     /**
      * Get task count
+     * Delegates to TaskStatistics
      */
     public int getTaskCount() {
-        String countQuery = "SELECT COUNT(*) FROM " + TABLE_TASKS;
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery(countQuery, null);
-
-        int count = 0;
-        if (cursor.moveToFirst()) {
-            count = cursor.getInt(0);
-        }
-
-        cursor.close();
-        db.close();
-
-        return count;
+        return statistics.getTaskCount();
     }
 
     /**
      * Get statistics for today
+     * Delegates to TaskStatistics
      */
     public int getTasksCompletedToday() {
-        String todayStart = String.valueOf(getTodayStart());
-        String query = "SELECT COUNT(*) FROM " + TABLE_TASKS +
-                      " WHERE " + COLUMN_LAST_COMPLETED_DATE + " >= " + todayStart;
-
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery(query, null);
-
-        int count = 0;
-        if (cursor.moveToFirst()) {
-            count = cursor.getInt(0);
-        }
-
-        cursor.close();
-        db.close();
-
-        return count;
+        return statistics.getTasksCompletedToday();
     }
 
     /**
      * Get statistics for last 7 days
+     * Delegates to TaskStatistics
      */
     public int getTasksCompletedLast7Days() {
-        long sevenDaysAgo = System.currentTimeMillis() - (7L * 24 * 60 * 60 * 1000);
-        String query = "SELECT COUNT(*) FROM " + TABLE_TASKS +
-                      " WHERE " + COLUMN_LAST_COMPLETED_DATE + " >= " + sevenDaysAgo;
-
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery(query, null);
-
-        int count = 0;
-        if (cursor.moveToFirst()) {
-            count = cursor.getInt(0);
-        }
-
-        cursor.close();
-        db.close();
-
-        return count;
+        return statistics.getTasksCompletedLast7Days();
     }
 
     /**
      * Get overdue tasks count
+     * Delegates to TaskStatistics
      */
     public int getOverdueTasksCount() {
-        long now = System.currentTimeMillis();
-        String query = "SELECT COUNT(*) FROM " + TABLE_TASKS +
-                      " WHERE " + COLUMN_DUE_DATE + " > 0" +
-                      " AND " + COLUMN_DUE_DATE + " < " + now +
-                      " AND " + COLUMN_IS_COMPLETED + " = 0";
-
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery(query, null);
-
-        int count = 0;
-        if (cursor.moveToFirst()) {
-            count = cursor.getInt(0);
-        }
-
-        cursor.close();
-        db.close();
-
-        return count;
+        return statistics.getOverdueTasksCount();
     }
 
     private long getTodayStart() {
@@ -725,54 +670,18 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     /**
      * Get completion history for a task
+     * Delegates to TaskStatistics
      */
     public List<ContentValues> getTaskCompletionHistory(long taskId) {
-        List<ContentValues> history = new ArrayList<>();
-
-        String query = "SELECT * FROM " + TABLE_COMPLETIONS +
-                      " WHERE " + COLUMN_TASK_ID + " = " + taskId +
-                      " ORDER BY " + COLUMN_COMPLETED_AT + " DESC";
-
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery(query, null);
-
-        if (cursor.moveToFirst()) {
-            do {
-                ContentValues completion = new ContentValues();
-                completion.put(COLUMN_COMPLETION_ID, cursor.getLong(cursor.getColumnIndex(COLUMN_COMPLETION_ID)));
-                completion.put(COLUMN_COMPLETED_AT, cursor.getLong(cursor.getColumnIndex(COLUMN_COMPLETED_AT)));
-                completion.put(COLUMN_TIME_SPENT, cursor.getInt(cursor.getColumnIndex(COLUMN_TIME_SPENT)));
-                completion.put(COLUMN_DIFFICULTY, cursor.getInt(cursor.getColumnIndex(COLUMN_DIFFICULTY)));
-                completion.put(COLUMN_NOTES, cursor.getString(cursor.getColumnIndex(COLUMN_NOTES)));
-                history.add(completion);
-            } while (cursor.moveToNext());
-        }
-
-        cursor.close();
-        db.close();
-
-        return history;
+        return statistics.getTaskCompletionHistory(taskId);
     }
 
     /**
      * Get average completion time for a task
+     * Delegates to TaskStatistics
      */
     public int getAverageCompletionTime(long taskId) {
-        String query = "SELECT AVG(" + COLUMN_TIME_SPENT + ") FROM " + TABLE_COMPLETIONS +
-                      " WHERE " + COLUMN_TASK_ID + " = " + taskId;
-
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery(query, null);
-
-        int average = 0;
-        if (cursor.moveToFirst()) {
-            average = cursor.getInt(0);
-        }
-
-        cursor.close();
-        db.close();
-
-        return average;
+        return statistics.getAverageCompletionTime(taskId);
     }
 
     /**
@@ -894,55 +803,5 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
         logger.debug(TAG, "Retrieved " + categories.size() + " unique categories");
         return categories;
-    }
-
-    // ==================== Statistics Methods (Delegated to TaskStatistics) ====================
-
-    /**
-     * Get total task count
-     * Delegates to TaskStatistics
-     */
-    public int getTaskCount() {
-        return statistics.getTaskCount();
-    }
-
-    /**
-     * Get count of tasks completed today
-     * Delegates to TaskStatistics
-     */
-    public int getTasksCompletedToday() {
-        return statistics.getTasksCompletedToday();
-    }
-
-    /**
-     * Get count of tasks completed in last 7 days
-     * Delegates to TaskStatistics
-     */
-    public int getTasksCompletedLast7Days() {
-        return statistics.getTasksCompletedLast7Days();
-    }
-
-    /**
-     * Get count of overdue tasks
-     * Delegates to TaskStatistics
-     */
-    public int getOverdueTasksCount() {
-        return statistics.getOverdueTasksCount();
-    }
-
-    /**
-     * Get average completion time for a task
-     * Delegates to TaskStatistics
-     */
-    public int getAverageCompletionTime(long taskId) {
-        return statistics.getAverageCompletionTime(taskId);
-    }
-
-    /**
-     * Get task completion history
-     * Delegates to TaskStatistics
-     */
-    public List<ContentValues> getTaskCompletionHistory(long taskId) {
-        return statistics.getTaskCompletionHistory(taskId);
     }
 }
