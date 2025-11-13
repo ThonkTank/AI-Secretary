@@ -70,9 +70,9 @@ class TaskListAdapter(
             view = LayoutInflater.from(context).inflate(R.layout.task_list_item, parent, false)
             holder = ViewHolder(
                 checkBox = view.findViewById(R.id.taskCheckBox),
-                titleTextView = view.findViewById(R.id.taskTitle),
-                descriptionTextView = view.findViewById(R.id.taskDescription),
-                infoTextView = view.findViewById(R.id.taskInfo),
+                titleTextView = view.findViewById(R.id.taskTitleText),
+                descriptionTextView = view.findViewById(R.id.taskDescriptionText),
+                infoTextView = view.findViewById(R.id.taskPriorityText),
                 editButton = view.findViewById(R.id.editTaskButton),
                 deleteButton = view.findViewById(R.id.deleteTaskButton)
             )
@@ -163,10 +163,10 @@ class TaskListAdapter(
      */
     private fun getRecurrenceText(task: Task): String {
         val unit = when (task.recurrenceUnit) {
-            Task.RecurrenceUnit.DAY -> if (task.recurrenceAmount == 1) "day" else "days"
-            Task.RecurrenceUnit.WEEK -> if (task.recurrenceAmount == 1) "week" else "weeks"
-            Task.RecurrenceUnit.MONTH -> if (task.recurrenceAmount == 1) "month" else "months"
-            Task.RecurrenceUnit.YEAR -> if (task.recurrenceAmount == 1) "year" else "years"
+            Task.TimeUnit.DAY -> if (task.recurrenceAmount == 1) "day" else "days"
+            Task.TimeUnit.WEEK -> if (task.recurrenceAmount == 1) "week" else "weeks"
+            Task.TimeUnit.MONTH -> if (task.recurrenceAmount == 1) "month" else "months"
+            Task.TimeUnit.YEAR -> if (task.recurrenceAmount == 1) "year" else "years"
             else -> "?"
         }
 
