@@ -41,31 +41,37 @@ jobs:
       run: |
         mkdir -p libs
 
-        # Download Room JARs from Maven Google
-        echo "Downloading Room dependencies..."
+        # Download Room libraries from Google Maven
+        echo "Downloading Room dependencies from dl.google.com..."
 
-        # Room runtime (required for classpath)
-        wget -q https://maven.google.com/androidx/room/room-runtime/2.6.0/room-runtime-2.6.0.jar \
-          -O libs/room-runtime.jar
-
-        # Room compiler (annotation processor)
-        wget -q https://maven.google.com/androidx/room/room-compiler/2.6.0/room-compiler-2.6.0.jar \
+        # Room compiler (JAR - annotation processor)
+        wget -q https://dl.google.com/dl/android/maven2/androidx/room/room-compiler/2.6.0/room-compiler-2.6.0.jar \
           -O libs/room-compiler.jar
 
-        # Room common (shared code)
-        wget -q https://maven.google.com/androidx/room/room-common/2.6.0/room-common-2.6.0.jar \
+        # Room common (JAR - shared interfaces)
+        wget -q https://dl.google.com/dl/android/maven2/androidx/room/room-common/2.6.0/room-common-2.6.0.jar \
           -O libs/room-common.jar
 
-        # AndroidX annotations (required dependency)
-        wget -q https://maven.google.com/androidx/annotation/annotation/1.7.0/annotation-1.7.0.jar \
+        # Room runtime (AAR - need to extract classes.jar)
+        wget -q https://dl.google.com/dl/android/maven2/androidx/room/room-runtime/2.6.0/room-runtime-2.6.0.aar \
+          -O libs/room-runtime.aar
+        unzip -q libs/room-runtime.aar -d libs/room-runtime-extracted
+        mv libs/room-runtime-extracted/classes.jar libs/room-runtime.jar
+        rm -rf libs/room-runtime.aar libs/room-runtime-extracted
+
+        # AndroidX annotation (JAR)
+        wget -q https://dl.google.com/dl/android/maven2/androidx/annotation/annotation/1.7.0/annotation-1.7.0.jar \
           -O libs/androidx-annotation.jar
 
-        # SQLite (Room dependency)
-        wget -q https://maven.google.com/androidx/sqlite/sqlite/2.4.0/sqlite-2.4.0.jar \
-          -O libs/androidx-sqlite.jar
+        # AndroidX SQLite (AAR - need to extract classes.jar)
+        wget -q https://dl.google.com/dl/android/maven2/androidx/sqlite/sqlite/2.4.0/sqlite-2.4.0.aar \
+          -O libs/androidx-sqlite.aar
+        unzip -q libs/androidx-sqlite.aar -d libs/sqlite-extracted
+        mv libs/sqlite-extracted/classes.jar libs/androidx-sqlite.jar
+        rm -rf libs/androidx-sqlite.aar libs/sqlite-extracted
 
-        echo "Room dependencies downloaded successfully"
-        ls -lh libs/
+        echo "Room dependencies downloaded and extracted successfully"
+        ls -lh libs/*.jar
 
     - name: Build APK
       run: |
