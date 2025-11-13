@@ -39,7 +39,6 @@ jobs:
 
     - name: Build APK
       run: |
-        set -x  # Enable debug output
         export ANDROID_SDK_ROOT=$HOME/android-sdk
         export ANDROID_JAR=$ANDROID_SDK_ROOT/platforms/android-33/android.jar
 
@@ -47,7 +46,6 @@ jobs:
         mkdir -p compiled_res gen classes
 
         # Ressourcen kompilieren
-        echo "=== Compiling resources ==="
         $ANDROID_SDK_ROOT/build-tools/33.0.2/aapt2 compile \
           res/values/strings.xml \
           res/layout/activity_main.xml \
@@ -60,11 +58,7 @@ jobs:
           res/menu/main_menu.xml \
           -o compiled_res/
 
-        echo "=== Compiled resources: ==="
-        ls -la compiled_res/
-
         # Ressourcen verlinken
-        echo "=== Linking resources ==="
         $ANDROID_SDK_ROOT/build-tools/33.0.2/aapt2 link \
           -o app_unsigned.apk \
           -I $ANDROID_JAR \
@@ -72,10 +66,6 @@ jobs:
           -R compiled_res/*.flat \
           --java gen/ \
           --auto-add-overlay
-
-        echo "=== APK created, checking files ==="
-        ls -lh app_unsigned.apk || echo "APK not created!"
-        ls -la gen/com/secretary/helloworld/ || echo "R.java not generated!"
 
         # Java kompilieren
         javac -source 8 -target 8 \
