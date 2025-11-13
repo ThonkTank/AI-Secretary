@@ -1,57 +1,65 @@
-# src/com/secretary - Main Application Code (Refactoring in Progress)
+# app/src/main/java/com/secretary/helloworld - Main Application Code
 
-**Purpose:** Contains all application code - partial Clean Architecture structure after Phase 4.5.2.
+**Purpose:** Contains all application code - Gradle structure with Kotlin migration in progress.
 
-**Status:** Phase 4.5.2 Complete - Clean Architecture foundation established, remaining files to be migrated in 4.5.3-4.5.5
+**Status:** Phase 4.5.3 Wave 1 Complete (14%) - First 3 files converted to Kotlin
 
-**Architecture:** Hybrid - Core and app files migrated to Clean Architecture, task files still in root (temporary)
+**Architecture:** Hybrid - Gradle structure established, Kotlin migration underway (3/18 files done)
+
+**Build System:** Gradle 8.2 + Kotlin 1.9.22 + KSP
 
 ---
 
-## Directory Structure
+## Directory Structure (Phase 4.5.3 - Kotlin Migration)
 
 ```
-src/com/secretary/
-├── app/                           # ✅ MIGRATED (Phase 4.5.2)
-│   └── MainActivity.java              # App entry point, Settings menu, HTTP server init
-│                                      # Package: com.secretary.helloworld.app
+app/src/main/java/com/secretary/helloworld/
+├── app/                           # ✅ Java (Phase 4.5.2)
+│   └── MainActivity.java              # App entry point (Wave 5)
 │
-├── core/                          # ✅ MIGRATED (Phase 4.5.2)
+├── core/                          # 🚧 CONVERTING (Wave 1: 1/2 Kotlin)
 │   ├── logging/
-│   │   ├── AppLogger.java             # In-memory logging system (87 lines)
-│   │   └── HttpLogServer.java         # HTTP server on localhost:8080 (renamed from SimpleHttpServer)
+│   │   ├── AppLogger.kt               # ✅ KOTLIN (Wave 1) - Singleton object (122 lines)
+│   │   └── HttpLogServer.java         # ⏳ Java (Wave 2) - HTTP server on localhost:8080
 │   └── network/
-│       ├── UpdateChecker.java         # GitHub Releases API client
-│       └── UpdateInstaller.java       # APK download and installation
+│       ├── UpdateChecker.java         # ⏳ Java (Wave 6) - GitHub Releases API
+│       └── UpdateInstaller.java       # ⏳ Java (Wave 6) - APK download
 │
-├── shared/                        # ✅ MIGRATED (Phase 4.5.2)
+├── shared/                        # ✅ KOTLIN (Wave 1: 1/1 done)
 │   ├── database/
-│   │   └── DatabaseConstants.java     # Database schema constants
-│   └── util/                          # (empty, for future utils)
+│   │   └── DatabaseConstants.kt       # ✅ KOTLIN (Wave 1) - Object with const val (46 lines)
+│   └── util/                          # (empty)
 │
-├── features/                      # ✅ CREATED (Phase 4.5.2) - awaiting migration
+├── features/                      # 🚧 KOTLIN (Wave 1: 1/1 done)
 │   ├── tasks/
-│   │   ├── data/                      # (empty - Phase 4.5.3)
-│   │   ├── domain/                    # (empty - Phase 4.5.4)
-│   │   └── presentation/              # (empty - Phase 4.5.5)
+│   │   ├── data/                      # ⏳ (Wave 4 - Room migration)
+│   │   ├── domain/                    # ⏳ (Wave 5 - Use Cases)
+│   │   └── presentation/              # ⏳ (Wave 6 - ViewModels)
 │   └── statistics/
-│       ├── data/                      # (empty - Phase 4.5.3)
-│       ├── domain/                    # (empty - Phase 4.5.4)
-│       └── presentation/              # (empty - Phase 4.5.5)
+│       ├── data/
+│       │   └── CompletionEntity.kt    # ✅ KOTLIN (Wave 1) - Data class (50 lines)
+│       ├── domain/                    # ⏳ (Wave 5)
+│       └── presentation/              # ⏳ (Wave 6)
 │
-└── (root - legacy files)          # ⏳ TO BE MIGRATED
-    ├── Task.java                      # → features/tasks/domain (Phase 4.5.4)
-    ├── TaskActivity.java              # → features/tasks/presentation (Phase 4.5.5)
-    ├── TaskListAdapter.java           # → features/tasks/presentation (Phase 4.5.5)
-    ├── TaskDialogHelper.java          # → features/tasks/presentation (Phase 4.5.5)
-    ├── TaskFilterManager.java         # → features/tasks/presentation (Phase 4.5.5)
-    ├── TaskDatabaseHelper.java        # → features/tasks/data (Phase 4.5.3, refactor to Room)
-    └── TaskStatistics.java            # → features/statistics/domain (Phase 4.5.4)
+└── (root - legacy Java files)     # ⏳ TO BE CONVERTED
+    ├── Task.java                      # ⏳ Wave 3 (entity)
+    ├── TaskActivity.java              # ⏳ Wave 6 (UI)
+    ├── TaskListAdapter.java           # ⏳ Wave 6 (UI)
+    ├── TaskDialogHelper.java          # ⏳ Wave 6 (UI)
+    ├── TaskFilterManager.java         # ⏳ Wave 5 (logic)
+    ├── TaskDatabaseHelper.java        # ⏳ Wave 4 (Room migration)
+    └── TaskStatistics.java            # ⏳ Wave 5 (domain logic)
 ```
 
-**Total:** 13 Java files, ~2,700 lines of code (after Phase 4.5.1 cleanup)
-**Migrated:** 6 files to Clean Architecture structure (Phase 4.5.2)
-**Remaining:** 7 files in root (to be migrated in Phase 4.5.3-4.5.5)
+**Total:** 18 files (~3,907 lines Java → target: ~3,500 lines Kotlin)
+**Converted:** 3 files (Wave 1) - 17% file count, 6% line count
+**Remaining:** 15 Java files to convert in Waves 2-7
+
+**Wave 1 Results (Complete ✅):**
+- DatabaseConstants.java → DatabaseConstants.kt: 48 → 46 lines (-4%)
+- AppLogger.java → AppLogger.kt: 87 → 122 lines (+40%, better docs)
+- CompletionEntity.java → CompletionEntity.kt: 100 → 50 lines (-50%!)
+- **Total:** 235 lines Java → 218 lines Kotlin (-7%)
 
 ---
 
@@ -59,22 +67,27 @@ src/com/secretary/
 
 This directory contains the **entire application** - now in **hybrid state** after Phase 4.5.2.
 
-**Current State (Phase 4.5.2 Complete):**
-- ✅ Clean Architecture foundation established
-- ✅ Core systems (logging, network) properly layered
-- ✅ Feature module structure created
-- ⏳ Task-related files still in root (temporary - awaiting migration)
+**Current State (Phase 4.5.3 Wave 1 Complete):**
+- ✅ Gradle build system established (AGP 8.2.2, Kotlin 1.9.22)
+- ✅ Project structure migrated to Gradle standard
+- ✅ Wave 1 Kotlin conversions: 3 small utility files (DatabaseConstants, AppLogger, CompletionEntity)
+- ✅ Build successfully compiles with hybrid Java/Kotlin codebase
+- ⏳ Remaining 15 Java files to convert in Waves 2-7
 
-**Phase 4.5.2 Achievements:**
-- Core and app files migrated to Clean Architecture packages
-- SimpleHttpServer renamed to HttpLogServer for clarity
-- All imports updated to reflect new structure
-- Build successfully compiles with new organization
+**Phase 4.5.3 Achievements (Wave 1):**
+- Set up Gradle 8.2 with Kotlin 1.9.22 and KSP
+- Moved project to standard Gradle structure (app/src/main/)
+- Converted 3 utility files to Kotlin with major boilerplate reduction
+- Updated GitHub Actions to use Gradle build
+- Build time: ~4 minutes (acceptable for CI/CD)
 
-**What happens next (Phase 4.5.3-4.5.5):**
-- Phase 4.5.3: TaskDatabaseHelper → Room ORM + Repository pattern
-- Phase 4.5.4: Business logic → Use Cases + Services in domain layer
-- Phase 4.5.5: UI code → ViewModels + Activities in presentation layer
+**What happens next (Waves 2-7):**
+- Wave 2: HttpLogServer, SimpleHttpServer utilities
+- Wave 3: Task, RecurrenceRule entities
+- Wave 4: Room ORM migration (TaskDatabaseHelper → Repository + DAO)
+- Wave 5: Business logic (TaskFilterManager, TaskStatistics → Use Cases)
+- Wave 6: UI layer (MainActivity, TaskActivity → ViewModels + Activities)
+- Wave 7: Update system (UpdateChecker, UpdateInstaller)
 
 ---
 
@@ -272,5 +285,6 @@ This directory contains the **entire application** - now in **hybrid state** aft
 ---
 
 **Last Updated:** 2025-11-13
-**Status:** Legacy code - will be refactored in Phase 4.5
+**Status:** Phase 4.5.3 Wave 1 Complete - Kotlin migration in progress (14%)
+**Version:** v0.3.28 (Build 328)
 **Maintainer:** AI Secretary Development Team

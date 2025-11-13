@@ -8,15 +8,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **AI Secretary** is a native Android task management app with recurring task support, developed entirely in Termux on Android. This is a personal productivity app focused on the "Taskmaster" feature suite - a comprehensive system for managing daily, weekly, and long-term recurring tasks with intelligent planning and streak tracking.
 
-**Current Status:** Phase 4.5 - Architecture Refactor (v0.3.26 - Build 326 - Refactoring Branch)
+**Current Status:** Phase 4.5.3 - Kotlin Migration (v0.3.28 - Build 328 - Kotlin + Gradle)
 - ✅ Phase 0: Foundation Systems (100% complete)
 - ✅ Phase 1: Taskmaster Foundation (100% complete)
 - ✅ Phase 2: Core Task Management (100% complete)
 - ✅ Phase 3: Tracking & Analytics (100% complete)
 - ⏸️ Phase 4: Motivation & Statistics (30% complete - PAUSED for refactoring)
-- 🚧 **Phase 4.5: Architecture Refactor (16.7% complete - IN PROGRESS)**
-  - ✅ Phase 4.5.1: Critical Cleanup (COMPLETE - 496 lines deleted)
-  - 🚧 Phase 4.5.2: Package Structure (Next up)
+- 🚧 **Phase 4.5: Architecture Refactor (30% complete - IN PROGRESS)**
+  - ✅ Phase 4.5.1: Critical Cleanup (COMPLETE)
+  - ✅ Phase 4.5.2: Package Structure (COMPLETE)
+  - 🚧 Phase 4.5.3: Kotlin Migration + Gradle (Wave 1 COMPLETE - 14%)
 
 **Repository:** https://github.com/ThonkTank/AI-Secretary
 **Branch:** `refactoring/phase-4.5-architecture` (active development)
@@ -30,10 +31,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Android Version:** Android 16 (API Level 36)
 - **Development:** Termux (googleplay.2025.10.05)
 - **Java:** OpenJDK 21.0.9
-- **Android SDK:** API 33 (compile), API 28-35 (runtime)
+- **Build System:** Gradle 8.2 + Android Gradle Plugin 8.2.2
+- **Language:** Kotlin 1.9.22 (migrating from Java)
+- **Android SDK:** API 35 (compile), API 28-35 (runtime)
 
-### Critical Constraint: No Local Gradle
-**Gradle does NOT work in Termux** (JVM libiconv error). All production builds MUST use GitHub Actions. Local builds with `build.sh` are only for quick testing and have severe limitations (no external libraries, manual compilation).
+### Build System: Gradle on GitHub Actions
+**Phase 4.5.3 Update:** Project now uses Gradle build system! All builds run on GitHub Actions with full Gradle support. Local Gradle DOES NOT work in Termux due to JVM libiconv errors.
 
 ---
 
@@ -42,22 +45,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Production Build (REQUIRED for all real work)
 
 ```bash
-# 1. Update version in AndroidManifest.xml
-#    - Increment versionCode (e.g., 325 → 326)
-#    - Update versionName following phase-based scheme (e.g., 0.3.25 → 0.3.26)
+# 1. Update version in app/build.gradle.kts
+#    - Increment versionCode (e.g., 327 → 328)
+#    - Update versionName following phase-based scheme (e.g., 0.3.27 → 0.3.28)
 
 # 2. Commit and push to trigger GitHub Actions
 git add .
 git commit -m "feat: your feature description"
-git push origin main
+git push origin refactoring/phase-4.5-architecture  # Use current branch
 
-# 3. Monitor build status (takes ~45 seconds)
+# 3. Monitor build status (takes ~4 minutes with Gradle)
 export GH_TOKEN=$(cat ~/.github_token)
-gh run list --limit 1
+gh run watch  # Watch live
 gh run view --log  # If build fails
 
 # 4. Download APK when build completes
-VERSION="0.3.26"  # Use your new version
+VERSION="0.3.28"  # Use your new version
 gh release download "v$VERSION" -p "AISecretary-signed.apk" -D ~/storage/downloads/
 
 # 5. Install APK
@@ -67,10 +70,13 @@ termux-open AISecretary-signed.apk
 ```
 
 **GitHub Workflow:** `.github/workflows/build-and-release.yml`
-- Triggers: push to main or manual dispatch
-- SDK: Android 33, Build Tools 33.0.2
-- Java: Source/target 8 for compatibility
-- Auto-creates releases with version tag from AndroidManifest.xml
+- Triggers: push to any branch or manual dispatch
+- Build System: Gradle 8.2 + Android Gradle Plugin 8.2.2
+- JDK: 21 (required for AGP 8.2+)
+- Kotlin: 1.9.22
+- Build command: `./gradlew assembleRelease --stacktrace`
+- Build time: ~4 minutes
+- Auto-creates releases with version tag from app/build.gradle.kts
 
 ### Local Development Build (Testing Only)
 
@@ -275,7 +281,7 @@ Users can assign categories when creating/editing tasks and filter task list by 
 
 ## Version Management
 
-**Location:** `AndroidManifest.xml`
+**Location:** `app/build.gradle.kts` (since Phase 4.5.3 Kotlin migration)
 
 **Phase-based Versioning Scheme:**
 - **0.0.x - 0.1.x** = Phase 0 (Foundation - Update & Logging)
@@ -285,12 +291,15 @@ Users can assign categories when creating/editing tasks and filter task list by 
 - **0.5.x** = Phase 6 (Widget & Polish)
 - **1.0.0** = Taskmaster MVP Release
 
-**Current Version:** v0.3.25 (Build 325)
+**Current Version:** v0.3.28 (Build 328)
 
 **How to Update:**
-1. Increment `versionCode` (integer, sequential: 325 → 326)
-2. Update `versionName` (semantic: 0.3.25 → 0.3.26)
-3. Commit and push - GitHub Actions creates release with tag `v{versionName}`
+1. Open `app/build.gradle.kts`
+2. Increment `versionCode` (integer, sequential: 328 → 329)
+3. Update `versionName` (semantic: "0.3.28" → "0.3.29")
+4. Commit and push - GitHub Actions creates release with tag `v{versionName}`
+
+**Note:** AndroidManifest.xml no longer contains version info (moved to build.gradle.kts in Phase 4.5.3)
 
 ---
 
@@ -409,71 +418,94 @@ logcat -c
 9. **Download & Install:** Test full build on device
 10. **Verify Logs:** Confirm feature works as expected
 
-### Adding New Java Class
+### Adding New Java/Kotlin Class
 
-1. Create file in `src/com/secretary/YourClass.java`
-2. Update `.github/workflows/build-and-release.yml`:
-   ```yaml
-   javac -source 8 -target 8 \
-     ...
-     src/com/secretary/YourClass.java \
-   ```
-3. Import in other classes: `import com.secretary.helloworld.YourClass;`
-4. Remember package name is `com.secretary.helloworld` (not just `com.secretary`)
+1. Create file in appropriate package (Clean Architecture):
+   - Presentation: `app/src/main/java/com/secretary/helloworld/features/[feature]/presentation/`
+   - Domain: `app/src/main/java/com/secretary/helloworld/features/[feature]/domain/`
+   - Data: `app/src/main/java/com/secretary/helloworld/features/[feature]/data/`
+   - Core: `app/src/main/java/com/secretary/helloworld/core/[subsystem]/`
+
+2. Gradle automatically compiles all files in `app/src/main/java/` - no workflow update needed!
+
+3. Import in other classes: `import com.secretary.helloworld.[package].YourClass`
+
+4. Package name is `com.secretary.helloworld` (legacy, but consistent)
 
 ### Adding New Layout Resource
 
-1. Create file in `res/layout/your_layout.xml`
-2. Update `.github/workflows/build-and-release.yml`:
-   ```yaml
-   $ANDROID_SDK_ROOT/build-tools/33.0.2/aapt2 compile \
-     ...
-     res/layout/your_layout.xml \
-     -o compiled_res/
+1. Create file in `app/src/main/res/layout/your_layout.xml`
+
+2. Gradle automatically compiles all resources - no workflow update needed!
+
+3. Reference in Java/Kotlin: `R.layout.your_layout`
+
+### Database Schema Changes (Phase 4.5.3+ with Room)
+
+1. Update entity class (e.g., `TaskEntity.kt`)
+   ```kotlin
+   @Entity(tableName = "tasks")
+   data class TaskEntity(
+       @ColumnInfo(name = "your_new_column") val yourNewColumn: String? = null
+   )
    ```
-3. Reference in Java: `R.layout.your_layout`
 
-### Database Schema Changes
+2. Increment database version in `AppDatabase.kt`
+   ```kotlin
+   @Database(entities = [TaskEntity::class], version = NEW_VERSION)
+   ```
 
-1. Increment `DATABASE_VERSION` in `DatabaseConstants.java`
-2. Add migration logic in `TaskDatabaseHelper.onUpgrade()`:
-   ```java
-   if (oldVersion < NEW_VERSION) {
-       db.execSQL("ALTER TABLE tasks ADD COLUMN your_column TYPE");
-       // ... migration logic
+3. Add Room migration
+   ```kotlin
+   val MIGRATION_4_5 = object : Migration(4, 5) {
+       override fun migrate(database: SupportSQLiteDatabase) {
+           database.execSQL("ALTER TABLE tasks ADD COLUMN your_new_column TEXT")
+       }
    }
    ```
-3. Update table creation SQL
-4. Test with existing database (app should migrate automatically)
+
+4. Test with existing database (migration runs automatically)
 
 ---
 
 ## Code Style & Conventions
 
 ### Current Standards
-- **Language:** Java (Kotlin migration planned for future)
+- **Language:** Kotlin 1.9.22 (migrating from Java in Phase 4.5.3, hybrid codebase)
+- **Architecture:** Clean Architecture (Presentation → Domain → Data)
 - **Comments:** Primarily English (some legacy German comments)
-- **Logging:** Always use `AppLogger.getInstance(context).info/debug/error(TAG, message)`
-- **Package:** `com.secretary.helloworld` (legacy name, consider migrating to `com.secretary`)
+- **Logging:** Always use `AppLogger.info/debug/error(TAG, message)` (Kotlin object)
+- **Package:** `com.secretary.helloworld` (legacy name, but consistent)
 
 ### Logging Best Practices
-```java
-private static final String TAG = "YourClassName";
-private AppLogger logger;
 
-// In onCreate() or constructor:
-logger = AppLogger.getInstance(context);
+**Kotlin (preferred):**
+```kotlin
+companion object {
+    private const val TAG = "YourClassName"
+}
 
-// Usage:
-logger.info(TAG, "Operation started");
-logger.debug(TAG, "Variable value: " + value);
-logger.error(TAG, "Operation failed", exception);
+// Usage (AppLogger is a singleton object):
+AppLogger.info(TAG, "Operation started")
+AppLogger.debug(TAG, "Variable value: $value")
+AppLogger.error(TAG, "Operation failed", exception)
 ```
 
-### Java Compilation
-- **Source/Target:** Java 8 (for compatibility)
-- **Classpath:** `$ANDROID_SDK_ROOT/platforms/android-33/android.jar`
-- **No external libraries** (limited by Termux/aapt2 build process)
+**Java (legacy):**
+```java
+private static final String TAG = "YourClassName";
+
+// Usage:
+AppLogger.getInstance(context).info(TAG, "Operation started");
+AppLogger.getInstance(context).debug(TAG, "Variable value: " + value);
+AppLogger.getInstance(context).error(TAG, "Operation failed", exception);
+```
+
+### Kotlin/Java Compilation
+- **Kotlin:** 1.9.22 with JVM target 17
+- **Java:** Source/Target 17 (for Gradle compatibility)
+- **Build System:** Gradle 8.2 with Android Gradle Plugin 8.2.2
+- **External Libraries:** Now supported! (Room, Coroutines, AndroidX, etc.)
 
 ---
 
@@ -688,9 +720,10 @@ logcat | grep Secretary
 ### File Paths
 
 - **Project:** `~/AI-Secretary-latest/`
-- **Source:** `~/AI-Secretary-latest/src/com/secretary/`
-- **Resources:** `~/AI-Secretary-latest/res/`
-- **Manifest:** `~/AI-Secretary-latest/AndroidManifest.xml`
+- **Source:** `~/AI-Secretary-latest/app/src/main/java/com/secretary/helloworld/`
+- **Resources:** `~/AI-Secretary-latest/app/src/main/res/`
+- **Manifest:** `~/AI-Secretary-latest/app/src/main/AndroidManifest.xml`
+- **Build Config:** `~/AI-Secretary-latest/app/build.gradle.kts`
 - **GitHub Token:** `~/.github_token`
 - **Downloads:** `~/storage/downloads/`
 
@@ -731,5 +764,5 @@ logcat | grep Secretary
 ---
 
 **Last Updated:** 2025-11-13
-**Current Version:** v0.3.25 (Build 325)
-**Status:** Phase 4 in progress - Motivation & Statistics (30% complete)
+**Current Version:** v0.3.28 (Build 328)
+**Status:** Phase 4.5.3 in progress - Kotlin Migration (Wave 1 complete - 14%)

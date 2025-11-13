@@ -1,8 +1,8 @@
 # AI Secretary - Development Roadmap
 
-**Current Version:** v0.3.27 (Build 327) - Refactoring Branch
+**Current Version:** v0.3.28 (Build 328) - Kotlin Migration in Progress
 **Last Updated:** 2025-11-13
-**Status:** Phase 4 (Motivation & Statistics) - RESUMED (30% complete)
+**Status:** Phase 4.5.3 (Kotlin Migration + Gradle Setup) - Wave 1 Complete (14% of phase)
 
 **Update when**: Completing phases, adding TODOs, changing priorities, finishing major features.
 
@@ -520,51 +520,32 @@ javac -source 8 -target 8 \
 ### Active TODOs
 
 **CRITICAL:**
-- [ ] Setup Gradle build configuration
+- [x] Setup Gradle build configuration ✅ COMPLETE (2025-11-13)
   - GOAL: Replace manual aapt2/javac/d8 build with Gradle
-  - Location: Create `build.gradle.kts` in project root
-  - Configuration:
-    - Android Gradle Plugin 8.2.0+
-    - Kotlin 1.9.20+ (latest stable)
-    - compileSdk 35, minSdk 28, targetSdk 35
-    - buildToolsVersion "35.0.0"
-  - Files to create:
-    - `build.gradle.kts` (project root)
-    - `app/build.gradle.kts` (app module)
-    - `settings.gradle.kts`
-    - `gradle.properties`
-    - `gradle/wrapper/gradle-wrapper.properties`
-- [ ] Configure GitHub Actions for Gradle
-  - GOAL: Automated Gradle builds on push
-  - Location: `.github/workflows/build-and-release.yml`
-  - Changes:
-    - Replace manual compilation with `./gradlew assembleRelease`
-    - Add JDK 21 setup (required for AGP 8.2+)
-    - Add Gradle caching (~/.gradle/caches)
-    - Keep signing and release steps
-  - Action: Use `gradle/actions/setup-gradle@v3`
-- [ ] Move source to Gradle structure
-  - GOAL: Standard Android project layout
-  - Current: `src/com/secretary/` (Java package-based)
-  - Target: `app/src/main/java/com/secretary/` (Gradle standard)
-  - Also move: `res/` → `app/src/main/res/`
-  - Keep: `AndroidManifest.xml` → `app/src/main/AndroidManifest.xml`
+  - Created: `build.gradle.kts`, `app/build.gradle.kts`, `settings.gradle.kts`, `gradle.properties`
+  - Configuration: AGP 8.2.2, Kotlin 1.9.22, compileSdk 35
+  - Result: Gradle wrapper functional, build time ~4min
+- [x] Configure GitHub Actions for Gradle ✅ COMPLETE (2025-11-13)
+  - Updated: `.github/workflows/build-and-release.yml`
+  - Changes: JDK 21 setup, gradle/actions/setup-gradle@v3, assembleRelease
+  - Result: Automated builds working, v0.3.28 released successfully
+- [x] Move source to Gradle structure ✅ COMPLETE (2025-11-13)
+  - Moved: `src/` → `app/src/main/java/`
+  - Moved: `res/` → `app/src/main/res/`
+  - Moved: `AndroidManifest.xml` → `app/src/main/AndroidManifest.xml`
+  - Result: Standard Gradle Android project layout
 
 **HIGH:**
-- [ ] Convert small utility files first (Wave 1: 3 files, ~235 lines)
+- [x] Convert small utility files first (Wave 1: 3 files, ~235 lines) ✅ COMPLETE (2025-11-13)
   - GOAL: Practice conversion on simple files
-  - Order:
-    1. `DatabaseConstants.java` (48 lines) → `DatabaseConstants.kt`
-       - Object instead of class with static fields
-       - Const val instead of public static final
-    2. `AppLogger.java` (87 lines) → `AppLogger.kt`
-       - Convert to Kotlin singleton
-       - Use lazy delegate for instance
-    3. `CompletionEntity.java` (100 lines) → `CompletionEntity.kt`
-       - Data class with Room annotations
-       - Reference for future Room files
-  - Method: Use IDE auto-convert, then refactor to idiomatic Kotlin
-  - Verify: Build succeeds after each file
+  - Completed:
+    1. `DatabaseConstants.java` (48 lines) → `DatabaseConstants.kt` (46 lines) ✅
+       - object with const val (idiomatic Kotlin)
+    2. `AppLogger.java` (87 lines) → `AppLogger.kt` (122 lines) ✅
+       - Singleton object pattern, @JvmStatic for Java interop
+    3. `CompletionEntity.java` (100 lines) → `CompletionEntity.kt` (50 lines) ✅
+       - data class with Room annotations (-50% lines!)
+  - Result: 235 lines Java → 218 lines Kotlin (-7%), successful build
 - [ ] Convert domain models (Wave 2: 2 files, ~397 lines)
   - GOAL: Core data structures to Kotlin
   - Order:
@@ -1098,6 +1079,26 @@ src/com/secretary/shared/database/TaskDatabase.java (100 lines)
 - GitHub Actions ensures build always works
 - Existing Java code kept until Kotlin version verified
 - No deadline pressure (personal project, no users)
+
+### Progress Update (2025-11-13)
+
+**Completed (14% of Phase 4.5.3):**
+- ✅ Gradle Build System fully functional
+- ✅ GitHub Actions workflow migrated to Gradle
+- ✅ Wave 1: 3 files converted (DatabaseConstants, AppLogger, CompletionEntity)
+- ✅ First successful Kotlin+Gradle build (v0.3.28)
+- ✅ Build time: ~4 minutes on GitHub Actions
+
+**Status:**
+- 3 of 18 files converted (17%)
+- 218 of ~3,500 target Kotlin lines (6%)
+- Wave 2-7 pending
+
+**Next Steps:**
+- Wave 2: Domain Models (Task, TaskStatistics) - 397 lines
+- Continue incremental conversion following plan
+
+**Actual Time So Far:** ~4 hours (Gradle setup + Wave 1)
 
 ---
 
