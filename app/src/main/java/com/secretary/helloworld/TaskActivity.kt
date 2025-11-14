@@ -72,7 +72,7 @@ class TaskActivity : Activity(), TaskListAdapter.TaskActionListener {
             // Find views
             taskListView = findViewById(R.id.taskListView)
             emptyTasksText = findViewById(R.id.emptyTasksText)
-            statisticsText = findViewById(R.id.statisticsText)
+            statisticsText = findViewById(R.id.taskStatisticsText)
             addTaskButton = findViewById(R.id.addTaskButton)
             searchEditText = findViewById(R.id.searchEditText)
             statusFilterSpinner = findViewById(R.id.statusFilterSpinner)
