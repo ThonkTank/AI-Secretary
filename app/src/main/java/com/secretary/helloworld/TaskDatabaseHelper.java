@@ -2,6 +2,7 @@ package com.secretary.helloworld;
 
 import com.secretary.helloworld.core.logging.AppLogger;
 import com.secretary.helloworld.shared.database.DatabaseConstants;
+import com.secretary.helloworld.features.tasks.domain.service.RecurrenceService;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -22,6 +23,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     private AppLogger logger;
     private TaskStatistics statistics;
+    private RecurrenceService recurrenceService;
 
     // SQL statement to create tasks table
     private static final String CREATE_TABLE_TASKS =
@@ -61,7 +63,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
         this.logger = AppLogger.getInstance(context);
         this.statistics = new TaskStatistics(this.getReadableDatabase());
-        logger.info(TAG, "TaskDatabaseHelper initialized with TaskStatistics");
+        this.recurrenceService = new RecurrenceService();
+        logger.info(TAG, "TaskDatabaseHelper initialized with TaskStatistics and RecurrenceService");
     }
 
     @Override
@@ -320,66 +323,35 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
 
     /**
      * Handle completion of a recurring task
+     * NOW DELEGATES TO RecurrenceService
      */
     private void handleRecurringTaskCompletion(SQLiteDatabase db, Task task) {
         long now = System.currentTimeMillis();
 
+        // Delegate to RecurrenceService for business logic
+        Task updatedTask = recurrenceService.handleRecurringCompletion(task, now);
+
+        // Persist the updated task state to database
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_IS_COMPLETED, updatedTask.isCompleted() ? 1 : 0);
+        values.put(COLUMN_LAST_COMPLETED_DATE, updatedTask.getLastCompletedDate());
+        values.put(COLUMN_DUE_DATE, updatedTask.getDueDate());
+        values.put(COLUMN_COMPLETIONS_THIS_PERIOD, updatedTask.getCompletionsThisPeriod());
+        values.put(COLUMN_CURRENT_PERIOD_START, updatedTask.getCurrentPeriodStart());
+
+        db.update(TABLE_TASKS, values,
+                 COLUMN_ID + " = ?",
+                 new String[]{String.valueOf(task.getId())});
+
+        // Log the recurrence action
         if (task.getRecurrenceType() == Task.RECURRENCE_INTERVAL) {
-            // INTERVAL type: Mark as completed and set next due date
-            ContentValues values = new ContentValues();
-            values.put(COLUMN_IS_COMPLETED, 1); // Keep as completed
-            values.put(COLUMN_LAST_COMPLETED_DATE, now);
-
-            // Calculate next due date based on current time
-            long nextDueDate = calculateNextDueDate(now,
-                                                   task.getRecurrenceAmount(),
-                                                   task.getRecurrenceUnit());
-            values.put(COLUMN_DUE_DATE, nextDueDate);
-
-            db.update(TABLE_TASKS, values,
-                     COLUMN_ID + " = ?",
-                     new String[]{String.valueOf(task.getId())});
-
             logger.info(TAG, "Interval recurring task completed, next due: " +
-                       new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(nextDueDate)) +
+                       new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(updatedTask.getDueDate())) +
                        " - " + task.getTitle());
-
         } else if (task.getRecurrenceType() == Task.RECURRENCE_FREQUENCY) {
-            // FREQUENCY type: Track completions within period
-            int completions = task.getCompletionsThisPeriod();
-            long periodStart = task.getCurrentPeriodStart();
-
-            // Check if we're still in the same period
-            if (!isInCurrentPeriod(periodStart, task.getRecurrenceUnit(), now)) {
-                // New period - reset counters
-                completions = 0;
-                periodStart = getPeriodStart(now, task.getRecurrenceUnit());
-            }
-
-            completions++; // Increment completion count
-
-            ContentValues values = new ContentValues();
-
-            if (completions >= task.getRecurrenceAmount()) {
-                // Target reached for this period - mark as completed
-                values.put(COLUMN_IS_COMPLETED, 1);
-                values.put(COLUMN_COMPLETIONS_THIS_PERIOD, completions);
-                logger.info(TAG, "Frequency task completed for period: " + task.getTitle() +
-                          " (" + completions + "/" + task.getRecurrenceAmount() + ")");
-            } else {
-                // Not yet reached target - keep uncompleted
-                values.put(COLUMN_IS_COMPLETED, 0);
-                values.put(COLUMN_COMPLETIONS_THIS_PERIOD, completions);
-                logger.info(TAG, "Frequency task progress: " + task.getTitle() +
-                          " (" + completions + "/" + task.getRecurrenceAmount() + ")");
-            }
-
-            values.put(COLUMN_CURRENT_PERIOD_START, periodStart);
-            values.put(COLUMN_LAST_COMPLETED_DATE, now);
-
-            db.update(TABLE_TASKS, values,
-                     COLUMN_ID + " = ?",
-                     new String[]{String.valueOf(task.getId())});
+            logger.info(TAG, "Frequency task progress: " + task.getTitle() +
+                       " (" + updatedTask.getCompletionsThisPeriod() + "/" + task.getRecurrenceAmount() + ")" +
+                       (updatedTask.isCompleted() ? " - Target reached!" : ""));
         }
     }
 
@@ -438,175 +410,46 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         return task;
     }
 
-    /**
-     * Calculate the next due date based on recurrence settings
-     */
-    private long calculateNextDueDate(long currentDueDate, int amount, int unit) {
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.setTimeInMillis(currentDueDate);
-
-        switch (unit) {
-            case Task.UNIT_DAY:
-                cal.add(java.util.Calendar.DAY_OF_MONTH, amount);
-                break;
-            case Task.UNIT_WEEK:
-                cal.add(java.util.Calendar.WEEK_OF_YEAR, amount);
-                break;
-            case Task.UNIT_MONTH:
-                cal.add(java.util.Calendar.MONTH, amount);
-                break;
-            case Task.UNIT_YEAR:
-                cal.add(java.util.Calendar.YEAR, amount);
-                break;
-        }
-
-        return cal.getTimeInMillis();
-    }
-
-    /**
-     * Check if a timestamp is in the current period
-     */
-    private boolean isInCurrentPeriod(long periodStart, int unit, long now) {
-        if (periodStart == 0) return false;
-
-        java.util.Calendar periodCal = java.util.Calendar.getInstance();
-        periodCal.setTimeInMillis(periodStart);
-
-        java.util.Calendar nowCal = java.util.Calendar.getInstance();
-        nowCal.setTimeInMillis(now);
-
-        switch (unit) {
-            case Task.UNIT_DAY:
-                return periodCal.get(java.util.Calendar.YEAR) == nowCal.get(java.util.Calendar.YEAR) &&
-                       periodCal.get(java.util.Calendar.DAY_OF_YEAR) == nowCal.get(java.util.Calendar.DAY_OF_YEAR);
-
-            case Task.UNIT_WEEK:
-                return periodCal.get(java.util.Calendar.YEAR) == nowCal.get(java.util.Calendar.YEAR) &&
-                       periodCal.get(java.util.Calendar.WEEK_OF_YEAR) == nowCal.get(java.util.Calendar.WEEK_OF_YEAR);
-
-            case Task.UNIT_MONTH:
-                return periodCal.get(java.util.Calendar.YEAR) == nowCal.get(java.util.Calendar.YEAR) &&
-                       periodCal.get(java.util.Calendar.MONTH) == nowCal.get(java.util.Calendar.MONTH);
-
-            case Task.UNIT_YEAR:
-                return periodCal.get(java.util.Calendar.YEAR) == nowCal.get(java.util.Calendar.YEAR);
-
-            default:
-                return false;
-        }
-    }
-
-    /**
-     * Get the start of the current period
-     */
-    private long getPeriodStart(long timestamp, int unit) {
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.setTimeInMillis(timestamp);
-
-        // Reset to start of period
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        cal.set(java.util.Calendar.MINUTE, 0);
-        cal.set(java.util.Calendar.SECOND, 0);
-        cal.set(java.util.Calendar.MILLISECOND, 0);
-
-        switch (unit) {
-            case Task.UNIT_DAY:
-                // Already at start of day
-                break;
-
-            case Task.UNIT_WEEK:
-                cal.set(java.util.Calendar.DAY_OF_WEEK, cal.getFirstDayOfWeek());
-                break;
-
-            case Task.UNIT_MONTH:
-                cal.set(java.util.Calendar.DAY_OF_MONTH, 1);
-                break;
-
-            case Task.UNIT_YEAR:
-                cal.set(java.util.Calendar.DAY_OF_YEAR, 1);
-                break;
-        }
-
-        return cal.getTimeInMillis();
-    }
+    // Date/period calculation methods removed - now in RecurrenceService
+    // (calculateNextDueDate, isInCurrentPeriod, getPeriodStart)
 
     /**
      * Reset recurring tasks that are due to reappear
+     * NOW DELEGATES TO RecurrenceService
      */
     private void resetDueRecurringTasks() {
         long now = System.currentTimeMillis();
-        SQLiteDatabase db = this.getWritableDatabase();
+        List<Task> allTasks = getAllTasks();
 
-        // Query for completed interval recurring tasks
-        String query = "SELECT * FROM " + TABLE_TASKS +
-                      " WHERE " + COLUMN_IS_COMPLETED + " = 1" +
-                      " AND " + COLUMN_RECURRENCE_TYPE + " = " + Task.RECURRENCE_INTERVAL +
-                      " AND " + COLUMN_DUE_DATE + " > 0" +
-                      " AND " + COLUMN_DUE_DATE + " <= " + now;
+        // Delegate to RecurrenceService to determine which tasks need reset
+        java.util.Map<Long, Task> tasksToUpdate = recurrenceService.getTasksNeedingReset(allTasks, now);
 
-        Cursor cursor = db.rawQuery(query, null);
+        if (!tasksToUpdate.isEmpty()) {
+            SQLiteDatabase db = this.getWritableDatabase();
 
-        if (cursor.moveToFirst()) {
-            do {
-                long taskId = cursor.getLong(cursor.getColumnIndex(COLUMN_ID));
-                String taskTitle = cursor.getString(cursor.getColumnIndex(COLUMN_TITLE));
+            for (java.util.Map.Entry<Long, Task> entry : tasksToUpdate.entrySet()) {
+                Task updatedTask = entry.getValue();
 
-                // Reset task to uncompleted
+                // Persist the reset state to database
                 ContentValues values = new ContentValues();
-                values.put(COLUMN_IS_COMPLETED, 0);
-                values.put(COLUMN_DUE_DATE, 0); // Clear due date until next completion
+                values.put(COLUMN_IS_COMPLETED, updatedTask.isCompleted() ? 1 : 0);
+                values.put(COLUMN_DUE_DATE, updatedTask.getDueDate());
+                values.put(COLUMN_COMPLETIONS_THIS_PERIOD, updatedTask.getCompletionsThisPeriod());
+                values.put(COLUMN_CURRENT_PERIOD_START, updatedTask.getCurrentPeriodStart());
 
                 db.update(TABLE_TASKS, values,
                          COLUMN_ID + " = ?",
-                         new String[]{String.valueOf(taskId)});
+                         new String[]{String.valueOf(updatedTask.getId())});
 
-                logger.info(TAG, "Recurring task reset (due): " + taskTitle);
-            } while (cursor.moveToNext());
+                logger.info(TAG, "Recurring task reset: " + updatedTask.getTitle() +
+                           " (type: " + (updatedTask.getRecurrenceType() == Task.RECURRENCE_INTERVAL ? "INTERVAL" : "FREQUENCY") + ")");
+            }
+
+            db.close();
         }
-        cursor.close();
-
-        // Also check frequency tasks for period resets
-        checkFrequencyTaskPeriods(db, now);
-
-        db.close();
     }
 
-    /**
-     * Check and reset frequency tasks if their period has expired
-     */
-    private void checkFrequencyTaskPeriods(SQLiteDatabase db, long now) {
-        String query = "SELECT * FROM " + TABLE_TASKS +
-                      " WHERE " + COLUMN_RECURRENCE_TYPE + " = " + Task.RECURRENCE_FREQUENCY;
-
-        Cursor cursor = db.rawQuery(query, null);
-
-        if (cursor.moveToFirst()) {
-            do {
-                long taskId = cursor.getLong(cursor.getColumnIndex(COLUMN_ID));
-                String taskTitle = cursor.getString(cursor.getColumnIndex(COLUMN_TITLE));
-                int unit = cursor.getInt(cursor.getColumnIndex(COLUMN_RECURRENCE_UNIT));
-                long periodStart = cursor.getLong(cursor.getColumnIndex(COLUMN_CURRENT_PERIOD_START));
-                int completions = cursor.getInt(cursor.getColumnIndex(COLUMN_COMPLETIONS_THIS_PERIOD));
-
-                // Check if we're in a new period
-                if (periodStart > 0 && !isInCurrentPeriod(periodStart, unit, now)) {
-                    // New period - reset counters
-                    ContentValues values = new ContentValues();
-                    values.put(COLUMN_COMPLETIONS_THIS_PERIOD, 0);
-                    values.put(COLUMN_CURRENT_PERIOD_START, getPeriodStart(now, unit));
-                    values.put(COLUMN_IS_COMPLETED, 0); // Reset to uncompleted for new period
-
-                    db.update(TABLE_TASKS, values,
-                             COLUMN_ID + " = ?",
-                             new String[]{String.valueOf(taskId)});
-
-                    logger.info(TAG, "Frequency task period reset: " + taskTitle +
-                               " (had " + completions + " completions last period)");
-                }
-            } while (cursor.moveToNext());
-        }
-        cursor.close();
-    }
+    // checkFrequencyTaskPeriods removed - now handled by RecurrenceService.getTasksNeedingReset()
 
     /**
      * Get task count
