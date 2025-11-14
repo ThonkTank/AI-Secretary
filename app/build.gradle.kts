@@ -5,15 +5,15 @@ plugins {
 }
 
 android {
-    namespace = "com.secretary.helloworld"
+    namespace = "com.secretary"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.secretary.helloworld"
+        applicationId = "com.secretary"
         minSdk = 28
         targetSdk = 35
-        versionCode = 340
-        versionName = "0.3.40"
+        versionCode = 341
+        versionName = "0.3.41"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
