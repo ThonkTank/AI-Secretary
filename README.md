@@ -2,7 +2,7 @@
 
 A native Android task management application with advanced recurring task support, developed entirely in Termux on Android.
 
-**Current Version:** v0.3.41 (Build 341)
+**Current Version:** v0.3.43 (Build 343)
 **Status:** Phase 4.5.4 (Package Renaming) COMPLETE ✅ | Package simplified from com.secretary.helloworld → com.secretary
 **Repository:** https://github.com/ThonkTank/AI-Secretary
 
@@ -350,5 +350,5 @@ Personal project - no formal license. Use at your own risk.
 ---
 
 **Last Updated:** 2025-11-14
-**Current Version:** v0.3.42 (Build 342)
+**Current Version:** v0.3.43 (Build 343)
 **Status:** Active development - Phase 4.5.4 (Package Renaming) COMPLETE ✅
