@@ -1,8 +1,8 @@
 # AI Secretary - Development Roadmap
 
-**Current Version:** v0.3.35 (Build 335) - Kotlin Migration in Progress
-**Last Updated:** 2025-11-13
-**Status:** Phase 4.5.3 (Kotlin Migration + Gradle Setup) - Wave 1,4,5,6,7,8 Complete (89% of files)
+**Current Version:** v0.3.36 (Build 336) - Kotlin Migration in Progress
+**Last Updated:** 2025-11-14
+**Status:** Phase 4.5.3 (Kotlin Migration + Gradle Setup) - Wave 1,4,5,6,7,8,9 Complete (94% of files)
 
 **Update when**: Completing phases, adding TODOs, changing priorities, finishing major features.
 
@@ -1114,32 +1114,41 @@ src/com/secretary/shared/database/TaskDatabase.java (100 lines)
 - Existing Java code kept until Kotlin version verified
 - No deadline pressure (personal project, no users)
 
-### Progress Update (2025-11-13)
+### Progress Update (2025-11-14)
 
-**Completed (28% of Phase 4.5.3):**
+**Completed (94% of Phase 4.5.3):**
 - ✅ Gradle Build System fully functional
 - ✅ GitHub Actions workflow migrated to Gradle
 - ✅ Wave 1: 3 files converted (DatabaseConstants, AppLogger, CompletionEntity) - 235 → 218 lines
-- ✅ Wave 2: 2 files converted (Task, TaskStatistics) - 453 → 305 lines
-- ✅ Build time: ~4 minutes on GitHub Actions
-- ✅ Version: v0.3.29 (Build 329)
+- ✅ Wave 4: 2 files converted (UpdateChecker, UpdateInstaller) - 274 → 256 lines
+- ✅ Wave 5: 3 files converted (TaskEntity, TaskDao, TaskDatabase) - 464 → 257 lines
+- ✅ Wave 6: 3 files converted (TaskFilterManager, TaskListAdapter, TaskDialogHelper) - 745 → 768 lines
+- ✅ Wave 7: 1 file converted (MainActivity) - 277 → 282 lines
+- ✅ Wave 8: 1 file converted (TaskDialogHelper - again) - 368 → 404 lines
+- ✅ Wave 9: 1 file converted (TaskActivity) - 393 → 385 lines
+- ✅ Build time: ~3 minutes on GitHub Actions
+- ✅ Version: v0.3.36 (Build 336)
 
 **Status:**
-- 5 of 18 files converted (28%)
-- 523 of ~3,500 target Kotlin lines (15%)
-- Wave 3-7 pending (13 files remaining)
+- 17 of 18 files converted (94%)
+- ~2,570 of ~3,500 target Kotlin lines (73%)
+- Wave 10 pending (1 file remaining: TaskDatabaseHelper - 808 lines)
 
 **Wave Results:**
 - Wave 1: -7% lines (235 → 218)
-- Wave 2: -33% lines (453 → 305)
-- **Combined: -26% reduction** (688 Java → 523 Kotlin)
+- Wave 4: -7% lines (274 → 256)
+- Wave 5: -45% lines (464 → 257)
+- Wave 6: +3% lines (745 → 768)
+- Wave 7: +2% lines (277 → 282)
+- Wave 8: +10% lines (368 → 404)
+- Wave 9: -2% lines (393 → 385)
+- **Combined: -14% reduction** (2,756 Java → 2,370 Kotlin)
 
 **Next Steps:**
-- Wave 3: Logging System (HttpLogServer) - 145 lines
-- Wave 4: Update System (UpdateChecker, UpdateInstaller) - 274 lines
-- Continue incremental conversion following plan
+- Wave 10: TaskDatabaseHelper (808 lines - largest file) - final conversion
+- After Wave 10: Testing, documentation, and Phase 4.5.3 completion
 
-**Actual Time So Far:** ~6 hours (Gradle setup + Wave 1 + Wave 2)
+**Actual Time So Far:** ~12 hours (Gradle setup + Waves 1,4-9)
 
 ---
 
