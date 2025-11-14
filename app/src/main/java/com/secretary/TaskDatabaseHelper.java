@@ -12,7 +12,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.secretary.helloworld.shared.database.DatabaseConstants.*;
+import static com.secretary.shared.database.DatabaseConstants.*;
 
 /**
  * Database helper for Task management.
