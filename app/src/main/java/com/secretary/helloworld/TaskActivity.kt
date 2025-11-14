@@ -213,8 +213,8 @@ class TaskActivity : Activity(), TaskListAdapter.TaskActionListener {
      */
     private fun applyFilters() {
         // Configure filter manager based on current UI state
-        filterManager.setSearchQuery(searchQuery)
-        filterManager.setCategoryFilter(categoryFilter)
+        filterManager.searchQuery = searchQuery
+        filterManager.categoryFilter = categoryFilter
 
         // Convert status filter to enum
         val completionFilter = when (statusFilter) {
@@ -222,12 +222,12 @@ class TaskActivity : Activity(), TaskListAdapter.TaskActionListener {
             2 -> TaskFilterManager.CompletionFilter.COMPLETED_ONLY
             else -> TaskFilterManager.CompletionFilter.ALL
         }
-        filterManager.setCompletionFilter(completionFilter)
+        filterManager.completionFilter = completionFilter
 
         // Convert sort option to enum
         val sortOptions = TaskFilterManager.SortOption.values()
         if (sortOption in sortOptions.indices) {
-            filterManager.setSortOption(sortOptions[sortOption])
+            filterManager.sortOption = sortOptions[sortOption]
         }
 
         // Apply filters and sorting
