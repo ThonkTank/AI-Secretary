@@ -1,9 +1,9 @@
-package com.secretary.helloworld;
+package com.secretary;
 
-import com.secretary.helloworld.core.logging.AppLogger;
-import com.secretary.helloworld.shared.database.DatabaseConstants;
-import com.secretary.helloworld.features.tasks.domain.service.RecurrenceService;
-import com.secretary.helloworld.features.tasks.domain.service.StreakService;
+import com.secretary.core.logging.AppLogger;
+import com.secretary.shared.database.DatabaseConstants;
+import com.secretary.features.tasks.domain.service.RecurrenceService;
+import com.secretary.features.tasks.domain.service.StreakService;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
