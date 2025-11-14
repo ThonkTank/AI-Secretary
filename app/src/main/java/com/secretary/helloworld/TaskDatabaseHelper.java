@@ -3,6 +3,7 @@ package com.secretary.helloworld;
 import com.secretary.helloworld.core.logging.AppLogger;
 import com.secretary.helloworld.shared.database.DatabaseConstants;
 import com.secretary.helloworld.features.tasks.domain.service.RecurrenceService;
+import com.secretary.helloworld.features.tasks.domain.service.StreakService;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -24,6 +25,7 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
     private AppLogger logger;
     private TaskStatistics statistics;
     private RecurrenceService recurrenceService;
+    private StreakService streakService;
 
     // SQL statement to create tasks table
     private static final String CREATE_TABLE_TASKS =
@@ -64,7 +66,8 @@ public class TaskDatabaseHelper extends SQLiteOpenHelper {
         this.logger = AppLogger.getInstance(context);
         this.statistics = new TaskStatistics(this.getReadableDatabase());
         this.recurrenceService = new RecurrenceService();
-        logger.info(TAG, "TaskDatabaseHelper initialized with TaskStatistics and RecurrenceService");
+        this.streakService = new StreakService();
+        logger.info(TAG, "TaskDatabaseHelper initialized with TaskStatistics, RecurrenceService, and StreakService");
     }
 
     @Override
