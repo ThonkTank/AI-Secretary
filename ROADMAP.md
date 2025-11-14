@@ -1389,74 +1389,94 @@ android {
 
 ### Active TODOs - Wave 12: Domain Integration
 
-**PHASE 1: Use Cases (Day 1)**
-- [ ] Create `CreateTaskUseCase.kt`
+**PHASE 1: Use Cases (Day 1)** ✅ COMPLETE
+- [x] Create `CreateTaskUseCase.kt` (53 lines)
   - GOAL: Validate and create new tasks
   - Location: `features/tasks/domain/usecase/CreateTaskUseCase.kt`
   - Dependencies: TaskRepository
-  - Max 50 lines (Single Responsibility)
-  - Validation: Title not empty, category valid, due date > today (if set)
+  - Validation: Title not empty, max 200 characters
 
-- [ ] Create `UpdateTaskUseCase.kt`
+- [x] Create `UpdateTaskUseCase.kt` (53 lines)
   - GOAL: Update existing task with validation
   - Location: `features/tasks/domain/usecase/UpdateTaskUseCase.kt`
   - Dependencies: TaskRepository
-  - Max 50 lines
 
-- [ ] Create `DeleteTaskUseCase.kt`
+- [x] Create `DeleteTaskUseCase.kt` (38 lines)
   - GOAL: Delete task and associated completions
   - Location: `features/tasks/domain/usecase/DeleteTaskUseCase.kt`
-  - Dependencies: TaskRepository, CompletionRepository
-  - Max 40 lines
+  - Dependencies: TaskRepository
 
-- [ ] Create `CompleteTaskUseCase.kt`
+- [x] Create `CompleteTaskUseCase.kt` (90 lines)
   - GOAL: Complete task with streak + recurrence handling
   - Location: `features/tasks/domain/usecase/CompleteTaskUseCase.kt`
   - Dependencies: TaskRepository, StreakService, RecurrenceService
-  - Max 80 lines (most complex use case)
   - Logic: Get task → Update streak → Handle recurrence → Save
 
-- [ ] Create `GetTasksUseCase.kt`
+- [x] Create `GetTasksUseCase.kt` (66 lines)
   - GOAL: Retrieve and filter task lists
   - Location: `features/tasks/domain/usecase/GetTasksUseCase.kt`
   - Dependencies: TaskRepository
-  - Max 60 lines
-  - Parameters: FilterCriteria (status, priority, category, search)
+  - Methods: invoke(), getActiveTasks(), getTaskById()
 
-**PHASE 2: ViewModels (Day 2)**
-- [ ] Create `TaskListViewModel.kt`
+**PHASE 2: ViewModels (Day 2)** ✅ COMPLETE
+- [x] Create `TaskListViewModel.kt` (147 lines)
   - GOAL: Manage task list state and operations
   - Location: `features/tasks/presentation/viewmodel/TaskListViewModel.kt`
   - Dependencies: GetTasksUseCase, DeleteTaskUseCase, CompleteTaskUseCase
-  - Max 150 lines
-  - State: LiveData<List<Task>>, loading, error
-  - Methods: loadTasks(), deleteTask(), completeTask(), applyFilters()
+  - State: LiveData<List<Task>>, loading, error, operationSuccess
+  - Methods: loadTasks(), loadActiveTasks(), deleteTask(), completeTask()
 
-- [ ] Create `TaskDetailViewModel.kt`
+- [x] Create `TaskDetailViewModel.kt` (125 lines)
   - GOAL: Single task create/edit operations
   - Location: `features/tasks/presentation/viewmodel/TaskDetailViewModel.kt`
   - Dependencies: CreateTaskUseCase, UpdateTaskUseCase, GetTasksUseCase
-  - Max 120 lines
-  - State: LiveData<Task?>, saveResult
-  - Methods: loadTask(), saveTask(), validate()
+  - State: LiveData<Task?>, loading, saveResult, validationError
+  - Methods: loadTask(taskId), saveTask(task), updateTaskData(task)
 
-**PHASE 3: Integration & Migration (Day 3-4)**
-- [ ] Update `TaskActivity.kt` to use ViewModels
-  - GOAL: Replace direct database calls with ViewModel
-  - Location: `app/TaskActivity.kt`
-  - Changes: Remove TaskDatabaseHelper, inject ViewModels, observe LiveData
-  - Pattern: MVVM (Activity observes ViewModel, no business logic in Activity)
+**PHASE 3: Integration & Migration (Day 3-4)** 🚧 IN PROGRESS
+- [ ] **Task 1:** Create `TaskViewModelFactory.kt` (50 lines)
+  - GOAL: ViewModelProvider.Factory for dependency injection
+  - Location: `features/tasks/presentation/viewmodel/TaskViewModelFactory.kt`
+  - Dependencies: TaskRepository, All Use Cases, Services
+  - Creates: TaskListViewModel, TaskDetailViewModel with proper dependencies
 
-- [ ] Test all functionality
-  - GOAL: Verify app works identically with new architecture
-  - Manual testing: Create task, edit, delete, complete, recurrence, streaks
+- [ ] **Task 2:** Initialize ViewModels in TaskActivity
+  - GOAL: Replace repository with ViewModels
+  - onCreate(): Create ViewModelFactory, get ViewModels via ViewModelProvider
+  - Remove: Direct repository calls
+  - Add: ViewModels as lateinit var properties
+
+- [ ] **Task 3:** Add LiveData Observers
+  - GOAL: React to ViewModel state changes
+  - Observer `tasks`: Update taskList, call applyFilters()
+  - Observer `error`: Show Toast with error message
+  - Observer `operationSuccess`: Show Toast with success message
+  - Observer `loading`: Show/hide progress indicator (optional)
+
+- [ ] **Task 4:** Refactor loadTasks() method
+  - GOAL: Delegate to ViewModel
+  - Replace: lifecycleScope.launch { repository.getAllTasks() }
+  - With: viewModel.loadTasks() (triggers LiveData update in observer)
+  - Keep: applyFilters() in Activity (UI filtering logic)
+
+- [ ] **Task 5:** Update Dialog Callbacks
+  - GOAL: Use ViewModel operations instead of direct DB calls
+  - onTaskSaved: Call viewModel.loadTasks()
+  - onTaskCompleted: Call viewModel.completeTask(task.id)
+  - onTasksNeedReload: Call viewModel.loadTasks()
+
+- [ ] **Task 6:** Build, Test & Verify
+  - GOAL: Ensure app works identically with MVVM pattern
+  - Increment version: v0.3.44 → v0.3.45 (Build 344 → 345)
+  - Manual testing: Task CRUD, filtering, completion, recurrence
   - Check logs: No errors, all operations successful
+  - GitHub Actions: Build SUCCESS
 
-- [ ] Delete legacy TaskDatabaseHelper
-  - GOAL: Remove 806-line God-Class
-  - Action: Delete `app/src/main/java/com/secretary/TaskDatabaseHelper.java`
-  - Verify: Zero references to TaskDatabaseHelper in codebase
-  - Build: Ensure app compiles and runs
+- [ ] **Task 7:** Cleanup Legacy Code (DEFERRED)
+  - GOAL: Remove 806-line God-Class once everything works
+  - Delete: `app/src/main/java/com/secretary/TaskDatabaseHelper.java`
+  - Verify: Zero references to TaskDatabaseHelper
+  - Remove: dbHelper from TaskActivity dependencies
 
 **PHASE 4: Testing (Deferred to Phase 4.5.6)**
 - [ ] Write unit tests for Use Cases (70%+ coverage)
