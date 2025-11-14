@@ -2,7 +2,7 @@
 
 **Current Version:** v0.3.43 (Build 343) - Kotlin Migration + Package Renaming Complete
 **Last Updated:** 2025-11-14
-**Status:** Phase 4.5.3 (Kotlin Migration + Gradle Setup + Package Renaming) - COMPLETE ✅ | Package simplified: com.secretary.helloworld → com.secretary | Ready for Phase 4.5.4
+**Status:** Phase 4.5.4 (Package Renaming) - COMPLETE ✅ | Package simplified: com.secretary.helloworld → com.secretary | Ready for Phase 4.5.5 (Domain Layer Integration)
 
 **Update when**: Completing phases, adding TODOs, changing priorities, finishing major features.
 
@@ -1362,84 +1362,107 @@ android {
 
 ---
 
-## Phase 4.5.5: Domain Layer - Business Logic (4-5 days)
+## Phase 4.5.5: Domain Layer Integration (3-4 days) 🚧 IN PROGRESS
 
-**Goal:** Extract business logic from database and UI into pure domain layer
-**When:** After Room migration completes
-**Why:** Enables testability, single responsibility, clear boundaries
+**Goal:** Integrate domain infrastructure (created in Phase 4.5.3 Wave 10) into presentation layer
+**When:** NOW - After package renaming (Phase 4.5.4) completes
+**Why:** Replace legacy TaskDatabaseHelper with Clean Architecture components
 
-### Active TODOs
+### Current State (Phase 4.5.3 Wave 10 Output)
 
-**CRITICAL:**
-- [ ] Refactor TaskDatabaseHelper God-Class (806 lines → ~200)
-  - GOAL: Break down monolithic class into single-responsibility components
-  - Current: TaskDatabaseHelper does CRUD + Recurrence + Streaks + Period calculations
-  - Target: TaskDatabaseHelper → only data access (replaced by Room in 4.5.3)
-  - Business logic → Use Cases and Services (this phase)
+**✅ EXISTING Domain Infrastructure:**
+- `RecurrenceService.kt` (245 lines) - Business logic for task recurrence
+- `StreakService.kt` (118 lines) - Streak calculation logic
+- `TaskRepository.kt` + `TaskRepositoryImpl.kt` - Task data access abstraction
+- `CompletionRepository.kt` + `CompletionRepositoryImpl.kt` - Completion tracking
+- `TaskDatabase.kt` (Room) - Database class (NOT yet activated)
+- `TaskDao.kt` + `CompletionDao.kt` - Data access objects
 
-**HIGH:**
-- [ ] Create pure domain models
-  - GOAL: Data classes with NO Android dependencies
-  - Location: `features/tasks/domain/model/`
-  - Models:
-    - `Task.java` - Pure task data (no getRecurrenceString(), no Android formatting)
-    - `RecurrenceRule.java` - Encapsulate recurrence logic
-    - `Completion.java` - Completion record
-  - Principle: Can be tested without Android framework
-- [ ] Define Repository interfaces
-  - GOAL: Abstract data access, enable mocking
-  - Location: `features/tasks/domain/repository/TaskRepository.java`
-  - Methods: getAllTasks(), getTaskById(), insertTask(), updateTask(), deleteTask()
-  - Note: Interface in domain/, implementation in data/ (dependency inversion)
-- [ ] Extract Use Cases from TaskDatabaseHelper
-  - GOAL: Single-purpose business logic units
-  - Location: `features/tasks/domain/usecase/`
-  - Use Cases to create:
-    - `CompleteTaskUseCase.java` - Handle task completion + streak + recurrence
-    - `CreateTaskUseCase.java` - Validate and create new task
-    - `UpdateTaskUseCase.java` - Update existing task
-    - `DeleteTaskUseCase.java` - Delete task and cleanup
-    - `ResetDueRecurringTasksUseCase.java` - Handle overdue recurring tasks
-  - Each: Single public method `execute()` or `invoke()`
-- [ ] Extract Services for complex logic
-  - GOAL: Reusable business logic components
-  - Location: `features/tasks/domain/service/`
-  - Services:
-    - `RecurrenceService.java` - All recurrence calculations (from TaskDatabaseHelper lines 400-600)
-      - Methods: calculateNextDueDate(), isInCurrentPeriod(), handleIntervalCompletion(), handleFrequencyCompletion()
-    - `StreakService.java` - Streak calculations (from TaskDatabaseHelper + TaskStatistics)
-      - Methods: calculateStreak(), updateStreak(), checkStreakBroken()
-  - Principle: Stateless, testable, no Android dependencies
-- [ ] Extract Statistics Use Cases
-  - GOAL: Separate statistics calculation from UI
-  - Location: `features/statistics/domain/usecase/`
-  - Use Cases:
-    - `CalculateStreakUseCase.java` - Calculate current and longest streaks
-    - `GetTaskStatisticsUseCase.java` - Aggregate stats (completions, rates, averages)
+**⚠️ LEGACY Code (Still Active):**
+- `TaskDatabaseHelper.java` (806 lines) - God-Class doing CRUD + business logic
+- `TaskActivity.kt` - Direct database access, no ViewModel
 
-**MEDIUM:**
-- [ ] Write unit tests for domain layer
-  - GOAL: 70%+ coverage for Use Cases and Services
-  - Location: `devkit/testing/domain/`
-  - Priority: RecurrenceService, StreakService, CompleteTaskUseCase
-  - Framework: JUnit + Mockito
-  - Example:
-    ```java
-    @Test
-    public void testCompleteTask_UpdatesStreak() {
-        // Given
-        Task task = new Task(...);
-        TaskRepository mockRepo = mock(TaskRepository.class);
-        StreakService streakService = new StreakService();
-        CompleteTaskUseCase useCase = new CompleteTaskUseCase(mockRepo, streakService, ...);
+**❌ MISSING Components:**
+- Use Cases - Orchestrate Services + Repositories
+- ViewModels - Presentation layer MVVM pattern
+- Integration - Wire domain layer to UI
 
-        // When
-        useCase.execute(task.getId());
+### Active TODOs - Wave 12: Domain Integration
 
-        // Then
-        verify(mockRepo).updateTask(argThat(t -> t.getCurrentStreak() == task.getCurrentStreak() + 1));
-    }
-    ```
+**PHASE 1: Use Cases (Day 1)**
+- [ ] Create `CreateTaskUseCase.kt`
+  - GOAL: Validate and create new tasks
+  - Location: `features/tasks/domain/usecase/CreateTaskUseCase.kt`
+  - Dependencies: TaskRepository
+  - Max 50 lines (Single Responsibility)
+  - Validation: Title not empty, category valid, due date > today (if set)
+
+- [ ] Create `UpdateTaskUseCase.kt`
+  - GOAL: Update existing task with validation
+  - Location: `features/tasks/domain/usecase/UpdateTaskUseCase.kt`
+  - Dependencies: TaskRepository
+  - Max 50 lines
+
+- [ ] Create `DeleteTaskUseCase.kt`
+  - GOAL: Delete task and associated completions
+  - Location: `features/tasks/domain/usecase/DeleteTaskUseCase.kt`
+  - Dependencies: TaskRepository, CompletionRepository
+  - Max 40 lines
+
+- [ ] Create `CompleteTaskUseCase.kt`
+  - GOAL: Complete task with streak + recurrence handling
+  - Location: `features/tasks/domain/usecase/CompleteTaskUseCase.kt`
+  - Dependencies: TaskRepository, StreakService, RecurrenceService
+  - Max 80 lines (most complex use case)
+  - Logic: Get task → Update streak → Handle recurrence → Save
+
+- [ ] Create `GetTasksUseCase.kt`
+  - GOAL: Retrieve and filter task lists
+  - Location: `features/tasks/domain/usecase/GetTasksUseCase.kt`
+  - Dependencies: TaskRepository
+  - Max 60 lines
+  - Parameters: FilterCriteria (status, priority, category, search)
+
+**PHASE 2: ViewModels (Day 2)**
+- [ ] Create `TaskListViewModel.kt`
+  - GOAL: Manage task list state and operations
+  - Location: `features/tasks/presentation/viewmodel/TaskListViewModel.kt`
+  - Dependencies: GetTasksUseCase, DeleteTaskUseCase, CompleteTaskUseCase
+  - Max 150 lines
+  - State: LiveData<List<Task>>, loading, error
+  - Methods: loadTasks(), deleteTask(), completeTask(), applyFilters()
+
+- [ ] Create `TaskDetailViewModel.kt`
+  - GOAL: Single task create/edit operations
+  - Location: `features/tasks/presentation/viewmodel/TaskDetailViewModel.kt`
+  - Dependencies: CreateTaskUseCase, UpdateTaskUseCase, GetTasksUseCase
+  - Max 120 lines
+  - State: LiveData<Task?>, saveResult
+  - Methods: loadTask(), saveTask(), validate()
+
+**PHASE 3: Integration & Migration (Day 3-4)**
+- [ ] Update `TaskActivity.kt` to use ViewModels
+  - GOAL: Replace direct database calls with ViewModel
+  - Location: `app/TaskActivity.kt`
+  - Changes: Remove TaskDatabaseHelper, inject ViewModels, observe LiveData
+  - Pattern: MVVM (Activity observes ViewModel, no business logic in Activity)
+
+- [ ] Test all functionality
+  - GOAL: Verify app works identically with new architecture
+  - Manual testing: Create task, edit, delete, complete, recurrence, streaks
+  - Check logs: No errors, all operations successful
+
+- [ ] Delete legacy TaskDatabaseHelper
+  - GOAL: Remove 806-line God-Class
+  - Action: Delete `app/src/main/java/com/secretary/TaskDatabaseHelper.java`
+  - Verify: Zero references to TaskDatabaseHelper in codebase
+  - Build: Ensure app compiles and runs
+
+**PHASE 4: Testing (Deferred to Phase 4.5.6)**
+- [ ] Write unit tests for Use Cases (70%+ coverage)
+  - Location: `app/src/test/java/com/secretary/features/tasks/domain/usecase/`
+  - Priority: CompleteTaskUseCase, CreateTaskUseCase, UpdateTaskUseCase
+  - Framework: JUnit + Mockito + Coroutines Test
 
 ### Technical Details
 
