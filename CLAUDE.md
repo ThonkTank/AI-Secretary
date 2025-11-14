@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **AI Secretary** is a native Android task management app with recurring task support, developed entirely in Termux on Android. This is a personal productivity app focused on the "Taskmaster" feature suite - a comprehensive system for managing daily, weekly, and long-term recurring tasks with intelligent planning and streak tracking.
 
-**Current Status:** Phase 4.5.3 - Kotlin Migration (v0.3.28 - Build 328 - Kotlin + Gradle)
+**Current Status:** Phase 4.5.3 - COMPLETE ✅ (v0.3.40 - Build 340 - Kotlin + Gradle + Domain Infrastructure)
 - ✅ Phase 0: Foundation Systems (100% complete)
 - ✅ Phase 1: Taskmaster Foundation (100% complete)
 - ✅ Phase 2: Core Task Management (100% complete)
@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 🚧 **Phase 4.5: Architecture Refactor (30% complete - IN PROGRESS)**
   - ✅ Phase 4.5.1: Critical Cleanup (COMPLETE)
   - ✅ Phase 4.5.2: Package Structure (COMPLETE)
-  - 🚧 Phase 4.5.3: Kotlin Migration + Gradle (Wave 1 COMPLETE - 14%)
+  - ✅ Phase 4.5.3: Kotlin Migration + Gradle + Domain Infrastructure (Waves 1-10 COMPLETE - 100%)
 
 **Repository:** https://github.com/ThonkTank/AI-Secretary
 **Branch:** `refactoring/phase-4.5-architecture` (active development)
@@ -46,8 +46,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # 1. Update version in app/build.gradle.kts
-#    - Increment versionCode (e.g., 327 → 328)
-#    - Update versionName following phase-based scheme (e.g., 0.3.27 → 0.3.28)
+#    - Increment versionCode (e.g., 340 → 341)
+#    - Update versionName following phase-based scheme (e.g., 0.3.40 → 0.3.41)
 
 # 2. Commit and push to trigger GitHub Actions
 git add .
@@ -60,7 +60,7 @@ gh run watch  # Watch live
 gh run view --log  # If build fails
 
 # 4. Download APK when build completes
-VERSION="0.3.28"  # Use your new version
+VERSION="0.3.40"  # Use your new version
 gh release download "v$VERSION" -p "AISecretary-signed.apk" -D ~/storage/downloads/
 
 # 5. Install APK
@@ -291,12 +291,12 @@ Users can assign categories when creating/editing tasks and filter task list by 
 - **0.5.x** = Phase 6 (Widget & Polish)
 - **1.0.0** = Taskmaster MVP Release
 
-**Current Version:** v0.3.28 (Build 328)
+**Current Version:** v0.3.40 (Build 340)
 
 **How to Update:**
 1. Open `app/build.gradle.kts`
-2. Increment `versionCode` (integer, sequential: 328 → 329)
-3. Update `versionName` (semantic: "0.3.28" → "0.3.29")
+2. Increment `versionCode` (integer, sequential: 340 → 341)
+3. Update `versionName` (semantic: "0.3.40" → "0.3.41")
 4. Commit and push - GitHub Actions creates release with tag `v{versionName}`
 
 **Note:** AndroidManifest.xml no longer contains version info (moved to build.gradle.kts in Phase 4.5.3)
@@ -763,6 +763,6 @@ logcat | grep Secretary
 
 ---
 
-**Last Updated:** 2025-11-13
-**Current Version:** v0.3.28 (Build 328)
-**Status:** Phase 4.5.3 in progress - Kotlin Migration (Wave 1 complete - 14%)
+**Last Updated:** 2025-11-14
+**Current Version:** v0.3.40 (Build 340)
+**Status:** Phase 4.5.3 COMPLETE ✅ - Kotlin Migration + Gradle + Domain Infrastructure (Waves 1-10 complete - 100%)
