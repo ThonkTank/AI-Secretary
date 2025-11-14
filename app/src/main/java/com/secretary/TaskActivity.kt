@@ -33,6 +33,7 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
     // Dependencies
     private lateinit var dbHelper: TaskDatabaseHelper // Legacy - for TaskDialogHelper (Step 6)
     private lateinit var repository: TaskRepository // NEW - for Task CRUD operations
+    private lateinit var viewModel: TaskListViewModel // ViewModel for MVVM pattern
     private lateinit var dialogHelper: TaskDialogHelper
     private lateinit var filterManager: TaskFilterManager
     private lateinit var logger: AppLogger
@@ -79,8 +80,24 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
             val taskDao = database.taskDao()
             repository = TaskRepositoryImpl(taskDao)
 
+            // Initialize Services for domain logic
+            val streakService = com.secretary.features.tasks.domain.service.StreakService()
+            val recurrenceService = com.secretary.features.tasks.domain.service.RecurrenceService()
+
+            // Initialize ViewModel with Factory (dependency injection)
+            val viewModelFactory = com.secretary.features.tasks.presentation.viewmodel.TaskViewModelFactory(
+                repository,
+                streakService,
+                recurrenceService
+            )
+            viewModel = androidx.lifecycle.ViewModelProvider(this, viewModelFactory)
+                .get(com.secretary.features.tasks.presentation.viewmodel.TaskListViewModel::class.java)
+
             dialogHelper = TaskDialogHelper(this, dbHelper)
             setupDialogHelperListeners()
+
+            // Setup ViewModel observers (MVVM pattern)
+            setupViewModelObservers()
 
             // Find views
             taskListView = findViewById(R.id.taskListView)
@@ -153,6 +170,41 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
                 loadTasks()
             }
         })
+    }
+
+    /**
+     * Setup LiveData observers for ViewModel (MVVM pattern)
+     */
+    private fun setupViewModelObservers() {
+        // Observe tasks - update task list and apply filters
+        viewModel.tasks.observe(this) { tasks ->
+            taskList.clear()
+            taskList.addAll(tasks)
+            lifecycleScope.launch {
+                updateCategoryFilter() // Update category filter with new categories
+                updateStatistics() // Update statistics display (async, uses repository)
+            }
+            applyFilters() // Apply current filters to show filtered list
+            logger.info(TAG, "ViewModel: Loaded ${tasks.size} tasks")
+        }
+
+        // Observe error - show error Toast
+        viewModel.error.observe(this) { errorMessage ->
+            errorMessage?.let {
+                Toast.makeText(this, "Error: $it", Toast.LENGTH_LONG).show()
+                logger.error(TAG, "ViewModel Error: $it")
+                viewModel.clearError() // Clear after showing
+            }
+        }
+
+        // Observe operation success - show success Toast
+        viewModel.operationSuccess.observe(this) { successMessage ->
+            successMessage?.let {
+                Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+                logger.info(TAG, "ViewModel Success: $it")
+                viewModel.clearOperationSuccess() // Clear after showing
+            }
+        }
     }
 
     /**
@@ -267,22 +319,11 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
     }
 
     /**
-     * Load all tasks from database using Repository
+     * Load all tasks from database via ViewModel
+     * The ViewModel observer will handle updating the UI automatically
      */
     private fun loadTasks() {
-        lifecycleScope.launch {
-            try {
-                taskList.clear()
-                taskList.addAll(repository.getAllTasks())
-                updateCategoryFilter() // Update category filter with any new categories
-                updateStatistics() // Update statistics display
-                applyFilters() // Apply filters after loading
-
-                logger.info(TAG, "Loaded ${taskList.size} tasks via Repository")
-            } catch (e: Exception) {
-                logger.error(TAG, "Failed to load tasks from Repository", e)
-            }
-        }
+        viewModel.loadTasks()
     }
 
     /**
