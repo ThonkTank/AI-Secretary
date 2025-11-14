@@ -689,41 +689,20 @@ javac -source 8 -target 8 \
   - **Status:** All domain components created and compiled ✅ Integration pending Phase 4.5.4
 
 **MEDIUM:**
-- [ ] Add Kotlin dependencies
+- [x] Add Kotlin dependencies ✅ COMPLETE
   - Location: `app/build.gradle.kts`
-  - Dependencies:
-    ```kotlin
-    dependencies {
-        // Kotlin
-        implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.20")
-
-        // Coroutines
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-
-        // AndroidX Core
-        implementation("androidx.core:core-ktx:1.12.0")
-        implementation("androidx.appcompat:appcompat:1.6.1")
-
-        // Room (for Phase 4.5.4)
-        implementation("androidx.room:room-runtime:2.6.1")
-        implementation("androidx.room:room-ktx:2.6.1")
-        ksp("androidx.room:room-compiler:2.6.1")
-
-        // Testing
-        testImplementation("junit:junit:4.13.2")
-        testImplementation("org.mockito:mockito-core:5.7.0")
-        testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
-    }
-    ```
-- [ ] Setup KSP for Room annotation processing
+  - Added: Kotlin stdlib 1.9.22, Coroutines (core + android), AndroidX Core, Lifecycle, Room, Testing
+  - Status: All dependencies configured and working (build.gradle.kts lines 60-91)
+- [x] Setup KSP for Room annotation processing ✅ COMPLETE
   - GOAL: Modern annotation processing (2x faster than KAPT)
   - Location: `app/build.gradle.kts`
-  - Plugin: `id("com.google.devtools.ksp") version "1.9.20-1.0.14"`
-  - Note: KSP version must match Kotlin version (1.9.20)
-- [ ] Configure proguard rules for Kotlin
+  - Plugin: `id("com.google.devtools.ksp")` (line 4)
+  - Room schema location: `ksp { arg("room.schemaLocation", "$projectDir/schemas") }` (lines 54-57)
+  - Status: KSP fully configured for Room
+- [x] Configure proguard rules for Kotlin ✅ COMPLETE
   - Location: `app/proguard-rules.pro`
-  - Rules: Keep Kotlin reflection, Room annotations
+  - Rules: Kotlin (lines 23-36), Coroutines (37-42), Room (44-47), Project-specific (52-61)
+  - Status: All proguard rules configured
 - [ ] Update documentation
   - GOAL: Reflect Kotlin in all docs
   - Files to update:

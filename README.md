@@ -2,8 +2,8 @@
 
 A native Android task management application with advanced recurring task support, developed entirely in Termux on Android.
 
-**Current Version:** v0.3.25 (Build 325)
-**Status:** Phase 4 in Progress - Motivation & Statistics (30% complete)
+**Current Version:** v0.3.40 (Build 340)
+**Status:** Phase 4.5.3 (Kotlin Migration + Gradle Setup) - Waves 1-10 COMPLETE | Domain Infrastructure established
 **Repository:** https://github.com/ThonkTank/AI-Secretary
 
 ---
@@ -234,12 +234,16 @@ AI-Secretary-latest/
 
 ## Technology Stack
 
-- **Language:** Java 8 (Kotlin migration planned)
-- **Database:** SQLite (v4 schema, 2 tables, 23 total columns)
-- **Build:** GitHub Actions (Gradle not available in Termux)
-- **SDK:** Android API 33 (compile), API 28-35 (runtime)
-- **Architecture:** Single Activity with Dialogs (simple, lightweight)
-- **Patterns:** Singleton (AppLogger), Helper classes, Callback interfaces
+- **Language:** Kotlin 1.9.22 (hybrid codebase - migration in progress, Waves 1-10 complete)
+- **Database:** Room 2.6.1 with KSP (domain infrastructure created, legacy SQLite v4 still active)
+- **Build:** Gradle 8.2 + Android Gradle Plugin 8.2.2 (via GitHub Actions)
+- **SDK:** Android API 35 (compile), API 28+ (minSdk)
+- **Architecture:** Clean Architecture in progress (Presentation → Domain → Data layers)
+  - Domain: Services (RecurrenceService, StreakService) + Repositories (TaskRepository, CompletionRepository)
+  - Data: Room DAOs (TaskDao, CompletionDao) + Repository implementations
+  - Presentation: Activities + ViewModels (planned Phase 4.5.4)
+- **Concurrency:** Kotlin Coroutines + Flow
+- **Patterns:** Singleton, Repository Pattern, MVVM (in progress), Clean Architecture
 
 ---
 
@@ -302,11 +306,11 @@ AI-Secretary-latest/
 
 ## Known Limitations
 
-1. **No Gradle in Termux** - All production builds must use GitHub Actions
-2. **No External Libraries** - Cannot use Room, Material Components, etc. due to Termux build limitations
+1. **Gradle in Termux** - Gradle works via GitHub Actions only (Termux has JVM libiconv issues)
+2. **Hybrid Codebase** - Migration to Kotlin in progress (Waves 1-10 complete, ~70% migrated)
 3. **Package Name** - Currently `com.secretary.helloworld` (should be `com.secretary`)
-4. **No Unit Tests** - Testing framework not set up in Termux environment
-5. **Local Build** - `build.sh` is for quick testing only, lacks external library support
+4. **Integration Pending** - Domain infrastructure created but not yet integrated (Phase 4.5.4)
+5. **Testing Coverage** - Unit tests planned for Phase 4.5.6 (70%+ target for domain layer)
 
 ---
 
@@ -345,6 +349,6 @@ Personal project - no formal license. Use at your own risk.
 
 ---
 
-**Last Updated:** 2025-11-13
-**Current Version:** v0.3.25 (Build 325)
-**Status:** Active development - Phase 4 (Motivation & Statistics)
+**Last Updated:** 2025-11-14
+**Current Version:** v0.3.40 (Build 340)
+**Status:** Active development - Phase 4.5.3 (Kotlin Migration + Gradle Setup) - Waves 1-10 COMPLETE
