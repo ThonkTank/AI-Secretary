@@ -1,13 +1,19 @@
 package com.secretary.helloworld
 
 import com.secretary.helloworld.core.logging.AppLogger
-import android.app.Activity
+import com.secretary.helloworld.features.tasks.data.TaskDao
+import com.secretary.helloworld.features.tasks.data.repository.TaskRepositoryImpl
+import com.secretary.helloworld.features.tasks.domain.repository.TaskRepository
+import com.secretary.helloworld.shared.database.TaskDatabase
+import androidx.appcompat.app.AppCompatActivity
 import android.app.AlertDialog
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.widget.*
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import java.util.*
 
 /**
@@ -18,14 +24,15 @@ import java.util.*
  * Delegates dialog management to TaskDialogHelper.
  * Implements TaskActionListener for adapter callbacks.
  */
-class TaskActivity : Activity(), TaskListAdapter.TaskActionListener {
+class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
 
     companion object {
         private const val TAG = "TaskActivity"
     }
 
     // Dependencies
-    private lateinit var dbHelper: TaskDatabaseHelper
+    private lateinit var dbHelper: TaskDatabaseHelper // Legacy - for TaskDialogHelper (Step 6)
+    private lateinit var repository: TaskRepository // NEW - for Task CRUD operations
     private lateinit var dialogHelper: TaskDialogHelper
     private lateinit var filterManager: TaskFilterManager
     private lateinit var logger: AppLogger
@@ -65,7 +72,13 @@ class TaskActivity : Activity(), TaskListAdapter.TaskActionListener {
             logger.info(TAG, "TaskActivity started - setContentView successful")
 
             // Initialize components
-            dbHelper = TaskDatabaseHelper(this)
+            dbHelper = TaskDatabaseHelper(this) // Legacy - for TaskDialogHelper
+
+            // Initialize Room database and repository
+            val database = TaskDatabase.getDatabase(this)
+            val taskDao = database.taskDao()
+            repository = TaskRepositoryImpl(taskDao)
+
             dialogHelper = TaskDialogHelper(this, dbHelper)
             setupDialogHelperListeners()
 
@@ -254,69 +267,83 @@ class TaskActivity : Activity(), TaskListAdapter.TaskActionListener {
     }
 
     /**
-     * Load all tasks from database
+     * Load all tasks from database using Repository
      */
     private fun loadTasks() {
-        taskList.clear()
-        taskList.addAll(dbHelper.getAllTasks())
-        updateCategoryFilter() // Update category filter with any new categories
-        updateStatistics() // Update statistics display
-        applyFilters() // Apply filters after loading
+        lifecycleScope.launch {
+            try {
+                taskList.clear()
+                taskList.addAll(repository.getAllTasks())
+                updateCategoryFilter() // Update category filter with any new categories
+                updateStatistics() // Update statistics display
+                applyFilters() // Apply filters after loading
 
-        logger.info(TAG, "Loaded ${taskList.size} tasks")
+                logger.info(TAG, "Loaded ${taskList.size} tasks via Repository")
+            } catch (e: Exception) {
+                logger.error(TAG, "Failed to load tasks from Repository", e)
+            }
+        }
     }
 
     /**
-     * Update statistics display at top of screen
+     * Update statistics display at top of screen using Repository
      */
-    private fun updateStatistics() {
-        val todayCount = dbHelper.getTasksCompletedToday()
-        val weekCount = dbHelper.getTasksCompletedLast7Days()
-        val overdueCount = dbHelper.getOverdueTasksCount()
+    private suspend fun updateStatistics() {
+        try {
+            val todayCount = repository.getTasksCompletedToday()
+            val weekCount = repository.getTasksCompletedLast7Days()
+            val overdueCount = repository.getOverdueTasksCount()
 
-        val statsText = "Today: $todayCount | Week: $weekCount | Overdue: $overdueCount"
+            val statsText = "Today: $todayCount | Week: $weekCount | Overdue: $overdueCount"
 
-        statisticsText.text = statsText
+            statisticsText.text = statsText
 
-        // Highlight if there are overdue tasks
-        statisticsText.setTextColor(
-            if (overdueCount > 0) 0xFFFFAA00.toInt() // Orange for warning
-            else 0xFFFFFFFF.toInt() // White
-        )
+            // Highlight if there are overdue tasks
+            statisticsText.setTextColor(
+                if (overdueCount > 0) 0xFFFFAA00.toInt() // Orange for warning
+                else 0xFFFFFFFF.toInt() // White
+            )
+        } catch (e: Exception) {
+            logger.error(TAG, "Failed to update statistics from Repository", e)
+        }
     }
 
     /**
-     * Update category filter spinner with all categories from database
+     * Update category filter spinner with all categories from database using Repository
      */
-    private fun updateCategoryFilter() {
-        // Get all unique categories from database
-        allCategories = dbHelper.getAllCategories()
+    private suspend fun updateCategoryFilter() {
+        try {
+            // Get all unique categories from database
+            allCategories = repository.getAllCategories()
 
-        // Build options for category filter spinner
-        val categoryOptions = Array(allCategories.size + 1) { i ->
-            if (i == 0) "All Categories" else allCategories[i - 1]
-        }
-
-        val categoryAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, categoryOptions).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
-        categoryFilterSpinner.adapter = categoryAdapter
-
-        // Restore previous selection if possible
-        categoryFilter?.let { filter ->
-            val index = allCategories.indexOf(filter) + 1
-            if (index > 0 && index < categoryOptions.size) {
-                categoryFilterSpinner.setSelection(index)
-            }
-        }
-
-        categoryFilterSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                categoryFilter = if (position == 0) null else allCategories[position - 1]
-                applyFilters()
+            // Build options for category filter spinner
+            val categoryOptions = Array(allCategories.size + 1) { i ->
+                if (i == 0) "All Categories" else allCategories[i - 1]
             }
 
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            val categoryAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, categoryOptions).apply {
+                setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            }
+            categoryFilterSpinner.adapter = categoryAdapter
+
+            // Restore previous selection if possible
+            categoryFilter?.let { filter ->
+                val index = allCategories.indexOf(filter) + 1
+                if (index > 0 && index < categoryOptions.size) {
+                    categoryFilterSpinner.setSelection(index)
+                }
+            }
+
+            categoryFilterSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                    categoryFilter = if (position == 0) null else allCategories[position - 1]
+                    applyFilters()
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) {}
+            }
+        } catch (e: Exception) {
+            logger.error(TAG, "Failed to update category filter from Repository", e)
         }
     }
 
@@ -362,8 +389,14 @@ class TaskActivity : Activity(), TaskListAdapter.TaskActionListener {
         } else {
             // Unchecked - mark as incomplete
             task.isCompleted = false
-            dbHelper.updateTask(task)
-            loadTasks()
+            lifecycleScope.launch {
+                try {
+                    repository.updateTask(task)
+                    loadTasks()
+                } catch (e: Exception) {
+                    logger.error(TAG, "Failed to update task via Repository", e)
+                }
+            }
         }
     }
 
@@ -374,8 +407,14 @@ class TaskActivity : Activity(), TaskListAdapter.TaskActionListener {
 
     override fun onTaskDelete(task: Task) {
         logger.info(TAG, "Delete task: ${task.title}")
-        dbHelper.deleteTask(task.id)
-        loadTasks()
+        lifecycleScope.launch {
+            try {
+                repository.deleteTask(task.id)
+                loadTasks()
+            } catch (e: Exception) {
+                logger.error(TAG, "Failed to delete task via Repository", e)
+            }
+        }
     }
 
     override fun onTasksChanged() {

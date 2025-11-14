@@ -2,7 +2,7 @@
 
 **Current Version:** v0.3.36 (Build 336) - Kotlin Migration in Progress
 **Last Updated:** 2025-11-14
-**Status:** Phase 4.5.3 (Kotlin Migration + Gradle Setup) - Wave 1,4,5,6,7,8,9 Complete (94% of files)
+**Status:** Phase 4.5.3 (Kotlin Migration + Gradle Setup) - Wave 1-9 Complete, Wave 10 (Incremental Refactor) IN PROGRESS (17/18 files, 94%)
 
 **Update when**: Completing phases, adding TODOs, changing priorities, finishing major features.
 
@@ -624,22 +624,62 @@ javac -source 8 -target 8 \
        - +2% lines (better clarity)
   - Result: 277 lines Java → 282 lines Kotlin (+2%)
   - Test: App launches correctly, HTTP server works
-- [ ] Convert task activity (Wave 8: 1 file, ~393 lines) ⏳ IN PROGRESS
+- [x] Convert legacy build script (Wave 8: 1 file, ~80 lines) ✅ COMPLETE (2025-11-14)
+  - GOAL: Migrate build.sh to Kotlin build script
+  - Completed:
+    1. `build.sh` (shell script) → `build.gradle.kts` integration ✅
+       - All builds now use Gradle exclusively
+       - Local testing via `./gradlew assembleDebug`
+  - Result: Unified build system
+- [x] Convert task activity (Wave 9: 1 file, ~393 lines) ✅ COMPLETE (2025-11-14)
   - GOAL: Main task management UI to Kotlin
-  - Order:
-    1. `TaskActivity.java` (393 lines) → `TaskActivity.kt`
-       - Largest UI file, complex state management
-       - Multiple listener interfaces
-       - Filter and sort operations
-  - Test: All task operations work correctly
-- [ ] Convert database helper (Wave 9: 1 file, ~808 lines)
-  - GOAL: Legacy database to Kotlin (preparation for Room)
-  - Order:
-    1. `TaskDatabaseHelper.java` (808 lines) → `TaskDatabaseHelper.kt`
-       - Keep as single file for now (will be replaced by Room in Phase 4.5.4)
-       - Use Kotlin extensions for cleaner code
-       - Prepare for Room migration
-  - Test: All database operations still work
+  - Completed:
+    1. `TaskActivity.java` (393 lines) → `TaskActivity.kt` (385 lines) ✅
+       - lateinit var for views and dependencies
+       - Object expressions for listener interfaces
+       - Functional filter and sort operations
+       - -2% lines (Kotlin concision)
+  - Result: 393 lines Java → 385 lines Kotlin (-2%)
+  - Test: All task operations work correctly (v0.3.36 Build 336)
+- [ ] Convert database helper with incremental refactor (Wave 10: 1 file → 6+ files, ~808 lines) ⏳ IN PROGRESS
+  - GOAL: Migrate TaskDatabaseHelper to Kotlin + Clean Architecture (combine Kotlin migration with refactoring)
+  - STRATEGY: Incremental extraction into separate Kotlin files (avoid creating temporary God-Class)
+  - Approach:
+    **Step 1: Room Database Setup**
+    - Create `data/database/AppDatabase.kt` - Room database class
+    - Create `data/database/TaskEntity.kt` - @Entity with 17 fields
+    - Create `data/database/TaskDao.kt` - @Dao with CRUD methods
+    - Create `data/database/Migrations.kt` - Migration v5 → Room v6
+    - Test: Database initializes, migrations work
+
+    **Step 2: Task CRUD → TaskRepository**
+    - Create `domain/repository/TaskRepository.kt` - Interface
+    - Create `data/repository/TaskRepositoryImpl.kt` - Implementation with TaskDao
+    - Mapping: TaskEntity ↔ Task (domain model)
+    - Update TaskActivity to use TaskRepository
+    - Test: Task list loads, add/edit/delete work
+
+    **Step 3: Recurrence Logic → RecurrenceService**
+    - Create `domain/service/RecurrenceService.kt` - All recurrence methods
+    - Extract: handleRecurringTaskCompletion, calculateNextDueDate, etc.
+    - Test: INTERVAL and FREQUENCY tasks work correctly
+
+    **Step 4: Streak Management → StreakService**
+    - Create `domain/service/StreakService.kt` - updateStreak logic
+    - Test: Streak updates on task completion
+
+    **Step 5: Completion Tracking → CompletionRepository**
+    - Create `domain/repository/CompletionRepository.kt` - Interface
+    - Create `data/repository/CompletionRepositoryImpl.kt` - Implementation
+    - Create `data/database/CompletionDao.kt` - Room DAO
+    - Test: Completion history works
+
+    **Step 6: Cleanup**
+    - Delete `TaskDatabaseHelper.java` (fully replaced)
+    - Update TaskStatistics.kt to use Repository
+    - Final integration testing
+  - Result: 808 lines Java → ~6 focused Kotlin files with Clean Architecture
+  - Test: All database operations work, no regressions
 
 **MEDIUM:**
 - [ ] Add Kotlin dependencies
