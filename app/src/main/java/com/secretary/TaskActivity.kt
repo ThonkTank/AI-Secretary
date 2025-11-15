@@ -38,7 +38,6 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
     private lateinit var viewModel: TaskListViewModel // ViewModel for MVVM pattern
     private lateinit var dialogHelper: TaskDialogHelper
     private lateinit var filterManager: TaskFilterManager
-    private lateinit var logger: AppLogger
 
     // Views
     private lateinit var taskListView: ListView
@@ -71,8 +70,8 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
 
         try {
             setContentView(R.layout.activity_tasks)
-            logger = AppLogger.getInstance(this)
-            logger.info(TAG, "TaskActivity started - setContentView successful")
+            AppLogger.initialize(this)
+            AppLogger.info(TAG, "TaskActivity started - setContentView successful")
 
             // Initialize components
             dbHelper = TaskDatabaseHelper(this) // Legacy - for TaskDialogHelper
@@ -112,7 +111,7 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
             categoryFilterSpinner = findViewById(R.id.categoryFilterSpinner)
             sortBySpinner = findViewById(R.id.sortBySpinner)
 
-            logger.info(TAG, "All views found successfully")
+            AppLogger.info(TAG, "All views found successfully")
 
             // Setup adapter
             adapter = TaskListAdapter(this, filteredTaskList, this)
@@ -127,18 +126,18 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
 
             // Add task button
             addTaskButton.setOnClickListener {
-                logger.info(TAG, "Add task button clicked")
+                AppLogger.info(TAG, "Add task button clicked")
                 showAddTaskDialog()
             }
 
             // Initial load
             loadTasks()
 
-            logger.info(TAG, "TaskActivity onCreate completed successfully")
+            AppLogger.info(TAG, "TaskActivity onCreate completed successfully")
 
         } catch (e: Exception) {
             android.util.Log.e(TAG, "FATAL ERROR in TaskActivity.onCreate()", e)
-            logger?.error(TAG, "TaskActivity onCreate crashed: ${e.message}", e)
+            AppLogger.error(TAG, "TaskActivity onCreate crashed: ${e.message}", e)
 
             AlertDialog.Builder(this)
                 .setTitle("Error")
@@ -187,14 +186,14 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
                 updateStatistics() // Update statistics display (async, uses repository)
             }
             applyFilters() // Apply current filters to show filtered list
-            logger.info(TAG, "ViewModel: Loaded ${tasks.size} tasks")
+            AppLogger.info(TAG, "ViewModel: Loaded ${tasks.size} tasks")
         }
 
         // Observe error - show error Toast
         viewModel.error.observe(this) { errorMessage ->
             errorMessage?.let {
                 Toast.makeText(this, "Error: $it", Toast.LENGTH_LONG).show()
-                logger.error(TAG, "ViewModel Error: $it")
+                AppLogger.error(TAG, "ViewModel Error: $it")
                 viewModel.clearError() // Clear after showing
             }
         }
@@ -203,7 +202,7 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
         viewModel.operationSuccess.observe(this) { successMessage ->
             successMessage?.let {
                 Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
-                logger.info(TAG, "ViewModel Success: $it")
+                AppLogger.info(TAG, "ViewModel Success: $it")
                 viewModel.clearOperationSuccess() // Clear after showing
             }
         }
@@ -317,7 +316,7 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
         }
 
         adapter.notifyDataSetChanged()
-        logger.info(TAG, "Filters applied: ${filteredTaskList.size} tasks shown")
+        AppLogger.info(TAG, "Filters applied: ${filteredTaskList.size} tasks shown")
     }
 
     /**
@@ -347,7 +346,7 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
                 else 0xFFFFFFFF.toInt() // White
             )
         } catch (e: Exception) {
-            logger.error(TAG, "Failed to update statistics from Repository", e)
+            AppLogger.error(TAG, "Failed to update statistics from Repository", e)
         }
     }
 
@@ -386,7 +385,7 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
                 override fun onNothingSelected(parent: AdapterView<*>?) {}
             }
         } catch (e: Exception) {
-            logger.error(TAG, "Failed to update category filter from Repository", e)
+            AppLogger.error(TAG, "Failed to update category filter from Repository", e)
         }
     }
 
@@ -424,7 +423,7 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
     // ========== TaskActionListener Interface Implementation ==========
 
     override fun onTaskCheckChanged(task: Task, isChecked: Boolean) {
-        logger.info(TAG, "Task checkbox changed: ${task.title} -> $isChecked")
+        AppLogger.info(TAG, "Task checkbox changed: ${task.title} -> $isChecked")
 
         if (isChecked) {
             // Show completion dialog
@@ -437,31 +436,31 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
                     repository.updateTask(task)
                     loadTasks()
                 } catch (e: Exception) {
-                    logger.error(TAG, "Failed to update task via Repository", e)
+                    AppLogger.error(TAG, "Failed to update task via Repository", e)
                 }
             }
         }
     }
 
     override fun onTaskEdit(task: Task) {
-        logger.info(TAG, "Edit task: ${task.title}")
+        AppLogger.info(TAG, "Edit task: ${task.title}")
         showEditTaskDialog(task)
     }
 
     override fun onTaskDelete(task: Task) {
-        logger.info(TAG, "Delete task: ${task.title}")
+        AppLogger.info(TAG, "Delete task: ${task.title}")
         lifecycleScope.launch {
             try {
                 repository.deleteTask(task.id)
                 loadTasks()
             } catch (e: Exception) {
-                logger.error(TAG, "Failed to delete task via Repository", e)
+                AppLogger.error(TAG, "Failed to delete task via Repository", e)
             }
         }
     }
 
     override fun onTasksChanged() {
-        logger.info(TAG, "Tasks changed - reloading")
+        AppLogger.info(TAG, "Tasks changed - reloading")
         loadTasks()
     }
 }

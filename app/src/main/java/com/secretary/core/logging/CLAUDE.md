@@ -190,8 +190,7 @@ fun getInstance(context: Context): AppLogger {
 ### Manual Testing
 
 ```bash
-# 1. Launch app
-am start -n com.secretary.helloworld/.MainActivity
+# 1. Launch app manually from device
 
 # 2. Verify logs accessible
 curl http://localhost:8080/logs | tail -10
@@ -210,7 +209,7 @@ curl -s http://localhost:8080/logs | grep ERROR  # Should be empty for success
 ### Common Issues
 
 **HTTP server not responding:**
-- Check app is running: `am start -n com.secretary.helloworld/.MainActivity`
+- Check app is running (launch manually from device)
 - Check logcat: `logcat | grep HttpLogServer`
 - Verify port 8080 not blocked
 

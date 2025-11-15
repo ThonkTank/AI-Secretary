@@ -285,14 +285,12 @@ abstract class AppDatabase : RoomDatabase() {
 ### Manual Verification
 
 ```bash
-# 1. Build and install app
+# 1. Download app
 gh release download "v0.3.28" -p "AISecretary-signed.apk" -D ~/storage/downloads/
-termux-open ~/storage/downloads/AISecretary-signed.apk
+termux-media-scan ~/storage/downloads/AISecretary-signed.apk
+# NOTE: Install and launch manually from device
 
-# 2. Launch app
-am start -n com.secretary.helloworld/.MainActivity
-
-# 3. Verify database operations in logs
+# 2. Verify database operations in logs
 curl http://localhost:8080/logs | grep -i database
 
 # Expected: No schema errors, normal CRUD operations

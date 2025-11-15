@@ -63,10 +63,10 @@ gh run view --log  # If build fails
 VERSION="0.3.40"  # Use your new version
 gh release download "v$VERSION" -p "AISecretary-signed.apk" -D ~/storage/downloads/
 
-# 5. Install APK
+# 5. Download APK to device
 cd ~/storage/downloads
 termux-media-scan AISecretary-signed.apk
-termux-open AISecretary-signed.apk
+# NOTE: Install manually from file manager (Claude cannot install from Termux)
 ```
 
 **GitHub Workflow:** `.github/workflows/build-and-release.yml`
@@ -84,9 +84,10 @@ termux-open AISecretary-signed.apk
 # For quick local testing - very limited capabilities
 ./build.sh
 
-# Install
+# Make APK available for manual installation
 cp app_signed.apk ~/storage/downloads/
-termux-open ~/storage/downloads/app_signed.apk
+termux-media-scan ~/storage/downloads/app_signed.apk
+# NOTE: Install manually from file manager (Claude cannot install from Termux)
 ```
 
 **Limitations:** No support for external libraries, manual resource compilation, no dependency management. Use only for quick tests.
@@ -350,16 +351,12 @@ while true; do clear; curl -s http://localhost:8080/logs | tail -20; sleep 2; do
 
 ## Testing & Debugging
 
-### Install and Launch App
+### Check Installed App Version
 
 ```bash
-# Install APK (replace or reinstall)
-pm install -r ~/storage/downloads/AISecretary-signed.apk
+# NOTE: Install/launch app manually from device (pm/am commands don't work in Termux context)
 
-# Launch app
-am start -n com.secretary.helloworld/.MainActivity
-
-# Check installed version
+# After manual installation, check version info
 pm dump com.secretary.helloworld | grep -E "versionCode|versionName"
 ```
 
@@ -705,12 +702,13 @@ git add . && git commit -m "feat: description" && git push origin main
 export GH_TOKEN=$(cat ~/.github_token)
 gh run watch
 
-# Download and install
+# Download APK
 VERSION="0.3.26"  # Update this
 gh release download "v$VERSION" -p "AISecretary-signed.apk" -D ~/storage/downloads/
-cd ~/storage/downloads && termux-media-scan AISecretary-signed.apk && termux-open AISecretary-signed.apk
+cd ~/storage/downloads && termux-media-scan AISecretary-signed.apk
+# NOTE: Install manually from file manager (Claude cannot install from Termux)
 
-# Check installed version
+# After manual installation, check version
 pm dump com.secretary.helloworld | grep version
 
 # View live logs
