@@ -4,6 +4,7 @@ import com.secretary.core.logging.AppLogger
 import com.secretary.features.tasks.data.TaskDao
 import com.secretary.features.tasks.data.repository.TaskRepositoryImpl
 import com.secretary.features.tasks.domain.repository.TaskRepository
+import com.secretary.features.tasks.presentation.viewmodel.TaskListViewModel
 import com.secretary.shared.database.TaskDatabase
 import androidx.appcompat.app.AppCompatActivity
 import android.app.AlertDialog
@@ -12,6 +13,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.widget.*
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import java.util.*
