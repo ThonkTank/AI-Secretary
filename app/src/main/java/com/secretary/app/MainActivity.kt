@@ -74,29 +74,36 @@ class MainActivity : Activity() {
         }
 
         // Setup Tasks button
-        findViewById<Button>(R.id.openTasksButton)?.setOnClickListener {
-            try {
-                logger.info(TAG, "Opening Tasks activity - button clicked")
-                Log.i(TAG, "DEBUG: About to create Intent for TaskActivity")
+        val tasksButton = findViewById<Button>(R.id.openTasksButton)
+        if (tasksButton == null) {
+            logger.error(TAG, "CRITICAL: Tasks button not found in layout!")
+            Log.e(TAG, "CRITICAL: findViewById returned null for R.id.openTasksButton")
+        } else {
+            logger.info(TAG, "Tasks button found successfully")
+            tasksButton.setOnClickListener {
+                try {
+                    logger.info(TAG, "Opening Tasks activity - button clicked")
+                    Log.i(TAG, "DEBUG: About to create Intent for TaskActivity")
 
-                val intent = Intent(this, TaskActivity::class.java)
-                Log.i(TAG, "DEBUG: Intent created successfully")
+                    val intent = Intent(this, TaskActivity::class.java)
+                    Log.i(TAG, "DEBUG: Intent created successfully")
 
-                startActivity(intent)
-                Log.i(TAG, "DEBUG: startActivity() called successfully")
+                    startActivity(intent)
+                    Log.i(TAG, "DEBUG: startActivity() called successfully")
 
-            } catch (e: Exception) {
-                Log.e(TAG, "FATAL: Failed to start TaskActivity", e)
-                logger.error(TAG, "Failed to start TaskActivity: ${e.message}", e)
+                } catch (e: Exception) {
+                    Log.e(TAG, "FATAL: Failed to start TaskActivity", e)
+                    logger.error(TAG, "Failed to start TaskActivity: ${e.message}", e)
 
-                AlertDialog.Builder(this)
-                    .setTitle("Error")
-                    .setMessage("Cannot open Tasks:\n${e.javaClass.simpleName}\n${e.message}")
-                    .setPositiveButton("OK", null)
-                    .show()
+                    AlertDialog.Builder(this)
+                        .setTitle("Error")
+                        .setMessage("Cannot open Tasks:\n${e.javaClass.simpleName}\n${e.message}")
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
             }
+            logger.info(TAG, "Tasks button initialized")
         }
-        logger.info(TAG, "Tasks button initialized")
 
         // Display logs
         findViewById<TextView>(R.id.mainLogsTextView)?.let { mainLogsTextView ->
