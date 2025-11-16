@@ -77,6 +77,40 @@
             android:text="View Logs"
             android:layout_marginBottom="16dp" />
 
+        <!-- Network Section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Network"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#666666"
+            android:layout_marginBottom="8dp" />
+
+        <CheckBox
+            android:id="@+id/settingsNetworkLogsCheckbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Enable Network Logs"
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/settingsNetworkInfoText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Network logs disabled (localhost only)"
+            android:textSize="12sp"
+            android:textColor="#999999"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/settingsWhitelistButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Whitelist Laptop IP"
+            android:layout_marginBottom="16dp" />
+
         <!-- Close Button -->
         <Button
             android:id="@+id/settingsCloseButton"

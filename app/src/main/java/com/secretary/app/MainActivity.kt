@@ -2,6 +2,7 @@ package com.secretary.app
 
 import com.secretary.R
 import com.secretary.TaskActivity
+import com.secretary.core.config.AppPreferences
 import com.secretary.core.logging.AppLogger
 import com.secretary.core.logging.HttpLogServer
 import com.secretary.core.network.UpdateChecker
@@ -14,11 +15,14 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.text.InputType
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Button
+import android.widget.CheckBox
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 
@@ -49,6 +53,9 @@ class MainActivity : Activity() {
 
         Log.i(TAG, "=== Application onCreate started ===")
 
+        // Initialize Preferences
+        AppPreferences.initialize(this)
+
         // Initialize Logger
         logger = AppLogger.getInstance(this)
         logger.info(TAG, "=== Application started ===")
@@ -66,9 +73,16 @@ class MainActivity : Activity() {
 
         // Start HTTP Log Server
         try {
-            httpServer = HttpLogServer(this).apply { start() }
+            val networkEnabled = AppPreferences.isNetworkLogsEnabled()
+            httpServer = HttpLogServer(this).apply { start(bindToAllInterfaces = networkEnabled) }
             logger.info(TAG, "HTTP Log Server started successfully")
-            logger.info(TAG, "Access logs from Termux: curl http://localhost:8080/logs")
+
+            if (networkEnabled) {
+                val localIp = httpServer?.getLocalNetworkIp()
+                logger.info(TAG, "Network mode enabled - Logs accessible at: http://$localIp:8080/logs")
+            } else {
+                logger.info(TAG, "Access logs from Termux: curl http://localhost:8080/logs")
+            }
         } catch (e: Exception) {
             logger.error(TAG, "Failed to start HTTP Log Server", e)
         }
@@ -177,6 +191,9 @@ class MainActivity : Activity() {
         val updateStatus = dialogView.findViewById<TextView>(R.id.settingsUpdateStatus)
         val checkUpdateButton = dialogView.findViewById<Button>(R.id.settingsCheckUpdateButton)
         val viewLogsButton = dialogView.findViewById<Button>(R.id.settingsViewLogsButton)
+        val networkCheckbox = dialogView.findViewById<CheckBox>(R.id.settingsNetworkLogsCheckbox)
+        val networkInfoText = dialogView.findViewById<TextView>(R.id.settingsNetworkInfoText)
+        val whitelistButton = dialogView.findViewById<Button>(R.id.settingsWhitelistButton)
         val closeButton = dialogView.findViewById<Button>(R.id.settingsCloseButton)
 
         // Display version
@@ -240,6 +257,24 @@ class MainActivity : Activity() {
             showLogsDialog()
         }
 
+        // Network Logs Checkbox - Initialize
+        networkCheckbox.isChecked = AppPreferences.isNetworkLogsEnabled()
+        updateNetworkInfoDisplay(networkInfoText)
+
+        // Network Logs Checkbox - Change Listener
+        networkCheckbox.setOnCheckedChangeListener { _, isChecked ->
+            logger.info(TAG, "Network logs ${if (isChecked) "enabled" else "disabled"} by user")
+            AppPreferences.setNetworkLogsEnabled(isChecked)
+            updateNetworkInfoDisplay(networkInfoText)
+            restartHttpServer(isChecked)
+        }
+
+        // Whitelist Button
+        whitelistButton.setOnClickListener {
+            logger.info(TAG, "User clicked whitelist button")
+            showIpWhitelistDialog(networkInfoText)
+        }
+
         // Close Button
         closeButton.setOnClickListener {
             logger.info(TAG, "Settings dialog closed")
@@ -247,6 +282,97 @@ class MainActivity : Activity() {
         }
 
         dialog.show()
+    }
+
+    // ========== Network Settings Helpers ==========
+
+    /**
+     * Update network info text display based on current settings.
+     */
+    private fun updateNetworkInfoDisplay(networkInfoText: TextView) {
+        val networkEnabled = AppPreferences.isNetworkLogsEnabled()
+        val whitelistedIp = AppPreferences.getWhitelistedIp()
+
+        networkInfoText.text = if (networkEnabled) {
+            val localIp = httpServer?.getLocalNetworkIp()
+            buildString {
+                append("Network logs enabled\n")
+                if (localIp != null) {
+                    append("Access at: http://$localIp:8080/logs\n")
+                }
+                if (whitelistedIp != null) {
+                    append("Whitelisted IP: $whitelistedIp")
+                } else {
+                    append("No IP whitelist (all network IPs allowed)")
+                }
+            }
+        } else {
+            "Network logs disabled (localhost only)"
+        }
+    }
+
+    /**
+     * Restart HTTP server with new binding mode.
+     */
+    private fun restartHttpServer(bindToAllInterfaces: Boolean) {
+        try {
+            // Stop existing server
+            httpServer?.stop()
+
+            // Start with new binding
+            httpServer = HttpLogServer(this).apply { start(bindToAllInterfaces = bindToAllInterfaces) }
+
+            val mode = if (bindToAllInterfaces) "NETWORK" else "LOCALHOST"
+            logger.info(TAG, "HTTP server restarted in $mode mode")
+
+            if (bindToAllInterfaces) {
+                val localIp = httpServer?.getLocalNetworkIp()
+                Toast.makeText(this, "Network logs enabled at http://$localIp:8080/logs", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(this, "Network logs disabled (localhost only)", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            logger.error(TAG, "Failed to restart HTTP server", e)
+            Toast.makeText(this, "Error restarting server: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Show dialog for entering laptop IP to whitelist.
+     */
+    private fun showIpWhitelistDialog(networkInfoText: TextView) {
+        val inputField = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            hint = "192.168.1.100"
+            setText(AppPreferences.getWhitelistedIp() ?: "")
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Whitelist Laptop IP")
+            .setMessage("Enter the IP address of your laptop to allow access to logs.\n\nLeave empty to allow all network IPs.")
+            .setView(inputField)
+            .setPositiveButton("Save") { _, _ ->
+                val ip = inputField.text.toString().trim()
+                if (ip.isEmpty()) {
+                    AppPreferences.clearWhitelistedIp()
+                    logger.info(TAG, "Whitelist cleared - all IPs allowed")
+                    Toast.makeText(this, "Whitelist cleared (all network IPs allowed)", Toast.LENGTH_SHORT).show()
+                } else {
+                    // Basic IP validation (simple check)
+                    if (ip.matches(Regex("^\\d{1,3}(\\.\\d{1,3}){3}\$"))) {
+                        AppPreferences.setWhitelistedIp(ip)
+                        logger.info(TAG, "Whitelisted IP set to: $ip")
+                        Toast.makeText(this, "Whitelisted IP: $ip", Toast.LENGTH_SHORT).show()
+                    } else {
+                        logger.error(TAG, "Invalid IP format: $ip")
+                        Toast.makeText(this, "Invalid IP format. Please use format: 192.168.1.100", Toast.LENGTH_LONG).show()
+                        return@setPositiveButton
+                    }
+                }
+                updateNetworkInfoDisplay(networkInfoText)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     // ========== Logs Dialog ==========

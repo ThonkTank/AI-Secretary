@@ -1,10 +1,13 @@
 package com.secretary.core.logging
 
 import android.content.Context
+import com.secretary.core.config.AppPreferences
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
+import java.net.Inet4Address
 import java.net.InetAddress
+import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 
@@ -30,14 +33,25 @@ class HttpLogServer(private val context: Context) {
     /**
      * Start HTTP server on port 8080
      * Runs in background thread to avoid blocking main thread
+     *
+     * @param bindToAllInterfaces If true, binds to 0.0.0.0 (accessible from network).
+     *                            If false, binds to 127.0.0.1 (localhost only, default).
      */
-    fun start() {
-        // Bind to localhost only (127.0.0.1) for security
-        // Phase 1 - Logging Improvements: Fixed network binding
-        serverSocket = ServerSocket(PORT, 50, InetAddress.getByName("127.0.0.1")).apply {
+    fun start(bindToAllInterfaces: Boolean = false) {
+        // Determine binding address based on network setting
+        val bindAddress = if (bindToAllInterfaces) {
+            "0.0.0.0" // All network interfaces (accessible from network)
+        } else {
+            "127.0.0.1" // Localhost only (secure default)
+        }
+
+        serverSocket = ServerSocket(PORT, 50, InetAddress.getByName(bindAddress)).apply {
             reuseAddress = true
         }
         running = true
+
+        val mode = if (bindToAllInterfaces) "NETWORK" else "LOCALHOST"
+        AppLogger.info(TAG, "Server binding to $bindAddress (mode: $mode)")
 
         serverThread = Thread {
             AppLogger.info(TAG, "Server started on port $PORT")
@@ -65,13 +79,27 @@ class HttpLogServer(private val context: Context) {
     private fun handleRequest(client: Socket) {
         try {
             client.use {
+                // Check IP whitelist if network mode enabled
+                val clientIp = it.inetAddress.hostAddress
+                if (!isClientAllowed(clientIp)) {
+                    val writer = PrintWriter(it.getOutputStream(), true)
+                    writer.println("HTTP/1.1 403 Forbidden")
+                    writer.println("Content-Type: text/plain; charset=UTF-8")
+                    writer.println("Connection: close")
+                    writer.println()
+                    writer.println("Access denied. IP $clientIp not whitelisted.")
+                    writer.flush()
+                    AppLogger.info(TAG, "Rejected request from non-whitelisted IP: $clientIp")
+                    return
+                }
+
                 val reader = BufferedReader(InputStreamReader(it.getInputStream()))
                 val writer = PrintWriter(it.getOutputStream(), true)
 
                 // Read request line
                 val requestLine = reader.readLine() ?: return
 
-                AppLogger.debug(TAG, "Request: $requestLine")
+                AppLogger.debug(TAG, "Request from $clientIp: $requestLine")
 
                 // Skip headers
                 while (true) {
@@ -126,13 +154,24 @@ class HttpLogServer(private val context: Context) {
         "/status" -> {
             // Return server status
             val crashExists = AppLogger.readCrashLog() != null
-            """
-                AI Secretary Log Server
-                Status: Running
-                Port: $PORT
-                Logs: ${AppLogger.readLogs().size} entries
-                Crash log: ${if (crashExists) "Available" else "None"}
-            """.trimIndent()
+            val networkMode = AppPreferences.isNetworkLogsEnabled()
+            val localIp = if (networkMode) getLocalNetworkIp() else null
+            val whitelistedIp = AppPreferences.getWhitelistedIp()
+
+            buildString {
+                appendLine("AI Secretary Log Server")
+                appendLine("Status: Running")
+                appendLine("Port: $PORT")
+                appendLine("Mode: ${if (networkMode) "NETWORK" else "LOCALHOST"}")
+                if (networkMode && localIp != null) {
+                    appendLine("Network URL: http://$localIp:$PORT/logs")
+                }
+                if (whitelistedIp != null) {
+                    appendLine("Whitelisted IP: $whitelistedIp")
+                }
+                appendLine("Logs: ${AppLogger.readLogs().size} entries")
+                appendLine("Crash log: ${if (crashExists) "Available" else "None"}")
+            }.trimEnd()
         }
 
         "/" -> {
@@ -237,6 +276,54 @@ class HttpLogServer(private val context: Context) {
             AppLogger.error(TAG, "Error stopping server: ${e.message}")
         }
         AppLogger.info(TAG, "Server stopped")
+    }
+
+    /**
+     * Check if client IP is allowed to access logs.
+     *
+     * Logic:
+     * - If localhost (127.0.0.1 or ::1): always allowed
+     * - If whitelist is set: only allow whitelisted IP
+     * - If whitelist is empty: allow all network IPs (user accepted risk)
+     *
+     * @param clientIp IP address of the client making the request
+     * @return true if access allowed, false otherwise
+     */
+    private fun isClientAllowed(clientIp: String?): Boolean {
+        if (clientIp == null) return false
+
+        // Always allow localhost
+        if (clientIp == "127.0.0.1" || clientIp == "0:0:0:0:0:0:0:1" || clientIp == "::1") {
+            return true
+        }
+
+        // Check whitelist
+        val whitelistedIp = AppPreferences.getWhitelistedIp()
+        return if (whitelistedIp != null) {
+            // Whitelist is set: only allow that IP
+            clientIp == whitelistedIp
+        } else {
+            // No whitelist: allow all network IPs (user's choice)
+            true
+        }
+    }
+
+    /**
+     * Get the device's local network IP address (e.g., 192.168.1.150).
+     *
+     * @return IPv4 address on local network, or null if not available
+     */
+    fun getLocalNetworkIp(): String? {
+        return try {
+            NetworkInterface.getNetworkInterfaces().asSequence()
+                .flatMap { it.inetAddresses.asSequence() }
+                .filter { !it.isLoopbackAddress && it is Inet4Address }
+                .map { it.hostAddress }
+                .firstOrNull()
+        } catch (e: Exception) {
+            AppLogger.error(TAG, "Failed to get local IP: ${e.message}")
+            null
+        }
     }
 
     companion object {
