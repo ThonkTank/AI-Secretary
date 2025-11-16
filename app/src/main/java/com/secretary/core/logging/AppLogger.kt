@@ -23,7 +23,8 @@ object AppLogger {
     private const val MAX_LOG_LINES = 1500  // Increased from 500 (Phase 1 - Logging Improvements)
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
-    private val logLines = mutableListOf<String>()
+    // Phase 2: Migrated to ArrayDeque for O(1) circular buffer performance
+    private val logLines = ArrayDeque<String>(MAX_LOG_LINES)
 
     @Volatile
     private var initialized = false
@@ -154,25 +155,20 @@ object AppLogger {
             else -> Log.i(tag, message)
         }
 
-        // Store in memory
-        logLines.add(logEntry)
-
-        // Auto-trim if too many lines
-        if (logLines.size > MAX_LOG_LINES) {
-            // Keep only the last MAX_LOG_LINES
-            val startIndex = logLines.size - MAX_LOG_LINES
-            val trimmedLogs = logLines.subList(startIndex, logLines.size).toMutableList()
-            logLines.clear()
-            logLines.addAll(trimmedLogs)
+        // Store in memory with O(1) circular buffer (Phase 2)
+        if (logLines.size >= MAX_LOG_LINES) {
+            logLines.removeFirst()  // O(1) - Remove oldest entry
         }
+        logLines.addLast(logEntry)  // O(1) - Add newest entry
     }
 
     /**
      * Read all logs from memory
+     * Returns immutable copy to prevent external modification
      */
     @Synchronized
     fun readLogs(): List<String> {
-        return ArrayList(logLines)
+        return logLines.toList()  // Creates immutable copy
     }
 
     /**
