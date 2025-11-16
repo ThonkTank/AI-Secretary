@@ -79,11 +79,17 @@ class HttpLogServer(private val context: Context) {
                     if (line.isNullOrEmpty()) break
                 }
 
-                // Parse request path
-                val path = requestLine.split(" ").getOrNull(1) ?: "/"
+                // Parse request path and query parameters
+                val fullPath = requestLine.split(" ").getOrNull(1) ?: "/"
+                val (path, queryString) = if (fullPath.contains("?")) {
+                    val parts = fullPath.split("?", limit = 2)
+                    parts[0] to parts.getOrNull(1)
+                } else {
+                    fullPath to null
+                }
 
                 // Generate and send response
-                val response = generateResponse(path)
+                val response = generateResponse(path, queryString)
                 val responseBytes = response.toByteArray(Charsets.UTF_8)
 
                 writer.println("HTTP/1.1 200 OK")
@@ -101,39 +107,123 @@ class HttpLogServer(private val context: Context) {
 
     /**
      * Generate HTTP response based on request path
+     * Phase 3: Added crash log endpoint and query parameter filtering
      */
-    private fun generateResponse(path: String): String = when (path) {
+    private fun generateResponse(path: String, queryString: String?): String = when (path) {
         "/logs" -> {
-            // Return all logs
-            AppLogger.readLogs().joinToString("\n")
+            // Return logs with optional filtering
+            val logs = AppLogger.readLogs()
+            val filtered = filterLogs(logs, queryString)
+            filtered.joinToString("\n")
+        }
+
+        "/crash" -> {
+            // Return crash log if exists
+            val crashLog = AppLogger.readCrashLog()
+            crashLog ?: "No crash log found"
         }
 
         "/status" -> {
             // Return server status
+            val crashExists = AppLogger.readCrashLog() != null
             """
                 AI Secretary Log Server
                 Status: Running
                 Port: $PORT
                 Logs: ${AppLogger.readLogs().size} entries
+                Crash log: ${if (crashExists) "Available" else "None"}
             """.trimIndent()
         }
 
         "/" -> {
             // Return help text
             """
-                AI Secretary HTTP Log Server
+                AI Secretary HTTP Log Server (Phase 3)
 
                 Available endpoints:
-                  GET /         - This help text
-                  GET /logs     - View all logs
-                  GET /status   - Server status
+                  GET /              - This help text
+                  GET /logs          - View all logs
+                  GET /logs?level=ERROR - Filter by log level
+                  GET /logs?tag=TaskActivity - Filter by component tag
+                  GET /logs?search=crash - Search logs
+                  GET /crash         - View crash log
+                  GET /status        - Server status
 
-                Usage from Termux:
+                Query parameters for /logs:
+                  level=ERROR,WARN   - Filter by log level (comma-separated)
+                  tag=TaskActivity   - Filter by tag (case-sensitive)
+                  search=keyword     - Search in log messages (case-insensitive)
+                  tail=50            - Show only last N entries
+
+                Examples:
                   curl http://localhost:8080/logs
+                  curl http://localhost:8080/logs?level=ERROR
+                  curl http://localhost:8080/logs?tag=TaskActivity
+                  curl http://localhost:8080/logs?search=crash
+                  curl http://localhost:8080/logs?level=ERROR&tag=Database
+                  curl http://localhost:8080/crash
             """.trimIndent()
         }
 
         else -> "404 Not Found: $path"
+    }
+
+    /**
+     * Filter logs based on query parameters
+     * Phase 3: Supports level, tag, search, and tail parameters
+     */
+    private fun filterLogs(logs: List<String>, queryString: String?): List<String> {
+        if (queryString == null) return logs
+
+        // Parse query parameters
+        val params = parseQueryParams(queryString)
+        var filtered = logs
+
+        // Filter by log level (e.g., level=ERROR or level=ERROR,WARN)
+        params["level"]?.let { levelParam ->
+            val levels = levelParam.split(",").map { it.trim().uppercase() }
+            filtered = filtered.filter { log ->
+                levels.any { level -> log.contains("[$level]") }
+            }
+        }
+
+        // Filter by tag (e.g., tag=TaskActivity)
+        params["tag"]?.let { tag ->
+            filtered = filtered.filter { log ->
+                log.contains("[$tag]")
+            }
+        }
+
+        // Filter by search keyword (case-insensitive)
+        params["search"]?.let { keyword ->
+            filtered = filtered.filter { log ->
+                log.contains(keyword, ignoreCase = true)
+            }
+        }
+
+        // Tail: return only last N entries
+        params["tail"]?.toIntOrNull()?.let { n ->
+            filtered = filtered.takeLast(n)
+        }
+
+        return filtered
+    }
+
+    /**
+     * Parse query string into parameter map
+     * Example: "level=ERROR&tag=Database" → {"level": "ERROR", "tag": "Database"}
+     */
+    private fun parseQueryParams(queryString: String): Map<String, String> {
+        return queryString.split("&")
+            .mapNotNull { param ->
+                val parts = param.split("=", limit = 2)
+                if (parts.size == 2) {
+                    parts[0] to parts[1]
+                } else {
+                    null
+                }
+            }
+            .toMap()
     }
 
     /**
