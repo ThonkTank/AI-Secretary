@@ -69,21 +69,71 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
         super.onCreate(savedInstanceState)
 
         try {
-            // MINIMAL SAFE VERSION - Just show we can load!
-            setContentView(R.layout.activity_tasks_minimal)
+            setContentView(R.layout.activity_tasks)
+            AppLogger.initialize(this)
+            AppLogger.info(TAG, "TaskActivity started - setContentView successful")
 
-            android.util.Log.i(TAG, "TaskActivity MINIMAL version loaded successfully!")
+            // Initialize components
+            dbHelper = TaskDatabaseHelper(this) // Legacy - for TaskDialogHelper
 
-            val debugText = findViewById<TextView>(R.id.debugTextView)
-            debugText.text = "✅ TaskActivity loaded!\n\n" +
-                    "This is a minimal safe version.\n" +
-                    "If you see this, the crash happens\n" +
-                    "during initialization of:\n" +
-                    "- Room Database\n" +
-                    "- ViewModels\n" +
-                    "- or other dependencies"
+            // Initialize Room database and repository
+            val database = TaskDatabase.getDatabase(this)
+            val taskDao = database.taskDao()
+            repository = TaskRepositoryImpl(taskDao)
 
-            android.util.Log.i(TAG, "TaskActivity onCreate completed successfully (MINIMAL)")
+            // Initialize Services for domain logic
+            val streakService = com.secretary.features.tasks.domain.service.StreakService()
+            val recurrenceService = com.secretary.features.tasks.domain.service.RecurrenceService()
+
+            // Initialize ViewModel with Factory (dependency injection)
+            val viewModelFactory = com.secretary.features.tasks.presentation.viewmodel.TaskViewModelFactory(
+                repository,
+                streakService,
+                recurrenceService
+            )
+            viewModel = androidx.lifecycle.ViewModelProvider(this, viewModelFactory)
+                .get(com.secretary.features.tasks.presentation.viewmodel.TaskListViewModel::class.java)
+
+            dialogHelper = TaskDialogHelper(this, dbHelper)
+            setupDialogHelperListeners()
+
+            // Setup ViewModel observers (MVVM pattern)
+            setupViewModelObservers()
+
+            // Find views
+            taskListView = findViewById(R.id.taskListView)
+            emptyTasksText = findViewById(R.id.emptyTasksText)
+            statisticsText = findViewById(R.id.taskStatisticsText)
+            addTaskButton = findViewById(R.id.addTaskButton)
+            searchEditText = findViewById(R.id.searchEditText)
+            statusFilterSpinner = findViewById(R.id.statusFilterSpinner)
+            priorityFilterSpinner = findViewById(R.id.priorityFilterSpinner)
+            categoryFilterSpinner = findViewById(R.id.categoryFilterSpinner)
+            sortBySpinner = findViewById(R.id.sortBySpinner)
+
+            AppLogger.info(TAG, "All views found successfully")
+
+            // Setup adapter
+            adapter = TaskListAdapter(this, filteredTaskList, this)
+            taskListView.adapter = adapter
+
+            // Setup filter manager
+            filterManager = TaskFilterManager()
+
+            // Setup UI
+            setupFilterSpinners()
+            setupSearch()
+
+            // Add task button
+            addTaskButton.setOnClickListener {
+                AppLogger.info(TAG, "Add task button clicked")
+                showAddTaskDialog()
+            }
+
+            // Initial load
+            loadTasks()
+
+            AppLogger.info(TAG, "TaskActivity onCreate completed successfully")
 
         } catch (e: Exception) {
             android.util.Log.e(TAG, "FATAL ERROR in TaskActivity.onCreate()", e)
