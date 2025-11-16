@@ -137,12 +137,25 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
 
         } catch (e: Exception) {
             android.util.Log.e(TAG, "FATAL ERROR in TaskActivity.onCreate()", e)
-            AppLogger.error(TAG, "TaskActivity onCreate crashed: ${e.message}", e)
+            e.printStackTrace() // Print full stack trace to logcat
 
+            try {
+                AppLogger.initialize(this) // Ensure logger is initialized
+                AppLogger.error(TAG, "TaskActivity onCreate crashed: ${e.javaClass.name}: ${e.message}", e)
+            } catch (logErr: Exception) {
+                android.util.Log.e(TAG, "Could not log error", logErr)
+            }
+
+            // Show error dialog with full stack trace
+            val stackTrace = e.stackTraceToString()
             AlertDialog.Builder(this)
-                .setTitle("Error")
-                .setMessage("Failed to open Tasks:\n${e.message}")
-                .setPositiveButton("OK") { _, _ -> finish() }
+                .setTitle("TaskActivity Crash")
+                .setMessage("Error: ${e.javaClass.simpleName}\n${e.message}\n\nStack trace:\n${stackTrace.take(500)}")
+                .setPositiveButton("Close App") { _, _ ->
+                    finish()
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                }
+                .setCancelable(false)
                 .show()
         }
     }
