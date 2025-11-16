@@ -15,3 +15,7 @@ gen/
 # OS
 .DS_Store
 *~
+
+# Claude Code documentation (auto-generated)
+CLAUDE.md
+**/CLAUDE.md
