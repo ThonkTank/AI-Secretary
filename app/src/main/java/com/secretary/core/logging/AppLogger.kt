@@ -12,14 +12,15 @@ import kotlin.system.exitProcess
 /**
  * Singleton AppLogger for centralized in-memory logging.
  *
- * Logs are stored in memory (max 500 lines) and accessible via HTTP server
+ * Logs are stored in memory (max 1500 lines) and accessible via HTTP server
  * on localhost:8080/logs. Also writes to Android Logcat for redundancy.
  *
  * Converted to Kotlin in Phase 4.5.3 (Kotlin Migration)
+ * Buffer increased from 500 to 1500 entries in Phase 1 (Logging Improvements)
  */
 object AppLogger {
     private const val TAG = "AppLogger"
-    private const val MAX_LOG_LINES = 500
+    private const val MAX_LOG_LINES = 1500  // Increased from 500 (Phase 1 - Logging Improvements)
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
     private val logLines = mutableListOf<String>()

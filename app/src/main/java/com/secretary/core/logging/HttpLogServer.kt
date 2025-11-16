@@ -4,6 +4,7 @@ import android.content.Context
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
+import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 
@@ -31,7 +32,9 @@ class HttpLogServer(private val context: Context) {
      * Runs in background thread to avoid blocking main thread
      */
     fun start() {
-        serverSocket = ServerSocket(PORT).apply {
+        // Bind to localhost only (127.0.0.1) for security
+        // Phase 1 - Logging Improvements: Fixed network binding
+        serverSocket = ServerSocket(PORT, 50, InetAddress.getByName("127.0.0.1")).apply {
             reuseAddress = true
         }
         running = true

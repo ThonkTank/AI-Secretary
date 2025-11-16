@@ -280,33 +280,38 @@ logger.error(TAG, "Download failed with status: " + status);
 ### Auto-Trimming
 
 **Configuration:**
-- **Max Entries:** 500
-- **Trimming Method:** Statistical (random check)
-- **Trigger:** ~2% probability per log entry
-- **Retention:** Keeps latest 500 entries when trimming
+- **Max Entries:** 1500 (increased from 500 in Phase 1 - Logging Improvements)
+- **Trimming Method:** Deterministic (on every write when size > 1500)
+- **Trigger:** Buffer exceeds 1500 entries
+- **Retention:** Keeps latest 1500 entries (FIFO - First In, First Out)
 
 **Implementation:**
-```java
-// In AppLogger.java
-private static final int MAX_LOG_ENTRIES = 500;
+```kotlin
+// In AppLogger.kt
+private const val MAX_LOG_LINES = 1500
 
-private void trimLogsIfNeeded() {
-    // ~2% chance of trimming check
-    if (Math.random() < 0.02 && logs.size() > MAX_LOG_ENTRIES) {
-        // Keep only last 500 entries
-        List<String> recentLogs = new ArrayList<>(
-            logs.subList(logs.size() - MAX_LOG_ENTRIES, logs.size())
-        );
-        logs.clear();
-        logs.addAll(recentLogs);
+@Synchronized
+private fun writeLog(level: String, tag: String, message: String) {
+    val logEntry = "[$timestamp] [$level] [$tag] $message"
+
+    // Add to in-memory buffer
+    logLines.add(logEntry)
+
+    // Deterministic trimming when buffer exceeds limit
+    if (logLines.size > MAX_LOG_LINES) {
+        // Keep only the last MAX_LOG_LINES entries
+        val startIndex = logLines.size - MAX_LOG_LINES
+        val trimmedLogs = logLines.subList(startIndex, logLines.size).toMutableList()
+        logLines.clear()
+        logLines.addAll(trimmedLogs)
     }
 }
 ```
 
 **Memory Usage:**
-- Average entry: ~100 bytes
-- 500 entries: ~50 KB
-- Negligible impact on app performance
+- Average entry: ~250 bytes (timestamp + level + tag + message)
+- 1500 entries: ~375 KB (previously ~120 KB for 500 entries)
+- Negligible impact on modern Android devices (0.07% of 512 MB app budget)
 
 ---
 
