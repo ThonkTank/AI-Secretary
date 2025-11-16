@@ -50,12 +50,17 @@
 -keepattributes *Annotation*
 
 # Keep Task entity and related classes
--keep class com.secretary.helloworld.features.tasks.data.TaskEntity { *; }
--keep class com.secretary.helloworld.features.statistics.data.CompletionEntity { *; }
--keep class com.secretary.helloworld.features.tasks.domain.model.** { *; }
+-keep class com.secretary.features.tasks.data.TaskEntity { *; }
+-keep class com.secretary.features.statistics.data.CompletionEntity { *; }
+-keep class com.secretary.features.tasks.domain.model.** { *; }
+-keep class com.secretary.** { *; }
 
 # Keep HTTP server for logging
--keep class com.secretary.helloworld.core.logging.** { *; }
+-keep class com.secretary.core.logging.** { *; }
 
 # Keep update system
--keep class com.secretary.helloworld.core.network.** { *; }
+-keep class com.secretary.core.network.** { *; }
+
+# Keep ALL classes in com.secretary package (safety measure)
+-keep class com.secretary.** { *; }
+-keepclassmembers class com.secretary.** { *; }

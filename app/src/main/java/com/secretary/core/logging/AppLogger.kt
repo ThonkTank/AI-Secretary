@@ -2,9 +2,12 @@ package com.secretary.core.logging
 
 import android.content.Context
 import android.util.Log
+import java.io.File
+import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.system.exitProcess
 
 /**
  * Singleton AppLogger for centralized in-memory logging.
@@ -24,6 +27,9 @@ object AppLogger {
     @Volatile
     private var initialized = false
 
+    private lateinit var crashLogFile: File
+    private var appContext: Context? = null
+
     /**
      * Initialize the logger with context.
      * Safe to call multiple times - initialization happens only once.
@@ -32,8 +38,74 @@ object AppLogger {
     fun initialize(context: Context) {
         if (!initialized) {
             initialized = true
-            info(TAG, "AppLogger initialized (IN-MEMORY ONLY)")
+            appContext = context.applicationContext
+
+            // Setup crash log file in app-specific directory (no permissions needed)
+            val logsDir = File(context.getExternalFilesDir(null), "logs")
+            logsDir.mkdirs()
+            crashLogFile = File(logsDir, "crash.log")
+
+            // Install crash handler
+            setupCrashHandler()
+
+            info(TAG, "AppLogger initialized (IN-MEMORY + CRASH LOGGING)")
             info(TAG, "Logs accessible via HTTP server: curl http://localhost:8080/logs")
+            info(TAG, "Crash logs saved to: ${crashLogFile.absolutePath}")
+        }
+    }
+
+    /**
+     * Setup uncaught exception handler to save crash logs
+     */
+    private fun setupCrashHandler() {
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                // Log to memory
+                error(TAG, "UNCAUGHT EXCEPTION in thread ${thread.name}", throwable)
+
+                // Save crash log to file
+                saveCrashLog(throwable, thread)
+
+                // Call default handler
+                defaultHandler?.uncaughtException(thread, throwable)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to save crash log", e)
+                defaultHandler?.uncaughtException(thread, throwable)
+            }
+        }
+    }
+
+    /**
+     * Save crash information to persistent file
+     */
+    private fun saveCrashLog(throwable: Throwable, thread: Thread) {
+        try {
+            FileWriter(crashLogFile, false).use { writer ->
+                writer.write("=== AI SECRETARY CRASH LOG ===\n")
+                writer.write("Time: ${dateFormat.format(Date())}\n")
+                writer.write("Thread: ${thread.name}\n")
+                writer.write("Exception: ${throwable.javaClass.name}\n")
+                writer.write("Message: ${throwable.message}\n\n")
+
+                writer.write("=== STACK TRACE ===\n")
+                writer.write(Log.getStackTraceString(throwable))
+                writer.write("\n\n")
+
+                writer.write("=== RECENT LOGS ===\n")
+                readLogs().forEach { line ->
+                    writer.write(line)
+                    writer.write("\n")
+                }
+
+                writer.flush()
+            }
+
+            Log.e(TAG, "Crash log saved to: ${crashLogFile.absolutePath}")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write crash log file", e)
         }
     }
 
@@ -109,6 +181,50 @@ object AppLogger {
     fun clearLogs() {
         logLines.clear()
         info(TAG, "Logs manually cleared by user")
+    }
+
+    /**
+     * Read crash log from file (if exists)
+     * Returns null if no crash log found
+     */
+    fun readCrashLog(): String? {
+        return try {
+            if (::crashLogFile.isInitialized && crashLogFile.exists()) {
+                crashLogFile.readText()
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to read crash log", e)
+            null
+        }
+    }
+
+    /**
+     * Delete crash log file
+     */
+    fun deleteCrashLog(): Boolean {
+        return try {
+            if (::crashLogFile.isInitialized && crashLogFile.exists()) {
+                crashLogFile.delete()
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete crash log", e)
+            false
+        }
+    }
+
+    /**
+     * Get crash log file path for external access
+     */
+    fun getCrashLogPath(): String? {
+        return if (::crashLogFile.isInitialized) {
+            crashLogFile.absolutePath
+        } else {
+            null
+        }
     }
 
     /**
