@@ -84,6 +84,8 @@ dependencies {
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito:mockito-core:5.8.0")
+    testImplementation("org.mockito:mockito-inline:5.2.0") // For mocking final classes
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0") // Kotlin extensions
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
 
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
