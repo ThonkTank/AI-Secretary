@@ -444,14 +444,7 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
         } else {
             // Unchecked - mark as incomplete
             task.isCompleted = false
-            lifecycleScope.launch {
-                try {
-                    repository.updateTask(task)
-                    loadTasks()
-                } catch (e: Exception) {
-                    AppLogger.error(TAG, "Failed to update task via Repository", e)
-                }
-            }
+            viewModel.updateTask(task)
         }
     }
 
@@ -462,14 +455,7 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
 
     override fun onTaskDelete(task: Task) {
         AppLogger.info(TAG, "Delete task: ${task.title}")
-        lifecycleScope.launch {
-            try {
-                repository.deleteTask(task.id)
-                loadTasks()
-            } catch (e: Exception) {
-                AppLogger.error(TAG, "Failed to delete task via Repository", e)
-            }
-        }
+        viewModel.deleteTask(task.id)
     }
 
     override fun onTasksChanged() {

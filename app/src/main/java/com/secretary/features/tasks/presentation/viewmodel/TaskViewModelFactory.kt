@@ -35,6 +35,7 @@ class TaskViewModelFactory(
                 // Create Use Cases for TaskListViewModel
                 val getTasksUseCase = GetTasksUseCase(taskRepository)
                 val deleteTaskUseCase = DeleteTaskUseCase(taskRepository)
+                val updateTaskUseCase = UpdateTaskUseCase(taskRepository)
                 val completeTaskUseCase = CompleteTaskUseCase(
                     taskRepository,
                     streakService,
@@ -44,7 +45,8 @@ class TaskViewModelFactory(
                 TaskListViewModel(
                     getTasksUseCase,
                     deleteTaskUseCase,
-                    completeTaskUseCase
+                    completeTaskUseCase,
+                    updateTaskUseCase
                 ) as T
             }
 

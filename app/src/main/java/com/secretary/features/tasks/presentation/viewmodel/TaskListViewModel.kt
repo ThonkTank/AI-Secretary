@@ -8,6 +8,7 @@ import com.secretary.Task
 import com.secretary.features.tasks.domain.usecase.CompleteTaskUseCase
 import com.secretary.features.tasks.domain.usecase.DeleteTaskUseCase
 import com.secretary.features.tasks.domain.usecase.GetTasksUseCase
+import com.secretary.features.tasks.domain.usecase.UpdateTaskUseCase
 import kotlinx.coroutines.launch
 
 /**
@@ -20,11 +21,13 @@ import kotlinx.coroutines.launch
  * @param getTasksUseCase Use case for retrieving tasks
  * @param deleteTaskUseCase Use case for deleting tasks
  * @param completeTaskUseCase Use case for completing tasks
+ * @param updateTaskUseCase Use case for updating tasks
  */
 class TaskListViewModel(
     private val getTasksUseCase: GetTasksUseCase,
     private val deleteTaskUseCase: DeleteTaskUseCase,
-    private val completeTaskUseCase: CompleteTaskUseCase
+    private val completeTaskUseCase: CompleteTaskUseCase,
+    private val updateTaskUseCase: UpdateTaskUseCase
 ) : ViewModel() {
 
     // UI State
@@ -119,6 +122,27 @@ class TaskListViewModel(
                 },
                 onFailure = { exception ->
                     _error.value = exception.message ?: "Failed to complete task"
+                }
+            )
+        }
+    }
+
+    /**
+     * Update a task (e.g., mark as incomplete, edit properties)
+     *
+     * @param task Task with updated properties
+     */
+    fun updateTask(task: Task) {
+        viewModelScope.launch {
+            _error.value = null
+
+            updateTaskUseCase(task).fold(
+                onSuccess = {
+                    _operationSuccess.value = "Task updated"
+                    loadTasks() // Refresh list
+                },
+                onFailure = { exception ->
+                    _error.value = exception.message ?: "Failed to update task"
                 }
             )
         }
