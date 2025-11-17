@@ -1,0 +1,42 @@
+[
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-merged_res-32:/layout_dialog_logs.xml.flat",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/dialog_logs.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-merged_res-32:/layout_dialog_settings.xml.flat",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/dialog_settings.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-merged_res-32:/layout_dialog_completion.xml.flat",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/dialog_completion.xml"
+    },
+    {
+        "merged": "com.secretary.app-merged_res-32:/layout_activity_main.xml.flat",
+        "source": "com.secretary.app-main-34:/layout/activity_main.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-merged_res-32:/layout_activity_tasks_minimal.xml.flat",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/activity_tasks_minimal.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-merged_res-32:/layout_activity_tasks.xml.flat",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/activity_tasks.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-merged_res-32:/layout_dialog_add_task.xml.flat",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/dialog_add_task.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-merged_res-32:/menu_main_menu.xml.flat",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/menu/main_menu.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-merged_res-32:/layout_task_list_item.xml.flat",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/task_list_item.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-merged_res-32:/layout_activity_main.xml.flat",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/activity_main.xml"
+    }
+]

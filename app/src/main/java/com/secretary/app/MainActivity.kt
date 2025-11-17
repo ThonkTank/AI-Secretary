@@ -7,8 +7,9 @@ import com.secretary.core.logging.AppLogger
 import com.secretary.core.logging.HttpLogServer
 import com.secretary.core.network.UpdateChecker
 import com.secretary.core.network.UpdateInstaller
-import android.app.Activity
 import android.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -36,7 +37,7 @@ import android.widget.Toast
  * - HTTP log server initialization
  * - Real-time log display
  */
-class MainActivity : Activity() {
+class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
@@ -50,6 +51,10 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Setup Toolbar as ActionBar
+        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
 
         Log.i(TAG, "=== Application onCreate started ===")
 

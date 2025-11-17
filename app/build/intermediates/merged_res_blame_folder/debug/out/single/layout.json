@@ -1,0 +1,38 @@
+[
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-mergeDebugResources-31:/layout/task_list_item.xml",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/task_list_item.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-mergeDebugResources-31:/layout/dialog_completion.xml",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/dialog_completion.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-mergeDebugResources-31:/layout/dialog_logs.xml",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/dialog_logs.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-mergeDebugResources-31:/layout/dialog_add_task.xml",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/dialog_add_task.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-mergeDebugResources-31:/layout/activity_main.xml",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.secretary.app-mergeDebugResources-31:/layout/activity_main.xml",
+        "source": "com.secretary.app-main-34:/layout/activity_main.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-mergeDebugResources-31:/layout/dialog_settings.xml",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/dialog_settings.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-mergeDebugResources-31:/layout/activity_tasks_minimal.xml",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/activity_tasks_minimal.xml"
+    },
+    {
+        "merged": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-mergeDebugResources-31:/layout/activity_tasks.xml",
+        "source": "/home/aaron/.gradle/daemon/8.2/com.secretary.app-main-34:/layout/activity_tasks.xml"
+    }
+]
