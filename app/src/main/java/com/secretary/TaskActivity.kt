@@ -1,6 +1,8 @@
 package com.secretary
 
 import com.secretary.core.logging.AppLogger
+import com.secretary.features.statistics.data.CompletionRepositoryImpl
+import com.secretary.features.statistics.domain.repository.CompletionRepository
 import com.secretary.features.tasks.data.TaskDao
 import com.secretary.features.tasks.data.repository.TaskRepositoryImpl
 import com.secretary.features.tasks.domain.repository.TaskRepository
@@ -74,10 +76,14 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
             AppLogger.initialize(this)
             AppLogger.info(TAG, "TaskActivity started - setContentView successful")
 
-            // Initialize Room database and repository
+            // Initialize Room database and repositories
             val database = TaskDatabase.getDatabase(this)
             val taskDao = database.taskDao()
             repository = TaskRepositoryImpl(taskDao)
+
+            // Phase 4: Initialize CompletionRepository for statistics
+            val completionDao = database.completionDao()
+            val completionRepository: CompletionRepository = CompletionRepositoryImpl(completionDao)
 
             // Initialize Services for domain logic
             val streakService = com.secretary.features.tasks.domain.service.StreakService()
@@ -86,6 +92,7 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
             // Initialize ViewModel with Factory (dependency injection)
             viewModelFactory = com.secretary.features.tasks.presentation.viewmodel.TaskViewModelFactory(
                 repository,
+                completionRepository,
                 streakService,
                 recurrenceService
             )
@@ -211,10 +218,18 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
             taskList.addAll(tasks)
             lifecycleScope.launch {
                 updateCategoryFilter() // Update category filter with new categories
-                updateStatistics() // Update statistics display (async, uses repository)
             }
             applyFilters() // Apply current filters to show filtered list
             AppLogger.info(TAG, "ViewModel: Loaded ${tasks.size} tasks")
+        }
+
+        // Phase 4: Observe statistics - update statistics display
+        viewModel.statistics.observe(this) { stats ->
+            stats?.let {
+                // Use the toDisplayString() method from TaskStatistics model
+                statisticsText.text = it.toDisplayString()
+                AppLogger.info(TAG, "Statistics updated: ${it.toDisplayString()}")
+            }
         }
 
         // Observe error - show error Toast

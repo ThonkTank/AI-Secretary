@@ -16,17 +16,18 @@
 
 **Resumed:** 2025-11-13 (after Phase 4.5.1-4.5.2 completion)
 
-**Completed (30%):**
+**Completed (50%):**
 - ✅ Streak Tracking (current and longest streaks)
 - ✅ Database schema with streak fields
 - ✅ Basic streak calculation logic
+- ✅ Statistics calculation service (GetStatisticsUseCase with CompletionRepository integration)
+- ✅ Statistics display in TaskActivity (daily/weekly completion counts via MVVM)
 
 **In Progress:**
 - 🚧 Visual motivation features (progress bars, badges)
-- 🚧 Statistics display (daily/weekly completion counts)
 - 🚧 Motivational messages
 
-**Progress:** 30% complete - continuing where we left off
+**Progress:** 50% complete - statistics infrastructure implemented with Clean Architecture
 
 ### ✅ Completed: Phase 4.5 Architecture Refactor (100% Complete)
 
@@ -81,7 +82,7 @@ Standard for all TODOs in this roadmap:
 **Goal:** User motivation through gamification and visual feedback
 
 **Duration:** 2-3 weeks
-**Progress:** 30% complete
+**Progress:** 50% complete
 
 ### Active TODOs
 
@@ -89,12 +90,14 @@ Standard for all TODOs in this roadmap:
 - [ ] None currently
 
 **HIGH:**
-- [ ] Statistics calculation service - compute daily/weekly completion counts
-  - Location: `src/com/secretary/TaskStatistics.java`
-  - Dependencies: completions table, current date logic
-- [ ] Statistics display in TaskActivity - show today/week stats above list
-  - Location: `src/com/secretary/TaskActivity.java`
-  - UI: Add TextView or custom view for stats panel
+- [x] Statistics calculation service - compute daily/weekly completion counts ✅
+  - Location: `features/statistics/domain/usecase/GetStatisticsUseCase.kt`
+  - Implementation: Clean Architecture with CompletionRepository + TaskRepository integration
+  - Completed: 2025-11-17
+- [x] Statistics display in TaskActivity - show today/week stats above list ✅
+  - Location: `TaskActivity.java` (MVVM integration via TaskListViewModel)
+  - UI: Statistics displayed via LiveData observer pattern
+  - Completed: 2025-11-17
 
 **MEDIUM:**
 - [ ] Visual streak indicator - improve streak display beyond emoji

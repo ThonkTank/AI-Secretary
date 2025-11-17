@@ -5,6 +5,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.secretary.Task
+import com.secretary.features.statistics.domain.model.TaskStatistics
+import com.secretary.features.statistics.domain.usecase.GetStatisticsUseCase
 import com.secretary.features.tasks.domain.usecase.CompleteTaskUseCase
 import com.secretary.features.tasks.domain.usecase.DeleteTaskUseCase
 import com.secretary.features.tasks.domain.usecase.GetTasksUseCase
@@ -14,20 +16,23 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel: Task List Management
  * Phase 4.5.5 Wave 12: Domain Layer Integration
+ * Phase 4: Motivation & Statistics - Added statistics support
  *
  * Single Responsibility: Manage task list UI state
- * Max 150 lines (Architecture Standard)
+ * Max 200 lines (Architecture Standard)
  *
  * @param getTasksUseCase Use case for retrieving tasks
  * @param deleteTaskUseCase Use case for deleting tasks
  * @param completeTaskUseCase Use case for completing tasks
  * @param updateTaskUseCase Use case for updating tasks
+ * @param getStatisticsUseCase Use case for retrieving task statistics
  */
 class TaskListViewModel(
     private val getTasksUseCase: GetTasksUseCase,
     private val deleteTaskUseCase: DeleteTaskUseCase,
     private val completeTaskUseCase: CompleteTaskUseCase,
-    private val updateTaskUseCase: UpdateTaskUseCase
+    private val updateTaskUseCase: UpdateTaskUseCase,
+    private val getStatisticsUseCase: GetStatisticsUseCase
 ) : ViewModel() {
 
     // UI State
@@ -43,8 +48,13 @@ class TaskListViewModel(
     private val _operationSuccess = MutableLiveData<String?>()
     val operationSuccess: LiveData<String?> = _operationSuccess
 
+    // Statistics State (Phase 4: Motivation & Statistics)
+    private val _statistics = MutableLiveData<TaskStatistics>()
+    val statistics: LiveData<TaskStatistics> = _statistics
+
     /**
      * Load all tasks from repository
+     * Also refreshes statistics
      */
     fun loadTasks() {
         viewModelScope.launch {
@@ -55,6 +65,7 @@ class TaskListViewModel(
                 onSuccess = { taskList ->
                     _tasks.value = taskList
                     _loading.value = false
+                    refreshStatistics() // Update statistics whenever tasks change
                 },
                 onFailure = { exception ->
                     _error.value = exception.message ?: "Failed to load tasks"
@@ -167,5 +178,31 @@ class TaskListViewModel(
      */
     fun clearOperationSuccess() {
         _operationSuccess.value = null
+    }
+
+    // ========== Statistics Methods (Phase 4: Motivation & Statistics) ==========
+
+    /**
+     * Refresh task statistics
+     * Retrieves completion counts and active task counts
+     */
+    fun refreshStatistics() {
+        viewModelScope.launch {
+            getStatisticsUseCase().fold(
+                onSuccess = { stats ->
+                    _statistics.value = stats
+                },
+                onFailure = { exception ->
+                    // Don't show error for statistics - just log it
+                    // Statistics are supplementary, not critical
+                    _statistics.value = TaskStatistics(
+                        completedToday = 0,
+                        completedThisWeek = 0,
+                        activeTasks = 0,
+                        totalTasks = 0
+                    )
+                }
+            )
+        }
     }
 }

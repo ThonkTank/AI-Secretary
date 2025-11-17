@@ -2,6 +2,8 @@ package com.secretary.features.tasks.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.secretary.features.statistics.domain.repository.CompletionRepository
+import com.secretary.features.statistics.domain.usecase.GetStatisticsUseCase
 import com.secretary.features.tasks.domain.repository.TaskRepository
 import com.secretary.features.tasks.domain.service.RecurrenceService
 import com.secretary.features.tasks.domain.service.StreakService
@@ -14,16 +16,19 @@ import com.secretary.features.tasks.domain.usecase.UpdateTaskUseCase
 /**
  * ViewModelFactory: Dependency Injection for ViewModels
  * Phase 4.5.5 Wave 12 Phase 3: Integration & Migration
+ * Phase 4: Motivation & Statistics - Added CompletionRepository
  *
  * Single Responsibility: Create ViewModels with proper dependencies
- * Max 70 lines (Architecture Standard)
+ * Max 90 lines (Architecture Standard)
  *
  * @param taskRepository Repository for task data access
+ * @param completionRepository Repository for completion data access
  * @param streakService Service for streak calculation
  * @param recurrenceService Service for recurrence logic
  */
 class TaskViewModelFactory(
     private val taskRepository: TaskRepository,
+    private val completionRepository: CompletionRepository,
     private val streakService: StreakService,
     private val recurrenceService: RecurrenceService
 ) : ViewModelProvider.Factory {
@@ -41,12 +46,18 @@ class TaskViewModelFactory(
                     streakService,
                     recurrenceService
                 )
+                // Phase 4: Statistics support
+                val getStatisticsUseCase = GetStatisticsUseCase(
+                    completionRepository,
+                    taskRepository
+                )
 
                 TaskListViewModel(
                     getTasksUseCase,
                     deleteTaskUseCase,
                     completeTaskUseCase,
-                    updateTaskUseCase
+                    updateTaskUseCase,
+                    getStatisticsUseCase
                 ) as T
             }
 

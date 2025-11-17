@@ -79,12 +79,12 @@ class CompletionDialog : DialogFragment() {
         val streakService = com.secretary.features.tasks.domain.service.StreakService()
         val recurrenceService = com.secretary.features.tasks.domain.service.RecurrenceService()
 
-        val factory = TaskViewModelFactory(taskRepository, streakService, recurrenceService)
-        viewModel = ViewModelProvider(this, factory)[TaskListViewModel::class.java]
-
         // Setup CompletionRepository for tracking data
         val completionDao = database.completionDao()
         completionRepository = CompletionRepositoryImpl(completionDao)
+
+        val factory = TaskViewModelFactory(taskRepository, completionRepository, streakService, recurrenceService)
+        viewModel = ViewModelProvider(this, factory)[TaskListViewModel::class.java]
 
         // Observe completion result
         viewModel.operationSuccess.observe(this) { message ->

@@ -67,10 +67,15 @@ class AddTaskDialog : DialogFragment() {
         val database = com.secretary.shared.database.TaskDatabase.getDatabase(requireContext())
         val taskDao = database.taskDao()
         val repository = com.secretary.features.tasks.data.repository.TaskRepositoryImpl(taskDao)
+
+        // Phase 4: Initialize CompletionRepository for statistics
+        val completionDao = database.completionDao()
+        val completionRepository = com.secretary.features.statistics.data.CompletionRepositoryImpl(completionDao)
+
         val streakService = com.secretary.features.tasks.domain.service.StreakService()
         val recurrenceService = com.secretary.features.tasks.domain.service.RecurrenceService()
 
-        val factory = TaskViewModelFactory(repository, streakService, recurrenceService)
+        val factory = TaskViewModelFactory(repository, completionRepository, streakService, recurrenceService)
         viewModel = ViewModelProvider(this, factory)[TaskDetailViewModel::class.java]
 
         // Observe save result
