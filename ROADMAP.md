@@ -1,6 +1,6 @@
 # AI Secretary - Development Roadmap
 
-**Current Version:** v0.3.60 (Build 360) - Dialog Extraction Complete
+**Current Version:** v0.3.61 (Build 361) - Dialog Extraction Complete
 **Last Updated:** 2025-11-17
 **Status:** Phase 4.5.6 (Dialog Extraction) - COMPLETE ✅ | TaskDialogHelper and TaskDatabaseHelper deleted, 3 DialogFragments created | Ready for Phase 4.5.7 (Testing)
 
@@ -30,7 +30,7 @@
 
 ### In Progress: Phase 4.5 Architecture Refactor (86% Complete) 🚧
 
-**Current Version:** v0.3.60 (Build 360)
+**Current Version:** v0.3.61 (Build 361)
 **Status:** 6 of 7 subphases complete
 
 **✅ Completed Phases:**
