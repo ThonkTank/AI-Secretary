@@ -12,8 +12,8 @@ android {
         applicationId = "com.secretary"
         minSdk = 28
         targetSdk = 35
-        versionCode = 355
-        versionName = "0.3.55"
+        versionCode = 356
+        versionName = "0.3.56"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
