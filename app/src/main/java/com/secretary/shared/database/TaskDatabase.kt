@@ -56,6 +56,7 @@ abstract class TaskDatabase : RoomDatabase() {
                     DatabaseConstants.DATABASE_NAME
                 )
                     .addMigrations(MIGRATION_4_5)
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance
