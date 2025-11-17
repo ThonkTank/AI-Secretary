@@ -303,8 +303,8 @@ class HttpLogServer(private val context: Context) {
             // Whitelist is set: only allow that IP
             clientIp == whitelistedIp
         } else {
-            // No whitelist: allow all network IPs (user's choice)
-            true
+            // No whitelist: deny all network IPs (secure by default)
+            false
         }
     }
 

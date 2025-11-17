@@ -303,7 +303,7 @@ class MainActivity : Activity() {
                 if (whitelistedIp != null) {
                     append("Whitelisted IP: $whitelistedIp")
                 } else {
-                    append("No IP whitelist (all network IPs allowed)")
+                    append("⚠️ No whitelist - network access DISABLED (localhost only)")
                 }
             }
         } else {
@@ -349,14 +349,14 @@ class MainActivity : Activity() {
 
         AlertDialog.Builder(this)
             .setTitle("Whitelist Laptop IP")
-            .setMessage("Enter the IP address of your laptop to allow access to logs.\n\nLeave empty to allow all network IPs.")
+            .setMessage("Enter the IP address of your laptop to allow access to logs.\n\nIMPORTANT: You must whitelist an IP to enable network access. Without a whitelist, only localhost is allowed.")
             .setView(inputField)
             .setPositiveButton("Save") { _, _ ->
                 val ip = inputField.text.toString().trim()
                 if (ip.isEmpty()) {
                     AppPreferences.clearWhitelistedIp()
-                    logger.info(TAG, "Whitelist cleared - all IPs allowed")
-                    Toast.makeText(this, "Whitelist cleared (all network IPs allowed)", Toast.LENGTH_SHORT).show()
+                    logger.info(TAG, "Whitelist cleared - network access disabled")
+                    Toast.makeText(this, "Whitelist cleared (network access disabled)", Toast.LENGTH_SHORT).show()
                 } else {
                     // Basic IP validation (simple check)
                     if (ip.matches(Regex("^\\d{1,3}(\\.\\d{1,3}){3}\$"))) {
