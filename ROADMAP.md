@@ -1,8 +1,8 @@
 # AI Secretary - Development Roadmap
 
-**Current Version:** v0.3.43 (Build 343) - Kotlin Migration + Package Renaming Complete
-**Last Updated:** 2025-11-14
-**Status:** Phase 4.5.4 (Package Renaming) - COMPLETE ✅ | Package simplified: com.secretary.helloworld → com.secretary | Ready for Phase 4.5.5 (Domain Layer Integration)
+**Current Version:** v0.3.60 (Build 360) - Dialog Extraction Complete
+**Last Updated:** 2025-11-17
+**Status:** Phase 4.5.6 (Dialog Extraction) - COMPLETE ✅ | TaskDialogHelper and TaskDatabaseHelper deleted, 3 DialogFragments created | Ready for Phase 4.5.7 (Testing)
 
 **Update when**: Completing phases, adding TODOs, changing priorities, finishing major features.
 
@@ -28,20 +28,23 @@
 
 **Progress:** 30% complete - continuing where we left off
 
-### Completed Refactoring: Phase 4.5 (Partial) ✅
+### In Progress: Phase 4.5 Architecture Refactor (86% Complete) 🚧
 
-**Why Partial?** Java limitations make Room/MVVM too complex. Deferred to Kotlin migration.
+**Current Version:** v0.3.60 (Build 360)
+**Status:** 6 of 7 subphases complete
 
-**Completed:**
+**✅ Completed Phases:**
 - ✅ Phase 4.5.1: Critical Cleanup (13.4% codebase reduction, 496 lines deleted)
 - ✅ Phase 4.5.2: Package Structure (Clean Architecture foundation established)
+- ✅ Phase 4.5.3: Kotlin Migration + Gradle Setup (Complete tooling infrastructure)
+- ✅ Phase 4.5.4: Package Renaming to com.secretary (Simplified package structure)
+- ✅ Phase 4.5.5: Domain Layer + MVVM Integration (ViewModels, Use Cases, Services - **COMPLETE**)
+- ✅ Phase 4.5.6: Dialog Extraction (Deleted TaskDialogHelper + TaskDatabaseHelper, created 3 DialogFragments - **COMPLETE**)
 
-**Next Steps:**
-- 🚧 Phase 4.5.3: Kotlin Migration + Gradle Setup (ACTIVE - moved forward)
-- ⏳ Phase 4.5.4: Domain Layer - Use Cases & Services (after Kotlin)
-- ⏳ Phase 4.5.5: Presentation Layer - MVVM (after Kotlin)
+**🚧 Next Steps:**
+- 🚧 Phase 4.5.7: Testing & Documentation (70% coverage, ARCHITECTURE.md, DEBUGGING.md)
 
-**Result:** Clean codebase + package structure ready for Kotlin migration NOW.
+**Key Achievement:** Full MVVM architecture implemented with Clean Architecture principles. TaskActivity now uses ViewModels for all operations, eliminating direct database access from presentation layer.
 
 **After Phase 4.5:**
 - ⏳ Phase 5: Intelligent Planning (4-5 weeks)
@@ -159,13 +162,14 @@ Standard for all TODOs in this roadmap:
 
 ---
 
-## 🏗️ Phase 4.5: Architecture Refactor (Upcoming)
+## 🏗️ Phase 4.5: Architecture Refactor (In Progress)
 
 **Goal:** Complete architecture overhaul - from flat structure to Clean Architecture with feature modules
 
 **Duration:** 3-4 weeks (13-18 working days)
-**Progress:** 0% complete
-**When:** After Phase 4 completion, before Phase 5
+**Progress:** 71% complete (5 of 7 subphases done) - Phase 4.5.5 (MVVM) COMPLETE ✅
+**Current:** v0.3.60 (Build 360)
+**Next:** Phase 4.5.6 (Dialog Extraction) → 4.5.7 (Testing) → DONE
 **Criticality:** 🔴 HIGH - Technical debt is blocking scalability
 
 **Based on:** ARCHITECTURE_AUDIT.md findings - addresses critical issues:
@@ -1365,9 +1369,10 @@ android {
 ## Phase 4.5.5: Domain Layer Integration (3-4 days) ✅ COMPLETE
 
 **Goal:** Integrate domain infrastructure (created in Phase 4.5.3 Wave 10) into presentation layer
-**When:** Completed v0.3.57 (2025-11-17)
+**When:** Completed v0.3.60 (2025-11-17) - Initially finished v0.3.57, refined through v0.3.60
 **Why:** Replace legacy TaskDatabaseHelper with Clean Architecture components
 **Result:** Full MVVM integration - ViewModels handle all task operations via Use Cases
+**Impact:** TaskActivity now uses TaskListViewModel for all CRUD operations, eliminating direct database access from presentation layer
 
 ### Current State (Phase 4.5.3 Wave 10 Output)
 
@@ -1624,82 +1629,72 @@ AFTER:
 
 ---
 
-## Phase 4.5.6: Presentation Layer - MVVM (3-4 days)
+## Phase 4.5.6: Dialog Extraction (2-3 days)
 
-**Goal:** Separate UI from business logic using MVVM pattern
-**When:** After domain layer is complete
-**Why:** Reactive UI, testable presentation logic, modern Android
+**Goal:** Extract TaskDialogHelper into modular DialogFragments with ViewModel integration
+**When:** After Phase 4.5.5 (MVVM) - NEXT PRIORITY
+**Why:** TaskDialogHelper (404 lines) still uses legacy TaskDatabaseHelper, blocking its deletion
+**Status:** ✅ COMPLETE (2025-11-17)
+
+### Current State
+
+**✅ What's Working (Phase 4.5.5):**
+- TaskListViewModel + TaskDetailViewModel (complete MVVM)
+- 5 Use Cases (Create, Update, Delete, Complete, GetTasks)
+- TaskViewModelFactory for DI
+- TaskActivity uses ViewModel for all CRUD operations
+
+**❌ Problem:**
+- TaskDialogHelper.kt (404 lines) still uses `TaskDatabaseHelper` directly
+- TaskActivity must keep `dbHelper` alive for dialogs
+- Prevents deletion of TaskDatabaseHelper (654 lines legacy code)
+- Violates MVVM pattern (dialogs bypass ViewModels)
 
 ### Active TODOs
 
 **HIGH:**
-- [ ] Create ViewModels for activities
-  - GOAL: Move UI state and logic out of Activities
-  - Location: `features/tasks/presentation/TaskViewModel.java`, `features/statistics/presentation/StatisticsViewModel.java`
-  - Responsibilities:
-    - Hold UI state (task list, statistics, filters)
-    - Orchestrate Use Cases
-    - Expose data via LiveData or StateFlow
-  - Dependencies: Use Cases injected via constructor
-- [ ] Refactor TaskActivity (392 lines → ~150 lines)
-  - GOAL: Activity only handles UI lifecycle and user interactions
-  - Current: TaskActivity does UI + filtering + statistics + DB access
-  - Target: TaskActivity → observe ViewModel, render UI, dispatch events
-  - Remove: Direct DB access, business logic, calculations
-  - Keep: onCreate(), UI setup, click listeners
-- [ ] Extract dialogs from TaskDialogHelper (367 lines)
-  - GOAL: Modular dialog components
-  - Location: `features/tasks/presentation/dialog/`
-  - Dialogs: AddTaskDialog, EditTaskDialog, CompletionDialog
-  - Pattern: DialogFragment with ViewModel communication
-- [ ] Implement basic Dependency Injection
-  - GOAL: Manual DI for ViewModels (Hilt not viable in Termux)
-  - Location: `core/di/AppModule.java`
-  - Pattern: Factory classes for ViewModel creation
-  - Example:
-    ```java
-    public class TaskViewModelFactory {
-        public static TaskViewModel create(Context context) {
-            TaskDatabase db = TaskDatabase.getDatabase(context);
-            TaskRepository repo = new TaskRepositoryImpl(db.taskDao());
-            CompleteTaskUseCase completeUseCase = new CompleteTaskUseCase(repo, ...);
-            return new TaskViewModel(completeUseCase, ...);
-        }
-    }
-    ```
+- [x] Extract AddTaskDialog (DialogFragment) ✅ COMPLETE
+  - GOAL: Replace showAddTaskDialog() in TaskDialogHelper
+  - Location: `features/tasks/presentation/dialog/AddTaskDialog.kt`
+  - Pattern: DialogFragment using TaskDetailViewModel
+  - Methods: saveTask() → viewModel.saveTask(task)
+  - Validation: Use ViewModel's validationError LiveData
+  - Result: 276 lines, full MVVM integration
+
+- [x] Extract EditTaskDialog (DialogFragment) ✅ COMPLETE
+  - GOAL: Replace showEditTaskDialog() in TaskDialogHelper
+  - Location: `features/tasks/presentation/dialog/EditTaskDialog.kt`
+  - Pattern: DialogFragment using TaskDetailViewModel
+  - Load existing task: viewModel.loadTask(taskId)
+  - Update: viewModel.updateTask(task)
+  - Result: 344 lines, full MVVM integration
+
+- [x] Extract CompletionDialog (DialogFragment) ✅ COMPLETE
+  - GOAL: Replace showCompletionDialog() in TaskDialogHelper
+  - Location: `features/tasks/presentation/dialog/CompletionDialog.kt`
+  - Pattern: DialogFragment using TaskListViewModel
+  - Complete task: viewModel.completeTask(taskId, completionData)
+  - Result: 217 lines, full MVVM integration
+
+- [x] Delete TaskDialogHelper.kt ✅ COMPLETE
+  - GOAL: Remove 404-line legacy code
+  - Prerequisite: All 3 DialogFragments implemented
+  - Update: TaskActivity to use new DialogFragments
+  - Remove: `TaskDialogHelper(this, dbHelper)` from TaskActivity
+  - Result: 404 lines deleted
+
+- [x] Delete TaskDatabaseHelper.java ✅ COMPLETE
+  - GOAL: Remove 654-line God-Class
+  - Prerequisite: TaskDialogHelper deleted
+  - Verify: Zero references in codebase
+  - Result: Fully complete MVVM migration (654 lines deleted)
 
 **MEDIUM:**
-- [ ] Implement reactive UI updates
-  - GOAL: UI automatically reflects data changes
-  - Pattern: ViewModel exposes LiveData, Activity observes
-  - Example:
-    ```java
-    // TaskViewModel
-    private MutableLiveData<List<Task>> tasksLiveData = new MutableLiveData<>();
-    public LiveData<List<Task>> getTasks() { return tasksLiveData; }
-
-    // TaskActivity
-    viewModel.getTasks().observe(this, tasks -> {
-        adapter.submitList(tasks);
-    });
-    ```
-- [ ] Refactor TaskFilterManager
-  - GOAL: Move filter logic to ViewModel
-  - Current: TaskFilterManager in separate class
-  - Target: Filtering logic in TaskViewModel
-  - Benefits: Reactive filtering, testable
-- [ ] Move statistics to StatisticsViewModel
-  - GOAL: Centralize statistics logic
-  - Location: `features/statistics/presentation/StatisticsViewModel.java`
-  - Exposes: todayCompletions, weekCompletions, currentStreak, longestStreak
-  - Updates: Automatically when tasks change
-
-**LOW:**
-- [ ] Add loading and error states
-  - GOAL: Better UX during async operations
-  - Pattern: Sealed class or enum for UI state
-  - States: Loading, Success, Error
-  - Displayed: Progress bars, error messages
+- [x] Add dialog result callbacks ✅ COMPLETE
+  - GOAL: Dialogs communicate results back to Activity
+  - Pattern: setFragmentResultListener in TaskActivity
+  - Results: Task created/updated, reload task list
+  - Implementation: All 3 dialogs use FragmentResult API
 
 ### Technical Details
 
@@ -1893,8 +1888,9 @@ AFTER:
 ## Phase 4.5.7: Testing & Documentation (2-3 days)
 
 **Goal:** Comprehensive tests, updated documentation, final cleanup
-**When:** Throughout phases 4.5.1-4.5.5 + final pass
-**Why:** Ensure refactoring didn't break anything, enable future development
+**When:** After Phase 4.5.6 (Dialog Extraction)
+**Why:** Ensure refactoring didn't break anything, enable future development, document completed architecture
+**Status:** ⏳ NOT STARTED - 0% test coverage currently
 
 ### Active TODOs
 
@@ -2124,14 +2120,15 @@ logcat | grep -E "(TaskViewModel|RecurrenceService|StreakService)"
 | Phase | Focus | Duration | Cumulative | Status |
 |-------|-------|----------|------------|--------|
 | 4.5.1: Cleanup | Delete redundant code, setup tests | ~2 hours | 0.25 days | ✅ COMPLETE (2025-11-13) |
-| 4.5.2: Structure | Create directories, move files | 2-3 days | 3 days | ⏳ Next Up |
-| 4.5.3: Data Layer | Room migration | 3-4 days | 7 days | ⏳ Planned |
-| 4.5.4: Domain Layer | Extract Use Cases & Services | 4-5 days | 12 days | ⏳ Planned |
-| 4.5.5: Presentation | MVVM with ViewModels | 3-4 days | 16 days | ⏳ Planned |
-| 4.5.6: Testing | Tests + Documentation | 2-3 days | 19 days | ⏳ Planned |
+| 4.5.2: Structure | Create directories, move files | 2-3 days | 3 days | ✅ COMPLETE (2025-11-14) |
+| 4.5.3: Kotlin + Gradle | Kotlin migration, Gradle setup | 5-7 days | 10 days | ✅ COMPLETE (2025-11-15) |
+| 4.5.4: Package Rename | Simplify to com.secretary | 1-2 days | 12 days | ✅ COMPLETE (2025-11-15) |
+| 4.5.5: MVVM Integration | Use Cases, ViewModels, Services | 3-4 days | 16 days | ✅ COMPLETE (v0.3.60, 2025-11-17) |
+| 4.5.6: Dialog Extraction | DialogFragments, delete legacy code | 2-3 days | 19 days | 🚧 NEXT |
+| 4.5.7: Testing & Docs | Tests (70% coverage), ARCHITECTURE.md | 2-3 days | 22 days | ⏳ Planned |
 
-**Total: 15-21 days (3-4 weeks full-time)**
-**Progress:** 1/6 phases complete (16.7%)
+**Total: 15-24 days (3-5 weeks full-time)**
+**Progress:** 5/7 phases complete (71%) - **Current version: v0.3.60**
 
 **Key Milestones:**
 - ✅ 2025-11-13: Codebase reduced by 13.4% (496 lines deleted)
@@ -2251,8 +2248,8 @@ AFTER:
 | Phase 1: Foundation | 3-4 weeks | ✅ Complete | v0.2.x |
 | Phase 2: Core Tasks | 4-5 weeks | ✅ Complete | v0.3.0 - v0.3.7 |
 | Phase 3: Tracking | 3-4 weeks | ✅ Complete | v0.3.8 - v0.3.10 |
-| Phase 4: Motivation | 2-3 weeks | 🚧 In Progress | v0.3.11+ |
-| Phase 4.5: Refactor | 3-4 weeks | ⏳ Planned | v0.3.30+ |
+| Phase 4: Motivation | 2-3 weeks | 🚧 In Progress (30%) | v0.3.11+ |
+| Phase 4.5: Refactor | 3-4 weeks | 🚧 In Progress (71% - 5/7 done) | v0.3.30 - v0.3.60 |
 | Phase 5: Planning | 4-5 weeks | ⏳ Planned | v0.4.x |
 | Phase 6: Widget | 3-4 weeks | ⏳ Planned | v0.5.x |
 | **MVP Release** | **~20-25 weeks** | **🎯 Target** | **v1.0.0** |

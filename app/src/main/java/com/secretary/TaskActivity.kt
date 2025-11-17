@@ -5,6 +5,7 @@ import com.secretary.features.tasks.data.TaskDao
 import com.secretary.features.tasks.data.repository.TaskRepositoryImpl
 import com.secretary.features.tasks.domain.repository.TaskRepository
 import com.secretary.features.tasks.presentation.viewmodel.TaskListViewModel
+import com.secretary.features.tasks.presentation.viewmodel.TaskViewModelFactory
 import com.secretary.shared.database.TaskDatabase
 import androidx.appcompat.app.AppCompatActivity
 import android.app.AlertDialog
@@ -20,10 +21,11 @@ import java.util.*
 
 /**
  * Task Activity - Main Task Management UI
+ * Phase 4.5.6: Dialog Extraction - Uses DialogFragments with MVVM
  * Phase 4.5.3 Wave 9: Converted to Kotlin
  *
  * Displays task list with search, filtering, and sorting.
- * Delegates dialog management to TaskDialogHelper.
+ * Uses AddTaskDialog, EditTaskDialog, CompletionDialog (DialogFragments).
  * Implements TaskActionListener for adapter callbacks.
  */
 class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
@@ -33,11 +35,10 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
     }
 
     // Dependencies
-    private lateinit var dbHelper: TaskDatabaseHelper // Legacy - for TaskDialogHelper (Step 6)
     private lateinit var repository: TaskRepository // NEW - for Task CRUD operations
     private lateinit var viewModel: TaskListViewModel // ViewModel for MVVM pattern
-    private lateinit var dialogHelper: TaskDialogHelper
     private lateinit var filterManager: TaskFilterManager
+    private lateinit var viewModelFactory: TaskViewModelFactory // Factory for DialogFragments
 
     // Views
     private lateinit var taskListView: ListView
@@ -73,9 +74,6 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
             AppLogger.initialize(this)
             AppLogger.info(TAG, "TaskActivity started - setContentView successful")
 
-            // Initialize components
-            dbHelper = TaskDatabaseHelper(this) // Legacy - for TaskDialogHelper
-
             // Initialize Room database and repository
             val database = TaskDatabase.getDatabase(this)
             val taskDao = database.taskDao()
@@ -86,7 +84,7 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
             val recurrenceService = com.secretary.features.tasks.domain.service.RecurrenceService()
 
             // Initialize ViewModel with Factory (dependency injection)
-            val viewModelFactory = com.secretary.features.tasks.presentation.viewmodel.TaskViewModelFactory(
+            viewModelFactory = com.secretary.features.tasks.presentation.viewmodel.TaskViewModelFactory(
                 repository,
                 streakService,
                 recurrenceService
@@ -94,8 +92,8 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
             viewModel = androidx.lifecycle.ViewModelProvider(this, viewModelFactory)
                 .get(com.secretary.features.tasks.presentation.viewmodel.TaskListViewModel::class.java)
 
-            dialogHelper = TaskDialogHelper(this, dbHelper)
-            setupDialogHelperListeners()
+            // Setup FragmentResult listeners for DialogFragments
+            setupFragmentResultListeners()
 
             // Setup ViewModel observers (MVVM pattern)
             setupViewModelObservers()
@@ -163,27 +161,44 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
     /**
      * Setup listeners for TaskDialogHelper callbacks
      */
-    private fun setupDialogHelperListeners() {
-        dialogHelper.setOnTaskSavedListener(object : TaskDialogHelper.OnTaskSavedListener {
-            override fun onTaskSaved(task: Task) {
-                loadTasks()
-            }
+    /**
+     * Setup FragmentResult listeners for DialogFragments
+     * Phase 4.5.6: Replaces setupDialogHelperListeners()
+     */
+    private fun setupFragmentResultListeners() {
+        // Listen for AddTaskDialog results
+        supportFragmentManager.setFragmentResultListener(
+            com.secretary.features.tasks.presentation.dialog.AddTaskDialog.RESULT_KEY,
+            this
+        ) { _, _ ->
+            // Task was saved - reload task list
+            loadTasks()
+        }
 
-            override fun onTasksNeedReload() {
-                loadTasks()
-            }
-        })
+        // Listen for EditTaskDialog results
+        supportFragmentManager.setFragmentResultListener(
+            com.secretary.features.tasks.presentation.dialog.EditTaskDialog.RESULT_KEY,
+            this
+        ) { _, _ ->
+            // Task was updated - reload task list
+            loadTasks()
+        }
 
-        dialogHelper.setOnTaskCompletedListener(object : TaskDialogHelper.OnTaskCompletedListener {
-            override fun onTaskCompleted(task: Task) {
+        // Listen for CompletionDialog results
+        supportFragmentManager.setFragmentResultListener(
+            com.secretary.features.tasks.presentation.dialog.CompletionDialog.RESULT_KEY,
+            this
+        ) { _, bundle ->
+            // Task was completed or cancelled - reload task list
+            val cancelled = bundle.getBoolean("cancelled", false)
+            if (cancelled) {
+                // User cancelled - reload to reset UI
+                loadTasks()
+            } else {
+                // Task completed - reload task list
                 loadTasks()
             }
-
-            override fun onCompletionCancelled(task: Task) {
-                // Unchecked the checkbox - reload to reset UI
-                loadTasks()
-            }
-        })
+        }
     }
 
     /**
@@ -404,23 +419,39 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
 
     /**
      * Show dialog for adding a new task
+     * Phase 4.5.6: Uses AddTaskDialog DialogFragment
      */
     private fun showAddTaskDialog() {
-        dialogHelper.showAddTaskDialog(allCategories)
+        val dialog = com.secretary.features.tasks.presentation.dialog.AddTaskDialog.newInstance(
+            allCategories,
+            viewModelFactory
+        )
+        dialog.show(supportFragmentManager, com.secretary.features.tasks.presentation.dialog.AddTaskDialog.TAG)
     }
 
     /**
      * Show dialog for editing an existing task
+     * Phase 4.5.6: Uses EditTaskDialog DialogFragment
      */
     private fun showEditTaskDialog(existingTask: Task) {
-        dialogHelper.showEditTaskDialog(existingTask, allCategories)
+        val dialog = com.secretary.features.tasks.presentation.dialog.EditTaskDialog.newInstance(
+            existingTask.id,
+            allCategories,
+            viewModelFactory
+        )
+        dialog.show(supportFragmentManager, com.secretary.features.tasks.presentation.dialog.EditTaskDialog.TAG)
     }
 
     /**
      * Show completion dialog with time tracking
+     * Phase 4.5.6: Uses CompletionDialog DialogFragment
      */
     private fun showCompletionDialog(task: Task) {
-        dialogHelper.showCompletionDialog(task)
+        val dialog = com.secretary.features.tasks.presentation.dialog.CompletionDialog.newInstance(
+            task,
+            viewModelFactory
+        )
+        dialog.show(supportFragmentManager, com.secretary.features.tasks.presentation.dialog.CompletionDialog.TAG)
     }
 
     override fun onResume() {
@@ -428,10 +459,8 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
         loadTasks()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        dbHelper.close()
-    }
+    // Note: Room database is managed automatically by TaskDatabase.getDatabase() singleton
+    // No need to manually close database connections
 
     // ========== TaskActionListener Interface Implementation ==========
 
