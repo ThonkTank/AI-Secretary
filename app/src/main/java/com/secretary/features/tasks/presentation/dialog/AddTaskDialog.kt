@@ -11,7 +11,7 @@ import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.ViewModelProvider
 import com.secretary.R
-import com.secretary.Task
+import com.secretary.features.tasks.domain.model.Task
 import com.secretary.features.tasks.presentation.viewmodel.TaskDetailViewModel
 import com.secretary.features.tasks.presentation.viewmodel.TaskViewModelFactory
 import java.text.SimpleDateFormat
@@ -74,8 +74,9 @@ class AddTaskDialog : DialogFragment() {
 
         val streakService = com.secretary.features.tasks.domain.service.StreakService()
         val recurrenceService = com.secretary.features.tasks.domain.service.RecurrenceService()
+        val motivationalMessageService = com.secretary.features.motivation.domain.MotivationalMessageService()
 
-        val factory = TaskViewModelFactory(repository, completionRepository, streakService, recurrenceService)
+        val factory = TaskViewModelFactory(repository, completionRepository, streakService, recurrenceService, motivationalMessageService)
         viewModel = ViewModelProvider(this, factory)[TaskDetailViewModel::class.java]
 
         // Observe save result

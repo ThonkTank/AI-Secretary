@@ -1,5 +1,7 @@
-package com.secretary
+package com.secretary.features.tasks.presentation.adapter
 
+import com.secretary.R
+import com.secretary.features.tasks.domain.model.Task
 import android.app.Activity
 import android.graphics.Paint
 import android.view.LayoutInflater

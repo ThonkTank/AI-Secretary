@@ -1,6 +1,6 @@
 package com.secretary.features.tasks.domain.usecase
 
-import com.secretary.Task
+import com.secretary.features.tasks.domain.model.Task
 import com.secretary.features.tasks.domain.repository.TaskRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*

@@ -4,7 +4,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.secretary.Task
+import com.secretary.features.tasks.domain.model.Task
+import com.secretary.features.motivation.domain.MotivationalMessageService
 import com.secretary.features.statistics.domain.model.TaskStatistics
 import com.secretary.features.statistics.domain.usecase.GetStatisticsUseCase
 import com.secretary.features.tasks.domain.usecase.CompleteTaskUseCase
@@ -26,13 +27,15 @@ import kotlinx.coroutines.launch
  * @param completeTaskUseCase Use case for completing tasks
  * @param updateTaskUseCase Use case for updating tasks
  * @param getStatisticsUseCase Use case for retrieving task statistics
+ * @param motivationalMessageService Service for generating motivational messages
  */
 class TaskListViewModel(
     private val getTasksUseCase: GetTasksUseCase,
     private val deleteTaskUseCase: DeleteTaskUseCase,
     private val completeTaskUseCase: CompleteTaskUseCase,
     private val updateTaskUseCase: UpdateTaskUseCase,
-    private val getStatisticsUseCase: GetStatisticsUseCase
+    private val getStatisticsUseCase: GetStatisticsUseCase,
+    private val motivationalMessageService: MotivationalMessageService
 ) : ViewModel() {
 
     // UI State
@@ -51,6 +54,10 @@ class TaskListViewModel(
     // Statistics State (Phase 4: Motivation & Statistics)
     private val _statistics = MutableLiveData<TaskStatistics>()
     val statistics: LiveData<TaskStatistics> = _statistics
+
+    // Motivational Message State (Phase 4: Motivation & Statistics)
+    private val _motivationalMessage = MutableLiveData<String>()
+    val motivationalMessage: LiveData<String> = _motivationalMessage
 
     /**
      * Load all tasks from repository
@@ -191,6 +198,8 @@ class TaskListViewModel(
             getStatisticsUseCase().fold(
                 onSuccess = { stats ->
                     _statistics.value = stats
+                    // Generate motivational message based on statistics
+                    _motivationalMessage.value = motivationalMessageService.getMessage(stats)
                 },
                 onFailure = { exception ->
                     // Don't show error for statistics - just log it

@@ -4,36 +4,23 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <!-- Header -->
-    <LinearLayout
+    <!-- Streak Indicator -->
+    <include layout="@layout/include_streak_indicator" />
+
+    <!-- Completion Rates -->
+    <include layout="@layout/include_completion_rates" />
+
+    <!-- Motivational Message -->
+    <TextView
+        android:id="@+id/motivationalMessageText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="?android:attr/colorPrimary">
-
-        <TextView
-            android:id="@+id/taskHeaderText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Tasks"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:padding="16dp"
-            android:paddingBottom="8dp"
-            android:textColor="#FFFFFF" />
-
-        <TextView
-            android:id="@+id/taskStatisticsText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Today: 0 | Week: 0 | Overdue: 0"
-            android:textSize="14sp"
-            android:paddingLeft="16dp"
-            android:paddingRight="16dp"
-            android:paddingBottom="12dp"
-            android:textColor="#FFFFFF" />
-
-    </LinearLayout>
+        android:padding="@dimen/spacing_sm"
+        android:text="Lass uns produktiv sein!"
+        android:textStyle="italic"
+        android:textColor="@color/text_secondary"
+        android:gravity="center"
+        android:background="@color/colorSurface" />
 
     <!-- Search and Filter Section -->
     <LinearLayout

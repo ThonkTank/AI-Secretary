@@ -1,6 +1,6 @@
 package com.secretary.features.tasks.data.repository
 
-import com.secretary.Task
+import com.secretary.features.tasks.domain.model.Task
 import com.secretary.features.tasks.data.TaskDao
 import com.secretary.features.tasks.data.TaskEntity
 import com.secretary.features.tasks.domain.repository.TaskRepository

@@ -1,6 +1,6 @@
 package com.secretary.features.tasks.domain.service
 
-import com.secretary.Task
+import com.secretary.features.tasks.domain.model.Task
 import java.util.Calendar
 
 /**

@@ -3,6 +3,7 @@ package com.secretary.features.tasks.domain.usecase
 import com.secretary.features.tasks.domain.repository.TaskRepository
 import com.secretary.features.tasks.domain.service.RecurrenceService
 import com.secretary.features.tasks.domain.service.StreakService
+import com.secretary.features.statistics.domain.repository.CompletionRepository
 
 /**
  * Use Case: Complete a task with streak and recurrence logic
@@ -18,7 +19,8 @@ import com.secretary.features.tasks.domain.service.StreakService
 class CompleteTaskUseCase(
     private val taskRepository: TaskRepository,
     private val streakService: StreakService,
-    private val recurrenceService: RecurrenceService
+    private val recurrenceService: RecurrenceService,
+    private val completionRepository: CompletionRepository
 ) {
     /**
      * Execute task completion with full business logic
@@ -81,8 +83,23 @@ class CompleteTaskUseCase(
         notes: String? = null,
         completionTime: Long = System.currentTimeMillis()
     ): Result<Unit> {
-        // TODO: Create Completion entity and save to CompletionRepository
-        // For now, just complete the task
-        return invoke(taskId, completionTime)
+        return try {
+            // First, complete the task normally
+            val result = invoke(taskId, completionTime)
+
+            // If task completion succeeded, save metadata
+            if (result.isSuccess) {
+                completionRepository.saveCompletion(
+                    taskId = taskId,
+                    timeSpentMinutes = timeSpent ?: 0,
+                    difficulty = difficulty ?: 0,
+                    notes = notes
+                )
+            }
+
+            result
+        } catch (e: Exception) {
+            Result.failure(Exception("Failed to complete task with metadata: ${e.message}", e))
+        }
     }
 }

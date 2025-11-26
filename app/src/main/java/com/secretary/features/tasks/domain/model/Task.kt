@@ -1,4 +1,4 @@
-package com.secretary
+package com.secretary.features.tasks.domain.model
 
 /**
  * Task entity representing a single task in the Taskmaster system.

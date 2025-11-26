@@ -1,4 +1,6 @@
-package com.secretary
+package com.secretary.features.tasks.presentation.util
+
+import com.secretary.features.tasks.domain.model.Task
 
 /**
  * Task filtering and sorting manager.

@@ -1,6 +1,6 @@
 package com.secretary.features.tasks.domain.repository
 
-import com.secretary.Task
+import com.secretary.features.tasks.domain.model.Task
 
 /**
  * Repository interface for Task CRUD operations.

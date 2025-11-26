@@ -11,12 +11,16 @@ package com.secretary.features.statistics.domain.model
  * @property completedThisWeek Number of tasks completed in the last 7 days
  * @property activeTasks Number of active (uncompleted) tasks
  * @property totalTasks Total number of all tasks
+ * @property highestActiveStreak Highest current streak among all active tasks
+ * @property longestStreakEver Longest streak ever achieved across all tasks
  */
 data class TaskStatistics(
     val completedToday: Int,
     val completedThisWeek: Int,
     val activeTasks: Int,
-    val totalTasks: Int
+    val totalTasks: Int,
+    val highestActiveStreak: Int = 0,
+    val longestStreakEver: Int = 0
 ) {
     /**
      * Calculate completion rate for today.
@@ -41,6 +45,6 @@ data class TaskStatistics(
      * @return Human-readable statistics string
      */
     fun toDisplayString(): String {
-        return "Today: $completedToday | Week: $completedThisWeek | Active: $activeTasks"
+        return "Today: $completedToday | Week: $completedThisWeek | Active: $activeTasks | Streak: $highestActiveStreak | Best: $longestStreakEver"
     }
 }

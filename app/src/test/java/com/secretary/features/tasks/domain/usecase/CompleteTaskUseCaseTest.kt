@@ -1,9 +1,10 @@
 package com.secretary.features.tasks.domain.usecase
 
-import com.secretary.Task
+import com.secretary.features.tasks.domain.model.Task
 import com.secretary.features.tasks.domain.repository.TaskRepository
 import com.secretary.features.tasks.domain.service.RecurrenceService
 import com.secretary.features.tasks.domain.service.StreakService
+import com.secretary.features.statistics.domain.repository.CompletionRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
@@ -33,6 +34,7 @@ class CompleteTaskUseCaseTest {
     private lateinit var taskRepository: TaskRepository
     private lateinit var streakService: StreakService
     private lateinit var recurrenceService: RecurrenceService
+    private lateinit var completionRepository: CompletionRepository
     private lateinit var completeTaskUseCase: CompleteTaskUseCase
 
     private lateinit var baseTask: Task
@@ -41,6 +43,7 @@ class CompleteTaskUseCaseTest {
     fun setUp() {
         // Create mocks
         taskRepository = mock(TaskRepository::class.java)
+        completionRepository = mock(CompletionRepository::class.java)
         streakService = StreakService() // Use real service
         recurrenceService = RecurrenceService() // Use real service
 
@@ -48,7 +51,8 @@ class CompleteTaskUseCaseTest {
         completeTaskUseCase = CompleteTaskUseCase(
             taskRepository,
             streakService,
-            recurrenceService
+            recurrenceService,
+            completionRepository
         )
 
         // Base task for testing

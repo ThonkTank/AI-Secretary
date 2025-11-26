@@ -1,7 +1,7 @@
 # AI Secretary - Architecture Documentation
 
-**Last Updated:** 2025-11-17
-**Version:** v0.3.61 (Build 361)
+**Last Updated:** 2025-11-26
+**Version:** v0.3.63 (Build 363)
 **Architecture Style:** Clean Architecture + MVVM
 
 ---
@@ -83,35 +83,41 @@ app/src/main/java/com/secretary/
 │   └── MainActivity.kt           # App entry point
 │
 ├── features/                     # Feature Modules
-│   └── tasks/                    # Task Management Feature
-│       ├── presentation/         # 🎨 Presentation Layer
-│       │   ├── viewmodel/        # ViewModels + Factory
-│       │   │   ├── TaskListViewModel.kt
-│       │   │   ├── TaskDetailViewModel.kt
-│       │   │   └── TaskViewModelFactory.kt
-│       │   └── dialog/           # DialogFragments
-│       │       ├── AddTaskDialog.kt
-│       │       ├── EditTaskDialog.kt
-│       │       └── CompletionDialog.kt
-│       │
-│       ├── domain/               # 💼 Domain Layer
-│       │   ├── repository/       # Repository Interfaces
-│       │   │   └── TaskRepository.kt
-│       │   ├── usecase/          # Use Cases
-│       │   │   ├── CreateTaskUseCase.kt
-│       │   │   ├── GetTasksUseCase.kt
-│       │   │   ├── UpdateTaskUseCase.kt
-│       │   │   ├── DeleteTaskUseCase.kt
-│       │   │   └── CompleteTaskUseCase.kt
-│       │   └── service/          # Domain Services
-│       │       ├── StreakService.kt
-│       │       └── RecurrenceService.kt
-│       │
-│       └── data/                 # 💾 Data Layer
-│           ├── repository/       # Repository Implementations
-│           │   └── TaskRepositoryImpl.kt
-│           ├── TaskEntity.kt     # Room Entity
-│           └── TaskDao.kt        # Room DAO
+│   ├── tasks/                    # Task Management Feature
+│   │   ├── presentation/         # 🎨 Presentation Layer
+│   │   │   ├── viewmodel/        # ViewModels + Factory
+│   │   │   │   ├── TaskListViewModel.kt
+│   │   │   │   ├── TaskDetailViewModel.kt
+│   │   │   │   └── TaskViewModelFactory.kt
+│   │   │   └── dialog/           # DialogFragments
+│   │   │       ├── AddTaskDialog.kt
+│   │   │       ├── EditTaskDialog.kt
+│   │   │       └── CompletionDialog.kt
+│   │   │
+│   │   ├── domain/               # 💼 Domain Layer
+│   │   │   ├── repository/       # Repository Interfaces
+│   │   │   │   └── TaskRepository.kt
+│   │   │   ├── usecase/          # Use Cases
+│   │   │   │   ├── CreateTaskUseCase.kt
+│   │   │   │   ├── GetTasksUseCase.kt
+│   │   │   │   ├── UpdateTaskUseCase.kt
+│   │   │   │   ├── DeleteTaskUseCase.kt
+│   │   │   │   └── CompleteTaskUseCase.kt
+│   │   │   └── service/          # Domain Services
+│   │   │       ├── StreakService.kt
+│   │   │       └── RecurrenceService.kt
+│   │   │
+│   │   └── data/                 # 💾 Data Layer
+│   │       ├── repository/       # Repository Implementations
+│   │       │   └── TaskRepositoryImpl.kt
+│   │       ├── TaskEntity.kt     # Room Entity
+│   │       └── TaskDao.kt        # Room DAO
+│   │
+│   └── motivation/               # Motivation Feature
+│       ├── domain/
+│       │   └── MotivationalMessageService.kt  # Motivational messages based on statistics
+│       └── presentation/
+│           └── StreakColorUtil.kt              # Color utilities for streak visualization
 │
 ├── shared/                       # Shared Components
 │   └── database/
@@ -119,6 +125,8 @@ app/src/main/java/com/secretary/
 │       └── DatabaseConstants.kt  # Schema Constants
 │
 └── core/                         # Core Infrastructure
+    ├── config/                   # Configuration
+    │   └── AppPreferences.kt     # Application preferences and settings
     ├── logging/                  # Logging System
     │   ├── AppLogger.kt
     │   └── HttpLogServer.kt

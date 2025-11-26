@@ -11,7 +11,7 @@ import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.secretary.R
-import com.secretary.Task
+import com.secretary.features.tasks.domain.model.Task
 import com.secretary.features.statistics.data.CompletionRepositoryImpl
 import com.secretary.features.statistics.domain.repository.CompletionRepository
 import com.secretary.features.tasks.presentation.viewmodel.TaskListViewModel
@@ -78,12 +78,13 @@ class CompletionDialog : DialogFragment() {
         val taskRepository = com.secretary.features.tasks.data.repository.TaskRepositoryImpl(taskDao)
         val streakService = com.secretary.features.tasks.domain.service.StreakService()
         val recurrenceService = com.secretary.features.tasks.domain.service.RecurrenceService()
+        val motivationalMessageService = com.secretary.features.motivation.domain.MotivationalMessageService()
 
         // Setup CompletionRepository for tracking data
         val completionDao = database.completionDao()
         completionRepository = CompletionRepositoryImpl(completionDao)
 
-        val factory = TaskViewModelFactory(taskRepository, completionRepository, streakService, recurrenceService)
+        val factory = TaskViewModelFactory(taskRepository, completionRepository, streakService, recurrenceService, motivationalMessageService)
         viewModel = ViewModelProvider(this, factory)[TaskListViewModel::class.java]
 
         // Observe completion result

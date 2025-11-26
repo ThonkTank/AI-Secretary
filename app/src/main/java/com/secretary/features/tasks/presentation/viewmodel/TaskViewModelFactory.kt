@@ -2,6 +2,7 @@ package com.secretary.features.tasks.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.secretary.features.motivation.domain.MotivationalMessageService
 import com.secretary.features.statistics.domain.repository.CompletionRepository
 import com.secretary.features.statistics.domain.usecase.GetStatisticsUseCase
 import com.secretary.features.tasks.domain.repository.TaskRepository
@@ -25,12 +26,14 @@ import com.secretary.features.tasks.domain.usecase.UpdateTaskUseCase
  * @param completionRepository Repository for completion data access
  * @param streakService Service for streak calculation
  * @param recurrenceService Service for recurrence logic
+ * @param motivationalMessageService Service for generating motivational messages
  */
 class TaskViewModelFactory(
     private val taskRepository: TaskRepository,
     private val completionRepository: CompletionRepository,
     private val streakService: StreakService,
-    private val recurrenceService: RecurrenceService
+    private val recurrenceService: RecurrenceService,
+    private val motivationalMessageService: MotivationalMessageService
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -44,7 +47,8 @@ class TaskViewModelFactory(
                 val completeTaskUseCase = CompleteTaskUseCase(
                     taskRepository,
                     streakService,
-                    recurrenceService
+                    recurrenceService,
+                    completionRepository
                 )
                 // Phase 4: Statistics support
                 val getStatisticsUseCase = GetStatisticsUseCase(
@@ -57,7 +61,8 @@ class TaskViewModelFactory(
                     deleteTaskUseCase,
                     completeTaskUseCase,
                     updateTaskUseCase,
-                    getStatisticsUseCase
+                    getStatisticsUseCase,
+                    motivationalMessageService
                 ) as T
             }
 

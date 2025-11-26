@@ -1,6 +1,6 @@
 package com.secretary.features.tasks.domain.service
 
-import com.secretary.Task
+import com.secretary.features.tasks.domain.model.Task
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test

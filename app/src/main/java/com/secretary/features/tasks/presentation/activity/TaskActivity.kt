@@ -1,10 +1,15 @@
-package com.secretary
+package com.secretary.features.tasks.presentation.activity
 
+import com.secretary.R
+import com.secretary.features.tasks.domain.model.Task
+import com.secretary.features.tasks.presentation.util.TaskFilterManager
+import com.secretary.features.tasks.presentation.adapter.TaskListAdapter
 import com.secretary.core.logging.AppLogger
+import com.secretary.features.motivation.presentation.StreakColorUtil
 import com.secretary.features.statistics.data.CompletionRepositoryImpl
+import com.secretary.features.statistics.domain.model.TaskStatistics
 import com.secretary.features.statistics.domain.repository.CompletionRepository
 import com.secretary.features.tasks.data.TaskDao
-import com.secretary.features.tasks.data.repository.TaskRepositoryImpl
 import com.secretary.features.tasks.domain.repository.TaskRepository
 import com.secretary.features.tasks.presentation.viewmodel.TaskListViewModel
 import com.secretary.features.tasks.presentation.viewmodel.TaskViewModelFactory
@@ -16,8 +21,10 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.widget.*
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -45,13 +52,25 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
     // Views
     private lateinit var taskListView: ListView
     private lateinit var emptyTasksText: TextView
-    private lateinit var statisticsText: TextView
     private lateinit var addTaskButton: Button
     private lateinit var searchEditText: EditText
     private lateinit var statusFilterSpinner: Spinner
     private lateinit var priorityFilterSpinner: Spinner
     private lateinit var categoryFilterSpinner: Spinner
     private lateinit var sortBySpinner: Spinner
+
+    // Motivation UI components
+    private lateinit var flameIcon: ImageView
+    private lateinit var streakCurrentText: TextView
+    private lateinit var streakBestText: TextView
+    private lateinit var streakProgressIndicator: CircularProgressIndicator
+    private lateinit var todayProgressIndicator: CircularProgressIndicator
+    private lateinit var todayPercentText: TextView
+    private lateinit var todayDetailText: TextView
+    private lateinit var weekProgressIndicator: CircularProgressIndicator
+    private lateinit var weekPercentText: TextView
+    private lateinit var weekDetailText: TextView
+    private lateinit var motivationalMessageText: TextView
 
     // Data
     private lateinit var adapter: TaskListAdapter
@@ -79,7 +98,7 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
             // Initialize Room database and repositories
             val database = TaskDatabase.getDatabase(this)
             val taskDao = database.taskDao()
-            repository = TaskRepositoryImpl(taskDao)
+            repository = com.secretary.features.tasks.data.repository.TaskRepositoryImpl(taskDao)
 
             // Phase 4: Initialize CompletionRepository for statistics
             val completionDao = database.completionDao()
@@ -89,12 +108,16 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
             val streakService = com.secretary.features.tasks.domain.service.StreakService()
             val recurrenceService = com.secretary.features.tasks.domain.service.RecurrenceService()
 
+            // Initialize MotivationalMessageService for DI
+            val motivationalMessageService = com.secretary.features.motivation.domain.MotivationalMessageService()
+
             // Initialize ViewModel with Factory (dependency injection)
             viewModelFactory = com.secretary.features.tasks.presentation.viewmodel.TaskViewModelFactory(
                 repository,
                 completionRepository,
                 streakService,
-                recurrenceService
+                recurrenceService,
+                motivationalMessageService
             )
             viewModel = androidx.lifecycle.ViewModelProvider(this, viewModelFactory)
                 .get(com.secretary.features.tasks.presentation.viewmodel.TaskListViewModel::class.java)
@@ -108,13 +131,25 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
             // Find views
             taskListView = findViewById(R.id.taskListView)
             emptyTasksText = findViewById(R.id.emptyTasksText)
-            statisticsText = findViewById(R.id.taskStatisticsText)
             addTaskButton = findViewById(R.id.addTaskButton)
             searchEditText = findViewById(R.id.searchEditText)
             statusFilterSpinner = findViewById(R.id.statusFilterSpinner)
             priorityFilterSpinner = findViewById(R.id.priorityFilterSpinner)
             categoryFilterSpinner = findViewById(R.id.categoryFilterSpinner)
             sortBySpinner = findViewById(R.id.sortBySpinner)
+
+            // Find motivation UI components
+            flameIcon = findViewById(R.id.flameIcon)
+            streakCurrentText = findViewById(R.id.streakCurrentText)
+            streakBestText = findViewById(R.id.streakBestText)
+            streakProgressIndicator = findViewById(R.id.streakProgressIndicator)
+            todayProgressIndicator = findViewById(R.id.todayProgressIndicator)
+            todayPercentText = findViewById(R.id.todayPercentText)
+            todayDetailText = findViewById(R.id.todayDetailText)
+            weekProgressIndicator = findViewById(R.id.weekProgressIndicator)
+            weekPercentText = findViewById(R.id.weekPercentText)
+            weekDetailText = findViewById(R.id.weekDetailText)
+            motivationalMessageText = findViewById(R.id.motivationalMessageText)
 
             AppLogger.info(TAG, "All views found successfully")
 
@@ -226,10 +261,15 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
         // Phase 4: Observe statistics - update statistics display
         viewModel.statistics.observe(this) { stats ->
             stats?.let {
-                // Use the toDisplayString() method from TaskStatistics model
-                statisticsText.text = it.toDisplayString()
                 AppLogger.info(TAG, "Statistics updated: ${it.toDisplayString()}")
+                updateStreakIndicator(it.highestActiveStreak, it.longestStreakEver)
+                updateCompletionRates(it)
             }
+        }
+
+        // Observe motivational message - update motivational message display
+        viewModel.motivationalMessage.observe(this) { message ->
+            motivationalMessageText.text = message
         }
 
         // Observe error - show error Toast
@@ -372,6 +412,7 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
 
     /**
      * Update statistics display at top of screen using Repository
+     * TODO: Update to use new motivation UI components
      */
     private suspend fun updateStatistics() {
         try {
@@ -379,15 +420,8 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
             val weekCount = repository.getTasksCompletedLast7Days()
             val overdueCount = repository.getOverdueTasksCount()
 
-            val statsText = "Today: $todayCount | Week: $weekCount | Overdue: $overdueCount"
-
-            statisticsText.text = statsText
-
-            // Highlight if there are overdue tasks
-            statisticsText.setTextColor(
-                if (overdueCount > 0) 0xFFFFAA00.toInt() // Orange for warning
-                else 0xFFFFFFFF.toInt() // White
-            )
+            // TODO: Update streak indicator, completion rates, and motivational message
+            AppLogger.info(TAG, "Statistics: Today=$todayCount, Week=$weekCount, Overdue=$overdueCount")
         } catch (e: Exception) {
             AppLogger.error(TAG, "Failed to update statistics from Repository", e)
         }
@@ -505,5 +539,50 @@ class TaskActivity : AppCompatActivity(), TaskListAdapter.TaskActionListener {
     override fun onTasksChanged() {
         AppLogger.info(TAG, "Tasks changed - reloading")
         loadTasks()
+    }
+
+    // ========== Helper Methods for Motivation UI ==========
+
+    /**
+     * Update the streak indicator with current and best streak values
+     * Updates the flame icon color, progress indicator, and text displays
+     *
+     * @param current Current active streak in days
+     * @param best Best (longest) streak ever achieved
+     */
+    private fun updateStreakIndicator(current: Int, best: Int) {
+        streakCurrentText.text = "Current: $current days"
+        streakBestText.text = "Best: $best days"
+
+        val progress = if (best > 0) (current * 100 / best) else 0
+        streakProgressIndicator.progress = progress
+
+        val colorRes = StreakColorUtil.getStreakColor(current)
+        flameIcon.setColorFilter(ContextCompat.getColor(this, colorRes))
+        streakProgressIndicator.setIndicatorColor(ContextCompat.getColor(this, colorRes))
+    }
+
+    /**
+     * Update completion rate displays for today and this week
+     * Updates progress indicators, percentages, and detail text
+     *
+     * @param stats TaskStatistics containing completion data
+     */
+    private fun updateCompletionRates(stats: TaskStatistics) {
+        // Today
+        val todayPercent = stats.getTodayCompletionRate()
+        todayProgressIndicator.progress = todayPercent
+        todayPercentText.text = "$todayPercent%"
+        todayDetailText.text = "${stats.completedToday} of ${stats.totalTasks} tasks"
+        val todayColor = StreakColorUtil.getCompletionColor(todayPercent)
+        todayProgressIndicator.setIndicatorColor(ContextCompat.getColor(this, todayColor))
+
+        // Week
+        val weekPercent = stats.getWeekCompletionRate()
+        weekProgressIndicator.progress = weekPercent
+        weekPercentText.text = "$weekPercent%"
+        weekDetailText.text = "${stats.completedThisWeek} of ${stats.totalTasks} tasks"
+        val weekColor = StreakColorUtil.getCompletionColor(weekPercent)
+        weekProgressIndicator.setIndicatorColor(ContextCompat.getColor(this, weekColor))
     }
 }

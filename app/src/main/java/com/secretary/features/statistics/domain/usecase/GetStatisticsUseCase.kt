@@ -1,6 +1,7 @@
 package com.secretary.features.statistics.domain.usecase
 
-import com.secretary.Task
+import com.secretary.core.logging.AppLogger
+import com.secretary.features.tasks.domain.model.Task
 import com.secretary.features.statistics.domain.model.TaskStatistics
 import com.secretary.features.statistics.domain.repository.CompletionRepository
 import com.secretary.features.tasks.domain.repository.TaskRepository
@@ -42,12 +43,22 @@ class GetStatisticsUseCase(
             val totalTasks = allTasks.size
             val activeTasks = allTasks.count { !it.isCompleted }
 
+            // Calculate streak statistics
+            val highestActiveStreak = allTasks
+                .filter { !it.isCompleted }
+                .maxOfOrNull { it.currentStreak } ?: 0
+
+            val longestStreakEver = allTasks
+                .maxOfOrNull { it.longestStreak } ?: 0
+
             // Create statistics model
             val statistics = TaskStatistics(
                 completedToday = completedToday,
                 completedThisWeek = completedThisWeek,
                 activeTasks = activeTasks,
-                totalTasks = totalTasks
+                totalTasks = totalTasks,
+                highestActiveStreak = highestActiveStreak,
+                longestStreakEver = longestStreakEver
             )
 
             Result.success(statistics)
@@ -69,6 +80,7 @@ class GetStatisticsUseCase(
         return try {
             completionRepository.getCompletionCountToday()
         } catch (e: Exception) {
+            AppLogger.debug("GetStatisticsUseCase", "Failed to get completed today count: ${e.message}")
             0
         }
     }
@@ -83,6 +95,7 @@ class GetStatisticsUseCase(
         return try {
             completionRepository.getCompletionCountLast7Days()
         } catch (e: Exception) {
+            AppLogger.debug("GetStatisticsUseCase", "Failed to get completed this week count: ${e.message}")
             0
         }
     }
