@@ -1,7 +1,9 @@
 package com.secretary.app
 
 import com.secretary.R
-import com.secretary.TaskActivity
+import com.secretary.features.tasks.presentation.activity.TaskActivity
+import com.secretary.features.tasks.presentation.fragment.TasksFragment
+import com.secretary.features.dreams.presentation.fragment.DreamsFragment
 import com.secretary.core.config.AppPreferences
 import com.secretary.core.logging.AppLogger
 import com.secretary.core.logging.HttpLogServer
@@ -10,6 +12,7 @@ import com.secretary.core.network.UpdateInstaller
 import android.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.fragment.app.Fragment
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -26,16 +29,17 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import com.google.android.material.bottomnavigation.BottomNavigationView
 
 /**
  * Main Activity - App Entry Point
- * Phase 4.5.3 Wave 7: Converted to Kotlin
+ * Wave 3: BottomNavigationView integration with Fragment structure
  *
- * Landing page with:
- * - "Open Tasks" button → TaskActivity
- * - Settings menu → Update check, View logs
+ * Features:
+ * - BottomNavigationView with Tasks, Dreams, Settings tabs
+ * - Fragment-based navigation
  * - HTTP log server initialization
- * - Real-time log display
+ * - Settings dialog with update check and log viewer
  */
 class MainActivity : AppCompatActivity() {
 
@@ -92,69 +96,43 @@ class MainActivity : AppCompatActivity() {
             logger.error(TAG, "Failed to start HTTP Log Server", e)
         }
 
-        // Setup Tasks button
-        val tasksButton = findViewById<Button>(R.id.openTasksButton)
-        if (tasksButton == null) {
-            logger.error(TAG, "CRITICAL: Tasks button not found in layout!")
-            Log.e(TAG, "CRITICAL: findViewById returned null for R.id.openTasksButton")
-        } else {
-            logger.info(TAG, "Tasks button found successfully")
-            tasksButton.setOnClickListener {
-                try {
-                    logger.info(TAG, "Opening Tasks activity - button clicked")
-                    Log.i(TAG, "DEBUG: About to create Intent for TaskActivity")
-
-                    val intent = Intent(this, TaskActivity::class.java)
-                    Log.i(TAG, "DEBUG: Intent created successfully")
-
-                    startActivity(intent)
-                    Log.i(TAG, "DEBUG: startActivity() called successfully")
-
-                } catch (e: Exception) {
-                    Log.e(TAG, "FATAL: Failed to start TaskActivity", e)
-                    logger.error(TAG, "Failed to start TaskActivity: ${e.message}", e)
-
-                    AlertDialog.Builder(this)
-                        .setTitle("Error")
-                        .setMessage("Cannot open Tasks:\n${e.javaClass.simpleName}\n${e.message}")
-                        .setPositiveButton("OK", null)
-                        .show()
+        // Setup BottomNavigationView
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
+        bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_tasks -> {
+                    logger.info(TAG, "Navigation: Tasks tab selected")
+                    loadFragment(TasksFragment.newInstance())
+                    true
                 }
+                R.id.nav_dreams -> {
+                    logger.info(TAG, "Navigation: Dreams tab selected")
+                    loadFragment(DreamsFragment.newInstance())
+                    true
+                }
+                R.id.nav_settings -> {
+                    logger.info(TAG, "Navigation: Settings tab clicked")
+                    showSettingsDialog()
+                    false // Don't select, it's a dialog
+                }
+                else -> false
             }
-            logger.info(TAG, "Tasks button initialized")
         }
 
-        // Display logs
-        findViewById<TextView>(R.id.mainLogsTextView)?.let { mainLogsTextView ->
-            // Show logs immediately
-            updateLogsDisplay(mainLogsTextView)
-
-            // Refresh logs after 1 second (for button details)
-            mainLogsTextView.postDelayed({
-                updateLogsDisplay(mainLogsTextView)
-            }, 1000)
-
-            Log.i(TAG, "Main logs display initialized")
-            logger.info(TAG, "Main logs display initialized")
-        } ?: run {
-            Log.e(TAG, "Main logs TextView NOT FOUND!")
-            logger.error(TAG, "Main logs TextView NOT FOUND!")
+        // Load default fragment (Tasks) on first launch
+        if (savedInstanceState == null) {
+            logger.info(TAG, "First launch - loading Tasks fragment")
+            bottomNav.selectedItemId = R.id.nav_tasks
         }
     }
 
-    private fun updateLogsDisplay(textView: TextView) {
-        val logs = logger.readLogs()
-        if (logs.isEmpty()) {
-            textView.text = "=== NO LOGS YET ===\n\nIf you see this, the app started but no logs were written."
-        } else {
-            val logText = buildString {
-                append("=== APP LOGS (Auto-refresh) ===\n\n")
-                logs.forEach { line ->
-                    append(line).append("\n")
-                }
-            }
-            textView.text = logText
-        }
+    /**
+     * Load a fragment into the main container.
+     */
+    private fun loadFragment(fragment: Fragment) {
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, fragment)
+            .commit()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

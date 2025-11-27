@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="4dp"
+    android:layout_margin="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/selfRegTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/self_reg_title"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#212121" />
+
+        <!-- Subtitle -->
+        <TextView
+            android:id="@+id/selfRegSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/self_reg_subtitle"
+            android:textSize="12sp"
+            android:textColor="#757575"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Gap Indicator Bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:id="@+id/gapLabelSoll"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/gap_label_soll"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#757575"
+                android:paddingEnd="8dp" />
+
+            <View
+                android:id="@+id/gapIndicatorBar"
+                android:layout_width="0dp"
+                android:layout_height="8dp"
+                android:layout_weight="1"
+                android:background="#4CAF50" />
+
+            <TextView
+                android:id="@+id/gapLabelIst"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/gap_label_ist"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#757575"
+                android:paddingStart="8dp" />
+        </LinearLayout>
+
+        <!-- Gap Percentage -->
+        <TextView
+            android:id="@+id/gapPercentageText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Auf Kurs"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:textColor="#4CAF50"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Motivational Message -->
+        <TextView
+            android:id="@+id/motivationalMessageText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Gut dabei! Weiter so."
+            android:textSize="14sp"
+            android:textColor="#424242"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Three Pillars -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/pillarAbsicht"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/pillar_absicht"
+                android:textSize="11sp"
+                android:textColor="#9E9E9E"
+                android:gravity="center"
+                android:paddingHorizontal="4dp" />
+
+            <TextView
+                android:id="@+id/pillarUmwelt"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/pillar_umwelt"
+                android:textSize="11sp"
+                android:textColor="#9E9E9E"
+                android:gravity="center"
+                android:paddingHorizontal="4dp" />
+
+            <TextView
+                android:id="@+id/pillarEmotion"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/pillar_emotion"
+                android:textSize="11sp"
+                android:textColor="#9E9E9E"
+                android:gravity="center"
+                android:paddingHorizontal="4dp" />
+        </LinearLayout>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

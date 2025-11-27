@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Self-Regulation Card -->
+    <string name="self_reg_title">Deine Strategie</string>
+    <string name="self_reg_subtitle">Fortschritts-Analyse</string>
+
+    <!-- Three Pillars -->
+    <string name="pillar_absicht">Absichtskontrolle</string>
+    <string name="pillar_umwelt">Umweltkontrolle</string>
+    <string name="pillar_emotion">Emotionskontrolle</string>
+
+    <!-- Gap Analysis -->
+    <string name="gap_label_soll">SOLL</string>
+    <string name="gap_label_ist">IST</string>
+    <string name="gap_ahead">Vorsprung</string>
+    <string name="gap_on_track">Auf Kurs</string>
+    <string name="gap_slightly_behind">Leicht hinter Plan</string>
+    <string name="gap_behind">Aufholbedarf</string>
+    <string name="gap_critical">Kritisch</string>
+
+    <!-- Progress Messages -->
+    <string name="progress_excellent">Hervorragend! Du übertriffst deine Ziele.</string>
+    <string name="progress_good">Gut dabei! Weiter so.</string>
+    <string name="progress_needs_focus">Etwas mehr Fokus könnte helfen.</string>
+    <string name="progress_catch_up">Zeit aufzuholen - du schaffst das!</string>
+    <string name="progress_critical">Wichtig: Neu priorisieren und kleine Schritte machen.</string>
+</resources>

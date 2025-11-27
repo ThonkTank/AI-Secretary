@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary App Colors (Material Design) -->
+    <color name="colorPrimary">#6200EE</color>
+    <color name="colorPrimaryVariant">#3700B3</color>
+    <color name="colorOnPrimary">#FFFFFF</color>
+    <color name="colorSecondary">#03DAC6</color>
+    <color name="colorSecondaryVariant">#018786</color>
+    <color name="colorOnSecondary">#000000</color>
+
+    <!-- Surface Colors -->
+    <color name="colorSurface">#FFFFFF</color>
+    <color name="colorOnSurface">#212121</color>
+    <color name="colorBackground">#F5F5F5</color>
+
+    <!-- Streak Colors (none → legendary) -->
+    <color name="streak_none">#9E9E9E</color>
+    <color name="streak_starting">#FFC107</color>
+    <color name="streak_building">#FF9800</color>
+    <color name="streak_strong">#FF5722</color>
+    <color name="streak_blazing">#F44336</color>
+    <color name="streak_legendary">#E91E63</color>
+
+    <!-- Completion Rate Colors (low → perfect) -->
+    <color name="completion_low">#F44336</color>
+    <color name="completion_medium">#FF9800</color>
+    <color name="completion_good">#FFEB3B</color>
+    <color name="completion_great">#8BC34A</color>
+    <color name="completion_perfect">#4CAF50</color>
+
+    <!-- UI Element Colors -->
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="divider">#E0E0E0</color>
+</resources>

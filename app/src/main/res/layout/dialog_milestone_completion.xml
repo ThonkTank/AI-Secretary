@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center">
+
+    <!-- Trophy Icon Placeholder -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🏆"
+        android:textSize="48sp" />
+
+    <TextView
+        android:id="@+id/completionTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Milestone Title"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginTop="16dp" />
+
+    <TextView
+        android:id="@+id/completionXpText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="+500 XP"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:textColor="#4CAF50"
+        android:layout_marginTop="12dp" />
+
+    <TextView
+        android:id="@+id/completionMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Complete this milestone?\n\nAll accumulated XP will be added to your dream!"
+        android:textSize="14sp"
+        android:textColor="#757575"
+        android:gravity="center"
+        android:layout_marginTop="16dp" />
+
+</LinearLayout>

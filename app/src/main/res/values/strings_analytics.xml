@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Analytics Dashboard -->
+    <string name="analytics_title">Dream Analytics</string>
+    <string name="analytics_subtitle">Dein Fortschritt im Überblick</string>
+
+    <!-- Time Range Selector -->
+    <string name="xp_history_7d">7 Tage</string>
+    <string name="xp_history_30d">30 Tage</string>
+    <string name="xp_history_all">Alle</string>
+
+    <!-- Charts -->
+    <string name="chart_xp_progress">XP-Verlauf</string>
+    <string name="chart_no_data">Noch keine Daten verfügbar</string>
+    <string name="chart_xp_earned">XP verdient</string>
+    <string name="chart_date">Datum</string>
+
+    <!-- Stats Cards -->
+    <string name="stats_total_xp">Gesamt-XP</string>
+    <string name="stats_current_level">Aktuelles Level</string>
+    <string name="stats_milestones_completed">Meilensteine abgeschlossen</string>
+    <string name="stats_current_streak">Aktuelle Serie</string>
+    <string name="stats_days">Tage</string>
+
+    <!-- Streak Insights -->
+    <string name="streak_excellent">Hervorragend! %d Tage aktiv!</string>
+    <string name="streak_good">Gut dabei - %d Tage in Serie!</string>
+    <string name="streak_start">Starte deine Serie heute!</string>
+    <string name="streak_next_milestone">Nächster Meilenstein: %d Tage</string>
+
+    <!-- Strategy Section -->
+    <string name="strategy_title">Empfehlungen</string>
+    <string name="strategy_subtitle">Basierend auf deinem Fortschritt</string>
+
+    <!-- Gap Analysis Integration -->
+    <string name="analytics_gap_title">SOLL-IST-Analyse</string>
+
+    <!-- Navigation -->
+    <string name="btn_analytics">Analytics</string>
+
+    <!-- Formatting -->
+    <string name="level_display">Level %d</string>
+    <string name="xp_format">%d XP</string>
+</resources>

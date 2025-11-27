@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="24dp"
+    app:cardElevation="16dp"
+    android:backgroundTint="#1A1A2E">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp">
+
+        <!-- Celebration Emoji -->
+        <TextView
+            android:id="@+id/celebrationEmoji"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🎉"
+            android:textSize="64sp" />
+
+        <!-- LEVEL UP Title -->
+        <TextView
+            android:id="@+id/levelUpTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LEVEL UP!"
+            android:textSize="36sp"
+            android:textStyle="bold"
+            android:textColor="#FFD700"
+            android:layout_marginTop="16dp" />
+
+        <!-- Level Transition -->
+        <TextView
+            android:id="@+id/levelTransition"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Lvl 4 → 5"
+            android:textSize="28sp"
+            android:textColor="#FFFFFF"
+            android:layout_marginTop="8dp" />
+
+        <!-- Dream Name -->
+        <TextView
+            android:id="@+id/dreamNameText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Dream Name"
+            android:textSize="18sp"
+            android:textColor="#AAAAAA"
+            android:layout_marginTop="16dp" />
+
+        <!-- Motivational Text -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Keep going! You're making great progress!"
+            android:textSize="14sp"
+            android:textColor="#888888"
+            android:gravity="center"
+            android:layout_marginTop="8dp" />
+
+        <!-- OK Button -->
+        <Button
+            android:id="@+id/levelUpOkButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Awesome!"
+            android:textColor="#1A1A2E"
+            android:backgroundTint="#FFD700"
+            android:layout_marginTop="24dp"
+            android:paddingHorizontal="32dp" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

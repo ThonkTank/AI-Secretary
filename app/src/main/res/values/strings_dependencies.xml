@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Prerequisite Warning Dialog -->
+    <string name="prereq_warning_title">Voraussetzungen nicht erfüllt</string>
+    <string name="prereq_warning_message">Folgende Meilensteine sollten zuerst abgeschlossen werden:</string>
+    <string name="prereq_continue_anyway">Trotzdem abschließen</string>
+    <string name="prereq_go_back">Zurück</string>
+
+    <!-- Prerequisite Indicator -->
+    <string name="prereq_indicator_single">1 Voraussetzung</string>
+    <string name="prereq_indicator_plural">%d Voraussetzungen</string>
+    <string name="prereq_completed">Voraussetzungen erfüllt</string>
+    <string name="prereq_unmet">Voraussetzungen offen</string>
+
+    <!-- Dependencies Section -->
+    <string name="dependencies_label">Abhängigkeiten</string>
+    <string name="no_dependencies">Keine Abhängigkeiten</string>
+</resources>
