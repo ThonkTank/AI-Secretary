@@ -2,7 +2,8 @@ name: Build and Release APK
 
 on:
   push:
-    branches: [ main, refactoring/phase-4.5-architecture ]
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -15,6 +16,14 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Extract version from tag
+      id: version
+      run: |
+        # Extract version from git tag (removes 'v' prefix)
+        VERSION=${GITHUB_REF_NAME#v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
 
     - name: Set up JDK 21
       uses: actions/setup-java@v4
@@ -51,27 +60,15 @@ jobs:
           --out AISecretary-signed.apk \
           $APK_PATH
 
-    - name: Extract version
-      id: version
-      run: |
-        VERSION=$(grep 'versionName = ' app/build.gradle.kts | sed 's/.*versionName = "\(.*\)".*/\1/')
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "Version: $VERSION"
-
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v${{ steps.version.outputs.version }}
+        tag_name: ${{ github.ref_name }}
         name: AI Secretary v${{ steps.version.outputs.version }}
         body: |
-          Automated build of AI Secretary
+          ## AI Secretary v${{ steps.version.outputs.version }}
 
-          Version: ${{ steps.version.outputs.version }}
-          Built on: ${{ github.event.head_commit.timestamp }}
           Commit: ${{ github.sha }}
-
-          ## Changes
-          ${{ github.event.head_commit.message }}
 
           ## Installation
           1. Download AISecretary-signed.apk
