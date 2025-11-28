@@ -16,6 +16,12 @@ import com.secretary.features.statistics.data.CompletionRepositoryImpl
 import com.secretary.features.statistics.domain.repository.CompletionRepository
 import com.secretary.features.tasks.presentation.viewmodel.TaskListViewModel
 import com.secretary.features.tasks.presentation.viewmodel.TaskViewModelFactory
+import com.secretary.features.dreams.domain.usecase.CompleteTaskWithXPUseCase
+import com.secretary.features.dreams.data.repository.TaskMilestoneLinkRepositoryImpl
+import com.secretary.features.dreams.data.repository.MilestoneRepositoryImpl
+import com.secretary.features.dreams.data.repository.DreamRepositoryImpl
+import com.secretary.features.dreams.domain.service.XPCalculationService
+import com.secretary.features.dreams.domain.service.LevelProgressionService
 import kotlinx.coroutines.launch
 
 /**
@@ -36,12 +42,14 @@ class CompletionDialog : DialogFragment() {
         const val RESULT_KEY = "task_completed"
         const val EXTRA_TASK_ID = "task_id"
         const val EXTRA_TASK_TITLE = "task_title"
+        const val EXTRA_TASK_PRIORITY = "task_priority"
 
         fun newInstance(task: Task, factory: TaskViewModelFactory): CompletionDialog {
             return CompletionDialog().apply {
                 arguments = bundleOf(
                     EXTRA_TASK_ID to task.id,
-                    EXTRA_TASK_TITLE to task.title
+                    EXTRA_TASK_TITLE to task.title,
+                    EXTRA_TASK_PRIORITY to task.priority
                 )
             }
         }
@@ -50,11 +58,13 @@ class CompletionDialog : DialogFragment() {
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val taskId = arguments?.getLong(EXTRA_TASK_ID) ?: 0
         val taskTitle = arguments?.getString(EXTRA_TASK_TITLE) ?: "Task"
+        val taskPriority = arguments?.getInt(EXTRA_TASK_PRIORITY) ?: 1
 
-        // Create a dummy task object (we only need id and title for completion)
+        // Create a dummy task object (we only need id, title, and priority)
         task = Task().apply {
             this.id = taskId
             this.title = taskTitle
+            this.priority = taskPriority
         }
 
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_completion, null)
@@ -67,6 +77,9 @@ class CompletionDialog : DialogFragment() {
 
         // Load average completion time
         loadAverageTime(dialogView, taskId)
+
+        // Load XP preview
+        loadXPPreview(dialogView, taskId, task?.priority ?: 1)
 
         return dialog
     }
@@ -188,6 +201,70 @@ class CompletionDialog : DialogFragment() {
             } catch (e: Exception) {
                 // Failed to load average time - not critical, just hide
                 averageTimeText.visibility = View.GONE
+            }
+        }
+    }
+
+    /**
+     * Load XP preview for the task.
+     * Shows how much XP will be earned from completing this task.
+     */
+    private fun loadXPPreview(dialogView: View, taskId: Long, taskPriority: Int) {
+        val xpPreviewSection = dialogView.findViewById<LinearLayout>(R.id.xpPreviewSection)
+        val xpPreviewText = dialogView.findViewById<TextView>(R.id.xpPreviewText)
+        val milestonePreviewText = dialogView.findViewById<TextView>(R.id.milestonePreviewText)
+
+        lifecycleScope.launch {
+            try {
+                val database = com.secretary.shared.database.TaskDatabase.getDatabase(requireContext())
+
+                // Create repositories
+                val linkRepo = TaskMilestoneLinkRepositoryImpl(database.taskMilestoneJunctionDao())
+                val milestoneRepo = MilestoneRepositoryImpl(database.milestoneDao())
+                val dreamRepo = DreamRepositoryImpl(database.dreamDao())
+
+                // Create services
+                val xpService = XPCalculationService()
+                val levelService = LevelProgressionService()
+
+                // Create use case
+                val useCase = CompleteTaskWithXPUseCase(
+                    linkRepo, milestoneRepo, dreamRepo, xpService, levelService
+                )
+
+                // Get preview
+                val preview = useCase.previewXP(taskId, taskPriority)
+
+                // Update UI on main thread
+                activity?.runOnUiThread {
+                    if (preview.milestoneCount > 0) {
+                        xpPreviewSection.visibility = View.VISIBLE
+
+                        // Format XP preview text
+                        if (preview.milestoneCount == 1) {
+                            xpPreviewText.text = "+${preview.xpPerMilestone} XP"
+                        } else {
+                            xpPreviewText.text = "+${preview.xpPerMilestone} XP × ${preview.milestoneCount} = ${preview.totalXp} XP total"
+                        }
+
+                        // Format milestone list
+                        if (preview.linkedMilestones.isNotEmpty()) {
+                            milestonePreviewText.text = preview.linkedMilestones.joinToString("\n") { "• $it" }
+                            milestonePreviewText.visibility = View.VISIBLE
+                        } else {
+                            milestonePreviewText.visibility = View.GONE
+                        }
+                    } else {
+                        // No milestones linked - hide the section
+                        xpPreviewSection.visibility = View.GONE
+                    }
+                }
+            } catch (e: Exception) {
+                // Failed to load XP preview - hide section
+                // This is not critical, so we just silently hide it
+                activity?.runOnUiThread {
+                    xpPreviewSection?.visibility = View.GONE
+                }
             }
         }
     }
