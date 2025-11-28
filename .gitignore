@@ -19,3 +19,7 @@ gen/
 # Claude Code documentation (auto-generated)
 CLAUDE.md
 **/CLAUDE.md
+
+# Release keystore
+release.keystore
+*.keystore
