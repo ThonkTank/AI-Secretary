@@ -1,0 +1,21 @@
+# Build output
+build/
+compiled_res/
+obj/
+*.apk
+*.apk.idsig
+
+# Keystore
+*.keystore
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
