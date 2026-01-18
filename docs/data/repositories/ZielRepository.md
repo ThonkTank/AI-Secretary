@@ -34,6 +34,8 @@ public interface ZielRepository {
 
 ## Implementation (Data Layer)
 
+**Hinweis:** Repositories sind "dumm" und machen nur CRUD-Operationen. Die automatischen Zuordnungen (Task→Ziel→Personas) werden im **ZuordnungsUseCase** orchestriert, nicht im Repository!
+
 ```java
 // data/repository/ZielRepositoryImpl.java
 public class ZielRepositoryImpl implements ZielRepository {
@@ -42,7 +44,6 @@ public class ZielRepositoryImpl implements ZielRepository {
     private final ZielMapper mapper;
     private final TaskZielDao taskZielDao;
     private final ZielPersonaDao zielPersonaDao;
-    private final TaskRepository taskRepository;
 
     @Override
     public Ziel save(Ziel ziel) {
@@ -68,7 +69,7 @@ public class ZielRepositoryImpl implements ZielRepository {
 
     @Override
     public void delete(Long id) {
-        // Beziehungen löschen
+        // Beziehungen löschen (Cascade)
         taskZielDao.deleteByZielId(id);
         zielPersonaDao.deleteByZielId(id);
         zielDao.delete(id);
@@ -76,26 +77,16 @@ public class ZielRepositoryImpl implements ZielRepository {
 
     @Override
     public void addPersonaToZiel(Long zielId, Long personaId) {
-        // 1. Beziehung Ziel→Persona erstellen
+        // NUR Beziehung erstellen - keine automatische Zuordnung hier!
+        // Automatische Zuordnungen werden im ZuordnungsUseCase orchestriert
         zielPersonaDao.insert(zielId, personaId);
-
-        // 2. Automatische Zuordnung: Alle Tasks des Ziels → Persona
-        List<Long> taskIds = taskZielDao.findTaskIdsByZielId(zielId);
-        for (Long taskId : taskIds) {
-            taskPersonaDao.insertIfNotExists(taskId, personaId);
-        }
     }
 
     @Override
     public void addTaskToZiel(Long zielId, Long taskId) {
-        // 1. Beziehung Task→Ziel erstellen
+        // NUR Beziehung erstellen - keine automatische Zuordnung hier!
+        // Automatische Zuordnungen werden im ZuordnungsUseCase orchestriert
         taskZielDao.insert(taskId, zielId);
-
-        // 2. Automatische Zuordnung: Task → alle Personas des Ziels
-        List<Long> personaIds = zielPersonaDao.findPersonaIdsByZielId(zielId);
-        for (Long personaId : personaIds) {
-            taskPersonaDao.insertIfNotExists(taskId, personaId);
-        }
     }
 }
 ```
@@ -111,7 +102,9 @@ public class ZielMapper {
     public ZielEntity toEntity(Ziel ziel) {
         ZielEntity entity = new ZielEntity();
         entity.id = ziel.getId();
+        entity.titel = ziel.getTitel();
         entity.beschreibung = ziel.getBeschreibung();
+        entity.wichtigkeit = ziel.getWichtigkeit();
         entity.frist = ziel.getFrist();
         entity.wiederholungsTyp = ziel.getWiederholungsTyp();
         entity.wiederholungsWert = ziel.getWiederholungsWert();
@@ -126,7 +119,9 @@ public class ZielMapper {
     public Ziel toDomain(ZielEntity entity) {
         Ziel ziel = new Ziel();
         ziel.setId(entity.id);
+        ziel.setTitel(entity.titel);
         ziel.setBeschreibung(entity.beschreibung);
+        ziel.setWichtigkeit(entity.wichtigkeit);
         ziel.setFrist(entity.frist);
         ziel.setWiederholungsTyp(entity.wiederholungsTyp);
         ziel.setWiederholungsWert(entity.wiederholungsWert);
@@ -144,19 +139,23 @@ public class ZielMapper {
 
 ## Automatische Zuordnungen
 
-### Bei addTaskToZiel
+**Hinweis:** Diese Logik liegt im **ZuordnungsUseCase**, NICHT im Repository!
+
+### Bei addTaskToZiel (via ZuordnungsUseCase)
 
 ```
 Task T wird Ziel Z zugeordnet
-→ Task T wird allen Personas von Ziel Z zugeordnet
+→ ZuordnungsUseCase: Task T wird allen Personas von Ziel Z zugeordnet
 ```
 
-### Bei addPersonaToZiel
+### Bei addPersonaToZiel (via ZuordnungsUseCase)
 
 ```
 Persona P wird Ziel Z zugeordnet
-→ Alle Tasks von Ziel Z werden Persona P zugeordnet
+→ ZuordnungsUseCase: Alle Tasks von Ziel Z werden Persona P zugeordnet
 ```
+
+Siehe [BUSINESS_RULES.md](../../meta/BUSINESS_RULES.md) für Details.
 
 ---
 

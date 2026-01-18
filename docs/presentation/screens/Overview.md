@@ -10,27 +10,29 @@
 | `TaskDetailActivity` | Task-Details anzeigen/bearbeiten | TBD |
 | `TaskCreateDialog` | Neue Task erstellen | TBD |
 
-### Phase 2: Habits (v0.4 - v0.5)
+### Phase 2: Wiederkehrende Tasks (v0.4 - v0.5)
 
 | Screen | Beschreibung | Status |
 |--------|--------------|--------|
-| `HabitListActivity` | Übersicht täglicher Gewohnheiten | TBD |
-| `HabitDetailActivity` | Habit-Details mit Streak-Anzeige | TBD |
+| `RecurrenceConfigDialog` | Wiederholungs-Konfiguration (INTERVALL/ZEITPUNKT/FREQUENZ) | TBD |
+| `StreakDisplayWidget` | Streak-Anzeige bei wiederkehrenden Tasks | TBD |
 
-### Phase 3: Routinen (v0.6 - v0.7)
+**Hinweis:** Keine separate "Habit"-Entität. Wiederkehrende Tasks mit Streak-Tracking erfüllen diese Funktion.
 
-| Screen | Beschreibung | Status |
-|--------|--------------|--------|
-| `RoutineListActivity` | Liste aller Routinen | TBD |
-| `RoutineExecutionActivity` | Schrittweise Routine-Abarbeitung | TBD |
-
-### Phase 4: GTD (v0.8 - v0.9)
+### Phase 3: Lernende Präferenzen (v0.6 - v0.7)
 
 | Screen | Beschreibung | Status |
 |--------|--------------|--------|
-| `InboxActivity` | Schnelles Erfassen von Ideen | TBD |
-| `ProjectListActivity` | Übersicht aller Projekte/Ziele | TBD |
-| `ContextFilterActivity` | Tasks nach Kontext filtern | TBD |
+| `SuggestionsActivity` | Vorschläge basierend auf gelernten Mustern | TBD |
+
+**Hinweis:** Keine separate "Routinen"-Entität. Routinen emergieren aus gelernten Task-Ketten + Zeitpräferenzen.
+
+### Phase 4: Ziele & Personas (v0.8 - v0.9)
+
+| Screen | Beschreibung | Status |
+|--------|--------------|--------|
+| `ZielListActivity` | Übersicht aller Ziele (GTD: Projekte) | TBD |
+| `ZielDetailActivity` | Ziel-Details mit zugehörigen Tasks | TBD |
 
 ### Phase 5: Pomodoro (v1.0)
 

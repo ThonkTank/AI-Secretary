@@ -11,25 +11,31 @@ Ein Ziel ist eine übergeordnete Einheit, die mehrere zusammengehörige Tasks b�
 | Feld | Typ | Pflicht | Beschreibung |
 |------|-----|---------|--------------|
 | `id` | Long | ✅ | Primary Key (auto-generated) |
-| `beschreibung` | String | ✅ | Ziel-Beschreibung |
+| `titel` | String | ✅ | Kurzer Ziel-Name (z.B. "Fitness-Routine") |
+| `beschreibung` | String | ❌ | Optionale Details |
+| `wichtigkeit` | Int | ✅ | Wichtigkeit für Zeitslot-Vergabe (1-10) |
 | `frist` | Date | ❌ | Optionale Deadline |
 
 ### Wiederholung
 
+**Hinweis:** Ziele können Wiederholungsregeln haben, die bestimmen wann sie in der ToDo-Liste Zeitslots bekommen.
+
 | Feld | Typ | Beschreibung |
 |------|-----|--------------|
-| `wiederholungsTyp` | Enum | KEINE, TIMER, ZEITPUNKT |
+| `wiederholungsTyp` | Enum | KEINE, INTERVALL, ZEITPUNKT, FREQUENZ |
 | `wiederholungsWert` | Int | X (Anzahl) |
-| `wiederholungsEinheit` | Enum | TAG, WOCHE, MONAT |
+| `wiederholungsEinheit` | Enum | ZeitEinheit (TAG, WOCHE, MONAT) |
 | `wiederholungsDetails` | String | Für Zeitpunkte |
 
 ### Completion-Metriken
 
+**Ziele organisieren Tasks.** Der Progress eines Ziels ergibt sich aus seinen zugehörigen Tasks.
+
 | Feld | Typ | Beschreibung |
 |------|-----|--------------|
 | `completionTyp` | Enum | KEINE, FREQUENZ, ZEIT, TASKS |
-| `completionWert` | Int | X (Anzahl/Minuten/Tasks) |
-| `completionEinheit` | Enum | TAG, WOCHE, MONAT |
+| `completionWert` | Int | X (Anzahl/Minuten/Tasks pro Zeitraum) |
+| `completionEinheit` | Enum | ZeitEinheit (TAG, WOCHE, MONAT) |
 
 ### Beziehungen
 
@@ -45,10 +51,10 @@ Ein Ziel ist eine übergeordnete Einheit, die mehrere zusammengehörige Tasks b�
 ### CompletionTyp (erweitert für Ziele)
 
 ```java
-enum CompletionTyp {
+enum ZielCompletionTyp {
     KEINE,      // Kein Tracking
-    FREQUENZ,   // X mal pro Zeitraum
-    ZEIT,       // X Minuten pro Zeitraum
+    FREQUENZ,   // X mal pro Zeitraum (Ziel-Tasks erledigen)
+    ZEIT,       // X Minuten pro Zeitraum (summiert aus Tasks)
     TASKS       // X zugehörige Tasks pro Zeitraum (NUR für Ziele!)
 }
 ```
@@ -72,7 +78,8 @@ enum CompletionTyp {
 
 ```java
 Ziel ziel = new Ziel();
-ziel.beschreibung = "Buch 'Clean Code' lesen";
+ziel.titel = "Buch 'Clean Code' lesen";
+ziel.wichtigkeit = 7;
 ziel.frist = Date.parse("2025-06-30");
 ziel.completionTyp = CompletionTyp.KEINE;
 ```
@@ -81,10 +88,11 @@ ziel.completionTyp = CompletionTyp.KEINE;
 
 ```java
 Ziel ziel = new Ziel();
-ziel.beschreibung = "Fitness-Routine";
+ziel.titel = "Fitness-Routine";
+ziel.wichtigkeit = 9;
 ziel.completionTyp = CompletionTyp.FREQUENZ;
 ziel.completionWert = 4;
-ziel.completionEinheit = WiederholungsEinheit.WOCHE;
+ziel.completionEinheit = ZeitEinheit.WOCHE;
 // → 4x pro Woche zugehörige Tasks erledigen
 ```
 
@@ -92,10 +100,11 @@ ziel.completionEinheit = WiederholungsEinheit.WOCHE;
 
 ```java
 Ziel ziel = new Ziel();
-ziel.beschreibung = "Spanisch lernen";
+ziel.titel = "Spanisch lernen";
+ziel.wichtigkeit = 6;
 ziel.completionTyp = CompletionTyp.ZEIT;
 ziel.completionWert = 60;
-ziel.completionEinheit = WiederholungsEinheit.TAG;
+ziel.completionEinheit = ZeitEinheit.TAG;
 // → 60 Minuten pro Tag
 ```
 
@@ -103,10 +112,11 @@ ziel.completionEinheit = WiederholungsEinheit.TAG;
 
 ```java
 Ziel ziel = new Ziel();
-ziel.beschreibung = "Hausputz";
+ziel.titel = "Hausputz";
+ziel.wichtigkeit = 5;
 ziel.completionTyp = CompletionTyp.TASKS;
 ziel.completionWert = 5;
-ziel.completionEinheit = WiederholungsEinheit.WOCHE;
+ziel.completionEinheit = ZeitEinheit.WOCHE;
 // → 5 zugehörige Tasks pro Woche erledigen
 ```
 

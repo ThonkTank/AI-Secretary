@@ -10,7 +10,8 @@ Erstellt eine neue Persona (Ziel-Identität des Benutzers).
 
 | Parameter | Typ | Pflicht | Beschreibung |
 |-----------|-----|---------|--------------|
-| `beschreibung` | String | ✅ | Persona-Titel und Utopie-Beschreibung |
+| `titel` | String | ✅ | Kurzer Persona-Name (z.B. "Sportler") |
+| `utopie` | String | ✅ | Ziel-Beschreibung (z.B. "Fit und gesund") |
 
 ---
 
@@ -26,10 +27,12 @@ Erstellt eine neue Persona (Ziel-Identität des Benutzers).
 
 ```
 1. Validierung der Eingaben
-   └── beschreibung nicht leer
+   ├── titel nicht leer
+   └── utopie nicht leer
 
 2. Persona-Objekt erstellen
-   ├── beschreibung setzen
+   ├── titel setzen
+   ├── utopie setzen
    ├── xp = 0
    └── level = 0
 
@@ -45,7 +48,8 @@ Erstellt eine neue Persona (Ziel-Identität des Benutzers).
 
 | Fehler | Beschreibung | Reaktion |
 |--------|--------------|----------|
-| `EmptyDescriptionException` | Beschreibung leer | Abbruch |
+| `EmptyTitleException` | Titel leer | Abbruch |
+| `EmptyUtopieException` | Utopie leer | Abbruch |
 
 ---
 
@@ -55,7 +59,8 @@ Erstellt eine neue Persona (Ziel-Identität des Benutzers).
 CreatePersonaUseCase useCase = new CreatePersonaUseCase(personaRepository);
 
 CreatePersonaRequest request = new CreatePersonaRequest();
-request.beschreibung = "Der Sportler - Fit, gesund und voller Energie";
+request.titel = "Sportler";
+request.utopie = "Fit, gesund und voller Energie";
 
 Persona persona = useCase.execute(request);
 // persona.xp = 0

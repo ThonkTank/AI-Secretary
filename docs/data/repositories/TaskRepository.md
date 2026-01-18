@@ -100,13 +100,20 @@ public class TaskMapper {
     public TaskEntity toEntity(Task task) {
         TaskEntity entity = new TaskEntity();
         entity.id = task.getId();
+        entity.titel = task.getTitel();
         entity.beschreibung = task.getBeschreibung();
         entity.streak = task.getStreak();
         entity.wichtigkeit = task.getWichtigkeit();
         entity.letztesmalErledigt = task.getLetztesmalErledigt();
         entity.frist = task.getFrist();
         entity.bearbeitungszeit = task.getBearbeitungszeit();
-        // ... weitere Felder
+        entity.wiederholungsTyp = task.getWiederholungsTyp();
+        entity.wiederholungsWert = task.getWiederholungsWert();
+        entity.wiederholungsEinheit = task.getWiederholungsEinheit();
+        entity.wiederholungsDetails = task.getWiederholungsDetails();
+        entity.completionTyp = task.getCompletionTyp();
+        entity.completionWert = task.getCompletionWert();
+        entity.completionEinheit = task.getCompletionEinheit();
         entity.completionHistoryJson = serializeTimestamps(task.getCompletionHistory());
         entity.nachfolgerHistoryJson = serializeMap(task.getNachfolgerHistory());
         return entity;
@@ -115,13 +122,20 @@ public class TaskMapper {
     public Task toDomain(TaskEntity entity) {
         Task task = new Task();
         task.setId(entity.id);
+        task.setTitel(entity.titel);
         task.setBeschreibung(entity.beschreibung);
         task.setStreak(entity.streak);
         task.setWichtigkeit(entity.wichtigkeit);
         task.setLetztesmalErledigt(entity.letztesmalErledigt);
         task.setFrist(entity.frist);
         task.setBearbeitungszeit(entity.bearbeitungszeit);
-        // ... weitere Felder
+        task.setWiederholungsTyp(entity.wiederholungsTyp);
+        task.setWiederholungsWert(entity.wiederholungsWert);
+        task.setWiederholungsEinheit(entity.wiederholungsEinheit);
+        task.setWiederholungsDetails(entity.wiederholungsDetails);
+        task.setCompletionTyp(entity.completionTyp);
+        task.setCompletionWert(entity.completionWert);
+        task.setCompletionEinheit(entity.completionEinheit);
         task.setCompletionHistory(deserializeTimestamps(entity.completionHistoryJson));
         task.setNachfolgerHistory(deserializeMap(entity.nachfolgerHistoryJson));
         return task;

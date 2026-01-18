@@ -1,6 +1,21 @@
 # AI Secretary - Business Rules
 
+## Grundprinzipien
+
+### Wiederholung vs Completion
+
+**Diese Konzepte schließen sich gegenseitig aus!**
+
+| Konzept | Bedeutung | Beispiel |
+|---------|-----------|----------|
+| **Wiederholung** | Task erscheint zu festen Zeiten, **egal ob erledigt** | "Jeden Dienstag Müll" |
+| **Completion** | Nach Erledigung wartet X Zeit bis Wiederholung | "6 Wochen nach Haarschnitt" |
+
+---
+
 ## Automatische Zuordnungen
+
+**Hinweis:** Diese Logik liegt im ZuordnungsUseCase, nicht im Repository!
 
 ### Regel 1: Task → Ziel → Personas
 
@@ -30,13 +45,14 @@ Alle 3 Tasks ──────────────────────�
 
 ### Wiederholungs-Typen
 
-| Typ | Beschreibung | Beispiel |
-|-----|--------------|----------|
-| **KEINE** | Einmalige Aufgabe | "Steuererklärung machen" |
-| **TIMER** | Alle X Zeiteinheiten | "Alle 3 Tage Wäsche waschen" |
-| **ZEITPUNKT** | An bestimmten Tagen | "Jeden Dienstag Müll rausbringen" |
+| Typ | Beschreibung | Trigger | Beispiel |
+|-----|--------------|---------|----------|
+| **KEINE** | Einmalige Aufgabe | - | "Steuererklärung machen" |
+| **INTERVALL** | Alle X Zeiteinheiten | Zeit (egal ob erledigt) | "Alle 3 Tage Wäsche" |
+| **ZEITPUNKT** | An bestimmten Tagen | Kalender (egal ob erledigt) | "Jeden Dienstag Müll" |
+| **FREQUENZ** | X mal pro Zeitraum | Flexibler Zeitpunkt | "3x pro Woche Sport" |
 
-### Wiederholungs-Einheiten
+### ZeitEinheit (gemeinsames Enum)
 
 - TAG
 - WOCHE
@@ -45,33 +61,36 @@ Alle 3 Tasks ──────────────────────�
 ### Beispiele
 
 ```
-TIMER + 3 + TAG = "Alle 3 Tage"
-TIMER + 2 + WOCHE = "Alle 2 Wochen"
+INTERVALL + 3 + TAG = "Alle 3 Tage"
+INTERVALL + 2 + WOCHE = "Alle 2 Wochen"
 ZEITPUNKT + "DI" = "Jeden Dienstag"
 ZEITPUNKT + "2.DI" = "Jeden zweiten Dienstag"
 ZEITPUNKT + "1,15" + MONAT = "Am 1. und 15. jeden Monats"
+FREQUENZ + 3 + WOCHE = "3x pro Woche (Zeitpunkt flexibel)"
 ```
 
 ---
 
-## Completion-Metriken
+## Completion-Logik
+
+### Wann Completion nutzen?
+
+**Nur wenn wiederholungsTyp = KEINE!** Bestimmt wie lange nach Erledigung bis Task wieder erscheint.
 
 ### Completion-Typen
 
 | Typ | Beschreibung | Beispiel |
 |-----|--------------|----------|
-| **KEINE** | Einfaches Abhaken | Normale Task |
-| **FREQUENZ** | X mal pro Zeitraum | "3x pro Woche Sport" |
+| **KEINE** | Einmalig - bleibt erledigt | Normale einmalige Task |
+| **INTERVALL** | Nach Erledigung wartet X Zeit | "6 Wochen nach Haarschnitt" |
 | **ZEIT** | X Minuten pro Zeitraum | "30 Min/Tag Lesen" |
-| **TASKS** | X Tasks pro Zeitraum (nur Ziele) | "5 Tasks/Woche für Projekt" |
 
-### Anwendbarkeit
+### Für Ziele zusätzlich
 
-| Metrik | Task | Ziel |
-|--------|------|------|
-| FREQUENZ | ✅ | ✅ |
-| ZEIT | ✅ | ✅ |
-| TASKS | ❌ | ✅ |
+| Typ | Beschreibung | Beispiel |
+|-----|--------------|----------|
+| **FREQUENZ** | X Ziel-Tasks pro Zeitraum | "4x/Woche Fitness-Tasks" |
+| **TASKS** | X Tasks pro Zeitraum | "5 Tasks/Woche für Projekt" |
 
 ---
 
@@ -111,18 +130,24 @@ Level = floor(sqrt(XP / 100))
 
 ### Streak-Erhöhung
 
-**Bedingung:** Task innerhalb des Wiederholungs-Intervalls erledigt
-**Aktion:** `streak++`
+| WiederholungsTyp | Bedingung für streak++ |
+|------------------|------------------------|
+| **INTERVALL** | Task innerhalb des Intervalls erledigt |
+| **ZEITPUNKT** | Task am geplanten Tag erledigt |
+| **FREQUENZ** | Periodenziel erreicht (z.B. 3/3 pro Woche) |
 
 ### Streak-Reset
 
-**Bedingung:** Wiederholungs-Intervall verpasst (ohne Erledigung)
-**Aktion:** `streak = 0`
+**Bedingung:** Intervall/Zeitpunkt verpasst ODER Periodenziel nicht erreicht
+**Aktion:** `streak = 1` (aktuelle Erledigung zählt)
 
-### Streak-Freeze (geplant)
+**Hinweis:** Streak wird auf 1 gesetzt (nicht 0), da die aktuelle Erledigung den Neustart markiert.
+
+### Streak-Freeze (TBD)
 
 - Manuelles Pausieren des Streaks
 - Kein Reset bei Nicht-Erfüllung während Freeze
+- *Details bei Implementierung spezifizieren*
 
 ---
 

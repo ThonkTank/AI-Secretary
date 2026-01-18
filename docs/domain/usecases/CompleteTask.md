@@ -48,8 +48,9 @@ Markiert eine Task als erledigt und führt alle damit verbundenen Aktionen aus (
    └── previousTask.nachfolgerHistory.put(taskId, count + 1)
 
 7. Nächste Fälligkeit berechnen (bei Wiederholung)
-   ├── TIMER: letztesmalErledigt + wiederholungsWert × einheit
-   └── ZEITPUNKT: nächster passender Tag
+   ├── INTERVALL: letztesmalErledigt + wiederholungsWert × einheit
+   ├── ZEITPUNKT: nächster passender Tag
+   └── FREQUENZ: Status aktualisieren (X/Y pro Zeitraum)
 
 8. Task aktualisieren
    ├── letztesmalErledigt = timestamp
@@ -88,6 +89,10 @@ int calculateXP(Task task, Date completionTime) {
 
 ## Streak-Logik (Detail)
 
+Die Streak-Logik hängt vom WiederholungsTyp ab:
+
+### Bei INTERVALL / ZEITPUNKT
+
 ```java
 void updateStreak(Task task, Date completionTime) {
     if (task.getLetztesmalErledigt() == null) {
@@ -103,9 +108,24 @@ void updateStreak(Task task, Date completionTime) {
         // Innerhalb des Intervalls - Streak erhöhen
         task.setStreak(task.getStreak() + 1);
     } else {
-        // Intervall verpasst - Streak zurücksetzen
+        // Intervall verpasst - Streak zurücksetzen auf 1 (aktuelle Erledigung zählt)
         task.setStreak(1);
     }
+}
+```
+
+### Bei FREQUENZ
+
+```java
+void updateStreakFrequenz(Task task, Date completionTime) {
+    int currentCount = getCompletionsInCurrentPeriod(task);
+    int target = task.getWiederholungsWert();
+
+    if (currentCount + 1 >= target) {
+        // Periodenziel erreicht - Streak erhöhen
+        task.setStreak(task.getStreak() + 1);
+    }
+    // Bei Nicht-Erreichen am Periodenende: streak = 1
 }
 ```
 

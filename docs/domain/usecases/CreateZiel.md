@@ -10,7 +10,9 @@ Erstellt ein neues Ziel (Projekt) mit optionaler Wiederholung und Completion-Met
 
 | Parameter | Typ | Pflicht | Beschreibung |
 |-----------|-----|---------|--------------|
-| `beschreibung` | String | ✅ | Ziel-Beschreibung |
+| `titel` | String | ✅ | Kurzer Ziel-Name |
+| `beschreibung` | String | ❌ | Optionale Details |
+| `wichtigkeit` | Int | ✅ | Wichtigkeit für Zeitslot-Vergabe (1-10) |
 | `frist` | Date | ❌ | Optionale Deadline |
 | `wiederholung` | WiederholungConfig | ❌ | Wiederholungs-Konfiguration |
 | `completion` | CompletionConfig | ❌ | Completion-Metrik |
@@ -30,14 +32,16 @@ Erstellt ein neues Ziel (Projekt) mit optionaler Wiederholung und Completion-Met
 
 ```
 1. Validierung der Eingaben
-   ├── beschreibung nicht leer
+   ├── titel nicht leer
+   ├── wichtigkeit zwischen 1-10
    └── Datum-Validierung (frist in der Zukunft)
 
 2. Ziel-Objekt erstellen
-   ├── Pflichtfelder setzen
+   ├── Pflichtfelder setzen (titel, wichtigkeit)
    └── Optionale Felder setzen
 
 3. Personas zuordnen (falls angegeben)
+   └── Via ZuordnungsUseCase
 
 4. Ziel speichern
    └── ZielRepository.save(ziel)
@@ -51,7 +55,8 @@ Erstellt ein neues Ziel (Projekt) mit optionaler Wiederholung und Completion-Met
 
 | Fehler | Beschreibung | Reaktion |
 |--------|--------------|----------|
-| `EmptyDescriptionException` | Beschreibung leer | Abbruch |
+| `EmptyTitleException` | Titel leer | Abbruch |
+| `InvalidImportanceException` | Wichtigkeit außerhalb 1-10 | Abbruch |
 | `PersonaNotFoundException` | Persona-ID existiert nicht | Abbruch |
 
 ---
@@ -59,14 +64,16 @@ Erstellt ein neues Ziel (Projekt) mit optionaler Wiederholung und Completion-Met
 ## Beispiel
 
 ```java
-CreateZielUseCase useCase = new CreateZielUseCase(zielRepository);
+CreateZielUseCase useCase = new CreateZielUseCase(zielRepository, zuordnungsUseCase);
 
 CreateZielRequest request = new CreateZielRequest();
-request.beschreibung = "Fitness-Routine etablieren";
+request.titel = "Fitness-Routine";
+request.beschreibung = "Regelmäßig Sport treiben";
+request.wichtigkeit = 8;
 request.completion = new CompletionConfig(
     CompletionTyp.FREQUENZ,
     4,
-    WiederholungsEinheit.WOCHE
+    ZeitEinheit.WOCHE
 );
 request.personaIds = Arrays.asList(1L); // "Sportler" Persona
 
@@ -77,22 +84,25 @@ Ziel ziel = useCase.execute(request);
 
 ## Automatische Zuordnung bei Persona-Zuweisung
 
-Wenn ein Ziel bereits Tasks hat und dann einer Persona zugeordnet wird:
+**Hinweis:** Diese Logik liegt im **ZuordnungsUseCase**, NICHT im CreateZielUseCase!
+
+Wenn ein Ziel einer Persona zugeordnet wird:
 
 ```java
-// In CreateZielUseCase oder separatem Service
-void assignPersonaToZiel(Ziel ziel, Persona persona) {
-    ziel.addPersona(persona);
+// Im ZuordnungsUseCase
+void assignPersonaToZiel(Long zielId, Long personaId) {
+    // 1. Beziehung Ziel→Persona erstellen
+    zielRepository.addPersonaToZiel(zielId, personaId);
 
-    // Alle existierenden Tasks des Ziels ebenfalls zuordnen
-    for (Task task : ziel.getTasks()) {
-        if (!task.getPersonas().contains(persona)) {
-            task.addPersona(persona);
-            taskRepository.save(task);
-        }
+    // 2. Alle existierenden Tasks des Ziels ebenfalls zuordnen
+    List<Task> tasks = taskRepository.findByZielId(zielId);
+    for (Task task : tasks) {
+        taskRepository.addPersonaToTask(task.getId(), personaId);
     }
 }
 ```
+
+Siehe [BUSINESS_RULES.md](../../meta/BUSINESS_RULES.md) für Details.
 
 ---
 

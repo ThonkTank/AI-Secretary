@@ -31,7 +31,8 @@ Basierend auf der **EPos-Methode** (Motivationspsychologie):
 | Feld | Typ | Pflicht | Beschreibung |
 |------|-----|---------|--------------|
 | `id` | Long | ✅ | Primary Key (auto-generated) |
-| `beschreibung` | String | ✅ | Persona-Titel und Utopie-Beschreibung |
+| `titel` | String | ✅ | Kurzer Persona-Name (z.B. "Sportler", "Absolvent") |
+| `utopie` | String | ✅ | Ziel-Beschreibung (z.B. "Fit, gesund und voller Energie") |
 | `xp` | Int | ✅ | Gesammelte Experience Points (Default: 0) |
 | `level` | Int | ✅ | Aktuelles Level (Default: 0) |
 
@@ -103,7 +104,8 @@ xpProPersona = totalXP / anzahlPersonas;
 
 ```java
 Persona persona = new Persona();
-persona.beschreibung = "Der Sportler - Fit, gesund, energiegeladen";
+persona.titel = "Sportler";
+persona.utopie = "Fit, gesund und voller Energie";
 persona.xp = 0;
 persona.level = 0;
 ```

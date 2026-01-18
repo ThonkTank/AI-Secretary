@@ -101,7 +101,8 @@ public class PersonaMapper {
     public PersonaEntity toEntity(Persona persona) {
         PersonaEntity entity = new PersonaEntity();
         entity.id = persona.getId();
-        entity.beschreibung = persona.getBeschreibung();
+        entity.titel = persona.getTitel();
+        entity.utopie = persona.getUtopie();
         entity.xp = persona.getXp();
         entity.level = persona.getLevel();
         return entity;
@@ -110,7 +111,8 @@ public class PersonaMapper {
     public Persona toDomain(PersonaEntity entity) {
         Persona persona = new Persona();
         persona.setId(entity.id);
-        persona.setBeschreibung(entity.beschreibung);
+        persona.setTitel(entity.titel);
+        persona.setUtopie(entity.utopie);
         persona.setXp(entity.xp);
         persona.setLevel(entity.level);
         return persona;

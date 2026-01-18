@@ -13,19 +13,20 @@ SQLite-Datenbank mit 6 Tabellen für Entities und Beziehungen.
 | Spalte | Typ | Constraint | Beschreibung |
 |--------|-----|------------|--------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Eindeutige ID |
-| `beschreibung` | TEXT | NOT NULL | Task-Beschreibung |
+| `titel` | TEXT | NOT NULL | Kurzer Task-Name |
+| `beschreibung` | TEXT | NULL | Optionale Details |
 | `streak` | INTEGER | NOT NULL DEFAULT 0 | Aktueller Streak |
 | `wichtigkeit` | INTEGER | NOT NULL DEFAULT 5 | Wichtigkeit (1-10) |
 | `letztes_mal_erledigt` | INTEGER | NULL | Timestamp (ms) |
 | `frist` | INTEGER | NULL | Deadline Timestamp |
 | `bearbeitungszeit` | INTEGER | NULL | Minuten |
-| `wiederholungs_typ` | TEXT | NOT NULL DEFAULT 'KEINE' | KEINE/TIMER/ZEITPUNKT |
+| `wiederholungs_typ` | TEXT | NOT NULL DEFAULT 'KEINE' | KEINE/INTERVALL/ZEITPUNKT/FREQUENZ |
 | `wiederholungs_wert` | INTEGER | NULL | X (Anzahl) |
-| `wiederholungs_einheit` | TEXT | NULL | TAG/WOCHE/MONAT |
+| `wiederholungs_einheit` | TEXT | NULL | TAG/WOCHE/MONAT (ZeitEinheit) |
 | `wiederholungs_details` | TEXT | NULL | z.B. "DI,FR" |
-| `completion_typ` | TEXT | NOT NULL DEFAULT 'KEINE' | KEINE/FREQUENZ/ZEIT |
+| `completion_typ` | TEXT | NOT NULL DEFAULT 'KEINE' | KEINE/INTERVALL/ZEIT |
 | `completion_wert` | INTEGER | NULL | X (Anzahl/Minuten) |
-| `completion_einheit` | TEXT | NULL | TAG/WOCHE/MONAT |
+| `completion_einheit` | TEXT | NULL | TAG/WOCHE/MONAT (ZeitEinheit) |
 | `completion_history` | TEXT | NULL | JSON Array [timestamp, ...] |
 | `nachfolger_history` | TEXT | NULL | JSON Object {taskId: count, ...} |
 | `created_at` | INTEGER | NOT NULL | Erstellungszeitpunkt |
@@ -34,7 +35,8 @@ SQLite-Datenbank mit 6 Tabellen für Entities und Beziehungen.
 ```sql
 CREATE TABLE tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    beschreibung TEXT NOT NULL,
+    titel TEXT NOT NULL,
+    beschreibung TEXT,
     streak INTEGER NOT NULL DEFAULT 0,
     wichtigkeit INTEGER NOT NULL DEFAULT 5,
     letztes_mal_erledigt INTEGER,
@@ -61,7 +63,8 @@ CREATE TABLE tasks (
 | Spalte | Typ | Constraint | Beschreibung |
 |--------|-----|------------|--------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Eindeutige ID |
-| `beschreibung` | TEXT | NOT NULL | Persona-Beschreibung |
+| `titel` | TEXT | NOT NULL | Kurzer Persona-Name (z.B. "Sportler") |
+| `utopie` | TEXT | NOT NULL | Ziel-Beschreibung (z.B. "Fit und gesund") |
 | `xp` | INTEGER | NOT NULL DEFAULT 0 | Experience Points |
 | `level` | INTEGER | NOT NULL DEFAULT 0 | Aktuelles Level |
 | `created_at` | INTEGER | NOT NULL | Erstellungszeitpunkt |
@@ -70,7 +73,8 @@ CREATE TABLE tasks (
 ```sql
 CREATE TABLE personas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    beschreibung TEXT NOT NULL,
+    titel TEXT NOT NULL,
+    utopie TEXT NOT NULL,
     xp INTEGER NOT NULL DEFAULT 0,
     level INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL,
@@ -85,22 +89,26 @@ CREATE TABLE personas (
 | Spalte | Typ | Constraint | Beschreibung |
 |--------|-----|------------|--------------|
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Eindeutige ID |
-| `beschreibung` | TEXT | NOT NULL | Ziel-Beschreibung |
+| `titel` | TEXT | NOT NULL | Kurzer Ziel-Name |
+| `beschreibung` | TEXT | NULL | Optionale Details |
+| `wichtigkeit` | INTEGER | NOT NULL DEFAULT 5 | Wichtigkeit für Zeitslot-Vergabe (1-10) |
 | `frist` | INTEGER | NULL | Deadline Timestamp |
-| `wiederholungs_typ` | TEXT | NOT NULL DEFAULT 'KEINE' | KEINE/TIMER/ZEITPUNKT |
+| `wiederholungs_typ` | TEXT | NOT NULL DEFAULT 'KEINE' | KEINE/INTERVALL/ZEITPUNKT/FREQUENZ |
 | `wiederholungs_wert` | INTEGER | NULL | X (Anzahl) |
-| `wiederholungs_einheit` | TEXT | NULL | TAG/WOCHE/MONAT |
+| `wiederholungs_einheit` | TEXT | NULL | TAG/WOCHE/MONAT (ZeitEinheit) |
 | `wiederholungs_details` | TEXT | NULL | z.B. "DI,FR" |
 | `completion_typ` | TEXT | NOT NULL DEFAULT 'KEINE' | KEINE/FREQUENZ/ZEIT/TASKS |
 | `completion_wert` | INTEGER | NULL | X (Anzahl/Minuten/Tasks) |
-| `completion_einheit` | TEXT | NULL | TAG/WOCHE/MONAT |
+| `completion_einheit` | TEXT | NULL | TAG/WOCHE/MONAT (ZeitEinheit) |
 | `created_at` | INTEGER | NOT NULL | Erstellungszeitpunkt |
 | `updated_at` | INTEGER | NOT NULL | Letzte Änderung |
 
 ```sql
 CREATE TABLE ziele (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    beschreibung TEXT NOT NULL,
+    titel TEXT NOT NULL,
+    beschreibung TEXT,
+    wichtigkeit INTEGER NOT NULL DEFAULT 5,
     frist INTEGER,
     wiederholungs_typ TEXT NOT NULL DEFAULT 'KEINE',
     wiederholungs_wert INTEGER,
@@ -182,8 +190,9 @@ CREATE TABLE ziel_persona (
 │   personas  │     │  task_persona │     │    tasks    │
 ├─────────────┤     ├───────────────┤     ├─────────────┤
 │ id (PK)     │←────│ persona_id    │     │ id (PK)     │
-│ beschreibung│     │ task_id       │────→│ beschreibung│
-│ xp          │     └───────────────┘     │ streak      │
+│ titel       │     │ task_id       │────→│ titel       │
+│ utopie      │     └───────────────┘     │ beschreibung│
+│ xp          │                           │ streak      │
 │ level       │                           │ wichtigkeit │
 └─────────────┘                           │ ...         │
       ↑                                   └─────────────┘
@@ -200,7 +209,9 @@ CREATE TABLE ziel_persona (
 │    ziele    │←────────────────────────────────┘
 ├─────────────┤
 │ id (PK)     │
+│ titel       │
 │ beschreibung│
+│ wichtigkeit │
 │ frist       │
 │ ...         │
 └─────────────┘

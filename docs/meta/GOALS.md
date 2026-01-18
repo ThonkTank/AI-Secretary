@@ -23,27 +23,30 @@
 
 ### Phase 1: Tasks (v0.1 - v0.3)
 - [ ] Basis CRUD (erstellen, bearbeiten, löschen, abhaken)
-- [ ] Kategorien/Tags
-- [ ] Priorisierung (Wichtigkeit/Dringlichkeit)
+- [ ] Priorisierung (Wichtigkeit)
 - [ ] Due Dates mit Notifications
 - [ ] Homescreen Widget
 
-### Phase 2: Habits (v0.4 - v0.5)
-- [ ] Tägliche Gewohnheiten definieren
+### Phase 2: Wiederkehrende Tasks (v0.4 - v0.5)
+- [ ] INTERVALL-Wiederholung (alle X Tage/Wochen/Monate)
+- [ ] ZEITPUNKT-Wiederholung (jeden Dienstag, 1. des Monats)
+- [ ] FREQUENZ-Wiederholung (X mal pro Zeitraum, flexibler Zeitpunkt)
+- [ ] Completion-Logik (nach Erledigung X Zeit warten)
 - [ ] Streak-Tracking
-- [ ] Intervall-basierte Wiederholung (alle X Tage)
-- [ ] Frequenz-basierte Wiederholung (X mal pro Woche)
 
-### Phase 3: Routinen (v0.6 - v0.7)
-- [ ] Routinen mit festen Schritten erstellen
-- [ ] Schrittweise Abarbeitung (Morgenroutine etc.)
-- [ ] Routinen an Tageszeiten koppeln
+**Hinweis:** "Habits" sind keine separate Entität, sondern wiederkehrende Tasks mit Streak-Tracking.
 
-### Phase 4: GTD (v0.8 - v0.9)
-- [ ] Inbox (schnelles Erfassen)
-- [ ] Projekte (Multi-Step Tasks)
-- [ ] Kontexte (@Home, @Work, @Phone)
-- [ ] Next Actions
+### Phase 3: Lernende Präferenzen (v0.6 - v0.7)
+- [ ] Task-Ketten lernen (welche Task folgt oft auf welche)
+- [ ] Zeitpunkt-Präferenzen lernen (wann wird Task typischerweise erledigt)
+- [ ] Automatische Vorschläge basierend auf gelernten Mustern
+
+**Hinweis:** "Routinen" emergieren aus gelernten Task-Ketten + Zeitpräferenzen. Keine separate Entität.
+
+### Phase 4: Ziele & Personas (v0.8 - v0.9)
+- [ ] Ziele (GTD: Projekte) - bündeln mehrere Tasks
+- [ ] Personas (Ziel-Identitäten mit XP/Level)
+- [ ] Automatische Task→Persona Zuordnung über Ziele
 
 ### Phase 5: Pomodoro (v1.0)
 - [ ] Focus Timer (25/5 oder konfigurierbar)
