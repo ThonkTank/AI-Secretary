@@ -1,13 +1,15 @@
 package repository.parser;
 
-import java.sql.*;
+import android.content.ContentValues;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import entities.todoList;
 import entities.todoList.TimeSlot;
@@ -16,9 +18,9 @@ public class todoParser {
 
     /**
      * Konvertiert eine DB-Zeile (todos) zu einem todoList Objekt.
-     * Lädt zugehörige TimeSlots aus der time_slots-Tabelle.
+     * Laedt zugehoerige TimeSlots aus der time_slots-Tabelle.
      */
-    public static todoList fromRow(Map<String, Object> row, Connection conn) throws SQLException {
+    public static todoList fromRow(Map<String, Object> row, SQLiteDatabase db) {
         Map<String, Object> typed = convertRow(row);
         todoList todo = new todoList();
         todo.id = (Long) typed.get("id");
@@ -28,30 +30,33 @@ public class todoParser {
 
         // TimeSlots aus eigener Tabelle laden
         if (todo.id != null) {
-            todo.timeSlots = loadSlots(conn, todo.id);
+            todo.timeSlots = loadSlots(db, todo.id);
         }
         return todo;
     }
 
     /**
-     * Lädt alle TimeSlots für eine todoList und rekonstruiert die Verschachtelung.
+     * Laedt alle TimeSlots fuer eine todoList und rekonstruiert die Verschachtelung.
      */
-    private static List<TimeSlot> loadSlots(Connection conn, long todoId) throws SQLException {
+    private static List<TimeSlot> loadSlots(SQLiteDatabase db, long todoId) {
         List<Map<String, Object>> allSlots = new ArrayList<>();
-        try (PreparedStatement pstmt = conn.prepareStatement(
-                "SELECT id, parent_slot_id, start_time, end_time, item_id, completed FROM time_slots WHERE todo_id = ? ORDER BY id")) {
-            pstmt.setLong(1, todoId);
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
+        Cursor cursor = db.query("time_slots",
+            new String[]{"id", "parent_slot_id", "start_time", "end_time", "item_id", "completed"},
+            "todo_id = ?", new String[]{String.valueOf(todoId)},
+            null, null, "id ASC");
+        try {
+            while (cursor.moveToNext()) {
                 Map<String, Object> slot = new LinkedHashMap<>();
-                slot.put("id", rs.getLong("id"));
-                slot.put("parent_slot_id", rs.getObject("parent_slot_id"));
-                slot.put("start_time", rs.getString("start_time"));
-                slot.put("end_time", rs.getString("end_time"));
-                slot.put("item_id", rs.getObject("item_id"));
-                slot.put("completed", rs.getInt("completed"));
+                slot.put("id", cursor.getLong(0));
+                slot.put("parent_slot_id", cursor.isNull(1) ? null : cursor.getLong(1));
+                slot.put("start_time", cursor.isNull(2) ? null : cursor.getString(2));
+                slot.put("end_time", cursor.isNull(3) ? null : cursor.getString(3));
+                slot.put("item_id", cursor.isNull(4) ? null : cursor.getLong(4));
+                slot.put("completed", cursor.getInt(5));
                 allSlots.add(slot);
             }
+        } finally {
+            cursor.close();
         }
 
         // Alle TimeSlot-Objekte erstellen
@@ -94,75 +99,59 @@ public class todoParser {
     /**
      * Persistiert ein todoList Objekt in die DB (todos + time_slots).
      * INSERT wenn id == null, UPDATE wenn id vorhanden.
+     * Nutzt eine Transaction fuer atomare Persistierung.
      */
-    public static void toRow(Connection conn, todoList todo) throws SQLException {
-        Map<String, String> row = new LinkedHashMap<>();
-        if (todo.date != null) row.put("date", todo.date.toString());
-        if (todo.start != null) row.put("start_time", todo.start.toString());
-        if (todo.end != null) row.put("end_time", todo.end.toString());
+    public static void toRow(SQLiteDatabase db, todoList todo) {
+        db.beginTransaction();
+        try {
+            ContentValues cv = new ContentValues();
+            if (todo.date != null) cv.put("date", todo.date.toString());
+            if (todo.start != null) cv.put("start_time", todo.start.toString());
+            if (todo.end != null) cv.put("end_time", todo.end.toString());
 
-        if (todo.id == null) {
-            String columns = String.join(", ", row.keySet());
-            String placeholders = row.keySet().stream().map(k -> "?").collect(Collectors.joining(", "));
-            try (PreparedStatement pstmt = conn.prepareStatement(
-                    "INSERT INTO todos (" + columns + ") VALUES (" + placeholders + ")",
-                    Statement.RETURN_GENERATED_KEYS)) {
-                int i = 1;
-                for (String value : row.values()) pstmt.setString(i++, value);
-                pstmt.executeUpdate();
-                try (ResultSet keys = pstmt.getGeneratedKeys()) {
-                    if (keys.next()) todo.id = keys.getLong(1);
-                }
-            }
-        } else {
-            // Alte Slots löschen vor UPDATE
-            try (PreparedStatement del = conn.prepareStatement("DELETE FROM time_slots WHERE todo_id = ?")) {
-                del.setLong(1, todo.id);
-                del.executeUpdate();
+            if (todo.id == null) {
+                long newId = db.insert("todos", null, cv);
+                todo.id = newId;
+            } else {
+                // Alte Slots loeschen vor UPDATE
+                db.delete("time_slots", "todo_id = ?", new String[]{String.valueOf(todo.id)});
+                db.update("todos", cv, "id = ?", new String[]{String.valueOf(todo.id)});
             }
 
-            String setClause = row.keySet().stream().map(k -> k + " = ?").collect(Collectors.joining(", "));
-            try (PreparedStatement pstmt = conn.prepareStatement(
-                    "UPDATE todos SET " + setClause + " WHERE id = ?")) {
-                int i = 1;
-                for (String value : row.values()) pstmt.setString(i++, value);
-                pstmt.setLong(i, todo.id);
-                pstmt.executeUpdate();
+            // TimeSlots in eigene Tabelle persistieren
+            if (todo.timeSlots != null && !todo.timeSlots.isEmpty()) {
+                persistSlots(db, todo.id, null, todo.timeSlots);
             }
-        }
 
-        // TimeSlots in eigene Tabelle persistieren
-        if (todo.timeSlots != null && !todo.timeSlots.isEmpty()) {
-            persistSlots(conn, todo.id, null, todo.timeSlots);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
         }
     }
 
     /**
      * Persistiert TimeSlots rekursiv (Goal-Slots → Task-Slots).
      */
-    private static void persistSlots(Connection conn, long todoId, Long parentSlotId, List<TimeSlot> slots) throws SQLException {
+    private static void persistSlots(SQLiteDatabase db, long todoId, Long parentSlotId, List<TimeSlot> slots) {
         for (TimeSlot slot : slots) {
-            try (PreparedStatement pstmt = conn.prepareStatement(
-                    "INSERT INTO time_slots (todo_id, parent_slot_id, start_time, end_time, item_id, completed) VALUES (?, ?, ?, ?, ?, ?)",
-                    Statement.RETURN_GENERATED_KEYS)) {
-                pstmt.setLong(1, todoId);
-                if (parentSlotId != null) pstmt.setLong(2, parentSlotId);
-                else pstmt.setNull(2, Types.INTEGER);
-                pstmt.setString(3, slot.start != null ? slot.start.toString() : null);
-                pstmt.setString(4, slot.end != null ? slot.end.toString() : null);
-                if (slot.item != null) pstmt.setLong(5, slot.item);
-                else pstmt.setNull(5, Types.INTEGER);
-                pstmt.setInt(6, (slot.completed != null && slot.completed) ? 1 : 0);
-                pstmt.executeUpdate();
-
-                try (ResultSet keys = pstmt.getGeneratedKeys()) {
-                    if (keys.next()) slot.id = keys.getLong(1);
-                }
+            ContentValues cv = new ContentValues();
+            cv.put("todo_id", todoId);
+            if (parentSlotId != null) {
+                cv.put("parent_slot_id", parentSlotId);
             }
+            cv.put("start_time", slot.start != null ? slot.start.toString() : null);
+            cv.put("end_time", slot.end != null ? slot.end.toString() : null);
+            if (slot.item != null) {
+                cv.put("item_id", slot.item);
+            }
+            cv.put("completed", (slot.completed != null && slot.completed) ? 1 : 0);
+
+            long newSlotId = db.insert("time_slots", null, cv);
+            slot.id = newSlotId;
 
             // Verschachtelte Slots (Tasks innerhalb eines Goals)
             if (slot.timeSlots != null && !slot.timeSlots.isEmpty()) {
-                persistSlots(conn, todoId, slot.id, slot.timeSlots);
+                persistSlots(db, todoId, slot.id, slot.timeSlots);
             }
         }
     }

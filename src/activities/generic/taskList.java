@@ -79,7 +79,7 @@ public class taskList extends Activity implements TodoListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        manager = new todoManager();
+        manager = new todoManager(this);
         manager.setListener(this);
 
         // ScrollView als Root

@@ -1,52 +1,52 @@
 package data;
 
-import repository.SQLrepo;
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
 
-import java.sql.*;
 import java.time.DayOfWeek;
 import java.util.List;
 
 import entities.trackedItem;
 import entities.trackedItem.*;
+import repository.SQLrepo;
 
 /**
  * Erstellt Testdaten in der Datenbank: Goals mit Tasks + config_schedules.
- * Ausführen: java -cp "bin:sqlite-jdbc.jar:slf4j-api.jar:slf4j-simple.jar" Data.seedTestData
  */
 public class seedTestData {
 
-    private static SQLrepo repo;
+    private SQLrepo repo;
 
-    public static void main(String[] args) {
-        repo = new SQLrepo(constants.DB_PATH);
+    public seedTestData(Context context) {
+        this.repo = new SQLrepo(context);
+    }
 
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + constants.DB_PATH);
-             Statement stmt = conn.createStatement()) {
-
-            // Bestehende Daten löschen und ID-Counter zurücksetzen
-            stmt.execute("DELETE FROM items");
-            stmt.execute("DELETE FROM sqlite_sequence WHERE name='items'");
-            stmt.execute("DELETE FROM config_schedules");
+    public void seed() {
+        SQLiteDatabase db = repo.getWritableDatabase();
+        db.beginTransaction();
+        try {
+            // Bestehende Daten loeschen und ID-Counter zuruecksetzen
+            db.delete("items", null, null);
+            db.execSQL("DELETE FROM sqlite_sequence WHERE name='items'");
+            db.delete("config_schedules", null, null);
 
             // === CONFIG SCHEDULES ===
-            String insertSchedule = "INSERT INTO config_schedules (day_of_week, start_time, end_time) VALUES (?, ?, ?)";
-            try (PreparedStatement ps = conn.prepareStatement(insertSchedule)) {
-                String[][] schedules = {
-                    {"MONDAY",    "06:00", "18:00"},
-                    {"TUESDAY",   "06:00", "18:00"},
-                    {"WEDNESDAY", "06:00", "18:00"},
-                    {"THURSDAY",  "06:00", "18:00"},
-                    {"FRIDAY",    "06:00", "18:00"},
-                    {"SATURDAY",  "09:00", "16:00"},
-                    {"SUNDAY",    "09:00", "14:00"}
-                };
-                for (String[] s : schedules) {
-                    ps.setString(1, s[0]);
-                    ps.setString(2, s[1]);
-                    ps.setString(3, s[2]);
-                    ps.addBatch();
-                }
-                ps.executeBatch();
+            String[][] schedules = {
+                {"MONDAY",    "06:00", "18:00"},
+                {"TUESDAY",   "06:00", "18:00"},
+                {"WEDNESDAY", "06:00", "18:00"},
+                {"THURSDAY",  "06:00", "18:00"},
+                {"FRIDAY",    "06:00", "18:00"},
+                {"SATURDAY",  "09:00", "16:00"},
+                {"SUNDAY",    "09:00", "14:00"}
+            };
+            for (String[] s : schedules) {
+                ContentValues cv = new ContentValues();
+                cv.put("day_of_week", s[0]);
+                cv.put("start_time", s[1]);
+                cv.put("end_time", s[2]);
+                db.insert("config_schedules", null, cv);
             }
 
             // ===== PROJECT: Fitness =====
@@ -59,7 +59,7 @@ public class seedTestData {
                 .timeToComplete(45).prefTime("07:00").parent(pFitness.id).created("2025-12-15").build();
             repo.write(gKraft);
 
-            trackedItem tLiegestuetze = new Builder(ItemType.TASK, "Liegestütze", Priority.HIGH)
+            trackedItem tLiegestuetze = new Builder(ItemType.TASK, "Liegestuetze", Priority.HIGH)
                 .timeToComplete(15).prefTime("06:30").parent(gKraft.id).created("2025-12-15")
                 .lastCompletion("2026-01-10").repetition(RepetitionType.INTERVAL, 2, RepUnits.DAY).build();
             trackedItem tKniebeugen = new Builder(ItemType.TASK, "Kniebeugen", Priority.MODERATE)
@@ -118,14 +118,14 @@ public class seedTestData {
 
             trackedItem gSaltmarcher = new Builder(ItemType.GOAL, "Saltmarcher Coden", Priority.HIGH)
                 .timeToComplete(180).prefTime("09:00").parent(pProjekte.id).created("2025-12-01").build();
-            trackedItem gSecretary = new Builder(ItemType.GOAL, "Secretary Coden", Priority.HIGH)
+            trackedItem gAutoSecretary = new Builder(ItemType.GOAL, "AutoSecretary Coden", Priority.HIGH)
                 .timeToComplete(180).prefTime("09:00").parent(pProjekte.id).created("2025-12-01")
                 .lastCompletion("2026-01-19").build();
             trackedItem gSchreiben = new Builder(ItemType.GOAL, "Schreiben ueben", Priority.HIGH)
                 .timeToComplete(180).prefTime("09:00").parent(pProjekte.id).created("2025-12-01")
                 .lastCompletion("2026-01-16").build();
-            repo.write(gSaltmarcher); repo.write(gSecretary); repo.write(gSchreiben);
-            pProjekte.children = List.of(gSaltmarcher.id, gSecretary.id, gSchreiben.id);
+            repo.write(gSaltmarcher); repo.write(gAutoSecretary); repo.write(gSchreiben);
+            pProjekte.children = List.of(gSaltmarcher.id, gAutoSecretary.id, gSchreiben.id);
             repo.write(pProjekte);
 
             // ===== GOAL: Haushalt =====
@@ -194,17 +194,9 @@ public class seedTestData {
             gMorgen.children = List.of(t1.id, t2.id, t3.id, t4.id, t5.id, t6.id, t7.id, t8.id, t9.id, t10.id, t11.id, t12.id, t13.id);
             repo.write(gMorgen);
 
-            System.out.println("Testdaten erfolgreich erstellt!");
-
-            // Zusammenfassung ausgeben
-            ResultSet rs = stmt.executeQuery("SELECT type, COUNT(*) FROM items GROUP BY type");
-            while (rs.next()) {
-                System.out.printf("  %s: %d%n", rs.getString(1), rs.getInt(2));
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Fehler beim Erstellen der Testdaten: " + e.getMessage());
-            e.printStackTrace();
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
         }
     }
 }

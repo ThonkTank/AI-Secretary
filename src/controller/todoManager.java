@@ -1,12 +1,13 @@
 package controller;
 
+import android.content.Context;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import data.constants;
 import entities.todoList;
 import entities.trackedItem;
 import repository.SQLrepo;
@@ -85,9 +86,13 @@ public class todoManager {
      *
      */
 
-    private SQLrepo repo = new SQLrepo(constants.DB_PATH);
+    private SQLrepo repo;
     private todoList todayList;
     private TodoListener listener;
+
+    public todoManager(Context context) {
+        this.repo = new SQLrepo(context);
+    }
 
     public interface TodoListener {
         void onListUpdated();
@@ -186,47 +191,4 @@ public class todoManager {
         }
     }
 
-    // ============================================================================
-    // main - Testfunktion: Generiert Tagesplan und gibt provideList()-Ergebnis aus
-    // ============================================================================
-    public static void main(String[] args) {
-        // Erst Testdaten + Tagesplan generieren
-        usecases.daliyPlanning.buildToDo.main(args);
-
-        System.out.println("\n╔══════════════════════════════════════════════════════════════════╗");
-        System.out.println("║                 TODOMANAGER - provideList() TEST                  ║");
-        System.out.println("╚══════════════════════════════════════════════════════════════════╝\n");
-
-        todoManager manager = new todoManager();
-        List<TaskEntry> entries = manager.provideList();
-
-        if (entries.isEmpty()) {
-            System.out.println("  (keine Einträge für heute)");
-            return;
-        }
-
-        System.out.printf("  %d Tasks für heute:%n", entries.size());
-        System.out.println("  ───────────────────────────────────────");
-
-        for (TaskEntry entry : entries) {
-            String status = entry.completed() ? "✓" : "○";
-            System.out.printf("  %s %s - %s │ [%s] %s (%d min)%n",
-                status,
-                entry.start(),
-                entry.end(),
-                entry.goalTitle(),
-                entry.taskTitle(),
-                entry.timeToComplete());
-            if (entry.taskDescription() != null && !entry.taskDescription().isEmpty()) {
-                System.out.printf("                     └─ %s%n", entry.taskDescription());
-            }
-        }
-
-        System.out.println("  ───────────────────────────────────────");
-        System.out.printf("  SlotIDs: ");
-        for (TaskEntry entry : entries) {
-            System.out.printf("%d ", entry.slotId());
-        }
-        System.out.println();
-    }
 }

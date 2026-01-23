@@ -1,6 +1,8 @@
 package repository.parser;
 
-import java.sql.*;
+import android.content.ContentValues;
+import android.database.sqlite.SQLiteDatabase;
+
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -148,100 +150,80 @@ public class itemParser {
     // ============== WRITER (Java → DB) ==============
 
     /**
-     * Konvertiert ein trackedItem zu einer Map<Spaltenname, Wert> und persistiert direkt in die DB.
+     * Konvertiert ein trackedItem zu ContentValues und persistiert in die DB.
      * INSERT wenn id == null, UPDATE wenn id vorhanden.
      * Setzt item.id nach INSERT auf die generierte ID.
      */
-    public static void toRow(Connection conn, trackedItem item) throws SQLException {
-        Map<String, String> row = new java.util.LinkedHashMap<>();
+    public static void toRow(SQLiteDatabase db, trackedItem item) {
+        ContentValues cv = new ContentValues();
 
         // Basic
-        if (item.type != null) row.put("type", item.type.name().substring(0, 1) + item.type.name().substring(1).toLowerCase());
-        if (item.title != null) row.put("title", item.title);
-        if (item.description != null) row.put("description", item.description);
-        if (item.created != null) row.put("created", item.created.toString());
+        if (item.type != null) cv.put("type", item.type.name().substring(0, 1) + item.type.name().substring(1).toLowerCase());
+        if (item.title != null) cv.put("title", item.title);
+        if (item.description != null) cv.put("description", item.description);
+        if (item.created != null) cv.put("created", item.created.toString());
 
         // Completion
-        if (item.lastCompletion != null) row.put("last_completion", item.lastCompletion.toString());
-        row.put("completions", String.valueOf(item.completions));
-        row.put("is_completed", (item.isCompleted != null && item.isCompleted) ? "1" : "0");
+        if (item.lastCompletion != null) cv.put("last_completion", item.lastCompletion.toString());
+        cv.put("completions", item.completions);
+        cv.put("is_completed", (item.isCompleted != null && item.isCompleted) ? 1 : 0);
 
         // Repetition
         if (item.repetition != null) {
-            row.put("repetition_type", item.repetition.type.name());
-            row.put("repetition_unit", item.repetition.unit.name());
-            row.put("repetition_value", String.valueOf(item.repetition.value));
+            cv.put("repetition_type", item.repetition.type.name());
+            cv.put("repetition_unit", item.repetition.unit.name());
+            cv.put("repetition_value", item.repetition.value);
             if (item.repetition.dayOfWeek != null) {
-                row.put("day_of_week", item.repetition.dayOfWeek.name());
+                cv.put("day_of_week", item.repetition.dayOfWeek.name());
             }
         }
-        row.put("complete_first", (item.completeFirst != null && item.completeFirst) ? "1" : "0");
+        cv.put("complete_first", (item.completeFirst != null && item.completeFirst) ? 1 : 0);
 
         // Timeframe
         if (item.nextRepetition != null) {
-            row.put("next_rep_start", item.nextRepetition.start.toString());
+            cv.put("next_rep_start", item.nextRepetition.start.toString());
             if (item.nextRepetition.end != null) {
-                row.put("next_rep_end", item.nextRepetition.end.toString());
+                cv.put("next_rep_end", item.nextRepetition.end.toString());
             }
         }
 
         // Planung
-        row.put("time_to_complete", String.valueOf(item.timeToComplete));
-        if (item.priority != null) row.put("priority", item.priority.name());
-        if (item.prefTime != null) row.put("pref_time", item.prefTime.toString());
+        cv.put("time_to_complete", item.timeToComplete);
+        if (item.priority != null) cv.put("priority", item.priority.name());
+        if (item.prefTime != null) cv.put("pref_time", item.prefTime.toString());
         if (item.scheduled != null && !item.scheduled.isEmpty()) {
-            row.put("scheduled", item.scheduled.stream()
+            cv.put("scheduled", item.scheduled.stream()
                 .map(java.time.LocalDate::toString)
                 .collect(Collectors.joining(",")));
         }
-        row.put("cooldown", String.valueOf(item.cooldown));
+        cv.put("cooldown", item.cooldown);
 
         // History
-        row.put("current_streak", String.valueOf(item.currentStreak));
-        row.put("average_streak", String.valueOf(item.averageStreak));
-        row.put("nr_of_streaks", String.valueOf(item.nrOfStreaks));
-        row.put("total_completions", String.valueOf(item.totalCompletions));
-        row.put("min_interval_days", String.valueOf(item.minIntervalDays));
+        cv.put("current_streak", item.currentStreak);
+        cv.put("average_streak", item.averageStreak);
+        cv.put("nr_of_streaks", item.nrOfStreaks);
+        cv.put("total_completions", item.totalCompletions);
+        cv.put("min_interval_days", item.minIntervalDays);
 
         // Relationen
-        if (item.parent != null) row.put("parent", String.valueOf(item.parent));
+        if (item.parent != null) cv.put("parent", item.parent);
         if (item.children != null && !item.children.isEmpty()) {
-            row.put("children", item.children.stream()
+            cv.put("children", item.children.stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining(",")));
         }
         if (item.followUps != null && !item.followUps.isEmpty()) {
-            row.put("followups", item.followUps.entrySet().stream()
+            cv.put("followups", item.followUps.entrySet().stream()
                 .map(e -> e.getKey() + ":" + e.getValue())
                 .collect(Collectors.joining(",")));
         }
 
         // Persistieren
         if (item.id != null) {
-            String setClause = row.keySet().stream()
-                .map(col -> col + " = ?")
-                .collect(Collectors.joining(", "));
-            try (PreparedStatement pstmt = conn.prepareStatement(
-                    "UPDATE items SET " + setClause + " WHERE id = ?")) {
-                int i = 1;
-                for (String value : row.values()) pstmt.setString(i++, value);
-                pstmt.setLong(i, item.id);
-                pstmt.executeUpdate();
-            }
+            db.update("items", cv, "id = ?", new String[]{String.valueOf(item.id)});
         } else {
-            String columns = String.join(", ", row.keySet());
-            String placeholders = row.keySet().stream().map(k -> "?").collect(Collectors.joining(", "));
-            try (PreparedStatement pstmt = conn.prepareStatement(
-                    "INSERT INTO items (" + columns + ") VALUES (" + placeholders + ")",
-                    Statement.RETURN_GENERATED_KEYS)) {
-                int i = 1;
-                for (String value : row.values()) pstmt.setString(i++, value);
-                pstmt.executeUpdate();
-                try (ResultSet keys = pstmt.getGeneratedKeys()) {
-                    keys.next();
-                    item.id = keys.getLong(1);
-                }
-            }
+            long newId = db.insert("items", null, cv);
+            item.id = newId;
         }
     }
 

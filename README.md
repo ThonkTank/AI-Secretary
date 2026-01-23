@@ -1,4 +1,4 @@
-# AI Secretary
+# AutoSecretary
 
 Personal task management and productivity assistant for Android.
 

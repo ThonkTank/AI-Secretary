@@ -1,9 +1,9 @@
 package usecases.daliyPlanning;
 
+import android.content.Context;
+
 import repository.SQLrepo;
 import repository.Table;
-import data.constants;
-import data.seedTestData;
 import entities.todoList;
 import entities.trackedItem;
 import entities.todoList.TimeSlot;
@@ -174,7 +174,11 @@ public class buildToDo {
      *
      */
 
-    SQLrepo repo = new SQLrepo(constants.DB_PATH);
+    SQLrepo repo;
+
+    public buildToDo(Context context) {
+        this.repo = new SQLrepo(context);
+    }
 
     // ============================================================================
     // makeToDoList - Hauptfunktion, erstellt ToDoListen für die nächsten 7 Tage.
@@ -409,87 +413,4 @@ public class buildToDo {
         return timeAdjusteditems;
     }
 
-    private static String repInfo(trackedItem task) {
-        if (task.repetition == null) return "[einmalig]";
-        trackedItem.Repetition rep = task.repetition;
-        String unit = switch (rep.unit) { case DAY -> "Tag(e)"; case WEEK -> "Woche"; case MONTH -> "Monat"; };
-        return switch (rep.type) {
-            case INTERVAL -> "[alle " + rep.value + " " + unit + "]";
-            case REPS_PER_TIME -> "[" + rep.value + "x/" + unit + "]";
-            case DAY_OF_TIME -> (rep.unit == trackedItem.RepUnits.WEEK)
-                ? "[jeden " + rep.dayOfWeek + "]"
-                : "[jeden " + rep.value + ".]";
-        };
-    }
-
-    // ============================================================================
-    // TEST - Lädt aus persistenter Testdatenbank
-    // ============================================================================
-
-    public static void main(String[] args) {
-        // DB frisch seeden
-        seedTestData.main(args);
-
-        buildToDo planner = new buildToDo();
-
-        // Prüfen ob config_schedules befüllt ist
-        List<LocalTime> configCheck = planner.repo.lookups(
-            "config_schedules",
-            Map.of("day_of_week", LocalDate.now().getDayOfWeek().toString()),
-            "start_time");
-        if (configCheck.isEmpty()) {
-            System.out.println("Keine config_schedules gefunden!");
-            System.out.println("Bitte erst Konfiguration erstellen.");
-            return;
-        }
-
-        System.out.println("╔══════════════════════════════════════════════════════════════════╗");
-        System.out.println("║                    TAGESPLAN ERSTELLEN                           ║");
-        System.out.println("╚══════════════════════════════════════════════════════════════════╝\n");
-
-        // Einzelnen Tag testen (heute)
-        LocalDate today = LocalDate.now();
-        String weekday = today.getDayOfWeek().toString();
-
-        Map<String, String> scheduleFilter = Map.of("day_of_week", weekday);
-        LocalTime start = planner.repo.lookup("config_schedules", scheduleFilter, "start_time");
-        LocalTime end = planner.repo.lookup("config_schedules", scheduleFilter, "end_time");
-        System.out.printf("Zeitfenster %s: %s - %s%n%n", weekday, start, end);
-
-        // Wochenplan erstellen und persistieren
-        planner.makeToDoList();
-
-        // Gespeicherte Tagespläne aus DB laden und ausgeben
-        List<todoList> wochenPlan = new ArrayList<>();
-        for (int i = 0; i < 7; i++) {
-            LocalDate day = LocalDate.now().plusDays(i);
-            todoList tag = planner.repo.fetch(Table.TODOS, Map.of("date", day.toString()));
-            if (tag != null) {
-                wochenPlan.add(tag);
-            }
-        }
-
-        for (todoList tag : wochenPlan) {
-            System.out.printf("\n%s (%s - %s)%n", tag.date, tag.start, tag.end);
-            System.out.println("───────────────────────────────────────");
-            if (tag.timeSlots == null || tag.timeSlots.isEmpty()) {
-                System.out.println("  (keine Einträge)");
-                continue;
-            }
-            for (TimeSlot slot : tag.timeSlots) {
-                trackedItem goal = planner.repo.fetch(Table.ITEMS, slot.item);
-                System.out.printf("  %s - %s │ %s%n", slot.start, slot.end, goal.title);
-                if (slot.timeSlots != null) {
-                    for (TimeSlot taskSlot : slot.timeSlots) {
-                        trackedItem task = planner.repo.fetch(Table.ITEMS, taskSlot.item);
-                        System.out.printf("    %s - %s │ %s %s%n", taskSlot.start, taskSlot.end, task.title, repInfo(task));
-                    }
-                }
-            }
-        }
-
-        System.out.println("\n═══════════════════════════════════════════════════════════════════");
-        System.out.printf("ZUSAMMENFASSUNG: %d Tage geplant%n", wochenPlan.size());
-        System.out.println("═══════════════════════════════════════════════════════════════════");
-    }
 }

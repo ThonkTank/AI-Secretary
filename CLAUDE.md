@@ -5,35 +5,52 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build Commands
 
 ```bash
-# Compile Java to bin/
-./compile.sh
+# Build debug APK
+./gradlew assembleDebug
 
-# Run daily planning algorithm (creates secretary.db with test data)
-java -cp "bin:sqlite-jdbc.jar:slf4j-api.jar:slf4j-simple.jar" usecases.daliyPlanning.buildToDo
+# Build release APK (unsigned)
+./gradlew assembleRelease
 
-# Build Android APK (requires Android SDK)
-./build.sh
+# Only compile Java (schneller Syntax-Check)
+./gradlew compileDebugJavaWithJavac
+
+# Clean build
+./gradlew clean
 ```
 
+APKs are automatically copied to `release/` after assembly.
+
 **Note:** The package name `daliyPlanning` is intentionally misspelled.
+
+## Project Layout
+
+Non-standard Android project structure — no `app/` module, sources are at root level:
+- Java sources: `src/` (not `app/src/main/java/`)
+- Resources: `res/`
+- Manifest: `AndroidManifest.xml` (root level)
+
+Configured in `build.gradle.kts` via custom `sourceSets`. Java 17, compileSdk/targetSdk 35, minSdk 26. Uses `coreLibraryDesugaring` for `java.time` API on older devices.
 
 ## Architecture
 
 ```
 src/
+├── activities/generic/
+│   └── taskList.java          # Main Activity (launcher), programmatic UI
 ├── entities/
 │   ├── trackedItem.java       # Central entity for Task/Goal/Project/Block
 │   ├── todoList.java          # TimeSlot-based daily schedule container
 │   └── config.java            # DayOfWeek → DaySchedule (start/end times)
 ├── repository/
 │   ├── SQLrepo.java           # DB-Zugriff: lookup(), lookups(), fetch(), write()
+│   ├── Table.java             # Type-safe table references (Table.ITEMS, Table.TODOS)
 │   └── parser/
 │       ├── itemParser.java    # trackedItem ↔ DB (fromRow, convertRow, toRow)
 │       └── todoParser.java    # todoList ↔ DB (fromRow, toRow, loadSlots, persistSlots)
 ├── controller/
 │   └── todoManager.java       # UI-facing: provideList(), completeSlot()
 ├── data/
-│   ├── constants.java         # DB_PATH = "secretary.db"
+│   ├── constants.java         # DB_NAME = "secretary.db", DB_VERSION = 1
 │   └── seedTestData.java      # Testdaten: 60+ Items über mehrere Goals/Projects
 └── usecases/
     ├── daliyPlanning/
@@ -42,6 +59,8 @@ src/
     └── userFlows/
         └── checkToDoItem.java # Stub für Task-Completion
 ```
+
+**Data flow:** `taskList` (Activity) → `todoManager` (Controller) → `buildToDo` (UseCase) → `SQLrepo` (Repository)
 
 ## Key Patterns
 
@@ -58,17 +77,15 @@ src/
 - `REPS_PER_TIME` - "X mal pro Woche/Monat" (X times per week/month)
 - `DAY_OF_TIME` - "jeden Freitag" or "jeden 10." (every Friday / every 10th)
 
-**SQLrepo methods (generisch typisiert):**
+**SQLrepo methods:**
 ```java
-// lookup: Erster Treffer oder null
+// lookup/lookups: String-based table names, return raw converted values
 LocalTime start = repo.lookup("config_schedules", filter, "start_time");
-
-// lookups: Alle Treffer als Liste
 List<Long> ids = repo.lookups("items", Map.of("type", "Goal"), "id");
 
-// fetch: Entity anhand ID oder Filter
-trackedItem item = repo.fetch("items", 5);
-todoList list = repo.fetch("todos", Map.of("date", "2026-01-23"));
+// fetch: Type-safe via Table<T>, returns entity objects
+trackedItem item = repo.fetch(Table.ITEMS, 5);
+todoList list = repo.fetch(Table.TODOS, Map.of("date", "2026-01-23"));
 
 // write: INSERT oder UPDATE (erkennt Entity-Typ automatisch)
 repo.write(myTrackedItem);

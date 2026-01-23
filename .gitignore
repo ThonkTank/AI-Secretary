@@ -1,16 +1,12 @@
-# Build output
+# Gradle
+.gradle/
 build/
-bin/
-compiled_res/
-obj/
-*.apk
-*.apk.idsig
+
+# Local properties (SDK path)
+local.properties
 
 # Generated
-secretary.db
-
-# Local SDK symlink
-android.jar
+autosecretary.db
 
 # Keystore
 *.keystore
@@ -26,3 +22,8 @@ android.jar
 # OS
 .DS_Store
 Thumbs.db
+
+# Old build artifacts
+bin/
+compiled_res/
+obj/
