@@ -1,9 +1,16 @@
 # Build output
 build/
+bin/
 compiled_res/
 obj/
 *.apk
 *.apk.idsig
+
+# Generated
+secretary.db
+
+# Local SDK symlink
+android.jar
 
 # Keystore
 *.keystore

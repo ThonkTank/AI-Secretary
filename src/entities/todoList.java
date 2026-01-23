@@ -1,0 +1,27 @@
+package entities;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+
+/**
+ * Container fuer alle Todo-bezogenen Objektdefinitionen.
+ */
+public class todoList {
+    
+    //Identifikation
+    public Long id;
+    public LocalDate date;
+    public LocalTime start;
+    public LocalTime end;
+    public List<TimeSlot> timeSlots;
+
+    public static class TimeSlot {
+        public Long id;
+        public LocalTime start;
+        public LocalTime end;
+        public List<TimeSlot> timeSlots;
+        public Long item;
+        public Boolean completed;
+    }
+}
