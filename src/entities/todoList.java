@@ -23,5 +23,10 @@ public class todoList {
         public List<TimeSlot> timeSlots;
         public Long item;
         public Boolean completed;
+        public Boolean isCalendarEvent;
+        public String calendarTitle;
+        //Für prefTime berechnung
+        public LocalTime workStart;         //Wann wurde die bearbeitung begonnen?
+        public LocalTime workEnd;           //Wann wurde die bearbeitung des Slots abgeschlossen
     }
 }

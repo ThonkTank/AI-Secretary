@@ -60,6 +60,8 @@ public class updateChecker {
 
     private int fetchRemoteVersion() throws Exception {
         HttpURLConnection conn = (HttpURLConnection) new URL(VERSION_URL).openConnection();
+        conn.setUseCaches(false);
+        conn.setRequestProperty("Cache-Control", "no-cache");
         conn.setConnectTimeout(5000);
         conn.setReadTimeout(5000);
         try (InputStream in = conn.getInputStream()) {

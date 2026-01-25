@@ -62,6 +62,11 @@ public class todoManager {
      *      5. Liste nach Startzeit sortieren
      *      Return: List<TaskEntry>
      *
+     *  startTimer(slotId) - Setzt workStart auf LocalTime.now()
+     *      → Persistiert + Listener benachrichtigen
+     *
+     *  stopTimer(slotId) - Setzt workEnd auf LocalTime.now(), delegiert an completeSlot
+     *
      *  completeSlot(slotId) - Markiert einen Task-Slot als erledigt
      *      1. Slot in todayList finden und completed=true setzen
      *      2. Prüfen ob alle Task-Slots des zugehörigen Goals completed sind
@@ -83,6 +88,8 @@ public class todoManager {
      *   completed         → Aktueller Checkbox-State
      *   goalTitle         → Übergeordnetes Goal (Kontext-Anzeige)
      *   goalSlotId        → Goal-Slot ID (für Goal-Completion-Check)
+     *   isCalendarEvent   → Kalender-Termin (nicht abhakbar)
+     *   workStart         → Timer gestartet? (null = nicht gestartet)
      *
      */
 
@@ -107,7 +114,9 @@ public class todoManager {
         LocalTime end,          // Slot-Endzeit
         boolean completed,      // Checkbox-State
         String goalTitle,       // Titel des übergeordneten Goals
-        Long goalSlotId         // Goal-Slot ID (für Goal-Completion-Check)
+        Long goalSlotId,        // Goal-Slot ID (für Goal-Completion-Check)
+        boolean isCalendarEvent,// Kalender-Termin (nicht abhakbar)
+        LocalTime workStart     // Timer gestartet? (null = nicht gestartet)
     ) {}
 
     // ============================================================================
@@ -124,6 +133,26 @@ public class todoManager {
         List<TaskEntry> entries = new ArrayList<>();
 
         for (todoList.TimeSlot goalSlot : todayList.timeSlots) {
+
+            // Kalender-Events als eigene Eintraege
+            if (Boolean.TRUE.equals(goalSlot.isCalendarEvent)) {
+                int duration = (int) java.time.temporal.ChronoUnit.MINUTES.between(goalSlot.start, goalSlot.end);
+                entries.add(new TaskEntry(
+                    goalSlot.id,
+                    goalSlot.calendarTitle,
+                    null,
+                    duration,
+                    goalSlot.start,
+                    goalSlot.end,
+                    false,
+                    "Kalender",
+                    null,
+                    true,
+                    null
+                ));
+                continue;
+            }
+
             // Goal-Titel laden
             trackedItem goal = repo.fetch(Table.ITEMS, goalSlot.item);
             String goalTitle = (goal != null) ? goal.title : "";
@@ -144,7 +173,9 @@ public class todoManager {
                     taskSlot.end,
                     Boolean.TRUE.equals(taskSlot.completed),
                     goalTitle,
-                    goalSlot.id
+                    goalSlot.id,
+                    false,
+                    taskSlot.workStart
                 ));
             }
         }
@@ -159,6 +190,67 @@ public class todoManager {
     // ============================================================================
     public void setListener (TodoListener listener) {
         this.listener = listener;
+    }
+
+    // ============================================================================
+    // uncompleteSlot - Setzt Task-Slot auf unerledigt zurück
+    // ============================================================================
+    public void uncompleteSlot(Long slotId) {
+        if (todayList == null || todayList.timeSlots == null) return;
+
+        for (todoList.TimeSlot goalSlot : todayList.timeSlots) {
+            if (goalSlot.timeSlots == null) continue;
+
+            for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
+                if (slotId.equals(taskSlot.id)) {
+                    taskSlot.completed = false;
+
+                    // Goal-Slot ebenfalls zurücksetzen
+                    goalSlot.completed = false;
+
+                    repo.write(todayList);
+                    if (listener != null) listener.onListUpdated();
+                    return;
+                }
+            }
+        }
+    }
+
+    // ============================================================================
+    // startTimer - Setzt workStart auf aktuelle Uhrzeit
+    // ============================================================================
+    public void startTimer(Long slotId) {
+        if (todayList == null || todayList.timeSlots == null) return;
+
+        for (todoList.TimeSlot goalSlot : todayList.timeSlots) {
+            if (goalSlot.timeSlots == null) continue;
+            for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
+                if (slotId.equals(taskSlot.id)) {
+                    taskSlot.workStart = LocalTime.now();
+                    repo.write(todayList);
+                    if (listener != null) listener.onListUpdated();
+                    return;
+                }
+            }
+        }
+    }
+
+    // ============================================================================
+    // stopTimer - Setzt workEnd und delegiert Completion an completeSlot
+    // ============================================================================
+    public void stopTimer(Long slotId) {
+        if (todayList == null || todayList.timeSlots == null) return;
+
+        for (todoList.TimeSlot goalSlot : todayList.timeSlots) {
+            if (goalSlot.timeSlots == null) continue;
+            for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
+                if (slotId.equals(taskSlot.id)) {
+                    taskSlot.workEnd = LocalTime.now();
+                    completeSlot(slotId);
+                    return;
+                }
+            }
+        }
     }
 
     // ============================================================================

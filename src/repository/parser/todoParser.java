@@ -41,7 +41,7 @@ public class todoParser {
     private static List<TimeSlot> loadSlots(SQLiteDatabase db, long todoId) {
         List<Map<String, Object>> allSlots = new ArrayList<>();
         Cursor cursor = db.query("time_slots",
-            new String[]{"id", "parent_slot_id", "start_time", "end_time", "item_id", "completed"},
+            new String[]{"id", "parent_slot_id", "start_time", "end_time", "item_id", "completed", "is_calendar_event", "calendar_title", "work_start", "work_end"},
             "todo_id = ?", new String[]{String.valueOf(todoId)},
             null, null, "id ASC");
         try {
@@ -53,6 +53,10 @@ public class todoParser {
                 slot.put("end_time", cursor.isNull(3) ? null : cursor.getString(3));
                 slot.put("item_id", cursor.isNull(4) ? null : cursor.getLong(4));
                 slot.put("completed", cursor.getInt(5));
+                slot.put("is_calendar_event", cursor.getInt(6));
+                slot.put("calendar_title", cursor.isNull(7) ? null : cursor.getString(7));
+                slot.put("work_start", cursor.isNull(8) ? null : cursor.getString(8));
+                slot.put("work_end", cursor.isNull(9) ? null : cursor.getString(9));
                 allSlots.add(slot);
             }
         } finally {
@@ -71,6 +75,12 @@ public class todoParser {
             Object itemId = r.get("item_id");
             if (itemId != null) ts.item = ((Number) itemId).longValue();
             ts.completed = ((Number) r.get("completed")).intValue() == 1;
+            ts.isCalendarEvent = ((Number) r.get("is_calendar_event")).intValue() == 1;
+            ts.calendarTitle = (String) r.get("calendar_title");
+            String workStartStr = (String) r.get("work_start");
+            if (workStartStr != null) ts.workStart = LocalTime.parse(workStartStr);
+            String workEndStr = (String) r.get("work_end");
+            if (workEndStr != null) ts.workEnd = LocalTime.parse(workEndStr);
             slotMap.put(ts.id, ts);
         }
 
@@ -145,6 +155,10 @@ public class todoParser {
                 cv.put("item_id", slot.item);
             }
             cv.put("completed", (slot.completed != null && slot.completed) ? 1 : 0);
+            cv.put("is_calendar_event", (slot.isCalendarEvent != null && slot.isCalendarEvent) ? 1 : 0);
+            cv.put("calendar_title", slot.calendarTitle);
+            cv.put("work_start", slot.workStart != null ? slot.workStart.toString() : null);
+            cv.put("work_end", slot.workEnd != null ? slot.workEnd.toString() : null);
 
             long newSlotId = db.insert("time_slots", null, cv);
             slot.id = newSlotId;

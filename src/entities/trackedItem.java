@@ -174,81 +174,109 @@ public class trackedItem {
 
     // ============== BUSINESS LOGIK ==============
 
+    // ============================================================================
+    // UPDATE - Wird von cleanToDo aufgerufen, wenn Task in der gestrigen Liste war.
+    // ============================================================================
     /**
-     * Wird aufgerufen wenn User eine Completion markiert.
+     * Zentraler Entry-Point für Tagesabschluss-Logik.
+     * Wird von cleanToDo für jeden Slot der gestrigen Liste aufgerufen.
+     *
+     * @param completed   Hat der User den Slot als erledigt markiert?
+     * @param workStart   Timer-Start (null wenn Timer nicht genutzt)
+     * @param workEnd     Timer-Ende (null wenn Timer nicht genutzt)
+     * @param day         Tag des Slots (gestern)
+     * @param repo        Zum Persistieren der Änderungen
      */
-    public void markCompletion() {
-        this.completions++;
-        this.lastCompletion = LocalDate.now();
-        if (this.type == ItemType.TASK) {
-            updatePrefTime();   // Durchschnittliche Erledigungszeit aktualisieren
+    public void update(boolean completed, LocalTime workStart, LocalTime workEnd,
+                       LocalDate day, SQLrepo repo) {
+        if (completed) {
+            // Completion tracking
+            this.completions++;
+            this.lastCompletion = day;
+
+            if (this.type == ItemType.TASK) {
+                // PrefTime aus workStart ableiten
+                updatePrefTime(workStart);
+
+                // TimeToComplete: aus Timer-Daten ableiten (laufender Durchschnitt)
+                if (workStart != null && workEnd != null) {
+                    int actualMinutes = (int) java.time.temporal.ChronoUnit.MINUTES.between(workStart, workEnd);
+                    if (actualMinutes > 0) {
+                        updateTimeToComplete(actualMinutes);
+                    }
+                }
+            }
+
+        } else {
+            // Nicht erledigt und überfällig → Streak reset wenn !completeFirst
+            if ((this.completeFirst == null || !this.completeFirst) && overdue(day) > 0) {
+                resetStreak();
+                this.completions = 0;
+            }
         }
-        checkCompletion();  // Prüft ob jetzt fertig
+
+        repo.write(this);
     }
 
     /**
      * Aktualisiert die bevorzugte Zeit (laufender Durchschnitt).
      *
      * Formel: neuerDurchschnitt = (alter × anzahl + neu) / (anzahl + 1)
-     *
-     * Beispiel: prefTime=14:00, totalCompletions=9, jetzt=16:00
-     *           → (14:00 × 9 + 16:00) / 10 = 14:12
      */
-    private void updatePrefTime() {
-        LocalTime jetzt = LocalTime.now();
-
-        // Erste Completion? Dann einfach aktuelle Zeit übernehmen
+    private void updatePrefTime(LocalTime workStart) {
         if (this.prefTime == null || this.totalCompletions == 0) {
-            this.prefTime = jetzt;
+            this.prefTime = workStart;
             this.totalCompletions = 1;
             return;
         }
 
-        // In Minuten seit Mitternacht umrechnen
         int altInMinuten = this.prefTime.getHour() * 60 + this.prefTime.getMinute();
-        int jetztInMinuten = jetzt.getHour() * 60 + jetzt.getMinute();
+        int neuInMinuten = workStart.getHour() * 60 + workStart.getMinute();
 
-        // Laufenden Durchschnitt berechnen
-        int neuerDurchschnitt = (altInMinuten * this.totalCompletions + jetztInMinuten)
+        int neuerDurchschnitt = (altInMinuten * this.totalCompletions + neuInMinuten)
                                 / (this.totalCompletions + 1);
 
-        // Zurück zu LocalTime und speichern
         this.prefTime = LocalTime.of(neuerDurchschnitt / 60, neuerDurchschnitt % 60);
         this.totalCompletions++;
     }
 
     /**
-     * Prüft ob Task abgeschlossen ist und berechnet ggf. nächste Wiederholung.
-     * @return true wenn abgeschlossen, false wenn noch offen
+     * Aktualisiert timeToComplete (laufender Durchschnitt aus Timer-Daten).
      */
-    public boolean checkCompletion() {
-        // Einmalige Aufgabe ohne Wiederholung
-        if (this.repetition == null) {
-            return this.lastCompletion != null;
+    private void updateTimeToComplete(int actualMinutes) {
+        if (this.totalCompletions <= 1) {
+            this.timeToComplete = actualMinutes;
+            return;
         }
-        
-        // Wie viele Completions werden benötigt?
-        int required = 1;  // Standard für DAY_OF_TIME und INTERVAL
-        if (this.repetition.type == RepetitionType.REPS_PER_TIME) {
-            required = this.repetition.value;
-        }
-        
-        // Genug Completions?
-        if (this.completions >= required) {
-            this.isCompleted = true;
-            this.completions = 0;  // Reset für nächste Periode
-            this.lastCompletion = LocalDate.now();
-            this.currentStreak += 1;
-            return true;
-        }
-        
-        return false;
+        this.timeToComplete = (this.timeToComplete * (this.totalCompletions - 1) + actualMinutes)
+                              / this.totalCompletions;
     }
 
     /**
-     * Setzt den Streak zurück (z.B. bei verpasster Deadline).
+     * Prüft ob genug Completions für die aktuelle Periode erreicht sind.
      */
-    public void resetStreak() {
+    public boolean checkCompletion(LocalDate day) {
+        if (this.repetition == null) {
+            return this.lastCompletion != null;
+        }
+
+        int required = 1;
+        if (this.repetition.type == RepetitionType.REPS_PER_TIME) {
+            required = this.repetition.value;
+        }
+
+        if (this.completions >= required) {
+            this.isCompleted = true;
+            this.completions = 0;
+            this.lastCompletion = day;
+            this.currentStreak += 1;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void resetStreak() {
         this.nrOfStreaks += 1;
         this.averageStreak = ((this.averageStreak * (this.nrOfStreaks - 1)) + this.currentStreak) / this.nrOfStreaks;
         this.currentStreak = 0;

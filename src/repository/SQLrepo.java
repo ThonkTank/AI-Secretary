@@ -111,6 +111,10 @@ public class SQLrepo extends SQLiteOpenHelper {
             + "end_time TEXT,"
             + "item_id INTEGER,"
             + "completed INTEGER DEFAULT 0,"
+            + "is_calendar_event INTEGER DEFAULT 0,"
+            + "calendar_title TEXT,"
+            + "work_start TEXT,"
+            + "work_end TEXT,"
             + "FOREIGN KEY (todo_id) REFERENCES todos(id),"
             + "FOREIGN KEY (parent_slot_id) REFERENCES time_slots(id),"
             + "FOREIGN KEY (item_id) REFERENCES items(id)"
@@ -120,7 +124,7 @@ public class SQLrepo extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // Zukuenftige Schema-Migrationen
+        // Kein Legacy-Support: DB wird bei jedem Update geloescht und neu geseeded (siehe mainActivity)
     }
 
     // ============================================================================

@@ -31,27 +31,42 @@ android {
             res.srcDirs("res")
             manifest.srcFile("AndroidManifest.xml")
         }
+        getByName("test") {
+            java.srcDirs("test")
+        }
+    }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            all { it.testLogging { showStandardStreams = true } }
+        }
     }
 }
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("androidx.core:core:1.12.0")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
 }
 
 // APK-Dateiname und automatisches Kopieren/Pushen
 android.applicationVariants.all {
+    if (buildType.name != "debug") return@all
     outputs.all {
         val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
         output.outputFileName = "AutoSecretary.apk"
-        val copyTask = tasks.register("copy${name.replaceFirstChar { it.uppercase() }}ToRelease", Copy::class) {
+        val copyTask = tasks.register("copyToRelease", Copy::class) {
             from(outputFile)
             into(layout.projectDirectory.dir("release"))
             doLast {
                 versionFile.writeText(nextVersion.toString())
             }
         }
-        val pushTask = tasks.register("push${name.replaceFirstChar { it.uppercase() }}ToGitHub", Exec::class) {
+        val pushTask = tasks.register("pushToGitHub", Exec::class) {
             workingDir = layout.projectDirectory.asFile
             commandLine("bash", "-c", """
                 git add release/ &&
@@ -59,7 +74,7 @@ android.applicationVariants.all {
                 git push
             """.trimIndent())
         }
-        tasks.named("assemble${name.replaceFirstChar { it.uppercase() }}") {
+        tasks.named("assemble") {
             finalizedBy(copyTask)
         }
         copyTask.configure {
