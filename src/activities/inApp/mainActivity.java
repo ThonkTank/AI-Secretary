@@ -22,7 +22,9 @@ import controller.todoManager;
 import controller.updateChecker;
 import data.seedTestData;
 import scheduling.DailyPlanningScheduler;
-import usecases.dailyPlanning.buildToDo;
+import repository.SQLrepo;
+import usecases.dailyPlanning.buildToDoV2;
+import usecases.dailyPlanning.CalendarReader;
 
 public class mainActivity extends Activity {
 
@@ -70,7 +72,9 @@ public class mainActivity extends Activity {
         if (prefs.getInt("db_version", 0) != currentVersion) {
             deleteDatabase(data.constants.DB_NAME);
             new seedTestData(this).seed();
-            new buildToDo(this).makeToDoList();
+            new buildToDoV2(new SQLrepo(this),
+                (day, start, end) -> CalendarReader.getEventsForDay(this, day, start, end)
+            ).planWeek();
             prefs.edit().putInt("db_version", currentVersion).apply();
         }
 

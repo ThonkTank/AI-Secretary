@@ -20,7 +20,9 @@ import java.util.List;
 import controller.todoManager;
 import controller.todoManager.TaskEntry;
 import controller.todoManager.TodoListener;
-import usecases.dailyPlanning.buildToDo;
+import repository.SQLrepo;
+import usecases.dailyPlanning.buildToDoV2;
+import usecases.dailyPlanning.CalendarReader;
 
 /**
  * ══════════════════════════════════════════════════════════════════════════════
@@ -152,7 +154,9 @@ public class taskList implements TodoListener, ViewBuilder {
         replanBtn.setTextColor(Color.WHITE);
         replanBtn.setBackgroundColor(ACCENT);
         replanBtn.setOnClickListener(v -> {
-            new buildToDo(context).makeToDoList();
+            new buildToDoV2(new SQLrepo(context),
+                (day, start, end) -> CalendarReader.getEventsForDay(context, day, start, end)
+            ).planWeek();
             render();
         });
         LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(

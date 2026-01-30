@@ -40,13 +40,13 @@ Configured in `build.gradle.kts` via custom `sourceSets`. Java 17, compileSdk/ta
 ```
 src/
 ├── activities/inApp/     # mainActivity (Launcher, Tab-UI), editItem (Create/Edit Modal)
-├── activities/generic/   # UIConstants, ViewHelper, ViewBuilder (programmatische UI)
+├── activities/generic/   # UIConstants, ViewHelper, ViewBuilder, taskList (programmatische UI)
 ├── entities/             # trackedItem, todoList, CalendarEvent, config
 ├── repository/           # Repo (Interface), SQLrepo, Table, parser/ (itemParser, todoParser)
 ├── controller/           # todoManager, updateChecker, editorManager
 ├── data/                 # constants (DB_NAME, DB_VERSION), seedTestData
-├── usecases/dailyPlanning/  # buildToDo (V1), buildToDoV2 (V2), cleanToDo, CalendarReader
-├── scheduling/           # DailyPlanningScheduler, DailyPlanningReceiver, BootReceiver
+├── scheduling/           # buildToDo (V1), buildToDoV2 (V2), cleanToDo, CalendarReader,
+│                         # DailyPlanningScheduler, DailyPlanningReceiver, BootReceiver
 └── test/                 # MockRepo, TestBuildToDo (standalone tests)
 ```
 
@@ -103,7 +103,7 @@ public interface Repo {
 
 ## Scheduling Algorithm
 
-**Two versions exist:** `buildToDo.java` (V1, chronologischer Cursor) und `buildToDoV2.java` (V2, aktiv in Entwicklung).
+**Two versions exist:** `scheduling/buildToDo.java` (V1, chronologischer Cursor) und `scheduling/buildToDoV2.java` (V2, aktiv in Entwicklung).
 
 **buildToDoV2** — Globale Slot-Bewertung über alle 7 Tage gleichzeitig:
 1. Load/create 7-day plans, sync calendar events
@@ -113,13 +113,18 @@ public interface Repo {
 
 **Priority** basiert auf `Priority` enum (CRITICAL: 100000, HIGH: 400, MODERATE: 200, LOW: 100), plus Overdue-Bonus und Frequency-Multiplier. PrefTime-Matching via logarithmische Score-Funktion.
 
-**Skip conditions in getItems():** Parent already scheduled today, `blockedDays` enthält den Tag (deckt Cooldown und Repetitions-Intervall ab).
+**Skip conditions in getItems():** `item.blockedDays` enthält den Tag, oder (nur Goal → Project) `parent.blockedDays` enthält den Tag.
 
-**blockedDays-Mechanismus:** `trackedItem.getBlockedDays()` berechnet blockierte Tage aus zwei Quellen:
-1. Cooldown nach `lastCompletion` und jedem `scheduled`-Datum (N Tage Puffer)
+**blockedDays-Mechanismus:** Jedes Item hat seine **eigenen** blockedDays. `trackedItem.getBlockedDays()` berechnet aus zwei Quellen:
+1. Cooldown-Fenster VOR und NACH `lastCompletion` und jedem `scheduled`-Datum (±N Tage)
 2. Alle Tage zwischen `lastCompletion` und `calcNextRepetition()` (NICHT für REPS_PER_TIME, da mehrfach pro Periode einplanbar)
 
-`blockedDays` wird in `update()` nach Tagesabschluss neu berechnet und persistiert. Goals erben die `blockedDays` ihres Parents.
+`blockedDays` wird automatisch neu berechnet in:
+- `update()` — nach Tagesabschluss
+- `schedule()` — wenn Item eingeplant wird (+ propagiert scheduled-Datum zum Parent und berechnet Parent-blockedDays neu)
+- `unPlan()` — wenn Item verdrängt wird
+
+**Wichtig:** Goals erben NICHT die blockedDays ihres Parents. Stattdessen prüfen `getItems()` und `placeItem()` separat `parent.blockedDays` (nur für Goal → Project).
 
 **Testability:** `buildToDoV2` nimmt `Repo`-Interface und `CalendarProvider` (Functional Interface) als Dependencies — ermöglicht vollständige Tests ohne Android. `buildToDo` (V1) nutzt `SQLrepo` direkt und ist daher weniger testbar.
 

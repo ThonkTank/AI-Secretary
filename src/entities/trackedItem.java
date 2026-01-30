@@ -15,9 +15,15 @@ import repository.Table;
 
 /**
  * Task Entity - repräsentiert eine einzelne Aufgabe.
- * TODO: Bearbeitungsfortschritt tracken (hausarbeit schreiben X/6 Seiten)
+ * TODO: Bearbeitungsfortschritt tracken (hausarbeit schreiben X/6 Seiten, Projekt x/100% fertig etc)
  * TODO: Aufgaben mit mehreren Wiederholungen pro Tag.
  * TODO: Update Funktion verfollständigen: isComplete wenn appropriate wieder zurücksetzen
+ * 
+ * Utility Funktionen:
+ * blockDays(): Für alle completions und sheduled termine cooldown berechnen und tage blockieren. Wenn complete, tage bis next repetition blockieren.
+ * getNextRepetition(): berechnet Beginn der nächsten Periode, persistiert start und enddatum für späteren vergleich (besonders für repPerTime tasks, um zu berechnen wieviel Zeit noch für fehlende Completions übrig bleibt.)
+ * update(): Wird einmal pro Tag aufgerufen. Nimmt Informationen aus taskSlot an, um completions, streaks und laufende averages zu aktualisieren.
+ * 
  */
 public class trackedItem {
 
@@ -177,6 +183,24 @@ public class trackedItem {
         }
     }
 
+    // ============== UTILITY ==============
+
+    /**
+     * Prüft ob dieses Item an einem bestimmten Tag blockiert ist.
+     * Berücksichtigt eigene blockedDays UND (für Goals) die blockedDays des Projekt-Parents.
+     */
+    public boolean isBlockedOn(LocalDate day, Repo repo) {
+        if (this.blockedDays != null && this.blockedDays.contains(day)) return true;
+        if (this.type == ItemType.GOAL && this.parent != null) {
+            trackedItem parentItem = repo.fetch(Table.ITEMS, this.parent);
+            if (parentItem != null && parentItem.type == ItemType.PROJECT
+                && parentItem.blockedDays != null && parentItem.blockedDays.contains(day)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // ============== BUSINESS LOGIK ==============
 
     // ============================================================================
@@ -220,12 +244,6 @@ public class trackedItem {
         }
 
         this.blockedDays = getBlockedDays();
-    
-        if (this.type == ItemType.GOAL && this.parent != null) {
-            trackedItem parentItem = repo.fetch(Table.ITEMS, this.parent);
-            this.blockedDays = parentItem.blockedDays;
-        }
-
         repo.write(this);
     }
 
@@ -308,9 +326,9 @@ public class trackedItem {
         blockedStarts.addAll(this.scheduled);
     }
     
-    // Für jeden Start: alle Tage bis Start + Cooldown blockieren
+    // Für jeden Start: Cooldown-Fenster VOR und NACH dem Termin blockieren
     for (LocalDate start : blockedStarts) {
-        for (int i = 0; i <= this.cooldown; i++) {
+        for (int i = -this.cooldown; i <= this.cooldown; i++) {
             blockedDays.add(start.plusDays(i));
         }
     }
@@ -392,10 +410,10 @@ public class trackedItem {
         if (!this.scheduled.contains(day)) {
             this.scheduled.add(day);
         }
-
+        this.blockedDays = getBlockedDays();
         repo.write(this);
 
-        // Falls Goal mit Parent, auch Parent's scheduled updaten
+        // Falls Goal mit Parent, auch Parent's scheduled + blockedDays updaten
         if (this.type == ItemType.GOAL && this.parent != null) {
             trackedItem parentItem = repo.fetch(Table.ITEMS, this.parent);
             if (parentItem != null) {
@@ -404,6 +422,7 @@ public class trackedItem {
                 }
                 if (!parentItem.scheduled.contains(day)) {
                     parentItem.scheduled.add(day);
+                    parentItem.blockedDays = parentItem.getBlockedDays();
                     repo.write(parentItem);
                 }
             }

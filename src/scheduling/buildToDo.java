@@ -278,7 +278,7 @@ public class buildToDo {
             filters = Map.of("parent", String.valueOf(parentId), "is_completed", "0");
         }
         else {
-            filters = Map.of("type", "Goal", "is_completed", "0");
+            filters = Map.of("type", "GOAL", "is_completed", "0");
         }
 
         // get open item for day

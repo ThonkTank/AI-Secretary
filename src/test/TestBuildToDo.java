@@ -35,7 +35,7 @@ public class TestBuildToDo {
         buildToDoV2 planner = new buildToDoV2(repo, (day, start, end) -> new ArrayList<>());
 
         System.out.println("=== Starte V2-Scheduling ===\n");
-        planner.makeToDoList();
+        planner.planWeek();
 
         // Ergebnis ausgeben
         printPlan(repo);

@@ -155,7 +155,7 @@ public class itemParser {
         ContentValues cv = new ContentValues();
 
         // Basic
-        if (item.type != null) cv.put("type", item.type.name().substring(0, 1) + item.type.name().substring(1).toLowerCase());
+        if (item.type != null) cv.put("type", item.type.name());
         if (item.title != null) cv.put("title", item.title);
         if (item.description != null) cv.put("description", item.description);
         if (item.created != null) cv.put("created", item.created.toString());
