@@ -1,4 +1,4 @@
-package usecases.daliyPlanning;
+package usecases.dailyPlanning;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -17,6 +17,8 @@ import repository.Table;
 /**
  * Tagesabschluss-Logik: Gestrige ToDo-Liste auswerten und aufräumen.
  * Wird täglich um 00:00 getriggert (vor buildToDo).
+ * 
+ * TODO: Alle Items Updaten.
  */
 public class cleanToDo {
 

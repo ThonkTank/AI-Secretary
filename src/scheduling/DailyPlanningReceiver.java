@@ -6,8 +6,8 @@ import android.content.Intent;
 import android.util.Log;
 
 import repository.SQLrepo;
-import usecases.daliyPlanning.buildToDo;
-import usecases.daliyPlanning.cleanToDo;
+import usecases.dailyPlanning.buildToDo;
+import usecases.dailyPlanning.cleanToDo;
 
 /**
  * Wird täglich um 00:00 vom AlarmManager getriggert.

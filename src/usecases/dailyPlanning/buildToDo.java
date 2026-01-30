@@ -1,15 +1,14 @@
-package usecases.daliyPlanning;
+package usecases.dailyPlanning;
 
 import android.content.Context;
 
 import repository.SQLrepo;
 import repository.Table;
+import entities.CalendarEvent;
 import entities.todoList;
 import entities.trackedItem;
 import entities.todoList.TimeSlot;
 import entities.trackedItem.RepetitionType;
-
-import usecases.daliyPlanning.CalendarReader.CalendarEvent;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -31,6 +30,12 @@ public class buildToDo {
      * ZIEL:
      *   Wird automatisch jeden Tag um 00:00 getriggert.
      *   Evaluiert die Planung der nächsten 7 Tage neu.
+     * 
+     * TODO: Algorythmus geht momentan chronologisch vor, sollte tasks aber eigentlich intelligent simultan über gesammte Woche verteilen und Adjustieren.
+     * TODO: Aufgaben mit mehreren Wiederholungen pro Tag ermöglichen.
+     * TODO: Kallender integration reparieren (nicht reaktiv auf kalender änderungen)
+     * TODO: Augment Plan durch tatsächlich guten Code ersetzen, momentan AI slop.
+     * TODO: Split zwischen augment/create entfernen, beides über selbe Pipeline laufen lassen.
      *
      * ──────────────────────────────────────────────────────────────────────────────
      * HIERARCHIE-STRUKTUR (alle Ebenen sind trackedItems)
@@ -89,7 +94,7 @@ public class buildToDo {
      *   TASKS (aus items-Tabelle, type="Task", nicht completed):
      *     - LocalDate lastCompletion   → Überfälligkeit berechnen
      *     - int completions            → Dringlichkeit bei "X pro Zeitraum"
-     *     - Timeframe nextRepetition   → Überfälligkeit und Dringlichkeit
+     *     - Set<LocalDate> blockedDays  → Blockierte Tage (Cooldown + Repetitions-Intervall)
      *     - int timeToComplete         → Zeitslot-Zuweisung
      *     - Priority priority          → Priorisierung
      *     - Map<Long,Integer> followUps→ Chains (Tasks die oft nacheinander kommen)
@@ -147,10 +152,8 @@ public class buildToDo {
      *            → Skip wenn parent.scheduled nicht leer und day.isBefore(max(parent.scheduled))
      *            → Skip wenn parent.cooldown > 0, lastCompletion existiert,
      *              und day.isBefore(lastCompletion.plusDays(parent.cooldown))
-     *         b) NextRepetition-Check: Wenn item.nextRepetition existiert
-     *            → Skip wenn item.nextRepetition.start.isAfter(day)
-     *         c) Cooldown-Check: Wenn item.cooldown > 0 und item.lastCompletion existiert
-     *            → Skip wenn day.isBefore(item.lastCompletion.plusDays(item.cooldown))
+     *         b) BlockedDays-Check: Skip wenn item.blockedDays den Tag enthält
+     *            (deckt Repetitions-Intervall und Cooldown ab)
      *      Return: List<trackedItem>
      *
      *  prioritize(items, day) - Sortiert nach kombinierter Dringlichkeit
@@ -305,15 +308,9 @@ public class buildToDo {
                     }
                 }
 
-                //ist next repetition fällig?
-                if (item.nextRepetition != null 
-                    && item.nextRepetition != null
-                    && item.nextRepetition.start.isAfter(day)) {
-                        continue;
-                } else if (item.cooldown != 0
-                    && item.lastCompletion != null
-                    && day.isBefore(item.lastCompletion.plusDays(item.cooldown))) {
-                        continue;
+                // blockedDays check (deckt Repetitions-Intervall und Cooldown ab)
+                if (item.blockedDays != null && item.blockedDays.contains(day)) {
+                    continue;
                 }
 
                 relevantItems.add(item);

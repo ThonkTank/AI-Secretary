@@ -1,10 +1,11 @@
-package usecases.daliyPlanning;
+package usecases.dailyPlanning;
 
 import android.content.ContentUris;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.CalendarContract;
+import entities.CalendarEvent;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -19,7 +20,7 @@ import java.util.List;
  */
 public class CalendarReader {
 
-    public record CalendarEvent(String title, LocalTime start, LocalTime end) {}
+    // CalendarEvent ist jetzt in eigener Datei: entities.CalendarEvent
 
     /**
      * Liest alle Events fuer den gegebenen Tag und gibt sie als sortierte Liste zurueck.

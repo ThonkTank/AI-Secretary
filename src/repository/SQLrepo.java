@@ -28,7 +28,7 @@ import repository.parser.todoParser;
  * - fetch(Table, id) / fetch(Table, filters) - Entity laden
  * - write(entity) - INSERT oder UPDATE
  */
-public class SQLrepo extends SQLiteOpenHelper {
+public class SQLrepo extends SQLiteOpenHelper implements Repo {
 
     public SQLrepo(Context context) {
         super(context, constants.DB_NAME, null, constants.DB_VERSION);
@@ -60,8 +60,6 @@ public class SQLrepo extends SQLiteOpenHelper {
             + "repetition_unit TEXT,"
             + "repetition_value INTEGER,"
             + "complete_first INTEGER DEFAULT 0,"
-            + "next_rep_start TEXT,"
-            + "next_rep_end TEXT,"
             + "day_of_week TEXT,"
             + "day_of_month INTEGER,"
             + "required_completions INTEGER,"
@@ -81,6 +79,7 @@ public class SQLrepo extends SQLiteOpenHelper {
             + "total_completions INTEGER DEFAULT 0,"
             + "min_interval_days INTEGER DEFAULT 0,"
             + "cooldown INTEGER DEFAULT 0,"
+            + "blocked_days TEXT,"
             + "scheduled TEXT"
             + ")"
         );

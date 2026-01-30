@@ -5,13 +5,19 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import repository.SQLrepo;
+import java.util.Set;
+
+import repository.Repo;
 import repository.Table;
 
 /**
  * Task Entity - repräsentiert eine einzelne Aufgabe.
+ * TODO: Bearbeitungsfortschritt tracken (hausarbeit schreiben X/6 Seiten)
+ * TODO: Aufgaben mit mehreren Wiederholungen pro Tag.
+ * TODO: Update Funktion verfollständigen: isComplete wenn appropriate wieder zurücksetzen
  */
 public class trackedItem {
 
@@ -30,13 +36,13 @@ public class trackedItem {
     public Boolean isCompleted;             // Wurde die Aufgabe erledigt?
 
     // Info für Planung
-    public Repetition repetition;           // Definiert wie nextRepetition berechnet wird
+    public Repetition repetition;           // Definiert Wiederholungslogik (Typ, Intervall, Einheit)
     public Boolean completeFirst;           // Should we wait for completion before repetition or skip if unfulfilled and repeat on schedule?
-    public Timeframe nextRepetition;        // Wann wird die Task wieder Offen? Kann Datum sein oder Zeitfenster
     public int timeToComplete;              // Wie lange braucht die Aufgabe um bearbeitet zu werden? bei Goals, wieviel Zeit soll für das Goal eingeplant werden?
     public Priority priority;               // Wie wichtig ist diese Task? Beeinflusst Planung.
     public List<LocalDate> scheduled;       // Alle Daten, an denen das Item momentan eingeplant ist.
     public int cooldown;                    // Wenn die Task für eine bestimmte Zeit nicht wiederholt werden soll nach der letzten completion.
+    public Set<LocalDate> blockedDays;      // Liste aller von Cooldown oder Completion blockierten Tage.
 
     // History
     public int currentStreak;               // wie oft hintereinander abgeschloßen ohne Verfehlung?
@@ -65,7 +71,6 @@ public class trackedItem {
         public Builder completions(int v) { item.completions = v; return this; }
         public Builder isCompleted(boolean v) { item.isCompleted = v; return this; }
         public Builder completeFirst(boolean v) { item.completeFirst = v; return this; }
-        public Builder nextRepetition(Timeframe v) { item.nextRepetition = v; return this; }
         public Builder timeToComplete(int v) { item.timeToComplete = v; return this; }
         public Builder scheduled(List<LocalDate> v) { item.scheduled = v; return this; }
         public Builder cooldown(int v) { item.cooldown = v; return this; }
@@ -188,11 +193,10 @@ public class trackedItem {
      * @param repo        Zum Persistieren der Änderungen
      */
     public void update(boolean completed, LocalTime workStart, LocalTime workEnd,
-                       LocalDate day, SQLrepo repo) {
+                       LocalDate day, Repo repo) {
         if (completed) {
             // Completion tracking
-            this.completions++;
-            this.lastCompletion = day;
+            checkCompletion(day);
 
             if (this.type == ItemType.TASK) {
                 // PrefTime aus workStart ableiten
@@ -213,6 +217,13 @@ public class trackedItem {
                 resetStreak();
                 this.completions = 0;
             }
+        }
+
+        this.blockedDays = getBlockedDays();
+    
+        if (this.type == ItemType.GOAL && this.parent != null) {
+            trackedItem parentItem = repo.fetch(Table.ITEMS, this.parent);
+            this.blockedDays = parentItem.blockedDays;
         }
 
         repo.write(this);
@@ -282,50 +293,86 @@ public class trackedItem {
         this.currentStreak = 0;
     }
 
+    public Set<LocalDate> getBlockedDays() {
+    // 1. Cooldown nach lastCompletion und scheduled
+    Set<LocalDate> blockedDays = new HashSet<>();
+     
+    // Sammle alle Start-Daten für Blockierungen
+    List<LocalDate> blockedStarts = new ArrayList<>();
+     
+    if (this.lastCompletion != null) {
+        blockedStarts.add(this.lastCompletion);
+    }
+     
+    if (this.scheduled != null) {
+        blockedStarts.addAll(this.scheduled);
+    }
+    
+    // Für jeden Start: alle Tage bis Start + Cooldown blockieren
+    for (LocalDate start : blockedStarts) {
+        for (int i = 0; i <= this.cooldown; i++) {
+            blockedDays.add(start.plusDays(i));
+        }
+    }
+      
+    // 2. Alle Tage zwischen lastCompletion und nextRepetition blockieren
+    //    (NICHT fuer REPS_PER_TIME, da diese mehrfach pro Periode eingeplant werden)
+    if (this.lastCompletion != null
+        && (this.repetition == null || this.repetition.type != RepetitionType.REPS_PER_TIME)) {
+        LocalDate nextRep = calcNextRepetition(this.lastCompletion);
+        if (nextRep != null) {
+            LocalDate cursor = this.lastCompletion;
+            while (cursor.isBefore(nextRep)) {
+                blockedDays.add(cursor);
+                cursor = cursor.plusDays(1);
+            }
+        }
+    }
+        
+    
+    return blockedDays;
+    }
+
     // ============================================================================
     // CALCNEXTREPETITION - Berechnet das nächste Wiederholungsdatum basierend auf dem Repetition-Typ.
     // ============================================================================
     /**
-     * @return Timeframe für die nächste Wiederholung
+     * @return LocalDate für die nächste Wiederholung
      */
-    private Timeframe calcNextRepetition(LocalDate day) {
-        
+    private LocalDate calcNextRepetition(LocalDate day) {
+
         if (this.repetition == null) {
             return null;  // Einmalige Aufgabe
         }
-        
+
         Repetition rep = this.repetition;
         return switch (rep.type) {
             case DAY_OF_TIME -> {
                 if (rep.unit == RepUnits.WEEK) {
-                    yield new Timeframe(day.with(TemporalAdjusters.next(rep.dayOfWeek)));
+                    yield day.with(TemporalAdjusters.next(rep.dayOfWeek));
                 } else {
                     LocalDate thisMonth = day.withDayOfMonth(Math.min(rep.value, day.lengthOfMonth()));
                     if (thisMonth.isAfter(day)) {
-                        yield new Timeframe(thisMonth);
+                        yield thisMonth;
                     } else {
-                        LocalDate nextMonth = day.plusMonths(1).withDayOfMonth(
+                        yield day.plusMonths(1).withDayOfMonth(
                             Math.min(rep.value, day.plusMonths(1).lengthOfMonth()));
-                        yield new Timeframe(nextMonth);
                     }
                 }
             }
             case REPS_PER_TIME -> {
                 if (rep.unit == RepUnits.WEEK) {
-                    LocalDate nextMonday = day.with(TemporalAdjusters.next(DayOfWeek.MONDAY));
-                    yield new Timeframe(nextMonday, nextMonday.plusDays(6));
+                    yield day.with(TemporalAdjusters.next(DayOfWeek.MONDAY));
                 } else {
-                    LocalDate firstOfMonth = day.plusMonths(1).withDayOfMonth(1);
-                    yield new Timeframe(firstOfMonth, firstOfMonth.withDayOfMonth(firstOfMonth.lengthOfMonth()));
+                    yield day.plusMonths(1).withDayOfMonth(1);
                 }
             }
             case INTERVAL -> {
-                LocalDate next = switch (rep.unit) {
+                yield switch (rep.unit) {
                     case DAY -> day.plusDays(rep.value);
                     case WEEK -> day.plusWeeks(rep.value);
                     case MONTH -> day.plusMonths(rep.value);
                 };
-                yield new Timeframe(next);
             }
         };
     }
@@ -334,13 +381,11 @@ public class trackedItem {
     // SCHEDULE - Updated die Task in der Datenbank mit neuem scheduled date
     // ============================================================================
     /**
-     * Updated schedule mit neuem datum
-     * berechnet und updated nextRepetition mit calcNextRepetition(day)
-     * 
-     * Nutzt SQLrepo.write zum schreiben
+     * Updated schedule mit neuem datum.
+     * Nutzt SQLrepo.write zum schreiben.
      * @param day
      */
-    public void schedule(LocalDate day, SQLrepo repo) {
+    public void schedule(LocalDate day, Repo repo) {
         if (this.scheduled == null) {
             this.scheduled = new ArrayList<>();
         }
@@ -348,7 +393,6 @@ public class trackedItem {
             this.scheduled.add(day);
         }
 
-        this.nextRepetition = calcNextRepetition(day);
         repo.write(this);
 
         // Falls Goal mit Parent, auch Parent's scheduled updaten
@@ -428,26 +472,27 @@ public class trackedItem {
     // REMAININGTIME - Berechnet die verbleibende Zeit für RepsPerTimeRepetition items in Tagen.
     // ============================================================================
     /**
-     * Beispiel: "3x pro Woche", heute ist Mittwoch
-     *           → Woche endet Sonntag → 4 Tage verbleibend
+     * Beispiel: "3x pro Woche", heute ist Mittwoch, 1 Tag bereits eingeplant
+     *           → Woche endet Sonntag → 4 Tage verbleibend - 1 eingeplant = 3
      *
-     * @return Verbleibende Tage in der aktuellen Periode (0 wenn keine RepsPerTimeRepetition)
+     * @return Verbleibende Tage in der aktuellen Periode minus bereits zugeplante Tage
+     *         (0 wenn keine RepsPerTimeRepetition)
      */
     public int remainingTime(LocalDate day) {
         if (this.repetition == null || this.repetition.type != RepetitionType.REPS_PER_TIME) {
             return 0;
         }
-        return switch (this.repetition.unit) {
-            case DAY -> 1;
-            case WEEK -> {
-                LocalDate endOfWeek = day.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
-                yield (int) java.time.temporal.ChronoUnit.DAYS.between(day, endOfWeek) + 1;
-            }
-            case MONTH -> {
-                LocalDate endOfMonth = day.withDayOfMonth(day.lengthOfMonth());
-                yield (int) java.time.temporal.ChronoUnit.DAYS.between(day, endOfMonth) + 1;
-            }
+
+        LocalDate periodEnd = switch (this.repetition.unit) {
+            case DAY -> day;
+            case WEEK -> day.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+            case MONTH -> day.withDayOfMonth(day.lengthOfMonth());
         };
+
+        int daysInPeriod = (int) java.time.temporal.ChronoUnit.DAYS.between(day, periodEnd) + 1;
+        int scheduledInPeriod = countScheduledInPeriod(day, periodEnd);
+
+        return Math.max(0, daysInPeriod - scheduledInPeriod);
     }
 
     // ============================================================================
@@ -456,16 +501,42 @@ public class trackedItem {
     /**
      * Nur relevant für RepsPerTimeRepetition Tasks.
      *
-     * Beispiel: "3x pro Woche", bereits 1x erledigt
-     *           → 3 - 1 = 2 verbleibende Completions
+     * Beispiel: "3x pro Woche", bereits 1x erledigt, 1x eingeplant
+     *           → 3 - (1 + 1) = 1 verbleibende Completions
      *
-     * @return Verbleibende Completions (0 wenn keine RepsPerTimeRepetition oder bereits erfüllt)
+     * @return requiredReps - (completions + scheduled in Periode)
+     *         (0 wenn keine RepsPerTimeRepetition oder bereits erfüllt)
      */
     public int remainingReps(LocalDate day) {
         if (this.repetition == null || this.repetition.type != RepetitionType.REPS_PER_TIME) {
             return 0;
         }
-        return Math.max(0, this.repetition.value - this.completions);
+
+        LocalDate periodEnd = switch (this.repetition.unit) {
+            case DAY -> day;
+            case WEEK -> day.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+            case MONTH -> day.withDayOfMonth(day.lengthOfMonth());
+        };
+
+        int scheduledInPeriod = countScheduledInPeriod(day, periodEnd);
+        return Math.max(0, this.repetition.value - (this.completions + scheduledInPeriod));
+    }
+
+    /**
+     * Hilfsmethode: Zählt bereits geplante Termine zwischen day und periodEnd (inklusiv).
+     */
+    private int countScheduledInPeriod(LocalDate day, LocalDate periodEnd) {
+        if (this.scheduled == null || this.scheduled.isEmpty()) {
+            return 0;
+        }
+
+        int count = 0;
+        for (LocalDate scheduledDate : this.scheduled) {
+            if (!scheduledDate.isBefore(day) && !scheduledDate.isAfter(periodEnd)) {
+                count++;
+            }
+        }
+        return count;
     }
 
 }

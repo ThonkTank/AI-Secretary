@@ -22,7 +22,7 @@ import controller.todoManager;
 import controller.updateChecker;
 import data.seedTestData;
 import scheduling.DailyPlanningScheduler;
-import usecases.daliyPlanning.buildToDo;
+import usecases.dailyPlanning.buildToDo;
 
 public class mainActivity extends Activity {
 

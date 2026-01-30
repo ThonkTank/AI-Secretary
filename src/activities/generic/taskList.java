@@ -20,7 +20,7 @@ import java.util.List;
 import controller.todoManager;
 import controller.todoManager.TaskEntry;
 import controller.todoManager.TodoListener;
-import usecases.daliyPlanning.buildToDo;
+import usecases.dailyPlanning.buildToDo;
 
 /**
  * ══════════════════════════════════════════════════════════════════════════════

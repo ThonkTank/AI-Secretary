@@ -25,6 +25,7 @@ public class todoList {
         public Boolean completed;
         public Boolean isCalendarEvent;
         public String calendarTitle;
+        public Integer adjustedPrio;            //Slot-adjusted Prio für Verdrängungsvergleich
         //Für prefTime berechnung
         public LocalTime workStart;         //Wann wurde die bearbeitung begonnen?
         public LocalTime workEnd;           //Wann wurde die bearbeitung des Slots abgeschlossen

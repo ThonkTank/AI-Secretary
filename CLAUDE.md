@@ -5,21 +5,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build Commands
 
 ```bash
-# Build debug APK (ACHTUNG: pushed automatisch zu GitHub!)
+# Syntax-Check ohne Nebenwirkungen (bevorzugt während der Entwicklung)
+./gradlew compileDebugJavaWithJavac
+
+# Build debug APK — ACHTUNG: pushed automatisch zu GitHub!
 ./gradlew assemble
 
-# Only compile Java (schneller Syntax-Check, kein Push)
-./gradlew compileDebugJavaWithJavac
+# Run JUnit/Robolectric unit tests (test sources in test/)
+./gradlew testDebugUnitTest
 
 # Clean build
 ./gradlew clean
 ```
 
-**Build-Kette:** `assemble` → `copyToRelease` (APK + version.txt inkrementieren) → `pushToGitHub` (git add, commit, push). Ein einfaches `assembleDebug` committed und pushed automatisch nach `release/`.
+**WICHTIG — `assemble` pushed automatisch:** `assemble` → `copyToRelease` (APK + version.txt inkrementieren) → `pushToGitHub` (git add release/, commit, push). Für einen reinen Syntax-Check ohne Push immer `compileDebugJavaWithJavac` verwenden.
 
-**WICHTIG:** Nach jeder Code-Änderung oder Bugfix MUSS `./gradlew assemble` ausgeführt werden. Das ist der korrekte Abschluss jeder Aufgabe – es baut die APK, inkrementiert die Version und pushed zu GitHub, damit das Auto-Update-System die neue Version an installierte Apps ausliefern kann.
+**WICHTIG:** Nach jeder abgeschlossenen Code-Änderung oder Bugfix MUSS `./gradlew assemble` ausgeführt werden. Das ist der korrekte Abschluss jeder Aufgabe – es baut die APK, inkrementiert die Version und pushed zu GitHub, damit das Auto-Update-System die neue Version an installierte Apps ausliefern kann.
 
-**Note:** The package name `daliyPlanning` is intentionally misspelled.
+**Typischer Workflow:** Code ändern → `compileDebugJavaWithJavac` (Fehler prüfen) → Fehler fixen → `assemble` (Release).
 
 ## Project Layout
 
@@ -30,122 +33,118 @@ Non-standard Android project structure — no `app/` module, sources are at root
 
 Configured in `build.gradle.kts` via custom `sourceSets`. Java 17, compileSdk/targetSdk 35, minSdk 26. Uses `coreLibraryDesugaring` for `java.time` API on older devices.
 
+**Flat package names:** Source files use direct package names (e.g. `package activities.inApp;`, `package entities;`) — there is no root `com.autosecretary` prefix in the source. The namespace in `build.gradle.kts` is `com.autosecretary` but that only affects the generated `R` class and manifest merging.
+
 ## Architecture
 
 ```
 src/
-├── activities/
-│   ├── inApp/
-│   │   ├── mainActivity.java     # Launcher Activity: Tab-UI (Tagesplan/Verwalten)
-│   │   └── editItem.java         # Item-Verwaltung (Create/Edit Modal) [WIP]
-│   └── generic/
-│       └── taskList.java          # Alte Activity (nicht mehr Launcher)
-├── entities/
-│   ├── trackedItem.java           # Central entity for Task/Goal/Project/Block
-│   ├── todoList.java              # TimeSlot-based daily schedule container
-│   └── config.java                # DayOfWeek → DaySchedule (start/end times)
-├── repository/
-│   ├── SQLrepo.java               # DB-Zugriff: lookup(), lookups(), fetch(), write()
-│   ├── Table.java                 # Type-safe table references (Table.ITEMS, Table.TODOS)
-│   └── parser/
-│       ├── itemParser.java        # trackedItem ↔ DB (fromRow, convertRow, toRow)
-│       └── todoParser.java        # todoList ↔ DB (fromRow, toRow, loadSlots, persistSlots)
-├── controller/
-│   ├── todoManager.java           # UI-facing: provideList(), completeSlot(), uncompleteSlot()
-│   ├── updateChecker.java         # GitHub-basierter Auto-Update-Check + APK-Download
-│   └── editorManager.java         # Item-Persistierung für editItem [WIP]
-├── data/
-│   ├── constants.java             # DB_NAME = "autosecretary.db", DB_VERSION
-│   └── seedTestData.java          # Testdaten: 60+ Items über mehrere Goals/Projects
-└── usecases/
-    ├── daliyPlanning/
-    │   ├── buildToDo.java         # 7-Tage Scheduling-Algorithmus (main entry point)
-    │   └── cleanToDo.java         # Placeholder
-    └── userFlows/
-        └── checkToDoItem.java     # Stub für Task-Completion
+├── activities/inApp/     # mainActivity (Launcher, Tab-UI), editItem (Create/Edit Modal)
+├── activities/generic/   # UIConstants, ViewHelper, ViewBuilder (programmatische UI)
+├── entities/             # trackedItem, todoList, CalendarEvent, config
+├── repository/           # Repo (Interface), SQLrepo, Table, parser/ (itemParser, todoParser)
+├── controller/           # todoManager, updateChecker, editorManager
+├── data/                 # constants (DB_NAME, DB_VERSION), seedTestData
+├── usecases/dailyPlanning/  # buildToDo (V1), buildToDoV2 (V2), cleanToDo, CalendarReader
+├── scheduling/           # DailyPlanningScheduler, DailyPlanningReceiver, BootReceiver
+└── test/                 # MockRepo, TestBuildToDo (standalone tests)
 ```
 
-**Data flow:** `mainActivity` (Activity) → `todoManager` (Controller) → `buildToDo` (UseCase) → `SQLrepo` (Repository)
+**Data flow:** `mainActivity` → `todoManager` (Controller) → `buildToDo`/`buildToDoV2` (UseCase) → `SQLrepo` (Repository)
+
+**Programmatische UI:** Es gibt keine XML-Layouts. Alle Views werden programmatisch in Java gebaut (`ViewBuilder`, `ViewHelper`, `UIConstants`). Neue UI-Elemente nicht als XML-Layouts anlegen, sondern programmatisch erstellen.
+
+**Background Scheduling:** `DailyPlanningScheduler` registriert AlarmManager-Trigger um 00:00 → `DailyPlanningReceiver` führt aus:
+1. `cleanToDo.clean()` — Gestrigen Plan auswerten (Slots → `trackedItem.update()`), veraltete Todos löschen, vergangene scheduled-Daten bereinigen
+2. `buildToDo.makeToDoList()` — Neuen 7-Tage-Plan erstellen
+3. `scheduleDaily()` — Nächsten Mitternachts-Alarm registrieren
+
+`BootReceiver` re-registriert den Alarm nach Geräte-Neustart.
 
 ## Key Patterns
 
-**trackedItem** is the central entity - Tasks, Goals, Projects, and Blocks all use this class with `ItemType` enum:
-- `TASK` - Individual work units with `timeToComplete`, `repetition`, `prefTime`
-- `GOAL` - Containers for tasks, have `children` list and time budget
-- `BLOCK` - Ordered sequence of goals (e.g., "Stretches" → "Training")
-- `PROJECT` - Top-level grouping, enforces `minIntervalDays` between scheduling
+**trackedItem** is the central entity — Tasks, Goals, Projects, and Blocks all use this class with `ItemType` enum:
+- `TASK` — Individual work units with `timeToComplete`, `repetition`, `prefTime`
+- `GOAL` — Containers for tasks, have `children` list and time budget
+- `BLOCK` — Ordered sequence of goals (e.g., "Stretches" → "Training")
+- `PROJECT` — Top-level grouping, enforces `minIntervalDays` between scheduling
 
 **Hierarchy:** Project → Block → Goal → Task
 
 **Repetition Types (RepetitionType enum):**
-- `INTERVAL` - "alle X Tage/Wochen" (every X days/weeks)
-- `REPS_PER_TIME` - "X mal pro Woche/Monat" (X times per week/month)
-- `DAY_OF_TIME` - "jeden Freitag" or "jeden 10." (every Friday / every 10th)
+- `INTERVAL` — "alle X Tage/Wochen" (every X days/weeks)
+- `REPS_PER_TIME` — "X mal pro Woche/Monat" (X times per week/month)
+- `DAY_OF_TIME` — "jeden Freitag" or "jeden 10." (every Friday / every 10th)
 
-**SQLrepo methods:**
+**CalendarEvent** (`CalendarEvent.java`) — Java Record: `record CalendarEvent(String title, LocalTime start, LocalTime end)`. `CalendarReader` liest Device-Kalender via `CalendarContract.Instances`, `CalendarProvider` ist ein Functional Interface für testbare Kalender-Abstraktion in V2.
+
+**Repo Interface** (`Repo.java`) — Abstraktion über SQLrepo, ermöglicht MockRepo für Tests:
 ```java
-// lookup/lookups: String-based table names, return raw converted values
-LocalTime start = repo.lookup("config_schedules", filter, "start_time");
-List<Long> ids = repo.lookups("items", Map.of("type", "Goal"), "id");
-
-// fetch: Type-safe via Table<T>, returns entity objects
-trackedItem item = repo.fetch(Table.ITEMS, 5);
-todoList list = repo.fetch(Table.TODOS, Map.of("date", "2026-01-23"));
-
-// write: INSERT oder UPDATE (erkennt Entity-Typ automatisch)
-repo.write(myTrackedItem);
-repo.write(myTodoList);
+public interface Repo {
+    <T> T lookup(String table, Map<String, String> filters, String column);   // raw value
+    <T> List<T> lookups(String table, Map<String, String> filters, String column); // raw values
+    <T> T fetch(Table<T> table, long id);                                     // entity by ID
+    <T> T fetch(Table<T> table, Map<String, String> filters);                 // entity by filter
+    void write(Object entity);                                                // INSERT or UPDATE
+}
 ```
 
-## Scheduling Algorithm (buildToDo.java)
+`lookup`/`lookups` use String table names and return converted primitives. `fetch` uses type-safe `Table<T>` references (`Table.ITEMS`, `Table.TODOS`) and returns entity objects. `write` auto-detects entity type.
 
-**Urgency score calculation:**
-- Base: Priority enum values (CRITICAL: 100000, HIGH: 400, MODERATE: 200, LOW: 100)
-- Plus: priority × (overdue × 0.5) for missed repetitions
-- Plus: frequency multiplier for REPS_PER_TIME tasks (normalized 1.0-2.0 based on remaining reps/time)
+## Testing
 
-**Time-preference adjustment (toSlots):**
-- If cursor < prefTime: penalty = 1.0 + (timeDiff / 480)
-- Adjusted priority = log(priority) × (normalized_diff²) × 100
-- Items with matching prefTime get scheduled first at their preferred time
+**Two source sets:**
+- `test/` (root level) → Gradle `test` source set for JUnit/Robolectric (`./gradlew testDebugUnitTest`). Derzeit leer.
+- `src/test/` → Lives in the `main` source set (weil `java.srcDirs("src")`). Standalone tests with `main()` methods, no Android dependencies.
 
-**Berechnungsmethoden auf trackedItem:**
-- `frequency()` - repetition interval in days
-- `overdue(day)` - missed repetitions count
-- `remainingTime(day)` - days left in current period
-- `remainingReps(day)` - completions still needed
+**MockRepo** (`src/test/MockRepo.java`) implementiert `Repo` mit In-Memory-Maps. Ermöglicht Tests des Scheduling-Algorithmus ohne SQLite/Android.
 
-**Skip conditions in getItems():**
-- Parent scheduled: skip if day < max(parent.scheduled)
-- Cooldown: skip if day < lastCompletion + cooldown
-- NextRepetition: skip if nextRepetition.start > day
+**Standalone-Tests ausführen:** `TestBuildToDo.java` hat eine `main()`-Methode. Kann direkt als Java-Programm ausgeführt werden — benötigt nur die kompilierten Klassen aus `src/`, kein Android-Framework.
+
+## Scheduling Algorithm
+
+**Two versions exist:** `buildToDo.java` (V1, chronologischer Cursor) und `buildToDoV2.java` (V2, aktiv in Entwicklung).
+
+**buildToDoV2** — Globale Slot-Bewertung über alle 7 Tage gleichzeitig:
+1. Load/create 7-day plans, sync calendar events
+2. Loop: `getItems()` + `prioritize()` → `placeItem(highest)` globally across all days
+3. Verdrängungslogik: Higher-priority items replace lower-priority ones
+4. Persist to DB
+
+**Priority** basiert auf `Priority` enum (CRITICAL: 100000, HIGH: 400, MODERATE: 200, LOW: 100), plus Overdue-Bonus und Frequency-Multiplier. PrefTime-Matching via logarithmische Score-Funktion.
+
+**Skip conditions in getItems():** Parent already scheduled today, `blockedDays` enthält den Tag (deckt Cooldown und Repetitions-Intervall ab).
+
+**blockedDays-Mechanismus:** `trackedItem.getBlockedDays()` berechnet blockierte Tage aus zwei Quellen:
+1. Cooldown nach `lastCompletion` und jedem `scheduled`-Datum (N Tage Puffer)
+2. Alle Tage zwischen `lastCompletion` und `calcNextRepetition()` (NICHT für REPS_PER_TIME, da mehrfach pro Periode einplanbar)
+
+`blockedDays` wird in `update()` nach Tagesabschluss neu berechnet und persistiert. Goals erben die `blockedDays` ihres Parents.
+
+**Testability:** `buildToDoV2` nimmt `Repo`-Interface und `CalendarProvider` (Functional Interface) als Dependencies — ermöglicht vollständige Tests ohne Android. `buildToDo` (V1) nutzt `SQLrepo` direkt und ist daher weniger testbar.
 
 ## Database
 
 SQLite with four tables:
-- `items` - All tracked items (Tasks, Goals, Blocks, Projects)
-- `config_schedules` - Day-of-week keyed schedule (start_time, end_time)
-- `todos` - Generated daily plans (id, date, start_time, end_time)
-- `time_slots` - Nested TimeSlots (todo_id FK, parent_slot_id FK for hierarchy, item_id FK, completed, work_start, work_end)
+- `items` — All tracked items (Tasks, Goals, Blocks, Projects)
+- `config_schedules` — Day-of-week keyed schedule (start_time, end_time)
+- `todos` — Generated daily plans (id, date, start_time, end_time)
+- `time_slots` — Nested TimeSlots (todo_id FK, parent_slot_id FK for hierarchy, item_id FK, completed, work_start, work_end)
 
 **Relations in items:** `parent` (single ID), `children` (comma-separated IDs), `followups` ("id:count" pairs, e.g. "5:3,8:1"), `scheduled` (comma-separated ISO dates).
 
-**DB-Strategie (WICHTIG):** Es gibt keine Migrationen. Die App hat genau einen Nutzer (Entwickler) und arbeitet ausschließlich mit geseedeten Testdaten (`seedTestData.java`). Bei jedem Update (`DB_VERSION`-Änderung in `constants.java`) wird die Datenbank komplett gelöscht und mit `seedTestData.seed()` + `buildToDo.makeToDoList()` neu aufgebaut. Deshalb:
-- **KEINE** `ALTER TABLE`-Migrationen in `onUpgrade()` schreiben
-- Bei Schema-Änderungen: `DB_VERSION` hochzählen, Schema direkt in `onCreate()` anpassen
-- Neue Testdaten oder geänderte Spalten direkt in `seedTestData.java` einpflegen
+**DB-Strategie (WICHTIG):** Es gibt keine Migrationen. Die App hat genau einen Nutzer (Entwickler) und arbeitet ausschließlich mit geseedeten Testdaten (`seedTestData.java`). Bei Schema-Änderungen:
+- `DB_VERSION` in `constants.java` hochzählen
+- Schema direkt in `onCreate()` anpassen
+- Neue Testdaten in `seedTestData.java` einpflegen
 - Die App erkennt den Versions-Wechsel via SharedPreferences und ruft `deleteDatabase()` auf
+- **KEINE** `ALTER TABLE`-Migrationen in `onUpgrade()` schreiben
 
 ## Auto-Update System
 
-GitHub dient als CDN. `release/version.txt` enthält den aktuellen Integer-versionCode, `release/AutoSecretary.apk` die aktuelle APK.
+GitHub dient als CDN. `release/version.txt` enthält den aktuellen Integer-versionCode, `release/AutoSecretary.apk` die aktuelle APK. Repository: `ThonkTank/AI-Secretary`.
 
-**updateChecker.java** prüft beim App-Start:
-1. Fetcht `version.txt` von `raw.githubusercontent.com/ThonkTank/AI-Secretary/main/release/`
-2. Vergleicht mit lokalem `versionCode`
-3. Bei neuer Version: Dialog → Download → FileProvider → System-Installer
-
-Die UI (`buildUI()`) wird erst nach abgeschlossenem Update-Check aufgebaut (Callback-Pattern).
+`updateChecker.java` prüft beim App-Start → fetcht `version.txt` → vergleicht mit lokalem `versionCode` → bei neuer Version: Dialog → Download → FileProvider → System-Installer. Die UI wird erst nach abgeschlossenem Update-Check aufgebaut (Callback-Pattern).
 
 ## Language
 

@@ -50,15 +50,6 @@ public class itemParser {
         }
         item.completeFirst = Boolean.TRUE.equals(typed.get("complete_first"));
 
-        // Timeframe
-        java.time.LocalDate repStart = (java.time.LocalDate) typed.get("next_rep_start");
-        if (repStart != null) {
-            java.time.LocalDate repEnd = (java.time.LocalDate) typed.get("next_rep_end");
-            item.nextRepetition = (repEnd != null)
-                ? new trackedItem.Timeframe(repStart, repEnd)
-                : new trackedItem.Timeframe(repStart);
-        }
-
         // Planung
         item.timeToComplete = typed.get("time_to_complete") instanceof Number n ? n.intValue() : 0;
         String prioStr = (String) typed.get("priority");
@@ -73,6 +64,12 @@ public class itemParser {
                 .collect(java.util.stream.Collectors.toList());
         }
         item.cooldown = typed.get("cooldown") instanceof Number n ? n.intValue() : 0;
+        String blockedDaysStr = (String) typed.get("blocked_days");
+        if (blockedDaysStr != null) {
+            item.blockedDays = java.util.Arrays.stream(blockedDaysStr.split(","))
+                .map(java.time.LocalDate::parse)
+                .collect(java.util.stream.Collectors.toSet());
+        }
 
         // History
         item.currentStreak = typed.get("current_streak") instanceof Number n ? n.intValue() : 0;
@@ -135,7 +132,7 @@ public class itemParser {
                 (v instanceof Number n) ? n.intValue() != 0 : "1".equals(v.toString());
 
             // LocalDate-Felder
-            case "created", "last_completion", "next_rep_start", "next_rep_end" ->
+            case "created", "last_completion" ->
                 java.time.LocalDate.parse(v.toString());
 
             // LocalTime-Felder
@@ -179,14 +176,6 @@ public class itemParser {
         }
         cv.put("complete_first", (item.completeFirst != null && item.completeFirst) ? 1 : 0);
 
-        // Timeframe
-        if (item.nextRepetition != null) {
-            cv.put("next_rep_start", item.nextRepetition.start.toString());
-            if (item.nextRepetition.end != null) {
-                cv.put("next_rep_end", item.nextRepetition.end.toString());
-            }
-        }
-
         // Planung
         cv.put("time_to_complete", item.timeToComplete);
         if (item.priority != null) cv.put("priority", item.priority.name());
@@ -197,6 +186,11 @@ public class itemParser {
                 .collect(Collectors.joining(",")));
         }
         cv.put("cooldown", item.cooldown);
+        if (item.blockedDays != null && !item.blockedDays.isEmpty()) {
+            cv.put("blocked_days", item.blockedDays.stream()
+                .map(java.time.LocalDate::toString)
+                .collect(Collectors.joining(",")));
+        }
 
         // History
         cv.put("current_streak", item.currentStreak);

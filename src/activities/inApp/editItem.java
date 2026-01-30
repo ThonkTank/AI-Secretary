@@ -1048,7 +1048,6 @@ public class editItem implements ViewBuilder {
             newItem.totalCompletions = editingItem.totalCompletions;
             newItem.followUps = editingItem.followUps;
             newItem.prefTime = editingItem.prefTime;
-            newItem.nextRepetition = editingItem.nextRepetition;
             manager.updateItem(newItem);
         } else {
             // Create-Modus
