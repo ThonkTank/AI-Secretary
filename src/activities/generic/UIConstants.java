@@ -3,6 +3,9 @@ package activities.generic;
 /**
  * Gemeinsame UI-Konstanten für alle Activity/View-Builder Klassen.
  * Farben, Textgrößen, Abstände.
+ *
+ * Werte gespiegelt in res/values/colors.xml und res/values/dimens.xml.
+ * Statische Layouts nutzen die XML-Ressourcen, dynamischer Code nutzt diese Konstanten.
  */
 public final class UIConstants {
 

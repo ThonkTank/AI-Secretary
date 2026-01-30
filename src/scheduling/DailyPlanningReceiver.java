@@ -6,9 +6,9 @@ import android.content.Intent;
 import android.util.Log;
 
 import repository.SQLrepo;
-import usecases.dailyPlanning.buildToDoV2;
-import usecases.dailyPlanning.CalendarReader;
-import usecases.dailyPlanning.cleanToDo;
+import scheduling.buildToDo;
+import scheduling.CalendarReader;
+import scheduling.cleanToDo;
 
 /**
  * Wird täglich um 00:00 vom AlarmManager getriggert.
@@ -29,11 +29,11 @@ public class DailyPlanningReceiver extends BroadcastReceiver {
         Log.d(TAG, "cleanToDo.clean() fertig");
 
         // 2. Neue 7-Tage-Planung erstellen (V2: globale Slot-Bewertung)
-        Log.d(TAG, "buildToDoV2.planWeek() startet");
-        new buildToDoV2(repo,
+        Log.d(TAG, "buildToDo.planWeek() startet");
+        new buildToDo(repo,
             (day, start, end) -> CalendarReader.getEventsForDay(context, day, start, end)
         ).planWeek();
-        Log.d(TAG, "buildToDoV2.planWeek() fertig");
+        Log.d(TAG, "buildToDo.planWeek() fertig");
 
         // 3. Nächsten Alarm registrieren
         DailyPlanningScheduler.scheduleDaily(context);

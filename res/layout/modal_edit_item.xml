@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/overlay_dim">
+
+    <!-- Modal-Card (clickable verhindert Durchfallen zum Overlay) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginBottom="32dp"
+        android:background="@android:color/white"
+        android:elevation="8dp"
+        android:orientation="vertical"
+        android:clickable="true">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/padding_large">
+
+                <!-- Typ-Auswahl -->
+                <TextView style="@style/FormLabel" android:text="Typ" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <Button android:id="@+id/btn_type_task" style="@style/GroupButton"
+                        android:text="TASK" android:textSize="@dimen/sp_badge" />
+                    <Button android:id="@+id/btn_type_goal" style="@style/GroupButton"
+                        android:text="GOAL" android:textSize="@dimen/sp_badge" />
+                    <Button android:id="@+id/btn_type_block" style="@style/GroupButton"
+                        android:text="BLOCK" android:textSize="@dimen/sp_badge" />
+                    <Button android:id="@+id/btn_type_project" style="@style/GroupButton"
+                        android:text="PROJECT" android:textSize="@dimen/sp_badge" />
+                </LinearLayout>
+                <View android:layout_width="match_parent" android:layout_height="8dp" />
+
+                <!-- Titel -->
+                <TextView style="@style/FormLabel" android:text="Titel" />
+                <EditText
+                    android:id="@+id/field_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Item-Titel"
+                    android:singleLine="true"
+                    android:textSize="@dimen/sp_body" />
+
+                <!-- Beschreibung -->
+                <TextView style="@style/FormLabel" android:text="Beschreibung" />
+                <EditText
+                    android:id="@+id/field_description"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Beschreibung (optional)"
+                    android:maxLines="3"
+                    android:textSize="@dimen/sp_body" />
+
+                <!-- Dauer -->
+                <LinearLayout
+                    android:id="@+id/row_duration"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <TextView style="@style/FormLabel" android:text="Dauer (Minuten)" />
+                    <EditText
+                        android:id="@+id/field_duration"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:singleLine="true"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- Prioritaet -->
+                <TextView style="@style/FormLabel" android:text="Priorit\u00e4t" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <Button android:id="@+id/btn_prio_low" style="@style/GroupButton"
+                        android:text="L" android:textSize="@dimen/sp_small" />
+                    <Button android:id="@+id/btn_prio_moderate" style="@style/GroupButton"
+                        android:text="M" android:textSize="@dimen/sp_small" />
+                    <Button android:id="@+id/btn_prio_high" style="@style/GroupButton"
+                        android:text="H" android:textSize="@dimen/sp_small" />
+                    <Button android:id="@+id/btn_prio_critical" style="@style/GroupButton"
+                        android:text="C" android:textSize="@dimen/sp_small" />
+                </LinearLayout>
+                <View android:layout_width="match_parent" android:layout_height="8dp" />
+
+                <!-- Parent -->
+                <LinearLayout
+                    android:id="@+id/row_parent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <TextView style="@style/FormLabel" android:text="Parent" />
+                    <Spinner
+                        android:id="@+id/spinner_parent"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <!-- Cooldown -->
+                <LinearLayout
+                    android:id="@+id/row_cooldown"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <TextView style="@style/FormLabel" android:text="Cooldown (Tage)" />
+                    <EditText
+                        android:id="@+id/field_cooldown"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:singleLine="true"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- Min. Intervall -->
+                <LinearLayout
+                    android:id="@+id/row_min_interval"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <TextView style="@style/FormLabel" android:text="Min. Intervall (Tage)" />
+                    <EditText
+                        android:id="@+id/field_min_interval"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:singleLine="true"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- Wiederholung-Sektion -->
+                <LinearLayout
+                    android:id="@+id/section_repetition"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/FormLabel" android:text="Wiederholung" />
+
+                    <!-- RepType Buttons -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <Button android:id="@+id/btn_rep_interval" style="@style/GroupButton"
+                            android:text="INTERVAL" android:textSize="10sp" />
+                        <Button android:id="@+id/btn_rep_reps" style="@style/GroupButton"
+                            android:text="REPS" android:textSize="10sp" />
+                        <Button android:id="@+id/btn_rep_day_of" style="@style/GroupButton"
+                            android:text="DAY_OF" android:textSize="10sp" />
+                    </LinearLayout>
+
+                    <!-- Wert -->
+                    <TextView style="@style/FormLabel" android:text="Wert" />
+                    <EditText
+                        android:id="@+id/field_rep_value"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:singleLine="true"
+                        android:textSize="@dimen/sp_body" />
+
+                    <!-- Einheit Buttons -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <Button android:id="@+id/btn_unit_day" style="@style/GroupButton"
+                            android:text="TAG" android:textSize="10sp" />
+                        <Button android:id="@+id/btn_unit_week" style="@style/GroupButton"
+                            android:text="WOCHE" android:textSize="10sp" />
+                        <Button android:id="@+id/btn_unit_month" style="@style/GroupButton"
+                            android:text="MONAT" android:textSize="10sp" />
+                    </LinearLayout>
+
+                    <!-- Wochentag (nur bei DAY_OF_TIME + WEEK) -->
+                    <LinearLayout
+                        android:id="@+id/row_weekday"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <TextView style="@style/FormLabel" android:text="Wochentag" />
+                        <Spinner
+                            android:id="@+id/spinner_weekday"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="12dp" />
+
+                <!-- Fehler-Text -->
+                <TextView
+                    android:id="@+id/text_error"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_error"
+                    android:textSize="@dimen/sp_small"
+                    android:visibility="gone" />
+                <View android:layout_width="match_parent" android:layout_height="8dp" />
+
+                <!-- Speichern -->
+                <Button
+                    android:id="@+id/btn_save"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Speichern"
+                    android:textColor="@android:color/white" />
+                <View android:layout_width="match_parent" android:layout_height="8dp" />
+
+                <!-- Abbrechen -->
+                <Button
+                    android:id="@+id/btn_cancel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Abbrechen" />
+
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+</FrameLayout>

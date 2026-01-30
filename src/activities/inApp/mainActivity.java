@@ -3,18 +3,15 @@ package activities.inApp;
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.graphics.Typeface;
 import android.os.Bundle;
-import android.util.TypedValue;
-import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import static activities.generic.UIConstants.*;
-import static activities.generic.ViewHelper.dp;
+
+import com.autosecretary.R;
 
 import activities.generic.taskList;
 import controller.editorManager;
@@ -23,8 +20,8 @@ import controller.updateChecker;
 import data.seedTestData;
 import scheduling.DailyPlanningScheduler;
 import repository.SQLrepo;
-import usecases.dailyPlanning.buildToDoV2;
-import usecases.dailyPlanning.CalendarReader;
+import scheduling.buildToDo;
+import scheduling.CalendarReader;
 
 public class mainActivity extends Activity {
 
@@ -72,7 +69,7 @@ public class mainActivity extends Activity {
         if (prefs.getInt("db_version", 0) != currentVersion) {
             deleteDatabase(data.constants.DB_NAME);
             new seedTestData(this).seed();
-            new buildToDoV2(new SQLrepo(this),
+            new buildToDo(new SQLrepo(this),
                 (day, start, end) -> CalendarReader.getEventsForDay(this, day, start, end)
             ).planWeek();
             prefs.edit().putInt("db_version", currentVersion).apply();
@@ -89,91 +86,25 @@ public class mainActivity extends Activity {
     }
 
     // ============================================================================
-    // buildUI - Baut das gesamte Tab-Layout programmatisch auf
+    // buildUI - Inflated Tab-Layout aus XML, bindet Listener
     // ============================================================================
     private void buildUI() {
-        // Root: Vertikal
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setLayoutParams(new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.MATCH_PARENT));
-        root.setBackgroundColor(Color.WHITE);
-        root.setFitsSystemWindows(true);
+        setContentView(R.layout.activity_main);
 
-        // Tab-Bar
-        root.addView(buildTabBar());
+        tabTagesplan = findViewById(R.id.tab_tagesplan);
+        tabVerwalten = findViewById(R.id.tab_verwalten);
+        indicator = findViewById(R.id.tab_indicator);
+        content = findViewById(R.id.content);
 
-        // Indicator
-        indicator = buildIndicator();
-        root.addView(indicator);
+        tabTagesplan.setOnClickListener(v -> selectTab(0));
+        tabVerwalten.setOnClickListener(v -> selectTab(1));
 
-        // Content-Bereich
-        content = new FrameLayout(this);
-        LinearLayout.LayoutParams contentParams = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
-        content.setLayoutParams(contentParams);
-        root.addView(content);
-
-        // Tab-Views erstellen
+        // Tab-Views erstellen (bleibt dynamisch)
         tagesplanView = buildTagesplanView();
         verwaltenView = buildVerwaltenView();
 
-        // Standardmäßig "Tagesplan" aktiv
+        // Standardmaessig "Tagesplan" aktiv
         selectTab(0);
-
-        setContentView(root);
-    }
-
-    // ============================================================================
-    // buildTabBar - Erstellt die horizontale Tab-Leiste
-    // ============================================================================
-    private View buildTabBar() {
-        LinearLayout tabBar = new LinearLayout(this);
-        tabBar.setOrientation(LinearLayout.HORIZONTAL);
-        tabBar.setBackgroundColor(Color.WHITE);
-        LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, dp(this, 48));
-        tabBar.setLayoutParams(barParams);
-        tabBar.setElevation(dp(this, 2));
-
-        tabTagesplan = buildTabLabel("Tagesplan");
-        tabTagesplan.setOnClickListener(v -> selectTab(0));
-        tabBar.addView(tabTagesplan);
-
-        tabVerwalten = buildTabLabel("Verwalten");
-        tabVerwalten.setOnClickListener(v -> selectTab(1));
-        tabBar.addView(tabVerwalten);
-
-        return tabBar;
-    }
-
-    // ============================================================================
-    // buildTabLabel - Erstellt ein einzelnes Tab-Label
-    // ============================================================================
-    private TextView buildTabLabel(String text) {
-        TextView tab = new TextView(this);
-        tab.setText(text);
-        tab.setGravity(Gravity.CENTER);
-        tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, SP_BODY);
-        tab.setTypeface(null, Typeface.BOLD);
-        tab.setTextColor(TEXT_SECONDARY);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-            0, LinearLayout.LayoutParams.MATCH_PARENT, 1f);
-        tab.setLayoutParams(params);
-        return tab;
-    }
-
-    // ============================================================================
-    // buildIndicator - Erstellt den farbigen Tab-Indicator (3dp Höhe)
-    // ============================================================================
-    private View buildIndicator() {
-        View ind = new View(this);
-        ind.setBackgroundColor(ACCENT);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, dp(this, 3));
-        ind.setLayoutParams(params);
-        return ind;
     }
 
     // ============================================================================

@@ -31,7 +31,8 @@ public final class ViewHelper {
         return bg;
     }
 
-    /** Erstellt ein Label (bold, SP_SMALL, TEXT_SECONDARY, topMargin=8dp) */
+    /** @deprecated Ersetzt durch style/FormLabel in res/values/styles.xml */
+    @Deprecated
     public static TextView buildLabel(Context ctx, String text) {
         TextView label = new TextView(ctx);
         label.setText(text);
@@ -46,7 +47,8 @@ public final class ViewHelper {
         return label;
     }
 
-    /** Erstellt einen transparenten Spacer mit gegebener Höhe in dp */
+    /** @deprecated Ersetzt durch View-Spacer in XML-Layouts */
+    @Deprecated
     public static View buildSpacer(Context ctx, int heightDp) {
         View spacer = new View(ctx);
         spacer.setLayoutParams(new LinearLayout.LayoutParams(

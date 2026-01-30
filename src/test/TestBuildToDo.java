@@ -5,7 +5,7 @@ import entities.trackedItem.*;
 import entities.CalendarEvent;
 import entities.todoList;
 import entities.todoList.TimeSlot;
-import usecases.dailyPlanning.buildToDoV2;
+import scheduling.buildToDo;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -32,7 +32,7 @@ public class TestBuildToDo {
         seedItems(repo);
 
         // Leerer Kalender (keine Events)
-        buildToDoV2 planner = new buildToDoV2(repo, (day, start, end) -> new ArrayList<>());
+        buildToDo planner = new buildToDo(repo, (day, start, end) -> new ArrayList<>());
 
         System.out.println("=== Starte V2-Scheduling ===\n");
         planner.planWeek();

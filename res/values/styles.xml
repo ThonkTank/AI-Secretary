@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Formular-Label (wie ViewHelper.buildLabel) -->
+    <style name="FormLabel">
+        <item name="android:textSize">@dimen/sp_small</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">8dp</item>
+    </style>
+
+    <!-- Tab-Label Stil -->
+    <style name="TabLabel">
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">@dimen/sp_body</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+    </style>
+
+    <!-- Button-Gruppen Eintrag (Typ, Prioritaet, RepType, RepUnit) -->
+    <style name="GroupButton">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_marginEnd">4dp</item>
+        <item name="android:padding">4dp</item>
+    </style>
+</resources>

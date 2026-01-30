@@ -5,15 +5,17 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import static activities.generic.UIConstants.*;
 import static activities.generic.ViewHelper.dp;
+
+import com.autosecretary.R;
 
 import java.util.List;
 
@@ -21,8 +23,8 @@ import controller.todoManager;
 import controller.todoManager.TaskEntry;
 import controller.todoManager.TodoListener;
 import repository.SQLrepo;
-import usecases.dailyPlanning.buildToDoV2;
-import usecases.dailyPlanning.CalendarReader;
+import scheduling.buildToDo;
+import scheduling.CalendarReader;
 
 /**
  * ══════════════════════════════════════════════════════════════════════════════
@@ -132,38 +134,27 @@ public class taskList implements TodoListener, ViewBuilder {
 
     /** Baut die komplette Task-Listen-View und gibt sie zurück */
     public View buildView() {
-        ScrollView scrollView = new ScrollView(context);
-        scrollView.setFillViewport(true);
+        View root = LayoutInflater.from(context).inflate(R.layout.view_task_list, null);
+        container = root.findViewById(R.id.task_container);
 
-        container = new LinearLayout(context);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 16));
-        scrollView.addView(container);
-
-        render();
-        return scrollView;
-    }
-
-    /** Rendert die Task-Liste in den Container */
-    public void render() {
-        container.removeAllViews();
-
-        // Neu-Planen Button
-        Button replanBtn = new Button(context);
-        replanBtn.setText("Neu planen");
-        replanBtn.setTextColor(Color.WHITE);
-        replanBtn.setBackgroundColor(ACCENT);
+        Button replanBtn = root.findViewById(R.id.btn_replan);
         replanBtn.setOnClickListener(v -> {
-            new buildToDoV2(new SQLrepo(context),
+            new buildToDo(new SQLrepo(context),
                 (day, start, end) -> CalendarReader.getEventsForDay(context, day, start, end)
             ).planWeek();
             render();
         });
-        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        btnParams.setMargins(0, 0, 0, dp(context, 12));
-        replanBtn.setLayoutParams(btnParams);
-        container.addView(replanBtn);
+
+        render();
+        return root;
+    }
+
+    /** Rendert die Task-Liste in den Container */
+    public void render() {
+        // Alle dynamischen Views entfernen (Button bleibt als erstes Kind aus XML)
+        while (container.getChildCount() > 1) {
+            container.removeViewAt(1);
+        }
 
         List<TaskEntry> entries = manager.provideList();
 

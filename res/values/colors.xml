@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primaerfarben -->
+    <color name="accent">#FF1976D2</color>
+    <color name="text_primary">#FF212121</color>
+    <color name="text_secondary">#FF757575</color>
+    <color name="text_muted">#FF9E9E9E</color>
+    <color name="text_error">#FFD32F2F</color>
+
+    <!-- Oberflaechen -->
+    <color name="surface">#FFFAFAFA</color>
+    <color name="surface_complete">#FFE8F5E9</color>
+    <color name="button_inactive">#FFE0E0E0</color>
+    <color name="overlay_dim">#80000000</color>
+
+    <!-- Typ-Badge Farben -->
+    <color name="badge_project">#FF7B1FA2</color>
+    <color name="badge_block">#FFE65100</color>
+    <color name="badge_goal">#FF1976D2</color>
+    <color name="badge_task">#FF388E3C</color>
+
+    <!-- Sonstige -->
+    <color name="header_bg">#FF455A64</color>
+    <color name="calendar_event_bg">#FFE3F2FD</color>
+</resources>

@@ -1,8 +1,6 @@
-package usecases.dailyPlanning;
+package scheduling;
 
-import android.content.Context;
-
-import repository.SQLrepo;
+import repository.Repo;
 import repository.Table;
 import entities.CalendarEvent;
 import entities.todoList;
@@ -14,14 +12,13 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class buildToDo {
- 
+
     /**
      * ══════════════════════════════════════════════════════════════════════════════
      * DAILY PLANNING ALGORITHM - Dokumentation
@@ -30,732 +27,672 @@ public class buildToDo {
      * ZIEL:
      *   Wird automatisch jeden Tag um 00:00 getriggert.
      *   Evaluiert die Planung der nächsten 7 Tage neu.
-     * 
-     * TODO: Algorythmus geht momentan chronologisch vor, sollte tasks aber eigentlich intelligent simultan über gesammte Woche verteilen und Adjustieren.
+     *
+     * DESIGN:
+     *   - Items werden intelligent über die gesamte Woche verteilt (globale Slot-Bewertung)
+     *   - placeItem bewertet ALLE Slots aller 7 Tage gleichzeitig und wählt den global besten
+     *   - Verdrängung: Höher-priorisierte Items können niedriger-priorisierte verdrängen
+     *   - Slot-adjusted Prio wird im TimeSlot persistiert für fairen Verdrängungsvergleich
+     *   - Kein Split zwischen augment/create: alles läuft über dieselbe Pipeline
+     *   - Goal-Tasks werden über placeItem platziert
+     *
      * TODO: Aufgaben mit mehreren Wiederholungen pro Tag ermöglichen.
-     * TODO: Kallender integration reparieren (nicht reaktiv auf kalender änderungen)
-     * TODO: Augment Plan durch tatsächlich guten Code ersetzen, momentan AI slop.
-     * TODO: Split zwischen augment/create entfernen, beides über selbe Pipeline laufen lassen.
-     *
-     * ──────────────────────────────────────────────────────────────────────────────
-     * HIERARCHIE-STRUKTUR (alle Ebenen sind trackedItems)
-     * ──────────────────────────────────────────────────────────────────────────────
-     *
-     *   ┌─────────────────────────────────────────────────────────────────────────┐
-     *   │                              PROJECT                                    │
-     *   │  Oberste Ebene: Gruppiert thematisch verwandte Blöcke                   │
-     *   │  Beispiel: "Fitness", "Arbeit", "Haushalt"                              │
-     *   │  Attribute: minIntervalDays (Mindestabstand zwischen Scheduling)        │
-     *   └───────────────────────────────┬─────────────────────────────────────────┘
-     *                                   │ children[]
-     *                                   ▼
-     *   ┌─────────────────────────────────────────────────────────────────────────┐
-     *   │                               BLOCK                                     │
-     *   │  Organisatorische Einheit: Zusammenhängende Goals die in Abhängigkeit   │
-     *   │  voneinander stehen und immer in fester Reihenfolge geplant werden.     │
-     *   │                                                                         │
-     *   │  Beispiel: "Schulter"-Block enthält:                                    │
-     *   │    1. "Schulter Stretches"  →  2. "Schulter Training"                   │
-     *   │  Diese Goals werden immer in dieser Reihenfolge eingeplant.             │
-     *   │                                                                         │
-     *   │  Attribute: prefTime (bevorzugte Tageszeit für diesen Block)            │
-     *   └───────────────────────────────┬─────────────────────────────────────────┘
-     *                                   │ children[]
-     *                                   ▼
-     *   ┌─────────────────────────────────────────────────────────────────────────┐
-     *   │                               GOAL                                      │
-     *   │  Inhaltliche Einheit: Konkretes Ziel mit Zeitbudget                     │
-     *   │  Beispiel: "Krafttraining", "E-Mails bearbeiten", "Küche putzen"        │
-     *   │  Attribute: timeToComplete (Zeitbudget in Minuten), priority            │
-     *   └───────────────────────────────┬─────────────────────────────────────────┘
-     *                                   │ children[]
-     *                                   ▼
-     *   ┌─────────────────────────────────────────────────────────────────────────┐
-     *   │                               TASK                                      │
-     *   │  Kleinste Einheit: Einzelne ausführbare Aufgabe                         │
-     *   │  Beispiel: "10 Liegestütze", "E-Mail an Chef", "Spülmaschine ausräumen" │
-     *   │  Attribute: timeToComplete, repetition, lastCompletion, followUps       │
-     *   └─────────────────────────────────────────────────────────────────────────┘
-     *
-     * ──────────────────────────────────────────────────────────────────────────────
-     * BENÖTIGTE EINGABEDATEN
-     * ──────────────────────────────────────────────────────────────────────────────
-     *
-     *   CONFIG (aus config-Tabelle):
-     *     - Active Time per Day: Von-bis Uhrzeit für ToDo-Liste
-     *       (z.B. 6-18 Uhr an Wochentagen, 10-18 Uhr am Wochenende)
-     *     - LocalDate.now
-     *
-     *   GOALS (aus items-Tabelle, type="Goal"):
-     *     - Priority priority          → Für Priorisierung, Enum mit string und int wert
-     *     - int timeToComplete         → Wieviel Zeit für das Goal eingeplant wird
-     *     - List<Long> children        → Welche Tasks zum Goal gehören
-     *
-     *   TASKS (aus items-Tabelle, type="Task", nicht completed):
-     *     - LocalDate lastCompletion   → Überfälligkeit berechnen
-     *     - int completions            → Dringlichkeit bei "X pro Zeitraum"
-     *     - Set<LocalDate> blockedDays  → Blockierte Tage (Cooldown + Repetitions-Intervall)
-     *     - int timeToComplete         → Zeitslot-Zuweisung
-     *     - Priority priority          → Priorisierung
-     *     - Map<Long,Integer> followUps→ Chains (Tasks die oft nacheinander kommen)
      * 
-     * ──────────────────────────────────────────────────────────────────────────────
-     * SQL Zugriff (SQLrepo)
-     * ──────────────────────────────────────────────────────────────────────────────
-     *
-     * =========== lookup(table, filters, outputColumns...) ===========
-     * Durchsucht eine Tabelle nach Zeilen die den Filtern entsprechen.
-     *
-     * Beispiele:
-     *   lookup("items", Map.of("id", "5"), "title")
-     *   lookup("items", Map.of("type", "Goal", "is_completed", "0"), "id", "title")
-     *   lookup("items", Map.of("type", "Task"), "*")
-     *
-     * @return List<Map<String, Object>> mit allen Treffern
-     *
-     * =========== fetch(table, id) ===========
-     * Lädt eine Entity anhand ihrer ID. Delegiert an den passenden Builder.
-     *
-     * Beispiel:
-     *   trackedItem item = repo.fetch(Table.ITEMS, 5);
-     *
-     * =========== write(Object) ===========
-     * Schreibt ein Entity in die DB (INSERT oder UPDATE).
-     *
-     * Beispiel:
-     *   repo.write(myTrackedItem);
-     *   repo.write(wochenPlanList);
-     *
      * ──────────────────────────────────────────────────────────────────────────────
      * ALGORITHMUS-ABLAUF
      * ──────────────────────────────────────────────────────────────────────────────
+     *  private List allSlots
+     * 
+     *  planWeek() {
+     *      todoLists = alle todolists der nächsten 7 Tage aus db, evtl neue wenn ein Tag noch keine hat
+     *      todoLists = calendarSync(todoLists)
+     *      allSlots = aggregateSlots(todoLists)
+     *      fillSlots(goal, null, allSlots)
      *
-     *  makeToDoList() - Hauptfunktion, erstellt/aktualisiert Wochenplan
-     *      Für jeden Tag der nächsten 7 Tage:
-     *      1. Wochentag bestimmen und Zeitspanne aus config_schedules holen (start_time, end_time)
-     *      2. Kalender-Events für den Tag laden (CalendarReader.getEventsForDay)
-     *      3. Prüfen ob bereits ein Plan existiert (repo.fetch mit date-Filter)
-     *         → Falls ja: augmentPlan(existing, day, end) + repo.write
-     *         → Falls nein: Neuen Plan erstellen:
-     *           a) getItems(day, null) → Holt relevante Goals für den Tag
-     *           b) prioritize(goals, day) → Sortiere nach Dringlichkeit
-     *           c) toSlots(sortedGoals, start, end, day, calEvents) → Zeitslots zuweisen
-     *           d) todoList-Objekt bauen: date, start, end=actualEnd, timeSlots=slots
-     *           e) repo.write(tagesPlan)
+     *      für alle Goal-Slots in allSlots
+     *          fillGoalTasks(goalSlot, list) //Tasks innerhalb Goal-Grenzen neu platzieren
      *
-     *  getItems(day, parentId) - Holt relevante Items
-     *      parentId==null → Goals holen (type="Goal", is_completed=0)
-     *      parentId!=null → Tasks eines Goals holen (parent=parentId, is_completed=0)
-     *      Für jedes Item: fetch(Table.ITEMS, itemID)
-     *         Skip-Bedingungen:
-     *         a) Parent-Check (immer wenn item.parent != null):
-     *            → Skip wenn parent.scheduled nicht leer und day.isBefore(max(parent.scheduled))
-     *            → Skip wenn parent.cooldown > 0, lastCompletion existiert,
-     *              und day.isBefore(lastCompletion.plusDays(parent.cooldown))
-     *         b) BlockedDays-Check: Skip wenn item.blockedDays den Tag enthält
-     *            (deckt Repetitions-Intervall und Cooldown ab)
-     *      Return: List<trackedItem>
+     *      für jede todoListe in todoLists
+     *          mit aktualisierten Slots updaten
+     *      return todoLists
+     * }
+     * 
+     * calendarSync(todoLists) {
+     *      für jede todoList in todoLists
+     *          entferne alte calendar events
+     *          hole aktuelle kalendar events
+     *          unplan(überlappende Tasks)
+     *      return aktualisierte todoLists
+     * }
+     * 
+     * fillSlots(typ, parent, list) {
+     *      loopen bis nichtsmehr platziert werden kann
+     *          relevantTasks = getItems(typ, parent)
+     *          scoredItems = prioritizeItems(relevantTasks)
+     *          Für alle scoredItems
+     *              match <item, slot> = tryMatch(scoredItems, list)
+     *          if match != null
+     *              assignSlot(match, list)
+     *          else
+     *              break
+     * }
+     * 
+     * aggregateSlots(todoLists) {
+     *      für jede todoListe in todoLists:
+     *          emptyWindows = Leere Zeitfenster finden
+     *          für alle windows in emptyWindows
+     *              zu einem Slot machen (wenn am Montag von 14-16 nichts geplant ist wird das ein 2 Stunden slot)
+     *              allSlots.add(this)
+     *          für alle befüllten Slots
+     *              allSlots.add(this)
+     *      allSlots chronologisch sortieren (Datum, dann Uhrzeit)
+     * }
      *
-     *  prioritize(items, day) - Sortiert nach kombinierter Dringlichkeit
+     * fillGoalTasks(goalSlot, list) {
+     *      virtual = todoList mit goalSlot-Grenzen und bestehenden Sub-Slots
+     *      taskSlots = aggregateSlots(virtual)
+     *      fillSlots(Task, goalSlot.item, taskSlots)
+     *      goalSlot.timeSlots = virtual.timeSlots
+     *      goalSlot.end auf Ende des tatsächlichen Inhalts setzen
+     * }
+     * 
+     * getItems(typ, parent) {
+     *      Für alle Items in db des gesuchten typs mit passendem parent wenn parent != null:
+     *          blockedDays mit kommenden 7 Tagen vergleichen
+     *          wenn item = goal && item.parent != null
+     *              item.parent.blockedDays mit kommenden 7 Tagen vergleichen.
+     *          wenn mind. einer der 7 Tage nicht in blocked days:
+     *          relevantItems.add(item) //für reps_Per_Time so oft wie nötig wiederholen
+     *      return relevantItems
+     * }
+     * 
+     * prioritize(relevantItems) {
      *      Für jedes Item:
      *      1. Basisdringlichkeit = priority.value + (priority.value * item.overdue(today) * 0.5)
      *      2. Für RepsPerTimeRepetition zusätzlich:
-     *         → daysPerRemainingRep = remainingTime(day) / remainingReps(day)
+     *         → daysPerRemainingRep = item.remainingTime() / item.remainingReps() //berechnet automatisch übrige Zeit in periode, rechnet bereits blockierte/scheduled Tage raus)
      *         → normalizedFrequency = min(2.0, 1.0 + (1.0 / daysPerRemainingRep))
      *         → priority *= normalizedFrequency
      *      3. Sortiere nach Dringlichkeit (höchste zuerst)
      *      Return: List<PrioritizedItem> (record mit item und prio)
+     * }
+     * 
+     * tryMatch(itemList, slotList) {
+     *      Für jedes Item in itemList
+     *          parentItem = Goal→Project Parent holen (einmal pro Item)
+     *          für jeden slot in slotList:
+     *              blockedDays-Prüfung: item.blockedDays und parentItem.blockedDays gegen slot.day
+     *              slotCoverage = min(1.0, slotMinuten / requiredTime) // 1.0 wenn genug Platz, sonst proportional reduziert
+     *              diff = Minuten zwischen prefTime und slot.start //wenn slot größer als benötigte zeit, bestmögliche startzeit innerhalb des slots verwenden statt slot.start
+     *              Wenn diff >= 0 (auf/nach prefTime): normalizedDiff = 1.0 (keine Strafe)
+     *              Wenn diff < 0 (vor prefTime): normalizedDiff = max(0.0, 1.0 + diff/480)
+     *              adjustedPrio = log1p(prio) * normalizedDiff² * slotCoverage * 100
+     *              wenn slot besetzt
+     *                  adjustedPrio - slot.prio
+     *          bestSlot = slotList.maxPrio
+     *          Wenn bestSlot.prio > 0
+     *              match = <item, bestSlot
+     *              break
+     *      Return: match
+     * }
+     * 
+     * assignSlot(item, Slot, list) {
+     *      wenn slot bereits belegt
+     *          unplan(Slot)
+     *      TaskSlots = alle sub-slots im slot + ggf freie 
+     *      wenn Slot zu groß für item
+     *          slot.start zu bester start zeit für Item machen
+     *      Slot mit allen relevanten goal Daten befüllen
+     *      Wenn item.type = goal
+     *          fillSlots(Task, slot.item, taskSlots)
+     *      slot.end auf ende des tatsächlichen Inhalts setzen
+     *      ggf. neue freie Slots in list erstellen, für jetzt freie Zeit
+     *      item.schedule(day)
+     * }
+     * 
+     * unplanSlot(slot) {
+     *      entplant item aus slot
+     * }
+     * 
+     * ──────────────────────────────────────────────────────────────────────
+     * BLOCKEDDAYS-DESIGN
+     * ──────────────────────────────────────────────────────────────────────────────
      *
-     *  toSlots(sortedItems, start, end, day, calEvents) - Weist Zeitslots zu (rekursiv)
-     *      Cursor beginnt bei start, remainingItems + remainingEvents als Arbeitskopien
-     *      Solange remainingItems nicht leer:
-     *      1. Kalender-Events einfügen die am/vor Cursor beginnen
-     *         → CalendarEvent-Slots erstellen (isCalendarEvent=true, item=null)
-     *         → Cursor hinter Event-Ende setzen
-     *      2. Abbruch wenn Cursor >= end
-     *      3. effectiveEnd = min(scheduleEnd, nächstes Event.start) bestimmen
-     *      4. timeAdjustItems(remainingItems, cursor) → Passt Prioritäten an aktuelle Zeit an
-     *      5. Für jeden angepassten Eintrag (höchste Prio zuerst):
-     *         → Prüfe ob genug Zeit bis effectiveEnd (cursor + timeToComplete ≤ effectiveEnd)
-     *         → TimeSlot erstellen (cursor, item.id, completed=false)
-     *         → Falls Goal: getItems(day, item.id) → prioritize → toSlots (rekursiv, ohne calEvents)
-     *           → itemSlot.timeSlots = taskResult.slots()
-     *           → itemSlot.end = taskResult.actualEnd()
-     *         → cursor = slotEnd
-     *         → Item aus remainingItems entfernen
-     *         → item.schedule(day, repo) NUR wenn day == today
-     *         → break (nächste Iteration)
-     *      6. Wenn nichts gescheduled: zum nächsten CalendarEvent springen oder abbrechen
-     *      7. Nach Loop: verbliebene CalendarEvents anhängen (sofern vor end)
-     *      Return: SlotResult(slots, cursor)
+     *  Jedes Item hat eigene blockedDays (berechnet von trackedItem.getBlockedDays()):
+     *    1. Cooldown-Fenster ±N Tage um lastCompletion und jedes scheduled-Datum
+     *    2. Alle Tage zwischen lastCompletion und calcNextRepetition() (nicht für REPS_PER_TIME)
      *
-     *  augmentPlan(existing, day, scheduleEnd) - Ergänzt bestehenden Plan
-     *      1. Bereits geplante Goal-IDs sammeln
-     *      2. Alle relevanten Goals holen, bereits geplante filtern
-     *      3. Niedrigste Priorität im Plan ermitteln (Schwelle für neue Goals)
-     *      4. Neue Goals an bester Stelle einfügen wenn prio >= lowestPlannedPrio
-     *         → Beste Lücke finden basierend auf prefTime (findBestInsertionIndex)
-     *         → Für jedes neue Goal: Tasks laden, priorisieren, toSlots (rekursiv)
-     *         → Folgende Slots verschieben (shiftSlotsAfter)
-     *      5. Task-Augmentation für bestehende Goals:
-     *         → Neue eligible Tasks ermitteln (noch nicht geplant)
-     *         → Einfügen wenn prio >= lowestTaskPrio und genug Zeit verfügbar (verglichen mit goal.timeToComplete)
-     *         → Goal Slot Zeit anpassen und folgende Zeiten verschieben (shiftSlotsAfter)
-     *      6. end-Zeit der Liste aktualisieren
+     *  blockedDays wird automatisch neu berechnet bei:
+     *    - schedule()  → Item eingeplant (+ Parent-Propagation für Goal → Project)
+     *    - unPlan()    → Item verdrängt
+     *    - update()    → Tagesabschluss durch cleanToDo
      *
-     *  timeAdjustItems(sortedItems, cursor) - Zeitbasierte Prioritätsanpassung
-     *      Für jedes Item:
-     *      → diff = Minuten zwischen prefTime und cursor
-     *      → Wenn diff >= 0 (auf/nach prefTime): normalizedDiff = 1.0 (keine Strafe)
-     *      → Wenn diff < 0 (vor prefTime): normalizedDiff = max(0.0, 1.0 + diff/480)
-     *      → adjustedPrio = log1p(prio) * normalizedDiff² * 100
-     *      Sortiere nach adjustedPrio (höchste zuerst)
-     *      Return: List<PrioritizedItem>
+     *  Goals erben NICHT parent.blockedDays. Stattdessen prüfen getItems() und tryMatch()
+     *  separat parent.blockedDays (nur für Goal mit Project-Parent).
      *
      */
 
-    private Context context;
-    SQLrepo repo;
+    public record PrioritizedItem(trackedItem item, int prio) {}
+    record SlotCandidate(TimeSlot slot, todoList list, TimeSlot displaceable) {}
+    record Match(PrioritizedItem item, SlotCandidate slot) {}
 
-    public buildToDo(Context context) {
-        this.context = context;
-        this.repo = new SQLrepo(context);
+    /** Liefert Kalender-Events für einen Tag. Abstrahiert CalendarReader für Testbarkeit. */
+    @FunctionalInterface
+    public interface CalendarProvider {
+        List<CalendarEvent> getEventsForDay(LocalDate day, LocalTime start, LocalTime end);
     }
 
-    // ============================================================================
-    // makeToDoList - Hauptfunktion, erstellt/aktualisiert ToDoListen für die nächsten 7 Tage.
-    // ============================================================================
-    public void makeToDoList(){
-        LocalDate today = LocalDate.now();
+    Repo repo;
+    CalendarProvider calendar;
 
-        // Für jeden Tag der nächsten 7 Tage:
+    public buildToDo(Repo repo, CalendarProvider calendar) {
+        this.repo = repo;
+        this.calendar = calendar;
+    }
+
+
+    // ============================================================================
+    // planWeek - Hauptfunktion, erstellt/aktualisiert ToDoListen für die nächsten 7 Tage.
+    // ============================================================================
+    public List<todoList> planWeek() {
+        LocalDate today = LocalDate.now();
+        List<todoList> lists = new ArrayList<>();
+
+        // 1. todoLists = alle todolists der nächsten 7 Tage aus db, evtl neue wenn ein Tag noch keine hat
         for (int i = 0; i < 7; i++) {
             LocalDate day = today.plusDays(i);
             String weekday = day.getDayOfWeek().toString();
 
-            //Holt schedule von config
             Map<String, String> scheduleFilter = Map.of("day_of_week", weekday);
             LocalTime start = repo.lookup("config_schedules", scheduleFilter, "start_time");
             LocalTime end = repo.lookup("config_schedules", scheduleFilter, "end_time");
 
-            // Prüfen ob bereits ein Plan für diesen Tag existiert
-            todoList existingPlan = repo.fetch(Table.TODOS, Map.of("date", day.toString()));
+            todoList existing = repo.fetch(Table.TODOS, Map.of("date", day.toString()));
 
-            // Kalender-Events fuer den Tag laden
-            List<CalendarEvent> calEvents = CalendarReader.getEventsForDay(context, day, start, end);
-
-            if (existingPlan != null) {
-                // Plan existiert: re-validieren und ergänzen
-                augmentPlan(existingPlan, day, end);
-                repo.write(existingPlan);
+            if (existing != null) {
+                calendarSync(existing, day, start, end);
+                lists.add(existing);
             } else {
-                // Kein Plan vorhanden: komplett neu planen
-                List<trackedItem> goals = getItems(day, null);
-                List<PrioritizedItem> sortedGoals = prioritize(goals, day);
-                SlotResult slottedGoals = toSlots(sortedGoals, start, end, day, calEvents);
+                todoList plan = new todoList();
+                plan.date = day;
+                plan.start = start;
+                plan.end = end;
+                plan.timeSlots = new ArrayList<>();
 
-                todoList tagesPlan = new todoList();
-                tagesPlan.date = day;
-                tagesPlan.start = start;
-                tagesPlan.end = slottedGoals.actualEnd();
-                tagesPlan.timeSlots = slottedGoals.slots();
+                List<CalendarEvent> calEvents = calendar.getEventsForDay(day, start, end);
+                for (CalendarEvent ev : calEvents) {
+                    TimeSlot calSlot = new TimeSlot();
+                    calSlot.start = ev.start().isBefore(start) ? start : ev.start();
+                    calSlot.end = ev.end().isAfter(end) ? end : ev.end();
+                    calSlot.isCalendarEvent = true;
+                    calSlot.calendarTitle = ev.title();
+                    plan.timeSlots.add(calSlot);
+                }
 
-                repo.write(tagesPlan);
+                lists.add(plan);
             }
         }
-    }
-    
 
-    // ============================================================================
-    // getItems - Holt relevante Goals für Tag oder Tasks für Goal
-    // ============================================================================
-    private List<trackedItem> getItems (LocalDate day, Long parentId) {
-        List<trackedItem> relevantItems = new ArrayList<>();
+        // 2. allSlots = aggregateSlots(todoLists)
+        List<SlotCandidate> allSlots = aggregateSlots(lists);
 
-        //Filter Bauen
-        Map<String, String> filters;
-        if (parentId != null) {
-            filters = Map.of("parent", String.valueOf(parentId), "is_completed", "0");
-        }
-        else {
-            filters = Map.of("type", "GOAL", "is_completed", "0");
+        // 3. fillSlots(goal, null, allSlots) - Goals in freie Slots platzieren
+        fillSlots(trackedItem.ItemType.GOAL, null, allSlots);
+
+        // 4. Für alle befüllten Goal-Slots: Tasks innerhalb der Goal-Grenzen neu platzieren
+        for (SlotCandidate sc : new ArrayList<>(allSlots)) {
+            if (sc.slot().item != null) {
+                fillGoalTasks(sc.slot(), sc.list());
+            }
         }
 
-        // get open item for day
-        List<Long> openItems = repo.lookups("items", filters, "id");
-
-        // Für alle IDs in der Liste
-        for (Long itemID : openItems){
-
-                //next rep start holen
-                trackedItem item = repo.fetch(Table.ITEMS, itemID);
-                // Projekt-Cooldown: Parent prüfen
-                if (item.parent != null) {
-                    trackedItem parent = repo.fetch(Table.ITEMS, item.parent);
-                    if (parent != null) {
-                        // Wenn Parent bereits scheduled, skip
-                        if (parent.scheduled != null
-                            && !parent.scheduled.isEmpty()
-                            && day.isBefore(Collections.max(parent.scheduled))) {
-                            continue;
-                        }
-                        // Wenn Parent cooldown aktiv, skip
-                        if (parent.cooldown != 0
-                            && item.lastCompletion != null
-                            && day.isBefore(item.lastCompletion.plusDays(parent.cooldown))) {
-                            continue;
-                        }
+        // 5. todoLists mit aktualisierten Slots updaten und persistieren
+        for (todoList list : lists) {
+            LocalTime maxEnd = list.start;
+            if (list.timeSlots != null) {
+                for (TimeSlot slot : list.timeSlots) {
+                    if (slot.end != null && slot.end.isAfter(maxEnd)) {
+                        maxEnd = slot.end;
                     }
                 }
+            }
+            list.end = maxEnd;
+            repo.write(list);
+        }
 
-                // blockedDays check (deckt Repetitions-Intervall und Cooldown ab)
-                if (item.blockedDays != null && item.blockedDays.contains(day)) {
-                    continue;
+        return lists;
+    }
+
+
+    // ============================================================================
+    // getItems - Holt relevante Items eines Typs, optional gefiltert nach Parent.
+    //   Berechnet intern die kommenden 7 Tage und prüft blockedDays.
+    // ============================================================================
+    private List<trackedItem> getItems(trackedItem.ItemType typ, Long parent) {
+        List<trackedItem> relevantItems = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+
+        // Kommende 7 Tage berechnen
+        List<LocalDate> days = new ArrayList<>();
+        for (int i = 0; i < 7; i++) {
+            days.add(today.plusDays(i));
+        }
+
+        // Filter nach Typ und optional nach Parent
+        Map<String, String> filters;
+        if (parent != null) {
+            filters = Map.of("type", typ.name(), "parent", String.valueOf(parent), "is_completed", "0");
+        } else {
+            filters = Map.of("type", typ.name(), "is_completed", "0");
+        }
+
+        List<Long> openItems = repo.lookups("items", filters, "id");
+
+        for (Long itemID : openItems) {
+            trackedItem item = repo.fetch(Table.ITEMS, itemID);
+
+            // Prüfen ob Item an mindestens einem der 7 Tage eingeplant werden kann
+            boolean canSchedule = false;
+            for (LocalDate day : days) {
+                if (!item.isBlockedOn(day, repo)) {
+                    canSchedule = true;
+                    break;
                 }
+            }
 
+            if (canSchedule) {
                 relevantItems.add(item);
+            }
         }
 
         return relevantItems;
     }
 
+
     // ============================================================================
-    // Prioritize - Priorisert Einträge in einer Liste
+    // prioritize - Sortiert nach kombinierter Dringlichkeit
     // ============================================================================
-    public record PrioritizedItem (trackedItem item, int prio) {}
-    
-    private List<PrioritizedItem> prioritize (List<trackedItem> items, LocalDate day) {
-        List<PrioritizedItem> prioritizedItems = new ArrayList<PrioritizedItem>();
-        // Für jedes Goal
+    private List<PrioritizedItem> prioritize(List<trackedItem> items) {
+        List<PrioritizedItem> prioritizedList = new ArrayList<>();
         LocalDate today = LocalDate.now();
+
         for (trackedItem item : items) {
-            // Dringlichkeit = priorität * (Überfälligkeit/2)
             int priority = item.priority.value + (int)(item.priority.value * (item.overdue(today) * 0.5));
 
-            // Dringlichkeit für reps per time items
             if (item.repetition != null && item.repetition.type == RepetitionType.REPS_PER_TIME) {
-                //rest Zeit für Periode in Tagen
-                double daysPerRemainingRep = (double) item.remainingTime(day) / item.remainingReps(day);
-                double normalizedFrequency = Math.min(2.0, 1.0 + (1.0 / daysPerRemainingRep));
-                priority = (int)(priority * normalizedFrequency);
+                int remainingReps = item.remainingReps(today);
+                if (remainingReps > 0) {
+                    double daysPerRemainingRep = (double) item.remainingTime(today) / remainingReps;
+                    double normalizedFrequency = Math.min(2.0, 1.0 + (1.0 / daysPerRemainingRep));
+                    priority = (int)(priority * normalizedFrequency);
+                }
             }
-            prioritizedItems.add(new PrioritizedItem(item, priority));
-        }
-        // Nach Dringlichkeit sortieren (höchste zuerst)
-        prioritizedItems.sort((a, b) -> b.prio() - a.prio());
 
-        return prioritizedItems;
+            prioritizedList.add(new PrioritizedItem(item, priority));
+        }
+
+        prioritizedList.sort((a, b) -> b.prio() - a.prio());
+        return prioritizedList;
     }
 
 
-
     // ============================================================================
-    // toSlots - Wandelt priorisierte Liste in ToDoListe um
+    // tryMatch - Iteriert priorisierte Items und findet den besten Slot für das
+    //   höchstpriorisierte Item, das platziert werden kann.
+    //   Bewertet prefTime-Passung (log. Score), Slot-Abdeckung (zu kurze Slots
+    //   werden proportional bestraft) und Verdrängung besetzter Slots.
+    //   Gibt null zurück wenn kein Item platzierbar ist.
     // ============================================================================
-    record SlotResult(List<TimeSlot> slots, LocalTime actualEnd) {}
+    private Match tryMatch(List<PrioritizedItem> itemList, List<SlotCandidate> slotList) {
+        for (PrioritizedItem pi : itemList) {
+            trackedItem item = pi.item();
+            int duration = item.timeToComplete;
 
-    private SlotResult toSlots(List<PrioritizedItem> sortedItems, LocalTime start, LocalTime end, LocalDate day, List<CalendarEvent> calEvents) {
-        List<TimeSlot> slots = new ArrayList<>();
+            SlotCandidate bestCandidate = null;
+            int bestScore = 0; // Muss > 0 sein für gültigen Match
+            LocalTime bestEffectiveStart = null;
+            int bestAdjustedPrio = 0;
 
-        // Kopie der Listen erstellen
-        List<PrioritizedItem> remainingItems = new ArrayList<>(sortedItems);
-        List<CalendarEvent> remainingEvents = new ArrayList<>(calEvents);
-        //Wo sind wir grade im tagesplan?
-        LocalTime cursor = start;
+            for (SlotCandidate c : slotList) {
+                // blockedDays-Prüfung pro Slot-Tag
+                if (item.isBlockedOn(c.list().date, repo)) continue;
 
-        //Loopen bis keine Items mehr übrig
-        while (!remainingItems.isEmpty()) {
+                TimeSlot slt = c.slot();
+                long slotMinutes = ChronoUnit.MINUTES.between(slt.start, slt.end);
 
-            // Kalender-Events einfuegen die am/vor dem Cursor beginnen
-            while (!remainingEvents.isEmpty()) {
-                CalendarEvent nextEvent = remainingEvents.get(0);
-                if (!nextEvent.start().isAfter(cursor)) {
-                    // Event bereits komplett vom Cursor ueberholt → ueberspringen
-                    if (!nextEvent.end().isAfter(cursor)) {
-                        remainingEvents.remove(0);
-                        continue;
+                // Tasks müssen komplett reinpassen, Goals dürfen partiell eingeplant werden
+                if (item.type == trackedItem.ItemType.TASK && slotMinutes < duration) continue;
+
+                // Slot-Abdeckung: wenn Slot kürzer als benötigte Zeit (nur Goals),
+                // Prio proportional reduzieren (z.B. 50% der Zeit → 50% der Prio)
+                double slotCoverage = Math.min(1.0, (double) slotMinutes / duration);
+
+                // Effektive Startzeit: wenn Slot größer als benötigte Zeit,
+                // bestmögliche Startzeit innerhalb des Slots verwenden
+                LocalTime effectiveStart = slt.start;
+                if (slotMinutes > duration && pi.item().prefTime != null) {
+                    LocalTime latestStart = slt.end.minusMinutes(duration);
+                    if (pi.item().prefTime.isBefore(slt.start)) {
+                        effectiveStart = slt.start;
+                    } else if (pi.item().prefTime.isAfter(latestStart)) {
+                        effectiveStart = latestStart;
+                    } else {
+                        effectiveStart = pi.item().prefTime;
                     }
-                    TimeSlot calSlot = new TimeSlot();
-                    calSlot.start = cursor.isBefore(nextEvent.start()) ? nextEvent.start() : cursor;
-                    calSlot.end = nextEvent.end();
-                    calSlot.isCalendarEvent = true;
-                    calSlot.calendarTitle = nextEvent.title();
-                    calSlot.item = null;
-                    calSlot.completed = null;
-                    slots.add(calSlot);
-                    cursor = nextEvent.end();
-                    remainingEvents.remove(0);
+                }
+
+                // Score: log1p(prio) * normalizedDiff² * slotCoverage * 100
+                int adjustedPrio;
+                if (pi.item().prefTime == null) {
+                    adjustedPrio = (int)(Math.log1p(pi.prio()) * slotCoverage * 100);
                 } else {
-                    break;
+                    long diff = ChronoUnit.MINUTES.between(pi.item().prefTime, effectiveStart);
+                    double normalizedDiff = (diff >= 0) ? 1.0
+                            : Math.max(0.0, 1.0 + (diff / 480.0));
+                    adjustedPrio = (int)(Math.log1p(pi.prio()) * normalizedDiff * normalizedDiff * slotCoverage * 100);
+                }
+
+                // Verdrängung: adjustedPrio muss höher sein als belegter Slot
+                int rankingScore = adjustedPrio;
+                if (c.displaceable() != null) {
+                    int existingPrio = (c.displaceable().adjustedPrio != null)
+                            ? c.displaceable().adjustedPrio : 0;
+                    if (adjustedPrio <= existingPrio) continue;
+                    rankingScore = adjustedPrio - existingPrio;
+                }
+
+                if (rankingScore > bestScore) {
+                    bestScore = rankingScore;
+                    bestCandidate = c;
+                    bestEffectiveStart = effectiveStart;
+                    bestAdjustedPrio = adjustedPrio;
                 }
             }
 
-            // Abbruch wenn Cursor ueber Ende hinaus
-            if (!cursor.isBefore(end)) break;
+            // Erstes Item mit gültigem Match → sofort zurückgeben
+            if (bestCandidate != null) {
+                bestCandidate.slot().adjustedPrio = bestAdjustedPrio;
+                return new Match(pi, bestCandidate);
+            }
+        }
+        return null;
+    }
 
-            // Effektives Ende: min(scheduleEnd, naechstes Event)
-            LocalTime effectiveEnd = end;
-            if (!remainingEvents.isEmpty()) {
-                LocalTime nextEventStart = remainingEvents.get(0).start();
-                if (nextEventStart.isBefore(effectiveEnd)) {
-                    effectiveEnd = nextEventStart;
-                }
+
+    // ============================================================================
+    // aggregateSlots - Sammelt alle Slots einer Liste.
+    //   Für jede todoList: freie Lücken + belegte Slots aufnehmen, chronologisch sortieren.
+    // ============================================================================
+    private List<SlotCandidate> aggregateSlots(List<todoList> lists) {
+        List<SlotCandidate> allSlots = new ArrayList<>();
+        for (todoList list : lists) {
+            // Freie Lücken
+            List<LocalTime[]> freeWindows = findFreeWindows(list);
+            for (LocalTime[] window : freeWindows) {
+                TimeSlot freeSlot = new TimeSlot();
+                freeSlot.start = window[0];
+                freeSlot.end = window[1];
+                allSlots.add(new SlotCandidate(freeSlot, list, null));
             }
 
-            //Items an zeit anpassen
-            List<PrioritizedItem> timeAdjustedItems = timeAdjustItems(remainingItems, cursor);
-            // Abbruch wenn kein item mehr gescheduled werden kann
-            Boolean scheduled = false;
-
-            for (PrioritizedItem pi : timeAdjustedItems) {
-                    trackedItem item = pi.item();
-                    int ttc = item.timeToComplete;
-
-                    //Prüfe, ob noch genug Zeit bis zum naechsten Event/Ende
-                    LocalTime slotEnd = cursor.plusMinutes(ttc);
-                    if (slotEnd.isAfter(effectiveEnd)) {
-                    continue;
+            // Befüllte Slots als verdrängbar aufnehmen (keine Calendar-Events)
+            if (list.timeSlots != null) {
+                for (TimeSlot slot : list.timeSlots) {
+                    if (slot.item != null && (slot.isCalendarEvent == null || !slot.isCalendarEvent)) {
+                        allSlots.add(new SlotCandidate(slot, list, slot));
                     }
-
-                    //timeSlot erstellen
-                    TimeSlot itemSlot = new TimeSlot();
-                    itemSlot.start = cursor;
-                    itemSlot.end = slotEnd;
-                    itemSlot.item = item.id;
-                    itemSlot.completed = false;
-
-                    //Falls Goal, Tasks hinzufügen
-                    if (item.type == trackedItem.ItemType.GOAL) {
-
-                        // Holt Tasks für Slot shedulen
-                        List<trackedItem> tasks = getItems(day, item.id);
-
-                        // Priorität an Dringlichkeit anpassen und liste sortieren.
-                        List<PrioritizedItem> sortedtasks = prioritize(tasks, day);
-
-                        // Liste in Slots zuweisen (keine Calendar-Events auf Task-Ebene)
-                        SlotResult taskResult = toSlots(sortedtasks, cursor, slotEnd, day, new ArrayList<>());
-
-                        // falls tasks gefunden wurden: lots füllen, ende anpassen, slotEnd = actualEnd
-                        if (!taskResult.slots().isEmpty()) {
-                            itemSlot.timeSlots = taskResult.slots();
-                            itemSlot.end = taskResult.actualEnd();
-                            slotEnd = itemSlot.end;
-                        }
-                    }
-
-                    //cursor zu ende bewegen
-                    cursor = slotEnd;
-
-                    //neuen Slot zu Liste hinzufügen
-                    slots.add(itemSlot);
-
-                    //item aus remaining entfernen
-                    remainingItems.removeIf(i -> i.item().id.equals(item.id));
-
-                    //item.scheduled nur für heute in Datenbank aktualisieren
-                    if (day.equals(LocalDate.now())) {
-                        item.schedule(day, repo);
-                    }
-
-                    //Markieren das etwas gescheduled wurde
-                    scheduled = true;
-
-                    //loop brechen wenn passendes item gefunden
-                    break;
-            }
-            //Abbruch wenn nichtsmehr gescheduled werden konnte
-            if (!scheduled) {
-                // Wenn noch Events kommen, zum naechsten Event springen
-                if (!remainingEvents.isEmpty()) {
-                    CalendarEvent nextEvent = remainingEvents.get(0);
-                    TimeSlot calSlot = new TimeSlot();
-                    calSlot.start = nextEvent.start();
-                    calSlot.end = nextEvent.end();
-                    calSlot.isCalendarEvent = true;
-                    calSlot.calendarTitle = nextEvent.title();
-                    calSlot.item = null;
-                    calSlot.completed = null;
-                    slots.add(calSlot);
-                    cursor = nextEvent.end();
-                    remainingEvents.remove(0);
-                    continue;
                 }
+            }
+        }
+
+        // Chronologisch sortieren (Datum zuerst, dann Uhrzeit)
+        allSlots.sort((a, b) -> {
+            int dateCompare = a.list().date.compareTo(b.list().date);
+            if (dateCompare != 0) return dateCompare;
+            return a.slot().start.compareTo(b.slot().start);
+        });
+        return allSlots;
+    }
+
+
+    // ============================================================================
+    // fillSlots - Füllt Slots iterativ: holt Items, priorisiert, matcht und weist zu.
+    //   Loopt bis kein Item mehr platziert werden kann.
+    // ============================================================================
+    private void fillSlots(trackedItem.ItemType typ, Long parent, List<SlotCandidate> slotList) {
+        while (true) {
+            List<trackedItem> relevantTasks = getItems(typ, parent);
+            if (relevantTasks.isEmpty()) break;
+
+            List<PrioritizedItem> scoredItems = prioritize(relevantTasks);
+            Match match = tryMatch(scoredItems, slotList);
+
+            if (match != null) {
+                assignSlot(match.item().item(), match.slot(), slotList);
+            } else {
                 break;
             }
         }
-
-        // Verbliebene Kalender-Events anhaengen
-        for (CalendarEvent ev : remainingEvents) {
-            if (ev.start().isBefore(end)) {
-                TimeSlot calSlot = new TimeSlot();
-                calSlot.start = ev.start();
-                calSlot.end = ev.end().isAfter(end) ? end : ev.end();
-                calSlot.isCalendarEvent = true;
-                calSlot.calendarTitle = ev.title();
-                calSlot.item = null;
-                calSlot.completed = null;
-                slots.add(calSlot);
-                if (ev.end().isAfter(cursor)) cursor = ev.end();
-            }
-        }
-
-        return new SlotResult(slots, cursor);
     }
 
 
     // ============================================================================
-    // augmentPlan - Ergänzt einen bestehenden Tagesplan um fehlende Goals/Tasks
+    // fillGoalTasks - Füllt Tasks innerhalb eines Goal-Slots (scoped auf Goal-Grenzen).
+    //   Erstellt virtuelle todoList mit den Goal-Grenzen, aggregiert Sub-Slots und
+    //   platziert Tasks nur innerhalb dieses Bereichs.
     // ============================================================================
-    private void augmentPlan(todoList existing, LocalDate day, LocalTime scheduleEnd) {
-        if (existing.timeSlots == null) existing.timeSlots = new ArrayList<>();
+    private void fillGoalTasks(TimeSlot goalSlot, todoList list) {
+        todoList virtual = new todoList();
+        virtual.date = list.date;
+        virtual.start = goalSlot.start;
+        virtual.end = goalSlot.end;
+        virtual.timeSlots = (goalSlot.timeSlots != null)
+                ? new ArrayList<>(goalSlot.timeSlots) : new ArrayList<>();
 
-        // 1. Bereits geplante Goal-IDs sammeln
-        Set<Long> plannedGoalIds = new HashSet<>();
-        for (TimeSlot slot : existing.timeSlots) {
-            if (slot.item != null) plannedGoalIds.add(slot.item);
-        }
+        List<SlotCandidate> taskSlots = aggregateSlots(List.of(virtual));
+        fillSlots(trackedItem.ItemType.TASK, goalSlot.item, taskSlots);
 
-        // 2. Alle für den Tag relevanten Goals holen, bereits geplante filtern
-        List<trackedItem> allGoals = getItems(day, null);
-        List<trackedItem> candidates = new ArrayList<>();
-        for (trackedItem goal : allGoals) {
-            if (!plannedGoalIds.contains(goal.id)) {
-                candidates.add(goal);
-            }
-        }
+        goalSlot.timeSlots = virtual.timeSlots;
 
-        // 3. Niedrigste Priorität im bestehenden Plan ermitteln (Schwelle für neue Goals)
-        List<trackedItem> plannedGoals = new ArrayList<>();
-        for (TimeSlot slot : existing.timeSlots) {
-            if (slot.item != null) {
-                trackedItem goal = repo.fetch(Table.ITEMS, slot.item);
-                if (goal != null) plannedGoals.add(goal);
-            }
-        }
-        List<PrioritizedItem> plannedPrios = prioritize(plannedGoals, day);
-        int lowestPlannedPrio = plannedPrios.isEmpty() ? 0
-                : plannedPrios.stream().mapToInt(PrioritizedItem::prio).min().orElse(0);
-
-        // 4. Neue Goals an bester Stelle einfügen wenn prio >= lowestPlannedPrio
-        if (!candidates.isEmpty()) {
-            List<PrioritizedItem> sortedCandidates = prioritize(candidates, day);
-
-            for (PrioritizedItem candidate : sortedCandidates) {
-                if (candidate.prio() < lowestPlannedPrio) break;
-
-                trackedItem goal = candidate.item();
-                int duration = goal.timeToComplete;
-
-                // Beste Einfügeposition finden basierend auf prefTime
-                int bestIndex = findBestInsertionIndex(existing.timeSlots, goal.prefTime, duration, existing.start, scheduleEnd);
-                if (bestIndex < 0) continue;
-
-                // Startzeit bestimmen
-                LocalTime insertStart;
-                if (bestIndex == 0) {
-                    insertStart = existing.start;
-                } else {
-                    insertStart = existing.timeSlots.get(bestIndex - 1).end;
-                }
-                LocalTime slotEnd = insertStart.plusMinutes(duration);
-
-                // Goal-Slot erstellen
-                TimeSlot goalSlot = new TimeSlot();
-                goalSlot.start = insertStart;
-                goalSlot.end = slotEnd;
-                goalSlot.item = goal.id;
-                goalSlot.completed = false;
-
-                // Tasks innerhalb des Goal-Slots planen
-                List<trackedItem> tasks = getItems(day, goal.id);
-                if (!tasks.isEmpty()) {
-                    List<PrioritizedItem> sortedTasks = prioritize(tasks, day);
-                    SlotResult taskResult = toSlots(sortedTasks, insertStart, slotEnd, day, new ArrayList<>());
-                    if (!taskResult.slots().isEmpty()) {
-                        goalSlot.timeSlots = taskResult.slots();
-                        goalSlot.end = taskResult.actualEnd();
-                    }
-                }
-
-                // An bester Stelle einfügen und folgende Slots verschieben
-                existing.timeSlots.add(bestIndex, goalSlot);
-                shiftSlotsAfter(existing.timeSlots, bestIndex, scheduleEnd);
-            }
-        }
-
-        // 5. Task-Augmentation für bestehende Goals
-        for (int gi = 0; gi < existing.timeSlots.size(); gi++) {
-            TimeSlot goalSlot = existing.timeSlots.get(gi);
-            if (goalSlot.item == null) continue; // Calendar-Event überspringen
-
-            trackedItem goal = repo.fetch(Table.ITEMS, goalSlot.item);
-            if (goal == null) continue;
-
-            // Bereits geplante Task-IDs im Goal
-            Set<Long> plannedTaskIds = new HashSet<>();
-            if (goalSlot.timeSlots != null) {
-                for (TimeSlot taskSlot : goalSlot.timeSlots) {
-                    if (taskSlot.item != null) plannedTaskIds.add(taskSlot.item);
+        // goalSlot.end auf Ende des tatsächlichen Inhalts setzen
+        if (goalSlot.timeSlots != null && !goalSlot.timeSlots.isEmpty()) {
+            LocalTime actualEnd = goalSlot.start;
+            for (TimeSlot ts : goalSlot.timeSlots) {
+                if (ts.end != null && ts.end.isAfter(actualEnd)) {
+                    actualEnd = ts.end;
                 }
             }
-
-            // Neue eligible Tasks ermitteln
-            List<trackedItem> allTasks = getItems(day, goalSlot.item);
-            List<trackedItem> newTasks = new ArrayList<>();
-            for (trackedItem task : allTasks) {
-                if (!plannedTaskIds.contains(task.id)) {
-                    newTasks.add(task);
-                }
-            }
-            if (newTasks.isEmpty()) continue;
-
-            // Verfügbare Zeit = goal.timeToComplete - bereits verbrauchte Zeit
-            long usedMinutes = 0;
-            if (goalSlot.timeSlots != null) {
-                for (TimeSlot ts : goalSlot.timeSlots) {
-                    usedMinutes += ChronoUnit.MINUTES.between(ts.start, ts.end);
-                }
-            }
-            long available = goal.timeToComplete - usedMinutes;
-
-            // Niedrigste Task-Prio im Goal ermitteln
-            int lowestTaskPrio = 0;
-            if (goalSlot.timeSlots != null && !goalSlot.timeSlots.isEmpty()) {
-                List<trackedItem> existingTasks = new ArrayList<>();
-                for (TimeSlot ts : goalSlot.timeSlots) {
-                    if (ts.item != null) {
-                        trackedItem t = repo.fetch(Table.ITEMS, ts.item);
-                        if (t != null) existingTasks.add(t);
-                    }
-                }
-                List<PrioritizedItem> existingPrios = prioritize(existingTasks, day);
-                lowestTaskPrio = existingPrios.stream().mapToInt(PrioritizedItem::prio).min().orElse(0);
-            }
-
-            // Cursor ans Ende der bestehenden Tasks setzen
-            LocalTime taskCursor = goalSlot.start;
-            if (goalSlot.timeSlots != null) {
-                for (TimeSlot ts : goalSlot.timeSlots) {
-                    if (ts.end != null && ts.end.isAfter(taskCursor)) {
-                        taskCursor = ts.end;
-                    }
-                }
-            }
-
-            // Neue Tasks einfügen
-            boolean goalGrew = false;
-            List<PrioritizedItem> sortedNewTasks = prioritize(newTasks, day);
-            for (PrioritizedItem pi : sortedNewTasks) {
-                if (pi.prio() < lowestTaskPrio) break;
-                trackedItem task = pi.item();
-                if (task.timeToComplete > available) continue;
-
-                TimeSlot taskSlot = new TimeSlot();
-                taskSlot.start = taskCursor;
-                taskSlot.end = taskCursor.plusMinutes(task.timeToComplete);
-                taskSlot.item = task.id;
-                taskSlot.completed = false;
-
-                if (goalSlot.timeSlots == null) goalSlot.timeSlots = new ArrayList<>();
-                goalSlot.timeSlots.add(taskSlot);
-                taskCursor = taskSlot.end;
-                available -= task.timeToComplete;
-                goalGrew = true;
-            }
-
-            // Goal Slot Zeit anpassen und folgende Zeiten anpassen
-            if (goalGrew && taskCursor.isAfter(goalSlot.end)) {
-                goalSlot.end = taskCursor;
-                shiftSlotsAfter(existing.timeSlots, gi, scheduleEnd);
-            }
+            goalSlot.end = actualEnd;
         }
-
-        // 6. end-Zeit der Liste aktualisieren
-        LocalTime maxEnd = existing.start;
-        for (TimeSlot slot : existing.timeSlots) {
-            if (slot.end != null && slot.end.isAfter(maxEnd)) {
-                maxEnd = slot.end;
-            }
-        }
-        existing.end = maxEnd;
-    }
-
-    // Findet die beste Einfügeposition basierend auf prefTime
-    private int findBestInsertionIndex(List<TimeSlot> slots, LocalTime prefTime, int duration, LocalTime dayStart, LocalTime dayEnd) {
-        int bestIndex = -1;
-        long bestDistance = Long.MAX_VALUE;
-
-        // Alle Lücken zwischen bestehenden Slots prüfen
-        for (int i = 0; i <= slots.size(); i++) {
-            LocalTime gapStart = (i == 0) ? dayStart : slots.get(i - 1).end;
-            LocalTime gapEnd = (i == slots.size()) ? dayEnd : slots.get(i).start;
-
-            if (gapStart == null || gapEnd == null) continue;
-
-            long gapMinutes = ChronoUnit.MINUTES.between(gapStart, gapEnd);
-            if (gapMinutes < duration) continue; // Lücke zu klein
-
-            // Distanz der Lückenmitte zu prefTime berechnen
-            LocalTime gapMid = gapStart.plusMinutes(gapMinutes / 2);
-            long distance = Math.abs(ChronoUnit.MINUTES.between(prefTime, gapMid));
-
-            if (distance < bestDistance) {
-                bestDistance = distance;
-                bestIndex = i;
-            }
-        }
-
-        return bestIndex;
-    }
-
-    // Verschiebt alle Slots nach insertedIndex so dass keine Überlappungen entstehen
-    private void shiftSlotsAfter(List<TimeSlot> slots, int insertedIndex, LocalTime dayEnd) {
-        for (int i = insertedIndex + 1; i < slots.size(); i++) {
-            TimeSlot prev = slots.get(i - 1);
-            TimeSlot curr = slots.get(i);
-
-            if (prev.end != null && curr.start != null && prev.end.isAfter(curr.start)) {
-                long shift = ChronoUnit.MINUTES.between(curr.start, prev.end);
-                curr.start = curr.start.plusMinutes(shift);
-                curr.end = curr.end.plusMinutes(shift);
-
-                // Verschachtelte Task-Slots ebenfalls verschieben
-                if (curr.timeSlots != null) {
-                    for (TimeSlot taskSlot : curr.timeSlots) {
-                        taskSlot.start = taskSlot.start.plusMinutes(shift);
-                        taskSlot.end = taskSlot.end.plusMinutes(shift);
-                    }
-                }
-            }
-        }
-
-        // Slots die über dayEnd hinausragen entfernen
-        slots.removeIf(s -> s.start != null && !s.start.isBefore(dayEnd));
     }
 
 
-    private List<PrioritizedItem> timeAdjustItems (List<PrioritizedItem> sortedItems, LocalTime cursor) {
-        List<PrioritizedItem> timeAdjusteditems = new ArrayList<PrioritizedItem>();
-        for (PrioritizedItem pi : sortedItems) {
-            trackedItem item = pi.item;
-            // positiv = Cursor ist NACH prefTime (überfällig), negativ = Cursor ist VOR prefTime (zu früh)
-            long diff = ChronoUnit.MINUTES.between(item.prefTime, cursor);
-            double normalizedDiff;
-            if (diff >= 0) {
-                // Auf oder nach prefTime → keine Strafe
-                normalizedDiff = 1.0;
+    // ============================================================================
+    // assignSlot - Weist ein Item einem Slot zu, befüllt Goals mit Tasks,
+    //   erstellt freie Slots für übrige Zeit und plant das Item ein.
+    // ============================================================================
+    private void assignSlot(trackedItem item, SlotCandidate candidate, List<SlotCandidate> slotList) {
+        TimeSlot slot = candidate.slot();
+        todoList list = candidate.list();
+
+        // Originale Grenzen merken
+        LocalTime originalStart = slot.start;
+        LocalTime originalEnd = slot.end;
+
+        // 1. Wenn Slot bereits belegt → unplan
+        if (candidate.displaceable() != null) {
+            unPlan(candidate.displaceable(), list);
+        }
+
+        // 2. Wenn Slot zu groß für Item → beste Startzeit berechnen
+        long slotMinutes = ChronoUnit.MINUTES.between(originalStart, originalEnd);
+        if (slotMinutes > item.timeToComplete && item.prefTime != null) {
+            LocalTime latestStart = originalEnd.minusMinutes(item.timeToComplete);
+            if (item.prefTime.isBefore(originalStart)) {
+                slot.start = originalStart;
+            } else if (item.prefTime.isAfter(latestStart)) {
+                slot.start = latestStart;
             } else {
-                // Vor prefTime → Strafe proportional zur Distanz
-                normalizedDiff = Math.max(0.0, 1.0 + (diff / 480.0));
+                slot.start = item.prefTime;
             }
-            double logPrio = Math.log1p(pi.prio());
-            int adjustedPrio = (int)(logPrio * normalizedDiff * normalizedDiff * 100);
-            timeAdjusteditems.add(new PrioritizedItem(pi.item, adjustedPrio));
         }
-        timeAdjusteditems.sort((a, b) -> b.prio() - a.prio());
+        // End-Zeit: auf Slot-Grenze begrenzen falls Slot kürzer als Item
+        long actualDuration = Math.min(item.timeToComplete, slotMinutes);
+        slot.end = slot.start.plusMinutes(actualDuration);
 
-        return timeAdjusteditems;
+        // 3. Slot mit Item-Daten befüllen
+        slot.item = item.id;
+        slot.completed = false;
+
+        // 4. Wenn Goal → Tasks innerhalb des Goal-Slots platzieren
+        if (item.type == trackedItem.ItemType.GOAL) {
+            fillGoalTasks(slot, list);
+        }
+
+        // 5. Slot zur todoList hinzufügen (sortiert nach Startzeit)
+        if (list.timeSlots == null) {
+            list.timeSlots = new ArrayList<>();
+        }
+        int idx = 0;
+        for (int i = 0; i < list.timeSlots.size(); i++) {
+            if (list.timeSlots.get(i).start.isAfter(slot.start)) break;
+            idx = i + 1;
+        }
+        list.timeSlots.add(idx, slot);
+
+        // 6. Neue freie Slots für jetzt freie Zeit erstellen
+        if (originalStart.isBefore(slot.start)) {
+            TimeSlot freeBefore = new TimeSlot();
+            freeBefore.start = originalStart;
+            freeBefore.end = slot.start;
+            slotList.add(new SlotCandidate(freeBefore, list, null));
+        }
+        if (slot.end.isBefore(originalEnd)) {
+            TimeSlot freeAfter = new TimeSlot();
+            freeAfter.start = slot.end;
+            freeAfter.end = originalEnd;
+            slotList.add(new SlotCandidate(freeAfter, list, null));
+        }
+
+        // Verwendeten SlotCandidate aus der Liste entfernen
+        slotList.remove(candidate);
+
+        // 7. Item einplanen
+        item.schedule(list.date, repo);
     }
 
+    // ============================================================================
+    // calendarSync - Synchronisiert Calendar-Events und entplant Überlappungen
+    // ============================================================================
+    private void calendarSync(todoList list, LocalDate day, LocalTime start, LocalTime end) {
+        // 1. Alte Calendar-Events entfernen
+        if (list.timeSlots != null) {
+            list.timeSlots.removeIf(s -> s.isCalendarEvent != null && s.isCalendarEvent);
+        }
+
+        // 2. Frische Events holen
+        List<CalendarEvent> calEvents = calendar.getEventsForDay(day, start, end);
+        if (calEvents.isEmpty()) return;
+
+        if (list.timeSlots == null) list.timeSlots = new ArrayList<>();
+
+        for (CalendarEvent ev : calEvents) {
+            TimeSlot calSlot = new TimeSlot();
+            calSlot.start = ev.start().isBefore(start) ? start : ev.start();
+            calSlot.end = ev.end().isAfter(end) ? end : ev.end();
+            calSlot.isCalendarEvent = true;
+            calSlot.calendarTitle = ev.title();
+            calSlot.item = null;
+            calSlot.completed = null;
+
+            // 3. Überlappende Goals entplanen
+            List<TimeSlot> overlapping = new ArrayList<>();
+            for (TimeSlot slot : list.timeSlots) {
+                if (slot.item != null
+                    && slot.start.isBefore(calSlot.end)
+                    && slot.end.isAfter(calSlot.start)) {
+                    overlapping.add(slot);
+                }
+            }
+            for (TimeSlot ol : overlapping) {
+                unPlan(ol, list);
+            }
+
+            // Einfügen (sortiert nach Startzeit)
+            int idx = 0;
+            for (int i = 0; i < list.timeSlots.size(); i++) {
+                if (list.timeSlots.get(i).start.isAfter(calSlot.start)) break;
+                idx = i + 1;
+            }
+            list.timeSlots.add(idx, calSlot);
+        }
+    }
+
+
+    // ============================================================================
+    // unPlan - Entfernt ein Item aus seinem Slot, gibt das verdrängte Item zurück.
+    // ============================================================================
+    private trackedItem unPlan(TimeSlot slot, todoList list) {
+        trackedItem displaced = null;
+        if (slot.item != null) {
+            displaced = repo.fetch(Table.ITEMS, slot.item);
+
+            // scheduled-Datum wieder entfernen
+            if (displaced != null && displaced.scheduled != null) {
+                displaced.scheduled.remove(list.date);
+                displaced.blockedDays = displaced.getBlockedDays();
+                repo.write(displaced);
+            }
+        }
+
+        // Unter-Tasks auch entplanen (falls Goal)
+        if (slot.timeSlots != null) {
+            for (TimeSlot childSlot : slot.timeSlots) {
+                if (childSlot.item != null) {
+                    trackedItem childItem = repo.fetch(Table.ITEMS, childSlot.item);
+                    if (childItem != null && childItem.scheduled != null) {
+                        childItem.scheduled.remove(list.date);
+                        childItem.blockedDays = childItem.getBlockedDays();
+                        repo.write(childItem);
+                    }
+                }
+            }
+        }
+
+        // Slot aus der Liste entfernen
+        list.timeSlots.remove(slot);
+        return displaced;
+    }
+
+
+    // ============================================================================
+    // findFreeWindows - Findet freie Zeitfenster in einer todoList
+    // ============================================================================
+    private List<LocalTime[]> findFreeWindows(todoList list) {
+        List<LocalTime[]> windows = new ArrayList<>();
+        LocalTime cursor = list.start;
+
+        if (list.timeSlots == null || list.timeSlots.isEmpty()) {
+            windows.add(new LocalTime[]{list.start, list.end});
+            return windows;
+        }
+
+        // TimeSlots nach Startzeit sortieren (Android-kompatibel, kein Stream.toList())
+        List<TimeSlot> sorted = new ArrayList<>(list.timeSlots);
+        sorted.sort((a, b) -> a.start.compareTo(b.start));
+
+        for (TimeSlot slot : sorted) {
+            if (cursor.isBefore(slot.start)) {
+                windows.add(new LocalTime[]{cursor, slot.start});
+            }
+            cursor = slot.end.isAfter(cursor) ? slot.end : cursor;
+        }
+
+        // Lücke am Ende
+        if (cursor.isBefore(list.end)) {
+            windows.add(new LocalTime[]{cursor, list.end});
+        }
+
+        return windows;
+    }
 }

@@ -1,4 +1,4 @@
-package usecases.dailyPlanning;
+package scheduling;
 
 import android.content.ContentUris;
 import android.content.Context;

@@ -41,22 +41,23 @@ Configured in `build.gradle.kts` via custom `sourceSets`. Java 17, compileSdk/ta
 src/
 ├── activities/inApp/     # mainActivity (Launcher, Tab-UI), editItem (Create/Edit Modal)
 ├── activities/generic/   # UIConstants, ViewHelper, ViewBuilder, taskList (programmatische UI)
-├── entities/             # trackedItem, todoList, CalendarEvent, config
+├── entities/             # trackedItem, todoList, CalendarEvent, config (DaySchedule pro Wochentag)
 ├── repository/           # Repo (Interface), SQLrepo, Table, parser/ (itemParser, todoParser)
 ├── controller/           # todoManager, updateChecker, editorManager
 ├── data/                 # constants (DB_NAME, DB_VERSION), seedTestData
-├── scheduling/           # buildToDo (V1), buildToDoV2 (V2), cleanToDo, CalendarReader,
+├── scheduling/           # buildToDo, cleanToDo, CalendarReader,
 │                         # DailyPlanningScheduler, DailyPlanningReceiver, BootReceiver
 └── test/                 # MockRepo, TestBuildToDo (standalone tests)
 ```
 
-**Data flow:** `mainActivity` → `todoManager` (Controller) → `buildToDo`/`buildToDoV2` (UseCase) → `SQLrepo` (Repository)
+
+**Data flow:** `mainActivity` → `todoManager` (Controller) → `buildToDo` (UseCase) → `SQLrepo` (Repository)
 
 **Programmatische UI:** Es gibt keine XML-Layouts. Alle Views werden programmatisch in Java gebaut (`ViewBuilder`, `ViewHelper`, `UIConstants`). Neue UI-Elemente nicht als XML-Layouts anlegen, sondern programmatisch erstellen.
 
 **Background Scheduling:** `DailyPlanningScheduler` registriert AlarmManager-Trigger um 00:00 → `DailyPlanningReceiver` führt aus:
 1. `cleanToDo.clean()` — Gestrigen Plan auswerten (Slots → `trackedItem.update()`), veraltete Todos löschen, vergangene scheduled-Daten bereinigen
-2. `buildToDo.makeToDoList()` — Neuen 7-Tage-Plan erstellen
+2. `buildToDo.planWeek()` — Neuen 7-Tage-Plan erstellen
 3. `scheduleDaily()` — Nächsten Mitternachts-Alarm registrieren
 
 `BootReceiver` re-registriert den Alarm nach Geräte-Neustart.
@@ -76,7 +77,9 @@ src/
 - `REPS_PER_TIME` — "X mal pro Woche/Monat" (X times per week/month)
 - `DAY_OF_TIME` — "jeden Freitag" or "jeden 10." (every Friday / every 10th)
 
-**CalendarEvent** (`CalendarEvent.java`) — Java Record: `record CalendarEvent(String title, LocalTime start, LocalTime end)`. `CalendarReader` liest Device-Kalender via `CalendarContract.Instances`, `CalendarProvider` ist ein Functional Interface für testbare Kalender-Abstraktion in V2.
+**config** (`config.java`) — Hält `Map<DayOfWeek, DaySchedule>` mit Start-/Endzeit pro Wochentag (z.B. Mo 06:00–18:00). Wird von `buildToDo` genutzt um verfügbare Stunden pro Tag zu bestimmen. `DaySchedule` ist eine innere Klasse mit `start`/`end` (`LocalTime`).
+
+**CalendarEvent** (`CalendarEvent.java`) — Java Record: `record CalendarEvent(String title, LocalTime start, LocalTime end)`. `CalendarReader` liest Device-Kalender via `CalendarContract.Instances`, `CalendarProvider` ist ein Functional Interface für testbare Kalender-Abstraktion.
 
 **Repo Interface** (`Repo.java`) — Abstraktion über SQLrepo, ermöglicht MockRepo für Tests:
 ```java
@@ -99,21 +102,26 @@ public interface Repo {
 
 **MockRepo** (`src/test/MockRepo.java`) implementiert `Repo` mit In-Memory-Maps. Ermöglicht Tests des Scheduling-Algorithmus ohne SQLite/Android.
 
-**Standalone-Tests ausführen:** `TestBuildToDo.java` hat eine `main()`-Methode. Kann direkt als Java-Programm ausgeführt werden — benötigt nur die kompilierten Klassen aus `src/`, kein Android-Framework.
+**Standalone-Tests ausführen:** `TestBuildToDo.java` hat eine `main()`-Methode. Nach `./gradlew compileDebugJavaWithJavac` ausführen mit:
+```bash
+java -cp build/intermediates/javac/debug/compileDebugJavaWithJavac/classes test.TestBuildToDo
+```
 
 ## Scheduling Algorithm
 
-**Two versions exist:** `scheduling/buildToDo.java` (V1, chronologischer Cursor) und `scheduling/buildToDoV2.java` (V2, aktiv in Entwicklung).
-
-**buildToDoV2** — Globale Slot-Bewertung über alle 7 Tage gleichzeitig:
+**buildToDo** — Globale Slot-Bewertung über alle 7 Tage gleichzeitig:
 1. Load/create 7-day plans, sync calendar events
-2. Loop: `getItems()` + `prioritize()` → `placeItem(highest)` globally across all days
+2. Loop: `getItems()` + `prioritize()` → `tryMatch(highest)` globally across all days
 3. Verdrängungslogik: Higher-priority items replace lower-priority ones
 4. Persist to DB
+
+**Testability:** `buildToDo` nimmt `Repo`-Interface und `CalendarProvider` (Functional Interface) als Dependencies — ermöglicht vollständige Tests ohne Android.
 
 **Priority** basiert auf `Priority` enum (CRITICAL: 100000, HIGH: 400, MODERATE: 200, LOW: 100), plus Overdue-Bonus und Frequency-Multiplier. PrefTime-Matching via logarithmische Score-Funktion.
 
 **Skip conditions in getItems():** `item.blockedDays` enthält den Tag, oder (nur Goal → Project) `parent.blockedDays` enthält den Tag.
+
+**Task vs. Goal Slot-Fitting:** Tasks müssen komplett in einen Slot passen (werden übersprungen wenn zu wenig Zeit). Goals dürfen partiell eingeplant werden (slotCoverage reduziert die Prio proportional).
 
 **blockedDays-Mechanismus:** Jedes Item hat seine **eigenen** blockedDays. `trackedItem.getBlockedDays()` berechnet aus zwei Quellen:
 1. Cooldown-Fenster VOR und NACH `lastCompletion` und jedem `scheduled`-Datum (±N Tage)
@@ -124,9 +132,7 @@ public interface Repo {
 - `schedule()` — wenn Item eingeplant wird (+ propagiert scheduled-Datum zum Parent und berechnet Parent-blockedDays neu)
 - `unPlan()` — wenn Item verdrängt wird
 
-**Wichtig:** Goals erben NICHT die blockedDays ihres Parents. Stattdessen prüfen `getItems()` und `placeItem()` separat `parent.blockedDays` (nur für Goal → Project).
-
-**Testability:** `buildToDoV2` nimmt `Repo`-Interface und `CalendarProvider` (Functional Interface) als Dependencies — ermöglicht vollständige Tests ohne Android. `buildToDo` (V1) nutzt `SQLrepo` direkt und ist daher weniger testbar.
+**Wichtig:** Goals erben NICHT die blockedDays ihres Parents. Stattdessen prüfen `getItems()` und `tryMatch()` separat `parent.blockedDays` (nur für Goal → Project).
 
 ## Database
 

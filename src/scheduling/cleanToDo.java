@@ -1,4 +1,4 @@
-package usecases.dailyPlanning;
+package scheduling;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;

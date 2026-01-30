@@ -4,22 +4,24 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.text.Editable;
-import android.text.InputType;
 import android.text.TextWatcher;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+
 import static activities.generic.UIConstants.*;
 import static activities.generic.ViewHelper.*;
+
+import com.autosecretary.R;
 
 import activities.generic.ViewBuilder;
 
@@ -300,71 +302,16 @@ public class editItem implements ViewBuilder {
     // BUILDVIEW - Haupteinstieg: Baut Root-FrameLayout mit Tree + Modal
     // ============================================================================
     /**
-     * Erstellt die komplette View-Hierarchie für den "Verwalten"-Tab.
-     * FrameLayout als Root ermöglicht Modal-Overlay über dem ScrollView.
+     * Inflated die View-Hierarchie fuer den "Verwalten"-Tab aus XML.
+     * FrameLayout als Root ermoeglicht Modal-Overlay ueber dem ScrollView.
      *
      * @return Die fertige View zum Einbetten in mainActivity
      */
     public View buildView() {
-        root = new FrameLayout(context);
-        root.setLayoutParams(new FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT));
+        root = (FrameLayout) LayoutInflater.from(context).inflate(R.layout.view_edit_item, null);
 
-        // Hauptinhalt: ScrollView mit Toolbar + Baum
-        ScrollView scrollView = new ScrollView(context);
-        scrollView.setFillViewport(true);
-        scrollView.setLayoutParams(new FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT));
-
-        LinearLayout mainContent = new LinearLayout(context);
-        mainContent.setOrientation(LinearLayout.VERTICAL);
-        mainContent.setPadding(dp(context, 8), dp(context, 8), dp(context, 8), dp(context, 8));
-
-        mainContent.addView(buildToolbar());
-
-        treeContainer = new LinearLayout(context);
-        treeContainer.setOrientation(LinearLayout.VERTICAL);
-        mainContent.addView(treeContainer);
-
-        scrollView.addView(mainContent);
-        root.addView(scrollView);
-
-        // Modal-Overlay
-        modalOverlay = buildModal();
-        root.addView(modalOverlay);
-
-        // Baum initial aufbauen
-        buildTree();
-
-        return root;
-    }
-
-    // ============================================================================
-    // BUILDTOOLBAR - Suchleiste + Filter-Button + Create-Button
-    // ============================================================================
-    /**
-     * Horizontale Toolbar oben:
-     * - EditText (weight=1) mit TextWatcher für Suche
-     * - Filter-Button (togglet activeFilters)
-     * - "+" Button (ACCENT) → showModal(null)
-     */
-    private View buildToolbar() {
-        LinearLayout toolbar = new LinearLayout(context);
-        toolbar.setOrientation(LinearLayout.HORIZONTAL);
-        toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        toolbar.setPadding(dp(context, 4), dp(context, 4), dp(context, 4), dp(context, 4));
-
-        // Suchleiste
-        EditText searchField = new EditText(context);
-        searchField.setHint("Suchen...");
-        searchField.setSingleLine(true);
-        searchField.setTextSize(TypedValue.COMPLEX_UNIT_SP, SP_BODY);
-        LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(
-            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        searchParams.setMarginEnd(dp(context, 8));
-        searchField.setLayoutParams(searchParams);
+        // Toolbar-Elemente binden
+        EditText searchField = root.findViewById(R.id.search_field);
         searchField.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -374,20 +321,8 @@ public class editItem implements ViewBuilder {
                 applyFilter();
             }
         });
-        toolbar.addView(searchField);
 
-        // Filter-Button
-        Button filterBtn = new Button(context);
-        filterBtn.setText("F");
-        filterBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, SP_SMALL);
-        filterBtn.setMinimumWidth(dp(context, 40));
-        filterBtn.setMinimumHeight(dp(context, 40));
-        filterBtn.setPadding(dp(context, 4), 0, dp(context, 4), 0);
-        LinearLayout.LayoutParams filterParams = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT);
-        filterParams.setMarginEnd(dp(context, 8));
-        filterBtn.setLayoutParams(filterParams);
+        Button filterBtn = root.findViewById(R.id.btn_filter);
         filterBtn.setOnClickListener(v -> {
             // Cycle durch Filter-Modi: Alle → nur PROJECT → nur BLOCK → nur GOAL → nur TASK → Alle
             if (activeFilters.size() == 4) {
@@ -403,21 +338,20 @@ public class editItem implements ViewBuilder {
             }
             applyFilter();
         });
-        toolbar.addView(filterBtn);
 
-        // Create-Button
-        Button createBtn = new Button(context);
-        createBtn.setText("+");
-        createBtn.setTextColor(Color.WHITE);
-        createBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, SP_HEADING);
+        Button createBtn = root.findViewById(R.id.btn_create);
         createBtn.setBackground(roundedBg(context, ACCENT, CORNER_RADIUS));
-        createBtn.setMinimumWidth(dp(context, 40));
-        createBtn.setMinimumHeight(dp(context, 40));
-        createBtn.setPadding(dp(context, 8), 0, dp(context, 8), 0);
         createBtn.setOnClickListener(v -> showModal(null));
-        toolbar.addView(createBtn);
 
-        return toolbar;
+        treeContainer = root.findViewById(R.id.tree_container);
+
+        // Modal binden
+        bindModal(root);
+
+        // Baum initial aufbauen
+        buildTree();
+
+        return root;
     }
 
     // ============================================================================
@@ -548,272 +482,106 @@ public class editItem implements ViewBuilder {
     }
 
     // ============================================================================
-    // BUILDMODAL - Erstellt das Overlay + Formular (initial GONE)
+    // BINDMODAL - Bindet Modal-Elemente aus XML-Layout
     // ============================================================================
     /**
-     * Baut das modale Overlay:
-     * - FrameLayout mit halbtransparentem Background (0x80000000)
-     * - Zentrierte weiße Card (90% Breite)
-     * - ScrollView mit allen Formular-Feldern
-     * - Initial visibility = GONE
+     * Bindet alle Modal-Formularelemente aus dem inflated XML-Layout
+     * und registriert Click-Listener fuer Buttons, Save/Cancel.
      */
-    private View buildModal() {
-        // Overlay (halbtransparent)
-        FrameLayout overlay = new FrameLayout(context);
-        overlay.setBackgroundColor(OVERLAY_DIM);
-        overlay.setLayoutParams(new FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT));
-        overlay.setVisibility(View.GONE);
-        overlay.setOnClickListener(v -> hideModal());
+    private void bindModal(View root) {
+        modalOverlay = root.findViewById(R.id.modal_overlay);
+        modalOverlay.setOnClickListener(v -> hideModal());
 
-        // Card (weiß, 90% Breite, zentriert)
-        LinearLayout card = new LinearLayout(context);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackgroundColor(Color.WHITE);
-        card.setElevation(dp(context, 8));
-        FrameLayout.LayoutParams cardParams = new FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT);
-        cardParams.gravity = Gravity.CENTER;
-        cardParams.setMargins(dp(context, 20), dp(context, 32), dp(context, 20), dp(context, 32));
-        card.setLayoutParams(cardParams);
-        card.setOnClickListener(v -> {}); // Klick auf Card schließt nicht
+        // Formular-Felder binden
+        titleField = root.findViewById(R.id.field_title);
+        descriptionField = root.findViewById(R.id.field_description);
+        durationField = root.findViewById(R.id.field_duration);
+        cooldownField = root.findViewById(R.id.field_cooldown);
+        minIntervalField = root.findViewById(R.id.field_min_interval);
+        repValueField = root.findViewById(R.id.field_rep_value);
+        parentSpinner = root.findViewById(R.id.spinner_parent);
+        weekdaySpinner = root.findViewById(R.id.spinner_weekday);
+        errorText = root.findViewById(R.id.text_error);
 
-        // ScrollView für Formular
-        ScrollView formScroll = new ScrollView(context);
-        formScroll.setLayoutParams(new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT));
+        // Container fuer Visibility-Toggling
+        durationRow = root.findViewById(R.id.row_duration);
+        parentRow = root.findViewById(R.id.row_parent);
+        cooldownRow = root.findViewById(R.id.row_cooldown);
+        minIntervalRow = root.findViewById(R.id.row_min_interval);
+        repetitionSection = root.findViewById(R.id.section_repetition);
+        weekdayRow = root.findViewById(R.id.row_weekday);
 
-        LinearLayout form = new LinearLayout(context);
-        form.setOrientation(LinearLayout.VERTICAL);
-        form.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 16));
-
-        // === Typ-Auswahl ===
-        form.addView(buildLabel(context, "Typ"));
-        LinearLayout typeRow = new LinearLayout(context);
-        typeRow.setOrientation(LinearLayout.HORIZONTAL);
-        typeRow.setLayoutParams(new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT));
-        String[] typeLabels = {"TASK", "GOAL", "BLOCK", "PROJECT"};
+        // Typ-Buttons
+        typeButtons[0] = root.findViewById(R.id.btn_type_task);
+        typeButtons[1] = root.findViewById(R.id.btn_type_goal);
+        typeButtons[2] = root.findViewById(R.id.btn_type_block);
+        typeButtons[3] = root.findViewById(R.id.btn_type_project);
         ItemType[] types = {ItemType.TASK, ItemType.GOAL, ItemType.BLOCK, ItemType.PROJECT};
         for (int i = 0; i < 4; i++) {
             final int idx = i;
-            Button btn = new Button(context);
-            btn.setText(typeLabels[i]);
-            btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, SP_BADGE);
-            btn.setPadding(dp(context, 4), dp(context, 4), dp(context, 4), dp(context, 4));
-            LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-            btnParams.setMarginEnd(dp(context, 4));
-            btn.setLayoutParams(btnParams);
-            btn.setOnClickListener(v -> {
+            typeButtons[i].setOnClickListener(v -> {
                 selectedType = types[idx];
                 updateButtonGroup(typeButtons, idx);
                 updateFieldVisibility(selectedType);
                 refreshParentSpinner();
             });
-            typeButtons[i] = btn;
-            typeRow.addView(btn);
         }
-        form.addView(typeRow);
-        form.addView(buildSpacer(context,8));
 
-        // === Titel ===
-        form.addView(buildLabel(context, "Titel"));
-        titleField = new EditText(context);
-        titleField.setSingleLine(true);
-        titleField.setHint("Item-Titel");
-        titleField.setTextSize(TypedValue.COMPLEX_UNIT_SP, SP_BODY);
-        form.addView(titleField);
-
-        // === Beschreibung ===
-        form.addView(buildLabel(context, "Beschreibung"));
-        descriptionField = new EditText(context);
-        descriptionField.setHint("Beschreibung (optional)");
-        descriptionField.setMaxLines(3);
-        descriptionField.setTextSize(TypedValue.COMPLEX_UNIT_SP, SP_BODY);
-        form.addView(descriptionField);
-
-        // === Dauer ===
-        durationRow = buildNumberRow("Dauer (Minuten)", durationField = new EditText(context));
-        form.addView(durationRow);
-
-        // === Priorität ===
-        form.addView(buildLabel(context, "Priorität"));
-        LinearLayout prioRow = new LinearLayout(context);
-        prioRow.setOrientation(LinearLayout.HORIZONTAL);
-        prioRow.setLayoutParams(new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT));
-        String[] prioLabels = {"L", "M", "H", "C"};
+        // Prioritaet-Buttons
+        priorityButtons[0] = root.findViewById(R.id.btn_prio_low);
+        priorityButtons[1] = root.findViewById(R.id.btn_prio_moderate);
+        priorityButtons[2] = root.findViewById(R.id.btn_prio_high);
+        priorityButtons[3] = root.findViewById(R.id.btn_prio_critical);
         Priority[] priorities = {Priority.LOW, Priority.MODERATE, Priority.HIGH, Priority.CRITICAL};
         for (int i = 0; i < 4; i++) {
             final int idx = i;
-            Button btn = new Button(context);
-            btn.setText(prioLabels[i]);
-            btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, SP_SMALL);
-            LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-            btnParams.setMarginEnd(dp(context, 4));
-            btn.setLayoutParams(btnParams);
-            btn.setOnClickListener(v -> {
+            priorityButtons[i].setOnClickListener(v -> {
                 selectedPriority = priorities[idx];
                 updateButtonGroup(priorityButtons, idx);
             });
-            priorityButtons[i] = btn;
-            prioRow.addView(btn);
         }
-        form.addView(prioRow);
-        form.addView(buildSpacer(context,8));
-
-        // === Parent ===
-        parentRow = buildSpinnerRow("Parent", parentSpinner = new Spinner(context));
-        form.addView(parentRow);
-
-        // === Cooldown ===
-        cooldownRow = buildNumberRow("Cooldown (Tage)", cooldownField = new EditText(context));
-        form.addView(cooldownRow);
-
-        // === minIntervalDays ===
-        minIntervalRow = buildNumberRow("Min. Intervall (Tage)", minIntervalField = new EditText(context));
-        form.addView(minIntervalRow);
-
-        // === Wiederholung ===
-        repetitionSection = new LinearLayout(context);
-        repetitionSection.setOrientation(LinearLayout.VERTICAL);
-        repetitionSection.setLayoutParams(new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        repetitionSection.addView(buildLabel(context, "Wiederholung"));
 
         // RepType-Buttons
-        LinearLayout repTypeRow = new LinearLayout(context);
-        repTypeRow.setOrientation(LinearLayout.HORIZONTAL);
-        String[] repLabels = {"INTERVAL", "REPS", "DAY_OF"};
+        repTypeButtons[0] = root.findViewById(R.id.btn_rep_interval);
+        repTypeButtons[1] = root.findViewById(R.id.btn_rep_reps);
+        repTypeButtons[2] = root.findViewById(R.id.btn_rep_day_of);
         RepetitionType[] repTypes = {RepetitionType.INTERVAL, RepetitionType.REPS_PER_TIME, RepetitionType.DAY_OF_TIME};
         for (int i = 0; i < 3; i++) {
             final int idx = i;
-            Button btn = new Button(context);
-            btn.setText(repLabels[i]);
-            btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
-            LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-            btnParams.setMarginEnd(dp(context, 4));
-            btn.setLayoutParams(btnParams);
-            btn.setOnClickListener(v -> {
+            repTypeButtons[i].setOnClickListener(v -> {
                 selectedRepType = repTypes[idx];
                 updateButtonGroup(repTypeButtons, idx);
                 updateWeekdayVisibility();
             });
-            repTypeButtons[i] = btn;
-            repTypeRow.addView(btn);
         }
-        repetitionSection.addView(repTypeRow);
 
-        // Wert
-        repetitionSection.addView(buildNumberRow("Wert", repValueField = new EditText(context)));
-
-        // Einheit-Buttons
-        LinearLayout unitRow = new LinearLayout(context);
-        unitRow.setOrientation(LinearLayout.HORIZONTAL);
-        String[] unitLabels = {"TAG", "WOCHE", "MONAT"};
+        // RepUnit-Buttons
+        repUnitButtons[0] = root.findViewById(R.id.btn_unit_day);
+        repUnitButtons[1] = root.findViewById(R.id.btn_unit_week);
+        repUnitButtons[2] = root.findViewById(R.id.btn_unit_month);
         RepUnits[] units = {RepUnits.DAY, RepUnits.WEEK, RepUnits.MONTH};
         for (int i = 0; i < 3; i++) {
             final int idx = i;
-            Button btn = new Button(context);
-            btn.setText(unitLabels[i]);
-            btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
-            LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-            btnParams.setMarginEnd(dp(context, 4));
-            btn.setLayoutParams(btnParams);
-            btn.setOnClickListener(v -> {
+            repUnitButtons[i].setOnClickListener(v -> {
                 selectedRepUnit = units[idx];
                 updateButtonGroup(repUnitButtons, idx);
                 updateWeekdayVisibility();
             });
-            repUnitButtons[i] = btn;
-            unitRow.addView(btn);
         }
-        repetitionSection.addView(unitRow);
 
-        // Wochentag-Spinner (nur bei DAY_OF_TIME + WEEK)
-        weekdayRow = buildSpinnerRow("Wochentag", weekdaySpinner = new Spinner(context));
+        // Wochentag-Spinner vorbelegen
         String[] days = {"Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"};
         weekdaySpinner.setAdapter(new ArrayAdapter<>(context,
             android.R.layout.simple_spinner_dropdown_item, days));
-        repetitionSection.addView(weekdayRow);
 
-        form.addView(repetitionSection);
-        form.addView(buildSpacer(context,12));
-
-        // === Fehler-Text ===
-        errorText = new TextView(context);
-        errorText.setTextColor(TEXT_ERROR);
-        errorText.setTextSize(TypedValue.COMPLEX_UNIT_SP, SP_SMALL);
-        errorText.setVisibility(View.GONE);
-        form.addView(errorText);
-        form.addView(buildSpacer(context,8));
-
-        // === Speichern-Button ===
-        Button saveBtn = new Button(context);
-        saveBtn.setText("Speichern");
-        saveBtn.setTextColor(Color.WHITE);
+        // Save/Cancel
+        Button saveBtn = root.findViewById(R.id.btn_save);
         saveBtn.setBackground(roundedBg(context, ACCENT, CORNER_RADIUS));
-        saveBtn.setLayoutParams(new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT));
         saveBtn.setOnClickListener(v -> saveItem());
-        form.addView(saveBtn);
-        form.addView(buildSpacer(context,8));
 
-        // === Abbrechen-Button ===
-        Button cancelBtn = new Button(context);
-        cancelBtn.setText("Abbrechen");
-        cancelBtn.setTextColor(TEXT_SECONDARY);
+        Button cancelBtn = root.findViewById(R.id.btn_cancel);
         cancelBtn.setBackground(roundedBg(context, BUTTON_INACTIVE, CORNER_RADIUS));
-        cancelBtn.setLayoutParams(new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT));
         cancelBtn.setOnClickListener(v -> hideModal());
-        form.addView(cancelBtn);
-
-        formScroll.addView(form);
-        card.addView(formScroll);
-        overlay.addView(card);
-
-        return overlay;
-    }
-
-    // === Helfer für Modal-Aufbau ===
-
-    private View buildNumberRow(String label, EditText field) {
-        LinearLayout row = new LinearLayout(context);
-        row.setOrientation(LinearLayout.VERTICAL);
-        row.setLayoutParams(new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT));
-        row.addView(buildLabel(context, label));
-        field.setInputType(InputType.TYPE_CLASS_NUMBER);
-        field.setSingleLine(true);
-        field.setTextSize(TypedValue.COMPLEX_UNIT_SP, SP_BODY);
-        row.addView(field);
-        return row;
-    }
-
-    private View buildSpinnerRow(String label, Spinner spinner) {
-        LinearLayout row = new LinearLayout(context);
-        row.setOrientation(LinearLayout.VERTICAL);
-        row.setLayoutParams(new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT));
-        row.addView(buildLabel(context, label));
-        row.addView(spinner);
-        return row;
     }
 
     private void updateButtonGroup(Button[] buttons, int selectedIdx) {
