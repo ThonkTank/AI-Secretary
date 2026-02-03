@@ -19,7 +19,25 @@
     <color name="badge_goal">#FF1976D2</color>
     <color name="badge_task">#FF388E3C</color>
 
+    <!-- Streak Rarity Farben (MMO-Style) -->
+    <color name="rarity_common">#FF9E9E9E</color>
+    <color name="rarity_uncommon">#FF4CAF50</color>
+    <color name="rarity_rare">#FF2196F3</color>
+    <color name="rarity_epic">#FF9C27B0</color>
+    <color name="rarity_legendary">#FFFFC107</color>
+
+    <!-- Timeline -->
+    <color name="timeline_hour_line">#FFE0E0E0</color>
+    <color name="timeline_hour_text">#FF9E9E9E</color>
+    <color name="timeline_now_line">#FFD32F2F</color>
+
     <!-- Sonstige -->
     <color name="header_bg">#FF455A64</color>
     <color name="calendar_event_bg">#FFE3F2FD</color>
+    <color name="text_description">#FF616161</color>
+
+    <!-- Widget-spezifische Farben -->
+    <color name="accent_light">#FFB3D4FC</color>
+    <color name="text_on_header">#FFFFFFFF</color>
+    <color name="white">#FFFFFFFF</color>
 </resources>

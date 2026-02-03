@@ -38,5 +38,7 @@ public class DailyPlanningReceiver extends BroadcastReceiver {
         // 3. Nächsten Alarm registrieren
         DailyPlanningScheduler.scheduleDaily(context);
         Log.d(TAG, "Nächster Alarm registriert");
+
+        // TODO: Widget-Update nach Neuimplementierung wieder einfügen
     }
 }

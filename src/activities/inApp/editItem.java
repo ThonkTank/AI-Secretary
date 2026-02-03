@@ -2,11 +2,8 @@ package activities.inApp;
 
 import android.content.Context;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.TypedValue;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -17,15 +14,18 @@ import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-
-import static activities.generic.UIConstants.*;
 import static activities.generic.ViewHelper.*;
+
+import androidx.core.content.ContextCompat;
 
 import com.autosecretary.R;
 
 import activities.generic.ViewBuilder;
 
+import android.app.DatePickerDialog;
+
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -254,8 +254,13 @@ public class editItem implements ViewBuilder {
     private EditText descriptionField;
     private EditText durationField;
     private EditText cooldownField;
+    private EditText deadlineField;
     private EditText minIntervalField;
     private EditText repValueField;
+    private EditText progressCurrentField;
+    private EditText progressTargetField;
+    private EditText progressUnitField;
+    private EditText goalIconField;
     private Spinner parentSpinner;
     private Spinner weekdaySpinner;
     private TextView errorText;
@@ -264,24 +269,37 @@ public class editItem implements ViewBuilder {
     private View durationRow;
     private View parentRow;
     private View cooldownRow;
+    private View deadlineRow;
     private View minIntervalRow;
+    private View progressRow;
+    private View goalIconRow;
+    private View goalColorRow;
+    private LinearLayout colorGrid;
     private LinearLayout repetitionSection;
+    private View repDetailsSection;
     private View weekdayRow;
 
     // Typ-Buttons (für Disable im Edit-Modus)
     private Button[] typeButtons = new Button[4];
     private Button[] priorityButtons = new Button[4];
-    private Button[] repTypeButtons = new Button[3];
+    private Button[] repTypeButtons = new Button[4];
     private Button[] repUnitButtons = new Button[3];
 
     // Parent-Auswahl Daten
     private List<trackedItem> availableParents = new ArrayList<>();
 
+    // Farb-Palette fuer Goal-Farben
+    private static final String[] GOAL_COLORS = {
+        "#FFE53935", "#FFD81B60", "#FF8E24AA", "#FF5E35B1", "#FF1E88E5",
+        "#FF00ACC1", "#FF00897B", "#FF43A047", "#FFFB8C00", "#FF6D4C41"
+    };
+
     // Modal-Zustand
     private ItemType selectedType = ItemType.TASK;
     private Priority selectedPriority = Priority.MODERATE;
-    private RepetitionType selectedRepType = RepetitionType.INTERVAL;
+    private RepetitionType selectedRepType = RepetitionType.NONE;
     private RepUnits selectedRepUnit = RepUnits.DAY;
+    private String selectedGoalColor = null;
     private trackedItem editingItem = null;  // null = Create-Modus
 
     // Baum-Zustand
@@ -340,7 +358,7 @@ public class editItem implements ViewBuilder {
         });
 
         Button createBtn = root.findViewById(R.id.btn_create);
-        createBtn.setBackground(roundedBg(context, ACCENT, CORNER_RADIUS));
+        createBtn.setBackground(roundedBg(context, ContextCompat.getColor(context, R.color.accent), 4));
         createBtn.setOnClickListener(v -> showModal(null));
 
         treeContainer = root.findViewById(R.id.tree_container);
@@ -389,20 +407,19 @@ public class editItem implements ViewBuilder {
         trackedItem item = entry.item();
         int depth = entry.depth();
 
-        LinearLayout row = new LinearLayout(context);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(context, 16 * depth + 8), dp(context, 10), dp(context, 8), dp(context, 10));
-        row.setBackgroundColor(SURFACE);
+        LinearLayout row = (LinearLayout) LayoutInflater.from(context)
+            .inflate(R.layout.row_tree_item, treeContainer, false);
 
-        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT);
+        // Dynamisches Padding links basierend auf Tiefe
+        row.setPaddingRelative(dp(context, 16 * depth + 8),
+            row.getPaddingTop(), row.getPaddingEnd(), row.getPaddingBottom());
+
+        // Trenn-Margin
+        LinearLayout.LayoutParams rowParams = (LinearLayout.LayoutParams) row.getLayoutParams();
         rowParams.setMargins(0, dp(context, 1), 0, 0);
-        row.setLayoutParams(rowParams);
 
-        // Typ-Badge
-        TextView badge = new TextView(context);
+        // Badge: Label + Farbe nach Typ
+        TextView badge = row.findViewById(R.id.tree_badge);
         String badgeLabel = switch (item.type) {
             case PROJECT -> "P";
             case BLOCK -> "B";
@@ -410,56 +427,34 @@ public class editItem implements ViewBuilder {
             case TASK -> "T";
         };
         int badgeColor = switch (item.type) {
-            case PROJECT -> BADGE_PROJECT;
-            case BLOCK -> BADGE_BLOCK;
-            case GOAL -> BADGE_GOAL;
-            case TASK -> BADGE_TASK;
+            case PROJECT -> ContextCompat.getColor(context, R.color.badge_project);
+            case BLOCK -> ContextCompat.getColor(context, R.color.badge_block);
+            case GOAL -> ContextCompat.getColor(context, R.color.badge_goal);
+            case TASK -> ContextCompat.getColor(context, R.color.badge_task);
         };
         badge.setText(badgeLabel);
-        badge.setTextColor(Color.WHITE);
-        badge.setTextSize(TypedValue.COMPLEX_UNIT_SP, SP_BADGE);
-        badge.setTypeface(null, Typeface.BOLD);
-        badge.setGravity(Gravity.CENTER);
         badge.setBackground(roundedBg(context, badgeColor, 3));
-        badge.setMinWidth(dp(context, 22));
-        badge.setPadding(dp(context, 4), dp(context, 2), dp(context, 4), dp(context, 2));
-        LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT);
-        badgeParams.setMarginEnd(dp(context, 8));
-        badge.setLayoutParams(badgeParams);
-        row.addView(badge);
 
         // Titel
-        TextView title = new TextView(context);
+        TextView title = row.findViewById(R.id.tree_title);
         title.setText(item.title);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, SP_BODY);
-        title.setTextColor(TEXT_PRIMARY);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        title.setLayoutParams(titleParams);
-        row.addView(title);
 
-        // Expand-Indikator für Items mit Kindern
+        // Expand-Pfeil (nur bei Items mit Kindern)
         boolean hasChildren = item.children != null && !item.children.isEmpty();
         if (hasChildren) {
-            TextView arrow = new TextView(context);
+            TextView arrow = row.findViewById(R.id.tree_arrow);
+            arrow.setVisibility(View.VISIBLE);
             Boolean expanded = expandedState.getOrDefault(item.id, true);
-            arrow.setText(expanded ? "▼" : "▶");
-            arrow.setTextSize(TypedValue.COMPLEX_UNIT_SP, SP_SMALL);
-            arrow.setTextColor(TEXT_SECONDARY);
-            row.addView(arrow);
+            arrow.setText(expanded ? "\u25BC" : "\u25B6");
         }
 
         // Klick-Handler
         row.setOnClickListener(v -> {
             if (hasChildren) {
-                // Toggle expand/collapse
                 boolean currentlyExpanded = expandedState.getOrDefault(item.id, true);
                 expandedState.put(item.id, !currentlyExpanded);
                 refreshTree();
             } else {
-                // Blatt-Item: Edit
                 showModal(item);
             }
         });
@@ -469,14 +464,6 @@ public class editItem implements ViewBuilder {
             showModal(item);
             return true;
         });
-
-        // Sichtbarkeit basierend auf Parent-Expand-State
-        if (depth > 0 && item.parent != null) {
-            Boolean parentExpanded = expandedState.getOrDefault(item.parent, true);
-            if (!parentExpanded) {
-                row.setVisibility(View.GONE);
-            }
-        }
 
         return row;
     }
@@ -499,6 +486,9 @@ public class editItem implements ViewBuilder {
         cooldownField = root.findViewById(R.id.field_cooldown);
         minIntervalField = root.findViewById(R.id.field_min_interval);
         repValueField = root.findViewById(R.id.field_rep_value);
+        progressCurrentField = root.findViewById(R.id.field_progress_current);
+        progressTargetField = root.findViewById(R.id.field_progress_target);
+        progressUnitField = root.findViewById(R.id.field_progress_unit);
         parentSpinner = root.findViewById(R.id.spinner_parent);
         weekdaySpinner = root.findViewById(R.id.spinner_weekday);
         errorText = root.findViewById(R.id.text_error);
@@ -507,7 +497,22 @@ public class editItem implements ViewBuilder {
         durationRow = root.findViewById(R.id.row_duration);
         parentRow = root.findViewById(R.id.row_parent);
         cooldownRow = root.findViewById(R.id.row_cooldown);
+        deadlineRow = root.findViewById(R.id.row_deadline);
+        deadlineField = root.findViewById(R.id.field_deadline);
+        deadlineField.setOnClickListener(v -> {
+            LocalDate init = LocalDate.now().plusDays(7);
+            new DatePickerDialog(context, (dp, y, m, d) -> {
+                LocalDate picked = LocalDate.of(y, m + 1, d);
+                deadlineField.setText(picked.toString());
+            }, init.getYear(), init.getMonthValue() - 1, init.getDayOfMonth()).show();
+        });
+        goalIconRow = root.findViewById(R.id.row_goal_icon);
+        goalIconField = root.findViewById(R.id.field_goal_icon);
+        goalColorRow = root.findViewById(R.id.row_goal_color);
+        colorGrid = root.findViewById(R.id.color_grid);
+        buildColorGrid();
         minIntervalRow = root.findViewById(R.id.row_min_interval);
+        progressRow = root.findViewById(R.id.row_progress);
         repetitionSection = root.findViewById(R.id.section_repetition);
         weekdayRow = root.findViewById(R.id.row_weekday);
 
@@ -542,15 +547,18 @@ public class editItem implements ViewBuilder {
         }
 
         // RepType-Buttons
-        repTypeButtons[0] = root.findViewById(R.id.btn_rep_interval);
-        repTypeButtons[1] = root.findViewById(R.id.btn_rep_reps);
-        repTypeButtons[2] = root.findViewById(R.id.btn_rep_day_of);
-        RepetitionType[] repTypes = {RepetitionType.INTERVAL, RepetitionType.REPS_PER_TIME, RepetitionType.DAY_OF_TIME};
-        for (int i = 0; i < 3; i++) {
+        repTypeButtons[0] = root.findViewById(R.id.btn_rep_none);
+        repTypeButtons[1] = root.findViewById(R.id.btn_rep_interval);
+        repTypeButtons[2] = root.findViewById(R.id.btn_rep_reps);
+        repTypeButtons[3] = root.findViewById(R.id.btn_rep_day_of);
+        repDetailsSection = root.findViewById(R.id.section_rep_details);
+        RepetitionType[] repTypes = {RepetitionType.NONE, RepetitionType.INTERVAL, RepetitionType.REPS_PER_TIME, RepetitionType.DAY_OF_TIME};
+        for (int i = 0; i < 4; i++) {
             final int idx = i;
             repTypeButtons[i].setOnClickListener(v -> {
                 selectedRepType = repTypes[idx];
                 updateButtonGroup(repTypeButtons, idx);
+                updateRepDetailsVisibility();
                 updateWeekdayVisibility();
             });
         }
@@ -576,23 +584,26 @@ public class editItem implements ViewBuilder {
 
         // Save/Cancel
         Button saveBtn = root.findViewById(R.id.btn_save);
-        saveBtn.setBackground(roundedBg(context, ACCENT, CORNER_RADIUS));
+        saveBtn.setBackground(roundedBg(context, ContextCompat.getColor(context, R.color.accent), 4));
         saveBtn.setOnClickListener(v -> saveItem());
 
         Button cancelBtn = root.findViewById(R.id.btn_cancel);
-        cancelBtn.setBackground(roundedBg(context, BUTTON_INACTIVE, CORNER_RADIUS));
+        cancelBtn.setBackground(roundedBg(context, ContextCompat.getColor(context, R.color.button_inactive), 4));
         cancelBtn.setOnClickListener(v -> hideModal());
     }
 
     private void updateButtonGroup(Button[] buttons, int selectedIdx) {
+        int accent = ContextCompat.getColor(context, R.color.accent);
+        int inactive = ContextCompat.getColor(context, R.color.button_inactive);
+        int textPrimary = ContextCompat.getColor(context, R.color.text_primary);
         for (int i = 0; i < buttons.length; i++) {
             if (buttons[i] == null) continue;
             if (i == selectedIdx) {
-                buttons[i].setBackgroundColor(ACCENT);
+                buttons[i].setBackgroundColor(accent);
                 buttons[i].setTextColor(Color.WHITE);
             } else {
-                buttons[i].setBackgroundColor(BUTTON_INACTIVE);
-                buttons[i].setTextColor(TEXT_PRIMARY);
+                buttons[i].setBackgroundColor(inactive);
+                buttons[i].setTextColor(textPrimary);
             }
         }
     }
@@ -606,6 +617,15 @@ public class editItem implements ViewBuilder {
         }
         parentSpinner.setAdapter(new ArrayAdapter<>(context,
             android.R.layout.simple_spinner_dropdown_item, parentNames));
+    }
+
+    private void updateRepDetailsVisibility() {
+        boolean show = selectedRepType != RepetitionType.NONE;
+        repDetailsSection.setVisibility(show ? View.VISIBLE : View.GONE);
+        // Deadline nur bei einmaligen Tasks (NONE) sichtbar
+        if (selectedType == ItemType.TASK) {
+            deadlineRow.setVisibility(show ? View.GONE : View.VISIBLE);
+        }
     }
 
     private void updateWeekdayVisibility() {
@@ -632,15 +652,22 @@ public class editItem implements ViewBuilder {
             // Create-Modus: leere Felder, Typ-Buttons aktiv
             selectedType = ItemType.TASK;
             selectedPriority = Priority.MODERATE;
-            selectedRepType = RepetitionType.INTERVAL;
+            selectedRepType = RepetitionType.NONE;
             selectedRepUnit = RepUnits.DAY;
 
             titleField.setText("");
             descriptionField.setText("");
             durationField.setText("");
             cooldownField.setText("");
+            deadlineField.setText("");
             minIntervalField.setText("");
             repValueField.setText("");
+            progressCurrentField.setText("");
+            progressTargetField.setText("");
+            progressUnitField.setText("");
+            goalIconField.setText("");
+            selectedGoalColor = null;
+            highlightSelectedColor();
 
             for (Button btn : typeButtons) btn.setEnabled(true);
             updateButtonGroup(typeButtons, 0);
@@ -656,7 +683,14 @@ public class editItem implements ViewBuilder {
             descriptionField.setText(item.description != null ? item.description : "");
             durationField.setText(item.timeToComplete > 0 ? String.valueOf(item.timeToComplete) : "");
             cooldownField.setText(item.cooldown > 0 ? String.valueOf(item.cooldown) : "");
+            deadlineField.setText(item.deadline != null ? item.deadline.toString() : "");
             minIntervalField.setText(item.minIntervalDays > 0 ? String.valueOf(item.minIntervalDays) : "");
+            progressCurrentField.setText(item.progressCurrent > 0 ? String.valueOf(item.progressCurrent) : "");
+            progressTargetField.setText(item.progressTarget > 0 ? String.valueOf(item.progressTarget) : "");
+            progressUnitField.setText(item.progressUnit != null ? item.progressUnit : "");
+            goalIconField.setText(item.goalIcon != null ? item.goalIcon : "");
+            selectedGoalColor = item.goalColor;
+            highlightSelectedColor();
 
             // Typ-Buttons: disabled + korrekt selektiert
             int typeIdx = switch (item.type) {
@@ -683,9 +717,10 @@ public class editItem implements ViewBuilder {
                 selectedRepUnit = item.repetition.unit;
                 repValueField.setText(String.valueOf(item.repetition.value));
                 int repIdx = switch (selectedRepType) {
-                    case INTERVAL -> 0;
-                    case REPS_PER_TIME -> 1;
-                    case DAY_OF_TIME -> 2;
+                    case NONE -> 0;
+                    case INTERVAL -> 1;
+                    case REPS_PER_TIME -> 2;
+                    case DAY_OF_TIME -> 3;
                 };
                 updateButtonGroup(repTypeButtons, repIdx);
                 int unitIdx = switch (selectedRepUnit) {
@@ -698,6 +733,7 @@ public class editItem implements ViewBuilder {
                     weekdaySpinner.setSelection(item.repetition.dayOfWeek.getValue() - 1);
                 }
             } else {
+                selectedRepType = RepetitionType.NONE;
                 repValueField.setText("");
                 updateButtonGroup(repTypeButtons, 0);
                 updateButtonGroup(repUnitButtons, 0);
@@ -717,6 +753,7 @@ public class editItem implements ViewBuilder {
             }
         }
 
+        updateRepDetailsVisibility();
         updateWeekdayVisibility();
         modalOverlay.setVisibility(View.VISIBLE);
     }
@@ -762,6 +799,13 @@ public class editItem implements ViewBuilder {
             catch (NumberFormatException e) { /* ignorieren */ }
         }
 
+        // Deadline
+        String dlStr = deadlineField.getText().toString().trim();
+        if (!dlStr.isEmpty()) {
+            try { builder.deadline(dlStr); }
+            catch (Exception e) { /* ignorieren */ }
+        }
+
         // Cooldown
         String cdStr = cooldownField.getText().toString().trim();
         if (!cdStr.isEmpty()) {
@@ -776,6 +820,25 @@ public class editItem implements ViewBuilder {
             catch (NumberFormatException e) { /* ignorieren */ }
         }
 
+        // Fortschritt
+        String ptStr = progressTargetField.getText().toString().trim();
+        if (!ptStr.isEmpty()) {
+            try { builder.progressTarget(Integer.parseInt(ptStr)); }
+            catch (NumberFormatException e) { /* ignorieren */ }
+        }
+        String pcStr = progressCurrentField.getText().toString().trim();
+        if (!pcStr.isEmpty()) {
+            try { builder.progressCurrent(Integer.parseInt(pcStr)); }
+            catch (NumberFormatException e) { /* ignorieren */ }
+        }
+        String puStr = progressUnitField.getText().toString().trim();
+        if (!puStr.isEmpty()) builder.progressUnit(puStr);
+
+        // Goal-Icon und -Farbe
+        String iconStr = goalIconField.getText().toString().trim();
+        if (!iconStr.isEmpty()) builder.goalIcon(iconStr);
+        if (selectedGoalColor != null) builder.goalColor(selectedGoalColor);
+
         // Parent
         int parentIdx = parentSpinner.getSelectedItemPosition();
         if (parentIdx > 0 && parentIdx <= availableParents.size()) {
@@ -784,18 +847,22 @@ public class editItem implements ViewBuilder {
 
         // Wiederholung (nur bei TASK)
         if (selectedType == ItemType.TASK) {
-            String repStr = repValueField.getText().toString().trim();
-            if (!repStr.isEmpty()) {
-                try {
-                    int repValue = Integer.parseInt(repStr);
-                    if (selectedRepType == RepetitionType.DAY_OF_TIME
-                        && selectedRepUnit == RepUnits.WEEK) {
-                        DayOfWeek dow = DayOfWeek.of(weekdaySpinner.getSelectedItemPosition() + 1);
-                        builder.repetition(selectedRepType, repValue, selectedRepUnit, dow);
-                    } else {
-                        builder.repetition(selectedRepType, repValue, selectedRepUnit);
-                    }
-                } catch (NumberFormatException e) { /* ignorieren */ }
+            if (selectedRepType == RepetitionType.NONE) {
+                builder.noRepetition();
+            } else {
+                String repStr = repValueField.getText().toString().trim();
+                if (!repStr.isEmpty()) {
+                    try {
+                        int repValue = Integer.parseInt(repStr);
+                        if (selectedRepType == RepetitionType.DAY_OF_TIME
+                            && selectedRepUnit == RepUnits.WEEK) {
+                            DayOfWeek dow = DayOfWeek.of(weekdaySpinner.getSelectedItemPosition() + 1);
+                            builder.repetition(selectedRepType, repValue, selectedRepUnit, dow);
+                        } else {
+                            builder.repetition(selectedRepType, repValue, selectedRepUnit);
+                        }
+                    } catch (NumberFormatException e) { /* ignorieren */ }
+                }
             }
         }
 
@@ -842,8 +909,18 @@ public class editItem implements ViewBuilder {
      * Iteriert über treeContainer-Kinder und setzt visibility basierend auf:
      * - searchQuery (title.toLowerCase().contains)
      * - activeFilters (Set<ItemType>)
+     * - Ancestor-Expand-State (gesamte Vorfahren-Kette wird geprüft)
      */
     private void applyFilter() {
+        // Lookup-Map: itemId → TreeEntry für Ancestor-Traversal
+        Map<Long, TreeEntry> entryById = new HashMap<>();
+        for (int i = 0; i < treeContainer.getChildCount(); i++) {
+            Object tag = treeContainer.getChildAt(i).getTag();
+            if (tag instanceof TreeEntry te && te.item().id != null) {
+                entryById.put(te.item().id, te);
+            }
+        }
+
         for (int i = 0; i < treeContainer.getChildCount(); i++) {
             View child = treeContainer.getChildAt(i);
             Object tag = child.getTag();
@@ -854,16 +931,29 @@ public class editItem implements ViewBuilder {
                 || (item.title != null && item.title.toLowerCase().contains(searchQuery));
             boolean matchesFilter = activeFilters.contains(item.type);
 
-            // Expand-State prüfen
-            boolean parentCollapsed = false;
-            if (entry.depth() > 0 && item.parent != null) {
-                Boolean expanded = expandedState.getOrDefault(item.parent, true);
-                if (!expanded) parentCollapsed = true;
-            }
+            // Gesamte Vorfahren-Kette prüfen
+            boolean ancestorCollapsed = isAnyAncestorCollapsed(item, entryById);
 
-            child.setVisibility(matchesSearch && matchesFilter && !parentCollapsed
+            child.setVisibility(matchesSearch && matchesFilter && !ancestorCollapsed
                 ? View.VISIBLE : View.GONE);
         }
+    }
+
+    /**
+     * Prüft ob irgendein Vorfahre in der Hierarchie kollabiert ist.
+     * Wandert von item.parent aufwärts bis zur Wurzel (parent == null).
+     */
+    private boolean isAnyAncestorCollapsed(trackedItem item, Map<Long, TreeEntry> entryById) {
+        Long currentParentId = item.parent;
+        while (currentParentId != null) {
+            Boolean expanded = expandedState.getOrDefault(currentParentId, true);
+            if (!expanded) return true;
+
+            TreeEntry parentEntry = entryById.get(currentParentId);
+            if (parentEntry == null) break;
+            currentParentId = parentEntry.item().parent;
+        }
+        return false;
     }
 
     // ============================================================================
@@ -877,20 +967,59 @@ public class editItem implements ViewBuilder {
      * PROJECT: minIntervalDays ✓
      */
     private void updateFieldVisibility(ItemType type) {
-        // TASK: Dauer ✓, Parent ✓, Cooldown ✓, Wiederholung ✓
-        // GOAL: Dauer ✓, Parent ✓
-        // BLOCK: Parent ✓
-        // PROJECT: minIntervalDays ✓
         durationRow.setVisibility(
             (type == ItemType.TASK || type == ItemType.GOAL) ? View.VISIBLE : View.GONE);
         parentRow.setVisibility(
             (type != ItemType.PROJECT) ? View.VISIBLE : View.GONE);
         cooldownRow.setVisibility(
             (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
+        deadlineRow.setVisibility(
+            (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
         minIntervalRow.setVisibility(
             (type == ItemType.PROJECT) ? View.VISIBLE : View.GONE);
+        progressRow.setVisibility(
+            (type == ItemType.TASK || type == ItemType.GOAL) ? View.VISIBLE : View.GONE);
+        goalIconRow.setVisibility(
+            (type == ItemType.GOAL) ? View.VISIBLE : View.GONE);
+        goalColorRow.setVisibility(
+            (type == ItemType.GOAL) ? View.VISIBLE : View.GONE);
         repetitionSection.setVisibility(
             (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
+    }
+
+    // ============================================================================
+    // BUILDCOLORGRID - Erstellt Farb-Buttons programmatisch
+    // ============================================================================
+    private void buildColorGrid() {
+        int size = dp(context, 32);
+        int margin = dp(context, 4);
+        for (String hex : GOAL_COLORS) {
+            View swatch = new View(context);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
+            lp.setMargins(margin, margin, margin, margin);
+            swatch.setLayoutParams(lp);
+            try {
+                swatch.setBackground(roundedBg(context, Color.parseColor(hex), 4));
+            } catch (IllegalArgumentException e) {
+                continue;
+            }
+            swatch.setOnClickListener(v -> {
+                selectedGoalColor = hex;
+                highlightSelectedColor();
+            });
+            swatch.setTag(hex);
+            colorGrid.addView(swatch);
+        }
+    }
+
+    private void highlightSelectedColor() {
+        for (int i = 0; i < colorGrid.getChildCount(); i++) {
+            View child = colorGrid.getChildAt(i);
+            String hex = (String) child.getTag();
+            float scale = hex.equals(selectedGoalColor) ? 1.3f : 1.0f;
+            child.setScaleX(scale);
+            child.setScaleY(scale);
+        }
     }
 
 }

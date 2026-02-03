@@ -1,6 +1,7 @@
 package controller;
 
 import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -12,6 +13,8 @@ import entities.todoList;
 import entities.trackedItem;
 import repository.SQLrepo;
 import repository.Table;
+import scheduling.buildToDo;
+import scheduling.CalendarReader;
 
 public class todoManager {
 
@@ -93,11 +96,13 @@ public class todoManager {
      *
      */
 
+    private Context context;
     private SQLrepo repo;
     private todoList todayList;
     private TodoListener listener;
 
     public todoManager(Context context) {
+        this.context = context;
         this.repo = new SQLrepo(context);
     }
 
@@ -116,8 +121,66 @@ public class todoManager {
         String goalTitle,       // Titel des übergeordneten Goals
         Long goalSlotId,        // Goal-Slot ID (für Goal-Completion-Check)
         boolean isCalendarEvent,// Kalender-Termin (nicht abhakbar)
-        LocalTime workStart     // Timer gestartet? (null = nicht gestartet)
+        LocalTime workStart,    // Timer gestartet? (null = nicht gestartet)
+        LocalDate deadline,     // Fälligkeitsdatum (null = keine Deadline)
+        String goalIcon,        // Emoji-Icon des Goals (null = kein Icon)
+        String goalColor,       // Hex-Farbcode des Goals (null = Standard)
+        int currentStreak       // Aktuelle Streak-Laenge des Tasks
     ) {}
+
+    // ============================================================================
+    // getTodayStart / getTodayEnd - Tagesgrenzen aus todayList exponieren
+    // ============================================================================
+    public LocalTime getTodayStart() {
+        return todayList != null ? todayList.start : LocalTime.of(6, 0);
+    }
+
+    public LocalTime getTodayEnd() {
+        return todayList != null ? todayList.end : LocalTime.of(18, 0);
+    }
+
+    // ============================================================================
+    // replanToday - Löscht heutigen Plan und generiert ihn neu via buildToDo
+    // ============================================================================
+    public void replanToday() {
+        LocalDate today = LocalDate.now();
+        todoList todayPlan = repo.fetch(Table.TODOS, Map.of("date", today.toString()));
+
+        if (todayPlan != null) {
+            // Eingeplante Items entplanen (scheduled-Datum entfernen)
+            if (todayPlan.timeSlots != null) {
+                unscheduleSlots(todayPlan.timeSlots, today);
+            }
+
+            // TodoList + TimeSlots aus DB löschen
+            SQLiteDatabase db = repo.getWritableDatabase();
+            db.delete("time_slots", "todo_id = ?", new String[]{String.valueOf(todayPlan.id)});
+            db.delete("todos", "id = ?", new String[]{String.valueOf(todayPlan.id)});
+        }
+
+        // Neu planen
+        new buildToDo(repo,
+            (day, start, end) -> CalendarReader.getEventsForDay(context, day, start, end)
+        ).planWeek();
+
+        if (listener != null) listener.onListUpdated();
+    }
+
+    private void unscheduleSlots(List<todoList.TimeSlot> slots, LocalDate day) {
+        for (todoList.TimeSlot slot : slots) {
+            if (slot.item != null) {
+                trackedItem item = repo.fetch(Table.ITEMS, slot.item);
+                if (item != null && item.scheduled != null) {
+                    item.scheduled.remove(day);
+                    item.blockedDays = item.getBlockedDays();
+                    repo.write(item);
+                }
+            }
+            if (slot.timeSlots != null) {
+                unscheduleSlots(slot.timeSlots, day);
+            }
+        }
+    }
 
     // ============================================================================
     // provideList - Lädt heutige Liste aus DB, konvertiert zu flacher TaskEntry-Liste
@@ -148,14 +211,20 @@ public class todoManager {
                     "Kalender",
                     null,
                     true,
-                    null
+                    null,
+                    null,
+                    null,
+                    null,
+                    0
                 ));
                 continue;
             }
 
-            // Goal-Titel laden
+            // Goal laden
             trackedItem goal = repo.fetch(Table.ITEMS, goalSlot.item);
             String goalTitle = (goal != null) ? goal.title : "";
+            String goalIcon = (goal != null) ? goal.goalIcon : null;
+            String goalColor = (goal != null) ? goal.goalColor : null;
 
             if (goalSlot.timeSlots == null) continue;
 
@@ -175,7 +244,11 @@ public class todoManager {
                     goalTitle,
                     goalSlot.id,
                     false,
-                    taskSlot.workStart
+                    taskSlot.workStart,
+                    task.deadline,
+                    goalIcon,
+                    goalColor,
+                    task.currentStreak
                 ));
             }
         }

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tree_row"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@color/surface"
+    android:paddingTop="@dimen/row_padding_v"
+    android:paddingBottom="@dimen/row_padding_v"
+    android:paddingEnd="@dimen/padding_medium">
+
+    <!-- paddingStart wird dynamisch gesetzt: (16 * depth + 8) dp -->
+
+    <!-- Typ-Badge -->
+    <TextView
+        android:id="@+id/tree_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="@dimen/badge_min_width"
+        android:gravity="center"
+        android:textColor="@android:color/white"
+        android:textSize="@dimen/sp_badge"
+        android:textStyle="bold"
+        android:paddingStart="@dimen/badge_padding_h"
+        android:paddingEnd="@dimen/badge_padding_h"
+        android:paddingTop="@dimen/badge_padding_v"
+        android:paddingBottom="@dimen/badge_padding_v"
+        android:layout_marginEnd="@dimen/padding_medium" />
+
+    <!-- Titel -->
+    <TextView
+        android:id="@+id/tree_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textSize="@dimen/sp_body"
+        android:textColor="@color/text_primary" />
+
+    <!-- Expand-Pfeil (visibility GONE wenn keine Kinder) -->
+    <TextView
+        android:id="@+id/tree_arrow"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="@dimen/sp_small"
+        android:textColor="@color/text_secondary"
+        android:visibility="gone" />
+
+</LinearLayout>

@@ -71,12 +71,24 @@ public class itemParser {
                 .collect(java.util.stream.Collectors.toSet());
         }
 
+        // Deadline
+        item.deadline = (java.time.LocalDate) typed.get("deadline");
+
+        // Fortschritt
+        item.progressCurrent = typed.get("progress_current") instanceof Number n ? n.intValue() : 0;
+        item.progressTarget = typed.get("progress_target") instanceof Number n2 ? n2.intValue() : 0;
+        item.progressUnit = (String) typed.get("progress_unit");
+
         // History
         item.currentStreak = typed.get("current_streak") instanceof Number n ? n.intValue() : 0;
         item.averageStreak = typed.get("average_streak") instanceof Number n ? n.intValue() : 0;
         item.nrOfStreaks = typed.get("nr_of_streaks") instanceof Number n ? n.intValue() : 0;
         item.totalCompletions = typed.get("total_completions") instanceof Number n ? n.intValue() : 0;
         item.minIntervalDays = typed.get("min_interval_days") instanceof Number n ? n.intValue() : 0;
+
+        // Darstellung
+        item.goalIcon = (String) typed.get("goal_icon");
+        item.goalColor = (String) typed.get("goal_color");
 
         // Relationen
         item.parent = (Long) typed.get("parent");
@@ -124,7 +136,8 @@ public class itemParser {
             // Int-Felder
             case "completions", "time_to_complete", "daily_subgoal_limit",
                  "sequence_order", "current_streak", "average_streak",
-                 "nr_of_streaks", "total_completions", "min_interval_days", "cooldown" ->
+                 "nr_of_streaks", "total_completions", "min_interval_days", "cooldown",
+                 "progress_current", "progress_target" ->
                 (v instanceof Number n) ? n.intValue() : Integer.parseInt(v.toString());
 
             // Boolean-Felder
@@ -132,7 +145,7 @@ public class itemParser {
                 (v instanceof Number n) ? n.intValue() != 0 : "1".equals(v.toString());
 
             // LocalDate-Felder
-            case "created", "last_completion" ->
+            case "created", "last_completion", "deadline" ->
                 java.time.LocalDate.parse(v.toString());
 
             // LocalTime-Felder
@@ -186,6 +199,10 @@ public class itemParser {
                 .collect(Collectors.joining(",")));
         }
         cv.put("cooldown", item.cooldown);
+        cv.put("progress_current", item.progressCurrent);
+        cv.put("progress_target", item.progressTarget);
+        if (item.progressUnit != null) cv.put("progress_unit", item.progressUnit);
+        if (item.deadline != null) cv.put("deadline", item.deadline.toString());
         if (item.blockedDays != null && !item.blockedDays.isEmpty()) {
             cv.put("blocked_days", item.blockedDays.stream()
                 .map(java.time.LocalDate::toString)
@@ -198,6 +215,10 @@ public class itemParser {
         cv.put("nr_of_streaks", item.nrOfStreaks);
         cv.put("total_completions", item.totalCompletions);
         cv.put("min_interval_days", item.minIntervalDays);
+
+        // Darstellung
+        if (item.goalIcon != null) cv.put("goal_icon", item.goalIcon);
+        if (item.goalColor != null) cv.put("goal_color", item.goalColor);
 
         // Relationen
         if (item.parent != null) cv.put("parent", item.parent);

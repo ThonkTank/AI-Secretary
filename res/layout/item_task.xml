@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- item_task.xml - Einheitliches Task-Layout für App und Widget (RemoteViews-kompatibel) -->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/task_row"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="@dimen/card_padding_h"
+    android:paddingEnd="@dimen/card_padding_h"
+    android:paddingTop="@dimen/card_padding_v"
+    android:paddingBottom="@dimen/card_padding_v"
+    android:background="@color/surface">
+
+    <!-- Goal-Farbbalken (links, volle Höhe) -->
+    <View
+        android:id="@+id/goal_color_bar"
+        android:layout_width="@dimen/goal_bar_width"
+        android:layout_height="match_parent"
+        android:layout_alignParentStart="true"
+        android:layout_alignTop="@id/task_checkbox"
+        android:layout_alignBottom="@id/task_meta_row"
+        android:background="@color/header_bg" />
+
+    <!-- Checkbox (ImageView, nicht CheckBox!) -->
+    <ImageView
+        android:id="@+id/task_checkbox"
+        android:layout_width="@dimen/checkbox_size"
+        android:layout_height="@dimen/checkbox_size"
+        android:layout_toEndOf="@id/goal_color_bar"
+        android:layout_marginStart="@dimen/padding_small"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_checkbox_unchecked"
+        android:contentDescription="@string/checkbox" />
+
+    <!-- Timer-Button (rechts außen) -->
+    <TextView
+        android:id="@+id/task_timer"
+        android:layout_width="@dimen/timer_button_size"
+        android:layout_height="@dimen/timer_button_size"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
+        android:gravity="center"
+        android:textSize="@dimen/sp_icon"
+        android:textColor="@color/text_secondary" />
+
+    <!-- Dauer (vor Timer) -->
+    <TextView
+        android:id="@+id/task_duration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toStartOf="@id/task_timer"
+        android:layout_alignBaseline="@id/task_title"
+        android:layout_marginEnd="@dimen/padding_small"
+        android:textSize="@dimen/sp_small"
+        android:textColor="@color/text_muted" />
+
+    <!-- Titel (füllt Platz zwischen Checkbox und Dauer) -->
+    <TextView
+        android:id="@+id/task_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_toEndOf="@id/task_checkbox"
+        android:layout_toStartOf="@id/task_duration"
+        android:layout_marginStart="@dimen/padding_small"
+        android:layout_marginEnd="@dimen/padding_small"
+        android:textSize="@dimen/sp_body"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary"
+        android:maxLines="2"
+        android:ellipsize="end" />
+
+    <!-- Meta-Zeile (unter Titel) -->
+    <LinearLayout
+        android:id="@+id/task_meta_row"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/task_title"
+        android:layout_toEndOf="@id/task_checkbox"
+        android:layout_marginStart="@dimen/padding_small"
+        android:layout_marginTop="@dimen/padding_tiny"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <!-- Streak-Badge -->
+        <TextView
+            android:id="@+id/task_streak"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/sp_small"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <!-- Deadline -->
+        <TextView
+            android:id="@+id/task_deadline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/padding_medium"
+            android:textSize="@dimen/sp_small"
+            android:textColor="@color/text_muted"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</RelativeLayout>

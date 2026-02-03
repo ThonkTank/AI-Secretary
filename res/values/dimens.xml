@@ -15,4 +15,28 @@
     <dimen name="padding_large">16dp</dimen>
     <dimen name="tab_bar_height">48dp</dimen>
     <dimen name="indicator_height">3dp</dimen>
+
+    <!-- Timeline -->
+    <dimen name="timeline_dp_per_minute">4dp</dimen>
+    <dimen name="timeline_gap_dp_per_minute">1dp</dimen>
+    <dimen name="timeline_max_gap_height">80dp</dimen>
+    <dimen name="timeline_goal_bar_width">4dp</dimen>
+
+    <!-- Row/Card Templates -->
+    <dimen name="badge_min_width">22dp</dimen>
+    <dimen name="badge_padding_h">4dp</dimen>
+    <dimen name="badge_padding_v">2dp</dimen>
+    <dimen name="time_block_width">48dp</dimen>
+    <dimen name="row_padding_v">10dp</dimen>
+    <dimen name="card_padding_h">8dp</dimen>
+    <dimen name="card_padding_v">6dp</dimen>
+    <dimen name="margin_1dp">1dp</dimen>
+
+    <!-- Widget-spezifische Dimensionen -->
+    <dimen name="goal_bar_width">4dp</dimen>
+    <dimen name="checkbox_size">24dp</dimen>
+    <dimen name="timer_button_size">36dp</dimen>
+    <dimen name="header_padding_v">8dp</dimen>
+    <dimen name="sp_icon">20sp</dimen>
+    <dimen name="padding_tiny">2dp</dimen>
 </resources>

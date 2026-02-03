@@ -9,7 +9,7 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import static activities.generic.UIConstants.*;
+import androidx.core.content.ContextCompat;
 
 import com.autosecretary.R;
 
@@ -113,13 +113,16 @@ public class mainActivity extends Activity {
     private void selectTab(int index) {
         content.removeAllViews();
 
+        int accent = ContextCompat.getColor(this, R.color.accent);
+        int secondary = ContextCompat.getColor(this, R.color.text_secondary);
+
         if (index == 0) {
-            tabTagesplan.setTextColor(ACCENT);
-            tabVerwalten.setTextColor(TEXT_SECONDARY);
+            tabTagesplan.setTextColor(accent);
+            tabVerwalten.setTextColor(secondary);
             content.addView(tagesplanView);
         } else {
-            tabTagesplan.setTextColor(TEXT_SECONDARY);
-            tabVerwalten.setTextColor(ACCENT);
+            tabTagesplan.setTextColor(secondary);
+            tabVerwalten.setTextColor(accent);
             content.addView(verwaltenView);
         }
 

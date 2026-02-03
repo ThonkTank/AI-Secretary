@@ -106,11 +106,14 @@ public class buildToDo {
      *      return relevantItems
      * }
      * 
-     * prioritize(relevantItems) {
-     *      Für jedes Item:
-     *      1. Basisdringlichkeit = priority.value + (priority.value * item.overdue(today) * 0.5)
+     * prioritize {
+     * int work = verbleibende Arbeit (reps*deadline je min 1)
+     * LocalDate untill = nächste relevante deadline (bei repeating tasks ende der wiederholenden Periode, oder deadline etc.)
+     * remainingTime = Tage bis untill
+     * 
+     * Basisdringlichkeit = priority.value + (priority.value * item.overdue(today) * 0.5)
      *      2. Für RepsPerTimeRepetition zusätzlich:
-     *         → daysPerRemainingRep = item.remainingTime() / item.remainingReps() //berechnet automatisch übrige Zeit in periode, rechnet bereits blockierte/scheduled Tage raus)
+     *         → daysPerWork = item.remainingTime() / item.work() //berechnet automatisch übrige Zeit in periode, rechnet bereits blockierte/scheduled Tage raus)
      *         → normalizedFrequency = min(2.0, 1.0 + (1.0 / daysPerRemainingRep))
      *         → priority *= normalizedFrequency
      *      3. Sortiere nach Dringlichkeit (höchste zuerst)
@@ -319,12 +322,15 @@ public class buildToDo {
         for (trackedItem item : items) {
             int priority = item.priority.value + (int)(item.priority.value * (item.overdue(today) * 0.5));
 
-            if (item.repetition != null && item.repetition.type == RepetitionType.REPS_PER_TIME) {
-                int remainingReps = item.remainingReps(today);
-                if (remainingReps > 0) {
-                    double daysPerRemainingRep = (double) item.remainingTime(today) / remainingReps;
-                    double normalizedFrequency = Math.min(2.0, 1.0 + (1.0 / daysPerRemainingRep));
-                    priority = (int)(priority * normalizedFrequency);
+            // Überfällige Deadline: fester 3x Boost
+            if (item.deadline != null && ChronoUnit.DAYS.between(today, item.deadline) <= 0) {
+                priority = (int)(priority * 3.0);
+            } else {
+                int work = item.work(today);
+                int time = item.remainingTime(today);
+                if (work > 0 && time > 0) {
+                    double frequency = Math.min(2.0, 1.0 + (double) work / time);
+                    priority = (int)(priority * frequency);
                 }
             }
 
@@ -350,8 +356,8 @@ public class buildToDo {
 
             SlotCandidate bestCandidate = null;
             int bestScore = 0; // Muss > 0 sein für gültigen Match
-            LocalTime bestEffectiveStart = null;
             int bestAdjustedPrio = 0;
+            LocalTime bestEffectiveStart = null;
 
             for (SlotCandidate c : slotList) {
                 // blockedDays-Prüfung pro Slot-Tag

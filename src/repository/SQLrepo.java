@@ -80,7 +80,13 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             + "min_interval_days INTEGER DEFAULT 0,"
             + "cooldown INTEGER DEFAULT 0,"
             + "blocked_days TEXT,"
-            + "scheduled TEXT"
+            + "scheduled TEXT,"
+            + "progress_current INTEGER DEFAULT 0,"
+            + "progress_target INTEGER DEFAULT 0,"
+            + "progress_unit TEXT,"
+            + "deadline TEXT,"
+            + "goal_icon TEXT,"
+            + "goal_color TEXT"
             + ")"
         );
 

@@ -15,15 +15,14 @@ import repository.Table;
 
 /**
  * Task Entity - repräsentiert eine einzelne Aufgabe.
- * TODO: Bearbeitungsfortschritt tracken (hausarbeit schreiben X/6 Seiten, Projekt x/100% fertig etc)
  * TODO: Aufgaben mit mehreren Wiederholungen pro Tag.
- * TODO: Update Funktion verfollständigen: isComplete wenn appropriate wieder zurücksetzen
- * 
+ *
  * Utility Funktionen:
- * blockDays(): Für alle completions und sheduled termine cooldown berechnen und tage blockieren. Wenn complete, tage bis next repetition blockieren.
- * getNextRepetition(): berechnet Beginn der nächsten Periode, persistiert start und enddatum für späteren vergleich (besonders für repPerTime tasks, um zu berechnen wieviel Zeit noch für fehlende Completions übrig bleibt.)
- * update(): Wird einmal pro Tag aufgerufen. Nimmt Informationen aus taskSlot an, um completions, streaks und laufende averages zu aktualisieren.
- * 
+ * getBlockedDays(): Für alle completions und scheduled Termine cooldown berechnen und Tage blockieren. Wenn complete, Tage bis next repetition blockieren.
+ * calcNextRepetition(): Berechnet Beginn der nächsten Periode.
+ * update(): Wird einmal pro Tag für ALLE Items aufgerufen. Slot-Items bekommen Completion-Daten,
+ *           alle Items bekommen Perioden-Reset, scheduled-Bereinigung und blockedDays-Refresh.
+ *
  */
 public class trackedItem {
 
@@ -35,6 +34,7 @@ public class trackedItem {
     public Long parent;                     // ID des übergeordneten Items (null = kein Parent)
     public List<Long> children;             // Trackt, falls vorhanden, child IDs für goals und metaGoals
     public LocalDate created;               // Wann das Item erstellt wurde.
+    public LocalDate deadline;               // Fälligkeitsdatum für einmalige Tasks (null = keine Deadline)
 
     // Completion Logik
     public LocalDate lastCompletion;        // when was the task last completed?
@@ -50,6 +50,11 @@ public class trackedItem {
     public int cooldown;                    // Wenn die Task für eine bestimmte Zeit nicht wiederholt werden soll nach der letzten completion.
     public Set<LocalDate> blockedDays;      // Liste aller von Cooldown oder Completion blockierten Tage.
 
+    // Fortschritt (Zähler)
+    public int progressCurrent;             // Aktueller Fortschritt (z.B. 3)
+    public int progressTarget;              // Zielwert (z.B. 6), 0 = kein Tracking
+    public String progressUnit;             // Einheit (z.B. "Seiten", "Kapitel")
+
     // History
     public int currentStreak;               // wie oft hintereinander abgeschloßen ohne Verfehlung?
     public int averageStreak;               // durchschnittliche Streak Länge
@@ -58,6 +63,10 @@ public class trackedItem {
     public LocalTime prefTime;              // Zu welcher Uhrzeit wird die Task für gewöhnlich erledigt? z.B. 14:30
     public int totalCompletions;            // Wie oft wurde die Task erledigt? (all time)
     public int minIntervalDays;             // Mindestabstand zwischen Einplanungen in Tagen (0 = keine Einschränkung)
+
+    // Darstellung (nur fuer Goals relevant)
+    public String goalIcon;                 // Emoji-Icon fuer Goal-Header (z.B. "💪")
+    public String goalColor;                // Hex-Farbcode fuer Goal-Header (z.B. "#FFE53935")
 
     // Builder
     public static class Builder {
@@ -73,6 +82,7 @@ public class trackedItem {
         public Builder parent(Long v) { item.parent = v; return this; }
         public Builder children(List<Long> v) { item.children = v; return this; }
         public Builder created(String v) { item.created = LocalDate.parse(v); return this; }
+        public Builder deadline(String v) { item.deadline = LocalDate.parse(v); return this; }
         public Builder lastCompletion(String v) { item.lastCompletion = LocalDate.parse(v); return this; }
         public Builder completions(int v) { item.completions = v; return this; }
         public Builder isCompleted(boolean v) { item.isCompleted = v; return this; }
@@ -87,6 +97,11 @@ public class trackedItem {
         public Builder nrOfStreaks(int v) { item.nrOfStreaks = v; return this; }
         public Builder totalCompletions(int v) { item.totalCompletions = v; return this; }
         public Builder followUps(Map<Long, Integer> v) { item.followUps = v; return this; }
+        public Builder progressCurrent(int v) { item.progressCurrent = v; return this; }
+        public Builder progressTarget(int v) { item.progressTarget = v; return this; }
+        public Builder progressUnit(String v) { item.progressUnit = v; return this; }
+        public Builder goalIcon(String v) { item.goalIcon = v; return this; }
+        public Builder goalColor(String v) { item.goalColor = v; return this; }
 
         public Builder repetition(RepetitionType type, int value, RepUnits unit) {
             item.repetition = new Repetition();
@@ -99,6 +114,14 @@ public class trackedItem {
         public Builder repetition(RepetitionType type, int value, RepUnits unit, DayOfWeek dow) {
             repetition(type, value, unit);
             item.repetition.dayOfWeek = dow;
+            return this;
+        }
+
+        public Builder noRepetition() {
+            item.repetition = new Repetition();
+            item.repetition.type = RepetitionType.NONE;
+            item.repetition.unit = RepUnits.DAY;
+            item.repetition.value = 0;
             return this;
         }
 
@@ -118,6 +141,7 @@ public class trackedItem {
     }
 
     public static enum RepetitionType {
+        NONE,           // Einmalig, keine Wiederholung
         DAY_OF_TIME,    // "jeden Freitag" oder "jeden 10."
         REPS_PER_TIME,  // "3x pro Woche"
         INTERVAL        // "alle 2 Wochen"
@@ -204,22 +228,42 @@ public class trackedItem {
     // ============== BUSINESS LOGIK ==============
 
     // ============================================================================
-    // UPDATE - Wird von cleanToDo aufgerufen, wenn Task in der gestrigen Liste war.
+    // UPDATE - Wird von cleanToDo für ALLE Items aufgerufen (täglich um 00:00).
     // ============================================================================
     /**
      * Zentraler Entry-Point für Tagesabschluss-Logik.
-     * Wird von cleanToDo für jeden Slot der gestrigen Liste aufgerufen.
+     * Wird von cleanToDo aufgerufen — für Slot-Items MIT Slot-Daten,
+     * für alle übrigen Items mit completed=null (nur "immer"-Updates).
      *
-     * @param completed   Hat der User den Slot als erledigt markiert?
-     * @param workStart   Timer-Start (null wenn Timer nicht genutzt)
-     * @param workEnd     Timer-Ende (null wenn Timer nicht genutzt)
-     * @param day         Tag des Slots (gestern)
-     * @param repo        Zum Persistieren der Änderungen
+     * Slot-basierte Updates (wenn completed != null):
+     *   - Completion(s), prefTime, timeToComplete, progress, streak, followUps
+     *
+     * "Immer"-Updates (für alle Items):
+     *   - isCompleted: Perioden-Reset für wiederkehrende Items
+     *   - scheduled: vergangene Daten entfernen
+     *   - blockedDays: neu berechnen
+     *
+     * @param completed       true=erledigt, false=nicht erledigt, null=kein Slot (nur Refresh)
+     * @param workStart       Timer-Start (null wenn Timer nicht genutzt)
+     * @param workEnd         Timer-Ende (null wenn Timer nicht genutzt)
+     * @param previousItemId  ID des vorher erledigten Items für followUp-Tracking (null wenn keins)
+     * @param day             Referenztag (Slot-Tag oder heute)
+     * @param repo            Zum Persistieren der Änderungen
      */
-    public void update(boolean completed, LocalTime workStart, LocalTime workEnd,
-                       LocalDate day, Repo repo) {
-        if (completed) {
-            // Completion tracking
+    public void update(Boolean completed, LocalTime workStart, LocalTime workEnd,
+                       Long previousItemId, LocalDate day, Repo repo) {
+
+        // ========== Slot-basierte Updates (nur wenn Slot-Daten vorhanden) ==========
+        if (completed != null && completed) {
+            // Progress inkrementieren (vor checkCompletion, damit der Stand aktuell ist)
+            if (this.progressTarget > 0 && this.progressCurrent < this.progressTarget) {
+                this.progressCurrent++;
+            }
+
+            // Completions inkrementieren (vor checkCompletion, damit der Zähler stimmt)
+            this.completions++;
+
+            // Completion tracking (setzt isCompleted, lastCompletion, streak)
             checkCompletion(day);
 
             if (this.type == ItemType.TASK) {
@@ -235,7 +279,13 @@ public class trackedItem {
                 }
             }
 
-        } else {
+            // followUps tracken
+            if (previousItemId != null) {
+                if (this.followUps == null) this.followUps = new java.util.LinkedHashMap<>();
+                this.followUps.merge(previousItemId, 1, Integer::sum);
+            }
+
+        } else if (completed != null && !completed) {
             // Nicht erledigt und überfällig → Streak reset wenn !completeFirst
             if ((this.completeFirst == null || !this.completeFirst) && overdue(day) > 0) {
                 resetStreak();
@@ -243,7 +293,29 @@ public class trackedItem {
             }
         }
 
+        // ========== "Immer" Updates (für alle Items) ==========
+        LocalDate today = LocalDate.now();
+
+        // isCompleted prüfen: Perioden-Reset für wiederkehrende Items
+        if (this.isCompleted != null && this.isCompleted
+                && this.repetition != null
+                && this.repetition.type != RepetitionType.NONE
+                && this.lastCompletion != null) {
+            LocalDate nextRep = calcNextRepetition(this.lastCompletion);
+            if (nextRep != null && !today.isBefore(nextRep)) {
+                this.isCompleted = false;
+                this.completions = 0;
+            }
+        }
+
+        // scheduled bereinigen: vergangene Daten entfernen
+        if (this.scheduled != null) {
+            this.scheduled.removeIf(d -> d.isBefore(today));
+        }
+
+        // blockedDays neu berechnen
         this.blockedDays = getBlockedDays();
+
         repo.write(this);
     }
 
@@ -289,6 +361,14 @@ public class trackedItem {
             return this.lastCompletion != null;
         }
 
+        // Einmalige Aufgabe: sofort als erledigt markieren
+        if (this.repetition.type == RepetitionType.NONE) {
+            this.isCompleted = true;
+            this.lastCompletion = day;
+            this.currentStreak += 1;
+            return true;
+        }
+
         int required = 1;
         if (this.repetition.type == RepetitionType.REPS_PER_TIME) {
             required = this.repetition.value;
@@ -299,6 +379,12 @@ public class trackedItem {
             this.completions = 0;
             this.lastCompletion = day;
             this.currentStreak += 1;
+
+            // Offener Progress hält Item aktiv (nicht als completed markieren)
+            if (this.progressTarget > 0 && this.progressCurrent < this.progressTarget) {
+                this.isCompleted = false;
+            }
+
             return true;
         }
 
@@ -331,22 +417,7 @@ public class trackedItem {
         for (int i = -this.cooldown; i <= this.cooldown; i++) {
             blockedDays.add(start.plusDays(i));
         }
-    }
-      
-    // 2. Alle Tage zwischen lastCompletion und nextRepetition blockieren
-    //    (NICHT fuer REPS_PER_TIME, da diese mehrfach pro Periode eingeplant werden)
-    if (this.lastCompletion != null
-        && (this.repetition == null || this.repetition.type != RepetitionType.REPS_PER_TIME)) {
-        LocalDate nextRep = calcNextRepetition(this.lastCompletion);
-        if (nextRep != null) {
-            LocalDate cursor = this.lastCompletion;
-            while (cursor.isBefore(nextRep)) {
-                blockedDays.add(cursor);
-                cursor = cursor.plusDays(1);
-            }
-        }
-    }
-        
+    }        
     
     return blockedDays;
     }
@@ -365,6 +436,7 @@ public class trackedItem {
 
         Repetition rep = this.repetition;
         return switch (rep.type) {
+            case NONE -> null;
             case DAY_OF_TIME -> {
                 if (rep.unit == RepUnits.WEEK) {
                     yield day.with(TemporalAdjusters.next(rep.dayOfWeek));
@@ -445,6 +517,7 @@ public class trackedItem {
 
         Repetition rep = this.repetition;
         return switch (rep.type) {
+            case NONE -> 0;
             case INTERVAL -> rep.value * rep.unit.value;
             case REPS_PER_TIME -> rep.unit.value / Math.max(1, rep.value);
             case DAY_OF_TIME -> rep.unit.value;
@@ -488,45 +561,53 @@ public class trackedItem {
     }
 
     // ============================================================================
-    // REMAININGTIME - Berechnet die verbleibende Zeit für RepsPerTimeRepetition items in Tagen.
+    // REMAININGTIME - Verbleibende Tage bis zur nächsten relevanten Deadline
     // ============================================================================
     /**
-     * Beispiel: "3x pro Woche", heute ist Mittwoch, 1 Tag bereits eingeplant
-     *           → Woche endet Sonntag → 4 Tage verbleibend - 1 eingeplant = 3
-     *
-     * @return Verbleibende Tage in der aktuellen Periode minus bereits zugeplante Tage
-     *         (0 wenn keine RepsPerTimeRepetition)
+     * Deadline → Tage bis Deadline.
+     * REPS_PER_TIME → Tage in Periode minus eingeplante.
+     * Progress-only → 7 Tage Fallback.
      */
     public int remainingTime(LocalDate day) {
-        if (this.repetition == null || this.repetition.type != RepetitionType.REPS_PER_TIME) {
-            return 0;
+        if (this.deadline != null) {
+            return (int) Math.max(0, java.time.temporal.ChronoUnit.DAYS.between(day, this.deadline));
         }
 
-        LocalDate periodEnd = switch (this.repetition.unit) {
-            case DAY -> day;
-            case WEEK -> day.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
-            case MONTH -> day.withDayOfMonth(day.lengthOfMonth());
-        };
+        if (this.repetition != null && this.repetition.type == RepetitionType.REPS_PER_TIME) {
+            LocalDate periodEnd = switch (this.repetition.unit) {
+                case DAY -> day;
+                case WEEK -> day.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+                case MONTH -> day.withDayOfMonth(day.lengthOfMonth());
+            };
+            int daysInPeriod = (int) java.time.temporal.ChronoUnit.DAYS.between(day, periodEnd) + 1;
+            int scheduledInPeriod = countScheduledInPeriod(day, periodEnd);
+            return Math.max(0, daysInPeriod - scheduledInPeriod);
+        }
 
-        int daysInPeriod = (int) java.time.temporal.ChronoUnit.DAYS.between(day, periodEnd) + 1;
-        int scheduledInPeriod = countScheduledInPeriod(day, periodEnd);
+        if (this.progressTarget > 0 && this.progressCurrent < this.progressTarget) {
+            return 7;
+        }
 
-        return Math.max(0, daysInPeriod - scheduledInPeriod);
+        return 0;
     }
 
     // ============================================================================
-    // REMAININGREPS -  Berechnet die verbleibenden benötigten Completions für RepsPerTimeRepetition items.
+    // WORK - Verbleibende Arbeit (reps * progress, je min 1)
     // ============================================================================
     /**
-     * Nur relevant für RepsPerTimeRepetition Tasks.
-     *
-     * Beispiel: "3x pro Woche", bereits 1x erledigt, 1x eingeplant
-     *           → 3 - (1 + 1) = 1 verbleibende Completions
-     *
-     * @return requiredReps - (completions + scheduled in Periode)
-     *         (0 wenn keine RepsPerTimeRepetition oder bereits erfüllt)
+     * Kombinierte verbleibende Arbeit aus Reps und Progress.
+     * Reps + Progress → reps * units.  Nur eins → das eine.  Nur Deadline → 1.  Keins → 0.
      */
-    public int remainingReps(LocalDate day) {
+    public int work(LocalDate day) {
+        int reps = (this.repetition != null && this.repetition.type == RepetitionType.REPS_PER_TIME)
+                ? remainingRepsInPeriod(day) : 0;
+        int units = (this.progressTarget > 0) ? this.progressTarget - this.progressCurrent : 0;
+
+        if (reps <= 0 && units <= 0 && this.deadline == null) return 0;
+        return Math.max(reps, 1) * Math.max(units, 1);
+    }
+
+    private int remainingRepsInPeriod(LocalDate day) {
         if (this.repetition == null || this.repetition.type != RepetitionType.REPS_PER_TIME) {
             return 0;
         }

@@ -31,32 +31,65 @@ Non-standard Android project structure — no `app/` module, sources are at root
 - Resources: `res/`
 - Manifest: `AndroidManifest.xml` (root level)
 
-Configured in `build.gradle.kts` via custom `sourceSets`. Java 17, compileSdk/targetSdk 35, minSdk 26. Uses `coreLibraryDesugaring` for `java.time` API on older devices.
+Configured in `build.gradle.kts` via custom `sourceSets`. Java 17, compileSdk/targetSdk 35, minSdk 26. Uses `coreLibraryDesugaring` for `java.time` API on older devices. `applicationId` / `namespace` = `com.autosecretary`.
 
-**Flat package names:** Source files use direct package names (e.g. `package activities.inApp;`, `package entities;`) — there is no root `com.autosecretary` prefix in the source. The namespace in `build.gradle.kts` is `com.autosecretary` but that only affects the generated `R` class and manifest merging.
+**Flat package names:** Source files use direct package names (e.g. `package activities.inApp;`, `package entities;`) — there is no root `com.autosecretary` prefix in the source. The namespace `com.autosecretary` only affects the generated `R` class (`import com.autosecretary.R;`) and manifest merging.
+
+**Dependencies:** `androidx.core:core:1.12.0`, `coreLibraryDesugaring` (desugar_jdk_libs 2.1.4). Test: JUnit 4.13.2, Robolectric 4.14.1, `androidx.test:core:1.6.1`.
+
+**versionCode-Mechanismus:** `build.gradle.kts` liest `release/version.txt` beim Build, inkrementiert um 1 und setzt das als `versionCode`. Der neue Wert wird erst während `copyToRelease` zurückgeschrieben — d.h. bei reinem `compileDebugJavaWithJavac` wird die Version nicht verändert.
 
 ## Architecture
 
 ```
 src/
 ├── activities/inApp/     # mainActivity (Launcher, Tab-UI), editItem (Create/Edit Modal)
-├── activities/generic/   # UIConstants, ViewHelper, ViewBuilder, taskList (programmatische UI)
+├── activities/generic/   # ViewHelper, ViewBuilder, taskList (nutzt TaskRowRenderer)
+├── activities/widget/    # TaskWidgetProvider, TaskWidgetFactory, TaskWidgetService, WidgetRefreshApp
 ├── entities/             # trackedItem, todoList, CalendarEvent, config (DaySchedule pro Wochentag)
 ├── repository/           # Repo (Interface), SQLrepo, Table, parser/ (itemParser, todoParser)
 ├── controller/           # todoManager, updateChecker, editorManager
-├── data/                 # constants (DB_NAME, DB_VERSION), seedTestData
+├── data/                 # constants, seedTestData, TaskListData, TaskRowConfig
+├── render/               # TaskRowRenderer (einheitlicher Renderer für App + Widget)
 ├── scheduling/           # buildToDo, cleanToDo, CalendarReader,
 │                         # DailyPlanningScheduler, DailyPlanningReceiver, BootReceiver
 └── test/                 # MockRepo, TestBuildToDo (standalone tests)
 ```
 
+**Widget-Architektur:** Siehe `WIDGET_REPORT.md` für vollständige Spezifikation. Kernprinzip: "App passt sich an Widget an" — RemoteViews-kompatible Layouts werden für beide Systeme verwendet.
+
 
 **Data flow:** `mainActivity` → `todoManager` (Controller) → `buildToDo` (UseCase) → `SQLrepo` (Repository)
 
-**Programmatische UI:** Es gibt keine XML-Layouts. Alle Views werden programmatisch in Java gebaut (`ViewBuilder`, `ViewHelper`, `UIConstants`). Neue UI-Elemente nicht als XML-Layouts anlegen, sondern programmatisch erstellen.
+**todoManager** exponiert `provideList()` → `List<TaskEntry>` (Record mit slotId, taskTitle, start/end, completed, goalTitle etc.). Wird von der App-UI konsumiert. Callback-Pattern via `TodoListener` Interface. Weitere Methoden: `replanToday()` (Plan löschen + neu generieren), `completeSlot(slotId)` / `uncompleteSlot(slotId)`, `startTimer(slotId)` / `stopTimer(slotId)` (setzt workStart/workEnd + completes).
+
+**editorManager** verwaltet CRUD-Operationen für alle Item-Typen. Exponiert `getAllItems()` → `List<TreeEntry>` (`record TreeEntry(trackedItem item, int depth)`) für die hierarchische Baumdarstellung im Editor (DFS-Traversal). `getAvailableParents(type)` filtert typbasiert: TASK→GOAL, GOAL→BLOCK, BLOCK→PROJECT, PROJECT→null. `createItem()` synct automatisch `parent.children`.
+
+**UI:** Hybrid XML + programmatisch. Hauptstruktur über XML-Layouts:
+- Seiten-Layouts: `activity_main.xml`, `view_task_list.xml`, `view_edit_item.xml`, `modal_edit_item.xml`
+- Komponenten: `row_tree_item.xml` (Editor-Baum)
+- Styling: `res/values/colors.xml`, `dimens.xml`, `styles.xml` — Farben/Größen als Ressourcen statt Hardcoded-Werte
+
+**Einheitliche Layouts** (`res/layout/`): `item_task.xml`, `item_goal_header.xml`, `item_calendar.xml` — RemoteViews-kompatibel (RelativeLayout statt LinearLayout+weight, ImageView statt CheckBox). Widget-Container: `widget_list.xml`. Widget-Metadaten: `res/xml/task_widget_info.xml`.
+
+Farben und Dimensionen liegen ausschließlich in `colors.xml`/`dimens.xml` — programmatischer Zugriff via `ContextCompat.getColor()` und `getResources().getDimension()`. Neue Views bevorzugt als XML-Layout anlegen; dynamische Listeinträge und ähnliches weiterhin programmatisch.
+
+**ViewHelper** (`activities/generic/ViewHelper.java`) — Zwei zentrale Utilities für programmatische UI:
+- `dp(Context, int)` — Konvertiert dp zu Pixel (statischer Import überall verwendet)
+- `roundedBg(Context, int color, int cornerDp)` — Erstellt `GradientDrawable` mit Farbe und abgerundeten Ecken
+
+**Widget + Unified Renderer:** App und Widget verwenden dieselben Layouts (`item_task.xml`, `item_goal_header.xml`, `item_calendar.xml`). Zwei-Schichten-Architektur:
+- `TaskRowConfig.java` — Records (TaskConfig, GoalHeaderConfig, CalendarConfig) mit Factory-Methoden, zentralisiert Business-Logik (Deadline-Rot, Streak-Farbe, etc.)
+- `TaskRowRenderer.java` — Überladene `apply*(View, ...)` und `apply*(RemoteViews, ...)` Methoden, wendet Config auf Views an
+
+Widget-Komponenten in `activities/widget/`:
+- `TaskWidgetProvider` — AppWidgetProvider, verarbeitet Actions (Toggle, Timer, Refresh)
+- `TaskWidgetFactory` — RemoteViewsFactory, liefert RemoteViews für ListView
+- `TaskWidgetService` — RemoteViewsService Boilerplate
+- `WidgetRefreshApp` — Custom Application, registriert Unlock-Receiver für Auto-Refresh
 
 **Background Scheduling:** `DailyPlanningScheduler` registriert AlarmManager-Trigger um 00:00 → `DailyPlanningReceiver` führt aus:
-1. `cleanToDo.clean()` — Gestrigen Plan auswerten (Slots → `trackedItem.update()`), veraltete Todos löschen, vergangene scheduled-Daten bereinigen
+1. `cleanToDo.clean()` — Zwei Phasen: (a) Gestrige Slots auswerten → `trackedItem.update()` mit Slot-Daten + followUp-Tracking, (b) ALLE übrigen Items refreshen → `update(null,...)` für Perioden-Reset, scheduled-Bereinigung, blockedDays-Refresh. Danach alte todoLists aus DB entfernen.
 2. `buildToDo.planWeek()` — Neuen 7-Tage-Plan erstellen
 3. `scheduleDaily()` — Nächsten Mitternachts-Alarm registrieren
 
@@ -72,7 +105,23 @@ src/
 
 **Hierarchy:** Project → Block → Goal → Task
 
+**Goal-Darstellung:** Goals haben `goalIcon` (Emoji-String, z.B. "💪") und `goalColor` (Hex-String, z.B. "#FFE53935"). Werden als farbige Header mit Icon in Task-Liste und Widget angezeigt. Editierbar im Create/Edit-Modal (Emoji-Eingabe via System-Tastatur + Farb-Grid mit 10 vordefinierten Farben).
+
+**Streak-Rarity-System (MMO-Style):** Tasks zeigen ein farbiges Streak-Badge ("🔥 35") basierend auf Rarity-Stufen:
+
+| Streak  | Rarity    | Farbe                      |
+|---------|-----------|----------------------------|
+| 0       | —         | Nichts angezeigt           |
+| 1–9     | Common    | Grau `rarity_common`       |
+| 10–29   | Uncommon  | Grün `rarity_uncommon`     |
+| 30–59   | Rare      | Blau `rarity_rare`         |
+| 60–99   | Epic      | Lila `rarity_epic`         |
+| 100+    | Legendary | Gold `rarity_legendary`    |
+
+Rarity-Farben in `colors.xml`, Streak-Wert kommt aus `trackedItem.currentStreak`. Logik in `TaskListData.getStreakRarityColorRes()`.
+
 **Repetition Types (RepetitionType enum):**
+- `NONE` — Einmalig, keine Wiederholung. Nach Completion: `isCompleted = true` permanent. Builder: `.noRepetition()`. Kann optionales `deadline`-Feld haben (siehe Deadline-Logik).
 - `INTERVAL` — "alle X Tage/Wochen" (every X days/weeks)
 - `REPS_PER_TIME` — "X mal pro Woche/Monat" (X times per week/month)
 - `DAY_OF_TIME` — "jeden Freitag" or "jeden 10." (every Friday / every 10th)
@@ -94,10 +143,36 @@ public interface Repo {
 
 `lookup`/`lookups` use String table names and return converted primitives. `fetch` uses type-safe `Table<T>` references (`Table.ITEMS`, `Table.TODOS`) and returns entity objects. `write` auto-detects entity type.
 
+**TaskListData** (`data/TaskListData.java`) — Shared data transformation für App und Widget:
+- `DisplayRow` sealed interface mit drei Record-Typen: `GoalHeader`, `TaskItem`, `CalendarEvent`
+- `fromEntries(List<TaskEntry>)` transformiert flache TaskEntry-Liste zu DisplayRow-Liste mit eingefügten Goal-Headern
+- `getStreakRarityColorRes(int streak)` gibt Rarity-Farb-Resource-ID zurück
+
+**TaskEntry** (`todoManager.java`) — Record für die UI-Datenübergabe:
+```java
+public record TaskEntry(
+    Long slotId,            // TimeSlot ID (zum Abhaken)
+    String taskTitle,       // Titel des Tasks
+    String taskDescription, // Beschreibung des Tasks
+    int timeToComplete,     // Dauer in Minuten
+    LocalTime start,        // Slot-Startzeit
+    LocalTime end,          // Slot-Endzeit
+    boolean completed,      // Checkbox-State
+    String goalTitle,       // Titel des übergeordneten Goals
+    Long goalSlotId,        // Goal-Slot ID (für Goal-Completion-Check)
+    boolean isCalendarEvent,// Kalender-Termin (nicht abhakbar)
+    LocalTime workStart,    // Timer gestartet? (null = nicht gestartet)
+    LocalDate deadline,     // Fälligkeitsdatum (null = keine Deadline)
+    String goalIcon,        // Emoji-Icon des Goals (z.B. "💪")
+    String goalColor,       // Hex-Farbcode des Goals (z.B. "#FFE53935")
+    int currentStreak       // Aktuelle Streak-Länge des Tasks
+)
+```
+
 ## Testing
 
 **Two source sets:**
-- `test/` (root level) → Gradle `test` source set for JUnit/Robolectric (`./gradlew testDebugUnitTest`). Derzeit leer.
+- `test/` (root level) → Gradle `test` source set for JUnit/Robolectric (`./gradlew testDebugUnitTest`). Verzeichnis existiert noch nicht physisch — Platzhalter für zukünftige Tests.
 - `src/test/` → Lives in the `main` source set (weil `java.srcDirs("src")`). Standalone tests with `main()` methods, no Android dependencies.
 
 **MockRepo** (`src/test/MockRepo.java`) implementiert `Repo` mit In-Memory-Maps. Ermöglicht Tests des Scheduling-Algorithmus ohne SQLite/Android.
@@ -117,15 +192,46 @@ java -cp build/intermediates/javac/debug/compileDebugJavaWithJavac/classes test.
 
 **Testability:** `buildToDo` nimmt `Repo`-Interface und `CalendarProvider` (Functional Interface) als Dependencies — ermöglicht vollständige Tests ohne Android.
 
-**Priority** basiert auf `Priority` enum (CRITICAL: 100000, HIGH: 400, MODERATE: 200, LOW: 100), plus Overdue-Bonus und Frequency-Multiplier. PrefTime-Matching via logarithmische Score-Funktion.
+**Priority** basiert auf `Priority` enum (CRITICAL: 100000, HIGH: 400, MODERATE: 200, LOW: 100), plus Overdue-Bonus. PrefTime-Matching via logarithmische Score-Funktion in `tryMatch()`.
+
+**Prio-Boost (`prioritize()`):** Einheitliche Formel über `item.work(today)` und `item.remainingTime(today)`:
+```
+basePrio = priority.value + (priority.value × overdue × 0.5)
+if (überfällige Deadline): basePrio × 3.0
+else if (work > 0 && time > 0): basePrio × min(2.0, 1.0 + work/time)
+```
+- `work()` = kombinierte verbleibende Arbeit (reps × progress-units, je min 1). Gibt 0 wenn weder Reps/Progress/Deadline aktiv.
+- `remainingTime()` = verbleibende Tage (Deadline → Tage bis Deadline; REPS_PER_TIME → Tage in Periode minus eingeplante; Progress-only → 7 Tage Fallback).
+- Überfällige Deadline (NONE-Tasks): fester 3.0x Boost, überschreibt die work/time-Formel.
+
+**Progress-Tracking:** Items können `progressCurrent`/`progressTarget`/`progressUnit` haben (z.B. 2/6 Seiten). Offener Progress (progressCurrent < progressTarget) bewirkt:
+- Prio-Boost über `work()/remainingTime()` — mehr verbleibende Einheiten = höherer Boost, gedeckelt bei 2.0x
+- Periodenblockierung wird übersprungen (wie REPS_PER_TIME), damit das Item täglich einplanbar bleibt
+- Bei Slot-Completion: `progressCurrent++` in `update()`, und `isCompleted` wird auf `false` gehalten solange Progress offen ist
+
+**Deadline-Logik:** Einmalige Tasks (`RepetitionType.NONE`) können ein optionales `deadline`-Feld (`LocalDate`) haben. Wirkung:
+- Prio-Boost über `work()/remainingTime()`: je näher die Deadline, desto höher der Multiplier (cap 2.0x). Bei überfälliger Deadline: fester 3.0x Boost.
+- Periodenblockierung wird übersprungen (wie REPS_PER_TIME), damit das Item täglich einplanbar bleibt bis zur Erledigung.
+- Anzeige in Task-Liste und Widget als "Fällig: dd.MM.yyyy", rot wenn überfällig.
+- Edit-UI: DatePickerDialog, nur sichtbar bei TASK + RepetitionType.NONE.
 
 **Skip conditions in getItems():** `item.blockedDays` enthält den Tag, oder (nur Goal → Project) `parent.blockedDays` enthält den Tag.
 
 **Task vs. Goal Slot-Fitting:** Tasks müssen komplett in einen Slot passen (werden übersprungen wenn zu wenig Zeit). Goals dürfen partiell eingeplant werden (slotCoverage reduziert die Prio proportional).
 
+**trackedItem.update()** — Zentraler Entry-Point für Tagesabschluss-Logik. Signatur:
+```java
+void update(Boolean completed, LocalTime workStart, LocalTime workEnd,
+            Long previousItemId, LocalDate day, Repo repo)
+```
+- `completed=true/false` → Slot-Daten auswerten (completions, progress, prefTime, timeToComplete, streak, followUps)
+- `completed=null` → Nur "immer"-Updates (Refresh ohne Slot-Daten)
+- "Immer"-Updates (laufen IMMER, auch bei null): Perioden-Reset (`isCompleted` → false wenn neue Periode begonnen), scheduled bereinigen (vergangene Daten entfernen), blockedDays neu berechnen.
+- `followUps`: Wenn `previousItemId != null`, wird `followUps.merge(previousItemId, 1, Integer::sum)` aufgerufen — trackt welche Items direkt vor diesem erledigt wurden.
+
 **blockedDays-Mechanismus:** Jedes Item hat seine **eigenen** blockedDays. `trackedItem.getBlockedDays()` berechnet aus zwei Quellen:
 1. Cooldown-Fenster VOR und NACH `lastCompletion` und jedem `scheduled`-Datum (±N Tage)
-2. Alle Tage zwischen `lastCompletion` und `calcNextRepetition()` (NICHT für REPS_PER_TIME, da mehrfach pro Periode einplanbar)
+2. Alle Tage zwischen `lastCompletion` und `calcNextRepetition()` (NICHT für REPS_PER_TIME, NICHT für Items mit offenem Progress, und NICHT für Items mit Deadline, da diese mehrfach pro Periode einplanbar sind)
 
 `blockedDays` wird automatisch neu berechnet in:
 - `update()` — nach Tagesabschluss
@@ -142,10 +248,12 @@ SQLite with four tables:
 - `todos` — Generated daily plans (id, date, start_time, end_time)
 - `time_slots` — Nested TimeSlots (todo_id FK, parent_slot_id FK for hierarchy, item_id FK, completed, work_start, work_end)
 
-**Relations in items:** `parent` (single ID), `children` (comma-separated IDs), `followups` ("id:count" pairs, e.g. "5:3,8:1"), `scheduled` (comma-separated ISO dates).
+**Relations in items:** `parent` (single ID), `children` (comma-separated IDs), `followups` ("id:count" pairs, e.g. "5:3,8:1"), `scheduled` (comma-separated ISO dates), `blocked_days` (comma-separated ISO dates, computed).
+
+**Darstellung in items:** `goal_icon` (TEXT, Emoji), `goal_color` (TEXT, Hex-Farbcode). Nur für Goals relevant.
 
 **DB-Strategie (WICHTIG):** Es gibt keine Migrationen. Die App hat genau einen Nutzer (Entwickler) und arbeitet ausschließlich mit geseedeten Testdaten (`seedTestData.java`). Bei Schema-Änderungen:
-- `DB_VERSION` in `constants.java` hochzählen
+- `DB_VERSION` in `constants.java` hochzählen (aktuell: **11**)
 - Schema direkt in `onCreate()` anpassen
 - Neue Testdaten in `seedTestData.java` einpflegen
 - Die App erkennt den Versions-Wechsel via SharedPreferences und ruft `deleteDatabase()` auf
@@ -159,4 +267,4 @@ GitHub dient als CDN. `release/version.txt` enthält den aktuellen Integer-versi
 
 ## Language
 
-German comments and variable names are preferred. Documentation can be in German or English.
+German documentation, comments and variable names are preferred.

@@ -65,6 +65,43 @@
                     android:maxLines="3"
                     android:textSize="@dimen/sp_body" />
 
+                <!-- Icon (nur GOAL) -->
+                <LinearLayout
+                    android:id="@+id/row_goal_icon"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="Icon" />
+                    <EditText
+                        android:id="@+id/field_goal_icon"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Emoji eingeben"
+                        android:singleLine="true"
+                        android:textSize="@dimen/sp_heading" />
+                </LinearLayout>
+
+                <!-- Farbe (nur GOAL) -->
+                <LinearLayout
+                    android:id="@+id/row_goal_color"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="Farbe" />
+                    <LinearLayout
+                        android:id="@+id/color_grid"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp">
+                        <!-- Farb-Buttons werden programmatisch erzeugt -->
+                    </LinearLayout>
+                </LinearLayout>
+
                 <!-- Dauer -->
                 <LinearLayout
                     android:id="@+id/row_duration"
@@ -127,6 +164,23 @@
                         android:textSize="@dimen/sp_body" />
                 </LinearLayout>
 
+                <!-- Deadline -->
+                <LinearLayout
+                    android:id="@+id/row_deadline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <TextView style="@style/FormLabel" android:text="Deadline" />
+                    <EditText
+                        android:id="@+id/field_deadline"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Datum w\u00e4hlen"
+                        android:focusable="false"
+                        android:clickable="true"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
                 <!-- Min. Intervall -->
                 <LinearLayout
                     android:id="@+id/row_min_interval"
@@ -139,6 +193,53 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="number"
+                        android:singleLine="true"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- Fortschritt -->
+                <LinearLayout
+                    android:id="@+id/row_progress"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <TextView style="@style/FormLabel" android:text="Fortschritt" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <EditText
+                            android:id="@+id/field_progress_current"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="Ist"
+                            android:inputType="number"
+                            android:singleLine="true"
+                            android:textSize="@dimen/sp_body" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_vertical"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:text="/"
+                            android:textSize="@dimen/sp_body" />
+                        <EditText
+                            android:id="@+id/field_progress_target"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="Ziel"
+                            android:inputType="number"
+                            android:singleLine="true"
+                            android:textSize="@dimen/sp_body" />
+                    </LinearLayout>
+                    <EditText
+                        android:id="@+id/field_progress_unit"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Einheit (z.B. Seiten, Kapitel)"
                         android:singleLine="true"
                         android:textSize="@dimen/sp_body" />
                 </LinearLayout>
@@ -157,6 +258,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal">
+                        <Button android:id="@+id/btn_rep_none" style="@style/GroupButton"
+                            android:text="KEINE" android:textSize="10sp" />
                         <Button android:id="@+id/btn_rep_interval" style="@style/GroupButton"
                             android:text="INTERVAL" android:textSize="10sp" />
                         <Button android:id="@+id/btn_rep_reps" style="@style/GroupButton"
@@ -165,40 +268,48 @@
                             android:text="DAY_OF" android:textSize="10sp" />
                     </LinearLayout>
 
-                    <!-- Wert -->
-                    <TextView style="@style/FormLabel" android:text="Wert" />
-                    <EditText
-                        android:id="@+id/field_rep_value"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number"
-                        android:singleLine="true"
-                        android:textSize="@dimen/sp_body" />
-
-                    <!-- Einheit Buttons -->
+                    <!-- Detail-Felder (ausgeblendet bei KEINE) -->
                     <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-                        <Button android:id="@+id/btn_unit_day" style="@style/GroupButton"
-                            android:text="TAG" android:textSize="10sp" />
-                        <Button android:id="@+id/btn_unit_week" style="@style/GroupButton"
-                            android:text="WOCHE" android:textSize="10sp" />
-                        <Button android:id="@+id/btn_unit_month" style="@style/GroupButton"
-                            android:text="MONAT" android:textSize="10sp" />
-                    </LinearLayout>
-
-                    <!-- Wochentag (nur bei DAY_OF_TIME + WEEK) -->
-                    <LinearLayout
-                        android:id="@+id/row_weekday"
+                        android:id="@+id/section_rep_details"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
-                        <TextView style="@style/FormLabel" android:text="Wochentag" />
-                        <Spinner
-                            android:id="@+id/spinner_weekday"
+
+                        <!-- Wert -->
+                        <TextView style="@style/FormLabel" android:text="Wert" />
+                        <EditText
+                            android:id="@+id/field_rep_value"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            android:inputType="number"
+                            android:singleLine="true"
+                            android:textSize="@dimen/sp_body" />
+
+                        <!-- Einheit Buttons -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+                            <Button android:id="@+id/btn_unit_day" style="@style/GroupButton"
+                                android:text="TAG" android:textSize="10sp" />
+                            <Button android:id="@+id/btn_unit_week" style="@style/GroupButton"
+                                android:text="WOCHE" android:textSize="10sp" />
+                            <Button android:id="@+id/btn_unit_month" style="@style/GroupButton"
+                                android:text="MONAT" android:textSize="10sp" />
+                        </LinearLayout>
+
+                        <!-- Wochentag (nur bei DAY_OF_TIME + WEEK) -->
+                        <LinearLayout
+                            android:id="@+id/row_weekday"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+                            <TextView style="@style/FormLabel" android:text="Wochentag" />
+                            <Spinner
+                                android:id="@+id/spinner_weekday"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
 

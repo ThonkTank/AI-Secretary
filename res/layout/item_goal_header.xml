@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- item_goal_header.xml - Einheitliches Goal-Header-Layout für App und Widget -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/goal_header_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="@dimen/card_padding_h"
+    android:paddingEnd="@dimen/card_padding_h"
+    android:paddingTop="@dimen/header_padding_v"
+    android:paddingBottom="@dimen/header_padding_v"
+    android:background="@color/header_bg">
+
+    <!-- Icon (Emoji) -->
+    <TextView
+        android:id="@+id/goal_icon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="@dimen/sp_icon"
+        android:layout_marginEnd="@dimen/padding_small"
+        android:visibility="gone" />
+
+    <!-- Titel -->
+    <TextView
+        android:id="@+id/goal_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="@dimen/sp_title"
+        android:textStyle="bold"
+        android:textColor="@color/text_on_header" />
+
+</LinearLayout>

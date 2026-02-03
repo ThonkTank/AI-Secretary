@@ -56,30 +56,36 @@ public class seedTestData {
 
             // --- Goal: Kraft ---
             trackedItem gKraft = new Builder(ItemType.GOAL, "Kraft", Priority.HIGH)
-                .timeToComplete(45).prefTime("07:00").parent(pFitness.id).created("2025-12-15").build();
+                .timeToComplete(45).prefTime("07:00").parent(pFitness.id).created("2025-12-15")
+                .goalIcon("\uD83D\uDCAA").goalColor("#FFE53935").build();
             repo.write(gKraft);
 
             trackedItem tLiegestuetze = new Builder(ItemType.TASK, "Liegestuetze", Priority.HIGH)
                 .timeToComplete(15).prefTime("06:30").parent(gKraft.id).created("2025-12-15")
-                .lastCompletion("2026-01-10").repetition(RepetitionType.INTERVAL, 2, RepUnits.DAY).build();
+                .lastCompletion("2026-01-10").currentStreak(12).totalCompletions(25)
+                .repetition(RepetitionType.INTERVAL, 2, RepUnits.DAY).build();
             trackedItem tKniebeugen = new Builder(ItemType.TASK, "Kniebeugen", Priority.MODERATE)
                 .timeToComplete(15).prefTime("07:00").parent(gKraft.id).created("2025-12-15")
-                .lastCompletion("2026-01-20").repetition(RepetitionType.REPS_PER_TIME, 3, RepUnits.WEEK).build();
+                .lastCompletion("2026-01-20").currentStreak(35).totalCompletions(60)
+                .repetition(RepetitionType.REPS_PER_TIME, 3, RepUnits.WEEK).build();
             trackedItem tKlimmzuege = new Builder(ItemType.TASK, "Klimmzuege", Priority.HIGH)
                 .timeToComplete(15).prefTime("07:30").parent(gKraft.id).created("2025-12-15")
-                .lastCompletion("2026-01-13").repetition(RepetitionType.DAY_OF_TIME, 0, RepUnits.WEEK, DayOfWeek.MONDAY).build();
+                .lastCompletion("2026-01-13").currentStreak(3).totalCompletions(8)
+                .repetition(RepetitionType.DAY_OF_TIME, 0, RepUnits.WEEK, DayOfWeek.MONDAY).build();
             repo.write(tLiegestuetze); repo.write(tKniebeugen); repo.write(tKlimmzuege);
             gKraft.children = List.of(tLiegestuetze.id, tKniebeugen.id, tKlimmzuege.id);
             repo.write(gKraft);
 
             // --- Goal: Ausdauer ---
             trackedItem gAusdauer = new Builder(ItemType.GOAL, "Ausdauer", Priority.MODERATE)
-                .timeToComplete(50).prefTime("17:00").parent(pFitness.id).created("2025-12-15").build();
+                .timeToComplete(50).prefTime("17:00").parent(pFitness.id).created("2025-12-15")
+                .goalIcon("\uD83C\uDFC3").goalColor("#FF1E88E5").build();
             repo.write(gAusdauer);
 
             trackedItem tJoggen = new Builder(ItemType.TASK, "Joggen", Priority.HIGH)
                 .timeToComplete(30).prefTime("17:30").parent(gAusdauer.id).created("2025-12-15")
-                .lastCompletion("2026-01-19").repetition(RepetitionType.INTERVAL, 2, RepUnits.DAY).build();
+                .lastCompletion("2026-01-19").currentStreak(65).totalCompletions(80)
+                .repetition(RepetitionType.INTERVAL, 2, RepUnits.DAY).build();
             trackedItem tSeilspringen = new Builder(ItemType.TASK, "Seilspringen", Priority.MODERATE)
                 .timeToComplete(15).prefTime("17:00").parent(gAusdauer.id).created("2025-12-15")
                 .lastCompletion("2026-01-21").repetition(RepetitionType.REPS_PER_TIME, 4, RepUnits.WEEK).build();
@@ -92,12 +98,14 @@ public class seedTestData {
 
             // --- Goal: Beweglichkeit ---
             trackedItem gBeweglich = new Builder(ItemType.GOAL, "Beweglichkeit", Priority.LOW)
-                .timeToComplete(40).prefTime("21:00").parent(pFitness.id).created("2025-12-15").build();
+                .timeToComplete(40).prefTime("21:00").parent(pFitness.id).created("2025-12-15")
+                .goalIcon("\uD83E\uDDD8").goalColor("#FF00897B").build();
             repo.write(gBeweglich);
 
             trackedItem tStretching = new Builder(ItemType.TASK, "Stretching", Priority.MODERATE)
                 .timeToComplete(15).prefTime("21:00").parent(gBeweglich.id).created("2025-12-15")
-                .lastCompletion("2026-01-20").repetition(RepetitionType.INTERVAL, 1, RepUnits.DAY).build();
+                .lastCompletion("2026-01-20").currentStreak(105).totalCompletions(150)
+                .repetition(RepetitionType.INTERVAL, 1, RepUnits.DAY).build();
             trackedItem tYoga = new Builder(ItemType.TASK, "Yoga", Priority.LOW)
                 .timeToComplete(20).prefTime("20:30").parent(gBeweglich.id).created("2025-12-15")
                 .lastCompletion("2026-01-18").repetition(RepetitionType.REPS_PER_TIME, 2, RepUnits.WEEK).build();
@@ -117,20 +125,25 @@ public class seedTestData {
             repo.write(pProjekte);
 
             trackedItem gSaltmarcher = new Builder(ItemType.GOAL, "Saltmarcher Coden", Priority.HIGH)
-                .timeToComplete(180).prefTime("09:00").parent(pProjekte.id).created("2025-12-01").build();
+                .timeToComplete(180).prefTime("09:00").parent(pProjekte.id).created("2025-12-01")
+                .goalIcon("\uD83D\uDCBB").goalColor("#FF5E35B1").build();
             trackedItem gAutoSecretary = new Builder(ItemType.GOAL, "AutoSecretary Coden", Priority.HIGH)
                 .timeToComplete(180).prefTime("09:00").parent(pProjekte.id).created("2025-12-01")
-                .lastCompletion("2026-01-19").build();
+                .lastCompletion("2026-01-19")
+                .goalIcon("\uD83E\uDD16").goalColor("#FF5E35B1").build();
             trackedItem gSchreiben = new Builder(ItemType.GOAL, "Schreiben ueben", Priority.HIGH)
                 .timeToComplete(180).prefTime("09:00").parent(pProjekte.id).created("2025-12-01")
-                .lastCompletion("2026-01-16").build();
+                .lastCompletion("2026-01-16")
+                .progressTarget(6).progressCurrent(2).progressUnit("Seiten")
+                .goalIcon("\u270D\uFE0F").goalColor("#FF5E35B1").build();
             repo.write(gSaltmarcher); repo.write(gAutoSecretary); repo.write(gSchreiben);
             pProjekte.children = List.of(gSaltmarcher.id, gAutoSecretary.id, gSchreiben.id);
             repo.write(pProjekte);
 
             // ===== GOAL: Haushalt =====
             trackedItem gHaushalt = new Builder(ItemType.GOAL, "Haushalt", Priority.MODERATE)
-                .timeToComplete(45).prefTime("16:00").created("2026-01-03").build();
+                .timeToComplete(45).prefTime("16:00").created("2026-01-03")
+                .goalIcon("\uD83C\uDFE0").goalColor("#FFFB8C00").build();
             repo.write(gHaushalt);
 
             trackedItem tKueche = new Builder(ItemType.TASK, "Kueche putzen", Priority.MODERATE)
@@ -146,17 +159,30 @@ public class seedTestData {
                 .timeToComplete(5).prefTime("19:00").parent(gHaushalt.id).created("2026-01-03")
                 .lastCompletion("2026-01-09").repetition(RepetitionType.DAY_OF_TIME, 0, RepUnits.WEEK, DayOfWeek.THURSDAY).build();
             repo.write(tKueche); repo.write(tStaub); repo.write(tWaesche); repo.write(tMuell);
-            gHaushalt.children = List.of(tKueche.id, tStaub.id, tWaesche.id, tMuell.id);
+
+            // Einmalige Tasks (ohne Wiederholung)
+            trackedItem tArzt = new Builder(ItemType.TASK, "Arzttermin vereinbaren", Priority.HIGH)
+                .timeToComplete(10).created("2026-01-20").noRepetition()
+                .deadline("2026-02-10").build();
+            trackedItem tRegal = new Builder(ItemType.TASK, "Regal aufbauen", Priority.MODERATE)
+                .timeToComplete(60).created("2026-01-22").parent(gHaushalt.id).noRepetition()
+                .deadline("2026-02-28").build();
+            repo.write(tArzt); repo.write(tRegal);
+            gHaushalt.children = List.of(tKueche.id, tStaub.id, tWaesche.id, tMuell.id, tRegal.id);
             repo.write(gHaushalt);
 
             // ===== GOAL: Lernen =====
             trackedItem gLernen = new Builder(ItemType.GOAL, "Lernen", Priority.HIGH)
-                .timeToComplete(90).prefTime("14:00").created("2025-12-20").build();
+                .timeToComplete(90).prefTime("14:00").created("2025-12-20")
+                .goalIcon("\uD83D\uDCDA").goalColor("#FF8E24AA").build();
             repo.write(gLernen);
 
             trackedItem tJava = new Builder(ItemType.TASK, "Java lernen", Priority.HIGH)
                 .timeToComplete(30).prefTime("14:00").parent(gLernen.id).created("2025-12-20")
-                .lastCompletion("2026-01-22").repetition(RepetitionType.INTERVAL, 1, RepUnits.DAY).build();
+                .lastCompletion("2026-01-22").currentStreak(22).totalCompletions(30)
+                .repetition(RepetitionType.INTERVAL, 1, RepUnits.DAY)
+                .progressTarget(12).progressCurrent(7).progressUnit("Kapitel")
+                .build();
             trackedItem tMathe = new Builder(ItemType.TASK, "Mathe ueben", Priority.HIGH)
                 .timeToComplete(25).prefTime("15:00").parent(gLernen.id).created("2025-12-20")
                 .lastCompletion("2026-01-20").repetition(RepetitionType.REPS_PER_TIME, 5, RepUnits.WEEK).build();
@@ -172,12 +198,13 @@ public class seedTestData {
 
             // ===== GOAL: Morgenroutine =====
             trackedItem gMorgen = new Builder(ItemType.GOAL, "Morgenroutine", Priority.HIGH)
-                .timeToComplete(75).prefTime("06:00").created("2025-12-01").build();
+                .timeToComplete(75).prefTime("06:00").created("2025-12-01")
+                .goalIcon("\u2600\uFE0F").goalColor("#FF43A047").build();
             repo.write(gMorgen);
 
-            trackedItem t1  = new Builder(ItemType.TASK, "Tabletten nehmen",     Priority.CRITICAL).timeToComplete(2) .prefTime("06:00").parent(gMorgen.id).created("2025-12-01").lastCompletion("2026-01-22").repetition(RepetitionType.INTERVAL, 1,  RepUnits.DAY).build();
-            trackedItem t2  = new Builder(ItemType.TASK, "Fruehstuecken",        Priority.CRITICAL).timeToComplete(20).prefTime("06:05").parent(gMorgen.id).created("2025-12-01").lastCompletion("2026-01-22").repetition(RepetitionType.INTERVAL, 1,  RepUnits.DAY).build();
-            trackedItem t3  = new Builder(ItemType.TASK, "Rasieren",             Priority.MODERATE).timeToComplete(5) .prefTime("06:30").parent(gMorgen.id).created("2025-12-01").lastCompletion("2026-01-22").repetition(RepetitionType.INTERVAL, 1,  RepUnits.DAY).build();
+            trackedItem t1  = new Builder(ItemType.TASK, "Tabletten nehmen",     Priority.CRITICAL).timeToComplete(2) .prefTime("06:00").parent(gMorgen.id).created("2025-12-01").lastCompletion("2026-01-22").currentStreak(45).totalCompletions(50).repetition(RepetitionType.INTERVAL, 1,  RepUnits.DAY).build();
+            trackedItem t2  = new Builder(ItemType.TASK, "Fruehstuecken",        Priority.CRITICAL).timeToComplete(20).prefTime("06:05").parent(gMorgen.id).created("2025-12-01").lastCompletion("2026-01-22").currentStreak(45).totalCompletions(50).repetition(RepetitionType.INTERVAL, 1,  RepUnits.DAY).build();
+            trackedItem t3  = new Builder(ItemType.TASK, "Rasieren",             Priority.MODERATE).timeToComplete(5) .prefTime("06:30").parent(gMorgen.id).created("2025-12-01").lastCompletion("2026-01-22").currentStreak(7).totalCompletions(20).repetition(RepetitionType.INTERVAL, 1,  RepUnits.DAY).build();
             trackedItem t4  = new Builder(ItemType.TASK, "Naegel klippsen",      Priority.LOW)     .timeToComplete(5) .prefTime("06:33").parent(gMorgen.id).created("2025-12-01").lastCompletion("2026-01-10").repetition(RepetitionType.INTERVAL, 7,  RepUnits.DAY).build();
             trackedItem t5  = new Builder(ItemType.TASK, "Achseln rasieren",     Priority.MODERATE).timeToComplete(3) .prefTime("06:35").parent(gMorgen.id).created("2025-12-01").lastCompletion("2026-01-20").repetition(RepetitionType.INTERVAL, 3,  RepUnits.DAY).build();
             trackedItem t6  = new Builder(ItemType.TASK, "Brust rasieren",       Priority.MODERATE).timeToComplete(5) .prefTime("06:38").parent(gMorgen.id).created("2025-12-01").lastCompletion("2026-01-19").repetition(RepetitionType.INTERVAL, 3,  RepUnits.DAY).build();
