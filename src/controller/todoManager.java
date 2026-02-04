@@ -87,7 +87,7 @@ public class todoManager {
      *   slotId            → TimeSlot ID in DB (zum Identifizieren beim Abhaken)
      *   taskTitle         → Angezeigter Name des Tasks
      *   taskDescription   → Optionale Beschreibung
-     *   timeToComplete    → Geplante Dauer in Minuten
+     *   slotDuration      → Berechnete Slot-Dauer in Minuten
      *   start / end       → Zeitfenster im Tagesplan
      *   completed         → Aktueller Checkbox-State
      *   goalTitle         → Übergeordnetes Goal (Kontext-Anzeige)
@@ -117,7 +117,7 @@ public class todoManager {
         Long slotId,            // TimeSlot ID (zum Abhaken)
         String taskTitle,       // Titel des Tasks
         String taskDescription, // Beschreibung des Tasks
-        int timeToComplete,     // Dauer in Minuten
+        int slotDuration,       // Berechnete Slot-Dauer in Minuten
         LocalTime start,        // Slot-Startzeit
         LocalTime end,          // Slot-Endzeit
         boolean completed,      // Checkbox-State
@@ -258,11 +258,13 @@ public class todoManager {
                     }
                 }
 
+                // Slot-Dauer berechnen (tatsaechlich geplante Zeit)
+                int slotDuration = (int) java.time.temporal.ChronoUnit.MINUTES.between(taskSlot.start, taskSlot.end);
                 entries.add(new TaskEntry(
                     taskSlot.id,
                     task.title,
                     task.description,
-                    task.timeToComplete,
+                    slotDuration,
                     taskSlot.start,
                     taskSlot.end,
                     Boolean.TRUE.equals(taskSlot.completed),

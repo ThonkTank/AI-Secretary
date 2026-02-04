@@ -82,6 +82,7 @@ import java.time.format.DateTimeFormatter;
 public class TaskRowConfig {
 
     private static final DateTimeFormatter DL_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
     // ══════════════════════════════════════════════════════════════════
     // TaskConfig — Konfiguration für Task-Zeilen
@@ -96,6 +97,7 @@ public class TaskRowConfig {
         Integer goalBarColor,
         boolean checked,
         String durationText,
+        String timeText,
         boolean showStreak,
         String streakText,
         @ColorRes int streakColorRes,
@@ -141,6 +143,11 @@ public class TaskRowConfig {
             // Titel-Farbe: muted wenn strikethrough
             @ColorRes int titleColorRes = strikethrough ? R.color.text_muted : R.color.text_primary;
 
+            // Zeit-Formatierung
+            String timeText = entry.start() != null && entry.end() != null
+                ? entry.start().format(TIME_FMT) + "–" + entry.end().format(TIME_FMT)
+                : null;
+
             return new TaskConfig(
                 entry.slotId(),
                 entry.taskTitle(),
@@ -149,7 +156,8 @@ public class TaskRowConfig {
                 showGreenBg ? R.color.surface_complete : R.color.surface,
                 goalBarColor,
                 completed,
-                entry.timeToComplete() + " min",
+                entry.slotDuration() + " min",
+                timeText,
                 hasStreak,
                 hasStreak ? "🔥 " + entry.currentStreak() : null,
                 TaskListData.getStreakRarityColorRes(entry.currentStreak()),

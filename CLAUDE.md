@@ -94,7 +94,7 @@ src/
 - `incrementProgress(slotId)` / `decrementProgress(slotId)` — Progress-Tasks: setzt `slot.progressDelta`, NICHT das Item direkt
 - `startTimer(slotId)` / `stopTimer(slotId)` — setzt workStart/workEnd + completes
 
-**editorManager** verwaltet CRUD-Operationen für alle Item-Typen. Exponiert `getAllItems()` → `List<TreeEntry>` (`record TreeEntry(trackedItem item, int depth)`) für die hierarchische Baumdarstellung im Editor (DFS-Traversal). `getAvailableParents(type)` filtert typbasiert: TASK→GOAL, GOAL→BLOCK, BLOCK→PROJECT, PROJECT→null. `createItem()` synct automatisch `parent.children`.
+**editorManager** verwaltet CRUD-Operationen für alle Item-Typen. Exponiert `getAllItems()` → `List<TreeEntry>` (`record TreeEntry(trackedItem item, int depth)`) für die hierarchische Baumdarstellung im Editor (DFS-Traversal). `getAvailableParents(type)` filtert typbasiert: TASK→GOAL, GOAL→PROJECT, PROJECT→null. `createItem()` synct automatisch `parent.children`.
 
 **UI:** Hybrid XML + programmatisch. Hauptstruktur über XML-Layouts:
 - Seiten-Layouts: `activity_main.xml`, `view_task_list.xml`, `view_edit_item.xml`, `modal_edit_item.xml`
@@ -114,10 +114,14 @@ Farben und Dimensionen liegen ausschließlich in `colors.xml`/`dimens.xml` — p
 - `TaskRowRenderer.java` — Überladene `apply*(View, ...)` und `apply*(RemoteViews, ...)` Methoden, wendet Config auf Views an
 
 Widget-Komponenten in `activities/widget/`:
-- `TaskWidgetProvider` — AppWidgetProvider, verarbeitet Actions (Toggle, Timer, Refresh)
+- `TaskWidgetProvider` — AppWidgetProvider, verarbeitet Actions (Toggle, Timer, Refresh, CreateItem)
 - `TaskWidgetFactory` — RemoteViewsFactory, liefert RemoteViews für ListView
 - `TaskWidgetService` — RemoteViewsService Boilerplate
 - `WidgetRefreshApp` — Custom Application, registriert Unlock-Receiver für Auto-Refresh
+
+**Widget-Header-Buttons:** Neben dem App-Titel befinden sich zwei Buttons:
+- "+" Button → Öffnet App direkt im Create-Modal (via `ACTION_CREATE_ITEM` Intent → `mainActivity.handleWidgetIntent()`)
+- "↻" Button → Refresht Widget-Daten (via `ACTION_REFRESH` Broadcast)
 
 **Completion-Feedback:**
 - **App** (`taskList.java`): `animateCompletion()` — Checkbox-Bounce (scale 1.0→1.3→1.0) + Hintergrund-Flash (`completion_flash` → `surface_complete`)
@@ -138,13 +142,12 @@ Widget-Komponenten in `activities/widget/`:
 
 ## Key Patterns
 
-**trackedItem** is the central entity — Tasks, Goals, Projects, and Blocks all use this class with `ItemType` enum:
-- `TASK` — Individual work units with `timeToComplete`, `repetition`, `prefTime`
+**trackedItem** is the central entity — Tasks, Goals, and Projects all use this class with `ItemType` enum:
+- `TASK` — Individual work units with `minDurationValue/maxDurationValue`, `timePerProgressUnit`, `repetition`, `prefTime`
 - `GOAL` — Containers for tasks, have `children` list and time budget
-- `BLOCK` — Ordered sequence of goals (e.g., "Stretches" → "Training")
 - `PROJECT` — Top-level grouping, enforces `minIntervalDays` between scheduling
 
-**Hierarchy:** Project → Block → Goal → Task
+**Hierarchy:** Project → Goal → Task
 
 **Goal-Darstellung:** Goals haben `goalIcon` (Emoji-String, z.B. "💪") und `goalColor` (Hex-String, z.B. "#FFE53935"). Werden als farbige Header mit Icon in Task-Liste und Widget angezeigt. Editierbar im Create/Edit-Modal (Emoji-Eingabe via System-Tastatur + Farb-Grid mit 10 vordefinierten Farben).
 
@@ -202,7 +205,7 @@ public record TaskEntry(
     Long slotId,            // TimeSlot ID (zum Abhaken)
     String taskTitle,       // Titel des Tasks
     String taskDescription, // Beschreibung des Tasks
-    int timeToComplete,     // Dauer in Minuten
+    int slotDuration,       // Berechnete Slot-Dauer in Minuten
     LocalTime start,        // Slot-Startzeit
     LocalTime end,          // Slot-Endzeit
     boolean completed,      // Checkbox-State / "heute erledigt" bei Progress
@@ -279,6 +282,20 @@ else if (work > 0 && time > 0): basePrio × min(2.0, 1.0 + work/time)
 
 **Progress-UI:** Tasks mit Progress zeigen statt Checkbox einen kompakten Stepper `[-] 3/6 [+]`. Hintergrund wird grün bei Fortschritt ("heute erledigt"), Strikethrough erst bei vollem Progress.
 
+**Zeit-pro-Einheit Tracking:** `timePerProgressUnit` speichert den Durchschnitt Minuten pro Fortschrittseinheit (gemessen via Timer oder User-Schätzung). Einheitliche Logik für alle Tasks:
+- Mit Progress-Tracking: `Zeit / progressDelta = Min/Einheit`
+- Ohne Progress-Tracking: `Zeit / 1 = Min/Completion` (jede Completion = 1 Einheit)
+- `getEstimatedTime()` berechnet geschätzte Zeit: `timePerProgressUnit × verbleibende Einheiten` (0 wenn keine Messung vorhanden)
+
+**Flexible Min/Max Duration:** Jedes Item kann separate Min- und Max-Grenzen haben, jeweils in Zeit oder Fortschritts-Einheiten:
+- `minDurationValue/Unit` — Minimum pro Tag (z.B. "min 2 Seiten" oder "min 30 min")
+- `maxDurationValue/Unit` — Maximum pro Tag (z.B. "max 4 Seiten" oder "max 60 min")
+- `DurationUnit` enum: `MINUTES` oder `PROGRESS_UNITS`
+- Builder-Convenience-Methoden: `.minMinutes(30)`, `.maxMinutes(60)`, `.minProgress(2)`, `.maxProgress(4)`
+- `getMinDurationMinutes()` / `getMaxDurationMinutes()` — Konvertieren zu Minuten (bei PROGRESS_UNITS: Wert × timePerProgressUnit)
+- `getSlotDuration()` — Clamps estimated auf [min, max], Fallback auf min oder 30 min wenn keine Schätzung
+- Wird von `buildToDo` via `getSlotDuration()` für Slot-Sizing und Scheduling genutzt
+
 Offener Progress (progressCurrent < progressTarget) bewirkt:
 - Prio-Boost über `work()/remainingTime()` — mehr verbleibende Einheiten = höherer Boost, gedeckelt bei 2.0x
 - Periodenblockierung wird übersprungen (wie REPS_PER_TIME), damit das Item täglich einplanbar bleibt
@@ -299,14 +316,14 @@ Offener Progress (progressCurrent < progressTarget) bewirkt:
 void update(Boolean completed, LocalTime workStart, LocalTime workEnd,
             Long previousItemId, Integer progressDelta, LocalDate day, Repo repo)
 ```
-- `completed=true/false` → Slot-Daten auswerten (completions, prefTime, timeToComplete, streak, followUps)
-- `progressDelta` → Fortschrittsänderung aus dem Slot (wird von `incrementProgress`/`decrementProgress` im Slot gesammelt und erst hier angewendet)
+- `completed=true/false` → Slot-Daten auswerten (completions, prefTime, timePerProgressUnit, streak, followUps)
+- `progressDelta` → Fortschrittsänderung aus dem Slot (wird von `incrementProgress`/`decrementProgress` im Slot gesammelt und erst hier angewendet). Auch für Zeit-pro-Einheit Berechnung genutzt.
 - `completed=null` → Nur "immer"-Updates (Refresh ohne Slot-Daten)
 - "Immer"-Updates (laufen IMMER, auch bei null): Perioden-Reset (`isCompleted` → false wenn neue Periode begonnen), scheduled bereinigen (vergangene Daten entfernen), blockedDays neu berechnen. Bei ALLEN Items mit Progress-Tracking: `progressCurrent` reset auf 0 mit Backup in `progressLastPeriod`.
 - `followUps`: Wenn `previousItemId != null`, wird `followUps.merge(previousItemId, 1, Integer::sum)` aufgerufen — trackt welche Items direkt vor diesem erledigt wurden.
 
 **FollowUp-System:** Drei Mechanismen für Task-Reihenfolge:
-- **requiredPredecessor** (`trackedItem.requiredPredecessor`): Harte Constraint "dieser Task soll nach Task X kommen". Nur Geschwister-Tasks (selber Parent) wählbar. UI: Spinner im Edit-Modal. **Scheduling:** Items mit requiredPredecessor werden in `buildChains()` zu Ketten gruppiert und als Block zusammen eingeplant (A → B → C werden konsekutiv platziert). Bei Platzmangel wird die Kette gekürzt.
+- **requiredPredecessor** (`trackedItem.requiredPredecessor`): Harte Constraint "dieser Task soll nach Task X kommen". Nur Geschwister-Tasks (selber Parent) wählbar. UI: Spinner im Edit-Modal. **Scheduling:** Items mit requiredPredecessor werden in `buildChains()` zu Ketten gruppiert und als Chain zusammen eingeplant (A → B → C werden konsekutiv platziert). Bei Platzmangel wird die Kette gekürzt.
 - **Actual Completion Tracking** (`TimeSlot.previousCompletedItemId`): Trackt die tatsächliche Completion-Reihenfolge (nicht die geplante!). `todoManager` speichert pro Goal-Slot, welcher Task zuletzt erledigt wurde (`lastCompletedByParent`). Bei Completion wird `previousCompletedItemId` im Slot gesetzt. `cleanToDo` liest aus dem Slot statt aus der Iterations-Reihenfolge.
 - **FollowUp Prio-Boost** (`trackedItem.scoreFollow(predecessorId)`): Tasks die historisch oft nach bestimmten anderen Tasks erledigt wurden, bekommen einen Planungs-Boost. Berechnung: Wenn Task A mindestens 5x nach Task B erledigt wurde UND das mindestens 5% aller FollowUps von A ausmacht, bekommt A einen Boost = Anteil (z.B. 60% der Follows von B → 60% Boost auf adjustedPrio). Angewendet in `buildToDo.tryMatchChain()` via `findPrecedingItem()`.
 
@@ -324,7 +341,7 @@ void update(Boolean completed, LocalTime workStart, LocalTime workEnd,
 ## Database
 
 SQLite with four tables:
-- `items` — All tracked items (Tasks, Goals, Blocks, Projects)
+- `items` — All tracked items (Tasks, Goals, Projects)
 - `config_schedules` — Day-of-week keyed schedule (start_time, end_time)
 - `todos` — Generated daily plans (id, date, start_time, end_time)
 - `time_slots` — Nested TimeSlots (todo_id FK, parent_slot_id FK for hierarchy, item_id FK, completed, work_start, work_end, progress_delta, previous_completed_item_id, chain_id)
@@ -334,7 +351,7 @@ SQLite with four tables:
 **Darstellung in items:** `goal_icon` (TEXT, Emoji), `goal_color` (TEXT, Hex-Farbcode). Nur für Goals relevant.
 
 **DB-Strategie (WICHTIG):** Es gibt keine Migrationen. Die App hat genau einen Nutzer (Entwickler) und arbeitet ausschließlich mit geseedeten Testdaten (`seedTestData.java`). Bei Schema-Änderungen:
-- `DB_VERSION` in `constants.java` hochzählen (aktuell: **15**)
+- `DB_VERSION` in `constants.java` hochzählen (aktuell: **19**)
 - Schema direkt in `onCreate()` anpassen
 - Neue Testdaten in `seedTestData.java` einpflegen
 - Die App erkennt den Versions-Wechsel via SharedPreferences und ruft `deleteDatabase()` auf

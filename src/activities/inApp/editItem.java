@@ -138,9 +138,8 @@ public class editItem implements ViewBuilder {
      *
      *   Typ-Badge Farben:
      *     PROJECT  → 0xFF7B1FA2 (Lila)   Label: "P"
-     *     BLOCK    → 0xFFE65100 (Orange)  Label: "B"
-     *     GOAL     → 0xFF1976D2 (Blau)    Label: "G"
-     *     TASK     → 0xFF388E3C (Grün)    Label: "T"
+     *     GOAL     → 0xFF1976D2 (Blau)   Label: "G"
+     *     TASK     → 0xFF388E3C (Grün)   Label: "T"
      *
      *   Expand/Collapse:
      *     Items mit children → Klick togglet Sichtbarkeit der Kind-Zeilen
@@ -158,10 +157,10 @@ public class editItem implements ViewBuilder {
      *   Modal-Layout:
      *     ┌──────────────────────────────────────────────────────────────────────┐
      *     │  LinearLayout (VERTICAL, 16dp Padding)                              │
-     *     │  ├── Typ-Auswahl: 4 Buttons [TASK] [GOAL] [BLOCK] [PROJECT]         │
+     *     │  ├── Typ-Auswahl: 3 Buttons [TASK] [GOAL] [PROJECT]                  │
      *     │  ├── Titel (EditText, singleLine)                                   │
      *     │  ├── Beschreibung (EditText, maxLines=3)                            │
-     *     │  ├── Dauer/timeToComplete (EditText, number)                        │
+     *     │  ├── Dauer/timeToSchedule (EditText, number)                        │
      *     │  ├── Priorität: 4 Buttons [L] [M] [H] [C]                          │
      *     │  ├── Parent (Spinner, befüllt via getAvailableParents)              │
      *     │  ├── Cooldown (EditText, number)                                    │
@@ -177,15 +176,15 @@ public class editItem implements ViewBuilder {
      *     └──────────────────────────────────────────────────────────────────────┘
      *
      *   Feld-Sichtbarkeit nach ItemType:
-     *     ┌──────────────────┬──────┬──────┬───────┬─────────┐
-     *     │ Feld             │ TASK │ GOAL │ BLOCK │ PROJECT │
-     *     ├──────────────────┼──────┼──────┼───────┼─────────┤
-     *     │ Dauer            │  ✓   │  ✓   │  —    │    —    │
-     *     │ Parent           │  ✓   │  ✓   │  ✓   │    —    │
-     *     │ Cooldown         │  ✓   │  —   │  —    │    —    │
-     *     │ minIntervalDays  │  —   │  —   │  —    │    ✓    │
-     *     │ Wiederholung     │  ✓   │  —   │  —    │    —    │
-     *     └──────────────────┴──────┴──────┴───────┴─────────┘
+     *     ┌──────────────────┬──────┬──────┬─────────┐
+     *     │ Feld             │ TASK │ GOAL │ PROJECT │
+     *     ├──────────────────┼──────┼──────┼─────────┤
+     *     │ Dauer            │  ✓   │  ✓   │    —    │
+     *     │ Parent           │  ✓   │  ✓   │    —    │
+     *     │ Cooldown         │  ✓   │  —   │    —    │
+     *     │ minIntervalDays  │  —   │  —   │    ✓    │
+     *     │ Wiederholung     │  ✓   │  —   │    —    │
+     *     └──────────────────┴──────┴──────┴─────────┘
      *
      *   Typ-Wechsel:
      *     → Irrelevante Felder: setVisibility(GONE)
@@ -284,7 +283,7 @@ public class editItem implements ViewBuilder {
     private View weekdayRow;
 
     // Typ-Buttons (für Disable im Edit-Modus)
-    private Button[] typeButtons = new Button[4];
+    private Button[] typeButtons = new Button[3];
     private Button[] priorityButtons = new Button[4];
     private Button[] repTypeButtons = new Button[4];
     private Button[] repUnitButtons = new Button[3];
@@ -351,12 +350,10 @@ public class editItem implements ViewBuilder {
 
         Button filterBtn = root.findViewById(R.id.btn_filter);
         filterBtn.setOnClickListener(v -> {
-            // Cycle durch Filter-Modi: Alle → nur PROJECT → nur BLOCK → nur GOAL → nur TASK → Alle
-            if (activeFilters.size() == 4) {
+            // Cycle durch Filter-Modi: Alle → nur PROJECT → nur GOAL → nur TASK → Alle
+            if (activeFilters.size() == 3) {
                 activeFilters = EnumSet.of(ItemType.PROJECT);
             } else if (activeFilters.contains(ItemType.PROJECT) && activeFilters.size() == 1) {
-                activeFilters = EnumSet.of(ItemType.BLOCK);
-            } else if (activeFilters.contains(ItemType.BLOCK) && activeFilters.size() == 1) {
                 activeFilters = EnumSet.of(ItemType.GOAL);
             } else if (activeFilters.contains(ItemType.GOAL) && activeFilters.size() == 1) {
                 activeFilters = EnumSet.of(ItemType.TASK);
@@ -431,13 +428,11 @@ public class editItem implements ViewBuilder {
         TextView badge = row.findViewById(R.id.tree_badge);
         String badgeLabel = switch (item.type) {
             case PROJECT -> "P";
-            case BLOCK -> "B";
             case GOAL -> "G";
             case TASK -> "T";
         };
         int badgeColor = switch (item.type) {
             case PROJECT -> ContextCompat.getColor(context, R.color.badge_project);
-            case BLOCK -> ContextCompat.getColor(context, R.color.badge_block);
             case GOAL -> ContextCompat.getColor(context, R.color.badge_goal);
             case TASK -> ContextCompat.getColor(context, R.color.badge_task);
         };
@@ -536,10 +531,9 @@ public class editItem implements ViewBuilder {
         // Typ-Buttons
         typeButtons[0] = root.findViewById(R.id.btn_type_task);
         typeButtons[1] = root.findViewById(R.id.btn_type_goal);
-        typeButtons[2] = root.findViewById(R.id.btn_type_block);
-        typeButtons[3] = root.findViewById(R.id.btn_type_project);
-        ItemType[] types = {ItemType.TASK, ItemType.GOAL, ItemType.BLOCK, ItemType.PROJECT};
-        for (int i = 0; i < 4; i++) {
+        typeButtons[2] = root.findViewById(R.id.btn_type_project);
+        ItemType[] types = {ItemType.TASK, ItemType.GOAL, ItemType.PROJECT};
+        for (int i = 0; i < 3; i++) {
             final int idx = i;
             typeButtons[i].setOnClickListener(v -> {
                 selectedType = types[idx];
@@ -748,7 +742,7 @@ public class editItem implements ViewBuilder {
 
             titleField.setText(item.title);
             descriptionField.setText(item.description != null ? item.description : "");
-            durationField.setText(item.timeToComplete > 0 ? String.valueOf(item.timeToComplete) : "");
+            durationField.setText(item.maxDurationValue > 0 ? String.valueOf(item.maxDurationValue) : "");
             cooldownField.setText(item.cooldown > 0 ? String.valueOf(item.cooldown) : "");
             deadlineField.setText(item.deadline != null ? item.deadline.toString() : "");
             minIntervalField.setText(item.minIntervalDays > 0 ? String.valueOf(item.minIntervalDays) : "");
@@ -764,8 +758,7 @@ public class editItem implements ViewBuilder {
             int typeIdx = switch (item.type) {
                 case TASK -> 0;
                 case GOAL -> 1;
-                case BLOCK -> 2;
-                case PROJECT -> 3;
+                case PROJECT -> 2;
             };
             for (Button btn : typeButtons) btn.setEnabled(false);
             updateButtonGroup(typeButtons, typeIdx);
@@ -848,6 +841,17 @@ public class editItem implements ViewBuilder {
     }
 
     // ============================================================================
+    // OPENCREATEMODAL - Öffnet Create-Modal von außen (für Widget-Integration)
+    // ============================================================================
+    /**
+     * Öffentliche API um das Create-Modal von außen zu öffnen.
+     * Wird von mainActivity aufgerufen wenn der "+" Button im Widget geklickt wird.
+     */
+    public void openCreateModal() {
+        showModal(null);
+    }
+
+    // ============================================================================
     // SAVEITEM - Validierung + create/update + Tree refresh
     // ============================================================================
     /**
@@ -872,10 +876,10 @@ public class editItem implements ViewBuilder {
         String desc = descriptionField.getText().toString().trim();
         if (!desc.isEmpty()) builder.description(desc);
 
-        // Dauer
+        // Max Slot-Dauer (in Minuten)
         String durStr = durationField.getText().toString().trim();
         if (!durStr.isEmpty()) {
-            try { builder.timeToComplete(Integer.parseInt(durStr)); }
+            try { builder.maxMinutes(Integer.parseInt(durStr)); }
             catch (NumberFormatException e) { /* ignorieren */ }
         }
 
@@ -1050,7 +1054,6 @@ public class editItem implements ViewBuilder {
      * Setzt visibility der typ-abhängigen Felder:
      * TASK: Dauer ✓, Parent ✓, Cooldown ✓, Wiederholung ✓
      * GOAL: Dauer ✓, Parent ✓
-     * BLOCK: Parent ✓
      * PROJECT: minIntervalDays ✓
      */
     private void updateFieldVisibility(ItemType type) {

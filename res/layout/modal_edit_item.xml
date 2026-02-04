@@ -38,8 +38,6 @@
                         android:text="TASK" android:textSize="@dimen/sp_badge" />
                     <Button android:id="@+id/btn_type_goal" style="@style/GroupButton"
                         android:text="GOAL" android:textSize="@dimen/sp_badge" />
-                    <Button android:id="@+id/btn_type_block" style="@style/GroupButton"
-                        android:text="BLOCK" android:textSize="@dimen/sp_badge" />
                     <Button android:id="@+id/btn_type_project" style="@style/GroupButton"
                         android:text="PROJECT" android:textSize="@dimen/sp_badge" />
                 </LinearLayout>

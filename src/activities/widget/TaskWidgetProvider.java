@@ -122,6 +122,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     private static final String ACTION_TOGGLE = "com.autosecretary.widget.ACTION_TOGGLE";
     private static final String ACTION_TIMER = "com.autosecretary.widget.ACTION_TIMER";
     private static final String ACTION_REFRESH = "com.autosecretary.widget.ACTION_REFRESH";
+    public static final String ACTION_CREATE_ITEM = "com.autosecretary.widget.ACTION_CREATE_ITEM";
 
     // Flash-Feedback: Slot-ID die gerade mit Flash-Farbe angezeigt werden soll
     private static Long flashingSlotId = null;
@@ -167,7 +168,17 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             );
             rv.setOnClickPendingIntent(R.id.widget_refresh, refreshPending);
 
-            // 5. Widget aktualisieren
+            // 5. Add-Button → mainActivity mit CREATE_ITEM Action starten
+            Intent addIntent = new Intent(context, mainActivity.class);
+            addIntent.setAction(ACTION_CREATE_ITEM);
+            addIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent addPending = PendingIntent.getActivity(
+                context, 1, addIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+            rv.setOnClickPendingIntent(R.id.widget_add, addPending);
+
+            // 6. Widget aktualisieren
             appWidgetManager.updateAppWidget(appWidgetId, rv);
         }
     }

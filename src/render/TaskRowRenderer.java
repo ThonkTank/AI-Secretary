@@ -142,6 +142,15 @@ public class TaskRowRenderer {
         TextView duration = view.findViewById(R.id.task_duration);
         duration.setText(cfg.durationText());
 
+        // Zeit
+        TextView time = view.findViewById(R.id.task_time);
+        if (cfg.timeText() != null) {
+            time.setText(cfg.timeText());
+            time.setVisibility(View.VISIBLE);
+        } else {
+            time.setVisibility(View.GONE);
+        }
+
         // Meta-Zeile
         applyMetaRow(view, cfg, ctx);
 
@@ -197,6 +206,14 @@ public class TaskRowRenderer {
 
         // Dauer
         rv.setTextViewText(R.id.task_duration, cfg.durationText());
+
+        // Zeit
+        if (cfg.timeText() != null) {
+            rv.setTextViewText(R.id.task_time, cfg.timeText());
+            rv.setViewVisibility(R.id.task_time, View.VISIBLE);
+        } else {
+            rv.setViewVisibility(R.id.task_time, View.GONE);
+        }
 
         // Meta-Zeile
         applyMetaRow(rv, cfg, ctx);

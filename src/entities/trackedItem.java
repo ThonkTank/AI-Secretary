@@ -44,7 +44,10 @@ public class trackedItem {
     // Info für Planung
     public Repetition repetition;           // Definiert Wiederholungslogik (Typ, Intervall, Einheit)
     public Boolean completeFirst;           // Should we wait for completion before repetition or skip if unfulfilled and repeat on schedule?
-    public int timeToComplete;              // Wie lange braucht die Aufgabe um bearbeitet zu werden? bei Goals, wieviel Zeit soll für das Goal eingeplant werden?
+    public int minDurationValue;            // Min-Wert pro Tag (0 = kein Minimum)
+    public DurationUnit minDurationUnit;    // In Minuten oder Fortschritts-Einheiten
+    public int maxDurationValue;            // Max-Wert pro Tag (0 = kein Maximum)
+    public DurationUnit maxDurationUnit;    // In Minuten oder Fortschritts-Einheiten
     public Priority priority;               // Wie wichtig ist diese Task? Beeinflusst Planung.
     public List<LocalDate> scheduled;       // Alle Daten, an denen das Item momentan eingeplant ist.
     public int cooldown;                    // Wenn die Task für eine bestimmte Zeit nicht wiederholt werden soll nach der letzten completion.
@@ -56,6 +59,8 @@ public class trackedItem {
     public String progressUnit;             // Einheit (z.B. "Seiten", "Kapitel")
     public boolean progressPerRep;          // True = Progress resets jede Periode
     public int progressLastPeriod;          // Letzter Progress-Wert (für Anzeige)
+    public int timePerProgressUnit;         // Durchschnitt Minuten pro Progress-Einheit (0 = nicht gemessen)
+    public int progressTimingCount;         // Anzahl Messungen fuer den Durchschnitt
 
     // History
     public int currentStreak;               // wie oft hintereinander abgeschloßen ohne Verfehlung?
@@ -66,6 +71,8 @@ public class trackedItem {
     public int totalCompletions;            // Wie oft wurde die Task erledigt? (all time)
     public int minIntervalDays;             // Mindestabstand zwischen Einplanungen in Tagen (0 = keine Einschränkung)
     public Long requiredPredecessor;        // Geschwister-Task der direkt davor erledigt werden soll (same parent)
+    public Long conditionalPrerequisite;    // Task der kürzlich erledigt sein muss um diesen zu aktivieren
+    public Integer prereqWindowDays;        // Zeitfenster in Tagen (null = persistent bis einmal erledigt)
 
     // Darstellung (nur fuer Goals relevant)
     public String goalIcon;                 // Emoji-Icon fuer Goal-Header (z.B. "💪")
@@ -90,7 +97,22 @@ public class trackedItem {
         public Builder completions(int v) { item.completions = v; return this; }
         public Builder isCompleted(boolean v) { item.isCompleted = v; return this; }
         public Builder completeFirst(boolean v) { item.completeFirst = v; return this; }
-        public Builder timeToComplete(int v) { item.timeToComplete = v; return this; }
+        public Builder minDuration(int value, DurationUnit unit) {
+            item.minDurationValue = value;
+            item.minDurationUnit = unit;
+            return this;
+        }
+        public Builder maxDuration(int value, DurationUnit unit) {
+            item.maxDurationValue = value;
+            item.maxDurationUnit = unit;
+            return this;
+        }
+        // Convenience für Zeit-basiert:
+        public Builder minMinutes(int v) { return minDuration(v, DurationUnit.MINUTES); }
+        public Builder maxMinutes(int v) { return maxDuration(v, DurationUnit.MINUTES); }
+        // Convenience für Fortschritt-basiert:
+        public Builder minProgress(int v) { return minDuration(v, DurationUnit.PROGRESS_UNITS); }
+        public Builder maxProgress(int v) { return maxDuration(v, DurationUnit.PROGRESS_UNITS); }
         public Builder scheduled(List<LocalDate> v) { item.scheduled = v; return this; }
         public Builder cooldown(int v) { item.cooldown = v; return this; }
         public Builder prefTime(String v) { item.prefTime = LocalTime.parse(v); return this; }
@@ -104,9 +126,13 @@ public class trackedItem {
         public Builder progressTarget(int v) { item.progressTarget = v; return this; }
         public Builder progressUnit(String v) { item.progressUnit = v; return this; }
         public Builder progressPerRep(boolean v) { item.progressPerRep = v; return this; }
+        public Builder timePerProgressUnit(int v) { item.timePerProgressUnit = v; return this; }
+        public Builder progressTimingCount(int v) { item.progressTimingCount = v; return this; }
         public Builder goalIcon(String v) { item.goalIcon = v; return this; }
         public Builder goalColor(String v) { item.goalColor = v; return this; }
         public Builder requiredPredecessor(Long v) { item.requiredPredecessor = v; return this; }
+        public Builder conditionalPrerequisite(Long v) { item.conditionalPrerequisite = v; return this; }
+        public Builder prereqWindowDays(Integer v) { item.prereqWindowDays = v; return this; }
 
         public Builder repetition(RepetitionType type, int value, RepUnits unit) {
             item.repetition = new Repetition();
@@ -142,7 +168,7 @@ public class trackedItem {
     }
     
     public static enum ItemType {
-        TASK, GOAL, BLOCK, PROJECT
+        TASK, GOAL, PROJECT
     }
 
     public static enum RepetitionType {
@@ -171,10 +197,15 @@ public class trackedItem {
         CRITICAL(100000);        // Muss baldmöglichst eingeplant werden
 
         public final int value;
-        
+
         Priority(int value) {
             this.value = value;
         }
+    }
+
+    public static enum DurationUnit {
+        MINUTES,          // Dauer in Minuten
+        PROGRESS_UNITS    // Dauer in Fortschritts-Einheiten (z.B. Seiten, Kapitel)
     }
 
 
@@ -230,6 +261,29 @@ public class trackedItem {
         return false;
     }
 
+    /**
+     * Prüft ob das Item seine Conditional-Prerequisite-Bedingung erfüllt.
+     *
+     * Zwei Modi:
+     * - Zeitfenster (prereqWindowDays > 0): Prereq muss in den letzten N Tagen erledigt worden sein
+     * - Persistent (prereqWindowDays == null oder 0): Prereq muss NACH letzter eigener Erledigung erledigt worden sein
+     */
+    public boolean meetsConditionalPrerequisite(LocalDate day, Repo repo) {
+        if (conditionalPrerequisite == null) return true;
+
+        trackedItem prereq = repo.fetch(Table.ITEMS, conditionalPrerequisite);
+        if (prereq == null || prereq.lastCompletion == null) return false;
+
+        if (prereqWindowDays == null || prereqWindowDays == 0) {
+            // PERSISTENT-MODUS: Aktiv wenn Prereq nach letzter eigener Erledigung kam
+            return lastCompletion == null || prereq.lastCompletion.isAfter(lastCompletion);
+        } else {
+            // ZEITFENSTER-MODUS: Prereq muss in den letzten N Tagen erledigt worden sein
+            LocalDate windowStart = day.minusDays(prereqWindowDays);
+            return !prereq.lastCompletion.isBefore(windowStart);
+        }
+    }
+
     // ============== BUSINESS LOGIK ==============
 
     // ============================================================================
@@ -241,7 +295,7 @@ public class trackedItem {
      * für alle übrigen Items mit completed=null (nur "immer"-Updates).
      *
      * Slot-basierte Updates (wenn completed != null):
-     *   - Completion(s), prefTime, timeToComplete, progress, streak, followUps
+     *   - Completion(s), prefTime, timePerProgressUnit, progress, streak, followUps
      *
      * "Immer"-Updates (für alle Items):
      *   - isCompleted: Perioden-Reset für wiederkehrende Items
@@ -280,11 +334,11 @@ public class trackedItem {
                 // PrefTime aus workStart ableiten
                 updatePrefTime(workStart);
 
-                // TimeToComplete: aus Timer-Daten ableiten (laufender Durchschnitt)
+                // TimeToComplete: aus Timer-Daten ableiten (laufender Durchschnitt pro Einheit)
                 if (workStart != null && workEnd != null) {
                     int actualMinutes = (int) java.time.temporal.ChronoUnit.MINUTES.between(workStart, workEnd);
                     if (actualMinutes > 0) {
-                        updateTimeToComplete(actualMinutes);
+                        updateTimePerUnit(actualMinutes, progressDelta);
                     }
                 }
             }
@@ -360,15 +414,102 @@ public class trackedItem {
     }
 
     /**
-     * Aktualisiert timeToComplete (laufender Durchschnitt aus Timer-Daten).
+     * Aktualisiert timePerProgressUnit (laufender Durchschnitt).
+     *
+     * Einheitliche Logik: Tasks ohne Progress-Tracking = 1 Einheit pro Completion.
+     * Mit Progress-Tracking: progressDelta Einheiten pro Completion.
      */
-    private void updateTimeToComplete(int actualMinutes) {
-        if (this.totalCompletions <= 1) {
-            this.timeToComplete = actualMinutes;
-            return;
+    private void updateTimePerUnit(int actualMinutes, Integer progressDelta) {
+        // Einheiten bestimmen: explizites Progress oder implizit 1 pro Completion
+        int units = (this.progressTarget > 0 && progressDelta != null && progressDelta > 0)
+            ? progressDelta
+            : 1;  // Tasks ohne Progress-Tracking = 1 Einheit pro Completion
+
+        int minutesPerUnit = actualMinutes / units;
+
+        if (this.progressTimingCount == 0) {
+            this.timePerProgressUnit = minutesPerUnit;
+            this.progressTimingCount = 1;
+        } else {
+            this.timePerProgressUnit =
+                (this.timePerProgressUnit * this.progressTimingCount + minutesPerUnit)
+                / (this.progressTimingCount + 1);
+            this.progressTimingCount++;
         }
-        this.timeToComplete = (this.timeToComplete * (this.totalCompletions - 1) + actualMinutes)
-                              / this.totalCompletions;
+    }
+
+    /**
+     * Berechnet geschaetzte Zeit fuer vollstaendige Erledigung.
+     * - Mit Progress-Tracking: timePerProgressUnit × verbleibende Einheiten
+     * - Ohne Progress-Tracking: timePerProgressUnit × 1
+     * @return 0 wenn keine Messung vorhanden
+     */
+    public int getEstimatedTime() {
+        if (this.timePerProgressUnit <= 0) {
+            return 0;  // Kein Schaetzwert vorhanden
+        }
+        if (this.progressTarget > 0) {
+            int remainingUnits = this.progressTarget - this.progressCurrent;
+            return this.timePerProgressUnit * Math.max(1, remainingUnits);
+        }
+        // Ohne Progress = 1 Einheit pro Completion
+        return this.timePerProgressUnit;
+    }
+
+    /**
+     * Berechnet Minimum in Minuten.
+     * Bei PROGRESS_UNITS: Wert × timePerProgressUnit
+     */
+    public int getMinDurationMinutes() {
+        if (minDurationValue <= 0) return 0;
+        if (minDurationUnit == DurationUnit.PROGRESS_UNITS) {
+            return minDurationValue * Math.max(1, timePerProgressUnit);
+        }
+        return minDurationValue;
+    }
+
+    /**
+     * Berechnet Maximum in Minuten.
+     * Bei PROGRESS_UNITS: Wert × timePerProgressUnit
+     */
+    public int getMaxDurationMinutes() {
+        if (maxDurationValue <= 0) return Integer.MAX_VALUE;
+        if (maxDurationUnit == DurationUnit.PROGRESS_UNITS) {
+            return maxDurationValue * Math.max(1, timePerProgressUnit);
+        }
+        return maxDurationValue;
+    }
+
+    /**
+     * Berechnet die Slot-Dauer fuer Einplanung.
+     * Clamps estimated auf [min, max].
+     */
+    public int getSlotDuration() {
+        int estimated = getEstimatedTime();
+        int min = getMinDurationMinutes();
+        int max = getMaxDurationMinutes();
+
+        // Ohne Schaetzung: Minimum oder Max als Fallback
+        if (estimated <= 0) {
+            if (min > 0) return min;
+            return Math.min(max, 30); // 30 min Default
+        }
+
+        // Clamp zu [min, max]
+        if (estimated < min) return min;
+        if (estimated > max) return max;
+        return estimated;
+    }
+
+    /**
+     * Berechnet erwarteten Fortschritt fuer gegebene Zeit.
+     * @return Anzahl Einheiten (oder 1 wenn kein Progress-Tracking)
+     */
+    public int expectedProgress(int availableMinutes) {
+        if (this.timePerProgressUnit > 0 && this.progressTarget > 0) {
+            return availableMinutes / this.timePerProgressUnit;
+        }
+        return 1;  // Ohne Progress = 1 Completion
     }
 
     /**

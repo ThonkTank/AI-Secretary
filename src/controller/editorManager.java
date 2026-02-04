@@ -75,7 +75,7 @@ public class editorManager {
      *      2. Jedes Item fetchen:
      *         → repo.fetch(Table.ITEMS, id)
      *      3. Roots finden (parent == null)
-     *         → Sortiert nach Typ-Ordnung: PROJECT → BLOCK → GOAL → TASK
+     *         → Sortiert nach Typ-Ordnung: PROJECT → GOAL → TASK
      *      4. DFS-Traversal ab jedem Root:
      *         → addToResult(item, depth=0)
      *         → Für jedes child in item.children:
@@ -86,8 +86,7 @@ public class editorManager {
      *  getAvailableParents(ItemType childType) - Mögliche Parents für Typ
      *      Typ-Mapping:
      *        TASK    → Parents vom Typ "Goal"
-     *        GOAL    → Parents vom Typ "Block"
-     *        BLOCK   → Parents vom Typ "Project"
+     *        GOAL    → Parents vom Typ "Project"
      *        PROJECT → keine Parents (return leere Liste)
      *      1. parentType bestimmen via switch
      *      2. IDs laden: repo.lookups("items", Map.of("type", parentType), "id")
@@ -145,7 +144,7 @@ public class editorManager {
     // ============================================================================
     /**
      * Liefert alle nicht-abgeschlossenen Items als flache Liste in Baum-Reihenfolge.
-     * Roots (parent==null) sortiert nach Typ: PROJECT → BLOCK → GOAL → TASK.
+     * Roots (parent==null) sortiert nach Typ: PROJECT → GOAL → TASK.
      * Kinder rekursiv eingehängt mit steigender depth.
      *
      * @return Liste von TreeEntry(item, depth)
@@ -177,13 +176,12 @@ public class editorManager {
         return result;
     }
 
-    /** Typ-Ordnung: PROJECT=0, BLOCK=1, GOAL=2, TASK=3 */
+    /** Typ-Ordnung: PROJECT=0, GOAL=1, TASK=2 */
     private int typeOrder(ItemType type) {
         return switch (type) {
             case PROJECT -> 0;
-            case BLOCK -> 1;
-            case GOAL -> 2;
-            case TASK -> 3;
+            case GOAL -> 1;
+            case TASK -> 2;
         };
     }
 
@@ -192,7 +190,7 @@ public class editorManager {
     // ============================================================================
     /**
      * Gibt alle Items zurück, die als Parent für den übergebenen childType
-     * in Frage kommen (TASK→Goal, GOAL→Block, BLOCK→Project, PROJECT→leer).
+     * in Frage kommen (TASK→Goal, GOAL→Project, PROJECT→leer).
      *
      * @param childType Der Typ des Kindes, für das ein Parent gesucht wird
      * @return Liste möglicher Parent-Items (leer bei PROJECT)
@@ -200,8 +198,7 @@ public class editorManager {
     public List<trackedItem> getAvailableParents(ItemType childType) {
         String parentType = switch (childType) {
             case TASK -> "GOAL";
-            case GOAL -> "BLOCK";
-            case BLOCK -> "PROJECT";
+            case GOAL -> "PROJECT";
             case PROJECT -> null;
         };
 

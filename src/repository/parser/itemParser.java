@@ -50,8 +50,13 @@ public class itemParser {
         }
         item.completeFirst = Boolean.TRUE.equals(typed.get("complete_first"));
 
-        // Planung
-        item.timeToComplete = typed.get("time_to_complete") instanceof Number n ? n.intValue() : 0;
+        // Planung (min/max Duration)
+        item.minDurationValue = typed.get("min_duration_value") instanceof Number n ? n.intValue() : 0;
+        String minUnit = (String) typed.get("min_duration_unit");
+        if (minUnit != null) item.minDurationUnit = trackedItem.DurationUnit.valueOf(minUnit);
+        item.maxDurationValue = typed.get("max_duration_value") instanceof Number n ? n.intValue() : 0;
+        String maxUnit = (String) typed.get("max_duration_unit");
+        if (maxUnit != null) item.maxDurationUnit = trackedItem.DurationUnit.valueOf(maxUnit);
         String prioStr = (String) typed.get("priority");
         if (prioStr != null) {
             item.priority = trackedItem.Priority.valueOf(prioStr);
@@ -80,6 +85,8 @@ public class itemParser {
         item.progressUnit = (String) typed.get("progress_unit");
         item.progressPerRep = Boolean.TRUE.equals(typed.get("progress_per_rep"));
         item.progressLastPeriod = typed.get("progress_last_period") instanceof Number n ? n.intValue() : 0;
+        item.timePerProgressUnit = typed.get("time_per_progress_unit") instanceof Number n ? n.intValue() : 0;
+        item.progressTimingCount = typed.get("progress_timing_count") instanceof Number n ? n.intValue() : 0;
 
         // History
         item.currentStreak = typed.get("current_streak") instanceof Number n ? n.intValue() : 0;
@@ -94,6 +101,10 @@ public class itemParser {
 
         // FollowUp-Constraint
         item.requiredPredecessor = (Long) typed.get("required_predecessor");
+
+        // Conditional Prerequisite
+        item.conditionalPrerequisite = (Long) typed.get("conditional_prerequisite");
+        item.prereqWindowDays = typed.get("prereq_window_days") instanceof Number n ? n.intValue() : null;
 
         // Relationen
         item.parent = (Long) typed.get("parent");
@@ -135,14 +146,16 @@ public class itemParser {
         return switch (column) {
             // Long-Felder
             case "id", "parent", "repetition_value", "required_completions",
-                 "rep_interval", "day_of_month", "required_predecessor" ->
+                 "rep_interval", "day_of_month", "required_predecessor",
+                 "conditional_prerequisite" ->
                 (v instanceof Number n) ? n.longValue() : Long.parseLong(v.toString());
 
             // Int-Felder
-            case "completions", "time_to_complete", "daily_subgoal_limit",
+            case "completions", "min_duration_value", "max_duration_value", "daily_subgoal_limit",
                  "sequence_order", "current_streak", "average_streak",
                  "nr_of_streaks", "total_completions", "min_interval_days", "cooldown",
-                 "progress_current", "progress_target", "progress_last_period" ->
+                 "progress_current", "progress_target", "progress_last_period",
+                 "time_per_progress_unit", "progress_timing_count", "prereq_window_days" ->
                 (v instanceof Number n) ? n.intValue() : Integer.parseInt(v.toString());
 
             // Boolean-Felder
@@ -194,8 +207,11 @@ public class itemParser {
         }
         cv.put("complete_first", (item.completeFirst != null && item.completeFirst) ? 1 : 0);
 
-        // Planung
-        cv.put("time_to_complete", item.timeToComplete);
+        // Planung (min/max Duration)
+        cv.put("min_duration_value", item.minDurationValue);
+        if (item.minDurationUnit != null) cv.put("min_duration_unit", item.minDurationUnit.name());
+        cv.put("max_duration_value", item.maxDurationValue);
+        if (item.maxDurationUnit != null) cv.put("max_duration_unit", item.maxDurationUnit.name());
         if (item.priority != null) cv.put("priority", item.priority.name());
         if (item.prefTime != null) cv.put("pref_time", item.prefTime.toString());
         if (item.scheduled != null && !item.scheduled.isEmpty()) {
@@ -209,6 +225,8 @@ public class itemParser {
         if (item.progressUnit != null) cv.put("progress_unit", item.progressUnit);
         cv.put("progress_per_rep", item.progressPerRep ? 1 : 0);
         cv.put("progress_last_period", item.progressLastPeriod);
+        cv.put("time_per_progress_unit", item.timePerProgressUnit);
+        cv.put("progress_timing_count", item.progressTimingCount);
         if (item.deadline != null) cv.put("deadline", item.deadline.toString());
         if (item.blockedDays != null && !item.blockedDays.isEmpty()) {
             cv.put("blocked_days", item.blockedDays.stream()
@@ -229,6 +247,10 @@ public class itemParser {
 
         // FollowUp-Constraint
         if (item.requiredPredecessor != null) cv.put("required_predecessor", item.requiredPredecessor);
+
+        // Conditional Prerequisite
+        if (item.conditionalPrerequisite != null) cv.put("conditional_prerequisite", item.conditionalPrerequisite);
+        if (item.prereqWindowDays != null) cv.put("prereq_window_days", item.prereqWindowDays);
 
         // Relationen
         if (item.parent != null) cv.put("parent", item.parent);

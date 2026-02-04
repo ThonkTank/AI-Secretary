@@ -313,7 +313,8 @@ public class buildToDo {
             // Prüfen ob Item an mindestens einem der 7 Tage eingeplant werden kann
             boolean canSchedule = false;
             for (LocalDate day : days) {
-                if (!item.isBlockedOn(day, repo)) {
+                if (!item.isBlockedOn(day, repo)
+                    && item.meetsConditionalPrerequisite(day, repo)) {
                     canSchedule = true;
                     break;
                 }
@@ -453,10 +454,10 @@ public class buildToDo {
                         }
                         if (anyBlocked) break;  // Kürzere Längen auch nicht möglich
 
-                        // Berechne Gesamtdauer
+                        // Berechne Gesamtdauer (respektiert timeToSchedule als Obergrenze)
                         int totalDuration = 0;
                         for (trackedItem item : fitting) {
-                            totalDuration += item.timeToComplete;
+                            totalDuration += item.getSlotDuration();
                         }
 
                         LocalTime endTime = startTime.plusMinutes(totalDuration);
@@ -483,7 +484,7 @@ public class buildToDo {
                             // FollowUp-Boost nur für erstes Item
                             Long precId = (i == 0) ? precedingItemId : null;
                             gainPrio += calculateItemScore(item, cursor, precId);
-                            cursor = cursor.plusMinutes(item.timeToComplete);
+                            cursor = cursor.plusMinutes(item.getSlotDuration());
                         }
 
                         // Bonus für längere Ketten
@@ -507,52 +508,6 @@ public class buildToDo {
 
         return globalBest;
     }
-
-
-    // ============================================================================
-    // findPrecedingItem - Findet die Item-ID im Slot direkt vor dem gegebenen Slot
-    // ============================================================================
-    /**
-     * Findet die Item-ID im Slot direkt vor dem gegebenen Slot (gleicher Tag, gleiche Liste).
-     */
-    private Long findPrecedingItem(SlotCandidate candidate, List<SlotCandidate> slotList) {
-        todoList sameList = candidate.list();
-        LocalTime candidateStart = candidate.slot().start;
-
-        Long precedingItem = null;
-        LocalTime latestEndBefore = null;
-
-        for (SlotCandidate other : slotList) {
-            // Nur gleicher Tag/Liste
-            if (other.list() != sameList) continue;
-            // Nur Slots die VOR diesem enden
-            if (!other.slot().end.isBefore(candidateStart) && !other.slot().end.equals(candidateStart)) continue;
-            // Nur belegte Slots
-            if (other.slot().item == null && other.displaceable() == null) continue;
-
-            // Der späteste Slot vor diesem gewinnt
-            if (latestEndBefore == null || other.slot().end.isAfter(latestEndBefore)) {
-                latestEndBefore = other.slot().end;
-                precedingItem = (other.displaceable() != null) ? other.displaceable().item : other.slot().item;
-            }
-        }
-
-        // Auch bereits platzierte Slots in der todoList prüfen
-        if (sameList.timeSlots != null) {
-            for (TimeSlot slot : sameList.timeSlots) {
-                if (slot.item == null) continue;
-                if (!slot.end.isBefore(candidateStart) && !slot.end.equals(candidateStart)) continue;
-
-                if (latestEndBefore == null || slot.end.isAfter(latestEndBefore)) {
-                    latestEndBefore = slot.end;
-                    precedingItem = slot.item;
-                }
-            }
-        }
-
-        return precedingItem;
-    }
-
 
     // ============================================================================
     // Hilfsmethoden für Multi-Längen-Evaluation
@@ -832,7 +787,7 @@ public class buildToDo {
         for (trackedItem item : match.fittingTasks()) {
             TimeSlot itemSlot = new TimeSlot();
             itemSlot.start = cursor;
-            itemSlot.end = cursor.plusMinutes(item.timeToComplete);
+            itemSlot.end = cursor.plusMinutes(item.getSlotDuration());
             itemSlot.item = item.id;
             itemSlot.chainId = chainId;
             itemSlot.adjustedPrio = match.adjustedPrio();

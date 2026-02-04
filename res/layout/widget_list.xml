@@ -27,6 +27,16 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/widget_add"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="+"
+            android:textSize="@dimen/sp_heading"
+            android:textColor="@color/white"
+            android:padding="@dimen/padding_small"
+            android:contentDescription="@string/add_item" />
+
+        <TextView
             android:id="@+id/widget_refresh"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

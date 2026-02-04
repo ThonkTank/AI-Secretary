@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat;
 import com.autosecretary.R;
 
 import activities.generic.taskList;
+import activities.widget.TaskWidgetProvider;
 import controller.editorManager;
 import controller.todoManager;
 import controller.updateChecker;
@@ -22,6 +23,7 @@ import scheduling.DailyPlanningScheduler;
 import repository.SQLrepo;
 import scheduling.buildToDo;
 import scheduling.CalendarReader;
+import android.content.Intent;
 
 public class mainActivity extends Activity {
 
@@ -34,6 +36,7 @@ public class mainActivity extends Activity {
 
     private View tagesplanView;
     private View verwaltenView;
+    private editItem verwaltenEditor;
 
     private todoManager manager;
     private taskList taskListView;
@@ -105,6 +108,34 @@ public class mainActivity extends Activity {
 
         // Standardmaessig "Tagesplan" aktiv
         selectTab(0);
+
+        // Intent-Extra prüfen für Widget-Navigation
+        handleWidgetIntent(getIntent());
+    }
+
+    // ============================================================================
+    // onNewIntent - Verarbeitet Intents wenn Activity bereits läuft
+    // ============================================================================
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleWidgetIntent(intent);
+    }
+
+    // ============================================================================
+    // handleWidgetIntent - Öffnet Create-Modal bei Widget-"+" Klick
+    // ============================================================================
+    private void handleWidgetIntent(Intent intent) {
+        if (intent != null && TaskWidgetProvider.ACTION_CREATE_ITEM.equals(intent.getAction())) {
+            // Zum Verwalten-Tab wechseln und Modal öffnen
+            selectTab(1);
+            if (verwaltenEditor != null) {
+                verwaltenEditor.openCreateModal();
+            }
+            // Intent-Action löschen um Wiederholung bei Config-Change zu verhindern
+            intent.setAction(null);
+        }
     }
 
     // ============================================================================
@@ -149,7 +180,8 @@ public class mainActivity extends Activity {
     // buildVerwaltenView - Delegiert an editItem View-Builder
     // ============================================================================
     private View buildVerwaltenView() {
-        return new editItem(this, new editorManager(this)).buildView();
+        verwaltenEditor = new editItem(this, new editorManager(this));
+        return verwaltenEditor.buildView();
     }
 
 }
