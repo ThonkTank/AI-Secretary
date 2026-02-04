@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import activities.widget.TaskWidgetProvider;
 import repository.SQLrepo;
 import scheduling.buildToDo;
 import scheduling.CalendarReader;
@@ -39,6 +40,8 @@ public class DailyPlanningReceiver extends BroadcastReceiver {
         DailyPlanningScheduler.scheduleDaily(context);
         Log.d(TAG, "Nächster Alarm registriert");
 
-        // TODO: Widget-Update nach Neuimplementierung wieder einfügen
+        // 4. Widget aktualisieren
+        TaskWidgetProvider.notifyWidgetUpdate(context);
+        Log.d(TAG, "Widget aktualisiert");
     }
 }

@@ -41,7 +41,7 @@ public class todoParser {
     private static List<TimeSlot> loadSlots(SQLiteDatabase db, long todoId) {
         List<Map<String, Object>> allSlots = new ArrayList<>();
         Cursor cursor = db.query("time_slots",
-            new String[]{"id", "parent_slot_id", "start_time", "end_time", "item_id", "completed", "is_calendar_event", "calendar_title", "work_start", "work_end"},
+            new String[]{"id", "parent_slot_id", "start_time", "end_time", "item_id", "completed", "is_calendar_event", "calendar_title", "work_start", "work_end", "progress_delta", "previous_completed_item_id", "chain_id"},
             "todo_id = ?", new String[]{String.valueOf(todoId)},
             null, null, "id ASC");
         try {
@@ -57,6 +57,9 @@ public class todoParser {
                 slot.put("calendar_title", cursor.isNull(7) ? null : cursor.getString(7));
                 slot.put("work_start", cursor.isNull(8) ? null : cursor.getString(8));
                 slot.put("work_end", cursor.isNull(9) ? null : cursor.getString(9));
+                slot.put("progress_delta", cursor.getInt(10));
+                slot.put("previous_completed_item_id", cursor.isNull(11) ? null : cursor.getLong(11));
+                slot.put("chain_id", cursor.isNull(12) ? null : cursor.getLong(12));
                 allSlots.add(slot);
             }
         } finally {
@@ -81,6 +84,11 @@ public class todoParser {
             if (workStartStr != null) ts.workStart = LocalTime.parse(workStartStr);
             String workEndStr = (String) r.get("work_end");
             if (workEndStr != null) ts.workEnd = LocalTime.parse(workEndStr);
+            ts.progressDelta = ((Number) r.get("progress_delta")).intValue();
+            Object prevItemId = r.get("previous_completed_item_id");
+            if (prevItemId != null) ts.previousCompletedItemId = ((Number) prevItemId).longValue();
+            Object chainIdVal = r.get("chain_id");
+            if (chainIdVal != null) ts.chainId = ((Number) chainIdVal).longValue();
             slotMap.put(ts.id, ts);
         }
 
@@ -159,6 +167,13 @@ public class todoParser {
             cv.put("calendar_title", slot.calendarTitle);
             cv.put("work_start", slot.workStart != null ? slot.workStart.toString() : null);
             cv.put("work_end", slot.workEnd != null ? slot.workEnd.toString() : null);
+            cv.put("progress_delta", slot.progressDelta != null ? slot.progressDelta : 0);
+            if (slot.previousCompletedItemId != null) {
+                cv.put("previous_completed_item_id", slot.previousCompletedItemId);
+            }
+            if (slot.chainId != null) {
+                cv.put("chain_id", slot.chainId);
+            }
 
             long newSlotId = db.insert("time_slots", null, cv);
             slot.id = newSlotId;

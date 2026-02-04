@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,9 +35,7 @@ public class buildToDo {
      *   - Verdrängung: Höher-priorisierte Items können niedriger-priorisierte verdrängen
      *   - Slot-adjusted Prio wird im TimeSlot persistiert für fairen Verdrängungsvergleich
      *   - Kein Split zwischen augment/create: alles läuft über dieselbe Pipeline
-     *   - Goal-Tasks werden über placeItem platziert
-     *
-     * TODO: Aufgaben mit mehreren Wiederholungen pro Tag ermöglichen.
+     *   - Goal-Tasks werden über placeItem platziert.
      * 
      * ──────────────────────────────────────────────────────────────────────────────
      * ALGORITHMUS-ABLAUF
@@ -175,9 +174,26 @@ public class buildToDo {
      *
      */
 
-    public record PrioritizedItem(trackedItem item, int prio) {}
+    /**
+     * Eine Kette von Items die durch requiredPredecessor verbunden sind.
+     * Einzelne Items ohne Chain sind Listen mit einem Element.
+     */
+    private record TaskChain(List<trackedItem> tasks, int prio) {}
+
     record SlotCandidate(TimeSlot slot, todoList list, TimeSlot displaceable) {}
-    record Match(PrioritizedItem item, SlotCandidate slot) {}
+
+    /**
+     * Match-Ergebnis: Welche Items der Kette passen, wo sie platziert werden.
+     * toDisplace enthält ALLE zu verdrängenden Slots (inkl. anderer Chain-Mitglieder für atomare Verdrängung).
+     * adjustedPrio = Summe der slot-spezifischen Prioritäten aller fittingTasks.
+     */
+    private record ChainMatch(
+        List<trackedItem> fittingTasks,  // Items die platziert werden
+        LocalTime startTime,              // Startzeit
+        todoList targetList,              // Ziel-Tag
+        Set<TimeSlot> toDisplace,         // Alle zu verdrängenden Slots (atomar)
+        int adjustedPrio                  // Gesamtscore der Chain
+    ) {}
 
     /** Liefert Kalender-Events für einen Tag. Abstrahiert CalendarReader für Testbarkeit. */
     @FunctionalInterface
@@ -313,115 +329,385 @@ public class buildToDo {
 
 
     // ============================================================================
-    // prioritize - Sortiert nach kombinierter Dringlichkeit
+    // buildChains - Gruppiert Items zu Ketten basierend auf requiredPredecessor
     // ============================================================================
-    private List<PrioritizedItem> prioritize(List<trackedItem> items) {
-        List<PrioritizedItem> prioritizedList = new ArrayList<>();
+    /**
+     * Gruppiert Items zu Ketten basierend auf requiredPredecessor und priorisiert.
+     * Items ohne Predecessor/Successor werden als Einzelketten behandelt.
+     * Kette bekommt die SUMME der Prios aller Mitglieder.
+     */
+    private List<TaskChain> buildChains(List<trackedItem> items) {
         LocalDate today = LocalDate.now();
 
+        Map<Long, trackedItem> byId = new HashMap<>();
         for (trackedItem item : items) {
-            int priority = item.priority.value + (int)(item.priority.value * (item.overdue(today) * 0.5));
-
-            // Überfällige Deadline: fester 3x Boost
-            if (item.deadline != null && ChronoUnit.DAYS.between(today, item.deadline) <= 0) {
-                priority = (int)(priority * 3.0);
-            } else {
-                int work = item.work(today);
-                int time = item.remainingTime(today);
-                if (work > 0 && time > 0) {
-                    double frequency = Math.min(2.0, 1.0 + (double) work / time);
-                    priority = (int)(priority * frequency);
-                }
-            }
-
-            prioritizedList.add(new PrioritizedItem(item, priority));
+            byId.put(item.id, item);
         }
 
-        prioritizedList.sort((a, b) -> b.prio() - a.prio());
-        return prioritizedList;
+        // Finde für jedes Item seinen Nachfolger (wer hat mich als requiredPredecessor?)
+        Map<Long, Long> successorOf = new HashMap<>();
+        for (trackedItem item : items) {
+            if (item.requiredPredecessor != null && byId.containsKey(item.requiredPredecessor)) {
+                successorOf.put(item.requiredPredecessor, item.id);
+            }
+        }
+
+        Set<Long> processed = new HashSet<>();
+        List<TaskChain> chains = new ArrayList<>();
+
+        for (trackedItem item : items) {
+            if (processed.contains(item.id)) continue;
+
+            // Finde Ketten-Kopf (kein Predecessor oder Predecessor nicht in Liste)
+            trackedItem head = item;
+            while (head.requiredPredecessor != null && byId.containsKey(head.requiredPredecessor)) {
+                head = byId.get(head.requiredPredecessor);
+            }
+
+            // Baue Kette: head → successor → successor...
+            List<trackedItem> chain = new ArrayList<>();
+            trackedItem current = head;
+            int totalPrio = 0;
+
+            while (current != null) {
+                chain.add(current);
+                processed.add(current.id);
+
+                // Prio berechnen (wie in alter prioritize())
+                int itemPrio = current.priority.value +
+                              (int)(current.priority.value * current.overdue(today) * 0.5);
+
+                // Deadline/Work-Boost
+                if (current.deadline != null && ChronoUnit.DAYS.between(today, current.deadline) <= 0) {
+                    itemPrio = (int)(itemPrio * 3.0);
+                } else {
+                    int work = current.work(today);
+                    int time = current.remainingTime(today);
+                    if (work > 0 && time > 0) {
+                        double frequency = Math.min(2.0, 1.0 + (double) work / time);
+                        itemPrio = (int)(itemPrio * frequency);
+                    }
+                }
+
+                totalPrio += itemPrio;
+
+                // Nächstes Item in Kette
+                Long successorId = successorOf.get(current.id);
+                current = (successorId != null) ? byId.get(successorId) : null;
+            }
+
+            chains.add(new TaskChain(chain, totalPrio));
+        }
+
+        // Nach Prio sortieren (höchste zuerst)
+        chains.sort((a, b) -> b.prio() - a.prio());
+        return chains;
     }
 
 
     // ============================================================================
-    // tryMatch - Iteriert priorisierte Items und findet den besten Slot für das
-    //   höchstpriorisierte Item, das platziert werden kann.
-    //   Bewertet prefTime-Passung (log. Score), Slot-Abdeckung (zu kurze Slots
-    //   werden proportional bestraft) und Verdrängung besetzter Slots.
-    //   Gibt null zurück wenn kein Item platzierbar ist.
+    // tryMatchChain - Findet die beste (Startpunkt × Länge)-Kombination für Chains
     // ============================================================================
-    private Match tryMatch(List<PrioritizedItem> itemList, List<SlotCandidate> slotList) {
-        for (PrioritizedItem pi : itemList) {
-            trackedItem item = pi.item();
-            int duration = item.timeToComplete;
+    /**
+     * Evaluiert alle möglichen (Startpunkt × Länge)-Kombinationen für alle Chains.
+     * Für jede Kombination: netScore = Summe(Chain-Item-Scores) - Summe(verdrängte Scores).
+     * Chains werden nur platziert wenn netScore > 0.
+     *
+     * WICHTIG: Atomare Chain-Verdrängung - wenn ein Slot zu einer Chain gehört,
+     * werden ALLE Slots dieser Chain in die Verdrängungsberechnung einbezogen.
+     */
+    private ChainMatch tryMatchChain(List<TaskChain> chains, List<SlotCandidate> slotList) {
+        // Sammle alle möglichen Startpunkte pro Tag
+        Map<todoList, List<LocalTime>> startsByDay = collectStartPointsByDay(slotList);
 
-            SlotCandidate bestCandidate = null;
-            int bestScore = 0; // Muss > 0 sein für gültigen Match
-            int bestAdjustedPrio = 0;
-            LocalTime bestEffectiveStart = null;
+        ChainMatch globalBest = null;
+        int globalBestScore = 0;  // Muss > 0 sein
 
-            for (SlotCandidate c : slotList) {
-                // blockedDays-Prüfung pro Slot-Tag
-                if (item.isBlockedOn(c.list().date, repo)) continue;
+        for (TaskChain chain : chains) {
+            if (chain.tasks().isEmpty()) continue;
 
-                TimeSlot slt = c.slot();
-                long slotMinutes = ChronoUnit.MINUTES.between(slt.start, slt.end);
+            trackedItem firstItem = chain.tasks().get(0);
 
-                // Tasks müssen komplett reinpassen, Goals dürfen partiell eingeplant werden
-                if (item.type == trackedItem.ItemType.TASK && slotMinutes < duration) continue;
+            // Für jeden Tag
+            for (Map.Entry<todoList, List<LocalTime>> entry : startsByDay.entrySet()) {
+                todoList list = entry.getKey();
+                LocalDate day = list.date;
 
-                // Slot-Abdeckung: wenn Slot kürzer als benötigte Zeit (nur Goals),
-                // Prio proportional reduzieren (z.B. 50% der Zeit → 50% der Prio)
-                double slotCoverage = Math.min(1.0, (double) slotMinutes / duration);
+                // BlockedDays-Prüfung für ersten Task
+                if (firstItem.isBlockedOn(day, repo)) continue;
 
-                // Effektive Startzeit: wenn Slot größer als benötigte Zeit,
-                // bestmögliche Startzeit innerhalb des Slots verwenden
-                LocalTime effectiveStart = slt.start;
-                if (slotMinutes > duration && pi.item().prefTime != null) {
-                    LocalTime latestStart = slt.end.minusMinutes(duration);
-                    if (pi.item().prefTime.isBefore(slt.start)) {
-                        effectiveStart = slt.start;
-                    } else if (pi.item().prefTime.isAfter(latestStart)) {
-                        effectiveStart = latestStart;
-                    } else {
-                        effectiveStart = pi.item().prefTime;
+                // Für jeden möglichen Startpunkt
+                for (LocalTime startTime : entry.getValue()) {
+
+                    // Für jede mögliche Chain-Länge (1 bis max)
+                    for (int chainLen = 1; chainLen <= chain.tasks().size(); chainLen++) {
+                        List<trackedItem> fitting = chain.tasks().subList(0, chainLen);
+
+                        // Prüfe ob alle Items an diesem Tag nicht geblockt sind
+                        boolean anyBlocked = false;
+                        for (trackedItem item : fitting) {
+                            if (item.isBlockedOn(day, repo)) {
+                                anyBlocked = true;
+                                break;
+                            }
+                        }
+                        if (anyBlocked) break;  // Kürzere Längen auch nicht möglich
+
+                        // Berechne Gesamtdauer
+                        int totalDuration = 0;
+                        for (trackedItem item : fitting) {
+                            totalDuration += item.timeToComplete;
+                        }
+
+                        LocalTime endTime = startTime.plusMinutes(totalDuration);
+
+                        // Prüfe Tagesgrenzen
+                        if (exceedsDayBounds(startTime, endTime, list)) continue;
+
+                        // Prüfe Calendar-Event-Überlappung
+                        if (overlapsCalendarEvent(startTime, endTime, list)) continue;
+
+                        // Finde alle überlappenden Slots
+                        Set<TimeSlot> overlapping = findOverlappingSlots(startTime, endTime, list);
+
+                        // Erweitere auf volle Chains (atomare Verdrängung)
+                        Set<TimeSlot> toDisplace = expandToFullChains(overlapping, list);
+
+                        // Berechne Chain-Score (Summe der Item-Scores)
+                        int gainPrio = 0;
+                        LocalTime cursor = startTime;
+                        Long precedingItemId = findPrecedingItemAt(startTime, list);
+
+                        for (int i = 0; i < fitting.size(); i++) {
+                            trackedItem item = fitting.get(i);
+                            // FollowUp-Boost nur für erstes Item
+                            Long precId = (i == 0) ? precedingItemId : null;
+                            gainPrio += calculateItemScore(item, cursor, precId);
+                            cursor = cursor.plusMinutes(item.timeToComplete);
+                        }
+
+                        // Bonus für längere Ketten
+                        gainPrio += fitting.size() * 50;
+
+                        // Berechne Verdrängungskosten
+                        int lossPrio = sumAdjustedPrios(toDisplace);
+
+                        // Net-Score
+                        int netScore = gainPrio - lossPrio;
+
+                        // Nur wenn Gewinn > Verlust
+                        if (netScore > globalBestScore) {
+                            globalBestScore = netScore;
+                            globalBest = new ChainMatch(fitting, startTime, list, toDisplace, gainPrio);
+                        }
                     }
                 }
-
-                // Score: log1p(prio) * normalizedDiff² * slotCoverage * 100
-                int adjustedPrio;
-                if (pi.item().prefTime == null) {
-                    adjustedPrio = (int)(Math.log1p(pi.prio()) * slotCoverage * 100);
-                } else {
-                    long diff = ChronoUnit.MINUTES.between(pi.item().prefTime, effectiveStart);
-                    double normalizedDiff = (diff >= 0) ? 1.0
-                            : Math.max(0.0, 1.0 + (diff / 480.0));
-                    adjustedPrio = (int)(Math.log1p(pi.prio()) * normalizedDiff * normalizedDiff * slotCoverage * 100);
-                }
-
-                // Verdrängung: adjustedPrio muss höher sein als belegter Slot
-                int rankingScore = adjustedPrio;
-                if (c.displaceable() != null) {
-                    int existingPrio = (c.displaceable().adjustedPrio != null)
-                            ? c.displaceable().adjustedPrio : 0;
-                    if (adjustedPrio <= existingPrio) continue;
-                    rankingScore = adjustedPrio - existingPrio;
-                }
-
-                if (rankingScore > bestScore) {
-                    bestScore = rankingScore;
-                    bestCandidate = c;
-                    bestEffectiveStart = effectiveStart;
-                    bestAdjustedPrio = adjustedPrio;
-                }
-            }
-
-            // Erstes Item mit gültigem Match → sofort zurückgeben
-            if (bestCandidate != null) {
-                bestCandidate.slot().adjustedPrio = bestAdjustedPrio;
-                return new Match(pi, bestCandidate);
             }
         }
-        return null;
+
+        return globalBest;
+    }
+
+
+    // ============================================================================
+    // findPrecedingItem - Findet die Item-ID im Slot direkt vor dem gegebenen Slot
+    // ============================================================================
+    /**
+     * Findet die Item-ID im Slot direkt vor dem gegebenen Slot (gleicher Tag, gleiche Liste).
+     */
+    private Long findPrecedingItem(SlotCandidate candidate, List<SlotCandidate> slotList) {
+        todoList sameList = candidate.list();
+        LocalTime candidateStart = candidate.slot().start;
+
+        Long precedingItem = null;
+        LocalTime latestEndBefore = null;
+
+        for (SlotCandidate other : slotList) {
+            // Nur gleicher Tag/Liste
+            if (other.list() != sameList) continue;
+            // Nur Slots die VOR diesem enden
+            if (!other.slot().end.isBefore(candidateStart) && !other.slot().end.equals(candidateStart)) continue;
+            // Nur belegte Slots
+            if (other.slot().item == null && other.displaceable() == null) continue;
+
+            // Der späteste Slot vor diesem gewinnt
+            if (latestEndBefore == null || other.slot().end.isAfter(latestEndBefore)) {
+                latestEndBefore = other.slot().end;
+                precedingItem = (other.displaceable() != null) ? other.displaceable().item : other.slot().item;
+            }
+        }
+
+        // Auch bereits platzierte Slots in der todoList prüfen
+        if (sameList.timeSlots != null) {
+            for (TimeSlot slot : sameList.timeSlots) {
+                if (slot.item == null) continue;
+                if (!slot.end.isBefore(candidateStart) && !slot.end.equals(candidateStart)) continue;
+
+                if (latestEndBefore == null || slot.end.isAfter(latestEndBefore)) {
+                    latestEndBefore = slot.end;
+                    precedingItem = slot.item;
+                }
+            }
+        }
+
+        return precedingItem;
+    }
+
+
+    // ============================================================================
+    // Hilfsmethoden für Multi-Längen-Evaluation
+    // ============================================================================
+
+    /**
+     * Sammelt alle möglichen Startpunkte pro Tag.
+     * Startpunkte sind: Beginn freier Fenster + Beginn belegter Slots (für Verdrängung).
+     */
+    private Map<todoList, List<LocalTime>> collectStartPointsByDay(List<SlotCandidate> slotList) {
+        Map<todoList, Set<LocalTime>> startsByDay = new HashMap<>();
+
+        for (SlotCandidate c : slotList) {
+            startsByDay.computeIfAbsent(c.list(), k -> new HashSet<>()).add(c.slot().start);
+        }
+
+        // In sortierte Listen umwandeln
+        Map<todoList, List<LocalTime>> result = new HashMap<>();
+        for (Map.Entry<todoList, Set<LocalTime>> entry : startsByDay.entrySet()) {
+            List<LocalTime> sorted = new ArrayList<>(entry.getValue());
+            sorted.sort(LocalTime::compareTo);
+            result.put(entry.getKey(), sorted);
+        }
+        return result;
+    }
+
+    /**
+     * Findet alle Slots die mit dem Zeitfenster überlappen (gleicher Tag).
+     */
+    private Set<TimeSlot> findOverlappingSlots(LocalTime start, LocalTime end, todoList list) {
+        Set<TimeSlot> overlapping = new HashSet<>();
+        if (list.timeSlots == null) return overlapping;
+
+        for (TimeSlot slot : list.timeSlots) {
+            // Überlappung: slot.start < end && slot.end > start
+            if (slot.start.isBefore(end) && slot.end.isAfter(start)) {
+                // Nur Item-Slots, keine Calendar-Events
+                if (slot.item != null && (slot.isCalendarEvent == null || !slot.isCalendarEvent)) {
+                    overlapping.add(slot);
+                }
+            }
+        }
+        return overlapping;
+    }
+
+    /**
+     * Erweitert überlappende Slots um alle Chain-Mitglieder (atomare Verdrängung).
+     * Wenn ein Slot eine chainId hat, werden ALLE Slots mit dieser chainId hinzugefügt.
+     */
+    private Set<TimeSlot> expandToFullChains(Set<TimeSlot> overlapping, todoList list) {
+        Set<TimeSlot> expanded = new HashSet<>(overlapping);
+        Set<Long> chainIds = new HashSet<>();
+
+        // Sammle alle chainIds
+        for (TimeSlot slot : overlapping) {
+            if (slot.chainId != null) {
+                chainIds.add(slot.chainId);
+            }
+        }
+
+        // Füge alle Slots mit diesen chainIds hinzu
+        if (!chainIds.isEmpty() && list.timeSlots != null) {
+            for (TimeSlot slot : list.timeSlots) {
+                if (slot.chainId != null && chainIds.contains(slot.chainId)) {
+                    expanded.add(slot);
+                }
+            }
+        }
+
+        return expanded;
+    }
+
+    /**
+     * Berechnet die adjustedPrio für ein einzelnes Item basierend auf seiner Startzeit.
+     * Berücksichtigt prefTime-Matching mit quadratischer Penalty.
+     */
+    private int calculateItemScore(trackedItem item, LocalTime itemStart, Long precedingItemId) {
+        // Basis: log1p(itemPrio) * 100
+        int basePrio = item.priority.value;
+        double score = Math.log1p(basePrio) * 100;
+
+        // PrefTime-Matching
+        if (item.prefTime != null) {
+            long diff = ChronoUnit.MINUTES.between(item.prefTime, itemStart);
+            double normalizedDiff = (diff >= 0) ? 1.0
+                    : Math.max(0.0, 1.0 + (diff / 480.0));
+            score *= normalizedDiff * normalizedDiff;
+        }
+
+        // FollowUp-Boost (nur wenn precedingItemId gegeben)
+        if (precedingItemId != null) {
+            double followBoost = item.scoreFollow(precedingItemId);
+            if (followBoost > 0) {
+                score *= (1.0 + followBoost);
+            }
+        }
+
+        return (int) score;
+    }
+
+    /**
+     * Summiert die adjustedPrio aller Slots.
+     */
+    private int sumAdjustedPrios(Set<TimeSlot> slots) {
+        int sum = 0;
+        for (TimeSlot slot : slots) {
+            if (slot.adjustedPrio != null) {
+                sum += slot.adjustedPrio;
+            }
+        }
+        return sum;
+    }
+
+    /**
+     * Prüft ob ein Zeitfenster in Calendar-Events hineinragt.
+     */
+    private boolean overlapsCalendarEvent(LocalTime start, LocalTime end, todoList list) {
+        if (list.timeSlots == null) return false;
+        for (TimeSlot slot : list.timeSlots) {
+            if (slot.isCalendarEvent != null && slot.isCalendarEvent) {
+                if (slot.start.isBefore(end) && slot.end.isAfter(start)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Prüft ob ein Zeitfenster über das Tagesende hinausgeht.
+     */
+    private boolean exceedsDayBounds(LocalTime start, LocalTime end, todoList list) {
+        return start.isBefore(list.start) || end.isAfter(list.end);
+    }
+
+    /**
+     * Findet die Item-ID im Slot direkt vor einer gegebenen Startzeit (gleicher Tag).
+     */
+    private Long findPrecedingItemAt(LocalTime startTime, todoList list) {
+        if (list.timeSlots == null) return null;
+
+        Long precedingItem = null;
+        LocalTime latestEndBefore = null;
+
+        for (TimeSlot slot : list.timeSlots) {
+            if (slot.item == null) continue;
+            if (!slot.end.isBefore(startTime) && !slot.end.equals(startTime)) continue;
+
+            if (latestEndBefore == null || slot.end.isAfter(latestEndBefore)) {
+                latestEndBefore = slot.end;
+                precedingItem = slot.item;
+            }
+        }
+
+        return precedingItem;
     }
 
 
@@ -462,22 +748,25 @@ public class buildToDo {
 
 
     // ============================================================================
-    // fillSlots - Füllt Slots iterativ: holt Items, priorisiert, matcht und weist zu.
-    //   Loopt bis kein Item mehr platziert werden kann.
+    // fillSlots - Füllt Slots iterativ: baut Ketten, matcht und weist zu.
+    //   Loopt bis keine Kette mehr platziert werden kann.
     // ============================================================================
     private void fillSlots(trackedItem.ItemType typ, Long parent, List<SlotCandidate> slotList) {
         while (true) {
-            List<trackedItem> relevantTasks = getItems(typ, parent);
-            if (relevantTasks.isEmpty()) break;
+            List<trackedItem> items = getItems(typ, parent);
+            if (items.isEmpty()) break;
 
-            List<PrioritizedItem> scoredItems = prioritize(relevantTasks);
-            Match match = tryMatch(scoredItems, slotList);
+            // Gruppiere zu Ketten (ersetzt prioritize())
+            List<TaskChain> chains = buildChains(items);
+            if (chains.isEmpty()) break;
 
-            if (match != null) {
-                assignSlot(match.item().item(), match.slot(), slotList);
-            } else {
-                break;
-            }
+            // Finde besten Slot für höchstpriorisierte Kette (ersetzt tryMatch())
+            // HINWEIS: parent-Parameter nicht mehr nötig, isBlockedOn() handled GOAL→PROJECT
+            ChainMatch match = tryMatchChain(chains, slotList);
+            if (match == null) break;
+
+            // Platziere Kette (ersetzt assignSlot())
+            assignChain(match, slotList);
         }
     }
 
@@ -514,77 +803,88 @@ public class buildToDo {
 
 
     // ============================================================================
-    // assignSlot - Weist ein Item einem Slot zu, befüllt Goals mit Tasks,
-    //   erstellt freie Slots für übrige Zeit und plant das Item ein.
+    // assignChain - Platziert alle Items einer gematchten Kette nacheinander
     // ============================================================================
-    private void assignSlot(trackedItem item, SlotCandidate candidate, List<SlotCandidate> slotList) {
-        TimeSlot slot = candidate.slot();
-        todoList list = candidate.list();
+    /**
+     * Platziert alle Items einer gematchten Kette an der berechneten Startzeit.
+     * Verdrängt alle Slots in toDisplace atomar (inkl. Chain-Mitglieder).
+     * Setzt chainId auf alle platzierten Slots für atomare Verdrängung in der Zukunft.
+     */
+    private void assignChain(ChainMatch match, List<SlotCandidate> slotList) {
+        todoList list = match.targetList();
 
-        // Originale Grenzen merken
-        LocalTime originalStart = slot.start;
-        LocalTime originalEnd = slot.end;
-
-        // 1. Wenn Slot bereits belegt → unplan
-        if (candidate.displaceable() != null) {
-            unPlan(candidate.displaceable(), list);
+        // 1. Alle zu verdrängenden Slots atomar entfernen
+        for (TimeSlot slot : match.toDisplace()) {
+            unPlan(slot, list);
+            // Aus slotList entfernen (als displaceable und als freier Slot)
+            slotList.removeIf(c -> c.slot() == slot || c.displaceable() == slot);
         }
 
-        // 2. Wenn Slot zu groß für Item → beste Startzeit berechnen
-        long slotMinutes = ChronoUnit.MINUTES.between(originalStart, originalEnd);
-        if (slotMinutes > item.timeToComplete && item.prefTime != null) {
-            LocalTime latestStart = originalEnd.minusMinutes(item.timeToComplete);
-            if (item.prefTime.isBefore(originalStart)) {
-                slot.start = originalStart;
-            } else if (item.prefTime.isAfter(latestStart)) {
-                slot.start = latestStart;
-            } else {
-                slot.start = item.prefTime;
+        // 2. Chain-ID bestimmen (ID des ersten Items, nur bei echten Ketten)
+        Long chainId = (match.fittingTasks().size() > 1)
+                       ? match.fittingTasks().get(0).id
+                       : null;
+
+        // 3. Items platzieren
+        LocalTime cursor = match.startTime();
+        List<TimeSlot> newSlots = new ArrayList<>();
+
+        for (trackedItem item : match.fittingTasks()) {
+            TimeSlot itemSlot = new TimeSlot();
+            itemSlot.start = cursor;
+            itemSlot.end = cursor.plusMinutes(item.timeToComplete);
+            itemSlot.item = item.id;
+            itemSlot.chainId = chainId;
+            itemSlot.adjustedPrio = match.adjustedPrio();
+            itemSlot.completed = false;
+
+            newSlots.add(itemSlot);
+
+            // Wenn Goal → Tasks innerhalb platzieren
+            if (item.type == trackedItem.ItemType.GOAL) {
+                fillGoalTasks(itemSlot, list);
             }
-        }
-        // End-Zeit: auf Slot-Grenze begrenzen falls Slot kürzer als Item
-        long actualDuration = Math.min(item.timeToComplete, slotMinutes);
-        slot.end = slot.start.plusMinutes(actualDuration);
 
-        // 3. Slot mit Item-Daten befüllen
-        slot.item = item.id;
-        slot.completed = false;
+            // Item als scheduled markieren
+            item.schedule(list.date, repo);
 
-        // 4. Wenn Goal → Tasks innerhalb des Goal-Slots platzieren
-        if (item.type == trackedItem.ItemType.GOAL) {
-            fillGoalTasks(slot, list);
+            cursor = itemSlot.end;
         }
 
-        // 5. Slot zur todoList hinzufügen (sortiert nach Startzeit)
-        if (list.timeSlots == null) {
-            list.timeSlots = new ArrayList<>();
-        }
-        int idx = 0;
-        for (int i = 0; i < list.timeSlots.size(); i++) {
-            if (list.timeSlots.get(i).start.isAfter(slot.start)) break;
-            idx = i + 1;
-        }
-        list.timeSlots.add(idx, slot);
+        // 4. Alle neuen Slots zur todoList hinzufügen (sortiert)
+        if (list.timeSlots == null) list.timeSlots = new ArrayList<>();
+        for (TimeSlot newSlot : newSlots) {
+            int idx = 0;
+            for (int i = 0; i < list.timeSlots.size(); i++) {
+                if (list.timeSlots.get(i).start.isAfter(newSlot.start)) break;
+                idx = i + 1;
+            }
+            list.timeSlots.add(idx, newSlot);
 
-        // 6. Neue freie Slots für jetzt freie Zeit erstellen
-        if (originalStart.isBefore(slot.start)) {
-            TimeSlot freeBefore = new TimeSlot();
-            freeBefore.start = originalStart;
-            freeBefore.end = slot.start;
-            slotList.add(new SlotCandidate(freeBefore, list, null));
-        }
-        if (slot.end.isBefore(originalEnd)) {
-            TimeSlot freeAfter = new TimeSlot();
-            freeAfter.start = slot.end;
-            freeAfter.end = originalEnd;
-            slotList.add(new SlotCandidate(freeAfter, list, null));
+            // SlotList aktualisieren (als belegt markieren)
+            slotList.add(new SlotCandidate(newSlot, list, newSlot));
         }
 
-        // Verwendeten SlotCandidate aus der Liste entfernen
-        slotList.remove(candidate);
+        // 5. slotList neu aufbauen für diesen Tag (freie Fenster aktualisieren)
+        regenerateFreeSlots(list, slotList);
+    }
 
-        // 7. Item einplanen
-        item.schedule(list.date, repo);
+    /**
+     * Aktualisiert die freien Slot-Fenster für eine todoList in der slotList.
+     * Entfernt alte freie Slots für diese Liste und fügt neue basierend auf findFreeWindows() hinzu.
+     */
+    private void regenerateFreeSlots(todoList list, List<SlotCandidate> slotList) {
+        // Alte freie Slots für diese Liste entfernen
+        slotList.removeIf(c -> c.list() == list && c.displaceable() == null);
+
+        // Neue freie Fenster hinzufügen
+        List<LocalTime[]> freeWindows = findFreeWindows(list);
+        for (LocalTime[] window : freeWindows) {
+            TimeSlot freeSlot = new TimeSlot();
+            freeSlot.start = window[0];
+            freeSlot.end = window[1];
+            slotList.add(new SlotCandidate(freeSlot, list, null));
+        }
     }
 
     // ============================================================================

@@ -78,6 +78,8 @@ public class itemParser {
         item.progressCurrent = typed.get("progress_current") instanceof Number n ? n.intValue() : 0;
         item.progressTarget = typed.get("progress_target") instanceof Number n2 ? n2.intValue() : 0;
         item.progressUnit = (String) typed.get("progress_unit");
+        item.progressPerRep = Boolean.TRUE.equals(typed.get("progress_per_rep"));
+        item.progressLastPeriod = typed.get("progress_last_period") instanceof Number n ? n.intValue() : 0;
 
         // History
         item.currentStreak = typed.get("current_streak") instanceof Number n ? n.intValue() : 0;
@@ -89,6 +91,9 @@ public class itemParser {
         // Darstellung
         item.goalIcon = (String) typed.get("goal_icon");
         item.goalColor = (String) typed.get("goal_color");
+
+        // FollowUp-Constraint
+        item.requiredPredecessor = (Long) typed.get("required_predecessor");
 
         // Relationen
         item.parent = (Long) typed.get("parent");
@@ -130,18 +135,18 @@ public class itemParser {
         return switch (column) {
             // Long-Felder
             case "id", "parent", "repetition_value", "required_completions",
-                 "rep_interval", "day_of_month" ->
+                 "rep_interval", "day_of_month", "required_predecessor" ->
                 (v instanceof Number n) ? n.longValue() : Long.parseLong(v.toString());
 
             // Int-Felder
             case "completions", "time_to_complete", "daily_subgoal_limit",
                  "sequence_order", "current_streak", "average_streak",
                  "nr_of_streaks", "total_completions", "min_interval_days", "cooldown",
-                 "progress_current", "progress_target" ->
+                 "progress_current", "progress_target", "progress_last_period" ->
                 (v instanceof Number n) ? n.intValue() : Integer.parseInt(v.toString());
 
             // Boolean-Felder
-            case "is_completed", "complete_first", "is_block" ->
+            case "is_completed", "complete_first", "is_block", "progress_per_rep" ->
                 (v instanceof Number n) ? n.intValue() != 0 : "1".equals(v.toString());
 
             // LocalDate-Felder
@@ -202,6 +207,8 @@ public class itemParser {
         cv.put("progress_current", item.progressCurrent);
         cv.put("progress_target", item.progressTarget);
         if (item.progressUnit != null) cv.put("progress_unit", item.progressUnit);
+        cv.put("progress_per_rep", item.progressPerRep ? 1 : 0);
+        cv.put("progress_last_period", item.progressLastPeriod);
         if (item.deadline != null) cv.put("deadline", item.deadline.toString());
         if (item.blockedDays != null && !item.blockedDays.isEmpty()) {
             cv.put("blocked_days", item.blockedDays.stream()
@@ -219,6 +226,9 @@ public class itemParser {
         // Darstellung
         if (item.goalIcon != null) cv.put("goal_icon", item.goalIcon);
         if (item.goalColor != null) cv.put("goal_color", item.goalColor);
+
+        // FollowUp-Constraint
+        if (item.requiredPredecessor != null) cv.put("required_predecessor", item.requiredPredecessor);
 
         // Relationen
         if (item.parent != null) cv.put("parent", item.parent);

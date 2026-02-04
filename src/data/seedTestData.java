@@ -185,7 +185,8 @@ public class seedTestData {
                 .build();
             trackedItem tMathe = new Builder(ItemType.TASK, "Mathe ueben", Priority.HIGH)
                 .timeToComplete(25).prefTime("15:00").parent(gLernen.id).created("2025-12-20")
-                .lastCompletion("2026-01-20").repetition(RepetitionType.REPS_PER_TIME, 5, RepUnits.WEEK).build();
+                .lastCompletion("2026-01-20").repetition(RepetitionType.REPS_PER_TIME, 5, RepUnits.WEEK)
+                .progressTarget(10).progressUnit("Aufgaben").progressPerRep(true).build();
             trackedItem tVokabel = new Builder(ItemType.TASK, "Vokabeln lernen", Priority.MODERATE)
                 .timeToComplete(20).prefTime("22:00").parent(gLernen.id).created("2025-12-20")
                 .lastCompletion("2026-01-15").repetition(RepetitionType.INTERVAL, 1, RepUnits.DAY).build();

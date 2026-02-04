@@ -107,11 +107,32 @@ public class TaskRowRenderer {
             colorBar.setBackgroundColor(cfg.goalBarColor());
         }
 
-        // Checkbox (ImageView)
+        // Checkbox vs Progress-Stepper
         ImageView checkbox = view.findViewById(R.id.task_checkbox);
-        checkbox.setImageResource(cfg.checked()
-            ? R.drawable.ic_checkbox_checked
-            : R.drawable.ic_checkbox_unchecked);
+        View progressContainer = view.findViewById(R.id.progress_container);
+
+        if (cfg.hasProgress()) {
+            // Progress-Modus: Checkbox verstecken, Stepper zeigen
+            checkbox.setVisibility(View.GONE);
+            progressContainer.setVisibility(View.VISIBLE);
+
+            // Progress-Text setzen
+            TextView progressText = view.findViewById(R.id.progress_text);
+            progressText.setText(cfg.progressText());
+
+            // Button-States (visuelles Feedback für disabled)
+            TextView btnMinus = view.findViewById(R.id.btn_progress_minus);
+            TextView btnPlus = view.findViewById(R.id.btn_progress_plus);
+            btnMinus.setAlpha(cfg.progressCurrent() > 0 ? 1.0f : 0.3f);
+            btnPlus.setAlpha(cfg.progressCurrent() < cfg.progressTarget() ? 1.0f : 0.3f);
+        } else {
+            // Normal-Modus: Checkbox zeigen, Stepper verstecken
+            checkbox.setVisibility(View.VISIBLE);
+            progressContainer.setVisibility(View.GONE);
+            checkbox.setImageResource(cfg.checked()
+                ? R.drawable.ic_checkbox_checked
+                : R.drawable.ic_checkbox_unchecked);
+        }
 
         // Titel
         TextView title = view.findViewById(R.id.task_title);
@@ -131,7 +152,7 @@ public class TaskRowRenderer {
             timer.setTextColor(ContextCompat.getColor(ctx, cfg.timerColorRes()));
             timer.setVisibility(View.VISIBLE);
         } else {
-            timer.setVisibility(View.GONE);
+            timer.setVisibility(View.INVISIBLE);
         }
     }
 
@@ -149,9 +170,27 @@ public class TaskRowRenderer {
             rv.setInt(R.id.goal_color_bar, "setBackgroundColor", cfg.goalBarColor());
         }
 
-        // Checkbox (ImageView)
-        rv.setImageViewResource(R.id.task_checkbox,
-            cfg.checked() ? R.drawable.ic_checkbox_checked : R.drawable.ic_checkbox_unchecked);
+        // Checkbox vs Progress-Stepper
+        if (cfg.hasProgress()) {
+            // Progress-Modus: Checkbox verstecken, Stepper zeigen
+            rv.setViewVisibility(R.id.task_checkbox, View.GONE);
+            rv.setViewVisibility(R.id.progress_container, View.VISIBLE);
+
+            // Progress-Text setzen
+            rv.setTextViewText(R.id.progress_text, cfg.progressText());
+
+            // Button-States (Alpha für disabled-Effekt)
+            float minusAlpha = cfg.progressCurrent() > 0 ? 1.0f : 0.3f;
+            float plusAlpha = cfg.progressCurrent() < cfg.progressTarget() ? 1.0f : 0.3f;
+            rv.setFloat(R.id.btn_progress_minus, "setAlpha", minusAlpha);
+            rv.setFloat(R.id.btn_progress_plus, "setAlpha", plusAlpha);
+        } else {
+            // Normal-Modus: Checkbox zeigen, Stepper verstecken
+            rv.setViewVisibility(R.id.task_checkbox, View.VISIBLE);
+            rv.setViewVisibility(R.id.progress_container, View.GONE);
+            rv.setImageViewResource(R.id.task_checkbox,
+                cfg.checked() ? R.drawable.ic_checkbox_checked : R.drawable.ic_checkbox_unchecked);
+        }
 
         // Titel
         applyTitle(rv, cfg.title(), cfg.strikethrough(), cfg.titleColorRes(), ctx);
@@ -168,7 +207,7 @@ public class TaskRowRenderer {
             rv.setTextColor(R.id.task_timer, ContextCompat.getColor(ctx, cfg.timerColorRes()));
             rv.setViewVisibility(R.id.task_timer, View.VISIBLE);
         } else {
-            rv.setViewVisibility(R.id.task_timer, View.GONE);
+            rv.setViewVisibility(R.id.task_timer, View.INVISIBLE);
         }
     }
 
@@ -265,8 +304,9 @@ public class TaskRowRenderer {
         LinearLayout metaRow = view.findViewById(R.id.task_meta_row);
         TextView streak = view.findViewById(R.id.task_streak);
         TextView deadline = view.findViewById(R.id.task_deadline);
+        TextView remaining = view.findViewById(R.id.task_remaining);
 
-        boolean showMeta = cfg.showStreak() || cfg.showDeadline();
+        boolean showMeta = cfg.showStreak() || cfg.showDeadline() || cfg.showRemaining();
         metaRow.setVisibility(showMeta ? View.VISIBLE : View.GONE);
 
         if (cfg.showStreak()) {
@@ -284,10 +324,17 @@ public class TaskRowRenderer {
         } else {
             deadline.setVisibility(View.GONE);
         }
+
+        if (cfg.showRemaining()) {
+            remaining.setText(cfg.remainingText());
+            remaining.setVisibility(View.VISIBLE);
+        } else {
+            remaining.setVisibility(View.GONE);
+        }
     }
 
     private static void applyMetaRow(RemoteViews rv, TaskConfig cfg, Context ctx) {
-        boolean showMeta = cfg.showStreak() || cfg.showDeadline();
+        boolean showMeta = cfg.showStreak() || cfg.showDeadline() || cfg.showRemaining();
         rv.setViewVisibility(R.id.task_meta_row, showMeta ? View.VISIBLE : View.GONE);
 
         if (cfg.showStreak()) {
@@ -304,6 +351,13 @@ public class TaskRowRenderer {
             rv.setViewVisibility(R.id.task_deadline, View.VISIBLE);
         } else {
             rv.setViewVisibility(R.id.task_deadline, View.GONE);
+        }
+
+        if (cfg.showRemaining()) {
+            rv.setTextViewText(R.id.task_remaining, cfg.remainingText());
+            rv.setViewVisibility(R.id.task_remaining, View.VISIBLE);
+        } else {
+            rv.setViewVisibility(R.id.task_remaining, View.GONE);
         }
     }
 }

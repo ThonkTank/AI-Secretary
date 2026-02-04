@@ -6,6 +6,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -272,6 +273,9 @@ public class editItem implements ViewBuilder {
     private View deadlineRow;
     private View minIntervalRow;
     private View progressRow;
+    private View progressPerRepRow;
+    private Button progressPerRepToggle;
+    private boolean progressPerRepEnabled = false;
     private View goalIconRow;
     private View goalColorRow;
     private LinearLayout colorGrid;
@@ -287,6 +291,11 @@ public class editItem implements ViewBuilder {
 
     // Parent-Auswahl Daten
     private List<trackedItem> availableParents = new ArrayList<>();
+
+    // Vorgänger-Auswahl (nur für TASK)
+    private View predecessorRow;
+    private Spinner predecessorSpinner;
+    private List<trackedItem> availablePredecessors = new ArrayList<>();
 
     // Farb-Palette fuer Goal-Farben
     private static final String[] GOAL_COLORS = {
@@ -490,12 +499,14 @@ public class editItem implements ViewBuilder {
         progressTargetField = root.findViewById(R.id.field_progress_target);
         progressUnitField = root.findViewById(R.id.field_progress_unit);
         parentSpinner = root.findViewById(R.id.spinner_parent);
+        predecessorSpinner = root.findViewById(R.id.spinner_predecessor);
         weekdaySpinner = root.findViewById(R.id.spinner_weekday);
         errorText = root.findViewById(R.id.text_error);
 
         // Container fuer Visibility-Toggling
         durationRow = root.findViewById(R.id.row_duration);
         parentRow = root.findViewById(R.id.row_parent);
+        predecessorRow = root.findViewById(R.id.row_predecessor);
         cooldownRow = root.findViewById(R.id.row_cooldown);
         deadlineRow = root.findViewById(R.id.row_deadline);
         deadlineField = root.findViewById(R.id.field_deadline);
@@ -513,6 +524,12 @@ public class editItem implements ViewBuilder {
         buildColorGrid();
         minIntervalRow = root.findViewById(R.id.row_min_interval);
         progressRow = root.findViewById(R.id.row_progress);
+        progressPerRepRow = root.findViewById(R.id.row_progress_per_rep);
+        progressPerRepToggle = root.findViewById(R.id.btn_progress_per_rep);
+        progressPerRepToggle.setOnClickListener(v -> {
+            progressPerRepEnabled = !progressPerRepEnabled;
+            updateProgressPerRepButton();
+        });
         repetitionSection = root.findViewById(R.id.section_repetition);
         weekdayRow = root.findViewById(R.id.row_weekday);
 
@@ -529,6 +546,7 @@ public class editItem implements ViewBuilder {
                 updateButtonGroup(typeButtons, idx);
                 updateFieldVisibility(selectedType);
                 refreshParentSpinner();
+                refreshPredecessorSpinner();
             });
         }
 
@@ -608,6 +626,21 @@ public class editItem implements ViewBuilder {
         }
     }
 
+    private void updateProgressPerRepButton() {
+        int accent = ContextCompat.getColor(context, R.color.accent);
+        int inactive = ContextCompat.getColor(context, R.color.button_inactive);
+        int textPrimary = ContextCompat.getColor(context, R.color.text_primary);
+        if (progressPerRepEnabled) {
+            progressPerRepToggle.setBackgroundColor(accent);
+            progressPerRepToggle.setTextColor(Color.WHITE);
+            progressPerRepToggle.setText("An");
+        } else {
+            progressPerRepToggle.setBackgroundColor(inactive);
+            progressPerRepToggle.setTextColor(textPrimary);
+            progressPerRepToggle.setText("Aus");
+        }
+    }
+
     private void refreshParentSpinner() {
         availableParents = manager.getAvailableParents(selectedType);
         List<String> parentNames = new ArrayList<>();
@@ -617,6 +650,39 @@ public class editItem implements ViewBuilder {
         }
         parentSpinner.setAdapter(new ArrayAdapter<>(context,
             android.R.layout.simple_spinner_dropdown_item, parentNames));
+        // Bei Änderung des Parents: Vorgänger-Spinner aktualisieren
+        parentSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                refreshPredecessorSpinner();
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+    }
+
+    private void refreshPredecessorSpinner() {
+        availablePredecessors.clear();
+        List<String> names = new ArrayList<>();
+        names.add("(kein Vorgänger)");
+
+        if (selectedType == ItemType.TASK) {
+            int parentIdx = parentSpinner.getSelectedItemPosition();
+            if (parentIdx > 0 && parentIdx <= availableParents.size()) {
+                Long goalId = availableParents.get(parentIdx - 1).id;
+                // Alle Geschwister-Tasks laden (Tasks mit demselben Goal als Parent)
+                for (TreeEntry entry : manager.getAllItems()) {
+                    if (entry.item().type == ItemType.TASK
+                        && goalId.equals(entry.item().parent)
+                        && (editingItem == null || !entry.item().id.equals(editingItem.id))) {
+                        availablePredecessors.add(entry.item());
+                        names.add(entry.item().title);
+                    }
+                }
+            }
+        }
+        predecessorSpinner.setAdapter(new ArrayAdapter<>(context,
+            android.R.layout.simple_spinner_dropdown_item, names));
     }
 
     private void updateRepDetailsVisibility() {
@@ -665,6 +731,7 @@ public class editItem implements ViewBuilder {
             progressCurrentField.setText("");
             progressTargetField.setText("");
             progressUnitField.setText("");
+            progressPerRepEnabled = false;
             goalIconField.setText("");
             selectedGoalColor = null;
             highlightSelectedColor();
@@ -688,6 +755,7 @@ public class editItem implements ViewBuilder {
             progressCurrentField.setText(item.progressCurrent > 0 ? String.valueOf(item.progressCurrent) : "");
             progressTargetField.setText(item.progressTarget > 0 ? String.valueOf(item.progressTarget) : "");
             progressUnitField.setText(item.progressUnit != null ? item.progressUnit : "");
+            progressPerRepEnabled = item.progressPerRep;
             goalIconField.setText(item.goalIcon != null ? item.goalIcon : "");
             selectedGoalColor = item.goalColor;
             highlightSelectedColor();
@@ -753,8 +821,20 @@ public class editItem implements ViewBuilder {
             }
         }
 
+        // Vorgänger-Spinner auf aktuellen requiredPredecessor setzen
+        refreshPredecessorSpinner();
+        if (item != null && item.requiredPredecessor != null) {
+            for (int i = 0; i < availablePredecessors.size(); i++) {
+                if (availablePredecessors.get(i).id.equals(item.requiredPredecessor)) {
+                    predecessorSpinner.setSelection(i + 1); // +1 wegen "(kein Vorgänger)"
+                    break;
+                }
+            }
+        }
+
         updateRepDetailsVisibility();
         updateWeekdayVisibility();
+        updateProgressPerRepButton();
         modalOverlay.setVisibility(View.VISIBLE);
     }
 
@@ -833,6 +913,7 @@ public class editItem implements ViewBuilder {
         }
         String puStr = progressUnitField.getText().toString().trim();
         if (!puStr.isEmpty()) builder.progressUnit(puStr);
+        builder.progressPerRep(progressPerRepEnabled);
 
         // Goal-Icon und -Farbe
         String iconStr = goalIconField.getText().toString().trim();
@@ -843,6 +924,12 @@ public class editItem implements ViewBuilder {
         int parentIdx = parentSpinner.getSelectedItemPosition();
         if (parentIdx > 0 && parentIdx <= availableParents.size()) {
             builder.parent(availableParents.get(parentIdx - 1).id);
+        }
+
+        // Vorgänger (nur bei TASK)
+        int predIdx = predecessorSpinner.getSelectedItemPosition();
+        if (predIdx > 0 && predIdx <= availablePredecessors.size()) {
+            builder.requiredPredecessor(availablePredecessors.get(predIdx - 1).id);
         }
 
         // Wiederholung (nur bei TASK)
@@ -971,6 +1058,8 @@ public class editItem implements ViewBuilder {
             (type == ItemType.TASK || type == ItemType.GOAL) ? View.VISIBLE : View.GONE);
         parentRow.setVisibility(
             (type != ItemType.PROJECT) ? View.VISIBLE : View.GONE);
+        predecessorRow.setVisibility(
+            (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
         cooldownRow.setVisibility(
             (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
         deadlineRow.setVisibility(
@@ -979,6 +1068,8 @@ public class editItem implements ViewBuilder {
             (type == ItemType.PROJECT) ? View.VISIBLE : View.GONE);
         progressRow.setVisibility(
             (type == ItemType.TASK || type == ItemType.GOAL) ? View.VISIBLE : View.GONE);
+        progressPerRepRow.setVisibility(
+            (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
         goalIconRow.setVisibility(
             (type == ItemType.GOAL) ? View.VISIBLE : View.GONE);
         goalColorRow.setVisibility(

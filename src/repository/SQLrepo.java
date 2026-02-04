@@ -84,9 +84,12 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             + "progress_current INTEGER DEFAULT 0,"
             + "progress_target INTEGER DEFAULT 0,"
             + "progress_unit TEXT,"
+            + "progress_per_rep INTEGER DEFAULT 0,"
+            + "progress_last_period INTEGER DEFAULT 0,"
             + "deadline TEXT,"
             + "goal_icon TEXT,"
-            + "goal_color TEXT"
+            + "goal_color TEXT,"
+            + "required_predecessor INTEGER"
             + ")"
         );
 
@@ -120,6 +123,9 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             + "calendar_title TEXT,"
             + "work_start TEXT,"
             + "work_end TEXT,"
+            + "progress_delta INTEGER DEFAULT 0,"
+            + "previous_completed_item_id INTEGER,"
+            + "chain_id INTEGER,"
             + "FOREIGN KEY (todo_id) REFERENCES todos(id),"
             + "FOREIGN KEY (parent_slot_id) REFERENCES time_slots(id),"
             + "FOREIGN KEY (item_id) REFERENCES items(id)"

@@ -54,6 +54,8 @@ public class trackedItem {
     public int progressCurrent;             // Aktueller Fortschritt (z.B. 3)
     public int progressTarget;              // Zielwert (z.B. 6), 0 = kein Tracking
     public String progressUnit;             // Einheit (z.B. "Seiten", "Kapitel")
+    public boolean progressPerRep;          // True = Progress resets jede Periode
+    public int progressLastPeriod;          // Letzter Progress-Wert (für Anzeige)
 
     // History
     public int currentStreak;               // wie oft hintereinander abgeschloßen ohne Verfehlung?
@@ -63,6 +65,7 @@ public class trackedItem {
     public LocalTime prefTime;              // Zu welcher Uhrzeit wird die Task für gewöhnlich erledigt? z.B. 14:30
     public int totalCompletions;            // Wie oft wurde die Task erledigt? (all time)
     public int minIntervalDays;             // Mindestabstand zwischen Einplanungen in Tagen (0 = keine Einschränkung)
+    public Long requiredPredecessor;        // Geschwister-Task der direkt davor erledigt werden soll (same parent)
 
     // Darstellung (nur fuer Goals relevant)
     public String goalIcon;                 // Emoji-Icon fuer Goal-Header (z.B. "💪")
@@ -100,8 +103,10 @@ public class trackedItem {
         public Builder progressCurrent(int v) { item.progressCurrent = v; return this; }
         public Builder progressTarget(int v) { item.progressTarget = v; return this; }
         public Builder progressUnit(String v) { item.progressUnit = v; return this; }
+        public Builder progressPerRep(boolean v) { item.progressPerRep = v; return this; }
         public Builder goalIcon(String v) { item.goalIcon = v; return this; }
         public Builder goalColor(String v) { item.goalColor = v; return this; }
+        public Builder requiredPredecessor(Long v) { item.requiredPredecessor = v; return this; }
 
         public Builder repetition(RepetitionType type, int value, RepUnits unit) {
             item.repetition = new Repetition();
@@ -247,17 +252,22 @@ public class trackedItem {
      * @param workStart       Timer-Start (null wenn Timer nicht genutzt)
      * @param workEnd         Timer-Ende (null wenn Timer nicht genutzt)
      * @param previousItemId  ID des vorher erledigten Items für followUp-Tracking (null wenn keins)
+     * @param progressDelta   Fortschrittsänderung aus dem Slot (+/- vom UI, null wenn keine)
      * @param day             Referenztag (Slot-Tag oder heute)
      * @param repo            Zum Persistieren der Änderungen
      */
     public void update(Boolean completed, LocalTime workStart, LocalTime workEnd,
-                       Long previousItemId, LocalDate day, Repo repo) {
+                       Long previousItemId, Integer progressDelta, LocalDate day, Repo repo) {
 
         // ========== Slot-basierte Updates (nur wenn Slot-Daten vorhanden) ==========
         if (completed != null && completed) {
-            // Progress inkrementieren (vor checkCompletion, damit der Stand aktuell ist)
-            if (this.progressTarget > 0 && this.progressCurrent < this.progressTarget) {
-                this.progressCurrent++;
+            // Progress aus progressDelta anwenden (statt auto-increment)
+            // WICHTIG: progressDelta kommt aus dem Slot und wurde dort während des Tages gesammelt
+            if (progressDelta != null && progressDelta > 0 && this.progressTarget > 0) {
+                this.progressCurrent = Math.min(
+                    this.progressCurrent + progressDelta,
+                    this.progressTarget
+                );
             }
 
             // Completions inkrementieren (vor checkCompletion, damit der Zähler stimmt)
@@ -297,14 +307,22 @@ public class trackedItem {
         LocalDate today = LocalDate.now();
 
         // isCompleted prüfen: Perioden-Reset für wiederkehrende Items
+        // SKIP reset wenn completeFirst=true und Item überfällig ist
         if (this.isCompleted != null && this.isCompleted
                 && this.repetition != null
                 && this.repetition.type != RepetitionType.NONE
-                && this.lastCompletion != null) {
+                && this.lastCompletion != null
+                && !isCompleteFirstBlocked(today)) {
             LocalDate nextRep = calcNextRepetition(this.lastCompletion);
             if (nextRep != null && !today.isBefore(nextRep)) {
                 this.isCompleted = false;
                 this.completions = 0;
+
+                // Progress-Reset für ALLE wiederkehrenden Items mit Progress-Tracking
+                if (this.progressTarget > 0) {
+                    this.progressLastPeriod = this.progressCurrent;
+                    this.progressCurrent = 0;
+                }
             }
         }
 
@@ -395,6 +413,24 @@ public class trackedItem {
         this.nrOfStreaks += 1;
         this.averageStreak = ((this.averageStreak * (this.nrOfStreaks - 1)) + this.currentStreak) / this.nrOfStreaks;
         this.currentStreak = 0;
+    }
+
+    /**
+     * Prüft ob dieses Item wegen completeFirst blockiert ist.
+     * Gibt true zurück wenn: completeFirst=true UND überfällig UND nicht erledigt.
+     * In diesem Zustand wird das Item behandelt als wäre es noch in der vorherigen Periode.
+     */
+    private boolean isCompleteFirstBlocked(LocalDate day) {
+        if (this.completeFirst == null || !this.completeFirst) {
+            return false;
+        }
+        if (overdue(day) <= 0) {
+            return false;
+        }
+        if (this.isCompleted != null && this.isCompleted) {
+            return false;
+        }
+        return true;
     }
 
     public Set<LocalDate> getBlockedDays() {
@@ -637,6 +673,46 @@ public class trackedItem {
             }
         }
         return count;
+    }
+
+    // ============================================================================
+    // SCOREFOLLOW - Berechnet Prio-Boost basierend auf historischen FollowUp-Mustern
+    // ============================================================================
+    /**
+     * Berechnet einen Prio-Boost basierend auf historischen FollowUp-Mustern.
+     *
+     * @param predecessorId ID des Items das direkt vor diesem platziert ist
+     * @return Boost als Faktor (z.B. 0.15 = 15% Boost), 0.0 wenn keine relevanten Daten
+     */
+    public double scoreFollow(Long predecessorId) {
+        if (predecessorId == null || followUps == null || followUps.isEmpty()) {
+            return 0.0;
+        }
+
+        // 1. Anzahl der Follows von diesem Predecessor
+        int predecessorCount = followUps.getOrDefault(predecessorId, 0);
+
+        // 2. Schwelle: Mindestens 5 mal gefolgt
+        if (predecessorCount < 5) {
+            return 0.0;
+        }
+
+        // 3. Total aller FollowUps berechnen
+        int totalFollowUps = 0;
+        for (Integer count : followUps.values()) {
+            totalFollowUps += count;
+        }
+
+        // 4. Anteil berechnen
+        double percentage = (double) predecessorCount / totalFollowUps;
+
+        // 5. Schwelle: Mindestens 5% aller FollowUps
+        if (percentage < 0.05) {
+            return 0.0;
+        }
+
+        // 6. Boost = Anteil (z.B. 20% der Follows → 0.20 Boost)
+        return percentage;
     }
 
 }

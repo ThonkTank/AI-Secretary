@@ -10,26 +10,89 @@
     android:paddingBottom="@dimen/card_padding_v"
     android:background="@color/surface">
 
-    <!-- Goal-Farbbalken (links, volle Höhe) -->
-    <View
+    <!-- Goal-Farbbalken (links, volle Höhe) - ImageView statt View wegen RemoteViews-Kompatibilität -->
+    <ImageView
         android:id="@+id/goal_color_bar"
         android:layout_width="@dimen/goal_bar_width"
         android:layout_height="match_parent"
         android:layout_alignParentStart="true"
-        android:layout_alignTop="@id/task_checkbox"
+        android:layout_alignTop="@id/control_container"
         android:layout_alignBottom="@id/task_meta_row"
-        android:background="@color/header_bg" />
+        android:background="@color/header_bg"
+        android:contentDescription="@null" />
 
-    <!-- Checkbox (ImageView, nicht CheckBox!) -->
-    <ImageView
-        android:id="@+id/task_checkbox"
-        android:layout_width="@dimen/checkbox_size"
-        android:layout_height="@dimen/checkbox_size"
+    <!-- Control-Container: enthält Checkbox ODER Progress-Stepper -->
+    <FrameLayout
+        android:id="@+id/control_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_toEndOf="@id/goal_color_bar"
         android:layout_marginStart="@dimen/padding_small"
-        android:scaleType="centerInside"
-        android:src="@drawable/ic_checkbox_unchecked"
-        android:contentDescription="@string/checkbox" />
+        android:layout_centerVertical="true"
+        android:minWidth="@dimen/checkbox_size">
+
+        <!-- Checkbox (ImageView, nicht CheckBox!) - für normale Tasks -->
+        <ImageView
+            android:id="@+id/task_checkbox"
+            android:layout_width="@dimen/checkbox_size"
+            android:layout_height="@dimen/checkbox_size"
+            android:layout_gravity="center"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_checkbox_unchecked"
+            android:contentDescription="@string/checkbox" />
+
+        <!-- Progress-Stepper (für Progress-Tasks, initial GONE) -->
+        <LinearLayout
+            android:id="@+id/progress_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <!-- Minus-Button -->
+            <TextView
+                android:id="@+id/btn_progress_minus"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="−"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:textColor="@color/text_secondary"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <!-- Progress-Anzeige "3/6" -->
+            <TextView
+                android:id="@+id/progress_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:gravity="center"
+                android:paddingHorizontal="4dp" />
+
+            <!-- Plus-Button -->
+            <TextView
+                android:id="@+id/btn_progress_plus"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="+"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:textColor="@color/text_secondary"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true" />
+
+        </LinearLayout>
+
+    </FrameLayout>
 
     <!-- Timer-Button (rechts außen) -->
     <TextView
@@ -53,12 +116,12 @@
         android:textSize="@dimen/sp_small"
         android:textColor="@color/text_muted" />
 
-    <!-- Titel (füllt Platz zwischen Checkbox und Dauer) -->
+    <!-- Titel (füllt Platz zwischen Control-Container und Dauer) -->
     <TextView
         android:id="@+id/task_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_toEndOf="@id/task_checkbox"
+        android:layout_toEndOf="@id/control_container"
         android:layout_toStartOf="@id/task_duration"
         android:layout_marginStart="@dimen/padding_small"
         android:layout_marginEnd="@dimen/padding_small"
@@ -74,7 +137,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/task_title"
-        android:layout_toEndOf="@id/task_checkbox"
+        android:layout_toEndOf="@id/control_container"
         android:layout_marginStart="@dimen/padding_small"
         android:layout_marginTop="@dimen/padding_tiny"
         android:orientation="horizontal"
@@ -92,6 +155,16 @@
         <!-- Deadline -->
         <TextView
             android:id="@+id/task_deadline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/padding_medium"
+            android:textSize="@dimen/sp_small"
+            android:textColor="@color/text_muted"
+            android:visibility="gone" />
+
+        <!-- Remaining Time -->
+        <TextView
+            android:id="@+id/task_remaining"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/padding_medium"

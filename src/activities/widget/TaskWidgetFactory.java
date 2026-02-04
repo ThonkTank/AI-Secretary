@@ -76,6 +76,8 @@ import android.content.Intent;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
 
+import androidx.core.content.ContextCompat;
+
 import com.autosecretary.R;
 
 import controller.todoManager;
@@ -140,12 +142,34 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
             TaskConfig cfg = TaskConfig.from(item.entry());
             TaskRowRenderer.applyTask(rv, cfg, context);
 
-            // Fill-In Intent für Checkbox
-            Intent checkIntent = new Intent()
-                .putExtra("action", "toggle")
-                .putExtra("slot_id", cfg.slotId())
-                .putExtra("was_completed", cfg.checked());
-            rv.setOnClickFillInIntent(R.id.task_checkbox, checkIntent);
+            // Flash-Feedback: Hintergrund überschreiben wenn dieser Slot gerade flasht
+            Long flashingId = TaskWidgetProvider.getFlashingSlotId();
+            if (flashingId != null && flashingId.equals(cfg.slotId())) {
+                rv.setInt(R.id.task_row, "setBackgroundColor",
+                    ContextCompat.getColor(context, R.color.completion_flash));
+            }
+
+            // Fill-In Intents je nach Modus
+            if (cfg.hasProgress()) {
+                // Progress-Modus: +/- Buttons
+                Intent plusIntent = new Intent()
+                    .putExtra("action", "increment_progress")
+                    .putExtra("slot_id", cfg.slotId())
+                    .putExtra("already_done_today", cfg.progressDoneToday());
+                rv.setOnClickFillInIntent(R.id.btn_progress_plus, plusIntent);
+
+                Intent minusIntent = new Intent()
+                    .putExtra("action", "decrement_progress")
+                    .putExtra("slot_id", cfg.slotId());
+                rv.setOnClickFillInIntent(R.id.btn_progress_minus, minusIntent);
+            } else {
+                // Normal-Modus: Checkbox
+                Intent checkIntent = new Intent()
+                    .putExtra("action", "toggle")
+                    .putExtra("slot_id", cfg.slotId())
+                    .putExtra("was_completed", cfg.checked());
+                rv.setOnClickFillInIntent(R.id.task_checkbox, checkIntent);
+            }
 
             // Fill-In Intent für Timer (nur wenn sichtbar)
             if (cfg.showTimer()) {

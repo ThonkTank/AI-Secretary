@@ -108,6 +108,8 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.RemoteViews;
 
 import com.autosecretary.R;
@@ -120,6 +122,14 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     private static final String ACTION_TOGGLE = "com.autosecretary.widget.ACTION_TOGGLE";
     private static final String ACTION_TIMER = "com.autosecretary.widget.ACTION_TIMER";
     private static final String ACTION_REFRESH = "com.autosecretary.widget.ACTION_REFRESH";
+
+    // Flash-Feedback: Slot-ID die gerade mit Flash-Farbe angezeigt werden soll
+    private static Long flashingSlotId = null;
+
+    /** Gibt die Slot-ID zurück die gerade "flashen" soll (für TaskWidgetFactory) */
+    public static Long getFlashingSlotId() {
+        return flashingSlotId;
+    }
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
@@ -182,11 +192,20 @@ public class TaskWidgetProvider extends AppWidgetProvider {
 
                 if (wasCompleted) {
                     manager.uncompleteSlot(slotId);
+                    notifyWidgetUpdate(context);
                 } else {
                     manager.completeSlot(slotId);
-                }
 
-                notifyWidgetUpdate(context);
+                    // Flash-Feedback: Slot mit Flash-Farbe anzeigen
+                    flashingSlotId = slotId;
+                    notifyWidgetUpdate(context);
+
+                    // Nach 300ms: Flash beenden und normal anzeigen
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        flashingSlotId = null;
+                        notifyWidgetUpdate(context);
+                    }, 300);
+                }
             }
         }
         else if ("timer".equals(action)) {
@@ -203,6 +222,39 @@ public class TaskWidgetProvider extends AppWidgetProvider {
                     manager.startTimer(slotId);
                 }
 
+                notifyWidgetUpdate(context);
+            }
+        }
+        else if ("increment_progress".equals(action)) {
+            long slotId = intent.getLongExtra("slot_id", -1);
+            boolean alreadyDoneToday = intent.getBooleanExtra("already_done_today", false);
+
+            if (slotId != -1) {
+                todoManager manager = new todoManager(context);
+                manager.provideList();
+                manager.incrementProgress(slotId);
+
+                // Flash-Feedback nur wenn noch nicht "heute erledigt"
+                if (!alreadyDoneToday) {
+                    flashingSlotId = slotId;
+                    notifyWidgetUpdate(context);
+
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        flashingSlotId = null;
+                        notifyWidgetUpdate(context);
+                    }, 300);
+                } else {
+                    notifyWidgetUpdate(context);
+                }
+            }
+        }
+        else if ("decrement_progress".equals(action)) {
+            long slotId = intent.getLongExtra("slot_id", -1);
+
+            if (slotId != -1) {
+                todoManager manager = new todoManager(context);
+                manager.provideList();
+                manager.decrementProgress(slotId);
                 notifyWidgetUpdate(context);
             }
         }

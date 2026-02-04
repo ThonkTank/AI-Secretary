@@ -148,6 +148,20 @@
                         android:layout_height="wrap_content" />
                 </LinearLayout>
 
+                <!-- Vorgänger (nur TASK) -->
+                <LinearLayout
+                    android:id="@+id/row_predecessor"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="Nach Task" />
+                    <Spinner
+                        android:id="@+id/spinner_predecessor"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
                 <!-- Cooldown -->
                 <LinearLayout
                     android:id="@+id/row_cooldown"
@@ -242,6 +256,30 @@
                         android:hint="Einheit (z.B. Seiten, Kapitel)"
                         android:singleLine="true"
                         android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- Progress pro Periode -->
+                <LinearLayout
+                    android:id="@+id/row_progress_per_rep"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:visibility="gone"
+                    android:paddingVertical="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Pro Periode zurücksetzen"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/sp_body" />
+
+                    <Button
+                        android:id="@+id/btn_progress_per_rep"
+                        style="@style/GroupButton"
+                        android:layout_width="60dp"
+                        android:text="Aus" />
                 </LinearLayout>
 
                 <!-- Wiederholung-Sektion -->

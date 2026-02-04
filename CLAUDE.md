@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Quick Reference
+
+| Task | Command |
+|------|---------|
+| Syntax check (safe) | `./gradlew compileDebugJavaWithJavac` |
+| Build + auto-push | `./gradlew assemble` |
+| Run tests | `./gradlew testDebugUnitTest` |
+| Widget debug | `adb logcat \| grep -iE "(widget\|RemoteViews\|autosecretary)"` |
+
 ## Build Commands
 
 ```bash
@@ -23,6 +32,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **WICHTIG:** Nach jeder abgeschlossenen Code-Änderung oder Bugfix MUSS `./gradlew assemble` ausgeführt werden. Das ist der korrekte Abschluss jeder Aufgabe – es baut die APK, inkrementiert die Version und pushed zu GitHub, damit das Auto-Update-System die neue Version an installierte Apps ausliefern kann.
 
 **Typischer Workflow:** Code ändern → `compileDebugJavaWithJavac` (Fehler prüfen) → Fehler fixen → `assemble` (Release).
+
+## Debugging (ADB)
+
+```bash
+# Widget-Fehler in Echtzeit anschauen
+~/Android/Sdk/platform-tools/adb logcat | grep -iE "(widget|RemoteViews|autosecretary)"
+
+# Logs vor Test löschen, dann Widget neu hinzufügen
+~/Android/Sdk/platform-tools/adb logcat -c
+```
+
+Typische Widget-Fehler: "Error inflating RemoteViews" + "Class not allowed to be inflated" → View-Typ nicht RemoteViews-kompatibel.
 
 ## Project Layout
 
@@ -56,12 +77,22 @@ src/
 └── test/                 # MockRepo, TestBuildToDo (standalone tests)
 ```
 
-**Widget-Architektur:** Siehe `WIDGET_REPORT.md` für vollständige Spezifikation. Kernprinzip: "App passt sich an Widget an" — RemoteViews-kompatible Layouts werden für beide Systeme verwendet.
+**Widget-Architektur:** Kernprinzip: "App passt sich an Widget an" — RemoteViews-kompatible Layouts werden für beide Systeme verwendet.
 
+**RemoteViews-Einschränkungen:** Nur bestimmte Views sind in Widgets erlaubt:
+- Layouts: `FrameLayout`, `LinearLayout`, `RelativeLayout`, `GridLayout`
+- Views: `TextView`, `ImageView`, `Button`, `ImageButton`, `ProgressBar`, `Chronometer`, `AnalogClock`
+- Collections: `ListView`, `GridView`, `StackView`, `AdapterViewFlipper`
+
+**NICHT erlaubt:** `<View>` (für Spacer/Divider stattdessen `ImageView` mit `background` verwenden), `CheckBox` (stattdessen `ImageView` mit Toggle-Icons), custom Views.
 
 **Data flow:** `mainActivity` → `todoManager` (Controller) → `buildToDo` (UseCase) → `SQLrepo` (Repository)
 
-**todoManager** exponiert `provideList()` → `List<TaskEntry>` (Record mit slotId, taskTitle, start/end, completed, goalTitle etc.). Wird von der App-UI konsumiert. Callback-Pattern via `TodoListener` Interface. Weitere Methoden: `replanToday()` (Plan löschen + neu generieren), `completeSlot(slotId)` / `uncompleteSlot(slotId)`, `startTimer(slotId)` / `stopTimer(slotId)` (setzt workStart/workEnd + completes).
+**todoManager** exponiert `provideList()` → `List<TaskEntry>` (Record mit slotId, taskTitle, start/end, completed, goalTitle, progressCurrent/Target/Unit etc.). Wird von der App-UI konsumiert. Callback-Pattern via `TodoListener` Interface. Weitere Methoden:
+- `replanToday()` — Plan löschen + neu generieren
+- `completeSlot(slotId)` / `uncompleteSlot(slotId)` — Normale Tasks abhaken
+- `incrementProgress(slotId)` / `decrementProgress(slotId)` — Progress-Tasks: setzt `slot.progressDelta`, NICHT das Item direkt
+- `startTimer(slotId)` / `stopTimer(slotId)` — setzt workStart/workEnd + completes
 
 **editorManager** verwaltet CRUD-Operationen für alle Item-Typen. Exponiert `getAllItems()` → `List<TreeEntry>` (`record TreeEntry(trackedItem item, int depth)`) für die hierarchische Baumdarstellung im Editor (DFS-Traversal). `getAvailableParents(type)` filtert typbasiert: TASK→GOAL, GOAL→BLOCK, BLOCK→PROJECT, PROJECT→null. `createItem()` synct automatisch `parent.children`.
 
@@ -88,10 +119,20 @@ Widget-Komponenten in `activities/widget/`:
 - `TaskWidgetService` — RemoteViewsService Boilerplate
 - `WidgetRefreshApp` — Custom Application, registriert Unlock-Receiver für Auto-Refresh
 
+**Completion-Feedback:**
+- **App** (`taskList.java`): `animateCompletion()` — Checkbox-Bounce (scale 1.0→1.3→1.0) + Hintergrund-Flash (`completion_flash` → `surface_complete`)
+- **Widget** (`TaskWidgetProvider`/`TaskWidgetFactory`): Flash via statischer `flashingSlotId` — bei Completion wird Slot-ID gesetzt, Factory rendert mit `completion_flash`, nach 300ms wird ID gelöscht und Widget neu gerendert
+
+**Meta-Row Badges:** Unterhalb des Task-Titels zeigt `task_meta_row` (LinearLayout) drei optionale Badges:
+- Streak: "🔥 X" mit Rarity-Farbe (aus `TaskListData.getStreakRarityColorRes()`)
+- Deadline: "Fällig: dd.MM.yyyy" (rot wenn überfällig)
+- Remaining: "⏱ X Tage" — aus `trackedItem.remainingTime(today)`
+
 **Background Scheduling:** `DailyPlanningScheduler` registriert AlarmManager-Trigger um 00:00 → `DailyPlanningReceiver` führt aus:
 1. `cleanToDo.clean()` — Zwei Phasen: (a) Gestrige Slots auswerten → `trackedItem.update()` mit Slot-Daten + followUp-Tracking, (b) ALLE übrigen Items refreshen → `update(null,...)` für Perioden-Reset, scheduled-Bereinigung, blockedDays-Refresh. Danach alte todoLists aus DB entfernen.
 2. `buildToDo.planWeek()` — Neuen 7-Tage-Plan erstellen
 3. `scheduleDaily()` — Nächsten Mitternachts-Alarm registrieren
+4. `TaskWidgetProvider.notifyWidgetUpdate()` — Widget aktualisieren
 
 `BootReceiver` re-registriert den Alarm nach Geräte-Neustart.
 
@@ -126,6 +167,13 @@ Rarity-Farben in `colors.xml`, Streak-Wert kommt aus `trackedItem.currentStreak`
 - `REPS_PER_TIME` — "X mal pro Woche/Monat" (X times per week/month)
 - `DAY_OF_TIME` — "jeden Freitag" or "jeden 10." (every Friday / every 10th)
 
+**completeFirst-Modus:** Wenn `completeFirst = true`, werden überfällige Tasks NICHT automatisch zurückgesetzt bis sie erledigt sind:
+- Streak bleibt erhalten (kein Reset bei Überfälligkeit)
+- Perioden-Reset (isCompleted, completions, progressCurrent) wird übersprungen
+- Task bleibt einplanbar und wartet auf Completion
+- Helper-Methode `isCompleteFirstBlocked(day)` prüft: `completeFirst=true && overdue(day) > 0 && !isCompleted`
+- Nach Completion läuft die normale Perioden-Logik wieder an
+
 **config** (`config.java`) — Hält `Map<DayOfWeek, DaySchedule>` mit Start-/Endzeit pro Wochentag (z.B. Mo 06:00–18:00). Wird von `buildToDo` genutzt um verfügbare Stunden pro Tag zu bestimmen. `DaySchedule` ist eine innere Klasse mit `start`/`end` (`LocalTime`).
 
 **CalendarEvent** (`CalendarEvent.java`) — Java Record: `record CalendarEvent(String title, LocalTime start, LocalTime end)`. `CalendarReader` liest Device-Kalender via `CalendarContract.Instances`, `CalendarProvider` ist ein Functional Interface für testbare Kalender-Abstraktion.
@@ -157,7 +205,7 @@ public record TaskEntry(
     int timeToComplete,     // Dauer in Minuten
     LocalTime start,        // Slot-Startzeit
     LocalTime end,          // Slot-Endzeit
-    boolean completed,      // Checkbox-State
+    boolean completed,      // Checkbox-State / "heute erledigt" bei Progress
     String goalTitle,       // Titel des übergeordneten Goals
     Long goalSlotId,        // Goal-Slot ID (für Goal-Completion-Check)
     boolean isCalendarEvent,// Kalender-Termin (nicht abhakbar)
@@ -165,7 +213,11 @@ public record TaskEntry(
     LocalDate deadline,     // Fälligkeitsdatum (null = keine Deadline)
     String goalIcon,        // Emoji-Icon des Goals (z.B. "💪")
     String goalColor,       // Hex-Farbcode des Goals (z.B. "#FFE53935")
-    int currentStreak       // Aktuelle Streak-Länge des Tasks
+    int currentStreak,      // Aktuelle Streak-Länge des Tasks
+    int remainingDays,      // Verbleibende Tage (Deadline/Periode)
+    int progressCurrent,    // Angezeigter Progress (berechnet je nach progressPerRep-Modus)
+    int progressTarget,     // Ziel-Fortschritt (0 = kein Tracking)
+    String progressUnit     // Einheit (z.B. "Seiten", nullable)
 )
 ```
 
@@ -186,15 +238,25 @@ java -cp build/intermediates/javac/debug/compileDebugJavaWithJavac/classes test.
 
 **buildToDo** — Globale Slot-Bewertung über alle 7 Tage gleichzeitig:
 1. Load/create 7-day plans, sync calendar events
-2. Loop: `getItems()` + `prioritize()` → `tryMatch(highest)` globally across all days
+2. Loop: `getItems()` + `buildChains()` → `tryMatchChain(highest)` globally across all days
 3. Verdrängungslogik: Higher-priority items replace lower-priority ones
 4. Persist to DB
 
+**Chain-basiertes Scheduling:** Items werden zu Ketten gruppiert basierend auf `requiredPredecessor`:
+- `buildChains()` gruppiert verkettete Items (A → B → C via requiredPredecessor) zu `TaskChain` Records
+- Einzelne Items ohne Kette werden als Ketten der Länge 1 behandelt
+- Kette bekommt die **Summe** der Prioritäten aller Mitglieder (nicht max)
+- `tryMatchChain()` evaluiert alle **(Startpunkt × Chain-Länge)**-Kombinationen über alle 7 Tage
+- `netScore = gainPrio - lossPrio` muss > 0 sein für Platzierung
+- **Atomare Chain-Verdrängung:** `TimeSlot.chainId` trackt Zugehörigkeit. Wenn ein Slot verdrängt wird, werden ALLE Slots derselben Chain verdrängt (via `expandToFullChains()`)
+- `assignChain()` platziert alle passenden Items konsekutiv und setzt `chainId`
+- Gilt für ALLE ItemTypes (Tasks UND Goals können Chains haben)
+
 **Testability:** `buildToDo` nimmt `Repo`-Interface und `CalendarProvider` (Functional Interface) als Dependencies — ermöglicht vollständige Tests ohne Android.
 
-**Priority** basiert auf `Priority` enum (CRITICAL: 100000, HIGH: 400, MODERATE: 200, LOW: 100), plus Overdue-Bonus. PrefTime-Matching via logarithmische Score-Funktion in `tryMatch()`.
+**Priority** basiert auf `Priority` enum (CRITICAL: 100000, HIGH: 400, MODERATE: 200, LOW: 100), plus Overdue-Bonus. PrefTime-Matching via logarithmische Score-Funktion in `tryMatchChain()`. FollowUp-Boost via `scoreFollow()` für historische Muster.
 
-**Prio-Boost (`prioritize()`):** Einheitliche Formel über `item.work(today)` und `item.remainingTime(today)`:
+**Prio-Boost (`buildChains()`):** Einheitliche Formel über `item.work(today)` und `item.remainingTime(today)`:
 ```
 basePrio = priority.value + (priority.value × overdue × 0.5)
 if (überfällige Deadline): basePrio × 3.0
@@ -204,10 +266,23 @@ else if (work > 0 && time > 0): basePrio × min(2.0, 1.0 + work/time)
 - `remainingTime()` = verbleibende Tage (Deadline → Tage bis Deadline; REPS_PER_TIME → Tage in Periode minus eingeplante; Progress-only → 7 Tage Fallback).
 - Überfällige Deadline (NONE-Tasks): fester 3.0x Boost, überschreibt die work/time-Formel.
 
-**Progress-Tracking:** Items können `progressCurrent`/`progressTarget`/`progressUnit` haben (z.B. 2/6 Seiten). Offener Progress (progressCurrent < progressTarget) bewirkt:
+**Progress-Tracking:** Items können `progressCurrent`/`progressTarget`/`progressUnit` haben (z.B. 2/6 Seiten). Zwei Modi:
+- **Global** (`progressPerRep=false`, Standard): Progress akkumuliert über Slots hinweg (z.B. "6 Seiten Hausarbeit" — Tag 1: 2 Seiten, Tag 2: weiter bei 2/6)
+- **Pro Slot** (`progressPerRep=true`): Jeder Slot startet bei 0 (z.B. "3x pro Woche 5 Liegestütze" — jeder der 3 Slots zeigt 0/5 → 5/5)
+
+**Perioden-Reset:** ALLE wiederkehrenden Tasks mit Progress-Tracking bekommen `progressCurrent=0` am Perioden-Ende (nicht nur progressPerRep). Alter Wert wird in `progressLastPeriod` gesichert.
+
+**Persistenz-Architektur:** Progress-Änderungen werden NICHT direkt im Item gespeichert, sondern im `TimeSlot.progressDelta`:
+1. User drückt [+] → `todoManager.incrementProgress()` setzt `slot.progressDelta++` und `slot.completed = true`
+2. UI zeigt: Bei `progressPerRep=false`: `item.progressCurrent + slot.progressDelta`. Bei `progressPerRep=true`: nur `slot.progressDelta`
+3. Um Mitternacht: `cleanToDo` → `item.update(..., progressDelta, ...)` wendet Delta auf Item an (für Statistik)
+
+**Progress-UI:** Tasks mit Progress zeigen statt Checkbox einen kompakten Stepper `[-] 3/6 [+]`. Hintergrund wird grün bei Fortschritt ("heute erledigt"), Strikethrough erst bei vollem Progress.
+
+Offener Progress (progressCurrent < progressTarget) bewirkt:
 - Prio-Boost über `work()/remainingTime()` — mehr verbleibende Einheiten = höherer Boost, gedeckelt bei 2.0x
 - Periodenblockierung wird übersprungen (wie REPS_PER_TIME), damit das Item täglich einplanbar bleibt
-- Bei Slot-Completion: `progressCurrent++` in `update()`, und `isCompleted` wird auf `false` gehalten solange Progress offen ist
+- `isCompleted` wird auf `false` gehalten solange Progress offen ist
 
 **Deadline-Logik:** Einmalige Tasks (`RepetitionType.NONE`) können ein optionales `deadline`-Feld (`LocalDate`) haben. Wirkung:
 - Prio-Boost über `work()/remainingTime()`: je näher die Deadline, desto höher der Multiplier (cap 2.0x). Bei überfälliger Deadline: fester 3.0x Boost.
@@ -222,12 +297,18 @@ else if (work > 0 && time > 0): basePrio × min(2.0, 1.0 + work/time)
 **trackedItem.update()** — Zentraler Entry-Point für Tagesabschluss-Logik. Signatur:
 ```java
 void update(Boolean completed, LocalTime workStart, LocalTime workEnd,
-            Long previousItemId, LocalDate day, Repo repo)
+            Long previousItemId, Integer progressDelta, LocalDate day, Repo repo)
 ```
-- `completed=true/false` → Slot-Daten auswerten (completions, progress, prefTime, timeToComplete, streak, followUps)
+- `completed=true/false` → Slot-Daten auswerten (completions, prefTime, timeToComplete, streak, followUps)
+- `progressDelta` → Fortschrittsänderung aus dem Slot (wird von `incrementProgress`/`decrementProgress` im Slot gesammelt und erst hier angewendet)
 - `completed=null` → Nur "immer"-Updates (Refresh ohne Slot-Daten)
-- "Immer"-Updates (laufen IMMER, auch bei null): Perioden-Reset (`isCompleted` → false wenn neue Periode begonnen), scheduled bereinigen (vergangene Daten entfernen), blockedDays neu berechnen.
+- "Immer"-Updates (laufen IMMER, auch bei null): Perioden-Reset (`isCompleted` → false wenn neue Periode begonnen), scheduled bereinigen (vergangene Daten entfernen), blockedDays neu berechnen. Bei ALLEN Items mit Progress-Tracking: `progressCurrent` reset auf 0 mit Backup in `progressLastPeriod`.
 - `followUps`: Wenn `previousItemId != null`, wird `followUps.merge(previousItemId, 1, Integer::sum)` aufgerufen — trackt welche Items direkt vor diesem erledigt wurden.
+
+**FollowUp-System:** Drei Mechanismen für Task-Reihenfolge:
+- **requiredPredecessor** (`trackedItem.requiredPredecessor`): Harte Constraint "dieser Task soll nach Task X kommen". Nur Geschwister-Tasks (selber Parent) wählbar. UI: Spinner im Edit-Modal. **Scheduling:** Items mit requiredPredecessor werden in `buildChains()` zu Ketten gruppiert und als Block zusammen eingeplant (A → B → C werden konsekutiv platziert). Bei Platzmangel wird die Kette gekürzt.
+- **Actual Completion Tracking** (`TimeSlot.previousCompletedItemId`): Trackt die tatsächliche Completion-Reihenfolge (nicht die geplante!). `todoManager` speichert pro Goal-Slot, welcher Task zuletzt erledigt wurde (`lastCompletedByParent`). Bei Completion wird `previousCompletedItemId` im Slot gesetzt. `cleanToDo` liest aus dem Slot statt aus der Iterations-Reihenfolge.
+- **FollowUp Prio-Boost** (`trackedItem.scoreFollow(predecessorId)`): Tasks die historisch oft nach bestimmten anderen Tasks erledigt wurden, bekommen einen Planungs-Boost. Berechnung: Wenn Task A mindestens 5x nach Task B erledigt wurde UND das mindestens 5% aller FollowUps von A ausmacht, bekommt A einen Boost = Anteil (z.B. 60% der Follows von B → 60% Boost auf adjustedPrio). Angewendet in `buildToDo.tryMatchChain()` via `findPrecedingItem()`.
 
 **blockedDays-Mechanismus:** Jedes Item hat seine **eigenen** blockedDays. `trackedItem.getBlockedDays()` berechnet aus zwei Quellen:
 1. Cooldown-Fenster VOR und NACH `lastCompletion` und jedem `scheduled`-Datum (±N Tage)
@@ -246,14 +327,14 @@ SQLite with four tables:
 - `items` — All tracked items (Tasks, Goals, Blocks, Projects)
 - `config_schedules` — Day-of-week keyed schedule (start_time, end_time)
 - `todos` — Generated daily plans (id, date, start_time, end_time)
-- `time_slots` — Nested TimeSlots (todo_id FK, parent_slot_id FK for hierarchy, item_id FK, completed, work_start, work_end)
+- `time_slots` — Nested TimeSlots (todo_id FK, parent_slot_id FK for hierarchy, item_id FK, completed, work_start, work_end, progress_delta, previous_completed_item_id, chain_id)
 
-**Relations in items:** `parent` (single ID), `children` (comma-separated IDs), `followups` ("id:count" pairs, e.g. "5:3,8:1"), `scheduled` (comma-separated ISO dates), `blocked_days` (comma-separated ISO dates, computed).
+**Relations in items:** `parent` (single ID), `children` (comma-separated IDs), `followups` ("id:count" pairs, e.g. "5:3,8:1"), `scheduled` (comma-separated ISO dates), `blocked_days` (comma-separated ISO dates, computed), `required_predecessor` (single ID, optionale Vorgänger-Constraint).
 
 **Darstellung in items:** `goal_icon` (TEXT, Emoji), `goal_color` (TEXT, Hex-Farbcode). Nur für Goals relevant.
 
 **DB-Strategie (WICHTIG):** Es gibt keine Migrationen. Die App hat genau einen Nutzer (Entwickler) und arbeitet ausschließlich mit geseedeten Testdaten (`seedTestData.java`). Bei Schema-Änderungen:
-- `DB_VERSION` in `constants.java` hochzählen (aktuell: **11**)
+- `DB_VERSION` in `constants.java` hochzählen (aktuell: **15**)
 - Schema direkt in `onCreate()` anpassen
 - Neue Testdaten in `seedTestData.java` einpflegen
 - Die App erkennt den Versions-Wechsel via SharedPreferences und ruft `deleteDatabase()` auf

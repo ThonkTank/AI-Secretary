@@ -87,32 +87,28 @@ public class cleanToDo {
             if (alreadyUpdated.contains(id)) continue;
             trackedItem item = repo.fetch(Table.ITEMS, id);
             if (item == null) continue;
-            item.update(null, null, null, null, today, repo);
+            item.update(null, null, null, null, null, today, repo);
         }
     }
 
     /**
      * Rekursiv alle Slots durchgehen und trackedItem.update() aufrufen.
-     * Trackt followUps innerhalb der Slot-Reihenfolge (pro Rekursionsebene).
+     * previousCompletedItemId kommt jetzt aus dem Slot selbst (von todoManager gesetzt),
+     * nicht mehr aus der Iterations-Reihenfolge.
      */
     private static void processSlots(List<TimeSlot> slots, LocalDate day,
                                       SQLrepo repo, Set<Long> updatedItemIds) {
-        Long previousCompletedItemId = null;
-
         for (TimeSlot slot : slots) {
             // Item updaten wenn vorhanden
             if (slot.item != null) {
                 trackedItem item = repo.fetch(Table.ITEMS, slot.item);
                 if (item != null) {
                     boolean completed = slot.completed != null && slot.completed;
-                    Long prevId = completed ? previousCompletedItemId : null;
+                    // previousItemId aus Slot lesen (tatsächliche Completion-Reihenfolge)
+                    Long prevId = completed ? slot.previousCompletedItemId : null;
 
-                    item.update(completed, slot.workStart, slot.workEnd, prevId, day, repo);
+                    item.update(completed, slot.workStart, slot.workEnd, prevId, slot.progressDelta, day, repo);
                     updatedItemIds.add(slot.item);
-
-                    if (completed) {
-                        previousCompletedItemId = slot.item;
-                    }
                 }
             }
 

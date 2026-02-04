@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -100,6 +101,8 @@ public class todoManager {
     private SQLrepo repo;
     private todoList todayList;
     private TodoListener listener;
+    // Trackt letzten completed Task PRO PARENT (Goal-ID → letztes completed Item-ID)
+    private Map<Long, Long> lastCompletedByParent = new HashMap<>();
 
     public todoManager(Context context) {
         this.context = context;
@@ -125,7 +128,11 @@ public class todoManager {
         LocalDate deadline,     // Fälligkeitsdatum (null = keine Deadline)
         String goalIcon,        // Emoji-Icon des Goals (null = kein Icon)
         String goalColor,       // Hex-Farbcode des Goals (null = Standard)
-        int currentStreak       // Aktuelle Streak-Laenge des Tasks
+        int currentStreak,      // Aktuelle Streak-Laenge des Tasks
+        int remainingDays,      // Verbleibende Tage (Deadline/Periode)
+        int progressCurrent,    // Aktueller Fortschritt (0 wenn kein Tracking)
+        int progressTarget,     // Ziel-Fortschritt (0 wenn kein Tracking)
+        String progressUnit     // Einheit (z.B. "Seiten", nullable)
     ) {}
 
     // ============================================================================
@@ -188,6 +195,7 @@ public class todoManager {
     public List<TaskEntry> provideList() {
         LocalDate today = LocalDate.now();
         todayList = repo.fetch(Table.TODOS, Map.of("date", today.toString()));
+        lastCompletedByParent.clear();  // Reset Completion-Tracking bei neuem Laden
 
         if (todayList == null || todayList.timeSlots == null) {
             return new ArrayList<>();
@@ -215,7 +223,11 @@ public class todoManager {
                     null,
                     null,
                     null,
-                    0
+                    0,
+                    0,  // remainingDays
+                    0,  // progressCurrent
+                    0,  // progressTarget
+                    null // progressUnit
                 ));
                 continue;
             }
@@ -233,6 +245,19 @@ public class todoManager {
                 trackedItem task = repo.fetch(Table.ITEMS, taskSlot.item);
                 if (task == null) continue;
 
+                // Angezeigter Progress:
+                // - progressPerRep=true: NUR slot.progressDelta (jeder Slot startet bei 0)
+                // - progressPerRep=false: item.progressCurrent + slot.progressDelta (globaler Progress)
+                int displayProgress;
+                if (task.progressPerRep) {
+                    displayProgress = (taskSlot.progressDelta != null) ? taskSlot.progressDelta : 0;
+                } else {
+                    displayProgress = task.progressCurrent;
+                    if (taskSlot.progressDelta != null) {
+                        displayProgress += taskSlot.progressDelta;
+                    }
+                }
+
                 entries.add(new TaskEntry(
                     taskSlot.id,
                     task.title,
@@ -248,7 +273,11 @@ public class todoManager {
                     task.deadline,
                     goalIcon,
                     goalColor,
-                    task.currentStreak
+                    task.currentStreak,
+                    task.remainingTime(today),
+                    displayProgress,  // Kombinierter Progress (item + slot delta)
+                    task.progressTarget,
+                    task.progressUnit
                 ));
             }
         }
@@ -277,6 +306,8 @@ public class todoManager {
             for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
                 if (slotId.equals(taskSlot.id)) {
                     taskSlot.completed = false;
+                    taskSlot.workStart = null;
+                    taskSlot.workEnd = null;
 
                     // Goal-Slot ebenfalls zurücksetzen
                     goalSlot.completed = false;
@@ -340,6 +371,11 @@ public class todoManager {
                 if (slotId.equals(taskSlot.id)) {
                     taskSlot.completed = true;
 
+                    // Track actual completion order (nur Geschwister innerhalb desselben Goals)
+                    Long parentGoalId = goalSlot.item;
+                    taskSlot.previousCompletedItemId = lastCompletedByParent.get(parentGoalId);
+                    lastCompletedByParent.put(parentGoalId, taskSlot.item);
+
                     // Alle Task-Slots des Goals completed? → Goal-Slot completed
                     boolean allDone = goalSlot.timeSlots.stream()
                         .allMatch(s -> Boolean.TRUE.equals(s.completed));
@@ -348,6 +384,105 @@ public class todoManager {
                     }
 
                     // Persistieren und Listener benachrichtigen
+                    repo.write(todayList);
+                    if (listener != null) listener.onListUpdated();
+                    return;
+                }
+            }
+        }
+    }
+
+    // ============================================================================
+    // incrementProgress - Erhöht progressDelta im Slot, markiert Slot als erledigt
+    // WICHTIG: Item wird NICHT direkt geändert - erst bei Mitternacht via update()
+    // ============================================================================
+    public void incrementProgress(Long slotId) {
+        if (todayList == null || todayList.timeSlots == null) return;
+
+        for (todoList.TimeSlot goalSlot : todayList.timeSlots) {
+            if (goalSlot.timeSlots == null) continue;
+
+            for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
+                if (slotId.equals(taskSlot.id)) {
+                    // Item laden für Grenzprüfung
+                    trackedItem item = repo.fetch(Table.ITEMS, taskSlot.item);
+                    if (item == null) return;
+
+                    // Progress-Delta initialisieren falls null
+                    if (taskSlot.progressDelta == null) taskSlot.progressDelta = 0;
+
+                    // Grenzprüfung:
+                    // - progressPerRep=true: slot.progressDelta < progressTarget (Slot-lokale Grenze)
+                    // - progressPerRep=false: item.progressCurrent + slot.progressDelta < progressTarget
+                    int effectiveProgress = item.progressPerRep
+                        ? taskSlot.progressDelta
+                        : item.progressCurrent + taskSlot.progressDelta;
+                    if (effectiveProgress < item.progressTarget) {
+                        taskSlot.progressDelta++;
+                    }
+
+                    // Slot als "für heute erledigt" markieren
+                    taskSlot.completed = true;
+
+                    // Track actual completion order (nur beim ersten Mal setzen)
+                    Long parentGoalId = goalSlot.item;
+                    if (taskSlot.previousCompletedItemId == null) {
+                        taskSlot.previousCompletedItemId = lastCompletedByParent.get(parentGoalId);
+                        lastCompletedByParent.put(parentGoalId, taskSlot.item);
+                    }
+
+                    // Goal-Completion prüfen
+                    boolean allDone = goalSlot.timeSlots.stream()
+                        .allMatch(s -> Boolean.TRUE.equals(s.completed));
+                    if (allDone) {
+                        goalSlot.completed = true;
+                    }
+
+                    // NUR die todoList speichern, NICHT das Item!
+                    repo.write(todayList);
+                    if (listener != null) listener.onListUpdated();
+                    return;
+                }
+            }
+        }
+    }
+
+    // ============================================================================
+    // decrementProgress - Verringert progressDelta im Slot, setzt ggf. Slot zurück
+    // WICHTIG: Item wird NICHT direkt geändert - erst bei Mitternacht via update()
+    // ============================================================================
+    public void decrementProgress(Long slotId) {
+        if (todayList == null || todayList.timeSlots == null) return;
+
+        for (todoList.TimeSlot goalSlot : todayList.timeSlots) {
+            if (goalSlot.timeSlots == null) continue;
+
+            for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
+                if (slotId.equals(taskSlot.id)) {
+                    // Item laden für Grenzprüfung
+                    trackedItem item = repo.fetch(Table.ITEMS, taskSlot.item);
+                    if (item == null) return;
+
+                    // Progress-Delta initialisieren falls null
+                    if (taskSlot.progressDelta == null) taskSlot.progressDelta = 0;
+
+                    // Grenzprüfung:
+                    // - progressPerRep=true: slot.progressDelta > 0 (Slot-lokale Grenze)
+                    // - progressPerRep=false: item.progressCurrent + slot.progressDelta > 0
+                    int effectiveProgress = item.progressPerRep
+                        ? taskSlot.progressDelta
+                        : item.progressCurrent + taskSlot.progressDelta;
+                    if (effectiveProgress > 0) {
+                        taskSlot.progressDelta--;
+                    }
+
+                    // Slot zurücksetzen wenn Delta wieder 0 oder negativ
+                    if (taskSlot.progressDelta <= 0) {
+                        taskSlot.completed = false;
+                        goalSlot.completed = false;
+                    }
+
+                    // NUR die todoList speichern, NICHT das Item!
                     repo.write(todayList);
                     if (listener != null) listener.onListUpdated();
                     return;

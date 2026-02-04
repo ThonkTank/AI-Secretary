@@ -102,9 +102,18 @@ public class TaskRowConfig {
         boolean showDeadline,
         String deadlineText,
         @ColorRes int deadlineColorRes,
+        boolean showRemaining,
+        String remainingText,
         boolean showTimer,
         boolean timerRunning,
-        @ColorRes int timerColorRes
+        @ColorRes int timerColorRes,
+        // Progress-Felder
+        boolean hasProgress,
+        int progressCurrent,
+        int progressTarget,
+        String progressText,
+        boolean progressDoneToday,
+        boolean progressFullyDone
     ) {
         public static TaskConfig from(TaskEntry entry) {
             boolean completed = entry.completed();
@@ -113,15 +122,31 @@ public class TaskRowConfig {
             boolean deadlineOverdue = hasDeadline
                 && !entry.deadline().isAfter(LocalDate.now());
             boolean timerRunning = entry.workStart() != null;
+            boolean hasRemaining = entry.remainingDays() > 0;
 
             Integer goalBarColor = parseColor(entry.goalColor());
+
+            // Progress-Logik
+            boolean hasProgress = entry.progressTarget() > 0;
+            boolean progressDoneToday = completed && hasProgress;
+            boolean progressFullyDone = hasProgress
+                && entry.progressCurrent() >= entry.progressTarget();
+
+            // Hintergrund: grün wenn completed ODER progressDoneToday
+            boolean showGreenBg = completed || progressDoneToday;
+
+            // Strikethrough: nur bei normalen completed Tasks ODER progressFullyDone
+            boolean strikethrough = (completed && !hasProgress) || progressFullyDone;
+
+            // Titel-Farbe: muted wenn strikethrough
+            @ColorRes int titleColorRes = strikethrough ? R.color.text_muted : R.color.text_primary;
 
             return new TaskConfig(
                 entry.slotId(),
                 entry.taskTitle(),
-                completed,
-                completed ? R.color.text_muted : R.color.text_primary,
-                completed ? R.color.surface_complete : R.color.surface,
+                strikethrough,
+                titleColorRes,
+                showGreenBg ? R.color.surface_complete : R.color.surface,
                 goalBarColor,
                 completed,
                 entry.timeToComplete() + " min",
@@ -131,9 +156,18 @@ public class TaskRowConfig {
                 hasDeadline,
                 hasDeadline ? "Fällig: " + entry.deadline().format(DL_FMT) : null,
                 deadlineOverdue ? R.color.text_error : R.color.text_muted,
+                hasRemaining,
+                hasRemaining ? "⏱ " + entry.remainingDays() + " Tage" : null,
                 !completed,
                 timerRunning,
-                timerRunning ? R.color.accent : R.color.text_secondary
+                timerRunning ? R.color.accent : R.color.text_secondary,
+                // Progress-Felder
+                hasProgress,
+                entry.progressCurrent(),
+                entry.progressTarget(),
+                hasProgress ? entry.progressCurrent() + "/" + entry.progressTarget() : null,
+                progressDoneToday,
+                progressFullyDone
             );
         }
     }
