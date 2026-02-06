@@ -61,7 +61,7 @@
         android:id="@+id/budget_warning"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Budget ueberschritten!"
+        android:text="@string/desc_budget_exceeded"
         android:textSize="@dimen/sp_micro"
         android:textColor="@color/budget_expense"
         android:visibility="gone"

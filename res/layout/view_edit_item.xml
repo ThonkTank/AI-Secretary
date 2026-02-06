@@ -29,7 +29,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginEnd="@dimen/padding_medium"
-                    android:hint="Suchen..."
+                    android:hint="@string/hint_search"
                     android:singleLine="true"
                     android:textSize="@dimen/sp_body" />
 

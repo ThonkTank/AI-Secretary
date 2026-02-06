@@ -75,7 +75,7 @@ package data;
 import android.graphics.Color;
 import androidx.annotation.ColorRes;
 import com.autosecretary.R;
-import controller.todoManager.TaskEntry;
+import controller.TodoManager.TaskEntry;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 

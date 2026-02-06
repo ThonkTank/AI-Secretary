@@ -33,7 +33,7 @@
                     android:id="@+id/modal_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Rezept erstellen"
+                    android:text="@string/title_create_recipe"
                     android:textSize="@dimen/sp_heading"
                     android:textColor="@color/text_primary"
                     android:textStyle="bold" />
@@ -41,23 +41,24 @@
                 <View android:layout_width="match_parent" android:layout_height="16dp" />
 
                 <!-- Titel -->
-                <TextView style="@style/FormLabel" android:text="Titel" />
+                <TextView style="@style/FormLabel" android:text="@string/label_titel" />
                 <EditText
                     android:id="@+id/input_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="z.B. Spaghetti Bolognese"
+                    android:hint="@string/hint_recipe_name"
                     android:singleLine="true"
                     android:textSize="@dimen/sp_body" />
 
                 <!-- Mahlzeit-Typ -->
-                <TextView style="@style/FormLabel" android:text="Mahlzeit" android:layout_marginTop="12dp" />
+                <TextView style="@style/FormLabel" android:text="@string/label_mahlzeit" android:layout_marginTop="12dp" />
                 <Spinner
                     android:id="@+id/spinner_meal_type"
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
                     android:background="@color/surface_elevated"
-                    android:padding="@dimen/padding_small" />
+                    android:padding="@dimen/padding_small"
+                    android:contentDescription="@string/cd_spinner_meal_type" />
 
                 <!-- Zeit-Row: Zubereitung + Kochzeit -->
                 <LinearLayout
@@ -72,7 +73,7 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:layout_marginEnd="8dp">
-                        <TextView style="@style/FormLabel" android:text="Zubereitungszeit (min)" />
+                        <TextView style="@style/FormLabel" android:text="@string/label_zubereitungszeit" />
                         <EditText
                             android:id="@+id/input_prep_time"
                             android:layout_width="match_parent"
@@ -88,7 +89,7 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:layout_marginStart="8dp">
-                        <TextView style="@style/FormLabel" android:text="Kochzeit (min)" />
+                        <TextView style="@style/FormLabel" android:text="@string/label_kochzeit" />
                         <EditText
                             android:id="@+id/input_cook_time"
                             android:layout_width="match_parent"
@@ -101,7 +102,7 @@
                 </LinearLayout>
 
                 <!-- Portionen -->
-                <TextView style="@style/FormLabel" android:text="Portionen" android:layout_marginTop="12dp" />
+                <TextView style="@style/FormLabel" android:text="@string/label_portionen" android:layout_marginTop="12dp" />
                 <EditText
                     android:id="@+id/input_servings"
                     android:layout_width="80dp"
@@ -111,7 +112,7 @@
                     android:textSize="@dimen/sp_body" />
 
                 <!-- Zutaten-Sektion -->
-                <TextView style="@style/FormLabel" android:text="Zutaten" android:layout_marginTop="16dp" />
+                <TextView style="@style/FormLabel" android:text="@string/label_zutaten" android:layout_marginTop="16dp" />
 
                 <LinearLayout
                     android:id="@+id/ingredients_container"
@@ -123,18 +124,18 @@
                     android:id="@+id/btn_add_ingredient"
                     android:layout_width="wrap_content"
                     android:layout_height="36dp"
-                    android:text="+ Zutat hinzufügen"
+                    android:text="@string/btn_add_ingredient"
                     android:textSize="12sp"
                     android:background="@color/surface_elevated"
                     android:layout_marginTop="@dimen/margin_small" />
 
                 <!-- Anleitung (optional) -->
-                <TextView style="@style/FormLabel" android:text="Zubereitung (optional)" android:layout_marginTop="16dp" />
+                <TextView style="@style/FormLabel" android:text="@string/label_zubereitung_optional" android:layout_marginTop="16dp" />
                 <EditText
                     android:id="@+id/input_instructions"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Schritt für Schritt..."
+                    android:hint="@string/hint_instructions"
                     android:minLines="3"
                     android:maxLines="6"
                     android:inputType="textMultiLine"
@@ -142,12 +143,12 @@
                     android:textSize="@dimen/sp_body" />
 
                 <!-- Tags -->
-                <TextView style="@style/FormLabel" android:text="Tags (optional)" android:layout_marginTop="12dp" />
+                <TextView style="@style/FormLabel" android:text="@string/label_tags_optional" android:layout_marginTop="12dp" />
                 <EditText
                     android:id="@+id/input_tags"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="schnell, vegetarisch, lowcarb"
+                    android:hint="@string/hint_tags"
                     android:singleLine="true"
                     android:textSize="@dimen/sp_body" />
 
@@ -163,7 +164,7 @@
                         android:id="@+id/btn_cancel"
                         android:layout_width="wrap_content"
                         android:layout_height="44dp"
-                        android:text="Abbrechen"
+                        android:text="@string/btn_cancel"
                         android:textColor="@color/text_secondary"
                         android:background="@android:color/transparent" />
 
@@ -172,7 +173,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="44dp"
                         android:layout_marginStart="16dp"
-                        android:text="Speichern"
+                        android:text="@string/btn_save"
                         android:textColor="@android:color/white"
                         android:background="@color/accent" />
 

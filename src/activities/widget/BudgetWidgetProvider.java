@@ -12,8 +12,8 @@ import androidx.core.content.ContextCompat;
 
 import com.autosecretary.R;
 
-import activities.inApp.mainActivity;
-import controller.budgetManager;
+import activities.inApp.MainActivity;
+import controller.BudgetManager;
 import data.BudgetDisplayData;
 
 /**
@@ -24,7 +24,7 @@ import data.BudgetDisplayData;
  *   Saldo: 1.234,56 EUR  |  Frei: 456,78 EUR
  *
  * Interaktionen:
- *   - Widget-Tap -> oeffnet Budget-Tab in mainActivity
+ *   - Widget-Tap -> oeffnet Budget-Tab in MainActivity
  *   - "+" Button -> oeffnet Transaktions-Erfassung
  */
 public class BudgetWidgetProvider extends AppWidgetProvider {
@@ -38,7 +38,7 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
             RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.widget_budget);
 
             // 1. Daten laden
-            budgetManager bm = new budgetManager(context);
+            BudgetManager bm = new BudgetManager(context);
             int totalCents = bm.getTotalBalanceCents();
             int freeCents = bm.getFreeBudgetCents();
 
@@ -53,7 +53,7 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
             rv.setTextColor(R.id.budget_free_value, freeColor);
 
             // 4. "+" Button -> Oeffnet Transaktions-Modal
-            Intent addIntent = new Intent(context, mainActivity.class);
+            Intent addIntent = new Intent(context, MainActivity.class);
             addIntent.setAction(ACTION_CREATE_TRANSACTION);
             addIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent addPending = PendingIntent.getActivity(
@@ -63,7 +63,7 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
             rv.setOnClickPendingIntent(R.id.budget_widget_add, addPending);
 
             // 5. Widget-Tap -> Oeffnet Budget-Tab
-            Intent appIntent = new Intent(context, mainActivity.class);
+            Intent appIntent = new Intent(context, MainActivity.class);
             appIntent.setAction(ACTION_OPEN_BUDGET);
             appIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent appPending = PendingIntent.getActivity(
@@ -80,7 +80,7 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
 
     /**
      * Aktualisiert alle Budget-Widget-Instanzen.
-     * Kann von externen Komponenten aufgerufen werden (budgetManager, todoManager, etc.).
+     * Kann von externen Komponenten aufgerufen werden (BudgetManager, TodoManager, etc.).
      */
     public static void notifyWidgetUpdate(Context context) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);

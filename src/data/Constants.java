@@ -1,8 +1,8 @@
 package data;
 
-public class constants {
+public class Constants {
     public static final String DB_NAME = "autosecretary.db";
-    public static final int DB_VERSION = 31;  // v1.0.0 Production Release
+    public static final int DB_VERSION = 32;  // Free-form Meal Schedule
 
     // SharedPreferences Konstanten
     public static final String PREF_NAME = "secretary";

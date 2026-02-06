@@ -9,7 +9,7 @@ import java.util.Map;
 
 import entities.ShoppingListItem;
 
-public class shoppingListParser {
+public class ShoppingListParser {
 
     // ============== BUILDER (DB → Java) ==============
 

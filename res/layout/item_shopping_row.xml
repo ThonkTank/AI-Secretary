@@ -24,7 +24,7 @@
             android:layout_height="24dp"
             android:src="@android:drawable/checkbox_off_background"
             android:layout_marginEnd="@dimen/padding_small"
-            android:contentDescription="Abgehakt" />
+            android:contentDescription="@string/cd_checked" />
 
         <LinearLayout
             android:layout_width="wrap_content"

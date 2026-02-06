@@ -8,7 +8,7 @@ import java.util.Map;
 
 import entities.BudgetLimit;
 
-public class budgetLimitParser {
+public class BudgetLimitParser {
 
     // ============== BUILDER (DB → Java) ==============
 

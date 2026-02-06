@@ -7,8 +7,8 @@ import android.database.sqlite.SQLiteDatabase;
 import java.time.DayOfWeek;
 import java.util.List;
 
-import entities.trackedItem;
-import entities.trackedItem.*;
+import entities.TrackedItem;
+import entities.TrackedItem.*;
 import entities.Account;
 import entities.Transaction;
 import entities.BudgetLimit;
@@ -65,12 +65,12 @@ import repository.SQLrepo;
  *
  * Alle Items sind offen (ueberfaellig), haben aber Streaks fuer Rarity-Demo.
  */
-public class seedTestData {
+public class SeedTestData {
 
     private SQLrepo repo;
 
-    public seedTestData(Context context) {
-        this.repo = new SQLrepo(context);
+    public SeedTestData(Context context) {
+        this.repo = SQLrepo.getInstance(context);
     }
 
     public void seed() {
@@ -151,31 +151,31 @@ public class seedTestData {
             repo.write(catExpenseOther);
 
             // ===== PROJECT: Fitness =====
-            trackedItem pFitness = new Builder(ItemType.PROJECT, "Fitness", Priority.HIGH)
+            TrackedItem pFitness = new Builder(ItemType.PROJECT, "Fitness", Priority.HIGH)
                 .created("2025-12-01").build();
             repo.write(pFitness);
 
             // --- Goal: Workout ---
-            trackedItem gWorkout = new Builder(ItemType.GOAL, "Workout", Priority.HIGH)
+            TrackedItem gWorkout = new Builder(ItemType.GOAL, "Workout", Priority.HIGH)
                 .maxMinutes(30).prefTime("07:00").parent(pFitness.id).created("2025-12-01")
                 .goalIcon("\uD83D\uDCAA").goalColor("#FFE53935").build();
             repo.write(gWorkout);
 
             // Tasks unter Workout
-            trackedItem tStretching = new Builder(ItemType.TASK, "Stretching", Priority.MODERATE)
+            TrackedItem tStretching = new Builder(ItemType.TASK, "Stretching", Priority.MODERATE)
                 .maxMinutes(10).prefTime("07:00").parent(gWorkout.id).created("2025-12-01")
                 .lastCompletion("2026-02-02").currentStreak(105).totalCompletions(105)
                 .repetition(RepetitionType.INTERVAL, 1, RepUnits.DAY).build();
             repo.write(tStretching);
 
-            trackedItem tLiegestuetze = new Builder(ItemType.TASK, "Liegestuetze", Priority.HIGH)
+            TrackedItem tLiegestuetze = new Builder(ItemType.TASK, "Liegestuetze", Priority.HIGH)
                 .maxMinutes(10).prefTime("07:10").parent(gWorkout.id).created("2025-12-01")
                 .lastCompletion("2026-02-02").currentStreak(35).totalCompletions(35)
                 .chainAfter(tStretching.id)  // Same-Day Chain: direkt nach Stretching
                 .repetition(RepetitionType.INTERVAL, 1, RepUnits.DAY).build();
             repo.write(tLiegestuetze);
 
-            trackedItem tKniebeugen = new Builder(ItemType.TASK, "Kniebeugen", Priority.MODERATE)
+            TrackedItem tKniebeugen = new Builder(ItemType.TASK, "Kniebeugen", Priority.MODERATE)
                 .maxMinutes(10).prefTime("07:20").parent(gWorkout.id).created("2025-12-01")
                 .repetition(RepetitionType.REPS_PER_TIME, 3, RepUnits.WEEK).build();
             repo.write(tKniebeugen);
@@ -187,25 +187,25 @@ public class seedTestData {
             repo.write(pFitness);
 
             // ===== GOAL: Lernen =====
-            trackedItem gLernen = new Builder(ItemType.GOAL, "Lernen", Priority.HIGH)
+            TrackedItem gLernen = new Builder(ItemType.GOAL, "Lernen", Priority.HIGH)
                 .maxMinutes(45).prefTime("14:00").created("2025-12-01")
                 .goalIcon("\uD83D\uDCDA").goalColor("#FF8E24AA").build();
             repo.write(gLernen);
 
-            trackedItem tVokabeln = new Builder(ItemType.TASK, "Vokabeln", Priority.HIGH)
+            TrackedItem tVokabeln = new Builder(ItemType.TASK, "Vokabeln", Priority.HIGH)
                 .maxMinutes(15).prefTime("14:00").parent(gLernen.id).created("2025-12-01")
                 .lastCompletion("2026-02-02").currentStreak(65).totalCompletions(65)
                 .repetition(RepetitionType.INTERVAL, 1, RepUnits.DAY)
                 .progressTarget(20).progressUnit("Woerter").progressPerRep(true).build();
             repo.write(tVokabeln);
 
-            trackedItem tLesen = new Builder(ItemType.TASK, "Lesen", Priority.LOW)
+            TrackedItem tLesen = new Builder(ItemType.TASK, "Lesen", Priority.LOW)
                 .maxMinutes(15).prefTime("14:15").parent(gLernen.id).created("2025-12-01")
                 .lastCompletion("2026-01-24").currentStreak(5).totalCompletions(5)
                 .repetition(RepetitionType.DAY_OF_TIME, 0, RepUnits.WEEK, DayOfWeek.FRIDAY).build();
             repo.write(tLesen);
 
-            trackedItem tHausarbeit = new Builder(ItemType.TASK, "Hausarbeit", Priority.HIGH)
+            TrackedItem tHausarbeit = new Builder(ItemType.TASK, "Hausarbeit", Priority.HIGH)
                 .minMinutes(30).maxMinutes(90).prefTime("14:30").parent(gLernen.id).created("2026-01-15")
                 .description("Wissenschaftliche Arbeit schreiben")
                 .noRepetition().deadline("2026-02-15")
@@ -218,25 +218,25 @@ public class seedTestData {
             repo.write(gLernen);
 
             // ===== GOAL: Haushalt =====
-            trackedItem gHaushalt = new Builder(ItemType.GOAL, "Haushalt", Priority.MODERATE)
+            TrackedItem gHaushalt = new Builder(ItemType.GOAL, "Haushalt", Priority.MODERATE)
                 .maxMinutes(30).prefTime("16:00").created("2025-12-01")
                 .goalIcon("\uD83C\uDFE0").goalColor("#FFFB8C00").build();
             repo.write(gHaushalt);
 
-            trackedItem tPutzen = new Builder(ItemType.TASK, "Putzen", Priority.MODERATE)
+            TrackedItem tPutzen = new Builder(ItemType.TASK, "Putzen", Priority.MODERATE)
                 .maxMinutes(15).prefTime("16:00").parent(gHaushalt.id).created("2025-12-01")
                 .lastCompletion("2026-01-31").currentStreak(15).totalCompletions(15)
                 .completeFirst(true)  // completeFirst-Modus
                 .repetition(RepetitionType.INTERVAL, 3, RepUnits.DAY).build();
             repo.write(tPutzen);
 
-            trackedItem tEinkaufen = new Builder(ItemType.TASK, "Einkaufen", Priority.CRITICAL)
+            TrackedItem tEinkaufen = new Builder(ItemType.TASK, "Einkaufen", Priority.CRITICAL)
                 .maxMinutes(15).prefTime("16:15").parent(gHaushalt.id).created("2025-12-01")
                 .repetition(RepetitionType.REPS_PER_TIME, 2, RepUnits.WEEK).build();
             repo.write(tEinkaufen);
 
             // Task mit Budget: Frisör (30€)
-            trackedItem tFrisoer = new Builder(ItemType.TASK, "Frisör", Priority.LOW)
+            TrackedItem tFrisoer = new Builder(ItemType.TASK, "Frisör", Priority.LOW)
                 .maxMinutes(60).parent(gHaushalt.id).created("2025-12-01")
                 .budgetRequirement(3000)  // 30€
                 .budgetCategory(catGesundheit.id)
@@ -247,13 +247,13 @@ public class seedTestData {
             repo.write(gHaushalt);
 
             // ===== GOAL: Einkäufe (Budget-Demo) =====
-            trackedItem gEinkaeufe = new Builder(ItemType.GOAL, "Einkäufe", Priority.LOW)
+            TrackedItem gEinkaeufe = new Builder(ItemType.GOAL, "Einkäufe", Priority.LOW)
                 .maxMinutes(60).prefTime("15:00").created("2026-01-01")
                 .goalIcon("\uD83D\uDED2").goalColor("#FF7B1FA2").build();
             repo.write(gEinkaeufe);
 
             // Einmaliger Kauf: AirForce 1 (150€) - wird nicht eingeplant wenn Budget < 150€
-            trackedItem tAirForce = new Builder(ItemType.TASK, "AirForce 1 kaufen", Priority.LOW)
+            TrackedItem tAirForce = new Builder(ItemType.TASK, "AirForce 1 kaufen", Priority.LOW)
                 .maxMinutes(30).parent(gEinkaeufe.id).created("2026-01-01")
                 .budgetRequirement(15000)  // 150€
                 .budgetCategory(catKleidung.id)
@@ -262,23 +262,23 @@ public class seedTestData {
             // children wird nach Konten-Erstellung aktualisiert (inkl. tOnlineShopping)
 
             // ===== GOAL: Wäsche (DELAYED CHAIN) =====
-            trackedItem gWaesche = new Builder(ItemType.GOAL, "Wäsche", Priority.MODERATE)
+            TrackedItem gWaesche = new Builder(ItemType.GOAL, "Wäsche", Priority.MODERATE)
                 .maxMinutes(60).prefTime("10:00").created("2025-12-01")
                 .goalIcon("\uD83E\uDDFA").goalColor("#FF42A5F5").build();
             repo.write(gWaesche);
 
-            trackedItem tWaschen = new Builder(ItemType.TASK, "Waschen", Priority.MODERATE)
+            TrackedItem tWaschen = new Builder(ItemType.TASK, "Waschen", Priority.MODERATE)
                 .maxMinutes(15).parent(gWaesche.id).created("2025-12-01")
                 .repetition(RepetitionType.INTERVAL, 3, RepUnits.DAY).build();
             repo.write(tWaschen);
 
-            trackedItem tAufhaengen = new Builder(ItemType.TASK, "Aufhängen", Priority.HIGH)
+            TrackedItem tAufhaengen = new Builder(ItemType.TASK, "Aufhängen", Priority.HIGH)
                 .maxMinutes(10).parent(gWaesche.id).created("2025-12-01")
                 .delayAfter(tWaschen.id, 180)  // 3 Stunden nach Waschen
                 .repetition(RepetitionType.INTERVAL, 3, RepUnits.DAY).build();
             repo.write(tAufhaengen);
 
-            trackedItem tAbhaengen = new Builder(ItemType.TASK, "Abhängen", Priority.MODERATE)
+            TrackedItem tAbhaengen = new Builder(ItemType.TASK, "Abhängen", Priority.MODERATE)
                 .maxMinutes(10).parent(gWaesche.id).created("2025-12-01")
                 .delayAfter(tAufhaengen.id, 1440)  // 24 Stunden nach Aufhängen
                 .repetition(RepetitionType.INTERVAL, 3, RepUnits.DAY).build();
@@ -288,14 +288,14 @@ public class seedTestData {
             repo.write(gWaesche);
 
             // ===== GOAL: Finanzen (DAY_OF_TIME Monatstag + budgetAccountId + cooldown) =====
-            trackedItem gFinanzen = new Builder(ItemType.GOAL, "Finanzen", Priority.HIGH)
+            TrackedItem gFinanzen = new Builder(ItemType.GOAL, "Finanzen", Priority.HIGH)
                 .maxMinutes(30).prefTime("09:00").created("2025-12-01")
                 .description("Monatliche Finanzaufgaben")
                 .goalIcon("\uD83D\uDCB0").goalColor("#FF00796B").build();
             repo.write(gFinanzen);
 
             // DAY_OF_TIME mit Monatstag ("jeden 1.")
-            trackedItem tMieteZahlen = new Builder(ItemType.TASK, "Miete zahlen", Priority.CRITICAL)
+            TrackedItem tMieteZahlen = new Builder(ItemType.TASK, "Miete zahlen", Priority.CRITICAL)
                 .maxMinutes(10).parent(gFinanzen.id).created("2025-12-01")
                 .description("Dauerauftrag prüfen")
                 .repetition(RepetitionType.DAY_OF_TIME, 1, RepUnits.MONTH)  // Am 1. jeden Monats
@@ -303,7 +303,7 @@ public class seedTestData {
             repo.write(tMieteZahlen);
 
             // Einmalige Aufgabe mit minMinutes und cooldown
-            trackedItem tSteuern = new Builder(ItemType.TASK, "Steuererklärung", Priority.HIGH)
+            TrackedItem tSteuern = new Builder(ItemType.TASK, "Steuererklärung", Priority.HIGH)
                 .minMinutes(60).maxMinutes(180).parent(gFinanzen.id).created("2026-01-01")
                 .description("Belege sammeln, ELSTER ausfüllen")
                 .noRepetition().deadline("2026-05-31")
@@ -312,7 +312,7 @@ public class seedTestData {
             repo.write(tSteuern);
 
             // Fester Termin: Task mit fixedDate + fixedTime
-            trackedItem tZahnarzt = new Builder(ItemType.TASK, "Zahnarzt", Priority.CRITICAL)
+            TrackedItem tZahnarzt = new Builder(ItemType.TASK, "Zahnarzt", Priority.CRITICAL)
                 .maxMinutes(60).parent(gFinanzen.id).created("2026-01-15")
                 .description("Kontrolluntersuchung")
                 .noRepetition()
@@ -324,14 +324,14 @@ public class seedTestData {
             repo.write(gFinanzen);
 
             // ===== GOAL: Programmieren (MIN/MAX PROGRESS_UNITS + timePerProgressUnit) =====
-            trackedItem gProgrammieren = new Builder(ItemType.GOAL, "Programmieren", Priority.HIGH)
+            TrackedItem gProgrammieren = new Builder(ItemType.GOAL, "Programmieren", Priority.HIGH)
                 .maxMinutes(120).prefTime("19:00").created("2025-12-01")
                 .description("Abendliche Coding-Sessions")
                 .goalIcon("\uD83D\uDCBB").goalColor("#FF6200EE").build();
             repo.write(gProgrammieren);
 
             // Task mit PROGRESS_UNITS-basierter Duration + gemessenem timePerProgressUnit
-            trackedItem tCoding = new Builder(ItemType.TASK, "Coding", Priority.HIGH)
+            TrackedItem tCoding = new Builder(ItemType.TASK, "Coding", Priority.HIGH)
                 .minProgress(2).maxProgress(8)  // Min 2, max 8 Pomodoros pro Tag
                 .parent(gProgrammieren.id).created("2025-12-01")
                 .description("Pomodoro-Technik: 25min fokussiert arbeiten")
@@ -382,7 +382,7 @@ public class seedTestData {
 
             // --- Budget-Task mit spezifischem Konto (budgetAccountId Demo) ---
             // Hinweis: Dieser Task wird dem Einkäufe-Goal hinzugefügt
-            trackedItem tOnlineShopping = new Builder(ItemType.TASK, "Online-Bestellung", Priority.LOW)
+            TrackedItem tOnlineShopping = new Builder(ItemType.TASK, "Online-Bestellung", Priority.LOW)
                 .maxMinutes(15).parent(gEinkaeufe.id).created("2026-01-15")
                 .description("Bestellung mit Kreditkarte bezahlen")
                 .budgetRequirement(5000)  // 50€
@@ -560,20 +560,18 @@ public class seedTestData {
         repo.write(prefs);
 
         // === MAHLZEITEN-KALENDER ===
-        // Werktags (Mo-Fr): Frühstück 06:30, Mittag 12:00, Abend 18:00
+        // Werktags (Mo-Fr): Frühstück 06:30 (30min), Mittag 12:00 (45min), Abend 18:00 (30min)
         for (DayOfWeek day : List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
                                      DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)) {
-            repo.write(new MealSchedule.Builder(day, MealType.BREAKFAST).time(6, 30).build());
-            repo.write(new MealSchedule.Builder(day, MealType.LUNCH).time(12, 0).build());
-            repo.write(new MealSchedule.Builder(day, MealType.DINNER).time(18, 0).build());
-            repo.write(new MealSchedule.Builder(day, MealType.SNACK).disabled().build());
+            repo.write(new MealSchedule.Builder(day, MealType.BREAKFAST).time(6, 30).duration(30).build());
+            repo.write(new MealSchedule.Builder(day, MealType.LUNCH).time(12, 0).duration(45).build());
+            repo.write(new MealSchedule.Builder(day, MealType.DINNER).time(18, 0).duration(30).build());
         }
         // Wochenende (Sa-So): später aufstehen
         for (DayOfWeek day : List.of(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)) {
-            repo.write(new MealSchedule.Builder(day, MealType.BREAKFAST).time(9, 0).build());
-            repo.write(new MealSchedule.Builder(day, MealType.LUNCH).time(12, 30).build());
-            repo.write(new MealSchedule.Builder(day, MealType.DINNER).time(18, 30).build());
-            repo.write(new MealSchedule.Builder(day, MealType.SNACK).disabled().build());
+            repo.write(new MealSchedule.Builder(day, MealType.BREAKFAST).time(9, 0).duration(30).build());
+            repo.write(new MealSchedule.Builder(day, MealType.LUNCH).time(12, 30).duration(45).build());
+            repo.write(new MealSchedule.Builder(day, MealType.DINNER).time(18, 30).duration(30).build());
         }
 
         // === ZUTATEN (~200 Stück) ===

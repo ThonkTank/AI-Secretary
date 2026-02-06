@@ -29,11 +29,11 @@ public class ImportProcessor {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private final Context context;
-    private final budgetManager manager;
+    private final BudgetManager manager;
 
     public ImportProcessor(Context context) {
         this.context = context;
-        this.manager = new budgetManager(context);
+        this.manager = new BudgetManager(context);
     }
 
     // ============== CALLBACK INTERFACE ==============

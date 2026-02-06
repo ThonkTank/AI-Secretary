@@ -17,7 +17,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import data.constants;
+import data.Constants;
+import entities.MealSchedule;
 
 /**
  * Verwaltet Datenbank-Migrationen mit automatischen Backups.
@@ -47,13 +48,13 @@ public class MigrationManager {
      * Gibt den Backup-Dateipfad zurueck, oder null bei Fehler.
      */
     public File createBackup(int fromVersion) {
-        File dbFile = context.getDatabasePath(constants.DB_NAME);
+        File dbFile = context.getDatabasePath(Constants.DB_NAME);
         if (!dbFile.exists()) {
             Log.w(TAG, "Database file does not exist, skipping backup");
             return null;
         }
 
-        File backupDir = new File(context.getFilesDir(), constants.BACKUP_DIR);
+        File backupDir = new File(context.getFilesDir(), Constants.BACKUP_DIR);
         if (!backupDir.exists()) {
             backupDir.mkdirs();
         }
@@ -83,7 +84,7 @@ public class MigrationManager {
             return false;
         }
 
-        File dbFile = context.getDatabasePath(constants.DB_NAME);
+        File dbFile = context.getDatabasePath(Constants.DB_NAME);
         try {
             copyFile(backupFile, dbFile);
             Log.i(TAG, "Restored from backup: " + backupFile.getName());
@@ -98,7 +99,7 @@ public class MigrationManager {
      * Listet verfuegbare Backup-Dateien auf, neueste zuerst.
      */
     public File[] listBackups() {
-        File backupDir = new File(context.getFilesDir(), constants.BACKUP_DIR);
+        File backupDir = new File(context.getFilesDir(), Constants.BACKUP_DIR);
         if (!backupDir.exists()) {
             return new File[0];
         }
@@ -118,8 +119,8 @@ public class MigrationManager {
      */
     private void rotateBackups() {
         File[] backups = listBackups();
-        if (backups.length > constants.MAX_BACKUPS) {
-            for (int i = constants.MAX_BACKUPS; i < backups.length; i++) {
+        if (backups.length > Constants.MAX_BACKUPS) {
+            for (int i = Constants.MAX_BACKUPS; i < backups.length; i++) {
                 if (backups[i].delete()) {
                     Log.i(TAG, "Deleted old backup: " + backups[i].getName());
                 }
@@ -192,8 +193,9 @@ public class MigrationManager {
                 migrateV31_ProductionCleanup(db);
                 break;
 
-            // Zukuenftige Migrationen hier einfuegen:
-            // case 32: migrateV32_AddNewFeature(db); break;
+            case 32:
+                migrateV32_FreeFormSchedule(db);
+                break;
 
             default:
                 Log.w(TAG, "No migration defined for v" + toVersion);
@@ -210,6 +212,7 @@ public class MigrationManager {
         switch (version) {
             case 30: return "Schema consolidation - add new columns for v1.0";
             case 31: return "Production cleanup - remove test data";
+            case 32: return "Free-form meal schedule - remove UNIQUE, add duration";
             default: return "Migration v" + version;
         }
     }
@@ -433,6 +436,46 @@ public class MigrationManager {
         }
     }
 
+    /**
+     * v32: Free-form Meal Schedule - UNIQUE Constraint entfernen, duration_minutes hinzufuegen.
+     * Tabelle muss neu erstellt werden (SQLite <3.35 kann kein DROP COLUMN/CONSTRAINT).
+     */
+    private void migrateV32_FreeFormSchedule(SQLiteDatabase db) {
+        Log.i(TAG, "v32: Migrating to free-form meal schedule");
+
+        db.beginTransaction();
+        try {
+            // 1. Neue Tabelle ohne UNIQUE Constraint erstellen
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS meal_schedules_new ("
+                + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + "day_of_week TEXT NOT NULL,"
+                + "meal_type TEXT NOT NULL,"
+                + "scheduled_time TEXT,"
+                + "duration_minutes INTEGER DEFAULT " + MealSchedule.DEFAULT_DURATION_MINUTES
+                + ")"
+            );
+
+            // 2. Nur aktivierte Eintraege migrieren (disabled = geloescht im neuen Modell)
+            db.execSQL(
+                "INSERT INTO meal_schedules_new (id, day_of_week, meal_type, scheduled_time, duration_minutes) "
+                + "SELECT id, day_of_week, meal_type, scheduled_time, " + MealSchedule.DEFAULT_DURATION_MINUTES + " "
+                + "FROM meal_schedules WHERE is_enabled = 1"
+            );
+
+            // 3. Alte Tabelle loeschen
+            db.execSQL("DROP TABLE meal_schedules");
+
+            // 4. Neue Tabelle umbenennen
+            db.execSQL("ALTER TABLE meal_schedules_new RENAME TO meal_schedules");
+
+            db.setTransactionSuccessful();
+            Log.i(TAG, "v32: Free-form meal schedule migration completed");
+        } finally {
+            db.endTransaction();
+        }
+    }
+
     // ================================================================
     // USER STATE DETECTION
     // ================================================================
@@ -442,18 +485,18 @@ public class MigrationManager {
      */
     public boolean isFirstProductionLaunch() {
         SharedPreferences prefs = context.getSharedPreferences(
-            constants.PREF_NAME, Context.MODE_PRIVATE);
-        String mode = prefs.getString(constants.PREF_APP_MODE, null);
-        return mode == null || constants.MODE_DEVELOPMENT.equals(mode);
+            Constants.PREF_NAME, Context.MODE_PRIVATE);
+        String mode = prefs.getString(Constants.PREF_APP_MODE, null);
+        return mode == null || Constants.MODE_DEVELOPMENT.equals(mode);
     }
 
     /**
      * Markiert die App als im Produktionsmodus laufend.
      */
     public void setProductionMode() {
-        context.getSharedPreferences(constants.PREF_NAME, Context.MODE_PRIVATE)
+        context.getSharedPreferences(Constants.PREF_NAME, Context.MODE_PRIVATE)
             .edit()
-            .putString(constants.PREF_APP_MODE, constants.MODE_PRODUCTION)
+            .putString(Constants.PREF_APP_MODE, Constants.MODE_PRODUCTION)
             .apply();
         Log.i(TAG, "App mode set to PRODUCTION");
     }
@@ -463,8 +506,8 @@ public class MigrationManager {
      */
     public boolean isProductionMode() {
         SharedPreferences prefs = context.getSharedPreferences(
-            constants.PREF_NAME, Context.MODE_PRIVATE);
-        String mode = prefs.getString(constants.PREF_APP_MODE, null);
-        return constants.MODE_PRODUCTION.equals(mode);
+            Constants.PREF_NAME, Context.MODE_PRIVATE);
+        String mode = prefs.getString(Constants.PREF_APP_MODE, null);
+        return Constants.MODE_PRODUCTION.equals(mode);
     }
 }

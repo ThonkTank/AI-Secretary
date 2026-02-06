@@ -14,12 +14,12 @@ import java.util.Map;
 
 import controller.WidgetUpdateManager;
 import controller.WidgetUpdateManager.DataDomain;
-import entities.todoList;
-import entities.todoList.TimeSlot;
-import entities.trackedItem;
+import entities.TodoList;
+import entities.TodoList.TimeSlot;
+import entities.TrackedItem;
 import repository.SQLrepo;
 import repository.Table;
-import scheduling.buildToDo;
+import scheduling.BuildToDo;
 import scheduling.CalendarReader;
 
 /**
@@ -49,7 +49,7 @@ public class DebugBroadcastReceiver extends BroadcastReceiver {
         String action = intent.getAction();
         if (action == null) return;
 
-        SQLrepo repo = new SQLrepo(context);
+        SQLrepo repo = SQLrepo.getInstance(context);
 
         switch (action) {
             case ACTION_DUMP_PLANS:
@@ -78,7 +78,7 @@ public class DebugBroadcastReceiver extends BroadcastReceiver {
             String dateStr = day.toString();
             String dayName = day.getDayOfWeek().toString();
 
-            todoList list = repo.fetch(Table.TODOS, Map.of("date", dateStr));
+            TodoList list = repo.fetch(Table.TODOS, Map.of("date", dateStr));
 
             if (list == null) {
                 Log.i(TAG, String.format("\n=== %s %s (kein Plan) ===", dayName, dateStr));
@@ -120,7 +120,7 @@ public class DebugBroadcastReceiver extends BroadcastReceiver {
         String completedMark = "";
 
         if (slot.item != null) {
-            trackedItem item = repo.fetch(Table.ITEMS, slot.item);
+            TrackedItem item = repo.fetch(Table.ITEMS, slot.item);
             if (item != null) {
                 title = item.title;
                 type = item.type.name();
@@ -164,12 +164,12 @@ public class DebugBroadcastReceiver extends BroadcastReceiver {
         int unscheduledCount = unscheduleAllItems(repo, today);
         Log.i(TAG, "  " + unscheduledCount + " Items aktualisiert");
 
-        // 3. Neue Pläne generieren via buildToDo.planWeek()
+        // 3. Neue Pläne generieren via BuildToDo.planWeek()
         Log.i(TAG, "Schritt 3: Generiere neue Pläne...");
-        buildToDo planner = new buildToDo(repo,
+        BuildToDo planner = new BuildToDo(repo,
             (day, start, end) -> CalendarReader.getEventsForDay(context, day, start, end)
         );
-        List<todoList> newLists = planner.planWeek();
+        List<TodoList> newLists = planner.planWeek();
         Log.i(TAG, "  " + newLists.size() + " neue todoLists erstellt");
 
         // 4. Widget aktualisieren (via decoupled Manager)
@@ -215,7 +215,7 @@ public class DebugBroadcastReceiver extends BroadcastReceiver {
         int count = 0;
 
         for (Long id : allIds) {
-            trackedItem item = repo.fetch(Table.ITEMS, id);
+            TrackedItem item = repo.fetch(Table.ITEMS, id);
             if (item == null) continue;
 
             boolean modified = false;

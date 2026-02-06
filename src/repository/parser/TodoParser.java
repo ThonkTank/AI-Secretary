@@ -11,18 +11,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import entities.todoList;
-import entities.todoList.TimeSlot;
+import entities.TodoList;
+import entities.TodoList.TimeSlot;
 
-public class todoParser {
+public class TodoParser {
 
     /**
-     * Konvertiert eine DB-Zeile (todos) zu einem todoList Objekt.
+     * Konvertiert eine DB-Zeile (todos) zu einem TodoList Objekt.
      * Laedt zugehoerige TimeSlots aus der time_slots-Tabelle.
      */
-    public static todoList fromRow(Map<String, Object> row, SQLiteDatabase db) {
+    public static TodoList fromRow(Map<String, Object> row, SQLiteDatabase db) {
         Map<String, Object> typed = convertRow(row);
-        todoList todo = new todoList();
+        TodoList todo = new TodoList();
         todo.id = (Long) typed.get("id");
         todo.date = (LocalDate) typed.get("date");
         todo.start = (LocalTime) typed.get("start_time");
@@ -36,7 +36,7 @@ public class todoParser {
     }
 
     /**
-     * Laedt alle TimeSlots fuer eine todoList und rekonstruiert die Verschachtelung.
+     * Laedt alle TimeSlots fuer eine TodoList und rekonstruiert die Verschachtelung.
      */
     private static List<TimeSlot> loadSlots(SQLiteDatabase db, long todoId) {
         List<Map<String, Object>> allSlots = new ArrayList<>();
@@ -115,11 +115,11 @@ public class todoParser {
     }
 
     /**
-     * Persistiert ein todoList Objekt in die DB (todos + time_slots).
+     * Persistiert ein TodoList Objekt in die DB (todos + time_slots).
      * INSERT wenn id == null, UPDATE wenn id vorhanden.
      * Nutzt eine Transaction fuer atomare Persistierung.
      */
-    public static void toRow(SQLiteDatabase db, todoList todo) {
+    public static void toRow(SQLiteDatabase db, TodoList todo) {
         db.beginTransaction();
         try {
             ContentValues cv = new ContentValues();

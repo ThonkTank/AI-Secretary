@@ -20,7 +20,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Wochenfortschritt"
+                android:text="@string/section_wochenfortschritt"
                 android:textSize="14sp"
                 android:textColor="@color/text_secondary"
                 android:textStyle="bold" />
@@ -54,7 +54,7 @@
                     android:layout_height="36dp"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="Woche"
+                    android:text="@string/tab_woche"
                     android:textSize="12sp"
                     android:textColor="@color/text_secondary" />
 
@@ -64,7 +64,7 @@
                     android:layout_height="36dp"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="Rezepte"
+                    android:text="@string/tab_rezepte"
                     android:textSize="12sp"
                     android:textColor="@color/accent" />
 
@@ -74,7 +74,7 @@
                     android:layout_height="36dp"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="Einkauf"
+                    android:text="@string/tab_einkauf"
                     android:textSize="12sp"
                     android:textColor="@color/text_secondary" />
 
@@ -84,17 +84,7 @@
                     android:layout_height="36dp"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="Vorrat"
-                    android:textSize="12sp"
-                    android:textColor="@color/text_secondary" />
-
-                <TextView
-                    android:id="@+id/tab_planning"
-                    android:layout_width="0dp"
-                    android:layout_height="36dp"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="Planung"
+                    android:text="@string/tab_vorrat"
                     android:textSize="12sp"
                     android:textColor="@color/text_secondary" />
 
@@ -134,50 +124,5 @@
 
     </FrameLayout>
 
-    <!-- Modal Overlay (Recipe) -->
-    <FrameLayout
-        android:id="@+id/modal_overlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone">
-
-        <include layout="@layout/modal_recipe" />
-
-    </FrameLayout>
-
-    <!-- Modal Overlay (MealPlan) -->
-    <FrameLayout
-        android:id="@+id/modal_meal_plan_overlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone">
-
-        <include layout="@layout/modal_meal_plan" />
-
-    </FrameLayout>
-
-    <!-- Modal Overlay (Member) -->
-    <FrameLayout
-        android:id="@+id/modal_member_overlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#80000000"
-        android:visibility="gone">
-
-        <include layout="@layout/modal_member" />
-
-    </FrameLayout>
-
-    <!-- Modal Overlay (Pantry) -->
-    <FrameLayout
-        android:id="@+id/modal_pantry_overlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#80000000"
-        android:visibility="gone">
-
-        <include layout="@layout/modal_pantry" />
-
-    </FrameLayout>
 
 </FrameLayout>

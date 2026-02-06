@@ -23,7 +23,7 @@ import repository.Table;
  *           alle Items bekommen Perioden-Reset, scheduled-Bereinigung und blockedDays-Refresh.
  *
  */
-public class trackedItem {
+public class TrackedItem {
 
     // Basic Fields
     public ItemType type;                   // Task, Goal, Block oder Project?
@@ -68,8 +68,12 @@ public class trackedItem {
     public int averageStreak;               // durchschnittliche Streak Länge
     public int nrOfStreaks;                 // menge der beendeten Streaks
     public Map<Long, Integer> followUps;    // Tasks, welche direkt vor dieser erledigt wurden (ID und Häufigkeit)
-    public LocalTime prefTime;              // Zu welcher Uhrzeit wird die Task für gewöhnlich erledigt? z.B. 14:30
+    public LocalTime prefTime;              // LEGACY - nur fuer Fallback/Migration (nicht mehr beschrieben)
+    public List<PrefSlot> prefSlots;        // Bevorzugte Tage + Zeiten (ersetzt prefTime)
     public int totalCompletions;            // Wie oft wurde die Task erledigt? (all time)
+
+    /** Bevorzugter Wochentag + Uhrzeit mit Completion-Tracking fuer Tagesgewichtung. */
+    public static record PrefSlot(DayOfWeek day, LocalTime time, int completionCount) {}
 
     // Darstellung (nur fuer Goals relevant)
     public String goalIcon;                 // Emoji-Icon fuer Goal-Header (z.B. "💪")
@@ -90,7 +94,7 @@ public class trackedItem {
 
     // Builder
     public static class Builder {
-        private final trackedItem item = new trackedItem();
+        private final TrackedItem item = new TrackedItem();
 
         public Builder(ItemType type, String title, Priority priority) {
             item.type = type;
@@ -126,6 +130,7 @@ public class trackedItem {
         public Builder scheduled(List<LocalDate> v) { item.scheduled = v; return this; }
         public Builder cooldown(int v) { item.cooldown = v; return this; }
         public Builder prefTime(String v) { item.prefTime = LocalTime.parse(v); return this; }
+        public Builder prefSlots(List<PrefSlot> v) { item.prefSlots = v; return this; }
         public Builder currentStreak(int v) { item.currentStreak = v; return this; }
         public Builder averageStreak(int v) { item.averageStreak = v; return this; }
         public Builder nrOfStreaks(int v) { item.nrOfStreaks = v; return this; }
@@ -180,7 +185,7 @@ public class trackedItem {
             return this;
         }
 
-        public trackedItem build() { return item; }
+        public TrackedItem build() { return item; }
     }
 
     //Subklassen
@@ -276,7 +281,7 @@ public class trackedItem {
     public boolean isBlockedOn(LocalDate day, Repo repo) {
         if (this.blockedDays != null && this.blockedDays.contains(day)) return true;
         if (this.type == ItemType.GOAL && this.parent != null) {
-            trackedItem parentItem = repo.fetch(Table.ITEMS, this.parent);
+            TrackedItem parentItem = repo.fetch(Table.ITEMS, this.parent);
             if (parentItem != null && parentItem.type == ItemType.PROJECT
                 && parentItem.blockedDays != null && parentItem.blockedDays.contains(day)) {
                 return true;
@@ -293,6 +298,39 @@ public class trackedItem {
         return fixedDate != null && fixedTime != null;
     }
 
+    /** Ob per-weekday Praeferenzen gesetzt sind. */
+    public boolean hasPrefSlots() {
+        return prefSlots != null && !prefSlots.isEmpty();
+    }
+
+    /** PrefSlot fuer einen bestimmten Wochentag (oder null). */
+    public PrefSlot getPrefSlotForDay(DayOfWeek day) {
+        if (prefSlots == null) return null;
+        for (PrefSlot s : prefSlots) {
+            if (s.day() == day) return s;
+        }
+        return null;
+    }
+
+    /**
+     * Tagesgewichtung: Anteil der Completions an diesem Tag relativ zu allen Slots.
+     * Gibt 0.0-1.0 zurueck. Bei gleicher Verteilung auf 7 Tage ≈ 0.14.
+     */
+    public double getDayWeight(DayOfWeek day) {
+        if (prefSlots == null || prefSlots.isEmpty()) return 0.0;
+        int total = 0;
+        int dayCount = 0;
+        for (PrefSlot s : prefSlots) {
+            total += s.completionCount();
+            if (s.day() == day) dayCount = s.completionCount();
+        }
+        if (total == 0) {
+            // Keine Completion-Historie: alle konfigurierten Tage gleich gewichten
+            return 1.0 / prefSlots.size();
+        }
+        return (double) dayCount / total;
+    }
+
     /**
      * Prüft ob dieses Item basierend auf Predecessor-Status bereit zur Planung ist.
      * - Kein predecessor: immer ready
@@ -305,7 +343,7 @@ public class trackedItem {
         // delay=0 items werden von buildChains() gruppiert
         if (this.predecessorDelay == 0) return true;
 
-        trackedItem pred = repo.fetch(Table.ITEMS, this.predecessor);
+        TrackedItem pred = repo.fetch(Table.ITEMS, this.predecessor);
         if (pred == null) return true;
 
         // Ready wenn Vorgänger scheduled ODER completed
@@ -322,7 +360,7 @@ public class trackedItem {
     public java.time.LocalDateTime getEarliestStart(Repo repo) {
         if (this.predecessor == null || this.predecessorDelay <= 0) return null;
 
-        trackedItem pred = repo.fetch(Table.ITEMS, this.predecessor);
+        TrackedItem pred = repo.fetch(Table.ITEMS, this.predecessor);
         if (pred == null) return null;
 
         // Referenzpunkt: Completion oder erstes Scheduled-Datum
@@ -391,8 +429,8 @@ public class trackedItem {
             this.lastCompletionTime = workStart != null ? workStart : LocalTime.now();
 
             if (this.type == ItemType.TASK) {
-                // PrefTime aus workStart ableiten
-                updatePrefTime(workStart);
+                // PrefSlot aus Wochentag + workStart ableiten
+                updatePrefSlot(day.getDayOfWeek(), workStart != null ? workStart : LocalTime.now());
 
                 // TimeToComplete: aus Timer-Daten ableiten (laufender Durchschnitt pro Einheit)
                 if (workStart != null && workEnd != null) {
@@ -452,24 +490,21 @@ public class trackedItem {
     }
 
     /**
-     * Aktualisiert die bevorzugte Zeit (laufender Durchschnitt).
-     *
-     * Formel: neuerDurchschnitt = (alter × anzahl + neu) / (anzahl + 1)
+     * Aktualisiert den bevorzugten Wochentag + Uhrzeit (laufender Durchschnitt pro Tag).
+     * Erstellt neuen Slot falls fuer diesen Tag noch keiner existiert.
      */
-    private void updatePrefTime(LocalTime workStart) {
-        if (this.prefTime == null || this.totalCompletions == 0) {
-            this.prefTime = workStart;
-            this.totalCompletions = 1;
-            return;
+    private void updatePrefSlot(DayOfWeek day, LocalTime workStart) {
+        if (this.prefSlots == null) this.prefSlots = new ArrayList<>();
+        PrefSlot existing = getPrefSlotForDay(day);
+        if (existing != null) {
+            int newCount = existing.completionCount() + 1;
+            int avgMinutes = (existing.time().toSecondOfDay() / 60 * existing.completionCount()
+                              + workStart.toSecondOfDay() / 60) / newCount;
+            this.prefSlots.set(this.prefSlots.indexOf(existing),
+                new PrefSlot(day, LocalTime.of(avgMinutes / 60, avgMinutes % 60), newCount));
+        } else {
+            this.prefSlots.add(new PrefSlot(day, workStart, 1));
         }
-
-        int altInMinuten = this.prefTime.getHour() * 60 + this.prefTime.getMinute();
-        int neuInMinuten = workStart.getHour() * 60 + workStart.getMinute();
-
-        int neuerDurchschnitt = (altInMinuten * this.totalCompletions + neuInMinuten)
-                                / (this.totalCompletions + 1);
-
-        this.prefTime = LocalTime.of(neuerDurchschnitt / 60, neuerDurchschnitt % 60);
         this.totalCompletions++;
     }
 
@@ -724,7 +759,7 @@ public class trackedItem {
 
         // Falls Goal mit Parent, auch Parent's scheduled + blockedDays updaten
         if (this.type == ItemType.GOAL && this.parent != null) {
-            trackedItem parentItem = repo.fetch(Table.ITEMS, this.parent);
+            TrackedItem parentItem = repo.fetch(Table.ITEMS, this.parent);
             if (parentItem != null) {
                 if (parentItem.scheduled == null) {
                     parentItem.scheduled = new ArrayList<>();

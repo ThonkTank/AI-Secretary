@@ -11,12 +11,12 @@ import java.util.stream.Collectors;
 
 import entities.Account;
 import entities.Category;
-import entities.trackedItem;
-import entities.trackedItem.ItemType;
+import entities.TrackedItem;
+import entities.TrackedItem.ItemType;
 import repository.SQLrepo;
 import repository.Table;
 
-public class editorManager {
+public class EditorManager {
 
     /**
      * ══════════════════════════════════════════════════════════════════════════════
@@ -24,15 +24,15 @@ public class editorManager {
      * ══════════════════════════════════════════════════════════════════════════════
      *
      * ZIEL:
-     *   Controller-Schicht zwischen editItem (UI) und SQLrepo (Persistenz).
+     *   Controller-Schicht zwischen EditItem (UI) und SQLrepo (Persistenz).
      *   Stellt alle Operationen bereit, die für das Erstellen, Editieren und
-     *   Anzeigen von trackedItems benötigt werden.
+     *   Anzeigen von TrackedItems benötigt werden.
      *
      * ──────────────────────────────────────────────────────────────────────────────
      * DATENFLUSS
      * ──────────────────────────────────────────────────────────────────────────────
      *
-     *   editItem (View-Builder)
+     *   EditItem (View-Builder)
      *       │
      *       ├─ getAllItems()        → Baum-Ansicht rendern
      *       ├─ getAvailableParents()→ Parent-Spinner befüllen
@@ -40,11 +40,11 @@ public class editorManager {
      *       └─ updateItem()         → Bestehendes Item ändern
      *       │
      *       ▼
-     *   editorManager (dieser Controller)
+     *   EditorManager (dieser Controller)
      *       │
      *       ├─ repo.lookups("items", filters, "id")  → IDs laden
      *       ├─ repo.fetch(Table.ITEMS, id)           → Entity laden
-     *       └─ repo.write(trackedItem)               → Entity speichern
+     *       └─ repo.write(TrackedItem)               → Entity speichern
      *       │
      *       ▼
      *   SQLrepo → SQLite (items-Tabelle)
@@ -54,18 +54,18 @@ public class editorManager {
      * ──────────────────────────────────────────────────────────────────────────────
      *
      *   Konstruktor:
-     *     editorManager(Context context)
+     *     EditorManager(Context context)
      *       → Erstellt SQLrepo-Instanz
      *
      *   Record:
-     *     TreeEntry(trackedItem item, int depth)
+     *     TreeEntry(TrackedItem item, int depth)
      *       → Für Baum-Darstellung: Item + Einrückungstiefe (0=Root, 1=Kind, ...)
      *
      *   Methoden:
      *     List<TreeEntry> getAllItems()
-     *     List<trackedItem> getAvailableParents(ItemType childType)
-     *     void createItem(trackedItem item)
-     *     void updateItem(trackedItem item)
+     *     List<TrackedItem> getAvailableParents(ItemType childType)
+     *     void createItem(TrackedItem item)
+     *     void updateItem(TrackedItem item)
      *
      * ──────────────────────────────────────────────────────────────────────────────
      * ALGORITHMEN
@@ -103,7 +103,7 @@ public class editorManager {
      *         → parent.children.add(item.id)
      *         → repo.write(parent)  → UPDATE
      *
-     *  updateItem(trackedItem item) - Bestehendes Item überschreiben
+     *  updateItem(TrackedItem item) - Bestehendes Item überschreiben
      *      1. repo.write(item)  → UPDATE (id vorhanden)
      *
      * ──────────────────────────────────────────────────────────────────────────────
@@ -117,9 +117,9 @@ public class editorManager {
      *     → Alle Goal-IDs (für Parent-Auswahl)
      *
      *   fetch(Table.ITEMS, id)
-     *     → Einzelnes trackedItem laden
+     *     → Einzelnes TrackedItem laden
      *
-     *   write(trackedItem)
+     *   write(TrackedItem)
      *     → INSERT (id==null) oder UPDATE (id!=null)
      *
      */
@@ -129,7 +129,7 @@ public class editorManager {
     // ============================================================================
 
     /** Baum-Eintrag: Item + Einrückungstiefe für die Baum-Ansicht */
-    public record TreeEntry(trackedItem item, int depth) {}
+    public record TreeEntry(TrackedItem item, int depth) {}
 
     // ============================================================================
     // FELDER + KONSTRUKTOR
@@ -137,7 +137,7 @@ public class editorManager {
 
     private SQLrepo repo;
 
-    public editorManager(Context context) {
+    public EditorManager(Context context) {
         this.repo = SQLrepo.getInstance(context);
     }
 
@@ -155,16 +155,16 @@ public class editorManager {
         List<TreeEntry> result = new ArrayList<>();
 
         // Alle nicht-abgeschlossenen Items per Batch laden
-        List<trackedItem> allItems = repo.fetchAll(Table.ITEMS, Map.of("is_completed", "0"));
+        List<TrackedItem> allItems = repo.fetchAll(Table.ITEMS, Map.of("is_completed", "0"));
 
         // Roots finden (parent == null), sortiert nach Typ-Ordnung
-        List<trackedItem> roots = allItems.stream()
+        List<TrackedItem> roots = allItems.stream()
             .filter(i -> i.parent == null)
             .sorted(Comparator.comparingInt(i -> typeOrder(i.type)))
             .collect(Collectors.toList());
 
         // DFS-Traversal ab jedem Root
-        for (trackedItem root : roots) {
+        for (TrackedItem root : roots) {
             traverse(root, 0, result);
         }
 
@@ -190,7 +190,7 @@ public class editorManager {
      * @param childType Der Typ des Kindes, für das ein Parent gesucht wird
      * @return Liste möglicher Parent-Items (leer bei PROJECT)
      */
-    public List<trackedItem> getAvailableParents(ItemType childType) {
+    public List<TrackedItem> getAvailableParents(ItemType childType) {
         String parentType = switch (childType) {
             case TASK -> "GOAL";
             case GOAL -> "PROJECT";
@@ -243,13 +243,13 @@ public class editorManager {
      *
      * @param item Das neue Item (id wird von DB vergeben)
      */
-    public void createItem(trackedItem item) {
+    public void createItem(TrackedItem item) {
         item.created = LocalDate.now();
         repo.write(item);
 
         // Parent-children aktualisieren
         if (item.parent != null) {
-            trackedItem parent = repo.fetch(Table.ITEMS, item.parent);
+            TrackedItem parent = repo.fetch(Table.ITEMS, item.parent);
             if (parent != null) {
                 if (parent.children == null) {
                     parent.children = new ArrayList<>();
@@ -271,7 +271,7 @@ public class editorManager {
      *
      * @param item Das zu aktualisierende Item
      */
-    public void updateItem(trackedItem item) {
+    public void updateItem(TrackedItem item) {
         repo.write(item);
     }
 
@@ -282,12 +282,12 @@ public class editorManager {
      * Fügt item mit gegebener depth zur result-Liste hinzu,
      * dann rekursiv alle children mit depth+1.
      */
-    private void traverse(trackedItem item, int depth, List<TreeEntry> result) {
+    private void traverse(TrackedItem item, int depth, List<TreeEntry> result) {
         result.add(new TreeEntry(item, depth));
 
         if (item.children != null) {
             for (Long childId : item.children) {
-                trackedItem child = repo.fetch(Table.ITEMS, childId);
+                TrackedItem child = repo.fetch(Table.ITEMS, childId);
                 if (child != null) {
                     traverse(child, depth + 1, result);
                 }

@@ -20,7 +20,7 @@ import java.util.concurrent.Executors;
 /**
  * Prüft auf GitHub ob eine neuere APK-Version vorliegt und bietet Update an.
  */
-public class updateChecker {
+public class UpdateChecker {
 
     private static final String VERSION_URL =
         "https://raw.githubusercontent.com/ThonkTank/AI-Secretary/main/release/version.txt";
@@ -31,7 +31,7 @@ public class updateChecker {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Runnable onDone;
 
-    public updateChecker(Activity activity) {
+    public UpdateChecker(Activity activity) {
         this.activity = activity;
     }
 

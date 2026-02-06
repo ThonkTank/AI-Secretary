@@ -8,7 +8,7 @@ import java.util.Map;
 
 import entities.WeeklyFoodTarget;
 
-public class weeklyFoodTargetParser {
+public class WeeklyFoodTargetParser {
 
     // ============== BUILDER (DB → Java) ==============
 

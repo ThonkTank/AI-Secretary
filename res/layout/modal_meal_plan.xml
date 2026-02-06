@@ -25,7 +25,7 @@
             android:id="@+id/modal_meal_plan_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Mahlzeit planen"
+            android:text="@string/title_plan_meal"
             android:textSize="@dimen/sp_heading"
             android:textColor="@color/text_primary"
             android:textStyle="bold" />
@@ -43,13 +43,14 @@
         <View android:layout_width="match_parent" android:layout_height="16dp" />
 
         <!-- Rezept Dropdown -->
-        <TextView style="@style/FormLabel" android:text="Rezept" />
+        <TextView style="@style/FormLabel" android:text="@string/label_rezept" />
         <Spinner
             android:id="@+id/spinner_meal_plan_recipe"
             android:layout_width="match_parent"
             android:layout_height="44dp"
             android:background="@color/surface_elevated"
-            android:padding="@dimen/padding_small" />
+            android:padding="@dimen/padding_small"
+            android:contentDescription="@string/cd_spinner_recipe" />
 
         <!-- Rezept-Info (wird dynamisch aktualisiert) -->
         <LinearLayout
@@ -87,7 +88,7 @@
         </LinearLayout>
 
         <!-- Portionen -->
-        <TextView style="@style/FormLabel" android:text="Portionen" android:layout_marginTop="16dp" />
+        <TextView style="@style/FormLabel" android:text="@string/label_portionen" android:layout_marginTop="16dp" />
         <EditText
             android:id="@+id/input_meal_plan_servings"
             android:layout_width="80dp"
@@ -108,7 +109,7 @@
                 android:id="@+id/btn_meal_plan_delete"
                 android:layout_width="wrap_content"
                 android:layout_height="44dp"
-                android:text="Entfernen"
+                android:text="@string/btn_remove"
                 android:textColor="@color/error"
                 android:background="@android:color/transparent"
                 android:visibility="gone" />
@@ -122,7 +123,7 @@
                 android:id="@+id/btn_meal_plan_cancel"
                 android:layout_width="wrap_content"
                 android:layout_height="44dp"
-                android:text="Abbrechen"
+                android:text="@string/btn_cancel"
                 android:textColor="@color/text_secondary"
                 android:background="@android:color/transparent" />
 
@@ -131,7 +132,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="44dp"
                 android:layout_marginStart="16dp"
-                android:text="Speichern"
+                android:text="@string/btn_save"
                 android:textColor="@android:color/white"
                 android:background="@color/accent" />
 

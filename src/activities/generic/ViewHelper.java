@@ -3,12 +3,33 @@ package activities.generic;
 import android.content.Context;
 import android.graphics.drawable.GradientDrawable;
 import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import java.util.List;
+
+import androidx.core.content.ContextCompat;
+
+import com.autosecretary.R;
+
+import static activities.generic.DateTimeHelper.getWeekNumber;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Statische Helfer-Methoden für programmatischen View-Aufbau.
  * Eliminiert dp()-Duplikate und wiederkehrende UI-Patterns.
  */
 public final class ViewHelper {
+
+    public static final int FAB_CORNER_RADIUS_DP = 28;
+    public static final int FAB_SECONDARY_CORNER_RADIUS_DP = 24;
 
     private ViewHelper() {}
 
@@ -25,5 +46,104 @@ public final class ViewHelper {
         bg.setColor(color);
         bg.setCornerRadius(dp(ctx, cornerDp));
         return bg;
+    }
+
+    /**
+     * Baut eine "< KW X (dd.-dd.MM.) >" Wochen-Navigation.
+     * Gibt das LinearLayout zurueck, damit der Aufrufer extra Buttons anhaengen kann.
+     */
+    public static LinearLayout buildWeekHeader(Context ctx, LocalDate weekStart,
+                                               Runnable onPrev, Runnable onNext) {
+        LinearLayout weekHeader = new LinearLayout(ctx);
+        weekHeader.setOrientation(LinearLayout.HORIZONTAL);
+        weekHeader.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        weekHeader.setPadding(0, dp(ctx, 16), 0, dp(ctx, 8));
+
+        // "<" Button
+        TextView btnPrev = new TextView(ctx);
+        btnPrev.setText("<");
+        btnPrev.setTextSize(20);
+        btnPrev.setTextColor(ContextCompat.getColor(ctx, R.color.accent));
+        btnPrev.setPadding(dp(ctx, 16), dp(ctx, 8), dp(ctx, 16), dp(ctx, 8));
+        btnPrev.setOnClickListener(v -> onPrev.run());
+        weekHeader.addView(btnPrev);
+
+        // KW Label
+        TextView weekLabel = new TextView(ctx);
+        weekLabel.setTextSize(14);
+        weekLabel.setTextColor(ContextCompat.getColor(ctx, R.color.text_primary));
+        weekLabel.setGravity(android.view.Gravity.CENTER);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        weekLabel.setLayoutParams(labelParams);
+
+        int weekNum = getWeekNumber(weekStart);
+        LocalDate weekEnd = weekStart.plusDays(6);
+        DateTimeFormatter dayFmt = DateTimeFormatter.ofPattern("dd.");
+        DateTimeFormatter monthFmt = DateTimeFormatter.ofPattern("dd.MM.");
+        weekLabel.setText("KW " + weekNum + " (" + dayFmt.format(weekStart) + "-" + monthFmt.format(weekEnd) + ")");
+        weekHeader.addView(weekLabel);
+
+        // ">" Button
+        TextView btnNext = new TextView(ctx);
+        btnNext.setText(">");
+        btnNext.setTextSize(20);
+        btnNext.setTextColor(ContextCompat.getColor(ctx, R.color.accent));
+        btnNext.setPadding(dp(ctx, 16), dp(ctx, 8), dp(ctx, 16), dp(ctx, 8));
+        btnNext.setOnClickListener(v -> onNext.run());
+        weekHeader.addView(btnNext);
+
+        return weekHeader;
+    }
+
+    /** Zeigt eine "Keine X vorhanden"-Meldung in einem Container */
+    public static void showEmptyState(ViewGroup container, String message) {
+        Context ctx = container.getContext();
+        TextView empty = new TextView(ctx);
+        empty.setText(message);
+        empty.setTextColor(ContextCompat.getColor(ctx, R.color.text_secondary));
+        empty.setPadding(dp(ctx, 16), dp(ctx, 32), dp(ctx, 16), dp(ctx, 32));
+        container.addView(empty);
+    }
+
+    /** Erstellt einen Standard-SpinnerAdapter (simple_spinner_item + dropdown) */
+    public static ArrayAdapter<String> spinnerAdapter(Context ctx, String[] items) {
+        ArrayAdapter<String> a = new ArrayAdapter<>(ctx, android.R.layout.simple_spinner_item, items);
+        a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        return a;
+    }
+
+    public static ArrayAdapter<String> spinnerAdapter(Context ctx, List<String> items) {
+        ArrayAdapter<String> a = new ArrayAdapter<>(ctx, android.R.layout.simple_spinner_item, items);
+        a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        return a;
+    }
+
+    /** Parst Integer aus EditText, gibt fallback bei leerem/ungueltigem Wert */
+    public static int parseInt(EditText input, int fallback) {
+        try {
+            String s = input.getText().toString().trim();
+            return s.isEmpty() ? fallback : Integer.parseInt(s);
+        } catch (NumberFormatException e) { return fallback; }
+    }
+
+    /** Parst Double aus EditText, gibt fallback bei leerem/ungueltigem Wert */
+    public static double parseDouble(EditText input, double fallback) {
+        try {
+            String s = input.getText().toString().trim();
+            return s.isEmpty() ? fallback : Double.parseDouble(s);
+        } catch (NumberFormatException e) { return fallback; }
+    }
+
+    /** Konfiguriert Modal-Overlay: Klick ausserhalb schliesst, Klick auf Card wird absorbiert. */
+    public static void setupModalOverlay(View overlay, Runnable onDismiss) {
+        overlay.setOnClickListener(v -> onDismiss.run());
+        View card = overlay.findViewById(R.id.modal_card);
+        if (card == null && overlay instanceof ViewGroup) {
+            card = ((ViewGroup) overlay).getChildAt(0);
+        }
+        if (card != null) {
+            card.setOnClickListener(v -> { /* Absorb click */ });
+        }
     }
 }

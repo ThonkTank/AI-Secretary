@@ -11,7 +11,7 @@ import java.util.Map;
 import entities.MealPlan;
 import entities.MealType;
 
-public class mealPlanParser {
+public class MealPlanParser {
 
     // ============== BUILDER (DB → Java) ==============
 

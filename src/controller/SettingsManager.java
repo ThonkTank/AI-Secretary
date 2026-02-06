@@ -8,7 +8,7 @@ import android.widget.Toast;
 import java.io.File;
 import java.util.Arrays;
 
-import data.constants;
+import data.Constants;
 import repository.MigrationManager;
 
 /**
@@ -113,7 +113,7 @@ public class SettingsManager {
             .setMessage("Alle aktuellen Daten werden durch das Backup ersetzt.\n\nDie App wird danach neu gestartet.")
             .setPositiveButton("Wiederherstellen", (d, w) -> {
                 // Erst aktuellen Stand sichern
-                migrationManager.createBackup(constants.DB_VERSION);
+                migrationManager.createBackup(Constants.DB_VERSION);
 
                 if (migrationManager.restoreFromBackup(backupFile)) {
                     Toast.makeText(context, "Backup wiederhergestellt. Bitte App neu starten.",
@@ -134,7 +134,7 @@ public class SettingsManager {
      * Erstellt manuelles Backup.
      */
     private void createManualBackup() {
-        File backup = migrationManager.createBackup(constants.DB_VERSION);
+        File backup = migrationManager.createBackup(Constants.DB_VERSION);
         if (backup != null) {
             Toast.makeText(context, "Backup erstellt", Toast.LENGTH_SHORT).show();
         } else {
@@ -153,10 +153,10 @@ public class SettingsManager {
                         "Die App wird danach neu gestartet.")
             .setPositiveButton("Loeschen", (d, w) -> {
                 // Sicherheitsbackup erstellen
-                migrationManager.createBackup(constants.DB_VERSION);
+                migrationManager.createBackup(Constants.DB_VERSION);
 
                 // Datenbank loeschen
-                context.deleteDatabase(constants.DB_NAME);
+                context.deleteDatabase(Constants.DB_NAME);
 
                 Toast.makeText(context, "Daten geloescht. Bitte App neu starten.",
                     Toast.LENGTH_LONG).show();
@@ -187,7 +187,7 @@ public class SettingsManager {
             .setMessage("Version: " + version + "\n\n" +
                         "Dein persoenlicher Assistent fuer\n" +
                         "Aufgaben, Budget und Ernaehrung.\n\n" +
-                        "DB-Schema: v" + constants.DB_VERSION)
+                        "DB-Schema: v" + Constants.DB_VERSION)
             .setPositiveButton("OK", null)
             .show();
     }

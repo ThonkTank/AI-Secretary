@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class config {
+public class Config {
 
     // Pro Wochentag: Wann beginnt/endet der aktive Tag?
     private Map<DayOfWeek, DaySchedule> dailySchedules;
@@ -25,7 +25,7 @@ public class config {
 
     // ============== KONSTRUKTOR ==============
 
-    public config() {
+    public Config() {
         // Mit Default-Werten initialisieren
         this.dailySchedules = getDefaultSchedules();
     }

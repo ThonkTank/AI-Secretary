@@ -45,7 +45,7 @@
         android:layout_height="24dp"
         android:layout_marginStart="@dimen/margin_small"
         android:src="@android:drawable/ic_delete"
-        android:contentDescription="Entfernen"
+        android:contentDescription="@string/cd_remove"
         android:background="@android:color/transparent" />
 
 </LinearLayout>

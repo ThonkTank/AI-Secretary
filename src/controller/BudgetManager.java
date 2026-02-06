@@ -47,13 +47,13 @@ import repository.Table;
  *   │  User erstellt Transaktion → DB Update → Listener benachrichtigt        │
  *   └─────────────────────────────────────────────────────────────────────────┘
  */
-public class budgetManager {
+public class BudgetManager {
 
     private Context context;
     private SQLrepo repo;
     private BudgetListener listener;
 
-    public budgetManager(Context context) {
+    public BudgetManager(Context context) {
         this.context = context;
         this.repo = SQLrepo.getInstance(context);
     }

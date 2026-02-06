@@ -11,7 +11,7 @@ import java.util.Map;
 
 import entities.Transaction;
 
-public class transactionParser {
+public class TransactionParser {
 
     // ============== BUILDER (DB → Java) ==============
 

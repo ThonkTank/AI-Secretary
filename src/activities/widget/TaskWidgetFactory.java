@@ -10,7 +10,7 @@ package activities.widget;
  *   Verwendet dieselben Layouts und Renderer wie die App.
  *
  * DESIGN:
- *   - Lädt Daten in onDataSetChanged() via todoManager.provideList()
+ *   - Lädt Daten in onDataSetChanged() via TodoManager.provideList()
  *   - getViewAt() delegiert an TaskRowRenderer
  *   - Fill-In Intents für Checkbox und Timer (setOnClickFillInIntent)
  *
@@ -23,7 +23,7 @@ package activities.widget;
  *     → Package-Name merken für RemoteViews-Constructor
  *
  *   onDataSetChanged()
- *     → todoManager instanzieren
+ *     → TodoManager instanzieren
  *     → manager.provideList() aufrufen
  *     → TaskListData.fromEntries() → List<DisplayRow>
  *     → In Member-Variable speichern
@@ -80,7 +80,7 @@ import androidx.core.content.ContextCompat;
 
 import com.autosecretary.R;
 
-import controller.todoManager;
+import controller.TodoManager;
 import data.TaskListData;
 import data.TaskListData.*;
 import data.TaskRowConfig.*;
@@ -109,9 +109,9 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
     @Override
     public void onDataSetChanged() {
         // Daten neu laden für das ausgewählte Datum
-        todoManager manager = new todoManager(context);
+        TodoManager manager = new TodoManager(context);
         LocalDate selectedDate = TaskWidgetProvider.getSelectedDate(context);
-        List<todoManager.TaskEntry> entries = manager.provideList(selectedDate);
+        List<TodoManager.TaskEntry> entries = manager.provideList(selectedDate);
         rows = TaskListData.fromEntries(entries);
     }
 

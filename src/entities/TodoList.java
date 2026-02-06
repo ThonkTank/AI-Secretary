@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Container fuer alle Todo-bezogenen Objektdefinitionen.
  */
-public class todoList {
+public class TodoList {
     
     //Identifikation
     public Long id;

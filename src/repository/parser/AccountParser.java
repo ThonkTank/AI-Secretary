@@ -9,7 +9,7 @@ import java.util.Map;
 
 import entities.Account;
 
-public class accountParser {
+public class AccountParser {
 
     // ============== BUILDER (DB → Java) ==============
 

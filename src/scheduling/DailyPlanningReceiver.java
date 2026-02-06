@@ -8,13 +8,13 @@ import android.util.Log;
 import controller.WidgetUpdateManager;
 import controller.WidgetUpdateManager.DataDomain;
 import repository.SQLrepo;
-import scheduling.buildToDo;
+import scheduling.BuildToDo;
 import scheduling.CalendarReader;
-import scheduling.cleanToDo;
+import scheduling.CleanToDo;
 
 /**
  * Wird täglich um 00:00 vom AlarmManager getriggert.
- * Führt erst cleanToDo (gestern auswerten), dann buildToDo (neue Woche planen) aus.
+ * Führt erst CleanToDo (gestern auswerten), dann BuildToDo (neue Woche planen) aus.
  */
 public class DailyPlanningReceiver extends BroadcastReceiver {
 
@@ -23,19 +23,19 @@ public class DailyPlanningReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.d(TAG, "Alarm ausgelöst – starte Tagesplanung");
-        SQLrepo repo = new SQLrepo(context);
+        SQLrepo repo = SQLrepo.getInstance(context);
 
         // 1. Gestrige Liste auswerten und aufräumen
-        Log.d(TAG, "cleanToDo.clean() startet");
-        cleanToDo.clean(repo);
-        Log.d(TAG, "cleanToDo.clean() fertig");
+        Log.d(TAG, "CleanToDo.clean() startet");
+        CleanToDo.clean(repo);
+        Log.d(TAG, "CleanToDo.clean() fertig");
 
         // 2. Neue 7-Tage-Planung erstellen (V2: globale Slot-Bewertung)
-        Log.d(TAG, "buildToDo.planWeek() startet");
-        new buildToDo(repo,
+        Log.d(TAG, "BuildToDo.planWeek() startet");
+        new BuildToDo(repo,
             (day, start, end) -> CalendarReader.getEventsForDay(context, day, start, end)
         ).planWeek();
-        Log.d(TAG, "buildToDo.planWeek() fertig");
+        Log.d(TAG, "BuildToDo.planWeek() fertig");
 
         // 3. Nächsten Alarm registrieren
         DailyPlanningScheduler.scheduleDaily(context);

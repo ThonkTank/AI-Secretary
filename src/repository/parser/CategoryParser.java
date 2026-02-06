@@ -8,7 +8,7 @@ import java.util.Map;
 
 import entities.Category;
 
-public class categoryParser {
+public class CategoryParser {
 
     // ============== BUILDER (DB → Java) ==============
 

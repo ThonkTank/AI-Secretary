@@ -2,9 +2,209 @@
 <resources>
     <string name="app_name">AutoSecretary</string>
 
-    <!-- Widget-spezifische Strings -->
+    <!-- Widget -->
     <string name="checkbox">Aufgabe abhaken</string>
     <string name="no_tasks">Keine Aufgaben für heute</string>
     <string name="refresh_widget">Widget aktualisieren</string>
     <string name="add_item">Neues Element erstellen</string>
+    <string name="widget_today">Heute</string>
+    <string name="widget_saldo">Saldo</string>
+    <string name="widget_frei">Frei</string>
+
+    <!-- Tabs -->
+    <string name="tab_tasks">Tasks</string>
+    <string name="tab_budget">Budget</string>
+    <string name="tab_ernaehrung">Ernährung</string>
+    <string name="tab_tagesplan">Tagesplan</string>
+    <string name="tab_verwalten">Verwalten</string>
+    <string name="tab_woche">Woche</string>
+    <string name="tab_rezepte">Rezepte</string>
+    <string name="tab_einkauf">Einkauf</string>
+    <string name="tab_vorrat">Vorrat</string>
+
+    <!-- Section Headers -->
+    <string name="section_wochenfortschritt">Wochenfortschritt</string>
+    <string name="section_konten">Konten</string>
+    <string name="section_budget">Budget</string>
+    <string name="section_letzte_transaktionen">Letzte Transaktionen</string>
+    <string name="section_gesamtsaldo">Gesamtsaldo</string>
+    <string name="section_einnahmen">Einnahmen</string>
+    <string name="section_ausgaben">Ausgaben</string>
+    <string name="section_netto">Netto</string>
+
+    <!-- Modal Titles -->
+    <string name="title_add_member">Mitglied hinzufügen</string>
+    <string name="title_add_pantry">Vorrat hinzufügen</string>
+    <string name="title_add_meal_slot">Mahlzeit hinzufügen</string>
+    <string name="title_plan_meal">Mahlzeit planen</string>
+    <string name="title_create_recipe">Rezept erstellen</string>
+    <string name="title_new_transaction">Neue Transaktion</string>
+    <string name="title_import_statement">Kontoauszug importieren</string>
+    <string name="title_recurring_patterns">Wiederkehrende Muster erkannt</string>
+
+    <!-- Form Labels -->
+    <string name="label_typ">Typ</string>
+    <string name="label_titel">Titel</string>
+    <string name="label_beschreibung">Beschreibung</string>
+    <string name="label_icon">Icon</string>
+    <string name="label_farbe">Farbe</string>
+    <string name="label_min_dauer">Min. Dauer</string>
+    <string name="label_max_dauer">Max. Dauer</string>
+    <string name="label_prioritaet">Priorität</string>
+    <string name="label_parent">Parent</string>
+    <string name="label_nach_task">Nach Task</string>
+    <string name="label_wartezeit_minuten">Wartezeit (Minuten)</string>
+    <string name="label_bevorzugte_uhrzeit">Bevorzugte Uhrzeit</string>
+    <string name="label_cooldown_tage">Cooldown (Tage)</string>
+    <string name="label_deadline">Deadline</string>
+    <string name="label_fester_termin_datum">Fester Termin - Datum</string>
+    <string name="label_fester_termin_uhrzeit">Fester Termin - Uhrzeit</string>
+    <string name="label_budget_eur">Budget (EUR)</string>
+    <string name="label_konto">Konto</string>
+    <string name="label_kategorie">Kategorie</string>
+    <string name="label_fortschritt">Fortschritt</string>
+    <string name="label_progress_per_rep">Pro Periode zurücksetzen</string>
+    <string name="label_wiederholung">Wiederholung</string>
+    <string name="label_wert">Wert</string>
+    <string name="label_wochentag">Wochentag</string>
+    <string name="label_complete_first">Erst erledigen vor Reset</string>
+    <string name="label_name">Name</string>
+    <string name="label_geburtsjahr">Geburtsjahr</string>
+    <string name="label_geschlecht">Geschlecht</string>
+    <string name="label_groesse_cm">Größe (cm)</string>
+    <string name="label_gewicht_kg">Gewicht (kg)</string>
+    <string name="label_aktivitaetslevel">Aktivitätslevel</string>
+    <string name="label_zutat">Zutat</string>
+    <string name="label_menge">Menge</string>
+    <string name="label_einheit">Einheit</string>
+    <string name="label_lagerort">Lagerort</string>
+    <string name="label_ablaufdatum">Ablaufdatum</string>
+    <string name="label_ziel_konto">Ziel-Konto</string>
+    <string name="label_kontoauszug">Kontoauszug</string>
+    <string name="label_api_key">Claude API Key</string>
+    <string name="label_betrag_eur">Betrag (EUR)</string>
+    <string name="label_datum">Datum</string>
+    <string name="label_beschreibung_optional">Beschreibung (optional)</string>
+    <string name="label_empfaenger_optional">Empfänger/Zahler (optional)</string>
+    <string name="label_ausgabe">Ausgabe</string>
+    <string name="label_einnahme">Einnahme</string>
+    <string name="label_mahlzeit">Mahlzeit</string>
+    <string name="label_zubereitungszeit">Zubereitungszeit (min)</string>
+    <string name="label_kochzeit">Kochzeit (min)</string>
+    <string name="label_portionen">Portionen</string>
+    <string name="label_zutaten">Zutaten</string>
+    <string name="label_zubereitung_optional">Zubereitung (optional)</string>
+    <string name="label_tags_optional">Tags (optional)</string>
+    <string name="label_rezept">Rezept</string>
+    <string name="label_start">Start</string>
+    <string name="label_ende">Ende</string>
+
+    <!-- Buttons -->
+    <string name="btn_save">Speichern</string>
+    <string name="btn_cancel">Abbrechen</string>
+    <string name="btn_delete">Löschen</string>
+    <string name="btn_remove">Entfernen</string>
+    <string name="btn_import">Importieren</string>
+    <string name="btn_skip">Überspringen</string>
+    <string name="btn_create_count">Erstellen (0)</string>
+    <string name="btn_save_api_key">API-Key speichern</string>
+    <string name="btn_select_file">Datei wählen…</string>
+    <string name="btn_toggle_off">Aus</string>
+    <string name="btn_add_ingredient">+ Zutat hinzufügen</string>
+
+    <!-- Hints -->
+    <string name="hint_item_title">Item-Titel</string>
+    <string name="hint_description_optional">Beschreibung (optional)</string>
+    <string name="hint_emoji">Emoji eingeben</string>
+    <string name="hint_delay_zero">0 = direkt danach</string>
+    <string name="hint_uhrzeit">Uhrzeit wählen</string>
+    <string name="hint_datum">Datum wählen</string>
+    <string name="hint_progress_current">Ist</string>
+    <string name="hint_progress_target">Ziel</string>
+    <string name="hint_progress_unit">Einheit (z.B. Seiten, Kapitel)</string>
+    <string name="hint_search">Suchen…</string>
+    <string name="hint_name_example">z.B. Max</string>
+    <string name="hint_year_example">z.B. 1990</string>
+    <string name="hint_amount_example">z.B. 500</string>
+    <string name="hint_select_date">Tippen um Datum zu wählen</string>
+    <string name="hint_api_key">sk-ant-…</string>
+    <string name="hint_description_example">z.B. Wocheneinkauf</string>
+    <string name="hint_payee_example">z.B. REWE</string>
+    <string name="hint_recipe_name">z.B. Spaghetti Bolognese</string>
+    <string name="hint_instructions">Schritt für Schritt…</string>
+    <string name="hint_tags">schnell, vegetarisch, lowcarb</string>
+    <string name="hint_step_title">Schritt-Titel</string>
+    <string name="hint_amount_eur">0,00</string>
+
+    <!-- Descriptive Text -->
+    <string name="desc_tdee_preview">Berechneter Tagesbedarf: — kcal</string>
+    <string name="desc_import_info">Lade einen Kontoauszug (PDF) hoch. Claude analysiert die Datei und erstellt automatisch Transaktionen.</string>
+    <string name="desc_recurring_prompt">Diese Transaktionen scheinen regelmäßig zu sein. Möchten Sie Templates erstellen?</string>
+    <string name="desc_import_complete">Import abgeschlossen</string>
+    <string name="desc_processing">Verarbeite…</string>
+    <string name="desc_no_file">Keine Datei ausgewählt</string>
+    <string name="desc_budget_exceeded">Budget überschritten!</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_settings">Einstellungen</string>
+    <string name="cd_checked">Abgehakt</string>
+    <string name="cd_select">Auswählen</string>
+    <string name="cd_remove">Entfernen</string>
+    <string name="cd_favorite">Favorit</string>
+    <string name="cd_delete_step">Schritt löschen</string>
+
+    <!-- Content Descriptions: Spinners -->
+    <string name="cd_spinner_parent">Übergeordnetes Element auswählen</string>
+    <string name="cd_spinner_predecessor">Vorgänger-Task auswählen</string>
+    <string name="cd_spinner_weekday">Wochentag auswählen</string>
+    <string name="cd_spinner_budget_account">Budget-Konto auswählen</string>
+    <string name="cd_spinner_budget_category">Budget-Kategorie auswählen</string>
+    <string name="cd_spinner_gender">Geschlecht auswählen</string>
+    <string name="cd_spinner_activity">Aktivitätslevel auswählen</string>
+    <string name="cd_spinner_ingredient">Zutat auswählen</string>
+    <string name="cd_spinner_location">Lagerort auswählen</string>
+    <string name="cd_spinner_day">Wochentag auswählen</string>
+    <string name="cd_spinner_meal_type">Mahlzeit-Typ auswählen</string>
+    <string name="cd_spinner_recipe">Rezept auswählen</string>
+    <string name="cd_spinner_account">Konto auswählen</string>
+    <string name="cd_spinner_category">Kategorie auswählen</string>
+
+    <!-- Content Descriptions: Type Buttons -->
+    <string name="cd_type_task">Typ: Task</string>
+    <string name="cd_type_goal">Typ: Goal</string>
+    <string name="cd_type_project">Typ: Project</string>
+
+    <!-- Content Descriptions: Priority Buttons -->
+    <string name="cd_prio_low">Priorität: Niedrig</string>
+    <string name="cd_prio_moderate">Priorität: Moderat</string>
+    <string name="cd_prio_high">Priorität: Hoch</string>
+    <string name="cd_prio_critical">Priorität: Kritisch</string>
+
+    <!-- Content Descriptions: Unit Buttons -->
+    <string name="cd_unit_minutes">Einheit: Minuten</string>
+    <string name="cd_unit_progress">Einheit: Fortschrittseinheiten</string>
+    <string name="cd_unit_day">Einheit: Tag</string>
+    <string name="cd_unit_week">Einheit: Woche</string>
+    <string name="cd_unit_month">Einheit: Monat</string>
+
+    <!-- Content Descriptions: Repetition Buttons -->
+    <string name="cd_rep_none">Keine Wiederholung</string>
+    <string name="cd_rep_interval">Intervall-Wiederholung</string>
+    <string name="cd_rep_reps">Wiederholungen pro Zeitraum</string>
+    <string name="cd_rep_day_of">Bestimmter Tag</string>
+
+    <!-- Content Descriptions: Toggle Buttons -->
+    <string name="cd_toggle_progress_per_rep">Fortschritt pro Periode umschalten</string>
+    <string name="cd_toggle_complete_first">Erst erledigen umschalten</string>
+
+    <!-- Content Descriptions: Navigation -->
+    <string name="cd_previous_day">Vorheriger Tag</string>
+    <string name="cd_next_day">Nächster Tag</string>
+    <string name="cd_add_transaction">Neue Transaktion</string>
+    <string name="cd_import_statement">Kontoauszug importieren</string>
+    <string name="cd_toggle_api_key">API-Schlüssel anzeigen/verbergen</string>
+
+    <!-- Hints for fields missing them -->
+    <string name="hint_cooldown_days">z.B. 2</string>
+    <string name="hint_rep_value">z.B. 3</string>
 </resources>

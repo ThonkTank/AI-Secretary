@@ -1,214 +1,225 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="@color/surface_card"
-    android:layout_margin="@dimen/margin_medium"
-    android:layout_gravity="center"
-    android:padding="@dimen/padding_medium">
+    android:layout_height="match_parent"
+    android:background="@color/overlay_dim">
 
-    <!-- Title -->
-    <TextView
-        android:id="@+id/modal_member_title"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Mitglied hinzufügen"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="@color/text_primary"
-        android:layout_marginBottom="@dimen/margin_medium" />
-
-    <!-- Name -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Name"
-        android:textSize="12sp"
-        android:textColor="@color/text_secondary" />
-
-    <EditText
-        android:id="@+id/input_member_name"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:background="@color/surface"
-        android:padding="@dimen/padding_small"
-        android:textColor="@color/text_primary"
-        android:textSize="14sp"
-        android:hint="z.B. Max"
-        android:inputType="textPersonName" />
-
-    <!-- Geburtsjahr -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Geburtsjahr"
-        android:textSize="12sp"
-        android:textColor="@color/text_secondary"
-        android:layout_marginTop="@dimen/margin_small" />
-
-    <EditText
-        android:id="@+id/input_member_birth_year"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:background="@color/surface"
-        android:padding="@dimen/padding_small"
-        android:textColor="@color/text_primary"
-        android:textSize="14sp"
-        android:hint="z.B. 1990"
-        android:inputType="number" />
-
-    <!-- Geschlecht -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Geschlecht"
-        android:textSize="12sp"
-        android:textColor="@color/text_secondary"
-        android:layout_marginTop="@dimen/margin_small" />
-
-    <Spinner
-        android:id="@+id/spinner_member_gender"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:background="@color/surface"
-        android:padding="@dimen/padding_small" />
-
-    <!-- Größe und Gewicht in einer Zeile -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="@dimen/margin_small">
+        android:orientation="vertical"
+        android:background="@color/surface_card"
+        android:layout_margin="@dimen/margin_medium"
+        android:layout_gravity="center"
+        android:padding="@dimen/padding_medium"
+        android:clickable="true">
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginEnd="4dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Größe (cm)"
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary" />
-
-            <EditText
-                android:id="@+id/input_member_height"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:background="@color/surface"
-                android:padding="@dimen/padding_small"
-                android:textColor="@color/text_primary"
-                android:textSize="14sp"
-                android:hint="180"
-                android:inputType="number" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="4dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Gewicht (kg)"
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary" />
-
-            <EditText
-                android:id="@+id/input_member_weight"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:background="@color/surface"
-                android:padding="@dimen/padding_small"
-                android:textColor="@color/text_primary"
-                android:textSize="14sp"
-                android:hint="75"
-                android:inputType="number" />
-
-        </LinearLayout>
-
-    </LinearLayout>
-
-    <!-- Aktivitätslevel -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Aktivitätslevel"
-        android:textSize="12sp"
-        android:textColor="@color/text_secondary"
-        android:layout_marginTop="@dimen/margin_small" />
-
-    <Spinner
-        android:id="@+id/spinner_member_activity"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:background="@color/surface"
-        android:padding="@dimen/padding_small" />
-
-    <!-- TDEE Vorschau -->
-    <TextView
-        android:id="@+id/member_tdee_preview"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Berechneter Tagesbedarf: — kcal"
-        android:textSize="12sp"
-        android:textColor="@color/accent"
-        android:layout_marginTop="@dimen/margin_small"
-        android:gravity="center" />
-
-    <!-- Button Row -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="@dimen/margin_medium"
-        android:gravity="end">
-
+        <!-- Title -->
         <TextView
-            android:id="@+id/btn_member_delete"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:gravity="center"
-            android:paddingHorizontal="@dimen/padding_medium"
-            android:text="Löschen"
-            android:textSize="14sp"
-            android:textColor="@color/error"
-            android:visibility="gone" />
+            android:id="@+id/modal_member_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/title_add_member"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:layout_marginBottom="@dimen/margin_medium" />
 
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-
+        <!-- Name -->
         <TextView
-            android:id="@+id/btn_member_cancel"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:gravity="center"
-            android:paddingHorizontal="@dimen/padding_medium"
-            android:text="Abbrechen"
-            android:textSize="14sp"
+            android:layout_height="wrap_content"
+            android:text="@string/label_name"
+            android:textSize="12sp"
             android:textColor="@color/text_secondary" />
 
-        <TextView
-            android:id="@+id/btn_member_save"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:gravity="center"
-            android:paddingHorizontal="@dimen/padding_medium"
-            android:text="Speichern"
+        <EditText
+            android:id="@+id/input_member_name"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@color/surface"
+            android:padding="@dimen/padding_small"
+            android:textColor="@color/text_primary"
             android:textSize="14sp"
+            android:hint="@string/hint_name_example"
+            android:inputType="textPersonName" />
+
+        <!-- Geburtsjahr -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/label_geburtsjahr"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="@dimen/margin_small" />
+
+        <EditText
+            android:id="@+id/input_member_birth_year"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@color/surface"
+            android:padding="@dimen/padding_small"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:hint="@string/hint_year_example"
+            android:inputType="number" />
+
+        <!-- Geschlecht -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/label_geschlecht"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="@dimen/margin_small" />
+
+        <Spinner
+            android:id="@+id/spinner_member_gender"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@color/surface"
+            android:padding="@dimen/padding_small"
+            android:contentDescription="@string/cd_spinner_gender" />
+
+        <!-- Größe und Gewicht in einer Zeile -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="@dimen/margin_small">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginEnd="4dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_groesse_cm"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary" />
+
+                <EditText
+                    android:id="@+id/input_member_height"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@color/surface"
+                    android:padding="@dimen/padding_small"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:hint="180"
+                    android:inputType="number" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="4dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_gewicht_kg"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary" />
+
+                <EditText
+                    android:id="@+id/input_member_weight"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@color/surface"
+                    android:padding="@dimen/padding_small"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:hint="75"
+                    android:inputType="number" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Aktivitätslevel -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/label_aktivitaetslevel"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="@dimen/margin_small" />
+
+        <Spinner
+            android:id="@+id/spinner_member_activity"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@color/surface"
+            android:padding="@dimen/padding_small"
+            android:contentDescription="@string/cd_spinner_activity" />
+
+        <!-- TDEE Vorschau -->
+        <TextView
+            android:id="@+id/member_tdee_preview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/desc_tdee_preview"
+            android:textSize="12sp"
             android:textColor="@color/accent"
-            android:textStyle="bold" />
+            android:layout_marginTop="@dimen/margin_small"
+            android:gravity="center" />
+
+        <!-- Button Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="@dimen/margin_medium"
+            android:gravity="end">
+
+            <TextView
+                android:id="@+id/btn_member_delete"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:paddingHorizontal="@dimen/padding_medium"
+                android:text="@string/btn_delete"
+                android:textSize="14sp"
+                android:textColor="@color/error"
+                android:visibility="gone" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/btn_member_cancel"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:paddingHorizontal="@dimen/padding_medium"
+                android:text="@string/btn_cancel"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary" />
+
+            <TextView
+                android:id="@+id/btn_member_save"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:paddingHorizontal="@dimen/padding_medium"
+                android:text="@string/btn_save"
+                android:textSize="14sp"
+                android:textColor="@color/accent"
+                android:textStyle="bold" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
-</LinearLayout>
+</FrameLayout>

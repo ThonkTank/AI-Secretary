@@ -21,7 +21,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:hint="Schritt-Titel"
+        android:hint="@string/hint_step_title"
         android:singleLine="true"
         android:textSize="@dimen/sp_body" />
 
@@ -38,6 +38,6 @@
         android:layout_height="32dp"
         android:src="@android:drawable/ic_delete"
         android:background="?android:attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Schritt löschen" />
+        android:contentDescription="@string/cd_delete_step" />
 
 </LinearLayout>

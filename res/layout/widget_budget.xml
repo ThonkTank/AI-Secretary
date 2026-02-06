@@ -20,7 +20,7 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
-            android:text="Budget"
+            android:text="@string/section_budget"
             android:textColor="@color/white"
             android:textSize="@dimen/sp_title"
             android:textStyle="bold" />
@@ -68,7 +68,7 @@
                 android:id="@+id/budget_total_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Saldo"
+                android:text="@string/widget_saldo"
                 android:textSize="@dimen/sp_small"
                 android:textColor="@color/text_muted" />
 
@@ -105,7 +105,7 @@
                 android:id="@+id/budget_free_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Frei"
+                android:text="@string/widget_frei"
                 android:textSize="@dimen/sp_small"
                 android:textColor="@color/text_muted" />
 

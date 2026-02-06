@@ -17,8 +17,8 @@ import androidx.core.content.ContextCompat;
 
 import com.autosecretary.R;
 
-import controller.todoManager;
-import controller.todoManager.TodoListener;
+import controller.TodoManager;
+import controller.TodoManager.TodoListener;
 import data.TaskListData;
 import data.TaskListData.*;
 import data.TaskRowConfig.*;
@@ -37,18 +37,18 @@ import java.util.Locale;
  * Verwendet TaskRowRenderer und die einheitlichen Layouts (item_task.xml,
  * item_goal_header.xml, item_calendar.xml) für 100% visuelle Parität mit dem Widget.
  */
-public class taskList implements TodoListener, ViewBuilder {
+public class TaskList implements TodoListener, ViewBuilder {
 
     private static final DateTimeFormatter DATE_FORMAT =
         DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN);
 
     private Context context;
-    private todoManager manager;
+    private TodoManager manager;
     private LinearLayout container;
     private Runnable onUpdate;
     private LocalDate selectedDate = LocalDate.now();
 
-    public taskList(Context context, todoManager manager) {
+    public TaskList(Context context, TodoManager manager) {
         this.context = context;
         this.manager = manager;
         this.manager.setListener(this);

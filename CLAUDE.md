@@ -13,27 +13,111 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Dump plans | `adb shell am broadcast -a com.autosecretary.debug.DUMP_PLANS -n com.autosecretary/activities.widget.DebugBroadcastReceiver` |
 | Replan all | `adb shell am broadcast -a com.autosecretary.debug.REPLAN_ALL -n com.autosecretary/activities.widget.DebugBroadcastReceiver` |
 
-## Build Commands
+## Critical Rules
 
-```bash
-# Syntax-Check ohne Nebenwirkungen (bevorzugt während der Entwicklung)
-./gradlew compileDebugJavaWithJavac
-
-# Build debug APK — ACHTUNG: pushed automatisch zu GitHub!
-./gradlew assemble
-
-# Run JUnit/Robolectric unit tests (test sources in test/)
-./gradlew testDebugUnitTest
-
-# Clean build
-./gradlew clean
-```
-
-**WICHTIG — `assemble` pushed automatisch:** `assemble` → `copyToRelease` (APK + version.txt inkrementieren) → `pushToGitHub` (git add release/, commit, push). Für einen reinen Syntax-Check ohne Push immer `compileDebugJavaWithJavac` verwenden.
-
-**WICHTIG:** Nach jeder abgeschlossenen Code-Änderung oder Bugfix MUSS `./gradlew assemble` ausgeführt werden. Das ist der korrekte Abschluss jeder Aufgabe – es baut die APK, inkrementiert die Version und pushed zu GitHub, damit das Auto-Update-System die neue Version an installierte Apps ausliefern kann.
+- **SQLrepo:** IMMER `SQLrepo.getInstance(context)` — NIEMALS `new SQLrepo(context)`
+- **MealType:** IMMER `import entities.MealType` — NICHT `Recipe.MealType` etc. (existieren nicht)
+- **Enum-Parsing:** IMMER `ParseUtils.safeEnum()` statt `Enum.valueOf()` in Parsern
+- **Batch-Fetch:** IMMER `fetchAll(Table, filters)` statt N+1 (IDs laden → einzeln fetchen)
+- **Geldbeträge:** IMMER `int` in Cents (1250 = 12.50 EUR), keine Floats
+- **assemble pushed automatisch:** `assemble` → `copyToRelease` (APK + version.txt inkrementieren) → `pushToGitHub`. Für Syntax-Check ohne Push: `compileDebugJavaWithJavac`
+- **Nach jeder Aufgabe:** `./gradlew assemble` ausführen (baut APK, inkrementiert Version, pushed zu GitHub für Auto-Update)
 
 **Typischer Workflow:** Code ändern → `compileDebugJavaWithJavac` (Fehler prüfen) → Fehler fixen → `assemble` (Release).
+
+## Code Style & Eleganz-Regeln
+
+Konkrete Arbeitsweisen für saubere Implementierungen:
+
+**Parsing aus EditText — IMMER `ViewHelper.parseInt()` / `ViewHelper.parseDouble()` verwenden:**
+```java
+// RICHTIG:
+int prepTime = parseInt(inputPrepTime, 0);
+double amount = parseDouble(inputAmount, 100.0);
+
+// FALSCH (5 Zeilen Boilerplate):
+int prepTime = 0;
+try { String s = input.getText().toString().trim();
+    if (!s.isEmpty()) prepTime = Integer.parseInt(s);
+} catch (NumberFormatException ignored) {}
+```
+
+**Enum ↔ Spinner-Index — `ordinal()` statt manuelles Switch-Mapping:**
+```java
+// RICHTIG:
+spinnerMealType.setSelection(recipe.mealType.ordinal());
+MealType type = MealType.values()[spinnerMealType.getSelectedItemPosition()];
+
+// FALSCH (redundantes Mapping das aus-dem-Sync geraten kann):
+private int getMealTypeIndex(MealType type) {
+    return switch (type) { case BREAKFAST -> 0; case LUNCH -> 1; ... };
+}
+```
+Gilt nur wenn Spinner-Reihenfolge = Enum-Reihenfolge (Standard in diesem Projekt).
+
+**Ressourcen-Management — IMMER try-with-resources für Streams:**
+```java
+// RICHTIG:
+try (InputStream is = getContentResolver().openInputStream(uri)) {
+    byte[] bytes = is.readAllBytes();
+}
+
+// FALSCH:
+InputStream is = getContentResolver().openInputStream(uri);
+byte[] bytes = is.readAllBytes();
+is.close();
+```
+
+**Farb-Alpha — `ColorUtils.setAlphaComponent()` statt Bitmanipulation:**
+```java
+// RICHTIG:
+import androidx.core.graphics.ColorUtils;
+int semiTransparent = ColorUtils.setAlphaComponent(color, 0x30);
+
+// FALSCH (unleserlich):
+int semiTransparent = (color & 0x00FFFFFF) | 0x30000000;
+```
+
+**Tab-Indizes — IMMER benannte Konstanten, keine Magic Numbers:**
+```java
+// RICHTIG:
+private static final int SUB_TAB_WEEK = 0;
+private static final int SUB_TAB_RECIPES = 1;
+switch (currentTab) { case SUB_TAB_WEEK -> ... }
+
+// FALSCH:
+switch (currentTab) { case 0 -> ... case 1 -> ... }
+```
+
+**Dead Code vermeiden — keine doppelten Zuweisungen vor Methodenaufrufen die dasselbe tun:**
+```java
+// RICHTIG:
+updateCategorySpinner();  // setzt categoriesList intern
+
+// FALSCH:
+categoriesList = manager.provideCategories().stream().filter(...).toList();
+updateCategorySpinner();  // überschreibt categoriesList sofort wieder
+```
+
+**Fehler-Fallbacks — bei Parse-Fehlern konsistenten Zustand herstellen, nicht stillschweigend ignorieren:**
+```java
+// RICHTIG:
+try { int color = Color.parseColor(hex); applyColor(card, color); }
+catch (IllegalArgumentException e) { applyDefaultColor(card); }
+
+// FALSCH (Card in inkonsistentem Zustand):
+try { ... applyColor(card, color); }
+catch (IllegalArgumentException ignored) {}
+```
+
+**Enum-Vergleiche — IMMER typsicher, NIEMALS über String-Label:**
+```java
+// RICHTIG (wenn Record MealType-Feld hat):
+if (entry.mealType() == MealType.BREAKFAST) { ... }
+
+// FALSCH (fragil, mehrere String-Formate nötig):
+if (entry.mealType().equals(type.label)) { ... }
+```
 
 ## Debugging (ADB)
 
@@ -50,7 +134,7 @@ adb shell am broadcast -a com.autosecretary.debug.REPLAN_ALL -n com.autosecretar
 adb logcat | grep DebugPlan   # Output filtern
 
 # App muss laufen oder kürzlich gestartet worden sein! Bei Bedarf erst starten:
-adb shell am start -n com.autosecretary/activities.inApp.mainActivity
+adb shell am start -n com.autosecretary/activities.inApp.MainActivity
 ```
 
 **DUMP_PLANS Output-Format:**
@@ -74,7 +158,7 @@ Non-standard Android project structure — no `app/` module, sources are at root
 
 Configured in `build.gradle.kts` via custom `sourceSets`. Java 17, compileSdk/targetSdk 35, minSdk 26. Uses `coreLibraryDesugaring` for `java.time` API on older devices. `applicationId` / `namespace` = `com.autosecretary`.
 
-**Flat package names:** Source files use direct package names (e.g. `package activities.inApp;`, `package entities;`) — there is no root `com.autosecretary` prefix in the source. The namespace `com.autosecretary` only affects the generated `R` class (`import com.autosecretary.R;`) and manifest merging.
+**Flat package names:** Source files use direct package names (e.g. `package activities.inApp;`, `package entities;`) — there is no root `com.autosecretary` prefix in the source. The namespace `com.autosecretary` only affects the generated `R` class (`import com.autosecretary.R;`) and manifest merging. Tab-Subdirectories verwenden eigene Sub-Packages: `activities.inApp.tasksTab`, `activities.inApp.budgetTab`, `activities.inApp.ernaehrungTab`.
 
 **Dependencies:** `androidx.core:core:1.12.0`, `coreLibraryDesugaring` (desugar_jdk_libs 2.1.4). Test: JUnit 4.13.2, Robolectric 4.14.1, `androidx.test:core:1.6.1`.
 
@@ -83,10 +167,10 @@ Configured in `build.gradle.kts` via custom `sourceSets`. Java 17, compileSdk/ta
 - **versionName:** Semantisch `$major.$minor.$patch` in `build.gradle.kts` (aktuell 1.0.0)
 - `copyToRelease` schreibt nur den neuen versionCode zurück — bei reinem `compileDebugJavaWithJavac` bleibt version.txt unverändert
 
-**Konstanten** (`data/constants.java`):
+**Konstanten** (`data/Constants.java`):
 ```java
 DB_NAME = "autosecretary.db"
-DB_VERSION = 31  // v1.0.0 Production Release
+DB_VERSION = 32  // Free-form Meal Schedule
 PREF_NAME = "secretary"
 PREF_DB_VERSION = "db_version"
 PREF_APP_MODE = "app_mode"
@@ -96,9 +180,7 @@ BACKUP_DIR = "backups"
 MAX_BACKUPS = 5
 ```
 
-**SQLrepo Singleton:** Verwende `SQLrepo.getInstance(context)` statt `new SQLrepo(context)` für Singleton-Zugriff. Alle Manager nutzen dies automatisch. Verhindert mehrfache DB-Connections und Race Conditions.
-
-**Scheduling-Konstanten** (`scheduling/buildToDo.java`):
+**Scheduling-Konstanten** (`scheduling/BuildToDo.java`):
 ```java
 FIXED_APPOINTMENT_PRIORITY = 10_000_000  // Feste Termine übertreffen alle
 PREF_TIME_WINDOW_MINUTES = 480           // 8h-Arbeitstag für PrefTime-Penalty
@@ -110,25 +192,24 @@ SCORE_SCALE_FACTOR = 100                 // log1p-Score-Skalierung
 
 ```
 src/
-├── activities/inApp/     # mainActivity (Launcher, 4-Tab-UI), editItem (Create/Edit Modal), budgetView (Budget-Tab), mealPlanView (Ernährung-Tab, 5 Sub-Tabs: Woche/Rezepte/Einkauf/Vorrat/Planung)
-├── activities/generic/   # ViewHelper, ViewBuilder, taskList (nutzt TaskRowRenderer)
+├── activities/inApp/     # MainActivity (Launcher, 3-Tab-UI: Tasks/Budget/Ernährung)
+│   ├── tasksTab/         # TaskView (Delegator, 2 Sub-Tabs), EditItem (Orchestrator) → TreeRenderer, FieldManager, ItemEditorModal
+│   ├── budgetTab/        # BudgetView (Delegator, BudgetListener), TransactionModal (Create/Edit), ImportModal (Claude API), RecurringSuggestionsModal
+│   └── ernaehrungTab/    # MealPlanView (Delegator, 4 Sub-Tabs), WeekPlanTab, RecipesTab, ShoppingTab, PantryTab, FoodGroupHeader, MemberTab, MealTabListener
+├── activities/generic/   # ViewHelper, DateTimeHelper, ViewBuilder, TaskList (nutzt TaskRowRenderer)
 ├── activities/widget/    # TaskWidgetProvider, TaskWidgetFactory, TaskWidgetService, WidgetRefreshApp
-├── entities/             # trackedItem, todoList, CalendarEvent, config, MealType (shared enum),
+├── entities/             # TrackedItem, TodoList, CalendarEvent, Config, MealType (shared enum),
 │                         # Account, Transaction, BudgetLimit, Import, HouseholdMember, CookingPreferences,
 │                         # RecipeRating, Ingredient, Recipe, MealPlan, MealSchedule, ShoppingListItem,
 │                         # PantryItem, ConsumptionLog, WeeklyFoodTarget, StorePackage
 ├── repository/           # Repo (Interface), SQLrepo, Table, MigrationManager,
-│                         # parser/ (ParseUtils, itemParser, todoParser, accountParser, transactionParser,
-│                         # budgetLimitParser, importParser, categoryParser, householdMemberParser,
-│                         # cookingPreferencesParser, recipeRatingParser, ingredientParser, recipeParser,
-│                         # mealPlanParser, mealScheduleParser, shoppingListParser, pantryParser,
-│                         # consumptionParser, weeklyFoodTargetParser)
-├── controller/           # todoManager, updateChecker, editorManager, budgetManager, mealManager,
+│                         # parser/ (ParseUtils + je ein {Entity}Parser.java pro Entity)
+├── controller/           # TodoManager, UpdateChecker, EditorManager, BudgetManager, MealManager,
 │                         # SettingsManager, ApiKeyManager, ClaudeApiClient, ImportProcessor,
 │                         # RecurringPatternDetector, WidgetUpdateManager
-├── data/                 # constants, seedTestData, TaskListData, TaskRowConfig, BudgetDisplayData
+├── data/                 # Constants, SeedTestData, TaskListData, TaskRowConfig, BudgetDisplayData, ClaudePrompts
 ├── render/               # TaskRowRenderer (einheitlicher Renderer für App + Widget)
-└── scheduling/           # buildToDo, cleanToDo, CalendarReader, generateMealPlan,
+└── scheduling/           # BuildToDo, CleanToDo, CalendarReader, GenerateMealPlan,
                           # DailyPlanningScheduler, DailyPlanningReceiver, BootReceiver
 ```
 
@@ -141,9 +222,16 @@ src/
 
 **NICHT erlaubt:** `<View>` (für Spacer/Divider stattdessen `ImageView` mit `background` verwenden), `CheckBox` (stattdessen `ImageView` mit Toggle-Icons), custom Views.
 
-**Data flow:** `mainActivity` → `todoManager` (Controller) → `buildToDo` (UseCase) → `SQLrepo` (Repository)
+**Tab-Architektur:** 3 Haupt-Tabs (Tasks, Budget, Ernährung). Jeder Tab ist ein schlanker Delegator (`ViewBuilder`-Interface) der an extrahierte Sub-Komponenten delegiert:
+- `TaskView` (`tasksTab/`) — 2 Sub-Tabs (Tagesplan/Verwalten), Constructor `(Context, TodoManager)`, erstellt EditorManager intern. Delegiert an `TaskList` + `EditItem`, exponiert `openCreateModal()` für Widget-Intent
+- `BudgetView` (`budgetTab/`) — Budget-Übersicht, Konten, Budget-Limits, Transaktionen. Implementiert `BudgetListener`. Delegiert Modals an `TransactionModal` (Create/Edit), `ImportModal` (Kontoauszug-Import via Claude API, `FilePickerCallback`), `RecurringSuggestionsModal` (wiederkehrende Muster). Import-Erfolg triggert Recurring-Modal via Callback-Chain.
+- `MealPlanView` (`ernaehrungTab/`) — 4 Sub-Tabs (Woche/Rezepte/Einkauf/Vorrat), delegiert an `WeekPlanTab`, `RecipesTab`, `ShoppingTab`, `PantryTab`, `FoodGroupHeader`. `WeekPlanTab` delegiert Haushalt-Verwaltung an `MemberTab`. Implementiert `MealListener`. Hält `currentWeekStart` als shared State für WeekPlanTab und ShoppingTab — Navigation-Callbacks via `navigateWeek(delta)`.
+- **Sub-Tab-Pattern:** Tabs haben `render(FrameLayout)`, `initModals(FrameLayout rootContainer)`, `setListener(MealTabListener)`. Wochen-basierte Tabs (WeekPlanTab, ShoppingTab) bekommen zusätzlich `weekStart` + `onPrevWeek`/`onNextWeek` Callbacks in `render()`. Jeder Sub-Tab inflated und besitzt seine eigenen Modals (via `LayoutInflater.inflate()` + `rootContainer.addView()`). `MealTabListener` ist ein `@FunctionalInterface` in `ernaehrungTab/`.
+- **Delegator-Pattern:** `selectSubTab(int)` toggled Farben + ruft `tab.render(container)` auf. FAB-Actions delegieren an `tab.showAutoGenerateDialog()`, `tab.openCreateModal()`, etc.
 
-**todoManager** exponiert `provideList()` → `List<TaskEntry>` (Record mit slotId, taskTitle, start/end, completed, goalTitle, progressCurrent/Target/Unit etc.). Wird von der App-UI konsumiert. Callback-Pattern via `TodoListener` Interface:
+**Data flow:** `MainActivity` → `TodoManager` (Controller) → `BuildToDo` (UseCase) → `SQLrepo` (Repository)
+
+**TodoManager** exponiert `provideList()` → `List<TaskEntry>` (Record mit slotId, taskTitle, start/end, completed, goalTitle, progressCurrent/Target/Unit etc.). Wird von der App-UI konsumiert. Callback-Pattern via `TodoListener` Interface:
 - `onListUpdated()` — Plan hat sich geändert, UI neu laden
 - `onSchedulingConflicts(List<SchedulingConflict>)` — Feste Termine konnten nicht eingeplant werden (default-Methode, optional implementierbar)
 
@@ -153,98 +241,24 @@ Weitere Methoden:
 - `incrementProgress(slotId)` / `decrementProgress(slotId)` — Progress-Tasks: setzt `slot.progressDelta`, NICHT das Item direkt
 - `startTimer(slotId)` / `stopTimer(slotId)` — setzt workStart/workEnd + completes
 
-**editorManager** verwaltet CRUD-Operationen für alle Item-Typen. Exponiert `getAllItems()` → `List<TreeEntry>` (`record TreeEntry(trackedItem item, int depth)`) für die hierarchische Baumdarstellung im Editor (DFS-Traversal). `getAvailableParents(type)` filtert typbasiert: TASK→GOAL, GOAL→PROJECT, PROJECT→null. `getActiveAccounts()` liefert alle aktiven Konten für Budget-Spinner. `createItem()` synct automatisch `parent.children`.
+**EditorManager** verwaltet CRUD-Operationen für alle Item-Typen. Exponiert `getAllItems()` → `List<TreeEntry>` (`record TreeEntry(TrackedItem item, int depth)`) für die hierarchische Baumdarstellung im Editor (DFS-Traversal). `getAvailableParents(type)` filtert typbasiert: TASK→GOAL, GOAL→PROJECT, PROJECT→null. `getActiveAccounts()` liefert alle aktiven Konten für Budget-Spinner. `createItem()` synct automatisch `parent.children`.
 
-**budgetManager** verwaltet Budget-Daten für die UI. Exponiert Record-basierte Methoden:
-- `provideAccounts()` → `List<AccountEntry>` — Alle aktiven Konten
-- `provideSummary(yearMonth)` → `BudgetSummary` — Gesamtübersicht (Saldo, Einnahmen, Ausgaben, Netto)
-- `provideRecentTransactions(limit)` → `List<TransactionEntry>` — Letzte N Transaktionen
-- `provideTransactions(accountId, yearMonth, category)` → `List<TransactionEntry>` — Gefiltert
-- `provideBudgetLimits(yearMonth)` → `List<BudgetEntry>` — Budget-Limits mit Spent/Remaining
-- `provideCategories()` / `provideExpenseCategories()` → `List<CategoryOption>` — Für Dropdowns
+**BudgetManager** verwaltet Budget-Daten für die UI. Pattern: Record-basierte `provide*()` Methoden für UI-Datenübergabe (z.B. `provideAccounts()` → `List<AccountEntry>`, `provideSummary(yearMonth)` → `BudgetSummary`). Callback via `BudgetListener` Interface. Write-Operationen aktualisieren automatisch Konto-Salden und benachrichtigen Listener. Recurring-Template-Erstellung via `createRecurringTemplate(candidate, accountId)`.
 
-Callback-Pattern via `BudgetListener` Interface. Write-Operationen (`createTransaction`, `setBudgetLimit`, etc.) aktualisieren automatisch Konto-Salden und benachrichtigen Listener.
+**MealManager** verwaltet Meal-Planning-Daten. Gleicher `provide*()`-Pattern wie BudgetManager (z.B. `provideAllRecipes()`, `provideMealPlan(weekStart)`, `provideSchedule()`). Write-Operationen für Rezepte, Mitglieder, MealPlans. `calculateRecipeNutrition()` berechnet Nährwerte basierend auf Zutaten. Shopping-List: `generateShoppingList()` aggregiert Zutaten, zieht Vorrat ab, rundet auf Packungsgrößen; `finishShopping()` markiert gekauft + füllt Vorrat + erstellt Transaktion. Pantry-CRUD mit `adjustPantryAmount(itemId, delta)` (Auto-Delete bei ≤0). Callback via `MealListener` Interface.
 
-**Recurring Template Operations:**
-- `getAllTransactionsForAccount(accountId)` → `List<Transaction>` — Für Pattern-Erkennung
-- `createRecurringTemplate(candidate, accountId)` → `Long` — Erstellt wiederkehrendes Template aus `RecurringCandidate`
-- `linkTransactionsToTemplate(txIds, templateId)` — Verknüpft existierende Transaktionen mit Template
+**Meal Completion Flow:** `completeMeal(mealPlanId, actualServings)` wird von `TodoManager.completeSlot()` aufgerufen: MealPlan→completed, Pantry reduzieren (FIFO nach Ablaufdatum), ConsumptionLog erstellen.
 
-**mealManager** verwaltet Meal-Planning-Daten für die UI. Exponiert Record-basierte Methoden:
-- `provideMembers()` → `List<MemberEntry>` — Alle aktiven Haushaltsmitglieder mit TDEE
-- `provideAllRecipes()` / `provideRecipes(MealType)` → `List<RecipeEntry>` — Alle oder gefilterte Rezepte
-- `provideIngredients()` → `List<IngredientEntry>` — Alle Zutaten für Rezept-Erstellung
-- `provideMealPlan(weekStart)` → `List<MealPlanEntry>` — Wochenplan-Einträge
-- `provideSchedule()` → `List<ScheduleEntry>` — Mahlzeiten-Kalender (7×4 Grid)
-- `provideFoodGroupProgress(weekStart)` → `List<FoodGroupProgress>` — Fortschritt pro Lebensmittelgruppe (DGE-basiert)
+**GenerateMealPlan** (`scheduling/GenerateMealPlan.java`) — Automatische Wochenplan-Generierung: DGE-basierter Wochenbedarf → TDEE-Kalorienverteilung (20/35/35/10%) → Koch-Sessions aus Preferences + Kalender → Rezept-Scoring (7 Kriterien: FoodGroup, Skalierbarkeit, Variety, Aufwand, Ratings, Pantry-Expiry, Verderblichkeit) → MealPlans + Meal-Tasks erstellen → Einkaufsliste mit Single-Store-Optimierung.
 
-Write-Operationen: `createRecipe()`, `updateRecipe()`, `deleteRecipe()`, `toggleFavorite()`, `createMember()`, `updateMember()`, `deleteMember()`, `createMealPlan()`, `updateMealPlan()`, `deleteMealPlan()`, `updateSchedule(id, time, enabled)`. `calculateRecipeNutrition()` berechnet Nährwerte basierend auf Zutaten automatisch. `findMealPlan(date, mealType)` findet existierenden Eintrag. `getMember(id)` und `getRecipe(id)` laden einzelne Entitäten.
+**Meal-Task-Erstellung:** Für jede Mahlzeit wird ein `TrackedItem` mit `fixedAppointment` (Datum + Uhrzeit aus MealSchedule) erstellt. `mealPlanId` verknüpft Task mit MealPlan für Completion-Tracking.
 
-**Shopping List Operations:**
-- `provideShoppingList(weekKey)` → `List<ShoppingEntry>` — Einkaufsliste gruppiert nach FoodGroup
-- `provideShoppingSummary(weekKey)` → `ShoppingSummary` — Zusammenfassung (Laden, Fortschritt, Preis)
-- `generateShoppingList(weekStart)` — Aggregiert Zutaten aus MealPlans, zieht Vorrat ab, rundet auf Packungsgrößen
-- `determinePreferredStore(ingredientIds)` — Scoring: Coverage (10 Punkte/Zutat) + Recency (max 30 Punkte)
-- `finishShopping(weekKey, accountId, totalCents)` — Markiert gekauft, füllt Vorrat, erstellt Transaktion
-- `toggleShoppingItemPurchased(itemId)` — Einzelnes Item togglen
+**Claude API Integration** (`controller/`) — Kontoauszug-Import via Anthropic Messages API. Workflow: `ApiKeyManager` (Base64-encoded in SharedPrefs, muss mit `"sk-ant-"` beginnen) → `ClaudeApiClient` (`claude-sonnet-4-20250514`, 4096 Tokens, 120s Timeout) → `ImportProcessor` (SHA256-Datei-Hash Duplikat-Check → Claude API → Transaktionen parsen + Hash-Check `date_amount_payee` → speichern via `createTransactionQuiet()`). `ClaudePrompts` generiert System-Prompt mit dynamischer Kategorie-Liste aus DB.
 
-**Meal Completion Flow:** `completeMeal(mealPlanId, actualServings)` wird von `todoManager.completeSlot()` aufgerufen wenn ein Meal-Task abgehakt wird:
-1. `MealPlan.isCompleted = true`, `completedAt = now()`
-2. Pantry reduzieren via `consumeFromPantry()` (FIFO nach Ablaufdatum)
-3. `ConsumptionLog` erstellen pro aktivem Haushaltsmitglied
-
-Callback-Pattern via `MealListener` Interface.
-
-**generateMealPlan** (`scheduling/generateMealPlan.java`) — Automatische Wochenplan-Generierung in 6 Schritten:
-1. `calculateWeeklyTarget()` — DGE-basierter Wochenbedarf pro FoodGroup, mit Überschuss/Defizit-Korrektur der Vorwoche
-2. `calculateMealCalories()` — TDEE-basierte Kalorienverteilung (Frühstück 20%, Mittag 35%, Abend 35%, Snack 10%)
-3. `planCookingSessions()` — Koch-Sessions basierend auf CookingPreferences und Kalender-Events
-4. `scoreRecipe()` — Rezept-Bewertung nach 7 Kriterien: FoodGroup-Bedarf, Skalierbarkeit, Variety, Aufwand, Ratings, Pantry-Expiry, Verderblichkeit
-5. `generateWeekPlan()` — Orchestriert alles, erstellt MealPlans und Meal-Tasks
-6. `mealManager.generateShoppingList()` — Erstellt Einkaufsliste mit Single-Store-Optimierung
-
-**Meal-Task-Erstellung:** Für jede Mahlzeit wird ein `trackedItem` mit `fixedAppointment` (Datum + Uhrzeit aus MealSchedule) erstellt. `mealPlanId` verknüpft Task mit MealPlan für Completion-Tracking.
-
-**Meal UI Records** (`mealManager.java`) — Records für die Meal-UI-Datenübergabe:
-- `MemberEntry(id, name, age, gender, dailyCalories, activityLabel, isActive)`
-- `RecipeEntry(id, title, mealType, totalTime, calories, servings, tags, isFavorite, formattedLastUsed)`
-- `IngredientEntry(id, name, foodGroup, unit, caloriesPer100)`
-- `MealPlanEntry(id, date, dayName, mealType, recipeId, recipeTitle, servings, calories, isCompleted)`
-- `ScheduleEntry(id, day, dayLabel, mealType, mealLabel, mealIcon, time, isEnabled, formattedTime)` — Mahlzeiten-Kalender
-- `FoodGroupProgress(group, label, icon, targetGrams, plannedGrams, percent, formatted)`
-- `ShoppingEntry(id, ingredientId, ingredientName, foodGroup, foodGroupIcon, amount, neededAmount, excessAmount, unit, formattedAmount, formattedExcess, suggestedStore, isPurchased, estimatedPriceCents, formattedPrice)`
-- `ShoppingSummary(weekKey, suggestedStore, totalItems, purchasedItems, estimatedTotalCents, formattedTotal, isComplete)`
-- `PantryEntry(id, ingredientId, name, amount, rawAmount, unit, location, locationIcon, locationType, expiryInfo, expiryDate, isExpiringSoon, isExpired)` — Vorratsartikel für Anzeige
-
-**Pantry CRUD Operations:**
-- `providePantry(filter)` → `List<PantryEntry>` — Vorrat sortiert nach Ablaufdatum, optional gefiltert nach StorageLocation
-- `addToPantry(ingredientId, amount, unit, location, expiryDate)` — Neuen Artikel hinzufügen
-- `updatePantryItem(item)` — Artikel aktualisieren
-- `adjustPantryAmount(itemId, delta)` — Stepper-Logik, Auto-Delete bei ≤0
-- `deletePantryItem(id)` — Artikel löschen
-- `getPantryItem(id)` → `PantryItem` — Einzelnen Artikel laden
-
-**Claude API Integration** (`controller/`) — Kontoauszug-Import via Anthropic Messages API:
-- `ApiKeyManager` — Speichert API-Key Base64-encoded in SharedPreferences (`"secretary"`). Validierung: muss mit `"sk-ant-"` beginnen.
-- `ClaudeApiClient` — HTTP-Client für `https://api.anthropic.com/v1/messages`. Model: `claude-sonnet-4-20250514`, Max 4096 Tokens, 120s Timeout für PDF-Verarbeitung.
-- `ClaudePrompts` — System-Prompt mit dynamischer Kategorie-Liste aus DB. Strikte JSON-Output-Vorgabe für Transaktionen.
-- `ImportProcessor` — Orchestriert Import-Workflow: SHA256-Datei-Hash (Duplikat-Check) → Import-Entity anlegen → Claude API aufrufen → Transaktionen parsen → Pro Transaktion: Hash-Check (`date_amount_payee`), Kategorie validieren, speichern via `createTransactionQuiet()` → Batch-Notifikation.
-
-**Import-Workflow Records:**
-- `ParsedStatementResult(periodStart, periodEnd, transactions[], promptTokens, responseTokens, processingTimeMs)`
-- `ParsedTransaction(date, amountCents, payee, description, categoryId, hash)`
-- `ImportResult(totalTransactions, newTransactions, duplicates, processingTimeMs, recurringCandidates)`
-
-**Recurring Pattern Detection** (`RecurringPatternDetector.java`) — Erkennt wiederkehrende Muster nach Import:
-- `normalizePayee()` — Entfernt Nummern/Sonderzeichen für Payee-Vergleich ("REWE #1234" → "REWE")
-- `payeeSimilarity()` — Levenshtein-basiertes Fuzzy-Matching (Threshold: ≥75%)
-- `detectPatterns()` — Gruppiert nach Payee, prüft Betrag-Konsistenz (±15%), erkennt Datum-Muster
-- Pattern-Typen: MONTHLY_DAY (gleicher Tag ±2), MONTHLY_LAST (Monatsende), WEEKLY (gleicher Wochentag), INTERVAL (festes Tage-Intervall)
-- `RecurringCandidate` Record mit Confidence-Score (0.0-1.0), automatischer Kategorisierung, Varianz-Statistiken
-- Nach Import: budgetView zeigt Modal mit Kandidaten, User kann Templates erstellen via `budgetManager.createRecurringTemplate()`
+**Recurring Pattern Detection** (`RecurringPatternDetector.java`) — Erkennt wiederkehrende Muster nach Import: Fuzzy-Payee-Matching (Levenshtein ≥75%), Betrag-Konsistenz (±15%), Datum-Pattern (MONTHLY_DAY, MONTHLY_LAST, WEEKLY, INTERVAL). `RecurringCandidate` Record mit Confidence-Score (0.0-1.0). BudgetView zeigt Modal mit Kandidaten nach Import.
 
 **UI:** Hybrid XML + programmatisch. Hauptstruktur über XML-Layouts:
-- Seiten-Layouts: `activity_main.xml`, `view_task_list.xml`, `view_edit_item.xml`, `modal_edit_item.xml`, `view_budget.xml`, `modal_transaction.xml`, `view_meal_plan.xml`, `modal_recipe.xml`, `modal_meal_plan.xml`, `modal_member.xml`, `modal_pantry.xml`
+- Seiten-Layouts: `activity_main.xml`, `view_tasks.xml` (Sub-Tabs), `view_task_list.xml`, `view_edit_item.xml`, `modal_edit_item.xml`, `view_budget.xml`, `modal_transaction.xml`, `view_meal_plan.xml` (Sub-Tabs), `modal_recipe.xml`, `modal_meal_plan.xml`, `modal_member.xml`, `modal_pantry.xml`
 - Komponenten: `row_tree_item.xml` (Editor-Baum), `item_account_card.xml`, `item_budget_bar.xml`, `item_transaction_row.xml`, `item_recipe_card.xml`, `item_food_group_bar.xml`, `item_ingredient_row.xml`, `item_meal_slot.xml` (Wochenplan-Karte), `item_member_card.xml` (Haushaltsmitglied), `item_shopping_row.xml` (Einkaufsliste)
 - Styling: `res/values/colors.xml`, `dimens.xml`, `styles.xml` — Farben/Größen als Ressourcen statt Hardcoded-Werte
 
@@ -252,7 +266,12 @@ Callback-Pattern via `MealListener` Interface.
 
 Farben und Dimensionen liegen ausschließlich in `colors.xml`/`dimens.xml` — programmatischer Zugriff via `ContextCompat.getColor()` und `getResources().getDimension()`. Neue Views bevorzugt als XML-Layout anlegen; dynamische Listeinträge und ähnliches weiterhin programmatisch.
 
-**Edit Modal** (`editItem.java` + `modal_edit_item.xml`) — Create/Edit-Dialog für Tasks, Goals und Projects:
+**Accessibility:** Alle interaktiven XML-Elemente (Spinner, Buttons mit kryptischem Text wie L/M/H/C) brauchen `android:contentDescription="@string/cd_*"`. String-Ressourcen in `strings.xml` unter `<!-- Content Descriptions -->`. EditTexts mit `android:hint` brauchen KEIN contentDescription (Hint dient als Accessibility-Label). Dekorative `<View>`-Spacer bekommen `android:importantForAccessibility="no"`.
+
+**Edit Modal** (`tasksTab/EditItem.java` + `modal_edit_item.xml`) — Create/Edit-Dialog für Tasks, Goals und Projects. `EditItem` ist ein dünner Orchestrator (~95 Zeilen) der an 3 package-private Klassen delegiert:
+- `TreeRenderer` — Hierarchischer Baum (Expand/Collapse, Suche, Typ-Filter), Callback via `Consumer<TrackedItem>`
+- `FieldManager` — Alle ~30 Formular-Felder (bind/populate/apply/visibility), Spinner-Refresh, Farb-Grid
+- `ItemEditorModal` — Modal-Lebenszyklus (Show/Hide), Validierung, Builder, Create/Update via `EditorManager`
 
 **Feld-Sichtbarkeit nach ItemType:**
 
@@ -283,14 +302,22 @@ Farben und Dimensionen liegen ausschließlich in `colors.xml`/`dimens.xml` — p
 - `refreshPredecessorSpinner()` — Lädt verfügbare Vorgänger + zeigt/versteckt Delay-Row
 - TimePicker/DatePicker — Standard Android-Dialoge via `TimePickerDialog`/`DatePickerDialog`
 
-**editItem Helper-Methoden:** `bindModal()` und `saveItem()` sind in spezialisierte Helper-Methoden aufgeteilt:
-- **Binding:** `bindBasicFields()`, `bindDeadlineFields()`, `bindFixedAppointmentFields()`, `bindGoalCustomizationFields()`, `bindProgressFields()`, `bindTypeButtons()`, `bindPriorityButtons()`, `bindRepetitionButtons()`, `bindBudgetFields()`, `bindDurationFields()`, `bindPrefTimeFields()`, `bindPredecessorDelayFields()`, `bindCompleteFirstFields()`
-- **Save:** `applyDurationFields()`, `applyDeadlineFields()`, `applyCooldownField()`, `applyProgressFields()`, `applyGoalFields()`, `applyParentField()`, `applyPrefTimeField()`, `applyPredecessorFields()`, `applyBudgetFields()`, `applyRepetitionFields()`, `persistItem()`
-- Neue Feld-Gruppen: Entsprechende `bind*()` und `apply*()` Methode hinzufügen
+**FieldManager-Pattern:** Jede Feld-Gruppe hat ein `bind*()` (im Konstruktor via `bindAll()`) und `apply*()` (aufgerufen von `ItemEditorModal.saveItem()`). Populate: `populateForCreate()`, `populateForEdit(item)`. Neue Feld-Gruppen: Entsprechende `bind*()` und `apply*()` Methode hinzufügen.
 
-**ViewHelper** (`activities/generic/ViewHelper.java`) — Zwei zentrale Utilities für programmatische UI:
+**DateTimeHelper** (`activities/generic/DateTimeHelper.java`) — Statische Utilities für Datum/Zeit-Operationen (Pure Java, keine Android-Dependencies):
+- `getMonday(LocalDate)` — Montag der Woche für ein Datum
+- `getWeekKey(LocalDate)` — Wochen-Key im Format "2026-W05" (zentralisiert `WeekFields.of(Locale.GERMANY)`)
+- `formatTime(LocalTime)` — Formatiert als "HH:mm"
+- `getWeekNumber(LocalDate)` — Extrahiert Wochennummer (deutsche Wochenberechnung)
+
+**ViewHelper** (`activities/generic/ViewHelper.java`) — Zentrale Utilities für programmatische UI:
 - `dp(Context, int)` — Konvertiert dp zu Pixel (statischer Import überall verwendet)
 - `roundedBg(Context, int color, int cornerDp)` — Erstellt `GradientDrawable` mit Farbe und abgerundeten Ecken
+- `showEmptyState(ViewGroup container, String message)` — Einheitliche "Keine X vorhanden"-Meldung (`text_secondary`, Padding 16/32)
+- `spinnerAdapter(Context, String[]/List<String>)` — Erstellt `ArrayAdapter` mit `simple_spinner_item` + `setDropDownViewResource`. Verwendung: `spinner.setAdapter(spinnerAdapter(ctx, items))`
+- `buildWeekHeader(Context, LocalDate, Runnable onPrev, Runnable onNext)` — Baut "< KW X (dd.-dd.MM.) >" Navigation, gibt `LinearLayout` zurück (Caller kann extra Buttons anhängen)
+- `setupModalOverlay(View overlay, Runnable onDismiss)` — Konfiguriert Modal-Overlay: Klick ausserhalb schliesst, Klick auf Card wird absorbiert. Sucht `R.id.modal_card`, Fallback auf `getChildAt(0)`
+- `parseInt(EditText, int fallback)` / `parseDouble(EditText, double fallback)` — Safe-Parsing aus EditText-Feldern (leerer/ungültiger Wert → fallback)
 
 **Widget + Unified Renderer:** App und Widget verwenden dieselben Layouts (`item_task.xml`, `item_goal_header.xml`, `item_calendar.xml`). Zwei-Schichten-Architektur:
 - `TaskRowConfig.java` — Records (TaskConfig, GoalHeaderConfig, CalendarConfig) mit Factory-Methoden, zentralisiert Business-Logik (Deadline-Rot, Streak-Farbe, etc.)
@@ -310,24 +337,24 @@ public enum DataDomain { TODO, BUDGET, MEAL }
 WidgetUpdateManager.registerWidget(DataDomain.TODO, TaskWidgetProvider::notifyWidgetUpdate);
 WidgetUpdateManager.notifyUpdate(context, DataDomain.TODO);
 ```
-Registrierung erfolgt in `WidgetRefreshApp.onCreate()`. Controller (budgetManager, todoManager, etc.) nutzen `notifyUpdate()` statt direkter Widget-Referenzen → verbesserte Testbarkeit.
+Registrierung erfolgt in `WidgetRefreshApp.onCreate()`. Controller (BudgetManager, TodoManager, etc.) nutzen `notifyUpdate()` statt direkter Widget-Referenzen → verbesserte Testbarkeit.
 
 **Widget-Header-Buttons:** Neben dem App-Titel befinden sich zwei Buttons:
-- "+" Button → Öffnet App direkt im Create-Modal (via `ACTION_CREATE_ITEM` Intent → `mainActivity.handleWidgetIntent()`)
+- "+" Button → Öffnet App direkt im Create-Modal (via `ACTION_CREATE_ITEM` Intent → `MainActivity.handleWidgetIntent()`)
 - "↻" Button → Refresht Widget-Daten (via `ACTION_REFRESH` Broadcast)
 
 **Completion-Feedback:**
-- **App** (`taskList.java`): `animateCompletion()` — Checkbox-Bounce (scale 1.0→1.3→1.0) + Hintergrund-Flash (`completion_flash` → `surface_complete`)
+- **App** (`TaskList.java`): `animateCompletion()` — Checkbox-Bounce (scale 1.0→1.3→1.0) + Hintergrund-Flash (`completion_flash` → `surface_complete`)
 - **Widget** (`TaskWidgetProvider`/`TaskWidgetFactory`): Flash via statischer `flashingSlotId` — bei Completion wird Slot-ID gesetzt, Factory rendert mit `completion_flash`, nach 300ms wird ID gelöscht und Widget neu gerendert
 
 **Meta-Row Badges:** Unterhalb des Task-Titels zeigt `task_meta_row` (LinearLayout) drei optionale Badges:
 - Streak: "🔥 X" mit Rarity-Farbe (aus `TaskListData.getStreakRarityColorRes()`)
 - Deadline: "Fällig: dd.MM.yyyy" (rot wenn überfällig)
-- Remaining: "⏱ X Tage" — aus `trackedItem.remainingTime(today)`
+- Remaining: "⏱ X Tage" — aus `TrackedItem.remainingTime(today)`
 
 **Background Scheduling:** `DailyPlanningScheduler` registriert AlarmManager-Trigger um 00:00 → `DailyPlanningReceiver` führt aus:
-1. `cleanToDo.clean()` — Zwei Phasen: (a) Gestrige Slots auswerten → `trackedItem.update()` mit Slot-Daten + followUp-Tracking, (b) ALLE übrigen Items refreshen → `update(null,...)` für Perioden-Reset, scheduled-Bereinigung, blockedDays-Refresh. Danach alte todoLists aus DB entfernen.
-2. `buildToDo.planWeek()` — Neuen 7-Tage-Plan erstellen
+1. `CleanToDo.clean()` — Zwei Phasen: (a) Gestrige Slots auswerten → `TrackedItem.update()` mit Slot-Daten + followUp-Tracking, (b) ALLE übrigen Items refreshen → `update(null,...)` für Perioden-Reset, scheduled-Bereinigung, blockedDays-Refresh. Danach alte TodoLists aus DB entfernen.
+2. `BuildToDo.planWeek()` — Neuen 7-Tage-Plan erstellen
 3. `scheduleDaily()` — Nächsten Mitternachts-Alarm registrieren
 4. `WidgetUpdateManager.notifyUpdate(context, DataDomain.TODO)` — Widget aktualisieren
 
@@ -335,7 +362,7 @@ Registrierung erfolgt in `WidgetRefreshApp.onCreate()`. Controller (budgetManage
 
 ## Key Patterns
 
-**trackedItem** is the central entity — Tasks, Goals, and Projects all use this class with `ItemType` enum:
+**TrackedItem** is the central entity — Tasks, Goals, and Projects all use this class with `ItemType` enum:
 - `TASK` — Individual work units with `minDurationValue/maxDurationValue`, `timePerProgressUnit`, `repetition`, `prefTime`, optional `budgetRequirementCents`, optional `fixedDate`/`fixedTime` (feste Termine), optional `mealPlanId` (Meal-Task-Verknüpfung)
 - `GOAL` — Containers for tasks, have `children` list and time budget
 - `PROJECT` — Top-level grouping
@@ -355,7 +382,7 @@ Registrierung erfolgt in `WidgetRefreshApp.onCreate()`. Controller (budgetManage
 | 60–99   | Epic      | Lila `rarity_epic`         |
 | 100+    | Legendary | Gold `rarity_legendary`    |
 
-Rarity-Farben in `colors.xml`, Streak-Wert kommt aus `trackedItem.currentStreak`. Logik in `TaskListData.getStreakRarityColorRes()`.
+Rarity-Farben in `colors.xml`, Streak-Wert kommt aus `TrackedItem.currentStreak`. Logik in `TaskListData.getStreakRarityColorRes()`.
 
 **Repetition Types (RepetitionType enum):**
 - `NONE` — Einmalig, keine Wiederholung. Nach Completion: `isCompleted = true` permanent. Builder: `.noRepetition()`. Kann optionales `deadline`-Feld haben (siehe Deadline-Logik).
@@ -370,94 +397,24 @@ Rarity-Farben in `colors.xml`, Streak-Wert kommt aus `trackedItem.currentStreak`
 - Helper-Methode `isCompleteFirstBlocked(day)` prüft: `completeFirst=true && overdue(day) > 0 && !isCompleted`
 - Nach Completion läuft die normale Perioden-Logik wieder an
 
-**config** (`config.java`) — Hält `Map<DayOfWeek, DaySchedule>` mit Start-/Endzeit pro Wochentag (z.B. Mo 06:00–18:00). Wird von `buildToDo` genutzt um verfügbare Stunden pro Tag zu bestimmen. `DaySchedule` ist eine innere Klasse mit `start`/`end` (`LocalTime`).
+**Config** (`Config.java`) — Hält `Map<DayOfWeek, DaySchedule>` mit Start-/Endzeit pro Wochentag (z.B. Mo 06:00–18:00). Wird von `BuildToDo` genutzt um verfügbare Stunden pro Tag zu bestimmen. `DaySchedule` ist eine innere Klasse mit `start`/`end` (`LocalTime`).
 
 **CalendarEvent** (`CalendarEvent.java`) — Java Record: `record CalendarEvent(String title, LocalTime start, LocalTime end)`. `CalendarReader` liest Device-Kalender via `CalendarContract.Instances`, `CalendarProvider` ist ein Functional Interface für testbare Kalender-Abstraktion.
 
-**Repo Interface** (`Repo.java`) — Abstraktion über SQLrepo, ermöglicht testbare Dependencies:
-```java
-public interface Repo {
-    <T> T lookup(String table, Map<String, String> filters, String column);   // raw value
-    <T> List<T> lookups(String table, Map<String, String> filters, String column); // raw values
-    <T> T fetch(Table<T> table, long id);                                     // entity by ID
-    <T> T fetch(Table<T> table, Map<String, String> filters);                 // entity by filter
-    <T> List<T> fetchAll(Table<T> table);                                     // all entities
-    <T> List<T> fetchAll(Table<T> table, Map<String, String> filters);        // filtered batch fetch
-    void write(Object entity);                                                // INSERT or UPDATE
-}
-```
+**Repo Interface** (`Repo.java`) — Abstraktion über SQLrepo, ermöglicht testbare Dependencies. Zwei Zugriffsarten: `lookup`/`lookups` (String table, raw primitives) vs `fetch`/`fetchAll` (type-safe `Table<T>`, entity objects). `write` auto-detects entity type. Batch-Fetch-Regel: Siehe Critical Rules oben. Table-Referenzen in `Table.java` (z.B. `Table.ITEMS`, `Table.ACCOUNTS`, `Table.RECIPES`).
 
-`lookup`/`lookups` use String table names and return converted primitives. `fetch` uses type-safe `Table<T>` references and returns entity objects. `fetchAll` lädt alle Einträge einer Tabelle oder gefiltert per Map (eliminiert N+1 Query-Pattern). `write` auto-detects entity type.
-
-**Batch-Fetch Pattern:** Statt N+1 Queries (IDs laden → einzeln fetchen) immer `fetchAll(Table, filters)` verwenden:
-```java
-// FALSCH (N+1):
-List<Long> ids = repo.lookups("items", Map.of("is_completed", "0"), "id");
-for (Long id : ids) { repo.fetch(Table.ITEMS, id); }
-
-// RICHTIG (Single Query):
-List<trackedItem> items = repo.fetchAll(Table.ITEMS, Map.of("is_completed", "0"));
-```
-
-**ParseUtils** (`repository/parser/ParseUtils.java`) — Zentrale safe-parsing Utilities für alle Parser:
-```java
-ParseUtils.safeEnum(AccountType.class, value);    // null statt Exception bei ungültigem Enum
-ParseUtils.safeLocalDate(value);                  // null statt Exception bei ungültigem Datum
-ParseUtils.safeLocalTime(value);                  // null statt Exception bei ungültiger Zeit
-ParseUtils.safeLong(value);                       // null statt Exception
-ParseUtils.safeInt(value, defaultValue);          // Fallback bei Fehler
-```
-**WICHTIG:** Bei allen `Enum.valueOf()` Aufrufen in Parsern `ParseUtils.safeEnum()` verwenden um Crashes bei ungültigen DB-Werten zu vermeiden.
-
-**Table-Referenzen:**
-- Task-Management: `Table.ITEMS`, `Table.TODOS`
-- Budget: `Table.ACCOUNTS`, `Table.TRANSACTIONS`, `Table.BUDGET_LIMITS`, `Table.IMPORTS`, `Table.CATEGORIES`
-- Meal Planning: `Table.HOUSEHOLD_MEMBERS`, `Table.COOKING_PREFERENCES`, `Table.RECIPE_RATINGS`, `Table.INGREDIENTS`, `Table.RECIPES`, `Table.MEAL_PLANS`, `Table.MEAL_SCHEDULES`, `Table.SHOPPING_LIST_ITEMS`, `Table.PANTRY_ITEMS`, `Table.CONSUMPTION_LOGS`, `Table.WEEKLY_FOOD_TARGETS`, `Table.STORE_PACKAGES`
+**ParseUtils** (`repository/parser/ParseUtils.java`) — Safe-parsing Utilities: `safeEnum()`, `safeLocalDate()`, `safeLocalTime()`, `safeLong()`, `safeInt()`. Siehe Critical Rules oben.
 
 **TaskListData** (`data/TaskListData.java`) — Shared data transformation für App und Widget:
 - `DisplayRow` sealed interface mit drei Record-Typen: `GoalHeader`, `TaskItem`, `CalendarEvent`
 - `fromEntries(List<TaskEntry>)` transformiert flache TaskEntry-Liste zu DisplayRow-Liste mit eingefügten Goal-Headern
 - `getStreakRarityColorRes(int streak)` gibt Rarity-Farb-Resource-ID zurück
 
-**BudgetDisplayData** (`data/BudgetDisplayData.java`) — Shared data transformation für Budget-UI:
-- `getCategoryLabel(category)` / `getCategoryIcon(category)` — Deutsche Labels und Emojis für TransactionCategory
-- `formatCents(int)` / `formatCentsWithSign(int)` — "1.234,56 EUR" bzw. "+1.234,56 EUR" Format
-- `formatDate(LocalDate)` / `formatDateShort(LocalDate)` — "02.02.2026" bzw. "02.02." Format
-- `formatYearMonth(String)` — "Februar 2026" aus "2026-02"
-- `toYearMonth(LocalDate)` / `toYearMonth(YearMonth)` — Konvertiert zu "2026-02" Format
-- `isIncomeCategory(category)` — Prüft ob Kategorie mit "INCOME_" beginnt
+**BudgetDisplayData** (`data/BudgetDisplayData.java`) — Shared data transformation für Budget-UI: Formatierung (`formatCents` → "1.234,56 EUR", `formatDate`/`formatYearMonth`), Kategorie-Labels/Icons, `toYearMonth()`-Konvertierung, `isIncomeCategory()`-Check.
 
-**TaskEntry** (`todoManager.java`) — Record für die UI-Datenübergabe:
-```java
-public record TaskEntry(
-    Long slotId,            // TimeSlot ID (zum Abhaken)
-    String taskTitle,       // Titel des Tasks
-    String taskDescription, // Beschreibung des Tasks
-    int slotDuration,       // Berechnete Slot-Dauer in Minuten
-    LocalTime start,        // Slot-Startzeit
-    LocalTime end,          // Slot-Endzeit
-    boolean completed,      // Checkbox-State / "heute erledigt" bei Progress
-    String goalTitle,       // Titel des übergeordneten Goals
-    Long goalSlotId,        // Goal-Slot ID (für Goal-Completion-Check)
-    boolean isCalendarEvent,// Kalender-Termin (nicht abhakbar)
-    LocalTime workStart,    // Timer gestartet? (null = nicht gestartet)
-    LocalDate deadline,     // Fälligkeitsdatum (null = keine Deadline)
-    String goalIcon,        // Emoji-Icon des Goals (z.B. "💪")
-    String goalColor,       // Hex-Farbcode des Goals (z.B. "#FFE53935")
-    int currentStreak,      // Aktuelle Streak-Länge des Tasks
-    int remainingDays,      // Verbleibende Tage (Deadline/Periode)
-    int progressCurrent,    // Angezeigter Progress (berechnet je nach progressPerRep-Modus)
-    int progressTarget,     // Ziel-Fortschritt (0 = kein Tracking)
-    String progressUnit     // Einheit (z.B. "Seiten", nullable)
-)
-```
+**TaskEntry** (`TodoManager.java`) — Record für die UI-Datenübergabe. Enthält slotId, taskTitle, start/end, completed, goalTitle/Icon/Color, currentStreak, deadline, progressCurrent/Target/Unit etc. Vollständige Signatur im Source-Code.
 
-**Budget UI Records** (`budgetManager.java`) — Records für die Budget-UI-Datenübergabe:
-- `AccountEntry(accountId, name, icon, color, type, balanceCents, formatted, includeInTotal)`
-- `TransactionEntry(id, accountId, accountName, amountCents, formatted, isIncome, date, dateFormatted, category, categoryLabel, categoryIcon, description, payee, isRecurring)`
-- `BudgetEntry(limitId, category, categoryLabel, categoryIcon, yearMonth, limitCents, spentCents, rolloverCents, remainingCents, percentUsed, isOverBudget, formattedLimit, formattedSpent, formattedRemaining)`
-- `BudgetSummary(totalBalanceCents, monthlyIncomeCents, monthlyExpensesCents, monthlyNetCents, formattedTotal, formattedIncome, formattedExpenses, formattedNet)`
-- `CategoryOption(category, label, icon, isIncome)` — Für Dropdown/Spinner
+**Budget UI Records** (`BudgetManager.java`) — `AccountEntry`, `TransactionEntry`, `BudgetEntry`, `BudgetSummary`, `CategoryOption`. Felder siehe Source-Code.
 
 ## Testing
 
@@ -467,7 +424,7 @@ public record TaskEntry(
 
 ## Scheduling Algorithm
 
-**buildToDo** — Globale Slot-Bewertung über alle 7 Tage gleichzeitig:
+**BuildToDo** — Globale Slot-Bewertung über alle 7 Tage gleichzeitig:
 1. Load/create 7-day plans, sync calendar events
 2. Loop: `getItems()` + `buildChains()` → `tryMatchChain(highest)` globally across all days
 3. Verdrängungslogik: Higher-priority items replace lower-priority ones
@@ -491,7 +448,7 @@ public record TaskEntry(
 - **Atomare Chain-Verdrängung:** `TimeSlot.chainId` trackt Zugehörigkeit (nur bei `delay=0`)
 - Builder-Convenience: `.chainAfter(id)` = delay 0, `.delayAfter(id, minutes)` = verzögert
 
-**Testability:** `buildToDo` nimmt `Repo`-Interface und `CalendarProvider` (Functional Interface) als Dependencies — ermöglicht Unit-Tests ohne Android-Kontext.
+**Testability:** `BuildToDo` nimmt `Repo`-Interface und `CalendarProvider` (Functional Interface) als Dependencies — ermöglicht Unit-Tests ohne Android-Kontext.
 
 **Priority** basiert auf `Priority` enum (CRITICAL: 100000, HIGH: 400, MODERATE: 200, LOW: 100), plus Overdue-Bonus. PrefTime-Matching via logarithmische Score-Funktion in `tryMatchChain()`. FollowUp-Boost via `scoreFollow()` für historische Muster.
 
@@ -512,9 +469,9 @@ else if (work > 0 && time > 0): basePrio × min(2.0, 1.0 + work/time)
 **Perioden-Reset:** ALLE wiederkehrenden Tasks mit Progress-Tracking bekommen `progressCurrent=0` am Perioden-Ende (nicht nur progressPerRep). Alter Wert wird in `progressLastPeriod` gesichert.
 
 **Persistenz-Architektur:** Progress-Änderungen werden NICHT direkt im Item gespeichert, sondern im `TimeSlot.progressDelta`:
-1. User drückt [+] → `todoManager.incrementProgress()` setzt `slot.progressDelta++` und `slot.completed = true`
+1. User drückt [+] → `TodoManager.incrementProgress()` setzt `slot.progressDelta++` und `slot.completed = true`
 2. UI zeigt: Bei `progressPerRep=false`: `item.progressCurrent + slot.progressDelta`. Bei `progressPerRep=true`: nur `slot.progressDelta`
-3. Um Mitternacht: `cleanToDo` → `item.update(..., progressDelta, ...)` wendet Delta auf Item an (für Statistik)
+3. Um Mitternacht: `CleanToDo` → `item.update(..., progressDelta, ...)` wendet Delta auf Item an (für Statistik)
 
 **Progress-UI:** Tasks mit Progress zeigen statt Checkbox einen kompakten Stepper `[-] 3/6 [+]`. Hintergrund wird grün bei Fortschritt ("heute erledigt"), Strikethrough erst bei vollem Progress.
 
@@ -537,7 +494,7 @@ else if (work > 0 && time > 0): basePrio × min(2.0, 1.0 + work/time)
   - `.completeFirst(boolean)` — Erst erledigen vor Reset
 - `getMinDurationMinutes()` / `getMaxDurationMinutes()` — Konvertieren zu Minuten (bei PROGRESS_UNITS: Wert × timePerProgressUnit)
 - `getSlotDuration()` — Clamps estimated auf [min, max], Fallback auf min oder 30 min wenn keine Schätzung
-- Wird von `buildToDo` via `getSlotDuration()` für Slot-Sizing und Scheduling genutzt
+- Wird von `BuildToDo` via `getSlotDuration()` für Slot-Sizing und Scheduling genutzt
 
 Offener Progress (progressCurrent < progressTarget) bewirkt:
 - Prio-Boost über `work()/remainingTime()` — mehr verbleibende Einheiten = höherer Boost, gedeckelt bei 2.0x
@@ -571,7 +528,7 @@ Offener Progress (progressCurrent < progressTarget) bewirkt:
 public record SchedulingConflict(Long itemId, String itemTitle, LocalDate conflictDate, String reason) {}
 // reason: "DAY_BOUNDS" | "CALENDAR_OVERLAP" | "FIXED_OVERLAP"
 ```
-`buildToDo.getConflicts()` liefert alle Konflikte des letzten `planWeek()`-Durchlaufs. `todoManager` leitet diese via `TodoListener.onSchedulingConflicts()` an die UI weiter.
+`BuildToDo.getConflicts()` liefert alle Konflikte des letzten `planWeek()`-Durchlaufs. `TodoManager` leitet diese via `TodoListener.onSchedulingConflicts()` an die UI weiter.
 
 **Skip conditions in getItems():** `item.blockedDays` enthält den Tag, oder (nur Goal → Project) `parent.blockedDays` enthält den Tag, oder (bei Tasks mit `budgetRequirementCents > 0`) das freie Budget ist nicht ausreichend.
 
@@ -580,7 +537,7 @@ public record SchedulingConflict(Long itemId, String itemTitle, LocalDate confli
 - `budgetAccountId` — Spezifisches Konto (null = beliebiges aktives Konto)
 - `budgetCategory` — Kategorie für die Auto-Transaction bei Completion
 
-`buildToDo.getFreeBudgetCents()` berechnet verfügbares Budget:
+`BuildToDo.getFreeBudgetCents()` berechnet verfügbares Budget:
 1. Summe aller aktiven Konten mit `includeInTotal` (oder spezifisches Konto)
 2. Minus: Wiederkehrende Ausgaben der nächsten 7 Tage (`nextDue` im Zeitfenster)
 3. Minus: Bereits im Scheduling-Durchlauf committed (`committedBudgetCents`)
@@ -589,17 +546,17 @@ public record SchedulingConflict(Long itemId, String itemTitle, LocalDate confli
 
 Nach erfolgreicher Platzierung in `assignChain()` wird `committedBudgetCents` erhöht, um Race Conditions zu vermeiden.
 
-**Auto-Transaction bei Completion:** `todoManager.completeSlot()` erstellt automatisch eine Transaction für Budget-Tasks:
+**Auto-Transaction bei Completion:** `TodoManager.completeSlot()` erstellt automatisch eine Transaction für Budget-Tasks:
 - Betrag: `-item.budgetRequirementCents` (Ausgabe)
 - Konto: `item.budgetAccountId` oder erstes aktives mit `includeInTotal`
 - `isConfirmed = false` — User muss in Budget-View bestätigen
 - Konto-Saldo wird sofort aktualisiert
 - **Atomarität:** Alle DB-Writes (Slot, Transaction, Account) werden in einer SQLite-Transaction gewrappt (`db.beginTransaction()` / `setTransactionSuccessful()` / `endTransaction()`)
-- Meal-Completion (`mealManager.completeMeal()`) wird außerhalb der Transaction ausgeführt und mit try-catch geschützt
+- Meal-Completion (`MealManager.completeMeal()`) wird außerhalb der Transaction ausgeführt und mit try-catch geschützt
 
 **Task vs. Goal Slot-Fitting:** Tasks müssen komplett in einen Slot passen (werden übersprungen wenn zu wenig Zeit). Goals dürfen partiell eingeplant werden (slotCoverage reduziert die Prio proportional).
 
-**trackedItem.update()** — Zentraler Entry-Point für Tagesabschluss-Logik. Signatur:
+**TrackedItem.update()** — Zentraler Entry-Point für Tagesabschluss-Logik. Signatur:
 ```java
 void update(Boolean completed, LocalTime workStart, LocalTime workEnd,
             Long previousItemId, Integer progressDelta, LocalDate day, Repo repo)
@@ -611,11 +568,11 @@ void update(Boolean completed, LocalTime workStart, LocalTime workEnd,
 - `followUps`: Wenn `previousItemId != null`, wird `followUps.merge(previousItemId, 1, Integer::sum)` aufgerufen — trackt welche Items direkt vor diesem erledigt wurden.
 
 **FollowUp-System:** Drei Mechanismen für Task-Reihenfolge:
-- **predecessor** (`trackedItem.predecessor`): Harte Constraint "dieser Task soll nach Task X kommen". UI: Spinner im Edit-Modal. **Scheduling:** Items mit `predecessorDelay=0` werden in `buildChains()` zu Ketten gruppiert (Same-Day). Items mit `predecessorDelay>0` warten auf Predecessor-Completion + Delay (Delayed-Chains).
-- **Actual Completion Tracking** (`TimeSlot.previousCompletedItemId`): Trackt die tatsächliche Completion-Reihenfolge (nicht die geplante!). `todoManager` speichert pro Goal-Slot, welcher Task zuletzt erledigt wurde (`lastCompletedByParent`). Bei Completion wird `previousCompletedItemId` im Slot gesetzt. `cleanToDo` liest aus dem Slot statt aus der Iterations-Reihenfolge.
-- **FollowUp Prio-Boost** (`trackedItem.scoreFollow(predecessorId)`): Tasks die historisch oft nach bestimmten anderen Tasks erledigt wurden, bekommen einen Planungs-Boost. Berechnung: Wenn Task A mindestens 5x nach Task B erledigt wurde UND das mindestens 5% aller FollowUps von A ausmacht, bekommt A einen Boost = Anteil (z.B. 60% der Follows von B → 60% Boost auf adjustedPrio). Angewendet in `buildToDo.tryMatchChain()` via `findPrecedingItem()`.
+- **predecessor** (`TrackedItem.predecessor`): Harte Constraint "dieser Task soll nach Task X kommen". UI: Spinner im Edit-Modal. **Scheduling:** Items mit `predecessorDelay=0` werden in `buildChains()` zu Ketten gruppiert (Same-Day). Items mit `predecessorDelay>0` warten auf Predecessor-Completion + Delay (Delayed-Chains).
+- **Actual Completion Tracking** (`TimeSlot.previousCompletedItemId`): Trackt die tatsächliche Completion-Reihenfolge (nicht die geplante!). `TodoManager` speichert pro Goal-Slot, welcher Task zuletzt erledigt wurde (`lastCompletedByParent`). Bei Completion wird `previousCompletedItemId` im Slot gesetzt. `CleanToDo` liest aus dem Slot statt aus der Iterations-Reihenfolge.
+- **FollowUp Prio-Boost** (`TrackedItem.scoreFollow(predecessorId)`): Tasks die historisch oft nach bestimmten anderen Tasks erledigt wurden, bekommen einen Planungs-Boost. Berechnung: Wenn Task A mindestens 5x nach Task B erledigt wurde UND das mindestens 5% aller FollowUps von A ausmacht, bekommt A einen Boost = Anteil (z.B. 60% der Follows von B → 60% Boost auf adjustedPrio). Angewendet in `BuildToDo.tryMatchChain()` via `findPrecedingItem()`.
 
-**blockedDays-Mechanismus:** Jedes Item hat seine **eigenen** blockedDays. `trackedItem.getBlockedDays()` berechnet aus zwei Quellen:
+**blockedDays-Mechanismus:** Jedes Item hat seine **eigenen** blockedDays. `TrackedItem.getBlockedDays()` berechnet aus zwei Quellen:
 1. Cooldown-Fenster VOR und NACH `lastCompletion` und jedem `scheduled`-Datum (±N Tage)
 2. Alle Tage zwischen `lastCompletion` und `calcNextRepetition()` (NICHT für REPS_PER_TIME, NICHT für Items mit offenem Progress, und NICHT für Items mit Deadline, da diese mehrfach pro Periode einplanbar sind)
 
@@ -637,24 +594,24 @@ SQLite mit drei Tabellen-Gruppen:
 - `time_slots` — Nested TimeSlots (todo_id FK, parent_slot_id FK for hierarchy, item_id FK, completed, work_start, work_end, progress_delta, previous_completed_item_id, chain_id)
 
 **Budget-Tracking:**
-- `accounts` — Finanzkonten (Girokonto, Sparkonto, Bargeld, Kreditkarte)
-- `transactions` — Buchungen (Income/Expense, einmalig/recurring in einer Tabelle)
-- `budget_limits` — Monatliche Budgetlimits pro Kategorie (UNIQUE category+year_month)
-- `imports` — Bank-Statement-Uploads via Claude API (file_hash für Duplikat-Check, claude_model/tokens für Tracking, status PENDING→PROCESSING→COMPLETED/FAILED)
-- `categories` — Transaktionskategorien (name, icon, isIncome, sortOrder)
+- `accounts` — Finanzkonten. AccountType enum: CHECKING, SAVINGS, CASH, CREDIT. Felder: name, icon, color, initialBalanceCents, currentBalanceCents, includeInTotal
+- `transactions` — Unified einmalig + recurring. Builder: `new Transaction.Builder(accountId, amountCents, date, categoryId).monthlyOnDay(15).build()`. `calcNextOccurrence(from)` für Fälligkeitsberechnung
+- `budget_limits` — Monatliche Budgetlimits pro Kategorie (UNIQUE category+year_month). Felder: limitCents, spentCents, rolloverCents
+- `imports` — Bank-Statement-Uploads via Claude API (file_hash für Duplikat-Check, status PENDING→PROCESSING→COMPLETED/FAILED)
+- `categories` — User-controlled Transaktionskategorien (name, icon, isIncome). ~20 Built-in via `SeedTestData.java`
 
 **Meal Planning:**
-- `household_members` — Haushaltsmitglieder mit BMR/TDEE-Berechnung (name, birthDate, gender, heightCm, weightKg, activityLevel)
-- `cooking_preferences` — Koch-Präferenzen (maxCookingPerWeek, allowedCookingDays, preferredMealTypes)
+- `household_members` — Gender/ActivityLevel enums. BMR (Mifflin-St Jeor), TDEE, DGE-Skalierung via `getFoodFactor()`
+- `cooking_preferences` — maxCookingPerWeek, allowedCookingDays, preferredMealTypes
 - `recipe_ratings` — Bewertungen pro Mitglied (recipeId, memberId, rating 1-5)
-- `ingredients` — Zutaten mit FoodGroup-Enum und Nährwerten pro 100g (name, foodGroup, unit, gramsPerUnit, calories, protein, carbs, fat, fiber)
-- `recipes` — Rezepte (name, description, prepEffort, mealTypes, servings, ingredients als pipe-separated String)
+- `ingredients` — FoodGroup enum mit DGE-Wochen-Empfehlungen. Nährwerte pro 100g. `isWholeUnit`, `isPerishable`
+- `recipes` — PrepEffort enum (QUICK/MEDIUM/ELABORATE). Ingredients als pipe-separated: `"id|name|amount|unit;..."`. Skalierung: `minServings`/`maxServings`
 - `meal_plans` — Wochenplan-Einträge (date, mealType, recipeId, servings, isCompleted)
-- `meal_schedules` — Mahlzeiten-Kalender 7×4 Grid (day_of_week, meal_type, scheduled_time, is_enabled)
-- `shopping_list_items` — Einkaufslisteneinträge (ingredientId, amount, unit, needed_amount, excess_amount, suggested_store, isPurchased)
-- `pantry_items` — Vorratsartikel (ingredientId, amount, unit, expiryDate, storageLocation)
-- `consumption_logs` — Verbrauchsprotokoll für Nährwert-Tracking (date, memberId, recipeId/ingredientId, calories, protein, carbs, fat)
-- `weekly_food_targets` — Berechneter Wochenbedarf pro FoodGroup (weekKey, grainGrams, vegetableGrams, fruitGrams, ...)
+- `meal_schedules` — Free-form Kalender (beliebig viele pro Tag, kein UNIQUE). `DEFAULT_DURATION_MINUTES = 30`
+- `shopping_list_items` — ingredientId, amount, needed/excess, suggested_store, isPurchased
+- `pantry_items` — StorageLocation enum (PANTRY, FRIDGE, FREEZER). expiryDate, purchaseDate
+- `consumption_logs` — Nährwert-Tracking (date, memberId, recipeId/ingredientId, calories, protein, carbs, fat)
+- `weekly_food_targets` — Berechneter Wochenbedarf pro FoodGroup (weekKey, diverse Gramm-Felder)
 
 **Relations in items:** `parent` (single ID), `children` (comma-separated IDs), `followups` ("id:count" pairs, e.g. "5:3,8:1"), `scheduled` (comma-separated ISO dates), `blocked_days` (comma-separated ISO dates, computed), `required_predecessor` (single ID, optionale Vorgänger-Constraint).
 
@@ -664,62 +621,12 @@ SQLite mit drei Tabellen-Gruppen:
 
 **Budget in items:** `budget_requirement_cents` (INTEGER, 0=kein Budget), `budget_account_id` (INTEGER FK, null=beliebig), `budget_category` (TEXT). Nur für Tasks relevant.
 
-**Meal-Tasks in items:** `meal_plan_id` (INTEGER FK, null=kein Meal-Task). Verknüpft Meal-Tasks mit MealPlan-Einträgen. Bei Completion wird `mealManager.completeMeal()` aufgerufen.
-
-**Budget-Entities:**
-- `Account` — AccountType enum: CHECKING, SAVINGS, CASH, CREDIT. Felder: name, icon, color, initialBalanceCents, currentBalanceCents, includeInTotal
-- `Transaction` — Unified für alle Transaktionstypen:
-  - Typ-Flags: `isIncome`, `isRecurring`
-  - `categoryId` → FK zu `categories` Tabelle (user-controlled, nicht hardcoded)
-  - `RecurringType` enum: MONTHLY_DAY, MONTHLY_LAST, WEEKLY, INTERVAL
-  - `RepUnits` enum: DAY (1), WEEK (7), MONTH (30) — für Intervall-basierte Wiederholungen
-  - Varianz-Tracking: amountMinCents, amountMaxCents, amountAvgCents, occurrenceCount
-  - `parentRecurringId` — Links zu wiederkehrendem Template (für Pattern-Detection)
-  - Utility: `calcNextOccurrence(from)` berechnet nächstes Fälligkeitsdatum, `updateStats(amount)` aktualisiert Varianz-Statistiken
-  - Builder-Pattern: `new Transaction.Builder(accountId, amountCents, date, categoryId).monthlyOnDay(15).build()`
-- `Category` — User-controlled Transaktionskategorien:
-  - Felder: name, icon (Emoji), color (Hex), isIncome, isBuiltIn, sortOrder, isActive
-  - Built-in Kategorien werden via `seedTestData.java` angelegt (~20 Default-Kategorien)
-  - Einnahmen: Gehalt, Bonus, Erstattung, Sonstiges Einkommen
-  - Ausgaben: Miete, Nebenkosten, Lebensmittel, Restaurant, ÖPNV, Auto, Gesundheit, etc.
-  - Claude-Prompt wird dynamisch mit User-Kategorien generiert (`ClaudePrompts.buildSystemPrompt(categories)`)
-- `BudgetLimit` — Pro Kategorie + yearMonth (UNIQUE Constraint). Felder: limitCents, spentCents, rolloverCents
-- `Import` — Kontoauszug-Import via Claude API. Felder: fileHash (SHA256), periodStart/End, Statistiken (total/new/autoCategorized), Claude-Metadata (model, promptTokens, responseTokens, processingTimeMs), Status-Workflow (PENDING→PROCESSING→COMPLETED/FAILED)
-
-**MealType** (`entities/MealType.java`) — **WICHTIG:** Zentraler Enum für Mahlzeit-Typen:
-```java
-public enum MealType {
-    BREAKFAST("Frühstück", "🍳"),
-    LUNCH("Mittagessen", "🍽️"),
-    DINNER("Abendessen", "🍲"),
-    SNACK("Snack", "🍎");
-
-    public final String label;
-    public final String icon;
-}
-```
-**IMMER** `entities.MealType` verwenden — NICHT `Recipe.MealType`, `MealPlan.MealType` oder `MealSchedule.MealType` (diese existieren nicht!). Bei Compile-Fehlern: Import `import entities.MealType;` prüfen.
-
-**Meal-Planning-Entities:**
-- `HouseholdMember` — Gender enum (MALE, FEMALE, OTHER), ActivityLevel enum (SEDENTARY, LIGHT, MODERATE, ACTIVE, VERY_ACTIVE) mit factor und label. Methoden: `calculateBMR()` (Mifflin-St Jeor), `calculateTDEE()`, `getAge()`, `getAgeFactor()`, `getActivityFoodFactor()`, `getFoodFactor()` (für DGE-Skalierung)
-- `CookingPreferences` — Felder: maxCookingPerWeek, allowedCookingDays (Set<DayOfWeek>), preferredMealTypes (Set<MealType>)
-- `RecipeRating` — Bewertung 1-5 Sterne pro Mitglied und Rezept
-- `Ingredient` — FoodGroup enum mit DGE-Wochen-Empfehlungen (GRAIN: 1750g, VEGETABLE: 2800g, FRUIT: 1750g, DAIRY: 1750g, MEAT: 400g, FISH: 140g, EGG: 210g, FAT: 210g, LEGUME: 560g, NUT: 175g, POTATO: 1400g, OTHER: 0g). Nährwerte pro 100g gespeichert. `isWholeUnit` (nur ganze Einheiten kaufbar), `isPerishable` (sollte bis Wochenende verbraucht werden).
-- `Recipe` — PrepEffort enum (QUICK, MEDIUM, ELABORATE). RecipeIngredient record für Zutaten-Referenz. Ingredients als pipe-separated String: "id|name|amount|unit;...". Skalierungsfelder: `minServings`, `maxServings`, `ScalingPrecision` enum (EXACT für Backen, ROUGH für Pfannengerichte, NONE für Eintöpfe).
-- `StorePackage` — Verknüpft Zutaten mit Ladengrößen (ingredientId, storeName, packageSize, unit, priceCents)
-- `MealPlan` — Wochenplan-Einträge mit date, mealType, recipeId, servings, isCompleted
-- `MealSchedule` — Mahlzeiten-Kalender: 7 Tage × 4 Mahlzeiten = 28 Einträge. Felder: dayOfWeek, mealType (→ MealType enum), scheduledTime (LocalTime), isEnabled
-- `ShoppingListItem` — Einkaufslisteneinträge mit `neededAmount` (exakt benötigt), `excessAmount` (Überschuss durch Packungsgrößen), `suggestedStore` (empfohlener Laden), `isPurchased`-Tracking
-- `PantryItem` — StorageLocation enum (PANTRY, FRIDGE, FREEZER). Felder: expiryDate, purchaseDate
-- `ConsumptionLog` — Nährwert-Protokoll: entweder rezeptbasiert (recipeId + servingsConsumed) oder Einzelzutat (ingredientId + amount)
-- `WeeklyFoodTarget` — Pro FoodGroup: Zielmengen (*Grams) und geplante Mengen (*Planned) für Wochenfortschritt
-
-**Beträge in Cents:** Alle Geldbeträge als `int` in Cents gespeichert (z.B. 1250 = 12.50 EUR) um Floating-Point-Probleme zu vermeiden.
+**Meal-Tasks in items:** `meal_plan_id` (INTEGER FK, null=kein Meal-Task). Verknüpft Meal-Tasks mit MealPlan-Einträgen. Bei Completion wird `MealManager.completeMeal()` aufgerufen.
 
 **DB-Strategie (v1.0.0+):** Production-Mode mit Migrations-Support.
 
 **Migration-System:**
-- `DB_VERSION` in `constants.java` (aktuell: **31**)
+- `DB_VERSION` in `Constants.java` (aktuell: **32**)
 - `MigrationManager.java` verwaltet Backups und Migrationen
 - `SQLrepo.onUpgrade()` ruft `MigrationManager.migrate()` auf
 - Backup wird VOR Migration erstellt: `getFilesDir()/backups/backup_vX_timestamp.db`
@@ -740,7 +647,7 @@ idx_items_open    ON items(is_completed, type) WHERE is_completed = 0
 ```
 
 **Bei Schema-Änderungen:**
-1. `DB_VERSION` in `constants.java` hochzählen
+1. `DB_VERSION` in `Constants.java` hochzählen
 2. Neuen `case` in `MigrationManager.runMigration()` hinzufügen:
    ```java
    case 32:
@@ -752,11 +659,11 @@ idx_items_open    ON items(is_completed, type) WHERE is_completed = 0
 
 **Referenzdaten:** `categories`, `ingredients`, `config_schedules` werden bei Migration beibehalten.
 
-**seedTestData.java:** Wird NICHT mehr automatisch aufgerufen — bleibt für Entwicklung/Debugging verfügbar.
+**SeedTestData.java:** Wird NICHT mehr automatisch aufgerufen — bleibt für Entwicklung/Debugging verfügbar.
 
 ## Settings UI
 
-**Overflow-Menü (⋮)** rechts in der Tab-Bar (`activity_main.xml`). Click-Handler in `mainActivity.buildUI()` öffnet `SettingsManager`.
+**Overflow-Menü (⋮)** rechts in der Tab-Bar (`activity_main.xml`). Click-Handler in `MainActivity.buildUI()` öffnet `SettingsManager`.
 
 **SettingsManager** (`controller/SettingsManager.java`) bietet:
 - Backup wiederherstellen (Liste verfügbarer Backups, formatierte Anzeige)
@@ -770,7 +677,29 @@ Bei Datenänderung (Restore/Reset) wird `Activity.recreate()` aufgerufen.
 
 GitHub dient als CDN. `release/version.txt` enthält den aktuellen Integer-versionCode, `release/AutoSecretary.apk` die aktuelle APK. Repository: `ThonkTank/AI-Secretary`.
 
-`updateChecker.java` prüft beim App-Start → fetcht `version.txt` → vergleicht mit lokalem `versionCode` → bei neuer Version: Dialog → Download → FileProvider → System-Installer. Die UI wird erst nach abgeschlossenem Update-Check aufgebaut (Callback-Pattern).
+`UpdateChecker.java` prüft beim App-Start → fetcht `version.txt` → vergleicht mit lokalem `versionCode` → bei neuer Version: Dialog → Download → FileProvider → System-Installer. Die UI wird erst nach abgeschlossenem Update-Check aufgebaut (Callback-Pattern).
+
+## Code Conventions
+
+**Keine Magic Numbers:** Wiederkehrende Werte als Konstanten definieren. Defaults gehören in die Entity-Klasse als Single Source of Truth (z.B. `MealSchedule.DEFAULT_DURATION_MINUTES`), nicht in Parser oder Migrationen duplizieren.
+
+**ViewHelper-Utilities nutzen (nicht duplizieren):**
+- `ViewHelper.showEmptyState(container, message)` — Einheitliche "Keine X vorhanden"-Meldung
+- `ViewHelper.spinnerAdapter(ctx, items)` — Spinner-Adapter erstellen
+- `ViewHelper.setupModalOverlay(overlay, onDismiss)` — Modal-Overlay mit Click-Absorption konfigurieren
+- `ViewHelper.buildWeekHeader(ctx, weekStart, onPrev, onNext)` — Wochen-Navigation
+- `ViewHelper.parseInt(EditText, fallback)` / `parseDouble(EditText, fallback)` — Safe-Parsing aus EditText-Feldern
+- `DateTimeHelper.*` — Datum/Zeit-Operationen (getMonday, getWeekKey, formatTime)
+
+**Sortier-/Filter-Logik zentralisieren:** Wenn dieselbe Sortierung an 2+ Stellen gebraucht wird → statische Methode in der Entity-Klasse (z.B. `MealSchedule.sortByTime(List)`), nicht inline duplizieren.
+
+**XML-Layouts:**
+- Overlay-Farbe: `@color/overlay_dim` — NICHT hardcoded `#80000000`
+- Farben/Dimensionen: Ausschließlich via `@color/*` / `@dimen/*` Ressourcen
+- Buttons: `<TextView>` mit Click-Handler (konsistent mit restlicher App), nicht `<Button>`
+- Accessibility: Alle interaktiven Elemente (Spinner, Buttons, clickable TextViews) brauchen `android:contentDescription`. EditTexts mit `android:hint` brauchen KEIN contentDescription
+
+**Migrationen:** Bei destruktiven Operationen (Records löschen, Spalten droppen) vorher `Log.w()` mit Anzahl betroffener Datensätze.
 
 ## Language
 

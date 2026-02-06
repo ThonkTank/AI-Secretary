@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 import entities.CookingPreferences;
 
-public class cookingPreferencesParser {
+public class CookingPreferencesParser {
 
     // ============== BUILDER (DB → Java) ==============
 

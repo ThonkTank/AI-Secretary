@@ -9,7 +9,7 @@ import java.util.Map;
 
 import entities.PantryItem;
 
-public class pantryParser {
+public class PantryParser {
 
     // ============== BUILDER (DB → Java) ==============
 

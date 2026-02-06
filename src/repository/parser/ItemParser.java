@@ -6,18 +6,18 @@ import android.database.sqlite.SQLiteDatabase;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import entities.trackedItem;
+import entities.TrackedItem;
 
-public class itemParser {
+public class ItemParser {
     // ============== BUILDER (DB → Java) ==============
 
     /**
      * Baut ein trackedItem aus einer DB-Zeile.
      * Inverse von toRow().
      */
-    public static trackedItem fromRow(Map<String, Object> row) {
+    public static TrackedItem fromRow(Map<String, Object> row) {
         Map<String, Object> typed = convertRow(row);
-        trackedItem item = new trackedItem();
+        TrackedItem item = new TrackedItem();
 
         // ID
         item.id = (Long) typed.get("id");
@@ -25,7 +25,7 @@ public class itemParser {
         // Basic
         String typeStr = (String) typed.get("type");
         if (typeStr != null) {
-            item.type = ParseUtils.safeEnum(trackedItem.ItemType.class, typeStr.toUpperCase());
+            item.type = ParseUtils.safeEnum(TrackedItem.ItemType.class, typeStr.toUpperCase());
         }
         item.title = (String) typed.get("title");
         item.description = (String) typed.get("description");
@@ -39,9 +39,9 @@ public class itemParser {
         // Repetition
         String repType = (String) typed.get("repetition_type");
         if (repType != null) {
-            item.repetition = new trackedItem.Repetition();
-            item.repetition.type = ParseUtils.safeEnum(trackedItem.RepetitionType.class, repType);
-            item.repetition.unit = ParseUtils.safeEnum(trackedItem.RepUnits.class, (String) typed.get("repetition_unit"));
+            item.repetition = new TrackedItem.Repetition();
+            item.repetition.type = ParseUtils.safeEnum(TrackedItem.RepetitionType.class, repType);
+            item.repetition.unit = ParseUtils.safeEnum(TrackedItem.RepUnits.class, (String) typed.get("repetition_unit"));
             item.repetition.value = typed.get("repetition_value") instanceof Number n ? n.intValue() : 0;
             String dow = (String) typed.get("day_of_week");
             if (dow != null) {
@@ -53,13 +53,13 @@ public class itemParser {
         // Planung (min/max Duration)
         item.minDurationValue = typed.get("min_duration_value") instanceof Number n ? n.intValue() : 0;
         String minUnit = (String) typed.get("min_duration_unit");
-        if (minUnit != null) item.minDurationUnit = ParseUtils.safeEnum(trackedItem.DurationUnit.class, minUnit);
+        if (minUnit != null) item.minDurationUnit = ParseUtils.safeEnum(TrackedItem.DurationUnit.class, minUnit);
         item.maxDurationValue = typed.get("max_duration_value") instanceof Number n ? n.intValue() : 0;
         String maxUnit = (String) typed.get("max_duration_unit");
-        if (maxUnit != null) item.maxDurationUnit = ParseUtils.safeEnum(trackedItem.DurationUnit.class, maxUnit);
+        if (maxUnit != null) item.maxDurationUnit = ParseUtils.safeEnum(TrackedItem.DurationUnit.class, maxUnit);
         String prioStr = (String) typed.get("priority");
         if (prioStr != null) {
-            item.priority = ParseUtils.safeEnum(trackedItem.Priority.class, prioStr);
+            item.priority = ParseUtils.safeEnum(TrackedItem.Priority.class, prioStr);
         }
         item.prefTime = (java.time.LocalTime) typed.get("pref_time");
         String scheduledStr = (String) typed.get("scheduled");
@@ -206,7 +206,7 @@ public class itemParser {
      * INSERT wenn id == null, UPDATE wenn id vorhanden.
      * Setzt item.id nach INSERT auf die generierte ID.
      */
-    public static void toRow(SQLiteDatabase db, trackedItem item) {
+    public static void toRow(SQLiteDatabase db, TrackedItem item) {
         ContentValues cv = new ContentValues();
 
         // Basic

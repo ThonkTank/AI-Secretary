@@ -11,26 +11,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import data.constants;
-import repository.parser.itemParser;
-import repository.parser.todoParser;
-import repository.parser.accountParser;
-import repository.parser.transactionParser;
-import repository.parser.budgetLimitParser;
-import repository.parser.importParser;
-import repository.parser.categoryParser;
-import repository.parser.householdMemberParser;
-import repository.parser.cookingPreferencesParser;
-import repository.parser.recipeRatingParser;
-import repository.parser.ingredientParser;
-import repository.parser.recipeParser;
-import repository.parser.mealPlanParser;
-import repository.parser.mealScheduleParser;
-import repository.parser.shoppingListParser;
-import repository.parser.pantryParser;
-import repository.parser.consumptionParser;
-import repository.parser.weeklyFoodTargetParser;
-import repository.parser.storePackageParser;
+import data.Constants;
+import entities.MealSchedule;
+import repository.parser.ItemParser;
+import repository.parser.TodoParser;
+import repository.parser.AccountParser;
+import repository.parser.TransactionParser;
+import repository.parser.BudgetLimitParser;
+import repository.parser.ImportParser;
+import repository.parser.CategoryParser;
+import repository.parser.HouseholdMemberParser;
+import repository.parser.CookingPreferencesParser;
+import repository.parser.RecipeRatingParser;
+import repository.parser.IngredientParser;
+import repository.parser.RecipeParser;
+import repository.parser.MealPlanParser;
+import repository.parser.MealScheduleParser;
+import repository.parser.ShoppingListParser;
+import repository.parser.PantryParser;
+import repository.parser.ConsumptionParser;
+import repository.parser.WeeklyFoodTargetParser;
+import repository.parser.StorePackageParser;
 
 /**
  * Basisklasse fuer SQLite-Datenbankzugriff (Android SQLiteOpenHelper).
@@ -75,7 +76,7 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
      * Direkter Aufruf ist noch moeglich fuer Rueckwaertskompatibilitaet.
      */
     public SQLrepo(Context context) {
-        super(context, constants.DB_NAME, null, constants.DB_VERSION);
+        super(context, Constants.DB_NAME, null, Constants.DB_VERSION);
         this.context = context;
     }
 
@@ -422,8 +423,7 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             + "day_of_week TEXT NOT NULL,"
             + "meal_type TEXT NOT NULL,"
             + "scheduled_time TEXT,"
-            + "is_enabled INTEGER DEFAULT 1,"
-            + "UNIQUE(day_of_week, meal_type)"
+            + "duration_minutes INTEGER DEFAULT " + MealSchedule.DEFAULT_DURATION_MINUTES
             + ")"
         );
 
@@ -647,27 +647,27 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
     private Object convertValue(String table, String column, Object raw) {
         if (raw == null) return null;
         switch (table) {
-            case "items": return itemParser.convertValue(column, raw);
+            case "items": return ItemParser.convertValue(column, raw);
             case "todos":
-            case "config_schedules": return todoParser.convertValue(column, raw);
-            case "accounts": return accountParser.convertValue(column, raw);
-            case "transactions": return transactionParser.convertValue(column, raw);
-            case "budget_limits": return budgetLimitParser.convertValue(column, raw);
-            case "imports": return importParser.convertValue(column, raw);
-            case "categories": return categoryParser.convertValue(column, raw);
+            case "config_schedules": return TodoParser.convertValue(column, raw);
+            case "accounts": return AccountParser.convertValue(column, raw);
+            case "transactions": return TransactionParser.convertValue(column, raw);
+            case "budget_limits": return BudgetLimitParser.convertValue(column, raw);
+            case "imports": return ImportParser.convertValue(column, raw);
+            case "categories": return CategoryParser.convertValue(column, raw);
             // Meal-Planning
-            case "household_members": return householdMemberParser.convertValue(column, raw);
-            case "cooking_preferences": return cookingPreferencesParser.convertValue(column, raw);
-            case "recipe_ratings": return recipeRatingParser.convertValue(column, raw);
-            case "ingredients": return ingredientParser.convertValue(column, raw);
-            case "recipes": return recipeParser.convertValue(column, raw);
-            case "meal_plans": return mealPlanParser.convertValue(column, raw);
-            case "meal_schedules": return mealScheduleParser.convertValue(column, raw);
-            case "shopping_list_items": return shoppingListParser.convertValue(column, raw);
-            case "pantry_items": return pantryParser.convertValue(column, raw);
-            case "consumption_logs": return consumptionParser.convertValue(column, raw);
-            case "weekly_food_targets": return weeklyFoodTargetParser.convertValue(column, raw);
-            case "store_packages": return storePackageParser.convertValue(column, raw);
+            case "household_members": return HouseholdMemberParser.convertValue(column, raw);
+            case "cooking_preferences": return CookingPreferencesParser.convertValue(column, raw);
+            case "recipe_ratings": return RecipeRatingParser.convertValue(column, raw);
+            case "ingredients": return IngredientParser.convertValue(column, raw);
+            case "recipes": return RecipeParser.convertValue(column, raw);
+            case "meal_plans": return MealPlanParser.convertValue(column, raw);
+            case "meal_schedules": return MealScheduleParser.convertValue(column, raw);
+            case "shopping_list_items": return ShoppingListParser.convertValue(column, raw);
+            case "pantry_items": return PantryParser.convertValue(column, raw);
+            case "consumption_logs": return ConsumptionParser.convertValue(column, raw);
+            case "weekly_food_targets": return WeeklyFoodTargetParser.convertValue(column, raw);
+            case "store_packages": return StorePackageParser.convertValue(column, raw);
             default: return raw;
         }
     }
@@ -695,26 +695,26 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             Map<String, Object> row = cursorToMap(cursor);
 
             switch (tableName) {
-                case "items": return (T) itemParser.fromRow(itemParser.convertRow(row));
-                case "todos": return (T) todoParser.fromRow(todoParser.convertRow(row), db);
-                case "accounts": return (T) accountParser.fromRow(accountParser.convertRow(row));
-                case "transactions": return (T) transactionParser.fromRow(transactionParser.convertRow(row));
-                case "budget_limits": return (T) budgetLimitParser.fromRow(budgetLimitParser.convertRow(row));
-                case "imports": return (T) importParser.fromRow(importParser.convertRow(row));
-                case "categories": return (T) categoryParser.fromRow(categoryParser.convertRow(row));
+                case "items": return (T) ItemParser.fromRow(ItemParser.convertRow(row));
+                case "todos": return (T) TodoParser.fromRow(TodoParser.convertRow(row), db);
+                case "accounts": return (T) AccountParser.fromRow(AccountParser.convertRow(row));
+                case "transactions": return (T) TransactionParser.fromRow(TransactionParser.convertRow(row));
+                case "budget_limits": return (T) BudgetLimitParser.fromRow(BudgetLimitParser.convertRow(row));
+                case "imports": return (T) ImportParser.fromRow(ImportParser.convertRow(row));
+                case "categories": return (T) CategoryParser.fromRow(CategoryParser.convertRow(row));
                 // Meal-Planning
-                case "household_members": return (T) householdMemberParser.fromRow(householdMemberParser.convertRow(row));
-                case "cooking_preferences": return (T) cookingPreferencesParser.fromRow(cookingPreferencesParser.convertRow(row));
-                case "recipe_ratings": return (T) recipeRatingParser.fromRow(recipeRatingParser.convertRow(row));
-                case "ingredients": return (T) ingredientParser.fromRow(ingredientParser.convertRow(row));
-                case "recipes": return (T) recipeParser.fromRow(recipeParser.convertRow(row));
-                case "meal_plans": return (T) mealPlanParser.fromRow(mealPlanParser.convertRow(row));
-                case "meal_schedules": return (T) mealScheduleParser.fromRow(mealScheduleParser.convertRow(row));
-                case "shopping_list_items": return (T) shoppingListParser.fromRow(shoppingListParser.convertRow(row));
-                case "pantry_items": return (T) pantryParser.fromRow(pantryParser.convertRow(row));
-                case "consumption_logs": return (T) consumptionParser.fromRow(consumptionParser.convertRow(row));
-                case "weekly_food_targets": return (T) weeklyFoodTargetParser.fromRow(weeklyFoodTargetParser.convertRow(row));
-                case "store_packages": return (T) storePackageParser.fromRow(storePackageParser.convertRow(row));
+                case "household_members": return (T) HouseholdMemberParser.fromRow(HouseholdMemberParser.convertRow(row));
+                case "cooking_preferences": return (T) CookingPreferencesParser.fromRow(CookingPreferencesParser.convertRow(row));
+                case "recipe_ratings": return (T) RecipeRatingParser.fromRow(RecipeRatingParser.convertRow(row));
+                case "ingredients": return (T) IngredientParser.fromRow(IngredientParser.convertRow(row));
+                case "recipes": return (T) RecipeParser.fromRow(RecipeParser.convertRow(row));
+                case "meal_plans": return (T) MealPlanParser.fromRow(MealPlanParser.convertRow(row));
+                case "meal_schedules": return (T) MealScheduleParser.fromRow(MealScheduleParser.convertRow(row));
+                case "shopping_list_items": return (T) ShoppingListParser.fromRow(ShoppingListParser.convertRow(row));
+                case "pantry_items": return (T) PantryParser.fromRow(PantryParser.convertRow(row));
+                case "consumption_logs": return (T) ConsumptionParser.fromRow(ConsumptionParser.convertRow(row));
+                case "weekly_food_targets": return (T) WeeklyFoodTargetParser.fromRow(WeeklyFoodTargetParser.convertRow(row));
+                case "store_packages": return (T) StorePackageParser.fromRow(StorePackageParser.convertRow(row));
                 default: throw new IllegalArgumentException("Unbekannte Tabelle: " + tableName);
             }
         } finally {
@@ -800,26 +800,26 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
      */
     private Object parseEntity(String tableName, Map<String, Object> row, SQLiteDatabase db) {
         switch (tableName) {
-            case "items": return itemParser.fromRow(itemParser.convertRow(row));
-            case "todos": return todoParser.fromRow(todoParser.convertRow(row), db);
-            case "accounts": return accountParser.fromRow(accountParser.convertRow(row));
-            case "transactions": return transactionParser.fromRow(transactionParser.convertRow(row));
-            case "budget_limits": return budgetLimitParser.fromRow(budgetLimitParser.convertRow(row));
-            case "imports": return importParser.fromRow(importParser.convertRow(row));
-            case "categories": return categoryParser.fromRow(categoryParser.convertRow(row));
+            case "items": return ItemParser.fromRow(ItemParser.convertRow(row));
+            case "todos": return TodoParser.fromRow(TodoParser.convertRow(row), db);
+            case "accounts": return AccountParser.fromRow(AccountParser.convertRow(row));
+            case "transactions": return TransactionParser.fromRow(TransactionParser.convertRow(row));
+            case "budget_limits": return BudgetLimitParser.fromRow(BudgetLimitParser.convertRow(row));
+            case "imports": return ImportParser.fromRow(ImportParser.convertRow(row));
+            case "categories": return CategoryParser.fromRow(CategoryParser.convertRow(row));
             // Meal-Planning
-            case "household_members": return householdMemberParser.fromRow(householdMemberParser.convertRow(row));
-            case "cooking_preferences": return cookingPreferencesParser.fromRow(cookingPreferencesParser.convertRow(row));
-            case "recipe_ratings": return recipeRatingParser.fromRow(recipeRatingParser.convertRow(row));
-            case "ingredients": return ingredientParser.fromRow(ingredientParser.convertRow(row));
-            case "recipes": return recipeParser.fromRow(recipeParser.convertRow(row));
-            case "meal_plans": return mealPlanParser.fromRow(mealPlanParser.convertRow(row));
-            case "meal_schedules": return mealScheduleParser.fromRow(mealScheduleParser.convertRow(row));
-            case "shopping_list_items": return shoppingListParser.fromRow(shoppingListParser.convertRow(row));
-            case "pantry_items": return pantryParser.fromRow(pantryParser.convertRow(row));
-            case "consumption_logs": return consumptionParser.fromRow(consumptionParser.convertRow(row));
-            case "weekly_food_targets": return weeklyFoodTargetParser.fromRow(weeklyFoodTargetParser.convertRow(row));
-            case "store_packages": return storePackageParser.fromRow(storePackageParser.convertRow(row));
+            case "household_members": return HouseholdMemberParser.fromRow(HouseholdMemberParser.convertRow(row));
+            case "cooking_preferences": return CookingPreferencesParser.fromRow(CookingPreferencesParser.convertRow(row));
+            case "recipe_ratings": return RecipeRatingParser.fromRow(RecipeRatingParser.convertRow(row));
+            case "ingredients": return IngredientParser.fromRow(IngredientParser.convertRow(row));
+            case "recipes": return RecipeParser.fromRow(RecipeParser.convertRow(row));
+            case "meal_plans": return MealPlanParser.fromRow(MealPlanParser.convertRow(row));
+            case "meal_schedules": return MealScheduleParser.fromRow(MealScheduleParser.convertRow(row));
+            case "shopping_list_items": return ShoppingListParser.fromRow(ShoppingListParser.convertRow(row));
+            case "pantry_items": return PantryParser.fromRow(PantryParser.convertRow(row));
+            case "consumption_logs": return ConsumptionParser.fromRow(ConsumptionParser.convertRow(row));
+            case "weekly_food_targets": return WeeklyFoodTargetParser.fromRow(WeeklyFoodTargetParser.convertRow(row));
+            case "store_packages": return StorePackageParser.fromRow(StorePackageParser.convertRow(row));
             default: throw new IllegalArgumentException("Unbekannte Tabelle: " + tableName);
         }
     }
@@ -853,45 +853,45 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
      */
     public void write(Object entity) {
         SQLiteDatabase db = getWritableDatabase();
-        if (entity instanceof entities.trackedItem) {
-            itemParser.toRow(db, (entities.trackedItem) entity);
-        } else if (entity instanceof entities.todoList) {
-            todoParser.toRow(db, (entities.todoList) entity);
+        if (entity instanceof entities.TrackedItem) {
+            ItemParser.toRow(db, (entities.TrackedItem) entity);
+        } else if (entity instanceof entities.TodoList) {
+            TodoParser.toRow(db, (entities.TodoList) entity);
         } else if (entity instanceof entities.Account) {
-            accountParser.toRow(db, (entities.Account) entity);
+            AccountParser.toRow(db, (entities.Account) entity);
         } else if (entity instanceof entities.Transaction) {
-            transactionParser.toRow(db, (entities.Transaction) entity);
+            TransactionParser.toRow(db, (entities.Transaction) entity);
         } else if (entity instanceof entities.BudgetLimit) {
-            budgetLimitParser.toRow(db, (entities.BudgetLimit) entity);
+            BudgetLimitParser.toRow(db, (entities.BudgetLimit) entity);
         } else if (entity instanceof entities.Import) {
-            importParser.toRow(db, (entities.Import) entity);
+            ImportParser.toRow(db, (entities.Import) entity);
         } else if (entity instanceof entities.Category) {
-            categoryParser.toRow(db, (entities.Category) entity);
+            CategoryParser.toRow(db, (entities.Category) entity);
         // Meal-Planning
         } else if (entity instanceof entities.HouseholdMember) {
-            householdMemberParser.toRow(db, (entities.HouseholdMember) entity);
+            HouseholdMemberParser.toRow(db, (entities.HouseholdMember) entity);
         } else if (entity instanceof entities.CookingPreferences) {
-            cookingPreferencesParser.toRow(db, (entities.CookingPreferences) entity);
+            CookingPreferencesParser.toRow(db, (entities.CookingPreferences) entity);
         } else if (entity instanceof entities.RecipeRating) {
-            recipeRatingParser.toRow(db, (entities.RecipeRating) entity);
+            RecipeRatingParser.toRow(db, (entities.RecipeRating) entity);
         } else if (entity instanceof entities.Ingredient) {
-            ingredientParser.toRow(db, (entities.Ingredient) entity);
+            IngredientParser.toRow(db, (entities.Ingredient) entity);
         } else if (entity instanceof entities.Recipe) {
-            recipeParser.toRow(db, (entities.Recipe) entity);
+            RecipeParser.toRow(db, (entities.Recipe) entity);
         } else if (entity instanceof entities.MealPlan) {
-            mealPlanParser.toRow(db, (entities.MealPlan) entity);
+            MealPlanParser.toRow(db, (entities.MealPlan) entity);
         } else if (entity instanceof entities.MealSchedule) {
-            mealScheduleParser.toRow(db, (entities.MealSchedule) entity);
+            MealScheduleParser.toRow(db, (entities.MealSchedule) entity);
         } else if (entity instanceof entities.ShoppingListItem) {
-            shoppingListParser.toRow(db, (entities.ShoppingListItem) entity);
+            ShoppingListParser.toRow(db, (entities.ShoppingListItem) entity);
         } else if (entity instanceof entities.PantryItem) {
-            pantryParser.toRow(db, (entities.PantryItem) entity);
+            PantryParser.toRow(db, (entities.PantryItem) entity);
         } else if (entity instanceof entities.ConsumptionLog) {
-            consumptionParser.toRow(db, (entities.ConsumptionLog) entity);
+            ConsumptionParser.toRow(db, (entities.ConsumptionLog) entity);
         } else if (entity instanceof entities.WeeklyFoodTarget) {
-            weeklyFoodTargetParser.toRow(db, (entities.WeeklyFoodTarget) entity);
+            WeeklyFoodTargetParser.toRow(db, (entities.WeeklyFoodTarget) entity);
         } else if (entity instanceof entities.StorePackage) {
-            storePackageParser.toRow(db, (entities.StorePackage) entity);
+            StorePackageParser.toRow(db, (entities.StorePackage) entity);
         } else {
             throw new IllegalArgumentException("Unbekannter Entity-Typ: " + entity.getClass().getName());
         }

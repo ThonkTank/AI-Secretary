@@ -46,7 +46,7 @@ package activities.widget;
  *        PendingIntent pendingTemplate = PendingIntent.getBroadcast(...)
  *        rv.setPendingIntentTemplate(R.id.widget_list, pendingTemplate)
  *     4. Header-Klick → App öffnen:
- *        Intent appIntent = new Intent(ctx, mainActivity.class)
+ *        Intent appIntent = new Intent(ctx, MainActivity.class)
  *        PendingIntent appPending = PendingIntent.getActivity(..., FLAG_IMMUTABLE)
  *        rv.setOnClickPendingIntent(R.id.widget_header, appPending)
  *     5. Refresh-Button → ACTION_REFRESH:
@@ -66,7 +66,7 @@ package activities.widget;
  *      ACTION_TOGGLE:
  *        Long slotId = intent.getLongExtra("slot_id", -1)
  *        boolean wasCompleted = intent.getBooleanExtra("was_completed", false)
- *        todoManager manager = new todoManager(context)
+ *        TodoManager manager = new TodoManager(context)
  *        manager.provideList()  // WICHTIG: Initialisiert Manager!
  *        if (wasCompleted) manager.uncompleteSlot(slotId)
  *        else manager.completeSlot(slotId)
@@ -75,7 +75,7 @@ package activities.widget;
  *      ACTION_TIMER:
  *        Long slotId = intent.getLongExtra("slot_id", -1)
  *        boolean timerRunning = intent.getBooleanExtra("timer_running", false)
- *        todoManager manager = new todoManager(context)
+ *        TodoManager manager = new TodoManager(context)
  *        manager.provideList()
  *        if (timerRunning) manager.stopTimer(slotId)
  *        else manager.startTimer(slotId)
@@ -119,8 +119,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-import activities.inApp.mainActivity;
-import controller.todoManager;
+import activities.inApp.MainActivity;
+import controller.TodoManager;
 
 public class TaskWidgetProvider extends AppWidgetProvider {
 
@@ -209,7 +209,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             }
 
             // 5. Datum-Klick → App öffnen
-            Intent appIntent = new Intent(context, mainActivity.class);
+            Intent appIntent = new Intent(context, MainActivity.class);
             appIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent appPending = PendingIntent.getActivity(
                 context, 0, appIntent,
@@ -244,8 +244,8 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             );
             rv.setOnClickPendingIntent(R.id.widget_refresh, refreshPending);
 
-            // 9. Add-Button → mainActivity mit CREATE_ITEM Action starten
-            Intent addIntent = new Intent(context, mainActivity.class);
+            // 9. Add-Button → MainActivity mit CREATE_ITEM Action starten
+            Intent addIntent = new Intent(context, MainActivity.class);
             addIntent.setAction(ACTION_CREATE_ITEM);
             addIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent addPending = PendingIntent.getActivity(
@@ -274,7 +274,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             boolean wasCompleted = intent.getBooleanExtra("was_completed", false);
 
             if (slotId != -1) {
-                todoManager manager = new todoManager(context);
+                TodoManager manager = new TodoManager(context);
                 manager.provideList(); // Initialisiert Manager
 
                 if (wasCompleted) {
@@ -300,7 +300,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             boolean timerRunning = intent.getBooleanExtra("timer_running", false);
 
             if (slotId != -1) {
-                todoManager manager = new todoManager(context);
+                TodoManager manager = new TodoManager(context);
                 manager.provideList();
 
                 if (timerRunning) {
@@ -317,7 +317,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             boolean alreadyDoneToday = intent.getBooleanExtra("already_done_today", false);
 
             if (slotId != -1) {
-                todoManager manager = new todoManager(context);
+                TodoManager manager = new TodoManager(context);
                 manager.provideList();
                 manager.incrementProgress(slotId);
 
@@ -339,7 +339,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             long slotId = intent.getLongExtra("slot_id", -1);
 
             if (slotId != -1) {
-                todoManager manager = new todoManager(context);
+                TodoManager manager = new TodoManager(context);
                 manager.provideList();
                 manager.decrementProgress(slotId);
                 notifyWidgetUpdate(context);

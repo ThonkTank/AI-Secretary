@@ -26,7 +26,7 @@
                 android:id="@+id/modal_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Kontoauszug importieren"
+                android:text="@string/title_import_statement"
                 android:textSize="@dimen/sp_heading"
                 android:textStyle="bold"
                 android:textColor="@color/text_primary"
@@ -36,7 +36,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Lade einen Kontoauszug (PDF) hoch. Claude analysiert die Datei und erstellt automatisch Transaktionen."
+                android:text="@string/desc_import_info"
                 android:textSize="@dimen/sp_caption"
                 android:textColor="@color/text_secondary"
                 android:layout_marginBottom="@dimen/padding_medium" />
@@ -45,7 +45,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Ziel-Konto"
+                android:text="@string/label_ziel_konto"
                 android:textSize="@dimen/sp_caption"
                 android:textColor="@color/text_secondary"
                 android:layout_marginBottom="4dp" />
@@ -56,13 +56,14 @@
                 android:layout_height="48dp"
                 android:background="@color/surface"
                 android:padding="@dimen/padding_small"
-                android:layout_marginBottom="@dimen/padding_medium" />
+                android:layout_marginBottom="@dimen/padding_medium"
+                android:contentDescription="@string/cd_spinner_account" />
 
             <!-- Datei auswaehlen -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Kontoauszug"
+                android:text="@string/label_kontoauszug"
                 android:textSize="@dimen/sp_caption"
                 android:textColor="@color/text_secondary"
                 android:layout_marginBottom="4dp" />
@@ -79,7 +80,7 @@
                     android:layout_height="48dp"
                     android:paddingStart="@dimen/padding_medium"
                     android:paddingEnd="@dimen/padding_medium"
-                    android:text="Datei waehlen..."
+                    android:text="@string/btn_select_file"
                     android:textColor="@color/white"
                     android:background="@color/accent"
                     android:gravity="center" />
@@ -89,7 +90,7 @@
                     android:layout_width="0dp"
                     android:layout_height="48dp"
                     android:layout_weight="1"
-                    android:text="Keine Datei ausgewaehlt"
+                    android:text="@string/desc_no_file"
                     android:textSize="@dimen/sp_caption"
                     android:textColor="@color/text_secondary"
                     android:gravity="center_vertical"
@@ -102,7 +103,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Claude API Key"
+                android:text="@string/label_api_key"
                 android:textSize="@dimen/sp_caption"
                 android:textColor="@color/text_secondary"
                 android:layout_marginBottom="4dp" />
@@ -119,7 +120,7 @@
                     android:layout_width="0dp"
                     android:layout_height="48dp"
                     android:layout_weight="1"
-                    android:hint="sk-ant-..."
+                    android:hint="@string/hint_api_key"
                     android:inputType="textPassword"
                     android:textSize="@dimen/sp_body"
                     android:background="@color/surface"
@@ -133,14 +134,15 @@
                     android:textSize="@dimen/sp_body"
                     android:background="@color/surface"
                     android:gravity="center"
-                    android:layout_marginStart="4dp" />
+                    android:layout_marginStart="4dp"
+                    android:contentDescription="@string/cd_toggle_api_key" />
             </LinearLayout>
 
             <CheckBox
                 android:id="@+id/checkbox_save_key"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="API-Key speichern"
+                android:text="@string/btn_save_api_key"
                 android:textSize="@dimen/sp_caption"
                 android:textColor="@color/text_secondary"
                 android:layout_marginBottom="@dimen/padding_medium" />
@@ -165,7 +167,7 @@
                     android:id="@+id/progress_text"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Verarbeite..."
+                    android:text="@string/desc_processing"
                     android:textSize="@dimen/sp_caption"
                     android:textColor="@color/text_secondary"
                     android:gravity="center"
@@ -187,7 +189,7 @@
                     android:id="@+id/result_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Import abgeschlossen"
+                    android:text="@string/desc_import_complete"
                     android:textSize="@dimen/sp_body"
                     android:textStyle="bold"
                     android:textColor="@color/budget_positive" />
@@ -227,7 +229,7 @@
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:text="Abbrechen"
+            android:text="@string/btn_cancel"
             android:textColor="@color/text_secondary"
             android:background="@color/button_inactive"
             android:gravity="center"
@@ -238,7 +240,7 @@
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:text="Importieren"
+            android:text="@string/btn_import"
             android:textColor="@color/white"
             android:background="@color/accent"
             android:gravity="center"

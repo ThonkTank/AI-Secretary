@@ -9,7 +9,7 @@ import java.util.Map;
 
 import entities.RecipeRating;
 
-public class recipeRatingParser {
+public class RecipeRatingParser {
 
     // ============== BUILDER (DB → Java) ==============
 

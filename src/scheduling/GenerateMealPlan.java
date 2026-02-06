@@ -1,5 +1,7 @@
 package scheduling;
 
+import static activities.generic.DateTimeHelper.getWeekKey;
+
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -11,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import controller.mealManager;
+import controller.MealManager;
 import entities.CalendarEvent;
 import entities.CookingPreferences;
 import entities.HouseholdMember;
@@ -23,7 +25,7 @@ import entities.PantryItem;
 import entities.Recipe;
 import entities.RecipeRating;
 import entities.WeeklyFoodTarget;
-import entities.trackedItem;
+import entities.TrackedItem;
 import repository.Repo;
 import repository.Table;
 
@@ -37,7 +39,7 @@ import repository.Table;
  * 4. scoreRecipe() + selectBestRecipe() - Rezeptauswahl nach 7 Kriterien
  * 5. generateWeekPlan() - Hauptfunktion mit Task-Erstellung
  */
-public class generateMealPlan {
+public class GenerateMealPlan {
 
     /** Functional Interface für Kalender-Zugriff (analog zu buildToDo). */
     @FunctionalInterface
@@ -46,13 +48,13 @@ public class generateMealPlan {
     }
 
     private final Repo repo;
-    private final mealManager mealMgr;
+    private final MealManager mealMgr;
     private final CalendarProvider calendar;
 
     // Cache für Ingredient-Lookups
     private Map<Long, Ingredient> ingredientCache;
 
-    public generateMealPlan(Repo repo, mealManager mealMgr, CalendarProvider calendar) {
+    public GenerateMealPlan(Repo repo, MealManager mealMgr, CalendarProvider calendar) {
         this.repo = repo;
         this.mealMgr = mealMgr;
         this.calendar = calendar;
@@ -480,21 +482,24 @@ public class generateMealPlan {
      */
     private void createMealTasks(List<MealPlan> meals) {
         for (MealPlan meal : meals) {
-            MealSchedule schedule = getMealSchedule(meal.date.getDayOfWeek(), meal.mealType);
-            if (schedule == null || !schedule.isEnabled) continue;
+            List<MealSchedule> slots = getMealSchedules(meal.date.getDayOfWeek(), meal.mealType);
+            if (slots.isEmpty()) continue;
+
+            // Ersten verfuegbaren Slot nutzen
+            MealSchedule schedule = slots.get(0);
 
             String icon = getMealIcon(meal.mealType);
             String title = icon + " " + meal.recipeTitle;
 
             // Task mit fixedAppointment erstellen
-            trackedItem task = new trackedItem.Builder(
-                    trackedItem.ItemType.TASK,
+            TrackedItem task = new TrackedItem.Builder(
+                    TrackedItem.ItemType.TASK,
                     title,
-                    trackedItem.Priority.CRITICAL)
+                    TrackedItem.Priority.CRITICAL)
                 .noRepetition()
                 .fixedAppointment(meal.date.toString(),
                                   schedule.scheduledTime.toString())
-                .maxMinutes(30)  // Standard-Essenszeit
+                .maxMinutes(schedule.durationMinutes)
                 .mealPlan(meal.id)
                 .build();
 
@@ -541,13 +546,16 @@ public class generateMealPlan {
         return repo.fetchAll(Table.PANTRY_ITEMS);
     }
 
-    private MealSchedule getMealSchedule(DayOfWeek day, MealType mealType) {
-        // MealSchedule für Tag + MealType finden
-        Map<String, String> filter = Map.of(
-            "day_of_week", day.name(),
-            "meal_type", mealType.name()
-        );
-        return repo.fetch(Table.MEAL_SCHEDULES, filter);
+    private List<MealSchedule> getMealSchedules(DayOfWeek day, MealType mealType) {
+        List<MealSchedule> result = new ArrayList<>();
+        List<MealSchedule> all = repo.fetchAll(Table.MEAL_SCHEDULES);
+        for (MealSchedule ms : all) {
+            if (ms.dayOfWeek == day && ms.mealType == mealType) {
+                result.add(ms);
+            }
+        }
+        MealSchedule.sortByTime(result);
+        return result;
     }
 
     private Map<LocalDate, List<CalendarEvent>> loadCalendarEvents(LocalDate weekStart) {
@@ -630,10 +638,6 @@ public class generateMealPlan {
         if (recipe.ingredients == null) return false;
         return recipe.ingredients.stream()
             .anyMatch(ing -> ingredientId.equals(ing.ingredientId()));
-    }
-
-    private String getWeekKey(LocalDate weekStart) {
-        return weekStart.toString(); // ISO format: 2026-02-03
     }
 
     // ============== TARGET/NEED HELPERS ==============

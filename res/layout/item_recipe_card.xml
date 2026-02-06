@@ -36,7 +36,7 @@
                 android:layout_height="20dp"
                 android:layout_marginStart="@dimen/margin_small"
                 android:src="@android:drawable/btn_star_big_off"
-                android:contentDescription="Favorit" />
+                android:contentDescription="@string/cd_favorite" />
 
         </LinearLayout>
 

@@ -10,7 +10,7 @@ import java.util.Map;
 
 import entities.Import;
 
-public class importParser {
+public class ImportParser {
 
     // ============== BUILDER (DB → Java) ==============
 

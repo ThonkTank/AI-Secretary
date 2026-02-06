@@ -10,9 +10,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import entities.todoList;
-import entities.todoList.TimeSlot;
-import entities.trackedItem;
+import entities.TodoList;
+import entities.TodoList.TimeSlot;
+import entities.TrackedItem;
 import repository.SQLrepo;
 import repository.Table;
 
@@ -24,7 +24,7 @@ import repository.Table;
  * 2. ALLE übrigen Items refreshen → item.update(null,...) für "immer"-Updates
  * 3. Alte todoLists aus DB entfernen
  */
-public class cleanToDo {
+public class CleanToDo {
 
     /**
      * Gestrige Liste auswerten, alle Items refreshen, vergangene Listen entfernen.
@@ -35,7 +35,7 @@ public class cleanToDo {
 
         // 1. Gestrige Slots auswerten (update mit Slot-Daten)
         Set<Long> updatedItemIds = new HashSet<>();
-        todoList liste = repo.fetch(Table.TODOS, Map.of("date", gestern.toString()));
+        TodoList liste = repo.fetch(Table.TODOS, Map.of("date", gestern.toString()));
         if (liste != null && liste.timeSlots != null) {
             processSlots(liste.timeSlots, gestern, repo, updatedItemIds);
         }
@@ -85,7 +85,7 @@ public class cleanToDo {
         LocalDate today = LocalDate.now();
         for (Long id : allIds) {
             if (alreadyUpdated.contains(id)) continue;
-            trackedItem item = repo.fetch(Table.ITEMS, id);
+            TrackedItem item = repo.fetch(Table.ITEMS, id);
             if (item == null) continue;
             item.update(null, null, null, null, null, today, repo);
         }
@@ -93,7 +93,7 @@ public class cleanToDo {
 
     /**
      * Rekursiv alle Slots durchgehen und trackedItem.update() aufrufen.
-     * previousCompletedItemId kommt jetzt aus dem Slot selbst (von todoManager gesetzt),
+     * previousCompletedItemId kommt jetzt aus dem Slot selbst (von TodoManager gesetzt),
      * nicht mehr aus der Iterations-Reihenfolge.
      */
     private static void processSlots(List<TimeSlot> slots, LocalDate day,
@@ -101,7 +101,7 @@ public class cleanToDo {
         for (TimeSlot slot : slots) {
             // Item updaten wenn vorhanden
             if (slot.item != null) {
-                trackedItem item = repo.fetch(Table.ITEMS, slot.item);
+                TrackedItem item = repo.fetch(Table.ITEMS, slot.item);
                 if (item != null) {
                     boolean completed = slot.completed != null && slot.completed;
                     // previousItemId aus Slot lesen (tatsächliche Completion-Reihenfolge)

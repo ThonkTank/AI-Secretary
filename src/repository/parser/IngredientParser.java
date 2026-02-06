@@ -8,7 +8,7 @@ import java.util.Map;
 
 import entities.Ingredient;
 
-public class ingredientParser {
+public class IngredientParser {
 
     // ============== BUILDER (DB → Java) ==============
 

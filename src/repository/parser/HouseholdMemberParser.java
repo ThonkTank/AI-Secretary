@@ -8,7 +8,7 @@ import java.util.Map;
 
 import entities.HouseholdMember;
 
-public class householdMemberParser {
+public class HouseholdMemberParser {
 
     // ============== BUILDER (DB → Java) ==============
 

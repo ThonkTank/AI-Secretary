@@ -11,15 +11,15 @@ import java.util.List;
 import java.util.Map;
 
 import entities.Account;
-import entities.todoList;
-import entities.trackedItem;
+import entities.TodoList;
+import entities.TrackedItem;
 import entities.Transaction;
 import repository.SQLrepo;
 import repository.Table;
-import scheduling.buildToDo;
+import scheduling.BuildToDo;
 import scheduling.CalendarReader;
 
-public class todoManager {
+public class TodoManager {
 
     /**
      * ══════════════════════════════════════════════════════════════════════════════
@@ -38,7 +38,7 @@ public class todoManager {
      *   ┌─────────────────────────────────────────────────────────────────────────┐
      *   │                           todoList (DB)                                 │
      *   │  Verschachtelte Struktur: Goal-Slots → Task-Slots                      │
-     *   │  Erstellt von: buildToDo.makeToDoList()                                │
+     *   │  Erstellt von: BuildToDo.makeToDoList()                                │
      *   └───────────────────────────────┬─────────────────────────────────────────┘
      *                                   │ provideList()
      *                                   ▼
@@ -101,13 +101,13 @@ public class todoManager {
 
     private Context context;
     private SQLrepo repo;
-    private todoList currentDayList;
+    private TodoList currentDayList;
     private LocalDate currentDay;
     private TodoListener listener;
     // Trackt letzten completed Task PRO PARENT (Goal-ID → letztes completed Item-ID)
     private Map<Long, Long> lastCompletedByParent = new HashMap<>();
 
-    public todoManager(Context context) {
+    public TodoManager(Context context) {
         this.context = context;
         this.repo = SQLrepo.getInstance(context);
     }
@@ -115,7 +115,7 @@ public class todoManager {
     public interface TodoListener {
         void onListUpdated();
         /** Wird aufgerufen wenn feste Termine nicht eingeplant werden konnten. */
-        default void onSchedulingConflicts(List<scheduling.buildToDo.SchedulingConflict> conflicts) {}
+        default void onSchedulingConflicts(List<scheduling.BuildToDo.SchedulingConflict> conflicts) {}
     }
 
     public record TaskEntry(
@@ -159,11 +159,11 @@ public class todoManager {
     }
 
     // ============================================================================
-    // replanToday - Löscht heutigen Plan und generiert ihn neu via buildToDo
+    // replanToday - Löscht heutigen Plan und generiert ihn neu via BuildToDo
     // ============================================================================
     public void replanToday() {
         LocalDate today = LocalDate.now();
-        todoList todayPlan = repo.fetch(Table.TODOS, Map.of("date", today.toString()));
+        TodoList todayPlan = repo.fetch(Table.TODOS, Map.of("date", today.toString()));
 
         if (todayPlan != null) {
             // Eingeplante Items entplanen (scheduled-Datum entfernen)
@@ -178,24 +178,24 @@ public class todoManager {
         }
 
         // Neu planen
-        buildToDo planner = new buildToDo(repo,
+        BuildToDo planner = new BuildToDo(repo,
             (day, start, end) -> CalendarReader.getEventsForDay(context, day, start, end)
         );
         planner.planWeek();
 
         if (listener != null) {
             listener.onListUpdated();
-            List<scheduling.buildToDo.SchedulingConflict> conflicts = planner.getConflicts();
+            List<scheduling.BuildToDo.SchedulingConflict> conflicts = planner.getConflicts();
             if (!conflicts.isEmpty()) {
                 listener.onSchedulingConflicts(conflicts);
             }
         }
     }
 
-    private void unscheduleSlots(List<todoList.TimeSlot> slots, LocalDate day) {
-        for (todoList.TimeSlot slot : slots) {
+    private void unscheduleSlots(List<TodoList.TimeSlot> slots, LocalDate day) {
+        for (TodoList.TimeSlot slot : slots) {
             if (slot.item != null) {
-                trackedItem item = repo.fetch(Table.ITEMS, slot.item);
+                TrackedItem item = repo.fetch(Table.ITEMS, slot.item);
                 if (item != null && item.scheduled != null) {
                     item.scheduled.remove(day);
                     item.blockedDays = item.getBlockedDays();
@@ -226,7 +226,7 @@ public class todoManager {
 
         List<TaskEntry> entries = new ArrayList<>();
 
-        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
+        for (TodoList.TimeSlot goalSlot : currentDayList.timeSlots) {
 
             // Kalender-Events als eigene Eintraege
             if (Boolean.TRUE.equals(goalSlot.isCalendarEvent)) {
@@ -256,7 +256,7 @@ public class todoManager {
             }
 
             // Goal laden
-            trackedItem goal = repo.fetch(Table.ITEMS, goalSlot.item);
+            TrackedItem goal = repo.fetch(Table.ITEMS, goalSlot.item);
             String goalTitle = (goal != null) ? goal.title : "";
             String goalIcon = (goal != null) ? goal.goalIcon : null;
             String goalColor = (goal != null) ? goal.goalColor : null;
@@ -264,8 +264,8 @@ public class todoManager {
             if (goalSlot.timeSlots == null) continue;
 
             // Task-Slots innerhalb des Goals durchgehen
-            for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
-                trackedItem task = repo.fetch(Table.ITEMS, taskSlot.item);
+            for (TodoList.TimeSlot taskSlot : goalSlot.timeSlots) {
+                TrackedItem task = repo.fetch(Table.ITEMS, taskSlot.item);
                 if (task == null) continue;
 
                 // Angezeigter Progress:
@@ -325,10 +325,10 @@ public class todoManager {
     public void uncompleteSlot(Long slotId) {
         if (currentDayList == null || currentDayList.timeSlots == null) return;
 
-        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
+        for (TodoList.TimeSlot goalSlot : currentDayList.timeSlots) {
             if (goalSlot.timeSlots == null) continue;
 
-            for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
+            for (TodoList.TimeSlot taskSlot : goalSlot.timeSlots) {
                 if (slotId.equals(taskSlot.id)) {
                     taskSlot.completed = false;
                     taskSlot.workStart = null;
@@ -351,9 +351,9 @@ public class todoManager {
     public void startTimer(Long slotId) {
         if (currentDayList == null || currentDayList.timeSlots == null) return;
 
-        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
+        for (TodoList.TimeSlot goalSlot : currentDayList.timeSlots) {
             if (goalSlot.timeSlots == null) continue;
-            for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
+            for (TodoList.TimeSlot taskSlot : goalSlot.timeSlots) {
                 if (slotId.equals(taskSlot.id)) {
                     taskSlot.workStart = LocalTime.now();
                     repo.write(currentDayList);
@@ -370,9 +370,9 @@ public class todoManager {
     public void stopTimer(Long slotId) {
         if (currentDayList == null || currentDayList.timeSlots == null) return;
 
-        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
+        for (TodoList.TimeSlot goalSlot : currentDayList.timeSlots) {
             if (goalSlot.timeSlots == null) continue;
-            for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
+            for (TodoList.TimeSlot taskSlot : goalSlot.timeSlots) {
                 if (slotId.equals(taskSlot.id)) {
                     taskSlot.workEnd = LocalTime.now();
                     completeSlot(slotId);
@@ -389,10 +389,10 @@ public class todoManager {
         if (currentDayList == null || currentDayList.timeSlots == null) return;
 
         // Slot finden und completed setzen, Goal-Completion prüfen
-        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
+        for (TodoList.TimeSlot goalSlot : currentDayList.timeSlots) {
             if (goalSlot.timeSlots == null) continue;
 
-            for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
+            for (TodoList.TimeSlot taskSlot : goalSlot.timeSlots) {
                 if (slotId.equals(taskSlot.id)) {
                     taskSlot.completed = true;
 
@@ -417,7 +417,7 @@ public class todoManager {
                         repo.write(currentDayList);
 
                         // 2. Auto-Transaction für budgetierte Tasks
-                        trackedItem item = repo.fetch(Table.ITEMS, taskSlot.item);
+                        TrackedItem item = repo.fetch(Table.ITEMS, taskSlot.item);
                         if (item != null && item.budgetRequirementCents > 0) {
                             Long accountId = item.budgetAccountId;
 
@@ -456,14 +456,14 @@ public class todoManager {
                     // === TRANSACTION END ===
 
                     // 3. Meal-Task-Completion: Vorrat reduzieren, ConsumptionLog erstellen
-                    // Außerhalb der Transaction, da mealManager eigene Schreiblogik hat
-                    trackedItem itemForMeal = repo.fetch(Table.ITEMS, taskSlot.item);
+                    // Außerhalb der Transaction, da MealManager eigene Schreiblogik hat
+                    TrackedItem itemForMeal = repo.fetch(Table.ITEMS, taskSlot.item);
                     if (itemForMeal != null && itemForMeal.mealPlanId != null) {
                         try {
-                            mealManager mealMgr = new mealManager(context);
+                            MealManager mealMgr = new MealManager(context);
                             mealMgr.completeMeal(itemForMeal.mealPlanId, 0);  // 0 = geplante Portionen
                         } catch (Exception e) {
-                            android.util.Log.e("todoManager",
+                            android.util.Log.e("TodoManager",
                                 "Meal completion failed: " + itemForMeal.mealPlanId, e);
                             // Weiter - Task ist trotzdem erledigt
                         }
@@ -484,13 +484,13 @@ public class todoManager {
     public void incrementProgress(Long slotId) {
         if (currentDayList == null || currentDayList.timeSlots == null) return;
 
-        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
+        for (TodoList.TimeSlot goalSlot : currentDayList.timeSlots) {
             if (goalSlot.timeSlots == null) continue;
 
-            for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
+            for (TodoList.TimeSlot taskSlot : goalSlot.timeSlots) {
                 if (slotId.equals(taskSlot.id)) {
                     // Item laden für Grenzprüfung
-                    trackedItem item = repo.fetch(Table.ITEMS, taskSlot.item);
+                    TrackedItem item = repo.fetch(Table.ITEMS, taskSlot.item);
                     if (item == null) return;
 
                     // Progress-Delta initialisieren falls null
@@ -539,13 +539,13 @@ public class todoManager {
     public void decrementProgress(Long slotId) {
         if (currentDayList == null || currentDayList.timeSlots == null) return;
 
-        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
+        for (TodoList.TimeSlot goalSlot : currentDayList.timeSlots) {
             if (goalSlot.timeSlots == null) continue;
 
-            for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
+            for (TodoList.TimeSlot taskSlot : goalSlot.timeSlots) {
                 if (slotId.equals(taskSlot.id)) {
                     // Item laden für Grenzprüfung
-                    trackedItem item = repo.fetch(Table.ITEMS, taskSlot.item);
+                    TrackedItem item = repo.fetch(Table.ITEMS, taskSlot.item);
                     if (item == null) return;
 
                     // Progress-Delta initialisieren falls null

@@ -9,7 +9,7 @@ import java.util.Map;
 
 import entities.ConsumptionLog;
 
-public class consumptionParser {
+public class ConsumptionParser {
 
     // ============== BUILDER (DB → Java) ==============
 

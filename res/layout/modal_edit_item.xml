@@ -29,37 +29,41 @@
                 android:padding="@dimen/padding_large">
 
                 <!-- Typ-Auswahl -->
-                <TextView style="@style/FormLabel" android:text="Typ" />
+                <TextView style="@style/FormLabel" android:text="@string/label_typ" />
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal">
                     <Button android:id="@+id/btn_type_task" style="@style/GroupButton"
-                        android:text="TASK" android:textSize="@dimen/sp_badge" />
+                        android:text="TASK" android:textSize="@dimen/sp_badge"
+                        android:contentDescription="@string/cd_type_task" />
                     <Button android:id="@+id/btn_type_goal" style="@style/GroupButton"
-                        android:text="GOAL" android:textSize="@dimen/sp_badge" />
+                        android:text="GOAL" android:textSize="@dimen/sp_badge"
+                        android:contentDescription="@string/cd_type_goal" />
                     <Button android:id="@+id/btn_type_project" style="@style/GroupButton"
-                        android:text="PROJECT" android:textSize="@dimen/sp_badge" />
+                        android:text="PROJECT" android:textSize="@dimen/sp_badge"
+                        android:contentDescription="@string/cd_type_project" />
                 </LinearLayout>
-                <View android:layout_width="match_parent" android:layout_height="8dp" />
+                <View android:layout_width="match_parent" android:layout_height="8dp"
+                    android:importantForAccessibility="no" />
 
                 <!-- Titel -->
-                <TextView style="@style/FormLabel" android:text="Titel" />
+                <TextView style="@style/FormLabel" android:text="@string/label_titel" />
                 <EditText
                     android:id="@+id/field_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Item-Titel"
+                    android:hint="@string/hint_item_title"
                     android:singleLine="true"
                     android:textSize="@dimen/sp_body" />
 
                 <!-- Beschreibung -->
-                <TextView style="@style/FormLabel" android:text="Beschreibung" />
+                <TextView style="@style/FormLabel" android:text="@string/label_beschreibung" />
                 <EditText
                     android:id="@+id/field_description"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Beschreibung (optional)"
+                    android:hint="@string/hint_description_optional"
                     android:maxLines="3"
                     android:textSize="@dimen/sp_body" />
 
@@ -70,12 +74,12 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="Icon" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_icon" />
                     <EditText
                         android:id="@+id/field_goal_icon"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Emoji eingeben"
+                        android:hint="@string/hint_emoji"
                         android:singleLine="true"
                         android:textSize="@dimen/sp_heading" />
                 </LinearLayout>
@@ -87,7 +91,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="Farbe" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_farbe" />
                     <LinearLayout
                         android:id="@+id/color_grid"
                         android:layout_width="match_parent"
@@ -107,7 +111,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="Min. Dauer" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_min_dauer" />
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -122,9 +126,11 @@
                             android:singleLine="true"
                             android:textSize="@dimen/sp_body" />
                         <Button android:id="@+id/btn_min_unit_minutes" style="@style/GroupButton"
-                            android:text="MIN" android:textSize="10sp" />
+                            android:text="MIN" android:textSize="10sp"
+                            android:contentDescription="@string/cd_unit_minutes" />
                         <Button android:id="@+id/btn_min_unit_progress" style="@style/GroupButton"
-                            android:text="EINH" android:textSize="10sp" />
+                            android:text="EINH" android:textSize="10sp"
+                            android:contentDescription="@string/cd_unit_progress" />
                     </LinearLayout>
                 </LinearLayout>
 
@@ -134,7 +140,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="Max. Dauer" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_max_dauer" />
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -149,28 +155,35 @@
                             android:singleLine="true"
                             android:textSize="@dimen/sp_body" />
                         <Button android:id="@+id/btn_max_unit_minutes" style="@style/GroupButton"
-                            android:text="MIN" android:textSize="10sp" />
+                            android:text="MIN" android:textSize="10sp"
+                            android:contentDescription="@string/cd_unit_minutes" />
                         <Button android:id="@+id/btn_max_unit_progress" style="@style/GroupButton"
-                            android:text="EINH" android:textSize="10sp" />
+                            android:text="EINH" android:textSize="10sp"
+                            android:contentDescription="@string/cd_unit_progress" />
                     </LinearLayout>
                 </LinearLayout>
 
                 <!-- Prioritaet -->
-                <TextView style="@style/FormLabel" android:text="Priorit\u00e4t" />
+                <TextView style="@style/FormLabel" android:text="@string/label_prioritaet" />
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal">
                     <Button android:id="@+id/btn_prio_low" style="@style/GroupButton"
-                        android:text="L" android:textSize="@dimen/sp_small" />
+                        android:text="L" android:textSize="@dimen/sp_small"
+                        android:contentDescription="@string/cd_prio_low" />
                     <Button android:id="@+id/btn_prio_moderate" style="@style/GroupButton"
-                        android:text="M" android:textSize="@dimen/sp_small" />
+                        android:text="M" android:textSize="@dimen/sp_small"
+                        android:contentDescription="@string/cd_prio_moderate" />
                     <Button android:id="@+id/btn_prio_high" style="@style/GroupButton"
-                        android:text="H" android:textSize="@dimen/sp_small" />
+                        android:text="H" android:textSize="@dimen/sp_small"
+                        android:contentDescription="@string/cd_prio_high" />
                     <Button android:id="@+id/btn_prio_critical" style="@style/GroupButton"
-                        android:text="C" android:textSize="@dimen/sp_small" />
+                        android:text="C" android:textSize="@dimen/sp_small"
+                        android:contentDescription="@string/cd_prio_critical" />
                 </LinearLayout>
-                <View android:layout_width="match_parent" android:layout_height="8dp" />
+                <View android:layout_width="match_parent" android:layout_height="8dp"
+                    android:importantForAccessibility="no" />
 
                 <!-- Parent -->
                 <LinearLayout
@@ -178,11 +191,12 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="Parent" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_parent" />
                     <Spinner
                         android:id="@+id/spinner_parent"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/cd_spinner_parent" />
                 </LinearLayout>
 
                 <!-- Vorgänger (nur TASK) -->
@@ -192,11 +206,12 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="Nach Task" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_nach_task" />
                     <Spinner
                         android:id="@+id/spinner_predecessor"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/cd_spinner_predecessor" />
                 </LinearLayout>
 
                 <!-- Wartezeit nach Vorgänger (nur wenn Vorgänger gewählt) -->
@@ -206,13 +221,13 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="Wartezeit (Minuten)" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_wartezeit_minuten" />
                     <EditText
                         android:id="@+id/field_predecessor_delay"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="number"
-                        android:hint="0 = direkt danach"
+                        android:hint="@string/hint_delay_zero"
                         android:singleLine="true"
                         android:textSize="@dimen/sp_body" />
                 </LinearLayout>
@@ -224,12 +239,12 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="Bevorzugte Uhrzeit" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_bevorzugte_uhrzeit" />
                     <EditText
                         android:id="@+id/field_pref_time"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Uhrzeit wählen"
+                        android:hint="@string/hint_uhrzeit"
                         android:focusable="false"
                         android:clickable="true"
                         android:textSize="@dimen/sp_body" />
@@ -241,12 +256,13 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="Cooldown (Tage)" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_cooldown_tage" />
                     <EditText
                         android:id="@+id/field_cooldown"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="number"
+                        android:hint="@string/hint_cooldown_days"
                         android:singleLine="true"
                         android:textSize="@dimen/sp_body" />
                 </LinearLayout>
@@ -257,12 +273,12 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="Deadline" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_deadline" />
                     <EditText
                         android:id="@+id/field_deadline"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Datum w\u00e4hlen"
+                        android:hint="@string/hint_datum"
                         android:focusable="false"
                         android:clickable="true"
                         android:textSize="@dimen/sp_body" />
@@ -274,12 +290,12 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="Fester Termin - Datum" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_fester_termin_datum" />
                     <EditText
                         android:id="@+id/field_fixed_date"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Datum wählen"
+                        android:hint="@string/hint_datum"
                         android:focusable="false"
                         android:clickable="true"
                         android:textSize="@dimen/sp_body" />
@@ -291,12 +307,12 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="Fester Termin - Uhrzeit" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_fester_termin_uhrzeit" />
                     <EditText
                         android:id="@+id/field_fixed_time"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Uhrzeit wählen"
+                        android:hint="@string/hint_uhrzeit"
                         android:focusable="false"
                         android:clickable="true"
                         android:textSize="@dimen/sp_body" />
@@ -309,7 +325,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="Budget (EUR)" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_budget_eur" />
                     <EditText
                         android:id="@+id/field_budget_amount"
                         android:layout_width="match_parent"
@@ -327,11 +343,12 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="Konto" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_konto" />
                     <Spinner
                         android:id="@+id/spinner_budget_account"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/cd_spinner_budget_account" />
                 </LinearLayout>
 
                 <!-- Budget-Kategorie (nur TASK) -->
@@ -341,11 +358,12 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="Kategorie" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_kategorie" />
                     <Spinner
                         android:id="@+id/spinner_budget_category"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/cd_spinner_budget_category" />
                 </LinearLayout>
 
                 <!-- Fortschritt -->
@@ -354,7 +372,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="Fortschritt" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_fortschritt" />
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -364,7 +382,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="Ist"
+                            android:hint="@string/hint_progress_current"
                             android:inputType="number"
                             android:singleLine="true"
                             android:textSize="@dimen/sp_body" />
@@ -381,7 +399,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="Ziel"
+                            android:hint="@string/hint_progress_target"
                             android:inputType="number"
                             android:singleLine="true"
                             android:textSize="@dimen/sp_body" />
@@ -390,7 +408,7 @@
                         android:id="@+id/field_progress_unit"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Einheit (z.B. Seiten, Kapitel)"
+                        android:hint="@string/hint_progress_unit"
                         android:singleLine="true"
                         android:textSize="@dimen/sp_body" />
                 </LinearLayout>
@@ -408,7 +426,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Pro Periode zurücksetzen"
+                        android:text="@string/label_progress_per_rep"
                         android:textColor="@color/text_secondary"
                         android:textSize="@dimen/sp_body" />
 
@@ -416,7 +434,8 @@
                         android:id="@+id/btn_progress_per_rep"
                         style="@style/GroupButton"
                         android:layout_width="60dp"
-                        android:text="Aus" />
+                        android:text="@string/btn_toggle_off"
+                        android:contentDescription="@string/cd_toggle_progress_per_rep" />
                 </LinearLayout>
 
                 <!-- Wiederholung-Sektion -->
@@ -426,7 +445,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <TextView style="@style/FormLabel" android:text="Wiederholung" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_wiederholung" />
 
                     <!-- RepType Buttons -->
                     <LinearLayout
@@ -434,13 +453,17 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal">
                         <Button android:id="@+id/btn_rep_none" style="@style/GroupButton"
-                            android:text="KEINE" android:textSize="10sp" />
+                            android:text="KEINE" android:textSize="10sp"
+                            android:contentDescription="@string/cd_rep_none" />
                         <Button android:id="@+id/btn_rep_interval" style="@style/GroupButton"
-                            android:text="INTERVAL" android:textSize="10sp" />
+                            android:text="INTERVAL" android:textSize="10sp"
+                            android:contentDescription="@string/cd_rep_interval" />
                         <Button android:id="@+id/btn_rep_reps" style="@style/GroupButton"
-                            android:text="REPS" android:textSize="10sp" />
+                            android:text="REPS" android:textSize="10sp"
+                            android:contentDescription="@string/cd_rep_reps" />
                         <Button android:id="@+id/btn_rep_day_of" style="@style/GroupButton"
-                            android:text="DAY_OF" android:textSize="10sp" />
+                            android:text="DAY_OF" android:textSize="10sp"
+                            android:contentDescription="@string/cd_rep_day_of" />
                     </LinearLayout>
 
                     <!-- Detail-Felder (ausgeblendet bei KEINE) -->
@@ -451,12 +474,13 @@
                         android:orientation="vertical">
 
                         <!-- Wert -->
-                        <TextView style="@style/FormLabel" android:text="Wert" />
+                        <TextView style="@style/FormLabel" android:text="@string/label_wert" />
                         <EditText
                             android:id="@+id/field_rep_value"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="number"
+                            android:hint="@string/hint_rep_value"
                             android:singleLine="true"
                             android:textSize="@dimen/sp_body" />
 
@@ -466,11 +490,14 @@
                             android:layout_height="wrap_content"
                             android:orientation="horizontal">
                             <Button android:id="@+id/btn_unit_day" style="@style/GroupButton"
-                                android:text="TAG" android:textSize="10sp" />
+                                android:text="TAG" android:textSize="10sp"
+                                android:contentDescription="@string/cd_unit_day" />
                             <Button android:id="@+id/btn_unit_week" style="@style/GroupButton"
-                                android:text="WOCHE" android:textSize="10sp" />
+                                android:text="WOCHE" android:textSize="10sp"
+                                android:contentDescription="@string/cd_unit_week" />
                             <Button android:id="@+id/btn_unit_month" style="@style/GroupButton"
-                                android:text="MONAT" android:textSize="10sp" />
+                                android:text="MONAT" android:textSize="10sp"
+                                android:contentDescription="@string/cd_unit_month" />
                         </LinearLayout>
 
                         <!-- Wochentag (nur bei DAY_OF_TIME + WEEK) -->
@@ -479,11 +506,12 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical">
-                            <TextView style="@style/FormLabel" android:text="Wochentag" />
+                            <TextView style="@style/FormLabel" android:text="@string/label_wochentag" />
                             <Spinner
                                 android:id="@+id/spinner_weekday"
                                 android:layout_width="match_parent"
-                                android:layout_height="wrap_content" />
+                                android:layout_height="wrap_content"
+                                android:contentDescription="@string/cd_spinner_weekday" />
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
@@ -500,17 +528,19 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Erst erledigen vor Reset"
+                        android:text="@string/label_complete_first"
                         android:textColor="@color/text_secondary"
                         android:textSize="@dimen/sp_body" />
                     <Button
                         android:id="@+id/btn_complete_first"
                         style="@style/GroupButton"
                         android:layout_width="60dp"
-                        android:text="Aus" />
+                        android:text="@string/btn_toggle_off"
+                        android:contentDescription="@string/cd_toggle_complete_first" />
                 </LinearLayout>
 
-                <View android:layout_width="match_parent" android:layout_height="12dp" />
+                <View android:layout_width="match_parent" android:layout_height="12dp"
+                    android:importantForAccessibility="no" />
 
                 <!-- Fehler-Text -->
                 <TextView
@@ -527,7 +557,7 @@
                     android:id="@+id/btn_save"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Speichern"
+                    android:text="@string/btn_save"
                     android:textColor="@android:color/white" />
                 <View android:layout_width="match_parent" android:layout_height="8dp" />
 
@@ -536,7 +566,7 @@
                     android:id="@+id/btn_cancel"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Abbrechen" />
+                    android:text="@string/btn_cancel" />
 
             </LinearLayout>
         </ScrollView>

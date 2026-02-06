@@ -16,24 +16,19 @@
         android:gravity="center_vertical">
 
         <TextView
-            android:id="@+id/tab_tagesplan"
+            android:id="@+id/tab_tasks"
             style="@style/TabLabel"
-            android:text="Tagesplan" />
-
-        <TextView
-            android:id="@+id/tab_verwalten"
-            style="@style/TabLabel"
-            android:text="Verwalten" />
+            android:text="@string/tab_tasks" />
 
         <TextView
             android:id="@+id/tab_budget"
             style="@style/TabLabel"
-            android:text="Budget" />
+            android:text="@string/tab_budget" />
 
         <TextView
             android:id="@+id/tab_ernaehrung"
             style="@style/TabLabel"
-            android:text="Ernährung" />
+            android:text="@string/tab_ernaehrung" />
 
         <!-- Settings-Button (Overflow-Menu) -->
         <TextView
@@ -45,7 +40,7 @@
             android:textSize="24sp"
             android:textColor="@color/text_primary"
             android:background="?android:attr/selectableItemBackground"
-            android:contentDescription="Einstellungen" />
+            android:contentDescription="@string/cd_settings" />
     </LinearLayout>
 
     <!-- Tab-Indicator -->

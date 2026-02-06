@@ -9,7 +9,7 @@ import java.util.Map;
 
 import entities.StorePackage;
 
-public class storePackageParser {
+public class StorePackageParser {
 
     // ============== BUILDER (DB → Java) ==============
 

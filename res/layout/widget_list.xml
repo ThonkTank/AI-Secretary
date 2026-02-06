@@ -24,7 +24,8 @@
             android:text="◀"
             android:textSize="@dimen/sp_body"
             android:textColor="@color/white"
-            android:padding="@dimen/padding_small" />
+            android:padding="@dimen/padding_small"
+            android:contentDescription="@string/cd_previous_day" />
 
         <!-- Datum-Label (zentriert) -->
         <TextView
@@ -32,7 +33,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Heute"
+            android:text="@string/widget_today"
             android:textColor="@color/white"
             android:textSize="@dimen/sp_title"
             android:textStyle="bold"
@@ -46,7 +47,8 @@
             android:text="▶"
             android:textSize="@dimen/sp_body"
             android:textColor="@color/white"
-            android:padding="@dimen/padding_small" />
+            android:padding="@dimen/padding_small"
+            android:contentDescription="@string/cd_next_day" />
 
         <TextView
             android:id="@+id/widget_add"

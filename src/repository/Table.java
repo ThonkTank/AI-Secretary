@@ -1,7 +1,7 @@
 package repository;
 
-import entities.trackedItem;
-import entities.todoList;
+import entities.TrackedItem;
+import entities.TodoList;
 import entities.Account;
 import entities.Transaction;
 import entities.BudgetLimit;
@@ -24,13 +24,13 @@ import entities.StorePackage;
  * Typisierte Tabellen-Referenz für typsichere fetch()-Aufrufe.
  *
  * Verwendung:
- *   trackedItem item = repo.fetch(Table.ITEMS, 5);
- *   todoList list = repo.fetch(Table.TODOS, Map.of("date", "2026-01-23"));
+ *   TrackedItem item = repo.fetch(Table.ITEMS, 5);
+ *   TodoList list = repo.fetch(Table.TODOS, Map.of("date", "2026-01-23"));
  */
 public class Table<T> {
 
-    public static final Table<trackedItem> ITEMS = new Table<>("items");
-    public static final Table<todoList> TODOS = new Table<>("todos");
+    public static final Table<TrackedItem> ITEMS = new Table<>("items");
+    public static final Table<TodoList> TODOS = new Table<>("todos");
 
     // Budget-Tabellen
     public static final Table<Account> ACCOUNTS = new Table<>("accounts");

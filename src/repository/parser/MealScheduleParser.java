@@ -11,7 +11,7 @@ import java.util.Map;
 import entities.MealSchedule;
 import entities.MealType;
 
-public class mealScheduleParser {
+public class MealScheduleParser {
 
     // ============== BUILDER (DB → Java) ==============
 
@@ -31,7 +31,9 @@ public class mealScheduleParser {
         }
 
         ms.scheduledTime = (LocalTime) row.get("scheduled_time");
-        ms.isEnabled = Boolean.TRUE.equals(row.get("is_enabled"));
+
+        Object durObj = row.get("duration_minutes");
+        ms.durationMinutes = (durObj instanceof Number n) ? n.intValue() : MealSchedule.DEFAULT_DURATION_MINUTES;
 
         return ms;
     }
@@ -50,7 +52,7 @@ public class mealScheduleParser {
         if (v == null) return null;
         return switch (column) {
             case "id" -> (v instanceof Number n) ? n.longValue() : Long.parseLong(v.toString());
-            case "is_enabled" -> (v instanceof Number n) ? n.intValue() != 0 : "1".equals(v.toString());
+            case "duration_minutes" -> (v instanceof Number n) ? n.intValue() : Integer.parseInt(v.toString());
             case "scheduled_time" -> LocalTime.parse(v.toString());
             default -> v.toString();  // day_of_week, meal_type als String
         };
@@ -64,7 +66,7 @@ public class mealScheduleParser {
         if (ms.dayOfWeek != null) cv.put("day_of_week", ms.dayOfWeek.name());
         if (ms.mealType != null) cv.put("meal_type", ms.mealType.name());
         if (ms.scheduledTime != null) cv.put("scheduled_time", ms.scheduledTime.toString());
-        cv.put("is_enabled", ms.isEnabled ? 1 : 0);
+        cv.put("duration_minutes", ms.durationMinutes);
 
         if (ms.id != null) {
             db.update("meal_schedules", cv, "id = ?", new String[]{String.valueOf(ms.id)});

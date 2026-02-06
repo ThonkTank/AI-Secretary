@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.WeekFields;
+import static activities.generic.DateTimeHelper.getWeekKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -56,13 +56,13 @@ import repository.Table;
  *       ▼ UI zeigt Daten an
  *   createRecipe() etc. → DB Update → Listener benachrichtigt
  */
-public class mealManager {
+public class MealManager {
 
     private Context context;
     private SQLrepo repo;
     private MealListener listener;
 
-    public mealManager(Context context) {
+    public MealManager(Context context) {
         this.context = context;
         this.repo = SQLrepo.getInstance(context);
     }
@@ -84,10 +84,18 @@ public class mealManager {
     }
 
     /**
-     * Öffentliche Methode für externe Aufrufe (z.B. generateMealPlan).
+     * Öffentliche Methode für externe Aufrufe (z.B. GenerateMealPlan).
      */
     public void notifyListeners() {
         notifyListener();
+    }
+
+    /**
+     * Liefert die ID des ersten aktiven Kontos (fuer Shopping-Completion).
+     */
+    public Long getFirstActiveAccountId() {
+        List<Long> ids = repo.lookups("accounts", Map.of("is_active", "1"), "id");
+        return ids.isEmpty() ? null : ids.get(0);
     }
 
     // ============================================================================
@@ -140,7 +148,7 @@ public class mealManager {
         Long id,
         LocalDate date,
         String dayName,
-        String mealType,
+        MealType mealType,
         Long recipeId,
         String recipeTitle,
         int servings,
@@ -162,8 +170,8 @@ public class mealManager {
     ) {}
 
     /**
-     * Mahlzeiten-Kalender Eintrag für die Anzeige.
-     * 7 Tage × 4 Mahlzeiten = 28 Einträge.
+     * Mahlzeiten-Kalender Eintrag fuer die Anzeige.
+     * Beliebig viele Eintraege pro Tag moeglich.
      */
     public record ScheduleEntry(
         Long id,
@@ -173,8 +181,8 @@ public class mealManager {
         String mealLabel,
         String mealIcon,
         LocalTime time,
-        boolean isEnabled,
-        String formattedTime
+        int durationMinutes,
+        String formattedTimeRange
     ) {}
 
     /**
@@ -351,18 +359,11 @@ public class mealManager {
         for (MealPlan mp : plans) {
             if (mp.date.isBefore(weekStart) || mp.date.isAfter(weekEnd)) continue;
 
-            String mealTypeLabel = switch (mp.mealType) {
-                case BREAKFAST -> "Frühstück";
-                case LUNCH -> "Mittagessen";
-                case DINNER -> "Abendessen";
-                case SNACK -> "Snack";
-            };
-
             result.add(new MealPlanEntry(
                 mp.id,
                 mp.date,
                 dayFmt.format(mp.date),
-                mealTypeLabel,
+                mp.mealType,
                 mp.recipeId,
                 mp.recipeTitle,
                 mp.plannedServings,
@@ -379,11 +380,7 @@ public class mealManager {
     public List<FoodGroupProgress> provideFoodGroupProgress(LocalDate weekStart) {
         List<FoodGroupProgress> result = new ArrayList<>();
 
-        // WeekKey berechnen (z.B. "2026-W06")
-        WeekFields weekFields = WeekFields.of(Locale.GERMANY);
-        int week = weekStart.get(weekFields.weekOfWeekBasedYear());
-        int year = weekStart.get(weekFields.weekBasedYear());
-        String weekKey = String.format("%d-W%02d", year, week);
+        String weekKey = getWeekKey(weekStart);
 
         // WeeklyFoodTarget laden oder berechnen
         WeeklyFoodTarget target = repo.fetch(Table.WEEKLY_FOOD_TARGETS, Map.of("week_key", weekKey));
@@ -434,11 +431,13 @@ public class mealManager {
     }
 
     /**
-     * Liefert alle Mahlzeiten-Zeiten (7 Tage × 4 Mahlzeiten = 28 Einträge).
+     * Liefert alle Mahlzeiten-Slots, sortiert nach Tag dann Zeit.
      */
     public List<ScheduleEntry> provideSchedule() {
         List<ScheduleEntry> result = new ArrayList<>();
         List<MealSchedule> schedules = repo.fetchAll(Table.MEAL_SCHEDULES);
+
+        MealSchedule.sortByTime(schedules);
 
         for (MealSchedule ms : schedules) {
             String dayLabel = switch (ms.dayOfWeek) {
@@ -459,32 +458,42 @@ public class mealManager {
                 ms.mealType.label,
                 ms.mealType.icon,
                 ms.scheduledTime,
-                ms.isEnabled,
-                ms.getFormattedTime()
+                ms.durationMinutes,
+                ms.getFormattedTimeRange()
             ));
         }
         return result;
     }
 
     /**
-     * Liefert die geplante Zeit für eine Mahlzeit.
-     * @return LocalTime oder null wenn nicht geplant
+     * Liefert die erste geplante Zeit fuer eine Mahlzeit.
+     * @return LocalTime oder null wenn kein Slot existiert
      */
     public LocalTime getScheduledTime(DayOfWeek day, MealType type) {
-        List<MealSchedule> schedules = repo.fetchAll(Table.MEAL_SCHEDULES);
-        for (MealSchedule ms : schedules) {
-            if (ms.dayOfWeek == day && ms.mealType == type && ms.isEnabled) {
-                return ms.scheduledTime;
-            }
-        }
-        return null;
+        List<MealSchedule> slots = getSchedules(day, type);
+        return slots.isEmpty() ? null : slots.get(0).scheduledTime;
     }
 
     /**
-     * Prüft ob eine Mahlzeit für den Tag geplant ist.
+     * Prueft ob eine Mahlzeit fuer den Tag geplant ist.
      */
     public boolean isMealScheduled(DayOfWeek day, MealType type) {
         return getScheduledTime(day, type) != null;
+    }
+
+    /**
+     * Liefert alle Schedule-Slots fuer einen Tag + MealType, sortiert nach Zeit.
+     */
+    public List<MealSchedule> getSchedules(DayOfWeek day, MealType type) {
+        List<MealSchedule> result = new ArrayList<>();
+        List<MealSchedule> all = repo.fetchAll(Table.MEAL_SCHEDULES);
+        for (MealSchedule ms : all) {
+            if (ms.dayOfWeek == day && ms.mealType == type) {
+                result.add(ms);
+            }
+        }
+        MealSchedule.sortByTime(result);
+        return result;
     }
 
     /**
@@ -673,16 +682,40 @@ public class mealManager {
     }
 
     /**
-     * Aktualisiert einen Schedule-Slot (Zeit ändern oder aktivieren/deaktivieren).
+     * Erstellt einen neuen Schedule-Slot.
      */
-    public void updateSchedule(Long scheduleId, LocalTime time, boolean enabled) {
-        MealSchedule schedule = repo.fetch(Table.MEAL_SCHEDULES, scheduleId);
-        if (schedule != null) {
-            schedule.scheduledTime = time;
-            schedule.isEnabled = enabled;
-            repo.write(schedule);
+    public Long createSchedule(DayOfWeek dayOfWeek, MealType mealType,
+                                    LocalTime time, int durationMinutes) {
+        MealSchedule ms = new MealSchedule.Builder(dayOfWeek, mealType)
+            .time(time)
+            .duration(durationMinutes)
+            .build();
+        repo.write(ms);
+        notifyListener();
+        return ms.id;
+    }
+
+    /**
+     * Aktualisiert einen bestehenden Schedule-Slot.
+     */
+    public void updateSchedule(Long id, MealType mealType,
+                                    LocalTime time, int durationMinutes) {
+        MealSchedule ms = repo.fetch(Table.MEAL_SCHEDULES, id);
+        if (ms != null) {
+            ms.mealType = mealType;
+            ms.scheduledTime = time;
+            ms.durationMinutes = durationMinutes;
+            repo.write(ms);
             notifyListener();
         }
+    }
+
+    /**
+     * Loescht einen Schedule-Slot.
+     */
+    public void deleteSchedule(Long id) {
+        repo.delete(Table.MEAL_SCHEDULES, id);
+        notifyListener();
     }
 
     // ============================================================================
@@ -817,7 +850,7 @@ public class mealManager {
 
     /**
      * Markiert Mahlzeit als abgeschlossen und reduziert Vorrat.
-     * Wird von todoManager.completeSlot() aufgerufen wenn ein Meal-Task abgehakt wird.
+     * Wird von TodoManager.completeSlot() aufgerufen wenn ein Meal-Task abgehakt wird.
      *
      * @param mealPlanId ID des MealPlan-Eintrags
      * @param actualServings Tatsächlich gegessene Portionen (0 = geplante Portionen)
@@ -1241,13 +1274,6 @@ public class mealManager {
     }
 
     // ============== SHOPPING HELPER ==============
-
-    private String getWeekKey(LocalDate weekStart) {
-        WeekFields weekFields = WeekFields.of(Locale.GERMANY);
-        int week = weekStart.get(weekFields.weekOfWeekBasedYear());
-        int year = weekStart.get(weekFields.weekBasedYear());
-        return String.format("%d-W%02d", year, week);
-    }
 
     private void deleteShoppingListForWeek(String weekKey) {
         List<ShoppingListItem> items = repo.fetchAll(Table.SHOPPING_LIST_ITEMS);

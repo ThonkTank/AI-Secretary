@@ -43,7 +43,7 @@
                     android:textSize="@dimen/sp_caption"
                     android:textColor="@color/text_secondary"
                     android:gravity="center"
-                    android:text="Gesamtsaldo"
+                    android:text="@string/section_gesamtsaldo"
                     android:layout_marginBottom="@dimen/padding_small" />
 
                 <LinearLayout
@@ -73,7 +73,7 @@
                             android:layout_height="wrap_content"
                             android:textSize="@dimen/sp_caption"
                             android:textColor="@color/text_secondary"
-                            android:text="Einnahmen" />
+                            android:text="@string/section_einnahmen" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -97,7 +97,7 @@
                             android:layout_height="wrap_content"
                             android:textSize="@dimen/sp_caption"
                             android:textColor="@color/text_secondary"
-                            android:text="Ausgaben" />
+                            android:text="@string/section_ausgaben" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -121,7 +121,7 @@
                             android:layout_height="wrap_content"
                             android:textSize="@dimen/sp_caption"
                             android:textColor="@color/text_secondary"
-                            android:text="Netto" />
+                            android:text="@string/section_netto" />
                     </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
@@ -130,7 +130,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Konten"
+                android:text="@string/section_konten"
                 android:textSize="@dimen/sp_subhead"
                 android:textStyle="bold"
                 android:textColor="@color/text_primary"
@@ -158,7 +158,7 @@
                 android:id="@+id/budget_section_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Budget"
+                android:text="@string/section_budget"
                 android:textSize="@dimen/sp_subhead"
                 android:textStyle="bold"
                 android:textColor="@color/text_primary"
@@ -179,7 +179,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Letzte Transaktionen"
+                android:text="@string/section_letzte_transaktionen"
                 android:textSize="@dimen/sp_subhead"
                 android:textStyle="bold"
                 android:textColor="@color/text_primary"
@@ -216,7 +216,8 @@
             android:background="@color/button_inactive"
             android:elevation="4dp"
             android:clickable="true"
-            android:focusable="true">
+            android:focusable="true"
+            android:contentDescription="@string/cd_import_statement">
 
             <TextView
                 android:layout_width="match_parent"
@@ -234,7 +235,8 @@
             android:background="@color/accent"
             android:elevation="6dp"
             android:clickable="true"
-            android:focusable="true">
+            android:focusable="true"
+            android:contentDescription="@string/cd_add_transaction">
 
             <TextView
                 android:layout_width="match_parent"

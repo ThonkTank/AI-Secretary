@@ -1,7 +1,7 @@
 package data;
 
 import com.autosecretary.R;
-import controller.todoManager.TaskEntry;
+import controller.TodoManager.TaskEntry;
 
 import java.util.ArrayList;
 import java.util.List;

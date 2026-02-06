@@ -5,10 +5,10 @@ import repository.Table;
 import entities.Account;
 import entities.CalendarEvent;
 import entities.Transaction;
-import entities.todoList;
-import entities.trackedItem;
-import entities.todoList.TimeSlot;
-import entities.trackedItem.RepetitionType;
+import entities.TodoList;
+import entities.TrackedItem;
+import entities.TodoList.TimeSlot;
+import entities.TrackedItem.RepetitionType;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class buildToDo {
+public class BuildToDo {
 
     // ============================================================================
     // SCHEDULING-KONSTANTEN
@@ -196,9 +196,9 @@ public class buildToDo {
      * Eine Kette von Items die durch requiredPredecessor verbunden sind.
      * Einzelne Items ohne Chain sind Listen mit einem Element.
      */
-    private record TaskChain(List<trackedItem> tasks, int prio) {}
+    private record TaskChain(List<TrackedItem> tasks, int prio) {}
 
-    record SlotCandidate(TimeSlot slot, todoList list, TimeSlot displaceable) {}
+    record SlotCandidate(TimeSlot slot, TodoList list, TimeSlot displaceable) {}
 
     /**
      * Match-Ergebnis: Welche Items der Kette passen, wo sie platziert werden.
@@ -206,9 +206,9 @@ public class buildToDo {
      * adjustedPrio = Summe der slot-spezifischen Prioritäten aller fittingTasks.
      */
     private record ChainMatch(
-        List<trackedItem> fittingTasks,  // Items die platziert werden
+        List<TrackedItem> fittingTasks,  // Items die platziert werden
         LocalTime startTime,              // Startzeit
-        todoList targetList,              // Ziel-Tag
+        TodoList targetList,              // Ziel-Tag
         Set<TimeSlot> toDisplace,         // Alle zu verdrängenden Slots (atomar)
         int adjustedPrio                  // Gesamtscore der Chain
     ) {}
@@ -240,7 +240,7 @@ public class buildToDo {
     // Konflikt-Tracking: Feste Termine die nicht eingeplant werden konnten
     private List<SchedulingConflict> conflicts = new ArrayList<>();
 
-    public buildToDo(Repo repo, CalendarProvider calendar) {
+    public BuildToDo(Repo repo, CalendarProvider calendar) {
         this.repo = repo;
         this.calendar = calendar;
     }
@@ -249,14 +249,14 @@ public class buildToDo {
     // ============================================================================
     // planWeek - Hauptfunktion, erstellt/aktualisiert ToDoListen für die nächsten 7 Tage.
     // ============================================================================
-    public List<todoList> planWeek() {
+    public List<TodoList> planWeek() {
         LocalDate today = LocalDate.now();
-        List<todoList> lists = new ArrayList<>();
+        List<TodoList> lists = new ArrayList<>();
 
         // Reset Budget-Tracking für neuen Durchlauf
         committedBudgetCents = 0;
         // Cache Basis-Budget einmalig (ohne accountId = alle aktiven Konten)
-        cachedBaseBudget = controller.budgetManager.calculateFreeBudget(repo, null, today);
+        cachedBaseBudget = controller.BudgetManager.calculateFreeBudget(repo, null, today);
         // Reset Konflikt-Tracking für neuen Durchlauf
         conflicts = new ArrayList<>();
 
@@ -269,13 +269,13 @@ public class buildToDo {
             LocalTime start = repo.lookup("config_schedules", scheduleFilter, "start_time");
             LocalTime end = repo.lookup("config_schedules", scheduleFilter, "end_time");
 
-            todoList existing = repo.fetch(Table.TODOS, Map.of("date", day.toString()));
+            TodoList existing = repo.fetch(Table.TODOS, Map.of("date", day.toString()));
 
             if (existing != null) {
                 calendarSync(existing, day, start, end);
                 lists.add(existing);
             } else {
-                todoList plan = new todoList();
+                TodoList plan = new TodoList();
                 plan.date = day;
                 plan.start = start;
                 plan.end = end;
@@ -299,7 +299,7 @@ public class buildToDo {
         List<SlotCandidate> allSlots = aggregateSlots(lists);
 
         // 3. fillSlots(goal, null, allSlots) - Goals in freie Slots platzieren
-        fillSlots(trackedItem.ItemType.GOAL, null, allSlots);
+        fillSlots(TrackedItem.ItemType.GOAL, null, allSlots);
 
         // 4. Für alle befüllten Goal-Slots: Tasks innerhalb der Goal-Grenzen neu platzieren
         for (SlotCandidate sc : new ArrayList<>(allSlots)) {
@@ -309,7 +309,7 @@ public class buildToDo {
         }
 
         // 5. todoLists mit aktualisierten Slots updaten und persistieren
-        for (todoList list : lists) {
+        for (TodoList list : lists) {
             LocalTime maxEnd = list.start;
             if (list.timeSlots != null) {
                 for (TimeSlot slot : list.timeSlots) {
@@ -342,7 +342,7 @@ public class buildToDo {
      * 2. Abzug wiederkehrender Ausgaben der nächsten 7 Tage (pessimistisch)
      * 3. Abzug bereits committeter Budget-Tasks in diesem Durchlauf
      *
-     * Nutzt die gemeinsame Berechnung aus budgetManager.calculateFreeBudget()
+     * Nutzt die gemeinsame Berechnung aus BudgetManager.calculateFreeBudget()
      *
      * @param accountId Spezifisches Konto (null = alle aktiven mit includeInTotal)
      * @param today Referenzdatum
@@ -352,7 +352,7 @@ public class buildToDo {
         // Nutze Cache für null-Account (alle Konten), sonst frisch berechnen
         int baseBudget = (accountId == null && cachedBaseBudget >= 0)
             ? cachedBaseBudget
-            : controller.budgetManager.calculateFreeBudget(repo, accountId, today);
+            : controller.BudgetManager.calculateFreeBudget(repo, accountId, today);
 
         // Scheduling-spezifisch: Bereits committete Budget-Tasks abziehen
         return Math.max(0, baseBudget - committedBudgetCents);
@@ -363,8 +363,8 @@ public class buildToDo {
     // getItems - Holt relevante Items eines Typs, optional gefiltert nach Parent.
     //   Berechnet intern die kommenden 7 Tage und prüft blockedDays.
     // ============================================================================
-    private List<trackedItem> getItems(trackedItem.ItemType typ, Long parent) {
-        List<trackedItem> relevantItems = new ArrayList<>();
+    private List<TrackedItem> getItems(TrackedItem.ItemType typ, Long parent) {
+        List<TrackedItem> relevantItems = new ArrayList<>();
         LocalDate today = LocalDate.now();
 
         // Kommende 7 Tage berechnen
@@ -384,7 +384,7 @@ public class buildToDo {
         List<Long> openItems = repo.lookups("items", filters, "id");
 
         for (Long itemID : openItems) {
-            trackedItem item = repo.fetch(Table.ITEMS, itemID);
+            TrackedItem item = repo.fetch(Table.ITEMS, itemID);
 
             // Delayed items (delay>0) überspringen wenn Predecessor nicht ready
             // delay=0 items werden von buildChains() gruppiert
@@ -439,17 +439,17 @@ public class buildToDo {
      * Items ohne Predecessor/Successor werden als Einzelketten behandelt.
      * Kette bekommt die SUMME der Prios aller Mitglieder.
      */
-    private List<TaskChain> buildChains(List<trackedItem> items) {
+    private List<TaskChain> buildChains(List<TrackedItem> items) {
         LocalDate today = LocalDate.now();
 
-        Map<Long, trackedItem> byId = new HashMap<>();
-        for (trackedItem item : items) {
+        Map<Long, TrackedItem> byId = new HashMap<>();
+        for (TrackedItem item : items) {
             byId.put(item.id, item);
         }
 
         // Finde für jedes Item seinen Nachfolger (nur delay=0 für Same-Day-Chains!)
         Map<Long, Long> successorOf = new HashMap<>();
-        for (trackedItem item : items) {
+        for (TrackedItem item : items) {
             if (item.predecessor != null
                 && item.predecessorDelay == 0  // Nur delay=0 verketten
                 && byId.containsKey(item.predecessor)) {
@@ -461,18 +461,18 @@ public class buildToDo {
         List<TaskChain> chains = new ArrayList<>();
 
         // Feste Termine zuerst als hochpriorisierte Einzelketten
-        for (trackedItem item : items) {
+        for (TrackedItem item : items) {
             if (item.isFixedAppointment()) {
                 chains.add(new TaskChain(List.of(item), FIXED_APPOINTMENT_PRIORITY));
                 processed.add(item.id);
             }
         }
 
-        for (trackedItem item : items) {
+        for (TrackedItem item : items) {
             if (processed.contains(item.id)) continue;
 
             // Finde Ketten-Kopf (kein Predecessor oder Predecessor nicht in Liste)
-            trackedItem head = item;
+            TrackedItem head = item;
             while (head.predecessor != null
                    && head.predecessorDelay == 0
                    && byId.containsKey(head.predecessor)) {
@@ -480,8 +480,8 @@ public class buildToDo {
             }
 
             // Baue Kette: head → successor → successor...
-            List<trackedItem> chain = new ArrayList<>();
-            trackedItem current = head;
+            List<TrackedItem> chain = new ArrayList<>();
+            TrackedItem current = head;
             int totalPrio = 0;
 
             while (current != null) {
@@ -533,7 +533,7 @@ public class buildToDo {
      */
     private ChainMatch tryMatchChain(List<TaskChain> chains, List<SlotCandidate> slotList) {
         // Sammle alle möglichen Startpunkte pro Tag
-        Map<todoList, List<LocalTime>> startsByDay = collectStartPointsByDay(slotList);
+        Map<TodoList, List<LocalTime>> startsByDay = collectStartPointsByDay(slotList);
 
         ChainMatch globalBest = null;
         int globalBestScore = 0;  // Muss > 0 sein
@@ -541,13 +541,13 @@ public class buildToDo {
         for (TaskChain chain : chains) {
             if (chain.tasks().isEmpty()) continue;
 
-            trackedItem firstItem = chain.tasks().get(0);
+            TrackedItem firstItem = chain.tasks().get(0);
 
             // Feste Termine: NUR exakten Tag und Zeit evaluieren
             if (firstItem.isFixedAppointment()) {
                 // Finde die todoList für den festen Tag
-                todoList targetList = null;
-                for (todoList list : startsByDay.keySet()) {
+                TodoList targetList = null;
+                for (TodoList list : startsByDay.keySet()) {
                     if (list.date.equals(firstItem.fixedDate)) {
                         targetList = list;
                         break;
@@ -579,7 +579,7 @@ public class buildToDo {
                 boolean conflictsWithFixed = false;
                 for (TimeSlot slot : overlapping) {
                     if (slot.item != null) {
-                        trackedItem existing = repo.fetch(Table.ITEMS, slot.item);
+                        TrackedItem existing = repo.fetch(Table.ITEMS, slot.item);
                         if (existing != null && existing.isFixedAppointment()) {
                             conflictsWithFixed = true;
                             break;
@@ -604,8 +604,8 @@ public class buildToDo {
             }
 
             // Für jeden Tag (normale Items)
-            for (Map.Entry<todoList, List<LocalTime>> entry : startsByDay.entrySet()) {
-                todoList list = entry.getKey();
+            for (Map.Entry<TodoList, List<LocalTime>> entry : startsByDay.entrySet()) {
+                TodoList list = entry.getKey();
                 LocalDate day = list.date;
 
                 // BlockedDays-Prüfung für ersten Task
@@ -616,11 +616,11 @@ public class buildToDo {
 
                     // Für jede mögliche Chain-Länge (1 bis max)
                     for (int chainLen = 1; chainLen <= chain.tasks().size(); chainLen++) {
-                        List<trackedItem> fitting = chain.tasks().subList(0, chainLen);
+                        List<TrackedItem> fitting = chain.tasks().subList(0, chainLen);
 
                         // Prüfe ob alle Items an diesem Tag nicht geblockt sind
                         boolean anyBlocked = false;
-                        for (trackedItem item : fitting) {
+                        for (TrackedItem item : fitting) {
                             if (item.isBlockedOn(day, repo)) {
                                 anyBlocked = true;
                                 break;
@@ -630,7 +630,7 @@ public class buildToDo {
 
                         // Berechne Gesamtdauer (respektiert timeToSchedule als Obergrenze)
                         int totalDuration = 0;
-                        for (trackedItem item : fitting) {
+                        for (TrackedItem item : fitting) {
                             totalDuration += item.getSlotDuration();
                         }
 
@@ -661,7 +661,7 @@ public class buildToDo {
                         Long precedingItemId = findPrecedingItemAt(startTime, list);
 
                         for (int i = 0; i < fitting.size(); i++) {
-                            trackedItem item = fitting.get(i);
+                            TrackedItem item = fitting.get(i);
                             // FollowUp-Boost nur für erstes Item
                             Long precId = (i == 0) ? precedingItemId : null;
                             gainPrio += calculateItemScore(item, cursor, precId);
@@ -698,16 +698,16 @@ public class buildToDo {
      * Sammelt alle möglichen Startpunkte pro Tag.
      * Startpunkte sind: Beginn freier Fenster + Beginn belegter Slots (für Verdrängung).
      */
-    private Map<todoList, List<LocalTime>> collectStartPointsByDay(List<SlotCandidate> slotList) {
-        Map<todoList, Set<LocalTime>> startsByDay = new HashMap<>();
+    private Map<TodoList, List<LocalTime>> collectStartPointsByDay(List<SlotCandidate> slotList) {
+        Map<TodoList, Set<LocalTime>> startsByDay = new HashMap<>();
 
         for (SlotCandidate c : slotList) {
             startsByDay.computeIfAbsent(c.list(), k -> new HashSet<>()).add(c.slot().start);
         }
 
         // In sortierte Listen umwandeln
-        Map<todoList, List<LocalTime>> result = new HashMap<>();
-        for (Map.Entry<todoList, Set<LocalTime>> entry : startsByDay.entrySet()) {
+        Map<TodoList, List<LocalTime>> result = new HashMap<>();
+        for (Map.Entry<TodoList, Set<LocalTime>> entry : startsByDay.entrySet()) {
             List<LocalTime> sorted = new ArrayList<>(entry.getValue());
             sorted.sort(LocalTime::compareTo);
             result.put(entry.getKey(), sorted);
@@ -718,7 +718,7 @@ public class buildToDo {
     /**
      * Findet alle Slots die mit dem Zeitfenster überlappen (gleicher Tag).
      */
-    private Set<TimeSlot> findOverlappingSlots(LocalTime start, LocalTime end, todoList list) {
+    private Set<TimeSlot> findOverlappingSlots(LocalTime start, LocalTime end, TodoList list) {
         Set<TimeSlot> overlapping = new HashSet<>();
         if (list.timeSlots == null) return overlapping;
 
@@ -738,7 +738,7 @@ public class buildToDo {
      * Erweitert überlappende Slots um alle Chain-Mitglieder (atomare Verdrängung).
      * Wenn ein Slot eine chainId hat, werden ALLE Slots mit dieser chainId hinzugefügt.
      */
-    private Set<TimeSlot> expandToFullChains(Set<TimeSlot> overlapping, todoList list) {
+    private Set<TimeSlot> expandToFullChains(Set<TimeSlot> overlapping, TodoList list) {
         Set<TimeSlot> expanded = new HashSet<>(overlapping);
         Set<Long> chainIds = new HashSet<>();
 
@@ -765,7 +765,7 @@ public class buildToDo {
      * Berechnet die adjustedPrio für ein einzelnes Item basierend auf seiner Startzeit.
      * Berücksichtigt prefTime-Matching mit quadratischer Penalty.
      */
-    private int calculateItemScore(trackedItem item, LocalTime itemStart, Long precedingItemId) {
+    private int calculateItemScore(TrackedItem item, LocalTime itemStart, Long precedingItemId) {
         // Basis: log1p(itemPrio) * SCORE_SCALE_FACTOR
         int basePrio = item.priority.value;
         double score = Math.log1p(basePrio) * SCORE_SCALE_FACTOR;
@@ -805,7 +805,7 @@ public class buildToDo {
     /**
      * Prüft ob ein Zeitfenster in Calendar-Events hineinragt.
      */
-    private boolean overlapsCalendarEvent(LocalTime start, LocalTime end, todoList list) {
+    private boolean overlapsCalendarEvent(LocalTime start, LocalTime end, TodoList list) {
         if (list.timeSlots == null) return false;
         for (TimeSlot slot : list.timeSlots) {
             if (slot.isCalendarEvent != null && slot.isCalendarEvent) {
@@ -820,14 +820,14 @@ public class buildToDo {
     /**
      * Prüft ob ein Zeitfenster über das Tagesende hinausgeht.
      */
-    private boolean exceedsDayBounds(LocalTime start, LocalTime end, todoList list) {
+    private boolean exceedsDayBounds(LocalTime start, LocalTime end, TodoList list) {
         return start.isBefore(list.start) || end.isAfter(list.end);
     }
 
     /**
      * Findet die Item-ID im Slot direkt vor einer gegebenen Startzeit (gleicher Tag).
      */
-    private Long findPrecedingItemAt(LocalTime startTime, todoList list) {
+    private Long findPrecedingItemAt(LocalTime startTime, TodoList list) {
         if (list.timeSlots == null) return null;
 
         Long precedingItem = null;
@@ -851,9 +851,9 @@ public class buildToDo {
     // aggregateSlots - Sammelt alle Slots einer Liste.
     //   Für jede todoList: freie Lücken + belegte Slots aufnehmen, chronologisch sortieren.
     // ============================================================================
-    private List<SlotCandidate> aggregateSlots(List<todoList> lists) {
+    private List<SlotCandidate> aggregateSlots(List<TodoList> lists) {
         List<SlotCandidate> allSlots = new ArrayList<>();
-        for (todoList list : lists) {
+        for (TodoList list : lists) {
             // Freie Lücken
             List<LocalTime[]> freeWindows = findFreeWindows(list);
             for (LocalTime[] window : freeWindows) {
@@ -887,9 +887,9 @@ public class buildToDo {
     // fillSlots - Füllt Slots iterativ: baut Ketten, matcht und weist zu.
     //   Loopt bis keine Kette mehr platziert werden kann.
     // ============================================================================
-    private void fillSlots(trackedItem.ItemType typ, Long parent, List<SlotCandidate> slotList) {
+    private void fillSlots(TrackedItem.ItemType typ, Long parent, List<SlotCandidate> slotList) {
         while (true) {
-            List<trackedItem> items = getItems(typ, parent);
+            List<TrackedItem> items = getItems(typ, parent);
             if (items.isEmpty()) break;
 
             // Gruppiere zu Ketten (ersetzt prioritize())
@@ -912,8 +912,8 @@ public class buildToDo {
     //   Erstellt virtuelle todoList mit den Goal-Grenzen, aggregiert Sub-Slots und
     //   platziert Tasks nur innerhalb dieses Bereichs.
     // ============================================================================
-    private void fillGoalTasks(TimeSlot goalSlot, todoList list) {
-        todoList virtual = new todoList();
+    private void fillGoalTasks(TimeSlot goalSlot, TodoList list) {
+        TodoList virtual = new TodoList();
         virtual.date = list.date;
         virtual.start = goalSlot.start;
         virtual.end = goalSlot.end;
@@ -921,7 +921,7 @@ public class buildToDo {
                 ? new ArrayList<>(goalSlot.timeSlots) : new ArrayList<>();
 
         List<SlotCandidate> taskSlots = aggregateSlots(List.of(virtual));
-        fillSlots(trackedItem.ItemType.TASK, goalSlot.item, taskSlots);
+        fillSlots(TrackedItem.ItemType.TASK, goalSlot.item, taskSlots);
 
         goalSlot.timeSlots = virtual.timeSlots;
 
@@ -947,7 +947,7 @@ public class buildToDo {
      * Setzt chainId auf alle platzierten Slots für atomare Verdrängung in der Zukunft.
      */
     private void assignChain(ChainMatch match, List<SlotCandidate> slotList) {
-        todoList list = match.targetList();
+        TodoList list = match.targetList();
 
         // 1. Alle zu verdrängenden Slots atomar entfernen
         for (TimeSlot slot : match.toDisplace()) {
@@ -965,7 +965,7 @@ public class buildToDo {
         LocalTime cursor = match.startTime();
         List<TimeSlot> newSlots = new ArrayList<>();
 
-        for (trackedItem item : match.fittingTasks()) {
+        for (TrackedItem item : match.fittingTasks()) {
             TimeSlot itemSlot = new TimeSlot();
             itemSlot.start = cursor;
             itemSlot.end = cursor.plusMinutes(item.getSlotDuration());
@@ -977,7 +977,7 @@ public class buildToDo {
             newSlots.add(itemSlot);
 
             // Wenn Goal → Tasks innerhalb platzieren
-            if (item.type == trackedItem.ItemType.GOAL) {
+            if (item.type == TrackedItem.ItemType.GOAL) {
                 fillGoalTasks(itemSlot, list);
             }
 
@@ -1002,7 +1002,7 @@ public class buildToDo {
         }
 
         // 5. Budget als "committed" markieren für diesen Scheduling-Durchlauf
-        for (trackedItem item : match.fittingTasks()) {
+        for (TrackedItem item : match.fittingTasks()) {
             if (item.budgetRequirementCents > 0) {
                 committedBudgetCents += item.budgetRequirementCents;
             }
@@ -1016,7 +1016,7 @@ public class buildToDo {
      * Aktualisiert die freien Slot-Fenster für eine todoList in der slotList.
      * Entfernt alte freie Slots für diese Liste und fügt neue basierend auf findFreeWindows() hinzu.
      */
-    private void regenerateFreeSlots(todoList list, List<SlotCandidate> slotList) {
+    private void regenerateFreeSlots(TodoList list, List<SlotCandidate> slotList) {
         // Alte freie Slots für diese Liste entfernen
         slotList.removeIf(c -> c.list() == list && c.displaceable() == null);
 
@@ -1033,7 +1033,7 @@ public class buildToDo {
     // ============================================================================
     // calendarSync - Synchronisiert Calendar-Events und entplant Überlappungen
     // ============================================================================
-    private void calendarSync(todoList list, LocalDate day, LocalTime start, LocalTime end) {
+    private void calendarSync(TodoList list, LocalDate day, LocalTime start, LocalTime end) {
         // 1. Alte Calendar-Events entfernen
         if (list.timeSlots != null) {
             list.timeSlots.removeIf(s -> s.isCalendarEvent != null && s.isCalendarEvent);
@@ -1081,8 +1081,8 @@ public class buildToDo {
     // ============================================================================
     // unPlan - Entfernt ein Item aus seinem Slot, gibt das verdrängte Item zurück.
     // ============================================================================
-    private trackedItem unPlan(TimeSlot slot, todoList list) {
-        trackedItem displaced = null;
+    private TrackedItem unPlan(TimeSlot slot, TodoList list) {
+        TrackedItem displaced = null;
         if (slot.item != null) {
             displaced = repo.fetch(Table.ITEMS, slot.item);
 
@@ -1098,7 +1098,7 @@ public class buildToDo {
         if (slot.timeSlots != null) {
             for (TimeSlot childSlot : slot.timeSlots) {
                 if (childSlot.item != null) {
-                    trackedItem childItem = repo.fetch(Table.ITEMS, childSlot.item);
+                    TrackedItem childItem = repo.fetch(Table.ITEMS, childSlot.item);
                     if (childItem != null && childItem.scheduled != null) {
                         childItem.scheduled.remove(list.date);
                         childItem.blockedDays = childItem.getBlockedDays();
@@ -1117,7 +1117,7 @@ public class buildToDo {
     // ============================================================================
     // findFreeWindows - Findet freie Zeitfenster in einer todoList
     // ============================================================================
-    private List<LocalTime[]> findFreeWindows(todoList list) {
+    private List<LocalTime[]> findFreeWindows(TodoList list) {
         List<LocalTime[]> windows = new ArrayList<>();
         LocalTime cursor = list.start;
 
