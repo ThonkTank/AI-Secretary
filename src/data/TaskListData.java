@@ -31,18 +31,19 @@ public class TaskListData {
         String currentGoal = "";
 
         for (TaskEntry entry : entries) {
-            // Neuer Goal-Header wenn sich der Goal-Titel ändert
+            // Kalender-Events werden inline eingefuegt, OHNE eigenen Header
+            if (entry.isCalendarEvent()) {
+                rows.add(new CalendarEvent(entry));
+                continue;
+            }
+
+            // Neuer Goal-Header wenn sich der Goal-Titel aendert (nur fuer Tasks)
             if (!entry.goalTitle().equals(currentGoal)) {
                 currentGoal = entry.goalTitle();
                 rows.add(new GoalHeader(currentGoal, entry.goalIcon(), entry.goalColor()));
             }
 
-            // Task oder Kalender-Event
-            if (entry.isCalendarEvent()) {
-                rows.add(new CalendarEvent(entry));
-            } else {
-                rows.add(new TaskItem(entry));
-            }
+            rows.add(new TaskItem(entry));
         }
 
         return rows;

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- widget_budget.xml - Container fuer das Budget Home-Screen Widget -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/surface">
+
+    <!-- Header mit Titel und Add-Button -->
+    <RelativeLayout
+        android:id="@+id/budget_widget_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/padding_medium"
+        android:background="@color/accent">
+
+        <TextView
+            android:id="@+id/budget_widget_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:text="Budget"
+            android:textColor="@color/white"
+            android:textSize="@dimen/sp_title"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/budget_widget_add"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:text="+"
+            android:textSize="@dimen/sp_heading"
+            android:textColor="@color/white"
+            android:paddingHorizontal="@dimen/padding_medium" />
+
+    </RelativeLayout>
+
+    <!-- Werte-Bereich -->
+    <RelativeLayout
+        android:id="@+id/budget_widget_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="@dimen/padding_medium">
+
+        <!-- Saldo (links) -->
+        <LinearLayout
+            android:id="@+id/budget_saldo_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/budget_total_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1.234,56 EUR"
+                android:textSize="@dimen/sp_subhead"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary" />
+
+            <TextView
+                android:id="@+id/budget_total_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Saldo"
+                android:textSize="@dimen/sp_small"
+                android:textColor="@color/text_muted" />
+
+        </LinearLayout>
+
+        <!-- Trennlinie (ImageView als Spacer) -->
+        <ImageView
+            android:id="@+id/budget_divider"
+            android:layout_width="1dp"
+            android:layout_height="40dp"
+            android:layout_centerInParent="true"
+            android:background="@color/divider" />
+
+        <!-- Frei (rechts) -->
+        <LinearLayout
+            android:id="@+id/budget_free_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/budget_free_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="456,78 EUR"
+                android:textSize="@dimen/sp_subhead"
+                android:textStyle="bold"
+                android:textColor="@color/budget_income" />
+
+            <TextView
+                android:id="@+id/budget_free_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Frei"
+                android:textSize="@dimen/sp_small"
+                android:textColor="@color/text_muted" />
+
+        </LinearLayout>
+
+    </RelativeLayout>
+
+</LinearLayout>

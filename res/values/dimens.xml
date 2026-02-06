@@ -3,16 +3,21 @@
     <dimen name="corner_radius">4dp</dimen>
 
     <!-- Textgroessen -->
+    <dimen name="sp_micro">10sp</dimen>
     <dimen name="sp_badge">11sp</dimen>
     <dimen name="sp_small">12sp</dimen>
+    <dimen name="sp_caption">12sp</dimen>
     <dimen name="sp_body">14sp</dimen>
     <dimen name="sp_title">15sp</dimen>
+    <dimen name="sp_subhead">16sp</dimen>
     <dimen name="sp_heading">18sp</dimen>
 
     <!-- Abstaende -->
     <dimen name="padding_small">4dp</dimen>
     <dimen name="padding_medium">8dp</dimen>
     <dimen name="padding_large">16dp</dimen>
+    <dimen name="margin_small">8dp</dimen>
+    <dimen name="margin_medium">16dp</dimen>
     <dimen name="tab_bar_height">48dp</dimen>
     <dimen name="indicator_height">3dp</dimen>
 

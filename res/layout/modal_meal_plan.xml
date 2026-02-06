@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Modal zum Zuweisen eines Rezepts zu einem Wochenplan-Slot -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/overlay_dim">
+
+    <!-- Modal-Card -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginBottom="32dp"
+        android:background="@android:color/white"
+        android:elevation="8dp"
+        android:orientation="vertical"
+        android:padding="@dimen/padding_large"
+        android:clickable="true">
+
+        <!-- Header -->
+        <TextView
+            android:id="@+id/modal_meal_plan_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Mahlzeit planen"
+            android:textSize="@dimen/sp_heading"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold" />
+
+        <!-- Datum + Mahlzeit (nur Anzeige, nicht editierbar) -->
+        <TextView
+            android:id="@+id/meal_plan_date_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/margin_small"
+            android:text="Montag, 03.02."
+            android:textSize="@dimen/sp_body"
+            android:textColor="@color/text_secondary" />
+
+        <View android:layout_width="match_parent" android:layout_height="16dp" />
+
+        <!-- Rezept Dropdown -->
+        <TextView style="@style/FormLabel" android:text="Rezept" />
+        <Spinner
+            android:id="@+id/spinner_meal_plan_recipe"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:background="@color/surface_elevated"
+            android:padding="@dimen/padding_small" />
+
+        <!-- Rezept-Info (wird dynamisch aktualisiert) -->
+        <LinearLayout
+            android:id="@+id/meal_plan_recipe_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="@dimen/margin_small"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/meal_plan_recipe_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/text_tertiary"
+                android:text="30 min" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="8dp"
+                android:textSize="12sp"
+                android:textColor="@color/text_tertiary"
+                android:text=" • " />
+
+            <TextView
+                android:id="@+id/meal_plan_recipe_calories"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/text_tertiary"
+                android:text="450 kcal" />
+
+        </LinearLayout>
+
+        <!-- Portionen -->
+        <TextView style="@style/FormLabel" android:text="Portionen" android:layout_marginTop="16dp" />
+        <EditText
+            android:id="@+id/input_meal_plan_servings"
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:text="2"
+            android:textSize="@dimen/sp_body" />
+
+        <!-- Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="24dp">
+
+            <!-- Löschen-Button (nur sichtbar im Edit-Modus) -->
+            <Button
+                android:id="@+id/btn_meal_plan_delete"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:text="Entfernen"
+                android:textColor="@color/error"
+                android:background="@android:color/transparent"
+                android:visibility="gone" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/btn_meal_plan_cancel"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:text="Abbrechen"
+                android:textColor="@color/text_secondary"
+                android:background="@android:color/transparent" />
+
+            <Button
+                android:id="@+id/btn_meal_plan_save"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginStart="16dp"
+                android:text="Speichern"
+                android:textColor="@android:color/white"
+                android:background="@color/accent" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>

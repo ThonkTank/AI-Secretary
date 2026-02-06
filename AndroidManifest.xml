@@ -23,6 +23,13 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name="activities.widget.DescriptionPopupActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:exported="false" />
+
 
         <receiver
             android:name="scheduling.DailyPlanningReceiver"
@@ -46,6 +53,27 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/task_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name="activities.widget.BudgetWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/budget_widget_info" />
+        </receiver>
+
+        <!-- Debug-Receiver fuer ADB-Befehle (exported=false: nur ADB, keine externen Apps) -->
+        <receiver
+            android:name="activities.widget.DebugBroadcastReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.autosecretary.debug.DUMP_PLANS" />
+                <action android:name="com.autosecretary.debug.REPLAN_ALL" />
+            </intent-filter>
         </receiver>
 
         <service

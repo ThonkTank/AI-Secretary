@@ -14,6 +14,23 @@ import java.util.stream.Collectors;
 import data.constants;
 import repository.parser.itemParser;
 import repository.parser.todoParser;
+import repository.parser.accountParser;
+import repository.parser.transactionParser;
+import repository.parser.budgetLimitParser;
+import repository.parser.importParser;
+import repository.parser.categoryParser;
+import repository.parser.householdMemberParser;
+import repository.parser.cookingPreferencesParser;
+import repository.parser.recipeRatingParser;
+import repository.parser.ingredientParser;
+import repository.parser.recipeParser;
+import repository.parser.mealPlanParser;
+import repository.parser.mealScheduleParser;
+import repository.parser.shoppingListParser;
+import repository.parser.pantryParser;
+import repository.parser.consumptionParser;
+import repository.parser.weeklyFoodTargetParser;
+import repository.parser.storePackageParser;
 
 /**
  * Basisklasse fuer SQLite-Datenbankzugriff (Android SQLiteOpenHelper).
@@ -30,8 +47,36 @@ import repository.parser.todoParser;
  */
 public class SQLrepo extends SQLiteOpenHelper implements Repo {
 
+    // ============================================================================
+    // SINGLETON PATTERN
+    // ============================================================================
+
+    private static SQLrepo instance;
+
+    /**
+     * Gibt die Singleton-Instanz zurueck.
+     * Thread-safe durch synchronized. Verwendet ApplicationContext um Memory-Leaks zu vermeiden.
+     */
+    public static synchronized SQLrepo getInstance(Context context) {
+        if (instance == null) {
+            instance = new SQLrepo(context.getApplicationContext());
+        }
+        return instance;
+    }
+
+    // ============================================================================
+    // INSTANZ-FELDER
+    // ============================================================================
+
+    private final Context context;
+
+    /**
+     * Konstruktor - bevorzugt getInstance() verwenden fuer Singleton-Zugriff.
+     * Direkter Aufruf ist noch moeglich fuer Rueckwaertskompatibilitaet.
+     */
     public SQLrepo(Context context) {
         super(context, constants.DB_NAME, null, constants.DB_VERSION);
+        this.context = context;
     }
 
     // ============================================================================
@@ -80,7 +125,6 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             + "average_streak INTEGER DEFAULT 0,"
             + "nr_of_streaks INTEGER DEFAULT 0,"
             + "total_completions INTEGER DEFAULT 0,"
-            + "min_interval_days INTEGER DEFAULT 0,"
             + "cooldown INTEGER DEFAULT 0,"
             + "blocked_days TEXT,"
             + "scheduled TEXT,"
@@ -92,11 +136,17 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             + "time_per_progress_unit INTEGER DEFAULT 0,"
             + "progress_timing_count INTEGER DEFAULT 0,"
             + "deadline TEXT,"
+            + "fixed_date TEXT,"
+            + "fixed_time TEXT,"
             + "goal_icon TEXT,"
             + "goal_color TEXT,"
-            + "required_predecessor INTEGER,"
-            + "conditional_prerequisite INTEGER,"
-            + "prereq_window_days INTEGER"
+            + "predecessor INTEGER,"
+            + "predecessor_delay INTEGER DEFAULT 0,"
+            + "last_completion_time TEXT,"
+            + "budget_requirement_cents INTEGER DEFAULT 0,"
+            + "budget_account_id INTEGER,"
+            + "budget_category_id INTEGER,"
+            + "meal_plan_id INTEGER"
             + ")"
         );
 
@@ -138,11 +188,354 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             + "FOREIGN KEY (item_id) REFERENCES items(id)"
             + ")"
         );
+
+        // ============== BUDGET-TRACKING TABELLEN ==============
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS accounts ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "name TEXT NOT NULL,"
+            + "type TEXT NOT NULL,"
+            + "current_balance_cents INTEGER DEFAULT 0,"
+            + "initial_balance_cents INTEGER DEFAULT 0,"
+            + "currency TEXT DEFAULT 'EUR',"
+            + "institution TEXT,"
+            + "account_number TEXT,"
+            + "color TEXT,"
+            + "icon TEXT,"
+            + "is_active INTEGER DEFAULT 1,"
+            + "include_in_total INTEGER DEFAULT 1,"
+            + "created TEXT NOT NULL"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS transactions ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "account_id INTEGER NOT NULL,"
+            + "amount_cents INTEGER NOT NULL,"
+            + "transaction_date TEXT NOT NULL,"
+            + "value_date TEXT,"
+            + "category_id INTEGER,"
+            + "subcategory TEXT,"
+            + "description TEXT,"
+            + "payee TEXT,"
+            + "is_income INTEGER DEFAULT 0,"
+            + "is_recurring INTEGER DEFAULT 0,"
+            + "repetition_type TEXT,"
+            + "repetition_value INTEGER,"
+            + "repetition_unit TEXT,"
+            + "day_of_week TEXT,"
+            + "next_due TEXT,"
+            + "last_occurrence TEXT,"
+            + "amount_min_cents INTEGER,"
+            + "amount_max_cents INTEGER,"
+            + "amount_avg_cents INTEGER,"
+            + "occurrence_count INTEGER DEFAULT 0,"
+            + "parent_recurring_id INTEGER,"
+            + "linked_transaction_id INTEGER,"
+            + "import_id INTEGER,"
+            + "import_hash TEXT,"
+            + "is_confirmed INTEGER DEFAULT 1,"
+            + "is_predicted INTEGER DEFAULT 0,"
+            + "created TEXT NOT NULL,"
+            + "FOREIGN KEY (account_id) REFERENCES accounts(id),"
+            + "FOREIGN KEY (category_id) REFERENCES categories(id),"
+            + "FOREIGN KEY (parent_recurring_id) REFERENCES transactions(id),"
+            + "FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id),"
+            + "FOREIGN KEY (import_id) REFERENCES imports(id)"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS budget_limits ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "category_id INTEGER,"
+            + "year_month TEXT NOT NULL,"
+            + "limit_cents INTEGER NOT NULL,"
+            + "spent_cents INTEGER DEFAULT 0,"
+            + "rollover_cents INTEGER DEFAULT 0,"
+            + "notes TEXT,"
+            + "UNIQUE(category_id, year_month),"
+            + "FOREIGN KEY (category_id) REFERENCES categories(id)"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS imports ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "account_id INTEGER NOT NULL,"
+            + "file_name TEXT NOT NULL,"
+            + "file_hash TEXT NOT NULL,"
+            + "import_date TEXT NOT NULL,"
+            + "period_start TEXT,"
+            + "period_end TEXT,"
+            + "total_transactions INTEGER DEFAULT 0,"
+            + "new_transactions INTEGER DEFAULT 0,"
+            + "auto_categorized INTEGER DEFAULT 0,"
+            + "claude_model TEXT,"
+            + "claude_prompt_tokens INTEGER,"
+            + "claude_response_tokens INTEGER,"
+            + "processing_time_ms INTEGER,"
+            + "raw_content TEXT,"
+            + "parsed_json TEXT,"
+            + "status TEXT DEFAULT 'PENDING',"
+            + "error_message TEXT,"
+            + "FOREIGN KEY (account_id) REFERENCES accounts(id)"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS categories ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "name TEXT NOT NULL,"
+            + "icon TEXT,"
+            + "color TEXT,"
+            + "is_income INTEGER DEFAULT 0,"
+            + "is_built_in INTEGER DEFAULT 0,"
+            + "sort_order INTEGER DEFAULT 0,"
+            + "is_active INTEGER DEFAULT 1"
+            + ")"
+        );
+
+        // ============== MEAL-PLANNING TABELLEN ==============
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS household_members ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "name TEXT NOT NULL,"
+            + "birth_year INTEGER,"
+            + "gender TEXT,"
+            + "weight_kg INTEGER,"
+            + "height_cm INTEGER,"
+            + "activity_level TEXT,"
+            + "is_active INTEGER DEFAULT 1"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS cooking_preferences ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "max_breakfast_cooking INTEGER DEFAULT 2,"
+            + "max_lunch_cooking INTEGER DEFAULT 3,"
+            + "max_dinner_cooking INTEGER DEFAULT 3,"
+            + "breakfast_cooking_days TEXT,"
+            + "lunch_cooking_days TEXT,"
+            + "dinner_cooking_days TEXT,"
+            + "quick_prep_max_minutes INTEGER DEFAULT 15"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS recipe_ratings ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "recipe_id INTEGER NOT NULL,"
+            + "member_id INTEGER NOT NULL,"
+            + "rating INTEGER NOT NULL,"
+            + "rated_at TEXT,"
+            + "UNIQUE(recipe_id, member_id),"
+            + "FOREIGN KEY (recipe_id) REFERENCES recipes(id),"
+            + "FOREIGN KEY (member_id) REFERENCES household_members(id)"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS ingredients ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "name TEXT NOT NULL,"
+            + "food_group TEXT NOT NULL,"
+            + "default_unit TEXT,"
+            + "grams_per_unit INTEGER DEFAULT 100,"
+            + "calories_per_100 INTEGER DEFAULT 0,"
+            + "protein_per_100 INTEGER DEFAULT 0,"
+            + "carbs_per_100 INTEGER DEFAULT 0,"
+            + "fat_per_100 INTEGER DEFAULT 0,"
+            + "fiber_per_100 INTEGER DEFAULT 0,"
+            + "shelf_life_days INTEGER DEFAULT 0,"
+            + "requires_refrigeration INTEGER DEFAULT 0,"
+            + "is_whole_unit INTEGER DEFAULT 0,"
+            + "is_perishable INTEGER DEFAULT 0"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS store_packages ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "ingredient_id INTEGER NOT NULL,"
+            + "store_name TEXT NOT NULL,"
+            + "package_size REAL NOT NULL,"
+            + "unit TEXT NOT NULL,"
+            + "price_cents INTEGER DEFAULT 0,"
+            + "last_purchased TEXT,"
+            + "FOREIGN KEY (ingredient_id) REFERENCES ingredients(id)"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS recipes ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "title TEXT NOT NULL,"
+            + "description TEXT,"
+            + "instructions TEXT,"
+            + "servings INTEGER DEFAULT 2,"
+            + "prep_time_minutes INTEGER DEFAULT 0,"
+            + "cook_time_minutes INTEGER DEFAULT 0,"
+            + "requires_cooking INTEGER DEFAULT 1,"
+            + "prep_effort TEXT DEFAULT 'MODERATE',"
+            + "servings_per_cooking INTEGER DEFAULT 2,"
+            + "shelf_life_days INTEGER DEFAULT 1,"
+            + "min_servings INTEGER DEFAULT 1,"
+            + "max_servings INTEGER DEFAULT 10,"
+            + "scaling_precision TEXT DEFAULT 'ROUGH',"
+            + "meal_type TEXT,"
+            + "ingredients TEXT,"
+            + "tags TEXT,"
+            + "last_used TEXT,"
+            + "usage_count INTEGER DEFAULT 0,"
+            + "is_favorite INTEGER DEFAULT 0,"
+            + "total_calories INTEGER DEFAULT 0,"
+            + "total_protein INTEGER DEFAULT 0,"
+            + "total_carbs INTEGER DEFAULT 0,"
+            + "total_fat INTEGER DEFAULT 0"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS meal_plans ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "date TEXT NOT NULL,"
+            + "meal_type TEXT NOT NULL,"
+            + "recipe_id INTEGER,"
+            + "planned_servings INTEGER DEFAULT 2,"
+            + "is_completed INTEGER DEFAULT 0,"
+            + "actual_servings INTEGER,"
+            + "completed_at TEXT,"
+            + "recipe_title TEXT,"
+            + "estimated_calories INTEGER DEFAULT 0,"
+            + "FOREIGN KEY (recipe_id) REFERENCES recipes(id)"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS meal_schedules ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "day_of_week TEXT NOT NULL,"
+            + "meal_type TEXT NOT NULL,"
+            + "scheduled_time TEXT,"
+            + "is_enabled INTEGER DEFAULT 1,"
+            + "UNIQUE(day_of_week, meal_type)"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS shopping_list_items ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "week_key TEXT NOT NULL,"
+            + "ingredient_id INTEGER,"
+            + "ingredient_name TEXT NOT NULL,"
+            + "amount REAL DEFAULT 0,"
+            + "unit TEXT,"
+            + "needed_amount REAL DEFAULT 0,"
+            + "excess_amount REAL DEFAULT 0,"
+            + "suggested_store TEXT,"
+            + "is_purchased INTEGER DEFAULT 0,"
+            + "purchased_at TEXT,"
+            + "actual_price_cents INTEGER DEFAULT 0,"
+            + "source_recipe_id INTEGER,"
+            + "food_group_label TEXT,"
+            + "FOREIGN KEY (ingredient_id) REFERENCES ingredients(id),"
+            + "FOREIGN KEY (source_recipe_id) REFERENCES recipes(id)"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS pantry_items ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "ingredient_id INTEGER,"
+            + "ingredient_name TEXT NOT NULL,"
+            + "amount REAL DEFAULT 0,"
+            + "unit TEXT,"
+            + "purchase_date TEXT,"
+            + "expiry_date TEXT,"
+            + "storage_location TEXT DEFAULT 'PANTRY',"
+            + "FOREIGN KEY (ingredient_id) REFERENCES ingredients(id)"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS consumption_logs ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "date TEXT NOT NULL,"
+            + "meal_plan_id INTEGER,"
+            + "member_id INTEGER,"
+            + "recipe_id INTEGER,"
+            + "servings_consumed INTEGER DEFAULT 0,"
+            + "ingredient_id INTEGER,"
+            + "amount REAL DEFAULT 0,"
+            + "unit TEXT,"
+            + "calories INTEGER DEFAULT 0,"
+            + "protein INTEGER DEFAULT 0,"
+            + "carbs INTEGER DEFAULT 0,"
+            + "fat INTEGER DEFAULT 0,"
+            + "FOREIGN KEY (meal_plan_id) REFERENCES meal_plans(id),"
+            + "FOREIGN KEY (member_id) REFERENCES household_members(id),"
+            + "FOREIGN KEY (recipe_id) REFERENCES recipes(id),"
+            + "FOREIGN KEY (ingredient_id) REFERENCES ingredients(id)"
+            + ")"
+        );
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS weekly_food_targets ("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + "week_key TEXT NOT NULL UNIQUE,"
+            + "grain_grams INTEGER DEFAULT 0,"
+            + "potato_grams INTEGER DEFAULT 0,"
+            + "vegetable_grams INTEGER DEFAULT 0,"
+            + "fruit_grams INTEGER DEFAULT 0,"
+            + "dairy_grams INTEGER DEFAULT 0,"
+            + "meat_grams INTEGER DEFAULT 0,"
+            + "fish_grams INTEGER DEFAULT 0,"
+            + "egg_grams INTEGER DEFAULT 0,"
+            + "fat_grams INTEGER DEFAULT 0,"
+            + "legume_grams INTEGER DEFAULT 0,"
+            + "nut_grams INTEGER DEFAULT 0,"
+            + "grain_planned INTEGER DEFAULT 0,"
+            + "potato_planned INTEGER DEFAULT 0,"
+            + "vegetable_planned INTEGER DEFAULT 0,"
+            + "fruit_planned INTEGER DEFAULT 0,"
+            + "dairy_planned INTEGER DEFAULT 0,"
+            + "meat_planned INTEGER DEFAULT 0,"
+            + "fish_planned INTEGER DEFAULT 0,"
+            + "egg_planned INTEGER DEFAULT 0,"
+            + "fat_planned INTEGER DEFAULT 0,"
+            + "legume_planned INTEGER DEFAULT 0,"
+            + "nut_planned INTEGER DEFAULT 0"
+            + ")"
+        );
+
+        // ============== PERFORMANCE-INDIZES ==============
+
+        // Index fuer Budget-Tasks (Scheduling-Filter auf budget_requirement_cents > 0)
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_items_budget " +
+            "ON items(budget_requirement_cents) WHERE budget_requirement_cents > 0");
+
+        // Index fuer feste Termine (Scheduling-Filter auf fixed_date IS NOT NULL)
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_items_fixed " +
+            "ON items(fixed_date) WHERE fixed_date IS NOT NULL");
+
+        // Index fuer Meal-Tasks (Join auf meal_plan_id)
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_items_meal " +
+            "ON items(meal_plan_id) WHERE meal_plan_id IS NOT NULL");
+
+        // Index fuer offene Items (haeufigster Query)
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_items_open " +
+            "ON items(is_completed, type) WHERE is_completed = 0");
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // Kein Legacy-Support: DB wird bei jedem Update geloescht und neu geseeded (siehe mainActivity)
+        // Migrationen ausfuehren (Backup wird vorher in mainActivity erstellt)
+        new MigrationManager(context).migrate(db, oldVersion, newVersion);
     }
 
     // ============================================================================
@@ -193,8 +586,9 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
      */
     @SuppressWarnings("unchecked")
     public <T> List<T> lookups(String table, Map<String, String> filters, String outputColumn) {
-        if (filters == null || filters.isEmpty()) {
-            throw new IllegalArgumentException("Mindestens ein Filter erforderlich");
+        // Leere Filter erlaubt → gibt alle Einträge zurück
+        if (filters == null) {
+            filters = Map.of();
         }
 
         validateIdentifier(table);
@@ -203,10 +597,11 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             validateIdentifier(col);
         }
 
-        String whereClause = filters.keySet().stream()
-            .map(col -> col + " = ?")
-            .collect(Collectors.joining(" AND "));
-        String[] whereArgs = filters.values().toArray(new String[0]);
+        String whereClause = filters.isEmpty() ? null :
+            filters.keySet().stream()
+                .map(col -> col + " = ?")
+                .collect(Collectors.joining(" AND "));
+        String[] whereArgs = filters.isEmpty() ? null : filters.values().toArray(new String[0]);
 
         List<T> result = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
@@ -255,6 +650,24 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             case "items": return itemParser.convertValue(column, raw);
             case "todos":
             case "config_schedules": return todoParser.convertValue(column, raw);
+            case "accounts": return accountParser.convertValue(column, raw);
+            case "transactions": return transactionParser.convertValue(column, raw);
+            case "budget_limits": return budgetLimitParser.convertValue(column, raw);
+            case "imports": return importParser.convertValue(column, raw);
+            case "categories": return categoryParser.convertValue(column, raw);
+            // Meal-Planning
+            case "household_members": return householdMemberParser.convertValue(column, raw);
+            case "cooking_preferences": return cookingPreferencesParser.convertValue(column, raw);
+            case "recipe_ratings": return recipeRatingParser.convertValue(column, raw);
+            case "ingredients": return ingredientParser.convertValue(column, raw);
+            case "recipes": return recipeParser.convertValue(column, raw);
+            case "meal_plans": return mealPlanParser.convertValue(column, raw);
+            case "meal_schedules": return mealScheduleParser.convertValue(column, raw);
+            case "shopping_list_items": return shoppingListParser.convertValue(column, raw);
+            case "pantry_items": return pantryParser.convertValue(column, raw);
+            case "consumption_logs": return consumptionParser.convertValue(column, raw);
+            case "weekly_food_targets": return weeklyFoodTargetParser.convertValue(column, raw);
+            case "store_packages": return storePackageParser.convertValue(column, raw);
             default: return raw;
         }
     }
@@ -284,6 +697,24 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             switch (tableName) {
                 case "items": return (T) itemParser.fromRow(itemParser.convertRow(row));
                 case "todos": return (T) todoParser.fromRow(todoParser.convertRow(row), db);
+                case "accounts": return (T) accountParser.fromRow(accountParser.convertRow(row));
+                case "transactions": return (T) transactionParser.fromRow(transactionParser.convertRow(row));
+                case "budget_limits": return (T) budgetLimitParser.fromRow(budgetLimitParser.convertRow(row));
+                case "imports": return (T) importParser.fromRow(importParser.convertRow(row));
+                case "categories": return (T) categoryParser.fromRow(categoryParser.convertRow(row));
+                // Meal-Planning
+                case "household_members": return (T) householdMemberParser.fromRow(householdMemberParser.convertRow(row));
+                case "cooking_preferences": return (T) cookingPreferencesParser.fromRow(cookingPreferencesParser.convertRow(row));
+                case "recipe_ratings": return (T) recipeRatingParser.fromRow(recipeRatingParser.convertRow(row));
+                case "ingredients": return (T) ingredientParser.fromRow(ingredientParser.convertRow(row));
+                case "recipes": return (T) recipeParser.fromRow(recipeParser.convertRow(row));
+                case "meal_plans": return (T) mealPlanParser.fromRow(mealPlanParser.convertRow(row));
+                case "meal_schedules": return (T) mealScheduleParser.fromRow(mealScheduleParser.convertRow(row));
+                case "shopping_list_items": return (T) shoppingListParser.fromRow(shoppingListParser.convertRow(row));
+                case "pantry_items": return (T) pantryParser.fromRow(pantryParser.convertRow(row));
+                case "consumption_logs": return (T) consumptionParser.fromRow(consumptionParser.convertRow(row));
+                case "weekly_food_targets": return (T) weeklyFoodTargetParser.fromRow(weeklyFoodTargetParser.convertRow(row));
+                case "store_packages": return (T) storePackageParser.fromRow(storePackageParser.convertRow(row));
                 default: throw new IllegalArgumentException("Unbekannte Tabelle: " + tableName);
             }
         } finally {
@@ -305,6 +736,110 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
     }
 
     // ============================================================================
+    // FETCH ALL - Lädt alle Einträge einer Tabelle (optimiert - single query)
+    // ============================================================================
+
+    /**
+     * Lädt alle Einträge einer Tabelle.
+     *
+     * Beispiel:
+     *   List<Recipe> recipes = repo.fetchAll(Table.RECIPES);
+     */
+    public <T> List<T> fetchAll(Table<T> table) {
+        return fetchAll(table, null);
+    }
+
+    /**
+     * Lädt Einträge einer Tabelle mit optionalen Filtern in einer einzigen Query.
+     * Ersetzt das ineffiziente N+1 Query-Pattern durch Batch-Fetch.
+     *
+     * Beispiel:
+     *   List<Account> activeAccounts = repo.fetchAll(Table.ACCOUNTS, Map.of("is_active", "1"));
+     *   List<Transaction> monthTx = repo.fetchAll(Table.TRANSACTIONS, Map.of("account_id", "5"));
+     */
+    @SuppressWarnings("unchecked")
+    public <T> List<T> fetchAll(Table<T> table, Map<String, String> filters) {
+        String tableName = table.name();
+        validateIdentifier(tableName);
+
+        if (filters == null) {
+            filters = Map.of();
+        }
+        for (String col : filters.keySet()) {
+            validateIdentifier(col);
+        }
+
+        String whereClause = filters.isEmpty() ? null :
+            filters.keySet().stream()
+                .map(col -> col + " = ?")
+                .collect(java.util.stream.Collectors.joining(" AND "));
+        String[] whereArgs = filters.isEmpty() ? null :
+            filters.values().toArray(new String[0]);
+
+        List<T> result = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(tableName, null, whereClause, whereArgs, null, null, null);
+
+        try {
+            while (cursor.moveToNext()) {
+                Map<String, Object> row = cursorToMap(cursor);
+                T entity = (T) parseEntity(tableName, row, db);
+                if (entity != null) {
+                    result.add(entity);
+                }
+            }
+        } finally {
+            cursor.close();
+        }
+        return result;
+    }
+
+    /**
+     * Parst eine DB-Row in die entsprechende Entity.
+     * Extrahiert aus dem switch-Statement in fetch() für Wiederverwendung.
+     */
+    private Object parseEntity(String tableName, Map<String, Object> row, SQLiteDatabase db) {
+        switch (tableName) {
+            case "items": return itemParser.fromRow(itemParser.convertRow(row));
+            case "todos": return todoParser.fromRow(todoParser.convertRow(row), db);
+            case "accounts": return accountParser.fromRow(accountParser.convertRow(row));
+            case "transactions": return transactionParser.fromRow(transactionParser.convertRow(row));
+            case "budget_limits": return budgetLimitParser.fromRow(budgetLimitParser.convertRow(row));
+            case "imports": return importParser.fromRow(importParser.convertRow(row));
+            case "categories": return categoryParser.fromRow(categoryParser.convertRow(row));
+            // Meal-Planning
+            case "household_members": return householdMemberParser.fromRow(householdMemberParser.convertRow(row));
+            case "cooking_preferences": return cookingPreferencesParser.fromRow(cookingPreferencesParser.convertRow(row));
+            case "recipe_ratings": return recipeRatingParser.fromRow(recipeRatingParser.convertRow(row));
+            case "ingredients": return ingredientParser.fromRow(ingredientParser.convertRow(row));
+            case "recipes": return recipeParser.fromRow(recipeParser.convertRow(row));
+            case "meal_plans": return mealPlanParser.fromRow(mealPlanParser.convertRow(row));
+            case "meal_schedules": return mealScheduleParser.fromRow(mealScheduleParser.convertRow(row));
+            case "shopping_list_items": return shoppingListParser.fromRow(shoppingListParser.convertRow(row));
+            case "pantry_items": return pantryParser.fromRow(pantryParser.convertRow(row));
+            case "consumption_logs": return consumptionParser.fromRow(consumptionParser.convertRow(row));
+            case "weekly_food_targets": return weeklyFoodTargetParser.fromRow(weeklyFoodTargetParser.convertRow(row));
+            case "store_packages": return storePackageParser.fromRow(storePackageParser.convertRow(row));
+            default: throw new IllegalArgumentException("Unbekannte Tabelle: " + tableName);
+        }
+    }
+
+    // ============================================================================
+    // DELETE - Löscht einen Eintrag aus der Datenbank
+    // ============================================================================
+
+    /**
+     * Löscht einen Eintrag per ID.
+     *
+     * Beispiel:
+     *   repo.delete(Table.RECIPES, 5L);
+     */
+    public <T> void delete(Table<T> table, long id) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.delete(table.name(), "id = ?", new String[]{String.valueOf(id)});
+    }
+
+    // ============================================================================
     // WRITE - Schreibt ein Objekt in die Datenbank
     // ============================================================================
 
@@ -322,6 +857,41 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             itemParser.toRow(db, (entities.trackedItem) entity);
         } else if (entity instanceof entities.todoList) {
             todoParser.toRow(db, (entities.todoList) entity);
+        } else if (entity instanceof entities.Account) {
+            accountParser.toRow(db, (entities.Account) entity);
+        } else if (entity instanceof entities.Transaction) {
+            transactionParser.toRow(db, (entities.Transaction) entity);
+        } else if (entity instanceof entities.BudgetLimit) {
+            budgetLimitParser.toRow(db, (entities.BudgetLimit) entity);
+        } else if (entity instanceof entities.Import) {
+            importParser.toRow(db, (entities.Import) entity);
+        } else if (entity instanceof entities.Category) {
+            categoryParser.toRow(db, (entities.Category) entity);
+        // Meal-Planning
+        } else if (entity instanceof entities.HouseholdMember) {
+            householdMemberParser.toRow(db, (entities.HouseholdMember) entity);
+        } else if (entity instanceof entities.CookingPreferences) {
+            cookingPreferencesParser.toRow(db, (entities.CookingPreferences) entity);
+        } else if (entity instanceof entities.RecipeRating) {
+            recipeRatingParser.toRow(db, (entities.RecipeRating) entity);
+        } else if (entity instanceof entities.Ingredient) {
+            ingredientParser.toRow(db, (entities.Ingredient) entity);
+        } else if (entity instanceof entities.Recipe) {
+            recipeParser.toRow(db, (entities.Recipe) entity);
+        } else if (entity instanceof entities.MealPlan) {
+            mealPlanParser.toRow(db, (entities.MealPlan) entity);
+        } else if (entity instanceof entities.MealSchedule) {
+            mealScheduleParser.toRow(db, (entities.MealSchedule) entity);
+        } else if (entity instanceof entities.ShoppingListItem) {
+            shoppingListParser.toRow(db, (entities.ShoppingListItem) entity);
+        } else if (entity instanceof entities.PantryItem) {
+            pantryParser.toRow(db, (entities.PantryItem) entity);
+        } else if (entity instanceof entities.ConsumptionLog) {
+            consumptionParser.toRow(db, (entities.ConsumptionLog) entity);
+        } else if (entity instanceof entities.WeeklyFoodTarget) {
+            weeklyFoodTargetParser.toRow(db, (entities.WeeklyFoodTarget) entity);
+        } else if (entity instanceof entities.StorePackage) {
+            storePackageParser.toRow(db, (entities.StorePackage) entity);
         } else {
             throw new IllegalArgumentException("Unbekannter Entity-Typ: " + entity.getClass().getName());
         }

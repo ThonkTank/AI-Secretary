@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/popup_overlay"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/overlay_dim">
+
+    <LinearLayout
+        android:id="@+id/popup_card"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginHorizontal="@dimen/padding_large"
+        android:orientation="vertical"
+        android:background="@drawable/popup_background"
+        android:padding="@dimen/padding_medium"
+        android:elevation="8dp"
+        android:minWidth="250dp">
+
+        <TextView
+            android:id="@+id/popup_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/sp_body"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="@dimen/padding_small"
+            android:background="@color/divider" />
+
+        <TextView
+            android:id="@+id/popup_description"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/sp_small"
+            android:textColor="@color/text_secondary"
+            android:maxLines="15"
+            android:ellipsize="end" />
+
+    </LinearLayout>
+
+</FrameLayout>

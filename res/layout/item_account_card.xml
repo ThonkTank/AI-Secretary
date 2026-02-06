@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="140dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/card_background"
+    android:padding="@dimen/padding_small"
+    android:layout_marginEnd="@dimen/padding_small"
+    android:elevation="2dp">
+
+    <!-- Icon + Name -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/account_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="20sp"
+            android:layout_marginEnd="4dp" />
+
+        <TextView
+            android:id="@+id/account_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Konto"
+            android:textSize="@dimen/sp_caption"
+            android:textColor="@color/text_secondary"
+            android:maxLines="1"
+            android:ellipsize="end" />
+    </LinearLayout>
+
+    <!-- Balance -->
+    <TextView
+        android:id="@+id/account_balance"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="0,00 EUR"
+        android:textSize="@dimen/sp_body"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary"
+        android:layout_marginTop="4dp" />
+
+    <!-- Type Badge -->
+    <TextView
+        android:id="@+id/account_type"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Giro"
+        android:textSize="@dimen/sp_micro"
+        android:textColor="@color/text_muted"
+        android:layout_marginTop="2dp" />
+
+</LinearLayout>

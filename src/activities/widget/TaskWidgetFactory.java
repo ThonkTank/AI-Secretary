@@ -86,6 +86,7 @@ import data.TaskListData.*;
 import data.TaskRowConfig.*;
 import render.TaskRowRenderer;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -107,9 +108,10 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
 
     @Override
     public void onDataSetChanged() {
-        // Daten neu laden
+        // Daten neu laden für das ausgewählte Datum
         todoManager manager = new todoManager(context);
-        List<todoManager.TaskEntry> entries = manager.provideList();
+        LocalDate selectedDate = TaskWidgetProvider.getSelectedDate(context);
+        List<todoManager.TaskEntry> entries = manager.provideList(selectedDate);
         rows = TaskListData.fromEntries(entries);
     }
 
@@ -149,36 +151,49 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
                     ContextCompat.getColor(context, R.color.completion_flash));
             }
 
-            // Fill-In Intents je nach Modus
-            if (cfg.hasProgress()) {
-                // Progress-Modus: +/- Buttons
-                Intent plusIntent = new Intent()
-                    .putExtra("action", "increment_progress")
-                    .putExtra("slot_id", cfg.slotId())
-                    .putExtra("already_done_today", cfg.progressDoneToday());
-                rv.setOnClickFillInIntent(R.id.btn_progress_plus, plusIntent);
+            // Interaktionen nur für heute erlaubt
+            boolean isToday = TaskWidgetProvider.isShowingToday(context);
 
-                Intent minusIntent = new Intent()
-                    .putExtra("action", "decrement_progress")
-                    .putExtra("slot_id", cfg.slotId());
-                rv.setOnClickFillInIntent(R.id.btn_progress_minus, minusIntent);
-            } else {
-                // Normal-Modus: Checkbox
-                Intent checkIntent = new Intent()
-                    .putExtra("action", "toggle")
-                    .putExtra("slot_id", cfg.slotId())
-                    .putExtra("was_completed", cfg.checked());
-                rv.setOnClickFillInIntent(R.id.task_checkbox, checkIntent);
-            }
+            if (isToday) {
+                // Fill-In Intents je nach Modus
+                if (cfg.hasProgress()) {
+                    // Progress-Modus: +/- Buttons
+                    Intent plusIntent = new Intent()
+                        .putExtra("action", "increment_progress")
+                        .putExtra("slot_id", cfg.slotId())
+                        .putExtra("already_done_today", cfg.progressDoneToday());
+                    rv.setOnClickFillInIntent(R.id.btn_progress_plus, plusIntent);
 
-            // Fill-In Intent für Timer (nur wenn sichtbar)
-            if (cfg.showTimer()) {
-                Intent timerIntent = new Intent()
-                    .putExtra("action", "timer")
-                    .putExtra("slot_id", cfg.slotId())
-                    .putExtra("timer_running", cfg.timerRunning());
-                rv.setOnClickFillInIntent(R.id.task_timer, timerIntent);
+                    Intent minusIntent = new Intent()
+                        .putExtra("action", "decrement_progress")
+                        .putExtra("slot_id", cfg.slotId());
+                    rv.setOnClickFillInIntent(R.id.btn_progress_minus, minusIntent);
+                } else {
+                    // Normal-Modus: Checkbox
+                    Intent checkIntent = new Intent()
+                        .putExtra("action", "toggle")
+                        .putExtra("slot_id", cfg.slotId())
+                        .putExtra("was_completed", cfg.checked());
+                    rv.setOnClickFillInIntent(R.id.task_checkbox, checkIntent);
+                }
+
+                // Fill-In Intent für Timer (nur wenn sichtbar)
+                if (cfg.showTimer()) {
+                    Intent timerIntent = new Intent()
+                        .putExtra("action", "timer")
+                        .putExtra("slot_id", cfg.slotId())
+                        .putExtra("timer_running", cfg.timerRunning());
+                    rv.setOnClickFillInIntent(R.id.task_timer, timerIntent);
+                }
             }
+            // Zukünftige Tage: Keine Fill-In Intents → Checkboxen nicht klickbar
+
+            // Fill-In Intent für Titel-Klick: Beschreibung anzeigen (für alle Tage)
+            Intent descIntent = new Intent()
+                .putExtra("action", "show_description")
+                .putExtra("task_title", item.entry().taskTitle())
+                .putExtra("task_description", item.entry().taskDescription());
+            rv.setOnClickFillInIntent(R.id.task_title, descIntent);
 
             return rv;
         }

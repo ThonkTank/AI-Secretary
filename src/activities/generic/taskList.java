@@ -3,10 +3,13 @@ package activities.generic;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Color;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
+import android.widget.TextView;
 
 import static activities.generic.ViewHelper.dp;
 
@@ -21,7 +24,10 @@ import data.TaskListData.*;
 import data.TaskRowConfig.*;
 import render.TaskRowRenderer;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * ══════════════════════════════════════════════════════════════════════════════
@@ -33,10 +39,14 @@ import java.util.List;
  */
 public class taskList implements TodoListener, ViewBuilder {
 
+    private static final DateTimeFormatter DATE_FORMAT =
+        DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN);
+
     private Context context;
     private todoManager manager;
     private LinearLayout container;
     private Runnable onUpdate;
+    private LocalDate selectedDate = LocalDate.now();
 
     public taskList(Context context, todoManager manager) {
         this.context = context;
@@ -60,22 +70,79 @@ public class taskList implements TodoListener, ViewBuilder {
     /** Rendert die Task-Liste in den Container */
     public void render() {
         container.removeAllViews();
+        boolean isToday = selectedDate.equals(LocalDate.now());
 
-        // Replan-Button hinzufügen
-        Button replanBtn = new Button(context);
-        replanBtn.setText("Neu planen");
-        replanBtn.setTextColor(Color.WHITE);
-        replanBtn.setBackgroundColor(ContextCompat.getColor(context, R.color.accent));
-        replanBtn.setOnClickListener(v -> manager.replanToday());
-        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
+        // ════════════════════════════════════════════════════════════════════════
+        // Datum-Header: [<] Mittwoch, 5. Feb [>]
+        // ════════════════════════════════════════════════════════════════════════
+        LinearLayout dateHeader = new LinearLayout(context);
+        dateHeader.setOrientation(LinearLayout.HORIZONTAL);
+        dateHeader.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams headerParams = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT);
-        btnParams.bottomMargin = dp(context, 12);
-        container.addView(replanBtn, btnParams);
+        headerParams.bottomMargin = dp(context, 12);
 
+        // Pfeil links (nur wenn nicht heute)
+        TextView arrowLeft = new TextView(context);
+        arrowLeft.setText("◀");
+        arrowLeft.setTextSize(20);
+        arrowLeft.setPadding(dp(context, 12), dp(context, 8), dp(context, 12), dp(context, 8));
+        if (isToday) {
+            arrowLeft.setTextColor(ContextCompat.getColor(context, R.color.button_inactive));
+        } else {
+            arrowLeft.setTextColor(ContextCompat.getColor(context, R.color.accent));
+            arrowLeft.setOnClickListener(v -> previousDay());
+        }
+        dateHeader.addView(arrowLeft);
+
+        // Datum-Label (zentriert, weight=1)
+        TextView dateLabel = new TextView(context);
+        String dateText = isToday ? "Heute" : selectedDate.format(DATE_FORMAT);
+        dateLabel.setText(dateText);
+        dateLabel.setTextSize(18);
+        dateLabel.setTextColor(ContextCompat.getColor(context, R.color.text_primary));
+        dateLabel.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        dateHeader.addView(dateLabel, labelParams);
+
+        // Pfeil rechts (nur wenn < heute+6)
+        TextView arrowRight = new TextView(context);
+        arrowRight.setText("▶");
+        arrowRight.setTextSize(20);
+        arrowRight.setPadding(dp(context, 12), dp(context, 8), dp(context, 12), dp(context, 8));
+        if (selectedDate.isBefore(LocalDate.now().plusDays(6))) {
+            arrowRight.setTextColor(ContextCompat.getColor(context, R.color.accent));
+            arrowRight.setOnClickListener(v -> nextDay());
+        } else {
+            arrowRight.setTextColor(ContextCompat.getColor(context, R.color.button_inactive));
+        }
+        dateHeader.addView(arrowRight);
+
+        container.addView(dateHeader, headerParams);
+
+        // ════════════════════════════════════════════════════════════════════════
+        // Replan-Button (nur für heute)
+        // ════════════════════════════════════════════════════════════════════════
+        if (isToday) {
+            Button replanBtn = new Button(context);
+            replanBtn.setText("Neu planen");
+            replanBtn.setTextColor(Color.WHITE);
+            replanBtn.setBackgroundColor(ContextCompat.getColor(context, R.color.accent));
+            replanBtn.setOnClickListener(v -> manager.replanToday());
+            LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+            btnParams.bottomMargin = dp(context, 12);
+            container.addView(replanBtn, btnParams);
+        }
+
+        // ════════════════════════════════════════════════════════════════════════
         // Task-Liste rendern
+        // ════════════════════════════════════════════════════════════════════════
         LayoutInflater inflater = LayoutInflater.from(context);
-        List<DisplayRow> rows = TaskListData.fromEntries(manager.provideList());
+        List<DisplayRow> rows = TaskListData.fromEntries(manager.provideList(selectedDate));
 
         for (DisplayRow row : rows) {
             if (row instanceof GoalHeader header) {
@@ -89,44 +156,61 @@ public class taskList implements TodoListener, ViewBuilder {
                 TaskConfig cfg = TaskConfig.from(item.entry());
                 TaskRowRenderer.applyTask(view, cfg, context);
 
-                if (cfg.hasProgress()) {
-                    // Progress-Modus: +/- Button Listener
-                    View btnPlus = view.findViewById(R.id.btn_progress_plus);
-                    View btnMinus = view.findViewById(R.id.btn_progress_minus);
+                // Interaktionen nur für heute erlaubt
+                if (isToday) {
+                    if (cfg.hasProgress()) {
+                        // Progress-Modus: +/- Button Listener
+                        View btnPlus = view.findViewById(R.id.btn_progress_plus);
+                        View btnMinus = view.findViewById(R.id.btn_progress_minus);
 
-                    btnPlus.setOnClickListener(v -> {
-                        if (cfg.progressCurrent() < cfg.progressTarget()) {
-                            animateProgressIncrement(view, btnPlus, cfg.progressDoneToday());
-                            manager.incrementProgress(cfg.slotId());
-                        }
-                    });
+                        btnPlus.setOnClickListener(v -> {
+                            if (cfg.progressCurrent() < cfg.progressTarget()) {
+                                animateProgressIncrement(view, btnPlus, cfg.progressDoneToday());
+                                manager.incrementProgress(cfg.slotId());
+                            }
+                        });
 
-                    btnMinus.setOnClickListener(v -> {
-                        if (cfg.progressCurrent() > 0) {
-                            manager.decrementProgress(cfg.slotId());
-                        }
-                    });
+                        btnMinus.setOnClickListener(v -> {
+                            if (cfg.progressCurrent() > 0) {
+                                manager.decrementProgress(cfg.slotId());
+                            }
+                        });
+                    } else {
+                        // Normal-Modus: Checkbox Listener
+                        View checkbox = view.findViewById(R.id.task_checkbox);
+                        checkbox.setOnClickListener(v -> {
+                            if (cfg.checked()) {
+                                manager.uncompleteSlot(cfg.slotId());
+                            } else {
+                                animateCompletion(view, checkbox);
+                                manager.completeSlot(cfg.slotId());
+                            }
+                        });
+                    }
+
+                    // Timer Listener (nur wenn sichtbar)
+                    View timer = view.findViewById(R.id.task_timer);
+                    if (cfg.showTimer()) {
+                        timer.setOnClickListener(v -> {
+                            if (cfg.timerRunning()) manager.stopTimer(cfg.slotId());
+                            else manager.startTimer(cfg.slotId());
+                        });
+                    }
                 } else {
-                    // Normal-Modus: Checkbox Listener
+                    // Zukünftige Tage: Checkbox visuell deaktivieren
                     View checkbox = view.findViewById(R.id.task_checkbox);
-                    checkbox.setOnClickListener(v -> {
-                        if (cfg.checked()) {
-                            manager.uncompleteSlot(cfg.slotId());
-                        } else {
-                            animateCompletion(view, checkbox);
-                            manager.completeSlot(cfg.slotId());
-                        }
-                    });
+                    if (checkbox != null) {
+                        checkbox.setAlpha(0.4f);
+                    }
+                    View progressContainer = view.findViewById(R.id.progress_container);
+                    if (progressContainer != null && progressContainer.getVisibility() == View.VISIBLE) {
+                        progressContainer.setAlpha(0.4f);
+                    }
                 }
 
-                // Timer Listener (nur wenn sichtbar)
-                View timer = view.findViewById(R.id.task_timer);
-                if (cfg.showTimer()) {
-                    timer.setOnClickListener(v -> {
-                        if (cfg.timerRunning()) manager.stopTimer(cfg.slotId());
-                        else manager.startTimer(cfg.slotId());
-                    });
-                }
+                // Titel-Klick: Beschreibung anzeigen (für alle Tage)
+                View title = view.findViewById(R.id.task_title);
+                title.setOnClickListener(v -> showDescriptionPopup(v, cfg.title(), item.entry().taskDescription()));
 
                 container.addView(view);
             }
@@ -137,6 +221,28 @@ public class taskList implements TodoListener, ViewBuilder {
                 container.addView(view);
             }
         }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════
+    // Navigation: Datum wechseln
+    // ════════════════════════════════════════════════════════════════════════════
+    public void nextDay() {
+        if (selectedDate.isBefore(LocalDate.now().plusDays(6))) {
+            selectedDate = selectedDate.plusDays(1);
+            render();
+        }
+    }
+
+    public void previousDay() {
+        if (selectedDate.isAfter(LocalDate.now())) {
+            selectedDate = selectedDate.minusDays(1);
+            render();
+        }
+    }
+
+    public void goToToday() {
+        selectedDate = LocalDate.now();
+        render();
     }
 
     @Override
@@ -183,5 +289,35 @@ public class taskList implements TodoListener, ViewBuilder {
             colorAnim.addUpdateListener(a -> row.setBackgroundColor((int) a.getAnimatedValue()));
             colorAnim.start();
         }
+    }
+
+    /** Zeigt Popup mit Task-Beschreibung */
+    private void showDescriptionPopup(View anchor, String title, String description) {
+        if (description == null || description.isEmpty()) {
+            description = "Keine Beschreibung";
+        }
+
+        // Popup-Layout inflaten
+        View popupView = LayoutInflater.from(context).inflate(R.layout.popup_description, null);
+
+        // Inhalt setzen
+        TextView titleView = popupView.findViewById(R.id.popup_title);
+        TextView descView = popupView.findViewById(R.id.popup_description);
+        titleView.setText(title);
+        descView.setText(description);
+
+        // PopupWindow erstellen
+        PopupWindow popup = new PopupWindow(
+            popupView,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            true  // focusable - Touch außerhalb schließt das Popup
+        );
+
+        popup.setElevation(dp(context, 8));
+        popup.setOutsideTouchable(true);
+
+        // Popup unter dem Anchor anzeigen
+        popup.showAsDropDown(anchor, 0, dp(context, 4));
     }
 }

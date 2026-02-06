@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/card_background"
+    android:padding="@dimen/padding_small"
+    android:layout_marginBottom="@dimen/padding_small"
+    android:elevation="1dp">
+
+    <!-- Header: Category + Amount -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/budget_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="16sp"
+            android:layout_marginEnd="4dp" />
+
+        <TextView
+            android:id="@+id/budget_category"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Kategorie"
+            android:textSize="@dimen/sp_body"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:id="@+id/budget_amounts"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0 / 0 EUR"
+            android:textSize="@dimen/sp_caption"
+            android:textColor="@color/text_secondary" />
+    </LinearLayout>
+
+    <!-- Progress Bar Background -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="8dp"
+        android:layout_marginTop="4dp"
+        android:background="@color/budget_bar_bg">
+
+        <!-- Progress Bar Fill -->
+        <View
+            android:id="@+id/budget_progress"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:background="@color/budget_bar_safe" />
+    </FrameLayout>
+
+    <!-- Over Budget Warning (optional) -->
+    <TextView
+        android:id="@+id/budget_warning"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Budget ueberschritten!"
+        android:textSize="@dimen/sp_micro"
+        android:textColor="@color/budget_expense"
+        android:visibility="gone"
+        android:layout_marginTop="2dp" />
+
+</LinearLayout>

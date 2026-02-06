@@ -100,20 +100,59 @@
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- Dauer -->
+                <!-- Min Dauer -->
+                <LinearLayout
+                    android:id="@+id/row_min_duration"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="Min. Dauer" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <EditText
+                            android:id="@+id/field_min_duration"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:inputType="number"
+                            android:hint="Wert"
+                            android:singleLine="true"
+                            android:textSize="@dimen/sp_body" />
+                        <Button android:id="@+id/btn_min_unit_minutes" style="@style/GroupButton"
+                            android:text="MIN" android:textSize="10sp" />
+                        <Button android:id="@+id/btn_min_unit_progress" style="@style/GroupButton"
+                            android:text="EINH" android:textSize="10sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Max Dauer -->
                 <LinearLayout
                     android:id="@+id/row_duration"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="Dauer (Minuten)" />
-                    <EditText
-                        android:id="@+id/field_duration"
+                    <TextView style="@style/FormLabel" android:text="Max. Dauer" />
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="number"
-                        android:singleLine="true"
-                        android:textSize="@dimen/sp_body" />
+                        android:orientation="horizontal">
+                        <EditText
+                            android:id="@+id/field_duration"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:inputType="number"
+                            android:hint="Wert"
+                            android:singleLine="true"
+                            android:textSize="@dimen/sp_body" />
+                        <Button android:id="@+id/btn_max_unit_minutes" style="@style/GroupButton"
+                            android:text="MIN" android:textSize="10sp" />
+                        <Button android:id="@+id/btn_max_unit_progress" style="@style/GroupButton"
+                            android:text="EINH" android:textSize="10sp" />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <!-- Prioritaet -->
@@ -160,6 +199,42 @@
                         android:layout_height="wrap_content" />
                 </LinearLayout>
 
+                <!-- Wartezeit nach Vorgänger (nur wenn Vorgänger gewählt) -->
+                <LinearLayout
+                    android:id="@+id/row_predecessor_delay"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="Wartezeit (Minuten)" />
+                    <EditText
+                        android:id="@+id/field_predecessor_delay"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:hint="0 = direkt danach"
+                        android:singleLine="true"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- Bevorzugte Uhrzeit (nur TASK) -->
+                <LinearLayout
+                    android:id="@+id/row_pref_time"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="Bevorzugte Uhrzeit" />
+                    <EditText
+                        android:id="@+id/field_pref_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Uhrzeit wählen"
+                        android:focusable="false"
+                        android:clickable="true"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
                 <!-- Cooldown -->
                 <LinearLayout
                     android:id="@+id/row_cooldown"
@@ -193,20 +268,84 @@
                         android:textSize="@dimen/sp_body" />
                 </LinearLayout>
 
-                <!-- Min. Intervall -->
+                <!-- Fester Termin - Datum (nur TASK + NONE) -->
                 <LinearLayout
-                    android:id="@+id/row_min_interval"
+                    android:id="@+id/row_fixed_date"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="Min. Intervall (Tage)" />
+                    <TextView style="@style/FormLabel" android:text="Fester Termin - Datum" />
                     <EditText
-                        android:id="@+id/field_min_interval"
+                        android:id="@+id/field_fixed_date"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="number"
+                        android:hint="Datum wählen"
+                        android:focusable="false"
+                        android:clickable="true"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- Fester Termin - Uhrzeit (nur TASK + NONE) -->
+                <LinearLayout
+                    android:id="@+id/row_fixed_time"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <TextView style="@style/FormLabel" android:text="Fester Termin - Uhrzeit" />
+                    <EditText
+                        android:id="@+id/field_fixed_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Uhrzeit wählen"
+                        android:focusable="false"
+                        android:clickable="true"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- Budget-Anforderung (nur TASK) -->
+                <LinearLayout
+                    android:id="@+id/row_budget"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="Budget (EUR)" />
+                    <EditText
+                        android:id="@+id/field_budget_amount"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal"
+                        android:hint="0.00"
                         android:singleLine="true"
                         android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- Budget-Konto (nur TASK) -->
+                <LinearLayout
+                    android:id="@+id/row_budget_account"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="Konto" />
+                    <Spinner
+                        android:id="@+id/spinner_budget_account"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <!-- Budget-Kategorie (nur TASK) -->
+                <LinearLayout
+                    android:id="@+id/row_budget_category"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="Kategorie" />
+                    <Spinner
+                        android:id="@+id/spinner_budget_category"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
                 </LinearLayout>
 
                 <!-- Fortschritt -->
@@ -347,6 +486,28 @@
                                 android:layout_height="wrap_content" />
                         </LinearLayout>
                     </LinearLayout>
+                </LinearLayout>
+
+                <!-- Erst erledigen vor Reset (nur TASK) -->
+                <LinearLayout
+                    android:id="@+id/row_complete_first"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:visibility="gone"
+                    android:paddingVertical="8dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Erst erledigen vor Reset"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/sp_body" />
+                    <Button
+                        android:id="@+id/btn_complete_first"
+                        style="@style/GroupButton"
+                        android:layout_width="60dp"
+                        android:text="Aus" />
                 </LinearLayout>
 
                 <View android:layout_width="match_parent" android:layout_height="12dp" />

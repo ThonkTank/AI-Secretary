@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import entities.Account;
+import entities.Category;
 import entities.trackedItem;
 import entities.trackedItem.ItemType;
 import repository.SQLrepo;
@@ -136,7 +138,7 @@ public class editorManager {
     private SQLrepo repo;
 
     public editorManager(Context context) {
-        this.repo = new SQLrepo(context);
+        this.repo = SQLrepo.getInstance(context);
     }
 
     // ============================================================================
@@ -152,15 +154,8 @@ public class editorManager {
     public List<TreeEntry> getAllItems() {
         List<TreeEntry> result = new ArrayList<>();
 
-        // Alle nicht-abgeschlossenen Item-IDs laden
-        List<Long> allIds = repo.lookups("items", Map.of("is_completed", "0"), "id");
-
-        // Items fetchen
-        List<trackedItem> allItems = new ArrayList<>();
-        for (Long id : allIds) {
-            trackedItem item = repo.fetch(Table.ITEMS, id);
-            if (item != null) allItems.add(item);
-        }
+        // Alle nicht-abgeschlossenen Items per Batch laden
+        List<trackedItem> allItems = repo.fetchAll(Table.ITEMS, Map.of("is_completed", "0"));
 
         // Roots finden (parent == null), sortiert nach Typ-Ordnung
         List<trackedItem> roots = allItems.stream()
@@ -204,13 +199,38 @@ public class editorManager {
 
         if (parentType == null) return new ArrayList<>();
 
-        List<Long> ids = repo.lookups("items", Map.of("type", parentType), "id");
-        List<trackedItem> parents = new ArrayList<>();
-        for (Long id : ids) {
-            trackedItem item = repo.fetch(Table.ITEMS, id);
-            if (item != null) parents.add(item);
-        }
-        return parents;
+        // Batch fetch: Alle Parents des entsprechenden Typs
+        return repo.fetchAll(Table.ITEMS, Map.of("type", parentType));
+    }
+
+    // ============================================================================
+    // GETACTIVEACCOUNTS - Alle aktiven Konten für Budget-Auswahl
+    // ============================================================================
+    /**
+     * Liefert alle aktiven Konten für die Budget-Konto-Auswahl im Edit-Modal.
+     *
+     * @return Liste aller aktiven Account-Entities
+     */
+    public List<Account> getActiveAccounts() {
+        // Batch fetch: Alle aktiven Konten
+        return repo.fetchAll(Table.ACCOUNTS, Map.of("is_active", "1"));
+    }
+
+    /**
+     * Liefert alle aktiven Ausgabe-Kategorien für die Budget-Kategorie-Auswahl.
+     *
+     * @return Liste aller aktiven Category-Entities mit isIncome=false
+     */
+    public List<Category> getExpenseCategories() {
+        // Batch fetch: Alle aktiven Ausgabe-Kategorien
+        List<Category> categories = repo.fetchAll(Table.CATEGORIES,
+            Map.of("is_active", "1", "is_income", "0"));
+        // Sortieren nach sortOrder, dann Name
+        categories.sort((a, b) -> {
+            if (a.sortOrder != b.sortOrder) return Integer.compare(a.sortOrder, b.sortOrder);
+            return a.name.compareTo(b.name);
+        });
+        return categories;
     }
 
     // ============================================================================

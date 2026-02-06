@@ -2,7 +2,9 @@ package scheduling;
 
 import repository.Repo;
 import repository.Table;
+import entities.Account;
 import entities.CalendarEvent;
+import entities.Transaction;
 import entities.todoList;
 import entities.trackedItem;
 import entities.todoList.TimeSlot;
@@ -19,6 +21,22 @@ import java.util.Map;
 import java.util.Set;
 
 public class buildToDo {
+
+    // ============================================================================
+    // SCHEDULING-KONSTANTEN
+    // ============================================================================
+
+    /** Sehr hohe Prioritaet fuer feste Termine - uebertrifft alle normalen Tasks */
+    private static final int FIXED_APPOINTMENT_PRIORITY = 10_000_000;
+
+    /** Zeitfenster fuer PrefTime-Penalty in Minuten (8-Stunden-Arbeitstag) */
+    private static final int PREF_TIME_WINDOW_MINUTES = 480;
+
+    /** Bonus pro Item in einer Kette, um laengere Ketten zu bevorzugen */
+    private static final int CHAIN_LENGTH_BONUS_PER_ITEM = 50;
+
+    /** Skalierungsfaktor fuer log1p-basierte Score-Berechnung */
+    private static final int SCORE_SCALE_FACTOR = 100;
 
     /**
      * ══════════════════════════════════════════════════════════════════════════════
@@ -201,8 +219,26 @@ public class buildToDo {
         List<CalendarEvent> getEventsForDay(LocalDate day, LocalTime start, LocalTime end);
     }
 
+    /**
+     * Repräsentiert einen Scheduling-Konflikt für feste Termine.
+     * Wird gesammelt und kann über getConflicts() abgefragt werden.
+     */
+    public record SchedulingConflict(
+        Long itemId,
+        String itemTitle,
+        LocalDate conflictDate,
+        String reason  // "FIXED_OVERLAP", "CALENDAR_OVERLAP", "DAY_BOUNDS"
+    ) {}
+
     Repo repo;
     CalendarProvider calendar;
+
+    // Budget-Tracking: Akkumuliert Budget während Scheduling-Loop
+    private int committedBudgetCents = 0;
+    // Budget-Cache: Basis-Budget wird einmal pro planWeek() berechnet
+    private int cachedBaseBudget = -1;
+    // Konflikt-Tracking: Feste Termine die nicht eingeplant werden konnten
+    private List<SchedulingConflict> conflicts = new ArrayList<>();
 
     public buildToDo(Repo repo, CalendarProvider calendar) {
         this.repo = repo;
@@ -216,6 +252,13 @@ public class buildToDo {
     public List<todoList> planWeek() {
         LocalDate today = LocalDate.now();
         List<todoList> lists = new ArrayList<>();
+
+        // Reset Budget-Tracking für neuen Durchlauf
+        committedBudgetCents = 0;
+        // Cache Basis-Budget einmalig (ohne accountId = alle aktiven Konten)
+        cachedBaseBudget = controller.budgetManager.calculateFreeBudget(repo, null, today);
+        // Reset Konflikt-Tracking für neuen Durchlauf
+        conflicts = new ArrayList<>();
 
         // 1. todoLists = alle todolists der nächsten 7 Tage aus db, evtl neue wenn ein Tag noch keine hat
         for (int i = 0; i < 7; i++) {
@@ -279,7 +322,40 @@ public class buildToDo {
             repo.write(list);
         }
 
+        // Cache zurücksetzen für nächsten Durchlauf
+        cachedBaseBudget = -1;
+
         return lists;
+    }
+
+    /** Liefert Scheduling-Konflikte aus dem letzten planWeek()-Durchlauf. */
+    public List<SchedulingConflict> getConflicts() {
+        return conflicts;
+    }
+
+    // ============================================================================
+    // getFreeBudgetCents - Berechnet verfügbares Budget für Scheduling
+    // ============================================================================
+    /**
+     * Berechnet das freie Budget unter Berücksichtigung:
+     * 1. Aktueller Kontostand (oder spezifisches Konto)
+     * 2. Abzug wiederkehrender Ausgaben der nächsten 7 Tage (pessimistisch)
+     * 3. Abzug bereits committeter Budget-Tasks in diesem Durchlauf
+     *
+     * Nutzt die gemeinsame Berechnung aus budgetManager.calculateFreeBudget()
+     *
+     * @param accountId Spezifisches Konto (null = alle aktiven mit includeInTotal)
+     * @param today Referenzdatum
+     * @return Freies Budget in Cents (min 0)
+     */
+    private int getFreeBudgetCents(Long accountId, LocalDate today) {
+        // Nutze Cache für null-Account (alle Konten), sonst frisch berechnen
+        int baseBudget = (accountId == null && cachedBaseBudget >= 0)
+            ? cachedBaseBudget
+            : controller.budgetManager.calculateFreeBudget(repo, accountId, today);
+
+        // Scheduling-spezifisch: Bereits committete Budget-Tasks abziehen
+        return Math.max(0, baseBudget - committedBudgetCents);
     }
 
 
@@ -310,19 +386,44 @@ public class buildToDo {
         for (Long itemID : openItems) {
             trackedItem item = repo.fetch(Table.ITEMS, itemID);
 
+            // Delayed items (delay>0) überspringen wenn Predecessor nicht ready
+            // delay=0 items werden von buildChains() gruppiert
+            if (item.predecessor != null && item.predecessorDelay > 0) {
+                if (!item.isPredecessorReady(repo)) {
+                    continue;
+                }
+            }
+
+            // Feste Termine: Nur wenn fixedDate im 7-Tage-Fenster liegt
+            if (item.isFixedAppointment()) {
+                if (!days.contains(item.fixedDate)) continue;
+                // Keine weitere blockedDays-Prüfung - feste Termine MÜSSEN eingeplant werden
+                relevantItems.add(item);
+                continue;
+            }
+
             // Prüfen ob Item an mindestens einem der 7 Tage eingeplant werden kann
             boolean canSchedule = false;
             for (LocalDate day : days) {
-                if (!item.isBlockedOn(day, repo)
-                    && item.meetsConditionalPrerequisite(day, repo)) {
+                if (!item.isBlockedOn(day, repo)) {
                     canSchedule = true;
                     break;
                 }
             }
 
-            if (canSchedule) {
-                relevantItems.add(item);
+            if (!canSchedule) {
+                continue;
             }
+
+            // Budget-Check: Skip wenn Budget nicht ausreicht
+            if (item.budgetRequirementCents > 0) {
+                int freeBudget = getFreeBudgetCents(item.budgetAccountId, today);
+                if (freeBudget < item.budgetRequirementCents) {
+                    continue;  // Task nicht einplanbar wegen Budget
+                }
+            }
+
+            relevantItems.add(item);
         }
 
         return relevantItems;
@@ -330,10 +431,11 @@ public class buildToDo {
 
 
     // ============================================================================
-    // buildChains - Gruppiert Items zu Ketten basierend auf requiredPredecessor
+    // buildChains - Gruppiert Items zu Ketten basierend auf predecessor (delay=0)
     // ============================================================================
     /**
-     * Gruppiert Items zu Ketten basierend auf requiredPredecessor und priorisiert.
+     * Gruppiert Items zu Ketten basierend auf predecessor mit delay=0.
+     * Items mit delay>0 werden NICHT verkettet (haben Zeit-Constraints).
      * Items ohne Predecessor/Successor werden als Einzelketten behandelt.
      * Kette bekommt die SUMME der Prios aller Mitglieder.
      */
@@ -345,24 +447,36 @@ public class buildToDo {
             byId.put(item.id, item);
         }
 
-        // Finde für jedes Item seinen Nachfolger (wer hat mich als requiredPredecessor?)
+        // Finde für jedes Item seinen Nachfolger (nur delay=0 für Same-Day-Chains!)
         Map<Long, Long> successorOf = new HashMap<>();
         for (trackedItem item : items) {
-            if (item.requiredPredecessor != null && byId.containsKey(item.requiredPredecessor)) {
-                successorOf.put(item.requiredPredecessor, item.id);
+            if (item.predecessor != null
+                && item.predecessorDelay == 0  // Nur delay=0 verketten
+                && byId.containsKey(item.predecessor)) {
+                successorOf.put(item.predecessor, item.id);
             }
         }
 
         Set<Long> processed = new HashSet<>();
         List<TaskChain> chains = new ArrayList<>();
 
+        // Feste Termine zuerst als hochpriorisierte Einzelketten
+        for (trackedItem item : items) {
+            if (item.isFixedAppointment()) {
+                chains.add(new TaskChain(List.of(item), FIXED_APPOINTMENT_PRIORITY));
+                processed.add(item.id);
+            }
+        }
+
         for (trackedItem item : items) {
             if (processed.contains(item.id)) continue;
 
             // Finde Ketten-Kopf (kein Predecessor oder Predecessor nicht in Liste)
             trackedItem head = item;
-            while (head.requiredPredecessor != null && byId.containsKey(head.requiredPredecessor)) {
-                head = byId.get(head.requiredPredecessor);
+            while (head.predecessor != null
+                   && head.predecessorDelay == 0
+                   && byId.containsKey(head.predecessor)) {
+                head = byId.get(head.predecessor);
             }
 
             // Baue Kette: head → successor → successor...
@@ -429,7 +543,67 @@ public class buildToDo {
 
             trackedItem firstItem = chain.tasks().get(0);
 
-            // Für jeden Tag
+            // Feste Termine: NUR exakten Tag und Zeit evaluieren
+            if (firstItem.isFixedAppointment()) {
+                // Finde die todoList für den festen Tag
+                todoList targetList = null;
+                for (todoList list : startsByDay.keySet()) {
+                    if (list.date.equals(firstItem.fixedDate)) {
+                        targetList = list;
+                        break;
+                    }
+                }
+                if (targetList == null) continue;  // Tag nicht im Plan
+
+                LocalTime fixedStart = firstItem.fixedTime;
+                LocalTime endTime = fixedStart.plusMinutes(firstItem.getSlotDuration());
+
+                // Tagesgrenzen prüfen
+                if (exceedsDayBounds(fixedStart, endTime, targetList)) {
+                    conflicts.add(new SchedulingConflict(
+                        firstItem.id, firstItem.title, firstItem.fixedDate, "DAY_BOUNDS"));
+                    continue;
+                }
+
+                // Calendar-Event-Konflikt prüfen
+                if (overlapsCalendarEvent(fixedStart, endTime, targetList)) {
+                    conflicts.add(new SchedulingConflict(
+                        firstItem.id, firstItem.title, firstItem.fixedDate, "CALENDAR_OVERLAP"));
+                    continue;
+                }
+
+                // Überlappende Slots finden
+                Set<TimeSlot> overlapping = findOverlappingSlots(fixedStart, endTime, targetList);
+
+                // Prüfen ob ein überlappender Slot auch ein fester Termin ist
+                boolean conflictsWithFixed = false;
+                for (TimeSlot slot : overlapping) {
+                    if (slot.item != null) {
+                        trackedItem existing = repo.fetch(Table.ITEMS, slot.item);
+                        if (existing != null && existing.isFixedAppointment()) {
+                            conflictsWithFixed = true;
+                            break;
+                        }
+                    }
+                }
+                if (conflictsWithFixed) {
+                    conflicts.add(new SchedulingConflict(
+                        firstItem.id, firstItem.title, firstItem.fixedDate, "FIXED_OVERLAP"));
+                    continue;  // Kann anderen festen Termin nicht verdrängen
+                }
+
+                // Erweitere auf volle Chains
+                Set<TimeSlot> toDisplace = expandToFullChains(overlapping, targetList);
+
+                // Fester Termin mit sehr hoher Prio
+                if (FIXED_APPOINTMENT_PRIORITY > globalBestScore) {
+                    globalBestScore = FIXED_APPOINTMENT_PRIORITY;
+                    globalBest = new ChainMatch(List.of(firstItem), fixedStart, targetList, toDisplace, FIXED_APPOINTMENT_PRIORITY);
+                }
+                continue;  // Keine weiteren Kombinationen für diesen festen Termin
+            }
+
+            // Für jeden Tag (normale Items)
             for (Map.Entry<todoList, List<LocalTime>> entry : startsByDay.entrySet()) {
                 todoList list = entry.getKey();
                 LocalDate day = list.date;
@@ -468,6 +642,13 @@ public class buildToDo {
                         // Prüfe Calendar-Event-Überlappung
                         if (overlapsCalendarEvent(startTime, endTime, list)) continue;
 
+                        // Prüfe Predecessor-Delay Constraint für verzögerte Items (delay > 0)
+                        if (firstItem.predecessorDelay > 0) {
+                            java.time.LocalDateTime slotStart = java.time.LocalDateTime.of(day, startTime);
+                            java.time.LocalDateTime earliestStart = firstItem.getEarliestStart(repo);
+                            if (earliestStart != null && slotStart.isBefore(earliestStart)) continue;
+                        }
+
                         // Finde alle überlappenden Slots
                         Set<TimeSlot> overlapping = findOverlappingSlots(startTime, endTime, list);
 
@@ -488,7 +669,7 @@ public class buildToDo {
                         }
 
                         // Bonus für längere Ketten
-                        gainPrio += fitting.size() * 50;
+                        gainPrio += fitting.size() * CHAIN_LENGTH_BONUS_PER_ITEM;
 
                         // Berechne Verdrängungskosten
                         int lossPrio = sumAdjustedPrios(toDisplace);
@@ -585,15 +766,15 @@ public class buildToDo {
      * Berücksichtigt prefTime-Matching mit quadratischer Penalty.
      */
     private int calculateItemScore(trackedItem item, LocalTime itemStart, Long precedingItemId) {
-        // Basis: log1p(itemPrio) * 100
+        // Basis: log1p(itemPrio) * SCORE_SCALE_FACTOR
         int basePrio = item.priority.value;
-        double score = Math.log1p(basePrio) * 100;
+        double score = Math.log1p(basePrio) * SCORE_SCALE_FACTOR;
 
         // PrefTime-Matching
         if (item.prefTime != null) {
             long diff = ChronoUnit.MINUTES.between(item.prefTime, itemStart);
             double normalizedDiff = (diff >= 0) ? 1.0
-                    : Math.max(0.0, 1.0 + (diff / 480.0));
+                    : Math.max(0.0, 1.0 + (diff / (double) PREF_TIME_WINDOW_MINUTES));
             score *= normalizedDiff * normalizedDiff;
         }
 
@@ -820,7 +1001,14 @@ public class buildToDo {
             slotList.add(new SlotCandidate(newSlot, list, newSlot));
         }
 
-        // 5. slotList neu aufbauen für diesen Tag (freie Fenster aktualisieren)
+        // 5. Budget als "committed" markieren für diesen Scheduling-Durchlauf
+        for (trackedItem item : match.fittingTasks()) {
+            if (item.budgetRequirementCents > 0) {
+                committedBudgetCents += item.budgetRequirementCents;
+            }
+        }
+
+        // 6. slotList neu aufbauen für diesen Tag (freie Fenster aktualisieren)
         regenerateFreeSlots(list, slotList);
     }
 

@@ -4,8 +4,13 @@ plugins {
 
 // Versionsnummer aus release/version.txt lesen und inkrementieren
 val versionFile = file("release/version.txt")
-val currentVersion = if (versionFile.exists()) versionFile.readText().trim().toIntOrNull() ?: 0 else 0
-val nextVersion = currentVersion + 1
+val currentVersionCode = if (versionFile.exists()) versionFile.readText().trim().toIntOrNull() ?: 0 else 0
+val nextVersionCode = currentVersionCode + 1
+
+// Semantische Versionierung (manuell aktualisieren bei neuen Releases)
+val versionMajor = 1
+val versionMinor = 0
+val versionPatch = 0
 
 android {
     namespace = "com.autosecretary"
@@ -15,8 +20,8 @@ android {
         applicationId = "com.autosecretary"
         minSdk = 26
         targetSdk = 35
-        versionCode = nextVersion
-        versionName = "1.0.$nextVersion"
+        versionCode = nextVersionCode
+        versionName = "$versionMajor.$versionMinor.$versionPatch"
     }
 
     compileOptions {
@@ -63,7 +68,7 @@ android.applicationVariants.all {
             from(outputFile)
             into(layout.projectDirectory.dir("release"))
             doLast {
-                versionFile.writeText(nextVersion.toString())
+                versionFile.writeText(nextVersionCode.toString())
             }
         }
         val pushTask = tasks.register("pushToGitHub", Exec::class) {

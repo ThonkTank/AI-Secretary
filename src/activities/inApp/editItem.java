@@ -36,11 +36,17 @@ import java.util.Set;
 
 import controller.editorManager;
 import controller.editorManager.TreeEntry;
+import data.BudgetDisplayData;
+import entities.Account;
+import entities.Category;
 import entities.trackedItem;
+import entities.trackedItem.DurationUnit;
 import entities.trackedItem.ItemType;
 import entities.trackedItem.Priority;
 import entities.trackedItem.RepetitionType;
 import entities.trackedItem.RepUnits;
+
+import java.time.LocalTime;
 
 public class editItem implements ViewBuilder {
 
@@ -255,7 +261,6 @@ public class editItem implements ViewBuilder {
     private EditText durationField;
     private EditText cooldownField;
     private EditText deadlineField;
-    private EditText minIntervalField;
     private EditText repValueField;
     private EditText progressCurrentField;
     private EditText progressTargetField;
@@ -270,7 +275,10 @@ public class editItem implements ViewBuilder {
     private View parentRow;
     private View cooldownRow;
     private View deadlineRow;
-    private View minIntervalRow;
+    private View fixedDateRow;
+    private EditText fixedDateField;
+    private View fixedTimeRow;
+    private EditText fixedTimeField;
     private View progressRow;
     private View progressPerRepRow;
     private Button progressPerRepToggle;
@@ -295,6 +303,37 @@ public class editItem implements ViewBuilder {
     private View predecessorRow;
     private Spinner predecessorSpinner;
     private List<trackedItem> availablePredecessors = new ArrayList<>();
+
+    // Budget-Felder (nur für TASK)
+    private View budgetRow;
+    private EditText budgetAmountField;
+    private View budgetAccountRow;
+    private Spinner budgetAccountSpinner;
+    private List<Account> availableAccounts = new ArrayList<>();
+    private View budgetCategoryRow;
+    private Spinner budgetCategorySpinner;
+    private List<Category> expenseCategories = new ArrayList<>();
+
+    // Neue Felder: Min/Max Dauer mit Unit
+    private View minDurationRow;
+    private EditText minDurationField;
+    private Button[] minDurationUnitButtons = new Button[2];
+    private DurationUnit selectedMinDurationUnit = DurationUnit.MINUTES;
+    private Button[] maxDurationUnitButtons = new Button[2];
+    private DurationUnit selectedMaxDurationUnit = DurationUnit.MINUTES;
+
+    // Bevorzugte Uhrzeit
+    private View prefTimeRow;
+    private EditText prefTimeField;
+
+    // Vorgänger-Wartezeit
+    private View predecessorDelayRow;
+    private EditText predecessorDelayField;
+
+    // Erst erledigen vor Reset
+    private View completeFirstRow;
+    private Button completeFirstToggle;
+    private boolean completeFirstEnabled = false;
 
     // Farb-Palette fuer Goal-Farben
     private static final String[] GOAL_COLORS = {
@@ -483,16 +522,43 @@ public class editItem implements ViewBuilder {
         modalOverlay = root.findViewById(R.id.modal_overlay);
         modalOverlay.setOnClickListener(v -> hideModal());
 
-        // Formular-Felder binden
+        // Basis-Felder binden
+        bindBasicFields(root);
+
+        // Spezialisierte Feld-Gruppen binden
+        bindDeadlineFields(root);
+        bindFixedAppointmentFields(root);
+        bindGoalCustomizationFields(root);
+        bindProgressFields(root);
+        bindTypeButtons(root);
+        bindPriorityButtons(root);
+        bindRepetitionButtons(root);
+        bindBudgetFields(root);
+        bindDurationFields(root);
+        bindPrefTimeFields(root);
+        bindPredecessorDelayFields(root);
+        bindCompleteFirstFields(root);
+
+        // Save/Cancel
+        Button saveBtn = root.findViewById(R.id.btn_save);
+        saveBtn.setBackground(roundedBg(context, ContextCompat.getColor(context, R.color.accent), 4));
+        saveBtn.setOnClickListener(v -> saveItem());
+
+        Button cancelBtn = root.findViewById(R.id.btn_cancel);
+        cancelBtn.setBackground(roundedBg(context, ContextCompat.getColor(context, R.color.button_inactive), 4));
+        cancelBtn.setOnClickListener(v -> hideModal());
+    }
+
+    // ============================================================================
+    // FIELD BINDING HELPERS
+    // ============================================================================
+
+    private void bindBasicFields(View root) {
         titleField = root.findViewById(R.id.field_title);
         descriptionField = root.findViewById(R.id.field_description);
         durationField = root.findViewById(R.id.field_duration);
         cooldownField = root.findViewById(R.id.field_cooldown);
-        minIntervalField = root.findViewById(R.id.field_min_interval);
         repValueField = root.findViewById(R.id.field_rep_value);
-        progressCurrentField = root.findViewById(R.id.field_progress_current);
-        progressTargetField = root.findViewById(R.id.field_progress_target);
-        progressUnitField = root.findViewById(R.id.field_progress_unit);
         parentSpinner = root.findViewById(R.id.spinner_parent);
         predecessorSpinner = root.findViewById(R.id.spinner_predecessor);
         weekdaySpinner = root.findViewById(R.id.spinner_weekday);
@@ -503,6 +569,16 @@ public class editItem implements ViewBuilder {
         parentRow = root.findViewById(R.id.row_parent);
         predecessorRow = root.findViewById(R.id.row_predecessor);
         cooldownRow = root.findViewById(R.id.row_cooldown);
+        repetitionSection = root.findViewById(R.id.section_repetition);
+        weekdayRow = root.findViewById(R.id.row_weekday);
+
+        // Wochentag-Spinner vorbelegen
+        String[] days = {"Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"};
+        weekdaySpinner.setAdapter(new ArrayAdapter<>(context,
+            android.R.layout.simple_spinner_dropdown_item, days));
+    }
+
+    private void bindDeadlineFields(View root) {
         deadlineRow = root.findViewById(R.id.row_deadline);
         deadlineField = root.findViewById(R.id.field_deadline);
         deadlineField.setOnClickListener(v -> {
@@ -512,12 +588,40 @@ public class editItem implements ViewBuilder {
                 deadlineField.setText(picked.toString());
             }, init.getYear(), init.getMonthValue() - 1, init.getDayOfMonth()).show();
         });
+    }
+
+    private void bindFixedAppointmentFields(View root) {
+        fixedDateRow = root.findViewById(R.id.row_fixed_date);
+        fixedDateField = root.findViewById(R.id.field_fixed_date);
+        fixedDateField.setOnClickListener(v -> {
+            LocalDate init = LocalDate.now().plusDays(1);
+            new DatePickerDialog(context, (dp, y, m, d) -> {
+                LocalDate picked = LocalDate.of(y, m + 1, d);
+                fixedDateField.setText(picked.toString());
+            }, init.getYear(), init.getMonthValue() - 1, init.getDayOfMonth()).show();
+        });
+
+        fixedTimeRow = root.findViewById(R.id.row_fixed_time);
+        fixedTimeField = root.findViewById(R.id.field_fixed_time);
+        fixedTimeField.setOnClickListener(v -> {
+            new android.app.TimePickerDialog(context, (tp, h, m) -> {
+                fixedTimeField.setText(String.format("%02d:%02d", h, m));
+            }, 12, 0, true).show();  // 24h Format
+        });
+    }
+
+    private void bindGoalCustomizationFields(View root) {
         goalIconRow = root.findViewById(R.id.row_goal_icon);
         goalIconField = root.findViewById(R.id.field_goal_icon);
         goalColorRow = root.findViewById(R.id.row_goal_color);
         colorGrid = root.findViewById(R.id.color_grid);
         buildColorGrid();
-        minIntervalRow = root.findViewById(R.id.row_min_interval);
+    }
+
+    private void bindProgressFields(View root) {
+        progressCurrentField = root.findViewById(R.id.field_progress_current);
+        progressTargetField = root.findViewById(R.id.field_progress_target);
+        progressUnitField = root.findViewById(R.id.field_progress_unit);
         progressRow = root.findViewById(R.id.row_progress);
         progressPerRepRow = root.findViewById(R.id.row_progress_per_rep);
         progressPerRepToggle = root.findViewById(R.id.btn_progress_per_rep);
@@ -525,10 +629,9 @@ public class editItem implements ViewBuilder {
             progressPerRepEnabled = !progressPerRepEnabled;
             updateProgressPerRepButton();
         });
-        repetitionSection = root.findViewById(R.id.section_repetition);
-        weekdayRow = root.findViewById(R.id.row_weekday);
+    }
 
-        // Typ-Buttons
+    private void bindTypeButtons(View root) {
         typeButtons[0] = root.findViewById(R.id.btn_type_task);
         typeButtons[1] = root.findViewById(R.id.btn_type_goal);
         typeButtons[2] = root.findViewById(R.id.btn_type_project);
@@ -543,8 +646,9 @@ public class editItem implements ViewBuilder {
                 refreshPredecessorSpinner();
             });
         }
+    }
 
-        // Prioritaet-Buttons
+    private void bindPriorityButtons(View root) {
         priorityButtons[0] = root.findViewById(R.id.btn_prio_low);
         priorityButtons[1] = root.findViewById(R.id.btn_prio_moderate);
         priorityButtons[2] = root.findViewById(R.id.btn_prio_high);
@@ -557,8 +661,9 @@ public class editItem implements ViewBuilder {
                 updateButtonGroup(priorityButtons, idx);
             });
         }
+    }
 
-        // RepType-Buttons
+    private void bindRepetitionButtons(View root) {
         repTypeButtons[0] = root.findViewById(R.id.btn_rep_none);
         repTypeButtons[1] = root.findViewById(R.id.btn_rep_interval);
         repTypeButtons[2] = root.findViewById(R.id.btn_rep_reps);
@@ -575,7 +680,6 @@ public class editItem implements ViewBuilder {
             });
         }
 
-        // RepUnit-Buttons
         repUnitButtons[0] = root.findViewById(R.id.btn_unit_day);
         repUnitButtons[1] = root.findViewById(R.id.btn_unit_week);
         repUnitButtons[2] = root.findViewById(R.id.btn_unit_month);
@@ -588,20 +692,76 @@ public class editItem implements ViewBuilder {
                 updateWeekdayVisibility();
             });
         }
+    }
 
-        // Wochentag-Spinner vorbelegen
-        String[] days = {"Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"};
-        weekdaySpinner.setAdapter(new ArrayAdapter<>(context,
-            android.R.layout.simple_spinner_dropdown_item, days));
+    private void bindBudgetFields(View root) {
+        budgetRow = root.findViewById(R.id.row_budget);
+        budgetAmountField = root.findViewById(R.id.field_budget_amount);
+        budgetAccountRow = root.findViewById(R.id.row_budget_account);
+        budgetAccountSpinner = root.findViewById(R.id.spinner_budget_account);
+        budgetCategoryRow = root.findViewById(R.id.row_budget_category);
+        budgetCategorySpinner = root.findViewById(R.id.spinner_budget_category);
+        refreshBudgetAccountSpinner();
+        refreshBudgetCategorySpinner();
+    }
 
-        // Save/Cancel
-        Button saveBtn = root.findViewById(R.id.btn_save);
-        saveBtn.setBackground(roundedBg(context, ContextCompat.getColor(context, R.color.accent), 4));
-        saveBtn.setOnClickListener(v -> saveItem());
+    private void bindDurationFields(View root) {
+        minDurationRow = root.findViewById(R.id.row_min_duration);
+        minDurationField = root.findViewById(R.id.field_min_duration);
+        minDurationUnitButtons[0] = root.findViewById(R.id.btn_min_unit_minutes);
+        minDurationUnitButtons[1] = root.findViewById(R.id.btn_min_unit_progress);
+        DurationUnit[] minUnits = {DurationUnit.MINUTES, DurationUnit.PROGRESS_UNITS};
+        for (int i = 0; i < 2; i++) {
+            final int idx = i;
+            minDurationUnitButtons[i].setOnClickListener(v -> {
+                selectedMinDurationUnit = minUnits[idx];
+                updateButtonGroup(minDurationUnitButtons, idx);
+            });
+        }
 
-        Button cancelBtn = root.findViewById(R.id.btn_cancel);
-        cancelBtn.setBackground(roundedBg(context, ContextCompat.getColor(context, R.color.button_inactive), 4));
-        cancelBtn.setOnClickListener(v -> hideModal());
+        maxDurationUnitButtons[0] = root.findViewById(R.id.btn_max_unit_minutes);
+        maxDurationUnitButtons[1] = root.findViewById(R.id.btn_max_unit_progress);
+        DurationUnit[] maxUnits = {DurationUnit.MINUTES, DurationUnit.PROGRESS_UNITS};
+        for (int i = 0; i < 2; i++) {
+            final int idx = i;
+            maxDurationUnitButtons[i].setOnClickListener(v -> {
+                selectedMaxDurationUnit = maxUnits[idx];
+                updateButtonGroup(maxDurationUnitButtons, idx);
+            });
+        }
+    }
+
+    private void bindPrefTimeFields(View root) {
+        prefTimeRow = root.findViewById(R.id.row_pref_time);
+        prefTimeField = root.findViewById(R.id.field_pref_time);
+        prefTimeField.setOnClickListener(v -> {
+            int initHour = 9, initMin = 0;
+            String current = prefTimeField.getText().toString().trim();
+            if (!current.isEmpty()) {
+                try {
+                    LocalTime parsed = LocalTime.parse(current);
+                    initHour = parsed.getHour();
+                    initMin = parsed.getMinute();
+                } catch (Exception e) { /* Default verwenden */ }
+            }
+            new android.app.TimePickerDialog(context, (tp, h, m) -> {
+                prefTimeField.setText(String.format("%02d:%02d", h, m));
+            }, initHour, initMin, true).show();
+        });
+    }
+
+    private void bindPredecessorDelayFields(View root) {
+        predecessorDelayRow = root.findViewById(R.id.row_predecessor_delay);
+        predecessorDelayField = root.findViewById(R.id.field_predecessor_delay);
+    }
+
+    private void bindCompleteFirstFields(View root) {
+        completeFirstRow = root.findViewById(R.id.row_complete_first);
+        completeFirstToggle = root.findViewById(R.id.btn_complete_first);
+        completeFirstToggle.setOnClickListener(v -> {
+            completeFirstEnabled = !completeFirstEnabled;
+            updateCompleteFirstButton();
+        });
     }
 
     private void updateButtonGroup(Button[] buttons, int selectedIdx) {
@@ -632,6 +792,21 @@ public class editItem implements ViewBuilder {
             progressPerRepToggle.setBackgroundColor(inactive);
             progressPerRepToggle.setTextColor(textPrimary);
             progressPerRepToggle.setText("Aus");
+        }
+    }
+
+    private void updateCompleteFirstButton() {
+        int accent = ContextCompat.getColor(context, R.color.accent);
+        int inactive = ContextCompat.getColor(context, R.color.button_inactive);
+        int textPrimary = ContextCompat.getColor(context, R.color.text_primary);
+        if (completeFirstEnabled) {
+            completeFirstToggle.setBackgroundColor(accent);
+            completeFirstToggle.setTextColor(Color.WHITE);
+            completeFirstToggle.setText("An");
+        } else {
+            completeFirstToggle.setBackgroundColor(inactive);
+            completeFirstToggle.setTextColor(textPrimary);
+            completeFirstToggle.setText("Aus");
         }
     }
 
@@ -677,14 +852,59 @@ public class editItem implements ViewBuilder {
         }
         predecessorSpinner.setAdapter(new ArrayAdapter<>(context,
             android.R.layout.simple_spinner_dropdown_item, names));
+
+        // Delay-Row anzeigen wenn Vorgänger ausgewählt
+        predecessorSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                boolean hasPredecessor = pos > 0;
+                predecessorDelayRow.setVisibility(hasPredecessor ? View.VISIBLE : View.GONE);
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                predecessorDelayRow.setVisibility(View.GONE);
+            }
+        });
+    }
+
+    private void refreshBudgetAccountSpinner() {
+        availableAccounts.clear();
+        List<String> accountNames = new ArrayList<>();
+        accountNames.add("(beliebig)");
+
+        // Alle aktiven Konten laden via manager (der hat Zugriff auf repo)
+        for (Account acc : manager.getActiveAccounts()) {
+            availableAccounts.add(acc);
+            accountNames.add(acc.name);
+        }
+        budgetAccountSpinner.setAdapter(new ArrayAdapter<>(context,
+            android.R.layout.simple_spinner_dropdown_item, accountNames));
+    }
+
+    private void refreshBudgetCategorySpinner() {
+        expenseCategories.clear();
+        List<String> categoryNames = new ArrayList<>();
+        categoryNames.add("(keine)");
+
+        // Alle Ausgabe-Kategorien aus DB laden via manager
+        for (Category cat : manager.getExpenseCategories()) {
+            expenseCategories.add(cat);
+            String displayName = (cat.icon != null ? cat.icon + " " : "") + cat.name;
+            categoryNames.add(displayName);
+        }
+        budgetCategorySpinner.setAdapter(new ArrayAdapter<>(context,
+            android.R.layout.simple_spinner_dropdown_item, categoryNames));
     }
 
     private void updateRepDetailsVisibility() {
         boolean show = selectedRepType != RepetitionType.NONE;
         repDetailsSection.setVisibility(show ? View.VISIBLE : View.GONE);
-        // Deadline nur bei einmaligen Tasks (NONE) sichtbar
+        // Deadline und feste Termine nur bei einmaligen Tasks (NONE) sichtbar
         if (selectedType == ItemType.TASK) {
-            deadlineRow.setVisibility(show ? View.GONE : View.VISIBLE);
+            boolean showNoneFields = !show;  // show = (repType != NONE)
+            deadlineRow.setVisibility(showNoneFields ? View.VISIBLE : View.GONE);
+            fixedDateRow.setVisibility(showNoneFields ? View.VISIBLE : View.GONE);
+            fixedTimeRow.setVisibility(showNoneFields ? View.VISIBLE : View.GONE);
         }
     }
 
@@ -720,7 +940,8 @@ public class editItem implements ViewBuilder {
             durationField.setText("");
             cooldownField.setText("");
             deadlineField.setText("");
-            minIntervalField.setText("");
+            fixedDateField.setText("");
+            fixedTimeField.setText("");
             repValueField.setText("");
             progressCurrentField.setText("");
             progressTargetField.setText("");
@@ -729,6 +950,22 @@ public class editItem implements ViewBuilder {
             goalIconField.setText("");
             selectedGoalColor = null;
             highlightSelectedColor();
+
+            // Budget-Felder zurücksetzen
+            budgetAmountField.setText("");
+            budgetAccountSpinner.setSelection(0);
+            budgetCategorySpinner.setSelection(0);
+
+            // Neue Felder initialisieren
+            minDurationField.setText("");
+            selectedMinDurationUnit = DurationUnit.MINUTES;
+            updateButtonGroup(minDurationUnitButtons, 0);
+            selectedMaxDurationUnit = DurationUnit.MINUTES;
+            updateButtonGroup(maxDurationUnitButtons, 0);
+            prefTimeField.setText("09:00"); // Default: 09:00
+            prefTimeField.setEnabled(true);
+            predecessorDelayField.setText("");
+            completeFirstEnabled = false;
 
             for (Button btn : typeButtons) btn.setEnabled(true);
             updateButtonGroup(typeButtons, 0);
@@ -745,7 +982,8 @@ public class editItem implements ViewBuilder {
             durationField.setText(item.maxDurationValue > 0 ? String.valueOf(item.maxDurationValue) : "");
             cooldownField.setText(item.cooldown > 0 ? String.valueOf(item.cooldown) : "");
             deadlineField.setText(item.deadline != null ? item.deadline.toString() : "");
-            minIntervalField.setText(item.minIntervalDays > 0 ? String.valueOf(item.minIntervalDays) : "");
+            fixedDateField.setText(item.fixedDate != null ? item.fixedDate.toString() : "");
+            fixedTimeField.setText(item.fixedTime != null ? item.fixedTime.toString() : "");
             progressCurrentField.setText(item.progressCurrent > 0 ? String.valueOf(item.progressCurrent) : "");
             progressTargetField.setText(item.progressTarget > 0 ? String.valueOf(item.progressTarget) : "");
             progressUnitField.setText(item.progressUnit != null ? item.progressUnit : "");
@@ -753,6 +991,27 @@ public class editItem implements ViewBuilder {
             goalIconField.setText(item.goalIcon != null ? item.goalIcon : "");
             selectedGoalColor = item.goalColor;
             highlightSelectedColor();
+
+            // Budget-Felder befüllen
+            if (item.budgetRequirementCents > 0) {
+                budgetAmountField.setText(String.format("%.2f", item.budgetRequirementCents / 100.0));
+            } else {
+                budgetAmountField.setText("");
+            }
+
+            // Neue Felder befüllen
+            minDurationField.setText(item.minDurationValue > 0 ? String.valueOf(item.minDurationValue) : "");
+            selectedMinDurationUnit = item.minDurationUnit != null ? item.minDurationUnit : DurationUnit.MINUTES;
+            updateButtonGroup(minDurationUnitButtons, selectedMinDurationUnit == DurationUnit.MINUTES ? 0 : 1);
+
+            selectedMaxDurationUnit = item.maxDurationUnit != null ? item.maxDurationUnit : DurationUnit.MINUTES;
+            updateButtonGroup(maxDurationUnitButtons, selectedMaxDurationUnit == DurationUnit.MINUTES ? 0 : 1);
+
+            // prefTime anzeigen (editierbar - User kann überschreiben, System lernt weiter)
+            prefTimeField.setText(item.prefTime != null ? item.prefTime.toString() : "");
+            prefTimeField.setEnabled(true);
+            predecessorDelayField.setText(item.predecessorDelay > 0 ? String.valueOf(item.predecessorDelay) : "");
+            completeFirstEnabled = item.completeFirst != null && item.completeFirst;
 
             // Typ-Buttons: disabled + korrekt selektiert
             int typeIdx = switch (item.type) {
@@ -814,12 +1073,33 @@ public class editItem implements ViewBuilder {
             }
         }
 
-        // Vorgänger-Spinner auf aktuellen requiredPredecessor setzen
+        // Vorgänger-Spinner auf aktuellen predecessor setzen
         refreshPredecessorSpinner();
-        if (item != null && item.requiredPredecessor != null) {
+        if (item != null && item.predecessor != null) {
             for (int i = 0; i < availablePredecessors.size(); i++) {
-                if (availablePredecessors.get(i).id.equals(item.requiredPredecessor)) {
+                if (availablePredecessors.get(i).id.equals(item.predecessor)) {
                     predecessorSpinner.setSelection(i + 1); // +1 wegen "(kein Vorgänger)"
+                    break;
+                }
+            }
+        }
+
+        // Budget-Account-Spinner auf aktuelles Konto setzen
+        refreshBudgetAccountSpinner();
+        if (item != null && item.budgetAccountId != null) {
+            for (int i = 0; i < availableAccounts.size(); i++) {
+                if (availableAccounts.get(i).id.equals(item.budgetAccountId)) {
+                    budgetAccountSpinner.setSelection(i + 1); // +1 wegen "(beliebig)"
+                    break;
+                }
+            }
+        }
+
+        // Budget-Kategorie-Spinner auf aktuelle Kategorie setzen
+        if (item != null && item.budgetCategoryId != null) {
+            for (int i = 0; i < expenseCategories.size(); i++) {
+                if (expenseCategories.get(i).id.equals(item.budgetCategoryId)) {
+                    budgetCategorySpinner.setSelection(i + 1); // +1 wegen "(keine)"
                     break;
                 }
             }
@@ -828,6 +1108,7 @@ public class editItem implements ViewBuilder {
         updateRepDetailsVisibility();
         updateWeekdayVisibility();
         updateProgressPerRepButton();
+        updateCompleteFirstButton();
         modalOverlay.setVisibility(View.VISIBLE);
     }
 
@@ -876,91 +1157,173 @@ public class editItem implements ViewBuilder {
         String desc = descriptionField.getText().toString().trim();
         if (!desc.isEmpty()) builder.description(desc);
 
-        // Max Slot-Dauer (in Minuten)
-        String durStr = durationField.getText().toString().trim();
-        if (!durStr.isEmpty()) {
-            try { builder.maxMinutes(Integer.parseInt(durStr)); }
-            catch (NumberFormatException e) { /* ignorieren */ }
+        // Felder via Helper-Methoden anwenden
+        applyDurationFields(builder);
+        applyDeadlineFields(builder);
+        applyCooldownField(builder);
+        applyProgressFields(builder);
+        applyGoalFields(builder);
+        applyParentField(builder);
+        applyPrefTimeField(builder);
+        applyPredecessorFields(builder);
+        builder.completeFirst(completeFirstEnabled);
+        applyBudgetFields(builder);
+        applyRepetitionFields(builder);
+
+        trackedItem newItem = builder.build();
+        persistItem(newItem);
+
+        hideModal();
+        refreshTree();
+    }
+
+    // ============================================================================
+    // SAVEITEM HELPERS - Field application methods
+    // ============================================================================
+
+    private void applyDurationFields(trackedItem.Builder builder) {
+        String minDurStr = minDurationField.getText().toString().trim();
+        if (!minDurStr.isEmpty()) {
+            try {
+                int minVal = Integer.parseInt(minDurStr);
+                builder.minDuration(minVal, selectedMinDurationUnit);
+            } catch (NumberFormatException e) { /* ignorieren */ }
         }
 
-        // Deadline
+        String durStr = durationField.getText().toString().trim();
+        if (!durStr.isEmpty()) {
+            try {
+                int maxVal = Integer.parseInt(durStr);
+                builder.maxDuration(maxVal, selectedMaxDurationUnit);
+            } catch (NumberFormatException e) { /* ignorieren */ }
+        }
+    }
+
+    private void applyDeadlineFields(trackedItem.Builder builder) {
         String dlStr = deadlineField.getText().toString().trim();
         if (!dlStr.isEmpty()) {
             try { builder.deadline(dlStr); }
             catch (Exception e) { /* ignorieren */ }
         }
 
-        // Cooldown
+        String fixedDateStr = fixedDateField.getText().toString().trim();
+        String fixedTimeStr = fixedTimeField.getText().toString().trim();
+        if (!fixedDateStr.isEmpty() && !fixedTimeStr.isEmpty()) {
+            try { builder.fixedAppointment(fixedDateStr, fixedTimeStr); }
+            catch (Exception e) { /* ignorieren */ }
+        }
+    }
+
+    private void applyCooldownField(trackedItem.Builder builder) {
         String cdStr = cooldownField.getText().toString().trim();
         if (!cdStr.isEmpty()) {
             try { builder.cooldown(Integer.parseInt(cdStr)); }
             catch (NumberFormatException e) { /* ignorieren */ }
         }
+    }
 
-        // minIntervalDays
-        String miStr = minIntervalField.getText().toString().trim();
-        if (!miStr.isEmpty()) {
-            try { builder.minIntervalDays(Integer.parseInt(miStr)); }
-            catch (NumberFormatException e) { /* ignorieren */ }
-        }
-
-        // Fortschritt
+    private void applyProgressFields(trackedItem.Builder builder) {
         String ptStr = progressTargetField.getText().toString().trim();
         if (!ptStr.isEmpty()) {
             try { builder.progressTarget(Integer.parseInt(ptStr)); }
             catch (NumberFormatException e) { /* ignorieren */ }
         }
+
         String pcStr = progressCurrentField.getText().toString().trim();
         if (!pcStr.isEmpty()) {
             try { builder.progressCurrent(Integer.parseInt(pcStr)); }
             catch (NumberFormatException e) { /* ignorieren */ }
         }
+
         String puStr = progressUnitField.getText().toString().trim();
         if (!puStr.isEmpty()) builder.progressUnit(puStr);
         builder.progressPerRep(progressPerRepEnabled);
+    }
 
-        // Goal-Icon und -Farbe
+    private void applyGoalFields(trackedItem.Builder builder) {
         String iconStr = goalIconField.getText().toString().trim();
         if (!iconStr.isEmpty()) builder.goalIcon(iconStr);
         if (selectedGoalColor != null) builder.goalColor(selectedGoalColor);
+    }
 
-        // Parent
+    private void applyParentField(trackedItem.Builder builder) {
         int parentIdx = parentSpinner.getSelectedItemPosition();
         if (parentIdx > 0 && parentIdx <= availableParents.size()) {
             builder.parent(availableParents.get(parentIdx - 1).id);
         }
+    }
 
-        // Vorgänger (nur bei TASK)
+    private void applyPrefTimeField(trackedItem.Builder builder) {
+        String prefTimeStr = prefTimeField.getText().toString().trim();
+        if (!prefTimeStr.isEmpty()) {
+            try { builder.prefTime(prefTimeStr); }
+            catch (Exception e) { /* ignorieren */ }
+        }
+    }
+
+    private void applyPredecessorFields(trackedItem.Builder builder) {
         int predIdx = predecessorSpinner.getSelectedItemPosition();
         if (predIdx > 0 && predIdx <= availablePredecessors.size()) {
-            builder.requiredPredecessor(availablePredecessors.get(predIdx - 1).id);
-        }
-
-        // Wiederholung (nur bei TASK)
-        if (selectedType == ItemType.TASK) {
-            if (selectedRepType == RepetitionType.NONE) {
-                builder.noRepetition();
+            Long predId = availablePredecessors.get(predIdx - 1).id;
+            String delayStr = predecessorDelayField.getText().toString().trim();
+            int delay = 0;
+            if (!delayStr.isEmpty()) {
+                try { delay = Integer.parseInt(delayStr); }
+                catch (NumberFormatException e) { /* ignorieren */ }
+            }
+            if (delay > 0) {
+                builder.delayAfter(predId, delay);
             } else {
-                String repStr = repValueField.getText().toString().trim();
-                if (!repStr.isEmpty()) {
-                    try {
-                        int repValue = Integer.parseInt(repStr);
-                        if (selectedRepType == RepetitionType.DAY_OF_TIME
-                            && selectedRepUnit == RepUnits.WEEK) {
-                            DayOfWeek dow = DayOfWeek.of(weekdaySpinner.getSelectedItemPosition() + 1);
-                            builder.repetition(selectedRepType, repValue, selectedRepUnit, dow);
-                        } else {
-                            builder.repetition(selectedRepType, repValue, selectedRepUnit);
-                        }
-                    } catch (NumberFormatException e) { /* ignorieren */ }
-                }
+                builder.chainAfter(predId);
             }
         }
+    }
 
-        trackedItem newItem = builder.build();
+    private void applyBudgetFields(trackedItem.Builder builder) {
+        String budgetStr = budgetAmountField.getText().toString().trim();
+        if (!budgetStr.isEmpty()) {
+            try {
+                double euros = Double.parseDouble(budgetStr.replace(",", "."));
+                builder.budgetRequirement((int)(euros * 100));
+            } catch (NumberFormatException e) { /* ignorieren */ }
+        }
 
+        int accountIdx = budgetAccountSpinner.getSelectedItemPosition();
+        if (accountIdx > 0 && accountIdx <= availableAccounts.size()) {
+            builder.budgetAccount(availableAccounts.get(accountIdx - 1).id);
+        }
+
+        int catIdx = budgetCategorySpinner.getSelectedItemPosition();
+        if (catIdx > 0 && catIdx <= expenseCategories.size()) {
+            builder.budgetCategory(expenseCategories.get(catIdx - 1).id);
+        }
+    }
+
+    private void applyRepetitionFields(trackedItem.Builder builder) {
+        if (selectedType != ItemType.TASK) return;
+
+        if (selectedRepType == RepetitionType.NONE) {
+            builder.noRepetition();
+        } else {
+            String repStr = repValueField.getText().toString().trim();
+            if (!repStr.isEmpty()) {
+                try {
+                    int repValue = Integer.parseInt(repStr);
+                    if (selectedRepType == RepetitionType.DAY_OF_TIME
+                        && selectedRepUnit == RepUnits.WEEK) {
+                        DayOfWeek dow = DayOfWeek.of(weekdaySpinner.getSelectedItemPosition() + 1);
+                        builder.repetition(selectedRepType, repValue, selectedRepUnit, dow);
+                    } else {
+                        builder.repetition(selectedRepType, repValue, selectedRepUnit);
+                    }
+                } catch (NumberFormatException e) { /* ignorieren */ }
+            }
+        }
+    }
+
+    private void persistItem(trackedItem newItem) {
         if (editingItem != null) {
-            // Edit-Modus: ID übernehmen + update
+            // Edit-Modus: ID und persistente Felder übernehmen
             newItem.id = editingItem.id;
             newItem.created = editingItem.created;
             newItem.children = editingItem.children;
@@ -973,15 +1336,10 @@ public class editItem implements ViewBuilder {
             newItem.nrOfStreaks = editingItem.nrOfStreaks;
             newItem.totalCompletions = editingItem.totalCompletions;
             newItem.followUps = editingItem.followUps;
-            newItem.prefTime = editingItem.prefTime;
             manager.updateItem(newItem);
         } else {
-            // Create-Modus
             manager.createItem(newItem);
         }
-
-        hideModal();
-        refreshTree();
     }
 
     // ============================================================================
@@ -1057,18 +1415,29 @@ public class editItem implements ViewBuilder {
      * PROJECT: minIntervalDays ✓
      */
     private void updateFieldVisibility(ItemType type) {
+        // Min/Max Dauer: TASK und GOAL
+        minDurationRow.setVisibility(
+            (type == ItemType.TASK || type == ItemType.GOAL) ? View.VISIBLE : View.GONE);
         durationRow.setVisibility(
             (type == ItemType.TASK || type == ItemType.GOAL) ? View.VISIBLE : View.GONE);
         parentRow.setVisibility(
             (type != ItemType.PROJECT) ? View.VISIBLE : View.GONE);
         predecessorRow.setVisibility(
             (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
+        // predecessorDelayRow wird von predecessorSpinner-Listener gesteuert
+        predecessorDelayRow.setVisibility(View.GONE);
+        // Bevorzugte Uhrzeit: TASK und GOAL
+        prefTimeRow.setVisibility(
+            (type == ItemType.TASK || type == ItemType.GOAL) ? View.VISIBLE : View.GONE);
         cooldownRow.setVisibility(
             (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
         deadlineRow.setVisibility(
             (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
-        minIntervalRow.setVisibility(
-            (type == ItemType.PROJECT) ? View.VISIBLE : View.GONE);
+        // Feste Termine initial sichtbar für TASK (wird von updateRepDetailsVisibility überschrieben)
+        fixedDateRow.setVisibility(
+            (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
+        fixedTimeRow.setVisibility(
+            (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
         progressRow.setVisibility(
             (type == ItemType.TASK || type == ItemType.GOAL) ? View.VISIBLE : View.GONE);
         progressPerRepRow.setVisibility(
@@ -1078,6 +1447,16 @@ public class editItem implements ViewBuilder {
         goalColorRow.setVisibility(
             (type == ItemType.GOAL) ? View.VISIBLE : View.GONE);
         repetitionSection.setVisibility(
+            (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
+        // Erst erledigen: nur TASK
+        completeFirstRow.setVisibility(
+            (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
+        // Budget-Felder nur bei TASK
+        budgetRow.setVisibility(
+            (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
+        budgetAccountRow.setVisibility(
+            (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
+        budgetCategoryRow.setVisibility(
             (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
     }
 

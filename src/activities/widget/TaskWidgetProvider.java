@@ -110,9 +110,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.View;
 import android.widget.RemoteViews;
 
 import com.autosecretary.R;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 import activities.inApp.mainActivity;
 import controller.todoManager;
@@ -122,14 +127,47 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     private static final String ACTION_TOGGLE = "com.autosecretary.widget.ACTION_TOGGLE";
     private static final String ACTION_TIMER = "com.autosecretary.widget.ACTION_TIMER";
     private static final String ACTION_REFRESH = "com.autosecretary.widget.ACTION_REFRESH";
+    private static final String ACTION_PREV_DAY = "com.autosecretary.widget.ACTION_PREV_DAY";
+    private static final String ACTION_NEXT_DAY = "com.autosecretary.widget.ACTION_NEXT_DAY";
     public static final String ACTION_CREATE_ITEM = "com.autosecretary.widget.ACTION_CREATE_ITEM";
 
     // Flash-Feedback: Slot-ID die gerade mit Flash-Farbe angezeigt werden soll
     private static Long flashingSlotId = null;
 
+    // SharedPreferences für persistenten Offset
+    private static final String PREFS_NAME = "widget_prefs";
+    private static final String KEY_OFFSET = "selected_day_offset";
+
+    private static final DateTimeFormatter DATE_FORMAT =
+        DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN);
+
     /** Gibt die Slot-ID zurück die gerade "flashen" soll (für TaskWidgetFactory) */
     public static Long getFlashingSlotId() {
         return flashingSlotId;
+    }
+
+    /** Lädt den Offset aus SharedPreferences */
+    private static int getSelectedDayOffset(Context context) {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getInt(KEY_OFFSET, 0);
+    }
+
+    /** Speichert den Offset in SharedPreferences */
+    private static void setSelectedDayOffset(Context context, int offset) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putInt(KEY_OFFSET, offset)
+            .commit();  // Synchron statt apply() - verhindert Race Condition mit onUpdate()
+    }
+
+    /** Gibt das aktuell ausgewählte Datum zurück (für TaskWidgetFactory) */
+    public static LocalDate getSelectedDate(Context context) {
+        return LocalDate.now().plusDays(getSelectedDayOffset(context));
+    }
+
+    /** Prüft ob der aktuell angezeigte Tag heute ist */
+    public static boolean isShowingToday(Context context) {
+        return getSelectedDayOffset(context) == 0;
     }
 
     @Override
@@ -150,16 +188,54 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             );
             rv.setPendingIntentTemplate(R.id.widget_list, pendingTemplate);
 
-            // 3. Header-Klick → App öffnen
+            // 3. Datum-Label aktualisieren
+            int offset = getSelectedDayOffset(context);
+            LocalDate selectedDate = getSelectedDate(context);
+            String dateText = offset == 0 ? "Heute" : selectedDate.format(DATE_FORMAT);
+            rv.setTextViewText(R.id.widget_date, dateText);
+
+            // 4. Pfeil-Sichtbarkeit und -Farbe je nach Offset
+            // Pfeil links: Nur aktiv wenn nicht heute
+            if (offset == 0) {
+                rv.setTextColor(R.id.widget_prev_day, 0x40FFFFFF); // 25% Alpha
+            } else {
+                rv.setTextColor(R.id.widget_prev_day, 0xFFFFFFFF); // Voll sichtbar
+            }
+            // Pfeil rechts: Nur aktiv wenn < 6 Tage
+            if (offset >= 6) {
+                rv.setTextColor(R.id.widget_next_day, 0x40FFFFFF);
+            } else {
+                rv.setTextColor(R.id.widget_next_day, 0xFFFFFFFF);
+            }
+
+            // 5. Datum-Klick → App öffnen
             Intent appIntent = new Intent(context, mainActivity.class);
             appIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent appPending = PendingIntent.getActivity(
                 context, 0, appIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
-            rv.setOnClickPendingIntent(R.id.widget_header, appPending);
+            rv.setOnClickPendingIntent(R.id.widget_date, appPending);
 
-            // 4. Refresh-Button → ACTION_REFRESH
+            // 6. Pfeil links → ACTION_PREV_DAY
+            Intent prevIntent = new Intent(context, TaskWidgetProvider.class);
+            prevIntent.setAction(ACTION_PREV_DAY);
+            PendingIntent prevPending = PendingIntent.getBroadcast(
+                context, 2, prevIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+            rv.setOnClickPendingIntent(R.id.widget_prev_day, prevPending);
+
+            // 7. Pfeil rechts → ACTION_NEXT_DAY
+            Intent nextIntent = new Intent(context, TaskWidgetProvider.class);
+            nextIntent.setAction(ACTION_NEXT_DAY);
+            PendingIntent nextPending = PendingIntent.getBroadcast(
+                context, 3, nextIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+            rv.setOnClickPendingIntent(R.id.widget_next_day, nextPending);
+
+            // 8. Refresh-Button → ACTION_REFRESH
             Intent refreshIntent = new Intent(context, TaskWidgetProvider.class);
             refreshIntent.setAction(ACTION_REFRESH);
             PendingIntent refreshPending = PendingIntent.getBroadcast(
@@ -168,7 +244,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             );
             rv.setOnClickPendingIntent(R.id.widget_refresh, refreshPending);
 
-            // 5. Add-Button → mainActivity mit CREATE_ITEM Action starten
+            // 9. Add-Button → mainActivity mit CREATE_ITEM Action starten
             Intent addIntent = new Intent(context, mainActivity.class);
             addIntent.setAction(ACTION_CREATE_ITEM);
             addIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -178,7 +254,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             );
             rv.setOnClickPendingIntent(R.id.widget_add, addPending);
 
-            // 6. Widget aktualisieren
+            // 10. Widget aktualisieren
             appWidgetManager.updateAppWidget(appWidgetId, rv);
         }
     }
@@ -269,8 +345,49 @@ public class TaskWidgetProvider extends AppWidgetProvider {
                 notifyWidgetUpdate(context);
             }
         }
+        else if ("show_description".equals(action)) {
+            String title = intent.getStringExtra("task_title");
+            String description = intent.getStringExtra("task_description");
+
+            Intent popupIntent = new Intent(context, DescriptionPopupActivity.class);
+            popupIntent.putExtra(DescriptionPopupActivity.EXTRA_TITLE, title);
+            popupIntent.putExtra(DescriptionPopupActivity.EXTRA_DESCRIPTION, description);
+            popupIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(popupIntent);
+        }
         else if (ACTION_REFRESH.equals(action)) {
             notifyWidgetUpdate(context);
+        }
+        else if (ACTION_PREV_DAY.equals(action)) {
+            int offset = getSelectedDayOffset(context);
+            if (offset > 0) {
+                setSelectedDayOffset(context, offset - 1);
+                updateWidgetFully(context);
+            }
+        }
+        else if (ACTION_NEXT_DAY.equals(action)) {
+            int offset = getSelectedDayOffset(context);
+            if (offset < 6) {
+                setSelectedDayOffset(context, offset + 1);
+                updateWidgetFully(context);
+            }
+        }
+    }
+
+    /**
+     * Vollständiges Widget-Update (Header + Liste).
+     * Notwendig bei Tag-Wechsel, da sich Header-Text und Pfeil-Farben ändern.
+     */
+    private void updateWidgetFully(Context context) {
+        AppWidgetManager manager = AppWidgetManager.getInstance(context);
+        ComponentName widget = new ComponentName(context, TaskWidgetProvider.class);
+        int[] ids = manager.getAppWidgetIds(widget);
+
+        if (ids != null && ids.length > 0) {
+            // Header aktualisieren (onUpdate neu aufrufen)
+            onUpdate(context, manager, ids);
+            // Liste aktualisieren
+            manager.notifyAppWidgetViewDataChanged(ids, R.id.widget_list);
         }
     }
 

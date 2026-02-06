@@ -30,11 +30,18 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 
+import controller.WidgetUpdateManager;
+import controller.WidgetUpdateManager.DataDomain;
+
 public class WidgetRefreshApp extends Application {
 
     @Override
     public void onCreate() {
         super.onCreate();
+
+        // Widgets beim WidgetUpdateManager registrieren
+        WidgetUpdateManager.registerWidget(DataDomain.TODO, TaskWidgetProvider::notifyWidgetUpdate);
+        WidgetUpdateManager.registerWidget(DataDomain.BUDGET, BudgetWidgetProvider::notifyWidgetUpdate);
 
         // BroadcastReceiver für Geräte-Unlock registrieren
         IntentFilter filter = new IntentFilter(Intent.ACTION_USER_PRESENT);
@@ -42,8 +49,9 @@ public class WidgetRefreshApp extends Application {
         registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                // Widget aktualisieren wenn Gerät entsperrt wird
-                TaskWidgetProvider.notifyWidgetUpdate(context);
+                // Alle Widgets aktualisieren wenn Geraet entsperrt wird
+                WidgetUpdateManager.notifyUpdate(context, DataDomain.TODO);
+                WidgetUpdateManager.notifyUpdate(context, DataDomain.BUDGET);
             }
         }, filter, Context.RECEIVER_NOT_EXPORTED);
     }

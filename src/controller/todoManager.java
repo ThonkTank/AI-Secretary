@@ -10,8 +10,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import entities.Account;
 import entities.todoList;
 import entities.trackedItem;
+import entities.Transaction;
 import repository.SQLrepo;
 import repository.Table;
 import scheduling.buildToDo;
@@ -72,7 +74,7 @@ public class todoManager {
      *  stopTimer(slotId) - Setzt workEnd auf LocalTime.now(), delegiert an completeSlot
      *
      *  completeSlot(slotId) - Markiert einen Task-Slot als erledigt
-     *      1. Slot in todayList finden und completed=true setzen
+     *      1. Slot in currentDayList finden und completed=true setzen
      *      2. Prüfen ob alle Task-Slots des zugehörigen Goals completed sind
      *      3. Falls ja: Goal-Slot ebenfalls als completed markieren
      *      4. Änderungen in DB persistieren
@@ -99,18 +101,21 @@ public class todoManager {
 
     private Context context;
     private SQLrepo repo;
-    private todoList todayList;
+    private todoList currentDayList;
+    private LocalDate currentDay;
     private TodoListener listener;
     // Trackt letzten completed Task PRO PARENT (Goal-ID → letztes completed Item-ID)
     private Map<Long, Long> lastCompletedByParent = new HashMap<>();
 
     public todoManager(Context context) {
         this.context = context;
-        this.repo = new SQLrepo(context);
+        this.repo = SQLrepo.getInstance(context);
     }
 
     public interface TodoListener {
         void onListUpdated();
+        /** Wird aufgerufen wenn feste Termine nicht eingeplant werden konnten. */
+        default void onSchedulingConflicts(List<scheduling.buildToDo.SchedulingConflict> conflicts) {}
     }
 
     public record TaskEntry(
@@ -136,14 +141,21 @@ public class todoManager {
     ) {}
 
     // ============================================================================
-    // getTodayStart / getTodayEnd - Tagesgrenzen aus todayList exponieren
+    // getTodayStart / getTodayEnd - Tagesgrenzen aus currentDayList exponieren
     // ============================================================================
     public LocalTime getTodayStart() {
-        return todayList != null ? todayList.start : LocalTime.of(6, 0);
+        return currentDayList != null ? currentDayList.start : LocalTime.of(6, 0);
     }
 
     public LocalTime getTodayEnd() {
-        return todayList != null ? todayList.end : LocalTime.of(18, 0);
+        return currentDayList != null ? currentDayList.end : LocalTime.of(18, 0);
+    }
+
+    // ============================================================================
+    // isCurrentDayToday - Prüft ob der aktuell geladene Tag heute ist
+    // ============================================================================
+    public boolean isCurrentDayToday() {
+        return currentDay != null && currentDay.equals(LocalDate.now());
     }
 
     // ============================================================================
@@ -166,11 +178,18 @@ public class todoManager {
         }
 
         // Neu planen
-        new buildToDo(repo,
+        buildToDo planner = new buildToDo(repo,
             (day, start, end) -> CalendarReader.getEventsForDay(context, day, start, end)
-        ).planWeek();
+        );
+        planner.planWeek();
 
-        if (listener != null) listener.onListUpdated();
+        if (listener != null) {
+            listener.onListUpdated();
+            List<scheduling.buildToDo.SchedulingConflict> conflicts = planner.getConflicts();
+            if (!conflicts.isEmpty()) {
+                listener.onSchedulingConflicts(conflicts);
+            }
+        }
     }
 
     private void unscheduleSlots(List<todoList.TimeSlot> slots, LocalDate day) {
@@ -193,17 +212,21 @@ public class todoManager {
     // provideList - Lädt heutige Liste aus DB, konvertiert zu flacher TaskEntry-Liste
     // ============================================================================
     public List<TaskEntry> provideList() {
-        LocalDate today = LocalDate.now();
-        todayList = repo.fetch(Table.TODOS, Map.of("date", today.toString()));
+        return provideList(LocalDate.now());
+    }
+
+    public List<TaskEntry> provideList(LocalDate day) {
+        currentDay = day;
+        currentDayList = repo.fetch(Table.TODOS, Map.of("date", day.toString()));
         lastCompletedByParent.clear();  // Reset Completion-Tracking bei neuem Laden
 
-        if (todayList == null || todayList.timeSlots == null) {
+        if (currentDayList == null || currentDayList.timeSlots == null) {
             return new ArrayList<>();
         }
 
         List<TaskEntry> entries = new ArrayList<>();
 
-        for (todoList.TimeSlot goalSlot : todayList.timeSlots) {
+        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
 
             // Kalender-Events als eigene Eintraege
             if (Boolean.TRUE.equals(goalSlot.isCalendarEvent)) {
@@ -276,7 +299,7 @@ public class todoManager {
                     goalIcon,
                     goalColor,
                     task.currentStreak,
-                    task.remainingTime(today),
+                    task.remainingTime(day),
                     displayProgress,  // Kombinierter Progress (item + slot delta)
                     task.progressTarget,
                     task.progressUnit
@@ -300,9 +323,9 @@ public class todoManager {
     // uncompleteSlot - Setzt Task-Slot auf unerledigt zurück
     // ============================================================================
     public void uncompleteSlot(Long slotId) {
-        if (todayList == null || todayList.timeSlots == null) return;
+        if (currentDayList == null || currentDayList.timeSlots == null) return;
 
-        for (todoList.TimeSlot goalSlot : todayList.timeSlots) {
+        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
             if (goalSlot.timeSlots == null) continue;
 
             for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
@@ -314,7 +337,7 @@ public class todoManager {
                     // Goal-Slot ebenfalls zurücksetzen
                     goalSlot.completed = false;
 
-                    repo.write(todayList);
+                    repo.write(currentDayList);
                     if (listener != null) listener.onListUpdated();
                     return;
                 }
@@ -326,14 +349,14 @@ public class todoManager {
     // startTimer - Setzt workStart auf aktuelle Uhrzeit
     // ============================================================================
     public void startTimer(Long slotId) {
-        if (todayList == null || todayList.timeSlots == null) return;
+        if (currentDayList == null || currentDayList.timeSlots == null) return;
 
-        for (todoList.TimeSlot goalSlot : todayList.timeSlots) {
+        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
             if (goalSlot.timeSlots == null) continue;
             for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
                 if (slotId.equals(taskSlot.id)) {
                     taskSlot.workStart = LocalTime.now();
-                    repo.write(todayList);
+                    repo.write(currentDayList);
                     if (listener != null) listener.onListUpdated();
                     return;
                 }
@@ -345,9 +368,9 @@ public class todoManager {
     // stopTimer - Setzt workEnd und delegiert Completion an completeSlot
     // ============================================================================
     public void stopTimer(Long slotId) {
-        if (todayList == null || todayList.timeSlots == null) return;
+        if (currentDayList == null || currentDayList.timeSlots == null) return;
 
-        for (todoList.TimeSlot goalSlot : todayList.timeSlots) {
+        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
             if (goalSlot.timeSlots == null) continue;
             for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
                 if (slotId.equals(taskSlot.id)) {
@@ -363,10 +386,10 @@ public class todoManager {
     // completeSlot - Markiert Task-Slot als erledigt, prüft Goal-Completion
     // ============================================================================
     public void completeSlot(Long slotId) {
-        if (todayList == null || todayList.timeSlots == null) return;
+        if (currentDayList == null || currentDayList.timeSlots == null) return;
 
         // Slot finden und completed setzen, Goal-Completion prüfen
-        for (todoList.TimeSlot goalSlot : todayList.timeSlots) {
+        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
             if (goalSlot.timeSlots == null) continue;
 
             for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
@@ -385,8 +408,68 @@ public class todoManager {
                         goalSlot.completed = true;
                     }
 
-                    // Persistieren und Listener benachrichtigen
-                    repo.write(todayList);
+                    // === TRANSACTION START ===
+                    // Alle DB-Writes atomar ausführen für Konsistenz
+                    SQLiteDatabase db = repo.getWritableDatabase();
+                    db.beginTransaction();
+                    try {
+                        // 1. TodoList mit Slot-Updates persistieren
+                        repo.write(currentDayList);
+
+                        // 2. Auto-Transaction für budgetierte Tasks
+                        trackedItem item = repo.fetch(Table.ITEMS, taskSlot.item);
+                        if (item != null && item.budgetRequirementCents > 0) {
+                            Long accountId = item.budgetAccountId;
+
+                            // Falls kein spezifisches Konto: erstes aktives mit includeInTotal
+                            if (accountId == null) {
+                                List<Long> ids = repo.lookups("accounts",
+                                    Map.of("is_active", "1", "include_in_total", "1"), "id");
+                                if (!ids.isEmpty()) accountId = ids.get(0);
+                            }
+
+                            if (accountId != null) {
+                                Transaction tx = new Transaction.Builder(
+                                    accountId,
+                                    -item.budgetRequirementCents,  // Negativ = Ausgabe
+                                    LocalDate.now(),
+                                    item.budgetCategoryId  // null = unkategorisiert
+                                )
+                                .description("Task: " + item.title)
+                                .isConfirmed(false)  // User muss bestätigen
+                                .build();
+                                repo.write(tx);
+
+                                // Konto-Saldo aktualisieren
+                                Account acc = repo.fetch(Table.ACCOUNTS, accountId);
+                                if (acc != null) {
+                                    acc.currentBalanceCents -= item.budgetRequirementCents;
+                                    repo.write(acc);
+                                }
+                            }
+                        }
+
+                        db.setTransactionSuccessful();
+                    } finally {
+                        db.endTransaction();
+                    }
+                    // === TRANSACTION END ===
+
+                    // 3. Meal-Task-Completion: Vorrat reduzieren, ConsumptionLog erstellen
+                    // Außerhalb der Transaction, da mealManager eigene Schreiblogik hat
+                    trackedItem itemForMeal = repo.fetch(Table.ITEMS, taskSlot.item);
+                    if (itemForMeal != null && itemForMeal.mealPlanId != null) {
+                        try {
+                            mealManager mealMgr = new mealManager(context);
+                            mealMgr.completeMeal(itemForMeal.mealPlanId, 0);  // 0 = geplante Portionen
+                        } catch (Exception e) {
+                            android.util.Log.e("todoManager",
+                                "Meal completion failed: " + itemForMeal.mealPlanId, e);
+                            // Weiter - Task ist trotzdem erledigt
+                        }
+                    }
+
+                    // Listener benachrichtigen
                     if (listener != null) listener.onListUpdated();
                     return;
                 }
@@ -399,9 +482,9 @@ public class todoManager {
     // WICHTIG: Item wird NICHT direkt geändert - erst bei Mitternacht via update()
     // ============================================================================
     public void incrementProgress(Long slotId) {
-        if (todayList == null || todayList.timeSlots == null) return;
+        if (currentDayList == null || currentDayList.timeSlots == null) return;
 
-        for (todoList.TimeSlot goalSlot : todayList.timeSlots) {
+        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
             if (goalSlot.timeSlots == null) continue;
 
             for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
@@ -441,7 +524,7 @@ public class todoManager {
                     }
 
                     // NUR die todoList speichern, NICHT das Item!
-                    repo.write(todayList);
+                    repo.write(currentDayList);
                     if (listener != null) listener.onListUpdated();
                     return;
                 }
@@ -454,9 +537,9 @@ public class todoManager {
     // WICHTIG: Item wird NICHT direkt geändert - erst bei Mitternacht via update()
     // ============================================================================
     public void decrementProgress(Long slotId) {
-        if (todayList == null || todayList.timeSlots == null) return;
+        if (currentDayList == null || currentDayList.timeSlots == null) return;
 
-        for (todoList.TimeSlot goalSlot : todayList.timeSlots) {
+        for (todoList.TimeSlot goalSlot : currentDayList.timeSlots) {
             if (goalSlot.timeSlots == null) continue;
 
             for (todoList.TimeSlot taskSlot : goalSlot.timeSlots) {
@@ -485,7 +568,7 @@ public class todoManager {
                     }
 
                     // NUR die todoList speichern, NICHT das Item!
-                    repo.write(todayList);
+                    repo.write(currentDayList);
                     if (listener != null) listener.onListUpdated();
                     return;
                 }

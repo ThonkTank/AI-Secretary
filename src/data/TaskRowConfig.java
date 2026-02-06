@@ -94,10 +94,9 @@ public class TaskRowConfig {
         boolean strikethrough,
         @ColorRes int titleColorRes,
         @ColorRes int backgroundColorRes,
-        Integer goalBarColor,
         boolean checked,
-        String durationText,
-        String timeText,
+        String startTimeText,
+        String endTimeText,
         boolean showStreak,
         String streakText,
         @ColorRes int streakColorRes,
@@ -126,8 +125,6 @@ public class TaskRowConfig {
             boolean timerRunning = entry.workStart() != null;
             boolean hasRemaining = entry.remainingDays() > 0;
 
-            Integer goalBarColor = parseColor(entry.goalColor());
-
             // Progress-Logik
             boolean hasProgress = entry.progressTarget() > 0;
             boolean progressDoneToday = completed && hasProgress;
@@ -143,10 +140,9 @@ public class TaskRowConfig {
             // Titel-Farbe: muted wenn strikethrough
             @ColorRes int titleColorRes = strikethrough ? R.color.text_muted : R.color.text_primary;
 
-            // Zeit-Formatierung
-            String timeText = entry.start() != null && entry.end() != null
-                ? entry.start().format(TIME_FMT) + "–" + entry.end().format(TIME_FMT)
-                : null;
+            // Zeit-Formatierung (Start und Ende separat)
+            String startTimeText = entry.start() != null ? entry.start().format(TIME_FMT) : null;
+            String endTimeText = entry.end() != null ? entry.end().format(TIME_FMT) : null;
 
             return new TaskConfig(
                 entry.slotId(),
@@ -154,10 +150,9 @@ public class TaskRowConfig {
                 strikethrough,
                 titleColorRes,
                 showGreenBg ? R.color.surface_complete : R.color.surface,
-                goalBarColor,
                 completed,
-                entry.slotDuration() + " min",
-                timeText,
+                startTimeText,
+                endTimeText,
                 hasStreak,
                 hasStreak ? "🔥 " + entry.currentStreak() : null,
                 TaskListData.getStreakRarityColorRes(entry.currentStreak()),
@@ -203,10 +198,16 @@ public class TaskRowConfig {
     // ══════════════════════════════════════════════════════════════════
 
     public record CalendarConfig(
-        String title
+        String title,
+        String startTimeText,
+        String endTimeText
     ) {
         public static CalendarConfig from(TaskEntry entry) {
-            return new CalendarConfig(entry.taskTitle());
+            return new CalendarConfig(
+                entry.taskTitle(),
+                entry.start() != null ? entry.start().format(TIME_FMT) : null,
+                entry.end() != null ? entry.end().format(TIME_FMT) : null
+            );
         }
     }
 

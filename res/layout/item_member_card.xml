@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="140dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/surface_card"
+    android:padding="@dimen/padding_small"
+    android:layout_marginEnd="@dimen/margin_small">
+
+    <!-- Name -->
+    <TextView
+        android:id="@+id/member_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Max"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <!-- Alter + Aktivität -->
+    <TextView
+        android:id="@+id/member_info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="32 Jahre • Aktiv"
+        android:textSize="11sp"
+        android:textColor="@color/text_secondary"
+        android:layout_marginTop="2dp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <!-- Kalorien pro Tag -->
+    <TextView
+        android:id="@+id/member_calories"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="2.400 kcal/Tag"
+        android:textSize="12sp"
+        android:textColor="@color/accent"
+        android:textStyle="bold"
+        android:layout_marginTop="4dp" />
+
+</LinearLayout>

@@ -6,6 +6,7 @@
     <color name="text_secondary">#FF757575</color>
     <color name="text_muted">#FF9E9E9E</color>
     <color name="text_error">#FFD32F2F</color>
+    <color name="error">#FFD32F2F</color>
 
     <!-- Oberflaechen -->
     <color name="surface">#FFFAFAFA</color>
@@ -33,6 +34,7 @@
     <color name="timeline_now_line">#FFD32F2F</color>
 
     <!-- Sonstige -->
+    <color name="divider">#FFE0E0E0</color>
     <color name="header_bg">#FF455A64</color>
     <color name="calendar_event_bg">#FFE3F2FD</color>
     <color name="text_description">#FF616161</color>
@@ -41,4 +43,25 @@
     <color name="accent_light">#FFB3D4FC</color>
     <color name="text_on_header">#FFFFFFFF</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- UI Oberflächen -->
+    <color name="surface_card">#FFFFFFFF</color>
+    <color name="surface_elevated">#FFF5F5F5</color>
+    <color name="text_tertiary">#FFBDBDBD</color>
+    <color name="status_success">#FF4CAF50</color>
+    <color name="background">#FFFAFAFA</color>
+
+    <!-- Budget-spezifische Farben -->
+    <color name="budget_income">#FF4CAF50</color>
+    <color name="budget_expense">#FFE53935</color>
+    <color name="budget_positive">#FF388E3C</color>
+    <color name="budget_positive_bg">#FFE8F5E9</color>
+    <color name="budget_negative">#FFD32F2F</color>
+    <color name="budget_negative_bg">#FFFFEBEE</color>
+    <color name="budget_bar_safe">#FF4CAF50</color>
+    <color name="budget_bar_warning">#FFFFC107</color>
+    <color name="budget_bar_danger">#FFE53935</color>
+    <color name="budget_bar_bg">#FFE0E0E0</color>
+    <color name="card_background">#FFFFFFFF</color>
+    <color name="card_shadow">#20000000</color>
 </resources>

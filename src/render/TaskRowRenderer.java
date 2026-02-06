@@ -24,12 +24,11 @@ package render;
  *   applyTask(View view, TaskConfig cfg, Context ctx)
  *   applyTask(RemoteViews rv, TaskConfig cfg, Context ctx)
  *     1. Hintergrund setzen (backgroundColorRes)
- *     2. Goal-Farbbalken setzen (goalBarColor, falls nicht null)
- *     3. Checkbox-Icon setzen (ic_checkbox_checked/unchecked)
- *     4. Titel setzen (mit optionalem Strikethrough + titleColorRes)
- *     5. Dauer setzen (durationText)
- *     6. Meta-Row konfigurieren (Streak + Deadline Visibility/Text/Color)
- *     7. Timer-Button konfigurieren (Symbol + Farbe + Visibility)
+ *     2. Checkbox-Icon oder Progress-Stepper setzen
+ *     3. Titel setzen (mit optionalem Strikethrough + titleColorRes)
+ *     4. Zeit setzen (Start + Ende, vertikal gestapelt)
+ *     5. Meta-Row konfigurieren (Streak + Deadline Visibility/Text/Color)
+ *     6. Timer-Button konfigurieren (Symbol + Farbe + Visibility)
  *
  *   applyGoalHeader(View view, GoalHeaderConfig cfg, Context ctx)
  *   applyGoalHeader(RemoteViews rv, GoalHeaderConfig cfg, Context ctx)
@@ -61,10 +60,12 @@ package render;
  * ──────────────────────────────────────────────────────────────────────────────
  *
  *   R.id.task_row          → Root RelativeLayout
- *   R.id.goal_color_bar    → View (Farbbalken links)
+ *   R.id.time_container    → LinearLayout (vertikal, Start+Ende)
+ *   R.id.task_time_start   → TextView (Startzeit)
+ *   R.id.task_time_end     → TextView (Endzeit)
+ *   R.id.control_container → FrameLayout (Checkbox oder Progress)
  *   R.id.task_checkbox     → ImageView
  *   R.id.task_title        → TextView
- *   R.id.task_duration     → TextView
  *   R.id.task_meta_row     → LinearLayout
  *   R.id.task_streak       → TextView
  *   R.id.task_deadline     → TextView
@@ -101,12 +102,6 @@ public class TaskRowRenderer {
         // Hintergrund
         view.setBackgroundColor(ContextCompat.getColor(ctx, cfg.backgroundColorRes()));
 
-        // Goal-Farbbalken
-        View colorBar = view.findViewById(R.id.goal_color_bar);
-        if (cfg.goalBarColor() != null) {
-            colorBar.setBackgroundColor(cfg.goalBarColor());
-        }
-
         // Checkbox vs Progress-Stepper
         ImageView checkbox = view.findViewById(R.id.task_checkbox);
         View progressContainer = view.findViewById(R.id.progress_container);
@@ -138,18 +133,11 @@ public class TaskRowRenderer {
         TextView title = view.findViewById(R.id.task_title);
         applyTitle(title, cfg.title(), cfg.strikethrough(), cfg.titleColorRes(), ctx);
 
-        // Dauer
-        TextView duration = view.findViewById(R.id.task_duration);
-        duration.setText(cfg.durationText());
-
-        // Zeit
-        TextView time = view.findViewById(R.id.task_time);
-        if (cfg.timeText() != null) {
-            time.setText(cfg.timeText());
-            time.setVisibility(View.VISIBLE);
-        } else {
-            time.setVisibility(View.GONE);
-        }
+        // Zeit (Start und Ende separat)
+        TextView timeStart = view.findViewById(R.id.task_time_start);
+        TextView timeEnd = view.findViewById(R.id.task_time_end);
+        timeStart.setText(cfg.startTimeText() != null ? cfg.startTimeText() : "");
+        timeEnd.setText(cfg.endTimeText() != null ? cfg.endTimeText() : "");
 
         // Meta-Zeile
         applyMetaRow(view, cfg, ctx);
@@ -173,11 +161,6 @@ public class TaskRowRenderer {
         // Hintergrund
         rv.setInt(R.id.task_row, "setBackgroundColor",
             ContextCompat.getColor(ctx, cfg.backgroundColorRes()));
-
-        // Goal-Farbbalken
-        if (cfg.goalBarColor() != null) {
-            rv.setInt(R.id.goal_color_bar, "setBackgroundColor", cfg.goalBarColor());
-        }
 
         // Checkbox vs Progress-Stepper
         if (cfg.hasProgress()) {
@@ -204,16 +187,9 @@ public class TaskRowRenderer {
         // Titel
         applyTitle(rv, cfg.title(), cfg.strikethrough(), cfg.titleColorRes(), ctx);
 
-        // Dauer
-        rv.setTextViewText(R.id.task_duration, cfg.durationText());
-
-        // Zeit
-        if (cfg.timeText() != null) {
-            rv.setTextViewText(R.id.task_time, cfg.timeText());
-            rv.setViewVisibility(R.id.task_time, View.VISIBLE);
-        } else {
-            rv.setViewVisibility(R.id.task_time, View.GONE);
-        }
+        // Zeit (Start und Ende separat)
+        rv.setTextViewText(R.id.task_time_start, cfg.startTimeText() != null ? cfg.startTimeText() : "");
+        rv.setTextViewText(R.id.task_time_end, cfg.endTimeText() != null ? cfg.endTimeText() : "");
 
         // Meta-Zeile
         applyMetaRow(rv, cfg, ctx);
@@ -279,8 +255,19 @@ public class TaskRowRenderer {
     // ══════════════════════════════════════════════════════════════════
 
     public static void applyCalendar(View view, CalendarConfig cfg, Context ctx) {
+        // Titel
         TextView title = view.findViewById(R.id.calendar_title);
         title.setText(cfg.title());
+
+        // Zeiten
+        TextView timeStart = view.findViewById(R.id.calendar_time_start);
+        TextView timeEnd = view.findViewById(R.id.calendar_time_end);
+        if (cfg.startTimeText() != null) {
+            timeStart.setText(cfg.startTimeText());
+        }
+        if (cfg.endTimeText() != null) {
+            timeEnd.setText(cfg.endTimeText());
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -288,7 +275,16 @@ public class TaskRowRenderer {
     // ══════════════════════════════════════════════════════════════════
 
     public static void applyCalendar(RemoteViews rv, CalendarConfig cfg, Context ctx) {
+        // Titel
         rv.setTextViewText(R.id.calendar_title, cfg.title());
+
+        // Zeiten
+        if (cfg.startTimeText() != null) {
+            rv.setTextViewText(R.id.calendar_time_start, cfg.startTimeText());
+        }
+        if (cfg.endTimeText() != null) {
+            rv.setTextViewText(R.id.calendar_time_end, cfg.endTimeText());
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════

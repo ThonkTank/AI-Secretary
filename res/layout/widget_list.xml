@@ -6,7 +6,7 @@
     android:orientation="vertical"
     android:background="@color/surface">
 
-    <!-- Header mit App-Name und Refresh-Button -->
+    <!-- Header mit Datum-Navigation und Buttons -->
     <LinearLayout
         android:id="@+id/widget_header"
         android:layout_width="match_parent"
@@ -16,15 +16,37 @@
         android:padding="@dimen/padding_medium"
         android:background="@color/accent">
 
+        <!-- Pfeil links (vorheriger Tag) -->
         <TextView
-            android:id="@+id/widget_title"
+            android:id="@+id/widget_prev_day"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="◀"
+            android:textSize="@dimen/sp_body"
+            android:textColor="@color/white"
+            android:padding="@dimen/padding_small" />
+
+        <!-- Datum-Label (zentriert) -->
+        <TextView
+            android:id="@+id/widget_date"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/app_name"
+            android:text="Heute"
             android:textColor="@color/white"
             android:textSize="@dimen/sp_title"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <!-- Pfeil rechts (naechster Tag) -->
+        <TextView
+            android:id="@+id/widget_next_day"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="▶"
+            android:textSize="@dimen/sp_body"
+            android:textColor="@color/white"
+            android:padding="@dimen/padding_small" />
 
         <TextView
             android:id="@+id/widget_add"

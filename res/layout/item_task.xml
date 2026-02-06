@@ -10,23 +10,38 @@
     android:paddingBottom="@dimen/card_padding_v"
     android:background="@color/surface">
 
-    <!-- Goal-Farbbalken (links, volle Höhe) - ImageView statt View wegen RemoteViews-Kompatibilität -->
-    <ImageView
-        android:id="@+id/goal_color_bar"
-        android:layout_width="@dimen/goal_bar_width"
-        android:layout_height="match_parent"
+    <!-- Zeit-Container (links, vertikal: Start oben, Ende unten) -->
+    <LinearLayout
+        android:id="@+id/time_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_alignParentStart="true"
-        android:layout_alignTop="@id/control_container"
-        android:layout_alignBottom="@id/task_meta_row"
-        android:background="@color/header_bg"
-        android:contentDescription="@null" />
+        android:layout_centerVertical="true"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+        <TextView
+            android:id="@+id/task_time_start"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/sp_small"
+            android:textColor="@color/text_muted" />
+
+        <TextView
+            android:id="@+id/task_time_end"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/sp_small"
+            android:textColor="@color/text_muted" />
+
+    </LinearLayout>
 
     <!-- Control-Container: enthält Checkbox ODER Progress-Stepper -->
     <FrameLayout
         android:id="@+id/control_container"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_toEndOf="@id/goal_color_bar"
+        android:layout_toEndOf="@id/time_container"
         android:layout_marginStart="@dimen/padding_small"
         android:layout_centerVertical="true"
         android:minWidth="@dimen/checkbox_size">
@@ -105,42 +120,22 @@
         android:textSize="@dimen/sp_icon"
         android:textColor="@color/text_secondary" />
 
-    <!-- Dauer (vor Timer) -->
-    <TextView
-        android:id="@+id/task_duration"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_toStartOf="@id/task_timer"
-        android:layout_alignBaseline="@id/task_title"
-        android:layout_marginEnd="@dimen/padding_small"
-        android:textSize="@dimen/sp_small"
-        android:textColor="@color/text_muted" />
-
-    <!-- Zeit (vor Dauer, z.B. "14:00–14:15") -->
-    <TextView
-        android:id="@+id/task_time"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_toStartOf="@id/task_duration"
-        android:layout_alignBaseline="@id/task_title"
-        android:layout_marginEnd="@dimen/padding_small"
-        android:textSize="@dimen/sp_small"
-        android:textColor="@color/text_muted" />
-
-    <!-- Titel (füllt Platz zwischen Control-Container und Zeit) -->
+    <!-- Titel (füllt Platz zwischen Control-Container und Timer) - klickbar für Beschreibung -->
     <TextView
         android:id="@+id/task_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_toEndOf="@id/control_container"
-        android:layout_toStartOf="@id/task_time"
+        android:layout_toStartOf="@id/task_timer"
         android:layout_marginStart="@dimen/padding_small"
         android:layout_marginEnd="@dimen/padding_small"
         android:textSize="@dimen/sp_body"
         android:textStyle="bold"
         android:textColor="@color/text_primary"
         android:maxLines="2"
-        android:ellipsize="end" />
+        android:ellipsize="end"
+        android:clickable="true"
+        android:focusable="true" />
 
     <!-- Meta-Zeile (unter Titel) -->
     <LinearLayout

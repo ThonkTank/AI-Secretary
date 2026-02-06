@@ -15,7 +15,6 @@ import repository.Table;
 
 /**
  * Task Entity - repräsentiert eine einzelne Aufgabe.
- * TODO: Aufgaben mit mehreren Wiederholungen pro Tag.
  *
  * Utility Funktionen:
  * getBlockedDays(): Für alle completions und scheduled Termine cooldown berechnen und Tage blockieren. Wenn complete, Tage bis next repetition blockieren.
@@ -35,6 +34,8 @@ public class trackedItem {
     public List<Long> children;             // Trackt, falls vorhanden, child IDs für goals und metaGoals
     public LocalDate created;               // Wann das Item erstellt wurde.
     public LocalDate deadline;               // Fälligkeitsdatum für einmalige Tasks (null = keine Deadline)
+    public LocalDate fixedDate;              // Fester Termin: Muss an diesem Tag geplant werden (null = flexibel)
+    public LocalTime fixedTime;              // Fester Termin: Muss zu dieser Uhrzeit starten (null = flexibel)
 
     // Completion Logik
     public LocalDate lastCompletion;        // when was the task last completed?
@@ -69,14 +70,23 @@ public class trackedItem {
     public Map<Long, Integer> followUps;    // Tasks, welche direkt vor dieser erledigt wurden (ID und Häufigkeit)
     public LocalTime prefTime;              // Zu welcher Uhrzeit wird die Task für gewöhnlich erledigt? z.B. 14:30
     public int totalCompletions;            // Wie oft wurde die Task erledigt? (all time)
-    public int minIntervalDays;             // Mindestabstand zwischen Einplanungen in Tagen (0 = keine Einschränkung)
-    public Long requiredPredecessor;        // Geschwister-Task der direkt davor erledigt werden soll (same parent)
-    public Long conditionalPrerequisite;    // Task der kürzlich erledigt sein muss um diesen zu aktivieren
-    public Integer prereqWindowDays;        // Zeitfenster in Tagen (null = persistent bis einmal erledigt)
 
     // Darstellung (nur fuer Goals relevant)
     public String goalIcon;                 // Emoji-Icon fuer Goal-Header (z.B. "💪")
     public String goalColor;                // Hex-Farbcode fuer Goal-Header (z.B. "#FFE53935")
+
+    // Budget-Anforderung (nur fuer Tasks relevant)
+    public int budgetRequirementCents;      // 0 = kein Budget, >0 = Kosten in Cents
+    public Long budgetAccountId;            // null = beliebiges Konto, sonst spezifisches
+    public Long budgetCategoryId;           // FK zu categories für die Auto-Transaction
+
+    // Meal-Task-Verknüpfung
+    public Long mealPlanId;                 // FK zu MealPlan (null wenn kein Meal-Task)
+
+    // Unified Chaining (ersetzt requiredPredecessor + isSequence + sequenceDelay)
+    public Long predecessor;                // Vorgänger-Task (delay=0: konsekutiv, delay>0: verzögert)
+    public int predecessorDelay;            // Minuten Wartezeit nach Vorgänger (0 = konsekutiv am selben Tag)
+    public LocalTime lastCompletionTime;    // Uhrzeit der Completion (für präzise Delays)
 
     // Builder
     public static class Builder {
@@ -116,7 +126,6 @@ public class trackedItem {
         public Builder scheduled(List<LocalDate> v) { item.scheduled = v; return this; }
         public Builder cooldown(int v) { item.cooldown = v; return this; }
         public Builder prefTime(String v) { item.prefTime = LocalTime.parse(v); return this; }
-        public Builder minIntervalDays(int v) { item.minIntervalDays = v; return this; }
         public Builder currentStreak(int v) { item.currentStreak = v; return this; }
         public Builder averageStreak(int v) { item.averageStreak = v; return this; }
         public Builder nrOfStreaks(int v) { item.nrOfStreaks = v; return this; }
@@ -130,9 +139,24 @@ public class trackedItem {
         public Builder progressTimingCount(int v) { item.progressTimingCount = v; return this; }
         public Builder goalIcon(String v) { item.goalIcon = v; return this; }
         public Builder goalColor(String v) { item.goalColor = v; return this; }
-        public Builder requiredPredecessor(Long v) { item.requiredPredecessor = v; return this; }
-        public Builder conditionalPrerequisite(Long v) { item.conditionalPrerequisite = v; return this; }
-        public Builder prereqWindowDays(Integer v) { item.prereqWindowDays = v; return this; }
+        public Builder budgetRequirement(int cents) { item.budgetRequirementCents = cents; return this; }
+        public Builder budgetAccount(Long id) { item.budgetAccountId = id; return this; }
+        public Builder budgetCategory(Long categoryId) { item.budgetCategoryId = categoryId; return this; }
+        public Builder mealPlan(Long id) { item.mealPlanId = id; return this; }
+        public Builder predecessor(Long v) { item.predecessor = v; return this; }
+        public Builder predecessorDelay(int v) { item.predecessorDelay = v; return this; }
+        // Convenience: Same-day chain (delay=0)
+        public Builder chainAfter(Long v) { return predecessor(v).predecessorDelay(0); }
+        // Convenience: Delayed chain
+        public Builder delayAfter(Long v, int minutes) { return predecessor(v).predecessorDelay(minutes); }
+        // Fester Termin
+        public Builder fixedDate(String v) { item.fixedDate = LocalDate.parse(v); return this; }
+        public Builder fixedTime(String v) { item.fixedTime = LocalTime.parse(v); return this; }
+        public Builder fixedAppointment(String date, String time) {
+            item.fixedDate = LocalDate.parse(date);
+            item.fixedTime = LocalTime.parse(time);
+            return this;
+        }
 
         public Builder repetition(RepetitionType type, int value, RepUnits unit) {
             item.repetition = new Repetition();
@@ -262,26 +286,59 @@ public class trackedItem {
     }
 
     /**
-     * Prüft ob das Item seine Conditional-Prerequisite-Bedingung erfüllt.
-     *
-     * Zwei Modi:
-     * - Zeitfenster (prereqWindowDays > 0): Prereq muss in den letzten N Tagen erledigt worden sein
-     * - Persistent (prereqWindowDays == null oder 0): Prereq muss NACH letzter eigener Erledigung erledigt worden sein
+     * Prüft ob dieses Item ein fester Termin ist (fixedDate + fixedTime gesetzt).
+     * Feste Termine werden exakt zur angegebenen Zeit eingeplant und können nicht verdrängt werden.
      */
-    public boolean meetsConditionalPrerequisite(LocalDate day, Repo repo) {
-        if (conditionalPrerequisite == null) return true;
+    public boolean isFixedAppointment() {
+        return fixedDate != null && fixedTime != null;
+    }
 
-        trackedItem prereq = repo.fetch(Table.ITEMS, conditionalPrerequisite);
-        if (prereq == null || prereq.lastCompletion == null) return false;
+    /**
+     * Prüft ob dieses Item basierend auf Predecessor-Status bereit zur Planung ist.
+     * - Kein predecessor: immer ready
+     * - delay=0: ready (buildChains() behandelt konsekutive Platzierung)
+     * - delay>0: ready wenn predecessor scheduled ODER completed
+     */
+    public boolean isPredecessorReady(Repo repo) {
+        if (this.predecessor == null) return true;
 
-        if (prereqWindowDays == null || prereqWindowDays == 0) {
-            // PERSISTENT-MODUS: Aktiv wenn Prereq nach letzter eigener Erledigung kam
-            return lastCompletion == null || prereq.lastCompletion.isAfter(lastCompletion);
-        } else {
-            // ZEITFENSTER-MODUS: Prereq muss in den letzten N Tagen erledigt worden sein
-            LocalDate windowStart = day.minusDays(prereqWindowDays);
-            return !prereq.lastCompletion.isBefore(windowStart);
+        // delay=0 items werden von buildChains() gruppiert
+        if (this.predecessorDelay == 0) return true;
+
+        trackedItem pred = repo.fetch(Table.ITEMS, this.predecessor);
+        if (pred == null) return true;
+
+        // Ready wenn Vorgänger scheduled ODER completed
+        boolean predScheduled = pred.scheduled != null && !pred.scheduled.isEmpty();
+        boolean predCompleted = pred.lastCompletion != null;
+
+        return predScheduled || predCompleted;
+    }
+
+    /**
+     * Berechnet den frühesten Startzeitpunkt basierend auf Predecessor + Delay.
+     * @return LocalDateTime oder null wenn kein Constraint
+     */
+    public java.time.LocalDateTime getEarliestStart(Repo repo) {
+        if (this.predecessor == null || this.predecessorDelay <= 0) return null;
+
+        trackedItem pred = repo.fetch(Table.ITEMS, this.predecessor);
+        if (pred == null) return null;
+
+        // Referenzpunkt: Completion oder erstes Scheduled-Datum
+        LocalDate refDate = null;
+        LocalTime refTime = LocalTime.of(8, 0);  // Default 08:00
+
+        if (pred.lastCompletion != null) {
+            refDate = pred.lastCompletion;
+            refTime = pred.lastCompletionTime != null ? pred.lastCompletionTime : refTime;
+        } else if (pred.scheduled != null && !pred.scheduled.isEmpty()) {
+            refDate = pred.scheduled.get(0);  // Erstes geplantes Datum
         }
+
+        if (refDate == null) return null;
+
+        return java.time.LocalDateTime.of(refDate, refTime).plusMinutes(this.predecessorDelay);
     }
 
     // ============== BUSINESS LOGIK ==============
@@ -329,6 +386,9 @@ public class trackedItem {
 
             // Completion tracking (setzt isCompleted, lastCompletion, streak)
             checkCompletion(day);
+
+            // lastCompletionTime für präzise Sequence-Delays
+            this.lastCompletionTime = workStart != null ? workStart : LocalTime.now();
 
             if (this.type == ItemType.TASK) {
                 // PrefTime aus workStart ableiten

@@ -25,7 +25,7 @@ public class itemParser {
         // Basic
         String typeStr = (String) typed.get("type");
         if (typeStr != null) {
-            item.type = trackedItem.ItemType.valueOf(typeStr.toUpperCase());
+            item.type = ParseUtils.safeEnum(trackedItem.ItemType.class, typeStr.toUpperCase());
         }
         item.title = (String) typed.get("title");
         item.description = (String) typed.get("description");
@@ -40,12 +40,12 @@ public class itemParser {
         String repType = (String) typed.get("repetition_type");
         if (repType != null) {
             item.repetition = new trackedItem.Repetition();
-            item.repetition.type = trackedItem.RepetitionType.valueOf(repType);
-            item.repetition.unit = trackedItem.RepUnits.valueOf((String) typed.get("repetition_unit"));
+            item.repetition.type = ParseUtils.safeEnum(trackedItem.RepetitionType.class, repType);
+            item.repetition.unit = ParseUtils.safeEnum(trackedItem.RepUnits.class, (String) typed.get("repetition_unit"));
             item.repetition.value = typed.get("repetition_value") instanceof Number n ? n.intValue() : 0;
             String dow = (String) typed.get("day_of_week");
             if (dow != null) {
-                item.repetition.dayOfWeek = java.time.DayOfWeek.valueOf(dow);
+                item.repetition.dayOfWeek = ParseUtils.safeDayOfWeek(dow);
             }
         }
         item.completeFirst = Boolean.TRUE.equals(typed.get("complete_first"));
@@ -53,31 +53,41 @@ public class itemParser {
         // Planung (min/max Duration)
         item.minDurationValue = typed.get("min_duration_value") instanceof Number n ? n.intValue() : 0;
         String minUnit = (String) typed.get("min_duration_unit");
-        if (minUnit != null) item.minDurationUnit = trackedItem.DurationUnit.valueOf(minUnit);
+        if (minUnit != null) item.minDurationUnit = ParseUtils.safeEnum(trackedItem.DurationUnit.class, minUnit);
         item.maxDurationValue = typed.get("max_duration_value") instanceof Number n ? n.intValue() : 0;
         String maxUnit = (String) typed.get("max_duration_unit");
-        if (maxUnit != null) item.maxDurationUnit = trackedItem.DurationUnit.valueOf(maxUnit);
+        if (maxUnit != null) item.maxDurationUnit = ParseUtils.safeEnum(trackedItem.DurationUnit.class, maxUnit);
         String prioStr = (String) typed.get("priority");
         if (prioStr != null) {
-            item.priority = trackedItem.Priority.valueOf(prioStr);
+            item.priority = ParseUtils.safeEnum(trackedItem.Priority.class, prioStr);
         }
         item.prefTime = (java.time.LocalTime) typed.get("pref_time");
         String scheduledStr = (String) typed.get("scheduled");
-        if (scheduledStr != null) {
+        if (scheduledStr != null && !scheduledStr.isEmpty()) {
             item.scheduled = java.util.Arrays.stream(scheduledStr.split(","))
-                .map(java.time.LocalDate::parse)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(ParseUtils::safeLocalDate)
+                .filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toList());
         }
         item.cooldown = typed.get("cooldown") instanceof Number n ? n.intValue() : 0;
         String blockedDaysStr = (String) typed.get("blocked_days");
-        if (blockedDaysStr != null) {
+        if (blockedDaysStr != null && !blockedDaysStr.isEmpty()) {
             item.blockedDays = java.util.Arrays.stream(blockedDaysStr.split(","))
-                .map(java.time.LocalDate::parse)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(ParseUtils::safeLocalDate)
+                .filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toSet());
         }
 
         // Deadline
         item.deadline = (java.time.LocalDate) typed.get("deadline");
+
+        // Fester Termin
+        item.fixedDate = (java.time.LocalDate) typed.get("fixed_date");
+        item.fixedTime = (java.time.LocalTime) typed.get("fixed_time");
 
         // Fortschritt
         item.progressCurrent = typed.get("progress_current") instanceof Number n ? n.intValue() : 0;
@@ -93,34 +103,47 @@ public class itemParser {
         item.averageStreak = typed.get("average_streak") instanceof Number n ? n.intValue() : 0;
         item.nrOfStreaks = typed.get("nr_of_streaks") instanceof Number n ? n.intValue() : 0;
         item.totalCompletions = typed.get("total_completions") instanceof Number n ? n.intValue() : 0;
-        item.minIntervalDays = typed.get("min_interval_days") instanceof Number n ? n.intValue() : 0;
 
         // Darstellung
         item.goalIcon = (String) typed.get("goal_icon");
         item.goalColor = (String) typed.get("goal_color");
 
-        // FollowUp-Constraint
-        item.requiredPredecessor = (Long) typed.get("required_predecessor");
+        // Budget
+        item.budgetRequirementCents = typed.get("budget_requirement_cents") instanceof Number n ? n.intValue() : 0;
+        item.budgetAccountId = (Long) typed.get("budget_account_id");
+        item.budgetCategoryId = (Long) typed.get("budget_category_id");
 
-        // Conditional Prerequisite
-        item.conditionalPrerequisite = (Long) typed.get("conditional_prerequisite");
-        item.prereqWindowDays = typed.get("prereq_window_days") instanceof Number n ? n.intValue() : null;
+        // Meal-Task-Verknüpfung
+        item.mealPlanId = (Long) typed.get("meal_plan_id");
+
+        // Unified Chaining
+        item.predecessor = (Long) typed.get("predecessor");
+        item.predecessorDelay = typed.get("predecessor_delay") instanceof Number n ? n.intValue() : 0;
+        item.lastCompletionTime = (java.time.LocalTime) typed.get("last_completion_time");
 
         // Relationen
         item.parent = (Long) typed.get("parent");
         String childrenStr = (String) typed.get("children");
-        if (childrenStr != null) {
+        if (childrenStr != null && !childrenStr.isEmpty()) {
             item.children = java.util.Arrays.stream(childrenStr.split(","))
                 .map(String::trim)
-                .map(Long::parseLong)
+                .filter(s -> !s.isEmpty())
+                .map(ParseUtils::safeLong)
+                .filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toList());
         }
         String followupsStr = (String) typed.get("followups");
-        if (followupsStr != null) {
+        if (followupsStr != null && !followupsStr.isEmpty()) {
             item.followUps = new java.util.LinkedHashMap<>();
             for (String pair : followupsStr.split(",")) {
                 String[] parts = pair.trim().split(":");
-                item.followUps.put(Long.parseLong(parts[0]), Integer.parseInt(parts[1]));
+                if (parts.length == 2) {
+                    Long key = ParseUtils.safeLong(parts[0]);
+                    int value = ParseUtils.safeInt(parts[1], 0);
+                    if (key != null) {
+                        item.followUps.put(key, value);
+                    }
+                }
             }
         }
 
@@ -146,16 +169,17 @@ public class itemParser {
         return switch (column) {
             // Long-Felder
             case "id", "parent", "repetition_value", "required_completions",
-                 "rep_interval", "day_of_month", "required_predecessor",
-                 "conditional_prerequisite" ->
+                 "rep_interval", "day_of_month", "predecessor", "budget_account_id",
+                 "budget_category_id", "meal_plan_id" ->
                 (v instanceof Number n) ? n.longValue() : Long.parseLong(v.toString());
 
             // Int-Felder
             case "completions", "min_duration_value", "max_duration_value", "daily_subgoal_limit",
                  "sequence_order", "current_streak", "average_streak",
-                 "nr_of_streaks", "total_completions", "min_interval_days", "cooldown",
+                 "nr_of_streaks", "total_completions", "cooldown",
                  "progress_current", "progress_target", "progress_last_period",
-                 "time_per_progress_unit", "progress_timing_count", "prereq_window_days" ->
+                 "time_per_progress_unit", "progress_timing_count", "predecessor_delay",
+                 "budget_requirement_cents" ->
                 (v instanceof Number n) ? n.intValue() : Integer.parseInt(v.toString());
 
             // Boolean-Felder
@@ -163,11 +187,11 @@ public class itemParser {
                 (v instanceof Number n) ? n.intValue() != 0 : "1".equals(v.toString());
 
             // LocalDate-Felder
-            case "created", "last_completion", "deadline" ->
+            case "created", "last_completion", "deadline", "fixed_date" ->
                 java.time.LocalDate.parse(v.toString());
 
             // LocalTime-Felder
-            case "pref_time" ->
+            case "pref_time", "last_completion_time", "fixed_time" ->
                 java.time.LocalTime.parse(v.toString());
 
             // String-Felder (type, title, description, priority, etc.)
@@ -228,6 +252,8 @@ public class itemParser {
         cv.put("time_per_progress_unit", item.timePerProgressUnit);
         cv.put("progress_timing_count", item.progressTimingCount);
         if (item.deadline != null) cv.put("deadline", item.deadline.toString());
+        if (item.fixedDate != null) cv.put("fixed_date", item.fixedDate.toString());
+        if (item.fixedTime != null) cv.put("fixed_time", item.fixedTime.toString());
         if (item.blockedDays != null && !item.blockedDays.isEmpty()) {
             cv.put("blocked_days", item.blockedDays.stream()
                 .map(java.time.LocalDate::toString)
@@ -239,18 +265,23 @@ public class itemParser {
         cv.put("average_streak", item.averageStreak);
         cv.put("nr_of_streaks", item.nrOfStreaks);
         cv.put("total_completions", item.totalCompletions);
-        cv.put("min_interval_days", item.minIntervalDays);
 
         // Darstellung
         if (item.goalIcon != null) cv.put("goal_icon", item.goalIcon);
         if (item.goalColor != null) cv.put("goal_color", item.goalColor);
 
-        // FollowUp-Constraint
-        if (item.requiredPredecessor != null) cv.put("required_predecessor", item.requiredPredecessor);
+        // Budget
+        cv.put("budget_requirement_cents", item.budgetRequirementCents);
+        if (item.budgetAccountId != null) cv.put("budget_account_id", item.budgetAccountId);
+        if (item.budgetCategoryId != null) cv.put("budget_category_id", item.budgetCategoryId);
 
-        // Conditional Prerequisite
-        if (item.conditionalPrerequisite != null) cv.put("conditional_prerequisite", item.conditionalPrerequisite);
-        if (item.prereqWindowDays != null) cv.put("prereq_window_days", item.prereqWindowDays);
+        // Meal-Task-Verknüpfung
+        if (item.mealPlanId != null) cv.put("meal_plan_id", item.mealPlanId);
+
+        // Unified Chaining
+        if (item.predecessor != null) cv.put("predecessor", item.predecessor);
+        cv.put("predecessor_delay", item.predecessorDelay);
+        if (item.lastCompletionTime != null) cv.put("last_completion_time", item.lastCompletionTime.toString());
 
         // Relationen
         if (item.parent != null) cv.put("parent", item.parent);

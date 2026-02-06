@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/modal_card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:layout_margin="@dimen/padding_large"
+    android:orientation="vertical"
+    android:background="@color/white"
+    android:padding="@dimen/padding_medium"
+    android:elevation="8dp">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="@dimen/padding_medium">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Wiederkehrende Muster erkannt"
+            android:textSize="@dimen/sp_heading"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:id="@+id/text_count_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="3"
+            android:textSize="@dimen/sp_caption"
+            android:textColor="@color/white"
+            android:background="@color/accent"
+            android:paddingHorizontal="@dimen/padding_medium"
+            android:paddingVertical="@dimen/padding_small"
+            android:gravity="center" />
+    </LinearLayout>
+
+    <!-- Description -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Diese Transaktionen scheinen regelmaessig zu sein. Moechten Sie Templates erstellen?"
+        android:textSize="@dimen/sp_body"
+        android:textColor="@color/text_secondary"
+        android:layout_marginBottom="@dimen/padding_medium" />
+
+    <!-- Candidates List -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:id="@+id/candidates_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <!-- item_recurring_candidate.xml wird hier dynamisch eingefuegt -->
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Selection Info -->
+    <TextView
+        android:id="@+id/text_selection_info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="0 von 3 ausgewaehlt"
+        android:textSize="@dimen/sp_caption"
+        android:textColor="@color/text_muted"
+        android:gravity="center"
+        android:layout_marginTop="@dimen/padding_medium"
+        android:layout_marginBottom="@dimen/padding_small" />
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="@dimen/padding_small">
+
+        <TextView
+            android:id="@+id/btn_skip"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="Ueberspringen"
+            android:textColor="@color/text_secondary"
+            android:background="@color/button_inactive"
+            android:gravity="center"
+            android:layout_marginEnd="@dimen/padding_small" />
+
+        <TextView
+            android:id="@+id/btn_create"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="Erstellen (0)"
+            android:textColor="@color/white"
+            android:background="@color/accent"
+            android:gravity="center"
+            android:layout_marginStart="@dimen/padding_small" />
+    </LinearLayout>
+
+</LinearLayout>
