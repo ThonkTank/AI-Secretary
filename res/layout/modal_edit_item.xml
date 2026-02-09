@@ -232,21 +232,26 @@
                         android:textSize="@dimen/sp_body" />
                 </LinearLayout>
 
-                <!-- Bevorzugte Uhrzeit (nur TASK) -->
+                <!-- Bevorzugte Zeiten (TASK und GOAL) -->
                 <LinearLayout
-                    android:id="@+id/row_pref_time"
+                    android:id="@+id/section_pref_schedule"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="@string/label_bevorzugte_uhrzeit" />
-                    <EditText
-                        android:id="@+id/field_pref_time"
+                    <TextView style="@style/FormLabel" android:text="@string/label_bevorzugte_zeiten" />
+                    <LinearLayout
+                        android:id="@+id/container_pref_slots"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/hint_uhrzeit"
-                        android:focusable="false"
-                        android:clickable="true"
+                        android:orientation="vertical" />
+                    <TextView
+                        android:id="@+id/btn_add_pref_slot"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/btn_add_pref_slot"
+                        android:textColor="@color/accent"
+                        android:padding="8dp"
                         android:textSize="@dimen/sp_body" />
                 </LinearLayout>
 

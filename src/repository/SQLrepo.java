@@ -115,7 +115,7 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             + "max_duration_value INTEGER DEFAULT 0,"
             + "max_duration_unit TEXT DEFAULT 'MINUTES',"
             + "priority TEXT,"
-            + "pref_time TEXT,"
+            + "pref_schedule TEXT,"
             + "parent INTEGER,"
             + "children TEXT,"
             + "followups TEXT,"

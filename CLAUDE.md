@@ -22,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Geldbeträge:** IMMER `int` in Cents (1250 = 12.50 EUR), keine Floats
 - **assemble pushed automatisch:** `assemble` → `copyToRelease` (APK + version.txt inkrementieren) → `pushToGitHub`. Für Syntax-Check ohne Push: `compileDebugJavaWithJavac`
 - **Nach jeder Aufgabe:** `./gradlew assemble` ausführen (baut APK, inkrementiert Version, pushed zu GitHub für Auto-Update)
+- **Kein Legacy-Support im Code:** Es gibt keine bestehenden Nutzerdaten — Parser, Entities und Business-Logik dürfen IMMER vom aktuellen Format ausgehen. KEIN Backward-Compat-Code (alte Enum-Namen, veraltete Feld-Formate, etc.). Der EINZIGE Legacy-Support-Mechanismus sind DB-Migrationen (`MigrationManager`), die Schema-Änderungen nach App-Updates durchführen.
 
 **Typischer Workflow:** Code ändern → `compileDebugJavaWithJavac` (Fehler prüfen) → Fehler fixen → `assemble` (Release).
 
@@ -110,6 +111,17 @@ try { ... applyColor(card, color); }
 catch (IllegalArgumentException ignored) {}
 ```
 
+**PrefSlot-Konstruktion — IMMER Factory-Methoden, NIEMALS `new PrefSlot()`:**
+```java
+// RICHTIG:
+PrefSlot.weekly(DayOfWeek.MONDAY, LocalTime.of(9, 0));
+PrefSlot.monthly(15, LocalTime.of(14, 0));
+PrefSlot.of(dayKey, time, count, monthly);  // Parser/Deserialisierung
+
+// FALSCH (keine dayKey-Validierung):
+new TrackedItem.PrefSlot(1, LocalTime.of(9, 0), 0);
+```
+
 **Enum-Vergleiche — IMMER typsicher, NIEMALS über String-Label:**
 ```java
 // RICHTIG (wenn Record MealType-Feld hat):
@@ -170,7 +182,7 @@ Configured in `build.gradle.kts` via custom `sourceSets`. Java 17, compileSdk/ta
 **Konstanten** (`data/Constants.java`):
 ```java
 DB_NAME = "autosecretary.db"
-DB_VERSION = 32  // Free-form Meal Schedule
+DB_VERSION = 33  // Per-weekday PrefTime
 PREF_NAME = "secretary"
 PREF_DB_VERSION = "db_version"
 PREF_APP_MODE = "app_mode"
@@ -186,6 +198,8 @@ FIXED_APPOINTMENT_PRIORITY = 10_000_000  // Feste Termine übertreffen alle
 PREF_TIME_WINDOW_MINUTES = 480           // 8h-Arbeitstag für PrefTime-Penalty
 CHAIN_LENGTH_BONUS_PER_ITEM = 50         // Bonus für längere Task-Ketten
 SCORE_SCALE_FACTOR = 100                 // log1p-Score-Skalierung
+NO_PREF_DAY_PENALTY = 0.3               // Score-Multiplikator wenn kein PrefSlot fuer den Tag
+DAY_WEIGHT_BASE = 0.5                   // Basis-Anteil der Tages-Gewichtung
 ```
 
 ## Architecture
@@ -193,7 +207,7 @@ SCORE_SCALE_FACTOR = 100                 // log1p-Score-Skalierung
 ```
 src/
 ├── activities/inApp/     # MainActivity (Launcher, 3-Tab-UI: Tasks/Budget/Ernährung)
-│   ├── tasksTab/         # TaskView (Delegator, 2 Sub-Tabs), EditItem (Orchestrator) → TreeRenderer, FieldManager, ItemEditorModal
+│   ├── tasksTab/         # TaskView (Delegator, 2 Sub-Tabs), EditItem (Orchestrator) → TreeRenderer, FieldManager, ItemEditorModal, PrefScheduleEditor
 │   ├── budgetTab/        # BudgetView (Delegator, BudgetListener), TransactionModal (Create/Edit), ImportModal (Claude API), RecurringSuggestionsModal
 │   └── ernaehrungTab/    # MealPlanView (Delegator, 4 Sub-Tabs), WeekPlanTab, RecipesTab, ShoppingTab, PantryTab, FoodGroupHeader, MemberTab, MealTabListener
 ├── activities/generic/   # ViewHelper, DateTimeHelper, ViewBuilder, TaskList (nutzt TaskRowRenderer)
@@ -259,7 +273,7 @@ Weitere Methoden:
 
 **UI:** Hybrid XML + programmatisch. Hauptstruktur über XML-Layouts:
 - Seiten-Layouts: `activity_main.xml`, `view_tasks.xml` (Sub-Tabs), `view_task_list.xml`, `view_edit_item.xml`, `modal_edit_item.xml`, `view_budget.xml`, `modal_transaction.xml`, `view_meal_plan.xml` (Sub-Tabs), `modal_recipe.xml`, `modal_meal_plan.xml`, `modal_member.xml`, `modal_pantry.xml`
-- Komponenten: `row_tree_item.xml` (Editor-Baum), `item_account_card.xml`, `item_budget_bar.xml`, `item_transaction_row.xml`, `item_recipe_card.xml`, `item_food_group_bar.xml`, `item_ingredient_row.xml`, `item_meal_slot.xml` (Wochenplan-Karte), `item_member_card.xml` (Haushaltsmitglied), `item_shopping_row.xml` (Einkaufsliste)
+- Komponenten: `row_tree_item.xml` (Editor-Baum), `item_account_card.xml`, `item_budget_bar.xml`, `item_transaction_row.xml`, `item_recipe_card.xml`, `item_food_group_bar.xml`, `item_ingredient_row.xml`, `item_pref_slot_row.xml` (PrefSlot Tag+Uhrzeit), `item_meal_slot.xml` (Wochenplan-Karte), `item_member_card.xml` (Haushaltsmitglied), `item_shopping_row.xml` (Einkaufsliste)
 - Styling: `res/values/colors.xml`, `dimens.xml`, `styles.xml` — Farben/Größen als Ressourcen statt Hardcoded-Werte
 
 **Einheitliche Layouts** (`res/layout/`): `item_task.xml`, `item_goal_header.xml`, `item_calendar.xml` — RemoteViews-kompatibel (RelativeLayout statt LinearLayout+weight, ImageView statt CheckBox). Widget-Container: `widget_list.xml`. Widget-Metadaten: `res/xml/task_widget_info.xml`.
@@ -268,10 +282,11 @@ Farben und Dimensionen liegen ausschließlich in `colors.xml`/`dimens.xml` — p
 
 **Accessibility:** Alle interaktiven XML-Elemente (Spinner, Buttons mit kryptischem Text wie L/M/H/C) brauchen `android:contentDescription="@string/cd_*"`. String-Ressourcen in `strings.xml` unter `<!-- Content Descriptions -->`. EditTexts mit `android:hint` brauchen KEIN contentDescription (Hint dient als Accessibility-Label). Dekorative `<View>`-Spacer bekommen `android:importantForAccessibility="no"`.
 
-**Edit Modal** (`tasksTab/EditItem.java` + `modal_edit_item.xml`) — Create/Edit-Dialog für Tasks, Goals und Projects. `EditItem` ist ein dünner Orchestrator (~95 Zeilen) der an 3 package-private Klassen delegiert:
+**Edit Modal** (`tasksTab/EditItem.java` + `modal_edit_item.xml`) — Create/Edit-Dialog für Tasks, Goals und Projects. `EditItem` ist ein dünner Orchestrator (~95 Zeilen) der an 4 package-private Klassen delegiert:
 - `TreeRenderer` — Hierarchischer Baum (Expand/Collapse, Suche, Typ-Filter), Callback via `Consumer<TrackedItem>`
 - `FieldManager` — Alle ~30 Formular-Felder (bind/populate/apply/visibility), Spinner-Refresh, Farb-Grid
 - `ItemEditorModal` — Modal-Lebenszyklus (Show/Hide), Validierung, Builder, Create/Update via `EditorManager`
+- `PrefScheduleEditor` — PrefSlot-Zeilen (Tag+Uhrzeit), inflated `item_pref_slot_row.xml`. Entkoppelt via `RepetitionStateProvider`-Callback. Steuert Wochentag/Monatstag-Spinner, fixe Slot-Anzahl bei REPS_PER_TIME, und dayKey-Validierung
 
 **Feld-Sichtbarkeit nach ItemType:**
 
@@ -285,7 +300,7 @@ Farben und Dimensionen liegen ausschließlich in `colors.xml`/`dimens.xml` — p
 | Parent | ✅ | ✅ | ❌ | — |
 | Vorgänger | ✅ | ❌ | ❌ | — |
 | Vorgänger Delay | ✅ | ❌ | ❌ | Wenn Vorgänger gewählt |
-| Bevorzugte Uhrzeit | ✅ | ✅ | ❌ | Default: 09:00 bei Create |
+| Bevorzugte Zeiten | ✅ | ✅ | ❌ | Dynamische Slots (Tag+Uhrzeit). REPS_PER_TIME/WEEK: fixe Anzahl = repValue. Sonst: 1-7 flexible Slots |
 | Cooldown | ✅ | ❌ | ❌ | — |
 | Deadline | ✅ | ❌ | ❌ | RepType=NONE |
 | Fester Termin | ✅ | ❌ | ❌ | RepType=NONE |
@@ -363,9 +378,31 @@ Registrierung erfolgt in `WidgetRefreshApp.onCreate()`. Controller (BudgetManage
 ## Key Patterns
 
 **TrackedItem** is the central entity — Tasks, Goals, and Projects all use this class with `ItemType` enum:
-- `TASK` — Individual work units with `minDurationValue/maxDurationValue`, `timePerProgressUnit`, `repetition`, `prefTime`, optional `budgetRequirementCents`, optional `fixedDate`/`fixedTime` (feste Termine), optional `mealPlanId` (Meal-Task-Verknüpfung)
+- `TASK` — Individual work units with `minDurationValue/maxDurationValue`, `timePerProgressUnit`, `repetition`, `prefSlots` (per-weekday preferred times), optional `budgetRequirementCents`, optional `fixedDate`/`fixedTime` (feste Termine), optional `mealPlanId` (Meal-Task-Verknüpfung)
 - `GOAL` — Containers for tasks, have `children` list and time budget
 - `PROJECT` — Top-level grouping
+
+**PrefSlot-System (Per-Weekday/Monthly Preferences):** Jedes Item hat `prefSlots: List<PrefSlot>` mit:
+```java
+public static record PrefSlot(int dayKey, LocalTime time, int completionCount) {
+    static PrefSlot weekly(DayOfWeek day, LocalTime time);     // dayKey 1-7, count=0
+    static PrefSlot monthly(int dayOfMonth, LocalTime time);   // dayKey 1-31, count=0
+    static PrefSlot of(int dayKey, LocalTime time, int count, boolean monthly); // validiert + count
+}
+```
+`dayKey` ist kontextabhängig: 1-7 (Wochentag, Mo=1) für die meisten Items, 1-31 (Monatstag) für REPS_PER_TIME/DAY_OF_TIME + MONTH. **IMMER Factory-Methoden statt `new PrefSlot()` verwenden** — Factory validiert dayKey-Range.
+
+**Statische Helpers (Single Source of Truth):**
+- `isMonthlyDayMode(RepetitionType, RepUnits)` — true nur für REPS_PER_TIME/DAY_OF_TIME + MONTH (NICHT INTERVAL+MONTH)
+- `isValidDayKey(int dayKey, boolean monthly)` — Validiert Range (weekly: 1-7, monthly: 1-31)
+
+**Instanz-Methoden:**
+- `getPrefDayKey(LocalDate)` → dayKey für ein Datum (kontextabhängig)
+- `getPrefSlotForDate(LocalDate)` → PrefSlot oder null (Convenience über getPrefDayKey)
+- `getDayKeyWeightForDate(LocalDate)` → 0.0-1.0 (Completion-Gewichtung)
+- `getPrefSlotForDay(DayOfWeek)` / `getDayWeight(DayOfWeek)` → Convenience für Wochentag-Lookup
+- `hasPrefSlots()` → true wenn Slots vorhanden
+- `updatePrefSlot(day, workStart)` — Running Average bei Completion, nutzt `getPrefDayKey()` intern
 
 **Hierarchy:** Project → Goal → Task
 
@@ -450,7 +487,7 @@ Rarity-Farben in `colors.xml`, Streak-Wert kommt aus `TrackedItem.currentStreak`
 
 **Testability:** `BuildToDo` nimmt `Repo`-Interface und `CalendarProvider` (Functional Interface) als Dependencies — ermöglicht Unit-Tests ohne Android-Kontext.
 
-**Priority** basiert auf `Priority` enum (CRITICAL: 100000, HIGH: 400, MODERATE: 200, LOW: 100), plus Overdue-Bonus. PrefTime-Matching via logarithmische Score-Funktion in `tryMatchChain()`. FollowUp-Boost via `scoreFollow()` für historische Muster.
+**Priority** basiert auf `Priority` enum (CRITICAL: 100000, HIGH: 400, MODERATE: 200, LOW: 100), plus Overdue-Bonus. Per-weekday PrefSlot-Matching via `calculateItemScore(item, itemStart, precedingItemId, date)` in `tryMatchChain()`: nutzt `item.getPrefSlotForDate(date)` und `item.getDayKeyWeightForDate(date)`. Items mit PrefSlot für den Tag bekommen Zeit-Matching (quadratische Penalty) + Tages-Gewichtung (0.5-1.0x basierend auf Completion-Häufigkeit); Items ohne Slot für den Tag werden mit 0.3x bestraft. FollowUp-Boost via `scoreFollow()` für historische Muster.
 
 **Prio-Boost (`buildChains()`):** Einheitliche Formel über `item.work(today)` und `item.remainingTime(today)`:
 ```
@@ -489,7 +526,7 @@ else if (work > 0 && time > 0): basePrio × min(2.0, 1.0 + work/time)
   - `.minProgress(2)`, `.maxProgress(4)` — Progress-basierte Grenzen
   - `.minDuration(value, unit)`, `.maxDuration(value, unit)` — Generische Methoden
   - `.budgetRequirement(cents)`, `.budgetAccount(id)`, `.budgetCategory(cat)`
-  - `.prefTime(LocalTime)` — Bevorzugte Startzeit (wird vom System gelernt, aber initial setzbar)
+  - `.prefSlots(List<PrefSlot>)` — Per-weekday bevorzugte Zeiten
   - `.delayAfter(predecessorId, minutes)` — Verzögerte Verkettung
   - `.completeFirst(boolean)` — Erst erledigen vor Reset
 - `getMinDurationMinutes()` / `getMaxDurationMinutes()` — Konvertieren zu Minuten (bei PROGRESS_UNITS: Wert × timePerProgressUnit)
@@ -561,7 +598,7 @@ Nach erfolgreicher Platzierung in `assignChain()` wird `committedBudgetCents` er
 void update(Boolean completed, LocalTime workStart, LocalTime workEnd,
             Long previousItemId, Integer progressDelta, LocalDate day, Repo repo)
 ```
-- `completed=true/false` → Slot-Daten auswerten (completions, prefTime, timePerProgressUnit, streak, followUps)
+- `completed=true/false` → Slot-Daten auswerten (completions, prefSlot, timePerProgressUnit, streak, followUps)
 - `progressDelta` → Fortschrittsänderung aus dem Slot (wird von `incrementProgress`/`decrementProgress` im Slot gesammelt und erst hier angewendet). Auch für Zeit-pro-Einheit Berechnung genutzt.
 - `completed=null` → Nur "immer"-Updates (Refresh ohne Slot-Daten)
 - "Immer"-Updates (laufen IMMER, auch bei null): Perioden-Reset (`isCompleted` → false wenn neue Periode begonnen), scheduled bereinigen (vergangene Daten entfernen), blockedDays neu berechnen. Bei ALLEN Items mit Progress-Tracking: `progressCurrent` reset auf 0 mit Backup in `progressLastPeriod`.
@@ -615,6 +652,8 @@ SQLite mit drei Tabellen-Gruppen:
 
 **Relations in items:** `parent` (single ID), `children` (comma-separated IDs), `followups` ("id:count" pairs, e.g. "5:3,8:1"), `scheduled` (comma-separated ISO dates), `blocked_days` (comma-separated ISO dates, computed), `required_predecessor` (single ID, optionale Vorgänger-Constraint).
 
+**Per-weekday PrefSlots in items:** `pref_schedule` (TEXT, Format: `"1;08:30;15,3;08:00;12"` — numerischer dayKey;Uhrzeit;completionCount, Semikolon trennt Felder, Komma trennt Einträge).
+
 **Feste Termine in items:** `fixed_date` (TEXT, ISO date), `fixed_time` (TEXT, ISO time). Beide Felder müssen gemeinsam gesetzt sein oder beide null. Nur für einmalige Tasks (RepetitionType.NONE) relevant.
 
 **Darstellung in items:** `goal_icon` (TEXT, Emoji), `goal_color` (TEXT, Hex-Farbcode). Nur für Goals relevant.
@@ -623,10 +662,10 @@ SQLite mit drei Tabellen-Gruppen:
 
 **Meal-Tasks in items:** `meal_plan_id` (INTEGER FK, null=kein Meal-Task). Verknüpft Meal-Tasks mit MealPlan-Einträgen. Bei Completion wird `MealManager.completeMeal()` aufgerufen.
 
-**DB-Strategie (v1.0.0+):** Production-Mode mit Migrations-Support.
+**DB-Strategie (v1.0.0+):** Production-Mode mit Migrations-Support. Keine Backward-Compat im Code — Migrationen sind der einzige Mechanismus für Schema-Änderungen nach Updates.
 
 **Migration-System:**
-- `DB_VERSION` in `Constants.java` (aktuell: **32**)
+- `DB_VERSION` in `Constants.java` (aktuell: **33**)
 - `MigrationManager.java` verwaltet Backups und Migrationen
 - `SQLrepo.onUpgrade()` ruft `MigrationManager.migrate()` auf
 - Backup wird VOR Migration erstellt: `getFilesDir()/backups/backup_vX_timestamp.db`
@@ -637,6 +676,8 @@ SQLite mit drei Tabellen-Gruppen:
 - v20–v29: Fall-through zu v30 (Konsolidierung)
 - v30: `migrateV30_SchemaConsolidation()` — Fügt alle neuen Spalten hinzu (fixed_date/time, predecessor/delay, budget, meal_plan_id, etc.) + `createPerformanceIndexes()`
 - v31: `migrateV31_ProductionCleanup()` — Bereinigt Testdaten, behält Referenzdaten (categories, ingredients, config_schedules)
+- v32: `migrateV32_FreeformMealSchedule()` — Free-form Meal Schedule (beliebig viele pro Tag)
+- v33: `migrateV33_PrefSchedule()` — Per-weekday PrefSlots (`pref_schedule` Spalte)
 
 **Performance-Indexes** (erstellt in v30):
 ```sql
@@ -650,7 +691,7 @@ idx_items_open    ON items(is_completed, type) WHERE is_completed = 0
 1. `DB_VERSION` in `Constants.java` hochzählen
 2. Neuen `case` in `MigrationManager.runMigration()` hinzufügen:
    ```java
-   case 32:
+   case 34:
        db.execSQL("ALTER TABLE items ADD COLUMN new_field TEXT");
        break;
    ```
@@ -689,6 +730,7 @@ GitHub dient als CDN. `release/version.txt` enthält den aktuellen Integer-versi
 - `ViewHelper.setupModalOverlay(overlay, onDismiss)` — Modal-Overlay mit Click-Absorption konfigurieren
 - `ViewHelper.buildWeekHeader(ctx, weekStart, onPrev, onNext)` — Wochen-Navigation
 - `ViewHelper.parseInt(EditText, fallback)` / `parseDouble(EditText, fallback)` — Safe-Parsing aus EditText-Feldern
+- `ViewHelper.afterTextChanged(Runnable)` — TextWatcher ohne beforeTextChanged/onTextChanged-Boilerplate
 - `DateTimeHelper.*` — Datum/Zeit-Operationen (getMonday, getWeekKey, formatTime)
 
 **Sortier-/Filter-Logik zentralisieren:** Wenn dieselbe Sortierung an 2+ Stellen gebraucht wird → statische Methode in der Entity-Klasse (z.B. `MealSchedule.sortByTime(List)`), nicht inline duplizieren.

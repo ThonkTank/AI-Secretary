@@ -20,7 +20,6 @@ import android.app.DatePickerDialog;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -110,9 +109,8 @@ class FieldManager {
     private Button[] maxDurationUnitButtons = new Button[2];
     private DurationUnit selectedMaxDurationUnit = DurationUnit.MINUTES;
 
-    // Bevorzugte Uhrzeit
-    private View prefTimeRow;
-    private EditText prefTimeField;
+    // Bevorzugte Zeiten (delegiert an PrefScheduleEditor)
+    private PrefScheduleEditor prefScheduleEditor;
 
     // Vorgaenger-Wartezeit
     private View predecessorDelayRow;
@@ -161,7 +159,12 @@ class FieldManager {
         bindRepetitionButtons(root);
         bindBudgetFields(root);
         bindDurationFields(root);
-        bindPrefTimeFields(root);
+        prefScheduleEditor = new PrefScheduleEditor(context, root,
+            new PrefScheduleEditor.RepetitionStateProvider() {
+                @Override public RepetitionType getRepType() { return selectedRepType; }
+                @Override public RepUnits getRepUnit() { return selectedRepUnit; }
+                @Override public int getRepValue() { return parseInt(repValueField, 0); }
+            });
         bindPredecessorDelayFields(root);
         bindCompleteFirstFields(root);
     }
@@ -176,6 +179,9 @@ class FieldManager {
         durationField = root.findViewById(R.id.field_duration);
         cooldownField = root.findViewById(R.id.field_cooldown);
         repValueField = root.findViewById(R.id.field_rep_value);
+        repValueField.addTextChangedListener(afterTextChanged(
+            () -> { if (prefScheduleEditor != null) prefScheduleEditor.updateSlotCount(); }
+        ));
         parentSpinner = root.findViewById(R.id.spinner_parent);
         predecessorSpinner = root.findViewById(R.id.spinner_predecessor);
         weekdaySpinner = root.findViewById(R.id.spinner_weekday);
@@ -291,6 +297,7 @@ class FieldManager {
                 updateButtonGroup(repTypeButtons, idx);
                 updateRepDetailsVisibility();
                 updateWeekdayVisibility();
+                onRepetitionChanged();
             });
         }
 
@@ -304,8 +311,15 @@ class FieldManager {
                 selectedRepUnit = units[idx];
                 updateButtonGroup(repUnitButtons, idx);
                 updateWeekdayVisibility();
+                onRepetitionChanged();
             });
         }
+    }
+
+    private void onRepetitionChanged() {
+        boolean wasMonthly = prefScheduleEditor.isMonthlyMode();
+        prefScheduleEditor.updateSlotCount();
+        if (prefScheduleEditor.isMonthlyMode() != wasMonthly) prefScheduleEditor.rebuildRows();
     }
 
     private void bindBudgetFields(View root) {
@@ -343,25 +357,6 @@ class FieldManager {
                 updateButtonGroup(maxDurationUnitButtons, idx);
             });
         }
-    }
-
-    private void bindPrefTimeFields(View root) {
-        prefTimeRow = root.findViewById(R.id.row_pref_time);
-        prefTimeField = root.findViewById(R.id.field_pref_time);
-        prefTimeField.setOnClickListener(v -> {
-            int initHour = 9, initMin = 0;
-            String current = prefTimeField.getText().toString().trim();
-            if (!current.isEmpty()) {
-                try {
-                    LocalTime parsed = LocalTime.parse(current);
-                    initHour = parsed.getHour();
-                    initMin = parsed.getMinute();
-                } catch (Exception e) { /* Default verwenden */ }
-            }
-            new android.app.TimePickerDialog(context, (tp, h, m) -> {
-                prefTimeField.setText(String.format("%02d:%02d", h, m));
-            }, initHour, initMin, true).show();
-        });
     }
 
     private void bindPredecessorDelayFields(View root) {
@@ -438,8 +433,7 @@ class FieldManager {
         predecessorRow.setVisibility(
             (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
         predecessorDelayRow.setVisibility(View.GONE);
-        prefTimeRow.setVisibility(
-            (type == ItemType.TASK || type == ItemType.GOAL) ? View.VISIBLE : View.GONE);
+        prefScheduleEditor.setVisible(type == ItemType.TASK || type == ItemType.GOAL);
         cooldownRow.setVisibility(
             (type == ItemType.TASK) ? View.VISIBLE : View.GONE);
         deadlineRow.setVisibility(
@@ -641,8 +635,7 @@ class FieldManager {
         updateButtonGroup(minDurationUnitButtons, 0);
         selectedMaxDurationUnit = DurationUnit.MINUTES;
         updateButtonGroup(maxDurationUnitButtons, 0);
-        prefTimeField.setText("09:00");
-        prefTimeField.setEnabled(true);
+        prefScheduleEditor.populateDefault();
         predecessorDelayField.setText("");
         completeFirstEnabled = false;
 
@@ -685,8 +678,7 @@ class FieldManager {
         selectedMaxDurationUnit = item.maxDurationUnit != null ? item.maxDurationUnit : DurationUnit.MINUTES;
         updateButtonGroup(maxDurationUnitButtons, selectedMaxDurationUnit == DurationUnit.MINUTES ? 0 : 1);
 
-        prefTimeField.setText(item.prefTime != null ? item.prefTime.toString() : "");
-        prefTimeField.setEnabled(true);
+        prefScheduleEditor.populateSlots(item.prefSlots);
         predecessorDelayField.setText(item.predecessorDelay > 0 ? String.valueOf(item.predecessorDelay) : "");
         completeFirstEnabled = item.completeFirst != null && item.completeFirst;
 
@@ -855,12 +847,9 @@ class FieldManager {
         }
     }
 
-    void applyPrefTimeField(TrackedItem.Builder builder) {
-        String prefTimeStr = prefTimeField.getText().toString().trim();
-        if (!prefTimeStr.isEmpty()) {
-            try { builder.prefTime(prefTimeStr); }
-            catch (Exception e) { /* ignorieren */ }
-        }
+    void applyPrefScheduleFields(TrackedItem.Builder builder) {
+        List<TrackedItem.PrefSlot> slots = prefScheduleEditor.collectSlots();
+        if (!slots.isEmpty()) builder.prefSlots(slots);
     }
 
     void applyPredecessorFields(TrackedItem.Builder builder) {

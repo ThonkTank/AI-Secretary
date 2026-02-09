@@ -134,7 +134,7 @@ class ItemEditorModal {
         fieldManager.applyProgressFields(builder);
         fieldManager.applyGoalFields(builder);
         fieldManager.applyParentField(builder);
-        fieldManager.applyPrefTimeField(builder);
+        fieldManager.applyPrefScheduleFields(builder);
         fieldManager.applyPredecessorFields(builder);
         builder.completeFirst(fieldManager.isCompleteFirstEnabled());
         fieldManager.applyBudgetFields(builder);

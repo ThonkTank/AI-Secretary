@@ -54,7 +54,7 @@
     <string name="label_parent">Parent</string>
     <string name="label_nach_task">Nach Task</string>
     <string name="label_wartezeit_minuten">Wartezeit (Minuten)</string>
-    <string name="label_bevorzugte_uhrzeit">Bevorzugte Uhrzeit</string>
+    <string name="label_bevorzugte_zeiten">Bevorzugte Zeiten</string>
     <string name="label_cooldown_tage">Cooldown (Tage)</string>
     <string name="label_deadline">Deadline</string>
     <string name="label_fester_termin_datum">Fester Termin - Datum</string>
@@ -111,6 +111,7 @@
     <string name="btn_select_file">Datei wählen…</string>
     <string name="btn_toggle_off">Aus</string>
     <string name="btn_add_ingredient">+ Zutat hinzufügen</string>
+    <string name="btn_add_pref_slot">+ Zeitslot hinzufügen</string>
 
     <!-- Hints -->
     <string name="hint_item_title">Item-Titel</string>
@@ -196,6 +197,10 @@
     <!-- Content Descriptions: Toggle Buttons -->
     <string name="cd_toggle_progress_per_rep">Fortschritt pro Periode umschalten</string>
     <string name="cd_toggle_complete_first">Erst erledigen umschalten</string>
+
+    <!-- Content Descriptions: PrefSlot -->
+    <string name="cd_remove_pref_slot">Zeitslot entfernen</string>
+    <string name="cd_spinner_pref_day">Tag auswählen</string>
 
     <!-- Content Descriptions: Navigation -->
     <string name="cd_previous_day">Vorheriger Tag</string>

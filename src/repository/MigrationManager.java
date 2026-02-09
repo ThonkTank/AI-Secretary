@@ -197,6 +197,10 @@ public class MigrationManager {
                 migrateV32_FreeFormSchedule(db);
                 break;
 
+            case 33:
+                migrateV33_PrefSchedule(db);
+                break;
+
             default:
                 Log.w(TAG, "No migration defined for v" + toVersion);
         }
@@ -213,6 +217,7 @@ public class MigrationManager {
             case 30: return "Schema consolidation - add new columns for v1.0";
             case 31: return "Production cleanup - remove test data";
             case 32: return "Free-form meal schedule - remove UNIQUE, add duration";
+            case 33: return "Per-weekday preferred time slots";
             default: return "Migration v" + version;
         }
     }
@@ -474,6 +479,15 @@ public class MigrationManager {
         } finally {
             db.endTransaction();
         }
+    }
+
+    /**
+     * v33: Per-weekday preferred time slots.
+     * Fuegt pref_schedule Spalte hinzu (keine Datenmigration noetig, da keine Nutzerdaten existieren).
+     */
+    private void migrateV33_PrefSchedule(SQLiteDatabase db) {
+        Log.i(TAG, "v33: Adding pref_schedule column");
+        addColumnIfNotExists(db, "items", "pref_schedule", "TEXT");
     }
 
     // ================================================================

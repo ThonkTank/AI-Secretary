@@ -27,7 +27,7 @@ public class TodoList {
         public String calendarTitle;
         public Integer adjustedPrio;            //Slot-adjusted Prio für Verdrängungsvergleich
         public Long chainId;                    //Chain-Zugehörigkeit (ID des ersten Items, null für Einzelitems)
-        //Für prefTime berechnung
+        //Für Zeiterfassung
         public LocalTime workStart;         //Wann wurde die bearbeitung begonnen?
         public LocalTime workEnd;           //Wann wurde die bearbeitung des Slots abgeschlossen
         //Für Progress-Tracking

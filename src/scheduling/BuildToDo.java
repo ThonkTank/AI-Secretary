@@ -10,6 +10,7 @@ import entities.TrackedItem;
 import entities.TodoList.TimeSlot;
 import entities.TrackedItem.RepetitionType;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
@@ -37,6 +38,12 @@ public class BuildToDo {
 
     /** Skalierungsfaktor fuer log1p-basierte Score-Berechnung */
     private static final int SCORE_SCALE_FACTOR = 100;
+
+    /** Score-Multiplikator wenn Item PrefSlots hat, aber NICHT fuer diesen Tag */
+    private static final double NO_PREF_DAY_PENALTY = 0.3;
+
+    /** Basis-Anteil der Tages-Gewichtung (score *= DAY_WEIGHT_BASE + DAY_WEIGHT_BASE * weight) */
+    private static final double DAY_WEIGHT_BASE = 0.5;
 
     /**
      * ══════════════════════════════════════════════════════════════════════════════
@@ -143,10 +150,11 @@ public class BuildToDo {
      *          für jeden slot in slotList:
      *              blockedDays-Prüfung: item.blockedDays und parentItem.blockedDays gegen slot.day
      *              slotCoverage = min(1.0, slotMinuten / requiredTime) // 1.0 wenn genug Platz, sonst proportional reduziert
-     *              diff = Minuten zwischen prefTime und slot.start //wenn slot größer als benötigte zeit, bestmögliche startzeit innerhalb des slots verwenden statt slot.start
-     *              Wenn diff >= 0 (auf/nach prefTime): normalizedDiff = 1.0 (keine Strafe)
-     *              Wenn diff < 0 (vor prefTime): normalizedDiff = max(0.0, 1.0 + diff/480)
-     *              adjustedPrio = log1p(prio) * normalizedDiff² * slotCoverage * 100
+     *              PrefSlot-Matching via calculateItemScore(item, start, precId, day):
+     *              slot = item.getPrefSlotForDate(day) // dayKey kontextabhaengig (Wochentag oder Monatstag)
+     *              Wenn slot vorhanden: timeFactor = quadratische Penalty + dayWeight-Skalierung
+     *              Wenn kein Slot fuer Tag: score *= NO_PREF_DAY_PENALTY
+     *              adjustedPrio = log1p(prio) * timeFactor² * dayWeight * SCORE_SCALE_FACTOR
      *              wenn slot besetzt
      *                  adjustedPrio - slot.prio
      *          bestSlot = slotList.maxPrio
@@ -664,7 +672,7 @@ public class BuildToDo {
                             TrackedItem item = fitting.get(i);
                             // FollowUp-Boost nur für erstes Item
                             Long precId = (i == 0) ? precedingItemId : null;
-                            gainPrio += calculateItemScore(item, cursor, precId);
+                            gainPrio += calculateItemScore(item, cursor, precId, day);
                             cursor = cursor.plusMinutes(item.getSlotDuration());
                         }
 
@@ -762,20 +770,31 @@ public class BuildToDo {
     }
 
     /**
-     * Berechnet die adjustedPrio für ein einzelnes Item basierend auf seiner Startzeit.
-     * Berücksichtigt prefTime-Matching mit quadratischer Penalty.
+     * Berechnet die adjustedPrio fuer ein einzelnes Item basierend auf Startzeit und Tag.
+     * dayKey = DayOfWeek.getValue() (1-7) oder dayOfMonth (1-31) je nach Item-RepType.
      */
-    private int calculateItemScore(TrackedItem item, LocalTime itemStart, Long precedingItemId) {
+    private int calculateItemScore(TrackedItem item, LocalTime itemStart,
+                                    Long precedingItemId, LocalDate date) {
         // Basis: log1p(itemPrio) * SCORE_SCALE_FACTOR
         int basePrio = item.priority.value;
         double score = Math.log1p(basePrio) * SCORE_SCALE_FACTOR;
 
-        // PrefTime-Matching
-        if (item.prefTime != null) {
-            long diff = ChronoUnit.MINUTES.between(item.prefTime, itemStart);
-            double normalizedDiff = (diff >= 0) ? 1.0
-                    : Math.max(0.0, 1.0 + (diff / (double) PREF_TIME_WINDOW_MINUTES));
-            score *= normalizedDiff * normalizedDiff;
+        // PrefSlot-Matching (dayKey kontextabhaengig via getPrefDayKey)
+        if (item.hasPrefSlots()) {
+            TrackedItem.PrefSlot slot = item.getPrefSlotForDate(date);
+            if (slot != null) {
+                // Zeit-Matching (quadratische Penalty)
+                long diff = ChronoUnit.MINUTES.between(slot.time(), itemStart);
+                double timeFactor = (diff >= 0) ? 1.0
+                        : Math.max(0.0, 1.0 + (diff / (double) PREF_TIME_WINDOW_MINUTES));
+                score *= timeFactor * timeFactor;
+                // Tages-Gewichtung (bevorzugte Tage scoren hoeher)
+                double dayWeight = item.getDayKeyWeightForDate(date);
+                score *= (DAY_WEIGHT_BASE + DAY_WEIGHT_BASE * dayWeight);
+            } else {
+                // Hat Praeferenzen, aber NICHT fuer diesen Tag
+                score *= NO_PREF_DAY_PENALTY;
+            }
         }
 
         // FollowUp-Boost (nur wenn precedingItemId gegeben)

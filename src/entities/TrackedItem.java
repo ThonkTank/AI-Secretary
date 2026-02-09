@@ -68,12 +68,28 @@ public class TrackedItem {
     public int averageStreak;               // durchschnittliche Streak Länge
     public int nrOfStreaks;                 // menge der beendeten Streaks
     public Map<Long, Integer> followUps;    // Tasks, welche direkt vor dieser erledigt wurden (ID und Häufigkeit)
-    public LocalTime prefTime;              // LEGACY - nur fuer Fallback/Migration (nicht mehr beschrieben)
-    public List<PrefSlot> prefSlots;        // Bevorzugte Tage + Zeiten (ersetzt prefTime)
+    public List<PrefSlot> prefSlots;        // Bevorzugte Tage + Zeiten (dayKey kontextabhaengig)
     public int totalCompletions;            // Wie oft wurde die Task erledigt? (all time)
 
-    /** Bevorzugter Wochentag + Uhrzeit mit Completion-Tracking fuer Tagesgewichtung. */
-    public static record PrefSlot(DayOfWeek day, LocalTime time, int completionCount) {}
+    /** Bevorzugter Tag + Uhrzeit. dayKey = DayOfWeek.getValue() (1-7) oder dayOfMonth (1-31). */
+    public static record PrefSlot(int dayKey, LocalTime time, int completionCount) {
+        /** Wochentag-Slot (dayKey 1-7), completionCount=0. */
+        public static PrefSlot weekly(DayOfWeek day, LocalTime time) {
+            return new PrefSlot(day.getValue(), time, 0);
+        }
+        /** Monatstag-Slot (dayKey 1-31), completionCount=0. */
+        public static PrefSlot monthly(int dayOfMonth, LocalTime time) {
+            if (dayOfMonth < 1 || dayOfMonth > 31)
+                throw new IllegalArgumentException("dayOfMonth: " + dayOfMonth);
+            return new PrefSlot(dayOfMonth, time, 0);
+        }
+        /** Validierter Slot mit Completion-Count (fuer Parser/Deserialisierung). */
+        public static PrefSlot of(int dayKey, LocalTime time, int completionCount, boolean monthly) {
+            if (!TrackedItem.isValidDayKey(dayKey, monthly))
+                throw new IllegalArgumentException("dayKey: " + dayKey + " (monthly=" + monthly + ")");
+            return new PrefSlot(dayKey, time, completionCount);
+        }
+    }
 
     // Darstellung (nur fuer Goals relevant)
     public String goalIcon;                 // Emoji-Icon fuer Goal-Header (z.B. "💪")
@@ -129,7 +145,6 @@ public class TrackedItem {
         public Builder maxProgress(int v) { return maxDuration(v, DurationUnit.PROGRESS_UNITS); }
         public Builder scheduled(List<LocalDate> v) { item.scheduled = v; return this; }
         public Builder cooldown(int v) { item.cooldown = v; return this; }
-        public Builder prefTime(String v) { item.prefTime = LocalTime.parse(v); return this; }
         public Builder prefSlots(List<PrefSlot> v) { item.prefSlots = v; return this; }
         public Builder currentStreak(int v) { item.currentStreak = v; return this; }
         public Builder averageStreak(int v) { item.averageStreak = v; return this; }
@@ -298,37 +313,84 @@ public class TrackedItem {
         return fixedDate != null && fixedTime != null;
     }
 
-    /** Ob per-weekday Praeferenzen gesetzt sind. */
+    /** Ob Praeferenz-Slots gesetzt sind. */
     public boolean hasPrefSlots() {
         return prefSlots != null && !prefSlots.isEmpty();
     }
 
-    /** PrefSlot fuer einen bestimmten Wochentag (oder null). */
-    public PrefSlot getPrefSlotForDay(DayOfWeek day) {
+    /**
+     * Bestimmt ob ein Wiederholungs-Modus monatliche Tage (1-31) statt Wochentage (1-7) nutzt.
+     * Nur REPS_PER_TIME und DAY_OF_TIME mit MONTH-Unit verwenden Monatstage.
+     * INTERVAL + MONTH (z.B. "alle 2 Monate") nutzt weiterhin Wochentage.
+     */
+    public static boolean isMonthlyDayMode(RepetitionType type, RepUnits unit) {
+        return unit == RepUnits.MONTH
+            && (type == RepetitionType.REPS_PER_TIME || type == RepetitionType.DAY_OF_TIME);
+    }
+
+    /** Ob dieses Item monatliche Tage (1-31) statt Wochentage (1-7) fuer PrefSlots nutzt. */
+    public boolean isMonthlyRepetition() {
+        if (repetition == null) return false;
+        return isMonthlyDayMode(repetition.type, repetition.unit);
+    }
+
+    /** Validiert dayKey-Range. Weekly: 1-7, Monthly: 1-31. */
+    public static boolean isValidDayKey(int dayKey, boolean monthly) {
+        if (monthly) return dayKey >= 1 && dayKey <= 31;
+        return dayKey >= 1 && dayKey <= 7;
+    }
+
+    /**
+     * Gibt den PrefSlot-Key fuer ein Datum zurueck.
+     * Monatliche Items: dayOfMonth (1-31). Sonst: dayOfWeek (1-7).
+     */
+    public int getPrefDayKey(LocalDate date) {
+        return isMonthlyRepetition() ? date.getDayOfMonth() : date.getDayOfWeek().getValue();
+    }
+
+    /** PrefSlot fuer einen dayKey (oder null). */
+    public PrefSlot getPrefSlotForKey(int dayKey) {
         if (prefSlots == null) return null;
         for (PrefSlot s : prefSlots) {
-            if (s.day() == day) return s;
+            if (s.dayKey() == dayKey) return s;
         }
         return null;
     }
 
+    /** PrefSlot fuer ein Datum (oder null). */
+    public PrefSlot getPrefSlotForDate(LocalDate date) {
+        return getPrefSlotForKey(getPrefDayKey(date));
+    }
+
+    /** Convenience: PrefSlot fuer einen Wochentag. */
+    public PrefSlot getPrefSlotForDay(DayOfWeek day) {
+        return getPrefSlotForKey(day.getValue());
+    }
+
     /**
-     * Tagesgewichtung: Anteil der Completions an diesem Tag relativ zu allen Slots.
-     * Gibt 0.0-1.0 zurueck. Bei gleicher Verteilung auf 7 Tage ≈ 0.14.
+     * Tagesgewichtung: Anteil der Completions an diesem dayKey relativ zu allen Slots.
+     * Gibt 0.0-1.0 zurueck. Bei gleicher Verteilung ≈ 1/N.
      */
-    public double getDayWeight(DayOfWeek day) {
+    public double getDayKeyWeight(int dayKey) {
         if (prefSlots == null || prefSlots.isEmpty()) return 0.0;
         int total = 0;
         int dayCount = 0;
         for (PrefSlot s : prefSlots) {
             total += s.completionCount();
-            if (s.day() == day) dayCount = s.completionCount();
+            if (s.dayKey() == dayKey) dayCount = s.completionCount();
         }
-        if (total == 0) {
-            // Keine Completion-Historie: alle konfigurierten Tage gleich gewichten
-            return 1.0 / prefSlots.size();
-        }
+        if (total == 0) return 1.0 / prefSlots.size();
         return (double) dayCount / total;
+    }
+
+    /** Tagesgewichtung fuer ein Datum. */
+    public double getDayKeyWeightForDate(LocalDate date) {
+        return getDayKeyWeight(getPrefDayKey(date));
+    }
+
+    /** Convenience: Tagesgewichtung fuer Wochentag. */
+    public double getDayWeight(DayOfWeek day) {
+        return getDayKeyWeight(day.getValue());
     }
 
     /**
@@ -390,7 +452,7 @@ public class TrackedItem {
      * für alle übrigen Items mit completed=null (nur "immer"-Updates).
      *
      * Slot-basierte Updates (wenn completed != null):
-     *   - Completion(s), prefTime, timePerProgressUnit, progress, streak, followUps
+     *   - Completion(s), prefSlot, timePerProgressUnit, progress, streak, followUps
      *
      * "Immer"-Updates (für alle Items):
      *   - isCompleted: Perioden-Reset für wiederkehrende Items
@@ -429,8 +491,8 @@ public class TrackedItem {
             this.lastCompletionTime = workStart != null ? workStart : LocalTime.now();
 
             if (this.type == ItemType.TASK) {
-                // PrefSlot aus Wochentag + workStart ableiten
-                updatePrefSlot(day.getDayOfWeek(), workStart != null ? workStart : LocalTime.now());
+                // PrefSlot aus Tag + workStart ableiten (Wochentag oder Monatstag je nach RepType)
+                updatePrefSlot(day, workStart != null ? workStart : LocalTime.now());
 
                 // TimeToComplete: aus Timer-Daten ableiten (laufender Durchschnitt pro Einheit)
                 if (workStart != null && workEnd != null) {
@@ -490,20 +552,23 @@ public class TrackedItem {
     }
 
     /**
-     * Aktualisiert den bevorzugten Wochentag + Uhrzeit (laufender Durchschnitt pro Tag).
-     * Erstellt neuen Slot falls fuer diesen Tag noch keiner existiert.
+     * Aktualisiert den bevorzugten Tag + Uhrzeit (laufender Durchschnitt).
+     * Nutzt getPrefDayKey() fuer kontextabhaengigen Key (Wochentag oder Monatstag).
      */
-    private void updatePrefSlot(DayOfWeek day, LocalTime workStart) {
+    private void updatePrefSlot(LocalDate day, LocalTime workStart) {
         if (this.prefSlots == null) this.prefSlots = new ArrayList<>();
-        PrefSlot existing = getPrefSlotForDay(day);
+        boolean monthly = isMonthlyRepetition();
+        int key = getPrefDayKey(day);
+        if (!isValidDayKey(key, monthly)) return;
+        PrefSlot existing = getPrefSlotForKey(key);
         if (existing != null) {
             int newCount = existing.completionCount() + 1;
             int avgMinutes = (existing.time().toSecondOfDay() / 60 * existing.completionCount()
                               + workStart.toSecondOfDay() / 60) / newCount;
             this.prefSlots.set(this.prefSlots.indexOf(existing),
-                new PrefSlot(day, LocalTime.of(avgMinutes / 60, avgMinutes % 60), newCount));
+                PrefSlot.of(key, LocalTime.of(avgMinutes / 60, avgMinutes % 60), newCount, monthly));
         } else {
-            this.prefSlots.add(new PrefSlot(day, workStart, 1));
+            this.prefSlots.add(PrefSlot.of(key, workStart, 1, monthly));
         }
         this.totalCompletions++;
     }

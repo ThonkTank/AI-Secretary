@@ -61,7 +61,10 @@ public class ItemParser {
         if (prioStr != null) {
             item.priority = ParseUtils.safeEnum(TrackedItem.Priority.class, prioStr);
         }
-        item.prefTime = (java.time.LocalTime) typed.get("pref_time");
+        String prefScheduleStr = (String) typed.get("pref_schedule");
+        if (prefScheduleStr != null && !prefScheduleStr.isEmpty()) {
+            item.prefSlots = parsePrefSchedule(prefScheduleStr, item.isMonthlyRepetition());
+        }
         String scheduledStr = (String) typed.get("scheduled");
         if (scheduledStr != null && !scheduledStr.isEmpty()) {
             item.scheduled = java.util.Arrays.stream(scheduledStr.split(","))
@@ -191,7 +194,7 @@ public class ItemParser {
                 java.time.LocalDate.parse(v.toString());
 
             // LocalTime-Felder
-            case "pref_time", "last_completion_time", "fixed_time" ->
+            case "last_completion_time", "fixed_time" ->
                 java.time.LocalTime.parse(v.toString());
 
             // String-Felder (type, title, description, priority, etc.)
@@ -237,7 +240,14 @@ public class ItemParser {
         cv.put("max_duration_value", item.maxDurationValue);
         if (item.maxDurationUnit != null) cv.put("max_duration_unit", item.maxDurationUnit.name());
         if (item.priority != null) cv.put("priority", item.priority.name());
-        if (item.prefTime != null) cv.put("pref_time", item.prefTime.toString());
+        // PrefSlots serialisieren (numerischer dayKey)
+        if (item.prefSlots != null && !item.prefSlots.isEmpty()) {
+            cv.put("pref_schedule", item.prefSlots.stream()
+                .map(s -> s.dayKey() + ";" + s.time().toString() + ";" + s.completionCount())
+                .collect(Collectors.joining(",")));
+        } else {
+            cv.putNull("pref_schedule");
+        }
         if (item.scheduled != null && !item.scheduled.isEmpty()) {
             cv.put("scheduled", item.scheduled.stream()
                 .map(java.time.LocalDate::toString)
@@ -303,6 +313,24 @@ public class ItemParser {
             long newId = db.insert("items", null, cv);
             item.id = newId;
         }
+    }
+
+    // ============== PREF-SCHEDULE PARSING ==============
+
+    /** Parst "dayKey;HH:mm;count,..." String zu PrefSlot-Liste. */
+    private static java.util.List<TrackedItem.PrefSlot> parsePrefSchedule(String raw, boolean monthly) {
+        java.util.List<TrackedItem.PrefSlot> slots = new java.util.ArrayList<>();
+        for (String entry : raw.split(",")) {
+            String[] parts = entry.trim().split(";");
+            if (parts.length != 3) continue;
+            java.time.LocalTime time = ParseUtils.safeLocalTime(parts[1]);
+            if (time == null) continue;
+            int dayKey = ParseUtils.safeInt(parts[0], 0);
+            int count = ParseUtils.safeInt(parts[2], 0);
+            try { slots.add(TrackedItem.PrefSlot.of(dayKey, time, count, monthly)); }
+            catch (IllegalArgumentException ignored) {}
+        }
+        return slots;
     }
 
 }

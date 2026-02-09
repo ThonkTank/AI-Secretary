@@ -5,6 +5,8 @@ import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 
 import java.time.DayOfWeek;
+import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.List;
 
 import entities.TrackedItem;
@@ -157,26 +159,26 @@ public class SeedTestData {
 
             // --- Goal: Workout ---
             TrackedItem gWorkout = new Builder(ItemType.GOAL, "Workout", Priority.HIGH)
-                .maxMinutes(30).prefTime("07:00").parent(pFitness.id).created("2025-12-01")
+                .maxMinutes(30).prefSlots(allDays("07:00")).parent(pFitness.id).created("2025-12-01")
                 .goalIcon("\uD83D\uDCAA").goalColor("#FFE53935").build();
             repo.write(gWorkout);
 
             // Tasks unter Workout
             TrackedItem tStretching = new Builder(ItemType.TASK, "Stretching", Priority.MODERATE)
-                .maxMinutes(10).prefTime("07:00").parent(gWorkout.id).created("2025-12-01")
+                .maxMinutes(10).prefSlots(allDays("07:00")).parent(gWorkout.id).created("2025-12-01")
                 .lastCompletion("2026-02-02").currentStreak(105).totalCompletions(105)
                 .repetition(RepetitionType.INTERVAL, 1, RepUnits.DAY).build();
             repo.write(tStretching);
 
             TrackedItem tLiegestuetze = new Builder(ItemType.TASK, "Liegestuetze", Priority.HIGH)
-                .maxMinutes(10).prefTime("07:10").parent(gWorkout.id).created("2025-12-01")
+                .maxMinutes(10).prefSlots(allDays("07:10")).parent(gWorkout.id).created("2025-12-01")
                 .lastCompletion("2026-02-02").currentStreak(35).totalCompletions(35)
                 .chainAfter(tStretching.id)  // Same-Day Chain: direkt nach Stretching
                 .repetition(RepetitionType.INTERVAL, 1, RepUnits.DAY).build();
             repo.write(tLiegestuetze);
 
             TrackedItem tKniebeugen = new Builder(ItemType.TASK, "Kniebeugen", Priority.MODERATE)
-                .maxMinutes(10).prefTime("07:20").parent(gWorkout.id).created("2025-12-01")
+                .maxMinutes(10).prefSlots(allDays("07:20")).parent(gWorkout.id).created("2025-12-01")
                 .repetition(RepetitionType.REPS_PER_TIME, 3, RepUnits.WEEK).build();
             repo.write(tKniebeugen);
 
@@ -188,25 +190,25 @@ public class SeedTestData {
 
             // ===== GOAL: Lernen =====
             TrackedItem gLernen = new Builder(ItemType.GOAL, "Lernen", Priority.HIGH)
-                .maxMinutes(45).prefTime("14:00").created("2025-12-01")
+                .maxMinutes(45).prefSlots(allDays("14:00")).created("2025-12-01")
                 .goalIcon("\uD83D\uDCDA").goalColor("#FF8E24AA").build();
             repo.write(gLernen);
 
             TrackedItem tVokabeln = new Builder(ItemType.TASK, "Vokabeln", Priority.HIGH)
-                .maxMinutes(15).prefTime("14:00").parent(gLernen.id).created("2025-12-01")
+                .maxMinutes(15).prefSlots(allDays("14:00")).parent(gLernen.id).created("2025-12-01")
                 .lastCompletion("2026-02-02").currentStreak(65).totalCompletions(65)
                 .repetition(RepetitionType.INTERVAL, 1, RepUnits.DAY)
                 .progressTarget(20).progressUnit("Woerter").progressPerRep(true).build();
             repo.write(tVokabeln);
 
             TrackedItem tLesen = new Builder(ItemType.TASK, "Lesen", Priority.LOW)
-                .maxMinutes(15).prefTime("14:15").parent(gLernen.id).created("2025-12-01")
+                .maxMinutes(15).prefSlots(allDays("14:15")).parent(gLernen.id).created("2025-12-01")
                 .lastCompletion("2026-01-24").currentStreak(5).totalCompletions(5)
                 .repetition(RepetitionType.DAY_OF_TIME, 0, RepUnits.WEEK, DayOfWeek.FRIDAY).build();
             repo.write(tLesen);
 
             TrackedItem tHausarbeit = new Builder(ItemType.TASK, "Hausarbeit", Priority.HIGH)
-                .minMinutes(30).maxMinutes(90).prefTime("14:30").parent(gLernen.id).created("2026-01-15")
+                .minMinutes(30).maxMinutes(90).prefSlots(allDays("14:30")).parent(gLernen.id).created("2026-01-15")
                 .description("Wissenschaftliche Arbeit schreiben")
                 .noRepetition().deadline("2026-02-15")
                 .progressTarget(10).progressCurrent(3).progressUnit("Seiten")
@@ -219,19 +221,19 @@ public class SeedTestData {
 
             // ===== GOAL: Haushalt =====
             TrackedItem gHaushalt = new Builder(ItemType.GOAL, "Haushalt", Priority.MODERATE)
-                .maxMinutes(30).prefTime("16:00").created("2025-12-01")
+                .maxMinutes(30).prefSlots(allDays("16:00")).created("2025-12-01")
                 .goalIcon("\uD83C\uDFE0").goalColor("#FFFB8C00").build();
             repo.write(gHaushalt);
 
             TrackedItem tPutzen = new Builder(ItemType.TASK, "Putzen", Priority.MODERATE)
-                .maxMinutes(15).prefTime("16:00").parent(gHaushalt.id).created("2025-12-01")
+                .maxMinutes(15).prefSlots(allDays("16:00")).parent(gHaushalt.id).created("2025-12-01")
                 .lastCompletion("2026-01-31").currentStreak(15).totalCompletions(15)
                 .completeFirst(true)  // completeFirst-Modus
                 .repetition(RepetitionType.INTERVAL, 3, RepUnits.DAY).build();
             repo.write(tPutzen);
 
             TrackedItem tEinkaufen = new Builder(ItemType.TASK, "Einkaufen", Priority.CRITICAL)
-                .maxMinutes(15).prefTime("16:15").parent(gHaushalt.id).created("2025-12-01")
+                .maxMinutes(15).prefSlots(allDays("16:15")).parent(gHaushalt.id).created("2025-12-01")
                 .repetition(RepetitionType.REPS_PER_TIME, 2, RepUnits.WEEK).build();
             repo.write(tEinkaufen);
 
@@ -248,7 +250,7 @@ public class SeedTestData {
 
             // ===== GOAL: Einkäufe (Budget-Demo) =====
             TrackedItem gEinkaeufe = new Builder(ItemType.GOAL, "Einkäufe", Priority.LOW)
-                .maxMinutes(60).prefTime("15:00").created("2026-01-01")
+                .maxMinutes(60).prefSlots(allDays("15:00")).created("2026-01-01")
                 .goalIcon("\uD83D\uDED2").goalColor("#FF7B1FA2").build();
             repo.write(gEinkaeufe);
 
@@ -263,7 +265,7 @@ public class SeedTestData {
 
             // ===== GOAL: Wäsche (DELAYED CHAIN) =====
             TrackedItem gWaesche = new Builder(ItemType.GOAL, "Wäsche", Priority.MODERATE)
-                .maxMinutes(60).prefTime("10:00").created("2025-12-01")
+                .maxMinutes(60).prefSlots(allDays("10:00")).created("2025-12-01")
                 .goalIcon("\uD83E\uDDFA").goalColor("#FF42A5F5").build();
             repo.write(gWaesche);
 
@@ -289,7 +291,7 @@ public class SeedTestData {
 
             // ===== GOAL: Finanzen (DAY_OF_TIME Monatstag + budgetAccountId + cooldown) =====
             TrackedItem gFinanzen = new Builder(ItemType.GOAL, "Finanzen", Priority.HIGH)
-                .maxMinutes(30).prefTime("09:00").created("2025-12-01")
+                .maxMinutes(30).prefSlots(allDays("09:00")).created("2025-12-01")
                 .description("Monatliche Finanzaufgaben")
                 .goalIcon("\uD83D\uDCB0").goalColor("#FF00796B").build();
             repo.write(gFinanzen);
@@ -325,7 +327,7 @@ public class SeedTestData {
 
             // ===== GOAL: Programmieren (MIN/MAX PROGRESS_UNITS + timePerProgressUnit) =====
             TrackedItem gProgrammieren = new Builder(ItemType.GOAL, "Programmieren", Priority.HIGH)
-                .maxMinutes(120).prefTime("19:00").created("2025-12-01")
+                .maxMinutes(120).prefSlots(allDays("19:00")).created("2025-12-01")
                 .description("Abendliche Coding-Sessions")
                 .goalIcon("\uD83D\uDCBB").goalColor("#FF6200EE").build();
             repo.write(gProgrammieren);
@@ -832,6 +834,14 @@ public class SeedTestData {
         seedIng(db, "Curry", "OTHER", "g", 100, 325, 141, 584, 140, 336);
         seedIng(db, "Paprikapulver", "OTHER", "g", 100, 282, 143, 540, 130, 210);
         seedIng(db, "Zimt", "OTHER", "g", 100, 247, 40, 808, 12, 533);
+    }
+
+    /** Erzeugt 7 PrefSlots (Mo-So) zur selben Uhrzeit — fuer Testdaten. */
+    private static List<TrackedItem.PrefSlot> allDays(String time) {
+        LocalTime t = LocalTime.parse(time);
+        return Arrays.stream(DayOfWeek.values())
+            .map(day -> TrackedItem.PrefSlot.weekly(day, t))
+            .toList();
     }
 
     /**

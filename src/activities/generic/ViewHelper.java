@@ -2,6 +2,8 @@ package activities.generic;
 
 import android.content.Context;
 import android.graphics.drawable.GradientDrawable;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -133,6 +135,15 @@ public final class ViewHelper {
             String s = input.getText().toString().trim();
             return s.isEmpty() ? fallback : Double.parseDouble(s);
         } catch (NumberFormatException e) { return fallback; }
+    }
+
+    /** Erstellt einen TextWatcher der nur afterTextChanged implementiert. */
+    public static TextWatcher afterTextChanged(Runnable action) {
+        return new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+            @Override public void onTextChanged(CharSequence s, int st, int b, int c) {}
+            @Override public void afterTextChanged(Editable s) { action.run(); }
+        };
     }
 
     /** Konfiguriert Modal-Overlay: Klick ausserhalb schliesst, Klick auf Card wird absorbiert. */
