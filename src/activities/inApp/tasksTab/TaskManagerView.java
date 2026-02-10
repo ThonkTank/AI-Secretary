@@ -3,6 +3,9 @@ package activities.inApp.tasksTab;
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -17,49 +20,88 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 
+import activities.generic.ViewBuilder;
+import activities.inApp.tasksTab.editorModal.ItemEditorModal;
 import controller.EditorManager;
 import controller.EditorManager.TreeEntry;
 import entities.TrackedItem;
 import entities.TrackedItem.ItemType;
 
 /**
- * Rendert den hierarchischen Item-Baum (Project -> Goal -> Task)
- * und verwaltet Expand/Collapse, Suche und Typ-Filter.
+ * Verwalten-SubTab: Hierarchischer Baum (Project→Goal→Task) + Editor-Modal.
+ * Verwaltet Expand/Collapse, Suche, Typ-Filter und delegiert Editing an ItemEditorModal.
  */
-class TreeRenderer {
+public class TaskManagerView implements ViewBuilder {
 
     private static final int TREE_INDENT_PER_LEVEL_DP = 16;
     private static final int TREE_BASE_PADDING_DP = 8;
 
     private final Context context;
     private final EditorManager manager;
-    private final LinearLayout treeContainer;
-    private final Consumer<TrackedItem> onEditItem;
+
+    private LinearLayout treeContainer;
+    private ItemEditorModal modal;
 
     // Baum-Zustand
     private Map<Long, Boolean> expandedState = new HashMap<>();
     private Set<ItemType> activeFilters = EnumSet.allOf(ItemType.class);
     private String searchQuery = "";
 
-    // ========================================================================
-    // KONSTRUKTOR
-    // ========================================================================
-
-    TreeRenderer(Context context, EditorManager manager,
-                 LinearLayout treeContainer, Consumer<TrackedItem> onEditItem) {
+    public TaskManagerView(Context context, EditorManager manager) {
         this.context = context;
         this.manager = manager;
-        this.treeContainer = treeContainer;
-        this.onEditItem = onEditItem;
+    }
+
+    // ========================================================================
+    // BUILDVIEW - Layout aufbauen, Modal + Toolbar + Baum initialisieren
+    // ========================================================================
+
+    @Override
+    public View buildView() {
+        FrameLayout root = (FrameLayout) LayoutInflater.from(context)
+            .inflate(R.layout.view_edit_item, null);
+
+        treeContainer = root.findViewById(R.id.tree_container);
+        View modalOverlay = root.findViewById(R.id.modal_overlay);
+
+        // ItemEditorModal: orchestriert 8 Field-Gruppen direkt
+        modal = new ItemEditorModal(context, manager, modalOverlay, this::refreshTree);
+        modal.init();
+
+        // Toolbar: Suchleiste
+        EditText searchField = root.findViewById(R.id.search_field);
+        searchField.addTextChangedListener(afterTextChanged(
+            () -> setSearchQuery(searchField.getText().toString())));
+
+        // Toolbar: Filter-Button
+        Button filterBtn = root.findViewById(R.id.btn_filter);
+        filterBtn.setOnClickListener(v -> cycleFilter());
+
+        // Toolbar: Create-Button
+        Button createBtn = root.findViewById(R.id.btn_create);
+        createBtn.setBackground(roundedBg(context, ContextCompat.getColor(context, R.color.accent), 4));
+        createBtn.setOnClickListener(v -> modal.openCreateModal());
+
+        // Baum initial aufbauen
+        buildTree();
+
+        return root;
+    }
+
+    /**
+     * Oeffentliche API um das Create-Modal von aussen zu oeffnen.
+     * Wird von TaskView aufgerufen (Widget "+" Button).
+     */
+    public void openCreateModal() {
+        modal.openCreateModal();
     }
 
     // ========================================================================
     // BUILDTREE - Baum-Zeilen aus manager.getAllItems() rendern
     // ========================================================================
 
-    void buildTree() {
+    private void buildTree() {
         List<TreeEntry> entries = manager.getAllItems();
         for (TreeEntry entry : entries) {
             View row = buildTreeRow(entry);
@@ -68,10 +110,6 @@ class TreeRenderer {
         }
         applyFilter();
     }
-
-    // ========================================================================
-    // BUILDTREEROW - Einzelne Zeile: Einrueckung + Badge + Titel
-    // ========================================================================
 
     private View buildTreeRow(TreeEntry entry) {
         TrackedItem item = entry.item();
@@ -123,13 +161,13 @@ class TreeRenderer {
                 expandedState.put(item.id, !currentlyExpanded);
                 refreshTree();
             } else {
-                onEditItem.accept(item);
+                modal.showModal(item);
             }
         });
 
         // Long-Press: immer Edit
         row.setOnLongClickListener(v -> {
-            onEditItem.accept(item);
+            modal.showModal(item);
             return true;
         });
 
@@ -140,7 +178,7 @@ class TreeRenderer {
     // REFRESHTREE - Baum-Ansicht neu aufbauen
     // ========================================================================
 
-    void refreshTree() {
+    private void refreshTree() {
         treeContainer.removeAllViews();
         buildTree();
     }
@@ -149,12 +187,12 @@ class TreeRenderer {
     // FILTER - Suche und Typ-Filter
     // ========================================================================
 
-    void setSearchQuery(String query) {
+    private void setSearchQuery(String query) {
         this.searchQuery = query.toLowerCase();
         applyFilter();
     }
 
-    void cycleFilter() {
+    private void cycleFilter() {
         if (activeFilters.size() == 3) {
             activeFilters = EnumSet.of(ItemType.PROJECT);
         } else if (activeFilters.contains(ItemType.PROJECT) && activeFilters.size() == 1) {

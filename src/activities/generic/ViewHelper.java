@@ -17,6 +17,12 @@ import android.widget.TextView;
 import android.graphics.Color;
 
 import java.util.List;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
+import java.util.function.IntConsumer;
+
+import android.widget.AdapterView;
+import android.widget.Spinner;
 
 import androidx.core.content.ContextCompat;
 
@@ -180,6 +186,42 @@ public final class ViewHelper {
             button.setTextColor(textPrimary);
             button.setText("Aus");
         }
+    }
+
+    /** Synct EditText mit Wert nur wenn unterschiedlich (verhindert Cursor-Reset). */
+    public static void syncText(EditText field, String value) {
+        String current = field.getText().toString();
+        if (!current.equals(value)) {
+            field.setText(value);
+            field.setSelection(value.length());
+        }
+    }
+
+    /** Setzt Spinner-Listener mit Skip-Guard (analog zu afterTextChanged). */
+    public static void onSpinnerSelected(Spinner spinner, BooleanSupplier skip, IntConsumer action) {
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                if (skip.getAsBoolean()) return;
+                action.accept(pos);
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+    }
+
+    /** Findet 1-basierten Offset-Index in einer Liste (0 = "kein X"). */
+    public static <T> int findOffsetIdx(List<T> list, Object id, Function<T, Object> getId) {
+        if (id == null) return 0;
+        for (int i = 0; i < list.size(); i++) {
+            if (id.equals(getId.apply(list.get(i)))) return i + 1;
+        }
+        return 0;
+    }
+
+    /** Loest 1-basierten Offset-Index zu einem Wert auf (0 = null). */
+    public static <T, R> R resolveAtOffset(List<T> list, int idx, Function<T, R> extract) {
+        return (idx > 0 && idx <= list.size()) ? extract.apply(list.get(idx - 1)) : null;
     }
 
     /** Konfiguriert Modal-Overlay: Klick ausserhalb schliesst, Klick auf Card wird absorbiert. */

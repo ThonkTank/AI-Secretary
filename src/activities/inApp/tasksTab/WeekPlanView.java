@@ -1,0 +1,322 @@
+package activities.inApp.tasksTab;
+
+import android.animation.ValueAnimator;
+import android.content.Context;
+import android.graphics.Color;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.PopupWindow;
+import android.widget.TextView;
+
+import static activities.generic.ViewHelper.dp;
+
+import activities.generic.ViewBuilder;
+
+import androidx.core.content.ContextCompat;
+
+import com.autosecretary.R;
+
+import controller.TodoManager;
+import controller.TodoManager.TodoListener;
+import data.TaskListData;
+import data.TaskListData.*;
+import data.TaskRowConfig.*;
+import render.TaskRowRenderer;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Locale;
+
+/**
+ * Tagesplan-SubTab: Zeigt den generierten Tagesplan mit Datum-Navigation (7 Tage).
+ * Verwendet TaskRowRenderer und die einheitlichen Layouts (item_task.xml,
+ * item_goal_header.xml, item_calendar.xml) fuer visuelle Paritaet mit dem Widget.
+ */
+public class WeekPlanView implements TodoListener, ViewBuilder {
+
+    private static final DateTimeFormatter DATE_FORMAT =
+        DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN);
+
+    private final Context context;
+    private final TodoManager manager;
+    private LinearLayout container;
+    private Runnable onUpdate;
+    private LocalDate selectedDate = LocalDate.now();
+
+    public WeekPlanView(Context context, TodoManager manager) {
+        this.context = context;
+        this.manager = manager;
+        this.manager.setListener(this);
+    }
+
+    /** Callback bei Listenänderung (optional) */
+    public void setOnUpdate(Runnable onUpdate) {
+        this.onUpdate = onUpdate;
+    }
+
+    /** Baut die komplette Task-Listen-View und gibt sie zurück */
+    public View buildView() {
+        View root = LayoutInflater.from(context).inflate(R.layout.view_task_list, null);
+        container = root.findViewById(R.id.task_container);
+        render();
+        return root;
+    }
+
+    /** Rendert die Task-Liste in den Container */
+    public void render() {
+        container.removeAllViews();
+        boolean isToday = selectedDate.equals(LocalDate.now());
+
+        // ════════════════════════════════════════════════════════════════════════
+        // Datum-Header: [<] Mittwoch, 5. Feb [>]
+        // ════════════════════════════════════════════════════════════════════════
+        LinearLayout dateHeader = new LinearLayout(context);
+        dateHeader.setOrientation(LinearLayout.HORIZONTAL);
+        dateHeader.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams headerParams = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT);
+        headerParams.bottomMargin = dp(context, 12);
+
+        // Pfeil links (nur wenn nicht heute)
+        TextView arrowLeft = new TextView(context);
+        arrowLeft.setText("◀");
+        arrowLeft.setTextSize(20);
+        arrowLeft.setPadding(dp(context, 12), dp(context, 8), dp(context, 12), dp(context, 8));
+        if (isToday) {
+            arrowLeft.setTextColor(ContextCompat.getColor(context, R.color.button_inactive));
+        } else {
+            arrowLeft.setTextColor(ContextCompat.getColor(context, R.color.accent));
+            arrowLeft.setOnClickListener(v -> previousDay());
+        }
+        dateHeader.addView(arrowLeft);
+
+        // Datum-Label (zentriert, weight=1)
+        TextView dateLabel = new TextView(context);
+        String dateText = isToday ? context.getString(R.string.widget_today) : selectedDate.format(DATE_FORMAT);
+        dateLabel.setText(dateText);
+        dateLabel.setTextSize(18);
+        dateLabel.setTextColor(ContextCompat.getColor(context, R.color.text_primary));
+        dateLabel.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        dateHeader.addView(dateLabel, labelParams);
+
+        // Pfeil rechts (nur wenn < heute+6)
+        TextView arrowRight = new TextView(context);
+        arrowRight.setText("▶");
+        arrowRight.setTextSize(20);
+        arrowRight.setPadding(dp(context, 12), dp(context, 8), dp(context, 12), dp(context, 8));
+        if (selectedDate.isBefore(LocalDate.now().plusDays(6))) {
+            arrowRight.setTextColor(ContextCompat.getColor(context, R.color.accent));
+            arrowRight.setOnClickListener(v -> nextDay());
+        } else {
+            arrowRight.setTextColor(ContextCompat.getColor(context, R.color.button_inactive));
+        }
+        dateHeader.addView(arrowRight);
+
+        container.addView(dateHeader, headerParams);
+
+        // ════════════════════════════════════════════════════════════════════════
+        // Replan-Button (nur für heute)
+        // ════════════════════════════════════════════════════════════════════════
+        if (isToday) {
+            Button replanBtn = new Button(context);
+            replanBtn.setText(context.getString(R.string.btn_replan));
+            replanBtn.setTextColor(Color.WHITE);
+            replanBtn.setBackgroundColor(ContextCompat.getColor(context, R.color.accent));
+            replanBtn.setOnClickListener(v -> manager.replanToday());
+            LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+            btnParams.bottomMargin = dp(context, 12);
+            container.addView(replanBtn, btnParams);
+        }
+
+        // ════════════════════════════════════════════════════════════════════════
+        // Task-Liste rendern
+        // ════════════════════════════════════════════════════════════════════════
+        LayoutInflater inflater = LayoutInflater.from(context);
+        List<DisplayRow> rows = TaskListData.fromEntries(manager.provideList(selectedDate));
+
+        for (DisplayRow row : rows) {
+            if (row instanceof GoalHeader header) {
+                View view = inflater.inflate(R.layout.item_goal_header, container, false);
+                GoalHeaderConfig cfg = GoalHeaderConfig.from(header);
+                TaskRowRenderer.applyGoalHeader(view, cfg, context);
+                container.addView(view);
+            }
+            else if (row instanceof TaskItem item) {
+                View view = inflater.inflate(R.layout.item_task, container, false);
+                TaskConfig cfg = TaskConfig.from(item.entry());
+                TaskRowRenderer.applyTask(view, cfg, context);
+
+                // Interaktionen nur für heute erlaubt
+                if (isToday) {
+                    if (cfg.hasProgress()) {
+                        // Progress-Modus: +/- Button Listener
+                        View btnPlus = view.findViewById(R.id.btn_progress_plus);
+                        View btnMinus = view.findViewById(R.id.btn_progress_minus);
+
+                        btnPlus.setOnClickListener(v -> {
+                            if (cfg.progressCurrent() < cfg.progressTarget()) {
+                                animateProgressIncrement(view, btnPlus, cfg.progressDoneToday());
+                                manager.incrementProgress(cfg.slotId());
+                            }
+                        });
+
+                        btnMinus.setOnClickListener(v -> {
+                            if (cfg.progressCurrent() > 0) {
+                                manager.decrementProgress(cfg.slotId());
+                            }
+                        });
+                    } else {
+                        // Normal-Modus: Checkbox Listener
+                        View checkbox = view.findViewById(R.id.task_checkbox);
+                        checkbox.setOnClickListener(v -> {
+                            if (cfg.checked()) {
+                                manager.uncompleteSlot(cfg.slotId());
+                            } else {
+                                animateCompletion(view, checkbox);
+                                manager.completeSlot(cfg.slotId());
+                            }
+                        });
+                    }
+
+                    // Timer Listener (nur wenn sichtbar)
+                    View timer = view.findViewById(R.id.task_timer);
+                    if (cfg.showTimer()) {
+                        timer.setOnClickListener(v -> {
+                            if (cfg.timerRunning()) manager.stopTimer(cfg.slotId());
+                            else manager.startTimer(cfg.slotId());
+                        });
+                    }
+                } else {
+                    // Zukünftige Tage: Checkbox visuell deaktivieren
+                    View checkbox = view.findViewById(R.id.task_checkbox);
+                    if (checkbox != null) {
+                        checkbox.setAlpha(0.4f);
+                    }
+                    View progressContainer = view.findViewById(R.id.progress_container);
+                    if (progressContainer != null && progressContainer.getVisibility() == View.VISIBLE) {
+                        progressContainer.setAlpha(0.4f);
+                    }
+                }
+
+                // Titel-Klick: Beschreibung anzeigen (für alle Tage)
+                View title = view.findViewById(R.id.task_title);
+                title.setOnClickListener(v -> showDescriptionPopup(v, cfg.title(), item.entry().taskDescription()));
+
+                container.addView(view);
+            }
+            else if (row instanceof CalendarEvent event) {
+                View view = inflater.inflate(R.layout.item_calendar, container, false);
+                CalendarConfig cfg = CalendarConfig.from(event.entry());
+                TaskRowRenderer.applyCalendar(view, cfg, context);
+                container.addView(view);
+            }
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════
+    // Navigation: Datum wechseln
+    // ════════════════════════════════════════════════════════════════════════════
+    public void nextDay() {
+        if (selectedDate.isBefore(LocalDate.now().plusDays(6))) {
+            selectedDate = selectedDate.plusDays(1);
+            render();
+        }
+    }
+
+    public void previousDay() {
+        if (selectedDate.isAfter(LocalDate.now())) {
+            selectedDate = selectedDate.minusDays(1);
+            render();
+        }
+    }
+
+    public void goToToday() {
+        selectedDate = LocalDate.now();
+        render();
+    }
+
+    @Override
+    public void onListUpdated() {
+        container.post(this::render);
+        if (onUpdate != null) onUpdate.run();
+    }
+
+    /** Completion-Animation: Checkbox Bounce + Hintergrund Flash */
+    private void animateCompletion(View row, View checkbox) {
+        // 1. Checkbox bounce (scale 1.0 -> 1.3 -> 1.0)
+        checkbox.animate()
+            .scaleX(1.3f).scaleY(1.3f)
+            .setDuration(100)
+            .withEndAction(() ->
+                checkbox.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
+            ).start();
+
+        // 2. Background flash (completion_flash -> surface_complete)
+        int flashColor = ContextCompat.getColor(context, R.color.completion_flash);
+        int finalColor = ContextCompat.getColor(context, R.color.surface_complete);
+        ValueAnimator colorAnim = ValueAnimator.ofArgb(flashColor, finalColor);
+        colorAnim.setDuration(300);
+        colorAnim.addUpdateListener(a -> row.setBackgroundColor((int) a.getAnimatedValue()));
+        colorAnim.start();
+    }
+
+    /** Progress-Increment-Animation: Button Bounce + optionaler Hintergrund Flash */
+    private void animateProgressIncrement(View row, View button, boolean alreadyDoneToday) {
+        // 1. Button bounce (scale 1.0 -> 1.2 -> 1.0)
+        button.animate()
+            .scaleX(1.2f).scaleY(1.2f)
+            .setDuration(80)
+            .withEndAction(() ->
+                button.animate().scaleX(1f).scaleY(1f).setDuration(80).start()
+            ).start();
+
+        // 2. Background flash nur wenn noch nicht "heute erledigt"
+        if (!alreadyDoneToday) {
+            int flashColor = ContextCompat.getColor(context, R.color.completion_flash);
+            int finalColor = ContextCompat.getColor(context, R.color.surface_complete);
+            ValueAnimator colorAnim = ValueAnimator.ofArgb(flashColor, finalColor);
+            colorAnim.setDuration(300);
+            colorAnim.addUpdateListener(a -> row.setBackgroundColor((int) a.getAnimatedValue()));
+            colorAnim.start();
+        }
+    }
+
+    /** Zeigt Popup mit Task-Beschreibung */
+    private void showDescriptionPopup(View anchor, String title, String description) {
+        if (description == null || description.isEmpty()) {
+            description = context.getString(R.string.desc_no_description);
+        }
+
+        // Popup-Layout inflaten
+        View popupView = LayoutInflater.from(context).inflate(R.layout.popup_description, null);
+
+        // Inhalt setzen
+        TextView titleView = popupView.findViewById(R.id.popup_title);
+        TextView descView = popupView.findViewById(R.id.popup_description);
+        titleView.setText(title);
+        descView.setText(description);
+
+        // PopupWindow erstellen
+        PopupWindow popup = new PopupWindow(
+            popupView,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            true  // focusable - Touch außerhalb schließt das Popup
+        );
+
+        popup.setElevation(dp(context, 8));
+        popup.setOutsideTouchable(true);
+
+        // Popup unter dem Anchor anzeigen
+        popup.showAsDropDown(anchor, 0, dp(context, 4));
+    }
+}

@@ -207,7 +207,7 @@ DAY_WEIGHT_BASE = 0.5                   // Basis-Anteil der Tages-Gewichtung
 ```
 src/
 ├── activities/inApp/     # MainActivity (Launcher, 3-Tab-UI: Tasks/Budget/Ernährung)
-│   ├── tasksTab/         # TaskView (Delegator, 2 Sub-Tabs), WeekPlanView (Tagesplan), TaskManagerView (Verwalten, Baum + Editor-Modal) + editorModal/ (ItemEditorModal [public], FieldManager, FieldLoader, FieldSaver, PrefScheduleEditor)
+│   ├── tasksTab/         # TaskView (Delegator, 2 Sub-Tabs), WeekPlanView (Tagesplan), TaskManagerView (Verwalten, Baum + Editor-Modal) + editorModal/ (ItemEditorModal [public Orchestrator]) + editorModal/fields/ (FieldGroup [interface], VisibilityFlags [record], CoreFields, SchedulingFields, RepetitionFields, DurationProgressFields, HierarchyFields, BudgetFields, GoalAppearanceFields, PrefScheduleEditor)
 │   ├── budgetTab/        # BudgetView (Delegator, BudgetListener), TransactionModal (Create/Edit), ImportModal (Claude API), RecurringSuggestionsModal
 │   └── ernaehrungTab/    # MealPlanView (Delegator, 4 Sub-Tabs), WeekPlanTab, RecipesTab, ShoppingTab, PantryTab, FoodGroupHeader, MemberTab, MealTabListener
 ├── activities/generic/   # ViewHelper, DateTimeHelper, ViewBuilder
@@ -284,11 +284,10 @@ Farben und Dimensionen liegen ausschließlich in `colors.xml`/`dimens.xml` — p
 
 **Edit Modal** (`tasksTab/TaskManagerView.java` + `editorModal/` + `modal_edit_item.xml`) — Create/Edit-Dialog für Tasks, Goals und Projects. `TaskManagerView` vereint Baum-Darstellung und Editor-Delegation in einer Klasse:
 - **Baum** (in `TaskManagerView`) — Hierarchischer Baum (Expand/Collapse, Suche, Typ-Filter)
-- `ItemEditorModal` (`editorModal/`, **public**) — Einziger öffentlicher Einstiegspunkt. Kapselt FieldManager + FieldLoader + FieldSaver intern. Konstruktor: `(Context, EditorManager, View modalOverlay, Runnable onSaved)`
-- `FieldManager` (`editorModal/`, package-private) — Alle ~30 Formular-Felder (bind/visibility), Spinner-Refresh, Farb-Grid
-- `FieldLoader` (`editorModal/`, package-private) — Befüllt Felder für Create (Defaults) oder Edit (aus TrackedItem)
-- `FieldSaver` (`editorModal/`, package-private) — Liest UI-Werte aus, baut Builder, validiert und persistiert via EditorManager
-- `PrefScheduleEditor` (`editorModal/`, package-private) — PrefSlot-Zeilen (Tag+Uhrzeit), inflated `item_pref_slot_row.xml`. Entkoppelt via `RepetitionStateProvider`-Callback
+- `ItemEditorModal` (`editorModal/`, **public**) — Schlanker Orchestrator. Erstellt alle 8 Field-Gruppen, koordiniert `populate()`/`save()`/`updateVisibility()`. Konstruktor: `(Context, EditorManager, View modalOverlay, Runnable onSaved)`. Hält `suppressListeners` Flag (ersetzt SyncGuard).
+- `FieldGroup` (`editorModal/fields/`, **public interface**) — `populate(TrackedItem)`, `apply(TrackedItem.Builder)`, `updateVisibility(VisibilityFlags)`. Jede Gruppe liest/schreibt Views direkt.
+- `VisibilityFlags` (`editorModal/fields/`, **public record**) — Immutable Sichtbarkeits-Flags. Statische Factory `compute(type, schedulingType, repType, repUnit, repValue, progressEnabled, budgetEnabled, predecessorIdx)`. Konstanten: `SCHED_TERMIN=0`, `SCHED_AUFGABE=1`, `SCHED_ANGEWOHNHEIT=2`. 8 Kontext-Inputs + 18 berechnete boolean-Flags.
+- **Field-Gruppen** (`editorModal/fields/`, **public**) — Je eine Klasse pro Domain: `CoreFields`, `SchedulingFields`, `RepetitionFields`, `DurationProgressFields`, `HierarchyFields`, `BudgetFields`, `GoalAppearanceFields`, `PrefScheduleEditor`. Konstruktor: `(Context, View root, BooleanSupplier suppressCheck, Runnable onVisibilityTrigger [, EditorManager])`. Keine TextWatcher, keine State-Updates — nur visibility-affektierende Listener (7 Stueck gesamt).
 
 **SchedulingType-System (UI-only, kein DB-Feld):** Neben dem ItemType (TASK/GOAL/PROJECT) steuert ein **SchedulingType-Dropdown** die Feld-Sichtbarkeit:
 - `SCHED_TERMIN` (0) — Fester Zeitpunkt (nur TASK). Erzwingt `RepetitionType.NONE` + `fixedDate`/`fixedTime`
@@ -318,12 +317,18 @@ Ableitung bei Edit: `isFixedAppointment()` → Termin, `repType != NONE` → Ang
 Repetition-Sektion enthält: RepType-Buttons (INTERVAL/REPS_PER_TIME/DAY_OF_TIME, kein NONE), Wert+Einheit+Wochentag, CompleteFirst-Toggle, PrefSlots.
 
 **UI-Patterns:**
-- `updateFieldVisibility()` — Parameterlose zentrale Methode, nutzt `selectedType` + `selectedSchedulingType` intern
-- `updateButtonGroup(buttons, selectedIndex)` — Toggle-Buttons (Priority, DurationUnit, RepType)
-- `refreshPredecessorSpinner()` — Lädt verfügbare Vorgänger + zeigt/versteckt Delay-Row
+- `VisibilityFlags.compute()` — Deterministische Sichtbarkeitsberechnung aus aktuellen Gruppen-Gettern
+- `updateButtonGroup(buttons, selectedIndex)` / `updateToggleButton(button, enabled)` — Toggle-Buttons (Priority, DurationUnit, RepType, CompleteFirst, ProgressPerRep)
+- `suppressListeners` — Boolean in ItemEditorModal, verhindert Listener-Kaskaden während `populate()`. Gruppen prüfen via `BooleanSupplier`.
 - TimePicker/DatePicker — Standard Android-Dialoge via `TimePickerDialog`/`DatePickerDialog`
 
-**Editor-Modal-Pattern:** `ItemEditorModal` (`editorModal/`, public) ist der einzige öffentliche Einstiegspunkt — kapselt drei package-private Klassen: `FieldManager` bindet Felder (`bind*()` im Konstruktor via `bindAll()`), `FieldLoader` befüllt sie (`populateForCreate()`, `populateForEdit(item)`), `FieldSaver` liest sie aus und persistiert (`apply*()` → Builder → `save(editingItem)`). Caller erstellt nur `new ItemEditorModal(ctx, manager, overlay, onSaved)` + `init()`. Neue Feld-Gruppen: `bind*()` in FieldManager, Populate-Logik in FieldLoader, `apply*()` in FieldSaver hinzufügen. Beim Edit übernimmt `TrackedItem.preserveState(source)` alle Laufzeit-/Historien-Felder (id, created, children, streaks, completions, followUps, timing, mealType etc.) — neue State-Felder dort ergänzen.
+**Editor-Modal-Pattern (Direct Field Groups):**
+- **Caller:** `new ItemEditorModal(ctx, manager, overlay, onSaved)` + `init()` + `showModal(item)` / `openCreateModal()`
+- **Show-Flow:** `suppressListeners = true` → `for (g : allGroups) g.populate(item)` → `suppressListeners = false` → `updateVisibility()`
+- **Save-Flow:** `coreFields.getTitle()` validieren → `new Builder(type, title, priority)` → `for (g : allGroups) g.apply(builder)` (jede Gruppe guardet sich selbst, z.B. RepetitionFields setzt `noRepetition()` wenn unsichtbar) → `build()` → `preserveState()` → `create/update`
+- **Neue Feld-Gruppe hinzufügen:** (1) Klasse in `fields/` mit `implements FieldGroup`, Constructor `(Context, View root, BooleanSupplier suppressCheck, Runnable onVisibilityTrigger [, EditorManager])`. (2) `populate(item)`, `apply(builder)`, `updateVisibility(flags)` implementieren. (3) In `ItemEditorModal` Konstruktor erstellen + in `allGroups` Array aufnehmen. (4) Neue Visibility-Regeln in `VisibilityFlags.compute()`.
+- **Spinner-Daten:** Field-Gruppen halten Referenz-Listen (z.B. `HierarchyFields.availableParents`). Index-Auflösung direkt in `apply()`.
+- Beim Edit übernimmt `TrackedItem.preserveState(source)` alle Laufzeit-/Historien-Felder (id, created, children, streaks, completions, followUps, timing, mealType etc.) — neue State-Felder dort ergänzen.
 
 **DateTimeHelper** (`activities/generic/DateTimeHelper.java`) — Statische Utilities für Datum/Zeit-Operationen (Pure Java, keine Android-Dependencies):
 - `getMonday(LocalDate)` — Montag der Woche für ein Datum
@@ -463,7 +468,7 @@ Rarity-Farben in `colors.xml`, Streak-Wert kommt aus `TrackedItem.currentStreak`
 
 ## Testing
 
-**Gradle Tests:** Test-Infrastruktur konfiguriert (`test/` sourceSets, JUnit 4.13.2, Robolectric 4.14.1) — aktuell keine Tests vorhanden. Kommando: `./gradlew testDebugUnitTest`.
+**Keine automatisierten Tests.** Der Code ändert sich zu schnell — Tests verursachen unnötigen Wartungs-Overhead. Verifizierung erfolgt ausschließlich über `compileDebugJavaWithJavac` (Syntax) und manuelles Testen via ADB. KEINE Unit-Tests, Integrationstests oder Test-Dateien anlegen.
 
 **ADB-basiertes Debugging:** Scheduling und Pläne werden via `DebugBroadcastReceiver` getestet (siehe Debugging-Sektion). Zeigt adjustedPrio-Scores, Budget-Info, Hierarchie.
 

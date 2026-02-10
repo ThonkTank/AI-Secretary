@@ -11,7 +11,6 @@ import androidx.core.content.ContextCompat;
 import com.autosecretary.R;
 
 import activities.generic.ViewBuilder;
-import activities.generic.TaskList;
 import controller.EditorManager;
 import controller.TodoManager;
 
@@ -29,8 +28,8 @@ public class TaskView implements ViewBuilder {
     private View tagesplanView;
     private View verwaltenView;
 
-    private TaskList taskListInstance;
-    private EditItem editItemInstance;
+    private WeekPlanView weekPlanView;
+    private TaskManagerView taskManagerView;
 
     public TaskView(Context context, TodoManager todoMgr) {
         this.context = context;
@@ -48,11 +47,11 @@ public class TaskView implements ViewBuilder {
         tabTagesplan.setOnClickListener(v -> selectSubTab(0));
         tabVerwalten.setOnClickListener(v -> selectSubTab(1));
 
-        taskListInstance = new TaskList(context, todoMgr);
-        tagesplanView = taskListInstance.buildView();
+        weekPlanView = new WeekPlanView(context, todoMgr);
+        tagesplanView = weekPlanView.buildView();
 
-        editItemInstance = new EditItem(context, new EditorManager(context));
-        verwaltenView = editItemInstance.buildView();
+        taskManagerView = new TaskManagerView(context, new EditorManager(context));
+        verwaltenView = taskManagerView.buildView();
 
         selectSubTab(0);
 
@@ -77,8 +76,8 @@ public class TaskView implements ViewBuilder {
 
     public void openCreateModal() {
         selectSubTab(1);
-        if (editItemInstance != null) {
-            editItemInstance.openCreateModal();
+        if (taskManagerView != null) {
+            taskManagerView.openCreateModal();
         }
     }
 }
