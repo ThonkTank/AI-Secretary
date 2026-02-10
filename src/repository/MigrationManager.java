@@ -18,7 +18,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 import data.Constants;
-import entities.MealSchedule;
 
 /**
  * Verwaltet Datenbank-Migrationen mit automatischen Backups.
@@ -201,6 +200,10 @@ public class MigrationManager {
                 migrateV33_PrefSchedule(db);
                 break;
 
+            case 34:
+                migrateV34_MealTypeConsolidation(db);
+                break;
+
             default:
                 Log.w(TAG, "No migration defined for v" + toVersion);
         }
@@ -218,6 +221,7 @@ public class MigrationManager {
             case 31: return "Production cleanup - remove test data";
             case 32: return "Free-form meal schedule - remove UNIQUE, add duration";
             case 33: return "Per-weekday preferred time slots";
+            case 34: return "Meal-type on items, item-id on meal_plans";
             default: return "Migration v" + version;
         }
     }
@@ -457,14 +461,14 @@ public class MigrationManager {
                 + "day_of_week TEXT NOT NULL,"
                 + "meal_type TEXT NOT NULL,"
                 + "scheduled_time TEXT,"
-                + "duration_minutes INTEGER DEFAULT " + MealSchedule.DEFAULT_DURATION_MINUTES
+                + "duration_minutes INTEGER DEFAULT " + 30
                 + ")"
             );
 
             // 2. Nur aktivierte Eintraege migrieren (disabled = geloescht im neuen Modell)
             db.execSQL(
                 "INSERT INTO meal_schedules_new (id, day_of_week, meal_type, scheduled_time, duration_minutes) "
-                + "SELECT id, day_of_week, meal_type, scheduled_time, " + MealSchedule.DEFAULT_DURATION_MINUTES + " "
+                + "SELECT id, day_of_week, meal_type, scheduled_time, " + 30 + " "
                 + "FROM meal_schedules WHERE is_enabled = 1"
             );
 
@@ -488,6 +492,140 @@ public class MigrationManager {
     private void migrateV33_PrefSchedule(SQLiteDatabase db) {
         Log.i(TAG, "v33: Adding pref_schedule column");
         addColumnIfNotExists(db, "items", "pref_schedule", "TEXT");
+    }
+
+    /**
+     * v34: Meal-Type auf Items + Item-ID auf MealPlans.
+     * Konsolidiert meal_schedules zu recurring TrackedItems.
+     * Markiert bestehende Einmal-Meal-Items als completed.
+     */
+    private void migrateV34_MealTypeConsolidation(SQLiteDatabase db) {
+        Log.i(TAG, "v34: Adding meal_type to items, item_id to meal_plans");
+        addColumnIfNotExists(db, "items", "meal_type", "TEXT");
+        addColumnIfNotExists(db, "meal_plans", "item_id", "INTEGER");
+
+        // meal_schedules → recurring TrackedItems konvertieren
+        convertMealSchedulesToItems(db);
+
+        // Bestehende Einmal-Meal-Items (mealPlanId != null, nicht erledigt) als completed markieren
+        int updated = db.update("items",
+            createCV("is_completed", 1),
+            "meal_plan_id IS NOT NULL AND is_completed = 0", null);
+        if (updated > 0) Log.i(TAG, "v34: Marked " + updated + " one-off meal items as completed");
+
+        // Index fuer Reverse-Lookup: MealPlan → TrackedItem
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_meal_plans_item " +
+            "ON meal_plans(item_id) WHERE item_id IS NOT NULL");
+    }
+
+    /**
+     * Liest alle meal_schedules, gruppiert nach mealType, erstellt recurring TrackedItems.
+     * Bei Tag-Duplikaten (z.B. 2x Lunch am Montag) werden separate Items erstellt.
+     */
+    private void convertMealSchedulesToItems(SQLiteDatabase db) {
+        // Alle meal_schedules lesen
+        java.util.List<String[]> schedules = new java.util.ArrayList<>();
+        try (android.database.Cursor c = db.rawQuery(
+                "SELECT day_of_week, meal_type, scheduled_time, duration_minutes FROM meal_schedules", null)) {
+            while (c.moveToNext()) {
+                schedules.add(new String[]{
+                    c.getString(0),  // day_of_week
+                    c.getString(1),  // meal_type
+                    c.getString(2),  // scheduled_time
+                    String.valueOf(c.getInt(3))  // duration_minutes
+                });
+            }
+        }
+        if (schedules.isEmpty()) {
+            Log.i(TAG, "v34: No meal_schedules to convert");
+            return;
+        }
+
+        // Gruppieren nach mealType
+        java.util.Map<String, java.util.List<String[]>> byType = new java.util.LinkedHashMap<>();
+        for (String[] s : schedules) {
+            byType.computeIfAbsent(s[1], k -> new java.util.ArrayList<>()).add(s);
+        }
+
+        String today = java.time.LocalDate.now().toString();
+        String[] mealIcons = {"🍳", "🍽️", "🍲", "🍎"};
+        String[] mealLabels = {"Frühstück", "Mittagessen", "Abendessen", "Snack"};
+        String[] mealTypes = {"BREAKFAST", "LUNCH", "DINNER", "SNACK"};
+
+        for (var entry : byType.entrySet()) {
+            String mealType = entry.getKey();
+            java.util.List<String[]> slots = entry.getValue();
+
+            // Icon und Label bestimmen
+            String icon = "🍽️";
+            String label = mealType;
+            for (int i = 0; i < mealTypes.length; i++) {
+                if (mealTypes[i].equals(mealType)) { icon = mealIcons[i]; label = mealLabels[i]; break; }
+            }
+
+            // Tage gruppieren (Tag → Liste von Zeiten) fuer Duplikat-Erkennung
+            java.util.Map<String, java.util.List<String[]>> byDay = new java.util.LinkedHashMap<>();
+            for (String[] s : slots) {
+                byDay.computeIfAbsent(s[0], k -> new java.util.ArrayList<>()).add(s);
+            }
+
+            // Maximale Anzahl Eintraege pro Tag = Anzahl benoetigter TrackedItems
+            int maxPerDay = byDay.values().stream().mapToInt(java.util.List::size).max().orElse(1);
+
+            for (int slotIdx = 0; slotIdx < maxPerDay; slotIdx++) {
+                StringBuilder prefSchedule = new StringBuilder();
+                int slotCount = 0;
+                int maxDuration = 30;
+
+                for (var dayEntry : byDay.entrySet()) {
+                    java.util.List<String[]> daySlots = dayEntry.getValue();
+                    if (slotIdx >= daySlots.size()) continue;
+                    String[] slot = daySlots.get(slotIdx);
+
+                    // dayKey aus DayOfWeek-Name berechnen
+                    int dayKey;
+                    try { dayKey = java.time.DayOfWeek.valueOf(slot[0]).getValue(); }
+                    catch (Exception e) { continue; }
+
+                    String time = (slot[2] != null) ? slot[2] : "09:00";
+                    int duration = 30;
+                    try { duration = Integer.parseInt(slot[3]); } catch (Exception ignored) {}
+                    maxDuration = Math.max(maxDuration, duration);
+
+                    if (prefSchedule.length() > 0) prefSchedule.append(",");
+                    prefSchedule.append(dayKey).append(";").append(time).append(";0");
+                    slotCount++;
+                }
+
+                if (slotCount == 0) continue;
+
+                String title = icon + " " + label + (slotIdx > 0 ? " " + (slotIdx + 1) : "");
+
+                ContentValues cv = new ContentValues();
+                cv.put("type", "TASK");
+                cv.put("title", title);
+                cv.put("priority", "CRITICAL");
+                cv.put("meal_type", mealType);
+                cv.put("repetition_type", "REPS_PER_TIME");
+                cv.put("repetition_value", slotCount);
+                cv.put("repetition_unit", "WEEK");
+                cv.put("pref_schedule", prefSchedule.toString());
+                cv.put("max_duration_value", maxDuration);
+                cv.put("max_duration_unit", "MINUTES");
+                cv.put("is_completed", 0);
+                cv.put("created", today);
+
+                long itemId = db.insert("items", null, cv);
+                Log.i(TAG, "v34: Created meal item '" + title + "' (id=" + itemId
+                    + ", " + slotCount + " slots, " + maxDuration + "min)");
+            }
+        }
+    }
+
+    private static ContentValues createCV(String key, int value) {
+        ContentValues cv = new ContentValues();
+        cv.put(key, value);
+        return cv;
     }
 
     // ================================================================

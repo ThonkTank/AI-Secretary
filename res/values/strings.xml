@@ -8,6 +8,8 @@
     <string name="refresh_widget">Widget aktualisieren</string>
     <string name="add_item">Neues Element erstellen</string>
     <string name="widget_today">Heute</string>
+    <string name="btn_replan">Neu planen</string>
+    <string name="desc_no_description">Keine Beschreibung</string>
     <string name="widget_saldo">Saldo</string>
     <string name="widget_frei">Frei</string>
 
@@ -62,12 +64,16 @@
     <string name="label_budget_eur">Budget (EUR)</string>
     <string name="label_konto">Konto</string>
     <string name="label_kategorie">Kategorie</string>
+    <string name="label_meal_type">Mahlzeiten-Typ</string>
     <string name="label_fortschritt">Fortschritt</string>
     <string name="label_progress_per_rep">Pro Periode zurücksetzen</string>
     <string name="label_wiederholung">Wiederholung</string>
     <string name="label_wert">Wert</string>
     <string name="label_wochentag">Wochentag</string>
     <string name="label_complete_first">Erst erledigen vor Reset</string>
+    <string name="label_planungsart">Planungsart</string>
+    <string name="label_fortschritt_tracken">Fortschritt tracken</string>
+    <string name="label_budget_anforderung">Budget-Anforderung</string>
     <string name="label_name">Name</string>
     <string name="label_geburtsjahr">Geburtsjahr</string>
     <string name="label_geschlecht">Geschlecht</string>
@@ -166,6 +172,9 @@
     <string name="cd_spinner_location">Lagerort auswählen</string>
     <string name="cd_spinner_day">Wochentag auswählen</string>
     <string name="cd_spinner_meal_type">Mahlzeit-Typ auswählen</string>
+    <string name="cd_spinner_scheduling_type">Planungsart auswählen</string>
+    <string name="cd_completion_toggle">Fortschritt-Tracking aktivieren</string>
+    <string name="cd_budget_toggle">Budget-Anforderung aktivieren</string>
     <string name="cd_spinner_recipe">Rezept auswählen</string>
     <string name="cd_spinner_account">Konto auswählen</string>
     <string name="cd_spinner_category">Kategorie auswählen</string>

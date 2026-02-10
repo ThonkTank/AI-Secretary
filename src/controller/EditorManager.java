@@ -24,7 +24,7 @@ public class EditorManager {
      * ══════════════════════════════════════════════════════════════════════════════
      *
      * ZIEL:
-     *   Controller-Schicht zwischen EditItem (UI) und SQLrepo (Persistenz).
+     *   Controller-Schicht zwischen TaskManagerView (UI) und SQLrepo (Persistenz).
      *   Stellt alle Operationen bereit, die für das Erstellen, Editieren und
      *   Anzeigen von TrackedItems benötigt werden.
      *
@@ -32,7 +32,7 @@ public class EditorManager {
      * DATENFLUSS
      * ──────────────────────────────────────────────────────────────────────────────
      *
-     *   EditItem (View-Builder)
+     *   TaskManagerView (View-Builder)
      *       │
      *       ├─ getAllItems()        → Baum-Ansicht rendern
      *       ├─ getAvailableParents()→ Parent-Spinner befüllen

@@ -28,7 +28,27 @@
                 android:orientation="vertical"
                 android:padding="@dimen/padding_large">
 
-                <!-- Typ-Auswahl -->
+                <!-- 1. Titel -->
+                <TextView style="@style/FormLabel" android:text="@string/label_titel" />
+                <EditText
+                    android:id="@+id/field_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/hint_item_title"
+                    android:singleLine="true"
+                    android:textSize="@dimen/sp_body" />
+
+                <!-- 2. Beschreibung -->
+                <TextView style="@style/FormLabel" android:text="@string/label_beschreibung" />
+                <EditText
+                    android:id="@+id/field_description"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/hint_description_optional"
+                    android:maxLines="3"
+                    android:textSize="@dimen/sp_body" />
+
+                <!-- 3. Typ-Auswahl -->
                 <TextView style="@style/FormLabel" android:text="@string/label_typ" />
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -47,27 +67,7 @@
                 <View android:layout_width="match_parent" android:layout_height="8dp"
                     android:importantForAccessibility="no" />
 
-                <!-- Titel -->
-                <TextView style="@style/FormLabel" android:text="@string/label_titel" />
-                <EditText
-                    android:id="@+id/field_title"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="@string/hint_item_title"
-                    android:singleLine="true"
-                    android:textSize="@dimen/sp_body" />
-
-                <!-- Beschreibung -->
-                <TextView style="@style/FormLabel" android:text="@string/label_beschreibung" />
-                <EditText
-                    android:id="@+id/field_description"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="@string/hint_description_optional"
-                    android:maxLines="3"
-                    android:textSize="@dimen/sp_body" />
-
-                <!-- Icon (nur GOAL) -->
+                <!-- 4. Icon (nur GOAL) -->
                 <LinearLayout
                     android:id="@+id/row_goal_icon"
                     android:layout_width="match_parent"
@@ -84,7 +84,7 @@
                         android:textSize="@dimen/sp_heading" />
                 </LinearLayout>
 
-                <!-- Farbe (nur GOAL) -->
+                <!-- 4. Farbe (nur GOAL) -->
                 <LinearLayout
                     android:id="@+id/row_goal_color"
                     android:layout_width="match_parent"
@@ -100,201 +100,59 @@
                         android:gravity="center_vertical"
                         android:paddingTop="4dp"
                         android:paddingBottom="4dp">
-                        <!-- Farb-Buttons werden programmatisch erzeugt -->
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- Min Dauer -->
+                <!-- 5. Planungsart (SchedulingType) -->
                 <LinearLayout
-                    android:id="@+id/row_min_duration"
+                    android:id="@+id/row_scheduling_type"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="@string/label_min_dauer" />
-                    <LinearLayout
+                    <TextView style="@style/FormLabel" android:text="@string/label_planungsart" />
+                    <Spinner
+                        android:id="@+id/spinner_scheduling_type"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-                        <EditText
-                            android:id="@+id/field_min_duration"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:inputType="number"
-                            android:hint="Wert"
-                            android:singleLine="true"
-                            android:textSize="@dimen/sp_body" />
-                        <Button android:id="@+id/btn_min_unit_minutes" style="@style/GroupButton"
-                            android:text="MIN" android:textSize="10sp"
-                            android:contentDescription="@string/cd_unit_minutes" />
-                        <Button android:id="@+id/btn_min_unit_progress" style="@style/GroupButton"
-                            android:text="EINH" android:textSize="10sp"
-                            android:contentDescription="@string/cd_unit_progress" />
-                    </LinearLayout>
+                        android:contentDescription="@string/cd_spinner_scheduling_type" />
                 </LinearLayout>
 
-                <!-- Max Dauer -->
+                <!-- 6. Prioritaet -->
                 <LinearLayout
-                    android:id="@+id/row_duration"
+                    android:id="@+id/row_priority"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="@string/label_max_dauer" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_prioritaet" />
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal">
-                        <EditText
-                            android:id="@+id/field_duration"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:inputType="number"
-                            android:hint="Wert"
-                            android:singleLine="true"
-                            android:textSize="@dimen/sp_body" />
-                        <Button android:id="@+id/btn_max_unit_minutes" style="@style/GroupButton"
-                            android:text="MIN" android:textSize="10sp"
-                            android:contentDescription="@string/cd_unit_minutes" />
-                        <Button android:id="@+id/btn_max_unit_progress" style="@style/GroupButton"
-                            android:text="EINH" android:textSize="10sp"
-                            android:contentDescription="@string/cd_unit_progress" />
+                        <Button android:id="@+id/btn_prio_low" style="@style/GroupButton"
+                            android:text="L" android:textSize="@dimen/sp_small"
+                            android:contentDescription="@string/cd_prio_low" />
+                        <Button android:id="@+id/btn_prio_moderate" style="@style/GroupButton"
+                            android:text="M" android:textSize="@dimen/sp_small"
+                            android:contentDescription="@string/cd_prio_moderate" />
+                        <Button android:id="@+id/btn_prio_high" style="@style/GroupButton"
+                            android:text="H" android:textSize="@dimen/sp_small"
+                            android:contentDescription="@string/cd_prio_high" />
+                        <Button android:id="@+id/btn_prio_critical" style="@style/GroupButton"
+                            android:text="C" android:textSize="@dimen/sp_small"
+                            android:contentDescription="@string/cd_prio_critical" />
                     </LinearLayout>
-                </LinearLayout>
-
-                <!-- Prioritaet -->
-                <TextView style="@style/FormLabel" android:text="@string/label_prioritaet" />
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-                    <Button android:id="@+id/btn_prio_low" style="@style/GroupButton"
-                        android:text="L" android:textSize="@dimen/sp_small"
-                        android:contentDescription="@string/cd_prio_low" />
-                    <Button android:id="@+id/btn_prio_moderate" style="@style/GroupButton"
-                        android:text="M" android:textSize="@dimen/sp_small"
-                        android:contentDescription="@string/cd_prio_moderate" />
-                    <Button android:id="@+id/btn_prio_high" style="@style/GroupButton"
-                        android:text="H" android:textSize="@dimen/sp_small"
-                        android:contentDescription="@string/cd_prio_high" />
-                    <Button android:id="@+id/btn_prio_critical" style="@style/GroupButton"
-                        android:text="C" android:textSize="@dimen/sp_small"
-                        android:contentDescription="@string/cd_prio_critical" />
                 </LinearLayout>
                 <View android:layout_width="match_parent" android:layout_height="8dp"
                     android:importantForAccessibility="no" />
 
-                <!-- Parent -->
-                <LinearLayout
-                    android:id="@+id/row_parent"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="@string/label_parent" />
-                    <Spinner
-                        android:id="@+id/spinner_parent"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:contentDescription="@string/cd_spinner_parent" />
-                </LinearLayout>
-
-                <!-- Vorgänger (nur TASK) -->
-                <LinearLayout
-                    android:id="@+id/row_predecessor"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="@string/label_nach_task" />
-                    <Spinner
-                        android:id="@+id/spinner_predecessor"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:contentDescription="@string/cd_spinner_predecessor" />
-                </LinearLayout>
-
-                <!-- Wartezeit nach Vorgänger (nur wenn Vorgänger gewählt) -->
-                <LinearLayout
-                    android:id="@+id/row_predecessor_delay"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="@string/label_wartezeit_minuten" />
-                    <EditText
-                        android:id="@+id/field_predecessor_delay"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number"
-                        android:hint="@string/hint_delay_zero"
-                        android:singleLine="true"
-                        android:textSize="@dimen/sp_body" />
-                </LinearLayout>
-
-                <!-- Bevorzugte Zeiten (TASK und GOAL) -->
-                <LinearLayout
-                    android:id="@+id/section_pref_schedule"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="@string/label_bevorzugte_zeiten" />
-                    <LinearLayout
-                        android:id="@+id/container_pref_slots"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical" />
-                    <TextView
-                        android:id="@+id/btn_add_pref_slot"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/btn_add_pref_slot"
-                        android:textColor="@color/accent"
-                        android:padding="8dp"
-                        android:textSize="@dimen/sp_body" />
-                </LinearLayout>
-
-                <!-- Cooldown -->
-                <LinearLayout
-                    android:id="@+id/row_cooldown"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="@string/label_cooldown_tage" />
-                    <EditText
-                        android:id="@+id/field_cooldown"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number"
-                        android:hint="@string/hint_cooldown_days"
-                        android:singleLine="true"
-                        android:textSize="@dimen/sp_body" />
-                </LinearLayout>
-
-                <!-- Deadline -->
-                <LinearLayout
-                    android:id="@+id/row_deadline"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="@string/label_deadline" />
-                    <EditText
-                        android:id="@+id/field_deadline"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/hint_datum"
-                        android:focusable="false"
-                        android:clickable="true"
-                        android:textSize="@dimen/sp_body" />
-                </LinearLayout>
-
-                <!-- Fester Termin - Datum (nur TASK + NONE) -->
+                <!-- 7. Fester Termin - Datum (nur Termin) -->
                 <LinearLayout
                     android:id="@+id/row_fixed_date"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:visibility="gone">
                     <TextView style="@style/FormLabel" android:text="@string/label_fester_termin_datum" />
                     <EditText
                         android:id="@+id/field_fixed_date"
@@ -306,12 +164,13 @@
                         android:textSize="@dimen/sp_body" />
                 </LinearLayout>
 
-                <!-- Fester Termin - Uhrzeit (nur TASK + NONE) -->
+                <!-- 7. Fester Termin - Uhrzeit (nur Termin) -->
                 <LinearLayout
                     android:id="@+id/row_fixed_time"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:visibility="gone">
                     <TextView style="@style/FormLabel" android:text="@string/label_fester_termin_uhrzeit" />
                     <EditText
                         android:id="@+id/field_fixed_time"
@@ -323,143 +182,39 @@
                         android:textSize="@dimen/sp_body" />
                 </LinearLayout>
 
-                <!-- Budget-Anforderung (nur TASK) -->
+                <!-- 8. Deadline (nur Aufgabe) -->
                 <LinearLayout
-                    android:id="@+id/row_budget"
+                    android:id="@+id/row_deadline"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="@string/label_budget_eur" />
+                    <TextView style="@style/FormLabel" android:text="@string/label_deadline" />
                     <EditText
-                        android:id="@+id/field_budget_amount"
+                        android:id="@+id/field_deadline"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="numberDecimal"
-                        android:hint="0.00"
-                        android:singleLine="true"
+                        android:hint="@string/hint_datum"
+                        android:focusable="false"
+                        android:clickable="true"
                         android:textSize="@dimen/sp_body" />
                 </LinearLayout>
 
-                <!-- Budget-Konto (nur TASK) -->
-                <LinearLayout
-                    android:id="@+id/row_budget_account"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="@string/label_konto" />
-                    <Spinner
-                        android:id="@+id/spinner_budget_account"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:contentDescription="@string/cd_spinner_budget_account" />
-                </LinearLayout>
-
-                <!-- Budget-Kategorie (nur TASK) -->
-                <LinearLayout
-                    android:id="@+id/row_budget_category"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-                    <TextView style="@style/FormLabel" android:text="@string/label_kategorie" />
-                    <Spinner
-                        android:id="@+id/spinner_budget_category"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:contentDescription="@string/cd_spinner_budget_category" />
-                </LinearLayout>
-
-                <!-- Fortschritt -->
-                <LinearLayout
-                    android:id="@+id/row_progress"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-                    <TextView style="@style/FormLabel" android:text="@string/label_fortschritt" />
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-                        <EditText
-                            android:id="@+id/field_progress_current"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:hint="@string/hint_progress_current"
-                            android:inputType="number"
-                            android:singleLine="true"
-                            android:textSize="@dimen/sp_body" />
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="center_vertical"
-                            android:paddingStart="4dp"
-                            android:paddingEnd="4dp"
-                            android:text="/"
-                            android:textSize="@dimen/sp_body" />
-                        <EditText
-                            android:id="@+id/field_progress_target"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:hint="@string/hint_progress_target"
-                            android:inputType="number"
-                            android:singleLine="true"
-                            android:textSize="@dimen/sp_body" />
-                    </LinearLayout>
-                    <EditText
-                        android:id="@+id/field_progress_unit"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/hint_progress_unit"
-                        android:singleLine="true"
-                        android:textSize="@dimen/sp_body" />
-                </LinearLayout>
-
-                <!-- Progress pro Periode -->
-                <LinearLayout
-                    android:id="@+id/row_progress_per_rep"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:visibility="gone"
-                    android:paddingVertical="8dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/label_progress_per_rep"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="@dimen/sp_body" />
-
-                    <Button
-                        android:id="@+id/btn_progress_per_rep"
-                        style="@style/GroupButton"
-                        android:layout_width="60dp"
-                        android:text="@string/btn_toggle_off"
-                        android:contentDescription="@string/cd_toggle_progress_per_rep" />
-                </LinearLayout>
-
-                <!-- Wiederholung-Sektion -->
+                <!-- 9. Wiederholung-Sektion (nur Angewohnheit) -->
                 <LinearLayout
                     android:id="@+id/section_repetition"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
                     <TextView style="@style/FormLabel" android:text="@string/label_wiederholung" />
 
-                    <!-- RepType Buttons -->
+                    <!-- RepType Buttons (kein NONE) -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal">
-                        <Button android:id="@+id/btn_rep_none" style="@style/GroupButton"
-                            android:text="KEINE" android:textSize="10sp"
-                            android:contentDescription="@string/cd_rep_none" />
                         <Button android:id="@+id/btn_rep_interval" style="@style/GroupButton"
                             android:text="INTERVAL" android:textSize="10sp"
                             android:contentDescription="@string/cd_rep_interval" />
@@ -471,7 +226,7 @@
                             android:contentDescription="@string/cd_rep_day_of" />
                     </LinearLayout>
 
-                    <!-- Detail-Felder (ausgeblendet bei KEINE) -->
+                    <!-- Detail-Felder -->
                     <LinearLayout
                         android:id="@+id/section_rep_details"
                         android:layout_width="match_parent"
@@ -519,11 +274,143 @@
                                 android:contentDescription="@string/cd_spinner_weekday" />
                         </LinearLayout>
                     </LinearLayout>
+
+                    <!-- Erst erledigen vor Reset (innerhalb Repetition-Sektion) -->
+                    <LinearLayout
+                        android:id="@+id/row_complete_first"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:paddingVertical="8dp">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/label_complete_first"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="@dimen/sp_body" />
+                        <Button
+                            android:id="@+id/btn_complete_first"
+                            style="@style/GroupButton"
+                            android:layout_width="60dp"
+                            android:text="@string/btn_toggle_off"
+                            android:contentDescription="@string/cd_toggle_complete_first" />
+                    </LinearLayout>
+
+                    <!-- Bevorzugte Zeiten (innerhalb Repetition-Sektion) -->
+                    <LinearLayout
+                        android:id="@+id/section_pref_schedule"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <TextView style="@style/FormLabel" android:text="@string/label_bevorzugte_zeiten" />
+                        <LinearLayout
+                            android:id="@+id/container_pref_slots"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+                        <TextView
+                            android:id="@+id/btn_add_pref_slot"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/btn_add_pref_slot"
+                            android:textColor="@color/accent"
+                            android:padding="8dp"
+                            android:textSize="@dimen/sp_body" />
+                    </LinearLayout>
                 </LinearLayout>
 
-                <!-- Erst erledigen vor Reset (nur TASK) -->
+                <!-- 10. Cooldown -->
                 <LinearLayout
-                    android:id="@+id/row_complete_first"
+                    android:id="@+id/row_cooldown"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="@string/label_cooldown_tage" />
+                    <EditText
+                        android:id="@+id/field_cooldown"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:hint="@string/hint_cooldown_days"
+                        android:singleLine="true"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- 11. Fortschritt-Toggle -->
+                <LinearLayout
+                    android:id="@+id/row_completion_toggle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="8dp"
+                    android:visibility="gone">
+                    <CheckBox
+                        android:id="@+id/cb_completion"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/cd_completion_toggle" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:text="@string/label_fortschritt_tracken"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- 11. Fortschritt (hinter Checkbox versteckt) -->
+                <LinearLayout
+                    android:id="@+id/row_progress"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="@string/label_fortschritt" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <EditText
+                            android:id="@+id/field_progress_current"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="@string/hint_progress_current"
+                            android:inputType="number"
+                            android:singleLine="true"
+                            android:textSize="@dimen/sp_body" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_vertical"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:text="/"
+                            android:textSize="@dimen/sp_body" />
+                        <EditText
+                            android:id="@+id/field_progress_target"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="@string/hint_progress_target"
+                            android:inputType="number"
+                            android:singleLine="true"
+                            android:textSize="@dimen/sp_body" />
+                    </LinearLayout>
+                    <EditText
+                        android:id="@+id/field_progress_unit"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/hint_progress_unit"
+                        android:singleLine="true"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- 11. Progress pro Periode (hinter Checkbox versteckt) -->
+                <LinearLayout
+                    android:id="@+id/row_progress_per_rep"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
@@ -533,15 +420,193 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="@string/label_complete_first"
+                        android:text="@string/label_progress_per_rep"
                         android:textColor="@color/text_secondary"
                         android:textSize="@dimen/sp_body" />
                     <Button
-                        android:id="@+id/btn_complete_first"
+                        android:id="@+id/btn_progress_per_rep"
                         style="@style/GroupButton"
                         android:layout_width="60dp"
                         android:text="@string/btn_toggle_off"
-                        android:contentDescription="@string/cd_toggle_complete_first" />
+                        android:contentDescription="@string/cd_toggle_progress_per_rep" />
+                </LinearLayout>
+
+                <!-- 12. Min Dauer -->
+                <LinearLayout
+                    android:id="@+id/row_min_duration"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="@string/label_min_dauer" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <EditText
+                            android:id="@+id/field_min_duration"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:inputType="number"
+                            android:hint="Wert"
+                            android:singleLine="true"
+                            android:textSize="@dimen/sp_body" />
+                        <Button android:id="@+id/btn_min_unit_minutes" style="@style/GroupButton"
+                            android:text="MIN" android:textSize="10sp"
+                            android:contentDescription="@string/cd_unit_minutes" />
+                        <Button android:id="@+id/btn_min_unit_progress" style="@style/GroupButton"
+                            android:text="EINH" android:textSize="10sp"
+                            android:contentDescription="@string/cd_unit_progress" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- 12. Max Dauer -->
+                <LinearLayout
+                    android:id="@+id/row_duration"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="@string/label_max_dauer" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <EditText
+                            android:id="@+id/field_duration"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:inputType="number"
+                            android:hint="Wert"
+                            android:singleLine="true"
+                            android:textSize="@dimen/sp_body" />
+                        <Button android:id="@+id/btn_max_unit_minutes" style="@style/GroupButton"
+                            android:text="MIN" android:textSize="10sp"
+                            android:contentDescription="@string/cd_unit_minutes" />
+                        <Button android:id="@+id/btn_max_unit_progress" style="@style/GroupButton"
+                            android:text="EINH" android:textSize="10sp"
+                            android:contentDescription="@string/cd_unit_progress" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- 13. Budget-Toggle (nur TASK) -->
+                <LinearLayout
+                    android:id="@+id/row_budget_toggle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="8dp"
+                    android:visibility="gone">
+                    <CheckBox
+                        android:id="@+id/cb_budget"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/cd_budget_toggle" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:text="@string/label_budget_anforderung"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- 13. Budget-Anforderung (hinter Checkbox versteckt) -->
+                <LinearLayout
+                    android:id="@+id/row_budget"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="@string/label_budget_eur" />
+                    <EditText
+                        android:id="@+id/field_budget_amount"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal"
+                        android:hint="0.00"
+                        android:singleLine="true"
+                        android:textSize="@dimen/sp_body" />
+                </LinearLayout>
+
+                <!-- 13. Budget-Konto (hinter Checkbox versteckt) -->
+                <LinearLayout
+                    android:id="@+id/row_budget_account"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="@string/label_konto" />
+                    <Spinner
+                        android:id="@+id/spinner_budget_account"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/cd_spinner_budget_account" />
+                </LinearLayout>
+
+                <!-- 13. Budget-Kategorie (hinter Checkbox versteckt) -->
+                <LinearLayout
+                    android:id="@+id/row_budget_category"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="@string/label_kategorie" />
+                    <Spinner
+                        android:id="@+id/spinner_budget_category"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/cd_spinner_budget_category" />
+                </LinearLayout>
+
+                <!-- 14. Parent -->
+                <LinearLayout
+                    android:id="@+id/row_parent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="@string/label_parent" />
+                    <Spinner
+                        android:id="@+id/spinner_parent"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/cd_spinner_parent" />
+                </LinearLayout>
+
+                <!-- 15. Vorgaenger (nur TASK) -->
+                <LinearLayout
+                    android:id="@+id/row_predecessor"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="@string/label_nach_task" />
+                    <Spinner
+                        android:id="@+id/spinner_predecessor"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/cd_spinner_predecessor" />
+                </LinearLayout>
+
+                <!-- 15. Wartezeit nach Vorgaenger -->
+                <LinearLayout
+                    android:id="@+id/row_predecessor_delay"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+                    <TextView style="@style/FormLabel" android:text="@string/label_wartezeit_minuten" />
+                    <EditText
+                        android:id="@+id/field_predecessor_delay"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:hint="@string/hint_delay_zero"
+                        android:singleLine="true"
+                        android:textSize="@dimen/sp_body" />
                 </LinearLayout>
 
                 <View android:layout_width="match_parent" android:layout_height="12dp"

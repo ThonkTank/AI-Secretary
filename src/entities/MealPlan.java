@@ -18,6 +18,9 @@ public class MealPlan {
     public int actualServings;               // Tatsächlich gekocht (kann abweichen)
     public LocalDateTime completedAt;
 
+    // Verknüpfung mit recurring Meal-TrackedItem
+    public Long itemId;                      // FK zu items.id (recurring Meal-Task)
+
     // Für schnelle Anzeige (denormalisiert)
     public String recipeTitle;
     public int estimatedCalories;
@@ -34,6 +37,7 @@ public class MealPlan {
         }
 
         public Builder servings(int v) { mp.plannedServings = v; return this; }
+        public Builder itemId(Long v) { mp.itemId = v; return this; }
         public Builder recipeTitle(String v) { mp.recipeTitle = v; return this; }
         public Builder estimatedCalories(int v) { mp.estimatedCalories = v; return this; }
 

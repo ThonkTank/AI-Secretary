@@ -19,7 +19,6 @@ import entities.CookingPreferences;
 import entities.HouseholdMember;
 import entities.Ingredient;
 import entities.MealPlan;
-import entities.MealSchedule;
 import entities.MealType;
 import entities.PantryItem;
 import entities.Recipe;
@@ -406,8 +405,8 @@ public class GenerateMealPlan {
             }
         }
 
-        // === SCHRITT 5: Tasks erstellen ===
-        createMealTasks(allMeals);
+        // === SCHRITT 5: MealPlans mit recurring Meal-Items verknuepfen ===
+        linkMealPlansToItems(allMeals);
 
         // WeeklyFoodTarget speichern mit aktualisierter Planned-Info
         target.weekKey = getWeekKey(weekStart);
@@ -474,46 +473,51 @@ public class GenerateMealPlan {
         return servings;
     }
 
-    // ============== TASK CREATION ==============
+    // ============== MEAL-PLAN LINKING ==============
 
     /**
-     * Erstellt trackedItems für alle Mahlzeiten.
-     * Nutzt das bestehende fixedAppointment-System.
+     * Verknuepft MealPlans mit den passenden recurring Meal-TrackedItems via item_id.
+     * Findet fuer jeden MealPlan das Item mit passendem mealType und PrefSlot fuer den Tag.
      */
-    private void createMealTasks(List<MealPlan> meals) {
+    private void linkMealPlansToItems(List<MealPlan> meals) {
+        // Alle recurring Meal-Items laden (einmalig)
+        List<TrackedItem> mealItems = new ArrayList<>();
+        for (TrackedItem item : repo.fetchAll(Table.ITEMS)) {
+            if (item.mealType != null && item.type == TrackedItem.ItemType.TASK
+                    && (item.isCompleted == null || !item.isCompleted)) {
+                mealItems.add(item);
+            }
+        }
+
         for (MealPlan meal : meals) {
-            List<MealSchedule> slots = getMealSchedules(meal.date.getDayOfWeek(), meal.mealType);
-            if (slots.isEmpty()) continue;
-
-            // Ersten verfuegbaren Slot nutzen
-            MealSchedule schedule = slots.get(0);
-
-            String icon = getMealIcon(meal.mealType);
-            String title = icon + " " + meal.recipeTitle;
-
-            // Task mit fixedAppointment erstellen
-            TrackedItem task = new TrackedItem.Builder(
-                    TrackedItem.ItemType.TASK,
-                    title,
-                    TrackedItem.Priority.CRITICAL)
-                .noRepetition()
-                .fixedAppointment(meal.date.toString(),
-                                  schedule.scheduledTime.toString())
-                .maxMinutes(schedule.durationMinutes)
-                .mealPlan(meal.id)
-                .build();
-
-            repo.write(task);
+            TrackedItem match = findMealItemForSlot(mealItems, meal.mealType, meal.date);
+            if (match != null) {
+                meal.itemId = match.id;
+                repo.write(meal);
+            }
         }
     }
 
-    private String getMealIcon(MealType type) {
-        return switch(type) {
-            case BREAKFAST -> "🍳";
-            case LUNCH -> "🍽️";
-            case DINNER -> "🍲";
-            case SNACK -> "🍎";
-        };
+    /**
+     * Findet das passende recurring Meal-Item fuer einen MealPlan.
+     * Matching: mealType stimmt ueberein UND Item hat PrefSlot fuer den Wochentag.
+     * Bei mehreren Matches: erstes nicht-vergebenes Item bevorzugen.
+     */
+    private TrackedItem findMealItemForSlot(List<TrackedItem> mealItems, MealType type, LocalDate date) {
+        int dayKey = date.getDayOfWeek().getValue();
+        TrackedItem bestMatch = null;
+
+        for (TrackedItem item : mealItems) {
+            if (item.mealType != type) continue;
+            TrackedItem.PrefSlot slot = item.getPrefSlotForKey(dayKey);
+            if (slot != null) {
+                bestMatch = item;
+                break;  // Erster Match reicht
+            }
+            // Fallback: Item ohne PrefSlot fuer diesen Tag (aber passender mealType)
+            if (bestMatch == null) bestMatch = item;
+        }
+        return bestMatch;
     }
 
     // ============== HELPER METHODS ==============
@@ -544,18 +548,6 @@ public class GenerateMealPlan {
 
     private List<PantryItem> loadPantry() {
         return repo.fetchAll(Table.PANTRY_ITEMS);
-    }
-
-    private List<MealSchedule> getMealSchedules(DayOfWeek day, MealType mealType) {
-        List<MealSchedule> result = new ArrayList<>();
-        List<MealSchedule> all = repo.fetchAll(Table.MEAL_SCHEDULES);
-        for (MealSchedule ms : all) {
-            if (ms.dayOfWeek == day && ms.mealType == mealType) {
-                result.add(ms);
-            }
-        }
-        MealSchedule.sortByTime(result);
-        return result;
     }
 
     private Map<LocalDate, List<CalendarEvent>> loadCalendarEvents(LocalDate weekStart) {

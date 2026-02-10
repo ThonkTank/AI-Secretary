@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import data.Constants;
-import entities.MealSchedule;
 import repository.parser.ItemParser;
 import repository.parser.TodoParser;
 import repository.parser.AccountParser;
@@ -26,7 +25,6 @@ import repository.parser.RecipeRatingParser;
 import repository.parser.IngredientParser;
 import repository.parser.RecipeParser;
 import repository.parser.MealPlanParser;
-import repository.parser.MealScheduleParser;
 import repository.parser.ShoppingListParser;
 import repository.parser.PantryParser;
 import repository.parser.ConsumptionParser;
@@ -147,7 +145,8 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             + "budget_requirement_cents INTEGER DEFAULT 0,"
             + "budget_account_id INTEGER,"
             + "budget_category_id INTEGER,"
-            + "meal_plan_id INTEGER"
+            + "meal_plan_id INTEGER,"
+            + "meal_type TEXT"
             + ")"
         );
 
@@ -413,19 +412,13 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             + "completed_at TEXT,"
             + "recipe_title TEXT,"
             + "estimated_calories INTEGER DEFAULT 0,"
-            + "FOREIGN KEY (recipe_id) REFERENCES recipes(id)"
+            + "item_id INTEGER,"
+            + "FOREIGN KEY (recipe_id) REFERENCES recipes(id),"
+            + "FOREIGN KEY (item_id) REFERENCES items(id)"
             + ")"
         );
-
-        db.execSQL(
-            "CREATE TABLE IF NOT EXISTS meal_schedules ("
-            + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-            + "day_of_week TEXT NOT NULL,"
-            + "meal_type TEXT NOT NULL,"
-            + "scheduled_time TEXT,"
-            + "duration_minutes INTEGER DEFAULT " + MealSchedule.DEFAULT_DURATION_MINUTES
-            + ")"
-        );
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_meal_plans_item " +
+            "ON meal_plans(item_id) WHERE item_id IS NOT NULL");
 
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS shopping_list_items ("
@@ -662,7 +655,7 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             case "ingredients": return IngredientParser.convertValue(column, raw);
             case "recipes": return RecipeParser.convertValue(column, raw);
             case "meal_plans": return MealPlanParser.convertValue(column, raw);
-            case "meal_schedules": return MealScheduleParser.convertValue(column, raw);
+
             case "shopping_list_items": return ShoppingListParser.convertValue(column, raw);
             case "pantry_items": return PantryParser.convertValue(column, raw);
             case "consumption_logs": return ConsumptionParser.convertValue(column, raw);
@@ -709,7 +702,7 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
                 case "ingredients": return (T) IngredientParser.fromRow(IngredientParser.convertRow(row));
                 case "recipes": return (T) RecipeParser.fromRow(RecipeParser.convertRow(row));
                 case "meal_plans": return (T) MealPlanParser.fromRow(MealPlanParser.convertRow(row));
-                case "meal_schedules": return (T) MealScheduleParser.fromRow(MealScheduleParser.convertRow(row));
+
                 case "shopping_list_items": return (T) ShoppingListParser.fromRow(ShoppingListParser.convertRow(row));
                 case "pantry_items": return (T) PantryParser.fromRow(PantryParser.convertRow(row));
                 case "consumption_logs": return (T) ConsumptionParser.fromRow(ConsumptionParser.convertRow(row));
@@ -814,7 +807,7 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             case "ingredients": return IngredientParser.fromRow(IngredientParser.convertRow(row));
             case "recipes": return RecipeParser.fromRow(RecipeParser.convertRow(row));
             case "meal_plans": return MealPlanParser.fromRow(MealPlanParser.convertRow(row));
-            case "meal_schedules": return MealScheduleParser.fromRow(MealScheduleParser.convertRow(row));
+
             case "shopping_list_items": return ShoppingListParser.fromRow(ShoppingListParser.convertRow(row));
             case "pantry_items": return PantryParser.fromRow(PantryParser.convertRow(row));
             case "consumption_logs": return ConsumptionParser.fromRow(ConsumptionParser.convertRow(row));
@@ -880,8 +873,6 @@ public class SQLrepo extends SQLiteOpenHelper implements Repo {
             RecipeParser.toRow(db, (entities.Recipe) entity);
         } else if (entity instanceof entities.MealPlan) {
             MealPlanParser.toRow(db, (entities.MealPlan) entity);
-        } else if (entity instanceof entities.MealSchedule) {
-            MealScheduleParser.toRow(db, (entities.MealSchedule) entity);
         } else if (entity instanceof entities.ShoppingListItem) {
             ShoppingListParser.toRow(db, (entities.ShoppingListItem) entity);
         } else if (entity instanceof entities.PantryItem) {

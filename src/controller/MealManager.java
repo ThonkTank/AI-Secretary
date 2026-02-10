@@ -23,7 +23,7 @@ import entities.ConsumptionLog;
 import entities.HouseholdMember;
 import entities.Ingredient;
 import entities.MealPlan;
-import entities.MealSchedule;
+import entities.TrackedItem;
 import entities.MealType;
 import entities.PantryItem;
 import entities.Recipe;
@@ -432,36 +432,56 @@ public class MealManager {
 
     /**
      * Liefert alle Mahlzeiten-Slots, sortiert nach Tag dann Zeit.
+     * Basiert auf TrackedItems mit mealType (statt meal_schedules).
      */
     public List<ScheduleEntry> provideSchedule() {
         List<ScheduleEntry> result = new ArrayList<>();
-        List<MealSchedule> schedules = repo.fetchAll(Table.MEAL_SCHEDULES);
 
-        MealSchedule.sortByTime(schedules);
+        for (TrackedItem item : repo.fetchAll(Table.ITEMS)) {
+            if (item.mealType == null) continue;
+            if (item.prefSlots == null || item.prefSlots.isEmpty()) continue;
 
-        for (MealSchedule ms : schedules) {
-            String dayLabel = switch (ms.dayOfWeek) {
-                case MONDAY -> "Mo";
-                case TUESDAY -> "Di";
-                case WEDNESDAY -> "Mi";
-                case THURSDAY -> "Do";
-                case FRIDAY -> "Fr";
-                case SATURDAY -> "Sa";
-                case SUNDAY -> "So";
-            };
+            int duration = item.maxDurationValue > 0 ? item.maxDurationValue : 30;
 
-            result.add(new ScheduleEntry(
-                ms.id,
-                ms.dayOfWeek,
-                dayLabel,
-                ms.mealType,
-                ms.mealType.label,
-                ms.mealType.icon,
-                ms.scheduledTime,
-                ms.durationMinutes,
-                ms.getFormattedTimeRange()
-            ));
+            for (TrackedItem.PrefSlot slot : item.prefSlots) {
+                DayOfWeek day = DayOfWeek.of(slot.dayKey());
+                LocalTime time = slot.time();
+                LocalTime end = time.plusMinutes(duration);
+
+                String dayLabel = switch (day) {
+                    case MONDAY -> "Mo";
+                    case TUESDAY -> "Di";
+                    case WEDNESDAY -> "Mi";
+                    case THURSDAY -> "Do";
+                    case FRIDAY -> "Fr";
+                    case SATURDAY -> "Sa";
+                    case SUNDAY -> "So";
+                };
+
+                String timeRange = String.format("%02d:%02d - %02d:%02d",
+                    time.getHour(), time.getMinute(), end.getHour(), end.getMinute());
+
+                result.add(new ScheduleEntry(
+                    item.id,
+                    day,
+                    dayLabel,
+                    item.mealType,
+                    item.mealType.label,
+                    item.mealType.icon,
+                    time,
+                    duration,
+                    timeRange
+                ));
+            }
         }
+
+        // Sortieren: Tag (Mo-So), dann Zeit
+        result.sort((a, b) -> {
+            int dayComp = a.day().compareTo(b.day());
+            if (dayComp != 0) return dayComp;
+            return a.time().compareTo(b.time());
+        });
+
         return result;
     }
 
@@ -470,8 +490,14 @@ public class MealManager {
      * @return LocalTime oder null wenn kein Slot existiert
      */
     public LocalTime getScheduledTime(DayOfWeek day, MealType type) {
-        List<MealSchedule> slots = getSchedules(day, type);
-        return slots.isEmpty() ? null : slots.get(0).scheduledTime;
+        int dayKey = day.getValue();
+        for (TrackedItem item : repo.fetchAll(Table.ITEMS)) {
+            if (item.mealType != type) continue;
+            if (item.prefSlots == null) continue;
+            TrackedItem.PrefSlot slot = item.getPrefSlotForKey(dayKey);
+            if (slot != null) return slot.time();
+        }
+        return null;
     }
 
     /**
@@ -482,17 +508,23 @@ public class MealManager {
     }
 
     /**
-     * Liefert alle Schedule-Slots fuer einen Tag + MealType, sortiert nach Zeit.
+     * Liefert alle Meal-TrackedItems fuer einen Tag + MealType, sortiert nach PrefSlot-Zeit.
      */
-    public List<MealSchedule> getSchedules(DayOfWeek day, MealType type) {
-        List<MealSchedule> result = new ArrayList<>();
-        List<MealSchedule> all = repo.fetchAll(Table.MEAL_SCHEDULES);
-        for (MealSchedule ms : all) {
-            if (ms.dayOfWeek == day && ms.mealType == type) {
-                result.add(ms);
+    public List<TrackedItem> getMealItems(DayOfWeek day, MealType type) {
+        int dayKey = day.getValue();
+        List<TrackedItem> result = new ArrayList<>();
+        for (TrackedItem item : repo.fetchAll(Table.ITEMS)) {
+            if (item.mealType != type) continue;
+            if (item.prefSlots == null) continue;
+            if (item.getPrefSlotForKey(dayKey) != null) {
+                result.add(item);
             }
         }
-        MealSchedule.sortByTime(result);
+        result.sort((a, b) -> {
+            LocalTime ta = a.getPrefSlotForKey(dayKey).time();
+            LocalTime tb = b.getPrefSlotForKey(dayKey).time();
+            return ta.compareTo(tb);
+        });
         return result;
     }
 
@@ -682,39 +714,82 @@ public class MealManager {
     }
 
     /**
-     * Erstellt einen neuen Schedule-Slot.
+     * Erstellt einen neuen Schedule-Slot als recurring TrackedItem.
      */
     public Long createSchedule(DayOfWeek dayOfWeek, MealType mealType,
                                     LocalTime time, int durationMinutes) {
-        MealSchedule ms = new MealSchedule.Builder(dayOfWeek, mealType)
-            .time(time)
-            .duration(durationMinutes)
+        TrackedItem item = new TrackedItem.Builder(
+                TrackedItem.ItemType.TASK,
+                mealType.icon + " " + mealType.label,
+                TrackedItem.Priority.CRITICAL)
+            .mealType(mealType)
+            .maxMinutes(durationMinutes)
+            .repetition(TrackedItem.RepetitionType.REPS_PER_TIME, 1, TrackedItem.RepUnits.WEEK)
+            .prefSlots(List.of(TrackedItem.PrefSlot.weekly(dayOfWeek, time)))
             .build();
-        repo.write(ms);
+        repo.write(item);
         notifyListener();
-        return ms.id;
+        return item.id;
     }
 
     /**
-     * Aktualisiert einen bestehenden Schedule-Slot.
+     * Aktualisiert einen bestehenden Schedule-Slot (TrackedItem + PrefSlot fuer den Tag).
      */
-    public void updateSchedule(Long id, MealType mealType,
+    public void updateSchedule(Long itemId, DayOfWeek day, MealType mealType,
                                     LocalTime time, int durationMinutes) {
-        MealSchedule ms = repo.fetch(Table.MEAL_SCHEDULES, id);
-        if (ms != null) {
-            ms.mealType = mealType;
-            ms.scheduledTime = time;
-            ms.durationMinutes = durationMinutes;
-            repo.write(ms);
-            notifyListener();
+        TrackedItem item = repo.fetch(Table.ITEMS, itemId);
+        if (item == null) return;
+
+        item.mealType = mealType;
+        item.title = mealType.icon + " " + mealType.label;
+        item.maxDurationValue = durationMinutes;
+        item.maxDurationUnit = TrackedItem.DurationUnit.MINUTES;
+
+        // PrefSlot fuer den Tag aktualisieren
+        int dayKey = day.getValue();
+        List<TrackedItem.PrefSlot> newSlots = new ArrayList<>();
+        boolean found = false;
+        if (item.prefSlots != null) {
+            for (TrackedItem.PrefSlot slot : item.prefSlots) {
+                if (slot.dayKey() == dayKey) {
+                    newSlots.add(TrackedItem.PrefSlot.weekly(day, time));
+                    found = true;
+                } else {
+                    newSlots.add(slot);
+                }
+            }
         }
+        if (!found) {
+            newSlots.add(TrackedItem.PrefSlot.weekly(day, time));
+        }
+        item.prefSlots = newSlots;
+
+        repo.write(item);
+        notifyListener();
     }
 
     /**
-     * Loescht einen Schedule-Slot.
+     * Loescht einen Schedule-Slot. Bei Items mit mehreren PrefSlots wird nur der Slot
+     * fuer den angegebenen Tag entfernt. Wenn kein Slot mehr uebrig: Item loeschen.
      */
-    public void deleteSchedule(Long id) {
-        repo.delete(Table.MEAL_SCHEDULES, id);
+    public void deleteSchedule(Long itemId, DayOfWeek day) {
+        TrackedItem item = repo.fetch(Table.ITEMS, itemId);
+        if (item == null) return;
+
+        if (item.prefSlots != null && item.prefSlots.size() > 1) {
+            // Nur den Slot fuer diesen Tag entfernen
+            int dayKey = day.getValue();
+            item.prefSlots = item.prefSlots.stream()
+                .filter(s -> s.dayKey() != dayKey)
+                .toList();
+            // repValue anpassen (Anzahl Slots = Reps pro Woche)
+            if (item.repetition != null && item.repetition.type == TrackedItem.RepetitionType.REPS_PER_TIME) {
+                item.repetition.value = item.prefSlots.size();
+            }
+            repo.write(item);
+        } else {
+            repo.delete(Table.ITEMS, itemId);
+        }
         notifyListener();
     }
 
@@ -842,6 +917,20 @@ public class MealManager {
             }
         }
         return null;
+    }
+
+    /**
+     * Findet den MealPlan für ein bestimmtes Datum und TrackedItem.
+     * Verwendet item_id statt mealType für eindeutige Zuordnung (auch bei 2 Mittagessen am selben Tag).
+     */
+    public MealPlan findMealPlanForItem(LocalDate date, Long itemId) {
+        if (date == null || itemId == null) return null;
+        List<MealPlan> plans = repo.fetchAll(Table.MEAL_PLANS, Map.of(
+            "date", date.toString(),
+            "item_id", String.valueOf(itemId),
+            "is_completed", "0"
+        ));
+        return plans.isEmpty() ? null : plans.get(0);
     }
 
     // ============================================================================

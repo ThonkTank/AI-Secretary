@@ -35,7 +35,7 @@ import java.util.Locale;
 import controller.MealManager;
 import controller.MealManager.*;
 import entities.MealPlan;
-import entities.MealSchedule;
+import entities.TrackedItem;
 import entities.MealType;
 import scheduling.CalendarReader;
 import scheduling.GenerateMealPlan;
@@ -286,7 +286,7 @@ public class WeekPlanTab {
                         MealPlan mp = manager.findMealPlan(date, slot.mealType());
                         if (mp != null && mp.id != null) manager.deleteMealPlan(mp.id);
                     }
-                    manager.deleteSchedule(slot.id());
+                    manager.deleteSchedule(slot.id(), slot.day());
                     notifyChanged();
                 })
                 .setNegativeButton("Abbrechen", null)
@@ -456,10 +456,10 @@ public class WeekPlanTab {
         MealType type = MealType.values()[spinnerSlotMealType.getSelectedItemPosition()];
 
         int duration = (int) ChronoUnit.MINUTES.between(selectedStartTime, selectedEndTime);
-        if (duration <= 0) duration = MealSchedule.DEFAULT_DURATION_MINUTES; // Fallback
+        if (duration <= 0) duration = 30; // Fallback
 
         if (editingSlot != null) {
-            manager.updateSchedule(editingSlot.id(), type, selectedStartTime, duration);
+            manager.updateSchedule(editingSlot.id(), editingSlot.day(), type, selectedStartTime, duration);
         } else {
             manager.createSchedule(day, type, selectedStartTime, duration);
         }
@@ -509,7 +509,7 @@ public class WeekPlanTab {
                     MealPlan mp = manager.findMealPlan(editingSlotDate, editingSlot.mealType());
                     if (mp != null && mp.id != null) manager.deleteMealPlan(mp.id);
                 }
-                manager.deleteSchedule(editingSlot.id());
+                manager.deleteSchedule(editingSlot.id(), editingSlot.day());
                 hideMealSlotModal();
                 notifyChanged();
             })

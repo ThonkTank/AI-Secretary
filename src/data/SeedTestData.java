@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -20,7 +21,6 @@ import entities.CookingPreferences;
 import entities.Ingredient;
 import entities.MealType;
 import entities.Recipe;
-import entities.MealSchedule;
 import repository.SQLrepo;
 
 /**
@@ -561,20 +561,42 @@ public class SeedTestData {
             .quickPrepMax(15).build();
         repo.write(prefs);
 
-        // === MAHLZEITEN-KALENDER ===
-        // Werktags (Mo-Fr): Frühstück 06:30 (30min), Mittag 12:00 (45min), Abend 18:00 (30min)
-        for (DayOfWeek day : List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
-                                     DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)) {
-            repo.write(new MealSchedule.Builder(day, MealType.BREAKFAST).time(6, 30).duration(30).build());
-            repo.write(new MealSchedule.Builder(day, MealType.LUNCH).time(12, 0).duration(45).build());
-            repo.write(new MealSchedule.Builder(day, MealType.DINNER).time(18, 0).duration(30).build());
-        }
-        // Wochenende (Sa-So): später aufstehen
-        for (DayOfWeek day : List.of(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)) {
-            repo.write(new MealSchedule.Builder(day, MealType.BREAKFAST).time(9, 0).duration(30).build());
-            repo.write(new MealSchedule.Builder(day, MealType.LUNCH).time(12, 30).duration(45).build());
-            repo.write(new MealSchedule.Builder(day, MealType.DINNER).time(18, 30).duration(30).build());
-        }
+        // === MAHLZEITEN-KALENDER (als recurring TrackedItems) ===
+        // Frühstück: Mo-Fr 06:30, Sa-So 08:00 (30min)
+        List<TrackedItem.PrefSlot> breakfastSlots = new ArrayList<>();
+        for (DayOfWeek d : List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+                                    DayOfWeek.THURSDAY, DayOfWeek.FRIDAY))
+            breakfastSlots.add(TrackedItem.PrefSlot.weekly(d, LocalTime.of(6, 30)));
+        breakfastSlots.add(TrackedItem.PrefSlot.weekly(DayOfWeek.SATURDAY, LocalTime.of(9, 0)));
+        breakfastSlots.add(TrackedItem.PrefSlot.weekly(DayOfWeek.SUNDAY, LocalTime.of(9, 0)));
+        repo.write(new TrackedItem.Builder(TrackedItem.ItemType.TASK, "🍳 Frühstück", TrackedItem.Priority.CRITICAL)
+            .mealType(MealType.BREAKFAST).maxMinutes(30)
+            .repetition(TrackedItem.RepetitionType.REPS_PER_TIME, 7, TrackedItem.RepUnits.WEEK)
+            .prefSlots(breakfastSlots).build());
+
+        // Mittagessen: Mo-Fr 12:00, Sa-So 12:30 (45min)
+        List<TrackedItem.PrefSlot> lunchSlots = new ArrayList<>();
+        for (DayOfWeek d : List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+                                    DayOfWeek.THURSDAY, DayOfWeek.FRIDAY))
+            lunchSlots.add(TrackedItem.PrefSlot.weekly(d, LocalTime.of(12, 0)));
+        lunchSlots.add(TrackedItem.PrefSlot.weekly(DayOfWeek.SATURDAY, LocalTime.of(12, 30)));
+        lunchSlots.add(TrackedItem.PrefSlot.weekly(DayOfWeek.SUNDAY, LocalTime.of(12, 30)));
+        repo.write(new TrackedItem.Builder(TrackedItem.ItemType.TASK, "🍽️ Mittagessen", TrackedItem.Priority.CRITICAL)
+            .mealType(MealType.LUNCH).maxMinutes(45)
+            .repetition(TrackedItem.RepetitionType.REPS_PER_TIME, 7, TrackedItem.RepUnits.WEEK)
+            .prefSlots(lunchSlots).build());
+
+        // Abendessen: Mo-Fr 18:00, Sa-So 18:30 (30min)
+        List<TrackedItem.PrefSlot> dinnerSlots = new ArrayList<>();
+        for (DayOfWeek d : List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+                                    DayOfWeek.THURSDAY, DayOfWeek.FRIDAY))
+            dinnerSlots.add(TrackedItem.PrefSlot.weekly(d, LocalTime.of(18, 0)));
+        dinnerSlots.add(TrackedItem.PrefSlot.weekly(DayOfWeek.SATURDAY, LocalTime.of(18, 30)));
+        dinnerSlots.add(TrackedItem.PrefSlot.weekly(DayOfWeek.SUNDAY, LocalTime.of(18, 30)));
+        repo.write(new TrackedItem.Builder(TrackedItem.ItemType.TASK, "🍲 Abendessen", TrackedItem.Priority.CRITICAL)
+            .mealType(MealType.DINNER).maxMinutes(30)
+            .repetition(TrackedItem.RepetitionType.REPS_PER_TIME, 7, TrackedItem.RepUnits.WEEK)
+            .prefSlots(dinnerSlots).build());
 
         // === ZUTATEN (~200 Stück) ===
         seedIngredients(db);

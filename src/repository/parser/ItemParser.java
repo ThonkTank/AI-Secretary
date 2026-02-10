@@ -117,7 +117,8 @@ public class ItemParser {
         item.budgetCategoryId = (Long) typed.get("budget_category_id");
 
         // Meal-Task-Verknüpfung
-        item.mealPlanId = (Long) typed.get("meal_plan_id");
+        String mealTypeStr = (String) typed.get("meal_type");
+        if (mealTypeStr != null) item.mealType = ParseUtils.safeEnum(entities.MealType.class, mealTypeStr);
 
         // Unified Chaining
         item.predecessor = (Long) typed.get("predecessor");
@@ -286,7 +287,7 @@ public class ItemParser {
         if (item.budgetCategoryId != null) cv.put("budget_category_id", item.budgetCategoryId);
 
         // Meal-Task-Verknüpfung
-        if (item.mealPlanId != null) cv.put("meal_plan_id", item.mealPlanId);
+        if (item.mealType != null) cv.put("meal_type", item.mealType.name());
 
         // Unified Chaining
         if (item.predecessor != null) cv.put("predecessor", item.predecessor);

@@ -13,7 +13,7 @@ import entities.RecipeRating;
 import entities.Ingredient;
 import entities.Recipe;
 import entities.MealPlan;
-import entities.MealSchedule;
+
 import entities.ShoppingListItem;
 import entities.PantryItem;
 import entities.ConsumptionLog;
@@ -46,7 +46,7 @@ public class Table<T> {
     public static final Table<Ingredient> INGREDIENTS = new Table<>("ingredients");
     public static final Table<Recipe> RECIPES = new Table<>("recipes");
     public static final Table<MealPlan> MEAL_PLANS = new Table<>("meal_plans");
-    public static final Table<MealSchedule> MEAL_SCHEDULES = new Table<>("meal_schedules");
+
     public static final Table<ShoppingListItem> SHOPPING_LIST_ITEMS = new Table<>("shopping_list_items");
     public static final Table<PantryItem> PANTRY_ITEMS = new Table<>("pantry_items");
     public static final Table<ConsumptionLog> CONSUMPTION_LOGS = new Table<>("consumption_logs");

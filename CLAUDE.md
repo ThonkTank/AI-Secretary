@@ -182,7 +182,7 @@ Configured in `build.gradle.kts` via custom `sourceSets`. Java 17, compileSdk/ta
 **Konstanten** (`data/Constants.java`):
 ```java
 DB_NAME = "autosecretary.db"
-DB_VERSION = 33  // Per-weekday PrefTime
+DB_VERSION = 34  // Meal-Type auf Items, Item-ID auf MealPlans
 PREF_NAME = "secretary"
 PREF_DB_VERSION = "db_version"
 PREF_APP_MODE = "app_mode"
@@ -207,14 +207,14 @@ DAY_WEIGHT_BASE = 0.5                   // Basis-Anteil der Tages-Gewichtung
 ```
 src/
 ├── activities/inApp/     # MainActivity (Launcher, 3-Tab-UI: Tasks/Budget/Ernährung)
-│   ├── tasksTab/         # TaskView (Delegator, 2 Sub-Tabs), EditItem (Orchestrator) → TreeRenderer, FieldManager, ItemEditorModal, PrefScheduleEditor
+│   ├── tasksTab/         # TaskView (Delegator, 2 Sub-Tabs), WeekPlanView (Tagesplan), TaskManagerView (Verwalten, Baum + Editor-Modal) + editorModal/ (ItemEditorModal [public], FieldManager, FieldLoader, FieldSaver, PrefScheduleEditor)
 │   ├── budgetTab/        # BudgetView (Delegator, BudgetListener), TransactionModal (Create/Edit), ImportModal (Claude API), RecurringSuggestionsModal
 │   └── ernaehrungTab/    # MealPlanView (Delegator, 4 Sub-Tabs), WeekPlanTab, RecipesTab, ShoppingTab, PantryTab, FoodGroupHeader, MemberTab, MealTabListener
-├── activities/generic/   # ViewHelper, DateTimeHelper, ViewBuilder, TaskList (nutzt TaskRowRenderer)
+├── activities/generic/   # ViewHelper, DateTimeHelper, ViewBuilder
 ├── activities/widget/    # TaskWidgetProvider, TaskWidgetFactory, TaskWidgetService, WidgetRefreshApp
 ├── entities/             # TrackedItem, TodoList, CalendarEvent, Config, MealType (shared enum),
 │                         # Account, Transaction, BudgetLimit, Import, HouseholdMember, CookingPreferences,
-│                         # RecipeRating, Ingredient, Recipe, MealPlan, MealSchedule, ShoppingListItem,
+│                         # RecipeRating, Ingredient, Recipe, MealPlan, ShoppingListItem,
 │                         # PantryItem, ConsumptionLog, WeeklyFoodTarget, StorePackage
 ├── repository/           # Repo (Interface), SQLrepo, Table, MigrationManager,
 │                         # parser/ (ParseUtils + je ein {Entity}Parser.java pro Entity)
@@ -237,7 +237,7 @@ src/
 **NICHT erlaubt:** `<View>` (für Spacer/Divider stattdessen `ImageView` mit `background` verwenden), `CheckBox` (stattdessen `ImageView` mit Toggle-Icons), custom Views.
 
 **Tab-Architektur:** 3 Haupt-Tabs (Tasks, Budget, Ernährung). Jeder Tab ist ein schlanker Delegator (`ViewBuilder`-Interface) der an extrahierte Sub-Komponenten delegiert:
-- `TaskView` (`tasksTab/`) — 2 Sub-Tabs (Tagesplan/Verwalten), Constructor `(Context, TodoManager)`, erstellt EditorManager intern. Delegiert an `TaskList` + `EditItem`, exponiert `openCreateModal()` für Widget-Intent
+- `TaskView` (`tasksTab/`) — 2 Sub-Tabs (Tagesplan/Verwalten), Constructor `(Context, TodoManager)`, erstellt EditorManager intern. Delegiert an `WeekPlanView` + `TaskManagerView`, exponiert `openCreateModal()` für Widget-Intent
 - `BudgetView` (`budgetTab/`) — Budget-Übersicht, Konten, Budget-Limits, Transaktionen. Implementiert `BudgetListener`. Delegiert Modals an `TransactionModal` (Create/Edit), `ImportModal` (Kontoauszug-Import via Claude API, `FilePickerCallback`), `RecurringSuggestionsModal` (wiederkehrende Muster). Import-Erfolg triggert Recurring-Modal via Callback-Chain.
 - `MealPlanView` (`ernaehrungTab/`) — 4 Sub-Tabs (Woche/Rezepte/Einkauf/Vorrat), delegiert an `WeekPlanTab`, `RecipesTab`, `ShoppingTab`, `PantryTab`, `FoodGroupHeader`. `WeekPlanTab` delegiert Haushalt-Verwaltung an `MemberTab`. Implementiert `MealListener`. Hält `currentWeekStart` als shared State für WeekPlanTab und ShoppingTab — Navigation-Callbacks via `navigateWeek(delta)`.
 - **Sub-Tab-Pattern:** Tabs haben `render(FrameLayout)`, `initModals(FrameLayout rootContainer)`, `setListener(MealTabListener)`. Wochen-basierte Tabs (WeekPlanTab, ShoppingTab) bekommen zusätzlich `weekStart` + `onPrevWeek`/`onNextWeek` Callbacks in `render()`. Jeder Sub-Tab inflated und besitzt seine eigenen Modals (via `LayoutInflater.inflate()` + `rootContainer.addView()`). `MealTabListener` ist ein `@FunctionalInterface` in `ernaehrungTab/`.
@@ -265,7 +265,7 @@ Weitere Methoden:
 
 **GenerateMealPlan** (`scheduling/GenerateMealPlan.java`) — Automatische Wochenplan-Generierung: DGE-basierter Wochenbedarf → TDEE-Kalorienverteilung (20/35/35/10%) → Koch-Sessions aus Preferences + Kalender → Rezept-Scoring (7 Kriterien: FoodGroup, Skalierbarkeit, Variety, Aufwand, Ratings, Pantry-Expiry, Verderblichkeit) → MealPlans + Meal-Tasks erstellen → Einkaufsliste mit Single-Store-Optimierung.
 
-**Meal-Task-Erstellung:** Für jede Mahlzeit wird ein `TrackedItem` mit `fixedAppointment` (Datum + Uhrzeit aus MealSchedule) erstellt. `mealPlanId` verknüpft Task mit MealPlan für Completion-Tracking.
+**Meal-Task-Erstellung:** Für jede Mahlzeit wird ein `TrackedItem` mit `fixedAppointment` (Datum + Uhrzeit) und `mealType` erstellt. `MealPlan.itemId` verknüpft MealPlan mit dem TrackedItem für Completion-Tracking (Lookup via `MealManager.findMealPlanForItem(date, itemId)`).
 
 **Claude API Integration** (`controller/`) — Kontoauszug-Import via Anthropic Messages API. Workflow: `ApiKeyManager` (Base64-encoded in SharedPrefs, muss mit `"sk-ant-"` beginnen) → `ClaudeApiClient` (`claude-sonnet-4-20250514`, 4096 Tokens, 120s Timeout) → `ImportProcessor` (SHA256-Datei-Hash Duplikat-Check → Claude API → Transaktionen parsen + Hash-Check `date_amount_payee` → speichern via `createTransactionQuiet()`). `ClaudePrompts` generiert System-Prompt mit dynamischer Kategorie-Liste aus DB.
 
@@ -282,42 +282,48 @@ Farben und Dimensionen liegen ausschließlich in `colors.xml`/`dimens.xml` — p
 
 **Accessibility:** Alle interaktiven XML-Elemente (Spinner, Buttons mit kryptischem Text wie L/M/H/C) brauchen `android:contentDescription="@string/cd_*"`. String-Ressourcen in `strings.xml` unter `<!-- Content Descriptions -->`. EditTexts mit `android:hint` brauchen KEIN contentDescription (Hint dient als Accessibility-Label). Dekorative `<View>`-Spacer bekommen `android:importantForAccessibility="no"`.
 
-**Edit Modal** (`tasksTab/EditItem.java` + `modal_edit_item.xml`) — Create/Edit-Dialog für Tasks, Goals und Projects. `EditItem` ist ein dünner Orchestrator (~95 Zeilen) der an 4 package-private Klassen delegiert:
-- `TreeRenderer` — Hierarchischer Baum (Expand/Collapse, Suche, Typ-Filter), Callback via `Consumer<TrackedItem>`
-- `FieldManager` — Alle ~30 Formular-Felder (bind/populate/apply/visibility), Spinner-Refresh, Farb-Grid
-- `ItemEditorModal` — Modal-Lebenszyklus (Show/Hide), Validierung, Builder, Create/Update via `EditorManager`
-- `PrefScheduleEditor` — PrefSlot-Zeilen (Tag+Uhrzeit), inflated `item_pref_slot_row.xml`. Entkoppelt via `RepetitionStateProvider`-Callback. Steuert Wochentag/Monatstag-Spinner, fixe Slot-Anzahl bei REPS_PER_TIME, und dayKey-Validierung
+**Edit Modal** (`tasksTab/TaskManagerView.java` + `editorModal/` + `modal_edit_item.xml`) — Create/Edit-Dialog für Tasks, Goals und Projects. `TaskManagerView` vereint Baum-Darstellung und Editor-Delegation in einer Klasse:
+- **Baum** (in `TaskManagerView`) — Hierarchischer Baum (Expand/Collapse, Suche, Typ-Filter)
+- `ItemEditorModal` (`editorModal/`, **public**) — Einziger öffentlicher Einstiegspunkt. Kapselt FieldManager + FieldLoader + FieldSaver intern. Konstruktor: `(Context, EditorManager, View modalOverlay, Runnable onSaved)`
+- `FieldManager` (`editorModal/`, package-private) — Alle ~30 Formular-Felder (bind/visibility), Spinner-Refresh, Farb-Grid
+- `FieldLoader` (`editorModal/`, package-private) — Befüllt Felder für Create (Defaults) oder Edit (aus TrackedItem)
+- `FieldSaver` (`editorModal/`, package-private) — Liest UI-Werte aus, baut Builder, validiert und persistiert via EditorManager
+- `PrefScheduleEditor` (`editorModal/`, package-private) — PrefSlot-Zeilen (Tag+Uhrzeit), inflated `item_pref_slot_row.xml`. Entkoppelt via `RepetitionStateProvider`-Callback
 
-**Feld-Sichtbarkeit nach ItemType:**
+**SchedulingType-System (UI-only, kein DB-Feld):** Neben dem ItemType (TASK/GOAL/PROJECT) steuert ein **SchedulingType-Dropdown** die Feld-Sichtbarkeit:
+- `SCHED_TERMIN` (0) — Fester Zeitpunkt (nur TASK). Erzwingt `RepetitionType.NONE` + `fixedDate`/`fixedTime`
+- `SCHED_AUFGABE` (1) — Einmalig, flexibel (TASK + GOAL). Erzwingt `RepetitionType.NONE`, optionale Deadline
+- `SCHED_ANGEWOHNHEIT` (2) — Wiederkehrend (TASK + GOAL). Erzwingt `RepetitionType != NONE`, PrefSlots + CompleteFirst
 
-| Feld | TASK | GOAL | PROJECT | Bedingung |
-|------|------|------|---------|-----------|
-| Titel | ✅ | ✅ | ✅ | — |
-| Beschreibung | ✅ | ✅ | ✅ | — |
-| Priorität | ✅ | ✅ | ✅ | — |
-| Min Dauer (Wert + Einheit) | ✅ | ✅ | ❌ | — |
-| Max Dauer (Wert + Einheit) | ✅ | ✅ | ❌ | — |
-| Parent | ✅ | ✅ | ❌ | — |
-| Vorgänger | ✅ | ❌ | ❌ | — |
-| Vorgänger Delay | ✅ | ❌ | ❌ | Wenn Vorgänger gewählt |
-| Bevorzugte Zeiten | ✅ | ✅ | ❌ | Dynamische Slots (Tag+Uhrzeit). REPS_PER_TIME/WEEK: fixe Anzahl = repValue. Sonst: 1-7 flexible Slots |
-| Cooldown | ✅ | ❌ | ❌ | — |
-| Deadline | ✅ | ❌ | ❌ | RepType=NONE |
-| Fester Termin | ✅ | ❌ | ❌ | RepType=NONE |
-| Progress | ✅ | ✅ | ❌ | — |
-| Progress per Rep | ✅ | ❌ | ❌ | Wenn Progress > 0 |
-| Goal Icon/Color | ❌ | ✅ | ❌ | — |
-| Budget | ✅ | ❌ | ❌ | — |
-| Wiederholung | ✅ | ❌ | ❌ | — |
-| Erst erledigen | ✅ | ❌ | ❌ | — |
+Mapping: TASK-Spinner zeigt alle 3, GOAL-Spinner zeigt nur Aufgabe+Angewohnheit, PROJECT bekommt kein Dropdown.
+Ableitung bei Edit: `isFixedAppointment()` → Termin, `repType != NONE` → Angewohnheit, sonst → Aufgabe.
+
+**Feld-Sichtbarkeit nach ItemType + SchedulingType:**
+
+| Feld | TASK+Termin | TASK+Aufgabe | TASK+Angew. | GOAL+Aufgabe | GOAL+Angew. | PROJECT |
+|------|-------------|-------------|-------------|-------------|-------------|---------|
+| SchedulingType | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Priorität | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Fixed Date/Time | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Deadline | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Repetition-Sektion | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ |
+| Cooldown | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| [CB] Fortschritt | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Dauer | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| [CB] Budget | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Parent | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Predecessor | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+`[CB]` = CheckBox-Toggle: Progress-Felder und Budget-Felder sind hinter CheckBoxen (`cb_completion`, `cb_budget`) versteckt.
+Repetition-Sektion enthält: RepType-Buttons (INTERVAL/REPS_PER_TIME/DAY_OF_TIME, kein NONE), Wert+Einheit+Wochentag, CompleteFirst-Toggle, PrefSlots.
 
 **UI-Patterns:**
-- `updateFieldVisibility()` — Zentrale Methode für typ-basierte Sichtbarkeit
-- `updateButtonGroup(buttons, selectedIndex, activeColor, inactiveColor)` — Toggle-Buttons (Priority, DurationUnit)
+- `updateFieldVisibility()` — Parameterlose zentrale Methode, nutzt `selectedType` + `selectedSchedulingType` intern
+- `updateButtonGroup(buttons, selectedIndex)` — Toggle-Buttons (Priority, DurationUnit, RepType)
 - `refreshPredecessorSpinner()` — Lädt verfügbare Vorgänger + zeigt/versteckt Delay-Row
 - TimePicker/DatePicker — Standard Android-Dialoge via `TimePickerDialog`/`DatePickerDialog`
 
-**FieldManager-Pattern:** Jede Feld-Gruppe hat ein `bind*()` (im Konstruktor via `bindAll()`) und `apply*()` (aufgerufen von `ItemEditorModal.saveItem()`). Populate: `populateForCreate()`, `populateForEdit(item)`. Neue Feld-Gruppen: Entsprechende `bind*()` und `apply*()` Methode hinzufügen.
+**Editor-Modal-Pattern:** `ItemEditorModal` (`editorModal/`, public) ist der einzige öffentliche Einstiegspunkt — kapselt drei package-private Klassen: `FieldManager` bindet Felder (`bind*()` im Konstruktor via `bindAll()`), `FieldLoader` befüllt sie (`populateForCreate()`, `populateForEdit(item)`), `FieldSaver` liest sie aus und persistiert (`apply*()` → Builder → `save(editingItem)`). Caller erstellt nur `new ItemEditorModal(ctx, manager, overlay, onSaved)` + `init()`. Neue Feld-Gruppen: `bind*()` in FieldManager, Populate-Logik in FieldLoader, `apply*()` in FieldSaver hinzufügen. Beim Edit übernimmt `TrackedItem.preserveState(source)` alle Laufzeit-/Historien-Felder (id, created, children, streaks, completions, followUps, timing, mealType etc.) — neue State-Felder dort ergänzen.
 
 **DateTimeHelper** (`activities/generic/DateTimeHelper.java`) — Statische Utilities für Datum/Zeit-Operationen (Pure Java, keine Android-Dependencies):
 - `getMonday(LocalDate)` — Montag der Woche für ein Datum
@@ -359,7 +365,7 @@ Registrierung erfolgt in `WidgetRefreshApp.onCreate()`. Controller (BudgetManage
 - "↻" Button → Refresht Widget-Daten (via `ACTION_REFRESH` Broadcast)
 
 **Completion-Feedback:**
-- **App** (`TaskList.java`): `animateCompletion()` — Checkbox-Bounce (scale 1.0→1.3→1.0) + Hintergrund-Flash (`completion_flash` → `surface_complete`)
+- **App** (`WeekPlanView.java`): `animateCompletion()` — Checkbox-Bounce (scale 1.0→1.3→1.0) + Hintergrund-Flash (`completion_flash` → `surface_complete`)
 - **Widget** (`TaskWidgetProvider`/`TaskWidgetFactory`): Flash via statischer `flashingSlotId` — bei Completion wird Slot-ID gesetzt, Factory rendert mit `completion_flash`, nach 300ms wird ID gelöscht und Widget neu gerendert
 
 **Meta-Row Badges:** Unterhalb des Task-Titels zeigt `task_meta_row` (LinearLayout) drei optionale Badges:
@@ -378,9 +384,11 @@ Registrierung erfolgt in `WidgetRefreshApp.onCreate()`. Controller (BudgetManage
 ## Key Patterns
 
 **TrackedItem** is the central entity — Tasks, Goals, and Projects all use this class with `ItemType` enum:
-- `TASK` — Individual work units with `minDurationValue/maxDurationValue`, `timePerProgressUnit`, `repetition`, `prefSlots` (per-weekday preferred times), optional `budgetRequirementCents`, optional `fixedDate`/`fixedTime` (feste Termine), optional `mealPlanId` (Meal-Task-Verknüpfung)
-- `GOAL` — Containers for tasks, have `children` list and time budget
+- `TASK` — Individual work units with `minDurationValue/maxDurationValue`, `timePerProgressUnit`, `repetition`, `prefSlots` (per-weekday preferred times), optional `budgetRequirementCents`, optional `fixedDate`/`fixedTime` (feste Termine), optional `mealType` (Meal-Item-Identifikation)
+- `GOAL` — Containers for tasks, have `children` list and time budget. Können jetzt auch Repetition (Angewohnheit) haben.
 - `PROJECT` — Top-level grouping
+
+**Meal-Items:** `TrackedItem.mealType` (BREAKFAST/LUNCH/DINNER/SNACK, null = kein Meal-Item) identifiziert recurring Meal-Items. `MealPlan.itemId` verknüpft MealPlan mit dem zugehörigen TrackedItem. MealType wird nicht im Edit-Modal gesetzt, sondern vom Ernährungs-Tab.
 
 **PrefSlot-System (Per-Weekday/Monthly Preferences):** Jedes Item hat `prefSlots: List<PrefSlot>` mit:
 ```java
@@ -542,7 +550,7 @@ Offener Progress (progressCurrent < progressTarget) bewirkt:
 - Prio-Boost über `work()/remainingTime()`: je näher die Deadline, desto höher der Multiplier (cap 2.0x). Bei überfälliger Deadline: fester 3.0x Boost.
 - Periodenblockierung wird übersprungen (wie REPS_PER_TIME), damit das Item täglich einplanbar bleibt bis zur Erledigung.
 - Anzeige in Task-Liste und Widget als "Fällig: dd.MM.yyyy", rot wenn überfällig.
-- Edit-UI: DatePickerDialog, nur sichtbar bei TASK + RepetitionType.NONE.
+- Edit-UI: DatePickerDialog, nur sichtbar bei SchedulingType=AUFGABE.
 
 **Feste Termine (Fixed Appointments):** Einmalige Tasks können zusätzlich zu oder anstelle von `deadline` einen festen Termin haben:
 - `fixedDate` (`LocalDate`) — Muss an diesem Tag eingeplant werden
@@ -558,7 +566,7 @@ Offener Progress (progressCurrent < progressTarget) bewirkt:
 - Können NICHT von anderen Tasks verdrängt werden (wie Calendar-Events)
 - Können andere feste Termine NICHT verdrängen (Konflikt → erster gewinnt)
 - SIND abhakbar (normale Task-Completion-Logik, anders als Calendar-Events)
-- Edit-UI: DatePicker + TimePicker (24h), nur sichtbar bei TASK + RepetitionType.NONE
+- Edit-UI: DatePicker + TimePicker (24h), nur sichtbar bei SchedulingType=TERMIN
 
 **Scheduling-Konflikt-Tracking:** Wenn feste Termine nicht eingeplant werden können, wird ein `SchedulingConflict` Record erstellt:
 ```java
@@ -643,8 +651,7 @@ SQLite mit drei Tabellen-Gruppen:
 - `recipe_ratings` — Bewertungen pro Mitglied (recipeId, memberId, rating 1-5)
 - `ingredients` — FoodGroup enum mit DGE-Wochen-Empfehlungen. Nährwerte pro 100g. `isWholeUnit`, `isPerishable`
 - `recipes` — PrepEffort enum (QUICK/MEDIUM/ELABORATE). Ingredients als pipe-separated: `"id|name|amount|unit;..."`. Skalierung: `minServings`/`maxServings`
-- `meal_plans` — Wochenplan-Einträge (date, mealType, recipeId, servings, isCompleted)
-- `meal_schedules` — Free-form Kalender (beliebig viele pro Tag, kein UNIQUE). `DEFAULT_DURATION_MINUTES = 30`
+- `meal_plans` — Wochenplan-Einträge (date, mealType, recipeId, servings, isCompleted, itemId FK zu TrackedItem)
 - `shopping_list_items` — ingredientId, amount, needed/excess, suggested_store, isPurchased
 - `pantry_items` — StorageLocation enum (PANTRY, FRIDGE, FREEZER). expiryDate, purchaseDate
 - `consumption_logs` — Nährwert-Tracking (date, memberId, recipeId/ingredientId, calories, protein, carbs, fat)
@@ -660,12 +667,12 @@ SQLite mit drei Tabellen-Gruppen:
 
 **Budget in items:** `budget_requirement_cents` (INTEGER, 0=kein Budget), `budget_account_id` (INTEGER FK, null=beliebig), `budget_category` (TEXT). Nur für Tasks relevant.
 
-**Meal-Tasks in items:** `meal_plan_id` (INTEGER FK, null=kein Meal-Task). Verknüpft Meal-Tasks mit MealPlan-Einträgen. Bei Completion wird `MealManager.completeMeal()` aufgerufen.
+**Meal-Items in items:** `meal_type` (TEXT, null=kein Meal-Item, BREAKFAST/LUNCH/DINNER/SNACK). Identifiziert recurring Meal-Items. Verknüpfung mit MealPlan läuft über `MealPlan.itemId` (nicht über items-Spalte). Bei Completion wird `MealManager.completeMeal()` aufgerufen.
 
 **DB-Strategie (v1.0.0+):** Production-Mode mit Migrations-Support. Keine Backward-Compat im Code — Migrationen sind der einzige Mechanismus für Schema-Änderungen nach Updates.
 
 **Migration-System:**
-- `DB_VERSION` in `Constants.java` (aktuell: **33**)
+- `DB_VERSION` in `Constants.java` (aktuell: **34**)
 - `MigrationManager.java` verwaltet Backups und Migrationen
 - `SQLrepo.onUpgrade()` ruft `MigrationManager.migrate()` auf
 - Backup wird VOR Migration erstellt: `getFilesDir()/backups/backup_vX_timestamp.db`
@@ -678,13 +685,15 @@ SQLite mit drei Tabellen-Gruppen:
 - v31: `migrateV31_ProductionCleanup()` — Bereinigt Testdaten, behält Referenzdaten (categories, ingredients, config_schedules)
 - v32: `migrateV32_FreeformMealSchedule()` — Free-form Meal Schedule (beliebig viele pro Tag)
 - v33: `migrateV33_PrefSchedule()` — Per-weekday PrefSlots (`pref_schedule` Spalte)
+- v34: `migrateV34_MealTypeConsolidation()` — `meal_type` auf items, `item_id` auf meal_plans. meal_schedules eliminiert zugunsten recurring TrackedItems
 
-**Performance-Indexes** (erstellt in v30):
+**Performance-Indexes** (erstellt in v30, ergaenzt in v34):
 ```sql
-idx_items_budget  ON items(budget_requirement_cents) WHERE budget_requirement_cents > 0
-idx_items_fixed   ON items(fixed_date) WHERE fixed_date IS NOT NULL
-idx_items_meal    ON items(meal_plan_id) WHERE meal_plan_id IS NOT NULL
-idx_items_open    ON items(is_completed, type) WHERE is_completed = 0
+idx_items_budget      ON items(budget_requirement_cents) WHERE budget_requirement_cents > 0
+idx_items_fixed       ON items(fixed_date) WHERE fixed_date IS NOT NULL
+idx_items_meal        ON items(meal_plan_id) WHERE meal_plan_id IS NOT NULL
+idx_items_open        ON items(is_completed, type) WHERE is_completed = 0
+idx_meal_plans_item   ON meal_plans(item_id) WHERE item_id IS NOT NULL   -- v34
 ```
 
 **Bei Schema-Änderungen:**
@@ -722,7 +731,7 @@ GitHub dient als CDN. `release/version.txt` enthält den aktuellen Integer-versi
 
 ## Code Conventions
 
-**Keine Magic Numbers:** Wiederkehrende Werte als Konstanten definieren. Defaults gehören in die Entity-Klasse als Single Source of Truth (z.B. `MealSchedule.DEFAULT_DURATION_MINUTES`), nicht in Parser oder Migrationen duplizieren.
+**Keine Magic Numbers:** Wiederkehrende Werte als Konstanten definieren. Defaults gehören in die Entity-Klasse als Single Source of Truth, nicht in Parser oder Migrationen duplizieren.
 
 **ViewHelper-Utilities nutzen (nicht duplizieren):**
 - `ViewHelper.showEmptyState(container, message)` — Einheitliche "Keine X vorhanden"-Meldung
@@ -733,7 +742,7 @@ GitHub dient als CDN. `release/version.txt` enthält den aktuellen Integer-versi
 - `ViewHelper.afterTextChanged(Runnable)` — TextWatcher ohne beforeTextChanged/onTextChanged-Boilerplate
 - `DateTimeHelper.*` — Datum/Zeit-Operationen (getMonday, getWeekKey, formatTime)
 
-**Sortier-/Filter-Logik zentralisieren:** Wenn dieselbe Sortierung an 2+ Stellen gebraucht wird → statische Methode in der Entity-Klasse (z.B. `MealSchedule.sortByTime(List)`), nicht inline duplizieren.
+**Sortier-/Filter-Logik zentralisieren:** Wenn dieselbe Sortierung an 2+ Stellen gebraucht wird → statische Methode in der Entity-Klasse, nicht inline duplizieren.
 
 **XML-Layouts:**
 - Overlay-Farbe: `@color/overlay_dim` — NICHT hardcoded `#80000000`

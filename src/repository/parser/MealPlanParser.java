@@ -33,6 +33,7 @@ public class MealPlanParser {
         mp.actualServings = row.get("actual_servings") instanceof Number n ? n.intValue() : 0;
         mp.completedAt = (LocalDateTime) row.get("completed_at");
 
+        mp.itemId = (Long) row.get("item_id");
         mp.recipeTitle = (String) row.get("recipe_title");
         mp.estimatedCalories = row.get("estimated_calories") instanceof Number n ? n.intValue() : 0;
 
@@ -52,7 +53,7 @@ public class MealPlanParser {
     public static Object convertValue(String column, Object v) {
         if (v == null) return null;
         return switch (column) {
-            case "id", "recipe_id" -> (v instanceof Number n) ? n.longValue() : Long.parseLong(v.toString());
+            case "id", "recipe_id", "item_id" -> (v instanceof Number n) ? n.longValue() : Long.parseLong(v.toString());
             case "planned_servings", "actual_servings", "estimated_calories" ->
                 (v instanceof Number n) ? n.intValue() : Integer.parseInt(v.toString());
             case "is_completed" -> (v instanceof Number n) ? n.intValue() != 0 : "1".equals(v.toString());
@@ -76,6 +77,7 @@ public class MealPlanParser {
         cv.put("actual_servings", mp.actualServings);
         if (mp.completedAt != null) cv.put("completed_at", mp.completedAt.toString());
 
+        if (mp.itemId != null) cv.put("item_id", mp.itemId);
         if (mp.recipeTitle != null) cv.put("recipe_title", mp.recipeTitle);
         cv.put("estimated_calories", mp.estimatedCalories);
 

@@ -9,9 +9,12 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import android.graphics.Color;
 
 import java.util.List;
 
@@ -144,6 +147,39 @@ public final class ViewHelper {
             @Override public void onTextChanged(CharSequence s, int st, int b, int c) {}
             @Override public void afterTextChanged(Editable s) { action.run(); }
         };
+    }
+
+    /** Highlight fuer Toggle-Button-Gruppen (Type, Priority, RepType, etc.) */
+    public static void updateButtonGroup(Context ctx, Button[] buttons, int selectedIdx) {
+        int accent = ContextCompat.getColor(ctx, R.color.accent);
+        int inactive = ContextCompat.getColor(ctx, R.color.button_inactive);
+        int textPrimary = ContextCompat.getColor(ctx, R.color.text_primary);
+        for (int i = 0; i < buttons.length; i++) {
+            if (buttons[i] == null) continue;
+            if (i == selectedIdx) {
+                buttons[i].setBackgroundColor(accent);
+                buttons[i].setTextColor(Color.WHITE);
+            } else {
+                buttons[i].setBackgroundColor(inactive);
+                buttons[i].setTextColor(textPrimary);
+            }
+        }
+    }
+
+    /** Highlight fuer An/Aus-Toggle-Buttons */
+    public static void updateToggleButton(Context ctx, Button button, boolean enabled) {
+        int accent = ContextCompat.getColor(ctx, R.color.accent);
+        int inactive = ContextCompat.getColor(ctx, R.color.button_inactive);
+        int textPrimary = ContextCompat.getColor(ctx, R.color.text_primary);
+        if (enabled) {
+            button.setBackgroundColor(accent);
+            button.setTextColor(Color.WHITE);
+            button.setText("An");
+        } else {
+            button.setBackgroundColor(inactive);
+            button.setTextColor(textPrimary);
+            button.setText("Aus");
+        }
     }
 
     /** Konfiguriert Modal-Overlay: Klick ausserhalb schliesst, Klick auf Card wird absorbiert. */

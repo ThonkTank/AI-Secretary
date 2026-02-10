@@ -2,7 +2,7 @@ package entities;
 
 /**
  * Gemeinsamer Enum fuer Mahlzeit-Typen.
- * Verwendet in Recipe, MealSchedule, MealPlan, CookingPreferences.
+ * Verwendet in Recipe, TrackedItem, MealPlan, CookingPreferences.
  */
 public enum MealType {
     BREAKFAST("Frühstück", "🍳"),

@@ -2,7 +2,7 @@ package data;
 
 public class Constants {
     public static final String DB_NAME = "autosecretary.db";
-    public static final int DB_VERSION = 33;  // Per-weekday PrefTime
+    public static final int DB_VERSION = 34;  // Meal-Type auf Items, Item-ID auf MealPlans
 
     // SharedPreferences Konstanten
     public static final String PREF_NAME = "secretary";

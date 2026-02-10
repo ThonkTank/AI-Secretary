@@ -101,7 +101,7 @@ public class TrackedItem {
     public Long budgetCategoryId;           // FK zu categories für die Auto-Transaction
 
     // Meal-Task-Verknüpfung
-    public Long mealPlanId;                 // FK zu MealPlan (null wenn kein Meal-Task)
+    public MealType mealType;               // null = kein Meal-Item. BREAKFAST/LUNCH/DINNER/SNACK = Meal-Item
 
     // Unified Chaining (ersetzt requiredPredecessor + isSequence + sequenceDelay)
     public Long predecessor;                // Vorgänger-Task (delay=0: konsekutiv, delay>0: verzögert)
@@ -162,7 +162,7 @@ public class TrackedItem {
         public Builder budgetRequirement(int cents) { item.budgetRequirementCents = cents; return this; }
         public Builder budgetAccount(Long id) { item.budgetAccountId = id; return this; }
         public Builder budgetCategory(Long categoryId) { item.budgetCategoryId = categoryId; return this; }
-        public Builder mealPlan(Long id) { item.mealPlanId = id; return this; }
+        public Builder mealType(MealType v) { item.mealType = v; return this; }
         public Builder predecessor(Long v) { item.predecessor = v; return this; }
         public Builder predecessorDelay(int v) { item.predecessorDelay = v; return this; }
         // Convenience: Same-day chain (delay=0)
@@ -201,6 +201,32 @@ public class TrackedItem {
         }
 
         public TrackedItem build() { return item; }
+    }
+
+    /**
+     * Kopiert alle Laufzeit-/Historien-Felder von source.
+     * Wird beim Editieren verwendet: Form-Felder kommen vom Builder,
+     * State-Felder werden aus dem bestehenden Item uebernommen.
+     */
+    public void preserveState(TrackedItem source) {
+        this.id = source.id;
+        this.created = source.created;
+        this.children = source.children;
+        this.lastCompletion = source.lastCompletion;
+        this.lastCompletionTime = source.lastCompletionTime;
+        this.completions = source.completions;
+        this.isCompleted = source.isCompleted;
+        this.scheduled = source.scheduled;
+        this.blockedDays = source.blockedDays;
+        this.currentStreak = source.currentStreak;
+        this.averageStreak = source.averageStreak;
+        this.nrOfStreaks = source.nrOfStreaks;
+        this.totalCompletions = source.totalCompletions;
+        this.followUps = source.followUps;
+        this.timePerProgressUnit = source.timePerProgressUnit;
+        this.progressTimingCount = source.progressTimingCount;
+        this.progressLastPeriod = source.progressLastPeriod;
+        this.mealType = source.mealType;
     }
 
     //Subklassen

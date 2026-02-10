@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 
 import entities.Account;
+import entities.MealPlan;
+import entities.Recipe;
 import entities.TodoList;
 import entities.TrackedItem;
 import entities.Transaction;
@@ -226,6 +228,20 @@ public class TodoManager {
 
         List<TaskEntry> entries = new ArrayList<>();
 
+        // Meal-Plans fuer den Tag vorladen (vermeidet N+1 Queries)
+        Map<Long, MealPlan> mealPlansByItemId = new HashMap<>();
+        for (MealPlan mp : repo.fetchAll(Table.MEAL_PLANS, Map.of(
+                "date", day.toString(), "is_completed", "0"))) {
+            if (mp.itemId != null) mealPlansByItemId.put(mp.itemId, mp);
+        }
+        Map<Long, String> recipeTitles = new HashMap<>();
+        for (MealPlan mp : mealPlansByItemId.values()) {
+            if (mp.recipeId != null && !recipeTitles.containsKey(mp.recipeId)) {
+                Recipe recipe = repo.fetch(Table.RECIPES, mp.recipeId);
+                if (recipe != null) recipeTitles.put(mp.recipeId, recipe.title);
+            }
+        }
+
         for (TodoList.TimeSlot goalSlot : currentDayList.timeSlots) {
 
             // Kalender-Events als eigene Eintraege
@@ -281,11 +297,23 @@ public class TodoManager {
                     }
                 }
 
+                // Dynamische Titel-Anreicherung: Rezeptname statt generischem Meal-Titel
+                String taskTitle = task.title;
+                if (task.mealType != null) {
+                    MealPlan plan = mealPlansByItemId.get(task.id);
+                    if (plan != null && plan.recipeId != null) {
+                        String recipeTitle = recipeTitles.get(plan.recipeId);
+                        if (recipeTitle != null) {
+                            taskTitle = task.mealType.icon + " " + recipeTitle;
+                        }
+                    }
+                }
+
                 // Slot-Dauer berechnen (tatsaechlich geplante Zeit)
                 int slotDuration = (int) java.time.temporal.ChronoUnit.MINUTES.between(taskSlot.start, taskSlot.end);
                 entries.add(new TaskEntry(
                     taskSlot.id,
-                    task.title,
+                    taskTitle,
                     task.description,
                     slotDuration,
                     taskSlot.start,
@@ -458,14 +486,17 @@ public class TodoManager {
                     // 3. Meal-Task-Completion: Vorrat reduzieren, ConsumptionLog erstellen
                     // Außerhalb der Transaction, da MealManager eigene Schreiblogik hat
                     TrackedItem itemForMeal = repo.fetch(Table.ITEMS, taskSlot.item);
-                    if (itemForMeal != null && itemForMeal.mealPlanId != null) {
+                    if (itemForMeal != null && itemForMeal.mealType != null) {
                         try {
                             MealManager mealMgr = new MealManager(context);
-                            mealMgr.completeMeal(itemForMeal.mealPlanId, 0);  // 0 = geplante Portionen
+                            MealPlan mealPlan = mealMgr.findMealPlanForItem(
+                                java.time.LocalDate.now(), itemForMeal.id);
+                            if (mealPlan != null) {
+                                mealMgr.completeMeal(mealPlan.id, 0);
+                            }
                         } catch (Exception e) {
                             android.util.Log.e("TodoManager",
-                                "Meal completion failed: " + itemForMeal.mealPlanId, e);
-                            // Weiter - Task ist trotzdem erledigt
+                                "Meal completion failed for item " + itemForMeal.id, e);
                         }
                     }
 
