@@ -52,6 +52,11 @@ android {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("androidx.core:core:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-livedata:2.10.0")
+    annotationProcessor("androidx.room:room-compiler:2.6.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")

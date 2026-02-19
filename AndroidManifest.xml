@@ -8,90 +8,15 @@
     <uses-permission android:name="android.permission.READ_CALENDAR" />
 
     <application
-        android:name="activities.widget.WidgetRefreshApp"
-        android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
-
-        <activity
-            android:name="activities.inApp.MainActivity"
-            android:exported="true">
+    android:theme="@style/AppTheme">
+        <activity 
+        android:name="views.mainView.MainActivity"
+        android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name="activities.widget.DescriptionPopupActivity"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:excludeFromRecents="true"
-            android:taskAffinity=""
-            android:exported="false" />
-
-
-        <receiver
-            android:name="scheduling.DailyPlanningReceiver"
-            android:exported="false" />
-
-        <receiver
-            android:name="scheduling.BootReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-
-        <!-- Widget-Komponenten -->
-        <receiver
-            android:name="activities.widget.TaskWidgetProvider"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/task_widget_info" />
-        </receiver>
-
-        <receiver
-            android:name="activities.widget.BudgetWidgetProvider"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/budget_widget_info" />
-        </receiver>
-
-        <!-- Debug-Receiver fuer ADB-Befehle (exported=false: nur ADB, keine externen Apps) -->
-        <receiver
-            android:name="activities.widget.DebugBroadcastReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.autosecretary.debug.DUMP_PLANS" />
-                <action android:name="com.autosecretary.debug.REPLAN_ALL" />
-            </intent-filter>
-        </receiver>
-
-        <service
-            android:name="activities.widget.TaskWidgetService"
-            android:permission="android.permission.BIND_REMOTEVIEWS"
-            android:exported="false" />
-
-
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
-
     </application>
 
 </manifest>
