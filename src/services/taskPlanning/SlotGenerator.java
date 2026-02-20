@@ -24,7 +24,7 @@ public class SlotGenerator {
     public void generateSlots() {
         // Task baum bauen
         List<Task> tasks = taskDao.readAll();
-        List<Task> taskTree = TreeBuilder.buildTree(tasks);
+        List<Task> taskTree = Task.buildTree(tasks);
         
         LocalDateTime cursor = prefStart;
         LocalDateTime end = prefEnd;

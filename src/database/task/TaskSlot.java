@@ -8,11 +8,19 @@ import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 import androidx.room.Embedded;
 
-@Entity (tableName = "task_slots")
+@Entity(tableName = "task_slots",
+    foreignKeys = @ForeignKey(
+        entity = TaskCore.class,
+        parentColumns = "id",
+        childColumns = "taskId",
+        onDelete = ForeignKey.CASCADE
+    ))
+
 public class TaskSlot {
     @PrimaryKey(autoGenerate = true)
     public Long id;
     public Long taskId;
+    public Long parentSlotId;
 
     public LocalDate day;
     public LocalTime start;

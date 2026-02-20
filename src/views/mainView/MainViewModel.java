@@ -11,7 +11,7 @@ import database.AppDatabase;
 import services.taskPlanning.*;
 import config.Preferences;
 import constants.Period;
-import views.models.ViewTask;
+import views.models.ViewSlot;
 
 //java
 import java.time.LocalDateTime;
@@ -22,7 +22,7 @@ import java.util.concurrent.Executors;
 import java.util.ArrayList;
 
 public class MainViewModel extends AndroidViewModel {
-    private MutableLiveData<List<ViewTask>> checkList = new MutableLiveData<>();
+    private MutableLiveData<List<ViewSlot>> checkList = new MutableLiveData<>();
     private Preferences prefs;
     private TaskDAO taskDao;
 
@@ -32,7 +32,7 @@ public class MainViewModel extends AndroidViewModel {
         this.taskDao = AppDatabase.getInstance(app).taskDao();
     }
 
-    public LiveData<List<ViewTask>> getCheckList() {
+    public LiveData<List<ViewSlot>> getCheckList() {
         return checkList;
     }
 
@@ -57,10 +57,13 @@ public class MainViewModel extends AndroidViewModel {
             taskDao.writeList(newTasks);
 
             slotGenerator.generateSlots();
-            List<Task> tasks = taskDao.readByDue(day);
-            List<Task> taskTree = TreeBuilder.buildTree(tasks);
-            List<ViewTask> viewTasks = ViewTask.fromTree(taskTree, 0);
-            checkList.postValue(viewTasks);
+            List<ViewSlot> viewSlots = taskDao.readSlotsForDay(day);
+            ViewSlot.assignIndents(viewSlots);
+            checkList.postValue(viewSlots);
          });
+    }
+
+    public void checkOff(TaskSlot taskSlot) {
+        return; //platzhalter
     }
 }

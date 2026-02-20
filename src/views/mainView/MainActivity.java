@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import java.util.ArrayList;
 
 import views.taskTab.TaskRowAdapter;
-import views.models.ViewTask;
+import views.models.ViewSlot;
 import com.autosecretary.R;
 
 public class MainActivity extends AppCompatActivity {
@@ -23,7 +23,7 @@ public class MainActivity extends AppCompatActivity {
         MainViewModel vm = new ViewModelProvider(this).get(MainViewModel.class);
 
         RecyclerView recyclerView = findViewById(R.id.TaskList);
-        TaskRowAdapter adapter = new TaskRowAdapter(new ArrayList<>());
+        TaskRowAdapter adapter = new TaskRowAdapter(new ArrayList<>(), slot -> vm.checkOff(slot));
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
         vm.getCheckList().observe(this, content -> {

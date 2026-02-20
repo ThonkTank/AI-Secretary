@@ -7,11 +7,13 @@ import androidx.room.Query;
 import androidx.room.Transaction;
 
 import java.time.LocalDate;
+import views.models.ViewSlot;
 import java.util.List;
 
 @Dao
 public interface TaskDAO {
 
+    // ============== READ ==============
     @Transaction
     @Query("SELECT * FROM task_core WHERE id = :id")
     Task read(Long id);
@@ -21,45 +23,14 @@ public interface TaskDAO {
     @Transaction
     @Query("SELECT * FROM task_core")
     List<Task> readAll();
+
+    //ViewSlot
     @Transaction
-    @Query("SELECT * FROM task_core WHERE title = :title")
-    Task readTitle(String title);
-    @Transaction
-    @Query("SELECT * FROM task_core")
-    List<Task> readAllCore();
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    long writeCore(TaskCore core);
-    @Query("DELETE FROM task_core WHERE id = :id")
-    void deleteCore(long id);
-    @Query("DELETE FROM task_core")
-    void deleteAllCore();
+    @Query("SELECT * FROM task_slots WHERE day = :day ORDER BY start")
+    List<ViewSlot> readSlotsForDay(LocalDate day);
 
-    //Follow Ups
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void writeFollowUps(List<TaskFollowUp> followUps);
-    @Query("DELETE FROM task_follow_ups WHERE taskId = :taskId")
-    void deleteFollowUps(long taskId);
-    @Query("DELETE FROM task_follow_ups")
-    void deleteAllFollowUps();
-
-    //Pref Slots
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void writePrefSlots(List<TaskPrefSlot> prefSlots);
-    @Query("DELETE FROM task_pref_slots WHERE taskId = :taskId")
-    void deletePrefSlots(long taskId);
-    @Query("DELETE FROM task_pref_slots")
-    void deleteAllPrefSlots();
-
-    //Task Slots
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void writeSlots(List<TaskSlot> slots);
-    @Query("DELETE FROM task_slots WHERE taskId = :taskId")
-    void deleteSlots(long taskId);
-    @Query("DELETE FROM task_slots")
-    void deleteAllSlots();
-
+    // ============== Write ==============
     //Transactions
-
     @Transaction
     default void write(Task task) {
         if (task.core.id != null) {
@@ -82,20 +53,24 @@ public interface TaskDAO {
         }
     }
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    long writeCore(TaskCore core);
 
-    @Transaction
-    default void delete(Task task){
-        deleteCore(task.core.id);
-        deleteFollowUps(task.core.id);
-        deletePrefSlots(task.core.id);
-        deleteSlots(task.core.id);
-    }
+    //Follow Ups
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void writeFollowUps(List<TaskFollowUp> followUps);
 
-    @Transaction
-    default void deleteAll(){
-        deleteAllCore();
-        deleteAllFollowUps();
-        deleteAllPrefSlots();
-        deleteAllSlots();
-    }
+    //Pref Slots
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void writePrefSlots(List<TaskPrefSlot> prefSlots);
+
+    //Task Slots
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void writeSlots(List<TaskSlot> slots);
+
+    // ============== Delete ==============
+    @Query("DELETE FROM task_core WHERE id = :id")
+    void deleteCore(long id);
+    @Query("DELETE FROM task_core")
+    void deleteAllCore();
 }
