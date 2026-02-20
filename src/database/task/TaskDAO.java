@@ -72,6 +72,8 @@ public interface TaskDAO {
     //Task Slots
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     long[] writeSlots(List<TaskSlot> slots);
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void writeSlot(TaskSlot slots);
 
     // ============== Delete ==============
     @Query("DELETE FROM task_core WHERE id = :id")

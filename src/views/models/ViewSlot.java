@@ -2,6 +2,7 @@ package views.models;
 
 import androidx.room.Embedded;
 import androidx.room.Relation;
+import androidx.room.Ignore;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ public class ViewSlot {
     @Embedded public TaskSlot slot;
     @Relation(parentColumn = "taskId", entityColumn = "id")
     public TaskCore core;
+    @Ignore 
     public int indent;
 
     public static void assignIndents(List<ViewSlot> viewSlots) {

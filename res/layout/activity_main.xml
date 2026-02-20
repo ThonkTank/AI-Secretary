@@ -5,13 +5,12 @@
     android:orientation="vertical"
     android:fitsSystemWindows="true">
 
-    <Button
-        android:layout_width="wrap_content"
+    <FragmentContainerView 
+        android:layout_weight="1"
+        android:layout_height="0dp"
+        android:id="@+id/Container"/>
+    <BottomNavigationView 
         android:layout_height="wrap_content"
-        android:id="@+id/Button"
-        android:text="Generieren"/>
-    <androidx.recyclerview.widget.RecyclerView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:id="@+id/TaskList"/>
+        app:menue="@menu/bottom_nav"
+        android:id="@+id/TabBar"/>
 </LinearLayout>
