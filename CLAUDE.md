@@ -49,14 +49,14 @@ constants/      → Enums (Priority, Period)
 Button → MainActivity.onClick → vm.updateList() → background thread:
   → write hardcoded test tasks (TEMPORARY — no task creation UI yet)
   → SlotGenerator.generateSlots()
-      → readAll() → TreeBuilder.buildTree() → assignSlot() → writeList()
-  → readByDue(today) → TreeBuilder.buildTree() → ViewTask.fromTree()
+      → readAll() → Task.buildTree() → assignSlot() → writeList()
+  → readSlotsForDay(today) → ViewSlot.assignIndents()
   → LiveData.postValue() → main thread → adapter.setList() → RecyclerView redraws
 ```
 
 All DB access runs on a background thread via `Executors.newSingleThreadExecutor()`.
 
-`TaskDAO.write()` uses a delete-then-reinsert strategy (not `@Update`) — it deletes the existing core + all related rows, then re-inserts everything. `write()` is **recursive**: it calls `write(child)` for each child, so a single call on a root task cascades through the entire subtree. `delete(Task)` does **not** recursively delete children — orphaned children surface as root tasks.
+`TaskDAO.write()` uses a delete-then-reinsert strategy (not `@Update`) — it deletes the existing core (cascading to related rows via `@ForeignKey(onDelete = CASCADE)` on `TaskSlot`), then re-inserts everything. `write()` is **recursive**: it calls `write(child)` for each child, so a single call on a root task cascades through the entire subtree.
 
 `SlotGenerator.generateSlots()` calls `taskDao.writeList(taskTree)` at the end — effectively a full rewrite of the entire database on each generation.
 
@@ -67,17 +67,17 @@ All DB access runs on a background thread via `Executors.newSingleThreadExecutor
 | Class | Table | Role |
 |-------|-------|------|
 | `TaskCore` | `task_core` | One row per task — title, scheduling params, embedded sub-objects |
-| `TaskSlot` | `task_slots` | Scheduled/completed time blocks. FK: `taskId` |
+| `TaskSlot` | `task_slots` | Scheduled/completed time blocks. FK: `taskId`, `@ForeignKey(onDelete = CASCADE)`. Has `parentSlotId` for parent-child slot hierarchy and `score` for the assigned score |
 | `TaskPrefSlot` | `task_pref_slots` | Preferred weekday/time. FK: `taskId` |
 | `TaskFollowUp` | `task_follow_ups` | Follow-up links. FK: `taskId` |
 
 `TaskCore` uses `@Embedded` for three static inner classes (`Repetition`, `Progress`, `History`) — their fields are flattened into `task_core` columns with prefixes (`repetition_`, `progress_`, `history_`).
 
-Parent-child relationship: `TaskCore.parent` is a `Long` pointing to another `task_core.id`. Not declared as a Room `@ForeignKey` — handled manually by `TreeBuilder` via a two-pass tree build from flat records.
+Parent-child relationship: `TaskCore.parent` is a `Long` pointing to another `task_core.id`. Not declared as a Room `@ForeignKey` — handled manually by `Task.buildTree()` (static method) via a two-pass tree build from flat records.
 
 ### View model
 
-`ViewTask` flattens the `Task` tree into a list with indent levels for the RecyclerView. `ViewTask.fromTree()` does a pre-order depth-first walk and produces a flat `List<ViewTask>`. Indent width is defined in `res/values/dimens.xml` as `indent_step` (24dp).
+`ViewSlot` is a Room POJO (`@Embedded TaskSlot` + `@Relation TaskCore`) returned directly by `TaskDAO.readSlotsForDay()`. Indentation is slot-based: `ViewSlot.assignIndents()` walks the flat list and computes each slot's indent level from `parentSlotId` using a lookup map. Indent width is defined in `res/values/dimens.xml` as `indent_step` (24dp).
 
 ### Scoring algorithm
 
@@ -111,16 +111,16 @@ The `old/` directory contains 80+ Java files spanning widgets, scheduling, budge
 ## Known Bugs
 
 - `TaskPrefSlot` uses a non-autoGenerate `@PrimaryKey` defaulting to `0` — inserting multiple pref slots silently replaces each other via `OnConflictStrategy.REPLACE`.
-- `TreeBuilder` will throw `NullPointerException` if a child is in the result set but its parent is not (possible with `readByDue()`).
+- `Task.buildTree()` will throw `NullPointerException` if a child is in the result set but its parent is not (the `mappedTasks.get(task.core.parent)` call returns null).
+- `ViewSlot.assignIndents()` will NPE if `parentSlotId` references a slot not in the list (same pattern — `indents.get(vs.slot.parentSlotId)` returns null).
 - `AppDatabase.getInstance()` is not thread-safe — no `synchronized` block, so concurrent first calls could create duplicate instances.
-- `readAll()` and `readAllCore()` in `TaskDAO` are identical queries both returning `List<Task>` — likely `readAllCore()` was intended to return `List<TaskCore>`.
 
 ## Not Yet Implemented
 
 - `MainViewModel.updateList()` seeds **hardcoded test data** on every button press — no real task creation UI exists yet.
-- The `CheckBox` in `TaskRowAdapter` is a visual placeholder — no listener or state binding.
+- The `CheckBox` in `TaskRowAdapter` has an `onClickListener` that routes to `vm.checkOff()`, but `checkOff()` is a no-op placeholder (`return;`).
 - Several `AndroidManifest` permissions (`RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `READ_CALENDAR`, `REQUEST_INSTALL_PACKAGES`) are dead declarations from the legacy architecture with no corresponding code in `src/`.
-- `TaskDAO.deleteAll()` exists but is never called anywhere in the codebase.
+- `TaskDAO.deleteAllCore()` exists but is never called anywhere in the codebase.
 
 ## Key Technical Details
 

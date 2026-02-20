@@ -21,6 +21,8 @@ public class TaskSlot {
     public Long id;
     public Long taskId;
     public Long parentSlotId;
+    @Ignore
+    public TaskSlot parentSlot;
 
     public LocalDate day;
     public LocalTime start;

@@ -33,17 +33,22 @@ public interface TaskDAO {
     //Transactions
     @Transaction
     default void write(Task task) {
-        if (task.core.id != null) {
-            delete(task);
-        } 
         long id = writeCore(task.core);
         task.setId(id);
-        for (Task child : task.children) {
-            write(child);
-        }
         writeFollowUps(task.followUps);
         writePrefSlots(task.prefSlots);
-        writeSlots(task.slots);
+        long[] slotIds = writeSlots(task.slots);
+        for (int i = 0; i <task.slots.size(); i++) {
+            task.slots.get(i).id = slotIds[i];
+        }
+        for (Task child : task.children) {
+            for (TaskSlot slot : child.slots) {
+                if (slot.parentSlot != null) {
+                    slot.parentSlotId = slot.parentSlot.id;
+                }
+            }
+            write(child);
+        }
     }
 
     @Transaction
@@ -66,7 +71,7 @@ public interface TaskDAO {
 
     //Task Slots
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void writeSlots(List<TaskSlot> slots);
+    long[] writeSlots(List<TaskSlot> slots);
 
     // ============== Delete ==============
     @Query("DELETE FROM task_core WHERE id = :id")

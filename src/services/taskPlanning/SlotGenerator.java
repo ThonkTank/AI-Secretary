@@ -25,15 +25,13 @@ public class SlotGenerator {
         // Task baum bauen
         List<Task> tasks = taskDao.readAll();
         List<Task> taskTree = Task.buildTree(tasks);
-        
-        LocalDateTime cursor = prefStart;
-        LocalDateTime end = prefEnd;
-        assignSlot(taskTree, cursor, end);
+
+        assignSlot(taskTree, prefStart, prefEnd, null);
 
         taskDao.writeList(taskTree);
     } 
 
-    private LocalDateTime assignSlot(List<Task> tasks, LocalDateTime cursor, LocalDateTime end) {
+    private LocalDateTime assignSlot(List<Task> tasks, LocalDateTime cursor, LocalDateTime end, TaskSlot parentSlot) {
         while (cursor.isBefore(end)) {
             Task bestTask = null;
             int bestScore = 0;
@@ -55,9 +53,10 @@ public class SlotGenerator {
             slot.score = bestScore;
             slot.day = cursor.toLocalDate();
             slot.start = cursor.toLocalTime();
+            slot.parentSlot = parentSlot;
 
             LocalDateTime slotEnd = cursor.plusMinutes(bestTask.core.maxDuration);
-            LocalDateTime childEnd = assignSlot(bestTask.children, cursor, slotEnd);
+            LocalDateTime childEnd = assignSlot(bestTask.children, cursor, slotEnd, slot);
             slotEnd = childEnd.isAfter(cursor) ? childEnd : slotEnd;
             slot.end = slotEnd.toLocalTime();
             bestTask.slots.add(slot);
