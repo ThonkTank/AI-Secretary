@@ -16,7 +16,7 @@ public interface TaskDAO {
     @Query("SELECT * FROM task_core WHERE id = :id")
     Task read(Long id);
     @Transaction
-    @Query("SELECT * FROM task_core WHERE id IN (SELECT taskId FROM task_slots WHERE day = :day)")
+    @Query("SELECT DISTINCT tc.* FROM task_core tc INNER JOIN task_slots ts ON tc.id = ts.taskId WHERE ts.day = :day ORDER BY ts.start")
     List<Task> readByDue(LocalDate day);
     @Transaction
     @Query("SELECT * FROM task_core")
@@ -33,14 +33,6 @@ public interface TaskDAO {
     void deleteCore(long id);
     @Query("DELETE FROM task_core")
     void deleteAllCore();
-
-    //Blocked Days
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void writeBlockedDays(List<TaskBlockedDay> blockedDays);
-    @Query("DELETE FROM task_blocked_days WHERE taskId = :taskId")
-    void deleteBlockedDays(long taskId);
-    @Query("DELETE FROM task_blocked_days")
-    void deleteAllBlockedDays();
 
     //Follow Ups
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -75,7 +67,9 @@ public interface TaskDAO {
         } 
         long id = writeCore(task.core);
         task.setId(id);
-        writeBlockedDays(task.blockedDays);
+        for (Task child : task.children) {
+            write(child);
+        }
         writeFollowUps(task.followUps);
         writePrefSlots(task.prefSlots);
         writeSlots(task.slots);
@@ -92,7 +86,6 @@ public interface TaskDAO {
     @Transaction
     default void delete(Task task){
         deleteCore(task.core.id);
-        deleteBlockedDays(task.core.id);
         deleteFollowUps(task.core.id);
         deletePrefSlots(task.core.id);
         deleteSlots(task.core.id);
@@ -101,7 +94,6 @@ public interface TaskDAO {
     @Transaction
     default void deleteAll(){
         deleteAllCore();
-        deleteAllBlockedDays();
         deleteAllFollowUps();
         deleteAllPrefSlots();
         deleteAllSlots();

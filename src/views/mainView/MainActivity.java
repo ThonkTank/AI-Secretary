@@ -4,11 +4,15 @@ package views.mainView;
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.widget.Button;
-import android.widget.TextView;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
+import java.util.ArrayList;
+
+import views.taskTab.TaskRowAdapter;
+import views.models.ViewTask;
 import com.autosecretary.R;
-
 
 public class MainActivity extends AppCompatActivity {
     @Override
@@ -18,14 +22,17 @@ public class MainActivity extends AppCompatActivity {
 
         MainViewModel vm = new ViewModelProvider(this).get(MainViewModel.class);
 
-        TextView test = findViewById(R.id.Text);
-        vm.getText().observe(this, content -> {
-            test.setText(content);
+        RecyclerView recyclerView = findViewById(R.id.TaskList);
+        TaskRowAdapter adapter = new TaskRowAdapter(new ArrayList<>());
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setAdapter(adapter);
+        vm.getCheckList().observe(this, content -> {
+            adapter.setList(content);
         });
         
         Button button = findViewById(R.id.Button);
         button.setOnClickListener(v -> {
-            vm.updateText();
+            vm.updateList();
         });
     }
 }

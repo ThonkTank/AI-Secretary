@@ -23,17 +23,7 @@ public class TreeBuilder {
                 taskTree.add(task);
             }
         }
-
+        
         return taskTree;
-
-    }
-
-    public static List<Task> flatten(List<Task> tree) {
-        List<Task> tasks = new ArrayList<>();
-        for (Task task : tree) {
-            tasks.add(task);
-            tasks.addAll(flatten(task.children));
-        }
-        return tasks;
     }
 }

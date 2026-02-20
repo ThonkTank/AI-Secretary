@@ -30,7 +30,7 @@ public class SlotGenerator {
         LocalDateTime end = prefEnd;
         assignSlot(taskTree, cursor, end);
 
-        taskDao.writeList(tasks);
+        taskDao.writeList(taskTree);
     } 
 
     private LocalDateTime assignSlot(List<Task> tasks, LocalDateTime cursor, LocalDateTime end) {
@@ -57,11 +57,12 @@ public class SlotGenerator {
             slot.start = cursor.toLocalTime();
 
             LocalDateTime slotEnd = cursor.plusMinutes(bestTask.core.maxDuration);
-            slotEnd = assignSlot(bestTask.children, cursor, slotEnd);
-            cursor = slotEnd;
-
+            LocalDateTime childEnd = assignSlot(bestTask.children, cursor, slotEnd);
+            slotEnd = childEnd.isAfter(cursor) ? childEnd : slotEnd;
             slot.end = slotEnd.toLocalTime();
             bestTask.slots.add(slot);
+
+            cursor = slotEnd;
         }
 
         //Gibt nur end time zurück. Veränderungen die an task.scheduledDays vorgenommen werden werden ja automatisch in taskTree behalten

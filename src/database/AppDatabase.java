@@ -8,7 +8,7 @@ import androidx.room.Room;
 import android.content.Context;
 
 @Database (
-        entities = {TaskPrefSlot.class, TaskBlockedDay.class, TaskCore.class, TaskFollowUp.class, TaskSlot.class},
+        entities = {TaskPrefSlot.class, TaskCore.class, TaskFollowUp.class, TaskSlot.class},
         version = 1,
         exportSchema = false
     )

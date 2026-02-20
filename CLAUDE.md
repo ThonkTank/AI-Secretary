@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew testDebugUnitTest      # Run debug unit tests only
 ```
 
-Build automatically increments `release/version.txt`, copies the APK to `release/`, and pushes to GitHub.
+**Warning:** `assembleDebug` automatically increments `release/version.txt`, copies the APK to `release/`, and **pushes to GitHub** via `git push`.
 
 No tests exist yet — the `test/` source set is configured but empty.
 
@@ -42,10 +42,15 @@ constants/      → Enums (Priority, Period)
 ```
 
 ### Data flow
-`ViewModel` → background thread → `TaskDAO` (Room) → SQLite (`autosecretary.db`)
+`Preferences` (per-weekday start/end times, default 06:00–16:00) → `MainViewModel` → `SlotGenerator` → `TaskDAO` (Room) → SQLite (`autosecretary.db`). All DB access runs on a background thread via `Executors.newSingleThreadExecutor()`.
+
+`TaskDAO.write()` uses a delete-then-reinsert strategy (not `@Update`) — it deletes the existing core + all related rows, then re-inserts everything.
 
 ### Task model
-`Task` is a composite Room entity: `TaskCore` (with embedded `Repetition`, `Progress`, `History`) + related tables (`TaskSlot`, `TaskPrefSlot`, `TaskBlockedDay`, `TaskFollowUp`) joined via `@Relation`.
+`Task` is a composite Room entity: `TaskCore` (with embedded `Repetition`, `Progress`, `History`) + related tables (`TaskSlot`, `TaskPrefSlot`, `TaskFollowUp`) joined via `@Relation`.
+
+### View model
+`ViewTask` flattens the `Task` tree into a list with indent levels for the RecyclerView. `ViewTask.fromTree()` recursively walks the tree and produces a flat `List<ViewTask>`.
 
 ### Scoring algorithm
 `Task.score()` combines priority, urgency (remaining vs required days), preferred-time fit (8-hour window), and aging factor. Child task priorities influence parent scoring.
@@ -67,6 +72,7 @@ The app has three feature domains. Only tasks are actively being rebuilt:
 
 - **Java 17** with core library desugaring (minSdk 26, targetSdk 35)
 - **Room 2.6.1** for persistence, annotation processor (not KSP)
-- **No XML layouts in active code** — UI is programmatic in `MainActivity`
+- **XML layouts** in `res/layout/` (`activity_main`, `task_row`), displayed via RecyclerView + `TaskRowAdapter`
+- **Room DB version 1**, `exportSchema = false` — entity changes require a migration or `fallbackToDestructiveMigration()`
 - **Package**: `com.autosecretary`
 - **Single Activity** architecture: `views.mainView.MainActivity`

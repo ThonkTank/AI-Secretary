@@ -26,9 +26,6 @@ public class Task {
     public List<TaskSlot> slots;
 
     @Relation(parentColumn = "id", entityColumn = "taskId")
-    public List<TaskBlockedDay> blockedDays;
-
-    @Relation(parentColumn = "id", entityColumn = "taskId")
     public List<TaskFollowUp> followUps;
 
     @Relation(parentColumn = "id", entityColumn = "taskId")
@@ -36,16 +33,65 @@ public class Task {
 
     @Ignore
     public List<Task> children = new ArrayList<>();
-
     @Ignore
+    private int completions;
+    @Ignore
+    private boolean isComplete;
+    @Ignore
+    private LocalDate lastCompletion;
+    @Ignore
+    private LocalDate lastScheduled;
+     LocalDate lastDate() {return lastScheduled != null && lastScheduled.isAfter(lastCompletion) ? lastScheduled : lastCompletion;}
+    private int sinceLast() {return (int) ChronoUnit.DAYS.between(lastDate(), LocalDate.now());}
+
+    public double remainingDays() {
+        if (core.deadline != null) {
+            return (double) ChronoUnit.DAYS.between(LocalDate.now(), core.deadline);
+        } else if (core.repetition != null) {
+            return core.repetition.remainingDays(lastCompletion);
+        }
+        return 1;
+    }
+
+    public double requiredDays() {
+        if (core.progress.target > 0) {
+            return core.progress.resetPerRep ? core.repetition.requiredDays() : core.progress.remaining() / (core.progress.repsRequired(core.minDuration)*(core.cooldown));
+        } else if (core.repetition != null) {
+            return core.repetition.requiredDays();
+        }
+        return 1;
+    }
+
+    public double agingForce() {
+        double agingFactor = 10;
+        return 1+(sinceLast() / agingFactor);
+    }
+
+    private void checkSlots() {
+        completions = 0;
+        isComplete = false;
+        lastCompletion = core.created.minusDays(1);
+        lastScheduled = null;
+        for (TaskSlot slot : slots) {
+            if (lastScheduled == null || slot.day.isAfter(lastScheduled)) {
+                lastScheduled = slot.day;
+            }
+            if (slot.completed) {
+                completions++;
+                isComplete = true;
+                if (slot.day.isAfter(lastCompletion)) {
+                    lastCompletion = slot.day;
+                }
+            }
+        }
+    }
+
     public int score(LocalDateTime start, LocalDateTime end) {
         int availibleTime = (int) ChronoUnit.MINUTES.between(start, end);
+        checkSlots();
 
         // hard constraints
-        if (core.cooldown > 0
-            && core.lastCompletion != null
-            && !start.toLocalDate().isAfter(core.lastCompletion.plusDays(core.cooldown))
-        ) {
+        if (sinceLast() < core.cooldown) {
             return 0;
         }
         if (availibleTime < core.minDuration) {
@@ -53,6 +99,12 @@ public class Task {
         }
         if (core.progress != null
             && availibleTime < core.progress.requiredTimePerRep()
+        ) {
+            return 0;
+        }
+        if (core.closeOnMiss
+            && core.deadline != null
+            && LocalDate.now().isAfter(core.deadline)
         ) {
             return 0;
         }
@@ -87,8 +139,8 @@ public class Task {
         }
 
         // urgency
-        double remainingDays = core.remainingDays();
-        double requiredDays = core.requiredDays();
+        double remainingDays = remainingDays();
+        double requiredDays = requiredDays();
         int urgencyMultOnMiss = 100;
         double urgency = 0;
 
@@ -97,7 +149,7 @@ public class Task {
         totalPrio = (int) (totalPrio * urgency);
 
         //aging
-        double agingForce = core.agingForce();
+        double agingForce = agingForce();
         totalPrio = (int) (totalPrio * agingForce);
 
         return totalPrio;
@@ -106,8 +158,8 @@ public class Task {
     @Ignore
     public void setId(long id) {
         core.id = id;
-        for (TaskBlockedDay day : blockedDays) {
-            day.taskId = id;
+        for (Task child : children) {
+            child.core.parent = id;
         }
         for (TaskFollowUp followUp : followUps) {
             followUp.taskId = id;
@@ -124,18 +176,24 @@ public class Task {
     //Leerer Construktor für Room
     public Task() {}
     //convenience Constructor für mich
-    public Task(String title, int reps, int perPeriod, Period periodUnit, LocalDate deadline, LocalDate lastCompletion, int cooldown, LocalTime start, LocalTime end) {
+    public Task(String title, int reps, int perPeriod, Period periodUnit, LocalDate deadline, int cooldown, LocalTime start, int maxDuration) {
         this.core = new TaskCore();
         this.core.title = title;
         this.core.cooldown = cooldown;
         this.core.deadline = deadline;
+        this.core.maxDuration = maxDuration;
+        
         this.core.repetition.reps = reps;
         this.core.repetition.perPeriod = perPeriod;
         this.core.repetition.periodUnit = periodUnit;
 
         this.slots = new ArrayList<>();
-        this.blockedDays = new ArrayList<>();
         this.followUps = new ArrayList<>();
         this.prefSlots = new ArrayList<>();
+
+        TaskPrefSlot prefSlot = new TaskPrefSlot();
+        prefSlot.day = LocalDate.now().getDayOfWeek();
+        prefSlot.start = start;
+        this.prefSlots.add(prefSlot);
     }
 }

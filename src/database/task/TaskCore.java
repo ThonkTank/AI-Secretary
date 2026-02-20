@@ -21,49 +21,25 @@ public class TaskCore {
     public Long parent;
 
     //scheduling
-    public Priority priority;
-    public int cooldown;
-    public LocalDate lastCompletion;
-    public double sinceLast() {return ChronoUnit.DAYS.between(lastCompletion, LocalDate.now());}
+    public Priority priority = Priority.MEDIUM;
+    public int cooldown = 1;
     public LocalDate deadline;
-    public boolean closeOnMiss; // Wenn deadline/perioden Ende etc. überschritten wird, task offen halten oder abschließen?
+    public LocalDate created = LocalDate.now();
+    public boolean closeOnMiss = true; // Wenn deadline/perioden Ende etc. überschritten wird, task offen halten oder abschließen?
 
     public boolean adaptive;  //prefTimes an Nutzerverhalten anpassen?
-    public int minDuration;
-    public int maxDuration;
-
-    public double remainingDays() {
-        if (deadline != null) {
-            return (double) ChronoUnit.DAYS.between(LocalDate.now(), deadline);
-        } else if (repetition != null) {
-            return repetition.remainingDays(lastCompletion);
-        }
-        return 1;
-    }
-
-    public double requiredDays() {
-        if (progress != null) {
-            return progress.resetPerRep ? this.repetition.requiredDays() : progress.remaining() / (progress.repsRequired(minDuration)*(cooldown+1));
-        } else if (repetition != null) {
-            return repetition.requiredDays();
-        }
-        return 1;
-    }
-
-    public double agingForce() {
-        double agingFactor = 10;
-        return 1+(sinceLast() / agingFactor);
-    }
+    public int minDuration = 5;
+    public int maxDuration = 10;
 
     @Embedded(prefix = "history_")
-    public History history;
+    public History history = new History();
 
     @Embedded(prefix = "repetition_")
-    public Repetition repetition;
+    public Repetition repetition = new Repetition();
 
     //completion tracking
     @Embedded(prefix = "progress_")
-    public Progress progress;
+    public Progress progress = new Progress();
 
     // Repeat amount (5 times, one time, ten times) perPeriod (every, within two) Period (day, weeks).
     public static class Repetition {
@@ -83,7 +59,7 @@ public class TaskCore {
         public String unit;             // Einheit (z.B. "Seiten", "Kapitel")
         public boolean resetPerRep;          // True = Progress resets jede repetition (muss dafür repetition haben)
 
-        public int target;              // Zielwert (z.B. 6), 0 = kein Tracking
+        public int target = 0;              // Zielwert (z.B. 6), 0 = kein Tracking
         public int current;             // Aktueller Fortschritt (z.B. 3)
         public int remaining() {return target - current;}
 
