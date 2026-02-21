@@ -8,7 +8,11 @@ import androidx.room.Transaction;
 
 import java.time.LocalDate;
 import views.models.ViewSlot;
+
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Dao
 public interface TaskDAO {
@@ -32,29 +36,39 @@ public interface TaskDAO {
     // ============== Write ==============
     //Transactions
     @Transaction
-    default void write(Task task) {
-        long id = writeCore(task.core);
-        task.setId(id);
-        writeFollowUps(task.followUps);
-        writePrefSlots(task.prefSlots);
-        long[] slotIds = writeSlots(task.slots);
-        for (int i = 0; i <task.slots.size(); i++) {
-            task.slots.get(i).id = slotIds[i];
+    default void writeGraph(List<Task> roots) {
+        // Flatten: alle einzigartigen Tasks sammeln
+        List<Task> all = Task.flatten(roots);
+
+        // Pass 1: Cores
+        for (Task task : all) {
+            long id = writeCore(task.core);
+            task.setId(id);
         }
-        for (Task child : task.children) {
-            for (TaskSlot slot : child.slots) {
-                if (slot.parentSlot != null) {
-                    slot.parentSlotId = slot.parentSlot.id;
-                }
+
+        // Pass 2: Parent-Links (IDs existieren jetzt)
+        for (Task task : all) {
+            for (Task child : task.children) {
+                writeRelation(new TaskRelation(task.core.id, child.core.id));
             }
-            write(child);
+        }
+
+        // Pass 3: Rest
+        for (Task task : all) {
+            writeFollowUps(task.followUps);
+            writePrefSlots(task.prefSlots);
+            long[] slotIds = writeSlots(task.slots);
+            for (int i = 0; i < task.slots.size(); i++) {
+                task.slots.get(i).id = slotIds[i];
+            }
         }
     }
 
-    @Transaction
-    default void writeList(List<Task> tasks) {
-        for (Task task : tasks) {
-            write(task);
+    private static void collectAll(Task task, List<Task> result, Set<Task> visited) {
+        if (!visited.add(task)) return;  // schon besucht
+        result.add(task);
+        for (Task child : task.children) {
+            collectAll(child, result, visited);
         }
     }
 
@@ -68,6 +82,10 @@ public interface TaskDAO {
     //Pref Slots
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writePrefSlots(List<TaskPrefSlot> prefSlots);
+
+    //Parent
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void writeRelation(TaskRelation relation);
 
     //Task Slots
     @Insert(onConflict = OnConflictStrategy.REPLACE)

@@ -14,11 +14,11 @@ import views.models.ViewSlot;
 import database.task.TaskSlot;
 import com.autosecretary.R;
 
-public class TaskRowAdapter extends RecyclerView.Adapter<TaskRowAdapter.TaskRowViewHolder> {
+public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowViewHolder> {
     List<ViewSlot> viewSlots;
     Consumer<TaskSlot> onCheck;
 
-    public TaskRowAdapter(List<ViewSlot> viewSlots, Consumer<TaskSlot> onCheck) {
+    public ListRowAdapter(List<ViewSlot> viewSlots, Consumer<TaskSlot> onCheck) {
         this.viewSlots = viewSlots;
         this.onCheck = onCheck;
     }

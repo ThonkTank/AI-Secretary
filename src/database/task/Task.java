@@ -13,8 +13,10 @@ import java.time.DayOfWeek;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import constants.Priority;
 import constants.Period;
@@ -31,6 +33,9 @@ public class Task {
 
     @Relation(parentColumn = "id", entityColumn = "taskId")
     public List<TaskPrefSlot> prefSlots;
+
+    @Relation(parentColumn = "id", entityColumn = "taskId")
+    public List<TaskParent> parents;
 
     @Ignore
     public List<Task> children = new ArrayList<>();
@@ -159,9 +164,6 @@ public class Task {
     @Ignore
     public void setId(long id) {
         core.id = id;
-        for (Task child : children) {
-            child.core.parent = id;
-        }
         for (TaskFollowUp followUp : followUps) {
             followUp.taskId = id;
         }
@@ -171,8 +173,14 @@ public class Task {
         for (TaskSlot slot : slots) {
             slot.taskId = id;
         }
-
     }
+
+    public void setParentId(long id) {
+        for (TaskParent parent : parents) {
+            parent.parent = id;
+        }
+    }
+
 
     //Leerer Construktor für Room
     public Task() {}
@@ -207,13 +215,26 @@ public class Task {
         }
 
         for (Task task : tasks) {
-            if (task.core.parent != null) {
-                mappedTasks.get(task.core.parent).children.add(task);
-            } else {
+            int parents = 0;
+            for (TaskParent parent : task.parents) {
+                mappedTasks.get(parent.parent).children.add(task);
+                parents++;
+            }
+            if (parents == 0) {
                 taskTree.add(task);
             }
         }
         
         return taskTree;
     }
+
+    public static List<Task> flatten(List<Task> roots) {
+        Set<Task> visited = new HashSet<>();
+        List<Task> result = new ArrayList<>();
+        for (Task root : roots) {
+            collectAll(root, result, visited);
+        }
+        return result;
+    }
+
 }

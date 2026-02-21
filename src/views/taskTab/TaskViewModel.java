@@ -21,13 +21,13 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.ArrayList;
 
-public class TaskViewModel extends AndroidViewModel {
+public class ListViewModel extends AndroidViewModel {
     private MutableLiveData<List<ViewSlot>> checkList = new MutableLiveData<>();
     private Preferences prefs;
     private TaskDAO taskDao;
     private ExecutorService executor; 
 
-    public TaskViewModel(Application app) {
+    public ListViewModel(Application app) {
         super(app);
         this.prefs = new Preferences(app);
         this.taskDao = AppDatabase.getInstance(app).taskDao();

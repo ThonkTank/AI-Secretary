@@ -17,9 +17,6 @@ public class TaskCore {
     public String title;
     public String description;
 
-    //relations
-    public Long parent;
-
     //scheduling
     public Priority priority = Priority.MEDIUM;
     public int cooldown = 1;
@@ -33,6 +30,7 @@ public class TaskCore {
 
     @Embedded(prefix = "history_")
     public History history = new History();
+    public boolean completed = false;
 
     @Embedded(prefix = "repetition_")
     public Repetition repetition = new Repetition();
