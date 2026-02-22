@@ -9,6 +9,7 @@ import androidx.room.PrimaryKey;
 import androidx.room.Embedded;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
+import androidx.annotation.NonNull;
 
 @Entity (tableName = "task_pref_slots",
     indices = @Index("taskId"),

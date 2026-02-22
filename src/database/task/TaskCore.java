@@ -9,6 +9,7 @@ import constants.Period;
 import androidx.room.Embedded;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
+import androidx.annotation.NonNull;
 
 @Entity (tableName = "task_core")
 public class TaskCore {

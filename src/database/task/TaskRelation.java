@@ -8,6 +8,7 @@ import java.util.UUID;
 import androidx.room.Embedded;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
+import androidx.annotation.NonNull;
 
 @Entity (tableName = "task_relation",
     indices = @Index("child"),

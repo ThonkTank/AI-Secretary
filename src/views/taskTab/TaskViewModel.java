@@ -51,7 +51,13 @@ public class TaskViewModel extends AndroidViewModel {
         super(app);
         this.prefs = new Preferences(app);
         this.taskDao = AppDatabase.getInstance(app).taskDao();
-        this.executor =    Executors.newSingleThreadExecutor();
+        this.executor = Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable);
+            thread.setUncaughtExceptionHandler((t, e) -> 
+                Log.e("TaskViewModel", "Background crash", e)
+            );
+            return thread;
+        });
         masterList = new ViewSlotList();
         executor.execute(() -> { 
             masterList.fromList(taskDao.readAll());

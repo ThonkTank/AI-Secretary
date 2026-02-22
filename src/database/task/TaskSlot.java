@@ -15,6 +15,7 @@ import androidx.room.Embedded;
 import androidx.room.ForeignKey;
 import androidx.room.Ignore;
 import androidx.room.Index;
+import androidx.annotation.NonNull;
 
 @Entity(tableName = "task_slots",
     indices = @Index("taskId"),
