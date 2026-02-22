@@ -35,7 +35,7 @@ public class Task {
     public List<TaskPrefSlot> prefSlots;
 
     @Relation(parentColumn = "id", entityColumn = "taskId")
-    public List<TaskParent> parents;
+    public List<TaskRelation> parents;
 
     @Ignore
     public List<Task> children = new ArrayList<>();
@@ -176,7 +176,7 @@ public class Task {
     }
 
     public void setParentId(long id) {
-        for (TaskParent parent : parents) {
+        for (TaskRelation parent : parents) {
             parent.parent = id;
         }
     }
@@ -216,7 +216,7 @@ public class Task {
 
         for (Task task : tasks) {
             int parents = 0;
-            for (TaskParent parent : task.parents) {
+            for (TaskRelation parent : task.parents) {
                 mappedTasks.get(parent.parent).children.add(task);
                 parents++;
             }

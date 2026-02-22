@@ -7,7 +7,6 @@ import androidx.room.Query;
 import androidx.room.Transaction;
 
 import java.time.LocalDate;
-import views.models.ViewSlot;
 
 import java.util.ArrayList;
 import java.util.HashSet;

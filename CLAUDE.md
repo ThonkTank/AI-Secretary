@@ -50,7 +50,7 @@ constants/          → Enums (Priority, Period)
 
 `MainActivity` hosts a `FragmentContainerView` + `BottomNavigationView` with two tabs:
 - **Schedule** (`tab_schedule`) → `ListFragment`
-- **Tasks** (`tab_manage`) → `ManagementFragment` — class doesn't exist yet
+- **Tasks** (`tab_manage`) → placeholder `ListFragment` (no management UI exists yet)
 
 `ListFragment` has an internal `MaterialButtonToggleGroup` that switches between two display modes:
 - **Checklist** — filtered to today, only scheduled slots, sorted by time
@@ -65,7 +65,7 @@ TaskViewModel constructor → background thread:
   → masterList.fromList(taskDao.readAll())   // builds ViewSlotList from all tasks
 
 ListFragment "Generieren" button → vm.updateList() → background thread:
-  → SlotGenerator.generateSlots()
+  → SlotGenerator.generateSlots(taskDao, start, end)  // currently broken — see Known Bugs
       → readAll() → Task.buildTree() → assignSlot() → writeList()
   → masterList.fromList(taskDao.readAll())   // refresh master list
   → filterList() → sortList() → displayList.postValue()
@@ -106,7 +106,7 @@ All DB access runs on a background thread via `Executors.newSingleThreadExecutor
 
 Parent-child relationship: `TaskRelation` entity links tasks via `child`/`parent` columns. `Task.buildTree()` reads `task.parents` (a `@Relation` list) and builds the in-memory tree. `Task.flatten()` does the inverse — collects all tasks from a tree into a flat list for writing.
 
-`TaskSlot` also has its own tree structure: `TaskSlot.parent` (Long) + `TaskSlot.buildTree()` builds a slot hierarchy. `SlotGenerator` sets `slot.parentSlot` when scheduling children inside parent time blocks.
+`TaskSlot` also has its own tree structure: `TaskSlot.parent` (Long) + `TaskSlot.buildTree()` builds a slot hierarchy. `SlotGenerator.assignSlot()` passes a `parentSlot` parameter to set child slot hierarchy — but currently references `slot.parentSlot` which doesn't exist on `TaskSlot` (see Known Bugs).
 
 ### ViewSlotList (presentation model)
 
@@ -155,14 +155,10 @@ The `old/` directory contains 80+ Java files spanning widgets, scheduling, budge
 
 ### Compile errors (project will not build)
 - **`TaskParent` class does not exist** — `Task.java` declares `@Relation List<TaskParent> parents`, and `TaskParent` is referenced in `Task.buildTree()`, `Task.setParentId()`, and `ViewSlotList.buildTree()`. No `TaskParent.java` file exists. Either create it or change references to `TaskRelation` (with corrected `@Relation` annotation: `entity = TaskRelation.class, entityColumn = "child"`).
-- **`TaskViewModel.getList()` return type typo** — returns `LivaData` (should be `LiveData`).
-- **`ListFragment` line 58: `LocalDay.now()`** — no such class, should be `LocalDate.now()`.
 - **`TaskDAO` imports deleted class** — `import views.models.ViewSlot` but that class was replaced by `ViewSlotList`. The import is unused and will fail.
-- **`SlotGenerator.generateSlots()` called as static** — `TaskViewModel.updateList()` calls `SlotGenerator.generateSlots()` without an instance, but the method is not static (it's an instance method that uses `this.taskDao`).
-- **`SlotGenerator` references `slot.parentSlot`** — `TaskSlot` has `slot.parent` (Long), not `parentSlot`. Field name mismatch.
-- **`activity_main.xml` missing `xmlns:android`** — the root `<LinearLayout>` declares `xmlns:app` but not `xmlns:android`, yet child elements use `android:` attributes.
-- **`fragment_task_list.xml` closing tag mismatch** — opening tag is `<com.google.android.material.button.MaterialButtonToggleGroup` but closing tag is `</MaterialButtonToggleGroup>`.
-- **`TaskViewModel.filters` and `sorters` are private** — but `ListFragment` accesses them directly (`vm.filters.day`, `vm.sorters.byTaskParent`). Either make them public or add accessors.
+- **`SlotGenerator` calling convention mismatch** — `TaskViewModel.updateList()` calls `SlotGenerator.generateSlots(taskDao, start, end)` as if it were a static method with parameters. But `SlotGenerator` has a constructor `(TaskDAO, LocalDateTime, LocalDateTime)` and `generateSlots()` is an instance method with no parameters. Either make `generateSlots` static with parameters, or instantiate `SlotGenerator` first.
+- **`SlotGenerator` references `slot.parentSlot`** — `TaskSlot` has `slot.parent` (Long), not `parentSlot`. Field name mismatch — `parentSlot` is typed as `TaskSlot` in `assignSlot()` but `TaskSlot` has no such field.
+- **`TaskViewModel.updateList()` type mismatch** — `prefs.readPrefTime()` returns `LocalTime` but the result is assigned to `LocalDateTime` variables. Need to combine with `LocalDate` (e.g. `LocalDateTime.of(date, time)`).
 
 ### Runtime bugs
 - **`TaskPrefSlot`** uses a non-autoGenerate `@PrimaryKey` defaulting to `0` — inserting multiple pref slots silently replaces each other via `OnConflictStrategy.REPLACE`.
@@ -176,7 +172,7 @@ The `old/` directory contains 80+ Java files spanning widgets, scheduling, budge
 
 ## Not Yet Implemented
 
-- `ManagementFragment` is referenced by `MainActivity` but the class doesn't exist yet — no task creation/editing UI.
+- No task creation/editing UI — `MainActivity`'s second tab is a placeholder (`ListFragment` again). A management fragment still needs to be built.
 - Several `AndroidManifest` permissions (`RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `READ_CALENDAR`, `REQUEST_INSTALL_PACKAGES`) are dead declarations from the legacy architecture with no corresponding code in `src/`.
 - `TaskDAO.deleteAllCore()` exists but is never called anywhere in the codebase.
 
