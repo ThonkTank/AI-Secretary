@@ -10,7 +10,7 @@ import android.widget.CheckBox;
 import java.util.List;
 import java.util.function.Consumer;
 
-import views.models.ViewSlot;
+import views.models.ViewSlotList.ViewSlot;
 import database.task.TaskSlot;
 import com.autosecretary.R;
 
@@ -49,8 +49,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         ViewSlot viewSlot = viewSlots.get(position);
         int step = holder.itemView.getContext().getResources().getDimensionPixelSize(R.dimen.indent_step);
 
-        holder.title.setText(viewSlot.core.title);
-        holder.itemView.setPadding(step * viewSlot.indent, 0, 0, 0);
+        holder.title.setText(viewSlot.task.core.title);
+        holder.itemView.setPadding(step * viewSlot.depth, 0, 0, 0);
         holder.checkBox.setOnClickListener(v -> onCheck.accept(viewSlot.slot));
         holder.checkBox.setChecked(viewSlot.slot.completed);
     }

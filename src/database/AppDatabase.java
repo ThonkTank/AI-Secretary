@@ -18,7 +18,7 @@ import java.util.concurrent.Executors;
 import android.content.Context;
 
 @Database (
-        entities = {TaskPrefSlot.class, TaskCore.class, TaskFollowUp.class, TaskSlot.class},
+        entities = {TaskPrefSlot.class, TaskRelation.class, TaskCore.class, TaskFollowUp.class, TaskSlot.class},
         version = 1,
         exportSchema = false
     )

@@ -30,7 +30,7 @@ public class TaskSlot {
     public Long taskId;
     public Long parent;
     @Ignore
-    public List<TaskSlot> children;
+    public List<TaskSlot> children = new ArrayList<>();
 
     public LocalDate day;
     public LocalTime start;

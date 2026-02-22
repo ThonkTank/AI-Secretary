@@ -24,7 +24,7 @@ This is a non-standard Android project using flat source directories (no `app/` 
 |------|---------|
 | `src/` | Active Java source (flat, not `src/main/java/`) |
 | `old/` | Legacy code being migrated — do not modify |
-| `res/` | Android resources (currently minimal) |
+| `res/` | Android resources |
 | `AndroidManifest.xml` | Root-level manifest |
 | `build.gradle.kts` | Single-module Kotlin DSL build |
 | `release/` | Built APK + version counter |
@@ -36,48 +36,91 @@ Source set mapping in Gradle: `java.srcDirs("src")`, `res.srcDirs("res")`, `mani
 **MVVM with Room** — the app is being rebuilt from a legacy SQLite/custom-parser architecture.
 
 ```
-views/          → Activities + ViewModels (LiveData)
-services/       → Business logic (scheduling algorithms)
-database/       → Room entities, DAOs, type converters
-config/         → SharedPreferences wrappers
-constants/      → Enums (Priority, Period)
+views/              → MainActivity (fragment host), MainViewModel (empty)
+views/taskTab/      → ListFragment, TaskViewModel, ListRowAdapter
+views/models/       → ViewSlotList (presentation model with filtering/sorting)
+services/           → Business logic (SlotGenerator)
+database/           → AppDatabase, Converters
+database/task/      → Room entities + DAO (Task, TaskCore, TaskSlot, TaskRelation, TaskPrefSlot, TaskFollowUp)
+config/             → SharedPreferences wrappers (Preferences)
+constants/          → Enums (Priority, Period)
 ```
+
+### Navigation
+
+`MainActivity` hosts a `FragmentContainerView` + `BottomNavigationView` with two tabs:
+- **Schedule** (`tab_schedule`) → `ListFragment`
+- **Tasks** (`tab_manage`) → `ManagementFragment` — class doesn't exist yet
+
+`ListFragment` has an internal `MaterialButtonToggleGroup` that switches between two display modes:
+- **Checklist** — filtered to today, only scheduled slots, sorted by time
+- **Manage** — filtered to today, includes unscheduled tasks, sorted by task-parent tree then title
+
+Fragment swapping via `getSupportFragmentManager().replace()`. `TaskViewModel` is scoped to the Activity (`requireActivity()`) so it's shared across fragments.
 
 ### Data flow
 
 ```
-Button → MainActivity.onClick → vm.updateList() → background thread:
-  → write hardcoded test tasks (TEMPORARY — no task creation UI yet)
+TaskViewModel constructor → background thread:
+  → masterList.fromList(taskDao.readAll())   // builds ViewSlotList from all tasks
+
+ListFragment "Generieren" button → vm.updateList() → background thread:
   → SlotGenerator.generateSlots()
       → readAll() → Task.buildTree() → assignSlot() → writeList()
-  → readSlotsForDay(today) → ViewSlot.assignIndents()
-  → LiveData.postValue() → main thread → adapter.setList() → RecyclerView redraws
+  → masterList.fromList(taskDao.readAll())   // refresh master list
+  → filterList() → sortList() → displayList.postValue()
+  → main thread → adapter.setList() → RecyclerView redraws
+
+ListFragment toggle switch → vm.filters/vm.sorters update → vm.filterList()
+  → masterList.filter(predicate) → sortList()
+      → masterList.sort() → buildTree() → sortTree() → flatten(with depth)
+  → displayList.postValue() → adapter.setList()
+
+ListFragment checkbox → vm.checkOff(slot) → taskDao.writeSlot(slot)
 ```
+
+DB seeding happens in `AppDatabase.onCreate()` callback (runs once on first DB creation), not on every button press.
 
 All DB access runs on a background thread via `Executors.newSingleThreadExecutor()`.
 
-`TaskDAO.write()` uses a delete-then-reinsert strategy (not `@Update`) — it deletes the existing core (cascading to related rows via `@ForeignKey(onDelete = CASCADE)` on `TaskSlot`), then re-inserts everything. `write()` is **recursive**: it calls `write(child)` for each child, so a single call on a root task cascades through the entire subtree.
+`TaskDAO.writeList()` uses a 3-pass strategy:
+1. **Pass 1 — Cores**: Insert all `TaskCore` rows, capture generated IDs via `setId()`
+2. **Pass 2 — Relations**: Write `TaskRelation` entries linking parents to children (IDs now exist)
+3. **Pass 3 — Rest**: Write follow-ups, pref slots, and task slots
 
 `SlotGenerator.generateSlots()` calls `taskDao.writeList(taskTree)` at the end — effectively a full rewrite of the entire database on each generation.
 
 ### Task model
 
-`Task` is a Room POJO (not a `@Entity`). Room assembles it via `@Embedded` + `@Relation` from four actual database tables:
+`Task` is a Room POJO (not a `@Entity`). Room assembles it via `@Embedded` + `@Relation` from five actual database tables:
 
 | Class | Table | Role |
 |-------|-------|------|
 | `TaskCore` | `task_core` | One row per task — title, scheduling params, embedded sub-objects |
-| `TaskSlot` | `task_slots` | Scheduled/completed time blocks. FK: `taskId`, `@ForeignKey(onDelete = CASCADE)`. Has `parentSlotId` for parent-child slot hierarchy and `score` for the assigned score |
-| `TaskPrefSlot` | `task_pref_slots` | Preferred weekday/time. FK: `taskId` |
-| `TaskFollowUp` | `task_follow_ups` | Follow-up links. FK: `taskId` |
+| `TaskSlot` | `task_slots` | Scheduled/completed time blocks. FK → `taskId`. Has `parent` (Long) for parent-child slot hierarchy and `score` |
+| `TaskRelation` | `task_relation` | Parent-child links between tasks. FK → `child`. Has `child` and `parent` columns pointing to `task_core.id` |
+| `TaskPrefSlot` | `task_pref_slots` | Preferred weekday/time. FK → `taskId` |
+| `TaskFollowUp` | `task_follow_ups` | Follow-up links. FK → `taskId` |
 
 `TaskCore` uses `@Embedded` for three static inner classes (`Repetition`, `Progress`, `History`) — their fields are flattened into `task_core` columns with prefixes (`repetition_`, `progress_`, `history_`).
 
-Parent-child relationship: `TaskCore.parent` is a `Long` pointing to another `task_core.id`. Not declared as a Room `@ForeignKey` — handled manually by `Task.buildTree()` (static method) via a two-pass tree build from flat records.
+Parent-child relationship: `TaskRelation` entity links tasks via `child`/`parent` columns. `Task.buildTree()` reads `task.parents` (a `@Relation` list) and builds the in-memory tree. `Task.flatten()` does the inverse — collects all tasks from a tree into a flat list for writing.
 
-### View model
+`TaskSlot` also has its own tree structure: `TaskSlot.parent` (Long) + `TaskSlot.buildTree()` builds a slot hierarchy. `SlotGenerator` sets `slot.parentSlot` when scheduling children inside parent time blocks.
 
-`ViewSlot` is a Room POJO (`@Embedded TaskSlot` + `@Relation TaskCore`) returned directly by `TaskDAO.readSlotsForDay()`. Indentation is slot-based: `ViewSlot.assignIndents()` walks the flat list and computes each slot's indent level from `parentSlotId` using a lookup map. Indent width is defined in `res/values/dimens.xml` as `indent_step` (24dp).
+### ViewSlotList (presentation model)
+
+`ViewSlotList` is the presentation layer between Room data and the RecyclerView. It holds two lists: `viewSlots` (master, all data) and `displaySlots` (filtered/sorted subset sent to UI).
+
+`ViewSlot` is an inner class of `ViewSlotList` with fields: `Task task`, `TaskSlot slot`, `int depth`, `List<ViewSlot> children`. One ViewSlot per TaskSlot; tasks with no slots get a synthetic empty-slot ViewSlot.
+
+Processing pipeline:
+1. `fromList(tasks)` — builds flat `viewSlots` from all Tasks (one ViewSlot per slot, synthetic empty slot for unscheduled)
+2. `filter(predicate)` — applies Predicate to `viewSlots`, writes matching items to `displaySlots`
+3. `sort(byTaskParent, comparator)` — three phases:
+   - `buildTree()` — groups `displaySlots` into parent-child hierarchy (by task-parent or slot-parent depending on `byTaskParent` flag)
+   - `sortTree()` — recursively sorts siblings at each level using the comparator
+   - `flatten()` — DFS traversal back to flat list, setting `depth` for UI indentation; cycle detection via `visited` set
 
 ### Scoring algorithm
 
@@ -90,7 +133,7 @@ Parent-child relationship: `TaskCore.parent` is a `Long` pointing to another `ta
 5. **Urgency** → `requiredDays / remainingDays`; overdue = hardcoded 100
 6. **Aging** → `1 + (daysSinceLastActivity / 10)`
 
-Note: `checkSlots()` runs inside `score()` on every call, making scoring O(tasks × slots) per greedy iteration.
+Note: `checkSlots()` runs inside `score()` on every call, making scoring O(tasks x slots) per greedy iteration.
 
 ### Slot generation
 
@@ -102,7 +145,7 @@ The app has three feature domains. Only tasks are actively being rebuilt:
 
 | Feature | Status | Location |
 |---------|--------|----------|
-| Task scheduling | **Active** — Room + MVVM | `src/` |
+| Task scheduling | **Active** — Room + MVVM + Fragments | `src/` |
 | Budget/Finance | Not migrated | `old/controller/budgetTab/`, `old/entities/` |
 | Meal planning | Not migrated | `old/controller/mealTab/`, `old/entities/` |
 
@@ -110,15 +153,30 @@ The `old/` directory contains 80+ Java files spanning widgets, scheduling, budge
 
 ## Known Bugs
 
-- `TaskPrefSlot` uses a non-autoGenerate `@PrimaryKey` defaulting to `0` — inserting multiple pref slots silently replaces each other via `OnConflictStrategy.REPLACE`.
-- `Task.buildTree()` will throw `NullPointerException` if a child is in the result set but its parent is not (the `mappedTasks.get(task.core.parent)` call returns null).
-- `ViewSlot.assignIndents()` will NPE if `parentSlotId` references a slot not in the list (same pattern — `indents.get(vs.slot.parentSlotId)` returns null).
-- `AppDatabase.getInstance()` is not thread-safe — no `synchronized` block, so concurrent first calls could create duplicate instances.
+### Compile errors (project will not build)
+- **`TaskParent` class does not exist** — `Task.java` declares `@Relation List<TaskParent> parents`, and `TaskParent` is referenced in `Task.buildTree()`, `Task.setParentId()`, and `ViewSlotList.buildTree()`. No `TaskParent.java` file exists. Either create it or change references to `TaskRelation` (with corrected `@Relation` annotation: `entity = TaskRelation.class, entityColumn = "child"`).
+- **`TaskViewModel.getList()` return type typo** — returns `LivaData` (should be `LiveData`).
+- **`ListFragment` line 58: `LocalDay.now()`** — no such class, should be `LocalDate.now()`.
+- **`TaskDAO` imports deleted class** — `import views.models.ViewSlot` but that class was replaced by `ViewSlotList`. The import is unused and will fail.
+- **`SlotGenerator.generateSlots()` called as static** — `TaskViewModel.updateList()` calls `SlotGenerator.generateSlots()` without an instance, but the method is not static (it's an instance method that uses `this.taskDao`).
+- **`SlotGenerator` references `slot.parentSlot`** — `TaskSlot` has `slot.parent` (Long), not `parentSlot`. Field name mismatch.
+- **`activity_main.xml` missing `xmlns:android`** — the root `<LinearLayout>` declares `xmlns:app` but not `xmlns:android`, yet child elements use `android:` attributes.
+- **`fragment_task_list.xml` closing tag mismatch** — opening tag is `<com.google.android.material.button.MaterialButtonToggleGroup` but closing tag is `</MaterialButtonToggleGroup>`.
+- **`TaskViewModel.filters` and `sorters` are private** — but `ListFragment` accesses them directly (`vm.filters.day`, `vm.sorters.byTaskParent`). Either make them public or add accessors.
+
+### Runtime bugs
+- **`TaskPrefSlot`** uses a non-autoGenerate `@PrimaryKey` defaulting to `0` — inserting multiple pref slots silently replaces each other via `OnConflictStrategy.REPLACE`.
+- **`TaskRelation` constructor arg order** — constructor is `TaskRelation(Long child, Long parent)` but `TaskDAO.writeList()` calls `new TaskRelation(task.core.id, child.core.id)` where `task` is the parent. Arguments are swapped, writing inverted relationships.
+- **`ViewSlot.children` never initialized** — `ViewSlotList.ViewSlot` declares `private List<ViewSlot> children;` but the constructor doesn't initialize it. `buildTree()` calls `mappedVS.get(parent).children.add(vs)` → NPE.
+- **`Task.buildTree()` NPE** — if a child references a parent not in the result set, `mappedTasks.get(parent.parent)` returns null.
+- **`TaskSlot.buildTree()` NPE** — same pattern: if `parent` references a slot not in the list.
+- **`ViewSlotList.buildTree()` NPE** — same pattern: `mappedVS.get(parent)` can return null if parent ViewSlot was filtered out.
+- **`AppDatabase.getInstance()` not thread-safe** — no `synchronized` block, concurrent first calls could create duplicate instances.
+- **DB version not bumped** — `TaskRelation` was added to `@Database` entities but version is still 1. This will crash existing installs with `IllegalStateException`. Must bump version and add migration or `fallbackToDestructiveMigration()`.
 
 ## Not Yet Implemented
 
-- `MainViewModel.updateList()` seeds **hardcoded test data** on every button press — no real task creation UI exists yet.
-- The `CheckBox` in `TaskRowAdapter` has an `onClickListener` that routes to `vm.checkOff()`, but `checkOff()` is a no-op placeholder (`return;`).
+- `ManagementFragment` is referenced by `MainActivity` but the class doesn't exist yet — no task creation/editing UI.
 - Several `AndroidManifest` permissions (`RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `READ_CALENDAR`, `REQUEST_INSTALL_PACKAGES`) are dead declarations from the legacy architecture with no corresponding code in `src/`.
 - `TaskDAO.deleteAllCore()` exists but is never called anywhere in the codebase.
 
@@ -126,8 +184,8 @@ The `old/` directory contains 80+ Java files spanning widgets, scheduling, budge
 
 - **Java 17** with core library desugaring (minSdk 26, targetSdk 35)
 - **Room 2.6.1** for persistence, annotation processor (not KSP)
-- **XML layouts** in `res/layout/` (`activity_main`, `task_row`), displayed via RecyclerView + `TaskRowAdapter`
+- **XML layouts** in `res/layout/` (`activity_main`, `fragment_task_list`, `task_row`), displayed via RecyclerView + `ListRowAdapter`
 - **Room DB version 1**, `exportSchema = false` — neither migrations nor `fallbackToDestructiveMigration()` are configured, so any entity change will crash at runtime with `IllegalStateException`. To change the schema: bump `version` in `@Database`, then either add a `Migration` or enable `fallbackToDestructiveMigration()` (destroys all data)
 - **Package**: `com.autosecretary`
-- **Single Activity** architecture: `views.mainView.MainActivity`
+- **Single Activity + Fragments**: `views.MainActivity` hosts fragments via `FragmentContainerView`
 - **Type converters** in `Converters.java` handle `LocalDate`, `LocalTime`, `DayOfWeek`, `Priority`, `Period` — all serialized to `String`

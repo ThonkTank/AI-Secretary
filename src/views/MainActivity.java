@@ -7,8 +7,7 @@ import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
 
-import views.taskTab.ScheduleFragment;
-import views.taskTab.ManagementFragment;
+import views.taskTab.ListFragment;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -19,7 +18,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
-                .replace(R.id.Container, new ScheduleFragment())
+                .replace(R.id.Container, new ListFragment())
                 .commit();
         }
         BottomNavigationView tabBar = findViewById(R.id.TabBar);
@@ -27,9 +26,10 @@ public class MainActivity extends AppCompatActivity {
         tabBar.setOnItemSelectedListener(item -> {
             Fragment fragment;
             if (item.getItemId() == R.id.tab_schedule) {
-                fragment = new ScheduleFragment();
+                fragment = new ListFragment();
             } else {
-                fragment = new ManagementFragment();
+                //Placeholder
+                fragment = new ListFragment();
             }
             getSupportFragmentManager().beginTransaction()
                 .replace(R.id.Container, fragment)

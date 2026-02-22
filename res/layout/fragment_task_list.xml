@@ -1,0 +1,50 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" 
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout 
+        android:layout_width="match_parent" 
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/Button"
+            android:text="Generieren"/>
+
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:singleSelection="true"
+            android:id="@+id/TaskListToggle"
+            app:checkedButton="@+id/ChecklistButton">
+            
+            <com.google.android.material.button.MaterialButton 
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Checklist"
+                android:id="@+id/ChecklistButton"
+                style="?attr/materialButtonOutlinedStyle" />
+
+            <com.google.android.material.button.MaterialButton 
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Manage"
+                android:id="@+id/ManagementButton"
+                style="?attr/materialButtonOutlinedStyle" />
+
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/TaskList"/>
+
+</LinearLayout>

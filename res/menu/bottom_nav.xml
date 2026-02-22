@@ -2,9 +2,9 @@
     <item
         android:id="@+id/tab_schedule"
         android:icon="@android:drawable/ic_menu_today"
-        android:title="Schedule"/>
+        android:title="Tasks"/>
     <item
         android:id="@+id/tab_manage"
         android:icon="@android:drawable/ic_menu_edit"
-        android:title="Tasks"/>
+        android:title="placeholder"/>
 </menu>

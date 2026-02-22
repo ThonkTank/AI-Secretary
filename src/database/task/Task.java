@@ -224,7 +224,6 @@ public class Task {
                 taskTree.add(task);
             }
         }
-        
         return taskTree;
     }
 
@@ -237,4 +236,11 @@ public class Task {
         return result;
     }
 
+    private static void collectAll(Task task, List<Task> result, Set<Task> visited) {
+        if (!visited.add(task)) return;  // schon besucht
+        result.add(task);
+        for (Task child : task.children) {
+            collectAll(child, result, visited);
+        }
+    }
 }

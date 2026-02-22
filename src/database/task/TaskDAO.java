@@ -28,15 +28,10 @@ public interface TaskDAO {
     @Query("SELECT * FROM task_core")
     List<Task> readAll();
 
-    //ViewSlot
-    @Transaction
-    @Query("SELECT * FROM task_slots WHERE day = :day ORDER BY start")
-    List<ViewSlot> readSlotsForDay(LocalDate day);
-
     // ============== Write ==============
     //Transactions
     @Transaction
-    default void writeGraph(List<Task> roots) {
+    default void writeList(List<Task> roots) {
         // Flatten: alle einzigartigen Tasks sammeln
         List<Task> all = Task.flatten(roots);
 
@@ -61,14 +56,6 @@ public interface TaskDAO {
             for (int i = 0; i < task.slots.size(); i++) {
                 task.slots.get(i).id = slotIds[i];
             }
-        }
-    }
-
-    private static void collectAll(Task task, List<Task> result, Set<Task> visited) {
-        if (!visited.add(task)) return;  // schon besucht
-        result.add(task);
-        for (Task child : task.children) {
-            collectAll(child, result, visited);
         }
     }
 
