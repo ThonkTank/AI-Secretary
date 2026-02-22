@@ -19,7 +19,7 @@ import androidx.room.Index;
     ))
 
 public class TaskFollowUp {
-    @PrimaryKey()
+    @PrimaryKey() @NonNull
     public String id = UUID.randomUUID().toString();
     public String taskId;
     public long followUp;

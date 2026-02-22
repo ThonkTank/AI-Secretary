@@ -26,7 +26,7 @@ import androidx.room.Index;
     ))
 
 public class TaskSlot {
-    @PrimaryKey()
+    @PrimaryKey() @NonNull
     public String id = UUID.randomUUID().toString();
     public String taskId;
     public String parent;

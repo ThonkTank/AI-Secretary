@@ -19,7 +19,7 @@ import androidx.room.Index;
     ))
 
 public class TaskRelation {
-    @PrimaryKey()
+    @PrimaryKey() @NonNull
     public String id = UUID.randomUUID().toString();
     public String child;
     public String parent;

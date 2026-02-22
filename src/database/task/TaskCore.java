@@ -13,7 +13,7 @@ import androidx.room.PrimaryKey;
 @Entity (tableName = "task_core")
 public class TaskCore {
     // Basic
-    @PrimaryKey()
+    @PrimaryKey() @NonNull
     public String id = UUID.randomUUID().toString();
     public String title;
     public String description;

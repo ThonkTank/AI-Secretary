@@ -34,6 +34,8 @@ public interface TaskDAO {
         tasks = Task.flatten(tasks);
         for (Task task : tasks) {
             writeCore(task.core);
+        }
+        for (Task task : tasks) {
             writeSlots(task.slots);
             writeFollowUps(task.followUps);
             writePrefSlots(task.prefSlots);

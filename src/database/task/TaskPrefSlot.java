@@ -20,7 +20,7 @@ import androidx.room.Index;
     ))
 
 public class TaskPrefSlot {
-    @PrimaryKey()
+    @PrimaryKey() @NonNull
     public String id = UUID.randomUUID().toString();
     public String taskId;
     public DayOfWeek day;
