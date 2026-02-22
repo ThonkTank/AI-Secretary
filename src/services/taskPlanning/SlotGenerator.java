@@ -53,7 +53,7 @@ public class SlotGenerator {
             slot.score = bestScore;
             slot.day = cursor.toLocalDate();
             slot.start = cursor.toLocalTime();
-            slot.parentSlot = parentSlot;
+            slot.parent = parentSlot != null ? parentSlot.id : null;
 
             LocalDateTime slotEnd = cursor.plusMinutes(bestTask.core.maxDuration);
             LocalDateTime childEnd = assignSlot(bestTask.children, cursor, slotEnd, slot);

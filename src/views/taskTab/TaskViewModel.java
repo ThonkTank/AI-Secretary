@@ -30,6 +30,7 @@ public class TaskViewModel extends AndroidViewModel {
     private ViewSlotList masterList;                        // alle ViewSlots
     private MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData();      // gefilterte Liste für die UI
     private TaskDAO taskDao;
+    private SlotGenerator generator;
     private ExecutorService executor;
     public Filters filters = new Filters();
     public Sorters sorters = new Sorters();
@@ -55,6 +56,11 @@ public class TaskViewModel extends AndroidViewModel {
         executor.execute(() -> { 
             masterList.fromList(taskDao.readAll());
         });
+
+        LocalDate day = LocalDate.now();
+        LocalDateTime start = LocalDateTime.of(day, prefs.readPrefTime(day, true));
+        LocalDateTime end = LocalDateTime.of(day, prefs.readPrefTime(day, false));
+        this.generator = new SlotGenerator(taskDao, start, end);
     }
 
     public LiveData<List<ViewSlot>> getList() {
@@ -62,10 +68,9 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void updateList() {
-        LocalDateTime start = prefs.readPrefTime(LocalDate.now(), true);
-        LocalDateTime end = prefs.readPrefTime(LocalDate.now(), false);
+        
         executor.execute(() -> {
-            SlotGenerator.generateSlots(taskDao, start, end);
+            generator.generateSlots();
             masterList.fromList(taskDao.readAll());
             filterList();
         });

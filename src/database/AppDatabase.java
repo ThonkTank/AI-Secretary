@@ -19,7 +19,7 @@ import android.content.Context;
 
 @Database (
         entities = {TaskPrefSlot.class, TaskRelation.class, TaskCore.class, TaskFollowUp.class, TaskSlot.class},
-        version = 1,
+        version = 2,
         exportSchema = false
     )
 @TypeConverters(Converters.class)
@@ -53,7 +53,7 @@ public abstract class AppDatabase extends RoomDatabase {
                         });
                     }
                 })
-            .build();
+            .fallbackToDestructiveMigration().build();
         }
         return instance;
     }

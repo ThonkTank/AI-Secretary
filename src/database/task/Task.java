@@ -34,7 +34,7 @@ public class Task {
     @Relation(parentColumn = "id", entityColumn = "taskId")
     public List<TaskPrefSlot> prefSlots;
 
-    @Relation(parentColumn = "id", entityColumn = "taskId")
+    @Relation(parentColumn = "id", entityColumn = "child")
     public List<TaskRelation> parents;
 
     @Ignore
@@ -161,21 +161,7 @@ public class Task {
         return totalPrio;
     }
 
-    @Ignore
-    public void setId(long id) {
-        core.id = id;
-        for (TaskFollowUp followUp : followUps) {
-            followUp.taskId = id;
-        }
-        for (TaskPrefSlot prefSlot : prefSlots) {
-            prefSlot.taskId = id;
-        }
-        for (TaskSlot slot : slots) {
-            slot.taskId = id;
-        }
-    }
-
-    public void setParentId(long id) {
+    public void setParentId(String id) {
         for (TaskRelation parent : parents) {
             parent.parent = id;
         }
@@ -201,13 +187,14 @@ public class Task {
         this.prefSlots = new ArrayList<>();
 
         TaskPrefSlot prefSlot = new TaskPrefSlot();
+        prefSlot.taskId = this.core.id;
         prefSlot.day = LocalDate.now().getDayOfWeek();
         prefSlot.start = start;
         this.prefSlots.add(prefSlot);
     }
 
     public static List<Task> buildTree(List<Task> tasks) {
-        Map<Long, Task> mappedTasks = new HashMap<>();
+        Map<String, Task> mappedTasks = new HashMap<>();
         List<Task> taskTree = new ArrayList<>();
         
         for (Task task : tasks) {

@@ -2,6 +2,9 @@ package database.task;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
+
+import java.util.UUID;
+
 import androidx.room.Embedded;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
@@ -16,9 +19,9 @@ import androidx.room.Index;
     ))
 
 public class TaskFollowUp {
-    @PrimaryKey(autoGenerate = true)
-    public long id;
-    public long taskId;
+    @PrimaryKey()
+    public String id = UUID.randomUUID().toString();
+    public String taskId;
     public long followUp;
     public int amount;
 }

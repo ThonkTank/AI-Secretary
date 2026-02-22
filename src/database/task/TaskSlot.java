@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
@@ -25,10 +26,10 @@ import androidx.room.Index;
     ))
 
 public class TaskSlot {
-    @PrimaryKey(autoGenerate = true)
-    public Long id;
-    public Long taskId;
-    public Long parent;
+    @PrimaryKey()
+    public String id = UUID.randomUUID().toString();
+    public String taskId;
+    public String parent;
     @Ignore
     public List<TaskSlot> children = new ArrayList<>();
 
@@ -43,7 +44,7 @@ public class TaskSlot {
     public int score;
 
     public static List<TaskSlot> buildTree(List<TaskSlot> slots) {
-        Map<Long, TaskSlot> mappedSlots = new HashMap<>();
+        Map<String, TaskSlot> mappedSlots = new HashMap<>();
         List<TaskSlot> slotTree = new ArrayList<>();
         
         for (TaskSlot slot : slots) {

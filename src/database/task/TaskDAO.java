@@ -19,7 +19,7 @@ public interface TaskDAO {
     // ============== READ ==============
     @Transaction
     @Query("SELECT * FROM task_core WHERE id = :id")
-    Task read(Long id);
+    Task read(String id);
     @Transaction
     @Query("SELECT DISTINCT tc.* FROM task_core tc INNER JOIN task_slots ts ON tc.id = ts.taskId WHERE ts.day = :day ORDER BY ts.start")
     List<Task> readByDue(LocalDate day);
@@ -29,37 +29,22 @@ public interface TaskDAO {
 
     // ============== Write ==============
     //Transactions
-    @Transaction
-    default void writeList(List<Task> roots) {
-        // Flatten: alle einzigartigen Tasks sammeln
-        List<Task> all = Task.flatten(roots);
-
-        // Pass 1: Cores
-        for (Task task : all) {
-            long id = writeCore(task.core);
-            task.setId(id);
-        }
-
-        // Pass 2: Parent-Links (IDs existieren jetzt)
-        for (Task task : all) {
-            for (Task child : task.children) {
-                writeRelation(new TaskRelation(task.core.id, child.core.id));
-            }
-        }
-
-        // Pass 3: Rest
-        for (Task task : all) {
+       @Transaction
+    default void writeList(List<Task> tasks) {
+        tasks = Task.flatten(tasks);
+        for (Task task : tasks) {
+            writeCore(task.core);
+            writeSlots(task.slots);
             writeFollowUps(task.followUps);
             writePrefSlots(task.prefSlots);
-            long[] slotIds = writeSlots(task.slots);
-            for (int i = 0; i < task.slots.size(); i++) {
-                task.slots.get(i).id = slotIds[i];
+            for (Task child : task.children) {
+                writeRelation(new TaskRelation(task.core.id, child.core.id));
             }
         }
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    long writeCore(TaskCore core);
+    void writeCore(TaskCore core);
 
     //Follow Ups
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -75,13 +60,13 @@ public interface TaskDAO {
 
     //Task Slots
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    long[] writeSlots(List<TaskSlot> slots);
+    void writeSlots(List<TaskSlot> slots);
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writeSlot(TaskSlot slots);
 
     // ============== Delete ==============
     @Query("DELETE FROM task_core WHERE id = :id")
-    void deleteCore(long id);
+    void deleteCore(String id);
     @Query("DELETE FROM task_core")
     void deleteAllCore();
 }

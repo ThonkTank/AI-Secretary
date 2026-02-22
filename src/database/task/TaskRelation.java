@@ -2,6 +2,9 @@ package database.task;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
+
+import java.util.UUID;
+
 import androidx.room.Embedded;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
@@ -16,12 +19,12 @@ import androidx.room.Index;
     ))
 
 public class TaskRelation {
-    @PrimaryKey(autoGenerate = true)
-    public Long id;
-    public Long child;
-    public Long parent;
+    @PrimaryKey()
+    public String id = UUID.randomUUID().toString();
+    public String child;
+    public String parent;
 
-    public TaskRelation(Long child, Long parent) {
+    public TaskRelation(String child, String parent) {
         this.child = child;
         this.parent = parent;
     }

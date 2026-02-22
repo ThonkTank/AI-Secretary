@@ -23,7 +23,7 @@ public class ViewSlotList {
         public TaskSlot slot;
         public int depth;
 
-        private List<ViewSlot> children;
+        private List<ViewSlot> children = new ArrayList<>();
 
         public ViewSlot (Task task, TaskSlot slot) {
             this.task = task;
@@ -58,29 +58,29 @@ public class ViewSlotList {
     }
 
     //ViewModel ruft sort auf
-    public void sort(boolean byTaskParent, Comparator<ViewSlot> comparator) {
-        buildTree(byTaskParent);
+    public void sort(boolean byTaskRelation, Comparator<ViewSlot> comparator) {
+        buildTree(byTaskRelation);
         sortTree(displaySlots, comparator);
 
         Set<ViewSlot> visited = new HashSet<>();
         displaySlots = flatten(displaySlots, visited, 0);
     }
 
-    private void buildTree(boolean byTaskParent) {
-        Map<Long, ViewSlot> mappedVS = new HashMap<>();
+    private void buildTree(boolean byTaskRelation) {
+        Map<String, ViewSlot> mappedVS = new HashMap<>();
         List<ViewSlot> vsTree = new ArrayList<>();
         
         for (ViewSlot vs : displaySlots) {
-            Long id = byTaskParent ? vs.task.core.id : vs.slot.id;
+            String id = byTaskRelation ? vs.task.core.id : vs.slot.id;
             mappedVS.put(id, vs);
         }
 
         for (ViewSlot vs : displaySlots) {
             int nrParents = 0;
-            List<Long> parentIDs = new ArrayList<>();
+            List<String> parentIDs = new ArrayList<>();
 
-            if (byTaskParent) {
-                for (TaskParent parent : vs.task.parents) {
+            if (byTaskRelation) {
+                for (TaskRelation parent : vs.task.parents) {
                     parentIDs.add(parent.parent);
                     nrParents++;
                 }
@@ -92,7 +92,7 @@ public class ViewSlotList {
             if (nrParents == 0) {
                 vsTree.add(vs);
             } else {
-                for (Long parent : parentIDs) {
+                for (String parent : parentIDs) {
                     mappedVS.get(parent).children.add(vs);
                 }
             }

@@ -2,6 +2,7 @@ package database.task;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 
 import constants.Priority;
 import constants.Period;
@@ -12,8 +13,8 @@ import androidx.room.PrimaryKey;
 @Entity (tableName = "task_core")
 public class TaskCore {
     // Basic
-    @PrimaryKey(autoGenerate = true)
-    public Long id;
+    @PrimaryKey()
+    public String id = UUID.randomUUID().toString();
     public String title;
     public String description;
 

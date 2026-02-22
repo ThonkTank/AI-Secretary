@@ -1,6 +1,7 @@
 package database.task;
 
 import java.time.LocalTime;
+import java.util.UUID;
 import java.time.DayOfWeek;
 
 import androidx.room.Entity;
@@ -19,9 +20,9 @@ import androidx.room.Index;
     ))
 
 public class TaskPrefSlot {
-    @PrimaryKey
-    public long id;
-    public long taskId;
+    @PrimaryKey()
+    public String id = UUID.randomUUID().toString();
+    public String taskId;
     public DayOfWeek day;
     public LocalTime start;
 }
