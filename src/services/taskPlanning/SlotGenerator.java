@@ -1,5 +1,7 @@
 package services.taskPlanning;
 
+import android.util.Log;
+
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -14,6 +16,7 @@ public class SlotGenerator {
     private TaskDAO taskDao;
     private LocalDateTime prefStart;
     private LocalDateTime prefEnd;
+    private int newSlots;
 
     public SlotGenerator(TaskDAO dao, LocalDateTime start, LocalDateTime end) {
         this.taskDao = dao;
@@ -23,10 +26,12 @@ public class SlotGenerator {
 
     public void generateSlots() {
         // Task baum bauen
+        newSlots = 0;
         List<Task> tasks = taskDao.readAll();
         List<Task> taskTree = Task.buildTree(tasks);
 
         assignSlot(taskTree, prefStart, prefEnd, null);
+        Log.d("TaskVM", "readAll: " + newSlots + " tasks");
 
         taskDao.writeList(taskTree);
     } 
@@ -60,6 +65,7 @@ public class SlotGenerator {
             slotEnd = childEnd.isAfter(cursor) ? childEnd : slotEnd;
             slot.end = slotEnd.toLocalTime();
             bestTask.slots.add(slot);
+            newSlots++;
 
             cursor = slotEnd;
         }

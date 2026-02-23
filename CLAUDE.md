@@ -89,34 +89,33 @@ ListFragment checkbox → vm.checkOff(slot) → taskDao.writeSlot(slot)
 
 DB seeding happens in `AppDatabase.onCreate()` callback (runs once on first DB creation, using its own `Executors.newSingleThreadExecutor()` — separate from the ViewModel's executor).
 
-All DB access in `TaskViewModel` runs on a background thread via `Executors.newSingleThreadExecutor()`.
+All DB access in `TaskViewModel` runs on a background thread via `Executors.newSingleThreadExecutor()` with a custom `UncaughtExceptionHandler` that logs to `Log.e("TaskViewModel", ...)`.
 
-`TaskDAO.writeList()` uses a 3-pass strategy:
-1. **Pass 1 — Cores**: Insert all `TaskCore` rows, call `setId()` to propagate the core ID to slots, followUps, and prefSlots. With UUID PKs, IDs are pre-generated in field initializers — the insert-then-propagate pattern is vestigial and currently broken (see Known Bugs)
-2. **Pass 2 — Relations**: Write `TaskRelation` entries linking parents to children (IDs now exist)
-3. **Pass 3 — Rest**: Write follow-ups, pref slots, and task slots; back-fill slot IDs into `task.slots.get(i).id` (vestigial with UUID PKs — slot IDs are pre-generated)
+`TaskDAO.writeList()` uses a 2-pass strategy:
+1. **Pass 1 — Cores**: Flatten tree, insert all `TaskCore` rows (UUIDs are pre-generated in field initializers, no propagation needed)
+2. **Pass 2 — Rest**: For each task, write slots, followUps, prefSlots, and one `TaskRelation` per child
 
 `SlotGenerator.generateSlots()` calls `taskDao.writeList(taskTree)` at the end — effectively a full rewrite of the entire database on each generation.
 
 ### Task model
 
-`Task` is a Room POJO (not a `@Entity`). Room assembles it via `@Embedded` + `@Relation` from five actual database tables. All entities use `String id = UUID.randomUUID().toString()` as their `@PrimaryKey` (migrated from auto-generated Long — see Known Bugs for incomplete migration):
+`Task` is a Room POJO (not a `@Entity`). Room assembles it via `@Embedded` + `@Relation` from five actual database tables. All entities use `String id = UUID.randomUUID().toString()` as their `@PrimaryKey`. All FK/reference fields are also `String` (UUID):
 
 | Class | Table | Role |
 |-------|-------|------|
 | `TaskCore` | `task_core` | One row per task — title, scheduling params, embedded sub-objects |
-| `TaskSlot` | `task_slots` | Scheduled/completed time blocks. FK `taskId` (Long) → `task_core.id`. Has `parent` (Long) for parent-child slot hierarchy and `score` |
-| `TaskRelation` | `task_relation` | Parent-child links between tasks. FK `child` (Long) → `task_core.id`. `child` and `parent` columns (both Long) point to `task_core.id` |
-| `TaskPrefSlot` | `task_pref_slots` | Preferred weekday/time. FK `taskId` (Long) → `task_core.id` |
-| `TaskFollowUp` | `task_follow_ups` | Follow-up links. FK `taskId` (Long) → `task_core.id` |
+| `TaskSlot` | `task_slots` | Scheduled/completed time blocks. FK `taskId` → `task_core.id`. Has `parent` for parent-child slot hierarchy and `score` |
+| `TaskRelation` | `task_relation` | Parent-child links between tasks. FK `child` → `task_core.id`. `child` and `parent` columns point to `task_core.id` |
+| `TaskPrefSlot` | `task_pref_slots` | Preferred weekday/time. FK `taskId` → `task_core.id` |
+| `TaskFollowUp` | `task_follow_ups` | Follow-up links. FK `taskId` → `task_core.id` |
 
 `TaskCore` uses `@Embedded` for three static inner classes (`Repetition`, `Progress`, `History`) — their fields are flattened into `task_core` columns with prefixes (`repetition_`, `progress_`, `history_`). Defaults: `cooldown = 1`, `minDuration = 5`, `maxDuration = 10`, `priority = MEDIUM`, `closeOnMiss = true`, `created = LocalDate.now()`.
 
 Parent-child relationship: `TaskRelation` entity links tasks via `child`/`parent` columns. `Task.buildTree()` reads `task.parents` (a `@Relation` list with `entityColumn = "child"`) and builds the in-memory tree. `Task.flatten()` does the inverse — collects all tasks from a tree into a flat list for writing.
 
-`TaskSlot` also has its own tree structure: `TaskSlot.parent` (Long) + `TaskSlot.buildTree()` builds a slot hierarchy. `TaskSlot.children` is an `@Ignore` field initialized to `new ArrayList<>()`.
+`TaskSlot` also has its own tree structure: `TaskSlot.parent` (String) + `TaskSlot.buildTree()` builds a slot hierarchy. `TaskSlot.children` is an `@Ignore` field initialized to `new ArrayList<>()`.
 
-The convenience `Task` constructor initializes `slots`, `followUps`, and `prefSlots` as empty lists, but does **not** initialize `parents` (left null — see Known Bugs).
+The convenience `Task` constructor `(String title, int reps, int perPeriod, Period periodUnit, LocalDate deadline, int cooldown, LocalTime start, int maxDuration)` creates a `TaskCore`, sets scheduling fields, initializes `slots`, `followUps`, and `prefSlots` as empty lists, and adds one `TaskPrefSlot` for the current day of week — but does **not** initialize `parents` (left null — see Known Bugs).
 
 ### ViewSlotList (presentation model)
 
@@ -170,9 +169,8 @@ The app has three feature domains. Only tasks are actively being rebuilt:
 The `old/` directory contains 80+ Java files spanning widgets, scheduling, budget management (with Claude API integration), meal planning (recipes/ingredients), and a custom SQLite repo layer with hand-written parsers.
 
 ## Known Bugs
-- **UUID PK migration incomplete** — All `@PrimaryKey` fields were changed from auto-generated `Long` to `String` (UUID), but FK/reference fields still use `Long`: `TaskRelation.child`/`.parent`, `TaskSlot.taskId`/`.parent`, `TaskPrefSlot.taskId`, `TaskFollowUp.taskId`. Also affects: `Task.setId(long)` parameter type, `TaskDAO.writeCore()` return type (`long`), `TaskDAO.writeSlots()` return type (`long[]`), `SlotGenerator.assignSlot()` assignments to `slot.taskId` and `slot.parent`, and all `buildTree()` methods using `Map<Long, ...>` for String-keyed IDs. Code does not compile in current state.
 - **`Task` convenience constructor doesn't initialize `parents`** — `parents` is left `null` (not an empty list). Room-constructed Tasks (via `readAll()`) get `parents` populated by `@Relation`, but manually constructed tasks (e.g. in `AppDatabase.onCreate()` seeding) don't. Currently latent: seed tasks only pass through `writeList()`/`flatten()` which iterate `children`, not `parents`. Would crash if manually constructed tasks were ever passed to `buildTree()`.
-- **`TaskRelation` constructor arg order** — constructor is `TaskRelation(Long child, Long parent)` but `TaskDAO.writeList()` calls `new TaskRelation(task.core.id, child.core.id)` where `task` is the parent. Arguments are swapped, writing inverted parent-child relationships.
+- **`TaskRelation` constructor arg order** — constructor is `TaskRelation(String child, String parent)` but `TaskDAO.writeList()` calls `new TaskRelation(task.core.id, child.core.id)` where `task` is the parent. Arguments are swapped, writing inverted parent-child relationships.
 - **`Task.buildTree()` NPE** — if a child references a parent not in the result set, `mappedTasks.get(parent.parent)` returns null, then `.children.add(task)` throws NPE.
 - **`TaskSlot.buildTree()` NPE** — same pattern: if `slot.parent` references a slot not in the list, `mappedSlots.get(slot.parent)` returns null.
 - **`ViewSlotList.buildTree()` NPE** — same pattern: `mappedVS.get(parent)` can return null if parent ViewSlot was filtered out.
@@ -185,16 +183,16 @@ The `old/` directory contains 80+ Java files spanning widgets, scheduling, budge
 
 - No task creation/editing UI — `MainActivity`'s second tab is a placeholder (`ListFragment` again). A management fragment still needs to be built.
 - Several `AndroidManifest` permissions (`RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `READ_CALENDAR`, `REQUEST_INSTALL_PACKAGES`) are dead declarations from the legacy architecture with no corresponding code in `src/`.
-- `TaskDAO.deleteAllCore()` and `deleteCore(long id)` exist but are never called anywhere in the codebase.
+- `TaskDAO.deleteAllCore()` and `deleteCore(String id)` exist but are never called anywhere in the codebase.
 - `TaskDAO.readByDue(LocalDate day)` exists but is never called.
-- `Task.setParentId(long id)` exists but is never called.
+- `Task.setParentId(String id)` exists but is never called.
 
 ## Key Technical Details
 
 - **Java 17** with core library desugaring (minSdk 26, targetSdk 35)
 - **Room 2.6.1** for persistence, annotation processor (not KSP)
 - **XML layouts** in `res/layout/` (`activity_main`, `fragment_task_list`, `task_row`), menu in `res/menu/bottom_nav.xml`
-- **Room DB version 2**, `exportSchema = false`, `fallbackToDestructiveMigration()` enabled — any schema change just needs a version bump (data will be destroyed on upgrade). No manual migrations exist
+- **Room DB version 3**, `exportSchema = false`, `fallbackToDestructiveMigration()` enabled — any schema change just needs a version bump (data will be destroyed on upgrade). No manual migrations exist
 - **Package**: `com.autosecretary`
 - **Single Activity + Fragments**: `views.MainActivity` hosts fragments via `FragmentContainerView`
 - **Type converters** in `Converters.java` handle `LocalDate`, `LocalTime`, `DayOfWeek`, `Priority`, `Period` — all serialized to `String`
