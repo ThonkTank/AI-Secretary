@@ -1,5 +1,41 @@
 # AI-Secretary
 
+## Quick Start (first successful run)
+
+### Prerequisites
+
+- **Java 17 (JDK 17)**. This project is configured for Java 17 source and target compatibility.
+- **Android SDK Platform 35** and **Android Build Tools 35.x** (matching `compileSdk = 35` / `targetSdk = 35`).
+- **Use the included Gradle wrapper** (`./gradlew`) so you run the project with the expected Gradle version (**8.10.2**) automatically.
+
+### Run path 1: Android Studio
+
+1. Open Android Studio and choose **Open**, then select this repository folder.
+2. Let Android Studio finish **Gradle sync** (it may prompt to install missing SDK components).
+3. Start an emulator or connect an Android device with USB debugging enabled.
+4. Click **Run** for the `app` configuration.
+
+### Run path 2: Command line (CLI)
+
+1. From the repository root, build a debug APK:
+   ```bash
+   ./gradlew assembleDebug
+   ```
+2. After a successful build, the APK is produced at:
+   `src/build/outputs/apk/debug/AutoSecretary.apk`
+
+### Success criteria
+
+Your first run is successful when the app starts and shows the task list screen with both:
+- a **Generate** control, and
+- a **New Task** control.
+
+### If sync/build fails
+
+Use the official Android setup guides to verify your environment (JDK, SDK, emulator/device, and command-line tools):
+- https://developer.android.com/studio/install
+- https://developer.android.com/tools
+
 ## Repository map
 
 - `src/` → active runtime application code.
