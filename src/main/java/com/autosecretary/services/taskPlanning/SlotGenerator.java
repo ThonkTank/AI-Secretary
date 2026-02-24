@@ -1,6 +1,5 @@
 package com.autosecretary.services.taskPlanning;
 
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
@@ -15,6 +14,18 @@ import java.time.format.DateTimeFormatter;
 import com.autosecretary.database.task.*;
 
 public class SlotGenerator {
+    private static class CandidateSelection {
+        private final Task task;
+        private final int score;
+        private final String scoreLog;
+
+        private CandidateSelection(Task task, int score, String scoreLog) {
+            this.task = task;
+            this.score = score;
+            this.scoreLog = scoreLog;
+        }
+    }
+
     private final Consumer<String> logger;
     private int newSlots;
     private Set<String> scheduledInSession;
@@ -54,15 +65,7 @@ public class SlotGenerator {
         for (Task t : allTasks) {
             int slotCount = t.slots.size();
             if (slotCount > 0) {
-                StringBuilder sb = new StringBuilder();
-                for (TaskSlot s : t.slots) {
-                    if (sb.length() > 0) sb.append(", ");
-                    sb.append(s.start != null ? s.start.format(HMM) : "?");
-                    sb.append("-");
-                    sb.append(s.end != null ? s.end.format(HMM) : "?");
-                    sb.append("(").append(s.score).append(")");
-                }
-                log("  " + t.core.title + ": " + slotCount + " slots [" + sb + "]");
+                log("  " + t.core.title + ": " + slotCount + " slots [" + formatSlotsSummary(t.slots) + "]");
             } else {
                 log("  " + t.core.title + ": unscheduled");
             }
@@ -79,45 +82,20 @@ public class SlotGenerator {
             long remaining = ChronoUnit.MINUTES.between(cursor, end);
             log(indent + "--- Cursor " + cursor.format(HMM) + " [depth=" + depth + "], " + remaining + "min übrig ---");
 
-            Task bestTask = null;
-            int bestScore = 0;
-            StringBuilder scores = new StringBuilder();
-            for (Task task : tasks) {
-                if (scores.length() > 0) scores.append("  |  ");
-                if (hasUnmetPrerequisites(task)) {
-                    scores.append(task.core.title).append(": 0 (Voraussetzung)");
-                    continue;
-                }
-                int score = scorer.score(task, cursor, end);
-                scores.append(task.core.title).append(": ").append(score);
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestTask = task;
-                }
-            }
-            log(indent + "  " + scores);
+            CandidateSelection selection = selectBestTask(tasks, cursor, end);
+            Task bestTask = selection.task;
+            int bestScore = selection.score;
+            log(indent + "  " + selection.scoreLog);
 
             if (bestScore == 0) {
                 log(indent + "  → (keine Task qualifiziert, Abbruch)");
                 break;
             }
 
-            TaskSlot slot = new TaskSlot();
-            slot.taskId = bestTask.core.id;
-            slot.score = bestScore;
-            slot.day = cursor.toLocalDate();
-            slot.start = cursor.toLocalTime();
-            slot.scheduled = true;
-            slot.parent = parentSlot != null ? parentSlot.id : null;
-
-            LocalDateTime slotEnd = cursor.plusMinutes(bestTask.core.maxDuration);
-            LocalDateTime childEnd = assignSlot(bestTask.children, cursor, slotEnd, slot, depth + 1);
-            slotEnd = childEnd.isAfter(cursor) ? childEnd : slotEnd;
+            TaskSlot slot = createScheduledSlot(bestTask, cursor, bestScore, parentSlot);
+            LocalDateTime slotEnd = scheduleChildren(bestTask, cursor, slot, depth);
             slot.end = slotEnd.toLocalTime();
-            bestTask.slots.add(slot);
-            scorer.onSlotAssigned(bestTask);
-            scheduledInSession.add(bestTask.core.id);
-            newSlots++;
+            finalizeAssignment(bestTask, slot, bestScore);
 
             log(indent + "  → " + bestTask.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM) + "] score=" + bestScore);
 
@@ -125,6 +103,85 @@ public class SlotGenerator {
         }
 
         return cursor;
+    }
+
+    private CandidateSelection selectBestTask(List<Task> tasks, LocalDateTime cursor, LocalDateTime end) {
+        Task bestTask = null;
+        int bestScore = 0;
+        StringBuilder scores = new StringBuilder();
+
+        for (Task task : tasks) {
+            appendScoreSeparator(scores);
+            if (hasUnmetPrerequisites(task)) {
+                scores.append(formatPrerequisiteBlockedScore(task));
+                continue;
+            }
+
+            int score = scorer.score(task, cursor, end);
+            scores.append(formatScore(task, score));
+            if (score > bestScore) {
+                bestScore = score;
+                bestTask = task;
+            }
+        }
+
+        return new CandidateSelection(bestTask, bestScore, scores.toString());
+    }
+
+    private TaskSlot createScheduledSlot(Task task, LocalDateTime cursor, int score, TaskSlot parentSlot) {
+        TaskSlot slot = new TaskSlot();
+        slot.taskId = task.core.id;
+        slot.score = score;
+        slot.day = cursor.toLocalDate();
+        slot.start = cursor.toLocalTime();
+        slot.scheduled = true;
+        slot.parent = parentSlot != null ? parentSlot.id : null;
+        return slot;
+    }
+
+    private void finalizeAssignment(Task task, TaskSlot slot, int score) {
+        slot.score = score;
+        task.slots.add(slot);
+        scorer.onSlotAssigned(task);
+        scheduledInSession.add(task.core.id);
+        newSlots++;
+    }
+
+    private LocalDateTime scheduleChildren(Task task, LocalDateTime cursor, TaskSlot slot, int depth) {
+        LocalDateTime slotEnd = cursor.plusMinutes(task.core.maxDuration);
+        LocalDateTime childEnd = assignSlot(task.children, cursor, slotEnd, slot, depth + 1);
+        return childEnd.isAfter(cursor) ? childEnd : slotEnd;
+    }
+
+    private String formatSlotsSummary(List<TaskSlot> slots) {
+        StringBuilder sb = new StringBuilder();
+        for (TaskSlot slot : slots) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(formatSlot(slot));
+        }
+        return sb.toString();
+    }
+
+    private String formatSlot(TaskSlot slot) {
+        String start = slot.start != null ? slot.start.format(HMM) : "?";
+        String end = slot.end != null ? slot.end.format(HMM) : "?";
+        return start + "-" + end + "(" + slot.score + ")";
+    }
+
+    private void appendScoreSeparator(StringBuilder scores) {
+        if (scores.length() > 0) {
+            scores.append("  |  ");
+        }
+    }
+
+    private String formatPrerequisiteBlockedScore(Task task) {
+        return task.core.title + ": 0 (Voraussetzung)";
+    }
+
+    private String formatScore(Task task, int score) {
+        return task.core.title + ": " + score;
     }
 
     private boolean hasUnmetPrerequisites(Task task) {
