@@ -52,11 +52,7 @@ public class TaskViewModel extends AndroidViewModel {
     private final MutableLiveData<Boolean> isNewTask = new MutableLiveData<>(false);
 
     private LocalDate day;
-    private boolean displayUnscheduled;
-    private boolean byTaskParent;
-    private boolean byScore;
-    private boolean byTime;
-    private boolean byTitle;
+    private ListConfig activeListConfig = ListConfig.DEFAULT;
 
     public TaskViewModel(Application app, TaskUseCaseFactory.Bundle bundle) {
         super(app);
@@ -134,13 +130,7 @@ public class TaskViewModel extends AndroidViewModel {
      * </p>
      */
     public void applyChecklistPreset() {
-        day = LocalDate.now();
-        displayUnscheduled = false;
-        byTaskParent = false;
-        byScore = false;
-        byTime = true;
-        byTitle = false;
-        filterList();
+        applyPreset(LocalDate.now(), ListConfig.CHECKLIST);
     }
 
     /**
@@ -156,12 +146,12 @@ public class TaskViewModel extends AndroidViewModel {
      * </p>
      */
     public void applyManagePreset() {
-        day = LocalDate.now();
-        displayUnscheduled = true;
-        byTaskParent = true;
-        byScore = false;
-        byTime = false;
-        byTitle = true;
+        applyPreset(LocalDate.now(), ListConfig.MANAGE);
+    }
+
+    private void applyPreset(LocalDate day, ListConfig config) {
+        this.day = day;
+        this.activeListConfig = config;
         filterList();
     }
 
@@ -177,7 +167,7 @@ public class TaskViewModel extends AndroidViewModel {
      * </p>
      */
     public void filterList() {
-        Predicate<ViewSlot> predicate = buildPredicate(day, displayUnscheduled);
+        Predicate<ViewSlot> predicate = buildPredicate(day, activeListConfig);
         masterList.filter(predicate);
         sortList();
     }
@@ -190,8 +180,8 @@ public class TaskViewModel extends AndroidViewModel {
      * </p>
      */
     public void sortList() {
-        Comparator<ViewSlot> comparator = buildComparator(byScore, byTime, byTitle);
-        masterList.sort(byTaskParent, comparator);
+        Comparator<ViewSlot> comparator = buildComparator(activeListConfig);
+        masterList.sort(activeListConfig.isGroupByTaskParent(), comparator);
         displayList.postValue(masterList.displaySlots);
     }
 
@@ -222,13 +212,13 @@ public class TaskViewModel extends AndroidViewModel {
      * </ol>
      * These conditions are AND-combined.
      */
-    private static Predicate<ViewSlot> buildPredicate(LocalDate day, boolean displayUnscheduled) {
+    private static Predicate<ViewSlot> buildPredicate(LocalDate day, ListConfig config) {
         Predicate<ViewSlot> predicate = vs -> true;
 
         if (day != null) {
             predicate = predicate.and(vs -> vs.item.day.equals(day));
         }
-        if (!displayUnscheduled) {
+        if (!config.isDisplayUnscheduled()) {
             predicate = predicate.and(vs -> vs.item.start != null);
         }
         return predicate;
@@ -239,23 +229,63 @@ public class TaskViewModel extends AndroidViewModel {
      * score (descending), then start time (ascending, nulls last), then title (ascending).
      * Disabled sort dimensions are skipped.
      */
-    private static Comparator<ViewSlot> buildComparator(boolean byScore, boolean byTime, boolean byTitle) {
+    private static Comparator<ViewSlot> buildComparator(ListConfig config) {
         Comparator<ViewSlot> comparator = (a, b) -> 0;
 
-        if (byScore) {
+        if (config.isSortByScore()) {
             comparator = comparator.thenComparing(
                     Comparator.comparingInt((ViewSlot vs) -> vs.item.score).reversed()
             );
         }
-        if (byTime) {
+        if (config.isSortByTime()) {
             comparator = comparator.thenComparing(
                     vs -> vs.item.start,
                     Comparator.nullsLast(Comparator.naturalOrder())
             );
         }
-        if (byTitle) {
+        if (config.isSortByTitle()) {
             comparator = comparator.thenComparing(vs -> vs.item.title, Comparator.naturalOrder());
         }
         return comparator;
+    }
+
+    private enum ListConfig {
+        DEFAULT(false, false, false, false, false),
+        CHECKLIST(false, false, false, true, false),
+        MANAGE(true, true, false, false, true);
+
+        private final boolean displayUnscheduled;
+        private final boolean groupByTaskParent;
+        private final boolean sortByScore;
+        private final boolean sortByTime;
+        private final boolean sortByTitle;
+
+        ListConfig(boolean displayUnscheduled, boolean groupByTaskParent, boolean sortByScore, boolean sortByTime, boolean sortByTitle) {
+            this.displayUnscheduled = displayUnscheduled;
+            this.groupByTaskParent = groupByTaskParent;
+            this.sortByScore = sortByScore;
+            this.sortByTime = sortByTime;
+            this.sortByTitle = sortByTitle;
+        }
+
+        boolean isDisplayUnscheduled() {
+            return displayUnscheduled;
+        }
+
+        boolean isGroupByTaskParent() {
+            return groupByTaskParent;
+        }
+
+        boolean isSortByScore() {
+            return sortByScore;
+        }
+
+        boolean isSortByTime() {
+            return sortByTime;
+        }
+
+        boolean isSortByTitle() {
+            return sortByTitle;
+        }
     }
 }
