@@ -5,11 +5,11 @@ import android.util.Log;
 import com.autosecretary.application.task.mapper.TaskListItemMapper;
 import com.autosecretary.application.task.port.TaskRepository;
 import com.autosecretary.config.Preferences;
-import com.autosecretary.database.task.TaskDAO;
 import com.autosecretary.services.TaskCompletionService;
 import com.autosecretary.services.TaskLifecycleManager;
 import com.autosecretary.services.taskPlanning.SlotGenerator;
 import com.autosecretary.services.taskPlanning.TaskScorer;
+import com.autosecretary.services.taskPlanning.TimeWindow;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,7 +20,7 @@ public final class TaskUseCaseFactory {
 
     private TaskUseCaseFactory() {}
 
-    public static Bundle create(TaskRepository taskRepository, TaskDAO taskDao, Preferences prefs) {
+    public static Bundle create(TaskRepository taskRepository, Preferences prefs) {
         ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable);
             thread.setUncaughtExceptionHandler((t, e) ->
@@ -33,10 +33,7 @@ public final class TaskUseCaseFactory {
         TaskCompletionService completionService = new TaskCompletionService();
         TaskScorer scorer = new TaskScorer(lifecycleManager);
 
-        LocalDate day = LocalDate.now();
-        LocalDateTime start = LocalDateTime.of(day, prefs.readPrefTime(day, true));
-        LocalDateTime end = LocalDateTime.of(day, prefs.readPrefTime(day, false));
-        SlotGenerator generator = new SlotGenerator(taskDao, start, end, scorer);
+        SlotGenerator generator = new SlotGenerator(scorer, message -> Log.d("SlotGen", message));
 
         TaskListItemMapper mapper = new TaskListItemMapper();
 
@@ -44,7 +41,12 @@ public final class TaskUseCaseFactory {
                 new LoadTaskListUseCase(taskRepository, mapper, executor),
                 new SaveTaskUseCase(taskRepository, executor),
                 new CheckOffTaskUseCase(taskRepository, completionService, lifecycleManager, executor),
-                new RegenerateScheduleUseCase(taskRepository, generator, executor)
+                new RegenerateScheduleUseCase(taskRepository, generator, () -> {
+                    LocalDate day = LocalDate.now();
+                    LocalDateTime start = LocalDateTime.of(day, prefs.readPrefTime(day, true));
+                    LocalDateTime end = LocalDateTime.of(day, prefs.readPrefTime(day, false));
+                    return new TimeWindow(start, end);
+                }, executor)
         );
     }
 
