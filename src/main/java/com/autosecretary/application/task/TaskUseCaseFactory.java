@@ -3,8 +3,8 @@ package com.autosecretary.application.task;
 import android.util.Log;
 
 import com.autosecretary.application.task.mapper.TaskListItemMapper;
-import com.autosecretary.application.task.port.TaskRepository;
 import com.autosecretary.config.Preferences;
+import com.autosecretary.database.task.TaskDAO;
 import com.autosecretary.services.TaskCompletionService;
 import com.autosecretary.services.TaskLifecycleManager;
 import com.autosecretary.services.taskPlanning.SlotGenerator;
@@ -20,7 +20,7 @@ public final class TaskUseCaseFactory {
 
     private TaskUseCaseFactory() {}
 
-    public static Bundle create(TaskRepository taskRepository, Preferences prefs) {
+    public static Bundle create(TaskDAO taskDao, Preferences prefs) {
         ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable);
             thread.setUncaughtExceptionHandler((t, e) ->
@@ -38,10 +38,10 @@ public final class TaskUseCaseFactory {
         TaskListItemMapper mapper = new TaskListItemMapper();
 
         return new Bundle(
-                new LoadTaskListUseCase(taskRepository, mapper, executor),
-                new SaveTaskUseCase(taskRepository, executor),
-                new CheckOffTaskUseCase(taskRepository, completionService, lifecycleManager, executor),
-                new RegenerateScheduleUseCase(taskRepository, generator, () -> {
+                new LoadTaskListUseCase(taskDao, mapper, executor),
+                new SaveTaskUseCase(taskDao, executor),
+                new CheckOffTaskUseCase(taskDao, completionService, lifecycleManager, executor),
+                new RegenerateScheduleUseCase(taskDao, generator, () -> {
                     LocalDate day = LocalDate.now();
                     LocalDateTime start = LocalDateTime.of(day, prefs.readPrefTime(day, true));
                     LocalDateTime end = LocalDateTime.of(day, prefs.readPrefTime(day, false));

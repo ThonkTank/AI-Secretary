@@ -6,7 +6,6 @@ import com.autosecretary.application.task.TaskUseCaseFactory;
 import com.autosecretary.config.Preferences;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.database.task.TaskDAO;
-import com.autosecretary.infrastructure.task.TaskDaoRepository;
 
 public class AppCompositionRoot {
     private final Application app;
@@ -18,8 +17,7 @@ public class AppCompositionRoot {
     public TaskUseCaseFactory.Bundle createTaskUseCases() {
         AppDatabase db = AppDatabase.getInstance(app);
         TaskDAO taskDao = db.taskDao();
-        TaskDaoRepository taskRepository = new TaskDaoRepository(taskDao);
         Preferences preferences = new Preferences(app);
-        return TaskUseCaseFactory.create(taskRepository, preferences);
+        return TaskUseCaseFactory.create(taskDao, preferences);
     }
 }

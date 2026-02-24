@@ -3,8 +3,8 @@ package com.autosecretary.application.task;
 import com.autosecretary.application.task.command.CheckOffTaskCommand;
 import com.autosecretary.application.task.model.TaskListItem;
 import com.autosecretary.application.task.model.checkoff.CheckOffResult;
-import com.autosecretary.application.task.port.TaskRepository;
 import com.autosecretary.database.task.Task;
+import com.autosecretary.database.task.TaskDAO;
 import com.autosecretary.database.task.TaskSlot;
 import com.autosecretary.services.TaskCompletionService;
 import com.autosecretary.services.TaskCompletionService.CompletionPhase;
@@ -13,13 +13,13 @@ import com.autosecretary.services.TaskLifecycleManager;
 import java.util.concurrent.ExecutorService;
 
 public class CheckOffTaskUseCase {
-    private final TaskRepository taskRepository;
+    private final TaskDAO taskDao;
     private final CheckOffTaskCommand checkOffTaskCommand;
     private final ExecutorService executor;
 
-    public CheckOffTaskUseCase(TaskRepository taskRepository, TaskCompletionService completionService,
+    public CheckOffTaskUseCase(TaskDAO taskDao, TaskCompletionService completionService,
                                TaskLifecycleManager lifecycleManager, ExecutorService executor) {
-        this.taskRepository = taskRepository;
+        this.taskDao = taskDao;
         this.checkOffTaskCommand = new CheckOffTaskCommand(completionService, lifecycleManager);
         this.executor = executor;
     }
@@ -30,7 +30,7 @@ public class CheckOffTaskUseCase {
                 return;
             }
 
-            Task task = taskRepository.read(listItem.taskId);
+            Task task = taskDao.read(listItem.taskId);
             TaskSlot slot = findSlot(task, listItem.slotId);
             if (slot == null) {
                 return;
@@ -42,9 +42,9 @@ public class CheckOffTaskUseCase {
             }
 
             if (result.phase == CompletionPhase.COMPLETED) {
-                taskRepository.write(result.updatedTask);
+                taskDao.write(result.updatedTask);
             }
-            taskRepository.writeSlot(result.updatedSlot);
+            taskDao.writeSlot(result.updatedSlot);
             onChanged.run();
         });
     }
