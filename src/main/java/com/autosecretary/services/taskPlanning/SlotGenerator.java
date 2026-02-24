@@ -83,21 +83,19 @@ public class SlotGenerator {
             log(indent + "--- Cursor " + cursor.format(HMM) + " [depth=" + depth + "], " + remaining + "min übrig ---");
 
             CandidateSelection selection = selectBestTask(tasks, cursor, end);
-            Task bestTask = selection.task;
-            int bestScore = selection.score;
             log(indent + "  " + selection.scoreLog);
 
-            if (bestScore == 0) {
+            if (selection.task == null || selection.score <= 0) {
                 log(indent + "  → (keine Task qualifiziert, Abbruch)");
                 break;
             }
 
-            TaskSlot slot = createScheduledSlot(bestTask, cursor, bestScore, parentSlot);
-            LocalDateTime slotEnd = scheduleChildren(bestTask, cursor, slot, depth);
+            TaskSlot slot = createScheduledSlot(selection.task, cursor, selection.score, parentSlot);
+            LocalDateTime slotEnd = scheduleChildren(selection.task, cursor, slot, depth);
             slot.end = slotEnd.toLocalTime();
-            finalizeAssignment(bestTask, slot, bestScore);
+            finalizeAssignment(selection.task, slot, selection.score);
 
-            log(indent + "  → " + bestTask.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM) + "] score=" + bestScore);
+            log(indent + "  → " + selection.task.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM) + "] score=" + selection.score);
 
             cursor = slotEnd;
         }
