@@ -36,6 +36,16 @@ Use the official Android setup guides to verify your environment (JDK, SDK, emul
 - https://developer.android.com/studio/install
 - https://developer.android.com/tools
 
+## Learn this first (public docs)
+
+- [Android Studio installation and setup](https://developer.android.com/studio/install): ensures your local IDE, SDK components, and emulator/device workflow match how this Android app is built and run.
+- [Guide to app architecture](https://developer.android.com/topic/architecture): explains the architecture patterns this repo follows for separating UI, state, and data responsibilities.
+- [Lifecycle-aware components (including ViewModel)](https://developer.android.com/topic/libraries/architecture/lifecycle): clarifies how lifecycle + ViewModel behavior should drive state handling in fragments and activities.
+- [Fragments overview](https://developer.android.com/guide/fragments): helps you understand the screen/navigation building blocks used throughout the app UI.
+- [RecyclerView overview](https://developer.android.com/develop/ui/views/layout/recyclerview): covers list rendering patterns needed to reason about task list rows and item updates.
+- [Room persistence library](https://developer.android.com/training/data-storage/room): provides the database fundamentals used by the repo's Room entities, DAOs, and persistence flow.
+- [Gradle Wrapper basics](https://docs.gradle.org/current/userguide/gradle_wrapper.html): explains why this repo expects `./gradlew` for consistent Gradle versioning and reproducible builds.
+
 ## Repository map
 
 - `src/` → active runtime application code.
