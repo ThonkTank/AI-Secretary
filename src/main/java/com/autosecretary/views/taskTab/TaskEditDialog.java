@@ -26,8 +26,9 @@ import androidx.lifecycle.ViewModelProvider;
 import com.autosecretary.R;
 import com.autosecretary.constants.Period;
 import com.autosecretary.constants.Priority;
-import com.autosecretary.database.task.Task;
-import com.autosecretary.database.task.TaskPrefSlot;
+import com.autosecretary.views.taskTab.mapper.TaskEditStateMapper;
+import com.autosecretary.views.taskTab.model.PrefSlotEditState;
+import com.autosecretary.views.taskTab.model.TaskEditState;
 import com.google.android.material.button.MaterialButton;
 
 import java.time.DayOfWeek;
@@ -40,7 +41,7 @@ import java.util.Set;
 public class TaskEditDialog extends DialogFragment {
 
     private TaskViewModel vm;
-    private Task task;
+    private TaskEditState editState;
     private TaskEditPresenter presenter;
     private PrefSlotUIBuilder prefSlotUIBuilder;
     private View rootView;
@@ -72,8 +73,8 @@ public class TaskEditDialog extends DialogFragment {
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         vm = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
-        task = vm.requireSelectedTask();
-        presenter = new TaskEditPresenter(task);
+        editState = vm.requireSelectedTask();
+        presenter = new TaskEditPresenter(editState, new TaskEditStateMapper());
 
         rootView = LayoutInflater.from(getContext())
             .inflate(R.layout.fragment_task_editor, null);
@@ -90,7 +91,7 @@ public class TaskEditDialog extends DialogFragment {
             .setView(rootView)
             .setPositiveButton("Speichern", (d, which) -> {
                 collectAllFields();
-                vm.saveEditedTask();
+                vm.saveEditedTask(presenter.toTaskForSave(vm.requireSelectedBaseTask()));
             })
             .setNegativeButton("Abbrechen", null)
             .create();
@@ -101,8 +102,8 @@ public class TaskEditDialog extends DialogFragment {
         descriptionView = rootView.findViewById(R.id.EditDescription);
         priorityView = rootView.findViewById(R.id.EditPriority);
 
-        titleView.setText(task.core.title);
-        descriptionView.setText(task.core.description);
+        titleView.setText(editState.title);
+        descriptionView.setText(editState.description);
 
         ArrayAdapter<Priority> adapter = new ArrayAdapter<>(
             requireContext(),
@@ -111,7 +112,7 @@ public class TaskEditDialog extends DialogFragment {
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         priorityView.setAdapter(adapter);
-        priorityView.setSelection(task.core.priority.ordinal());
+        priorityView.setSelection(editState.priority.ordinal());
     }
 
     private void bindScheduling() {
@@ -130,11 +131,11 @@ public class TaskEditDialog extends DialogFragment {
             updateDeadlineDisplay();
         });
 
-        closeOnMissView.setChecked(task.core.closeOnMiss);
-        minDurationView.setText(String.valueOf(task.core.minDuration));
-        maxDurationView.setText(String.valueOf(task.core.maxDuration));
-        cooldownView.setText(String.valueOf(task.core.cooldown));
-        adaptiveView.setChecked(task.core.adaptive);
+        closeOnMissView.setChecked(editState.closeOnMiss);
+        minDurationView.setText(String.valueOf(editState.minDuration));
+        maxDurationView.setText(String.valueOf(editState.maxDuration));
+        cooldownView.setText(String.valueOf(editState.cooldown));
+        adaptiveView.setChecked(editState.adaptive);
     }
 
     private void updateDeadlineDisplay() {
@@ -160,14 +161,12 @@ public class TaskEditDialog extends DialogFragment {
         perPeriodView = rootView.findViewById(R.id.EditPerPeriod);
         periodUnitView = rootView.findViewById(R.id.EditPeriodUnit);
 
-        boolean hasRepetition = task.core.repetition != null && task.core.repetition.reps > 0;
+        boolean hasRepetition = editState.reps > 0;
         toggleRepetition.setChecked(hasRepetition);
         repetitionContainer.setVisibility(hasRepetition ? View.VISIBLE : View.GONE);
 
-        if (task.core.repetition != null) {
-            repsView.setText(String.valueOf(task.core.repetition.reps));
-            perPeriodView.setText(String.valueOf(task.core.repetition.perPeriod));
-        }
+        repsView.setText(String.valueOf(editState.reps > 0 ? editState.reps : 1));
+        perPeriodView.setText(String.valueOf(editState.perPeriod > 0 ? editState.perPeriod : 1));
 
         ArrayAdapter<Period> periodAdapter = new ArrayAdapter<>(
             requireContext(),
@@ -176,9 +175,7 @@ public class TaskEditDialog extends DialogFragment {
         );
         periodAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         periodUnitView.setAdapter(periodAdapter);
-        if (task.core.repetition != null && task.core.repetition.periodUnit != null) {
-            periodUnitView.setSelection(task.core.repetition.periodUnit.ordinal());
-        }
+        periodUnitView.setSelection((editState.periodUnit != null ? editState.periodUnit : Period.DAY).ordinal());
 
         presenter.initializeRepetitionState(
             toggleRepetition.isChecked(),
@@ -219,18 +216,16 @@ public class TaskEditDialog extends DialogFragment {
         minPerRepView = rootView.findViewById(R.id.EditMinPerRep);
         maxPerRepView = rootView.findViewById(R.id.EditMaxPerRep);
 
-        boolean hasProgress = task.core.progress != null && task.core.progress.target > 0;
+        boolean hasProgress = editState.target > 0;
         toggleProgress.setChecked(hasProgress);
         progressContainer.setVisibility(hasProgress ? View.VISIBLE : View.GONE);
 
-        if (task.core.progress != null) {
-            unitView.setText(task.core.progress.unit != null ? task.core.progress.unit : "");
-            targetView.setText(String.valueOf(task.core.progress.target));
-            currentView.setText(String.valueOf(task.core.progress.current));
-            resetPerRepView.setChecked(task.core.progress.resetPerRep);
-            minPerRepView.setText(String.valueOf(task.core.progress.minPerRep));
-            maxPerRepView.setText(String.valueOf(task.core.progress.maxPerRep));
-        }
+        unitView.setText(editState.unit != null ? editState.unit : "");
+        targetView.setText(String.valueOf(editState.target));
+        currentView.setText(String.valueOf(editState.current));
+        resetPerRepView.setChecked(editState.resetPerRep);
+        minPerRepView.setText(String.valueOf(editState.minPerRep));
+        maxPerRepView.setText(String.valueOf(editState.maxPerRep));
 
         toggleProgress.setOnCheckedChangeListener((btn, checked) ->
             progressContainer.setVisibility(checked ? View.VISIBLE : View.GONE));
@@ -260,18 +255,18 @@ public class TaskEditDialog extends DialogFragment {
         prefSlotUIBuilder.rebuild(prefSlotContainer, presenter.getEditablePrefSlots(), repsPerDay,
             new PrefSlotUIBuilder.Listener() {
                 @Override
-                public void onDaysClicked(TaskPrefSlot prefSlot, Set<DayOfWeek> takenByOthers) {
+                public void onDaysClicked(PrefSlotEditState prefSlot, Set<DayOfWeek> takenByOthers) {
                     showDayPicker(prefSlot, takenByOthers);
                 }
 
                 @Override
-                public void onTimeClicked(TaskPrefSlot prefSlot, TextView timeView) {
+                public void onTimeClicked(PrefSlotEditState prefSlot, TextView timeView) {
                     showTimePicker(prefSlot, timeView);
                 }
             });
     }
 
-    private void showDayPicker(TaskPrefSlot prefSlot, Set<DayOfWeek> takenByOthers) {
+    private void showDayPicker(PrefSlotEditState prefSlot, Set<DayOfWeek> takenByOthers) {
         DayOfWeek[] weekDays = {
             DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
             DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY
@@ -347,7 +342,7 @@ public class TaskEditDialog extends DialogFragment {
             .show();
     }
 
-    private void showTimePicker(TaskPrefSlot prefSlot, TextView timeView) {
+    private void showTimePicker(PrefSlotEditState prefSlot, TextView timeView) {
         int hour = prefSlot.start != null ? prefSlot.start.getHour() : 6;
         int minute = prefSlot.start != null ? prefSlot.start.getMinute() : 0;
 

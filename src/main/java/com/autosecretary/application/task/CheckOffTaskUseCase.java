@@ -1,26 +1,26 @@
 package com.autosecretary.application.task;
 
+import com.autosecretary.application.task.command.CheckOffTaskCommand;
 import com.autosecretary.application.task.model.TaskListItem;
-import com.autosecretary.database.task.Task;
+import com.autosecretary.application.task.model.checkoff.CheckOffResult;
 import com.autosecretary.application.task.port.TaskRepository;
+import com.autosecretary.database.task.Task;
 import com.autosecretary.database.task.TaskSlot;
 import com.autosecretary.services.TaskCompletionService;
-import com.autosecretary.services.TaskLifecycleManager;
 import com.autosecretary.services.TaskCompletionService.CompletionPhase;
+import com.autosecretary.services.TaskLifecycleManager;
 
 import java.util.concurrent.ExecutorService;
 
 public class CheckOffTaskUseCase {
     private final TaskRepository taskRepository;
-    private final TaskCompletionService completionService;
-    private final TaskLifecycleManager lifecycleManager;
+    private final CheckOffTaskCommand checkOffTaskCommand;
     private final ExecutorService executor;
 
     public CheckOffTaskUseCase(TaskRepository taskRepository, TaskCompletionService completionService,
                                TaskLifecycleManager lifecycleManager, ExecutorService executor) {
         this.taskRepository = taskRepository;
-        this.completionService = completionService;
-        this.lifecycleManager = lifecycleManager;
+        this.checkOffTaskCommand = new CheckOffTaskCommand(completionService, lifecycleManager);
         this.executor = executor;
     }
 
@@ -36,15 +36,15 @@ public class CheckOffTaskUseCase {
                 return;
             }
 
-            CompletionPhase phase = completionService.checkOff(task, slot, lifecycleManager);
-            if (phase == CompletionPhase.NONE) {
+            CheckOffResult result = checkOffTaskCommand.execute(task, slot);
+            if (result.phase == CompletionPhase.NONE) {
                 return;
             }
 
-            if (phase == CompletionPhase.COMPLETED) {
-                taskRepository.write(task);
+            if (result.phase == CompletionPhase.COMPLETED) {
+                taskRepository.write(result.updatedTask);
             }
-            taskRepository.writeSlot(slot);
+            taskRepository.writeSlot(result.updatedSlot);
             onChanged.run();
         });
     }

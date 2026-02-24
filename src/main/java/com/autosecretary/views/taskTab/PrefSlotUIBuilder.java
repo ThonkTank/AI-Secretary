@@ -7,7 +7,7 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.autosecretary.database.task.TaskPrefSlot;
+import com.autosecretary.views.taskTab.model.PrefSlotEditState;
 
 import java.time.DayOfWeek;
 import java.time.format.DateTimeFormatter;
@@ -26,9 +26,9 @@ import java.util.Set;
 public class PrefSlotUIBuilder {
 
     public interface Listener {
-        void onDaysClicked(TaskPrefSlot prefSlot, Set<DayOfWeek> takenByOthers);
+        void onDaysClicked(PrefSlotEditState prefSlot, Set<DayOfWeek> takenByOthers);
 
-        void onTimeClicked(TaskPrefSlot prefSlot, TextView timeView);
+        void onTimeClicked(PrefSlotEditState prefSlot, TextView timeView);
     }
 
     public interface DpToPx {
@@ -43,11 +43,11 @@ public class PrefSlotUIBuilder {
         this.dpToPx = dpToPx;
     }
 
-    public void rebuild(LinearLayout prefSlotContainer, List<TaskPrefSlot> editablePrefSlots,
+    public void rebuild(LinearLayout prefSlotContainer, List<PrefSlotEditState> editablePrefSlots,
                         int repsPerDay, Listener listener) {
         prefSlotContainer.removeAllViews();
 
-        List<TaskPrefSlot> sorted = new ArrayList<>(editablePrefSlots);
+        List<PrefSlotEditState> sorted = new ArrayList<>(editablePrefSlots);
         Collections.sort(sorted, (a, b) -> {
             if (a.start == null && b.start == null) return 0;
             if (a.start == null) return 1;
@@ -55,7 +55,7 @@ public class PrefSlotUIBuilder {
             return a.start.compareTo(b.start);
         });
 
-        Map<Integer, List<TaskPrefSlot>> slotMap = groupByRepetition(sorted, repsPerDay);
+        Map<Integer, List<PrefSlotEditState>> slotMap = groupByRepetition(sorted, repsPerDay);
 
         for (int key = 1; key <= repsPerDay; key++) {
             TextView header = new TextView(context);
@@ -64,8 +64,8 @@ public class PrefSlotUIBuilder {
             header.setPadding(0, dpToPx.convert(12), 0, dpToPx.convert(4));
             prefSlotContainer.addView(header);
 
-            List<TaskPrefSlot> slotsInGroup = slotMap.getOrDefault(key, Collections.emptyList());
-            for (TaskPrefSlot prefSlot : slotsInGroup) {
+            List<PrefSlotEditState> slotsInGroup = slotMap.getOrDefault(key, Collections.emptyList());
+            for (PrefSlotEditState prefSlot : slotsInGroup) {
                 LinearLayout row = new LinearLayout(context);
                 row.setOrientation(LinearLayout.HORIZONTAL);
                 row.setGravity(Gravity.CENTER_VERTICAL);
@@ -129,17 +129,17 @@ public class PrefSlotUIBuilder {
         return day.getDisplayName(TextStyle.SHORT, Locale.GERMAN).replace(".", "");
     }
 
-    private static Map<Integer, List<TaskPrefSlot>> groupByRepetition(List<TaskPrefSlot> sorted,
+    private static Map<Integer, List<PrefSlotEditState>> groupByRepetition(List<PrefSlotEditState> sorted,
                                                                        int repsPerDay) {
-        Map<Integer, List<TaskPrefSlot>> slotMap = new HashMap<>();
+        Map<Integer, List<PrefSlotEditState>> slotMap = new HashMap<>();
         Set<DayOfWeek> usedDays = new HashSet<>();
-        List<TaskPrefSlot> remaining = new ArrayList<>(sorted);
+        List<PrefSlotEditState> remaining = new ArrayList<>(sorted);
 
         int currentRep = 1;
         while (currentRep <= repsPerDay) {
-            Iterator<TaskPrefSlot> it = remaining.iterator();
+            Iterator<PrefSlotEditState> it = remaining.iterator();
             while (it.hasNext()) {
-                TaskPrefSlot prefSlot = it.next();
+                PrefSlotEditState prefSlot = it.next();
                 Set<DayOfWeek> days = prefSlot.days != null ? prefSlot.days : EnumSet.noneOf(DayOfWeek.class);
                 if (Collections.disjoint(days, usedDays)) {
                     usedDays.addAll(days);
@@ -154,9 +154,9 @@ public class PrefSlotUIBuilder {
         return slotMap;
     }
 
-    private static Set<DayOfWeek> computeTakenDays(TaskPrefSlot current, List<TaskPrefSlot> groupSlots) {
+    private static Set<DayOfWeek> computeTakenDays(PrefSlotEditState current, List<PrefSlotEditState> groupSlots) {
         Set<DayOfWeek> taken = EnumSet.noneOf(DayOfWeek.class);
-        for (TaskPrefSlot other : groupSlots) {
+        for (PrefSlotEditState other : groupSlots) {
             if (other != current && other.days != null) {
                 taken.addAll(other.days);
             }

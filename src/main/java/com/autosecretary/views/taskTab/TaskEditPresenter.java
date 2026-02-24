@@ -3,38 +3,37 @@ package com.autosecretary.views.taskTab;
 import com.autosecretary.constants.Period;
 import com.autosecretary.constants.Priority;
 import com.autosecretary.database.task.Task;
-import com.autosecretary.database.task.TaskPrefSlot;
+import com.autosecretary.views.taskTab.mapper.TaskEditStateMapper;
+import com.autosecretary.views.taskTab.model.PrefSlotEditState;
+import com.autosecretary.views.taskTab.model.TaskEditState;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
 public class TaskEditPresenter {
 
-    private final Task task;
-    private final List<TaskPrefSlot> editablePrefSlots;
-    private LocalDate editableDeadline;
+    private final TaskEditState editState;
+    private final TaskEditStateMapper mapper;
     private int lastRepsPerDay = -1;
 
-    public TaskEditPresenter(Task task) {
-        this.task = task;
-        this.editablePrefSlots = deepCopyPrefSlots(task.prefSlots);
-        this.editableDeadline = task.core.deadline;
+    public TaskEditPresenter(TaskEditState editState, TaskEditStateMapper mapper) {
+        this.editState = editState;
+        this.mapper = mapper;
     }
 
-    public List<TaskPrefSlot> getEditablePrefSlots() {
-        return editablePrefSlots;
+    public List<PrefSlotEditState> getEditablePrefSlots() {
+        return editState.prefSlots;
     }
 
     public LocalDate getEditableDeadline() {
-        return editableDeadline;
+        return editState.deadline;
     }
 
     public void setEditableDeadline(LocalDate editableDeadline) {
-        this.editableDeadline = editableDeadline;
+        editState.deadline = editableDeadline;
     }
 
     public void initializeRepetitionState(boolean repetitionEnabled, String repsText,
@@ -50,18 +49,18 @@ public class TaskEditPresenter {
         }
         lastRepsPerDay = newRepsPerDay;
 
-        int currentCount = editablePrefSlots.size();
+        int currentCount = editState.prefSlots.size();
         if (newRepsPerDay > currentCount) {
             for (int i = currentCount; i < newRepsPerDay; i++) {
-                TaskPrefSlot newSlot = new TaskPrefSlot();
-                newSlot.taskId = task.core.id;
+                PrefSlotEditState newSlot = new PrefSlotEditState();
+                newSlot.taskId = editState.id;
                 newSlot.days = EnumSet.allOf(DayOfWeek.class);
                 newSlot.start = LocalTime.of(6, 0);
-                editablePrefSlots.add(newSlot);
+                editState.prefSlots.add(newSlot);
             }
         } else if (newRepsPerDay < currentCount && newRepsPerDay > 0) {
-            while (editablePrefSlots.size() > newRepsPerDay) {
-                editablePrefSlots.remove(editablePrefSlots.size() - 1);
+            while (editState.prefSlots.size() > newRepsPerDay) {
+                editState.prefSlots.remove(editState.prefSlots.size() - 1);
             }
         }
         return true;
@@ -84,78 +83,62 @@ public class TaskEditPresenter {
     }
 
     public void collectAllFields(FormData formData) {
-        task.core.title = formData.title;
-        task.core.description = formData.description;
-        task.core.priority = formData.priority;
+        editState.title = formData.title;
+        editState.description = formData.description;
+        editState.priority = formData.priority != null ? formData.priority : Priority.MEDIUM;
 
-        task.core.deadline = editableDeadline;
-        task.core.closeOnMiss = formData.closeOnMiss;
-        task.core.minDuration = parseIntSafe(formData.minDuration, 5);
-        task.core.maxDuration = parseIntSafe(formData.maxDuration, 10);
-        task.core.cooldown = parseIntSafe(formData.cooldown, 1);
-        task.core.adaptive = formData.adaptive;
+        editState.closeOnMiss = formData.closeOnMiss;
+        editState.minDuration = parseIntSafe(formData.minDuration, 5);
+        editState.maxDuration = parseIntSafe(formData.maxDuration, 10);
+        editState.cooldown = parseIntSafe(formData.cooldown, 1);
+        editState.adaptive = formData.adaptive;
 
         if (formData.repetitionEnabled) {
             int newReps = parseIntSafe(formData.reps, 1);
             int newPerPeriod = parseIntSafe(formData.perPeriod, 1);
-            Period newPeriodUnit = formData.periodUnit;
+            Period newPeriodUnit = formData.periodUnit != null ? formData.periodUnit : Period.DAY;
 
             boolean periodChanged =
-                newReps != task.core.repetition.reps ||
-                newPerPeriod != task.core.repetition.perPeriod ||
-                newPeriodUnit != task.core.repetition.periodUnit;
+                newReps != editState.reps ||
+                newPerPeriod != editState.perPeriod ||
+                newPeriodUnit != editState.periodUnit;
 
-            task.core.repetition.reps = newReps;
-            task.core.repetition.perPeriod = newPerPeriod;
-            task.core.repetition.periodUnit = newPeriodUnit;
+            editState.reps = newReps;
+            editState.perPeriod = newPerPeriod;
+            editState.periodUnit = newPeriodUnit;
 
-            if (periodChanged || task.core.repetition.periodStart == null) {
-                task.core.repetition.periodStart = LocalDate.now();
-                task.core.repetition.periodCompletions = 0;
+            if (periodChanged || editState.periodStart == null) {
+                editState.periodStart = LocalDate.now();
+                editState.periodCompletions = 0;
             }
         } else {
-            task.core.repetition.reps = 0;
-            task.core.repetition.perPeriod = 1;
-            task.core.repetition.periodUnit = Period.DAY;
-            task.core.repetition.periodCompletions = 0;
-            task.core.repetition.periodStart = null;
+            editState.reps = 0;
+            editState.perPeriod = 1;
+            editState.periodUnit = Period.DAY;
+            editState.periodCompletions = 0;
+            editState.periodStart = null;
         }
 
         if (formData.progressEnabled) {
-            task.core.progress.unit = formData.unit;
-            task.core.progress.target = parseIntSafe(formData.target, 0);
-            task.core.progress.current = parseIntSafe(formData.current, 0);
-            task.core.progress.resetPerRep = formData.resetPerRep;
-            task.core.progress.minPerRep = parseIntSafe(formData.minPerRep, 0);
-            task.core.progress.maxPerRep = parseIntSafe(formData.maxPerRep, 0);
+            editState.unit = formData.unit;
+            editState.target = parseIntSafe(formData.target, 0);
+            editState.current = parseIntSafe(formData.current, 0);
+            editState.resetPerRep = formData.resetPerRep;
+            editState.minPerRep = parseIntSafe(formData.minPerRep, 0);
+            editState.maxPerRep = parseIntSafe(formData.maxPerRep, 0);
         } else {
-            task.core.progress.target = 0;
+            editState.target = 0;
         }
-
-        task.prefSlots = new ArrayList<>(editablePrefSlots);
     }
 
-    private static List<TaskPrefSlot> deepCopyPrefSlots(List<TaskPrefSlot> prefSlots) {
-        List<TaskPrefSlot> editable = new ArrayList<>();
-        if (prefSlots == null) {
-            return editable;
-        }
-
-        for (TaskPrefSlot ps : prefSlots) {
-            TaskPrefSlot copy = new TaskPrefSlot();
-            copy.id = ps.id;
-            copy.taskId = ps.taskId;
-            copy.days = ps.days != null ? EnumSet.copyOf(ps.days) : EnumSet.noneOf(DayOfWeek.class);
-            copy.start = ps.start;
-            editable.add(copy);
-        }
-        return editable;
+    public Task toTaskForSave(Task baseTask) {
+        return mapper.toTask(editState, baseTask);
     }
 
     private static int parseIntSafe(String s, int fallback) {
         try {
             return Integer.parseInt(s.trim());
-        } catch (NumberFormatException e) {
+        } catch (Exception e) {
             return fallback;
         }
     }
