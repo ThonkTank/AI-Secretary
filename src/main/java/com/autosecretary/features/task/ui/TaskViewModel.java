@@ -10,7 +10,6 @@ import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.LoadTaskListUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.SaveTaskUseCase;
-import com.autosecretary.features.task.application.TaskUseCaseFactory;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
@@ -54,12 +53,16 @@ public class TaskViewModel extends AndroidViewModel {
     private LocalDate day;
     private ListConfig activeListConfig = ListConfig.DEFAULT;
 
-    public TaskViewModel(Application app, TaskUseCaseFactory.Bundle bundle) {
+    public TaskViewModel(Application app,
+                         LoadTaskListUseCase loadTaskListUseCase,
+                         SaveTaskUseCase saveTaskUseCase,
+                         CheckOffTaskUseCase checkOffTaskUseCase,
+                         RegenerateScheduleUseCase regenerateScheduleUseCase) {
         super(app);
-        this.loadTaskListUseCase = bundle.loadTaskListUseCase;
-        this.saveTaskUseCase = bundle.saveTaskUseCase;
-        this.checkOffTaskUseCase = bundle.checkOffTaskUseCase;
-        this.regenerateScheduleUseCase = bundle.regenerateScheduleUseCase;
+        this.loadTaskListUseCase = loadTaskListUseCase;
+        this.saveTaskUseCase = saveTaskUseCase;
+        this.checkOffTaskUseCase = checkOffTaskUseCase;
+        this.regenerateScheduleUseCase = regenerateScheduleUseCase;
 
         this.masterList = new ViewSlotList();
         refreshList();

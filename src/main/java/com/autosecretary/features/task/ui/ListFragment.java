@@ -25,10 +25,7 @@ public class ListFragment extends Fragment {
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         AppCompositionRoot compositionRoot = new AppCompositionRoot(requireActivity().getApplication());
-        TaskViewModelFactory viewModelFactory = new TaskViewModelFactory(
-                requireActivity().getApplication(),
-                compositionRoot.createTaskUseCases()
-        );
+        TaskViewModelFactory viewModelFactory = compositionRoot.createTaskViewModelFactory();
         // Keep one ViewModel tied to the activity so list/edit state survives fragment swaps and dialogs.
         TaskViewModel vm = new ViewModelProvider(requireActivity(), viewModelFactory).get(TaskViewModel.class);
         RecyclerView recyclerView = view.findViewById(R.id.TaskList);
