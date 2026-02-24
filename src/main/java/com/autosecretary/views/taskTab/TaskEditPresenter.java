@@ -48,22 +48,25 @@ public class TaskEditPresenter {
         }
         lastRepsPerDay = newRepsPerDay;
 
-        int currentCount = editState.prefSlots.size();
-        if (newRepsPerDay > currentCount) {
-            for (int i = currentCount; i < newRepsPerDay; i++) {
-                TaskPrefSlot defaultSlot = TaskPrefSlotFactory.createDefault(editState.id);
-                PrefSlotEditState newSlot = new PrefSlotEditState();
-                newSlot.taskId = defaultSlot.taskId;
-                newSlot.days = defaultSlot.days;
-                newSlot.start = defaultSlot.start;
-                editState.prefSlots.add(newSlot);
+        int targetSlotCount = newRepsPerDay;
+        int currentSlotCount = editState.prefSlots.size();
+        if (targetSlotCount > currentSlotCount) {
+            for (int i = currentSlotCount; i < targetSlotCount; i++) {
+                editState.prefSlots.add(createDefaultPrefSlotState(editState.id));
             }
-        } else if (newRepsPerDay < currentCount && newRepsPerDay > 0) {
-            while (editState.prefSlots.size() > newRepsPerDay) {
-                editState.prefSlots.remove(editState.prefSlots.size() - 1);
-            }
+        } else if (targetSlotCount < currentSlotCount && targetSlotCount > 0) {
+            editState.prefSlots.subList(targetSlotCount, currentSlotCount).clear();
         }
         return true;
+    }
+
+    private PrefSlotEditState createDefaultPrefSlotState(String taskId) {
+        TaskPrefSlot defaultSlot = TaskPrefSlotFactory.createDefault(taskId);
+        PrefSlotEditState newSlot = new PrefSlotEditState();
+        newSlot.taskId = defaultSlot.taskId;
+        newSlot.days = defaultSlot.days;
+        newSlot.start = defaultSlot.start;
+        return newSlot;
     }
 
     public int computeCurrentRepsPerDay(boolean repetitionEnabled, String repsText,
