@@ -1,89 +1,70 @@
 package com.autosecretary.views.taskTab;
 
 import android.app.Application;
-import android.util.Log;
 
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.autosecretary.config.Preferences;
-import com.autosecretary.database.AppDatabase;
+import com.autosecretary.application.task.CheckOffTaskUseCase;
+import com.autosecretary.application.task.LoadTaskListUseCase;
+import com.autosecretary.application.task.RegenerateScheduleUseCase;
+import com.autosecretary.application.task.SaveTaskUseCase;
+import com.autosecretary.application.task.TaskUseCaseFactory;
 import com.autosecretary.database.task.Task;
 import com.autosecretary.database.task.TaskCore;
-import com.autosecretary.database.task.TaskDAO;
 import com.autosecretary.database.task.TaskPrefSlot;
-import com.autosecretary.services.TaskCompletionService;
-import com.autosecretary.services.TaskCompletionService.CompletionPhase;
-import com.autosecretary.services.TaskLifecycleManager;
-import com.autosecretary.services.taskPlanning.TaskTreeOperations;
-import com.autosecretary.services.taskPlanning.SlotGenerator;
-import com.autosecretary.services.taskPlanning.TaskScorer;
 import com.autosecretary.views.models.ViewSlotList;
 import com.autosecretary.views.models.ViewSlotList.ViewSlot;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Predicate;
 
 public class TaskViewModel extends AndroidViewModel {
-    private final Preferences prefs;
-    private final TaskDAO taskDao;
-    private final SlotGenerator generator;
-    private final ExecutorService executor;
-    private final TaskLifecycleManager lifecycleManager;
-    private final TaskCompletionService completionService;
+    private final LoadTaskListUseCase loadTaskListUseCase;
+    private final SaveTaskUseCase saveTaskUseCase;
+    private final CheckOffTaskUseCase checkOffTaskUseCase;
+    private final RegenerateScheduleUseCase regenerateScheduleUseCase;
 
     private final ViewSlotList masterList;
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
     private final MutableLiveData<Task> selectedTask = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isNewTask = new MutableLiveData<>(false);
 
-    private final Filters filters = new Filters();
-    private final Sorters sorters = new Sorters();
-
-    private static class Filters {
+    static class Filters {
         LocalDate day;
         boolean displayUnscheduled;
     }
 
-    private static class Sorters {
+    static class Sorters {
         boolean byTaskParent;
         boolean byScore;
         boolean byTime;
         boolean byTitle;
     }
 
+    private final Filters filters = new Filters();
+    private final Sorters sorters = new Sorters();
+
     public TaskViewModel(Application app) {
+        this(app, TaskUseCaseFactory.create(app));
+    }
+
+    TaskViewModel(Application app, TaskUseCaseFactory.Bundle bundle) {
         super(app);
-        this.prefs = new Preferences(app);
-        this.taskDao = AppDatabase.getInstance(app).taskDao();
-        this.executor = Executors.newSingleThreadExecutor(runnable -> {
-            Thread thread = new Thread(runnable);
-            thread.setUncaughtExceptionHandler((t, e) ->
-                    Log.e("TaskViewModel", "Background crash", e)
-            );
-            return thread;
-        });
+        this.loadTaskListUseCase = bundle.loadTaskListUseCase;
+        this.saveTaskUseCase = bundle.saveTaskUseCase;
+        this.checkOffTaskUseCase = bundle.checkOffTaskUseCase;
+        this.regenerateScheduleUseCase = bundle.regenerateScheduleUseCase;
+
         this.masterList = new ViewSlotList();
-        executor.execute(() -> masterList.fromList(taskDao.readAll()));
-
-        this.lifecycleManager = new TaskLifecycleManager();
-        this.completionService = new TaskCompletionService();
-
-        TaskScorer scorer = new TaskScorer(lifecycleManager);
-        LocalDate day = LocalDate.now();
-        LocalDateTime start = LocalDateTime.of(day, prefs.readPrefTime(day, true));
-        LocalDateTime end = LocalDateTime.of(day, prefs.readPrefTime(day, false));
-        this.generator = new SlotGenerator(taskDao, start, end, scorer);
+        refreshList();
     }
 
     public LiveData<List<ViewSlot>> getList() {
@@ -107,9 +88,11 @@ public class TaskViewModel extends AndroidViewModel {
         return task;
     }
 
-    public void beginEditTask(Task task) {
-        selectedTask.setValue(task);
-        isNewTask.setValue(false);
+    public void beginEditTask(String taskId) {
+        loadTaskListUseCase.loadTask(taskId, task -> {
+            selectedTask.postValue(task);
+            isNewTask.postValue(false);
+        });
     }
 
     public void createNewTask() {
@@ -132,10 +115,9 @@ public class TaskViewModel extends AndroidViewModel {
 
     public void saveEditedTask() {
         Task task = requireSelectedTask();
-        executor.execute(() -> {
-            taskDao.write(task);
+        saveTaskUseCase.execute(task, () -> {
             isNewTask.postValue(false);
-            filterList();
+            refreshList();
         });
     }
 
@@ -160,13 +142,7 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void updateList() {
-        executor.execute(() -> {
-            taskDao.deleteAllCore();
-            taskDao.writeList(TaskTreeOperations.flatten(TaskSeedDataFactory.createDefaultTasks()));
-            generator.generateSlots();
-            masterList.fromList(taskDao.readAll());
-            filterList();
-        });
+        regenerateScheduleUseCase.execute(this::refreshList);
     }
 
     public void filterList() {
@@ -182,17 +158,12 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void checkOff(ViewSlot viewSlot) {
-        Task task = viewSlot.task;
-        CompletionPhase phase = completionService.checkOff(task, viewSlot.slot, lifecycleManager);
-        if (phase == CompletionPhase.NONE) {
-            return;
-        }
+        checkOffTaskUseCase.execute(viewSlot.item, this::refreshList);
+    }
 
-        executor.execute(() -> {
-            if (phase == CompletionPhase.COMPLETED) {
-                taskDao.write(task);
-            }
-            taskDao.writeSlot(viewSlot.slot);
+    private void refreshList() {
+        loadTaskListUseCase.execute(items -> {
+            masterList.fromList(items);
             filterList();
         });
     }

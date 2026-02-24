@@ -13,10 +13,10 @@ public final class TaskViewSlotQuery {
         Predicate<ViewSlot> predicate = vs -> true;
 
         if (filters.day != null) {
-            predicate = predicate.and(vs -> vs.slot.day.equals(filters.day));
+            predicate = predicate.and(vs -> vs.item.day.equals(filters.day));
         }
         if (!filters.displayUnscheduled) {
-            predicate = predicate.and(vs -> vs.slot.start != null);
+            predicate = predicate.and(vs -> vs.item.start != null);
         }
         return predicate;
     }
@@ -25,18 +25,18 @@ public final class TaskViewSlotQuery {
         Comparator<ViewSlot> comparator = (a, b) -> 0;
 
         if (sorters.byScore) {
-            comparator = comparator.thenComparing((a, b) -> Integer.compare(b.slot.score, a.slot.score));
+            comparator = comparator.thenComparing((a, b) -> Integer.compare(b.item.score, a.item.score));
         }
         if (sorters.byTime) {
             comparator = comparator.thenComparing((a, b) -> {
-                if (a.slot.start == null && b.slot.start == null) return 0;
-                if (a.slot.start == null) return 1;
-                if (b.slot.start == null) return -1;
-                return a.slot.start.compareTo(b.slot.start);
+                if (a.item.start == null && b.item.start == null) return 0;
+                if (a.item.start == null) return 1;
+                if (b.item.start == null) return -1;
+                return a.item.start.compareTo(b.item.start);
             });
         }
         if (sorters.byTitle) {
-            comparator = comparator.thenComparing((a, b) -> a.task.core.title.compareTo(b.task.core.title));
+            comparator = comparator.thenComparing((a, b) -> a.item.title.compareTo(b.item.title));
         }
         return comparator;
     }
