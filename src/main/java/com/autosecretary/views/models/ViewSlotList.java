@@ -1,22 +1,40 @@
-package views.models;
+package com.autosecretary.views.models;
 
 import java.util.List;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.function.Predicate;
 
-import database.task.*;
+import com.autosecretary.database.task.*;
+import com.autosecretary.util.TreeBuilder;
 
 public class ViewSlotList {
     private List<ViewSlot> viewSlots;
     public List<ViewSlot> displaySlots;
+
+    private static final TreeBuilder<ViewSlot> TREE_BY_TASK = new TreeBuilder<>(
+            vs -> vs.task.core.id,
+            vs -> {
+                List<String> ids = new ArrayList<>();
+                for (TaskRelation rel : vs.task.parents) ids.add(rel.parent);
+                return ids;
+            },
+            (parent, child) -> parent.children.add(child),
+            vs -> vs.children,
+            vs -> vs.children = new ArrayList<>()
+    );
+
+    private static final TreeBuilder<ViewSlot> TREE_BY_SLOT = new TreeBuilder<>(
+            vs -> vs.slot.id,
+            vs -> vs.slot.parent != null
+                    ? Collections.singletonList(vs.slot.parent)
+                    : Collections.emptyList(),
+            (parent, child) -> parent.children.add(child),
+            vs -> vs.children,
+            vs -> vs.children = new ArrayList<>()
+    );
 
     public static class ViewSlot {
         public Task task;
@@ -59,68 +77,9 @@ public class ViewSlotList {
 
     //ViewModel ruft sort auf
     public void sort(boolean byTaskRelation, Comparator<ViewSlot> comparator) {
-        buildTree(byTaskRelation);
-        sortTree(displaySlots, comparator);
-
-        Set<ViewSlot> visited = new HashSet<>();
-        displaySlots = flatten(displaySlots, visited, 0);
-    }
-
-    private void buildTree(boolean byTaskRelation) {
-        for (ViewSlot vs : displaySlots) {
-            vs.children = new ArrayList<>();
-        }
-        
-        Map<String, ViewSlot> mappedVS = new HashMap<>();
-        List<ViewSlot> vsTree = new ArrayList<>();
-        
-        for (ViewSlot vs : displaySlots) {
-            String id = byTaskRelation ? vs.task.core.id : vs.slot.id;
-            mappedVS.put(id, vs);
-        }
-
-        for (ViewSlot vs : displaySlots) {
-            int nrParents = 0;
-            List<String> parentIDs = new ArrayList<>();
-
-            if (byTaskRelation) {
-                for (TaskRelation parent : vs.task.parents) {
-                    parentIDs.add(parent.parent);
-                    nrParents++;
-                }
-            } else if (vs.slot.parent != null) {
-                parentIDs.add(vs.slot.parent);
-                nrParents++;
-            }
-
-            if (nrParents == 0) {
-                vsTree.add(vs);
-            } else {
-                for (String parent : parentIDs) {
-                    mappedVS.get(parent).children.add(vs);
-                }
-            }
-            
-        }
-        displaySlots = vsTree;
-    }
-
-    private void sortTree(List<ViewSlot> vsSlots, Comparator<ViewSlot> comparator) {
-        if (vsSlots.isEmpty()) return;
-        vsSlots.sort(comparator);
-        for (ViewSlot vs : vsSlots) {
-            sortTree(vs.children, comparator);
-        }
-    }
-
-    private List<ViewSlot> flatten(List<ViewSlot> viewSlots, Set<ViewSlot> visited, int depth) {
-        List<ViewSlot> result = new ArrayList<>();
-        for (ViewSlot vs : viewSlots) {
-            vs.depth = depth;
-            if (!visited.add(vs)) return result;  // schon besucht
-            result.add(vs);
-            result.addAll(flatten(vs.children, visited, depth+1));
-        }
-        return result;
+        TreeBuilder<ViewSlot> builder = byTaskRelation ? TREE_BY_TASK : TREE_BY_SLOT;
+        displaySlots = builder.buildTree(displaySlots);
+        builder.sortTree(displaySlots, comparator);
+        displaySlots = builder.flattenWithDepth(displaySlots, (vs, depth) -> vs.depth = depth);
     }
 }

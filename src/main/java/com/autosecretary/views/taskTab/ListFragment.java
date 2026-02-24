@@ -1,4 +1,4 @@
-package views.taskTab;
+package com.autosecretary.views.taskTab;
 
 //Android
 import androidx.fragment.app.Fragment;
@@ -18,8 +18,8 @@ import com.google.android.material.button.MaterialButton;
 import java.time.LocalDate;
 import java.util.ArrayList;
 
-import views.taskTab.ListRowAdapter;
-import views.models.ViewSlotList.ViewSlot;
+import com.autosecretary.views.taskTab.ListRowAdapter;
+import com.autosecretary.views.models.ViewSlotList.ViewSlot;
 import com.autosecretary.R;
 
 public class ListFragment extends Fragment {
@@ -37,7 +37,7 @@ public class ListFragment extends Fragment {
 
         ListRowAdapter adapter = new ListRowAdapter(
             new ArrayList<>(),
-            slot -> vm.checkOff(slot),
+            viewSlot -> vm.checkOff(viewSlot),
             viewSlot -> {
                 vm.selectedTask = viewSlot.task;
                 new TaskEditDialog().show(getParentFragmentManager(), "edit");
@@ -52,6 +52,11 @@ public class ListFragment extends Fragment {
         Button button = view.findViewById(R.id.Button);
         button.setOnClickListener(v -> {
             vm.updateList();
+        });
+
+        view.findViewById(R.id.NewTaskButton).setOnClickListener(v -> {
+            vm.createNewTask();
+            new TaskEditDialog().show(getParentFragmentManager(), "create");
         });
 
         MaterialButtonToggleGroup toggle = view.findViewById(R.id.TaskListToggle);

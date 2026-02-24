@@ -1,4 +1,4 @@
-package util;
+package com.autosecretary.util;
 
 import java.util.ArrayList;
 import java.util.Comparator;

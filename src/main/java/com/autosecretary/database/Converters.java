@@ -1,4 +1,4 @@
-package database;
+package com.autosecretary.database;
 
 import androidx.room.TypeConverter;
 import java.time.LocalDate;
@@ -7,8 +7,8 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.time.DayOfWeek;
-import constants.Priority;
-import constants.Period;
+import com.autosecretary.constants.Priority;
+import com.autosecretary.constants.Period;
 
 public class Converters {
     @TypeConverter

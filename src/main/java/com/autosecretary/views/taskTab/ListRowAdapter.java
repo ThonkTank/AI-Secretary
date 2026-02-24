@@ -1,26 +1,28 @@
-package views.taskTab;
+package com.autosecretary.views.taskTab;
 
 import androidx.recyclerview.widget.RecyclerView;
+import android.content.res.ColorStateList;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.LayoutInflater;
 import android.widget.TextView;
 import android.widget.CheckBox;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.function.Consumer;
 import java.time.format.DateTimeFormatter;
 
-import views.models.ViewSlotList.ViewSlot;
-import database.task.TaskSlot;
+import com.autosecretary.views.models.ViewSlotList.ViewSlot;
 import com.autosecretary.R;
 
 public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowViewHolder> {
     List<ViewSlot> viewSlots;
-    Consumer<TaskSlot> onCheck;
+    Consumer<ViewSlot> onCheck;
     Consumer<ViewSlot> onLongPress;
 
-    public ListRowAdapter(List<ViewSlot> viewSlots, Consumer<TaskSlot> onCheck, Consumer<ViewSlot> onLongPress) {
+    public ListRowAdapter(List<ViewSlot> viewSlots, Consumer<ViewSlot> onCheck, Consumer<ViewSlot> onLongPress) {
         this.viewSlots = viewSlots;
         this.onCheck = onCheck;
         this.onLongPress = onLongPress;
@@ -31,6 +33,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         TextView start;
         TextView end;
         CheckBox checkBox;
+        TextView deadlineCountdown;
+        TextView streakDisplay;
 
         TaskRowViewHolder(View taskRow) {
             super(taskRow);
@@ -38,6 +42,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             this.start = taskRow.findViewById(R.id.StartTime);
             this.end = taskRow.findViewById(R.id.EndTime);
             this.checkBox = taskRow.findViewById(R.id.TaskCheckBox);
+            this.deadlineCountdown = taskRow.findViewById(R.id.DeadlineCountdown);
+            this.streakDisplay = taskRow.findViewById(R.id.StreakDisplay);
         }
     }
 
@@ -65,12 +71,56 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.start.setText(startString);
         holder.end.setText(endString);
         holder.itemView.setPadding(step * viewSlot.depth, 0, 0, 0);
-        holder.checkBox.setOnClickListener(v -> onCheck.accept(viewSlot.slot));
+
+        // Deadline countdown
+        if (viewSlot.task.core.deadline != null) {
+            long daysUntil = ChronoUnit.DAYS.between(LocalDate.now(), viewSlot.task.core.deadline);
+            if (daysUntil < 0) {
+                holder.deadlineCountdown.setText("Fällig!");
+                holder.deadlineCountdown.setTextColor(0xFFFF0000);
+            } else if (daysUntil == 0) {
+                holder.deadlineCountdown.setText("Heute");
+                holder.deadlineCountdown.setTextColor(0xFFFF8800);
+            } else {
+                holder.deadlineCountdown.setText(daysUntil + "d");
+                holder.deadlineCountdown.setTextColor(daysUntil <= 3 ? 0xFFFF8800 : 0xFF888888);
+            }
+            holder.deadlineCountdown.setVisibility(View.VISIBLE);
+        } else {
+            holder.deadlineCountdown.setVisibility(View.GONE);
+        }
+
+        // Streak
+        int streak = viewSlot.task.core.history.currentStreak;
+        if (streak > 0) {
+            holder.streakDisplay.setText(streak + "x");
+            holder.streakDisplay.setVisibility(View.VISIBLE);
+        } else {
+            holder.streakDisplay.setVisibility(View.GONE);
+        }
+
+        // In-progress visual state
+        boolean inProgress = viewSlot.slot.realStart != null && !viewSlot.slot.completed;
+        if (inProgress) {
+            holder.itemView.setBackgroundColor(0x1A4CAF50);
+            holder.checkBox.setButtonTintList(ColorStateList.valueOf(0xFF4CAF50));
+        } else {
+            holder.itemView.setBackgroundColor(0x00000000);
+            holder.checkBox.setButtonTintList(null);
+        }
+
+        // Checkbox: prevent auto-toggle, let ViewModel manage state via data refresh
+        holder.checkBox.setOnClickListener(v -> {
+            holder.checkBox.setChecked(viewSlot.slot.completed);
+            onCheck.accept(viewSlot);
+        });
+        holder.checkBox.setChecked(viewSlot.slot.completed);
+        holder.checkBox.setEnabled(!viewSlot.slot.completed);
+
         holder.itemView.setOnLongClickListener(v -> {
             onLongPress.accept(viewSlot);
             return true;
         });
-        holder.checkBox.setChecked(viewSlot.slot.completed);
     }
 
     public void setList(List<ViewSlot> viewSlots) {

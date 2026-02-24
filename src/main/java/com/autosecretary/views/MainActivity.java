@@ -1,4 +1,4 @@
-package views;
+package com.autosecretary.views;
 
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
@@ -7,7 +7,7 @@ import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
 
-import views.taskTab.ListFragment;
+import com.autosecretary.views.taskTab.ListFragment;
 
 public class MainActivity extends AppCompatActivity {
 

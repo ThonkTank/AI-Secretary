@@ -1,7 +1,7 @@
-package database;
+package com.autosecretary.database;
 
-import database.task.*;
-import constants.Period;
+import com.autosecretary.database.task.*;
+import com.autosecretary.constants.Period;
 
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.room.Database;
@@ -19,8 +19,8 @@ import java.util.concurrent.Executors;
 import android.content.Context;
 
 @Database (
-        entities = {TaskPrefSlot.class, TaskRelation.class, TaskCore.class, TaskFollowUp.class, TaskSlot.class},
-        version = 3,
+        entities = {TaskPrefSlot.class, TaskRelation.class, TaskCore.class, TaskSlot.class, TaskPrerequisite.class},
+        version = 6,
         exportSchema = false
     )
 @TypeConverters(Converters.class)
@@ -31,7 +31,7 @@ public abstract class AppDatabase extends RoomDatabase {
     //Singleton-Pattern
     private static AppDatabase instance;
 
-    public static AppDatabase getInstance(Context context) {
+    public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context, AppDatabase.class, "autosecretary.db")
             .fallbackToDestructiveMigration().build();

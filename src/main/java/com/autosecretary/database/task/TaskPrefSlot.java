@@ -1,4 +1,4 @@
-package database.task;
+package com.autosecretary.database.task;
 
 import java.util.Set;
 import java.util.UUID;

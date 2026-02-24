@@ -1,11 +1,11 @@
-package database.task;
+package com.autosecretary.database.task;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
-import constants.Priority;
-import constants.Period;
+import com.autosecretary.constants.Priority;
+import com.autosecretary.constants.Period;
 import androidx.room.Embedded;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
@@ -51,8 +51,10 @@ public class TaskCore {
     // Repeat amount (5 times, one time, ten times) perPeriod (every, within two) Period (day, weeks).
     public static class Repetition {
         public int reps;
-        public int finishedReps = 0;
-        public double remainingReps() {return reps - finishedReps;}
+        public int periodCompletions = 0;
+        public LocalDate periodStart;
+
+        public double remainingReps() {return reps - periodCompletions;}
 
         public int perPeriod;
         public Period periodUnit;
@@ -60,7 +62,15 @@ public class TaskCore {
         public int repsPerDay() {return (int) Math.ceil( (double) reps / (double) periodInDays());}
         public double daysPerRep() {return (double) periodInDays() / (double) reps;}
         public double requiredDays() {return daysPerRep() * remainingReps();}
-        public double remainingDays(LocalDate lastCompletion) {return (double) ChronoUnit.DAYS.between(LocalDate.now(), lastCompletion.plusDays(periodInDays()));}
+
+        public LocalDate periodEnd() {
+            return periodStart != null ? periodStart.plusDays(periodInDays()) : null;
+        }
+        public double remainingDays() {
+            LocalDate end = periodEnd();
+            if (end == null) return periodInDays();
+            return (double) ChronoUnit.DAYS.between(LocalDate.now(), end);
+        }
     }
 
     public static class Progress {
@@ -84,9 +94,13 @@ public class TaskCore {
 
     public static class History {
         public int completions;
+        public int trackedCompletions;
         public int currentStreak;
         public int nrStreaks = 1;
-        public int averageStreak() {return completions/nrStreaks;}
+        public int totalDuration;
+
+        public int averageStreak() { return nrStreaks > 0 ? completions / nrStreaks : 0; }
+        public int averageDuration() { return trackedCompletions > 0 ? totalDuration / trackedCompletions : 0; }
     }
 
 

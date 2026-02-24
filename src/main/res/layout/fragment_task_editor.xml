@@ -1,34 +1,303 @@
-<LinearLayout
+<ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" 
+    android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:fitsSystemWindows="true">
-    
-    <EditText 
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/EditTitle"/>
-    
-    <EditText 
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/EditDescription"/>
+    android:padding="16dp">
 
-    <Spinner 
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/EditPriority"/>
+        android:orientation="vertical">
 
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        <!-- Basic Info -->
+        <EditText
+            android:id="@+id/EditTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Titel"/>
+
+        <EditText
+            android:id="@+id/EditDescription"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Beschreibung"
+            android:minLines="2"/>
+
+        <Spinner
+            android:id="@+id/EditPriority"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <!-- Scheduling: Deadline -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:id="@+id/PrefSlotContainer"/>
-    </ScrollView>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="12dp">
 
-</LinearLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Frist:"/>
+
+            <TextView
+                android:id="@+id/EditDeadline"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:padding="8dp"
+                android:background="?attr/selectableItemBackground"
+                android:text="Keine Frist"/>
+
+            <ImageButton
+                android:id="@+id/ClearDeadline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Frist löschen"/>
+        </LinearLayout>
+
+        <CheckBox
+            android:id="@+id/EditCloseOnMiss"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Bei Überschreitung schließen"/>
+
+        <!-- Duration -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Dauer (Min):"/>
+
+            <EditText
+                android:id="@+id/EditMinDuration"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:inputType="number"
+                android:hint="Min"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" - "
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"/>
+
+            <EditText
+                android:id="@+id/EditMaxDuration"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:inputType="number"
+                android:hint="Max"/>
+        </LinearLayout>
+
+        <!-- Cooldown -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cooldown (Tage):"/>
+
+            <EditText
+                android:id="@+id/EditCooldown"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:inputType="number"/>
+        </LinearLayout>
+
+        <!-- Repetition -->
+        <CheckBox
+            android:id="@+id/ToggleRepetition"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Wiederholung"/>
+
+        <LinearLayout
+            android:id="@+id/RepetitionContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone"
+            android:paddingStart="32dp">
+
+            <EditText
+                android:id="@+id/EditReps"
+                android:layout_width="48dp"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:gravity="center"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" mal pro "
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"/>
+
+            <EditText
+                android:id="@+id/EditPerPeriod"
+                android:layout_width="48dp"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:gravity="center"/>
+
+            <Spinner
+                android:id="@+id/EditPeriodUnit"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"/>
+        </LinearLayout>
+
+        <!-- PrefSlots -->
+        <LinearLayout
+            android:id="@+id/PrefSlotContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp"/>
+
+        <CheckBox
+            android:id="@+id/EditAdaptive"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Adaptive Zeiten"/>
+
+        <!-- Progress -->
+        <CheckBox
+            android:id="@+id/ToggleProgress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Fortschritt"/>
+
+        <LinearLayout
+            android:id="@+id/ProgressContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:paddingStart="32dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Einheit:"/>
+
+                <EditText
+                    android:id="@+id/EditUnit"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:hint="z.B. Seiten"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ziel:"/>
+
+                <EditText
+                    android:id="@+id/EditTarget"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:inputType="number"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Aktuell:"
+                    android:layout_marginStart="16dp"/>
+
+                <EditText
+                    android:id="@+id/EditCurrent"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:inputType="number"/>
+            </LinearLayout>
+
+            <CheckBox
+                android:id="@+id/EditResetPerRep"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Reset pro Wiederholung"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Pro Wdh.:"/>
+
+                <EditText
+                    android:id="@+id/EditMinPerRep"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:inputType="number"
+                    android:hint="Min"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=" - "
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"/>
+
+                <EditText
+                    android:id="@+id/EditMaxPerRep"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:inputType="number"
+                    android:hint="Max"/>
+            </LinearLayout>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

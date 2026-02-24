@@ -1,4 +1,4 @@
-package database.task;
+package com.autosecretary.database.task;
 
 import androidx.room.Dao; 
 import androidx.room.Insert;
@@ -21,9 +21,6 @@ public interface TaskDAO {
     @Query("SELECT * FROM task_core WHERE id = :id")
     Task read(String id);
     @Transaction
-    @Query("SELECT DISTINCT tc.* FROM task_core tc INNER JOIN task_slots ts ON tc.id = ts.taskId WHERE ts.day = :day ORDER BY ts.start")
-    List<Task> readByDue(LocalDate day);
-    @Transaction
     @Query("SELECT * FROM task_core")
     List<Task> readAll();
 
@@ -31,14 +28,14 @@ public interface TaskDAO {
     //Transactions
     @Transaction
     default void writeList(List<Task> tasks) {
-        tasks = Task.flatten(tasks);
+        tasks = Task.TREE_BUILDER.flatten(tasks);
         for (Task task : tasks) {
             writeCore(task.core);
         }
         for (Task task : tasks) {
             writeSlots(task.slots);
-            writeFollowUps(task.followUps);
             writePrefSlots(task.prefSlots);
+            writePrerequisites(task.prerequisites);
             for (Task child : task.children) {
                 writeRelation(new TaskRelation(task.core.id, child.core.id));
             }
@@ -49,8 +46,8 @@ public interface TaskDAO {
     default void write(Task task) {
         writeCore(task.core);
         writeSlots(task.slots);
-        writeFollowUps(task.followUps);
         writePrefSlots(task.prefSlots);
+        writePrerequisites(task.prerequisites);
         for (Task child : task.children) {
             writeRelation(new TaskRelation(task.core.id, child.core.id));
         }
@@ -59,13 +56,13 @@ public interface TaskDAO {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writeCore(TaskCore core);
 
-    //Follow Ups
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void writeFollowUps(List<TaskFollowUp> followUps);
-
     //Pref Slots
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writePrefSlots(List<TaskPrefSlot> prefSlots);
+
+    //Prerequisites
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void writePrerequisites(List<TaskPrerequisite> prerequisites);
 
     //Parent
     @Insert(onConflict = OnConflictStrategy.REPLACE)

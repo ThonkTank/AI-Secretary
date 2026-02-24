@@ -1,4 +1,4 @@
-package database.task;
+package com.autosecretary.database.task;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;

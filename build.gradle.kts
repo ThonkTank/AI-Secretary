@@ -30,17 +30,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    sourceSets {
-        getByName("main") {
-            java.srcDirs("src")
-            res.srcDirs("res")
-            manifest.srcFile("AndroidManifest.xml")
-        }
-        getByName("test") {
-            java.srcDirs("test")
-        }
-    }
-
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
