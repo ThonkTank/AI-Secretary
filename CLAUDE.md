@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**WARNING: `assembleDebug` (and any `assemble` variant that includes debug) automatically increments `release/version.txt`, copies the APK to `release/`, and pushes to GitHub via `git push`. Do NOT run it without intending a release.**
+**WARNING: `assembleDebug` (and any `assemble` variant that includes debug) automatically increments `ops/release/version.txt`, copies the APK to `ops/release/`, and pushes to GitHub via `git push`. Do NOT run it without intending a release.**
 
 ## Build Commands
 
@@ -23,7 +23,7 @@ Standard Android project structure (single module, no `app/` directory):
 | `src/main/AndroidManifest.xml` | Manifest |
 | `old/` | Legacy code being migrated — do not modify |
 | `build.gradle.kts` | Single-module Kotlin DSL build |
-| `release/` | Built APK + version counter |
+| `ops/release/` | Built APK + version counter |
 
 Uses default Gradle source set conventions (no custom `sourceSets` block). All packages are fully qualified under `com.autosecretary.*`.
 

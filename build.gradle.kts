@@ -2,8 +2,8 @@ plugins {
     id("com.android.application") version "8.7.3"
 }
 
-// Versionsnummer aus release/version.txt lesen und inkrementieren
-val versionFile = file("release/version.txt")
+// Versionsnummer aus ops/release/version.txt lesen und inkrementieren
+val versionFile = file("ops/release/version.txt")
 val currentVersionCode = if (versionFile.exists()) versionFile.readText().trim().toIntOrNull() ?: 0 else 0
 val nextVersionCode = currentVersionCode + 1
 
@@ -70,7 +70,7 @@ android.applicationVariants.all {
 
         val copyTask = tasks.register("copyToRelease", Copy::class) {
             from(outputFile)
-            into(layout.projectDirectory.dir("release"))
+            into(layout.projectDirectory.dir("ops/release"))
             doLast {
                 versionFile.writeText(nextVersionCode.toString())
             }
@@ -79,7 +79,7 @@ android.applicationVariants.all {
         tasks.register("pushToGitHub", Exec::class) {
             workingDir = layout.projectDirectory.asFile
             commandLine("bash", "-c", """
-                git add release/ &&
+                git add ops/release/ &&
                 git commit -m "build: APK aktualisiert" --allow-empty &&
                 git push
             """.trimIndent())
@@ -87,7 +87,7 @@ android.applicationVariants.all {
 
         tasks.register("publishReleaseArtifact") {
             group = "release"
-            description = "Kopiert das APK ins release-Verzeichnis und pusht die Änderungen nach GitHub."
+            description = "Kopiert das APK ins ops/release-Verzeichnis und pusht die Änderungen nach GitHub."
             dependsOn(copyTask)
             dependsOn("pushToGitHub")
         }
