@@ -7,17 +7,17 @@
     android:fitsSystemWindows="true">
     
     <EditText 
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/EditTitle"/>
     
     <EditText 
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/EditDescription"/>
 
     <Spinner 
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/EditPriority"/>
 

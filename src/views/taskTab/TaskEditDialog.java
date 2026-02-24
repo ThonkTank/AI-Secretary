@@ -48,7 +48,12 @@ public class TaskEditDialog extends DialogFragment {
         return new AlertDialog.Builder(requireContext())
             .setTitle("Task bearbeiten")
             .setView(view)
-            .setPositiveButton("Speichern", (d, which) -> { /* speichern */ })
+            .setPositiveButton("Speichern", (d, which) -> {
+                task.core.title = this.title.getText().toString();
+                task.core.description = this.description.getText().toString();
+                task.core.priority = (Priority) priority.getSelectedItem();
+                vm.saveEditedTask();
+             })
             .setNegativeButton("Abbrechen", null)
             .create();
     }

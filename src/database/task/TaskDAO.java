@@ -29,7 +29,7 @@ public interface TaskDAO {
 
     // ============== Write ==============
     //Transactions
-       @Transaction
+    @Transaction
     default void writeList(List<Task> tasks) {
         tasks = Task.flatten(tasks);
         for (Task task : tasks) {
@@ -42,6 +42,17 @@ public interface TaskDAO {
             for (Task child : task.children) {
                 writeRelation(new TaskRelation(task.core.id, child.core.id));
             }
+        }
+    }
+
+    @Transaction
+    default void write(Task tasks) {
+        writeCore(task.core);
+        writeSlots(task.slots);
+        writeFollowUps(task.followUps);
+        writePrefSlots(task.prefSlots);
+        for (Task child : task.children) {
+            writeRelation(new TaskRelation(task.core.id, child.core.id));
         }
     }
 
