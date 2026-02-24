@@ -1,4 +1,4 @@
-package com.autosecretary.views;
+package com.autosecretary.app;
 
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;

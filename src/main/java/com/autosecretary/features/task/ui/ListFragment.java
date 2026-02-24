@@ -13,7 +13,7 @@ import com.google.android.material.button.MaterialButtonToggleGroup;
 import java.util.ArrayList;
 
 import com.autosecretary.R;
-import com.autosecretary.views.AppCompositionRoot;
+import com.autosecretary.app.AppCompositionRoot;
 
 public class ListFragment extends Fragment {
 

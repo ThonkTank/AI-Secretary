@@ -1,4 +1,4 @@
-package com.autosecretary.views;
+package com.autosecretary.app;
 
 import android.app.Application;
 import android.util.Log;
