@@ -36,6 +36,12 @@ android {
             all { it.testLogging { showStandardStreams = true } }
         }
     }
+
+    sourceSets {
+        getByName("main").java.setSrcDirs(listOf("src/main/java"))
+        getByName("test").java.setSrcDirs(listOf("src/test/java"))
+        getByName("androidTest").java.setSrcDirs(listOf("src/androidTest/java"))
+    }
 }
 
 dependencies {
