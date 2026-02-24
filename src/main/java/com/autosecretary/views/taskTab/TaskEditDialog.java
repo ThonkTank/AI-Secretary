@@ -20,6 +20,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
 
@@ -39,6 +40,12 @@ import java.util.EnumSet;
 import java.util.Set;
 
 public class TaskEditDialog extends DialogFragment {
+
+    private static final int WEEK_DAY_COUNT = 7;
+    private static final int DAY_PICKER_HORIZONTAL_PADDING_DP = 8;
+    private static final int DAY_PICKER_VERTICAL_PADDING_DP = 16;
+    private static final int DAY_BUTTON_HORIZONTAL_PADDING_DP = 4;
+    private static final int DAY_BUTTON_HORIZONTAL_MARGIN_DP = 2;
 
     private TaskViewModel vm;
     private TaskEditState editState;
@@ -271,16 +278,30 @@ public class TaskEditDialog extends DialogFragment {
             DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
             DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY
         };
-        String[] labels = {"Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"};
+        String[] labels = getResources().getStringArray(R.array.task_edit_weekday_short_labels);
+
+        if (labels.length != WEEK_DAY_COUNT) {
+            throw new IllegalStateException("Expected exactly 7 localized weekday labels.");
+        }
 
         LinearLayout layout = new LinearLayout(requireContext());
         layout.setOrientation(LinearLayout.HORIZONTAL);
-        layout.setPadding(dpToPx(8), dpToPx(16), dpToPx(8), dpToPx(16));
+        layout.setPadding(
+            dpToPx(DAY_PICKER_HORIZONTAL_PADDING_DP),
+            dpToPx(DAY_PICKER_VERTICAL_PADDING_DP),
+            dpToPx(DAY_PICKER_HORIZONTAL_PADDING_DP),
+            dpToPx(DAY_PICKER_VERTICAL_PADDING_DP)
+        );
         layout.setGravity(Gravity.CENTER);
 
-        boolean[] selected = new boolean[7];
+        boolean[] selected = new boolean[WEEK_DAY_COUNT];
 
-        for (int i = 0; i < 7; i++) {
+        int selectedBackgroundColor = ContextCompat.getColor(requireContext(), R.color.task_edit_day_selected_background);
+        int selectedTextColor = ContextCompat.getColor(requireContext(), R.color.task_edit_day_selected_text);
+        int unselectedTextColor = ContextCompat.getColor(requireContext(), R.color.task_edit_day_unselected_text);
+        int transparentBackgroundColor = ContextCompat.getColor(requireContext(), android.R.color.transparent);
+
+        for (int i = 0; i < WEEK_DAY_COUNT; i++) {
             DayOfWeek day = weekDays[i];
             boolean isSelected = prefSlot.days != null && prefSlot.days.contains(day);
             boolean isTaken = takenByOthers.contains(day);
@@ -294,30 +315,33 @@ public class TaskEditDialog extends DialogFragment {
             btn.setMinimumWidth(0);
             btn.setInsetTop(0);
             btn.setInsetBottom(0);
-            btn.setPadding(dpToPx(4), 0, dpToPx(4), 0);
+            btn.setPadding(dpToPx(DAY_BUTTON_HORIZONTAL_PADDING_DP), 0, dpToPx(DAY_BUTTON_HORIZONTAL_PADDING_DP), 0);
 
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-            params.setMargins(dpToPx(2), 0, dpToPx(2), 0);
+            params.setMargins(dpToPx(DAY_BUTTON_HORIZONTAL_MARGIN_DP), 0, dpToPx(DAY_BUTTON_HORIZONTAL_MARGIN_DP), 0);
             btn.setLayoutParams(params);
 
             if (isTaken) {
                 btn.setEnabled(false);
             } else {
                 if (isSelected) {
-                    btn.setBackgroundColor(0xFF6200EE);
-                    btn.setTextColor(0xFFFFFFFF);
+                    btn.setBackgroundColor(selectedBackgroundColor);
+                    btn.setTextColor(selectedTextColor);
+                } else {
+                    btn.setBackgroundColor(transparentBackgroundColor);
+                    btn.setTextColor(unselectedTextColor);
                 }
 
                 final int index = i;
                 btn.setOnClickListener(v -> {
                     selected[index] = !selected[index];
                     if (selected[index]) {
-                        btn.setBackgroundColor(0xFF6200EE);
-                        btn.setTextColor(0xFFFFFFFF);
+                        btn.setBackgroundColor(selectedBackgroundColor);
+                        btn.setTextColor(selectedTextColor);
                     } else {
-                        btn.setBackgroundColor(0x00000000);
-                        btn.setTextColor(0xFF6200EE);
+                        btn.setBackgroundColor(transparentBackgroundColor);
+                        btn.setTextColor(unselectedTextColor);
                     }
                 });
             }
@@ -326,11 +350,11 @@ public class TaskEditDialog extends DialogFragment {
         }
 
         new AlertDialog.Builder(requireContext())
-            .setTitle("Tage auswählen")
+            .setTitle(R.string.task_edit_day_picker_title)
             .setView(layout)
             .setPositiveButton("OK", (d, w) -> {
                 EnumSet<DayOfWeek> newDays = EnumSet.noneOf(DayOfWeek.class);
-                for (int i = 0; i < 7; i++) {
+                for (int i = 0; i < WEEK_DAY_COUNT; i++) {
                     if (selected[i]) {
                         newDays.add(weekDays[i]);
                     }

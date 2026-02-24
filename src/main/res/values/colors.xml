@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="task_edit_day_selected_background">#6200EE</color>
+    <color name="task_edit_day_selected_text">#FFFFFF</color>
+    <color name="task_edit_day_unselected_text">#6200EE</color>
+</resources>
