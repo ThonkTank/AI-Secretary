@@ -13,6 +13,7 @@ import com.google.android.material.button.MaterialButtonToggleGroup;
 import java.util.ArrayList;
 
 import com.autosecretary.R;
+import com.autosecretary.views.AppCompositionRoot;
 
 public class ListFragment extends Fragment {
 
@@ -23,7 +24,12 @@ public class ListFragment extends Fragment {
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
-        TaskViewModel vm = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
+        AppCompositionRoot compositionRoot = new AppCompositionRoot(requireActivity().getApplication());
+        TaskViewModelFactory viewModelFactory = new TaskViewModelFactory(
+                requireActivity().getApplication(),
+                compositionRoot.createTaskUseCases()
+        );
+        TaskViewModel vm = new ViewModelProvider(requireActivity(), viewModelFactory).get(TaskViewModel.class);
         RecyclerView recyclerView = view.findViewById(R.id.TaskList);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
 

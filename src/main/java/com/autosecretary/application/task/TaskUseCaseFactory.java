@@ -1,11 +1,10 @@
 package com.autosecretary.application.task;
 
-import android.app.Application;
 import android.util.Log;
 
 import com.autosecretary.application.task.mapper.TaskListItemMapper;
+import com.autosecretary.application.task.port.TaskRepository;
 import com.autosecretary.config.Preferences;
-import com.autosecretary.database.AppDatabase;
 import com.autosecretary.database.task.TaskDAO;
 import com.autosecretary.services.TaskCompletionService;
 import com.autosecretary.services.TaskLifecycleManager;
@@ -21,9 +20,7 @@ public final class TaskUseCaseFactory {
 
     private TaskUseCaseFactory() {}
 
-    public static Bundle create(Application app) {
-        Preferences prefs = new Preferences(app);
-        TaskDAO taskDao = AppDatabase.getInstance(app).taskDao();
+    public static Bundle create(TaskRepository taskRepository, TaskDAO taskDao, Preferences prefs) {
         ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable);
             thread.setUncaughtExceptionHandler((t, e) ->
@@ -44,10 +41,10 @@ public final class TaskUseCaseFactory {
         TaskListItemMapper mapper = new TaskListItemMapper();
 
         return new Bundle(
-                new LoadTaskListUseCase(taskDao, mapper, executor),
-                new SaveTaskUseCase(taskDao, executor),
-                new CheckOffTaskUseCase(taskDao, completionService, lifecycleManager, executor),
-                new RegenerateScheduleUseCase(taskDao, generator, executor)
+                new LoadTaskListUseCase(taskRepository, mapper, executor),
+                new SaveTaskUseCase(taskRepository, executor),
+                new CheckOffTaskUseCase(taskRepository, completionService, lifecycleManager, executor),
+                new RegenerateScheduleUseCase(taskRepository, generator, executor)
         );
     }
 

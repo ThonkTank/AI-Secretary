@@ -52,11 +52,7 @@ public class TaskViewModel extends AndroidViewModel {
     private final Filters filters = new Filters();
     private final Sorters sorters = new Sorters();
 
-    public TaskViewModel(Application app) {
-        this(app, TaskUseCaseFactory.create(app));
-    }
-
-    TaskViewModel(Application app, TaskUseCaseFactory.Bundle bundle) {
+    public TaskViewModel(Application app, TaskUseCaseFactory.Bundle bundle) {
         super(app);
         this.loadTaskListUseCase = bundle.loadTaskListUseCase;
         this.saveTaskUseCase = bundle.saveTaskUseCase;
