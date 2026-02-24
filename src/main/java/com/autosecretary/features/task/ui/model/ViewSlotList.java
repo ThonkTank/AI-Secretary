@@ -1,4 +1,4 @@
-package com.autosecretary.views.models;
+package com.autosecretary.features.task.ui.model;
 
 import java.util.List;
 import java.util.ArrayList;

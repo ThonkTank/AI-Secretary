@@ -14,8 +14,8 @@ import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.mapper.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.model.TaskEditState;
-import com.autosecretary.views.models.ViewSlotList;
-import com.autosecretary.views.models.ViewSlotList.ViewSlot;
+import com.autosecretary.features.task.ui.model.ViewSlotList;
+import com.autosecretary.features.task.ui.model.ViewSlotList.ViewSlot;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
