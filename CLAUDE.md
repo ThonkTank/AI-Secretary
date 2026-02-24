@@ -2,13 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**WARNING: `assembleDebug` (and any `assemble` variant that includes debug) automatically increments `ops/release/version.txt`, copies the APK to `ops/release/`, and pushes to GitHub via `git push`. Do NOT run it without intending a release.**
+> [!WARNING]
+> `copyToRelease` and `publishReleaseArtifact` have side effects:
+> - `copyToRelease` copies the debug APK to `ops/release/` **and increments** `ops/release/version.txt`.
+> - `publishReleaseArtifact` runs `copyToRelease` and then `pushToGitHub`, which executes `git add ops/release/`, `git commit --allow-empty`, and `git push`.
+>
+> **Safe local build command (no version bump, commit, or push):** `./gradlew assembleDebug`
 
 ## Build Commands
 
-```bash
-./gradlew assembleDebug          # Build debug APK — ALSO pushes to GitHub (see warning above)
-```
+- `./gradlew assembleDebug` only builds the debug APK (`AutoSecretary.apk`) and has no Git side effects.
+- `./gradlew copyToRelease` copies the built debug APK to `ops/release/` and writes the next value to `ops/release/version.txt`.
+- `./gradlew publishReleaseArtifact` depends on `copyToRelease` and `pushToGitHub`; Git push happens only when this task is run.
 
 **No automated tests.** At this stage they add unnecessary overhead. Do not write tests.
 
