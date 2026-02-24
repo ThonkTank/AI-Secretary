@@ -55,12 +55,13 @@ dependencies {
     testImplementation("androidx.test:core:1.6.1")
 }
 
-// APK-Dateiname und automatisches Kopieren/Pushen
+// APK-Dateiname für Debug-Builds, Artifact-Tasks bleiben explizit
 android.applicationVariants.all {
     if (buildType.name != "debug") return@all
     outputs.all {
         val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
         output.outputFileName = "AutoSecretary.apk"
+
         val copyTask = tasks.register("copyToRelease", Copy::class) {
             from(outputFile)
             into(layout.projectDirectory.dir("release"))
@@ -68,7 +69,8 @@ android.applicationVariants.all {
                 versionFile.writeText(nextVersionCode.toString())
             }
         }
-        val pushTask = tasks.register("pushToGitHub", Exec::class) {
+
+        tasks.register("pushToGitHub", Exec::class) {
             workingDir = layout.projectDirectory.asFile
             commandLine("bash", "-c", """
                 git add release/ &&
@@ -76,11 +78,12 @@ android.applicationVariants.all {
                 git push
             """.trimIndent())
         }
-        tasks.named("assemble") {
-            finalizedBy(copyTask)
-        }
-        copyTask.configure {
-            finalizedBy(pushTask)
+
+        tasks.register("publishReleaseArtifact") {
+            group = "release"
+            description = "Kopiert das APK ins release-Verzeichnis und pusht die Änderungen nach GitHub."
+            dependsOn(copyTask)
+            dependsOn("pushToGitHub")
         }
     }
 }
