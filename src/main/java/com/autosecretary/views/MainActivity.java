@@ -7,7 +7,7 @@ import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
 
-import com.autosecretary.views.taskTab.ListFragment;
+import com.autosecretary.features.task.ui.ListFragment;
 
 public class MainActivity extends AppCompatActivity {
 

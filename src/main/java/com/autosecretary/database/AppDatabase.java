@@ -1,6 +1,6 @@
 package com.autosecretary.database;
 
-import com.autosecretary.database.task.*;
+import com.autosecretary.features.task.data.*;
 import com.autosecretary.constants.Period;
 
 import androidx.sqlite.db.SupportSQLiteDatabase;

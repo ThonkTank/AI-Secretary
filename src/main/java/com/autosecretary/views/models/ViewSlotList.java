@@ -6,7 +6,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.function.Predicate;
 
-import com.autosecretary.application.task.model.TaskListItem;
+import com.autosecretary.features.task.application.model.TaskListItem;
 import com.autosecretary.util.TreeBuilder;
 
 public class ViewSlotList {
