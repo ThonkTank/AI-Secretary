@@ -1,8 +1,6 @@
 package com.autosecretary.features.task.application;
 
-import com.autosecretary.features.task.application.command.CheckOffTaskCommand;
 import com.autosecretary.features.task.application.model.TaskListItem;
-import com.autosecretary.features.task.application.model.checkoff.CheckOffResult;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskSlot;
@@ -14,13 +12,15 @@ import java.util.concurrent.ExecutorService;
 
 public class CheckOffTaskUseCase {
     private final TaskDAO taskDao;
-    private final CheckOffTaskCommand checkOffTaskCommand;
+    private final TaskCompletionService completionService;
+    private final TaskLifecycleManager lifecycleManager;
     private final ExecutorService executor;
 
     public CheckOffTaskUseCase(TaskDAO taskDao, TaskCompletionService completionService,
                                TaskLifecycleManager lifecycleManager, ExecutorService executor) {
         this.taskDao = taskDao;
-        this.checkOffTaskCommand = new CheckOffTaskCommand(completionService, lifecycleManager);
+        this.completionService = completionService;
+        this.lifecycleManager = lifecycleManager;
         this.executor = executor;
     }
 
@@ -36,15 +36,15 @@ public class CheckOffTaskUseCase {
                 return;
             }
 
-            CheckOffResult result = checkOffTaskCommand.execute(task, slot);
-            if (result.phase == CompletionPhase.NONE) {
+            CompletionPhase phase = completionService.checkOff(task, slot, lifecycleManager);
+            if (phase == CompletionPhase.NONE) {
                 return;
             }
 
-            if (result.phase == CompletionPhase.COMPLETED) {
-                taskDao.write(result.updatedTask);
+            if (phase == CompletionPhase.COMPLETED) {
+                taskDao.write(task);
             }
-            taskDao.writeSlot(result.updatedSlot);
+            taskDao.writeSlot(slot);
             onChanged.run();
         });
     }
