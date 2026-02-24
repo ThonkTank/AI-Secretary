@@ -91,52 +91,81 @@ public class TaskEditPresenter {
         RepetitionInput repetition = formData.repetition != null ? formData.repetition : new RepetitionInput();
         ProgressInput progress = formData.progress != null ? formData.progress : new ProgressInput();
 
+        mapBasicInfo(basicInfo);
+        mapSchedule(schedule);
+        updateOrResetRepetition(repetition);
+        updateOrResetProgress(progress);
+    }
+
+    private void mapBasicInfo(BasicInfoInput basicInfo) {
         editState.title = basicInfo.title;
         editState.description = basicInfo.description;
         editState.priority = basicInfo.priority;
+    }
 
+    private void mapSchedule(ScheduleInput schedule) {
         editState.closeOnMiss = schedule.closeOnMiss;
         editState.minDuration = schedule.minDuration;
         editState.maxDuration = schedule.maxDuration;
         editState.cooldown = schedule.cooldown;
         editState.adaptive = schedule.adaptive;
+    }
 
+    private void updateOrResetRepetition(RepetitionInput repetition) {
         if (repetition.enabled) {
-            int newReps = repetition.reps;
-            int newPerPeriod = repetition.perPeriod;
-            Period newPeriodUnit = repetition.periodUnit;
+            updateRepetition(repetition);
+            return;
+        }
+        resetRepetition();
+    }
 
-            boolean periodChanged =
-                newReps != editState.reps ||
-                newPerPeriod != editState.perPeriod ||
-                newPeriodUnit != editState.periodUnit;
+    private void updateRepetition(RepetitionInput repetition) {
+        int newReps = repetition.reps;
+        int newPerPeriod = repetition.perPeriod;
+        Period newPeriodUnit = repetition.periodUnit;
 
-            editState.reps = newReps;
-            editState.perPeriod = newPerPeriod;
-            editState.periodUnit = newPeriodUnit;
+        boolean periodChanged =
+            newReps != editState.reps ||
+            newPerPeriod != editState.perPeriod ||
+            newPeriodUnit != editState.periodUnit;
 
-            if (periodChanged || editState.periodStart == null) {
-                editState.periodStart = LocalDate.now();
-                editState.periodCompletions = 0;
-            }
-        } else {
-            editState.reps = 0;
-            editState.perPeriod = 1;
-            editState.periodUnit = Period.DAY;
+        editState.reps = newReps;
+        editState.perPeriod = newPerPeriod;
+        editState.periodUnit = newPeriodUnit;
+
+        if (periodChanged || editState.periodStart == null) {
+            editState.periodStart = LocalDate.now();
             editState.periodCompletions = 0;
-            editState.periodStart = null;
         }
+    }
 
+    private void resetRepetition() {
+        editState.reps = 0;
+        editState.perPeriod = 1;
+        editState.periodUnit = Period.DAY;
+        editState.periodCompletions = 0;
+        editState.periodStart = null;
+    }
+
+    private void updateOrResetProgress(ProgressInput progress) {
         if (progress.enabled) {
-            editState.unit = progress.unit;
-            editState.target = progress.target;
-            editState.current = progress.current;
-            editState.resetPerRep = progress.resetPerRep;
-            editState.minPerRep = progress.minPerRep;
-            editState.maxPerRep = progress.maxPerRep;
-        } else {
-            editState.target = 0;
+            updateProgress(progress);
+            return;
         }
+        resetProgress();
+    }
+
+    private void updateProgress(ProgressInput progress) {
+        editState.unit = progress.unit;
+        editState.target = progress.target;
+        editState.current = progress.current;
+        editState.resetPerRep = progress.resetPerRep;
+        editState.minPerRep = progress.minPerRep;
+        editState.maxPerRep = progress.maxPerRep;
+    }
+
+    private void resetProgress() {
+        editState.target = 0;
     }
 
     public Task toTaskForSave(Task baseTask) {
