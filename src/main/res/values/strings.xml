@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="task_edit_day_picker_title">Tage auswählen</string>
+    <string name="task_row_edit">Aufgabe bearbeiten</string>
 
     <string-array name="task_edit_weekday_short_labels">
         <item>Mo</item>
