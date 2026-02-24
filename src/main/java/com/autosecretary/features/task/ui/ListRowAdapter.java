@@ -1,6 +1,7 @@
 package com.autosecretary.features.task.ui;
 
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.core.view.ViewCompat;
 import android.content.res.ColorStateList;
 import android.view.View;
 import android.view.ViewGroup;
@@ -69,29 +70,38 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         int step = holder.itemView.getContext().getResources().getDimensionPixelSize(R.dimen.indent_step);
 
         holder.title.setText(item.title);
+        holder.itemView.setContentDescription(item.title);
 
         String startString = item.start != null ? item.start.format(DateTimeFormatter.ofPattern("HH:mm")) : "Nicht";
         String endString = item.end != null ? item.end.format(DateTimeFormatter.ofPattern("HH:mm")) : "Heute";
         holder.start.setText(startString);
         holder.end.setText(endString);
-        holder.itemView.setPadding(step * viewSlot.depth, 0, 0, 0);
+        holder.itemView.setPaddingRelative(
+                step * viewSlot.depth,
+                holder.itemView.getPaddingTop(),
+                holder.itemView.getPaddingEnd(),
+                holder.itemView.getPaddingBottom());
 
         TaskListItem.DeadlineUrgency deadlineUrgency = item.deadlineUrgency();
         if (deadlineUrgency != TaskListItem.DeadlineUrgency.NONE) {
             long daysUntil = item.daysUntilDeadline();
             if (deadlineUrgency == TaskListItem.DeadlineUrgency.OVERDUE) {
-                holder.deadlineCountdown.setText("Fällig!");
+                holder.deadlineCountdown.setText("! Fällig");
                 holder.deadlineCountdown.setTextColor(0xFFFF0000);
+                holder.deadlineCountdown.setContentDescription("Überfällig");
             } else if (deadlineUrgency == TaskListItem.DeadlineUrgency.TODAY) {
-                holder.deadlineCountdown.setText("Heute");
+                holder.deadlineCountdown.setText("! Heute fällig");
                 holder.deadlineCountdown.setTextColor(0xFFFF8800);
+                holder.deadlineCountdown.setContentDescription("Heute fällig");
             } else {
-                holder.deadlineCountdown.setText(daysUntil + "d");
+                holder.deadlineCountdown.setText("in " + daysUntil + "d");
                 holder.deadlineCountdown.setTextColor(deadlineUrgency == TaskListItem.DeadlineUrgency.SOON ? 0xFFFF8800 : 0xFF888888);
+                holder.deadlineCountdown.setContentDescription("Fällig in " + daysUntil + " Tagen");
             }
             holder.deadlineCountdown.setVisibility(View.VISIBLE);
         } else {
             holder.deadlineCountdown.setVisibility(View.GONE);
+            holder.deadlineCountdown.setContentDescription(null);
         }
 
         if (item.streak > 0) {
@@ -104,9 +114,11 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         if (item.inProgress) {
             holder.itemView.setBackgroundColor(0x1A4CAF50);
             holder.checkBox.setButtonTintList(ColorStateList.valueOf(0xFF4CAF50));
+            ViewCompat.setStateDescription(holder.itemView, "In Bearbeitung");
         } else {
             holder.itemView.setBackgroundColor(0x00000000);
             holder.checkBox.setButtonTintList(null);
+            ViewCompat.setStateDescription(holder.itemView, null);
         }
 
         holder.checkBox.setOnClickListener(v -> {
