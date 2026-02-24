@@ -2,10 +2,10 @@ package com.autosecretary.views;
 
 import android.app.Application;
 
-import com.autosecretary.application.task.TaskUseCaseFactory;
+import com.autosecretary.features.task.application.TaskUseCaseFactory;
 import com.autosecretary.config.Preferences;
 import com.autosecretary.database.AppDatabase;
-import com.autosecretary.database.task.TaskDAO;
+import com.autosecretary.features.task.data.TaskDAO;
 
 public class AppCompositionRoot {
     private final Application app;
