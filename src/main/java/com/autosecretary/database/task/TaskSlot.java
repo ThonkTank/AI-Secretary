@@ -4,11 +4,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-
-import com.autosecretary.util.TreeBuilder;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
@@ -28,15 +25,6 @@ import androidx.annotation.NonNull;
     ))
 
 public class TaskSlot {
-
-    public static final TreeBuilder<TaskSlot> TREE_BUILDER = new TreeBuilder<>(
-            slot -> slot.id,
-            slot -> slot.parent != null
-                    ? Collections.singletonList(slot.parent)
-                    : Collections.emptyList(),
-            (parent, child) -> parent.children.add(child),
-            slot -> slot.children
-    );
 
     @PrimaryKey() @NonNull
     public String id = UUID.randomUUID().toString();

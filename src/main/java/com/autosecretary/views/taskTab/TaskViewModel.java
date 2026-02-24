@@ -16,6 +16,7 @@ import com.autosecretary.database.task.TaskPrefSlot;
 import com.autosecretary.services.TaskCompletionService;
 import com.autosecretary.services.TaskCompletionService.CompletionPhase;
 import com.autosecretary.services.TaskLifecycleManager;
+import com.autosecretary.services.taskPlanning.TaskTreeOperations;
 import com.autosecretary.services.taskPlanning.SlotGenerator;
 import com.autosecretary.services.taskPlanning.TaskScorer;
 import com.autosecretary.views.models.ViewSlotList;
@@ -161,7 +162,7 @@ public class TaskViewModel extends AndroidViewModel {
     public void updateList() {
         executor.execute(() -> {
             taskDao.deleteAllCore();
-            taskDao.writeList(TaskSeedDataFactory.createDefaultTasks());
+            taskDao.writeList(TaskTreeOperations.flatten(TaskSeedDataFactory.createDefaultTasks()));
             generator.generateSlots();
             masterList.fromList(taskDao.readAll());
             filterList();
