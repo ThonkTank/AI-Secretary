@@ -1,16 +1,8 @@
 package com.autosecretary.views.taskTab;
 
-import androidx.fragment.app.DialogFragment;
-import com.autosecretary.constants.Period;
-import com.autosecretary.constants.Priority;
-import com.autosecretary.database.task.Task;
-import com.autosecretary.database.task.TaskPrefSlot;
-import com.autosecretary.views.taskTab.TaskViewModel;
-import androidx.appcompat.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.app.Dialog;
 import android.app.TimePickerDialog;
-import android.graphics.Typeface;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -26,34 +18,32 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.autosecretary.R;
+import com.autosecretary.constants.Period;
+import com.autosecretary.constants.Priority;
+import com.autosecretary.database.task.Task;
+import com.autosecretary.database.task.TaskPrefSlot;
 import com.google.android.material.button.MaterialButton;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.TextStyle;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
-
-import com.autosecretary.R;
 
 public class TaskEditDialog extends DialogFragment {
 
     private TaskViewModel vm;
     private Task task;
+    private TaskEditPresenter presenter;
+    private PrefSlotUIBuilder prefSlotUIBuilder;
     private View rootView;
-    private List<TaskPrefSlot> editablePrefSlots;
 
     // Basic info
     private EditText titleView, descriptionView;
@@ -63,14 +53,12 @@ public class TaskEditDialog extends DialogFragment {
     private TextView deadlineView;
     private CheckBox closeOnMissView, adaptiveView;
     private EditText minDurationView, maxDurationView, cooldownView;
-    private LocalDate editableDeadline;
 
     // Repetition
     private CheckBox toggleRepetition;
     private LinearLayout repetitionContainer;
     private EditText repsView, perPeriodView;
     private Spinner periodUnitView;
-    private int lastRepsPerDay = -1;
 
     // Progress
     private CheckBox toggleProgress;
@@ -85,22 +73,11 @@ public class TaskEditDialog extends DialogFragment {
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         vm = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
         task = vm.requireSelectedTask();
+        presenter = new TaskEditPresenter(task);
 
         rootView = LayoutInflater.from(getContext())
             .inflate(R.layout.fragment_task_editor, null);
-
-        // Deep-copy prefSlots for non-destructive editing
-        editablePrefSlots = new ArrayList<>();
-        for (TaskPrefSlot ps : task.prefSlots) {
-            TaskPrefSlot copy = new TaskPrefSlot();
-            copy.id = ps.id;
-            copy.taskId = ps.taskId;
-            copy.days = ps.days != null ? EnumSet.copyOf(ps.days) : EnumSet.noneOf(DayOfWeek.class);
-            copy.start = ps.start;
-            editablePrefSlots.add(copy);
-        }
-
-        editableDeadline = task.core.deadline;
+        prefSlotUIBuilder = new PrefSlotUIBuilder(requireContext(), this::dpToPx);
 
         bindBasicInfo();
         bindScheduling();
@@ -118,8 +95,6 @@ public class TaskEditDialog extends DialogFragment {
             .setNegativeButton("Abbrechen", null)
             .create();
     }
-
-    // ===== Basic Info =====
 
     private void bindBasicInfo() {
         titleView = rootView.findViewById(R.id.EditTitle);
@@ -139,8 +114,6 @@ public class TaskEditDialog extends DialogFragment {
         priorityView.setSelection(task.core.priority.ordinal());
     }
 
-    // ===== Scheduling =====
-
     private void bindScheduling() {
         deadlineView = rootView.findViewById(R.id.EditDeadline);
         ImageButton clearDeadline = rootView.findViewById(R.id.ClearDeadline);
@@ -153,7 +126,7 @@ public class TaskEditDialog extends DialogFragment {
         updateDeadlineDisplay();
         deadlineView.setOnClickListener(v -> showDatePicker());
         clearDeadline.setOnClickListener(v -> {
-            editableDeadline = null;
+            presenter.setEditableDeadline(null);
             updateDeadlineDisplay();
         });
 
@@ -165,22 +138,20 @@ public class TaskEditDialog extends DialogFragment {
     }
 
     private void updateDeadlineDisplay() {
-        if (editableDeadline != null) {
-            deadlineView.setText(editableDeadline.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")));
+        if (presenter.getEditableDeadline() != null) {
+            deadlineView.setText(presenter.getEditableDeadline().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")));
         } else {
             deadlineView.setText("Keine Frist");
         }
     }
 
     private void showDatePicker() {
-        LocalDate current = editableDeadline != null ? editableDeadline : LocalDate.now();
+        LocalDate current = presenter.getEditableDeadline() != null ? presenter.getEditableDeadline() : LocalDate.now();
         new DatePickerDialog(requireContext(), (picker, year, month, day) -> {
-            editableDeadline = LocalDate.of(year, month + 1, day);
+            presenter.setEditableDeadline(LocalDate.of(year, month + 1, day));
             updateDeadlineDisplay();
         }, current.getYear(), current.getMonthValue() - 1, current.getDayOfMonth()).show();
     }
-
-    // ===== Repetition =====
 
     private void bindRepetition() {
         toggleRepetition = rootView.findViewById(R.id.ToggleRepetition);
@@ -209,8 +180,12 @@ public class TaskEditDialog extends DialogFragment {
             periodUnitView.setSelection(task.core.repetition.periodUnit.ordinal());
         }
 
-        // Initialize lastRepsPerDay before attaching listeners
-        lastRepsPerDay = computeCurrentRepsPerDay();
+        presenter.initializeRepetitionState(
+            toggleRepetition.isChecked(),
+            repsView.getText().toString(),
+            perPeriodView.getText().toString(),
+            (Period) periodUnitView.getSelectedItem()
+        );
 
         toggleRepetition.setOnCheckedChangeListener((btn, checked) -> {
             repetitionContainer.setVisibility(checked ? View.VISIBLE : View.GONE);
@@ -233,8 +208,6 @@ public class TaskEditDialog extends DialogFragment {
             }
         });
     }
-
-    // ===== Progress =====
 
     private void bindProgress() {
         toggleProgress = rootView.findViewById(R.id.ToggleProgress);
@@ -259,129 +232,44 @@ public class TaskEditDialog extends DialogFragment {
             maxPerRepView.setText(String.valueOf(task.core.progress.maxPerRep));
         }
 
-        toggleProgress.setOnCheckedChangeListener((btn, checked) -> {
-            progressContainer.setVisibility(checked ? View.VISIBLE : View.GONE);
-        });
+        toggleProgress.setOnCheckedChangeListener((btn, checked) ->
+            progressContainer.setVisibility(checked ? View.VISIBLE : View.GONE));
     }
-
-    // ===== Repetition <-> PrefSlots Reactivity =====
 
     private void onRepetitionChanged() {
-        int newRepsPerDay = computeCurrentRepsPerDay();
-        if (newRepsPerDay == lastRepsPerDay) return;
-        lastRepsPerDay = newRepsPerDay;
-
-        int currentCount = editablePrefSlots.size();
-
-        if (newRepsPerDay > currentCount) {
-            for (int i = currentCount; i < newRepsPerDay; i++) {
-                TaskPrefSlot newSlot = new TaskPrefSlot();
-                newSlot.taskId = task.core.id;
-                newSlot.days = EnumSet.allOf(DayOfWeek.class);
-                newSlot.start = LocalTime.of(6, 0);
-                editablePrefSlots.add(newSlot);
-            }
-        } else if (newRepsPerDay < currentCount && newRepsPerDay > 0) {
-            while (editablePrefSlots.size() > newRepsPerDay) {
-                editablePrefSlots.remove(editablePrefSlots.size() - 1);
-            }
+        boolean changed = presenter.onRepetitionChanged(
+            toggleRepetition.isChecked(),
+            repsView.getText().toString(),
+            perPeriodView.getText().toString(),
+            (Period) periodUnitView.getSelectedItem()
+        );
+        if (changed) {
+            rebuildPrefSlotUI();
         }
-
-        rebuildPrefSlotUI();
     }
-
-    private int computeCurrentRepsPerDay() {
-        if (!toggleRepetition.isChecked()) return 1;
-
-        int reps = parseIntSafe(repsView.getText().toString(), 1);
-        int perPeriod = parseIntSafe(perPeriodView.getText().toString(), 1);
-        Period periodUnit = (Period) periodUnitView.getSelectedItem();
-        if (periodUnit == null) periodUnit = Period.DAY;
-
-        int periodInDays = periodUnit.value * perPeriod;
-        if (periodInDays <= 0) periodInDays = 1;
-        return (int) Math.ceil((double) reps / (double) periodInDays);
-    }
-
-    // ===== PrefSlot UI =====
 
     private void rebuildPrefSlotUI() {
         prefSlotContainer = rootView.findViewById(R.id.PrefSlotContainer);
-        prefSlotContainer.removeAllViews();
+        int repsPerDay = presenter.computeCurrentRepsPerDay(
+            toggleRepetition.isChecked(),
+            repsView.getText().toString(),
+            perPeriodView.getText().toString(),
+            (Period) periodUnitView.getSelectedItem()
+        );
 
-        // Sort by start time (working copy)
-        List<TaskPrefSlot> sorted = new ArrayList<>(editablePrefSlots);
-        Collections.sort(sorted, (a, b) -> {
-            if (a.start == null && b.start == null) return 0;
-            if (a.start == null) return 1;
-            if (b.start == null) return -1;
-            return a.start.compareTo(b.start);
-        });
-
-        // Group into repetition buckets (existing algorithm)
-        int repsPerDay = computeCurrentRepsPerDay();
-        Map<Integer, List<TaskPrefSlot>> slotMap = new HashMap<>();
-        Set<DayOfWeek> usedDays = new HashSet<>();
-        List<TaskPrefSlot> remaining = new ArrayList<>(sorted);
-
-        int currentRep = 1;
-        while (currentRep <= repsPerDay) {
-            Iterator<TaskPrefSlot> it = remaining.iterator();
-            while (it.hasNext()) {
-                TaskPrefSlot prefSlot = it.next();
-                if (Collections.disjoint(prefSlot.days, usedDays)) {
-                    usedDays.addAll(prefSlot.days);
-                    slotMap.computeIfAbsent(currentRep, k -> new ArrayList<>()).add(prefSlot);
-                    it.remove();
+        prefSlotUIBuilder.rebuild(prefSlotContainer, presenter.getEditablePrefSlots(), repsPerDay,
+            new PrefSlotUIBuilder.Listener() {
+                @Override
+                public void onDaysClicked(TaskPrefSlot prefSlot, Set<DayOfWeek> takenByOthers) {
+                    showDayPicker(prefSlot, takenByOthers);
                 }
-            }
-            usedDays.clear();
-            currentRep++;
-        }
 
-        // Build UI rows
-        for (int key = 1; key <= repsPerDay; key++) {
-            TextView header = new TextView(requireContext());
-            header.setText("Wiederholung " + key);
-            header.setTypeface(null, Typeface.BOLD);
-            header.setPadding(0, dpToPx(12), 0, dpToPx(4));
-            prefSlotContainer.addView(header);
-
-            List<TaskPrefSlot> slotsInGroup = slotMap.getOrDefault(key, Collections.emptyList());
-
-            for (TaskPrefSlot prefSlot : slotsInGroup) {
-                LinearLayout row = new LinearLayout(requireContext());
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setPadding(dpToPx(16), dpToPx(4), 0, dpToPx(4));
-
-                // Days text (clickable)
-                TextView daysView = new TextView(requireContext());
-                daysView.setText(formatDaysAsRanges(prefSlot.days));
-                daysView.setPadding(0, dpToPx(4), dpToPx(16), dpToPx(4));
-                daysView.setTextSize(14);
-
-                Set<DayOfWeek> takenByOthers = computeTakenDays(prefSlot, slotsInGroup);
-                daysView.setOnClickListener(v -> showDayPicker(prefSlot, takenByOthers));
-
-                // Time text (clickable)
-                TextView timeView = new TextView(requireContext());
-                timeView.setText(prefSlot.start != null
-                    ? prefSlot.start.format(DateTimeFormatter.ofPattern("HH:mm"))
-                    : "--:--");
-                timeView.setPadding(0, dpToPx(4), 0, dpToPx(4));
-                timeView.setTextSize(14);
-                timeView.setTypeface(Typeface.MONOSPACE);
-                timeView.setOnClickListener(v -> showTimePicker(prefSlot, timeView));
-
-                row.addView(daysView);
-                row.addView(timeView);
-                prefSlotContainer.addView(row);
-            }
-        }
+                @Override
+                public void onTimeClicked(TaskPrefSlot prefSlot, TextView timeView) {
+                    showTimePicker(prefSlot, timeView);
+                }
+            });
     }
-
-    // ===== Day Picker Dialog =====
 
     private void showDayPicker(TaskPrefSlot prefSlot, Set<DayOfWeek> takenByOthers) {
         DayOfWeek[] weekDays = {
@@ -396,7 +284,6 @@ public class TaskEditDialog extends DialogFragment {
         layout.setGravity(Gravity.CENTER);
 
         boolean[] selected = new boolean[7];
-        MaterialButton[] buttons = new MaterialButton[7];
 
         for (int i = 0; i < 7; i++) {
             DayOfWeek day = weekDays[i];
@@ -440,7 +327,6 @@ public class TaskEditDialog extends DialogFragment {
                 });
             }
 
-            buttons[i] = btn;
             layout.addView(btn);
         }
 
@@ -461,8 +347,6 @@ public class TaskEditDialog extends DialogFragment {
             .show();
     }
 
-    // ===== Time Picker =====
-
     private void showTimePicker(TaskPrefSlot prefSlot, TextView timeView) {
         int hour = prefSlot.start != null ? prefSlot.start.getHour() : 6;
         int minute = prefSlot.start != null ? prefSlot.start.getMinute() : 0;
@@ -473,126 +357,37 @@ public class TaskEditDialog extends DialogFragment {
         }, hour, minute, true).show();
     }
 
-    // ===== Weekday Formatting =====
-
-    static String formatDaysAsRanges(Set<DayOfWeek> days) {
-        if (days == null || days.isEmpty()) return "Keine Tage";
-
-        List<DayOfWeek> sorted = new ArrayList<>(days);
-        Collections.sort(sorted);
-
-        List<String> parts = new ArrayList<>();
-        int i = 0;
-        while (i < sorted.size()) {
-            DayOfWeek rangeStart = sorted.get(i);
-            DayOfWeek rangeEnd = rangeStart;
-
-            while (i + 1 < sorted.size()
-                    && sorted.get(i + 1).getValue() == sorted.get(i).getValue() + 1) {
-                i++;
-                rangeEnd = sorted.get(i);
-            }
-
-            String startLabel = dayLabel(rangeStart);
-            if (rangeStart == rangeEnd) {
-                parts.add(startLabel);
-            } else {
-                parts.add(startLabel + "-" + dayLabel(rangeEnd));
-            }
-            i++;
-        }
-
-        return String.join(" ", parts);
-    }
-
-    private static String dayLabel(DayOfWeek day) {
-        return day.getDisplayName(TextStyle.SHORT, Locale.GERMAN).replace(".", "");
-    }
-
-    // ===== Save =====
-
     private void collectAllFields() {
-        // Basic info
-        task.core.title = titleView.getText().toString();
-        task.core.description = descriptionView.getText().toString();
-        task.core.priority = (Priority) priorityView.getSelectedItem();
+        TaskEditPresenter.FormData formData = new TaskEditPresenter.FormData();
+        formData.title = titleView.getText().toString();
+        formData.description = descriptionView.getText().toString();
+        formData.priority = (Priority) priorityView.getSelectedItem();
 
-        // Scheduling
-        task.core.deadline = editableDeadline;
-        task.core.closeOnMiss = closeOnMissView.isChecked();
-        task.core.minDuration = parseIntSafe(minDurationView.getText().toString(), 5);
-        task.core.maxDuration = parseIntSafe(maxDurationView.getText().toString(), 10);
-        task.core.cooldown = parseIntSafe(cooldownView.getText().toString(), 1);
-        task.core.adaptive = adaptiveView.isChecked();
+        formData.closeOnMiss = closeOnMissView.isChecked();
+        formData.minDuration = minDurationView.getText().toString();
+        formData.maxDuration = maxDurationView.getText().toString();
+        formData.cooldown = cooldownView.getText().toString();
+        formData.adaptive = adaptiveView.isChecked();
 
-        // Repetition
-        if (toggleRepetition.isChecked()) {
-            int newReps = parseIntSafe(repsView.getText().toString(), 1);
-            int newPerPeriod = parseIntSafe(perPeriodView.getText().toString(), 1);
-            Period newPeriodUnit = (Period) periodUnitView.getSelectedItem();
+        formData.repetitionEnabled = toggleRepetition.isChecked();
+        formData.reps = repsView.getText().toString();
+        formData.perPeriod = perPeriodView.getText().toString();
+        formData.periodUnit = (Period) periodUnitView.getSelectedItem();
 
-            boolean periodChanged =
-                newReps != task.core.repetition.reps ||
-                newPerPeriod != task.core.repetition.perPeriod ||
-                newPeriodUnit != task.core.repetition.periodUnit;
+        formData.progressEnabled = toggleProgress.isChecked();
+        formData.unit = unitView.getText().toString();
+        formData.target = targetView.getText().toString();
+        formData.current = currentView.getText().toString();
+        formData.resetPerRep = resetPerRepView.isChecked();
+        formData.minPerRep = minPerRepView.getText().toString();
+        formData.maxPerRep = maxPerRepView.getText().toString();
 
-            task.core.repetition.reps = newReps;
-            task.core.repetition.perPeriod = newPerPeriod;
-            task.core.repetition.periodUnit = newPeriodUnit;
-
-            if (periodChanged || task.core.repetition.periodStart == null) {
-                task.core.repetition.periodStart = LocalDate.now();
-                task.core.repetition.periodCompletions = 0;
-            }
-        } else {
-            task.core.repetition.reps = 0;
-            task.core.repetition.perPeriod = 1;
-            task.core.repetition.periodUnit = Period.DAY;
-            task.core.repetition.periodCompletions = 0;
-            task.core.repetition.periodStart = null;
-        }
-
-        // Progress
-        if (toggleProgress.isChecked()) {
-            task.core.progress.unit = unitView.getText().toString();
-            task.core.progress.target = parseIntSafe(targetView.getText().toString(), 0);
-            task.core.progress.current = parseIntSafe(currentView.getText().toString(), 0);
-            task.core.progress.resetPerRep = resetPerRepView.isChecked();
-            task.core.progress.minPerRep = parseIntSafe(minPerRepView.getText().toString(), 0);
-            task.core.progress.maxPerRep = parseIntSafe(maxPerRepView.getText().toString(), 0);
-        } else {
-            task.core.progress.target = 0;
-        }
-
-        // PrefSlots
-        task.prefSlots = new ArrayList<>(editablePrefSlots);
-    }
-
-    // ===== Helpers =====
-
-    private Set<DayOfWeek> computeTakenDays(TaskPrefSlot current, List<TaskPrefSlot> groupSlots) {
-        Set<DayOfWeek> taken = EnumSet.noneOf(DayOfWeek.class);
-        for (TaskPrefSlot other : groupSlots) {
-            if (other != current && other.days != null) {
-                taken.addAll(other.days);
-            }
-        }
-        return taken;
-    }
-
-    private static int parseIntSafe(String s, int fallback) {
-        try {
-            return Integer.parseInt(s.trim());
-        } catch (NumberFormatException e) {
-            return fallback;
-        }
+        presenter.collectAllFields(formData);
     }
 
     private int dpToPx(int dp) {
         return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
     }
-
-    // ===== Inner helper classes =====
 
     private static abstract class SimpleTextWatcher implements TextWatcher {
         @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
