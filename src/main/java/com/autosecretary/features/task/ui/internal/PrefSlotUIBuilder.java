@@ -3,11 +3,12 @@ package com.autosecretary.features.task.ui.internal;
 import android.content.Context;
 import android.graphics.Typeface;
 import android.view.Gravity;
-import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.autosecretary.features.task.ui.model.PrefSlotEditState;
+import com.google.android.material.button.MaterialButton;
 
 import java.time.DayOfWeek;
 import java.time.format.DateTimeFormatter;
@@ -30,6 +31,8 @@ public class PrefSlotUIBuilder {
 
         void onTimeClicked(PrefSlotEditState prefSlot, TextView timeView);
     }
+
+    private static final int TOUCH_TARGET_DP = 48;
 
     private final Context context;
 
@@ -65,21 +68,36 @@ public class PrefSlotUIBuilder {
                 row.setGravity(Gravity.CENTER_VERTICAL);
                 row.setPadding(dpToPx(16), dpToPx(4), 0, dpToPx(4));
 
-                TextView daysView = new TextView(context);
-                daysView.setText(formatDaysAsRanges(prefSlot.days));
-                daysView.setPadding(0, dpToPx(4), dpToPx(16), dpToPx(4));
-                daysView.setTextSize(14);
+                String formattedDays = formatDaysAsRanges(prefSlot.days);
+                MaterialButton daysView = createInteractiveButton();
+                daysView.setText("Wochentage wählen: " + formattedDays);
+                daysView.setContentDescription("Wochentage wählen. Aktuell: " + formattedDays);
+
+                LinearLayout.LayoutParams daysParams = new LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    1f
+                );
+                daysParams.setMarginEnd(dpToPx(8));
+                daysView.setLayoutParams(daysParams);
 
                 Set<DayOfWeek> takenByOthers = computeTakenDays(prefSlot, slotsInGroup);
                 daysView.setOnClickListener(v -> listener.onDaysClicked(prefSlot, takenByOthers));
 
-                TextView timeView = new TextView(context);
-                timeView.setText(prefSlot.start != null
+                String formattedTime = prefSlot.start != null
                     ? prefSlot.start.format(DateTimeFormatter.ofPattern("HH:mm"))
-                    : "--:--");
-                timeView.setPadding(0, dpToPx(4), 0, dpToPx(4));
-                timeView.setTextSize(14);
+                    : "--:--";
+                MaterialButton timeView = createInteractiveButton();
+                timeView.setText("Startzeit wählen: " + formattedTime);
+                timeView.setContentDescription("Startzeit wählen. Aktuell: " + formattedTime);
                 timeView.setTypeface(Typeface.MONOSPACE);
+
+                LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    1f
+                );
+                timeView.setLayoutParams(timeParams);
                 timeView.setOnClickListener(v -> listener.onTimeClicked(prefSlot, timeView));
 
                 row.addView(daysView);
@@ -156,6 +174,19 @@ public class PrefSlotUIBuilder {
             }
         }
         return taken;
+    }
+
+    private MaterialButton createInteractiveButton() {
+        MaterialButton button = new MaterialButton(context, null,
+            com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        button.setMinHeight(dpToPx(TOUCH_TARGET_DP));
+        button.setMinimumHeight(dpToPx(TOUCH_TARGET_DP));
+        button.setClickable(true);
+        button.setFocusable(true);
+        button.setAllCaps(false);
+        button.setTextSize(14);
+        button.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        return button;
     }
 
     private int dpToPx(int dp) {

@@ -32,6 +32,7 @@ import com.autosecretary.features.task.ui.internal.mapper.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.model.PrefSlotEditState;
 import com.autosecretary.features.task.ui.model.TaskEditState;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -59,7 +60,8 @@ public class TaskEditDialog extends DialogFragment {
     private Spinner priorityView;
 
     // Scheduling
-    private TextView deadlineView;
+    private EditText deadlineView;
+    private TextInputLayout deadlineInputLayout;
     private CheckBox closeOnMissView, adaptiveView;
     private EditText minDurationView, maxDurationView, cooldownView;
 
@@ -125,6 +127,7 @@ public class TaskEditDialog extends DialogFragment {
 
     private void bindScheduling() {
         deadlineView = rootView.findViewById(R.id.EditDeadline);
+        deadlineInputLayout = rootView.findViewById(R.id.DeadlineInputLayout);
         ImageButton clearDeadline = rootView.findViewById(R.id.ClearDeadline);
         closeOnMissView = rootView.findViewById(R.id.EditCloseOnMiss);
         minDurationView = rootView.findViewById(R.id.EditMinDuration);
@@ -134,6 +137,7 @@ public class TaskEditDialog extends DialogFragment {
 
         updateDeadlineDisplay();
         deadlineView.setOnClickListener(v -> showDatePicker());
+        deadlineInputLayout.setEndIconOnClickListener(v -> showDatePicker());
         clearDeadline.setOnClickListener(v -> {
             presenter.setEditableDeadline(null);
             updateDeadlineDisplay();
@@ -148,9 +152,12 @@ public class TaskEditDialog extends DialogFragment {
 
     private void updateDeadlineDisplay() {
         if (presenter.getEditableDeadline() != null) {
-            deadlineView.setText(presenter.getEditableDeadline().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")));
+            String deadlineText = presenter.getEditableDeadline().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+            deadlineView.setText(deadlineText);
+            deadlineView.setContentDescription("Frist auswählen. Aktuell: " + deadlineText);
         } else {
             deadlineView.setText("Keine Frist");
+            deadlineView.setContentDescription("Frist auswählen. Aktuell: Keine Frist");
         }
     }
 
@@ -373,7 +380,9 @@ public class TaskEditDialog extends DialogFragment {
 
         new TimePickerDialog(requireContext(), (picker, h, m) -> {
             prefSlot.start = LocalTime.of(h, m);
-            timeView.setText(prefSlot.start.format(DateTimeFormatter.ofPattern("HH:mm")));
+            String formattedTime = prefSlot.start.format(DateTimeFormatter.ofPattern("HH:mm"));
+            timeView.setText("Startzeit wählen: " + formattedTime);
+            timeView.setContentDescription("Startzeit wählen. Aktuell: " + formattedTime);
         }, hour, minute, true).show();
     }
 
