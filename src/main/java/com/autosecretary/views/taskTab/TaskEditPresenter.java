@@ -72,9 +72,9 @@ public class TaskEditPresenter {
             return 1;
         }
 
-        int reps = parseIntSafe(repsText, 1);
-        int perPeriod = parseIntSafe(perPeriodText, 1);
-        Period safePeriodUnit = periodUnit != null ? periodUnit : Period.DAY;
+        int reps = parseIntSafe(repsText, InputDefaults.REPETITION_REPS);
+        int perPeriod = parseIntSafe(perPeriodText, InputDefaults.REPETITION_PER_PERIOD);
+        Period safePeriodUnit = periodUnit != null ? periodUnit : InputDefaults.REPETITION_PERIOD_UNIT;
         int periodInDays = safePeriodUnit.value * perPeriod;
         if (periodInDays <= 0) {
             periodInDays = 1;
@@ -83,20 +83,25 @@ public class TaskEditPresenter {
     }
 
     public void collectAllFields(FormData formData) {
-        editState.title = formData.title;
-        editState.description = formData.description;
-        editState.priority = formData.priority != null ? formData.priority : Priority.MEDIUM;
+        BasicInfoInput basicInfo = formData.basicInfo != null ? formData.basicInfo : new BasicInfoInput();
+        ScheduleInput schedule = formData.schedule != null ? formData.schedule : new ScheduleInput();
+        RepetitionInput repetition = formData.repetition != null ? formData.repetition : new RepetitionInput();
+        ProgressInput progress = formData.progress != null ? formData.progress : new ProgressInput();
 
-        editState.closeOnMiss = formData.closeOnMiss;
-        editState.minDuration = parseIntSafe(formData.minDuration, 5);
-        editState.maxDuration = parseIntSafe(formData.maxDuration, 10);
-        editState.cooldown = parseIntSafe(formData.cooldown, 1);
-        editState.adaptive = formData.adaptive;
+        editState.title = basicInfo.title;
+        editState.description = basicInfo.description;
+        editState.priority = basicInfo.priority;
 
-        if (formData.repetitionEnabled) {
-            int newReps = parseIntSafe(formData.reps, 1);
-            int newPerPeriod = parseIntSafe(formData.perPeriod, 1);
-            Period newPeriodUnit = formData.periodUnit != null ? formData.periodUnit : Period.DAY;
+        editState.closeOnMiss = schedule.closeOnMiss;
+        editState.minDuration = schedule.minDuration;
+        editState.maxDuration = schedule.maxDuration;
+        editState.cooldown = schedule.cooldown;
+        editState.adaptive = schedule.adaptive;
+
+        if (repetition.enabled) {
+            int newReps = repetition.reps;
+            int newPerPeriod = repetition.perPeriod;
+            Period newPeriodUnit = repetition.periodUnit;
 
             boolean periodChanged =
                 newReps != editState.reps ||
@@ -119,13 +124,13 @@ public class TaskEditPresenter {
             editState.periodStart = null;
         }
 
-        if (formData.progressEnabled) {
-            editState.unit = formData.unit;
-            editState.target = parseIntSafe(formData.target, 0);
-            editState.current = parseIntSafe(formData.current, 0);
-            editState.resetPerRep = formData.resetPerRep;
-            editState.minPerRep = parseIntSafe(formData.minPerRep, 0);
-            editState.maxPerRep = parseIntSafe(formData.maxPerRep, 0);
+        if (progress.enabled) {
+            editState.unit = progress.unit;
+            editState.target = progress.target;
+            editState.current = progress.current;
+            editState.resetPerRep = progress.resetPerRep;
+            editState.minPerRep = progress.minPerRep;
+            editState.maxPerRep = progress.maxPerRep;
         } else {
             editState.target = 0;
         }
@@ -143,28 +148,59 @@ public class TaskEditPresenter {
         }
     }
 
+    public static class InputDefaults {
+        public static final Priority PRIORITY = Priority.MEDIUM;
+
+        public static final int MIN_DURATION = 5;
+        public static final int MAX_DURATION = 10;
+        public static final int COOLDOWN = 1;
+
+        public static final int REPETITION_REPS = 1;
+        public static final int REPETITION_PER_PERIOD = 1;
+        public static final Period REPETITION_PERIOD_UNIT = Period.DAY;
+
+        public static final String UNIT = "";
+        public static final int TARGET = 0;
+        public static final int CURRENT = 0;
+        public static final int MIN_PER_REP = 0;
+        public static final int MAX_PER_REP = 0;
+    }
+
     public static class FormData {
+        public BasicInfoInput basicInfo;
+        public ScheduleInput schedule;
+        public RepetitionInput repetition;
+        public ProgressInput progress;
+    }
+
+    public static class BasicInfoInput {
         public String title;
         public String description;
-        public Priority priority;
+        public Priority priority = InputDefaults.PRIORITY;
+    }
 
+    public static class ScheduleInput {
         public boolean closeOnMiss;
-        public String minDuration;
-        public String maxDuration;
-        public String cooldown;
+        public int minDuration = InputDefaults.MIN_DURATION;
+        public int maxDuration = InputDefaults.MAX_DURATION;
+        public int cooldown = InputDefaults.COOLDOWN;
         public boolean adaptive;
+    }
 
-        public boolean repetitionEnabled;
-        public String reps;
-        public String perPeriod;
-        public Period periodUnit;
+    public static class RepetitionInput {
+        public boolean enabled;
+        public int reps = InputDefaults.REPETITION_REPS;
+        public int perPeriod = InputDefaults.REPETITION_PER_PERIOD;
+        public Period periodUnit = InputDefaults.REPETITION_PERIOD_UNIT;
+    }
 
-        public boolean progressEnabled;
+    public static class ProgressInput {
+        public boolean enabled;
         public String unit;
-        public String target;
-        public String current;
+        public int target = InputDefaults.TARGET;
+        public int current = InputDefaults.CURRENT;
         public boolean resetPerRep;
-        public String minPerRep;
-        public String maxPerRep;
+        public int minPerRep = InputDefaults.MIN_PER_REP;
+        public int maxPerRep = InputDefaults.MAX_PER_REP;
     }
 }
