@@ -25,6 +25,19 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 
+/**
+ * Coordinates task-list presentation state for the task screen.
+ * <p>
+ * Raw task slots are loaded into {@link #masterList}, then transformed through a two-step pipeline:
+ * filtering ({@link #filterList()}) and sorting ({@link #sortList()}). The resulting
+ * {@link ViewSlotList#displaySlots} are published to {@link #displayList} for the UI.
+ * </p>
+ * <p>
+ * This ViewModel also manages task-selection/editing state ({@link #selectedTask},
+ * {@link #selectedBaseTask}, {@link #isNewTask}) and delegates persistence/scheduling actions to
+ * use cases.
+ * </p>
+ */
 public class TaskViewModel extends AndroidViewModel {
     private final LoadTaskListUseCase loadTaskListUseCase;
     private final SaveTaskUseCase saveTaskUseCase;
@@ -107,6 +120,19 @@ public class TaskViewModel extends AndroidViewModel {
         });
     }
 
+    /**
+     * Applies the checklist browsing preset.
+     * <p>
+     * Exact semantics:
+     * <ul>
+     *     <li>Filter to tasks on {@code LocalDate.now()}.</li>
+     *     <li>Hide unscheduled tasks ({@code start == null}).</li>
+     *     <li>Do not group by parent task.</li>
+     *     <li>Sort by time only (ascending, nulls last).</li>
+     * </ul>
+     * Note: both built-in presets currently target {@code LocalDate.now()}.
+     * </p>
+     */
     public void applyChecklistPreset() {
         day = LocalDate.now();
         displayUnscheduled = false;
@@ -117,6 +143,18 @@ public class TaskViewModel extends AndroidViewModel {
         filterList();
     }
 
+    /**
+     * Applies the management browsing preset.
+     * <p>
+     * Exact semantics:
+     * <ul>
+     *     <li>Filter to tasks on {@code LocalDate.now()}.</li>
+     *     <li>Include unscheduled tasks.</li>
+     *     <li>Group by parent task.</li>
+     *     <li>Sort by title only (natural ascending order).</li>
+     * </ul>
+     * </p>
+     */
     public void applyManagePreset() {
         day = LocalDate.now();
         displayUnscheduled = true;
@@ -131,12 +169,26 @@ public class TaskViewModel extends AndroidViewModel {
         regenerateScheduleUseCase.execute(this::refreshList);
     }
 
+    /**
+     * Rebuilds the displayed list using the current filter controls.
+     * <p>
+     * Invariant: this method always applies filtering before sorting so that ordering is performed
+     * over the already-filtered subset.
+     * </p>
+     */
     public void filterList() {
         Predicate<ViewSlot> predicate = buildPredicate(day, displayUnscheduled);
         masterList.filter(predicate);
         sortList();
     }
 
+    /**
+     * Re-sorts the current filtered list and publishes it to observers.
+     * <p>
+     * Invariant: this method does not change filter membership; it only updates order/grouping and
+     * then posts {@link ViewSlotList#displaySlots} to {@link #displayList}.
+     * </p>
+     */
     public void sortList() {
         Comparator<ViewSlot> comparator = buildComparator(byScore, byTime, byTitle);
         masterList.sort(byTaskParent, comparator);
@@ -162,6 +214,14 @@ public class TaskViewModel extends AndroidViewModel {
         });
     }
 
+    /**
+     * Builds the filter predicate in fixed order:
+     * <ol>
+     *     <li>If {@code day != null}, require {@code vs.item.day.equals(day)}.</li>
+     *     <li>If {@code !displayUnscheduled}, additionally require {@code vs.item.start != null}.</li>
+     * </ol>
+     * These conditions are AND-combined.
+     */
     private static Predicate<ViewSlot> buildPredicate(LocalDate day, boolean displayUnscheduled) {
         Predicate<ViewSlot> predicate = vs -> true;
 
@@ -174,6 +234,11 @@ public class TaskViewModel extends AndroidViewModel {
         return predicate;
     }
 
+    /**
+     * Builds the comparator by appending optional tie-breakers in this exact order:
+     * score (descending), then start time (ascending, nulls last), then title (ascending).
+     * Disabled sort dimensions are skipped.
+     */
     private static Comparator<ViewSlot> buildComparator(boolean byScore, boolean byTime, boolean byTitle) {
         Comparator<ViewSlot> comparator = (a, b) -> 0;
 
