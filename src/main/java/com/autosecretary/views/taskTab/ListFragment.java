@@ -10,12 +10,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import android.view.View;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
-import androidx.appcompat.app.AlertDialog;
-
 import com.google.android.material.button.MaterialButtonToggleGroup;
-import com.google.android.material.button.MaterialButton;
-
-import java.time.LocalDate;
 import java.util.ArrayList;
 
 import com.autosecretary.views.taskTab.ListRowAdapter;
@@ -39,7 +34,7 @@ public class ListFragment extends Fragment {
             new ArrayList<>(),
             viewSlot -> vm.checkOff(viewSlot),
             viewSlot -> {
-                vm.selectedTask = viewSlot.task;
+                vm.beginEditTask(viewSlot.task);
                 new TaskEditDialog().show(getParentFragmentManager(), "edit");
             }
         );
@@ -63,21 +58,10 @@ public class ListFragment extends Fragment {
         toggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (isChecked) {
                 if (checkedId == R.id.ChecklistButton) {
-                    vm.filters.day = LocalDate.now();
-                    vm.filters.displayUnscheduled = false;
-                    vm.sorters.byTaskParent = false;
-                    vm.sorters.byScore = false;
-                    vm.sorters.byTime = true;
-                    vm.sorters.byTitle = false;
+                    vm.applyChecklistPreset();
                 } else {
-                    vm.filters.day = LocalDate.now();
-                    vm.filters.displayUnscheduled = true;
-                    vm.sorters.byTaskParent = true;
-                    vm.sorters.byScore = false;
-                    vm.sorters.byTime = false;
-                    vm.sorters.byTitle = true;
+                    vm.applyManagePreset();
                 }
-                vm.filterList();
             }
         });
     }

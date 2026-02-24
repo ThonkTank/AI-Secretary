@@ -84,7 +84,7 @@ public class TaskEditDialog extends DialogFragment {
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         vm = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
-        task = vm.selectedTask;
+        task = vm.requireSelectedTask();
 
         rootView = LayoutInflater.from(getContext())
             .inflate(R.layout.fragment_task_editor, null);
@@ -109,7 +109,7 @@ public class TaskEditDialog extends DialogFragment {
         rebuildPrefSlotUI();
 
         return new AlertDialog.Builder(requireContext())
-            .setTitle(vm.isNewTask ? "Task erstellen" : "Task bearbeiten")
+            .setTitle(vm.isNewTask() ? "Task erstellen" : "Task bearbeiten")
             .setView(rootView)
             .setPositiveButton("Speichern", (d, which) -> {
                 collectAllFields();

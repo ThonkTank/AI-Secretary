@@ -43,22 +43,22 @@ public class TaskViewModel extends AndroidViewModel {
 
     private final ViewSlotList masterList;
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
-    public Task selectedTask;
-    public boolean isNewTask = false;
+    private final MutableLiveData<Task> selectedTask = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> isNewTask = new MutableLiveData<>(false);
 
-    public Filters filters = new Filters();
-    public Sorters sorters = new Sorters();
+    private final Filters filters = new Filters();
+    private final Sorters sorters = new Sorters();
 
-    public class Filters {
-        public LocalDate day;
-        public boolean displayUnscheduled;
+    private static class Filters {
+        LocalDate day;
+        boolean displayUnscheduled;
     }
 
-    public class Sorters {
-        public boolean byTaskParent;
-        public boolean byScore;
-        public boolean byTime;
-        public boolean byTitle;
+    private static class Sorters {
+        boolean byTaskParent;
+        boolean byScore;
+        boolean byTime;
+        boolean byTitle;
     }
 
     public TaskViewModel(Application app) {
@@ -89,6 +89,28 @@ public class TaskViewModel extends AndroidViewModel {
         return displayList;
     }
 
+    public LiveData<Task> getSelectedTask() {
+        return selectedTask;
+    }
+
+    public boolean isNewTask() {
+        Boolean value = isNewTask.getValue();
+        return value != null && value;
+    }
+
+    public Task requireSelectedTask() {
+        Task task = selectedTask.getValue();
+        if (task == null) {
+            throw new IllegalStateException("No task selected for editing.");
+        }
+        return task;
+    }
+
+    public void beginEditTask(Task task) {
+        selectedTask.setValue(task);
+        isNewTask.setValue(false);
+    }
+
     public void createNewTask() {
         Task task = new Task();
         task.core = new TaskCore();
@@ -103,16 +125,37 @@ public class TaskViewModel extends AndroidViewModel {
         defaultSlot.start = LocalTime.of(6, 0);
         task.prefSlots.add(defaultSlot);
 
-        selectedTask = task;
-        isNewTask = true;
+        selectedTask.setValue(task);
+        isNewTask.setValue(true);
     }
 
     public void saveEditedTask() {
+        Task task = requireSelectedTask();
         executor.execute(() -> {
-            taskDao.write(selectedTask);
-            isNewTask = false;
+            taskDao.write(task);
+            isNewTask.postValue(false);
             filterList();
         });
+    }
+
+    public void applyChecklistPreset() {
+        filters.day = LocalDate.now();
+        filters.displayUnscheduled = false;
+        sorters.byTaskParent = false;
+        sorters.byScore = false;
+        sorters.byTime = true;
+        sorters.byTitle = false;
+        filterList();
+    }
+
+    public void applyManagePreset() {
+        filters.day = LocalDate.now();
+        filters.displayUnscheduled = true;
+        sorters.byTaskParent = true;
+        sorters.byScore = false;
+        sorters.byTime = false;
+        sorters.byTitle = true;
+        filterList();
     }
 
     public void updateList() {
