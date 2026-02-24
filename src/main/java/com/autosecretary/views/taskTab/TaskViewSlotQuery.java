@@ -25,18 +25,18 @@ public final class TaskViewSlotQuery {
         Comparator<ViewSlot> comparator = (a, b) -> 0;
 
         if (sorters.byScore) {
-            comparator = comparator.thenComparing((a, b) -> Integer.compare(b.item.score, a.item.score));
+            comparator = comparator.thenComparing(
+                    Comparator.comparingInt((ViewSlot vs) -> vs.item.score).reversed()
+            );
         }
         if (sorters.byTime) {
-            comparator = comparator.thenComparing((a, b) -> {
-                if (a.item.start == null && b.item.start == null) return 0;
-                if (a.item.start == null) return 1;
-                if (b.item.start == null) return -1;
-                return a.item.start.compareTo(b.item.start);
-            });
+            comparator = comparator.thenComparing(
+                    vs -> vs.item.start,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            );
         }
         if (sorters.byTitle) {
-            comparator = comparator.thenComparing((a, b) -> a.item.title.compareTo(b.item.title));
+            comparator = comparator.thenComparing(vs -> vs.item.title, Comparator.naturalOrder());
         }
         return comparator;
     }
