@@ -15,4 +15,5 @@
 ## Repository layout
 
 - Active code lives under `src/`.
-- Legacy snapshots are stored under `history/legacy/` and are intentionally excluded from active source sets.
+- Legacy snapshots are stored under `history/legacy/`.
+- **Legacy path semantics:** `history/legacy/` is reference-only documentation/source history and is **not** an active source set for builds or runtime behavior.
