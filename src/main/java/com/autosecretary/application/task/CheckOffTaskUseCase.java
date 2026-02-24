@@ -2,7 +2,7 @@ package com.autosecretary.application.task;
 
 import com.autosecretary.application.task.model.TaskListItem;
 import com.autosecretary.database.task.Task;
-import com.autosecretary.database.task.TaskDAO;
+import com.autosecretary.application.task.port.TaskRepository;
 import com.autosecretary.database.task.TaskSlot;
 import com.autosecretary.services.TaskCompletionService;
 import com.autosecretary.services.TaskLifecycleManager;
@@ -11,14 +11,14 @@ import com.autosecretary.services.TaskCompletionService.CompletionPhase;
 import java.util.concurrent.ExecutorService;
 
 public class CheckOffTaskUseCase {
-    private final TaskDAO taskDao;
+    private final TaskRepository taskRepository;
     private final TaskCompletionService completionService;
     private final TaskLifecycleManager lifecycleManager;
     private final ExecutorService executor;
 
-    public CheckOffTaskUseCase(TaskDAO taskDao, TaskCompletionService completionService,
+    public CheckOffTaskUseCase(TaskRepository taskRepository, TaskCompletionService completionService,
                                TaskLifecycleManager lifecycleManager, ExecutorService executor) {
-        this.taskDao = taskDao;
+        this.taskRepository = taskRepository;
         this.completionService = completionService;
         this.lifecycleManager = lifecycleManager;
         this.executor = executor;
@@ -30,7 +30,7 @@ public class CheckOffTaskUseCase {
                 return;
             }
 
-            Task task = taskDao.read(listItem.taskId);
+            Task task = taskRepository.read(listItem.taskId);
             TaskSlot slot = findSlot(task, listItem.slotId);
             if (slot == null) {
                 return;
@@ -42,9 +42,9 @@ public class CheckOffTaskUseCase {
             }
 
             if (phase == CompletionPhase.COMPLETED) {
-                taskDao.write(task);
+                taskRepository.write(task);
             }
-            taskDao.writeSlot(slot);
+            taskRepository.writeSlot(slot);
             onChanged.run();
         });
     }
