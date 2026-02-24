@@ -67,6 +67,10 @@ public class ViewSlotList {
     }
 
     private void buildTree(boolean byTaskRelation) {
+        for (ViewSlot vs : displaySlots) {
+            vs.children = new ArrayList<>();
+        }
+        
         Map<String, ViewSlot> mappedVS = new HashMap<>();
         List<ViewSlot> vsTree = new ArrayList<>();
         

@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import android.view.View;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
+import androidx.appcompat.app.AlertDialog;
 
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.button.MaterialButton;
@@ -32,8 +33,20 @@ public class ListFragment extends Fragment {
     public void onViewCreated(View view, Bundle savedInstanceState) {
         TaskViewModel vm = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
         RecyclerView recyclerView = view.findViewById(R.id.TaskList);
-        ListRowAdapter adapter = new ListRowAdapter(new ArrayList<>(), slot -> vm.checkOff(slot));
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+
+        ListRowAdapter adapter = new ListRowAdapter(
+            new ArrayList<>(),
+            slot -> vm.checkOff(slot),
+            viewSlot -> {
+                new AlertDialog.Builder(getContext())
+                    .setTitle(viewSlot.task.core.title)
+                    .setMessage("Platzhalter für Detail-Ansicht")
+                    .setPositiveButton("OK", null)
+                    .show();
+            }
+        );
+
         recyclerView.setAdapter(adapter);
         vm.getList().observe(getViewLifecycleOwner(), content -> {
             adapter.setList(content);

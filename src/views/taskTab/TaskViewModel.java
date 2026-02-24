@@ -88,7 +88,8 @@ public class TaskViewModel extends AndroidViewModel {
             Task parent = new Task("Parent", 1, 1, Period.MONTH, null, 1, LocalTime.of(6, 0), 30);
             newTasks.add(parent);
             parent.children.add(new Task("Child A", 3, 5, Period.DAY, null, 1, LocalTime.of(6, 0), 15));
-            parent.children.add(new Task("Child B", 1, 4, Period.DAY, null, 1, LocalTime.of(6, 0), 5));                            Task childC = new Task("Child C", 1, 1, Period.WEEK, null, 1, LocalTime.of(6, 0), 15);
+            parent.children.add(new Task("Child B", 1, 4, Period.DAY, null, 1, LocalTime.of(6, 0), 5));
+            Task childC = new Task("Child C", 1, 1, Period.WEEK, null, 1, LocalTime.of(6, 0), 15);
             parent.children.add(childC);
             childC.children.add(new Task("Grandchild", 1, 1, Period.WEEK, null, 1, LocalTime.of(6, 0), 20));
             taskDao.writeList(newTasks);
