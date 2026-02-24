@@ -138,7 +138,7 @@ public class Task {
         for (TaskPrefSlot slot : prefSlots) {
             if (slot.days.contains(start.getDayOfWeek())) {
                 long slotDiff = Math.abs(Duration.between(start.toLocalTime(), slot.start).toMinutes());
-                if (minDiff < slotDiff) {
+                if (slotDiff < minDiff) {
                     minDiff = slotDiff;
                     prefStart = slot.start;
                 }
@@ -207,6 +207,7 @@ public class Task {
         this.followUps = new ArrayList<>();
         this.prefSlots = new ArrayList<>();
 
+        int repsPerDay = core.repsPerDay();
         for (int i = 0; i < repsPerDay; i++) {
             TaskPrefSlot prefSlot = new TaskPrefSlot();
             prefSlot.days = EnumSet.allOf(DayOfWeek.class);
@@ -216,7 +217,7 @@ public class Task {
     }
 
     public static List<Task> buildTree(List<Task> tasks) {
-        Map<Long, Task> mappedTasks = new HashMap<>();
+        Map<String, Task> mappedTasks = new HashMap<>();
         List<Task> taskTree = new ArrayList<>();
         
         for (Task task : tasks) {

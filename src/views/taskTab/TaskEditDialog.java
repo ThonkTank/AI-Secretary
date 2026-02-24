@@ -3,6 +3,7 @@ package views.taskTab;
 import androidx.fragment.app.DialogFragment;
 import constants.Priority;
 import database.task.Task;
+import database.task.TaskPrefSlot;
 import views.taskTab.TaskViewModel;
 import androidx.appcompat.app.AlertDialog;
 import android.app.Dialog;
@@ -14,12 +15,22 @@ import android.widget.Spinner;
 import android.widget.ArrayAdapter;
 import androidx.lifecycle.ViewModelProvider;
 
+import java.time.DayOfWeek;
+import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.autosecretary.R;
 
 public class TaskEditDialog extends DialogFragment {
-    EditText title;
-    EditText description;
-    Spinner priority; 
 
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
@@ -29,11 +40,16 @@ public class TaskEditDialog extends DialogFragment {
         View view = LayoutInflater.from(getContext())
             .inflate(R.layout.fragment_task_editor, null);
 
-        this.title = view.findViewById(R.id.EditTitle);
-        this.description = view.findViewById(R.id.EditDescription);
-        this.priority = view.findViewById(R.id.EditPriority);
+        //Connecting all the views
+        EditText title = view.findViewById(R.id.EditTitle);
+        EditText description = view.findViewById(R.id.EditDescription);
+        Spinner priority = view.findViewById(R.id.EditPriority);
 
-        //basic info
+        /**basic info
+         * title
+         * description
+         * priority
+        */
         this.title.setText(task.core.title);
         this.description.setText(task.core.description);
         ArrayAdapter<Priority> adapter = new ArrayAdapter<>(
@@ -44,7 +60,6 @@ public class TaskEditDialog extends DialogFragment {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         this.priority.setAdapter(adapter);
         this.priority.setSelection(task.core.priority.ordinal());
-
         /** scheduling
          * Deadline
          * closeOnMiss
@@ -54,6 +69,45 @@ public class TaskEditDialog extends DialogFragment {
          * prefTimes
          * adaptive
         */
+       
+        //PrefSlots + adaptive
+        LinearLayout prefSlotContainer = view.findViewById(R.id.PrefSlotContainer);
+        List<TaskPrefSlot> prefSlots = new ArrayList<>(task.prefSlots);
+        Collections.sort(prefSlots, (a, b) -> a.start.compareTo(b.start));
+        Map<Integer, List<TaskPrefSlot>> slotMap = new HashMap<>();
+        int repsPerDay = task.repsPerDay();
+        int currentRep = 1;
+        Set<DayOfWeek> days = new HashSet<>();
+        while (currentRep <= repsPerDay) {
+            while (!(days.size() >= 7)) {
+            Iterator<TaskPrefSlot> it = prefSlots.iterator();
+            while (it.hasNext()) {
+                TaskPrefSlot prefSlot = it.next();
+                if (Collections.disjoint(prefSlot.days, days)) {
+                    days.addAll(prefSlot.days);
+                    slotMap.computeIfAbsent(currentRep, k -> new ArrayList<>()).add(prefSlot);
+                    it.remove(); 
+                }
+            }
+            days.clear();
+            currentRep++;
+        }
+
+        for (int i = 0; i < repsPerDay; i++) {
+            TextView header = new TextView(requireContext());
+            header.setText("Wiederholung " + (i+1));
+            prefSlotContainer.addView(header);
+            for (TaskPrefSlot prefSlot : slotMap.get(i+1)) {
+                TextView slotView = new TextView(requireContext());
+                String dayString = prefSlot.days.stream()
+                    .sorted()
+                    .map(d -> d.getDisplayName(TextStyle.SHORT, Locale.GERMAN))
+                    .collect(Collectors.joining(" "));
+                String timeString = prefSlot.start.format(DateTimeFormatter.ofPattern("HH:mm"));
+                slotView.setText(dayString + "  " + timeString);
+                prefSlotContainer.addView(slotView);
+            }
+        }
 
         /** Repetition (checkbox um rest anzueigen)
          * reps
@@ -62,7 +116,7 @@ public class TaskEditDialog extends DialogFragment {
          * cooldown
          */
 
-        /** Progress
+        /** Progress (checkbox um rest anzueigen)
          * unit
          * target
          * current
