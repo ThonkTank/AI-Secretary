@@ -9,7 +9,7 @@ public final class TaskViewSlotQuery {
 
     private TaskViewSlotQuery() {}
 
-    public static Predicate<ViewSlot> buildPredicate(TaskViewModel.Filters filters) {
+    public static Predicate<ViewSlot> buildPredicate(TaskListFilter filters) {
         Predicate<ViewSlot> predicate = vs -> true;
 
         if (filters.day != null) {
@@ -21,7 +21,7 @@ public final class TaskViewSlotQuery {
         return predicate;
     }
 
-    public static Comparator<ViewSlot> buildComparator(TaskViewModel.Sorters sorters) {
+    public static Comparator<ViewSlot> buildComparator(TaskListSort sorters) {
         Comparator<ViewSlot> comparator = (a, b) -> 0;
 
         if (sorters.byScore) {

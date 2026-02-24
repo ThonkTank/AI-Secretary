@@ -41,20 +41,8 @@ public class TaskViewModel extends AndroidViewModel {
     private final TaskEditStateMapper taskEditStateMapper = new TaskEditStateMapper();
     private final MutableLiveData<Boolean> isNewTask = new MutableLiveData<>(false);
 
-    static class Filters {
-        LocalDate day;
-        boolean displayUnscheduled;
-    }
-
-    static class Sorters {
-        boolean byTaskParent;
-        boolean byScore;
-        boolean byTime;
-        boolean byTitle;
-    }
-
-    private final Filters filters = new Filters();
-    private final Sorters sorters = new Sorters();
+    private final TaskListFilter filters = new TaskListFilter();
+    private final TaskListSort sorters = new TaskListSort();
 
     public TaskViewModel(Application app, TaskUseCaseFactory.Bundle bundle) {
         super(app);
