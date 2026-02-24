@@ -13,7 +13,7 @@ import java.util.function.Consumer;
 import java.time.format.DateTimeFormatter;
 
 import com.autosecretary.features.task.application.model.TaskListItem;
-import com.autosecretary.views.models.ViewSlotList.ViewSlot;
+import com.autosecretary.features.task.ui.model.ViewSlotList.ViewSlot;
 import com.autosecretary.R;
 
 public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowViewHolder> {
