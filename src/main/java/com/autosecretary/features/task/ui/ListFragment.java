@@ -29,6 +29,7 @@ public class ListFragment extends Fragment {
         // Keep one ViewModel tied to the activity so list/edit state survives fragment swaps and dialogs.
         TaskViewModel vm = new ViewModelProvider(requireActivity(), viewModelFactory).get(TaskViewModel.class);
         RecyclerView recyclerView = view.findViewById(R.id.TaskList);
+        View emptyStateContainer = view.findViewById(R.id.EmptyStateContainer);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         ListRowAdapter adapter = new ListRowAdapter(
@@ -39,17 +40,25 @@ public class ListFragment extends Fragment {
         );
 
         recyclerView.setAdapter(adapter);
-        vm.getList().observe(getViewLifecycleOwner(), adapter::setList);
+        vm.getList().observe(getViewLifecycleOwner(), items -> {
+            adapter.setList(items);
+            boolean hasItems = items != null && !items.isEmpty();
+            recyclerView.setVisibility(hasItems ? View.VISIBLE : View.GONE);
+            emptyStateContainer.setVisibility(hasItems ? View.GONE : View.VISIBLE);
+        });
 
         Button button = view.findViewById(R.id.Button);
         // Generate rebuilds the schedule using current rules, then pushes the refreshed rows to this list.
         button.setOnClickListener(v -> vm.updateList());
 
-        view.findViewById(R.id.NewTaskButton).setOnClickListener(v -> {
+        View.OnClickListener createTaskClickListener = v -> {
             // Start from a blank task in shared state, then open the dialog so the user fills details.
             vm.createNewTask();
             new TaskEditDialog().show(getParentFragmentManager(), "create");
-        });
+        };
+
+        view.findViewById(R.id.NewTaskButton).setOnClickListener(createTaskClickListener);
+        view.findViewById(R.id.EmptyStateNewTaskButton).setOnClickListener(createTaskClickListener);
 
         MaterialButtonToggleGroup toggle = view.findViewById(R.id.TaskListToggle);
         // Checklist vs Manage toggles between focused presets for quick completion and planning workflows.
