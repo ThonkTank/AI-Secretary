@@ -293,16 +293,18 @@ public class TaskViewModel extends AndroidViewModel {
     public void checkOff(ViewSlot viewSlot) {
         TaskSlot slot = viewSlot.slot;
         Task task = viewSlot.task;
-        if (slot.completed) return;
 
-        if (slot.realStart == null) {
-            // Phase 1: Start markieren
-            slot.realStart = LocalTime.now();
-            executor.execute(() -> {
+        executor.execute(() -> {
+            if (slot.completed) return;
+
+            if (slot.realStart == null) {
+                // Phase 1: Start markieren
+                slot.realStart = LocalTime.now();
                 taskDao.writeSlot(slot);
                 filterList();
-            });
-        } else {
+                return;
+            }
+
             // Phase 2: Ende markieren + abschliessen
             slot.realEnd = LocalTime.now();
             slot.completed = true;
@@ -315,22 +317,20 @@ public class TaskViewModel extends AndroidViewModel {
             boolean isStale = durationSeconds > STALE_THRESHOLD_SECONDS;
             boolean trackDuration = !isQuickTap && !isStale;
 
-            executor.execute(() -> {
-                lifecycleManager.updateStreak(task, slot);
-                task.core.history.completions++;
+            lifecycleManager.updateStreak(task, slot);
+            task.core.history.completions++;
 
-                if (trackDuration) {
-                    task.core.history.trackedCompletions++;
-                    task.core.history.totalDuration += (int) durationMinutes;
+            if (trackDuration) {
+                task.core.history.trackedCompletions++;
+                task.core.history.totalDuration += (int) durationMinutes;
 
-                    if (task.core.adaptive) {
-                        lifecycleManager.adaptPrefSlot(task, slot);
-                    }
+                if (task.core.adaptive) {
+                    lifecycleManager.adaptPrefSlot(task, slot);
                 }
-                taskDao.write(task);
-                taskDao.writeSlot(slot);
-                filterList();
-            });
-        }
+            }
+            taskDao.write(task);
+            taskDao.writeSlot(slot);
+            filterList();
+        });
     }
 }
