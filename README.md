@@ -42,6 +42,15 @@ Use the official Android setup guides to verify your environment (JDK, SDK, emul
 - `history/` → non-runtime historical snapshots and references.
 - `ops/` → non-runtime operational release artifacts and metadata.
 
+## Where to start reading
+
+- `views/MainActivity.java` (navigation host): start here to see how top-level navigation and app entry flow are wired before diving into feature internals.
+- `features/task/ui/ListFragment.java` (main UI interactions): read next to understand how users trigger task actions and how UI events are captured.
+- `features/task/ui/TaskViewModel.java` (state/filter/sort orchestration): this shows how UI intents are translated into observable state, filtering, and sorting decisions.
+- `features/task/application/*UseCase*.java` (application boundary): review these classes to see where business operations are coordinated between UI-facing logic and domain rules.
+- `features/task/domain/SlotGenerator.java` and `TaskScorer.java` (scheduling logic): these files contain the core scheduling heuristics, so they explain why task ordering and slot assignment behave as they do.
+- `features/task/data/*` + `database/AppDatabase.java` (Room persistence): finish here to understand how entities are stored, queried, and persisted through the Room database layer.
+
 ## Build and release tasks
 
 > [!WARNING]
