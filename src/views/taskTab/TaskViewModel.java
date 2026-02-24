@@ -28,11 +28,14 @@ import java.util.function.Predicate;
 
 public class TaskViewModel extends AndroidViewModel {
     private Preferences prefs;
-    private ViewSlotList masterList;                        // alle ViewSlots
-    private MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData();      // gefilterte Liste für die UI
     private TaskDAO taskDao;
     private SlotGenerator generator;
     private ExecutorService executor;
+
+    private ViewSlotList masterList;                        // alle ViewSlots
+    private MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData();      // gefilterte Liste für die UI
+    public Task selectedTask;
+
     public Filters filters = new Filters();
     public Sorters sorters = new Sorters();
 

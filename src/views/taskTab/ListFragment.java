@@ -39,11 +39,8 @@ public class ListFragment extends Fragment {
             new ArrayList<>(),
             slot -> vm.checkOff(slot),
             viewSlot -> {
-                new AlertDialog.Builder(getContext())
-                    .setTitle(viewSlot.task.core.title)
-                    .setMessage("Platzhalter für Detail-Ansicht")
-                    .setPositiveButton("OK", null)
-                    .show();
+                vm.selectedTask = viewSlot.task;
+                new TaskEditDialog().show(getParentFragmentManager(), "edit");
             }
         );
 
