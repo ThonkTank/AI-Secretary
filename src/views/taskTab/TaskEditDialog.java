@@ -33,6 +33,7 @@ public class TaskEditDialog extends DialogFragment {
         this.description = view.findViewById(R.id.EditDescription);
         this.priority = view.findViewById(R.id.EditPriority);
 
+        //basic info
         this.title.setText(task.core.title);
         this.description.setText(task.core.description);
         ArrayAdapter<Priority> adapter = new ArrayAdapter<>(
@@ -43,7 +44,33 @@ public class TaskEditDialog extends DialogFragment {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         this.priority.setAdapter(adapter);
         this.priority.setSelection(task.core.priority.ordinal());
-        
+
+        /** scheduling
+         * Deadline
+         * closeOnMiss
+         * 
+         * minDuration
+         * maxDuration
+         * prefTimes
+         * adaptive
+        */
+
+        /** Repetition (checkbox um rest anzueigen)
+         * reps
+         * perPeriod
+         * periodUnit
+         * cooldown
+         */
+
+        /** Progress
+         * unit
+         * target
+         * current
+         * 
+         * (wenn repetition true)
+         * minPerRep
+         * maxPerRep
+         */
         
         return new AlertDialog.Builder(requireContext())
             .setTitle("Task bearbeiten")

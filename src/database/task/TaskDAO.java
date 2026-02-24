@@ -46,7 +46,7 @@ public interface TaskDAO {
     }
 
     @Transaction
-    default void write(Task tasks) {
+    default void write(Task task) {
         writeCore(task.core);
         writeSlots(task.slots);
         writeFollowUps(task.followUps);

@@ -24,6 +24,6 @@ public class TaskPrefSlot {
     @PrimaryKey() @NonNull
     public String id = UUID.randomUUID().toString();
     public String taskId;
-    public DayOfWeek day;
+    public Set<DayOfWeek> days;
     public LocalTime start;
 }

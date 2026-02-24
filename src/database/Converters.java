@@ -3,6 +3,9 @@ package database;
 import androidx.room.TypeConverter;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.time.DayOfWeek;
 import constants.Priority;
 import constants.Period;
@@ -56,5 +59,15 @@ public class Converters {
     @TypeConverter
     public static Period toPeriod(String value) {
         return value != null ? Period.valueOf(value) : null;
+    }
+
+    @TypeConverter
+    public static String fromDaySet(Set<DayOfWeek> days) {
+        return days != null ? days.stream().map(DayOfWeek::name).collect(Collectors.joining(",")) : null;
+    }
+
+    @TypeConverter
+    public static Set<DayOfWeek> toDaySet(String value) {
+        return value != null ? Arrays.stream(value.split(",")).map(DayOfWeek::valueOf).collect(Collectors.toSet()) : null;
     }
 }

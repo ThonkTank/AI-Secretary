@@ -25,8 +25,8 @@ public class TaskRelation {
     public String child;
     public String parent;
 
-    public TaskRelation(String child, String parent) {
-        this.child = child;
+    public TaskRelation(String parent, String child) {
         this.parent = parent;
+        this.child = child;
     }
 }

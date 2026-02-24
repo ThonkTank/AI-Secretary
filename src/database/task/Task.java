@@ -12,6 +12,7 @@ import java.time.temporal.ChronoUnit;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -133,11 +134,17 @@ public class Task {
         
         // fit
         LocalTime prefStart = null;
+        long minDiff = Long.MAX_VALUE;
         for (TaskPrefSlot slot : prefSlots) {
-            if (start.getDayOfWeek() == slot.day) {
-                prefStart = slot.start;
+            if (slot.days.contains(start.getDayOfWeek())) {
+                long slotDiff = Math.abs(Duration.between(start.toLocalTime(), slot.start).toMinutes());
+                if (minDiff < slotDiff) {
+                    minDiff = slotDiff;
+                    prefStart = slot.start;
+                }
             }
         }  
+
         if (prefStart != null){
             double dif = Duration.between(start.toLocalTime(), prefStart).toMinutes() / 60.0;
             double fit = 1 - Math.abs(dif/ 8);
@@ -159,6 +166,20 @@ public class Task {
         totalPrio = (int) (totalPrio * agingForce);
 
         return totalPrio;
+    }
+
+    @Ignore
+    public void setId(String id) {
+        core.id = id;
+        for (TaskFollowUp followUp : followUps) {
+            followUp.taskId = id;
+        }
+        for (TaskPrefSlot prefSlot : prefSlots) {
+            prefSlot.taskId = id;
+        }
+        for (TaskSlot slot : slots) {
+            slot.taskId = id;
+        }
     }
 
     public void setParentId(String id) {
@@ -186,15 +207,16 @@ public class Task {
         this.followUps = new ArrayList<>();
         this.prefSlots = new ArrayList<>();
 
-        TaskPrefSlot prefSlot = new TaskPrefSlot();
-        prefSlot.taskId = this.core.id;
-        prefSlot.day = LocalDate.now().getDayOfWeek();
-        prefSlot.start = start;
-        this.prefSlots.add(prefSlot);
+        for (int i = 0; i < repsPerDay; i++) {
+            TaskPrefSlot prefSlot = new TaskPrefSlot();
+            prefSlot.days = EnumSet.allOf(DayOfWeek.class);
+            prefSlot.start = start;
+            this.prefSlots.add(prefSlot);
+        }
     }
 
     public static List<Task> buildTree(List<Task> tasks) {
-        Map<String, Task> mappedTasks = new HashMap<>();
+        Map<Long, Task> mappedTasks = new HashMap<>();
         List<Task> taskTree = new ArrayList<>();
         
         for (Task task : tasks) {

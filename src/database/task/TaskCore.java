@@ -36,6 +36,13 @@ public class TaskCore {
 
     @Embedded(prefix = "repetition_")
     public Repetition repetition = new Repetition();
+    public int repsPerDay() {
+        if (repetition != null) {
+                return repetition.repsPerDay();
+        } else {
+            return 1;
+        }
+    }
 
     //completion tracking
     @Embedded(prefix = "progress_")
@@ -50,6 +57,7 @@ public class TaskCore {
         public int perPeriod;
         public Period periodUnit;
         public int periodInDays() {return periodUnit.value * perPeriod;}
+        public int repsPerDay() {return (double) reps / (double) periodInDays();}
         public double daysPerRep() {return (double) periodInDays() / (double) reps;}
         public double requiredDays() {return daysPerRep() * remainingReps();}
         public double remainingDays(LocalDate lastCompletion) {return (double) ChronoUnit.DAYS.between(LocalDate.now(), lastCompletion.plusDays(periodInDays()));}

@@ -39,8 +39,6 @@ public class TaskViewModel extends AndroidViewModel {
     public Filters filters = new Filters();
     public Sorters sorters = new Sorters();
 
-    private boolean dataSeeded;
-
     public class Filters {
         public LocalDate day;
         public boolean displayUnscheduled;
@@ -81,9 +79,7 @@ public class TaskViewModel extends AndroidViewModel {
 
     public void saveEditedTask() {
         executor.execute(() -> {
-            List<Task> task = new ArrayList<>();
-            task.add(selectedTask);
-            taskDao.write(task);
+            taskDao.write(selectedTask);
             filterList();
         });
     }
@@ -91,27 +87,23 @@ public class TaskViewModel extends AndroidViewModel {
     public void updateList() {
         
         executor.execute(() -> {
+            //clean DB
+            taskDao.deleteAllCore();
 
-            if (!dataSeeded) {
-                //clean DB
-                taskDao.deleteAllCore();
-
-                //neu einrichten
-                List<Task> newTasks = new ArrayList<>();
-                newTasks.add(new Task("Täglich", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 15));
-                newTasks.add(new Task("overdue", 1, 1, Period.DAY, LocalDate.now().minusDays(7), 1, LocalTime.of(9, 0), 1));
-                newTasks.add(new Task("Cooldown", 1, 1, Period.WEEK, null, 7, null, 15));
-                Task parent = new Task("Parent", 1, 1, Period.MONTH, null, 1, LocalTime.of(6, 0), 30);
-                newTasks.add(parent);
-                parent.children.add(new Task("Child A", 3, 5, Period.DAY, null, 1, LocalTime.of(6, 0), 15));
-                parent.children.add(new Task("Child B", 1, 4, Period.DAY, null, 1, LocalTime.of(6, 0), 5));
-                Task childC = new Task("Child C", 1, 1, Period.WEEK, null, 1, LocalTime.of(6, 0), 15);
-                parent.children.add(childC);
-                childC.children.add(new Task("Grandchild", 1, 1, Period.WEEK, null, 1, LocalTime.of(6, 0), 20));
-                taskDao.writeList(newTasks);
-                dataSeeded = true;
-            }
-
+            //neu einrichten
+            List<Task> newTasks = new ArrayList<>();
+            newTasks.add(new Task("Täglich", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 15));
+            newTasks.add(new Task("overdue", 1, 1, Period.DAY, LocalDate.now().minusDays(7), 1, LocalTime.of(9, 0), 1));
+            newTasks.add(new Task("Cooldown", 1, 1, Period.WEEK, null, 7, null, 15));
+            Task parent = new Task("Parent", 1, 1, Period.MONTH, null, 1, LocalTime.of(6, 0), 30);
+            newTasks.add(parent);
+            parent.children.add(new Task("Child A", 3, 5, Period.DAY, null, 1, LocalTime.of(6, 0), 15));
+            parent.children.add(new Task("Child B", 1, 4, Period.DAY, null, 1, LocalTime.of(6, 0), 5));
+            Task childC = new Task("Child C", 1, 1, Period.WEEK, null, 1, LocalTime.of(6, 0), 15);
+            parent.children.add(childC);
+            childC.children.add(new Task("Grandchild", 1, 1, Period.WEEK, null, 1, LocalTime.of(6, 0), 20));
+            taskDao.writeList(newTasks);
+            
             //slots generieren
             generator.generateSlots();
             masterList.fromList(taskDao.readAll());
