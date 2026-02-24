@@ -192,14 +192,9 @@ public class TaskScorer {
         }
 
         int availableTime = (int) ChronoUnit.MINUTES.between(start, end);
-
-        // hard constraints
-        if (cache.isComplete) return 0;
-        if (cache.scheduledToday >= cache.repsPerDay) return 0;
-        if (cache.sinceLast < task.core.cooldown) return 0;
-        if (availableTime < task.core.minDuration) return 0;
-        if (task.core.progress != null && availableTime < task.core.progress.requiredTimePerRep()) return 0;
-        if (cache.deadlineExpired) return 0;
+        if (!isSchedulableNow(task, cache, availableTime)) {
+            return 0;
+        }
 
         // prio
         int totalPrio = task.core.priority.value;
@@ -239,6 +234,15 @@ public class TaskScorer {
         totalPrio = (int) (totalPrio * cache.agingForce);
 
         return totalPrio;
+    }
+
+    private boolean isSchedulableNow(Task task, ScoringCache cache, int availableTime) {
+        if (cache.isComplete) return false;
+        if (cache.scheduledToday >= cache.repsPerDay) return false;
+        if (cache.sinceLast < task.core.cooldown) return false;
+        if (availableTime < task.core.minDuration) return false;
+        if (task.core.progress != null && availableTime < task.core.progress.requiredTimePerRep()) return false;
+        return !cache.deadlineExpired;
     }
 
     public void onSlotAssigned(Task task) {
