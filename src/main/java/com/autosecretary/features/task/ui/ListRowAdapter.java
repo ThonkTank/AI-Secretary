@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import android.view.LayoutInflater;
 import android.widget.TextView;
 import android.widget.CheckBox;
+import android.widget.ImageButton;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -20,11 +21,13 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     List<ViewSlot> viewSlots;
     Consumer<ViewSlot> onCheck;
     Consumer<ViewSlot> onLongPress;
+    Consumer<ViewSlot> onEditClick;
 
-    public ListRowAdapter(List<ViewSlot> viewSlots, Consumer<ViewSlot> onCheck, Consumer<ViewSlot> onLongPress) {
+    public ListRowAdapter(List<ViewSlot> viewSlots, Consumer<ViewSlot> onCheck, Consumer<ViewSlot> onLongPress, Consumer<ViewSlot> onEditClick) {
         this.viewSlots = viewSlots;
         this.onCheck = onCheck;
         this.onLongPress = onLongPress;
+        this.onEditClick = onEditClick;
     }
 
     static class TaskRowViewHolder extends RecyclerView.ViewHolder {
@@ -34,6 +37,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         CheckBox checkBox;
         TextView deadlineCountdown;
         TextView streakDisplay;
+        ImageButton editButton;
 
         TaskRowViewHolder(View taskRow) {
             super(taskRow);
@@ -43,6 +47,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             this.checkBox = taskRow.findViewById(R.id.TaskCheckBox);
             this.deadlineCountdown = taskRow.findViewById(R.id.DeadlineCountdown);
             this.streakDisplay = taskRow.findViewById(R.id.StreakDisplay);
+            this.editButton = taskRow.findViewById(R.id.EditTaskButton);
         }
     }
 
@@ -115,6 +120,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             onLongPress.accept(viewSlot);
             return true;
         });
+
+        holder.editButton.setOnClickListener(v -> onEditClick.accept(viewSlot));
     }
 
     public void setList(List<ViewSlot> viewSlots) {

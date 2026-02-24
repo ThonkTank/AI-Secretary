@@ -34,11 +34,8 @@ public class ListFragment extends Fragment {
         ListRowAdapter adapter = new ListRowAdapter(
                 new ArrayList<>(),
                 vm::checkOff,
-                viewSlot -> {
-                    // Long-press selects the tapped task as the edit target before opening the editor dialog.
-                    vm.beginEditTask(viewSlot.item.taskId);
-                    new TaskEditDialog().show(getParentFragmentManager(), "edit");
-                }
+                viewSlot -> openEditDialog(vm, viewSlot.item.taskId),
+                viewSlot -> openEditDialog(vm, viewSlot.item.taskId)
         );
 
         recyclerView.setAdapter(adapter);
@@ -66,4 +63,10 @@ public class ListFragment extends Fragment {
             }
         });
     }
+    private void openEditDialog(TaskViewModel vm, String taskId) {
+        // Explicit edit callback shared by row edit controls and optional long-press shortcut.
+        vm.beginEditTask(taskId);
+        new TaskEditDialog().show(getParentFragmentManager(), "edit");
+    }
+
 }
