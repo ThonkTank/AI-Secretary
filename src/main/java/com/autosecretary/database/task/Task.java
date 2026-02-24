@@ -14,20 +14,8 @@ import java.util.EnumSet;
 import java.util.List;
 
 import com.autosecretary.constants.Period;
-import com.autosecretary.util.TreeBuilder;
 
 public class Task {
-
-    public static final TreeBuilder<Task> TREE_BUILDER = new TreeBuilder<>(
-            task -> task.core.id,
-            task -> {
-                List<String> ids = new ArrayList<>();
-                for (TaskRelation rel : task.parents) ids.add(rel.parent);
-                return ids;
-            },
-            (parent, child) -> parent.children.add(child),
-            task -> task.children
-    );
 
     @Embedded public TaskCore core;
 

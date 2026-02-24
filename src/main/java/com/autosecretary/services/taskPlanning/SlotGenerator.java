@@ -40,9 +40,9 @@ public class SlotGenerator {
         newSlots = 0;
         scorer.reset();
         List<Task> tasks = taskDao.readAll();
-        List<Task> taskTree = Task.TREE_BUILDER.buildTree(tasks);
+        List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
 
-        List<Task> allTasks = Task.TREE_BUILDER.flatten(taskTree);
+        List<Task> allTasks = TaskTreeOperations.flatten(taskTree);
         scheduledInSession = new HashSet<>();
         allTasksById = new HashMap<>();
         for (Task t : allTasks) {
@@ -75,7 +75,7 @@ public class SlotGenerator {
         }
         Log.d(TAG, "Gesamt: " + newSlots + " slots");
 
-        taskDao.writeList(taskTree);
+        taskDao.writeList(allTasks);
     }
 
     private LocalDateTime assignSlot(List<Task> tasks, LocalDateTime cursor, LocalDateTime end, TaskSlot parentSlot, int depth) {

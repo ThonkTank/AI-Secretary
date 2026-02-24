@@ -6,12 +6,7 @@ import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 import androidx.room.Transaction;
 
-import java.time.LocalDate;
-
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Dao
 public interface TaskDAO {
@@ -28,7 +23,6 @@ public interface TaskDAO {
     //Transactions
     @Transaction
     default void writeList(List<Task> tasks) {
-        tasks = Task.TREE_BUILDER.flatten(tasks);
         for (Task task : tasks) {
             writeCore(task.core);
         }
