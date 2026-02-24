@@ -79,6 +79,15 @@ public class Task {
         }
     }
 
+
+    public void recordCompletion(long durationMinutes, boolean trackDuration) {
+        core.history.completions++;
+        if (trackDuration) {
+            core.history.trackedCompletions++;
+            core.history.totalDuration += (int) durationMinutes;
+        }
+    }
+
     public void setParentId(String id) {
         for (TaskRelation parent : parents) {
             parent.parent = id;
