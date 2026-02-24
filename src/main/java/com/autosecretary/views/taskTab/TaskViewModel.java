@@ -14,6 +14,8 @@ import com.autosecretary.application.task.TaskUseCaseFactory;
 import com.autosecretary.database.task.Task;
 import com.autosecretary.database.task.TaskCore;
 import com.autosecretary.database.task.TaskPrefSlot;
+import com.autosecretary.views.taskTab.mapper.TaskEditStateMapper;
+import com.autosecretary.views.taskTab.model.TaskEditState;
 import com.autosecretary.views.models.ViewSlotList;
 import com.autosecretary.views.models.ViewSlotList.ViewSlot;
 
@@ -34,7 +36,9 @@ public class TaskViewModel extends AndroidViewModel {
 
     private final ViewSlotList masterList;
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
-    private final MutableLiveData<Task> selectedTask = new MutableLiveData<>();
+    private final MutableLiveData<TaskEditState> selectedTask = new MutableLiveData<>();
+    private final MutableLiveData<Task> selectedBaseTask = new MutableLiveData<>();
+    private final TaskEditStateMapper taskEditStateMapper = new TaskEditStateMapper();
     private final MutableLiveData<Boolean> isNewTask = new MutableLiveData<>(false);
 
     static class Filters {
@@ -67,7 +71,7 @@ public class TaskViewModel extends AndroidViewModel {
         return displayList;
     }
 
-    public LiveData<Task> getSelectedTask() {
+    public LiveData<TaskEditState> getSelectedTask() {
         return selectedTask;
     }
 
@@ -76,8 +80,8 @@ public class TaskViewModel extends AndroidViewModel {
         return value != null && value;
     }
 
-    public Task requireSelectedTask() {
-        Task task = selectedTask.getValue();
+    public TaskEditState requireSelectedTask() {
+        TaskEditState task = selectedTask.getValue();
         if (task == null) {
             throw new IllegalStateException("No task selected for editing.");
         }
@@ -86,7 +90,8 @@ public class TaskViewModel extends AndroidViewModel {
 
     public void beginEditTask(String taskId) {
         loadTaskListUseCase.loadTask(taskId, task -> {
-            selectedTask.postValue(task);
+            selectedBaseTask.postValue(task);
+            selectedTask.postValue(taskEditStateMapper.fromTask(task));
             isNewTask.postValue(false);
         });
     }
@@ -105,13 +110,13 @@ public class TaskViewModel extends AndroidViewModel {
         defaultSlot.start = LocalTime.of(6, 0);
         task.prefSlots.add(defaultSlot);
 
-        selectedTask.setValue(task);
+        selectedBaseTask.setValue(task);
+        selectedTask.setValue(taskEditStateMapper.fromTask(task));
         isNewTask.setValue(true);
     }
 
-    public void saveEditedTask() {
-        Task task = requireSelectedTask();
-        saveTaskUseCase.execute(task, () -> {
+    public void saveEditedTask(Task mappedTask) {
+        saveTaskUseCase.execute(mappedTask, () -> {
             isNewTask.postValue(false);
             refreshList();
         });
@@ -151,6 +156,14 @@ public class TaskViewModel extends AndroidViewModel {
         Comparator<ViewSlot> comparator = TaskViewSlotQuery.buildComparator(sorters);
         masterList.sort(sorters.byTaskParent, comparator);
         displayList.postValue(masterList.displaySlots);
+    }
+
+    public Task requireSelectedBaseTask() {
+        Task task = selectedBaseTask.getValue();
+        if (task == null) {
+            throw new IllegalStateException("No base task selected for editing.");
+        }
+        return task;
     }
 
     public void checkOff(ViewSlot viewSlot) {
