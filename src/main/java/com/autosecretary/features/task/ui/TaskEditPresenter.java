@@ -5,7 +5,7 @@ import com.autosecretary.constants.Priority;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
-import com.autosecretary.features.task.ui.mapper.TaskEditStateMapper;
+import com.autosecretary.features.task.ui.internal.mapper.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.model.PrefSlotEditState;
 import com.autosecretary.features.task.ui.model.TaskEditState;
 

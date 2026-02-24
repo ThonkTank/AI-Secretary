@@ -92,3 +92,16 @@ Use the official Android setup guides to verify your environment (JDK, SDK, emul
 - Active code lives under `src/`.
 - Legacy snapshots are stored under `history/legacy/`.
 - **Legacy path semantics:** `history/legacy/` is reference-only documentation/source history and is **not** an active source set for builds or runtime behavior.
+
+### Feature package layout rule (`features/task`)
+
+- **Public entry points stay in stable packages:**
+  - `features/task/ui/ListFragment`
+  - `features/task/ui/TaskViewModelFactory`
+  - `features/task/application/*UseCase`
+- **Non-entry helpers must live under internal packages:**
+  - `features/task/internal/...`, or
+  - `features/task/{domain,ui}/internal/...`
+- Start migration with high-churn helpers (mappers/builders). Current examples:
+  - `TaskEditStateMapper` → `features/task/ui/internal/mapper`
+  - `PrefSlotUIBuilder` → `features/task/ui/internal`

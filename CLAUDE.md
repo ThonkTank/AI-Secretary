@@ -32,6 +32,17 @@ Standard Android project structure (single module, no `app/` directory):
 
 Uses default Gradle source set conventions (no custom `sourceSets` block). All packages are fully qualified under `com.autosecretary.*`.
 
+### Feature package layout rule (`features/task`)
+
+- Keep public entry points in stable packages:
+  - `features/task/ui/ListFragment`
+  - `features/task/ui/TaskViewModelFactory`
+  - `features/task/application/*UseCase`
+- Move non-entry helpers to internal packages:
+  - `features/task/internal/...`, or
+  - `features/task/{domain,ui}/internal/...`
+- Prioritize high-churn helpers (mappers/builders) when migrating classes.
+
 ## Architecture
 
 **MVVM with Room** — the app is being rebuilt from a legacy SQLite/custom-parser architecture.

@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui.mapper;
+package com.autosecretary.features.task.ui.internal.mapper;
 
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
