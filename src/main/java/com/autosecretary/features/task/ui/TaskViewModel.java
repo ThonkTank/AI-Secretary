@@ -51,7 +51,7 @@ public class TaskViewModel extends AndroidViewModel {
     private final MutableLiveData<Boolean> isNewTask = new MutableLiveData<>(false);
 
     private LocalDate day;
-    private ListConfig activeListConfig = ListConfig.DEFAULT;
+    private ListConfig activeListConfig = ListConfig.CHECKLIST;
 
     public TaskViewModel(Application app,
                          LoadTaskListUseCase loadTaskListUseCase,
@@ -65,6 +65,7 @@ public class TaskViewModel extends AndroidViewModel {
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
 
         this.masterList = new ViewSlotList();
+        applyChecklistPreset();
         refreshList();
     }
 
@@ -170,7 +171,17 @@ public class TaskViewModel extends AndroidViewModel {
      * </p>
      */
     public void filterList() {
-        Predicate<ViewSlot> predicate = buildPredicate(day, activeListConfig);
+        Predicate<ViewSlot> predicate;
+        switch (activeListConfig) {
+            case CHECKLIST:
+                predicate = buildChecklistPredicate(day);
+                break;
+            case MANAGE:
+                predicate = buildManagePredicate(day);
+                break;
+            default:
+                throw new IllegalStateException("Unsupported list mode: " + activeListConfig);
+        }
         masterList.filter(predicate);
         sortList();
     }
@@ -183,8 +194,23 @@ public class TaskViewModel extends AndroidViewModel {
      * </p>
      */
     public void sortList() {
-        Comparator<ViewSlot> comparator = buildComparator(activeListConfig);
-        masterList.sort(activeListConfig.isGroupByTaskParent(), comparator);
+        Comparator<ViewSlot> comparator;
+        boolean groupByTaskParent;
+
+        switch (activeListConfig) {
+            case CHECKLIST:
+                comparator = buildChecklistComparator();
+                groupByTaskParent = false;
+                break;
+            case MANAGE:
+                comparator = buildManageComparator();
+                groupByTaskParent = true;
+                break;
+            default:
+                throw new IllegalStateException("Unsupported list mode: " + activeListConfig);
+        }
+
+        masterList.sort(groupByTaskParent, comparator);
         displayList.postValue(masterList.displaySlots);
     }
 
@@ -208,87 +234,47 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     /**
-     * Builds the filter predicate in fixed order:
+     * Builds the checklist predicate in fixed order:
      * <ol>
      *     <li>If {@code day != null}, require {@code vs.item.day.equals(day)}.</li>
-     *     <li>If {@code !displayUnscheduled}, additionally require {@code vs.item.start != null}.</li>
+     *     <li>Always require {@code vs.item.start != null} to hide unscheduled items.</li>
      * </ol>
-     * These conditions are AND-combined.
      */
-    private static Predicate<ViewSlot> buildPredicate(LocalDate day, ListConfig config) {
+    private static Predicate<ViewSlot> buildChecklistPredicate(LocalDate day) {
         Predicate<ViewSlot> predicate = vs -> true;
 
         if (day != null) {
             predicate = predicate.and(vs -> vs.item.day.equals(day));
         }
-        if (!config.isDisplayUnscheduled()) {
-            predicate = predicate.and(vs -> vs.item.start != null);
+        predicate = predicate.and(vs -> vs.item.start != null);
+        return predicate;
+    }
+
+    private static Predicate<ViewSlot> buildManagePredicate(LocalDate day) {
+        Predicate<ViewSlot> predicate = vs -> true;
+
+        if (day != null) {
+            predicate = predicate.and(vs -> vs.item.day.equals(day));
         }
         return predicate;
     }
 
     /**
-     * Builds the comparator by appending optional tie-breakers in this exact order:
-     * score (descending), then start time (ascending, nulls last), then title (ascending).
-     * Disabled sort dimensions are skipped.
+     * Checklist sorts by start time only (ascending, nulls last).
      */
-    private static Comparator<ViewSlot> buildComparator(ListConfig config) {
-        Comparator<ViewSlot> comparator = (a, b) -> 0;
+    private static Comparator<ViewSlot> buildChecklistComparator() {
+        return Comparator.comparing(
+                (ViewSlot vs) -> vs.item.start,
+                Comparator.nullsLast(Comparator.naturalOrder())
+        );
+    }
 
-        if (config.isSortByScore()) {
-            comparator = comparator.thenComparing(
-                    Comparator.comparingInt((ViewSlot vs) -> vs.item.score).reversed()
-            );
-        }
-        if (config.isSortByTime()) {
-            comparator = comparator.thenComparing(
-                    vs -> vs.item.start,
-                    Comparator.nullsLast(Comparator.naturalOrder())
-            );
-        }
-        if (config.isSortByTitle()) {
-            comparator = comparator.thenComparing(vs -> vs.item.title, Comparator.naturalOrder());
-        }
-        return comparator;
+    private static Comparator<ViewSlot> buildManageComparator() {
+        return Comparator.comparing(vs -> vs.item.title, Comparator.naturalOrder());
     }
 
     private enum ListConfig {
-        DEFAULT(false, false, false, false, false),
-        CHECKLIST(false, false, false, true, false),
-        MANAGE(true, true, false, false, true);
-
-        private final boolean displayUnscheduled;
-        private final boolean groupByTaskParent;
-        private final boolean sortByScore;
-        private final boolean sortByTime;
-        private final boolean sortByTitle;
-
-        ListConfig(boolean displayUnscheduled, boolean groupByTaskParent, boolean sortByScore, boolean sortByTime, boolean sortByTitle) {
-            this.displayUnscheduled = displayUnscheduled;
-            this.groupByTaskParent = groupByTaskParent;
-            this.sortByScore = sortByScore;
-            this.sortByTime = sortByTime;
-            this.sortByTitle = sortByTitle;
-        }
-
-        boolean isDisplayUnscheduled() {
-            return displayUnscheduled;
-        }
-
-        boolean isGroupByTaskParent() {
-            return groupByTaskParent;
-        }
-
-        boolean isSortByScore() {
-            return sortByScore;
-        }
-
-        boolean isSortByTime() {
-            return sortByTime;
-        }
-
-        boolean isSortByTitle() {
-            return sortByTitle;
-        }
+        CHECKLIST,
+        MANAGE
     }
 }
