@@ -8,8 +8,6 @@ import android.view.LayoutInflater;
 import android.widget.TextView;
 import android.widget.CheckBox;
 
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.function.Consumer;
 import java.time.format.DateTimeFormatter;
@@ -73,17 +71,18 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.itemView.setPadding(step * viewSlot.depth, 0, 0, 0);
 
         // Deadline countdown
-        if (viewSlot.task.core.deadline != null) {
-            long daysUntil = ChronoUnit.DAYS.between(LocalDate.now(), viewSlot.task.core.deadline);
-            if (daysUntil < 0) {
+        ViewSlot.DeadlineUrgency deadlineUrgency = viewSlot.deadlineUrgency();
+        if (deadlineUrgency != ViewSlot.DeadlineUrgency.NONE) {
+            long daysUntil = viewSlot.daysUntilDeadline();
+            if (deadlineUrgency == ViewSlot.DeadlineUrgency.OVERDUE) {
                 holder.deadlineCountdown.setText("Fällig!");
                 holder.deadlineCountdown.setTextColor(0xFFFF0000);
-            } else if (daysUntil == 0) {
+            } else if (deadlineUrgency == ViewSlot.DeadlineUrgency.TODAY) {
                 holder.deadlineCountdown.setText("Heute");
                 holder.deadlineCountdown.setTextColor(0xFFFF8800);
             } else {
                 holder.deadlineCountdown.setText(daysUntil + "d");
-                holder.deadlineCountdown.setTextColor(daysUntil <= 3 ? 0xFFFF8800 : 0xFF888888);
+                holder.deadlineCountdown.setTextColor(deadlineUrgency == ViewSlot.DeadlineUrgency.SOON ? 0xFFFF8800 : 0xFF888888);
             }
             holder.deadlineCountdown.setVisibility(View.VISIBLE);
         } else {

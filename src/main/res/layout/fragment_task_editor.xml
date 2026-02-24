@@ -2,7 +2,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp">
+    android:padding="@dimen/spacing_lg">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -34,7 +34,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="12dp">
+            android:layout_marginTop="@dimen/spacing_md">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -46,8 +46,8 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:padding="8dp"
+                android:layout_marginStart="@dimen/spacing_sm"
+                android:padding="@dimen/spacing_sm"
                 android:background="?attr/selectableItemBackground"
                 android:text="Keine Frist"/>
 
@@ -72,7 +72,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="8dp">
+            android:layout_marginTop="@dimen/spacing_sm">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -84,7 +84,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="@dimen/spacing_sm"
                 android:inputType="number"
                 android:hint="Min"/>
 
@@ -92,8 +92,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=" - "
-                android:layout_marginStart="4dp"
-                android:layout_marginEnd="4dp"/>
+                android:layout_marginStart="@dimen/spacing_xs"
+                android:layout_marginEnd="@dimen/spacing_xs"/>
 
             <EditText
                 android:id="@+id/EditMaxDuration"
@@ -110,7 +110,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="8dp">
+            android:layout_marginTop="@dimen/spacing_sm">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -122,7 +122,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="@dimen/spacing_sm"
                 android:inputType="number"/>
         </LinearLayout>
 
@@ -131,7 +131,7 @@
             android:id="@+id/ToggleRepetition"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/spacing_md"
             android:text="Wiederholung"/>
 
         <LinearLayout
@@ -141,11 +141,11 @@
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:visibility="gone"
-            android:paddingStart="32dp">
+            android:paddingStart="@dimen/editor_section_indent">
 
             <EditText
                 android:id="@+id/EditReps"
-                android:layout_width="48dp"
+                android:layout_width="@dimen/compact_input_width"
                 android:layout_height="wrap_content"
                 android:inputType="number"
                 android:gravity="center"/>
@@ -154,12 +154,12 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=" mal pro "
-                android:layout_marginStart="4dp"
-                android:layout_marginEnd="4dp"/>
+                android:layout_marginStart="@dimen/spacing_xs"
+                android:layout_marginEnd="@dimen/spacing_xs"/>
 
             <EditText
                 android:id="@+id/EditPerPeriod"
-                android:layout_width="48dp"
+                android:layout_width="@dimen/compact_input_width"
                 android:layout_height="wrap_content"
                 android:inputType="number"
                 android:gravity="center"/>
@@ -169,7 +169,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="4dp"/>
+                android:layout_marginStart="@dimen/spacing_xs"/>
         </LinearLayout>
 
         <!-- PrefSlots -->
@@ -178,7 +178,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginTop="8dp"/>
+            android:layout_marginTop="@dimen/spacing_sm"/>
 
         <CheckBox
             android:id="@+id/EditAdaptive"
@@ -191,7 +191,7 @@
             android:id="@+id/ToggleProgress"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/spacing_md"
             android:text="Fortschritt"/>
 
         <LinearLayout
@@ -200,7 +200,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:visibility="gone"
-            android:paddingStart="32dp">
+            android:paddingStart="@dimen/editor_section_indent">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -218,7 +218,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="8dp"
+                    android:layout_marginStart="@dimen/spacing_sm"
                     android:hint="z.B. Seiten"/>
             </LinearLayout>
 
@@ -238,21 +238,21 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="8dp"
+                    android:layout_marginStart="@dimen/spacing_sm"
                     android:inputType="number"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Aktuell:"
-                    android:layout_marginStart="16dp"/>
+                    android:layout_marginStart="@dimen/spacing_lg"/>
 
                 <EditText
                     android:id="@+id/EditCurrent"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="8dp"
+                    android:layout_marginStart="@dimen/spacing_sm"
                     android:inputType="number"/>
             </LinearLayout>
 
@@ -278,7 +278,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="8dp"
+                    android:layout_marginStart="@dimen/spacing_sm"
                     android:inputType="number"
                     android:hint="Min"/>
 
@@ -286,8 +286,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text=" - "
-                    android:layout_marginStart="4dp"
-                    android:layout_marginEnd="4dp"/>
+                    android:layout_marginStart="@dimen/spacing_xs"
+                    android:layout_marginEnd="@dimen/spacing_xs"/>
 
                 <EditText
                     android:id="@+id/EditMaxPerRep"

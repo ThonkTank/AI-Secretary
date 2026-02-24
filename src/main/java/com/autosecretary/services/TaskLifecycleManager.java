@@ -13,6 +13,18 @@ import java.time.temporal.ChronoUnit;
 
 public class TaskLifecycleManager {
 
+    private static final double DEFAULT_PREF_SLOT_EMA_ALPHA = 0.2;
+
+    private final double prefSlotEmaAlpha;
+
+    public TaskLifecycleManager() {
+        this(DEFAULT_PREF_SLOT_EMA_ALPHA);
+    }
+
+    public TaskLifecycleManager(double prefSlotEmaAlpha) {
+        this.prefSlotEmaAlpha = prefSlotEmaAlpha;
+    }
+
     public void advancePeriods(Task task) {
         TaskCore.Repetition rep = task.core.repetition;
         if (rep == null || rep.reps <= 0 || rep.periodUnit == null) return;
@@ -83,10 +95,9 @@ public class TaskLifecycleManager {
 
         if (bestMatch == null) return;
 
-        double alpha = 0.2;
         long prefMinutes = bestMatch.start.toSecondOfDay() / 60;
         long actualMinutes = slot.realStart.toSecondOfDay() / 60;
-        long newMinutes = Math.round(prefMinutes * (1 - alpha) + actualMinutes * alpha);
+        long newMinutes = Math.round(prefMinutes * (1 - prefSlotEmaAlpha) + actualMinutes * prefSlotEmaAlpha);
         newMinutes = Math.round(newMinutes / 5.0) * 5;
 
         bestMatch.start = LocalTime.of((int) (newMinutes / 60), (int) (newMinutes % 60));
