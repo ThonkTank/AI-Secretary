@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.time.format.DateTimeFormatter;
 
+import com.autosecretary.application.task.model.TaskListItem;
 import com.autosecretary.views.models.ViewSlotList.ViewSlot;
 import com.autosecretary.R;
 
@@ -45,7 +46,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         }
     }
 
-    // Adapter Methoden
     @Override
     public int getItemCount() {
         return viewSlots.size();
@@ -60,47 +60,43 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     @Override
     public void onBindViewHolder(TaskRowViewHolder holder, int position) {
         ViewSlot viewSlot = viewSlots.get(position);
+        TaskListItem item = viewSlot.item;
         int step = holder.itemView.getContext().getResources().getDimensionPixelSize(R.dimen.indent_step);
 
-        holder.title.setText(viewSlot.task.core.title);
+        holder.title.setText(item.title);
 
-        String startString = viewSlot.slot.start != null ? viewSlot.slot.start.format(DateTimeFormatter.ofPattern("HH:mm")) : "Nicht";
-        String endString = viewSlot.slot.end != null ? viewSlot.slot.end.format(DateTimeFormatter.ofPattern("HH:mm")) : "Heute";
+        String startString = item.start != null ? item.start.format(DateTimeFormatter.ofPattern("HH:mm")) : "Nicht";
+        String endString = item.end != null ? item.end.format(DateTimeFormatter.ofPattern("HH:mm")) : "Heute";
         holder.start.setText(startString);
         holder.end.setText(endString);
         holder.itemView.setPadding(step * viewSlot.depth, 0, 0, 0);
 
-        // Deadline countdown
-        ViewSlot.DeadlineUrgency deadlineUrgency = viewSlot.deadlineUrgency();
-        if (deadlineUrgency != ViewSlot.DeadlineUrgency.NONE) {
-            long daysUntil = viewSlot.daysUntilDeadline();
-            if (deadlineUrgency == ViewSlot.DeadlineUrgency.OVERDUE) {
+        TaskListItem.DeadlineUrgency deadlineUrgency = item.deadlineUrgency();
+        if (deadlineUrgency != TaskListItem.DeadlineUrgency.NONE) {
+            long daysUntil = item.daysUntilDeadline();
+            if (deadlineUrgency == TaskListItem.DeadlineUrgency.OVERDUE) {
                 holder.deadlineCountdown.setText("Fällig!");
                 holder.deadlineCountdown.setTextColor(0xFFFF0000);
-            } else if (deadlineUrgency == ViewSlot.DeadlineUrgency.TODAY) {
+            } else if (deadlineUrgency == TaskListItem.DeadlineUrgency.TODAY) {
                 holder.deadlineCountdown.setText("Heute");
                 holder.deadlineCountdown.setTextColor(0xFFFF8800);
             } else {
                 holder.deadlineCountdown.setText(daysUntil + "d");
-                holder.deadlineCountdown.setTextColor(deadlineUrgency == ViewSlot.DeadlineUrgency.SOON ? 0xFFFF8800 : 0xFF888888);
+                holder.deadlineCountdown.setTextColor(deadlineUrgency == TaskListItem.DeadlineUrgency.SOON ? 0xFFFF8800 : 0xFF888888);
             }
             holder.deadlineCountdown.setVisibility(View.VISIBLE);
         } else {
             holder.deadlineCountdown.setVisibility(View.GONE);
         }
 
-        // Streak
-        int streak = viewSlot.task.core.history.currentStreak;
-        if (streak > 0) {
-            holder.streakDisplay.setText(streak + "x");
+        if (item.streak > 0) {
+            holder.streakDisplay.setText(item.streak + "x");
             holder.streakDisplay.setVisibility(View.VISIBLE);
         } else {
             holder.streakDisplay.setVisibility(View.GONE);
         }
 
-        // In-progress visual state
-        boolean inProgress = viewSlot.slot.realStart != null && !viewSlot.slot.completed;
-        if (inProgress) {
+        if (item.inProgress) {
             holder.itemView.setBackgroundColor(0x1A4CAF50);
             holder.checkBox.setButtonTintList(ColorStateList.valueOf(0xFF4CAF50));
         } else {
@@ -108,13 +104,12 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             holder.checkBox.setButtonTintList(null);
         }
 
-        // Checkbox: prevent auto-toggle, let ViewModel manage state via data refresh
         holder.checkBox.setOnClickListener(v -> {
-            holder.checkBox.setChecked(viewSlot.slot.completed);
+            holder.checkBox.setChecked(item.completed);
             onCheck.accept(viewSlot);
         });
-        holder.checkBox.setChecked(viewSlot.slot.completed);
-        holder.checkBox.setEnabled(!viewSlot.slot.completed);
+        holder.checkBox.setChecked(item.completed);
+        holder.checkBox.setEnabled(!item.completed && item.slotId != null);
 
         holder.itemView.setOnLongClickListener(v -> {
             onLongPress.accept(viewSlot);
