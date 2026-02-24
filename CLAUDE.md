@@ -21,7 +21,7 @@ Standard Android project structure (single module, no `app/` directory):
 | `src/main/java/com/autosecretary/` | Active Java source |
 | `src/main/res/` | Android resources |
 | `src/main/AndroidManifest.xml` | Manifest |
-| `old/` | Legacy code being migrated — do not modify |
+| `history/legacy/` | Legacy snapshots (reference-only, not part of active source set) |
 | `build.gradle.kts` | Single-module Kotlin DSL build |
 | `ops/release/` | Built APK + version counter |
 
@@ -204,10 +204,10 @@ The app has three feature domains. Only tasks are actively being rebuilt:
 | Feature | Status | Location |
 |---------|--------|----------|
 | Task scheduling | **Active** — Room + MVVM + Fragments | `src/main/java/com/autosecretary/` |
-| Budget/Finance | Not migrated | `old/controller/budgetTab/`, `old/entities/` |
-| Meal planning | Not migrated | `old/controller/mealTab/`, `old/entities/` |
+| Budget/Finance | Not migrated | `history/legacy/controller/budgetTab/`, `history/legacy/entities/` |
+| Meal planning | Not migrated | `history/legacy/controller/mealTab/`, `history/legacy/entities/` |
 
-The `old/` directory contains 80+ Java files spanning widgets, scheduling, budget management (with Claude API integration), meal planning (recipes/ingredients), and a custom SQLite repo layer with hand-written parsers.
+The `history/legacy/` directory contains 80+ Java files spanning widgets, scheduling, budget management (with Claude API integration), meal planning (recipes/ingredients), and a custom SQLite repo layer with hand-written parsers.
 
 ## Not Yet Implemented
 
