@@ -13,18 +13,15 @@ import com.autosecretary.application.task.SaveTaskUseCase;
 import com.autosecretary.application.task.TaskUseCaseFactory;
 import com.autosecretary.database.task.Task;
 import com.autosecretary.database.task.TaskCore;
-import com.autosecretary.database.task.TaskPrefSlot;
+import com.autosecretary.database.task.TaskPrefSlotFactory;
 import com.autosecretary.views.taskTab.mapper.TaskEditStateMapper;
 import com.autosecretary.views.taskTab.model.TaskEditState;
 import com.autosecretary.views.models.ViewSlotList;
 import com.autosecretary.views.models.ViewSlotList.ViewSlot;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -92,11 +89,7 @@ public class TaskViewModel extends AndroidViewModel {
         task.parents = new ArrayList<>();
         task.prerequisites = new ArrayList<>();
 
-        TaskPrefSlot defaultSlot = new TaskPrefSlot();
-        defaultSlot.taskId = task.core.id;
-        defaultSlot.days = EnumSet.allOf(DayOfWeek.class);
-        defaultSlot.start = LocalTime.of(6, 0);
-        task.prefSlots.add(defaultSlot);
+        task.prefSlots.add(TaskPrefSlotFactory.createDefault(task.core.id));
 
         selectedBaseTask.setValue(task);
         selectedTask.setValue(taskEditStateMapper.fromTask(task));
