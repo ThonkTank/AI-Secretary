@@ -38,8 +38,12 @@ public class TaskViewModel extends AndroidViewModel {
     private final TaskEditStateMapper taskEditStateMapper = new TaskEditStateMapper();
     private final MutableLiveData<Boolean> isNewTask = new MutableLiveData<>(false);
 
-    private final TaskListFilter filters = new TaskListFilter();
-    private final TaskListSort sorters = new TaskListSort();
+    private LocalDate day;
+    private boolean displayUnscheduled;
+    private boolean byTaskParent;
+    private boolean byScore;
+    private boolean byTime;
+    private boolean byTitle;
 
     public TaskViewModel(Application app, TaskUseCaseFactory.Bundle bundle) {
         super(app);
@@ -104,22 +108,22 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void applyChecklistPreset() {
-        filters.day = LocalDate.now();
-        filters.displayUnscheduled = false;
-        sorters.byTaskParent = false;
-        sorters.byScore = false;
-        sorters.byTime = true;
-        sorters.byTitle = false;
+        day = LocalDate.now();
+        displayUnscheduled = false;
+        byTaskParent = false;
+        byScore = false;
+        byTime = true;
+        byTitle = false;
         filterList();
     }
 
     public void applyManagePreset() {
-        filters.day = LocalDate.now();
-        filters.displayUnscheduled = true;
-        sorters.byTaskParent = true;
-        sorters.byScore = false;
-        sorters.byTime = false;
-        sorters.byTitle = true;
+        day = LocalDate.now();
+        displayUnscheduled = true;
+        byTaskParent = true;
+        byScore = false;
+        byTime = false;
+        byTitle = true;
         filterList();
     }
 
@@ -128,14 +132,14 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void filterList() {
-        Predicate<ViewSlot> predicate = TaskViewSlotQuery.buildPredicate(filters);
+        Predicate<ViewSlot> predicate = buildPredicate(day, displayUnscheduled);
         masterList.filter(predicate);
         sortList();
     }
 
     public void sortList() {
-        Comparator<ViewSlot> comparator = TaskViewSlotQuery.buildComparator(sorters);
-        masterList.sort(sorters.byTaskParent, comparator);
+        Comparator<ViewSlot> comparator = buildComparator(byScore, byTime, byTitle);
+        masterList.sort(byTaskParent, comparator);
         displayList.postValue(masterList.displaySlots);
     }
 
@@ -156,5 +160,37 @@ public class TaskViewModel extends AndroidViewModel {
             masterList.fromList(items);
             filterList();
         });
+    }
+
+    private static Predicate<ViewSlot> buildPredicate(LocalDate day, boolean displayUnscheduled) {
+        Predicate<ViewSlot> predicate = vs -> true;
+
+        if (day != null) {
+            predicate = predicate.and(vs -> vs.item.day.equals(day));
+        }
+        if (!displayUnscheduled) {
+            predicate = predicate.and(vs -> vs.item.start != null);
+        }
+        return predicate;
+    }
+
+    private static Comparator<ViewSlot> buildComparator(boolean byScore, boolean byTime, boolean byTitle) {
+        Comparator<ViewSlot> comparator = (a, b) -> 0;
+
+        if (byScore) {
+            comparator = comparator.thenComparing(
+                    Comparator.comparingInt((ViewSlot vs) -> vs.item.score).reversed()
+            );
+        }
+        if (byTime) {
+            comparator = comparator.thenComparing(
+                    vs -> vs.item.start,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            );
+        }
+        if (byTitle) {
+            comparator = comparator.thenComparing(vs -> vs.item.title, Comparator.naturalOrder());
+        }
+        return comparator;
     }
 }
