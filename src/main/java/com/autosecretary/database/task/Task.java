@@ -8,9 +8,7 @@ import androidx.room.Ignore;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
-import java.time.DayOfWeek;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 
 import com.autosecretary.constants.Period;
@@ -105,9 +103,7 @@ public class Task {
 
         int repsPerDay = core.repsPerDay();
         for (int i = 0; i < repsPerDay; i++) {
-            TaskPrefSlot prefSlot = new TaskPrefSlot();
-            prefSlot.taskId = this.core.id;
-            prefSlot.days = EnumSet.allOf(DayOfWeek.class);
+            TaskPrefSlot prefSlot = TaskPrefSlotFactory.createDefault(this.core.id);
             prefSlot.start = start;
             this.prefSlots.add(prefSlot);
         }

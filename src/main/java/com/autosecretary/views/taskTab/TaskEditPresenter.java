@@ -3,14 +3,13 @@ package com.autosecretary.views.taskTab;
 import com.autosecretary.constants.Period;
 import com.autosecretary.constants.Priority;
 import com.autosecretary.database.task.Task;
+import com.autosecretary.database.task.TaskPrefSlot;
+import com.autosecretary.database.task.TaskPrefSlotFactory;
 import com.autosecretary.views.taskTab.mapper.TaskEditStateMapper;
 import com.autosecretary.views.taskTab.model.PrefSlotEditState;
 import com.autosecretary.views.taskTab.model.TaskEditState;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.EnumSet;
 import java.util.List;
 
 public class TaskEditPresenter {
@@ -52,10 +51,11 @@ public class TaskEditPresenter {
         int currentCount = editState.prefSlots.size();
         if (newRepsPerDay > currentCount) {
             for (int i = currentCount; i < newRepsPerDay; i++) {
+                TaskPrefSlot defaultSlot = TaskPrefSlotFactory.createDefault(editState.id);
                 PrefSlotEditState newSlot = new PrefSlotEditState();
-                newSlot.taskId = editState.id;
-                newSlot.days = EnumSet.allOf(DayOfWeek.class);
-                newSlot.start = LocalTime.of(6, 0);
+                newSlot.taskId = defaultSlot.taskId;
+                newSlot.days = defaultSlot.days;
+                newSlot.start = defaultSlot.start;
                 editState.prefSlots.add(newSlot);
             }
         } else if (newRepsPerDay < currentCount && newRepsPerDay > 0) {
