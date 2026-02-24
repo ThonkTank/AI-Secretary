@@ -19,13 +19,22 @@ import java.util.Map;
 
 public class TaskScorer {
 
-    private static final double MAX_AGING = 3.0;
+    private static final double DEFAULT_MAX_AGING_MULTIPLIER = 3.0;
+    private static final double DEFAULT_PREFERRED_START_DEVIATION_HOURS = 8.0;
 
     private final TaskLifecycleManager lifecycleManager;
+    private final double maxAgingMultiplier;
+    private final double preferredStartDeviationHours;
     private final Map<String, ScoringCache> caches = new HashMap<>();
 
     public TaskScorer(TaskLifecycleManager lifecycleManager) {
+        this(lifecycleManager, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
+    }
+
+    public TaskScorer(TaskLifecycleManager lifecycleManager, double maxAgingMultiplier, double preferredStartDeviationHours) {
         this.lifecycleManager = lifecycleManager;
+        this.maxAgingMultiplier = maxAgingMultiplier;
+        this.preferredStartDeviationHours = preferredStartDeviationHours;
     }
 
     public void reset() {
@@ -93,7 +102,7 @@ public class TaskScorer {
         cache.sinceLast = (int) ChronoUnit.DAYS.between(cache.lastCompletion, today);
         cache.remainingDays = task.remainingDays();
         cache.requiredDays = task.requiredDays();
-        cache.agingForce = Math.min(1 + ((double) cache.sinceLast / 10), MAX_AGING);
+        cache.agingForce = Math.min(1 + ((double) cache.sinceLast / 10), maxAgingMultiplier);
         cache.repsPerDay = task.core.repsPerDay();
         cache.deadlineExpired = task.core.closeOnMiss && task.core.deadline != null && today.isAfter(task.core.deadline);
 
@@ -147,7 +156,7 @@ public class TaskScorer {
 
         if (prefStart != null) {
             double dif = Duration.between(start.toLocalTime(), prefStart).toMinutes() / 60.0;
-            double fit = Math.max(0, 1 - Math.abs(dif / 8));
+            double fit = Math.max(0, 1 - Math.abs(dif / preferredStartDeviationHours));
             totalPrio = (int) (totalPrio * fit);
         }
 

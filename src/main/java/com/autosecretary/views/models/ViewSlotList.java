@@ -2,6 +2,7 @@ package com.autosecretary.views.models;
 
 import java.util.List;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -37,6 +38,14 @@ public class ViewSlotList {
     );
 
     public static class ViewSlot {
+        public enum DeadlineUrgency {
+            NONE,
+            OVERDUE,
+            TODAY,
+            SOON,
+            FUTURE
+        }
+
         public Task task;
         public TaskSlot slot;
         public int depth;
@@ -46,6 +55,25 @@ public class ViewSlotList {
         public ViewSlot (Task task, TaskSlot slot) {
             this.task = task;
             this.slot = slot;
+        }
+
+        public long daysUntilDeadline() {
+            if (task.core.deadline == null) {
+                return Long.MAX_VALUE;
+            }
+            return ChronoUnit.DAYS.between(LocalDate.now(), task.core.deadline);
+        }
+
+        public DeadlineUrgency deadlineUrgency() {
+            if (task.core.deadline == null) {
+                return DeadlineUrgency.NONE;
+            }
+
+            long daysUntil = daysUntilDeadline();
+            if (daysUntil < 0) return DeadlineUrgency.OVERDUE;
+            if (daysUntil == 0) return DeadlineUrgency.TODAY;
+            if (daysUntil <= 3) return DeadlineUrgency.SOON;
+            return DeadlineUrgency.FUTURE;
         }
     }
 
