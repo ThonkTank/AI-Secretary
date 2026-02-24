@@ -377,71 +377,64 @@ public class TaskEditDialog extends DialogFragment {
     }
 
     private void collectAllFields() {
-        TaskEditPresenter.FormData formData = new TaskEditPresenter.FormData();
+        TaskEditPresenter.FormInput input = new TaskEditPresenter.FormInput();
+        input.title = titleView.getText().toString();
+        input.description = descriptionView.getText().toString();
+        input.priority = TaskEditPresenter.coalesce(
+            (Priority) priorityView.getSelectedItem(),
+            TaskEditPresenter.InputDefaults.PRIORITY
+        );
 
-        TaskEditPresenter.BasicInfoInput basicInfo = new TaskEditPresenter.BasicInfoInput();
-        basicInfo.title = titleView.getText().toString();
-        basicInfo.description = descriptionView.getText().toString();
-        basicInfo.priority = InputParser.parsePriority((Priority) priorityView.getSelectedItem());
-        formData.basicInfo = basicInfo;
+        input.closeOnMiss = closeOnMissView.isChecked();
+        input.minDuration = TaskEditPresenter.parseIntSafe(
+            minDurationView.getText().toString(),
+            TaskEditPresenter.InputDefaults.MIN_DURATION
+        );
+        input.maxDuration = TaskEditPresenter.parseIntSafe(
+            maxDurationView.getText().toString(),
+            TaskEditPresenter.InputDefaults.MAX_DURATION
+        );
+        input.cooldown = TaskEditPresenter.parseIntSafe(
+            cooldownView.getText().toString(),
+            TaskEditPresenter.InputDefaults.COOLDOWN
+        );
+        input.adaptive = adaptiveView.isChecked();
 
-        TaskEditPresenter.ScheduleInput schedule = new TaskEditPresenter.ScheduleInput();
-        schedule.closeOnMiss = closeOnMissView.isChecked();
-        schedule.minDuration = InputParser.parseScheduleInt(minDurationView, TaskEditPresenter.InputDefaults.MIN_DURATION);
-        schedule.maxDuration = InputParser.parseScheduleInt(maxDurationView, TaskEditPresenter.InputDefaults.MAX_DURATION);
-        schedule.cooldown = InputParser.parseScheduleInt(cooldownView, TaskEditPresenter.InputDefaults.COOLDOWN);
-        schedule.adaptive = adaptiveView.isChecked();
-        formData.schedule = schedule;
+        input.repetitionEnabled = toggleRepetition.isChecked();
+        input.reps = TaskEditPresenter.parseIntSafe(
+            repsView.getText().toString(),
+            TaskEditPresenter.InputDefaults.REPETITION_REPS
+        );
+        input.perPeriod = TaskEditPresenter.parseIntSafe(
+            perPeriodView.getText().toString(),
+            TaskEditPresenter.InputDefaults.REPETITION_PER_PERIOD
+        );
+        input.periodUnit = TaskEditPresenter.coalesce(
+            (Period) periodUnitView.getSelectedItem(),
+            TaskEditPresenter.InputDefaults.REPETITION_PERIOD_UNIT
+        );
 
-        TaskEditPresenter.RepetitionInput repetition = new TaskEditPresenter.RepetitionInput();
-        repetition.enabled = toggleRepetition.isChecked();
-        repetition.reps = InputParser.parseRepetitionInt(repsView, TaskEditPresenter.InputDefaults.REPETITION_REPS);
-        repetition.perPeriod = InputParser.parseRepetitionInt(perPeriodView, TaskEditPresenter.InputDefaults.REPETITION_PER_PERIOD);
-        repetition.periodUnit = InputParser.parsePeriod((Period) periodUnitView.getSelectedItem());
-        formData.repetition = repetition;
+        input.progressEnabled = toggleProgress.isChecked();
+        input.unit = unitView.getText().toString();
+        input.target = TaskEditPresenter.parseIntSafe(
+            targetView.getText().toString(),
+            TaskEditPresenter.InputDefaults.TARGET
+        );
+        input.current = TaskEditPresenter.parseIntSafe(
+            currentView.getText().toString(),
+            TaskEditPresenter.InputDefaults.CURRENT
+        );
+        input.resetPerRep = resetPerRepView.isChecked();
+        input.minPerRep = TaskEditPresenter.parseIntSafe(
+            minPerRepView.getText().toString(),
+            TaskEditPresenter.InputDefaults.MIN_PER_REP
+        );
+        input.maxPerRep = TaskEditPresenter.parseIntSafe(
+            maxPerRepView.getText().toString(),
+            TaskEditPresenter.InputDefaults.MAX_PER_REP
+        );
 
-        TaskEditPresenter.ProgressInput progress = new TaskEditPresenter.ProgressInput();
-        progress.enabled = toggleProgress.isChecked();
-        progress.unit = unitView.getText().toString();
-        progress.target = InputParser.parseProgressInt(targetView, TaskEditPresenter.InputDefaults.TARGET);
-        progress.current = InputParser.parseProgressInt(currentView, TaskEditPresenter.InputDefaults.CURRENT);
-        progress.resetPerRep = resetPerRepView.isChecked();
-        progress.minPerRep = InputParser.parseProgressInt(minPerRepView, TaskEditPresenter.InputDefaults.MIN_PER_REP);
-        progress.maxPerRep = InputParser.parseProgressInt(maxPerRepView, TaskEditPresenter.InputDefaults.MAX_PER_REP);
-        formData.progress = progress;
-
-        presenter.collectAllFields(formData);
-    }
-
-
-    private static final class InputParser {
-        private static int parseScheduleInt(EditText view, int fallback) {
-            return parseIntWithFallback(view.getText().toString(), fallback);
-        }
-
-        private static int parseRepetitionInt(EditText view, int fallback) {
-            return parseIntWithFallback(view.getText().toString(), fallback);
-        }
-
-        private static int parseProgressInt(EditText view, int fallback) {
-            return parseIntWithFallback(view.getText().toString(), fallback);
-        }
-
-        private static Priority parsePriority(Priority priority) {
-            return priority != null ? priority : TaskEditPresenter.InputDefaults.PRIORITY;
-        }
-
-        private static Period parsePeriod(Period period) {
-            return period != null ? period : TaskEditPresenter.InputDefaults.REPETITION_PERIOD_UNIT;
-        }
-
-        private static int parseIntWithFallback(String value, int fallback) {
-            try {
-                return Integer.parseInt(value.trim());
-            } catch (Exception ignored) {
-                return fallback;
-            }
-        }
+        presenter.applyForm(input);
     }
 
     private int dpToPx(int dp) {

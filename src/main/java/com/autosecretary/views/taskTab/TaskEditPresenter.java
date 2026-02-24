@@ -85,44 +85,34 @@ public class TaskEditPresenter {
         return (int) Math.ceil((double) reps / (double) periodInDays);
     }
 
-    public void collectAllFields(FormData formData) {
-        BasicInfoInput basicInfo = formData.basicInfo != null ? formData.basicInfo : new BasicInfoInput();
-        ScheduleInput schedule = formData.schedule != null ? formData.schedule : new ScheduleInput();
-        RepetitionInput repetition = formData.repetition != null ? formData.repetition : new RepetitionInput();
-        ProgressInput progress = formData.progress != null ? formData.progress : new ProgressInput();
+    public void applyForm(FormInput input) {
+        FormInput safeInput = input != null ? input : new FormInput();
+        editState.title = safeInput.title;
+        editState.description = safeInput.description;
+        editState.priority = coalesce(safeInput.priority, InputDefaults.PRIORITY);
 
-        mapBasicInfo(basicInfo);
-        mapSchedule(schedule);
-        updateOrResetRepetition(repetition);
-        updateOrResetProgress(progress);
+        editState.closeOnMiss = safeInput.closeOnMiss;
+        editState.minDuration = safeInput.minDuration;
+        editState.maxDuration = safeInput.maxDuration;
+        editState.cooldown = safeInput.cooldown;
+        editState.adaptive = safeInput.adaptive;
+
+        updateOrResetRepetition(safeInput);
+        updateOrResetProgress(safeInput);
     }
 
-    private void mapBasicInfo(BasicInfoInput basicInfo) {
-        editState.title = basicInfo.title;
-        editState.description = basicInfo.description;
-        editState.priority = basicInfo.priority;
-    }
-
-    private void mapSchedule(ScheduleInput schedule) {
-        editState.closeOnMiss = schedule.closeOnMiss;
-        editState.minDuration = schedule.minDuration;
-        editState.maxDuration = schedule.maxDuration;
-        editState.cooldown = schedule.cooldown;
-        editState.adaptive = schedule.adaptive;
-    }
-
-    private void updateOrResetRepetition(RepetitionInput repetition) {
-        if (repetition.enabled) {
-            updateRepetition(repetition);
+    private void updateOrResetRepetition(FormInput input) {
+        if (input.repetitionEnabled) {
+            updateRepetition(input);
             return;
         }
         resetRepetition();
     }
 
-    private void updateRepetition(RepetitionInput repetition) {
-        int newReps = repetition.reps;
-        int newPerPeriod = repetition.perPeriod;
-        Period newPeriodUnit = repetition.periodUnit;
+    private void updateRepetition(FormInput input) {
+        int newReps = input.reps;
+        int newPerPeriod = input.perPeriod;
+        Period newPeriodUnit = input.periodUnit;
 
         boolean periodChanged =
             newReps != editState.reps ||
@@ -147,21 +137,21 @@ public class TaskEditPresenter {
         editState.periodStart = null;
     }
 
-    private void updateOrResetProgress(ProgressInput progress) {
-        if (progress.enabled) {
-            updateProgress(progress);
+    private void updateOrResetProgress(FormInput input) {
+        if (input.progressEnabled) {
+            updateProgress(input);
             return;
         }
         resetProgress();
     }
 
-    private void updateProgress(ProgressInput progress) {
-        editState.unit = progress.unit;
-        editState.target = progress.target;
-        editState.current = progress.current;
-        editState.resetPerRep = progress.resetPerRep;
-        editState.minPerRep = progress.minPerRep;
-        editState.maxPerRep = progress.maxPerRep;
+    private void updateProgress(FormInput input) {
+        editState.unit = input.unit;
+        editState.target = input.target;
+        editState.current = input.current;
+        editState.resetPerRep = input.resetPerRep;
+        editState.minPerRep = input.minPerRep;
+        editState.maxPerRep = input.maxPerRep;
     }
 
     private void resetProgress() {
@@ -172,12 +162,16 @@ public class TaskEditPresenter {
         return mapper.toTask(editState, baseTask);
     }
 
-    private static int parseIntSafe(String s, int fallback) {
+    public static int parseIntSafe(String s, int fallback) {
         try {
             return Integer.parseInt(s.trim());
         } catch (Exception e) {
             return fallback;
         }
+    }
+
+    public static <T> T coalesce(T value, T fallback) {
+        return value != null ? value : fallback;
     }
 
     public static class InputDefaults {
@@ -198,36 +192,23 @@ public class TaskEditPresenter {
         public static final int MAX_PER_REP = 0;
     }
 
-    public static class FormData {
-        public BasicInfoInput basicInfo;
-        public ScheduleInput schedule;
-        public RepetitionInput repetition;
-        public ProgressInput progress;
-    }
-
-    public static class BasicInfoInput {
+    public static class FormInput {
         public String title;
         public String description;
         public Priority priority = InputDefaults.PRIORITY;
-    }
 
-    public static class ScheduleInput {
         public boolean closeOnMiss;
         public int minDuration = InputDefaults.MIN_DURATION;
         public int maxDuration = InputDefaults.MAX_DURATION;
         public int cooldown = InputDefaults.COOLDOWN;
         public boolean adaptive;
-    }
 
-    public static class RepetitionInput {
-        public boolean enabled;
+        public boolean repetitionEnabled;
         public int reps = InputDefaults.REPETITION_REPS;
         public int perPeriod = InputDefaults.REPETITION_PER_PERIOD;
         public Period periodUnit = InputDefaults.REPETITION_PERIOD_UNIT;
-    }
 
-    public static class ProgressInput {
-        public boolean enabled;
+        public boolean progressEnabled;
         public String unit;
         public int target = InputDefaults.TARGET;
         public int current = InputDefaults.CURRENT;
