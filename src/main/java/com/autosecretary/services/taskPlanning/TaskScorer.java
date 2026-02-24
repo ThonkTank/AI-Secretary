@@ -62,11 +62,40 @@ public class TaskScorer {
         ScoringCache cache = new ScoringCache();
         caches.put(task.core.id, cache);
         LocalDate today = LocalDate.now();
+        TaskCore.Repetition rep = task.core.repetition;
 
-        // 1. Täglicher Upkeep
+        advanceTaskPeriod(task, cache);
+        scanSlots(task, cache, today);
+        computeCompletionState(task, cache);
+        computeDerivedMetrics(task, cache, today);
+        computeTodayPrefSlots(task, cache, today.getDayOfWeek());
+    }
+
+    /**
+     * Advances repetition windows before reading slot-derived counters.
+     * <p>
+     * Invariant assumptions:
+     * <ul>
+     *   <li>{@code task} and {@code cache} are non-null.</li>
+     *   <li>{@code task.core.repetition} may be null and is handled by {@link TaskLifecycleManager}.</li>
+     *   <li>Must be executed before {@link #scanSlots(Task, ScoringCache, LocalDate)} so period boundaries are up-to-date.</li>
+     * </ul>
+     */
+    private void advanceTaskPeriod(Task task, ScoringCache cache) {
         lifecycleManager.advancePeriods(task);
+    }
 
-        // 2. Slot-Scan (einmalig)
+    /**
+     * Performs a single pass over all slots and fills raw counters in the cache.
+     * <p>
+     * Invariant assumptions:
+     * <ul>
+     *   <li>{@code task}, {@code cache}, and {@code today} are non-null.</li>
+     *   <li>{@code task.core.repetition} may be null, have null {@code periodUnit}, or no active period start.</li>
+     *   <li>Uses half-open period range {@code [periodStart, periodEnd)} when counting period completions.</li>
+     * </ul>
+     */
+    private void scanSlots(Task task, ScoringCache cache, LocalDate today) {
         cache.completions = 0;
         cache.scheduledToday = 0;
         cache.lastCompletion = task.core.created.minusDays(1);
@@ -90,15 +119,39 @@ public class TaskScorer {
                 cache.scheduledToday++;
             }
         }
+    }
 
+    /**
+     * Derives completion state from scanned slot counters and repetition settings.
+     * <p>
+     * Invariant assumptions:
+     * <ul>
+     *   <li>{@code task} and {@code cache} are non-null.</li>
+     *   <li>{@code cache.periodCompletions} and {@code cache.completions} were populated by {@link #scanSlots(Task, ScoringCache, LocalDate)}.</li>
+     *   <li>If repetition is disabled ({@code rep == null}, {@code reps <= 0}, or null period unit), completion falls back to any historical completion.</li>
+     * </ul>
+     */
+    private void computeCompletionState(Task task, ScoringCache cache) {
+        TaskCore.Repetition rep = task.core.repetition;
         if (rep != null && rep.reps > 0 && rep.periodUnit != null) {
             rep.periodCompletions = cache.periodCompletions;
             cache.isComplete = cache.periodCompletions >= rep.reps;
         } else {
             cache.isComplete = cache.completions > 0;
         }
+    }
 
-        // 3. Scoring-Konstanten vorberechnen
+    /**
+     * Computes scoring metrics that depend on current day, deadline, and child priorities.
+     * <p>
+     * Invariant assumptions:
+     * <ul>
+     *   <li>{@code task}, {@code cache}, and {@code today} are non-null.</li>
+     *   <li>{@code cache.lastCompletion} was initialized during slot scanning.</li>
+     *   <li>Deadline is considered expired only when {@code closeOnMiss} is true, deadline exists, and {@code today} is strictly after deadline.</li>
+     * </ul>
+     */
+    private void computeDerivedMetrics(Task task, ScoringCache cache, LocalDate today) {
         cache.sinceLast = (int) ChronoUnit.DAYS.between(cache.lastCompletion, today);
         cache.remainingDays = task.remainingDays();
         cache.requiredDays = task.requiredDays();
@@ -110,11 +163,22 @@ public class TaskScorer {
         for (Task child : task.children) {
             cache.maxChildPriority = Math.max(cache.maxChildPriority, child.core.priority.value);
         }
+    }
 
-        DayOfWeek todayDow = today.getDayOfWeek();
+    /**
+     * Filters preferred slots to weekday-compatible entries for today's scoring.
+     * <p>
+     * Invariant assumptions:
+     * <ul>
+     *   <li>{@code task}, {@code cache}, and {@code dayOfWeek} are non-null.</li>
+     *   <li>{@code TaskPrefSlot.days} may be null and is treated as "not applicable".</li>
+     *   <li>Produces a fresh list each run to avoid leaking state across maintenance invocations.</li>
+     * </ul>
+     */
+    private void computeTodayPrefSlots(Task task, ScoringCache cache, DayOfWeek dayOfWeek) {
         cache.todayPrefSlots = new ArrayList<>();
         for (TaskPrefSlot ps : task.prefSlots) {
-            if (ps.days != null && ps.days.contains(todayDow)) {
+            if (ps.days != null && ps.days.contains(dayOfWeek)) {
                 cache.todayPrefSlots.add(ps);
             }
         }
