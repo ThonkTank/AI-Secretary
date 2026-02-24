@@ -9,22 +9,29 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
-public class LoadTaskListUseCase {
+public class TaskAsyncDataService {
     private final TaskDAO taskDao;
     private final TaskListItemMapper mapper;
     private final ExecutorService executor;
 
-    public LoadTaskListUseCase(TaskDAO taskDao, TaskListItemMapper mapper, ExecutorService executor) {
+    public TaskAsyncDataService(TaskDAO taskDao, TaskListItemMapper mapper, ExecutorService executor) {
         this.taskDao = taskDao;
         this.mapper = mapper;
         this.executor = executor;
     }
 
-    public void execute(Consumer<List<TaskListItem>> callback) {
+    public void loadAllMapped(Consumer<List<TaskListItem>> callback) {
         executor.execute(() -> callback.accept(mapper.map(taskDao.readAll())));
     }
 
-    public void loadTask(String taskId, Consumer<Task> callback) {
-        executor.execute(() -> callback.accept(taskDao.read(taskId)));
+    public void loadTask(String id, Consumer<Task> callback) {
+        executor.execute(() -> callback.accept(taskDao.read(id)));
+    }
+
+    public void saveTask(Task task, Runnable onSaved) {
+        executor.execute(() -> {
+            taskDao.write(task);
+            onSaved.run();
+        });
     }
 }

@@ -6,9 +6,8 @@ import android.util.Log;
 import com.autosecretary.config.Preferences;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
-import com.autosecretary.features.task.application.LoadTaskListUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
-import com.autosecretary.features.task.application.SaveTaskUseCase;
+import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.application.mapper.TaskListItemMapper;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.SlotGenerator;
@@ -49,8 +48,7 @@ public class AppCompositionRoot {
         SlotGenerator generator = new SlotGenerator(scorer, message -> Log.d("SlotGen", message));
         TaskListItemMapper mapper = new TaskListItemMapper();
 
-        LoadTaskListUseCase loadTaskListUseCase = new LoadTaskListUseCase(taskDao, mapper, executor);
-        SaveTaskUseCase saveTaskUseCase = new SaveTaskUseCase(taskDao, executor);
+        TaskAsyncDataService taskAsyncDataService = new TaskAsyncDataService(taskDao, mapper, executor);
         CheckOffTaskUseCase checkOffTaskUseCase = new CheckOffTaskUseCase(
                 taskDao,
                 completionService,
@@ -71,8 +69,7 @@ public class AppCompositionRoot {
 
         return new TaskViewModelFactory(
                 app,
-                loadTaskListUseCase,
-                saveTaskUseCase,
+                taskAsyncDataService,
                 checkOffTaskUseCase,
                 regenerateScheduleUseCase
         );

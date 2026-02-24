@@ -7,9 +7,8 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
-import com.autosecretary.features.task.application.LoadTaskListUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
-import com.autosecretary.features.task.application.SaveTaskUseCase;
+import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
@@ -38,8 +37,7 @@ import java.util.function.Predicate;
  * </p>
  */
 public class TaskViewModel extends AndroidViewModel {
-    private final LoadTaskListUseCase loadTaskListUseCase;
-    private final SaveTaskUseCase saveTaskUseCase;
+    private final TaskAsyncDataService taskAsyncDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
 
@@ -54,13 +52,11 @@ public class TaskViewModel extends AndroidViewModel {
     private ListConfig activeListConfig = ListConfig.CHECKLIST;
 
     public TaskViewModel(Application app,
-                         LoadTaskListUseCase loadTaskListUseCase,
-                         SaveTaskUseCase saveTaskUseCase,
+                         TaskAsyncDataService taskAsyncDataService,
                          CheckOffTaskUseCase checkOffTaskUseCase,
                          RegenerateScheduleUseCase regenerateScheduleUseCase) {
         super(app);
-        this.loadTaskListUseCase = loadTaskListUseCase;
-        this.saveTaskUseCase = saveTaskUseCase;
+        this.taskAsyncDataService = taskAsyncDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
 
@@ -91,7 +87,7 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void beginEditTask(String taskId) {
-        loadTaskListUseCase.loadTask(taskId, task -> {
+        taskAsyncDataService.loadTask(taskId, task -> {
             selectedBaseTask.postValue(task);
             selectedTask.postValue(taskEditStateMapper.fromTask(task));
             isNewTask.postValue(false);
@@ -114,7 +110,7 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void saveEditedTask(Task mappedTask) {
-        saveTaskUseCase.execute(mappedTask, () -> {
+        taskAsyncDataService.saveTask(mappedTask, () -> {
             isNewTask.postValue(false);
             refreshList();
         });
@@ -227,7 +223,7 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     private void refreshList() {
-        loadTaskListUseCase.execute(items -> {
+        taskAsyncDataService.loadAllMapped(items -> {
             masterList.fromList(items);
             filterList();
         });
