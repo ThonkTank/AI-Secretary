@@ -42,6 +42,19 @@ Use the official Android setup guides to verify your environment (JDK, SDK, emul
 - `history/` → non-runtime historical snapshots and references.
 - `ops/` → non-runtime operational release artifacts and metadata.
 
+## Glossary
+
+- **Task**: The main work item that stores title, schedule settings, and progress in code (`Task` / `TaskCore`). In the UI it is shown as each row title via `TaskTitle` and created from `+ Neue Task` (`NewTaskButton`).
+- **Slot**: One concrete scheduled execution window of a task (`TaskSlot`, DB table `task_slots`). In the list row UI it maps to `StartTime` / `EndTime` (and completion via `TaskCheckBox`).
+- **PrefSlot**: A preferred time pattern used by scheduling (`TaskPrefSlot`, DB table `task_pref_slots`). In the editor UI this is the `PrefSlotContainer` section (day/time pickers per preferred slot).
+- **Repetition**: How often a task should repeat inside a time window (`TaskCore.Repetition`). In the editor UI this is controlled by `ToggleRepetition` and the `RepetitionContainer` fields.
+- **Period**: The unit for repetition windows (day/week/month via enum `Period`). In the editor UI this maps to the period unit picker `EditPeriodUnit` (next to `EditPerPeriod`).
+- **Streak**: Count of consecutive successful periods (`TaskCore.History.currentStreak`). In the task row UI it appears as `StreakDisplay` (e.g., `3x`).
+- **Adaptive**: Flag to automatically adjust preferred times from real completions (`TaskCore.adaptive`). In the editor UI this is the checkbox `EditAdaptive` (label `Adaptive Zeiten`).
+- **closeOnMiss**: Flag that closes tasks when deadline/period limits are missed (`TaskCore.closeOnMiss`). In the editor UI this is checkbox `EditCloseOnMiss` (label `Bei Überschreitung schließen`).
+- **Manage mode**: List mode for editing/organizing tasks rather than quick checking. In the list toolbar UI this is the toggle button labeled `Manage` (`ManagementButton` in `TaskListToggle`).
+- **Checklist mode**: List mode optimized for checking off planned items. In the list toolbar UI this is the toggle button labeled `Checklist` (`ChecklistButton` in `TaskListToggle`).
+
 ## Where to start reading
 
 - `views/MainActivity.java` (navigation host): start here to see how top-level navigation and app entry flow are wired before diving into feature internals.
