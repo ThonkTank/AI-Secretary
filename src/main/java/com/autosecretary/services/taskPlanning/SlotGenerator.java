@@ -1,45 +1,40 @@
 package com.autosecretary.services.taskPlanning;
 
-import android.util.Log;
-
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.List;
+import java.util.function.Consumer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 
-import com.autosecretary.database.*;
 import com.autosecretary.database.task.*;
 
 public class SlotGenerator {
-    private TaskDAO taskDao;
-    private LocalDateTime prefStart;
-    private LocalDateTime prefEnd;
+    private final Consumer<String> logger;
     private int newSlots;
     private Set<String> scheduledInSession;
     private Map<String, Task> allTasksById;
-    private TaskScorer scorer;
+    private final TaskScorer scorer;
 
-    public SlotGenerator(TaskDAO dao, LocalDateTime start, LocalDateTime end, TaskScorer scorer) {
-        this.taskDao = dao;
-        this.prefStart = start;
-        this.prefEnd = end;
-        this.scorer = scorer;
+    public SlotGenerator(TaskScorer scorer) {
+        this(scorer, null);
     }
 
-    private static final String TAG = "SlotGen";
+    public SlotGenerator(TaskScorer scorer, Consumer<String> logger) {
+        this.scorer = scorer;
+        this.logger = logger;
+    }
+
     private static final DateTimeFormatter HMM = DateTimeFormatter.ofPattern("HH:mm");
 
-    public void generateSlots() {
-        // Task baum bauen
+    public List<Task> generateSlots(List<Task> tasks, TimeWindow window) {
         newSlots = 0;
         scorer.reset();
-        List<Task> tasks = taskDao.readAll();
         List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
 
         List<Task> allTasks = TaskTreeOperations.flatten(taskTree);
@@ -50,13 +45,12 @@ public class SlotGenerator {
             scorer.maintenance(t);
         }
 
-        long windowMin = ChronoUnit.MINUTES.between(prefStart, prefEnd);
-        Log.d(TAG, "=== Generierung Start === Fenster " + prefStart.format(HMM) + "-" + prefEnd.format(HMM) + " (" + windowMin + "min), " + taskTree.size() + " root tasks");
+        long windowMin = ChronoUnit.MINUTES.between(window.start(), window.end());
+        log("=== Generierung Start === Fenster " + window.start().format(HMM) + "-" + window.end().format(HMM) + " (" + windowMin + "min), " + taskTree.size() + " root tasks");
 
-        assignSlot(taskTree, prefStart, prefEnd, null, 0);
+        assignSlot(taskTree, window.start(), window.end(), null, 0);
 
-        // Zusammenfassung
-        Log.d(TAG, "=== Zusammenfassung ===");
+        log("=== Zusammenfassung ===");
         for (Task t : allTasks) {
             int slotCount = t.slots.size();
             if (slotCount > 0) {
@@ -68,14 +62,14 @@ public class SlotGenerator {
                     sb.append(s.end != null ? s.end.format(HMM) : "?");
                     sb.append("(").append(s.score).append(")");
                 }
-                Log.d(TAG, "  " + t.core.title + ": " + slotCount + " slots [" + sb + "]");
+                log("  " + t.core.title + ": " + slotCount + " slots [" + sb + "]");
             } else {
-                Log.d(TAG, "  " + t.core.title + ": unscheduled");
+                log("  " + t.core.title + ": unscheduled");
             }
         }
-        Log.d(TAG, "Gesamt: " + newSlots + " slots");
+        log("Gesamt: " + newSlots + " slots");
 
-        taskDao.writeList(allTasks);
+        return allTasks;
     }
 
     private LocalDateTime assignSlot(List<Task> tasks, LocalDateTime cursor, LocalDateTime end, TaskSlot parentSlot, int depth) {
@@ -83,7 +77,7 @@ public class SlotGenerator {
 
         while (cursor.isBefore(end)) {
             long remaining = ChronoUnit.MINUTES.between(cursor, end);
-            Log.d(TAG, indent + "--- Cursor " + cursor.format(HMM) + " [depth=" + depth + "], " + remaining + "min übrig ---");
+            log(indent + "--- Cursor " + cursor.format(HMM) + " [depth=" + depth + "], " + remaining + "min übrig ---");
 
             Task bestTask = null;
             int bestScore = 0;
@@ -101,10 +95,10 @@ public class SlotGenerator {
                     bestTask = task;
                 }
             }
-            Log.d(TAG, indent + "  " + scores);
+            log(indent + "  " + scores);
 
             if (bestScore == 0) {
-                Log.d(TAG, indent + "  → (keine Task qualifiziert, Abbruch)");
+                log(indent + "  → (keine Task qualifiziert, Abbruch)");
                 break;
             }
 
@@ -125,7 +119,7 @@ public class SlotGenerator {
             scheduledInSession.add(bestTask.core.id);
             newSlots++;
 
-            Log.d(TAG, indent + "  → " + bestTask.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM) + "] score=" + bestScore);
+            log(indent + "  → " + bestTask.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM) + "] score=" + bestScore);
 
             cursor = slotEnd;
         }
@@ -150,5 +144,11 @@ public class SlotGenerator {
             if (!satisfied) return true;
         }
         return false;
+    }
+
+    private void log(String message) {
+        if (logger != null) {
+            logger.accept(message);
+        }
     }
 }

@@ -20,6 +20,6 @@ public class AppCompositionRoot {
         TaskDAO taskDao = db.taskDao();
         TaskDaoRepository taskRepository = new TaskDaoRepository(taskDao);
         Preferences preferences = new Preferences(app);
-        return TaskUseCaseFactory.create(taskRepository, taskDao, preferences);
+        return TaskUseCaseFactory.create(taskRepository, preferences);
     }
 }
