@@ -85,7 +85,7 @@ public class TaskEditDialog extends DialogFragment {
 
         rootView = LayoutInflater.from(getContext())
             .inflate(R.layout.fragment_task_editor, null);
-        prefSlotUIBuilder = new PrefSlotUIBuilder(requireContext(), this::dpToPx);
+        prefSlotUIBuilder = new PrefSlotUIBuilder(requireContext());
 
         bindBasicInfo();
         bindScheduling();
@@ -435,10 +435,6 @@ public class TaskEditDialog extends DialogFragment {
         );
 
         presenter.applyForm(input);
-    }
-
-    private int dpToPx(int dp) {
-        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
     }
 
     private static abstract class SimpleTextWatcher implements TextWatcher {

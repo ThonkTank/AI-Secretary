@@ -31,16 +31,10 @@ public class PrefSlotUIBuilder {
         void onTimeClicked(PrefSlotEditState prefSlot, TextView timeView);
     }
 
-    public interface DpToPx {
-        int convert(int dp);
-    }
-
     private final Context context;
-    private final DpToPx dpToPx;
 
-    public PrefSlotUIBuilder(Context context, DpToPx dpToPx) {
+    public PrefSlotUIBuilder(Context context) {
         this.context = context;
-        this.dpToPx = dpToPx;
     }
 
     public void rebuild(LinearLayout prefSlotContainer, List<PrefSlotEditState> editablePrefSlots,
@@ -61,7 +55,7 @@ public class PrefSlotUIBuilder {
             TextView header = new TextView(context);
             header.setText("Wiederholung " + key);
             header.setTypeface(null, Typeface.BOLD);
-            header.setPadding(0, dpToPx.convert(12), 0, dpToPx.convert(4));
+            header.setPadding(0, dpToPx(12), 0, dpToPx(4));
             prefSlotContainer.addView(header);
 
             List<PrefSlotEditState> slotsInGroup = slotMap.getOrDefault(key, Collections.emptyList());
@@ -69,11 +63,11 @@ public class PrefSlotUIBuilder {
                 LinearLayout row = new LinearLayout(context);
                 row.setOrientation(LinearLayout.HORIZONTAL);
                 row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setPadding(dpToPx.convert(16), dpToPx.convert(4), 0, dpToPx.convert(4));
+                row.setPadding(dpToPx(16), dpToPx(4), 0, dpToPx(4));
 
                 TextView daysView = new TextView(context);
                 daysView.setText(formatDaysAsRanges(prefSlot.days));
-                daysView.setPadding(0, dpToPx.convert(4), dpToPx.convert(16), dpToPx.convert(4));
+                daysView.setPadding(0, dpToPx(4), dpToPx(16), dpToPx(4));
                 daysView.setTextSize(14);
 
                 Set<DayOfWeek> takenByOthers = computeTakenDays(prefSlot, slotsInGroup);
@@ -83,7 +77,7 @@ public class PrefSlotUIBuilder {
                 timeView.setText(prefSlot.start != null
                     ? prefSlot.start.format(DateTimeFormatter.ofPattern("HH:mm"))
                     : "--:--");
-                timeView.setPadding(0, dpToPx.convert(4), 0, dpToPx.convert(4));
+                timeView.setPadding(0, dpToPx(4), 0, dpToPx(4));
                 timeView.setTextSize(14);
                 timeView.setTypeface(Typeface.MONOSPACE);
                 timeView.setOnClickListener(v -> listener.onTimeClicked(prefSlot, timeView));
@@ -162,5 +156,9 @@ public class PrefSlotUIBuilder {
             }
         }
         return taken;
+    }
+
+    private int dpToPx(int dp) {
+        return (int) (dp * context.getResources().getDisplayMetrics().density + 0.5f);
     }
 }
