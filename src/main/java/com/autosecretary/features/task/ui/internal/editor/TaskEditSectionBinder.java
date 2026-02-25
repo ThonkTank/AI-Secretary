@@ -14,7 +14,7 @@ import com.autosecretary.R;
 import com.autosecretary.constants.Period;
 import com.autosecretary.constants.Priority;
 import com.autosecretary.features.task.ui.TaskEditPresenter;
-import com.autosecretary.features.task.ui.model.TaskEditState;
+import com.autosecretary.features.task.ui.state.TaskEditState;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;

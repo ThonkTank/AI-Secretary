@@ -9,7 +9,7 @@ import android.widget.RemoteViewsService;
 import com.autosecretary.R;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.task.application.mapper.TaskListItemMapper;
-import com.autosecretary.features.task.application.model.TaskListItem;
+import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 
