@@ -5,6 +5,7 @@ import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
+import com.autosecretary.features.task.domain.TaskPlanningState;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
 
 import java.time.DayOfWeek;
@@ -26,9 +27,6 @@ import java.util.function.Consumer;
  */
 public class DefaultTaskSlotGenerator implements com.autosecretary.features.task.domain.TaskSlotGenerator {
 
-    private static final class PlanningStateAdapter implements PlanningState {
-        private final MultiDayState state = new MultiDayState();
-    }
 
     private static class CandidateSelection {
         private final Task task;
@@ -79,50 +77,41 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
     private static final DateTimeFormatter HMM = DateTimeFormatter.ofPattern("HH:mm");
 
     @Override
-    public PlanningState createPlanningState() {
-        return new PlanningStateAdapter();
+    public TaskPlanningState createPlanningState() {
+        return new TaskPlanningState();
     }
 
     @Override
-    public void recordPreservedSlots(List<Task> tasks, LocalDate startInclusive, LocalDate endExclusive, PlanningState state) {
-        MultiDayState multiDayState = unwrap(state);
+    public void recordPreservedSlots(List<Task> tasks, LocalDate startInclusive, LocalDate endExclusive, TaskPlanningState state) {
         for (Task task : tasks) {
             for (TaskSlot slot : task.slots) {
                 if (slot.day != null
                         && !slot.day.isBefore(startInclusive)
                         && slot.day.isBefore(endExclusive)
                         && (slot.completed || slot.realStart != null)) {
-                    multiDayState.recordScheduled(task.core.id, slot.day);
+                    state.recordScheduled(task.core.id, slot.day);
                 }
             }
         }
     }
 
     @Override
-    public void generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, PlanningState state) {
-        generateSlotsForDay(tasks, new TimeWindow(windowStart, windowEnd), unwrap(state));
+    public void generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
+        generateSlotsForDay(tasks, new TimeWindow(windowStart, windowEnd), state);
     }
 
     @Override
-    public void recordScheduledSlotsForDay(List<Task> tasks, LocalDate day, PlanningState state) {
-        MultiDayState multiDayState = unwrap(state);
+    public void recordScheduledSlotsForDay(List<Task> tasks, LocalDate day, TaskPlanningState state) {
         for (Task task : tasks) {
             for (TaskSlot slot : task.slots) {
-                if (slot.day.equals(day) && slot.scheduled && !multiDayState.getScheduledDays(task.core.id).contains(day)) {
-                    multiDayState.recordScheduled(task.core.id, day);
+                if (slot.day.equals(day) && slot.scheduled && !state.getScheduledDays(task.core.id).contains(day)) {
+                    state.recordScheduled(task.core.id, day);
                 }
             }
         }
     }
 
-    private MultiDayState unwrap(PlanningState state) {
-        if (!(state instanceof PlanningStateAdapter adapter)) {
-            throw new IllegalArgumentException("Unsupported planning state implementation");
-        }
-        return adapter.state;
-    }
-
-    private void generateSlotsForDay(List<Task> tasks, TimeWindow window, MultiDayState state) {
+    private void generateSlotsForDay(List<Task> tasks, TimeWindow window, TaskPlanningState state) {
         schedulingDay = window.start().toLocalDate();
         newSlots = 0;
         scorer.reset();

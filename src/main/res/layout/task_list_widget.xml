@@ -19,7 +19,7 @@
             android:id="@+id/widget_prev_day"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="\u25C0"
+            android:text="@string/widget_day_nav_prev"
             android:textSize="16sp"
             android:padding="8dp"
             android:textColor="#333333" />
@@ -33,13 +33,13 @@
             android:textSize="15sp"
             android:textStyle="bold"
             android:textColor="#333333"
-            android:text="Heute" />
+            android:text="@string/widget_day_nav_today" />
 
         <TextView
             android:id="@+id/widget_next_day"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="\u25B6"
+            android:text="@string/widget_day_nav_next"
             android:textSize="16sp"
             android:padding="8dp"
             android:textColor="#333333" />
@@ -59,7 +59,7 @@
             android:layout_height="32dp"
             android:src="@android:drawable/ic_popup_sync"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Aktualisieren"
+            android:contentDescription="@string/widget_refresh_content_description"
             android:scaleType="fitCenter" />
     </LinearLayout>
 
@@ -79,7 +79,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:gravity="center"
-        android:text="Keine Aufgaben"
+        android:text="@string/widget_empty"
         android:textColor="#888888"
         android:textSize="14sp"
         android:visibility="gone" />

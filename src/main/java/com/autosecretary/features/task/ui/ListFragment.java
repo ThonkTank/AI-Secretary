@@ -19,6 +19,8 @@ import java.util.Locale;
 import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
+import com.autosecretary.features.task.ui.edit.TaskEditDialog;
+import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 
 public class ListFragment extends Fragment {
 
@@ -42,7 +44,6 @@ public class ListFragment extends Fragment {
         ListRowAdapter adapter = new ListRowAdapter(
                 new ArrayList<>(),
                 vm::checkOff,
-                viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId),
                 viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId)
         );
 

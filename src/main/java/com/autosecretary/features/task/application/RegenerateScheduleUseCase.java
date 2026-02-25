@@ -4,6 +4,7 @@ import com.autosecretary.config.Preferences;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskSeedDataFactory;
+import com.autosecretary.features.task.domain.TaskPlanningState;
 import com.autosecretary.features.task.domain.TaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
 
@@ -62,7 +63,7 @@ public class RegenerateScheduleUseCase {
             }
 
             // 2) Initialize cross-day state from preserved slots (completed/in-progress)
-            TaskSlotGenerator.PlanningState state = generator.createPlanningState();
+            TaskPlanningState state = generator.createPlanningState();
             generator.recordPreservedSlots(tasks, today, windowEnd, state);
 
             // 3) Flatten once, then schedule day by day
