@@ -9,16 +9,10 @@ import androidx.lifecycle.MutableLiveData;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
-import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskCore;
-import com.autosecretary.features.task.data.TaskPrefSlotFactory;
-import com.autosecretary.features.task.ui.internal.mapper.TaskEditStateMapper;
-import com.autosecretary.features.task.ui.model.TaskEditState;
 import com.autosecretary.features.task.ui.model.ViewSlotList;
 import com.autosecretary.features.task.ui.model.ViewSlotList.ViewSlot;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
@@ -31,22 +25,18 @@ import java.util.function.Predicate;
  * {@link ViewSlotList#displaySlots} are published to {@link #displayList} for the UI.
  * </p>
  * <p>
- * This ViewModel also manages task-selection/editing state ({@link #selectedTask},
- * {@link #selectedBaseTask}, {@link #isNewTask}) and delegates persistence/scheduling actions to
- * use cases.
+ * Editing lifecycle is delegated to {@link TaskEditSessionController} while this ViewModel keeps
+ * list-oriented concerns and scheduling actions.
  * </p>
  */
 public class TaskViewModel extends AndroidViewModel {
     private final TaskAsyncDataService taskAsyncDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
+    private final TaskEditSessionController taskEditSessionController;
 
     private final ViewSlotList masterList;
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
-    private final MutableLiveData<TaskEditState> selectedTask = new MutableLiveData<>();
-    private final MutableLiveData<Task> selectedBaseTask = new MutableLiveData<>();
-    private final TaskEditStateMapper taskEditStateMapper = new TaskEditStateMapper();
-    private final MutableLiveData<Boolean> isNewTask = new MutableLiveData<>(false);
 
     private LocalDate day;
     private ListConfig activeListConfig = ListConfig.CHECKLIST;
@@ -59,6 +49,7 @@ public class TaskViewModel extends AndroidViewModel {
         this.taskAsyncDataService = taskAsyncDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
+        this.taskEditSessionController = new TaskEditSessionController(taskAsyncDataService, this::refreshList);
 
         this.masterList = new ViewSlotList();
         applyChecklistPreset();
@@ -69,52 +60,10 @@ public class TaskViewModel extends AndroidViewModel {
         return displayList;
     }
 
-    public LiveData<TaskEditState> getSelectedTask() {
-        return selectedTask;
+    public TaskEditSessionController getTaskEditSessionController() {
+        return taskEditSessionController;
     }
 
-    public boolean isNewTask() {
-        Boolean value = isNewTask.getValue();
-        return value != null && value;
-    }
-
-    public TaskEditState requireSelectedTask() {
-        TaskEditState task = selectedTask.getValue();
-        if (task == null) {
-            throw new IllegalStateException("No task selected for editing.");
-        }
-        return task;
-    }
-
-    public void beginEditTask(String taskId) {
-        taskAsyncDataService.loadTask(taskId, task -> {
-            selectedBaseTask.setValue(task);
-            selectedTask.setValue(taskEditStateMapper.fromTask(task));
-            isNewTask.setValue(false);
-        });
-    }
-
-    public void createNewTask() {
-        Task task = new Task();
-        task.core = new TaskCore();
-        task.slots = new ArrayList<>();
-        task.prefSlots = new ArrayList<>();
-        task.parents = new ArrayList<>();
-        task.prerequisites = new ArrayList<>();
-
-        task.prefSlots.add(TaskPrefSlotFactory.createDefault(task.core.id));
-
-        selectedBaseTask.setValue(task);
-        selectedTask.setValue(taskEditStateMapper.fromTask(task));
-        isNewTask.setValue(true);
-    }
-
-    public void saveEditedTask(Task mappedTask) {
-        taskAsyncDataService.saveTask(mappedTask, () -> {
-            isNewTask.setValue(false);
-            refreshList();
-        });
-    }
 
     /**
      * Applies the checklist browsing preset.
@@ -208,14 +157,6 @@ public class TaskViewModel extends AndroidViewModel {
 
         masterList.sort(groupByTaskParent, comparator);
         displayList.setValue(masterList.displaySlots);
-    }
-
-    public Task requireSelectedBaseTask() {
-        Task task = selectedBaseTask.getValue();
-        if (task == null) {
-            throw new IllegalStateException("No base task selected for editing.");
-        }
-        return task;
     }
 
     public void checkOff(ViewSlot viewSlot) {
