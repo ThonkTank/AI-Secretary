@@ -5,32 +5,30 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:padding="4dp"
-    android:background="#FFFFFF">
+    android:padding="@dimen/spacing_xs"
+    android:background="@color/task_widget_surface">
 
     <!-- Time column -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_marginEnd="8dp"
-        android:minWidth="40dp">
+        android:layout_marginEnd="@dimen/spacing_sm"
+        android:minWidth="@dimen/widget_time_column_min_width">
 
         <TextView
             android:id="@+id/widget_row_start"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="11sp"
-            android:textColor="#555555"
-            android:fontFamily="monospace" />
+            android:textAppearance="@style/TextAppearance.Task.Time.Primary"
+            android:textColor="@color/task_widget_text_secondary" />
 
         <TextView
             android:id="@+id/widget_row_end"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="11sp"
-            android:textColor="#999999"
-            android:fontFamily="monospace" />
+            android:textAppearance="@style/TextAppearance.Task.Time.Secondary"
+            android:textColor="@color/task_widget_text_muted" />
     </LinearLayout>
 
     <!-- Checkbox -->
@@ -38,7 +36,7 @@
         android:id="@+id/widget_row_checkbox"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="4dp"
+        android:layout_marginEnd="@dimen/spacing_xs"
         android:focusable="false" />
 
     <!-- Title -->
@@ -47,18 +45,18 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:textSize="13sp"
-        android:textColor="#333333"
         android:ellipsize="end"
-        android:maxLines="1" />
+        android:maxLines="1"
+        android:textAppearance="@style/TextAppearance.Task.Title"
+        android:textColor="@color/task_widget_text_primary" />
 
     <!-- Streak -->
     <TextView
         android:id="@+id/widget_row_streak"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textSize="11sp"
-        android:textColor="#888888"
-        android:layout_marginStart="4dp" />
+        android:layout_marginStart="@dimen/spacing_xs"
+        android:textAppearance="@style/TextAppearance.Task.Metadata"
+        android:textColor="@color/task_widget_text_muted" />
 
 </LinearLayout>

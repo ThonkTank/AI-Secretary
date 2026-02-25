@@ -3,6 +3,7 @@ package com.autosecretary.features.task.domain;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
+import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskSlot;
 
 import java.time.DayOfWeek;
@@ -159,5 +160,29 @@ public class TaskLifecycleManager {
         newMinutes = Math.round(newMinutes / 5.0) * 5; // Round to nearest 5-minute granularity
 
         bestMatch.start = LocalTime.of((int) (newMinutes / 60), (int) (newMinutes % 60));
+    }
+
+    /**
+     * Adjusts the {@code minGapMinutes} of a prerequisite using an exponential moving
+     * average of the actual gap between the prerequisite's completion and the dependent
+     * task's start. Rounds to the nearest 5 minutes.
+     *
+     * @param prereq        the prerequisite relation to adapt
+     * @param prereqSlot    the prerequisite task's completed slot for the same day
+     * @param dependentSlot the dependent task's completed slot
+     */
+    public void adaptPrerequisiteGap(TaskPrerequisite prereq, TaskSlot prereqSlot, TaskSlot dependentSlot) {
+        if (prereqSlot == null || dependentSlot == null) return;
+        if (prereqSlot.realEnd == null || dependentSlot.realStart == null) return;
+        if (prereq.minGapMinutes <= 0) return;
+
+        long actualGapMinutes = Duration.between(prereqSlot.realEnd, dependentSlot.realStart).toMinutes();
+        if (actualGapMinutes < 0) actualGapMinutes += 24 * 60;
+
+        long newGap = Math.round(prereq.minGapMinutes * (1 - prefSlotEmaAlpha) + actualGapMinutes * prefSlotEmaAlpha);
+        newGap = Math.round(newGap / 5.0) * 5;
+        newGap = Math.max(0, newGap);
+
+        prereq.minGapMinutes = (int) newGap;
     }
 }

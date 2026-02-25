@@ -26,6 +26,7 @@ public class TaskPrerequisite {
     public String id = UUID.randomUUID().toString();
     public String taskId;
     public String prerequisiteId;
+    public int minGapMinutes = 0;
 
     public TaskPrerequisite() {}
 
@@ -33,5 +34,12 @@ public class TaskPrerequisite {
     public TaskPrerequisite(String taskId, String prerequisiteId) {
         this.taskId = taskId;
         this.prerequisiteId = prerequisiteId;
+    }
+
+    @Ignore
+    public TaskPrerequisite(String taskId, String prerequisiteId, int minGapMinutes) {
+        this.taskId = taskId;
+        this.prerequisiteId = prerequisiteId;
+        this.minGapMinutes = minGapMinutes;
     }
 }

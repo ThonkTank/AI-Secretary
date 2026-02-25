@@ -20,7 +20,7 @@ import android.content.Context;
 
 @Database (
         entities = {TaskPrefSlot.class, TaskRelation.class, TaskCore.class, TaskSlot.class, TaskPrerequisite.class},
-        version = 6,
+        version = 7,
         exportSchema = false
     )
 @TypeConverters(Converters.class)
