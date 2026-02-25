@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui.internal.editor;
+package com.autosecretary.features.task.ui.edit.internal.editor;
 
 import android.widget.CheckBox;
 import android.widget.EditText;

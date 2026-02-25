@@ -1,8 +1,8 @@
-package com.autosecretary.features.task.ui.internal.editor;
+package com.autosecretary.features.task.ui.edit.internal.editor;
 
 import com.autosecretary.constants.Period;
 import com.autosecretary.constants.Priority;
-import com.autosecretary.features.task.ui.TaskEditPresenter;
+import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 
 public class TaskEditFormInputBuilder {
 

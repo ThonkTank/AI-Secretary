@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui;
+package com.autosecretary.features.task.ui.edit;
 
 import android.app.Dialog;
 import android.app.TimePickerDialog;
@@ -17,12 +17,13 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.R;
 import com.autosecretary.constants.Period;
-import com.autosecretary.features.task.ui.internal.PrefSlotUIBuilder;
-import com.autosecretary.features.task.ui.internal.editor.TaskEditFormInputBuilder;
-import com.autosecretary.features.task.ui.internal.editor.TaskEditFormValidator;
-import com.autosecretary.features.task.ui.internal.editor.TaskEditFormViews;
-import com.autosecretary.features.task.ui.internal.editor.TaskEditSectionBinder;
-import com.autosecretary.features.task.ui.internal.mapper.TaskEditStateMapper;
+import com.autosecretary.features.task.ui.edit.internal.PrefSlotUIBuilder;
+import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormInputBuilder;
+import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormValidator;
+import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormViews;
+import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditSectionBinder;
+import com.autosecretary.features.task.ui.edit.internal.mapper.TaskEditStateMapper;
+import com.autosecretary.features.task.ui.TaskViewModel;
 import com.autosecretary.features.task.ui.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.state.TaskEditState;
 import com.google.android.material.button.MaterialButton;
