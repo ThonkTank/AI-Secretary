@@ -9,6 +9,19 @@
     <dimen name="indent_step">24dp</dimen>
     <dimen name="editor_section_indent">32dp</dimen>
     <dimen name="compact_input_width">48dp</dimen>
+    <dimen name="task_editor_clear_deadline_button_size">48dp</dimen>
+    <dimen name="task_editor_day_picker_horizontal_padding">8dp</dimen>
+    <dimen name="task_editor_day_picker_vertical_padding">16dp</dimen>
+    <dimen name="task_editor_day_button_horizontal_padding">4dp</dimen>
+    <dimen name="task_editor_day_button_horizontal_margin">2dp</dimen>
+
+    <dimen name="task_editor_pref_slot_header_padding_top">12dp</dimen>
+    <dimen name="task_editor_pref_slot_header_padding_bottom">4dp</dimen>
+    <dimen name="task_editor_pref_slot_row_padding_start">16dp</dimen>
+    <dimen name="task_editor_pref_slot_row_padding_vertical">4dp</dimen>
+    <dimen name="task_editor_pref_slot_button_spacing">8dp</dimen>
+    <dimen name="task_editor_pref_slot_button_min_height">48dp</dimen>
+    <dimen name="task_editor_pref_slot_button_text_size">14sp</dimen>
 
     <dimen name="task_row_min_height">56dp</dimen>
     <dimen name="task_row_time_divider_height">2dp</dimen>

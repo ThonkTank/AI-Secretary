@@ -13,6 +13,7 @@ import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import androidx.annotation.DimenRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
@@ -47,10 +48,6 @@ import java.util.Set;
 public class TaskEditDialog extends DialogFragment {
 
     private static final int WEEK_DAY_COUNT = 7;
-    private static final int DAY_PICKER_HORIZONTAL_PADDING_DP = 8;
-    private static final int DAY_PICKER_VERTICAL_PADDING_DP = 16;
-    private static final int DAY_BUTTON_HORIZONTAL_PADDING_DP = 4;
-    private static final int DAY_BUTTON_HORIZONTAL_MARGIN_DP = 2;
 
     private TaskViewModel vm;
     private TaskEditSessionController editSessionController;
@@ -228,10 +225,10 @@ public class TaskEditDialog extends DialogFragment {
         LinearLayout layout = new LinearLayout(requireContext());
         layout.setOrientation(LinearLayout.HORIZONTAL);
         layout.setPadding(
-            dpToPx(DAY_PICKER_HORIZONTAL_PADDING_DP),
-            dpToPx(DAY_PICKER_VERTICAL_PADDING_DP),
-            dpToPx(DAY_PICKER_HORIZONTAL_PADDING_DP),
-            dpToPx(DAY_PICKER_VERTICAL_PADDING_DP)
+            dimenPx(R.dimen.task_editor_day_picker_horizontal_padding),
+            dimenPx(R.dimen.task_editor_day_picker_vertical_padding),
+            dimenPx(R.dimen.task_editor_day_picker_horizontal_padding),
+            dimenPx(R.dimen.task_editor_day_picker_vertical_padding)
         );
         layout.setGravity(Gravity.CENTER);
 
@@ -253,11 +250,13 @@ public class TaskEditDialog extends DialogFragment {
             btn.setChecked(isSelected);
             btn.setInsetTop(0);
             btn.setInsetBottom(0);
-            btn.setPadding(dpToPx(DAY_BUTTON_HORIZONTAL_PADDING_DP), 0, dpToPx(DAY_BUTTON_HORIZONTAL_PADDING_DP), 0);
+            int dayButtonHorizontalPadding = dimenPx(R.dimen.task_editor_day_button_horizontal_padding);
+            btn.setPadding(dayButtonHorizontalPadding, 0, dayButtonHorizontalPadding, 0);
 
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-            params.setMargins(dpToPx(DAY_BUTTON_HORIZONTAL_MARGIN_DP), 0, dpToPx(DAY_BUTTON_HORIZONTAL_MARGIN_DP), 0);
+            int dayButtonHorizontalMargin = dimenPx(R.dimen.task_editor_day_button_horizontal_margin);
+            params.setMargins(dayButtonHorizontalMargin, 0, dayButtonHorizontalMargin, 0);
             btn.setLayoutParams(params);
 
             if (isTaken) {
@@ -303,8 +302,8 @@ public class TaskEditDialog extends DialogFragment {
     }
 
 
-    private int dpToPx(int dp) {
-        return (int) (dp * requireContext().getResources().getDisplayMetrics().density + 0.5f);
+    private int dimenPx(@DimenRes int dimenResId) {
+        return requireContext().getResources().getDimensionPixelSize(dimenResId);
     }
 
     private TaskEditPresenter.FormInput readFormInput() {
