@@ -97,21 +97,6 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
 
     @Override
     public void generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
-        generateSlotsForDay(tasks, windowStart, windowEnd, state);
-    }
-
-    @Override
-    public void recordScheduledSlotsForDay(List<Task> tasks, LocalDate day, TaskPlanningState state) {
-        for (Task task : tasks) {
-            for (TaskSlot slot : task.slots) {
-                if (slot.day.equals(day) && slot.scheduled && !state.getScheduledDays(task.core.id).contains(day)) {
-                    state.recordScheduled(task.core.id, day);
-                }
-            }
-        }
-    }
-
-    private void generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
         schedulingDay = windowStart.toLocalDate();
         newSlots = 0;
         scorer.reset();
@@ -156,6 +141,17 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
             }
         }
         log("Gesamt: " + totalDaySlots + " slots (neu: " + newSlots + ")");
+    }
+
+    @Override
+    public void recordScheduledSlotsForDay(List<Task> tasks, LocalDate day, TaskPlanningState state) {
+        for (Task task : tasks) {
+            for (TaskSlot slot : task.slots) {
+                if (slot.day.equals(day) && slot.scheduled && !state.getScheduledDays(task.core.id).contains(day)) {
+                    state.recordScheduled(task.core.id, day);
+                }
+            }
+        }
     }
 
     private void assignGlobalBestFit(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd,
