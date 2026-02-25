@@ -22,8 +22,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/task_list_day_nav_prev"
-            android:textSize="20sp"
-            android:padding="@dimen/spacing_md"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+            android:padding="@dimen/spacing_sm"
             android:clickable="true"
             android:focusable="true" />
 
@@ -42,17 +42,25 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/task_list_day_nav_next"
-            android:textSize="20sp"
-            android:padding="@dimen/spacing_md"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+            android:padding="@dimen/spacing_sm"
             android:clickable="true"
             android:focusable="true" />
     </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="@dimen/spacing_md"
+        android:layout_marginEnd="@dimen/spacing_md"
+        android:background="?attr/colorOutline" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
+        android:layout_marginTop="@dimen/spacing_sm"
         android:paddingStart="@dimen/spacing_md"
         android:paddingEnd="@dimen/spacing_md"
         android:paddingBottom="@dimen/spacing_sm">
@@ -62,7 +70,8 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="@dimen/spacing_sm"
             android:id="@+id/Button"
-            android:text="@string/task_list_generate"/>
+            android:text="@string/task_list_generate"
+            style="?attr/materialButtonOutlinedStyle"/>
 
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:layout_width="wrap_content"
@@ -132,6 +141,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/spacing_md"
+        style="?attr/materialButtonStyle"
         android:text="@string/task_list_new_task"
         android:textSize="16sp"/>
 
