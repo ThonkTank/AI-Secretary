@@ -2,8 +2,9 @@ package com.autosecretary.features.budget.data;
 
 import com.autosecretary.features.budget.domain.BudgetRepository;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
-import java.util.ArrayList;
 
 public class BudgetRoomRepository implements BudgetRepository {
     private final BudgetLookupDao lookupDao;
@@ -55,7 +56,56 @@ public class BudgetRoomRepository implements BudgetRepository {
     }
 
     @Override public void deleteTransaction(String transactionId) {
-        transactionDao.deleteById(transactionId);
+        transactionDao.deleteWithLinked(transactionId);
+    }
+
+    @Override
+    public void createTransfer(String sourceAccountId,
+                               String targetAccountId,
+                               long amountCents,
+                               LocalDate bookingDate,
+                               String note) {
+        String yearMonth = YearMonth.from(bookingDate).toString();
+
+        BudgetTransactionEntity debit = new BudgetTransactionEntity(
+                sourceAccountId,
+                null,
+                BudgetTransactionEntity.TransactionType.EXPENSE,
+                amountCents,
+                bookingDate,
+                yearMonth
+        );
+        debit.note = note;
+
+        BudgetTransactionEntity credit = new BudgetTransactionEntity(
+                targetAccountId,
+                null,
+                BudgetTransactionEntity.TransactionType.INCOME,
+                amountCents,
+                bookingDate,
+                yearMonth
+        );
+        credit.note = note;
+
+        transactionDao.createTransferPair(debit, credit);
+    }
+
+    @Override
+    public boolean updateTransfer(String transactionId,
+                                  String sourceAccountId,
+                                  String targetAccountId,
+                                  long amountCents,
+                                  LocalDate bookingDate,
+                                  String note) {
+        return transactionDao.updateTransferPair(
+                transactionId,
+                sourceAccountId,
+                targetAccountId,
+                amountCents,
+                bookingDate,
+                YearMonth.from(bookingDate).toString(),
+                note
+        );
     }
 
     @Override public void saveBudgetLimit(BudgetLimit budgetLimit) {
@@ -82,7 +132,25 @@ public class BudgetRoomRepository implements BudgetRepository {
         return transactionDao.getMonthlyOverview(yearMonth);
     }
 
+    @Override public List<MonthlyTransactionOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId) {
+        return transactionDao.getMonthlyOverviewForAccount(yearMonth, accountId);
+    }
+
     @Override public List<CategorySpendTotal> getCategorySpendTotals(String yearMonth) {
         return limitDao.getCategorySpendTotals(yearMonth);
+    }
+
+    @Override public List<AccountDailyDeltaPoint> getDailyDeltasForAccount(
+            String accountId, LocalDate fromDate, LocalDate toDate) {
+        return transactionDao.getDailyDeltasForAccount(accountId, fromDate, toDate);
+    }
+
+    @Override public List<AccountMonthlyDeltaPoint> getMonthlyDeltasForAccount(
+            String accountId, String fromYearMonth, String toYearMonth) {
+        return transactionDao.getMonthlyDeltasForAccount(accountId, fromYearMonth, toYearMonth);
+    }
+
+    @Override public long getNetAmountBeforeDateForAccount(String accountId, LocalDate beforeDate) {
+        return transactionDao.getNetAmountBeforeDateForAccount(accountId, beforeDate);
     }
 }

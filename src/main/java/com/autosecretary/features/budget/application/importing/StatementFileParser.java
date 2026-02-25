@@ -1,13 +1,15 @@
 package com.autosecretary.features.budget.application.importing;
 
+import com.autosecretary.features.budget.data.BudgetCategory;
+import com.autosecretary.features.budget.domain.BudgetImportRepository;
+
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Minimaler Statement-Parser für Importdateien.
- * Erwartet CSV mit Header: date,amountCents,payee,description,categoryId,importHash
+ * Statement-Parser: CSV wird lokal geparst, PDF an Claude delegiert.
  */
 public class StatementFileParser {
 
@@ -23,16 +25,45 @@ public class StatementFileParser {
             int amountCents,
             String payee,
             String description,
-            Long categoryId,
+            String categoryId,
             String importHash
     ) {
     }
 
+    private final ClaudeStatementApiClient claudeApiClient;
+    private final ClaudeApiKeyStore apiKeyStore;
+    private final BudgetImportRepository importRepository;
+
+    public StatementFileParser(ClaudeStatementApiClient claudeApiClient,
+                               ClaudeApiKeyStore apiKeyStore,
+                               BudgetImportRepository importRepository) {
+        this.claudeApiClient = claudeApiClient;
+        this.apiKeyStore = apiKeyStore;
+        this.importRepository = importRepository;
+    }
+
     public ParsedStatement parse(String fileName, byte[] fileBytes, String mimeType) {
+        if (isPdf(fileName, mimeType)) {
+            return parsePdf(fileBytes);
+        }
         if (!accepts(fileName, mimeType)) {
             throw new IllegalArgumentException("Nicht unterstütztes Dateiformat: " + fileName);
         }
+        return parseCsv(fileBytes);
+    }
 
+    private ParsedStatement parsePdf(byte[] fileBytes) {
+        String apiKey = apiKeyStore.getApiKey();
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Kein Claude API-Key hinterlegt. Bitte in den Budget-Einstellungen setzen."
+            );
+        }
+        List<BudgetCategory> categories = importRepository.loadActiveCategoriesForImport();
+        return claudeApiClient.parsePdf(apiKey, fileBytes, categories);
+    }
+
+    private ParsedStatement parseCsv(byte[] fileBytes) {
         String content = new String(fileBytes, StandardCharsets.UTF_8);
         String[] lines = content.split("\\r?\\n");
         if (lines.length <= 1) {
@@ -58,7 +89,7 @@ public class StatementFileParser {
             int amountCents = Integer.parseInt(columns[1].trim());
             String payee = emptyToNull(columns[2]);
             String description = emptyToNull(columns[3]);
-            Long categoryId = columns.length > 4 && !columns[4].isBlank() ? Long.parseLong(columns[4].trim()) : null;
+            String categoryId = columns.length > 4 ? emptyToNull(columns[4]) : null;
             String importHash = columns.length > 5 ? emptyToNull(columns[5]) : null;
 
             parsedTransactions.add(new ParsedTransaction(date, amountCents, payee, description, categoryId, importHash));
@@ -78,7 +109,14 @@ public class StatementFileParser {
         String lowerMime = mimeType == null ? "" : mimeType.toLowerCase();
         return lowerName.endsWith(".csv")
                 || "text/csv".equals(lowerMime)
-                || "application/vnd.ms-excel".equals(lowerMime);
+                || "application/vnd.ms-excel".equals(lowerMime)
+                || isPdf(fileName, mimeType);
+    }
+
+    private boolean isPdf(String fileName, String mimeType) {
+        String lowerName = fileName == null ? "" : fileName.toLowerCase();
+        String lowerMime = mimeType == null ? "" : mimeType.toLowerCase();
+        return lowerName.endsWith(".pdf") || "application/pdf".equals(lowerMime);
     }
 
     private String emptyToNull(String value) {

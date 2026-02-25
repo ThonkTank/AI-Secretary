@@ -73,6 +73,13 @@
     <string name="budget_summary">Erfasse Buchungen oder importiere einen Kontoauszug.</string>
     <string name="budget_add_transaction">Transaktion hinzufügen</string>
     <string name="budget_import_statement">Kontoauszug importieren</string>
+    <string name="budget_add_transfer">Überweisung</string>
+    <string name="budget_transfer_title">Überweisung</string>
+    <string name="budget_transfer_save">Überweisen</string>
+    <string name="budget_transfer_source_account">Quellkonto</string>
+    <string name="budget_transfer_target_account">Zielkonto</string>
+    <string name="budget_transfer_date_hint">Datum (YYYY-MM-DD)</string>
+    <string name="budget_transfer_requires_two_accounts">Für Überweisungen werden mindestens zwei Konten benötigt.</string>
     <string name="budget_empty_state">Noch keine Buchungen. Starte mit „Transaktion hinzufügen“.</string>
     <string name="budget_loading">Budget wird geladen</string>
     <string name="budget_retry">Erneut versuchen</string>
@@ -111,6 +118,11 @@
     <string name="budget_recurring_pattern_interval">Alle %1$d Tage</string>
     <string name="budget_recurring_pattern_unknown">Unbekanntes Muster</string>
 
+    <string name="budget_account_selector">Konto auswählen</string>
+    <string name="budget_range_30d">30T</string>
+    <string name="budget_range_3m">3M</string>
+    <string name="budget_range_12m">12M</string>
+    <string name="budget_chart_title">Saldo-Verlauf</string>
     <string name="budget_summary_income">Einnahmen</string>
     <string name="budget_summary_expense">Ausgaben</string>
     <string name="budget_summary_net">Saldo</string>
