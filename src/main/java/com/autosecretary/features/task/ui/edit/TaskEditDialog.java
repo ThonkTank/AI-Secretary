@@ -149,6 +149,7 @@ public class TaskEditDialog extends DialogFragment {
             .setView(rootView)
             // Save handler with validation is set in onStart() to prevent dialog auto-dismiss on errors
             .setPositiveButton(R.string.task_edit_dialog_positive, null)
+            .setNeutralButton(R.string.task_edit_dialog_delete, null)
             .setNegativeButton(R.string.task_edit_dialog_negative, null)
             .create();
     }
@@ -169,6 +170,29 @@ public class TaskEditDialog extends DialogFragment {
             editSessionController.saveEditedTask(presenter.toTaskForSave(editSessionController.requireSelectedBaseTask()));
             dismiss();
         });
+
+        View deleteButton = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
+        if (deleteButton == null) {
+            return;
+        }
+
+        if (editSessionController.isNewTask()) {
+            deleteButton.setVisibility(View.GONE);
+            return;
+        }
+
+        deleteButton.setOnClickListener(v -> showDeleteConfirmDialog());
+    }
+
+    private void showDeleteConfirmDialog() {
+        new AlertDialog.Builder(requireContext())
+            .setTitle(R.string.task_edit_delete_title)
+            .setMessage(R.string.task_edit_delete_message)
+            .setPositiveButton(R.string.task_edit_delete_confirm, (dialog, which) ->
+                editSessionController.deleteSelectedTask(this::dismiss)
+            )
+            .setNegativeButton(R.string.task_edit_delete_cancel, null)
+            .show();
     }
 
     // Repetition field change triggers prefSlot count recalculation and UI rebuild
