@@ -4,6 +4,7 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
+import com.autosecretary.features.task.domain.TaskPlanningState;
 import com.autosecretary.features.task.domain.internal.scoring.ScoringOutputs.CompletionState;
 import com.autosecretary.features.task.domain.internal.scoring.ScoringInputs.MultiDayStateSnapshot;
 import com.autosecretary.features.task.domain.internal.scoring.PreferenceFitCalculator;
@@ -68,10 +69,10 @@ final class TaskScorer {
     }
 
     void maintenance(Task task) {
-        maintenance(task, LocalDate.now(), new MultiDayState());
+        maintenance(task, LocalDate.now(), new TaskPlanningState());
     }
 
-    void maintenance(Task task, LocalDate day, MultiDayState state) {
+    void maintenance(Task task, LocalDate day, TaskPlanningState state) {
         advanceTaskPeriod(task, day);
         SlotScanResult slotScanResult = scanSlots(task, day);
         CompletionState completionState = computeCompletionState(task, slotScanResult);
@@ -154,7 +155,7 @@ final class TaskScorer {
         return maxChildPriority;
     }
 
-    private MultiDayStateSnapshot computeMultiDaySnapshot(Task task, MultiDayState state, LocalDate day) {
+    private MultiDayStateSnapshot computeMultiDaySnapshot(Task task, TaskPlanningState state, LocalDate day) {
         TaskCore.Repetition rep = task.core.repetition;
         int totalScheduledReps = state.getTotalScheduledReps(task.core.id);
         int minDayDistance = state.minDayDistance(task.core.id, day);

@@ -11,21 +11,19 @@ import java.util.List;
  */
 public interface TaskSlotGenerator {
 
-    interface PlanningState {}
-
-    PlanningState createPlanningState();
+    TaskPlanningState createPlanningState();
 
     void recordPreservedSlots(List<Task> tasks,
                               LocalDate startInclusive,
                               LocalDate endExclusive,
-                              PlanningState state);
+                              TaskPlanningState state);
 
     void generateSlotsForDay(List<Task> tasks,
                              LocalDateTime windowStart,
                              LocalDateTime windowEnd,
-                             PlanningState state);
+                             TaskPlanningState state);
 
     void recordScheduledSlotsForDay(List<Task> tasks,
                                     LocalDate day,
-                                    PlanningState state);
+                                    TaskPlanningState state);
 }
