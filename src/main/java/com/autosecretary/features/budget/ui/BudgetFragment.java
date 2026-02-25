@@ -45,8 +45,11 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 public class BudgetFragment extends Fragment {
 
@@ -390,7 +393,7 @@ public class BudgetFragment extends Fragment {
         List<String> names = new ArrayList<>();
         for (BudgetCategory cat : allCategories) {
             if (filterType.equals(cat.type)) {
-                names.add(cat.name);
+                names.add(buildCategoryDisplayLabel(cat));
             }
         }
         ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
@@ -509,7 +512,9 @@ public class BudgetFragment extends Fragment {
             progress.setProgress(Math.min(pct, 100));
 
             int color;
-            if (pct > 100) {
+            if (isValidColorHex(bar.getCategoryColorHex())) {
+                color = Color.parseColor(bar.getCategoryColorHex());
+            } else if (pct > 100) {
                 color = Color.parseColor("#F44336");
             } else if (pct >= 80) {
                 color = Color.parseColor("#FF9800");
@@ -529,6 +534,7 @@ public class BudgetFragment extends Fragment {
                                     LinearLayout container) {
         container.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(container.getContext());
+        Map<String, String> categoryColorsByLabel = getCategoryColorsByDisplayLabel();
 
         for (BudgetViewModel.BudgetTransactionRow row : rows) {
             View rowView = inflater.inflate(R.layout.budget_transaction_item, container, false);
@@ -536,6 +542,16 @@ public class BudgetFragment extends Fragment {
             TextView amount = rowView.findViewById(R.id.BudgetTransactionAmount);
             label.setText(row.getLabel());
             amount.setText(row.getAmount());
+            String labelColorHex = row.getCategoryColorHex();
+            if (!isValidColorHex(labelColorHex)) {
+                labelColorHex = categoryColorsByLabel.get(row.getLabel());
+            }
+            if (isValidColorHex(labelColorHex)) {
+                label.setTextColor(Color.parseColor(labelColorHex));
+            }
+            amount.setTextColor(row.isExpense()
+                    ? Color.parseColor("#F44336")
+                    : Color.parseColor("#4CAF50"));
             rowView.setContentDescription(
                     getString(R.string.budget_transaction_content_description,
                             row.getLabel(), row.getAmount()));
@@ -549,6 +565,28 @@ public class BudgetFragment extends Fragment {
 
             container.addView(rowView);
         }
+    }
+
+    private String buildCategoryDisplayLabel(BudgetCategory category) {
+        String icon = (category.icon == null || category.icon.trim().isEmpty())
+                ? BudgetCategory.DEFAULT_ICON
+                : category.icon.trim();
+        return icon + " " + category.name;
+    }
+
+    private Map<String, String> getCategoryColorsByDisplayLabel() {
+        Map<String, String> out = new HashMap<>();
+        List<BudgetCategory> allCategories = budgetViewModel.getCategories().getValue();
+        if (allCategories == null) return out;
+        for (BudgetCategory category : allCategories) {
+            out.put(buildCategoryDisplayLabel(category), category.colorHex);
+        }
+        return out;
+    }
+
+    private boolean isValidColorHex(String colorHex) {
+        if (colorHex == null) return false;
+        return Pattern.matches("^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", colorHex);
     }
 
     private void showDeleteTransactionDialog(BudgetViewModel.BudgetTransactionRow row) {

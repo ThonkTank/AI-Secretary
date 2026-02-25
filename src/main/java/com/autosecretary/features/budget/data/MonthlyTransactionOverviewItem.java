@@ -14,5 +14,7 @@ public class MonthlyTransactionOverviewItem {
     public String accountName;
     public String categoryId;
     public String categoryName;
+    public String categoryIcon;
+    public String categoryColorHex;
     public String linkedTransactionId;
 }
