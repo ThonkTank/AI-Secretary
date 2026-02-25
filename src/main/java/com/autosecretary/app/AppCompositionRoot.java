@@ -21,23 +21,28 @@ import java.util.concurrent.Executors;
 
 public class AppCompositionRoot {
     private final Application app;
+    private final ExecutorService taskUseCaseExecutor;
+    private TaskViewModelFactory taskViewModelFactory;
 
     public AppCompositionRoot(Application app) {
         this.app = app;
-    }
-
-    public TaskViewModelFactory createTaskViewModelFactory() {
-        AppDatabase db = AppDatabase.getInstance(app);
-        TaskDAO taskDao = db.taskDao();
-        Preferences preferences = new Preferences(app);
-
-        ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
+        this.taskUseCaseExecutor = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable);
             thread.setUncaughtExceptionHandler((t, e) ->
                     Log.e("TaskUseCase", "Background crash", e)
             );
             return thread;
         });
+    }
+
+    public TaskViewModelFactory createTaskViewModelFactory() {
+        if (taskViewModelFactory != null) {
+            return taskViewModelFactory;
+        }
+
+        AppDatabase db = AppDatabase.getInstance(app);
+        TaskDAO taskDao = db.taskDao();
+        Preferences preferences = new Preferences(app);
 
         TaskLifecycleManager lifecycleManager = new TaskLifecycleManager();
         TaskCompletionService completionService = new TaskCompletionService();
@@ -45,25 +50,27 @@ public class AppCompositionRoot {
         SlotGenerator generator = new SlotGenerator(scorer, message -> Log.d("SlotGen", message));
         TaskListItemMapper mapper = new TaskListItemMapper();
 
-        TaskAsyncDataService taskAsyncDataService = new TaskAsyncDataService(taskDao, mapper, executor);
+        TaskAsyncDataService taskAsyncDataService = new TaskAsyncDataService(taskDao, mapper, taskUseCaseExecutor);
         CheckOffTaskUseCase checkOffTaskUseCase = new CheckOffTaskUseCase(
                 taskDao,
                 completionService,
                 lifecycleManager,
-                executor
+                taskUseCaseExecutor
         );
         RegenerateScheduleUseCase regenerateScheduleUseCase = new RegenerateScheduleUseCase(
                 taskDao,
                 generator,
                 preferences,
-                executor
+                taskUseCaseExecutor
         );
 
-        return new TaskViewModelFactory(
+        taskViewModelFactory = new TaskViewModelFactory(
                 app,
                 taskAsyncDataService,
                 checkOffTaskUseCase,
                 regenerateScheduleUseCase
         );
+
+        return taskViewModelFactory;
     }
 }
