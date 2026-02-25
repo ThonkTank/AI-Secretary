@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.domain;
+package com.autosecretary.features.task.domain.internal.scheduling;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -13,7 +13,7 @@ import java.util.Set;
  * Tracks which tasks were scheduled on which days, enabling intelligent
  * distribution across the week.
  */
-public class MultiDayState {
+final class MultiDayState {
     private final Map<String, Set<LocalDate>> scheduledDays = new HashMap<>();
     private final Map<String, Integer> totalScheduledReps = new HashMap<>();
 
