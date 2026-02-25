@@ -152,4 +152,11 @@
         <item>Sa</item>
         <item>So</item>
     </string-array>
+
+    <string name="task_schedule_button">Zeitfenster</string>
+    <string name="task_schedule_dialog_title">Tagesfenster konfigurieren</string>
+    <string name="task_schedule_dialog_save">Speichern</string>
+    <string name="task_schedule_dialog_cancel">Abbrechen</string>
+    <string name="task_schedule_validation_error">Endzeit muss nach Startzeit liegen.</string>
+    <string name="task_schedule_saved">Zeitfenster gespeichert</string>
 </resources>
