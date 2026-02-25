@@ -73,7 +73,7 @@ public class TaskEditDialog extends DialogFragment {
         formInputBuilder = new TaskEditFormInputBuilder();
 
         rootView = LayoutInflater.from(getContext())
-            .inflate(R.layout.fragment_task_editor, null);
+            .inflate(R.layout.task_editor_fragment, null);
         prefSlotUIBuilder = new PrefSlotUIBuilder(requireContext());
         sectionBinder = new TaskEditSectionBinder(this, rootView, editState, presenter, formViews);
 
