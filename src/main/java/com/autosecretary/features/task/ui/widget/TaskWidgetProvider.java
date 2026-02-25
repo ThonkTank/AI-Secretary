@@ -6,7 +6,6 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.util.Log;
 import android.widget.RemoteViews;
@@ -14,9 +13,8 @@ import android.widget.RemoteViews;
 import com.autosecretary.R;
 import com.autosecretary.app.MainActivity;
 import com.autosecretary.database.AppDatabase;
-import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.application.TaskSlotToggleAction;
 import com.autosecretary.features.task.data.TaskDAO;
-import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
@@ -158,29 +156,17 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             try {
                 AppDatabase db = AppDatabase.getInstance(context);
                 TaskDAO dao = db.taskDao();
-                Task task = dao.read(taskId);
-                if (task == null) return;
-
-                TaskSlot slot = null;
-                for (TaskSlot s : task.slots) {
-                    if (slotId.equals(s.id)) {
-                        slot = s;
-                        break;
-                    }
-                }
-                if (slot == null) return;
-
                 TaskCompletionService completionService = new TaskCompletionService();
                 TaskLifecycleManager lifecycleManager = new TaskLifecycleManager();
-                TaskCompletionService.CompletionPhase phase =
-                        completionService.checkOff(task, slot, lifecycleManager);
 
-                if (phase == TaskCompletionService.CompletionPhase.NONE) return;
-                if (phase == TaskCompletionService.CompletionPhase.COMPLETED) {
-                    dao.write(task);
-                }
-                dao.writeSlot(slot);
-                notifyWidgetUpdate(context);
+                TaskSlotToggleAction.execute(
+                        dao,
+                        completionService,
+                        lifecycleManager,
+                        taskId,
+                        slotId,
+                        () -> notifyWidgetUpdate(context)
+                );
             } catch (Exception e) {
                 Log.e(TAG, "Toggle failed", e);
             } finally {
