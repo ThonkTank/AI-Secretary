@@ -12,17 +12,24 @@ import java.util.stream.Collectors;
  */
 public final class RecurringPatternDetector {
     private static final int MIN_OCCURRENCES_DEFAULT = 3;
-    private static final double AMOUNT_VARIANCE_THRESHOLD = 0.15;
 
     private RecurringPatternDetector() {
     }
 
     public static List<RecurringSuggestion> detectPatterns(List<BudgetTransaction> transactions) {
-        return detectPatterns(transactions, MIN_OCCURRENCES_DEFAULT);
+        return detectPatterns(transactions, MIN_OCCURRENCES_DEFAULT, null);
     }
 
     public static List<RecurringSuggestion> detectPatterns(List<BudgetTransaction> transactions,
                                                            int minOccurrences) {
+        return detectPatterns(transactions, minOccurrences, null);
+    }
+
+    public static List<RecurringSuggestion> detectPatterns(List<BudgetTransaction> transactions,
+                                                           int minOccurrences,
+                                                           PatternDetectionConfig config) {
+        PatternDetectionConfig effectiveConfig = config != null ? config : PatternDetectionConfig.defaults();
+
         if (transactions == null || transactions.isEmpty()) {
             return new ArrayList<>();
         }
@@ -39,7 +46,7 @@ public final class RecurringPatternDetector {
             return new ArrayList<>();
         }
 
-        Map<String, List<BudgetTransaction>> groupedByPayee = PayeeGrouper.groupBySimilarPayee(eligible);
+        Map<String, List<BudgetTransaction>> groupedByPayee = PayeeGrouper.groupBySimilarPayee(eligible, effectiveConfig);
 
         List<RecurringSuggestion> candidates = new ArrayList<>();
         for (Map.Entry<String, List<BudgetTransaction>> group : groupedByPayee.entrySet()) {
@@ -48,11 +55,11 @@ public final class RecurringPatternDetector {
                 continue;
             }
             txList.sort(Comparator.comparing(tx -> tx.transactionDate));
-            if (!hasConsistentAmounts(txList)) {
+            if (!hasConsistentAmounts(txList, effectiveConfig)) {
                 continue;
             }
 
-            RecurringSuggestion candidate = analyzePattern(group.getKey(), txList);
+            RecurringSuggestion candidate = analyzePattern(group.getKey(), txList, effectiveConfig);
             if (candidate != null && candidate.suggestedType() != null) {
                 candidates.add(candidate);
             }
@@ -63,7 +70,8 @@ public final class RecurringPatternDetector {
     }
 
     private static RecurringSuggestion analyzePattern(String normalizedPayee,
-                                                      List<BudgetTransaction> transactions) {
+                                                      List<BudgetTransaction> transactions,
+                                                      PatternDetectionConfig config) {
         int sumAmounts = 0;
         int minAmount = Integer.MAX_VALUE;
         int maxAmount = Integer.MIN_VALUE;
@@ -97,12 +105,12 @@ public final class RecurringPatternDetector {
             maxAmount = -tmp;
         }
 
-        DatePatternDetector.PatternResult pattern = DatePatternDetector.detectDatePattern(transactions);
+        DatePatternDetector.PatternResult pattern = DatePatternDetector.detectDatePattern(transactions, config);
         if (pattern == null) {
             return null;
         }
 
-        double confidence = SuggestionScorer.calculateConfidence(transactions, pattern, avgAmount, minAmount, maxAmount);
+        double confidence = SuggestionScorer.calculateConfidence(transactions, pattern, avgAmount, minAmount, maxAmount, config);
 
         return new RecurringSuggestion(
                 normalizedPayee,
@@ -119,7 +127,8 @@ public final class RecurringPatternDetector {
         );
     }
 
-    private static boolean hasConsistentAmounts(List<BudgetTransaction> txList) {
+    private static boolean hasConsistentAmounts(List<BudgetTransaction> txList,
+                                                PatternDetectionConfig config) {
         if (txList.size() < 2) {
             return true;
         }
@@ -128,6 +137,6 @@ public final class RecurringPatternDetector {
         if (avg == 0) {
             return false;
         }
-        return amounts.stream().allMatch(amount -> Math.abs(amount - avg) <= avg * AMOUNT_VARIANCE_THRESHOLD);
+        return amounts.stream().allMatch(amount -> Math.abs(amount - avg) <= avg * config.amountVarianceThreshold);
     }
 }

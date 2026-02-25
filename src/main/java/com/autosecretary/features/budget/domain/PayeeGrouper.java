@@ -16,13 +16,23 @@ public final class PayeeGrouper {
     }
 
     public static Map<String, List<BudgetTransaction>> groupBySimilarPayee(List<BudgetTransaction> transactions) {
+        return groupBySimilarPayee(transactions, PAYEE_SIMILARITY_THRESHOLD);
+    }
+
+    public static Map<String, List<BudgetTransaction>> groupBySimilarPayee(List<BudgetTransaction> transactions,
+                                                                            PatternDetectionConfig config) {
+        return groupBySimilarPayee(transactions, config.payeeSimilarityThreshold);
+    }
+
+    private static Map<String, List<BudgetTransaction>> groupBySimilarPayee(List<BudgetTransaction> transactions,
+                                                                             double similarityThreshold) {
         Map<String, List<BudgetTransaction>> groupedByPayee = new HashMap<>();
         for (BudgetTransaction tx : transactions) {
             String normalized = normalizePayee(tx.payee);
             if (normalized.isEmpty()) {
                 continue;
             }
-            String existingGroup = findMatchingGroup(normalized, groupedByPayee.keySet());
+            String existingGroup = findMatchingGroup(normalized, groupedByPayee.keySet(), similarityThreshold);
             if (existingGroup != null) {
                 groupedByPayee.get(existingGroup).add(tx);
             } else {
@@ -61,8 +71,12 @@ public final class PayeeGrouper {
     }
 
     static String findMatchingGroup(String normalized, Set<String> keys) {
+        return findMatchingGroup(normalized, keys, PAYEE_SIMILARITY_THRESHOLD);
+    }
+
+    static String findMatchingGroup(String normalized, Set<String> keys, double similarityThreshold) {
         for (String key : keys) {
-            if (payeeSimilarity(normalized, key) >= PAYEE_SIMILARITY_THRESHOLD) {
+            if (payeeSimilarity(normalized, key) >= similarityThreshold) {
                 return key;
             }
         }

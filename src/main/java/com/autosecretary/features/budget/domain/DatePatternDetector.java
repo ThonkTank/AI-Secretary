@@ -17,6 +17,11 @@ public final class DatePatternDetector {
     }
 
     public static PatternResult detectDatePattern(List<BudgetTransaction> transactions) {
+        return detectDatePattern(transactions, null);
+    }
+
+    public static PatternResult detectDatePattern(List<BudgetTransaction> transactions,
+                                                   PatternDetectionConfig config) {
         if (transactions.size() < 2) {
             return null;
         }
@@ -35,7 +40,9 @@ public final class DatePatternDetector {
             return monthlyLast;
         }
 
-        PatternResult weekly = checkWeekly(dates);
+        int minDays = config != null ? config.weeklyIntervalMinDays : 5;
+        int maxDays = config != null ? config.weeklyIntervalMaxDays : 9;
+        PatternResult weekly = checkWeekly(dates, minDays, maxDays);
         if (weekly != null) {
             return weekly;
         }
@@ -70,6 +77,10 @@ public final class DatePatternDetector {
     }
 
     static PatternResult checkWeekly(List<LocalDate> dates) {
+        return checkWeekly(dates, 5, 9);
+    }
+
+    static PatternResult checkWeekly(List<LocalDate> dates, int minDays, int maxDays) {
         List<DayOfWeek> weekdays = dates.stream().map(LocalDate::getDayOfWeek).collect(Collectors.toList());
         Map<DayOfWeek, Long> counts = weekdays.stream()
                 .collect(Collectors.groupingBy(d -> d, Collectors.counting()));
@@ -82,7 +93,7 @@ public final class DatePatternDetector {
         if (modeCount >= dates.size() * 0.8) {
             List<Long> intervals = calculateIntervals(dates);
             double avgInterval = intervals.stream().mapToLong(Long::longValue).average().orElse(0);
-            if (avgInterval >= 5 && avgInterval <= 9) {
+            if (avgInterval >= minDays && avgInterval <= maxDays) {
                 return new PatternResult(BudgetTransaction.RecurringType.WEEKLY, 0, dominantWeekday);
             }
         }

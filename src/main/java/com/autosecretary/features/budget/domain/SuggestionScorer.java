@@ -47,6 +47,34 @@ public final class SuggestionScorer {
         return Math.min(score, 1.0);
     }
 
+    public static double calculateConfidence(List<BudgetTransaction> txList,
+                                             DatePatternDetector.PatternResult pattern,
+                                             int avgAmount,
+                                             int minAmount,
+                                             int maxAmount,
+                                             PatternDetectionConfig config) {
+        PatternDetectionConfig.ScoringWeights weights = config.scoringWeights;
+
+        double score = 0;
+        score += Math.min(txList.size() / OCCURRENCE_CAP, weights.occurrenceWeight);
+
+        if (avgAmount != 0) {
+            double variance = Math.abs(maxAmount - minAmount) / (double) Math.abs(avgAmount);
+            score += Math.max(weights.amountVarianceWeight - variance, 0);
+        }
+
+        if (pattern.type() != null) {
+            score += weights.patternTypeWeight;
+        }
+
+        String normalized = txList.get(0).payee != null ? PayeeGrouper.normalizePayee(txList.get(0).payee) : "";
+        if (config.knownSubscriptionPatterns.matches(normalized)) {
+            score += weights.knownSubscriptionWeight;
+        }
+
+        return Math.min(score, 1.0);
+    }
+
     static boolean isKnownSubscription(String normalizedPayee) {
         for (String pattern : KNOWN_SUBSCRIPTION_PATTERNS) {
             if (normalizedPayee.contains(pattern)) {
