@@ -6,7 +6,7 @@
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:padding="@dimen/spacing_xs"
-    android:background="?attr/colorSurface">
+    android:background="@color/task_widget_surface">
 
     <!-- Time column -->
     <LinearLayout
@@ -20,13 +20,15 @@
             android:id="@+id/widget_row_start"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Task.Time.Primary" />
+            android:textAppearance="@style/TextAppearance.Task.Time.Primary"
+            android:textColor="@color/task_widget_text_secondary" />
 
         <TextView
             android:id="@+id/widget_row_end"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Task.Time.Secondary" />
+            android:textAppearance="@style/TextAppearance.Task.Time.Secondary"
+            android:textColor="@color/task_widget_text_muted" />
     </LinearLayout>
 
     <!-- Checkbox -->
@@ -45,7 +47,8 @@
         android:layout_weight="1"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textAppearance="@style/TextAppearance.Task.Title" />
+        android:textAppearance="@style/TextAppearance.Task.Title"
+        android:textColor="@color/task_widget_text_primary" />
 
     <!-- Streak -->
     <TextView
@@ -53,6 +56,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/spacing_xs"
-        android:textAppearance="@style/TextAppearance.Task.Metadata" />
+        android:textAppearance="@style/TextAppearance.Task.Metadata"
+        android:textColor="@color/task_widget_text_muted" />
 
 </LinearLayout>

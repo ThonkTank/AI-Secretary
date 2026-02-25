@@ -49,7 +49,10 @@ public interface TaskDAO {
         writeDependents(task);
     }
 
-    private void writeDependents(Task task) {
+    /**
+     * Writes dependent rows that reference a task core row.
+     */
+    default void writeDependents(Task task) {
         writeSlots(task.slots);
         writePrefSlots(task.prefSlots);
         writePrerequisites(task.prerequisites);

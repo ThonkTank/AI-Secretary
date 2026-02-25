@@ -6,11 +6,6 @@ import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.TaskPlanningState;
-import com.autosecretary.features.task.domain.internal.scoring.ScoringModel.CompletionState;
-import com.autosecretary.features.task.domain.internal.scoring.ScoringModel.MultiDayStateSnapshot;
-import com.autosecretary.features.task.domain.internal.scoring.ScoringModel.PreferenceFitState;
-import com.autosecretary.features.task.domain.internal.scoring.ScoringModel.TaskScoringSnapshot;
-import com.autosecretary.features.task.domain.internal.scoring.ScoringModel.UrgencyState;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -18,9 +13,11 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Scores tasks for scheduling priority using a multi-layer multiplicative formula.
@@ -67,6 +64,81 @@ final class TaskScorer {
             this.lastCompletion = lastCompletion;
             this.periodCompletions = periodCompletions;
             this.scheduledToday = scheduledToday;
+        }
+    }
+
+    record CompletionState(int completions,
+                           LocalDate lastCompletion,
+                           int periodCompletions,
+                           boolean isComplete,
+                           int scheduledToday) {
+        CompletionState withIncrementedScheduledToday() {
+            return new CompletionState(completions, lastCompletion, periodCompletions, isComplete, scheduledToday + 1);
+        }
+    }
+
+    record UrgencyState(double remainingDays,
+                        double requiredDays,
+                        boolean isDeadlineExpired) {
+    }
+
+    record PreferenceFitState(List<TaskPrefSlot> todayPrefSlots,
+                              boolean hasDayConstraints,
+                              Set<String> consumedPrefSlotIds) {
+        PreferenceFitState {
+            todayPrefSlots = List.copyOf(todayPrefSlots);
+            consumedPrefSlotIds = Set.copyOf(consumedPrefSlotIds);
+        }
+
+        PreferenceFitState(List<TaskPrefSlot> todayPrefSlots, boolean hasDayConstraints) {
+            this(todayPrefSlots, hasDayConstraints, Set.of());
+        }
+
+        PreferenceFitState withConsumedPrefSlot(String prefSlotId) {
+            Set<String> newConsumed = new HashSet<>(consumedPrefSlotIds);
+            newConsumed.add(prefSlotId);
+            return new PreferenceFitState(todayPrefSlots, hasDayConstraints, newConsumed);
+        }
+    }
+
+    record MultiDayStateSnapshot(int totalScheduledReps,
+                                 int totalRepsInPeriod,
+                                 int minDayDistance,
+                                 double expectedDayGap) {
+    }
+
+    record TaskScoringSnapshot(CompletionState completionState,
+                               UrgencyState urgencyState,
+                               PreferenceFitState preferenceFitState,
+                               MultiDayStateSnapshot multiDayStateSnapshot,
+                               int sinceLast,
+                               double agingForce,
+                               int repsPerDay,
+                               int maxChildPriority) {
+        TaskScoringSnapshot withIncrementedScheduledToday() {
+            return new TaskScoringSnapshot(
+                    completionState.withIncrementedScheduledToday(),
+                    urgencyState,
+                    preferenceFitState,
+                    multiDayStateSnapshot,
+                    sinceLast,
+                    agingForce,
+                    repsPerDay,
+                    maxChildPriority
+            );
+        }
+
+        TaskScoringSnapshot withConsumedPrefSlot(String prefSlotId) {
+            return new TaskScoringSnapshot(
+                    completionState.withIncrementedScheduledToday(),
+                    urgencyState,
+                    preferenceFitState.withConsumedPrefSlot(prefSlotId),
+                    multiDayStateSnapshot,
+                    sinceLast,
+                    agingForce,
+                    repsPerDay,
+                    maxChildPriority
+            );
         }
     }
 
@@ -281,30 +353,45 @@ final class TaskScorer {
     }
 
     private int applyPreferredTimeFit(int baseScore, ScoringContext context) {
-        LocalTime prefStart = findClosestPreferredStart(
+        Set<String> consumed = context.snapshot.preferenceFitState().consumedPrefSlotIds();
+        PrefSlotMatch match = findClosestUnconsumedPrefSlot(
                 context.snapshot.preferenceFitState().todayPrefSlots(),
-                context.start.toLocalTime()
+                context.start.toLocalTime(),
+                consumed
         );
-        if (prefStart == null) {
+        if (match == null) {
             return context.snapshot.preferenceFitState().hasDayConstraints() ? 0 : baseScore;
         }
 
-        double dif = Duration.between(context.start.toLocalTime(), prefStart).toMinutes() / 60.0;
+        double dif = Duration.between(context.start.toLocalTime(), match.start).toMinutes() / 60.0;
         double fit = Math.max(0, 1 - Math.abs(dif / preferredStartDeviationHours));
         return (int) (baseScore * fit);
     }
 
-    private LocalTime findClosestPreferredStart(List<TaskPrefSlot> preferredSlots, LocalTime candidateStart) {
-        LocalTime preferredStart = null;
+    static final class PrefSlotMatch {
+        final TaskPrefSlot prefSlot;
+        final LocalTime start;
+
+        PrefSlotMatch(TaskPrefSlot prefSlot, LocalTime start) {
+            this.prefSlot = prefSlot;
+            this.start = start;
+        }
+    }
+
+    private PrefSlotMatch findClosestUnconsumedPrefSlot(List<TaskPrefSlot> preferredSlots,
+                                                         LocalTime candidateStart,
+                                                         Set<String> consumedIds) {
+        TaskPrefSlot bestSlot = null;
         long minDiff = Long.MAX_VALUE;
         for (TaskPrefSlot slot : preferredSlots) {
+            if (consumedIds.contains(slot.id)) continue;
             long slotDiff = Math.abs(Duration.between(candidateStart, slot.start).toMinutes());
             if (slotDiff < minDiff) {
                 minDiff = slotDiff;
-                preferredStart = slot.start;
+                bestSlot = slot;
             }
         }
-        return preferredStart;
+        return bestSlot != null ? new PrefSlotMatch(bestSlot, bestSlot.start) : null;
     }
 
     private int applyAgingAndSpreadModifiers(int score, ScoringContext context) {
@@ -321,11 +408,27 @@ final class TaskScorer {
         return adjustedScore;
     }
 
-    void onSlotAssigned(Task task) {
+    void onSlotAssigned(Task task, LocalTime assignedStart) {
         TaskScoringSnapshot snapshot = caches.get(task.core.id);
-        if (snapshot != null) {
+        if (snapshot == null) return;
+
+        PrefSlotMatch match = findClosestUnconsumedPrefSlot(
+                snapshot.preferenceFitState().todayPrefSlots(),
+                assignedStart,
+                snapshot.preferenceFitState().consumedPrefSlotIds()
+        );
+
+        if (match != null) {
+            caches.put(task.core.id, snapshot.withConsumedPrefSlot(match.prefSlot.id));
+        } else {
             caches.put(task.core.id, snapshot.withIncrementedScheduledToday());
         }
+    }
+
+    boolean isPrefSlotConsumed(String taskId, String prefSlotId) {
+        TaskScoringSnapshot snapshot = caches.get(taskId);
+        return snapshot != null
+                && snapshot.preferenceFitState().consumedPrefSlotIds().contains(prefSlotId);
     }
 
     static final class ScoringContext {

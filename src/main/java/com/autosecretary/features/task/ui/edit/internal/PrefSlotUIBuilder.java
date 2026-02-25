@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.autosecretary.R;
 import com.autosecretary.features.task.ui.state.PrefSlotEditState;
 import com.google.android.material.button.MaterialButton;
 
@@ -37,12 +38,22 @@ public class PrefSlotUIBuilder {
         void onTimeClicked(PrefSlotEditState prefSlot, TextView timeView);
     }
 
-    private static final int TOUCH_TARGET_DP = 48;
-
     private final Context context;
+    private final int prefSlotHeaderPaddingTopPx;
+    private final int prefSlotHeaderPaddingBottomPx;
+    private final int prefSlotRowPaddingStartPx;
+    private final int prefSlotRowPaddingVerticalPx;
+    private final int prefSlotButtonSpacingPx;
+    private final int prefSlotButtonMinHeightPx;
 
     public PrefSlotUIBuilder(Context context) {
         this.context = context;
+        prefSlotHeaderPaddingTopPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_header_padding_top);
+        prefSlotHeaderPaddingBottomPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_header_padding_bottom);
+        prefSlotRowPaddingStartPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_row_padding_start);
+        prefSlotRowPaddingVerticalPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_row_padding_vertical);
+        prefSlotButtonSpacingPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_button_spacing);
+        prefSlotButtonMinHeightPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_button_min_height);
     }
 
     /**
@@ -65,9 +76,9 @@ public class PrefSlotUIBuilder {
 
         for (int key = 1; key <= repsPerDay; key++) {
             TextView header = new TextView(context);
-            header.setText("Wiederholung " + key);
+            header.setText(context.getString(R.string.task_editor_pref_slot_header, key));
             header.setTypeface(null, Typeface.BOLD);
-            header.setPadding(0, dpToPx(12), 0, dpToPx(4));
+            header.setPadding(0, prefSlotHeaderPaddingTopPx, 0, prefSlotHeaderPaddingBottomPx);
             prefSlotContainer.addView(header);
 
             List<PrefSlotEditState> slotsInGroup = slotMap.getOrDefault(key, Collections.emptyList());
@@ -75,19 +86,22 @@ public class PrefSlotUIBuilder {
                 LinearLayout row = new LinearLayout(context);
                 row.setOrientation(LinearLayout.HORIZONTAL);
                 row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setPadding(dpToPx(16), dpToPx(4), 0, dpToPx(4));
+                row.setPadding(prefSlotRowPaddingStartPx, prefSlotRowPaddingVerticalPx, 0, prefSlotRowPaddingVerticalPx);
 
                 String formattedDays = formatDaysAsRanges(prefSlot.days);
                 MaterialButton daysView = createInteractiveButton();
-                daysView.setText("Wochentage wählen: " + formattedDays);
-                daysView.setContentDescription("Wochentage wählen. Aktuell: " + formattedDays);
+                daysView.setText(context.getString(R.string.task_editor_pref_slot_days_button, formattedDays));
+                daysView.setContentDescription(context.getString(
+                    R.string.task_editor_pref_slot_days_content_description,
+                    formattedDays
+                ));
 
                 LinearLayout.LayoutParams daysParams = new LinearLayout.LayoutParams(
                     0,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                     1f
                 );
-                daysParams.setMarginEnd(dpToPx(8));
+                daysParams.setMarginEnd(prefSlotButtonSpacingPx);
                 daysView.setLayoutParams(daysParams);
 
                 Set<DayOfWeek> takenByOthers = computeTakenDays(prefSlot, slotsInGroup);
@@ -97,8 +111,11 @@ public class PrefSlotUIBuilder {
                     ? prefSlot.start.format(DateTimeFormatter.ofPattern("HH:mm"))
                     : "--:--";
                 MaterialButton timeView = createInteractiveButton();
-                timeView.setText("Startzeit wählen: " + formattedTime);
-                timeView.setContentDescription("Startzeit wählen. Aktuell: " + formattedTime);
+                timeView.setText(context.getString(R.string.task_editor_pref_slot_time_button, formattedTime));
+                timeView.setContentDescription(context.getString(
+                    R.string.task_editor_pref_slot_time_content_description,
+                    formattedTime
+                ));
                 timeView.setTypeface(Typeface.MONOSPACE);
 
                 LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(
@@ -116,8 +133,8 @@ public class PrefSlotUIBuilder {
         }
     }
 
-    static String formatDaysAsRanges(Set<DayOfWeek> days) {
-        if (days == null || days.isEmpty()) return "Keine Tage";
+    private String formatDaysAsRanges(Set<DayOfWeek> days) {
+        if (days == null || days.isEmpty()) return context.getString(R.string.task_editor_pref_slot_no_days);
 
         List<DayOfWeek> sorted = new ArrayList<>(days);
         Collections.sort(sorted);
@@ -196,17 +213,14 @@ public class PrefSlotUIBuilder {
     private MaterialButton createInteractiveButton() {
         MaterialButton button = new MaterialButton(context, null,
             com.google.android.material.R.attr.materialButtonOutlinedStyle);
-        button.setMinHeight(dpToPx(TOUCH_TARGET_DP));
-        button.setMinimumHeight(dpToPx(TOUCH_TARGET_DP));
+        button.setMinHeight(prefSlotButtonMinHeightPx);
+        button.setMinimumHeight(prefSlotButtonMinHeightPx);
         button.setClickable(true);
         button.setFocusable(true);
         button.setAllCaps(false);
-        button.setTextSize(14);
+        button.setTextAppearance(R.style.TextAppearance_AISecretary_Editor_PrefSlotButton);
         button.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         return button;
     }
 
-    private int dpToPx(int dp) {
-        return (int) (dp * context.getResources().getDisplayMetrics().density + 0.5f);
-    }
 }
