@@ -70,11 +70,11 @@ public class BudgetRoomRepository implements BudgetRepository {
         lookupDao.insertCategory(category);
     }
 
-    @Override public List<MonthlyTransactionOverviewItem> getMonthlyOverview(String yearMonth) {
-        return transactionDao.getMonthlyOverview(yearMonth);
+    @Override public List<MonthlyTransactionOverviewItem> getMonthlyOverview(String yearMonth, String accountId) {
+        return transactionDao.getMonthlyOverview(yearMonth, accountId);
     }
 
-    @Override public List<CategorySpendTotal> getCategorySpendTotals(String yearMonth) {
-        return limitDao.getCategorySpendTotals(yearMonth);
+    @Override public List<CategorySpendTotal> getCategorySpendTotals(String yearMonth, String accountId) {
+        return limitDao.getCategorySpendTotals(yearMonth, accountId);
     }
 }

@@ -27,6 +27,7 @@ public interface BudgetLimitDao {
             LEFT JOIN budget_transaction t
                    ON t.categoryId = c.id
                   AND t.yearMonth = :yearMonth
+                  AND t.accountId = :accountId
             LEFT JOIN budget_limit l
                    ON l.categoryId = c.id
                   AND l.yearMonth = :yearMonth
@@ -34,7 +35,7 @@ public interface BudgetLimitDao {
             GROUP BY c.id, c.name, l.amount
             ORDER BY spentCents DESC, c.name COLLATE NOCASE ASC
             """)
-    List<CategorySpendTotal> getCategorySpendTotals(String yearMonth);
+    List<CategorySpendTotal> getCategorySpendTotals(String yearMonth, String accountId);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(BudgetLimit budgetLimit);

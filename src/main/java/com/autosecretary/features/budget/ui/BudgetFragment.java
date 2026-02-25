@@ -32,6 +32,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
+import com.autosecretary.features.budget.data.BudgetAccount;
 import com.autosecretary.features.budget.data.BudgetCategory;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 import com.google.android.material.textfield.TextInputEditText;
@@ -61,7 +62,8 @@ public class BudgetFragment extends Fragment {
                     String mimeType = requireContext().getContentResolver().getType(uri);
                     try {
                         byte[] bytes = readUriBytes(uri);
-                        budgetViewModel.importFromCsv(fileName, bytes, mimeType);
+                        String accountId = budgetViewModel.getSelectedAccountId().getValue();
+                        budgetViewModel.importFromCsv(accountId, fileName, bytes, mimeType);
                     } catch (IOException e) {
                         budgetViewModel.onImportReadFailed();
                     }
@@ -104,6 +106,12 @@ public class BudgetFragment extends Fragment {
 
         budgetViewModel.getTitle().observe(getViewLifecycleOwner(), title::setText);
         budgetViewModel.getStatusMessage().observe(getViewLifecycleOwner(), status::setText);
+        budgetViewModel.getAccounts().observe(getViewLifecycleOwner(), accounts -> {
+            String selectedId = budgetViewModel.getSelectedAccountId().getValue();
+            if ((selectedId == null || selectedId.isBlank()) && accounts != null && !accounts.isEmpty()) {
+                budgetViewModel.setSelectedAccountId(accounts.get(0).id);
+            }
+        });
 
         budgetViewModel.getSummaryData().observe(getViewLifecycleOwner(), data -> {
             if (data == null) return;
@@ -161,6 +169,7 @@ public class BudgetFragment extends Fragment {
         RadioButton expenseRadio = dialogView.findViewById(R.id.BudgetDialogTypeExpense);
         RadioGroup typeGroup = dialogView.findViewById(R.id.BudgetDialogTypeGroup);
         Spinner categorySpinner = dialogView.findViewById(R.id.BudgetDialogCategory);
+        Spinner accountSpinner = dialogView.findViewById(R.id.BudgetDialogAccount);
         TextInputEditText noteInput = dialogView.findViewById(R.id.BudgetDialogNote);
 
         List<BudgetCategory> allCategories = budgetViewModel.getCategories().getValue();
@@ -168,6 +177,21 @@ public class BudgetFragment extends Fragment {
         List<BudgetCategory> allCats = allCategories;
 
         populateCategorySpinner(categorySpinner, allCats, true);
+
+        List<BudgetAccount> allAccounts = budgetViewModel.getAccounts().getValue();
+        if (allAccounts == null) allAccounts = new ArrayList<>();
+        List<BudgetAccount> accounts = allAccounts;
+        populateAccountSpinner(accountSpinner, accounts);
+
+        String selectedAccountId = budgetViewModel.getSelectedAccountId().getValue();
+        if (selectedAccountId != null) {
+            for (int i = 0; i < accounts.size(); i++) {
+                if (selectedAccountId.equals(accounts.get(i).id)) {
+                    accountSpinner.setSelection(i);
+                    break;
+                }
+            }
+        }
 
         typeGroup.setOnCheckedChangeListener((group, checkedId) ->
                 populateCategorySpinner(categorySpinner, allCats,
@@ -183,8 +207,10 @@ public class BudgetFragment extends Fragment {
                     String note = noteInput.getText() != null
                             ? noteInput.getText().toString().trim() : "";
                     String categoryId = getSelectedCategoryId(categorySpinner, allCats, isExpense);
+                    String accountId = getSelectedAccountId(accountSpinner, accounts);
+                    budgetViewModel.setSelectedAccountId(accountId);
 
-                    budgetViewModel.addTransaction(amountStr, isExpense, categoryId,
+                    budgetViewModel.addTransaction(accountId, amountStr, isExpense, categoryId,
                             note.isEmpty() ? null : note, LocalDate.now());
                 })
                 .setNegativeButton(R.string.budget_dialog_cancel, null)
@@ -204,6 +230,23 @@ public class BudgetFragment extends Fragment {
                 android.R.layout.simple_spinner_item, names);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
+    }
+
+    private void populateAccountSpinner(Spinner spinner, List<BudgetAccount> allAccounts) {
+        List<String> names = new ArrayList<>();
+        for (BudgetAccount account : allAccounts) {
+            names.add(account.name);
+        }
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
+                android.R.layout.simple_spinner_item, names);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+    }
+
+    private String getSelectedAccountId(Spinner spinner, List<BudgetAccount> allAccounts) {
+        int position = spinner.getSelectedItemPosition();
+        if (position < 0 || position >= allAccounts.size()) return null;
+        return allAccounts.get(position).id;
     }
 
     private String getSelectedCategoryId(Spinner spinner, List<BudgetCategory> allCategories,
@@ -373,7 +416,8 @@ public class BudgetFragment extends Fragment {
                     if (selections[i]) selected.add(suggestions.get(i));
                 }
                 if (!selected.isEmpty()) {
-                    budgetViewModel.applyRecurringSuggestions(selected);
+                    String accountId = budgetViewModel.getSelectedAccountId().getValue();
+                    budgetViewModel.applyRecurringSuggestions(accountId, selected);
                 }
                 dialog.dismiss();
             });

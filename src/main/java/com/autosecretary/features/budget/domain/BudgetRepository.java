@@ -22,6 +22,6 @@ public interface BudgetRepository {
     void saveBudgetLimit(BudgetLimit budgetLimit);
     void insertAccount(BudgetAccount account);
     void insertCategory(BudgetCategory category);
-    List<MonthlyTransactionOverviewItem> getMonthlyOverview(String yearMonth);
-    List<CategorySpendTotal> getCategorySpendTotals(String yearMonth);
+    List<MonthlyTransactionOverviewItem> getMonthlyOverview(String yearMonth, String accountId);
+    List<CategorySpendTotal> getCategorySpendTotals(String yearMonth, String accountId);
 }

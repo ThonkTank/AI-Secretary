@@ -115,6 +115,8 @@ public class BudgetViewModel extends ViewModel {
     private final MutableLiveData<BudgetImportUseCase.ImportResult> importResult = new MutableLiveData<>();
     private final MutableLiveData<YearMonth> currentMonth = new MutableLiveData<>(YearMonth.now());
     private final MutableLiveData<List<BudgetCategory>> categories = new MutableLiveData<>(new ArrayList<>());
+    private final MutableLiveData<List<BudgetAccount>> accounts = new MutableLiveData<>(new ArrayList<>());
+    private final MutableLiveData<String> selectedAccountId = new MutableLiveData<>();
     private final MutableLiveData<List<BudgetLimitBar>> budgetLimits = new MutableLiveData<>(new ArrayList<>());
 
     private final BudgetRepository repository;
@@ -171,6 +173,19 @@ public class BudgetViewModel extends ViewModel {
         return categories;
     }
 
+    public LiveData<List<BudgetAccount>> getAccounts() {
+        return accounts;
+    }
+
+    public LiveData<String> getSelectedAccountId() {
+        return selectedAccountId;
+    }
+
+    public void setSelectedAccountId(String accountId) {
+        selectedAccountId.setValue(accountId);
+        loadOverview();
+    }
+
     public LiveData<List<BudgetLimitBar>> getLimits() {
         return budgetLimits;
     }
@@ -181,21 +196,49 @@ public class BudgetViewModel extends ViewModel {
 
     private void ensureDefaultData() {
         executor.execute(() -> {
-            List<BudgetAccount> accounts = repository.findActiveAccounts();
-            if (accounts.isEmpty()) {
-                repository.insertAccount(new BudgetAccount("Girokonto"));
+            List<BudgetAccount> activeAccounts = repository.findActiveAccounts();
+            if (activeAccounts.isEmpty()) {
+                repository.insertAccount(new BudgetAccount(
+                        "Girokonto",
+                        BudgetAccount.AccountType.CHECKING,
+                        0,
+                        null));
                 repository.insertCategory(new BudgetCategory("Sonstiges", "EXPENSE"));
                 repository.insertCategory(new BudgetCategory("Gehalt", "INCOME"));
+                activeAccounts = repository.findActiveAccounts();
             }
-            if (repository.findAllTransactions().isEmpty()) {
-                String accountId = repository.findActiveAccounts().get(0).id;
+
+            String resolvedAccountId = resolveSelectedAccountId(activeAccounts);
+            if (resolvedAccountId != null && repository.findTransactionsForAccount(resolvedAccountId).isEmpty()) {
                 LocalDate today = LocalDate.now();
-                seedDemoTransactions(accountId, today);
+                seedDemoTransactions(resolvedAccountId, today);
             }
+
             List<BudgetCategory> cats = repository.getActiveCategories();
-            postToMain.accept(() -> categories.setValue(cats));
+            List<BudgetAccount> finalAccounts = activeAccounts;
+            String finalResolvedAccountId = resolvedAccountId;
+            postToMain.accept(() -> {
+                accounts.setValue(finalAccounts);
+                selectedAccountId.setValue(finalResolvedAccountId);
+                categories.setValue(cats);
+            });
             loadOverviewOnExecutor();
         });
+    }
+
+    private String resolveSelectedAccountId(List<BudgetAccount> activeAccounts) {
+        String currentSelection = selectedAccountId.getValue();
+        if (currentSelection != null) {
+            for (BudgetAccount account : activeAccounts) {
+                if (currentSelection.equals(account.id)) {
+                    return currentSelection;
+                }
+            }
+        }
+        if (activeAccounts.isEmpty()) {
+            return null;
+        }
+        return activeAccounts.get(0).id;
     }
 
     private void seedDemoTransactions(String accountId, LocalDate reference) {
@@ -246,8 +289,19 @@ public class BudgetViewModel extends ViewModel {
         YearMonth month = currentMonth.getValue();
         if (month == null) month = YearMonth.now();
         String yearMonthStr = month.toString();
+        String accountId = selectedAccountId.getValue();
+        if (accountId == null || accountId.isBlank()) {
+            postToMain.accept(() -> {
+                transactions.setValue(new ArrayList<>());
+                summaryData.setValue(new BudgetSummaryData(0, 0));
+                uiState.setValue(BudgetUiState.EMPTY);
+                statusMessage.setValue("Kein Konto ausgewählt.");
+            });
+            return;
+        }
+
         List<MonthlyTransactionOverviewItem> items =
-                repository.getMonthlyOverview(yearMonthStr);
+                repository.getMonthlyOverview(yearMonthStr, accountId);
 
         List<BudgetTransactionRow> rows = new ArrayList<>();
         long totalIncomeCents = 0;
@@ -296,7 +350,7 @@ public class BudgetViewModel extends ViewModel {
         loadLimitsOnExecutor();
     }
 
-    public void addTransaction(String amountStr, boolean isExpense, String categoryId,
+    public void addTransaction(String accountId, String amountStr, boolean isExpense, String categoryId,
                                String note, LocalDate date) {
         executor.execute(() -> {
             long amountCents;
@@ -311,8 +365,13 @@ public class BudgetViewModel extends ViewModel {
                 return;
             }
 
-            List<BudgetAccount> accounts = repository.findActiveAccounts();
-            String accountId = accounts.get(0).id;
+            if (accountId == null || accountId.isBlank()) {
+                postToMain.accept(() -> {
+                    uiState.setValue(BudgetUiState.ERROR);
+                    statusMessage.setValue("Kein Konto ausgewählt.");
+                });
+                return;
+            }
 
             BudgetTransactionEntity.TransactionType type = isExpense
                     ? BudgetTransactionEntity.TransactionType.EXPENSE
@@ -335,14 +394,10 @@ public class BudgetViewModel extends ViewModel {
         });
     }
 
-    public void importFromCsv(String fileName, byte[] bytes, String mimeType) {
+    public void importFromCsv(String accountId, String fileName, byte[] bytes, String mimeType) {
         postToMain.accept(() -> uiState.setValue(BudgetUiState.LOADING));
 
-        String accountId;
-        List<BudgetAccount> accounts = repository.findActiveAccounts();
-        if (!accounts.isEmpty()) {
-            accountId = accounts.get(0).id;
-        } else {
+        if (accountId == null || accountId.isBlank()) {
             postToMain.accept(() -> {
                 uiState.setValue(BudgetUiState.ERROR);
                 statusMessage.setValue("Kein Konto vorhanden.");
@@ -383,10 +438,8 @@ public class BudgetViewModel extends ViewModel {
         });
     }
 
-    public void applyRecurringSuggestions(List<RecurringSuggestion> suggestions) {
-        List<BudgetAccount> accounts = repository.findActiveAccounts();
-        if (accounts.isEmpty()) return;
-        String accountId = accounts.get(0).id;
+    public void applyRecurringSuggestions(String accountId, List<RecurringSuggestion> suggestions) {
+        if (accountId == null || accountId.isBlank()) return;
 
         applyRecurringUseCase.executeAsync(
                 accountId,
@@ -405,7 +458,13 @@ public class BudgetViewModel extends ViewModel {
         if (month == null) month = YearMonth.now();
         String yearMonthStr = month.toString();
 
-        List<CategorySpendTotal> totals = repository.getCategorySpendTotals(yearMonthStr);
+        String accountId = selectedAccountId.getValue();
+        if (accountId == null || accountId.isBlank()) {
+            postToMain.accept(() -> budgetLimits.setValue(new ArrayList<>()));
+            return;
+        }
+
+        List<CategorySpendTotal> totals = repository.getCategorySpendTotals(yearMonthStr, accountId);
         List<BudgetLimitBar> bars = new ArrayList<>();
         for (CategorySpendTotal total : totals) {
             if (total.limitAmount > 0) {

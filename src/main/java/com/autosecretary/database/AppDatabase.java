@@ -6,6 +6,8 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
+import androidx.room.migration.Migration;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.autosecretary.features.budget.data.BudgetAccount;
 import com.autosecretary.features.budget.data.BudgetCategory;
@@ -39,11 +41,20 @@ import com.autosecretary.features.task.data.TaskSlot;
                 BudgetImportEntity.class,
                 BudgetRecurringTemplateEntity.class
         },
-        version = 10,
+        version = 11,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
 public abstract class AppDatabase extends RoomDatabase {
+
+    private static final Migration MIGRATION_10_11 = new Migration(10, 11) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE budget_account ADD COLUMN accountType TEXT NOT NULL DEFAULT 'CHECKING'");
+            database.execSQL("ALTER TABLE budget_account ADD COLUMN currentBalanceCents INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE budget_account ADD COLUMN accountNumber TEXT");
+        }
+    };
 
     public abstract TaskDAO taskDao();
 
@@ -63,6 +74,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context, AppDatabase.class, "autosecretary.db")
+                    .addMigrations(MIGRATION_10_11)
                     .fallbackToDestructiveMigration()
                     .build();
         }

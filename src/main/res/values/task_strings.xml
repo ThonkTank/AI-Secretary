@@ -90,6 +90,7 @@
     <string name="budget_import_error">Import fehlgeschlagen: %1$s</string>
     <string name="budget_transaction_content_description">Transaktion: %1$s, %2$s</string>
     <string name="budget_dialog_category_label">Kategorie</string>
+    <string name="budget_dialog_account_label">Konto</string>
     <string name="budget_month_previous">Vorheriger Monat</string>
     <string name="budget_month_next">Nächster Monat</string>
     <string name="budget_delete_title">Transaktion löschen?</string>
