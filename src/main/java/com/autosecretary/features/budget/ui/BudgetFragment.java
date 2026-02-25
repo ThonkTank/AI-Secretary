@@ -37,6 +37,7 @@ import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
+import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.io.ByteArrayOutputStream;
@@ -201,9 +202,9 @@ public class BudgetFragment extends Fragment {
             }
         });
 
-        budgetViewModel.getImportResult().observe(getViewLifecycleOwner(), result -> {
-            if (result != null && !result.recurringSuggestions().isEmpty()) {
-                showRecurringSuggestionsDialog(result.recurringSuggestions());
+        budgetViewModel.getImportDialogState().observe(getViewLifecycleOwner(), state -> {
+            if (state != null && state.shouldShowRecurringSuggestionsDialog()) {
+                showRecurringSuggestionsDialog(state.getRecurringSuggestions());
                 budgetViewModel.clearImportResult();
             }
         });
@@ -590,7 +591,7 @@ public class BudgetFragment extends Fragment {
     }
 
     // --- Budget Limit Bars ---
-    private void renderLimitBars(List<BudgetViewModel.BudgetLimitBar> bars,
+    private void renderLimitBars(List<BudgetLimitBar> bars,
                                  LinearLayout container, Button setLimitButton) {
         container.removeAllViews();
         if (bars == null || bars.isEmpty()) {
@@ -602,7 +603,7 @@ public class BudgetFragment extends Fragment {
         setLimitButton.setVisibility(View.VISIBLE);
         LayoutInflater inflater = LayoutInflater.from(container.getContext());
 
-        for (BudgetViewModel.BudgetLimitBar bar : bars) {
+        for (BudgetLimitBar bar : bars) {
             View row = inflater.inflate(R.layout.budget_limit_bar_item, container, false);
             TextView name = row.findViewById(R.id.BudgetLimitBarName);
             TextView spentText = row.findViewById(R.id.BudgetLimitBarSpentText);

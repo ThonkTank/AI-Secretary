@@ -7,6 +7,8 @@ import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.View;
 
+import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,7 +19,7 @@ public class BudgetBalanceChartView extends View {
     private final Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint pointPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-    private List<BudgetViewModel.BudgetChartPoint> points = new ArrayList<>();
+    private List<BudgetChartPoint> points = new ArrayList<>();
 
     public BudgetBalanceChartView(Context context) {
         this(context, null);
@@ -43,7 +45,7 @@ public class BudgetBalanceChartView extends View {
         labelPaint.setTextSize(dp(10f));
     }
 
-    public void setPoints(List<BudgetViewModel.BudgetChartPoint> points) {
+    public void setPoints(List<BudgetChartPoint> points) {
         this.points = points != null ? points : new ArrayList<>();
         invalidate();
     }
@@ -71,7 +73,7 @@ public class BudgetBalanceChartView extends View {
 
         long min = Long.MAX_VALUE;
         long max = Long.MIN_VALUE;
-        for (BudgetViewModel.BudgetChartPoint point : points) {
+        for (BudgetChartPoint point : points) {
             min = Math.min(min, point.getBalanceCents());
             max = Math.max(max, point.getBalanceCents());
         }
@@ -85,7 +87,7 @@ public class BudgetBalanceChartView extends View {
         float lastY = -1;
 
         for (int i = 0; i < points.size(); i++) {
-            BudgetViewModel.BudgetChartPoint point = points.get(i);
+            BudgetChartPoint point = points.get(i);
             float x = leftPad + i * stepX;
             float ratio = (point.getBalanceCents() - min) / (float) (max - min);
             float y = bottomY - ratio * height;
@@ -101,8 +103,8 @@ public class BudgetBalanceChartView extends View {
         canvas.drawText(formatEuro(max), leftPad, topPad + dp(2f), labelPaint);
         canvas.drawText(formatEuro(min), leftPad, bottomY - dp(4f), labelPaint);
 
-        BudgetViewModel.BudgetChartPoint first = points.get(0);
-        BudgetViewModel.BudgetChartPoint last = points.get(points.size() - 1);
+        BudgetChartPoint first = points.get(0);
+        BudgetChartPoint last = points.get(points.size() - 1);
         canvas.drawText(first.getLabel(), leftPad, getHeight() - dp(8f), labelPaint);
         float endLabelWidth = labelPaint.measureText(last.getLabel());
         canvas.drawText(last.getLabel(), leftPad + width - endLabelWidth, getHeight() - dp(8f), labelPaint);
