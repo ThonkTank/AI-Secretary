@@ -12,7 +12,7 @@ import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.application.mapper.TaskListItemMapper;
 import com.autosecretary.features.task.data.TaskDAO;
-import com.autosecretary.features.task.domain.SlotGenerator;
+import com.autosecretary.features.task.domain.TaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.ui.TaskViewModelFactory;
@@ -48,7 +48,7 @@ public class AppCompositionRoot {
 
         TaskLifecycleManager lifecycleManager = new TaskLifecycleManager();
         TaskCompletionService completionService = new TaskCompletionService();
-        SlotGenerator generator = new com.autosecretary.features.task.domain.internal.scheduling.SlotGenerator(
+        TaskSlotGenerator generator = new com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator(
                 lifecycleManager,
                 message -> Log.d("SlotGen", message)
         );

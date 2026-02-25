@@ -7,9 +7,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Stable domain entry point for schedule generation.
+ * Public domain contract for task schedule generation.
  */
-public interface SlotGenerator {
+public interface TaskSlotGenerator {
 
     interface PlanningState {}
 

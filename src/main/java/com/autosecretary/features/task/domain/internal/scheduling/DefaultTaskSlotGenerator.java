@@ -21,9 +21,10 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * Core scheduling algorithm that assigns tasks to time slots within a {@link TimeWindow}.
+ * Internal scheduler implementation of the {@link com.autosecretary.features.task.domain.TaskSlotGenerator}
+ * contract that assigns tasks to time slots within a {@link TimeWindow}.
  */
-public class SlotGenerator implements com.autosecretary.features.task.domain.SlotGenerator {
+public class DefaultTaskSlotGenerator implements com.autosecretary.features.task.domain.TaskSlotGenerator {
 
     private static final class PlanningStateAdapter implements PlanningState {
         private final MultiDayState state = new MultiDayState();
@@ -66,11 +67,11 @@ public class SlotGenerator implements com.autosecretary.features.task.domain.Slo
     private final TaskScorer scorer;
     private LocalDate schedulingDay;
 
-    public SlotGenerator(TaskLifecycleManager lifecycleManager) {
+    public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager) {
         this(lifecycleManager, null);
     }
 
-    public SlotGenerator(TaskLifecycleManager lifecycleManager, Consumer<String> logger) {
+    public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager, Consumer<String> logger) {
         this.scorer = new TaskScorer(lifecycleManager);
         this.logger = logger;
     }
