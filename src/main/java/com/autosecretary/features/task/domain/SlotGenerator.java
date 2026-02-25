@@ -1,5 +1,6 @@
 package com.autosecretary.features.task.domain;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
@@ -17,12 +18,10 @@ import com.autosecretary.features.task.data.*;
 /**
  * Core scheduling algorithm that assigns tasks to time slots within a {@link TimeWindow}.
  * <p>
- * The algorithm uses cursor-based greedy assignment with preferred-time lookahead. For each
- * cursor position, it evaluates every task at both the current cursor and at each of the task's
- * preferred start times (from {@link TaskPrefSlot}). The (task, startTime) pair with the highest
- * composite score wins. When the winning task's start is after the cursor, the gap is filled
- * recursively using greedy-only selection (no lookahead), with the "anchored" task excluded to
- * prevent premature placement. Unfillable gaps remain as free time.
+ * Uses gap-aware global best-fit placement: each iteration evaluates every task at every
+ * available position (gap starts + preferred times within gaps), picks the (task, startTime)
+ * pair with the highest composite score, places it, and repeats. This ensures tasks land at
+ * their optimal times rather than being greedily placed at the earliest available slot.
  * </p>
  * <p>
  * Additional rules: tasks with unmet {@link TaskPrerequisite}s are skipped, and child tasks are
@@ -49,11 +48,29 @@ public class SlotGenerator {
         }
     }
 
+    /** Half-open time interval [start, end) representing an occupied block in the schedule. */
+    private static class Interval implements Comparable<Interval> {
+        final LocalDateTime start;
+        final LocalDateTime end;
+
+        Interval(LocalDateTime start, LocalDateTime end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        @Override
+        public int compareTo(Interval other) {
+            int cmp = this.start.compareTo(other.start);
+            return cmp != 0 ? cmp : this.end.compareTo(other.end);
+        }
+    }
+
     private final Consumer<String> logger;
     private int newSlots;
     private Set<String> scheduledInSession;
     private Map<String, Task> allTasksById;
     private final TaskScorer scorer;
+    private LocalDate schedulingDay;
 
     public SlotGenerator(TaskScorer scorer) {
         this(scorer, null);
@@ -68,56 +85,105 @@ public class SlotGenerator {
 
     /**
      * Generates scheduled time slots for the given tasks within {@code window}.
-     * <p>
-     * Builds the task tree, runs scorer maintenance on every task, then fills the window using
-     * lookahead-aware assignment. Returns the flat list of all tasks with their newly assigned
-     * {@link TaskSlot}s attached.
-     * </p>
+     * Single-day convenience method that delegates to {@link #generateSlotsForDay} with empty state.
      *
      * @param tasks  flat list of all tasks (will be tree-built and re-flattened internally)
      * @param window the scheduling time boundaries
      * @return all tasks with slots assigned
      */
     public List<Task> generateSlots(List<Task> tasks, TimeWindow window) {
+        List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
+        List<Task> allTasks = TaskTreeOperations.flatten(taskTree);
+        generateSlotsForDay(allTasks, window, new MultiDayState());
+        return allTasks;
+    }
+
+    /**
+     * Generates scheduled time slots for one day, aware of cross-day scheduling state.
+     * <p>
+     * Builds the task tree, runs scorer maintenance (with day and multi-day state) on every task,
+     * pre-registers preserved slots (completed/in-progress), then fills the window using
+     * gap-aware global best-fit assignment.
+     * </p>
+     *
+     * @param tasks  flat list of all tasks (already flattened by caller)
+     * @param window the scheduling time boundaries for a single day
+     * @param state  cross-day state tracking scheduled tasks across the week
+     */
+    public void generateSlotsForDay(List<Task> tasks, TimeWindow window, MultiDayState state) {
+        schedulingDay = window.start().toLocalDate();
         newSlots = 0;
         scorer.reset();
-        List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
 
+        List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
         List<Task> allTasks = TaskTreeOperations.flatten(taskTree);
+
         scheduledInSession = new HashSet<>();
         allTasksById = new HashMap<>();
         for (Task t : allTasks) {
             allTasksById.put(t.core.id, t);
-            scorer.maintenance(t);
+            scorer.maintenance(t, schedulingDay, state);
+        }
+
+        // Pre-register preserved slots (completed/in-progress) for this day
+        for (Task t : allTasks) {
+            for (TaskSlot slot : t.slots) {
+                if (slot.day.equals(schedulingDay) && (slot.completed || slot.realStart != null)) {
+                    scheduledInSession.add(t.core.id);
+                    scorer.onSlotAssigned(t);
+                }
+            }
         }
 
         long windowMin = ChronoUnit.MINUTES.between(window.start(), window.end());
-        log("=== Generierung Start === Fenster " + window.start().format(HMM) + "-" + window.end().format(HMM) + " (" + windowMin + "min), " + taskTree.size() + " root tasks");
+        log("=== Generierung " + schedulingDay + " === Fenster " + window.start().format(HMM) + "-" + window.end().format(HMM) + " (" + windowMin + "min), " + taskTree.size() + " root tasks");
 
-        assignWithLookahead(taskTree, window.start(), window.end(), null, 0);
+        List<Interval> occupied = collectOccupiedIntervals(allTasks, schedulingDay);
+        assignGlobalBestFit(taskTree, window.start(), window.end(), null, 0, occupied);
 
-        log("=== Zusammenfassung ===");
+        log("=== Zusammenfassung " + schedulingDay + " ===");
+        int totalDaySlots = 0;
         for (Task t : allTasks) {
-            int slotCount = t.slots.size();
-            if (slotCount > 0) {
-                log("  " + t.core.title + ": " + slotCount + " slots [" + formatSlotsSummary(t.slots) + "]");
+            List<TaskSlot> daySlots = new ArrayList<>();
+            for (TaskSlot s : t.slots) {
+                if (s.day.equals(schedulingDay) && s.scheduled) daySlots.add(s);
+            }
+            if (!daySlots.isEmpty()) {
+                totalDaySlots += daySlots.size();
+                log("  " + t.core.title + ": " + daySlots.size() + " slots [" + formatSlotsSummary(daySlots) + "]");
             } else {
                 log("  " + t.core.title + ": unscheduled");
             }
         }
-        log("Gesamt: " + newSlots + " slots");
-
-        return allTasks;
+        log("Gesamt: " + totalDaySlots + " slots (neu: " + newSlots + ")");
     }
 
-    private LocalDateTime assignWithLookahead(List<Task> tasks, LocalDateTime cursor, LocalDateTime end, TaskSlot parentSlot, int depth) {
+    // ========================================================================
+    // Gap-aware global best-fit scheduling
+    // ========================================================================
+
+    /**
+     * Main scheduling loop: iteratively finds the globally best (task, startTime) pair
+     * across all available gaps and places it. Repeats until no task qualifies.
+     */
+    private void assignGlobalBestFit(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd,
+                                      TaskSlot parentSlot, int depth, List<Interval> occupied) {
         String indent = "  ".repeat(depth);
 
-        while (cursor.isBefore(end)) {
-            long remaining = ChronoUnit.MINUTES.between(cursor, end);
-            log(indent + "--- Cursor " + cursor.format(HMM) + " [depth=" + depth + "], " + remaining + "min übrig ---");
+        while (true) {
+            List<Interval> gaps = findGaps(occupied, windowStart, windowEnd);
+            if (gaps.isEmpty()) {
+                log(indent + "--- Keine Lücken übrig [depth=" + depth + "] ---");
+                break;
+            }
 
-            CandidateSelection selection = selectWithLookahead(tasks, cursor, end);
+            long totalFreeMin = 0;
+            for (Interval gap : gaps) {
+                totalFreeMin += ChronoUnit.MINUTES.between(gap.start, gap.end);
+            }
+            log(indent + "--- Lückensuche [depth=" + depth + "], " + gaps.size() + " Lücken, " + totalFreeMin + "min frei ---");
+
+            CandidateSelection selection = evaluateAllCandidates(tasks, gaps, windowEnd);
             log(indent + "  " + selection.scoreLog);
 
             if (selection.task == null || selection.score <= 0) {
@@ -125,63 +191,27 @@ public class SlotGenerator {
                 break;
             }
 
-            if (selection.startTime.isAfter(cursor)) {
-                log(indent + "  → Lücke [" + cursor.format(HMM) + "-" + selection.startTime.format(HMM) + "] vor " + selection.task.core.title + " wird gefüllt");
-                cursor = assignGreedy(tasks, cursor, selection.startTime, parentSlot, depth, selection.task.core.id);
-                if (cursor.isBefore(selection.startTime)) {
-                    long gapMin = ChronoUnit.MINUTES.between(cursor, selection.startTime);
-                    log(indent + "  → Freie Lücke [" + cursor.format(HMM) + "-" + selection.startTime.format(HMM) + "] (" + gapMin + "min)");
-                    cursor = selection.startTime;
-                }
-            }
-
-            TaskSlot slot = createScheduledSlot(selection.task, cursor, selection.score, parentSlot);
-            LocalDateTime slotEnd = scheduleChildren(selection.task, cursor, slot, depth);
+            TaskSlot slot = createScheduledSlot(selection.task, selection.startTime, selection.score, parentSlot);
+            LocalDateTime slotEnd = scheduleChildrenGapAware(selection.task, selection.startTime, slot, depth);
             slot.end = slotEnd.toLocalTime();
             finalizeAssignment(selection.task, slot, selection.score);
 
             log(indent + "  → " + selection.task.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM) + "] score=" + selection.score);
 
-            cursor = slotEnd;
+            insertSorted(occupied, new Interval(selection.startTime, slotEnd));
         }
-
-        return cursor;
     }
 
-    private LocalDateTime assignGreedy(List<Task> tasks, LocalDateTime cursor, LocalDateTime end, TaskSlot parentSlot, int depth, String excludeId) {
-        String indent = "  ".repeat(depth);
-
-        while (cursor.isBefore(end)) {
-            long remaining = ChronoUnit.MINUTES.between(cursor, end);
-            log(indent + "--- Cursor " + cursor.format(HMM) + " [depth=" + depth + ", greedy], " + remaining + "min übrig ---");
-
-            CandidateSelection selection = selectAtCursor(tasks, cursor, end, excludeId);
-            log(indent + "  " + selection.scoreLog);
-
-            if (selection.task == null || selection.score <= 0) {
-                log(indent + "  → (keine Task qualifiziert, Abbruch)");
-                break;
-            }
-
-            TaskSlot slot = createScheduledSlot(selection.task, cursor, selection.score, parentSlot);
-            LocalDateTime slotEnd = scheduleChildren(selection.task, cursor, slot, depth);
-            slot.end = slotEnd.toLocalTime();
-            finalizeAssignment(selection.task, slot, selection.score);
-
-            log(indent + "  → " + selection.task.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM) + "] score=" + selection.score);
-
-            cursor = slotEnd;
-        }
-
-        return cursor;
-    }
-
-    private CandidateSelection selectWithLookahead(List<Task> tasks, LocalDateTime cursor, LocalDateTime end) {
+    /**
+     * Evaluates all tasks at all available positions (gap starts + preferred times within gaps).
+     * Returns the (task, startTime) pair with the highest score.
+     */
+    private CandidateSelection evaluateAllCandidates(List<Task> tasks, List<Interval> gaps, LocalDateTime windowEnd) {
         Task bestTask = null;
         int bestScore = 0;
-        LocalDateTime bestStart = cursor;
+        LocalDateTime bestStart = null;
         StringBuilder scores = new StringBuilder();
-        DayOfWeek today = cursor.toLocalDate().getDayOfWeek();
+        DayOfWeek today = schedulingDay.getDayOfWeek();
 
         for (Task task : tasks) {
             appendScoreSeparator(scores);
@@ -190,57 +220,113 @@ public class SlotGenerator {
                 continue;
             }
 
-            int cursorScore = scorer.score(task, cursor, end);
-            scores.append(formatScore(task, cursorScore));
-            if (cursorScore > bestScore) {
-                bestScore = cursorScore;
-                bestTask = task;
-                bestStart = cursor;
-            }
+            int taskBestScore = 0;
 
-            for (TaskPrefSlot ps : task.prefSlots) {
-                if (ps.days == null || !ps.days.contains(today)) continue;
-                LocalDateTime prefStart = cursor.toLocalDate().atTime(ps.start);
-                if (!prefStart.isAfter(cursor) || !prefStart.isBefore(end)) continue;
-                int prefScore = scorer.score(task, prefStart, end);
-                if (prefScore > bestScore) {
-                    bestScore = prefScore;
+            for (Interval gap : gaps) {
+                LocalDateTime gapEnd = gap.end.isBefore(windowEnd) ? gap.end : windowEnd;
+
+                // Evaluate at gap start
+                int gapScore = scorer.score(task, gap.start, gapEnd);
+                if (gapScore > taskBestScore) {
+                    taskBestScore = gapScore;
+                }
+                if (gapScore > bestScore) {
+                    bestScore = gapScore;
                     bestTask = task;
-                    bestStart = prefStart;
-                    scores.append("@" + ps.start.format(HMM) + "=" + prefScore);
+                    bestStart = gap.start;
+                }
+
+                // Evaluate at each preferred time within this gap
+                for (TaskPrefSlot ps : task.prefSlots) {
+                    if (ps.days == null || !ps.days.contains(today)) continue;
+                    LocalDateTime prefStart = schedulingDay.atTime(ps.start);
+                    if (!prefStart.isAfter(gap.start) || !prefStart.isBefore(gap.end)) continue;
+                    int prefScore = scorer.score(task, prefStart, gapEnd);
+                    if (prefScore > taskBestScore) {
+                        taskBestScore = prefScore;
+                    }
+                    if (prefScore > bestScore) {
+                        bestScore = prefScore;
+                        bestTask = task;
+                        bestStart = prefStart;
+                        scores.append("@" + ps.start.format(HMM) + "=" + prefScore);
+                    }
                 }
             }
+
+            scores.append(formatScore(task, taskBestScore));
         }
 
         return new CandidateSelection(bestTask, bestScore, bestStart, scores.toString());
     }
 
-    private CandidateSelection selectAtCursor(List<Task> tasks, LocalDateTime cursor, LocalDateTime end, String excludeId) {
-        Task bestTask = null;
-        int bestScore = 0;
-        StringBuilder scores = new StringBuilder();
+    /**
+     * Schedules children inside their parent's time block using the same global-best-fit approach.
+     */
+    private LocalDateTime scheduleChildrenGapAware(Task task, LocalDateTime parentStart, TaskSlot parentSlot, int depth) {
+        LocalDateTime parentEnd = parentStart.plusMinutes(task.core.maxDuration);
+        if (task.children.isEmpty()) {
+            return parentEnd;
+        }
+        List<Interval> childOccupied = new ArrayList<>();
+        assignGlobalBestFit(task.children, parentStart, parentEnd, parentSlot, depth + 1, childOccupied);
+        return parentEnd;
+    }
 
-        for (Task task : tasks) {
-            appendScoreSeparator(scores);
-            if (excludeId != null && excludeId.equals(task.core.id)) {
-                scores.append(task.core.title + ": -- (excluded)");
-                continue;
-            }
-            if (hasUnmetPrerequisites(task)) {
-                scores.append(formatPrerequisiteBlockedScore(task));
-                continue;
-            }
+    // ========================================================================
+    // Gap tracking
+    // ========================================================================
 
-            int score = scorer.score(task, cursor, end);
-            scores.append(formatScore(task, score));
-            if (score > bestScore) {
-                bestScore = score;
-                bestTask = task;
+    /** Computes free gaps between occupied intervals within the given window. */
+    private List<Interval> findGaps(List<Interval> occupied, LocalDateTime windowStart, LocalDateTime windowEnd) {
+        List<Interval> gaps = new ArrayList<>();
+        LocalDateTime cursor = windowStart;
+
+        for (Interval interval : occupied) {
+            if (interval.start.isAfter(cursor)) {
+                gaps.add(new Interval(cursor, interval.start));
+            }
+            if (interval.end.isAfter(cursor)) {
+                cursor = interval.end;
             }
         }
 
-        return new CandidateSelection(bestTask, bestScore, cursor, scores.toString());
+        if (cursor.isBefore(windowEnd)) {
+            gaps.add(new Interval(cursor, windowEnd));
+        }
+
+        return gaps;
     }
+
+    /** Scans all tasks for preserved (completed/in-progress) slots to seed the initial occupied list. */
+    private List<Interval> collectOccupiedIntervals(List<Task> tasks, LocalDate day) {
+        List<Interval> intervals = new ArrayList<>();
+        for (Task task : tasks) {
+            for (TaskSlot slot : task.slots) {
+                if (slot.day.equals(day) && (slot.completed || slot.realStart != null)
+                        && slot.start != null && slot.end != null) {
+                    intervals.add(new Interval(
+                            day.atTime(slot.start),
+                            day.atTime(slot.end)));
+                }
+            }
+        }
+        intervals.sort(Interval::compareTo);
+        return intervals;
+    }
+
+    /** Inserts a new interval into the sorted list at the correct position. */
+    private void insertSorted(List<Interval> intervals, Interval newInterval) {
+        int i = 0;
+        while (i < intervals.size() && intervals.get(i).start.compareTo(newInterval.start) <= 0) {
+            i++;
+        }
+        intervals.add(i, newInterval);
+    }
+
+    // ========================================================================
+    // Slot creation and finalization (unchanged)
+    // ========================================================================
 
     private TaskSlot createScheduledSlot(Task task, LocalDateTime cursor, int score, TaskSlot parentSlot) {
         TaskSlot slot = new TaskSlot();
@@ -261,11 +347,9 @@ public class SlotGenerator {
         newSlots++;
     }
 
-    private LocalDateTime scheduleChildren(Task task, LocalDateTime cursor, TaskSlot slot, int depth) {
-        LocalDateTime slotEnd = cursor.plusMinutes(task.core.maxDuration);
-        LocalDateTime childEnd = assignWithLookahead(task.children, cursor, slotEnd, slot, depth + 1);
-        return childEnd.isAfter(cursor) ? childEnd : slotEnd;
-    }
+    // ========================================================================
+    // Formatting and logging helpers (unchanged)
+    // ========================================================================
 
     private String formatSlotsSummary(List<TaskSlot> slots) {
         StringBuilder sb = new StringBuilder();
@@ -305,14 +389,13 @@ public class SlotGenerator {
      */
     private boolean hasUnmetPrerequisites(Task task) {
         if (task.prerequisites == null || task.prerequisites.isEmpty()) return false;
-        LocalDate today = LocalDate.now();
         for (TaskPrerequisite prereq : task.prerequisites) {
             if (scheduledInSession.contains(prereq.prerequisiteId)) continue;
             Task prereqTask = allTasksById.get(prereq.prerequisiteId);
             if (prereqTask == null) continue;
             boolean satisfied = false;
             for (TaskSlot slot : prereqTask.slots) {
-                if (slot.day.equals(today) && (slot.completed || slot.scheduled)) {
+                if (slot.day.equals(schedulingDay) && (slot.completed || slot.scheduled)) {
                     satisfied = true;
                     break;
                 }

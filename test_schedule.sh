@@ -85,10 +85,39 @@ tap_button() {
     $ADB shell input tap "$cx" "$cy"
 }
 
+# Zaehlt auf wie vielen Tages-Zusammenfassungen eine Task mit slots auftaucht
+count_days_with_task() {
+    local task_name="$1"
+    local count=0
+    local in_block=0
+    local found_in_block=0
+    while IFS= read -r line; do
+        if echo "$line" | grep -q "Zusammenfassung"; then
+            if [ "$found_in_block" -eq 1 ]; then
+                count=$((count + 1))
+            fi
+            in_block=1
+            found_in_block=0
+        fi
+        if [ "$in_block" -eq 1 ] && echo "$line" | grep -q "${task_name}:" && echo "$line" | grep -q "slots"; then
+            found_in_block=1
+        fi
+        if echo "$line" | grep -q "^Gesamt:"; then
+            if [ "$found_in_block" -eq 1 ]; then
+                count=$((count + 1))
+            fi
+            in_block=0
+            found_in_block=0
+        fi
+    done <<< "$ALL_SUMMARIES"
+    echo "$count"
+}
+
 # === Hauptablauf ===
 echo ""
 echo -e "${CYAN}========================================${NC}"
 echo -e "${CYAN}  AutoSecretary Schedule Test${NC}"
+echo -e "${CYAN}  (7-Tage Multi-Day Scheduling)${NC}"
 echo -e "${CYAN}========================================${NC}"
 echo ""
 
@@ -132,48 +161,67 @@ info "Tippe 'Generieren' Button..."
 tap_button "GENERIEREN"
 echo ""
 
-# 8. Warten auf Generation
-info "Warte 5s auf Slot-Generierung..."
-sleep 5
+# 8. Warten auf Generation (7 Tage braucht laenger)
+info "Warte 10s auf 7-Tage Slot-Generierung..."
+sleep 10
 echo ""
 
 # 9. Logcat auslesen
-echo -e "${CYAN}========================================${NC}"
-echo -e "${CYAN}  Slot-Generierung Ergebnisse${NC}"
-echo -e "${CYAN}========================================${NC}"
-echo ""
-
 LOG_OUTPUT=$($ADB logcat -d -s "${LOG_TAG}:D" | grep "$LOG_TAG" || true)
 
 if [ -z "$LOG_OUTPUT" ]; then
     fail "Keine SlotGen-Logs gefunden! Moegliche Ursachen:"
     echo "  - App wurde nicht korrekt gestartet"
     echo "  - 'Generieren' Button wurde nicht getroffen"
-    echo "  - Generation hat laenger als 5s gedauert"
+    echo "  - Generation hat laenger als 10s gedauert"
     echo ""
     echo "Versuche gesamten Logcat:"
     $ADB logcat -d | grep -i "slot\|task\|autosecretary" | tail -30
     exit 1
 fi
 
-# Vollstaendiges Log anzeigen
-echo -e "${BLUE}--- Vollstaendiges SlotGen Log ---${NC}"
-echo "$LOG_OUTPUT"
+# Zusammenfassungen extrahieren
+# TODAY_SUMMARY = erster Block (heute), ALL_SUMMARIES = alle 7 Bloecke
+ALL_SUMMARIES=$(echo "$LOG_OUTPUT" | sed -n '/Zusammenfassung/,/^.*Gesamt:/p')
+TODAY_SUMMARY=$(echo "$LOG_OUTPUT" | sed -n '/Zusammenfassung/{:a;/Gesamt:/!{N;ba};p;q}')
+
+# === 7-Tage Wochenplan Uebersicht ===
+echo -e "${CYAN}========================================${NC}"
+echo -e "${CYAN}  7-Tage Wochenplan${NC}"
+echo -e "${CYAN}========================================${NC}"
 echo ""
 
-# Zusammenfassung extrahieren
-echo -e "${CYAN}--- Zusammenfassung ---${NC}"
-SUMMARY=$(echo "$LOG_OUTPUT" | sed -n '/Zusammenfassung/,/Gesamt/p')
-if [ -n "$SUMMARY" ]; then
-    echo "$SUMMARY"
+if [ -n "$ALL_SUMMARIES" ]; then
+    # Tagesweise ausgeben mit Farbe
+    echo "$ALL_SUMMARIES" | while IFS= read -r line; do
+        if echo "$line" | grep -q "Zusammenfassung"; then
+            echo ""
+            echo -e "${BLUE}${line}${NC}"
+        elif echo "$line" | grep -q "Gesamt:"; then
+            echo -e "${YELLOW}${line}${NC}"
+        elif echo "$line" | grep -q "unscheduled"; then
+            : # unscheduled Tasks nicht anzeigen
+        elif echo "$line" | grep -q "slots"; then
+            echo -e "  ${GREEN}${line}${NC}"
+        else
+            echo "$line"
+        fi
+    done
 else
-    warn "Keine Zusammenfassung im Log gefunden"
+    warn "Keine Zusammenfassungen im Log gefunden"
 fi
 echo ""
 
+# Vollstaendiges Log (optional, nur bei --verbose)
+if [ "${1:-}" = "--verbose" ] || [ "${2:-}" = "--verbose" ]; then
+    echo -e "${BLUE}--- Vollstaendiges SlotGen Log ---${NC}"
+    echo "$LOG_OUTPUT"
+    echo ""
+fi
+
 # === 10. Automatische Checks ===
 echo -e "${CYAN}========================================${NC}"
-echo -e "${CYAN}  Automatische Checks${NC}"
+echo -e "${CYAN}  Automatische Checks (Heute)${NC}"
 echo -e "${CYAN}========================================${NC}"
 echo ""
 
@@ -191,6 +239,9 @@ run_check() {
         fail "$name"
     fi
 }
+
+# Alias: bestehende Checks nutzen TODAY_SUMMARY
+SUMMARY="$TODAY_SUMMARY"
 
 TODAY_DOW=$(date +%u) # 1=Mo, 2=Di, ..., 6=Sa, 7=So
 
@@ -433,6 +484,73 @@ else
     fi
 fi
 
+# === Multi-Day Distribution Checks ===
+echo ""
+echo -e "${CYAN}========================================${NC}"
+echo -e "${CYAN}  Multi-Day Verteilungs-Checks${NC}"
+echo -e "${CYAN}========================================${NC}"
+echo ""
+
+# Check 17: Sport auf genau 3 Tagen (Mo/Mi/Fr)
+SPORT_DAYS=$(count_days_with_task "Sport")
+if [ "$SPORT_DAYS" -eq 3 ]; then
+    run_check "Multi-Day: Sport auf $SPORT_DAYS Tagen geplant (3x/Woche korrekt)" "pass"
+elif [ "$SPORT_DAYS" -gt 0 ]; then
+    run_check "Multi-Day: Sport auf $SPORT_DAYS Tagen geplant (erwartet: 3)" "fail"
+else
+    run_check "Multi-Day: Sport auf keinem Tag geplant!" "fail"
+fi
+
+# Check 18: Einkaufen auf genau 1 Tag (Samstag)
+EINKAUFEN_DAYS=$(count_days_with_task "Einkaufen")
+if [ "$EINKAUFEN_DAYS" -eq 1 ]; then
+    run_check "Multi-Day: Einkaufen auf $EINKAUFEN_DAYS Tag geplant (1x/Woche Sa korrekt)" "pass"
+elif [ "$EINKAUFEN_DAYS" -gt 1 ]; then
+    run_check "Multi-Day: Einkaufen auf $EINKAUFEN_DAYS Tagen geplant (erwartet: 1)" "fail"
+else
+    run_check "Multi-Day: Einkaufen auf keinem Tag geplant!" "fail"
+fi
+
+# Check 19: Arbeit auf genau 5 Tagen (Mo-Fr)
+ARBEIT_DAYS=$(count_days_with_task "Arbeit")
+if [ "$ARBEIT_DAYS" -eq 5 ]; then
+    run_check "Multi-Day: Arbeit auf $ARBEIT_DAYS Tagen geplant (Mo-Fr korrekt)" "pass"
+elif [ "$ARBEIT_DAYS" -gt 0 ]; then
+    run_check "Multi-Day: Arbeit auf $ARBEIT_DAYS Tagen geplant (erwartet: 5)" "fail"
+else
+    run_check "Multi-Day: Arbeit auf keinem Tag geplant!" "fail"
+fi
+
+# Check 20: Morgenroutine auf allen 7 Tagen
+MORGEN_DAYS=$(count_days_with_task "Morgenroutine")
+if [ "$MORGEN_DAYS" -eq 7 ]; then
+    run_check "Multi-Day: Morgenroutine auf allen $MORGEN_DAYS Tagen geplant (taeglich korrekt)" "pass"
+elif [ "$MORGEN_DAYS" -gt 0 ]; then
+    run_check "Multi-Day: Morgenroutine auf $MORGEN_DAYS Tagen geplant (erwartet: 7)" "fail"
+else
+    run_check "Multi-Day: Morgenroutine auf keinem Tag geplant!" "fail"
+fi
+
+# Check 21: Wäsche waschen auf genau 2 Tagen
+WAESCHE_DAYS=$(count_days_with_task "Wäsche waschen")
+if [ "$WAESCHE_DAYS" -eq 2 ]; then
+    run_check "Multi-Day: Wäsche waschen auf $WAESCHE_DAYS Tagen geplant (2x/Woche korrekt)" "pass"
+elif [ "$WAESCHE_DAYS" -gt 0 ]; then
+    run_check "Multi-Day: Wäsche waschen auf $WAESCHE_DAYS Tagen geplant (erwartet: 2)" "fail"
+else
+    run_check "Multi-Day: Wäsche waschen auf keinem Tag geplant!" "fail"
+fi
+
+# Check 22: Abendspaziergang auf genau 1 Tag (Sonntag)
+SPAZIERGANG_DAYS=$(count_days_with_task "Abendspaziergang")
+if [ "$SPAZIERGANG_DAYS" -eq 1 ]; then
+    run_check "Multi-Day: Abendspaziergang auf $SPAZIERGANG_DAYS Tag geplant (1x/Woche So korrekt)" "pass"
+elif [ "$SPAZIERGANG_DAYS" -gt 1 ]; then
+    run_check "Multi-Day: Abendspaziergang auf $SPAZIERGANG_DAYS Tagen geplant (erwartet: 1)" "fail"
+else
+    run_check "Multi-Day: Abendspaziergang auf keinem Tag geplant!" "fail"
+fi
+
 # Ergebnis
 echo ""
 echo -e "${CYAN}========================================${NC}"
@@ -440,7 +558,7 @@ echo -e "${CYAN}  Ergebnis: $PASS/$TOTAL Checks bestanden${NC}"
 echo -e "${CYAN}========================================${NC}"
 
 # === Optional: DB ziehen ===
-if [ "${1:-}" = "--pull-db" ]; then
+if [ "${1:-}" = "--pull-db" ] || [ "${2:-}" = "--pull-db" ]; then
     echo ""
     info "Ziehe SQLite-Datenbank vom Geraet..."
     DB_LOCAL="/tmp/autosecretary.db"
@@ -449,8 +567,8 @@ if [ "${1:-}" = "--pull-db" ]; then
         ok "Datenbank gespeichert: $DB_LOCAL"
         if command -v sqlite3 &>/dev/null; then
             echo ""
-            info "Task-Slots aus der DB:"
-            sqlite3 "$DB_LOCAL" "SELECT tc.title, ts.start, ts.end, ts.score, ts.scheduled, ts.completed FROM task_slots ts JOIN task_core tc ON ts.taskId = tc.id WHERE ts.scheduled = 1 ORDER BY ts.start;" 2>/dev/null || warn "SQLite-Abfrage fehlgeschlagen"
+            info "Task-Slots aus der DB (nach Tag gruppiert):"
+            sqlite3 "$DB_LOCAL" "SELECT ts.day, tc.title, ts.start, ts.end, ts.score FROM task_slots ts JOIN task_core tc ON ts.taskId = tc.id WHERE ts.scheduled = 1 ORDER BY ts.day, ts.start;" 2>/dev/null || warn "SQLite-Abfrage fehlgeschlagen"
         fi
     else
         warn "Konnte DB nicht ziehen (run-as fehlgeschlagen?)"

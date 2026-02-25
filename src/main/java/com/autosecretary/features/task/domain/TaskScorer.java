@@ -68,19 +68,40 @@ public class TaskScorer {
         boolean hasDayConstraints;
         int repsPerDay;
         boolean deadlineExpired;
+
+        // Multi-day scheduling fields
+        int totalScheduledReps;     // reps scheduled across all days (from MultiDayState)
+        int totalRepsInPeriod;      // total reps needed in the current period
+        int minDayDistance;          // min days between this day and nearest already-scheduled day
+        double expectedDayGap;      // expected days between scheduling occurrences (periodInDays / reps)
     }
 
     public void maintenance(Task task) {
+        maintenance(task, LocalDate.now(), new MultiDayState());
+    }
+
+    public void maintenance(Task task, LocalDate day, MultiDayState state) {
         ScoringCache cache = new ScoringCache();
         caches.put(task.core.id, cache);
-        LocalDate today = LocalDate.now();
         TaskCore.Repetition rep = task.core.repetition;
 
-        advanceTaskPeriod(task, cache);
-        scanSlots(task, cache, today);
+        advanceTaskPeriod(task, cache, day);
+        scanSlots(task, cache, day);
         computeCompletionState(task, cache);
-        computeDerivedMetrics(task, cache, today);
-        computeTodayPrefSlots(task, cache, today.getDayOfWeek());
+        computeDerivedMetrics(task, cache, day);
+        computeTodayPrefSlots(task, cache, day.getDayOfWeek());
+
+        // Multi-day state integration
+        cache.totalScheduledReps = state.getTotalScheduledReps(task.core.id);
+        cache.minDayDistance = state.minDayDistance(task.core.id, day);
+        if (rep != null && rep.reps > 0) {
+            int periodsInWindow = Math.max(1, (int) Math.ceil(7.0 / rep.periodInDays()));
+            cache.totalRepsInPeriod = rep.reps * periodsInWindow;
+            cache.expectedDayGap = (double) rep.periodInDays() / rep.reps;
+        } else {
+            cache.totalRepsInPeriod = 1;
+            cache.expectedDayGap = 7; // one-shot: treat as once per week
+        }
     }
 
     /**
@@ -93,8 +114,8 @@ public class TaskScorer {
      *   <li>Must be executed before {@link #scanSlots(Task, ScoringCache, LocalDate)} so period boundaries are up-to-date.</li>
      * </ul>
      */
-    private void advanceTaskPeriod(Task task, ScoringCache cache) {
-        lifecycleManager.advancePeriods(task);
+    private void advanceTaskPeriod(Task task, ScoringCache cache, LocalDate day) {
+        lifecycleManager.advancePeriods(task, day);
     }
 
     /**
@@ -163,14 +184,25 @@ public class TaskScorer {
      *   <li>Deadline is considered expired only when {@code closeOnMiss} is true, deadline exists, and {@code today} is strictly after deadline.</li>
      * </ul>
      */
-    private void computeDerivedMetrics(Task task, ScoringCache cache, LocalDate today) {
-        cache.sinceLast = (int) ChronoUnit.DAYS.between(cache.lastCompletion, today);
-        cache.remainingDays = task.remainingDays();
+    private void computeDerivedMetrics(Task task, ScoringCache cache, LocalDate day) {
+        cache.sinceLast = (int) ChronoUnit.DAYS.between(cache.lastCompletion, day);
+        // Compute remainingDays relative to scheduling day (not LocalDate.now())
+        TaskCore.Repetition rep = task.core.repetition;
+        if (task.core.deadline != null) {
+            cache.remainingDays = (double) ChronoUnit.DAYS.between(day, task.core.deadline);
+        } else if (rep != null && rep.reps > 0 && rep.periodUnit != null) {
+            LocalDate periodEnd = rep.periodEnd();
+            cache.remainingDays = periodEnd != null
+                    ? (double) ChronoUnit.DAYS.between(day, periodEnd)
+                    : rep.periodInDays();
+        } else {
+            cache.remainingDays = 1;
+        }
         cache.requiredDays = task.requiredDays();
         // 10 = aging divisor: each 10 days of inactivity adds 1.0 to the multiplier (capped at maxAgingMultiplier)
         cache.agingForce = Math.min(1 + ((double) cache.sinceLast / 10), maxAgingMultiplier);
         cache.repsPerDay = task.core.repsPerDay();
-        cache.deadlineExpired = task.core.closeOnMiss && task.core.deadline != null && today.isAfter(task.core.deadline);
+        cache.deadlineExpired = task.core.closeOnMiss && task.core.deadline != null && day.isAfter(task.core.deadline);
 
         cache.maxChildPriority = 0;
         for (Task child : task.children) {
@@ -270,6 +302,14 @@ public class TaskScorer {
         // aging
         totalPrio = (int) (totalPrio * cache.agingForce);
 
+        // spread: only penalize over-scheduling relative to expected frequency
+        if (cache.minDayDistance > 0 && cache.minDayDistance < Integer.MAX_VALUE
+                && cache.minDayDistance < cache.expectedDayGap) {
+            double ratio = cache.minDayDistance / cache.expectedDayGap;
+            double spread = Math.min(1.0, 0.1 + ratio * 0.9);
+            totalPrio = (int) (totalPrio * spread);
+        }
+
         return totalPrio;
     }
 
@@ -277,6 +317,10 @@ public class TaskScorer {
         if (cache.isComplete) return false;
         if (cache.scheduledToday >= cache.repsPerDay) return false;
         if (cache.sinceLast < task.core.cooldown) return false;
+        // Multi-day spacing: block if scheduled more frequently than expected
+        if (cache.minDayDistance > 0 && cache.minDayDistance < cache.expectedDayGap * 0.5) return false;
+        // Period reps exhausted across all days
+        if (cache.totalScheduledReps >= cache.totalRepsInPeriod) return false;
         if (availableTime < task.core.minDuration) return false;
         if (task.core.progress != null && availableTime < task.core.progress.requiredTimePerRep()) return false;
         return !cache.deadlineExpired;

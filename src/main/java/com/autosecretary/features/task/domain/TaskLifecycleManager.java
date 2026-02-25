@@ -36,16 +36,25 @@ public class TaskLifecycleManager {
      * Advances {@code periodStart} to the current period boundary if the repetition period
      * has expired. Evaluates whether the rep goal was met in the expired period and breaks
      * the streak if not. Also breaks the streak for any skipped empty periods in between.
+     * Uses {@code LocalDate.now()} as reference — suitable for real-time checkoff flows.
      */
     public void advancePeriods(Task task) {
+        advancePeriods(task, LocalDate.now());
+    }
+
+    /**
+     * Scheduling-day-aware variant of {@link #advancePeriods(Task)}.
+     * Uses the given {@code referenceDay} instead of {@code LocalDate.now()} so that
+     * multi-day scheduling can correctly advance periods for future days.
+     */
+    public void advancePeriods(Task task, LocalDate referenceDay) {
         TaskCore.Repetition rep = task.core.repetition;
         if (rep == null || rep.reps <= 0 || rep.periodUnit == null) return;
         if (rep.periodStart == null) rep.periodStart = task.core.created;
 
-        LocalDate now = LocalDate.now();
         int periodDays = rep.periodInDays();
         if (periodDays <= 0) return;
-        if (now.isBefore(rep.periodEnd())) return;
+        if (referenceDay.isBefore(rep.periodEnd())) return;
 
         // Evaluate expired period
         boolean goalMet = rep.periodCompletions >= rep.reps;
@@ -55,7 +64,7 @@ public class TaskLifecycleManager {
         }
 
         // Bulk-jump to current period boundary
-        long daysSinceStart = ChronoUnit.DAYS.between(rep.periodStart, now);
+        long daysSinceStart = ChronoUnit.DAYS.between(rep.periodStart, referenceDay);
         long fullPeriods = daysSinceStart / periodDays;
         rep.periodStart = rep.periodStart.plusDays(fullPeriods * periodDays);
         rep.periodCompletions = 0;

@@ -14,11 +14,8 @@ import com.autosecretary.features.task.domain.SlotGenerator;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.TaskScorer;
-import com.autosecretary.features.task.domain.TimeWindow;
 import com.autosecretary.features.task.ui.TaskViewModelFactory;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -58,12 +55,7 @@ public class AppCompositionRoot {
         RegenerateScheduleUseCase regenerateScheduleUseCase = new RegenerateScheduleUseCase(
                 taskDao,
                 generator,
-                () -> {
-                    LocalDate day = LocalDate.now();
-                    LocalDateTime start = LocalDateTime.of(day, preferences.readPrefTime(day, true));
-                    LocalDateTime end = LocalDateTime.of(day, preferences.readPrefTime(day, false));
-                    return new TimeWindow(start, end);
-                },
+                preferences,
                 executor
         );
 
