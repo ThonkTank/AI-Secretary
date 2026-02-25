@@ -202,11 +202,13 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
         DayOfWeek today = schedulingDay.getDayOfWeek();
 
         for (Task task : tasks) {
-            appendScoreSeparator(scores);
+            if (scores.length() > 0) {
+                scores.append("  |  ");
+            }
 
             // Fast path: if prerequisites are unmet even at the latest possible time, skip entirely
             if (hasUnmetPrerequisites(task, windowEnd)) {
-                scores.append(formatPrerequisiteBlockedScore(task));
+                scores.append(task.core.title).append(": 0 (Voraussetzung)");
                 continue;
             }
 
@@ -246,7 +248,7 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
                 }
             }
 
-            scores.append(formatScore(task, taskBestScore));
+            scores.append(task.core.title).append(": ").append(taskBestScore);
         }
 
         return new CandidateSelection(bestTask, bestScore, bestStart, scores.toString());
@@ -340,20 +342,6 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
         String start = slot.start != null ? slot.start.format(HMM) : "?";
         String end = slot.end != null ? slot.end.format(HMM) : "?";
         return start + "-" + end + "(" + slot.score + ")";
-    }
-
-    private void appendScoreSeparator(StringBuilder scores) {
-        if (scores.length() > 0) {
-            scores.append("  |  ");
-        }
-    }
-
-    private String formatPrerequisiteBlockedScore(Task task) {
-        return task.core.title + ": 0 (Voraussetzung)";
-    }
-
-    private String formatScore(Task task, int score) {
-        return task.core.title + ": " + score;
     }
 
     private boolean hasUnmetPrerequisites(Task task, LocalDateTime candidateStart) {
