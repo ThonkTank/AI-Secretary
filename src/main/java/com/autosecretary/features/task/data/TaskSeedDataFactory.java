@@ -187,9 +187,13 @@ public final class TaskSeedDataFactory {
         t.prefSlots.add(TaskPrefSlotFactory.create(t.core.id, EnumSet.of(DayOfWeek.SUNDAY), LocalTime.of(17, 0)));
         newTasks.add(t);
 
-        // 17. Listen to podcast — MEDIUM, 3x daily (repsPerDay=3), all at 18:00
-        t = new Task("Podcast hören", 3, 1, Period.DAY, null, 1, LocalTime.of(18, 0), 20);
+        // 17. Listen to podcast — MEDIUM, 3x daily (repsPerDay=3), spread across day
+        t = new Task("Podcast hören", 3, 1, Period.DAY, null, 1, LocalTime.of(8, 0), 20);
         t.core.minDuration = 10;
+        t.prefSlots.clear();
+        t.prefSlots.add(TaskPrefSlotFactory.create(t.core.id, EnumSet.allOf(DayOfWeek.class), LocalTime.of(8, 0)));
+        t.prefSlots.add(TaskPrefSlotFactory.create(t.core.id, EnumSet.allOf(DayOfWeek.class), LocalTime.of(13, 0)));
+        t.prefSlots.add(TaskPrefSlotFactory.create(t.core.id, EnumSet.allOf(DayOfWeek.class), LocalTime.of(18, 0)));
         newTasks.add(t);
 
         // 18. Learn Japanese — MEDIUM, daily, 19:00, progress resetPerRep=true
@@ -247,10 +251,11 @@ public final class TaskSeedDataFactory {
         waescheWaschen.core.minDuration = 10;
         newTasks.add(waescheWaschen);
 
-        // 22b. Hang laundry — MEDIUM, 2x/week, 17:30, prereq: Do laundry
+        // 22b. Hang laundry — MEDIUM, 2x/week, 17:30, prereq: Do laundry (45min gap for wash cycle)
         t = new Task("Wäsche aufhängen", 2, 1, Period.WEEK, null, 1, LocalTime.of(17, 30), 10);
         t.core.minDuration = 5;
-        t.prerequisites.add(new TaskPrerequisite(t.core.id, waescheWaschen.core.id));
+        t.core.adaptive = true;
+        t.prerequisites.add(new TaskPrerequisite(t.core.id, waescheWaschen.core.id, 45));
         newTasks.add(t);
 
         return newTasks;

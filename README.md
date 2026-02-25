@@ -1,5 +1,13 @@
 # AI-Secretary
 
+## What this project does
+
+AI-Secretary is an Android app for planning everyday tasks and turning them into clear, checkable time slots. It helps users create tasks, choose when they prefer to do them, and keep track of progress over time. The app's goal is to make personal scheduling easier to understand and easier to follow day to day.
+
+This project is a good fit for Android contributors working on UI, ViewModel/state flow, and Room persistence, as well as contributors interested in improving task scoring and scheduling behavior.
+
+Current scope is split clearly: active product code lives in `src/`, legacy reference snapshots live in `history/legacy/`, and release/process artifacts live in `ops/`.
+
 ## Quick Start (first successful run)
 
 ### Prerequisites
@@ -21,8 +29,9 @@
    ```bash
    ./gradlew assembleDebug
    ```
-2. After a successful build, the APK is produced at:
-   `src/build/outputs/apk/debug/AutoSecretary.apk`
+2. After a successful build, because this repository's app is the root module, the APK is produced at:
+   `build/outputs/apk/debug/AutoSecretary.apk`
+   *(Optional troubleshooting: If the path differs by AGP version, run `find build/outputs -name '*.apk'` from repo root.)*
 
 ### Success criteria
 
@@ -67,12 +76,15 @@ Use the official Android setup guides to verify your environment (JDK, SDK, emul
 
 ## Where to start reading
 
-- `views/MainActivity.java` (navigation host): start here to see how top-level navigation and app entry flow are wired before diving into feature internals.
-- `features/task/ui/ListFragment.java` (main UI interactions): read next to understand how users trigger task actions and how UI events are captured.
-- `features/task/ui/TaskViewModel.java` (state/filter/sort orchestration): this shows how UI intents are translated into observable state, filtering, and sorting decisions.
-- `features/task/application/*UseCase*.java` (application boundary): review these classes to see where business operations are coordinated between UI-facing logic and domain rules.
-- `features/task/domain/SlotGenerator.java` and `TaskScorer.java` (scheduling logic): these files contain the core scheduling heuristics, so they explain why task ordering and slot assignment behave as they do.
-- `features/task/data/*` + `database/AppDatabase.java` (Room persistence): finish here to understand how entities are stored, queried, and persisted through the Room database layer.
+- `src/main/java/com/autosecretary/app/MainActivity.java` (navigation host): start here to understand app entry and top-level screen wiring.
+- `src/main/java/com/autosecretary/features/task/ui/ListFragment.java` (main UI interactions): read next to see how task list actions are triggered from the primary screen.
+- `src/main/java/com/autosecretary/features/task/ui/TaskViewModel.java` (state/filter/sort orchestration): this is where UI intents are converted into observable list state.
+- `src/main/java/com/autosecretary/features/task/application/*UseCase*.java` (application boundary): follow these classes to see task operations coordinated between UI and domain services.
+- `src/main/java/com/autosecretary/features/task/domain/TaskSlotGenerator.java` (domain scheduling contract): this interface defines how task slot generation is expected to behave.
+- `src/main/java/com/autosecretary/features/task/domain/internal/scheduling/DefaultTaskSlotGenerator.java` (default scheduler): this implementation contains the concrete scheduling flow.
+- `src/main/java/com/autosecretary/features/task/domain/internal/scheduling/TaskScorer.java` (slot scoring heuristics): this class ranks candidate slots and drives ordering decisions.
+- `src/main/java/com/autosecretary/features/task/data/*` (Room entities and DAO surface): inspect this package for persisted task models and database access definitions.
+- `src/main/java/com/autosecretary/database/AppDatabase.java` (Room database root): finish here to see the central Room configuration that binds entities and DAOs.
 
 ## Build and release tasks
 
@@ -86,6 +98,21 @@ Use the official Android setup guides to verify your environment (JDK, SDK, emul
 - `./gradlew assembleDebug` only builds the debug APK (`AutoSecretary.apk`) and has no Git side effects.
 - `./gradlew copyToRelease` copies the built debug APK to `ops/release/` and writes the next value to `ops/release/version.txt`.
 - `./gradlew publishReleaseArtifact` depends on `copyToRelease` and `pushToGitHub`; Git push happens only when this task is run.
+
+## First contribution (small safe change)
+
+For your first PR, keep scope tiny and low-risk: update README text (like this section) or adjust one user-facing string in `src/main/res/values/strings.xml`.
+
+Minimal validation in this repo:
+- `./gradlew assembleDebug`
+- `./gradlew testDebugUnitTest`
+
+Done looks like:
+- Build succeeds.
+- App launches and basic navigation still works.
+- No release-side-effect tasks were run.
+
+Reminder: for normal contributions, avoid `copyToRelease` and `publishReleaseArtifact`; see the warning in **Build and release tasks** above.
 
 ## Repository layout
 

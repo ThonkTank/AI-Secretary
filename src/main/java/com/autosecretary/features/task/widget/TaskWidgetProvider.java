@@ -52,6 +52,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        Log.d(TAG, "onReceive action=" + intent.getAction());
         super.onReceive(context, intent);
 
         String action = intent.getAction();
@@ -84,11 +85,13 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         int offset = getSelectedDayOffset(context);
         LocalDate selectedDate = LocalDate.now().plusDays(offset);
         boolean isToday = offset == 0;
-        views.setTextViewText(R.id.widget_date_label, isToday ? "Heute" : selectedDate.format(DATE_FORMAT));
+        String label = isToday ? "Heute" : selectedDate.format(DATE_FORMAT);
+        Log.d(TAG, "updateWidget offset=" + offset + " label=" + label, new Throwable("caller"));
+        views.setTextViewText(R.id.widget_date_label, label);
 
         // Arrow states
-        views.setInt(R.id.widget_prev_day, "setAlpha", isToday ? 77 : 255); // 77 = ~0.3 * 255
-        views.setInt(R.id.widget_next_day, "setAlpha", offset >= MAX_OFFSET ? 77 : 255);
+        views.setFloat(R.id.widget_prev_day, "setAlpha", isToday ? 0.3f : 1.0f);
+        views.setFloat(R.id.widget_next_day, "setAlpha", offset >= MAX_OFFSET ? 0.3f : 1.0f);
 
         // Day navigation intents
         views.setOnClickPendingIntent(R.id.widget_prev_day,
@@ -138,6 +141,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     private void navigateDay(Context context, int delta) {
         int offset = getSelectedDayOffset(context);
         int newOffset = offset + delta;
+        Log.d(TAG, "navigateDay old=" + offset + " delta=" + delta + " new=" + newOffset);
         if (newOffset < 0 || newOffset > MAX_OFFSET) return;
         setSelectedDayOffset(context, newOffset);
         notifyWidgetUpdate(context);
@@ -209,6 +213,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     // --- Public refresh trigger ---
 
     public static void notifyWidgetUpdate(Context context) {
+        Log.d(TAG, "notifyWidgetUpdate called", new Throwable("caller"));
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         ComponentName widget = new ComponentName(context, TaskWidgetProvider.class);
         int[] widgetIds = manager.getAppWidgetIds(widget);

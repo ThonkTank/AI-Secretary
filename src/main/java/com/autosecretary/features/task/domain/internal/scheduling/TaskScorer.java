@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Scores tasks for scheduling priority using a multi-layer multiplicative formula.
@@ -281,30 +282,45 @@ final class TaskScorer {
     }
 
     private int applyPreferredTimeFit(int baseScore, ScoringContext context) {
-        LocalTime prefStart = findClosestPreferredStart(
+        Set<String> consumed = context.snapshot.preferenceFitState().consumedPrefSlotIds();
+        PrefSlotMatch match = findClosestUnconsumedPrefSlot(
                 context.snapshot.preferenceFitState().todayPrefSlots(),
-                context.start.toLocalTime()
+                context.start.toLocalTime(),
+                consumed
         );
-        if (prefStart == null) {
+        if (match == null) {
             return context.snapshot.preferenceFitState().hasDayConstraints() ? 0 : baseScore;
         }
 
-        double dif = Duration.between(context.start.toLocalTime(), prefStart).toMinutes() / 60.0;
+        double dif = Duration.between(context.start.toLocalTime(), match.start).toMinutes() / 60.0;
         double fit = Math.max(0, 1 - Math.abs(dif / preferredStartDeviationHours));
         return (int) (baseScore * fit);
     }
 
-    private LocalTime findClosestPreferredStart(List<TaskPrefSlot> preferredSlots, LocalTime candidateStart) {
-        LocalTime preferredStart = null;
+    static final class PrefSlotMatch {
+        final TaskPrefSlot prefSlot;
+        final LocalTime start;
+
+        PrefSlotMatch(TaskPrefSlot prefSlot, LocalTime start) {
+            this.prefSlot = prefSlot;
+            this.start = start;
+        }
+    }
+
+    private PrefSlotMatch findClosestUnconsumedPrefSlot(List<TaskPrefSlot> preferredSlots,
+                                                         LocalTime candidateStart,
+                                                         Set<String> consumedIds) {
+        TaskPrefSlot bestSlot = null;
         long minDiff = Long.MAX_VALUE;
         for (TaskPrefSlot slot : preferredSlots) {
+            if (consumedIds.contains(slot.id)) continue;
             long slotDiff = Math.abs(Duration.between(candidateStart, slot.start).toMinutes());
             if (slotDiff < minDiff) {
                 minDiff = slotDiff;
-                preferredStart = slot.start;
+                bestSlot = slot;
             }
         }
-        return preferredStart;
+        return bestSlot != null ? new PrefSlotMatch(bestSlot, bestSlot.start) : null;
     }
 
     private int applyAgingAndSpreadModifiers(int score, ScoringContext context) {
@@ -321,11 +337,27 @@ final class TaskScorer {
         return adjustedScore;
     }
 
-    void onSlotAssigned(Task task) {
+    void onSlotAssigned(Task task, LocalTime assignedStart) {
         TaskScoringSnapshot snapshot = caches.get(task.core.id);
-        if (snapshot != null) {
+        if (snapshot == null) return;
+
+        PrefSlotMatch match = findClosestUnconsumedPrefSlot(
+                snapshot.preferenceFitState().todayPrefSlots(),
+                assignedStart,
+                snapshot.preferenceFitState().consumedPrefSlotIds()
+        );
+
+        if (match != null) {
+            caches.put(task.core.id, snapshot.withConsumedPrefSlot(match.prefSlot.id));
+        } else {
             caches.put(task.core.id, snapshot.withIncrementedScheduledToday());
         }
+    }
+
+    boolean isPrefSlotConsumed(String taskId, String prefSlotId) {
+        TaskScoringSnapshot snapshot = caches.get(taskId);
+        return snapshot != null
+                && snapshot.preferenceFitState().consumedPrefSlotIds().contains(prefSlotId);
     }
 
     static final class ScoringContext {
