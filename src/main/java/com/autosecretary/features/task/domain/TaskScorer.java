@@ -4,8 +4,6 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskSlot;
-import com.autosecretary.features.task.domain.TaskLifecycleManager;
-
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -20,7 +18,7 @@ import java.util.Map;
 /**
  * Scores tasks for scheduling priority using a multi-layer multiplicative formula.
  * <p>
- * Holds a per-task {@link ScoringCache} keyed by task ID. Intended lifecycle per generation run:
+ * Holds a per-task {@link TaskScoringSnapshot} keyed by task ID. Intended lifecycle per generation run:
  * {@link #reset()} once, then {@link #maintenance(Task)} for each task to pre-compute caches,
  * then {@link #score(Task, LocalDateTime, LocalDateTime)} for each candidate placement.
  * After a slot is assigned, call {@link #onSlotAssigned(Task)} to update the daily counter.
@@ -35,7 +33,7 @@ public class TaskScorer {
     private final TaskLifecycleManager lifecycleManager;
     private final double maxAgingMultiplier;
     private final double preferredStartDeviationHours;
-    private final Map<String, ScoringCache> caches = new HashMap<>();
+    private final Map<String, TaskScoringSnapshot> caches = new HashMap<>();
 
     public TaskScorer(TaskLifecycleManager lifecycleManager) {
         this(lifecycleManager, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
@@ -51,29 +49,117 @@ public class TaskScorer {
         caches.clear();
     }
 
-    /** Pre-computed per-task scoring data, populated by {@link #maintenance(Task)} and read by {@link #score}. */
-    static class ScoringCache {
-        int completions;
-        LocalDate lastCompletion;
-        int periodCompletions;
-        boolean isComplete;
-        int scheduledToday;
+    /** Immutable per-task scoring snapshot, populated by {@link #maintenance(Task)} and read by {@link #score}. */
+    static final class TaskScoringSnapshot {
+        final CompletionState completionState;
+        final UrgencyState urgencyState;
+        final PreferenceFitState preferenceFitState;
+        final MultiDayStateSnapshot multiDayStateSnapshot;
+        final int sinceLast;
+        final double agingForce;
+        final int repsPerDay;
+        final int maxChildPriority;
 
-        int sinceLast;
-        double remainingDays;
-        double requiredDays;
-        double agingForce;
-        int maxChildPriority;
-        List<TaskPrefSlot> todayPrefSlots;
-        boolean hasDayConstraints;
-        int repsPerDay;
-        boolean deadlineExpired;
+        TaskScoringSnapshot(CompletionState completionState,
+                            UrgencyState urgencyState,
+                            PreferenceFitState preferenceFitState,
+                            MultiDayStateSnapshot multiDayStateSnapshot,
+                            int sinceLast,
+                            double agingForce,
+                            int repsPerDay,
+                            int maxChildPriority) {
+            this.completionState = completionState;
+            this.urgencyState = urgencyState;
+            this.preferenceFitState = preferenceFitState;
+            this.multiDayStateSnapshot = multiDayStateSnapshot;
+            this.sinceLast = sinceLast;
+            this.agingForce = agingForce;
+            this.repsPerDay = repsPerDay;
+            this.maxChildPriority = maxChildPriority;
+        }
 
-        // Multi-day scheduling fields
-        int totalScheduledReps;     // reps scheduled across all days (from MultiDayState)
-        int totalRepsInPeriod;      // total reps needed in the current period
-        int minDayDistance;          // min days between this day and nearest already-scheduled day
-        double expectedDayGap;      // expected days between scheduling occurrences (periodInDays / reps)
+        TaskScoringSnapshot withIncrementedScheduledToday() {
+            return new TaskScoringSnapshot(
+                    completionState.withIncrementedScheduledToday(),
+                    urgencyState,
+                    preferenceFitState,
+                    multiDayStateSnapshot,
+                    sinceLast,
+                    agingForce,
+                    repsPerDay,
+                    maxChildPriority
+            );
+        }
+    }
+
+    static final class CompletionState {
+        final int completions;
+        final LocalDate lastCompletion;
+        final int periodCompletions;
+        final boolean isComplete;
+        final int scheduledToday;
+
+        CompletionState(int completions, LocalDate lastCompletion, int periodCompletions, boolean isComplete, int scheduledToday) {
+            this.completions = completions;
+            this.lastCompletion = lastCompletion;
+            this.periodCompletions = periodCompletions;
+            this.isComplete = isComplete;
+            this.scheduledToday = scheduledToday;
+        }
+
+        CompletionState withIncrementedScheduledToday() {
+            return new CompletionState(completions, lastCompletion, periodCompletions, isComplete, scheduledToday + 1);
+        }
+    }
+
+    static final class UrgencyState {
+        final double remainingDays;
+        final double requiredDays;
+        final boolean deadlineExpired;
+
+        UrgencyState(double remainingDays, double requiredDays, boolean deadlineExpired) {
+            this.remainingDays = remainingDays;
+            this.requiredDays = requiredDays;
+            this.deadlineExpired = deadlineExpired;
+        }
+    }
+
+    static final class PreferenceFitState {
+        final List<TaskPrefSlot> todayPrefSlots;
+        final boolean hasDayConstraints;
+
+        PreferenceFitState(List<TaskPrefSlot> todayPrefSlots, boolean hasDayConstraints) {
+            this.todayPrefSlots = List.copyOf(todayPrefSlots);
+            this.hasDayConstraints = hasDayConstraints;
+        }
+    }
+
+    static final class MultiDayStateSnapshot {
+        final int totalScheduledReps;
+        final int totalRepsInPeriod;
+        final int minDayDistance;
+        final double expectedDayGap;
+
+        MultiDayStateSnapshot(int totalScheduledReps, int totalRepsInPeriod, int minDayDistance, double expectedDayGap) {
+            this.totalScheduledReps = totalScheduledReps;
+            this.totalRepsInPeriod = totalRepsInPeriod;
+            this.minDayDistance = minDayDistance;
+            this.expectedDayGap = expectedDayGap;
+        }
+    }
+
+    static final class SlotScanResult {
+        final int completions;
+        final LocalDate lastCompletion;
+        final int periodCompletions;
+        final int scheduledToday;
+
+        SlotScanResult(int completions, LocalDate lastCompletion, int periodCompletions, int scheduledToday) {
+            this.completions = completions;
+            this.lastCompletion = lastCompletion;
+            this.periodCompletions = periodCompletions;
+            this.scheduledToday = scheduledToday;
+        }
     }
 
     public void maintenance(Task task) {
@@ -81,27 +167,28 @@ public class TaskScorer {
     }
 
     public void maintenance(Task task, LocalDate day, MultiDayState state) {
-        ScoringCache cache = new ScoringCache();
-        caches.put(task.core.id, cache);
-        TaskCore.Repetition rep = task.core.repetition;
+        advanceTaskPeriod(task, day);
+        SlotScanResult slotScanResult = scanSlots(task, day);
+        CompletionState completionState = computeCompletionState(task, slotScanResult);
+        UrgencyState urgencyState = computeUrgencyState(task, day);
+        PreferenceFitState preferenceFitState = computeTodayPrefSlots(task, day.getDayOfWeek());
+        MultiDayStateSnapshot multiDayStateSnapshot = computeMultiDaySnapshot(task, state, day);
 
-        advanceTaskPeriod(task, cache, day);
-        scanSlots(task, cache, day);
-        computeCompletionState(task, cache);
-        computeDerivedMetrics(task, cache, day);
-        computeTodayPrefSlots(task, cache, day.getDayOfWeek());
+        int sinceLast = (int) ChronoUnit.DAYS.between(completionState.lastCompletion, day);
+        double agingForce = Math.min(1 + ((double) sinceLast / 10), maxAgingMultiplier);
+        int maxChildPriority = computeMaxChildPriority(task);
 
-        // Multi-day state integration
-        cache.totalScheduledReps = state.getTotalScheduledReps(task.core.id);
-        cache.minDayDistance = state.minDayDistance(task.core.id, day);
-        if (rep != null && rep.reps > 0) {
-            int periodsInWindow = Math.max(1, (int) Math.ceil(7.0 / rep.periodInDays()));
-            cache.totalRepsInPeriod = rep.reps * periodsInWindow;
-            cache.expectedDayGap = (double) rep.periodInDays() / rep.reps;
-        } else {
-            cache.totalRepsInPeriod = 1;
-            cache.expectedDayGap = 7; // one-shot: treat as once per week
-        }
+        TaskScoringSnapshot snapshot = new TaskScoringSnapshot(
+                completionState,
+                urgencyState,
+                preferenceFitState,
+                multiDayStateSnapshot,
+                sinceLast,
+                agingForce,
+                task.core.repsPerDay(),
+                maxChildPriority
+        );
+        caches.put(task.core.id, snapshot);
     }
 
     /**
@@ -109,12 +196,12 @@ public class TaskScorer {
      * <p>
      * Invariant assumptions:
      * <ul>
-     *   <li>{@code task} and {@code cache} are non-null.</li>
+     *   <li>{@code task} is non-null.</li>
      *   <li>{@code task.core.repetition} may be null and is handled by {@link TaskLifecycleManager}.</li>
-     *   <li>Must be executed before {@link #scanSlots(Task, ScoringCache, LocalDate)} so period boundaries are up-to-date.</li>
+     *   <li>Must be executed before {@link #scanSlots(Task, LocalDate)} so period boundaries are up-to-date.</li>
      * </ul>
      */
-    private void advanceTaskPeriod(Task task, ScoringCache cache, LocalDate day) {
+    private void advanceTaskPeriod(Task task, LocalDate day) {
         lifecycleManager.advancePeriods(task, day);
     }
 
@@ -123,35 +210,37 @@ public class TaskScorer {
      * <p>
      * Invariant assumptions:
      * <ul>
-     *   <li>{@code task}, {@code cache}, and {@code today} are non-null.</li>
+     *   <li>{@code task} and {@code today} are non-null.</li>
      *   <li>{@code task.core.repetition} may be null, have null {@code periodUnit}, or no active period start.</li>
      *   <li>Uses half-open period range {@code [periodStart, periodEnd)} when counting period completions.</li>
      * </ul>
      */
-    private void scanSlots(Task task, ScoringCache cache, LocalDate today) {
-        cache.completions = 0;
-        cache.scheduledToday = 0;
-        cache.lastCompletion = task.core.created.minusDays(1);
+    private SlotScanResult scanSlots(Task task, LocalDate today) {
+        int completions = 0;
+        int scheduledToday = 0;
+        LocalDate lastCompletion = task.core.created.minusDays(1);
 
         TaskCore.Repetition rep = task.core.repetition;
         LocalDate periodStart = (rep != null && rep.periodStart != null) ? rep.periodStart : task.core.created;
         LocalDate periodEnd = (rep != null && rep.periodUnit != null && rep.reps > 0) ? rep.periodEnd() : null;
-        cache.periodCompletions = 0;
+        int periodCompletions = 0;
 
         for (TaskSlot slot : task.slots) {
             if (slot.completed) {
-                cache.completions++;
-                if (slot.day.isAfter(cache.lastCompletion)) {
-                    cache.lastCompletion = slot.day;
+                completions++;
+                if (slot.day.isAfter(lastCompletion)) {
+                    lastCompletion = slot.day;
                 }
                 if (periodEnd != null && !slot.day.isBefore(periodStart) && slot.day.isBefore(periodEnd)) {
-                    cache.periodCompletions++;
+                    periodCompletions++;
                 }
             }
             if (slot.day.equals(today) && slot.scheduled) {
-                cache.scheduledToday++;
+                scheduledToday++;
             }
         }
+
+        return new SlotScanResult(completions, lastCompletion, periodCompletions, scheduledToday);
     }
 
     /**
@@ -159,19 +248,27 @@ public class TaskScorer {
      * <p>
      * Invariant assumptions:
      * <ul>
-     *   <li>{@code task} and {@code cache} are non-null.</li>
-     *   <li>{@code cache.periodCompletions} and {@code cache.completions} were populated by {@link #scanSlots(Task, ScoringCache, LocalDate)}.</li>
+     *   <li>{@code task} is non-null.</li>
+     *   <li>{@code slotScanResult.periodCompletions} and {@code slotScanResult.completions} were populated by {@link #scanSlots(Task, LocalDate)}.</li>
      *   <li>If repetition is disabled ({@code rep == null}, {@code reps <= 0}, or null period unit), completion falls back to any historical completion.</li>
      * </ul>
      */
-    private void computeCompletionState(Task task, ScoringCache cache) {
+    private CompletionState computeCompletionState(Task task, SlotScanResult slotScanResult) {
         TaskCore.Repetition rep = task.core.repetition;
+        boolean isComplete;
         if (rep != null && rep.reps > 0 && rep.periodUnit != null) {
-            rep.periodCompletions = cache.periodCompletions;
-            cache.isComplete = cache.periodCompletions >= rep.reps;
+            rep.periodCompletions = slotScanResult.periodCompletions;
+            isComplete = slotScanResult.periodCompletions >= rep.reps;
         } else {
-            cache.isComplete = cache.completions > 0;
+            isComplete = slotScanResult.completions > 0;
         }
+        return new CompletionState(
+                slotScanResult.completions,
+                slotScanResult.lastCompletion,
+                slotScanResult.periodCompletions,
+                isComplete,
+                slotScanResult.scheduledToday
+        );
     }
 
     /**
@@ -179,35 +276,36 @@ public class TaskScorer {
      * <p>
      * Invariant assumptions:
      * <ul>
-     *   <li>{@code task}, {@code cache}, and {@code today} are non-null.</li>
-     *   <li>{@code cache.lastCompletion} was initialized during slot scanning.</li>
+     *   <li>{@code task} and {@code today} are non-null.</li>
+     *   <li>Uses task deadline/repetition windows relative to the provided scheduling day.</li>
      *   <li>Deadline is considered expired only when {@code closeOnMiss} is true, deadline exists, and {@code today} is strictly after deadline.</li>
      * </ul>
      */
-    private void computeDerivedMetrics(Task task, ScoringCache cache, LocalDate day) {
-        cache.sinceLast = (int) ChronoUnit.DAYS.between(cache.lastCompletion, day);
+    private UrgencyState computeUrgencyState(Task task, LocalDate day) {
         // Compute remainingDays relative to scheduling day (not LocalDate.now())
         TaskCore.Repetition rep = task.core.repetition;
+        double remainingDays;
         if (task.core.deadline != null) {
-            cache.remainingDays = (double) ChronoUnit.DAYS.between(day, task.core.deadline);
+            remainingDays = (double) ChronoUnit.DAYS.between(day, task.core.deadline);
         } else if (rep != null && rep.reps > 0 && rep.periodUnit != null) {
             LocalDate periodEnd = rep.periodEnd();
-            cache.remainingDays = periodEnd != null
+            remainingDays = periodEnd != null
                     ? (double) ChronoUnit.DAYS.between(day, periodEnd)
                     : rep.periodInDays();
         } else {
-            cache.remainingDays = 1;
+            remainingDays = 1;
         }
-        cache.requiredDays = task.requiredDays();
-        // 10 = aging divisor: each 10 days of inactivity adds 1.0 to the multiplier (capped at maxAgingMultiplier)
-        cache.agingForce = Math.min(1 + ((double) cache.sinceLast / 10), maxAgingMultiplier);
-        cache.repsPerDay = task.core.repsPerDay();
-        cache.deadlineExpired = task.core.closeOnMiss && task.core.deadline != null && day.isAfter(task.core.deadline);
+        double requiredDays = task.requiredDays();
+        boolean deadlineExpired = task.core.closeOnMiss && task.core.deadline != null && day.isAfter(task.core.deadline);
+        return new UrgencyState(remainingDays, requiredDays, deadlineExpired);
+    }
 
-        cache.maxChildPriority = 0;
+    private int computeMaxChildPriority(Task task) {
+        int maxChildPriority = 0;
         for (Task child : task.children) {
-            cache.maxChildPriority = Math.max(cache.maxChildPriority, child.core.priority.value);
+            maxChildPriority = Math.max(maxChildPriority, child.core.priority.value);
         }
+        return maxChildPriority;
     }
 
     /**
@@ -215,22 +313,42 @@ public class TaskScorer {
      * <p>
      * Invariant assumptions:
      * <ul>
-     *   <li>{@code task}, {@code cache}, and {@code dayOfWeek} are non-null.</li>
+     *   <li>{@code task} and {@code dayOfWeek} are non-null.</li>
      *   <li>{@code TaskPrefSlot.days} may be null and is treated as "not applicable".</li>
      *   <li>Produces a fresh list each run to avoid leaking state across maintenance invocations.</li>
      * </ul>
      */
-    private void computeTodayPrefSlots(Task task, ScoringCache cache, DayOfWeek dayOfWeek) {
-        cache.todayPrefSlots = new ArrayList<>();
-        cache.hasDayConstraints = false;
+    private PreferenceFitState computeTodayPrefSlots(Task task, DayOfWeek dayOfWeek) {
+        List<TaskPrefSlot> todayPrefSlots = new ArrayList<>();
+        boolean hasDayConstraints = false;
         for (TaskPrefSlot ps : task.prefSlots) {
             if (ps.days != null && !ps.days.isEmpty()) {
-                cache.hasDayConstraints = true;
+                hasDayConstraints = true;
                 if (ps.days.contains(dayOfWeek)) {
-                    cache.todayPrefSlots.add(ps);
+                    todayPrefSlots.add(ps);
                 }
             }
         }
+        return new PreferenceFitState(todayPrefSlots, hasDayConstraints);
+    }
+
+    private MultiDayStateSnapshot computeMultiDaySnapshot(Task task, MultiDayState state, LocalDate day) {
+        TaskCore.Repetition rep = task.core.repetition;
+        int totalScheduledReps = state.getTotalScheduledReps(task.core.id);
+        int minDayDistance = state.minDayDistance(task.core.id, day);
+        int totalRepsInPeriod;
+        double expectedDayGap;
+
+        if (rep != null && rep.reps > 0) {
+            int periodsInWindow = Math.max(1, (int) Math.ceil(7.0 / rep.periodInDays()));
+            totalRepsInPeriod = rep.reps * periodsInWindow;
+            expectedDayGap = (double) rep.periodInDays() / rep.reps;
+        } else {
+            totalRepsInPeriod = 1;
+            expectedDayGap = 7;
+        }
+
+        return new MultiDayStateSnapshot(totalScheduledReps, totalRepsInPeriod, minDayDistance, expectedDayGap);
     }
 
     /**
@@ -246,90 +364,122 @@ public class TaskScorer {
      *   <li><b>Preferred time fit</b> — linear decay from 1.0 at exact match to 0.0 at
      *       {@link #preferredStartDeviationHours} hours deviation.</li>
      *   <li><b>Urgency</b> — {@code 1 + requiredDays / remainingDays}; overdue tasks use a fixed high value.</li>
-     *   <li><b>Aging</b> — {@code cache.agingForce}, pre-computed in maintenance, capped at {@link #maxAgingMultiplier}.</li>
+     *   <li><b>Aging</b> — snapshot aging force, pre-computed in maintenance, capped at {@link #maxAgingMultiplier}.</li>
      * </ol>
      */
     public int score(Task task, LocalDateTime start, LocalDateTime end) {
-        ScoringCache cache = caches.get(task.core.id);
-        if (cache == null) {
+        TaskScoringSnapshot snapshot = caches.get(task.core.id);
+        if (snapshot == null) {
             maintenance(task);
-            cache = caches.get(task.core.id);
+            snapshot = caches.get(task.core.id);
         }
 
-        int availableTime = (int) ChronoUnit.MINUTES.between(start, end);
-        if (!isSchedulableNow(task, cache, availableTime)) {
+        ScoringContext context = new ScoringContext(task, snapshot, start, end);
+        if (!passesHardConstraintGate(context)) {
             return 0;
         }
 
-        // prio
-        int totalPrio = task.core.priority.value;
-        if (cache.maxChildPriority > 0) {
-            totalPrio = Math.max(totalPrio, cache.maxChildPriority);
+        int totalPrio = applyBasePriorityAndChildInfluence(context);
+        totalPrio = applyPreferredTimeFit(totalPrio, context);
+        if (totalPrio <= 0) {
+            return 0;
         }
+        totalPrio = applyUrgencyMultiplier(totalPrio, context);
+        return applyAgingAndSpreadModifiers(totalPrio, context);
+    }
 
-        // fit (todayPrefSlots bereits auf Wochentag gefiltert)
+    private boolean passesHardConstraintGate(ScoringContext context) {
+        Task task = context.task;
+        TaskScoringSnapshot snapshot = context.snapshot;
+        if (snapshot.completionState.isComplete) return false;
+        if (snapshot.completionState.scheduledToday >= snapshot.repsPerDay) return false;
+        if (snapshot.sinceLast < task.core.cooldown) return false;
+        // Multi-day spacing: block if scheduled more frequently than expected
+        if (snapshot.multiDayStateSnapshot.minDayDistance > 0
+                && snapshot.multiDayStateSnapshot.minDayDistance < snapshot.multiDayStateSnapshot.expectedDayGap * 0.5) {
+            return false;
+        }
+        // Period reps exhausted across all days
+        if (snapshot.multiDayStateSnapshot.totalScheduledReps >= snapshot.multiDayStateSnapshot.totalRepsInPeriod) return false;
+        if (context.availableTime < task.core.minDuration) return false;
+        if (task.core.progress != null && context.availableTime < task.core.progress.requiredTimePerRep()) return false;
+        return !snapshot.urgencyState.deadlineExpired;
+    }
+
+    private int applyBasePriorityAndChildInfluence(ScoringContext context) {
+        return Math.max(context.task.core.priority.value, context.snapshot.maxChildPriority);
+    }
+
+    private int applyPreferredTimeFit(int baseScore, ScoringContext context) {
+        PreferenceFitState fitState = context.snapshot.preferenceFitState;
+
         LocalTime prefStart = null;
         long minDiff = Long.MAX_VALUE;
-        for (TaskPrefSlot slot : cache.todayPrefSlots) {
-            long slotDiff = Math.abs(Duration.between(start.toLocalTime(), slot.start).toMinutes());
+        for (TaskPrefSlot slot : fitState.todayPrefSlots) {
+            long slotDiff = Math.abs(Duration.between(context.start.toLocalTime(), slot.start).toMinutes());
             if (slotDiff < minDiff) {
                 minDiff = slotDiff;
                 prefStart = slot.start;
             }
         }
 
-        if (prefStart == null && cache.hasDayConstraints) {
+        if (prefStart == null && fitState.hasDayConstraints) {
             return 0;
         }
 
-        if (prefStart != null) {
-            double dif = Duration.between(start.toLocalTime(), prefStart).toMinutes() / 60.0;
-            double fit = Math.max(0, 1 - Math.abs(dif / preferredStartDeviationHours));
-            totalPrio = (int) (totalPrio * fit);
+        if (prefStart == null) {
+            return baseScore;
         }
 
-        // urgency
-        double urgency;
-        if (cache.remainingDays <= 0) {
-            urgency = 100; // fixed high urgency for overdue tasks (deadline passed, remainingDays <= 0)
-        } else if (task.core.deadline != null || (task.core.repetition != null && task.core.repetition.reps > 0)) {
-            urgency = 1.0 + cache.requiredDays / cache.remainingDays; // ratio-based: grows as deadline approaches
-        } else {
-            urgency = 1.0; // no deadline and no repetition — neutral multiplier
-        }
-        totalPrio = (int) (totalPrio * urgency);
-
-        // aging
-        totalPrio = (int) (totalPrio * cache.agingForce);
-
-        // spread: only penalize over-scheduling relative to expected frequency
-        if (cache.minDayDistance > 0 && cache.minDayDistance < Integer.MAX_VALUE
-                && cache.minDayDistance < cache.expectedDayGap) {
-            double ratio = cache.minDayDistance / cache.expectedDayGap;
-            double spread = Math.min(1.0, 0.1 + ratio * 0.9);
-            totalPrio = (int) (totalPrio * spread);
-        }
-
-        return totalPrio;
+        double dif = Duration.between(context.start.toLocalTime(), prefStart).toMinutes() / 60.0;
+        double fit = Math.max(0, 1 - Math.abs(dif / preferredStartDeviationHours));
+        return (int) (baseScore * fit);
     }
 
-    private boolean isSchedulableNow(Task task, ScoringCache cache, int availableTime) {
-        if (cache.isComplete) return false;
-        if (cache.scheduledToday >= cache.repsPerDay) return false;
-        if (cache.sinceLast < task.core.cooldown) return false;
-        // Multi-day spacing: block if scheduled more frequently than expected
-        if (cache.minDayDistance > 0 && cache.minDayDistance < cache.expectedDayGap * 0.5) return false;
-        // Period reps exhausted across all days
-        if (cache.totalScheduledReps >= cache.totalRepsInPeriod) return false;
-        if (availableTime < task.core.minDuration) return false;
-        if (task.core.progress != null && availableTime < task.core.progress.requiredTimePerRep()) return false;
-        return !cache.deadlineExpired;
+    private int applyUrgencyMultiplier(int score, ScoringContext context) {
+        UrgencyState urgencyState = context.snapshot.urgencyState;
+        double urgency;
+        if (urgencyState.remainingDays <= 0) {
+            urgency = 100;
+        } else if (context.task.core.deadline != null || (context.task.core.repetition != null && context.task.core.repetition.reps > 0)) {
+            urgency = 1.0 + urgencyState.requiredDays / urgencyState.remainingDays;
+        } else {
+            urgency = 1.0;
+        }
+        return (int) (score * urgency);
+    }
+
+    private int applyAgingAndSpreadModifiers(int score, ScoringContext context) {
+        TaskScoringSnapshot snapshot = context.snapshot;
+        int adjustedScore = (int) (score * snapshot.agingForce);
+        if (snapshot.multiDayStateSnapshot.minDayDistance > 0
+                && snapshot.multiDayStateSnapshot.minDayDistance < Integer.MAX_VALUE
+                && snapshot.multiDayStateSnapshot.minDayDistance < snapshot.multiDayStateSnapshot.expectedDayGap) {
+            double ratio = snapshot.multiDayStateSnapshot.minDayDistance / snapshot.multiDayStateSnapshot.expectedDayGap;
+            double spread = Math.min(1.0, 0.1 + ratio * 0.9);
+            adjustedScore = (int) (adjustedScore * spread);
+        }
+        return adjustedScore;
     }
 
     public void onSlotAssigned(Task task) {
-        ScoringCache cache = caches.get(task.core.id);
-        if (cache != null) {
-            cache.scheduledToday++;
+        TaskScoringSnapshot snapshot = caches.get(task.core.id);
+        if (snapshot != null) {
+            caches.put(task.core.id, snapshot.withIncrementedScheduledToday());
+        }
+    }
+
+    static final class ScoringContext {
+        final Task task;
+        final TaskScoringSnapshot snapshot;
+        final LocalDateTime start;
+        final int availableTime;
+
+        ScoringContext(Task task, TaskScoringSnapshot snapshot, LocalDateTime start, LocalDateTime end) {
+            this.task = task;
+            this.snapshot = snapshot;
+            this.start = start;
+            this.availableTime = (int) ChronoUnit.MINUTES.between(start, end);
         }
     }
 }
