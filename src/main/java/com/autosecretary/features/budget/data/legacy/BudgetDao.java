@@ -6,7 +6,9 @@ import androidx.room.Insert;
 import androidx.room.Query;
 import androidx.room.Update;
 
+import com.autosecretary.features.budget.data.BudgetAccount;
 import com.autosecretary.features.budget.data.BudgetLimit;
+import com.autosecretary.features.budget.data.BudgetTransaction;
 
 import java.util.List;
 

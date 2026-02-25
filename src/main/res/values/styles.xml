@@ -6,7 +6,7 @@
         <item name="colorOnPrimary">@color/task_color_on_primary</item>
         <item name="colorSecondary">@color/task_color_secondary</item>
         <item name="colorSurface">@color/task_color_surface</item>
-        <item name="colorBackground">@color/task_color_background</item>
+        <item name="android:colorBackground">@color/task_color_background</item>
         <item name="colorOnSurface">@color/task_color_on_surface</item>
         <item name="colorOutline">@color/task_color_outline</item>
         <item name="android:windowBackground">@drawable/bg_forest_gradient</item>
@@ -25,8 +25,8 @@
         <item name="backgroundTint">@color/task_edit_day_button_background_tint</item>
         <item name="strokeColor">@color/task_edit_day_button_stroke_color</item>
         <item name="cornerRadius">12dp</item>
-        <item name="insetTop">0dp</item>
-        <item name="insetBottom">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
     </style>
 
     <!-- Base task text appearances -->
