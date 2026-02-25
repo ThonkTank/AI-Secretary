@@ -56,9 +56,13 @@ public class ListFragment extends Fragment {
         });
 
         Button generateButton = view.findViewById(R.id.Button);
+        Button scheduleConfigButton = view.findViewById(R.id.ScheduleConfigButton);
         View newTaskButton = view.findViewById(R.id.NewTaskButton);
         // Generate rebuilds the schedule using current rules, then pushes the refreshed rows to this list.
         generateButton.setOnClickListener(v -> vm.updateList());
+        scheduleConfigButton.setOnClickListener(v ->
+                new TaskScheduleConfigDialog().show(getParentFragmentManager(), "schedule_config")
+        );
 
         View.OnClickListener createTaskClickListener = v -> {
             // Start from a blank task in shared state, then open the dialog so the user fills details.
