@@ -25,15 +25,51 @@
             android:text="@string/budget_summary"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
 
-        <TextView
+        <Button
+            android:id="@+id/BudgetAddTransactionButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_lg"
-            android:text="@string/budget_demo_section_title"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
-            android:textStyle="bold" />
+            android:text="@string/budget_add_transaction" />
 
-        <include layout="@layout/budget_transaction_item" />
+        <Button
+            android:id="@+id/BudgetImportStatementButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:text="@string/budget_import_statement" />
+
+        <TextView
+            android:id="@+id/BudgetStatusMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_lg"
+            android:text="@string/budget_empty_state"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
+
+        <ProgressBar
+            android:id="@+id/BudgetLoading"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_md"
+            android:contentDescription="@string/budget_loading"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/BudgetRetryButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:text="@string/budget_retry"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/BudgetTransactionList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_md"
+            android:orientation="vertical" />
 
     </LinearLayout>
 </ScrollView>
