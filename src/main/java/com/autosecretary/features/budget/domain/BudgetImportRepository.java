@@ -1,5 +1,6 @@
 package com.autosecretary.features.budget.domain;
 
+import com.autosecretary.features.budget.data.BudgetCategory;
 import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 
 import java.time.LocalDate;
@@ -35,6 +36,10 @@ public interface BudgetImportRepository {
     boolean existsTransactionByImportHash(String importHash);
 
     String findDefaultCategoryId(boolean income);
+
+    boolean isKnownCategory(String categoryId);
+
+    List<BudgetCategory> loadActiveCategoriesForImport();
 
     void saveTransactionsBatch(List<BudgetTransactionEntity> transactions);
 

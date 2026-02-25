@@ -32,11 +32,19 @@ import java.util.UUID;
                         childColumns = "linkedTransactionId",
                         onDelete = ForeignKey.SET_NULL,
                         onUpdate = ForeignKey.CASCADE
+                ),
+                @ForeignKey(
+                        entity = BudgetRecurringTemplateEntity.class,
+                        parentColumns = "id",
+                        childColumns = "templateId",
+                        onDelete = ForeignKey.SET_NULL,
+                        onUpdate = ForeignKey.CASCADE
                 )
         },
         indices = {
                 @Index("accountId"),
                 @Index("categoryId"),
+                @Index("templateId"),
                 @Index("yearMonth"),
                 @Index("bookingDate"),
                 @Index("importHash"),
@@ -62,6 +70,8 @@ public class BudgetTransactionEntity {
     public String accountId;
 
     public String categoryId;
+
+    public String templateId;
 
     @NonNull
     public TransactionType type = TransactionType.EXPENSE;

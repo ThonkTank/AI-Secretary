@@ -51,10 +51,68 @@ public interface TransactionDao {
             FROM budget_transaction t
             INNER JOIN budget_account a ON a.id = t.accountId
             LEFT JOIN budget_category c ON c.id = t.categoryId
+            WHERE t.yearMonth = :yearMonth
+              AND t.accountId = :accountId
+            ORDER BY t.bookingDate DESC, t.id DESC
+            """)
+    List<MonthlyTransactionOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId);
+
+    @Query("""
+            SELECT t.id AS transactionId,
+                   t.bookingDate AS bookingDate,
+                   t.yearMonth AS yearMonth,
+                   t.type AS type,
+                   t.amountCents AS amountCents,
+                   t.note AS note,
+                   t.accountId AS accountId,
+                   a.name AS accountName,
+                   t.categoryId AS categoryId,
+                   c.name AS categoryName
+            FROM budget_transaction t
+            INNER JOIN budget_account a ON a.id = t.accountId
+            LEFT JOIN budget_category c ON c.id = t.categoryId
             WHERE t.bookingDate BETWEEN :fromDate AND :toDate
             ORDER BY t.bookingDate DESC, t.id DESC
             """)
     List<MonthlyTransactionOverviewItem> getOverviewInDateRange(LocalDate fromDate, LocalDate toDate);
+
+    @Query("""
+            SELECT bookingDate AS bucketDate,
+                   SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END) AS deltaCents
+            FROM budget_transaction
+            WHERE accountId = :accountId
+              AND bookingDate BETWEEN :fromDate AND :toDate
+            GROUP BY bookingDate
+            ORDER BY bookingDate ASC
+            """)
+    List<AccountDailyDeltaPoint> getDailyDeltasForAccount(
+            String accountId,
+            LocalDate fromDate,
+            LocalDate toDate
+    );
+
+    @Query("""
+            SELECT yearMonth,
+                   SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END) AS deltaCents
+            FROM budget_transaction
+            WHERE accountId = :accountId
+              AND yearMonth BETWEEN :fromYearMonth AND :toYearMonth
+            GROUP BY yearMonth
+            ORDER BY yearMonth ASC
+            """)
+    List<AccountMonthlyDeltaPoint> getMonthlyDeltasForAccount(
+            String accountId,
+            String fromYearMonth,
+            String toYearMonth
+    );
+
+    @Query("""
+            SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END), 0)
+            FROM budget_transaction
+            WHERE accountId = :accountId
+              AND bookingDate < :beforeDate
+            """)
+    long getNetAmountBeforeDateForAccount(String accountId, LocalDate beforeDate);
 
     @Query("""
             SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' AND transactionKind != 'INTERNAL_TRANSFER' THEN amountCents ELSE 0 END), 0) AS sumIncomeCents,
@@ -96,6 +154,9 @@ public interface TransactionDao {
 
     @Query("SELECT id FROM budget_category WHERE type = :type AND archived = 0 LIMIT 1")
     String findDefaultCategoryId(String type);
+
+    @Query("UPDATE budget_transaction SET templateId = :templateId WHERE id IN (:transactionIds)")
+    void updateTemplateIdForTransactions(List<String> transactionIds, String templateId);
 
     @Transaction
     default void createTransferPair(BudgetTransactionEntity debit, BudgetTransactionEntity credit) {

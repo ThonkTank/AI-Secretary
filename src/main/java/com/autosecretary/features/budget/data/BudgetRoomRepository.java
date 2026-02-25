@@ -4,7 +4,6 @@ import com.autosecretary.features.budget.domain.BudgetRepository;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.ArrayList;
 import java.util.List;
 
 public class BudgetRoomRepository implements BudgetRepository {
@@ -125,7 +124,25 @@ public class BudgetRoomRepository implements BudgetRepository {
         return transactionDao.getMonthlyOverview(yearMonth);
     }
 
+    @Override public List<MonthlyTransactionOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId) {
+        return transactionDao.getMonthlyOverviewForAccount(yearMonth, accountId);
+    }
+
     @Override public List<CategorySpendTotal> getCategorySpendTotals(String yearMonth) {
         return limitDao.getCategorySpendTotals(yearMonth);
+    }
+
+    @Override public List<AccountDailyDeltaPoint> getDailyDeltasForAccount(
+            String accountId, LocalDate fromDate, LocalDate toDate) {
+        return transactionDao.getDailyDeltasForAccount(accountId, fromDate, toDate);
+    }
+
+    @Override public List<AccountMonthlyDeltaPoint> getMonthlyDeltasForAccount(
+            String accountId, String fromYearMonth, String toYearMonth) {
+        return transactionDao.getMonthlyDeltasForAccount(accountId, fromYearMonth, toYearMonth);
+    }
+
+    @Override public long getNetAmountBeforeDateForAccount(String accountId, LocalDate beforeDate) {
+        return transactionDao.getNetAmountBeforeDateForAccount(accountId, beforeDate);
     }
 }

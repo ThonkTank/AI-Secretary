@@ -73,6 +73,7 @@ public class BudgetTransactionMapper {
         entity.importHash = domainTransaction.importHash;
         entity.payee = domainTransaction.payee;
         entity.importId = domainTransaction.importId;
+        entity.templateId = domainTransaction.parentRecurringId;
         return entity;
     }
 
@@ -105,6 +106,8 @@ public class BudgetTransactionMapper {
                 .build();
 
         tx.id = entity.id;
+        tx.parentRecurringId = entity.templateId;
+        tx.isRecurring = entity.templateId != null && !entity.templateId.isBlank();
         return tx;
     }
 }
