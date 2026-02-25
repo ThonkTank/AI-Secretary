@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -48,6 +49,7 @@ import java.util.Set;
 public class TaskEditDialog extends DialogFragment {
 
     private static final int WEEK_DAY_COUNT = 7;
+    private static final int DAY_PICKER_COLUMN_COUNT = 4;
 
     private TaskViewModel vm;
     private TaskEditSessionController editSessionController;
@@ -136,11 +138,13 @@ public class TaskEditDialog extends DialogFragment {
         rebuildPrefSlotUI();
 
         return new AlertDialog.Builder(requireContext())
-            .setTitle(editSessionController.isNewTask() ? "Task erstellen" : "Task bearbeiten")
+            .setTitle(editSessionController.isNewTask()
+                ? R.string.task_edit_dialog_title_create
+                : R.string.task_edit_dialog_title_edit)
             .setView(rootView)
             // Save handler with validation is set in onStart() to prevent dialog auto-dismiss on errors
-            .setPositiveButton("Speichern", null)
-            .setNegativeButton("Abbrechen", null)
+            .setPositiveButton(R.string.task_edit_dialog_positive, null)
+            .setNegativeButton(R.string.task_edit_dialog_negative, null)
             .create();
     }
 
@@ -222,15 +226,16 @@ public class TaskEditDialog extends DialogFragment {
             throw new IllegalStateException("Expected exactly 7 localized weekday labels.");
         }
 
-        LinearLayout layout = new LinearLayout(requireContext());
-        layout.setOrientation(LinearLayout.HORIZONTAL);
+        GridLayout layout = new GridLayout(requireContext());
+        layout.setColumnCount(DAY_PICKER_COLUMN_COUNT);
         layout.setPadding(
             dimenPx(R.dimen.task_editor_day_picker_horizontal_padding),
             dimenPx(R.dimen.task_editor_day_picker_vertical_padding),
             dimenPx(R.dimen.task_editor_day_picker_horizontal_padding),
             dimenPx(R.dimen.task_editor_day_picker_vertical_padding)
         );
-        layout.setGravity(Gravity.CENTER);
+        layout.setUseDefaultMargins(false);
+        layout.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
 
         boolean[] selected = new boolean[WEEK_DAY_COUNT];
 
@@ -244,6 +249,7 @@ public class TaskEditDialog extends DialogFragment {
             MaterialButton btn = new MaterialButton(requireContext(), null, 0,
                 R.style.Widget_AutoSecretary_TaskEdit_DayPickerButton);
             btn.setText(labels[i]);
+            btn.setMaxLines(2);
             btn.setMinWidth(0);
             btn.setMinimumWidth(0);
             btn.setCheckable(true);
@@ -253,10 +259,21 @@ public class TaskEditDialog extends DialogFragment {
             int dayButtonHorizontalPadding = dimenPx(R.dimen.task_editor_day_button_horizontal_padding);
             btn.setPadding(dayButtonHorizontalPadding, 0, dayButtonHorizontalPadding, 0);
 
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams(
+                GridLayout.spec(i / DAY_PICKER_COLUMN_COUNT, 1f),
+                GridLayout.spec(i % DAY_PICKER_COLUMN_COUNT, 1f)
+            );
+            params.width = 0;
+            params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            params.setGravity(Gravity.FILL_HORIZONTAL);
             int dayButtonHorizontalMargin = dimenPx(R.dimen.task_editor_day_button_horizontal_margin);
-            params.setMargins(dayButtonHorizontalMargin, 0, dayButtonHorizontalMargin, 0);
+            int dayButtonVerticalMargin = dimenPx(R.dimen.task_editor_day_button_vertical_margin);
+            params.setMargins(
+                dayButtonHorizontalMargin,
+                dayButtonVerticalMargin,
+                dayButtonHorizontalMargin,
+                dayButtonVerticalMargin
+            );
             btn.setLayoutParams(params);
 
             if (isTaken) {
@@ -275,7 +292,7 @@ public class TaskEditDialog extends DialogFragment {
         new AlertDialog.Builder(requireContext())
             .setTitle(R.string.task_edit_day_picker_title)
             .setView(layout)
-            .setPositiveButton("OK", (d, w) -> {
+            .setPositiveButton(R.string.task_edit_day_picker_positive, (d, w) -> {
                 EnumSet<DayOfWeek> newDays = EnumSet.noneOf(DayOfWeek.class);
                 for (int i = 0; i < WEEK_DAY_COUNT; i++) {
                     if (selected[i]) {
@@ -285,7 +302,7 @@ public class TaskEditDialog extends DialogFragment {
                 prefSlot.days = newDays;
                 rebuildPrefSlotUI();
             })
-            .setNegativeButton("Abbrechen", null)
+            .setNegativeButton(R.string.task_edit_day_picker_negative, null)
             .show();
     }
 
@@ -296,8 +313,11 @@ public class TaskEditDialog extends DialogFragment {
         new TimePickerDialog(requireContext(), (picker, h, m) -> {
             prefSlot.start = LocalTime.of(h, m);
             String formattedTime = prefSlot.start.format(DateTimeFormatter.ofPattern("HH:mm"));
-            timeView.setText("Startzeit wählen: " + formattedTime);
-            timeView.setContentDescription("Startzeit wählen. Aktuell: " + formattedTime);
+            timeView.setText(getString(R.string.task_editor_pref_slot_time_button, formattedTime));
+            timeView.setContentDescription(getString(
+                R.string.task_editor_pref_slot_time_content_description,
+                formattedTime
+            ));
         }, hour, minute, true).show();
     }
 

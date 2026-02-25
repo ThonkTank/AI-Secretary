@@ -23,7 +23,7 @@
             android:id="@+id/TimeDivider"
             android:layout_width="match_parent"
             android:layout_height="@dimen/task_row_time_divider_height"
-            android:background="@android:color/darker_gray"/>
+            android:background="@color/task_row_time_divider"/>
         <TextView
             android:id="@+id/EndTime"
             android:layout_width="wrap_content"
@@ -71,5 +71,6 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/task_row_edit"
         android:padding="@dimen/task_row_edit_button_padding"
-        android:src="@android:drawable/ic_menu_edit"/>
+        android:src="@drawable/ic_task_edit_24"
+        android:tint="@color/task_text_on_surface_emphasis"/>
 </LinearLayout>
