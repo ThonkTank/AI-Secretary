@@ -26,6 +26,9 @@ import com.autosecretary.R;
  */
 public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowViewHolder> {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final int STREAK_COMMON_MAX = 3;
+    private static final int STREAK_RARE_MAX = 7;
+    private static final int STREAK_EPIC_MAX = 14;
 
     List<ViewSlot> viewSlots;
     Consumer<ViewSlot> onCheck;
@@ -138,10 +141,34 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     private void bindStreak(TaskRowViewHolder holder, TaskListItem item) {
         if (item.streak > 0) {
-            holder.streakDisplay.setText(holder.itemView.getContext().getString(R.string.task_streak_display, item.streak));
+            Context context = holder.itemView.getContext();
+            int streakColor;
+            int rarityLabel;
+            if (item.streak <= STREAK_COMMON_MAX) {
+                streakColor = R.color.task_streak_common;
+                rarityLabel = R.string.task_streak_tier_common;
+            } else if (item.streak <= STREAK_RARE_MAX) {
+                streakColor = R.color.task_streak_rare;
+                rarityLabel = R.string.task_streak_tier_rare;
+            } else if (item.streak <= STREAK_EPIC_MAX) {
+                streakColor = R.color.task_streak_epic;
+                rarityLabel = R.string.task_streak_tier_epic;
+            } else {
+                streakColor = R.color.task_streak_legendary;
+                rarityLabel = R.string.task_streak_tier_legendary;
+            }
+
+            holder.streakDisplay.setText(context.getString(R.string.task_streak_display, item.streak));
+            holder.streakDisplay.setTextColor(ContextCompat.getColor(context, streakColor));
+            holder.streakDisplay.setContentDescription(
+                    context.getString(
+                            R.string.task_streak_content_description,
+                            item.streak,
+                            context.getString(rarityLabel)));
             holder.streakDisplay.setVisibility(View.VISIBLE);
         } else {
             holder.streakDisplay.setVisibility(View.GONE);
+            holder.streakDisplay.setContentDescription(null);
         }
     }
 

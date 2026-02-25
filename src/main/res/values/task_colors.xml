@@ -39,6 +39,12 @@
     <color name="task_deadline_soon">@color/task_urgency_soon</color>
     <color name="task_deadline_future">@color/task_urgency_future</color>
 
+    <!-- Streak rarity tiers -->
+    <color name="task_streak_common">@color/task_color_on_surface_muted</color>
+    <color name="task_streak_rare">#FF5C7A4D</color>
+    <color name="task_streak_epic">#FF7A4DA8</color>
+    <color name="task_streak_legendary">#FFCF8F4F</color>
+
     <color name="task_status_in_progress_background">#1F5C7A4D</color>
     <color name="task_status_in_progress_checkbox_tint">#FF5C7A4D</color>
     <color name="task_in_progress_background">@color/task_status_in_progress_background</color>
