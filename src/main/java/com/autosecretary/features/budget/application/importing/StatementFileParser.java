@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.application.importing;
 
-import com.autosecretary.features.budget.data.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
 
 import java.nio.charset.StandardCharsets;

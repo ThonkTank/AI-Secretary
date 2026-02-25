@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.data;
+package com.autosecretary.features.budget.data.dao;
 
 import androidx.room.Dao;
 import androidx.room.Delete;
@@ -10,6 +10,12 @@ import androidx.room.Update;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
+import com.autosecretary.features.budget.data.projection.AccountBalanceTotal;
+import com.autosecretary.features.budget.data.projection.AccountDailyDeltaPoint;
+import com.autosecretary.features.budget.data.projection.AccountMonthlyDeltaPoint;
+import com.autosecretary.features.budget.data.projection.IncomeExpenseSummary;
+import com.autosecretary.features.budget.data.projection.MonthlyTransactionOverviewItem;
 
 @Dao
 public interface TransactionDao {

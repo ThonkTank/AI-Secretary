@@ -20,3 +20,16 @@ Legacy classes are retained only to support migration and historical reference a
 Do **not** add new usages of legacy `accounts` / `transactions` tables.
 
 Import metadata entities live in `data/importing`.
+
+
+## Placement convention (single predictable rule)
+
+Place new data-layer files in exactly one of these packages:
+
+- `data/entity`: persisted Room entities for canonical budget tables.
+- `data/dao`: DAO interfaces for canonical entity access and aggregate queries.
+- `data/repository`: Room-backed implementations of domain repositories.
+- `data/projection`: read/query models returned by DAO projections.
+- `data/importing`: import-specific entities, DAOs, and recurring templates.
+
+Avoid adding new classes directly under `data/`; use one of the packages above.

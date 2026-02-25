@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.data.CategorySpendTotal;
+import com.autosecretary.features.budget.data.projection.CategorySpendTotal;
 import com.autosecretary.features.budget.domain.BudgetWidgetRepository;
 
 import java.time.YearMonth;
