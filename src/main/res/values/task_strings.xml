@@ -6,7 +6,12 @@
     <string name="task_edit_dialog_title_create">Aufgabe erstellen</string>
     <string name="task_edit_dialog_title_edit">Aufgabe bearbeiten</string>
     <string name="task_edit_dialog_positive">Speichern</string>
+    <string name="task_edit_dialog_delete">Löschen</string>
     <string name="task_edit_dialog_negative">Abbrechen</string>
+    <string name="task_edit_delete_title">Aufgabe löschen?</string>
+    <string name="task_edit_delete_message">Möchtest du diese Aufgabe wirklich löschen?</string>
+    <string name="task_edit_delete_confirm">Löschen</string>
+    <string name="task_edit_delete_cancel">Abbrechen</string>
     <string name="task_row_edit">Aufgabe bearbeiten</string>
 
     <string name="task_time_fallback_start">Nicht</string>
@@ -155,4 +160,11 @@
         <item>Sa</item>
         <item>So</item>
     </string-array>
+
+    <string name="task_schedule_button">Zeitfenster</string>
+    <string name="task_schedule_dialog_title">Tagesfenster konfigurieren</string>
+    <string name="task_schedule_dialog_save">Speichern</string>
+    <string name="task_schedule_dialog_cancel">Abbrechen</string>
+    <string name="task_schedule_validation_error">Endzeit muss nach Startzeit liegen.</string>
+    <string name="task_schedule_saved">Zeitfenster gespeichert</string>
 </resources>

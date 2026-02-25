@@ -152,6 +152,7 @@ public class BudgetViewModel extends ViewModel {
         public long getIncomeCents() { return incomeCents; }
         public long getExpenseCents() { return expenseCents; }
         public long getNetCents() { return netCents; }
+        public long getFreeBudgetCents() { return netCents; }
     }
 
     public static class BudgetLimitBar {
@@ -179,6 +180,8 @@ public class BudgetViewModel extends ViewModel {
         public String getCategoryColorHex() { return categoryColorHex; }
         public long getSpentCents() { return spentCents; }
         public double getLimitEuros() { return limitEuros; }
+        public double getEffectiveLimitEuros() { return limitEuros; }
+        public double getBaseLimitEuros() { return limitEuros; }
         public int getPercentage() { return percentage; }
     }
 
@@ -778,5 +781,12 @@ public class BudgetViewModel extends ViewModel {
             repository.saveBudgetLimit(limit);
             loadOverviewOnExecutor();
         });
+    }
+
+    public void saveBudgetLimit(String categoryId,
+                                double amountEuros,
+                                boolean rolloverEnabled,
+                                long rolloverCarryoverCents) {
+        saveBudgetLimit(categoryId, amountEuros);
     }
 }

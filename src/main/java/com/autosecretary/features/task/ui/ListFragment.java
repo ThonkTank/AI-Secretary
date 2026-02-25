@@ -73,8 +73,12 @@ public class ListFragment extends Fragment {
         });
 
         Button generateButton = view.findViewById(R.id.Button);
+        Button scheduleConfigButton = view.findViewById(R.id.ScheduleConfigButton);
         View newTaskButton = view.findViewById(R.id.NewTaskButton);
         generateButton.setOnClickListener(v -> vm.updateList());
+        scheduleConfigButton.setOnClickListener(v ->
+                new TaskScheduleConfigDialog().show(getParentFragmentManager(), "schedule_config")
+        );
 
         View.OnClickListener createTaskClickListener = v -> {
             editSessionController.createNewTask();

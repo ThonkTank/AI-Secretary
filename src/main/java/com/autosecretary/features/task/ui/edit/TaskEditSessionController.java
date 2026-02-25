@@ -3,6 +3,7 @@ package com.autosecretary.features.task.ui.edit;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
@@ -16,16 +17,20 @@ import java.util.ArrayList;
  */
 public class TaskEditSessionController {
     private final TaskAsyncDataService taskAsyncDataService;
-    private final Runnable onTaskSaved;
+    private final DeleteTaskUseCase deleteTaskUseCase;
+    private final Runnable onTaskChanged;
     private final TaskEditStateMapper taskEditStateMapper = new TaskEditStateMapper();
 
     private final MutableLiveData<TaskEditState> selectedTask = new MutableLiveData<>();
     private final MutableLiveData<Task> selectedBaseTask = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isNewTask = new MutableLiveData<>(false);
 
-    public TaskEditSessionController(TaskAsyncDataService taskAsyncDataService, Runnable onTaskSaved) {
+    public TaskEditSessionController(TaskAsyncDataService taskAsyncDataService,
+                                     DeleteTaskUseCase deleteTaskUseCase,
+                                     Runnable onTaskChanged) {
         this.taskAsyncDataService = taskAsyncDataService;
-        this.onTaskSaved = onTaskSaved;
+        this.deleteTaskUseCase = deleteTaskUseCase;
+        this.onTaskChanged = onTaskChanged;
     }
 
     public LiveData<TaskEditState> getSelectedTask() {
@@ -79,7 +84,17 @@ public class TaskEditSessionController {
     public void saveEditedTask(Task mappedTask) {
         taskAsyncDataService.saveTask(mappedTask, () -> {
             isNewTask.postValue(false);
-            onTaskSaved.run();
+            onTaskChanged.run();
+        });
+    }
+
+    public void deleteSelectedTask(Runnable onDeleted) {
+        String taskId = requireSelectedBaseTask().core.id;
+        deleteTaskUseCase.execute(taskId, () -> {
+            onTaskChanged.run();
+            if (onDeleted != null) {
+                onDeleted.run();
+            }
         });
     }
 }

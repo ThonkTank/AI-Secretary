@@ -59,6 +59,8 @@ public class DefaultTaskSlotGenerator {
     }
 
     private final Consumer<String> logger;
+    private final SchedulingWindowProvider schedulingWindowProvider;
+    private final CalendarBlockedIntervalProvider calendarBlockedIntervalProvider;
     private int newSlots;
     private Set<String> scheduledInSession;
     private Map<String, Task> allTasksById;
@@ -66,12 +68,29 @@ public class DefaultTaskSlotGenerator {
     private LocalDate schedulingDay;
 
     public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager) {
-        this(lifecycleManager, null);
+        this(lifecycleManager, null, day -> {
+            LocalDateTime start = LocalDateTime.of(day, java.time.LocalTime.of(6, 0));
+            LocalDateTime end = LocalDateTime.of(day, java.time.LocalTime.of(21, 0));
+            return new SchedulingWindowProvider.SchedulingWindow(start, end);
+        }, CalendarBlockedIntervalProvider.NONE);
     }
 
     public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager, Consumer<String> logger) {
+        this(lifecycleManager, logger, day -> {
+            LocalDateTime start = LocalDateTime.of(day, java.time.LocalTime.of(6, 0));
+            LocalDateTime end = LocalDateTime.of(day, java.time.LocalTime.of(21, 0));
+            return new SchedulingWindowProvider.SchedulingWindow(start, end);
+        }, CalendarBlockedIntervalProvider.NONE);
+    }
+
+    public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager,
+                                    Consumer<String> logger,
+                                    SchedulingWindowProvider schedulingWindowProvider,
+                                    CalendarBlockedIntervalProvider calendarBlockedIntervalProvider) {
         this.scorer = new TaskScorer(lifecycleManager);
         this.logger = logger;
+        this.schedulingWindowProvider = schedulingWindowProvider;
+        this.calendarBlockedIntervalProvider = calendarBlockedIntervalProvider;
     }
 
     private static final DateTimeFormatter HMM = DateTimeFormatter.ofPattern("HH:mm");
@@ -95,6 +114,13 @@ public class DefaultTaskSlotGenerator {
 
     public void generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
         generateSlotsForDay(tasks, windowStart, windowEnd, state, new ArrayList<>());
+    }
+
+    public void generateSlotsForDay(List<Task> tasks, LocalDate day, TaskPlanningState state) {
+        SchedulingWindowProvider.SchedulingWindow window = schedulingWindowProvider.forDay(day);
+        LocalDateTime windowStart = window.start;
+        LocalDateTime windowEnd = window.end;
+        generateSlotsForDayInternal(tasks, windowStart, windowEnd, state, new ArrayList<>());
     }
 
     public void generateSlotsForDay(List<Task> tasks,
@@ -137,6 +163,11 @@ public class DefaultTaskSlotGenerator {
         log("=== Generierung " + schedulingDay + " === Fenster " + windowStart.format(HMM) + "-" + windowEnd.format(HMM) + " (" + windowMin + "min), " + taskTree.size() + " root tasks");
 
         List<Interval> occupied = collectOccupiedIntervals(allTasks, schedulingDay, calendarEvents);
+        for (CalendarBlockedIntervalProvider.BlockedInterval blocked :
+                calendarBlockedIntervalProvider.readBlockedIntervals(schedulingDay, windowStart, windowEnd)) {
+            occupied.add(new Interval(blocked.start, blocked.end));
+        }
+        occupied.sort(Interval::compareTo);
         assignGlobalBestFit(taskTree, windowStart, windowEnd, null, 0, occupied);
 
         log("=== Zusammenfassung " + schedulingDay + " ===");

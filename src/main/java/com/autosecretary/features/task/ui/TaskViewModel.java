@@ -8,6 +8,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.autosecretary.app.Preferences;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
+import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.application.TaskListItem;
@@ -49,14 +50,19 @@ public class TaskViewModel extends AndroidViewModel {
                          TaskAsyncDataService taskAsyncDataService,
                          CheckOffTaskUseCase checkOffTaskUseCase,
                          RegenerateScheduleUseCase regenerateScheduleUseCase,
+                         DeleteTaskUseCase deleteTaskUseCase,
                          CalendarReader calendarReader) {
         super(app);
         this.taskAsyncDataService = taskAsyncDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
+        this.taskEditSessionController = new TaskEditSessionController(
+                taskAsyncDataService,
+                deleteTaskUseCase,
+                this::refreshList
+        );
         this.calendarReader = calendarReader;
         this.preferences = new Preferences(app);
-        this.taskEditSessionController = new TaskEditSessionController(taskAsyncDataService, this::refreshList);
 
         this.masterList = new ViewSlotList();
         applyChecklistPreset();
