@@ -3,6 +3,7 @@ package com.autosecretary.features.task.ui;
 import androidx.fragment.app.Fragment;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.TextView;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -10,7 +11,10 @@ import android.view.View;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
 import com.google.android.material.button.MaterialButtonToggleGroup;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Locale;
 
 import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
@@ -50,9 +54,10 @@ public class ListFragment extends Fragment {
             emptyStateContainer.setVisibility(hasItems ? View.GONE : View.VISIBLE);
         });
 
-        Button button = view.findViewById(R.id.Button);
+        Button generateButton = view.findViewById(R.id.Button);
+        View newTaskButton = view.findViewById(R.id.NewTaskButton);
         // Generate rebuilds the schedule using current rules, then pushes the refreshed rows to this list.
-        button.setOnClickListener(v -> vm.updateList());
+        generateButton.setOnClickListener(v -> vm.updateList());
 
         View.OnClickListener createTaskClickListener = v -> {
             // Start from a blank task in shared state, then open the dialog so the user fills details.
@@ -60,8 +65,34 @@ public class ListFragment extends Fragment {
             new TaskEditDialog().show(getParentFragmentManager(), "create");
         };
 
-        view.findViewById(R.id.NewTaskButton).setOnClickListener(createTaskClickListener);
+        newTaskButton.setOnClickListener(createTaskClickListener);
         view.findViewById(R.id.EmptyStateNewTaskButton).setOnClickListener(createTaskClickListener);
+
+        // Day navigation: arrows to browse today through today+6
+        TextView dayNavPrev = view.findViewById(R.id.DayNavPrev);
+        TextView dayNavLabel = view.findViewById(R.id.DayNavLabel);
+        TextView dayNavNext = view.findViewById(R.id.DayNavNext);
+        DateTimeFormatter dayFormat = DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN);
+
+        dayNavPrev.setOnClickListener(v -> vm.navigatePreviousDay());
+        dayNavNext.setOnClickListener(v -> vm.navigateNextDay());
+
+        vm.getSelectedDay().observe(getViewLifecycleOwner(), day -> {
+            boolean isToday = day.equals(LocalDate.now());
+            dayNavLabel.setText(isToday ? "Heute" : day.format(dayFormat));
+
+            dayNavPrev.setEnabled(!isToday);
+            dayNavPrev.setAlpha(isToday ? 0.3f : 1.0f);
+
+            boolean canGoForward = day.isBefore(LocalDate.now().plusDays(6));
+            dayNavNext.setEnabled(canGoForward);
+            dayNavNext.setAlpha(canGoForward ? 1.0f : 0.3f);
+
+            generateButton.setVisibility(isToday ? View.VISIBLE : View.GONE);
+            newTaskButton.setVisibility(isToday ? View.VISIBLE : View.GONE);
+
+            adapter.setInteractionsEnabled(isToday);
+        });
 
         MaterialButtonToggleGroup toggle = view.findViewById(R.id.TaskListToggle);
         // Checklist vs Manage toggles between focused presets for quick completion and planning workflows.

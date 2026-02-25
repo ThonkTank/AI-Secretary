@@ -1,7 +1,12 @@
 package com.autosecretary.app;
 
 import android.app.Application;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+
+import com.autosecretary.features.task.widget.TaskWidgetProvider;
 
 public class AutoSecretaryApplication extends Application {
     private AppCompositionRoot appCompositionRoot;
@@ -10,6 +15,17 @@ public class AutoSecretaryApplication extends Application {
     public void onCreate() {
         super.onCreate();
         appCompositionRoot = new AppCompositionRoot(this);
+        registerWidgetRefreshOnUnlock();
+    }
+
+    private void registerWidgetRefreshOnUnlock() {
+        IntentFilter filter = new IntentFilter(Intent.ACTION_USER_PRESENT);
+        registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                TaskWidgetProvider.notifyWidgetUpdate(context);
+            }
+        }, filter, Context.RECEIVER_NOT_EXPORTED);
     }
 
     public AppCompositionRoot getAppCompositionRoot() {

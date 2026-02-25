@@ -11,6 +11,7 @@ import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.ui.state.ViewSlotList;
 import com.autosecretary.features.task.ui.state.ViewSlotList.ViewSlot;
+import com.autosecretary.features.task.widget.TaskWidgetProvider;
 
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -30,6 +31,8 @@ import java.util.function.Predicate;
  * </p>
  */
 public class TaskViewModel extends AndroidViewModel {
+    private static final int MAX_DAY_OFFSET = 6;
+
     private final TaskAsyncDataService taskAsyncDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
@@ -37,6 +40,7 @@ public class TaskViewModel extends AndroidViewModel {
 
     private final ViewSlotList masterList;
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
+    private final MutableLiveData<LocalDate> selectedDay = new MutableLiveData<>(LocalDate.now());
 
     private LocalDate day;
     private ListConfig activeListConfig = ListConfig.CHECKLIST;
@@ -60,6 +64,29 @@ public class TaskViewModel extends AndroidViewModel {
         return displayList;
     }
 
+    public LiveData<LocalDate> getSelectedDay() {
+        return selectedDay;
+    }
+
+    public void navigateNextDay() {
+        LocalDate current = selectedDay.getValue();
+        if (current != null && current.isBefore(LocalDate.now().plusDays(MAX_DAY_OFFSET))) {
+            setSelectedDay(current.plusDays(1));
+        }
+    }
+
+    public void navigatePreviousDay() {
+        LocalDate current = selectedDay.getValue();
+        if (current != null && current.isAfter(LocalDate.now())) {
+            setSelectedDay(current.minusDays(1));
+        }
+    }
+
+    private void setSelectedDay(LocalDate newDay) {
+        selectedDay.setValue(newDay);
+        applyPreset(newDay, activeListConfig);
+    }
+
     public TaskEditSessionController getTaskEditSessionController() {
         return taskEditSessionController;
     }
@@ -70,16 +97,15 @@ public class TaskViewModel extends AndroidViewModel {
      * <p>
      * Exact semantics:
      * <ul>
-     *     <li>Filter to tasks on {@code LocalDate.now()}.</li>
+     *     <li>Filter to tasks on the currently selected day.</li>
      *     <li>Hide unscheduled tasks ({@code start == null}).</li>
      *     <li>Do not group by parent task.</li>
      *     <li>Sort by time only (ascending, nulls last).</li>
      * </ul>
-     * Note: both built-in presets currently target {@code LocalDate.now()}.
      * </p>
      */
     public void applyChecklistPreset() {
-        applyPreset(LocalDate.now(), ListConfig.CHECKLIST);
+        applyPreset(selectedDay.getValue(), ListConfig.CHECKLIST);
     }
 
     /**
@@ -87,7 +113,7 @@ public class TaskViewModel extends AndroidViewModel {
      * <p>
      * Exact semantics:
      * <ul>
-     *     <li>Filter to tasks on {@code LocalDate.now()}.</li>
+     *     <li>Filter to tasks on the currently selected day.</li>
      *     <li>Include unscheduled tasks.</li>
      *     <li>Group by parent task.</li>
      *     <li>Sort by title only (natural ascending order).</li>
@@ -95,7 +121,7 @@ public class TaskViewModel extends AndroidViewModel {
      * </p>
      */
     public void applyManagePreset() {
-        applyPreset(LocalDate.now(), ListConfig.MANAGE);
+        applyPreset(selectedDay.getValue(), ListConfig.MANAGE);
     }
 
     private void applyPreset(LocalDate day, ListConfig config) {
@@ -167,6 +193,7 @@ public class TaskViewModel extends AndroidViewModel {
         taskAsyncDataService.loadAllMapped(items -> {
             masterList.fromList(items);
             filterList();
+            TaskWidgetProvider.notifyWidgetUpdate(getApplication());
         });
     }
 

@@ -6,8 +6,50 @@
     android:orientation="vertical"
     android:fitsSystemWindows="true">
 
-    <LinearLayout 
-        android:layout_width="match_parent" 
+    <LinearLayout
+        android:id="@+id/DayNavigationBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="@dimen/spacing_md"
+        android:paddingEnd="@dimen/spacing_md"
+        android:paddingTop="@dimen/spacing_sm"
+        android:paddingBottom="@dimen/spacing_sm">
+
+        <TextView
+            android:id="@+id/DayNavPrev"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="\u25C0"
+            android:textSize="20sp"
+            android:padding="@dimen/spacing_md"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/DayNavLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:text="Heute" />
+
+        <TextView
+            android:id="@+id/DayNavNext"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="\u25B6"
+            android:textSize="20sp"
+            android:padding="@dimen/spacing_md"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal">
 

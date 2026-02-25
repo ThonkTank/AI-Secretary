@@ -31,6 +31,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     Consumer<ViewSlot> onCheck;
     Consumer<ViewSlot> onLongPress;
     Consumer<ViewSlot> onEditClick;
+    boolean interactionsEnabled = true;
 
     public ListRowAdapter(List<ViewSlot> viewSlots, Consumer<ViewSlot> onCheck, Consumer<ViewSlot> onLongPress, Consumer<ViewSlot> onEditClick) {
         this.viewSlots = viewSlots;
@@ -165,18 +166,33 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             onCheck.accept(viewSlot);
         });
         holder.checkBox.setChecked(item.completed);
-        holder.checkBox.setEnabled(!item.completed && item.slotId != null);
+        boolean checkable = !item.completed && item.slotId != null && interactionsEnabled;
+        holder.checkBox.setEnabled(checkable);
+        holder.checkBox.setAlpha(interactionsEnabled ? 1.0f : 0.4f);
 
-        holder.itemView.setOnLongClickListener(v -> {
-            onLongPress.accept(viewSlot);
-            return true;
-        });
-
-        holder.editButton.setOnClickListener(v -> onEditClick.accept(viewSlot));
+        if (interactionsEnabled) {
+            holder.itemView.setOnLongClickListener(v -> {
+                onLongPress.accept(viewSlot);
+                return true;
+            });
+            holder.editButton.setOnClickListener(v -> onEditClick.accept(viewSlot));
+            holder.editButton.setAlpha(1.0f);
+        } else {
+            holder.itemView.setOnLongClickListener(null);
+            holder.editButton.setOnClickListener(null);
+            holder.editButton.setAlpha(0.4f);
+        }
     }
 
     public void setList(List<ViewSlot> viewSlots) {
         this.viewSlots = viewSlots;
         notifyDataSetChanged();
+    }
+
+    public void setInteractionsEnabled(boolean enabled) {
+        if (this.interactionsEnabled != enabled) {
+            this.interactionsEnabled = enabled;
+            notifyDataSetChanged();
+        }
     }
 }
