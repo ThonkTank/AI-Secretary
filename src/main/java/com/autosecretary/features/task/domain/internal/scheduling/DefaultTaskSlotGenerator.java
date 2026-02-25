@@ -364,7 +364,6 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
 
             TaskSlot prereqSlot = findScheduledSlotForDay(prereqTask, schedulingDay);
             if (prereqSlot == null) {
-                if (!scheduledInSession.contains(prereq.prerequisiteId)) return true;
                 return true;
             }
 
