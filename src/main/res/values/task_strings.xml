@@ -18,8 +18,8 @@
     <string name="task_list_day_nav_today">Heute</string>
     <string name="task_list_day_nav_next">&#x25B6;</string>
     <string name="task_list_generate">Generieren</string>
-    <string name="task_list_toggle_checklist">Checklist</string>
-    <string name="task_list_toggle_manage">Manage</string>
+    <string name="task_list_toggle_checklist">Checkliste</string>
+    <string name="task_list_toggle_manage">Verwalten</string>
     <string name="task_list_empty_title">Noch keine Aufgaben</string>
     <string name="task_list_empty_subtitle">Erstelle deine erste Aufgabe, um deinen Tagesplan zu starten</string>
     <string name="task_list_empty_action">Erste Aufgabe erstellen</string>
