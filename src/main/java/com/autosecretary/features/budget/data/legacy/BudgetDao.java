@@ -19,36 +19,36 @@ import java.util.List;
 @Deprecated
 @Dao
 public interface BudgetDao {
-    @Query("SELECT * FROM accounts WHERE id = :accountId LIMIT 1")
-    Account findAccountById(Long accountId);
+    @Query("SELECT * FROM budget_account WHERE id = :accountId LIMIT 1")
+    BudgetAccount findAccountById(String accountId);
 
-    @Query("SELECT * FROM accounts WHERE isActive = 1")
-    List<Account> findActiveAccounts();
+    @Query("SELECT * FROM budget_account WHERE archived = 0")
+    List<BudgetAccount> findActiveAccounts();
 
-    @Query("SELECT * FROM transactions")
-    List<Transaction> findAllTransactions();
+    @Query("SELECT * FROM budget_transaction")
+    List<BudgetTransaction> findAllTransactions();
 
-    @Query("SELECT * FROM transactions WHERE accountId = :accountId")
-    List<Transaction> findTransactionsForAccount(Long accountId);
+    @Query("SELECT * FROM budget_transaction WHERE accountId = :accountId")
+    List<BudgetTransaction> findTransactionsForAccount(String accountId);
 
-    @Query("SELECT * FROM budget_limits WHERE categoryId = :categoryId AND yearMonth = :yearMonth LIMIT 1")
-    BudgetLimit findBudgetLimit(Long categoryId, String yearMonth);
+    @Query("SELECT * FROM budget_limit WHERE categoryId = :categoryId AND yearMonth = :yearMonth LIMIT 1")
+    BudgetLimit findBudgetLimit(String categoryId, String yearMonth);
 
     @Insert
-    long insertTransaction(Transaction transaction);
+    void insertTransaction(BudgetTransaction transaction);
 
     @Update
-    void updateTransaction(Transaction transaction);
+    void updateTransaction(BudgetTransaction transaction);
 
     @Delete
-    void deleteTransaction(Transaction transaction);
+    void deleteTransaction(BudgetTransaction transaction);
 
     @Insert
-    long insertBudgetLimit(BudgetLimit budgetLimit);
+    void insertBudgetLimit(BudgetLimit budgetLimit);
 
     @Update
     void updateBudgetLimit(BudgetLimit budgetLimit);
 
     @Update
-    void updateAccount(Account account);
+    void updateAccount(BudgetAccount account);
 }
