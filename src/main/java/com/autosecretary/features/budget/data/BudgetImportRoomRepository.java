@@ -19,6 +19,13 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     public BudgetImportRoomRepository(BudgetImportDao importDao,
                                        BudgetRecurringTemplateDao templateDao,
                                        TransactionDao transactionDao,
+                                       BudgetLookupDao lookupDao) {
+        this(importDao, templateDao, transactionDao, lookupDao, () -> { });
+    }
+
+    public BudgetImportRoomRepository(BudgetImportDao importDao,
+                                       BudgetRecurringTemplateDao templateDao,
+                                       TransactionDao transactionDao,
                                        BudgetLookupDao lookupDao,
                                        Runnable onBudgetDataUpdated) {
         this.importDao = importDao;

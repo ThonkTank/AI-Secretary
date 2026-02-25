@@ -19,6 +19,7 @@ import com.autosecretary.features.budget.data.MonthlyTransactionOverviewItem;
 import com.autosecretary.features.budget.domain.AccountBalanceTimelineService;
 import com.autosecretary.features.budget.domain.BalanceTimelinePoint;
 import com.autosecretary.features.budget.domain.BudgetRepository;
+import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
 import java.time.LocalDate;
@@ -142,17 +143,23 @@ public class BudgetViewModel extends ViewModel {
         private final long incomeCents;
         private final long expenseCents;
         private final long netCents;
+        private final long freeBudgetCents;
 
         public BudgetSummaryData(long incomeCents, long expenseCents) {
+            this(incomeCents, expenseCents, 0L);
+        }
+
+        public BudgetSummaryData(long incomeCents, long expenseCents, long freeBudgetCents) {
             this.incomeCents = incomeCents;
             this.expenseCents = expenseCents;
             this.netCents = incomeCents - expenseCents;
+            this.freeBudgetCents = freeBudgetCents;
         }
 
         public long getIncomeCents() { return incomeCents; }
         public long getExpenseCents() { return expenseCents; }
         public long getNetCents() { return netCents; }
-        public long getFreeBudgetCents() { return netCents; }
+        public long getFreeBudgetCents() { return freeBudgetCents; }
     }
 
     public static class BudgetLimitBar {
@@ -160,18 +167,20 @@ public class BudgetViewModel extends ViewModel {
         private final String categoryName;
         private final String categoryColorHex;
         private final long spentCents;
-        private final double limitEuros;
+        private final double baseLimitEuros;
+        private final double effectiveLimitEuros;
         private final int percentage;
 
         public BudgetLimitBar(String categoryId, String categoryName, String categoryColorHex,
-                              long spentCents, double limitEuros) {
+                              long spentCents, double baseLimitEuros, double effectiveLimitEuros) {
             this.categoryId = categoryId;
             this.categoryName = categoryName;
             this.categoryColorHex = categoryColorHex;
             this.spentCents = spentCents;
-            this.limitEuros = limitEuros;
-            this.percentage = limitEuros > 0
-                    ? (int) ((spentCents / 100.0) / limitEuros * 100)
+            this.baseLimitEuros = baseLimitEuros;
+            this.effectiveLimitEuros = effectiveLimitEuros;
+            this.percentage = effectiveLimitEuros > 0
+                    ? (int) ((spentCents / 100.0) / effectiveLimitEuros * 100)
                     : 0;
         }
 
@@ -179,9 +188,8 @@ public class BudgetViewModel extends ViewModel {
         public String getCategoryName() { return categoryName; }
         public String getCategoryColorHex() { return categoryColorHex; }
         public long getSpentCents() { return spentCents; }
-        public double getLimitEuros() { return limitEuros; }
-        public double getEffectiveLimitEuros() { return limitEuros; }
-        public double getBaseLimitEuros() { return limitEuros; }
+        public double getBaseLimitEuros() { return baseLimitEuros; }
+        public double getEffectiveLimitEuros() { return effectiveLimitEuros; }
         public int getPercentage() { return percentage; }
     }
 
@@ -214,13 +222,15 @@ public class BudgetViewModel extends ViewModel {
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
     private final CreateTransferUseCase createTransferUseCase;
     private final AccountBalanceTimelineService balanceTimelineService;
+    private final CalculateFreeBudgetUseCase calculateFreeBudgetUseCase;
 
     public BudgetViewModel(BudgetRepository repository,
                            StatementFileParser parser,
                            ExecutorService executor,
                            Consumer<Runnable> postToMain,
                            BudgetImportUseCase importUseCase,
-                           ApplyRecurringSuggestionsUseCase applyRecurringUseCase) {
+                           ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
+                           CalculateFreeBudgetUseCase calculateFreeBudgetUseCase) {
         this.repository = repository;
         this.parser = parser;
         this.executor = executor;
@@ -229,6 +239,7 @@ public class BudgetViewModel extends ViewModel {
         this.applyRecurringUseCase = applyRecurringUseCase;
         this.createTransferUseCase = new CreateTransferUseCase(repository);
         this.balanceTimelineService = new AccountBalanceTimelineService();
+        this.calculateFreeBudgetUseCase = calculateFreeBudgetUseCase;
         ensureDefaultData();
     }
 
@@ -462,15 +473,21 @@ public class BudgetViewModel extends ViewModel {
         }
 
         List<BudgetChartPoint> balancePoints = loadBalanceChartData(accountId);
+        long freeBudgetCents = calculateFreeBudgetUseCase.execute(accountId, LocalDate.now(), 7);
 
         long finalTotalIncomeCents = totalIncomeCents;
         long finalTotalExpenseCents = totalExpenseCents;
+        long finalFreeBudgetCents = freeBudgetCents;
         List<BudgetTransactionRow> finalRows = rows;
 
         postToMain.accept(() -> {
             transactions.setValue(finalRows);
             chartPoints.setValue(balancePoints);
-            summaryData.setValue(new BudgetSummaryData(finalTotalIncomeCents, finalTotalExpenseCents));
+            summaryData.setValue(new BudgetSummaryData(
+                    finalTotalIncomeCents,
+                    finalTotalExpenseCents,
+                    finalFreeBudgetCents
+            ));
             if (!finalRows.isEmpty()) {
                 uiState.setValue(BudgetUiState.CONTENT);
                 statusMessage.setValue("Letzte Buchungen");
@@ -764,29 +781,32 @@ public class BudgetViewModel extends ViewModel {
                 String icon = total.categoryIcon != null && !total.categoryIcon.trim().isEmpty()
                         ? total.categoryIcon : BudgetCategory.DEFAULT_ICON;
                 String label = icon + " " + total.categoryName;
+                Long effectiveLimitCents = repository.getEffectiveLimitCents(total.categoryId, yearMonthStr);
+                double effectiveLimitEuros = effectiveLimitCents != null
+                        ? (effectiveLimitCents / 100.0)
+                        : total.limitAmount;
                 bars.add(new BudgetLimitBar(
                         total.categoryId, label, total.categoryColorHex,
-                        total.spentCents, total.limitAmount));
+                        total.spentCents, total.limitAmount, effectiveLimitEuros));
             }
         }
         postToMain.accept(() -> budgetLimits.setValue(bars));
     }
 
     public void saveBudgetLimit(String categoryId, double amountEuros) {
+        saveBudgetLimit(categoryId, amountEuros, false, 0L);
+    }
+
+    public void saveBudgetLimit(String categoryId, double amountEuros, boolean rolloverEnabled, long rolloverCarryoverCents) {
         executor.execute(() -> {
             YearMonth month = currentMonth.getValue();
             if (month == null) month = YearMonth.now();
             String yearMonthStr = month.toString();
             BudgetLimit limit = new BudgetLimit(categoryId, yearMonthStr, amountEuros);
+            limit.rolloverEnabled = rolloverEnabled;
+            limit.rolloverCarryoverCents = rolloverCarryoverCents;
             repository.saveBudgetLimit(limit);
             loadOverviewOnExecutor();
         });
-    }
-
-    public void saveBudgetLimit(String categoryId,
-                                double amountEuros,
-                                boolean rolloverEnabled,
-                                long rolloverCarryoverCents) {
-        saveBudgetLimit(categoryId, amountEuros);
     }
 }

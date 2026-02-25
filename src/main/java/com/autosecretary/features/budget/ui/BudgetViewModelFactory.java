@@ -8,6 +8,7 @@ import com.autosecretary.features.budget.application.importing.ApplyRecurringSug
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
 import com.autosecretary.features.budget.domain.BudgetRepository;
+import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
@@ -20,19 +21,22 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
     private final Consumer<Runnable> postToMain;
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
+    private final CalculateFreeBudgetUseCase calculateFreeBudgetUseCase;
 
     public BudgetViewModelFactory(BudgetRepository repository,
                                   StatementFileParser parser,
                                   ExecutorService executor,
                                   Consumer<Runnable> postToMain,
                                   BudgetImportUseCase importUseCase,
-                                  ApplyRecurringSuggestionsUseCase applyRecurringUseCase) {
+                                  ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
+                                  CalculateFreeBudgetUseCase calculateFreeBudgetUseCase) {
         this.repository = repository;
         this.parser = parser;
         this.executor = executor;
         this.postToMain = postToMain;
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
+        this.calculateFreeBudgetUseCase = calculateFreeBudgetUseCase;
     }
 
     @NonNull
@@ -40,7 +44,8 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
     public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
         if (modelClass.isAssignableFrom(BudgetViewModel.class)) {
             return modelClass.cast(new BudgetViewModel(
-                    repository, parser, executor, postToMain, importUseCase, applyRecurringUseCase));
+                    repository, parser, executor, postToMain,
+                    importUseCase, applyRecurringUseCase, calculateFreeBudgetUseCase));
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
     }

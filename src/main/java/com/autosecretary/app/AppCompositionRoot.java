@@ -13,6 +13,7 @@ import com.autosecretary.features.budget.application.importing.ClaudeStatementAp
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
 import com.autosecretary.features.budget.data.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.BudgetRoomRepository;
+import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.DecrementTaskProgressUseCase;
@@ -169,13 +170,17 @@ public class AppCompositionRoot {
                 importRepository, taskUseCaseExecutor
         );
 
+        CalculateFreeBudgetUseCase calculateFreeBudgetUseCase =
+                new CalculateFreeBudgetUseCase(repository);
+
         budgetViewModelFactory = new BudgetViewModelFactory(
                 repository,
                 parser,
                 taskUseCaseExecutor,
                 mainHandler::post,
                 importUseCase,
-                applyRecurringUseCase
+                applyRecurringUseCase,
+                calculateFreeBudgetUseCase
         );
 
         return budgetViewModelFactory;

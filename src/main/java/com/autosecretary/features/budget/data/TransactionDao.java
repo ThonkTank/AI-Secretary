@@ -33,30 +33,6 @@ public interface TransactionDao {
             INNER JOIN budget_account a ON a.id = t.accountId
             LEFT JOIN budget_category c ON c.id = t.categoryId
             WHERE t.yearMonth = :yearMonth
-              AND t.accountId = :accountId
-            ORDER BY t.bookingDate DESC, t.id DESC
-            """)
-    List<MonthlyTransactionOverviewItem> getMonthlyOverview(String yearMonth, String accountId);
-
-    @Query("""
-            SELECT t.id AS transactionId,
-                   t.bookingDate AS bookingDate,
-                   t.yearMonth AS yearMonth,
-                   t.type AS type,
-                   t.transactionKind AS transactionKind,
-                   t.amountCents AS amountCents,
-                   t.note AS note,
-                   t.accountId AS accountId,
-                   a.name AS accountName,
-                   t.categoryId AS categoryId,
-                   c.name AS categoryName,
-                   c.icon AS categoryIcon,
-                   c.colorHex AS categoryColorHex,
-                   t.linkedTransactionId AS linkedTransactionId
-            FROM budget_transaction t
-            INNER JOIN budget_account a ON a.id = t.accountId
-            LEFT JOIN budget_category c ON c.id = t.categoryId
-            WHERE t.yearMonth = :yearMonth
             ORDER BY t.bookingDate DESC, t.id DESC
             """)
     List<MonthlyTransactionOverviewItem> getMonthlyOverview(String yearMonth);
@@ -73,6 +49,10 @@ public interface TransactionDao {
                    a.name AS accountName,
                    t.categoryId AS categoryId,
                    c.name AS categoryName,
+                   c.icon AS categoryIcon,
+                   c.colorHex AS categoryColorHex,
+                   c.icon AS categoryIcon,
+                   c.colorHex AS categoryColorHex,
                    t.linkedTransactionId AS linkedTransactionId
             FROM budget_transaction t
             INNER JOIN budget_account a ON a.id = t.accountId
@@ -150,6 +130,12 @@ public interface TransactionDao {
             """)
     IncomeExpenseSummary getIncomeExpenseSummary(String yearMonth);
 
+    @Query("""
+            SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END), 0)
+            FROM budget_transaction
+            """)
+    long getNetBalanceCents();
+
 
 
     @Query("""
@@ -159,12 +145,6 @@ public interface TransactionDao {
             GROUP BY accountId
             """)
     List<AccountBalanceTotal> getAccountBalanceTotals();
-
-    @Query("""
-            SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END), 0)
-            FROM budget_transaction
-            """)
-    long getNetBalanceCents();
 
     @Query("SELECT * FROM budget_transaction ORDER BY bookingDate DESC")
     List<BudgetTransactionEntity> findAll();

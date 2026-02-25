@@ -37,7 +37,6 @@ public class BudgetAccount {
 
     public BudgetAccount() {
     }
-
     @Ignore
     public BudgetAccount(@NonNull String name) {
         this.name = name;

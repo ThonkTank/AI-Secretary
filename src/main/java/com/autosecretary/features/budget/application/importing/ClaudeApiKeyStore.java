@@ -6,6 +6,7 @@ import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
@@ -86,7 +87,7 @@ public class ClaudeApiKeyStore {
         return apiKey != null && apiKey.startsWith("sk-ant-") && apiKey.length() > 20;
     }
 
-    private SecretKey getOrCreateSecretKey() throws Exception {
+    private SecretKey getOrCreateSecretKey() throws GeneralSecurityException, IOException {
         KeyStore keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
         keyStore.load(null);
 

@@ -271,11 +271,11 @@ public class BudgetFragment extends Fragment {
         List<BudgetAccount> allAccounts =
                 budgetViewModel.getAccounts().getValue();
         if (allAccounts == null) allAccounts = new ArrayList<>();
-        List<BudgetAccount> accountsForDialog = allAccounts;
+        final List<BudgetAccount> finalAllAccounts = allAccounts;
 
         boolean isExpense = existingRow == null || existingRow.isExpense();
         populateCategorySpinner(categorySpinner, allCats, isExpense);
-        populateAccountSpinner(accountSpinner, accountsForDialog);
+        populateAccountSpinner(accountSpinner, finalAllAccounts);
 
         typeGroup.setOnCheckedChangeListener((group, checkedId) ->
                 populateCategorySpinner(categorySpinner, allCats,
@@ -294,7 +294,7 @@ public class BudgetFragment extends Fragment {
                 incomeRadio.setChecked(true);
             }
             setCategorySelection(categorySpinner, allCats, existingRow.isExpense(), existingRow.getCategoryId());
-            setAccountSelection(accountSpinner, accountsForDialog, existingRow.getAccountId());
+            setAccountSelection(accountSpinner, finalAllAccounts, existingRow.getAccountId());
         }
 
         dateInput.setText(selectedDate.toString());
@@ -316,7 +316,7 @@ public class BudgetFragment extends Fragment {
                     String note = noteInput.getText() != null
                             ? noteInput.getText().toString().trim() : "";
                     String categoryId = getSelectedCategoryId(categorySpinner, allCats, selectedExpense);
-                    String accountId = getSelectedAccountId(accountSpinner, accountsForDialog);
+                    String accountId = getSelectedAccountId(accountSpinner, finalAllAccounts);
                     LocalDate bookingDate = parseDateInput(dateInput.getText() != null
                             ? dateInput.getText().toString().trim() : "");
 

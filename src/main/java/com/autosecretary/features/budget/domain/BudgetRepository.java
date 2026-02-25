@@ -24,6 +24,8 @@ public interface BudgetRepository {
     long getPreviousMonthExpenseCents(String categoryId, String targetYearMonth);
     long getCategoryExpenseCents(String categoryId, String yearMonth);
     Long getEffectiveLimitCents(String categoryId, String targetYearMonth);
+    long getCurrentBalanceCents(String accountId);
+    long getUpcomingExpenseTemplateCents(String accountId, LocalDate fromDate, LocalDate toDate);
     void saveTransaction(BudgetTransactionEntity transaction);
     void updateTransaction(BudgetTransactionEntity transaction);
     void saveTransactions(List<BudgetTransactionEntity> transactions);

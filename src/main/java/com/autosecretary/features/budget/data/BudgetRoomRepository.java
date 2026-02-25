@@ -10,13 +10,22 @@ public class BudgetRoomRepository implements BudgetRepository {
     private final BudgetLookupDao lookupDao;
     private final TransactionDao transactionDao;
     private final BudgetLimitDao limitDao;
+    private final BudgetRecurringTemplateDao recurringTemplateDao;
 
     public BudgetRoomRepository(BudgetLookupDao lookupDao,
                                  TransactionDao transactionDao,
                                  BudgetLimitDao limitDao) {
+        this(lookupDao, transactionDao, limitDao, null);
+    }
+
+    public BudgetRoomRepository(BudgetLookupDao lookupDao,
+                                 TransactionDao transactionDao,
+                                 BudgetLimitDao limitDao,
+                                 BudgetRecurringTemplateDao recurringTemplateDao) {
         this.lookupDao = lookupDao;
         this.transactionDao = transactionDao;
         this.limitDao = limitDao;
+        this.recurringTemplateDao = recurringTemplateDao;
     }
 
     @Override public BudgetAccount findAccountById(String accountId) {
@@ -61,6 +70,29 @@ public class BudgetRoomRepository implements BudgetRepository {
 
     @Override public Long getEffectiveLimitCents(String categoryId, String targetYearMonth) {
         return limitDao.getEffectiveLimitCentsForMonth(categoryId, targetYearMonth);
+    }
+
+    @Override public long getCurrentBalanceCents(String accountId) {
+        if (accountId == null || accountId.isBlank()) {
+            return lookupDao.sumCurrentBalanceCentsForActiveAccounts();
+        }
+        Long value = lookupDao.findCurrentBalanceCentsByAccountId(accountId);
+        return value != null ? value : 0L;
+    }
+
+    @Override public long getUpcomingExpenseTemplateCents(String accountId, LocalDate fromDate, LocalDate toDate) {
+        if (recurringTemplateDao == null) {
+            return 0L;
+        }
+        List<BudgetRecurringTemplateEntity> templates = (accountId == null || accountId.isBlank())
+                ? recurringTemplateDao.findActiveExpenseTemplatesForActiveAccountsInRange(fromDate, toDate)
+                : recurringTemplateDao.findActiveExpenseTemplatesForAccountInRange(accountId, fromDate, toDate);
+
+        long total = 0L;
+        for (BudgetRecurringTemplateEntity template : templates) {
+            total += Math.max(0L, -template.avgAmountCents);
+        }
+        return total;
     }
 
     @Override public void saveTransaction(BudgetTransactionEntity transaction) {

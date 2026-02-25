@@ -35,7 +35,6 @@ public class BudgetCategory {
 
     public BudgetCategory() {
     }
-
     @Ignore
     public BudgetCategory(@NonNull String name, @NonNull String type) {
         this(name, type, DEFAULT_ICON, DEFAULT_COLOR_HEX);
