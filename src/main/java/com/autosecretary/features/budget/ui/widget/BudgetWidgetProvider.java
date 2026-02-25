@@ -12,7 +12,7 @@ import com.autosecretary.R;
 import com.autosecretary.app.MainActivity;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseCase;
-import com.autosecretary.features.budget.data.BudgetWidgetRoomRepository;
+import com.autosecretary.features.budget.data.repository.BudgetWidgetRoomRepository;
 
 import java.util.Locale;
 

@@ -1,8 +1,8 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.data.BudgetAccount;
-import com.autosecretary.features.budget.data.BudgetLimit;
-import com.autosecretary.features.budget.data.BudgetTransactionEntity;
+import com.autosecretary.features.budget.data.entity.BudgetAccount;
+import com.autosecretary.features.budget.data.entity.BudgetLimit;
+import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 
 import java.util.List;

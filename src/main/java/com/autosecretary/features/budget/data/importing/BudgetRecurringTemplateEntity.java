@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.data;
+package com.autosecretary.features.budget.data.importing;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
@@ -9,6 +9,8 @@ import androidx.room.PrimaryKey;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.UUID;
+import com.autosecretary.features.budget.data.entity.BudgetAccount;
+import com.autosecretary.features.budget.data.entity.BudgetCategory;
 
 @Entity(
         tableName = "budget_recurring_template",

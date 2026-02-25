@@ -1,7 +1,7 @@
 package com.autosecretary.features.budget.domain;
 
-import com.autosecretary.features.budget.data.BudgetCategory;
-import com.autosecretary.features.budget.data.BudgetTransactionEntity;
+import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 
 import java.time.LocalDate;
 import java.util.List;

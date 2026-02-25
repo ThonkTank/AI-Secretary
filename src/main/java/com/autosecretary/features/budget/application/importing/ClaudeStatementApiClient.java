@@ -2,7 +2,7 @@ package com.autosecretary.features.budget.application.importing;
 
 import android.util.Base64;
 
-import com.autosecretary.features.budget.data.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetCategory;
 
 import org.json.JSONArray;
 import org.json.JSONException;

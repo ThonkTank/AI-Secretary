@@ -11,8 +11,8 @@ import com.autosecretary.features.budget.application.importing.BudgetImportUseCa
 import com.autosecretary.features.budget.application.importing.ClaudeApiKeyStore;
 import com.autosecretary.features.budget.application.importing.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
-import com.autosecretary.features.budget.data.BudgetImportRoomRepository;
-import com.autosecretary.features.budget.data.BudgetRoomRepository;
+import com.autosecretary.features.budget.data.repository.BudgetImportRoomRepository;
+import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;

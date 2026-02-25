@@ -1,10 +1,12 @@
-package com.autosecretary.features.budget.data;
+package com.autosecretary.features.budget.data.entity;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
+
+import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateEntity;
 
 import java.time.LocalDate;
 import java.util.UUID;

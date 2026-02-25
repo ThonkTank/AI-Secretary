@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.data;
+package com.autosecretary.features.budget.data.dao;
 
 import androidx.room.Dao;
 import androidx.room.Delete;
@@ -8,6 +8,8 @@ import androidx.room.Query;
 import androidx.room.Update;
 
 import java.util.List;
+import com.autosecretary.features.budget.data.entity.BudgetLimit;
+import com.autosecretary.features.budget.data.projection.CategorySpendTotal;
 
 @Dao
 public interface BudgetLimitDao {

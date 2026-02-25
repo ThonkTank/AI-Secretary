@@ -1,7 +1,7 @@
 package com.autosecretary.features.budget.domain;
 
-import com.autosecretary.features.budget.data.AccountDailyDeltaPoint;
-import com.autosecretary.features.budget.data.AccountMonthlyDeltaPoint;
+import com.autosecretary.features.budget.data.projection.AccountDailyDeltaPoint;
+import com.autosecretary.features.budget.data.projection.AccountMonthlyDeltaPoint;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
