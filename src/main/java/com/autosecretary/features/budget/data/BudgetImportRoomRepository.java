@@ -14,15 +14,18 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     private final BudgetRecurringTemplateDao templateDao;
     private final TransactionDao transactionDao;
     private final BudgetLookupDao lookupDao;
+    private final Runnable onBudgetDataUpdated;
 
     public BudgetImportRoomRepository(BudgetImportDao importDao,
                                        BudgetRecurringTemplateDao templateDao,
                                        TransactionDao transactionDao,
-                                       BudgetLookupDao lookupDao) {
+                                       BudgetLookupDao lookupDao,
+                                       Runnable onBudgetDataUpdated) {
         this.importDao = importDao;
         this.templateDao = templateDao;
         this.transactionDao = transactionDao;
         this.lookupDao = lookupDao;
+        this.onBudgetDataUpdated = onBudgetDataUpdated;
     }
 
     @Override
@@ -163,7 +166,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
 
     @Override
     public void notifyBudgetDataUpdated() {
-        // No-Op: UI-Refresh passiert über die Callback-Kette im ViewModel.
+        onBudgetDataUpdated.run();
     }
 
     private void updateAccountBalances() {
