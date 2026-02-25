@@ -415,6 +415,16 @@ public class TaskEditDialog extends DialogFragment {
     private boolean validateAndCollectAllFields() {
         clearFieldErrors();
 
+        if (!isFormValid()) {
+            return false;
+        }
+
+        presenter.applyForm(buildFormInput());
+        return true;
+    }
+
+    private boolean isFormValid() {
+
         boolean valid = true;
         valid &= requireNonEmpty(titleView, "Titel ist erforderlich.");
 
@@ -466,6 +476,10 @@ public class TaskEditDialog extends DialogFragment {
             return false;
         }
 
+        return true;
+    }
+
+    private TaskEditPresenter.FormInput buildFormInput() {
         TaskEditPresenter.FormInput input = new TaskEditPresenter.FormInput();
         input.title = titleView.getText().toString();
         input.description = descriptionView.getText().toString();
@@ -523,8 +537,7 @@ public class TaskEditDialog extends DialogFragment {
             TaskEditPresenter.InputDefaults.MAX_PER_REP
         );
 
-        presenter.applyForm(input);
-        return true;
+        return input;
     }
 
     private void clearFieldErrors() {
