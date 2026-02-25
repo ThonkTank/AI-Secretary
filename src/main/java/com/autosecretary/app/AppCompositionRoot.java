@@ -14,6 +14,7 @@ import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
+import com.autosecretary.features.budget.application.CalculateEffectiveBudgetLimitUseCase;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
@@ -120,13 +121,17 @@ public class AppCompositionRoot {
                 importRepository, taskUseCaseExecutor
         );
 
+        CalculateEffectiveBudgetLimitUseCase calculateEffectiveBudgetLimitUseCase =
+                new CalculateEffectiveBudgetLimitUseCase(repository);
+
         budgetViewModelFactory = new BudgetViewModelFactory(
                 repository,
                 parser,
                 taskUseCaseExecutor,
                 mainHandler::post,
                 importUseCase,
-                applyRecurringUseCase
+                applyRecurringUseCase,
+                calculateEffectiveBudgetLimitUseCase
         );
 
         return budgetViewModelFactory;

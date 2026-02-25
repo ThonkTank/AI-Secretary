@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.autosecretary.features.budget.application.CalculateEffectiveBudgetLimitUseCase;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
@@ -84,23 +85,34 @@ public class BudgetViewModel extends ViewModel {
         private final String categoryId;
         private final String categoryName;
         private final long spentCents;
-        private final double limitEuros;
+        private final double baseLimitEuros;
+        private final double effectiveLimitEuros;
+        private final long rolloverDeltaCents;
         private final int percentage;
 
-        public BudgetLimitBar(String categoryId, String categoryName, long spentCents, double limitEuros) {
+        public BudgetLimitBar(String categoryId,
+                              String categoryName,
+                              long spentCents,
+                              double baseLimitEuros,
+                              double effectiveLimitEuros,
+                              long rolloverDeltaCents) {
             this.categoryId = categoryId;
             this.categoryName = categoryName;
             this.spentCents = spentCents;
-            this.limitEuros = limitEuros;
-            this.percentage = limitEuros > 0
-                    ? (int) ((spentCents / 100.0) / limitEuros * 100)
+            this.baseLimitEuros = baseLimitEuros;
+            this.effectiveLimitEuros = effectiveLimitEuros;
+            this.rolloverDeltaCents = rolloverDeltaCents;
+            this.percentage = effectiveLimitEuros > 0
+                    ? (int) ((spentCents / 100.0) / effectiveLimitEuros * 100)
                     : 0;
         }
 
         public String getCategoryId() { return categoryId; }
         public String getCategoryName() { return categoryName; }
         public long getSpentCents() { return spentCents; }
-        public double getLimitEuros() { return limitEuros; }
+        public double getBaseLimitEuros() { return baseLimitEuros; }
+        public double getEffectiveLimitEuros() { return effectiveLimitEuros; }
+        public long getRolloverDeltaCents() { return rolloverDeltaCents; }
         public int getPercentage() { return percentage; }
     }
 
@@ -123,19 +135,22 @@ public class BudgetViewModel extends ViewModel {
     private final Consumer<Runnable> postToMain;
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
+    private final CalculateEffectiveBudgetLimitUseCase calculateEffectiveBudgetLimitUseCase;
 
     public BudgetViewModel(BudgetRepository repository,
                            StatementFileParser parser,
                            ExecutorService executor,
                            Consumer<Runnable> postToMain,
                            BudgetImportUseCase importUseCase,
-                           ApplyRecurringSuggestionsUseCase applyRecurringUseCase) {
+                           ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
+                           CalculateEffectiveBudgetLimitUseCase calculateEffectiveBudgetLimitUseCase) {
         this.repository = repository;
         this.parser = parser;
         this.executor = executor;
         this.postToMain = postToMain;
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
+        this.calculateEffectiveBudgetLimitUseCase = calculateEffectiveBudgetLimitUseCase;
         ensureDefaultData();
     }
 
@@ -409,20 +424,38 @@ public class BudgetViewModel extends ViewModel {
         List<BudgetLimitBar> bars = new ArrayList<>();
         for (CategorySpendTotal total : totals) {
             if (total.limitAmount > 0) {
+                CalculateEffectiveBudgetLimitUseCase.Result effectiveResult =
+                        calculateEffectiveBudgetLimitUseCase.execute(total.categoryId, yearMonthStr);
+                double effectiveLimitEuros = effectiveResult.getEffectiveLimitCents() / 100.0;
                 bars.add(new BudgetLimitBar(
-                        total.categoryId, total.categoryName,
-                        total.spentCents, total.limitAmount));
+                        total.categoryId,
+                        total.categoryName,
+                        total.spentCents,
+                        total.limitAmount,
+                        effectiveLimitEuros,
+                        effectiveResult.getAppliedDeltaCents()));
             }
         }
         postToMain.accept(() -> budgetLimits.setValue(bars));
     }
 
-    public void saveBudgetLimit(String categoryId, double amountEuros) {
+    public void saveBudgetLimit(String categoryId,
+                                double amountEuros,
+                                boolean rolloverEnabled,
+                                long rolloverCarryoverCents) {
         executor.execute(() -> {
             YearMonth month = currentMonth.getValue();
             if (month == null) month = YearMonth.now();
             String yearMonthStr = month.toString();
+            BudgetLimit existing = repository.findBudgetLimit(categoryId, yearMonthStr);
             BudgetLimit limit = new BudgetLimit(categoryId, yearMonthStr, amountEuros);
+            if (existing != null) {
+                limit.id = existing.id;
+                limit.rolloverCapPositiveCents = existing.rolloverCapPositiveCents;
+                limit.rolloverCapNegativeCents = existing.rolloverCapNegativeCents;
+            }
+            limit.rolloverEnabled = rolloverEnabled;
+            limit.rolloverCarryoverCents = rolloverCarryoverCents;
             repository.saveBudgetLimit(limit);
             loadOverviewOnExecutor();
         });

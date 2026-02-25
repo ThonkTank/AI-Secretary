@@ -244,7 +244,7 @@ public class BudgetFragment extends Fragment {
 
             name.setText(bar.getCategoryName());
             spentText.setText(String.format(Locale.GERMAN, "%.2f / %.2f €",
-                    bar.getSpentCents() / 100.0, bar.getLimitEuros()));
+                    bar.getSpentCents() / 100.0, bar.getEffectiveLimitEuros()));
             int pct = bar.getPercentage();
             percentText.setText(String.format(Locale.GERMAN, "%d%%", pct));
             progress.setProgress(Math.min(pct, 100));
@@ -261,7 +261,7 @@ public class BudgetFragment extends Fragment {
             percentText.setTextColor(color);
 
             row.setOnClickListener(v ->
-                    showEditLimitDialog(bar.getCategoryId(), bar.getCategoryName(), bar.getLimitEuros()));
+                    showEditLimitDialog(bar.getCategoryId(), bar.getCategoryName(), bar.getBaseLimitEuros()));
             container.addView(row);
         }
     }
@@ -449,6 +449,10 @@ public class BudgetFragment extends Fragment {
                 .inflate(R.layout.budget_edit_limit_dialog, null);
         Spinner categorySpinner = dialogView.findViewById(R.id.BudgetLimitDialogCategory);
         TextInputEditText amountInput = dialogView.findViewById(R.id.BudgetLimitDialogAmount);
+        com.google.android.material.switchmaterial.SwitchMaterial rolloverSwitch =
+                dialogView.findViewById(R.id.BudgetLimitDialogRolloverEnabled);
+        TextInputEditText rolloverCarryoverInput =
+                dialogView.findViewById(R.id.BudgetLimitDialogRolloverCarryover);
 
         List<BudgetCategory> allCategories = budgetViewModel.getCategories().getValue();
         if (allCategories == null) allCategories = new ArrayList<>();
@@ -492,7 +496,22 @@ public class BudgetFragment extends Fragment {
                     String categoryId = getSelectedCategoryId(categorySpinner, allCats, true);
                     if (categoryId == null) return;
 
-                    budgetViewModel.saveBudgetLimit(categoryId, amountEuros);
+                    String rolloverCarryoverStr = rolloverCarryoverInput.getText() != null
+                            ? rolloverCarryoverInput.getText().toString().trim() : "";
+                    long rolloverCarryoverCents = 0L;
+                    if (!rolloverCarryoverStr.isEmpty()) {
+                        try {
+                            rolloverCarryoverCents = Math.round(Double.parseDouble(rolloverCarryoverStr.replace(',', '.')) * 100.0);
+                        } catch (NumberFormatException e) {
+                            return;
+                        }
+                    }
+
+                    budgetViewModel.saveBudgetLimit(
+                            categoryId,
+                            amountEuros,
+                            rolloverSwitch.isChecked(),
+                            rolloverCarryoverCents);
                 })
                 .setNegativeButton(R.string.budget_dialog_cancel, null)
                 .show();

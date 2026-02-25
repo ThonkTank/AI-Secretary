@@ -8,9 +8,9 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
         android:text="@string/budget_dialog_category_label"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
-        android:layout_marginBottom="4dp" />
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
 
     <Spinner
         android:id="@+id/BudgetLimitDialogCategory"
@@ -28,6 +28,35 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="numberDecimal" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.switchmaterial.SwitchMaterial
+        android:id="@+id/BudgetLimitDialogRolloverEnabled"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_md"
+        android:text="@string/budget_rollover_switch" />
+
+    <TextView
+        android:id="@+id/BudgetLimitDialogRolloverHint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/budget_rollover_hint"
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:hint="@string/budget_rollover_manual_hint">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/BudgetLimitDialogRolloverCarryover"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal|numberSigned" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
