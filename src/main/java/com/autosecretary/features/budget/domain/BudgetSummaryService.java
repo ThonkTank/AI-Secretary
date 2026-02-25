@@ -1,41 +1,48 @@
 package com.autosecretary.features.budget.domain;
 
-import com.autosecretary.features.budget.data.Account;
-import com.autosecretary.features.budget.data.Transaction;
+import com.autosecretary.features.budget.data.BudgetAccount;
+import com.autosecretary.features.budget.data.BudgetTransaction;
 
 import java.util.List;
 
 public class BudgetSummaryService {
 
-    public Summary calculateSummary(List<Account> accounts, List<Transaction> transactions, String yearMonth) {
-        int totalBalance = 0;
-        for (Account account : accounts) {
-            if (account.includeInTotal) {
-                totalBalance += account.currentBalanceCents;
-            }
+    public Summary calculateSummary(List<BudgetAccount> accounts,
+                                    List<BudgetTransaction> transactions,
+                                    String yearMonth) {
+        double totalBalance = 0d;
+        for (BudgetTransaction tx : transactions) {
+            totalBalance += signedAmount(tx);
         }
 
-        int monthlyIncome = 0;
-        int monthlyExpenses = 0;
-        for (Transaction tx : transactions) {
-            if (tx.transactionDate == null || !YearMonthKey.from(tx.transactionDate).equals(yearMonth)) {
+        double monthlyIncome = 0d;
+        double monthlyExpenses = 0d;
+        for (BudgetTransaction tx : transactions) {
+            if (!yearMonth.equals(tx.yearMonth)) {
                 continue;
             }
-            if (tx.isIncome) {
-                monthlyIncome += tx.amountCents;
+            if ("INCOME".equalsIgnoreCase(tx.type)) {
+                monthlyIncome += Math.abs(tx.amount);
             } else {
-                monthlyExpenses += Math.abs(tx.amountCents);
+                monthlyExpenses += Math.abs(tx.amount);
             }
         }
 
-        return new Summary(totalBalance, monthlyIncome, monthlyExpenses, monthlyIncome - monthlyExpenses);
+        return new Summary(totalBalance, monthlyIncome, monthlyExpenses, monthlyIncome - monthlyExpenses,
+                accounts.size());
     }
 
+    private double signedAmount(BudgetTransaction transaction) {
+        return "INCOME".equalsIgnoreCase(transaction.type)
+                ? Math.abs(transaction.amount)
+                : -Math.abs(transaction.amount);
+    }
 
     public record Summary(
-            int totalBalanceCents,
-            int monthlyIncomeCents,
-            int monthlyExpensesCents,
-            int monthlyNetCents
+            double totalBalance,
+            double monthlyIncome,
+            double monthlyExpenses,
+            double monthlyNet,
+            int accountCount
     ) {}
 }
