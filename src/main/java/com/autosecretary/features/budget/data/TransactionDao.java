@@ -18,7 +18,7 @@ public interface TransactionDao {
                    t.bookingDate AS bookingDate,
                    t.yearMonth AS yearMonth,
                    t.type AS type,
-                   t.amount AS amount,
+                   t.amountCents AS amountCents,
                    t.note AS note,
                    t.accountId AS accountId,
                    a.name AS accountName,
@@ -37,7 +37,7 @@ public interface TransactionDao {
                    t.bookingDate AS bookingDate,
                    t.yearMonth AS yearMonth,
                    t.type AS type,
-                   t.amount AS amount,
+                   t.amountCents AS amountCents,
                    t.note AS note,
                    t.accountId AS accountId,
                    a.name AS accountName,
@@ -52,12 +52,18 @@ public interface TransactionDao {
     List<MonthlyTransactionOverviewItem> getOverviewInDateRange(LocalDate fromDate, LocalDate toDate);
 
     @Query("""
-            SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END), 0) AS sumIncome,
-                   COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END), 0) AS sumExpense
+            SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE 0 END), 0) AS sumIncomeCents,
+                   COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amountCents ELSE 0 END), 0) AS sumExpenseCents
             FROM budget_transaction
             WHERE yearMonth = :yearMonth
             """)
     IncomeExpenseSummary getIncomeExpenseSummary(String yearMonth);
+
+    @Query("SELECT * FROM budget_transaction ORDER BY bookingDate DESC")
+    List<BudgetTransactionEntity> findAll();
+
+    @Query("SELECT * FROM budget_transaction WHERE accountId = :accountId ORDER BY bookingDate DESC")
+    List<BudgetTransactionEntity> findByAccountId(String accountId);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(BudgetTransactionEntity transaction);

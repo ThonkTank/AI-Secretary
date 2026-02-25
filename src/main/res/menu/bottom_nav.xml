@@ -5,6 +5,6 @@
         android:title="@string/nav_tasks"/>
     <item
         android:id="@+id/tab_manage"
-        android:icon="@android:drawable/ic_menu_edit"
+        android:icon="@android:drawable/ic_menu_agenda"
         android:title="@string/nav_manage"/>
 </menu>

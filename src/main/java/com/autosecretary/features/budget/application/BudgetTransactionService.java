@@ -44,26 +44,25 @@ public class BudgetTransactionService {
     }
 
     private Summary calculateSummary(List<BudgetTransactionEntity> transactions, String yearMonth) {
-        double totalBalance = 0d;
-        double monthlyIncome = 0d;
-        double monthlyExpenses = 0d;
+        long totalBalanceCents = 0;
+        long monthlyIncomeCents = 0;
+        long monthlyExpenseCents = 0;
         for (BudgetTransactionEntity tx : transactions) {
-            double absoluteAmount = Math.abs(tx.amount);
             boolean isIncome = tx.type == BudgetTransactionEntity.TransactionType.INCOME;
-            double signedAmount = isIncome ? absoluteAmount : -absoluteAmount;
-
-            totalBalance += signedAmount;
+            totalBalanceCents += isIncome ? tx.amountCents : -tx.amountCents;
 
             if (yearMonth.equals(tx.yearMonth)) {
                 if (isIncome) {
-                    monthlyIncome += absoluteAmount;
+                    monthlyIncomeCents += tx.amountCents;
                 } else {
-                    monthlyExpenses += absoluteAmount;
+                    monthlyExpenseCents += tx.amountCents;
                 }
             }
         }
 
-        return new Summary(totalBalance, monthlyIncome, monthlyExpenses, monthlyIncome - monthlyExpenses);
+        double monthlyIncome = monthlyIncomeCents / 100.0;
+        double monthlyExpenses = monthlyExpenseCents / 100.0;
+        return new Summary(totalBalanceCents / 100.0, monthlyIncome, monthlyExpenses, monthlyIncome - monthlyExpenses);
     }
 
     public record BudgetOverview(

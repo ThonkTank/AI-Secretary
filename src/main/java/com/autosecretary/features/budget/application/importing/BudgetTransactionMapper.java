@@ -4,11 +4,44 @@ import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 
 import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Explicit mapper between domain import/recurring model and Room entity.
  */
 public class BudgetTransactionMapper {
+
+    public List<BudgetTransactionEntity> toEntities(
+            List<StatementFileParser.ParsedTransaction> transactions, String accountId) {
+        List<BudgetTransactionEntity> result = new ArrayList<>(transactions.size());
+        for (StatementFileParser.ParsedTransaction tx : transactions) {
+            result.add(toEntity(tx, accountId));
+        }
+        return result;
+    }
+
+    public BudgetTransactionEntity toEntity(
+            StatementFileParser.ParsedTransaction tx, String accountId) {
+        boolean isExpense = tx.amountCents() < 0;
+        BudgetTransactionEntity.TransactionType type = isExpense
+                ? BudgetTransactionEntity.TransactionType.EXPENSE
+                : BudgetTransactionEntity.TransactionType.INCOME;
+
+        BudgetTransactionEntity entity = new BudgetTransactionEntity(
+                accountId, null, type,
+                Math.abs(tx.amountCents()),
+                tx.date(),
+                YearMonth.from(tx.date()).toString()
+        );
+
+        if (tx.description() != null) {
+            entity.note = tx.description();
+        } else if (tx.payee() != null) {
+            entity.note = tx.payee();
+        }
+        return entity;
+    }
 
     public BudgetTransactionEntity toEntity(RecurringBudgetTransaction domainTransaction) {
         if (domainTransaction == null) {
@@ -28,7 +61,7 @@ public class BudgetTransactionMapper {
                 String.valueOf(domainTransaction.accountId),
                 domainTransaction.categoryId != null ? String.valueOf(domainTransaction.categoryId) : null,
                 type,
-                Math.abs(domainTransaction.amountCents) / 100.0,
+                Math.abs(domainTransaction.amountCents),
                 domainTransaction.transactionDate,
                 YearMonth.from(domainTransaction.transactionDate).toString()
         );
@@ -47,7 +80,7 @@ public class BudgetTransactionMapper {
 
         long accountId = parseRequiredLong(entity.accountId, "accountId");
         Long categoryId = parseNullableLong(entity.categoryId);
-        int signedAmountCents = (int) Math.round(entity.amount * 100.0);
+        int signedAmountCents = (int) entity.amountCents;
         if (entity.type == BudgetTransactionEntity.TransactionType.EXPENSE) {
             signedAmountCents = -Math.abs(signedAmountCents);
         } else {

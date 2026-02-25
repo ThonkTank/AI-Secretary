@@ -21,7 +21,7 @@ public interface BudgetLimitDao {
     @Query("""
             SELECT c.id AS categoryId,
                    c.name AS categoryName,
-                   COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount ELSE 0 END), 0) AS spent,
+                   COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amountCents ELSE 0 END), 0) AS spentCents,
                    l.amount AS limitAmount
             FROM budget_category c
             LEFT JOIN budget_transaction t
@@ -32,7 +32,7 @@ public interface BudgetLimitDao {
                   AND l.yearMonth = :yearMonth
             WHERE c.archived = 0
             GROUP BY c.id, c.name, l.amount
-            ORDER BY spent DESC, c.name COLLATE NOCASE ASC
+            ORDER BY spentCents DESC, c.name COLLATE NOCASE ASC
             """)
     List<CategorySpendTotal> getCategorySpendTotals(String yearMonth);
 

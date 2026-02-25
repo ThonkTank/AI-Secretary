@@ -13,7 +13,6 @@ import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
-import android.widget.TextView;
 
 import androidx.annotation.DimenRes;
 import androidx.appcompat.app.AlertDialog;
@@ -26,6 +25,7 @@ import com.autosecretary.shared.Priority;
 import com.autosecretary.features.task.ui.edit.internal.PrefSlotUIBuilder;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormValidator;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditSectionBinder;
+import com.autosecretary.features.task.ui.edit.TaskEditFormViews;
 import com.autosecretary.features.task.ui.edit.internal.mapper.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.TaskViewModel;
 import com.google.android.material.button.MaterialButton;
@@ -33,7 +33,6 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -57,6 +56,7 @@ public class TaskEditDialog extends DialogFragment {
     private PrefSlotUIBuilder prefSlotUIBuilder;
     private TaskEditSectionBinder sectionBinder;
     private TaskEditFormValidator formValidator;
+    private TaskEditFormViews formViews;
 
     private EditText titleView;
     private EditText descriptionView;
@@ -136,6 +136,12 @@ public class TaskEditDialog extends DialogFragment {
 
         rebuildPrefSlotUI();
 
+        formViews = new TaskEditFormViews(
+            titleView, minDurationView, maxDurationView, cooldownView,
+            toggleRepetition, repsView, perPeriodView,
+            toggleProgress, targetView, currentView, minPerRepView, maxPerRepView
+        );
+
         return new AlertDialog.Builder(requireContext())
             .setTitle(editSessionController.isNewTask()
                 ? R.string.task_edit_dialog_title_create
@@ -156,20 +162,7 @@ public class TaskEditDialog extends DialogFragment {
         }
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            if (!formValidator.validateAndCollectAllFields(
-                titleView,
-                minDurationView,
-                maxDurationView,
-                cooldownView,
-                toggleRepetition,
-                repsView,
-                perPeriodView,
-                toggleProgress,
-                targetView,
-                currentView,
-                minPerRepView,
-                maxPerRepView
-            )) {
+            if (!formValidator.validate(formViews)) {
                 return;
             }
             presenter.applyForm(readFormInput());
@@ -208,8 +201,8 @@ public class TaskEditDialog extends DialogFragment {
                 }
 
                 @Override
-                public void onTimeClicked(PrefSlotEditState prefSlot, TextView timeView) {
-                    showTimePicker(prefSlot, timeView);
+                public void onTimeClicked(PrefSlotEditState prefSlot) {
+                    showTimePicker(prefSlot);
                 }
             });
     }
@@ -306,18 +299,13 @@ public class TaskEditDialog extends DialogFragment {
             .show();
     }
 
-    private void showTimePicker(PrefSlotEditState prefSlot, TextView timeView) {
+    private void showTimePicker(PrefSlotEditState prefSlot) {
         int hour = prefSlot.start != null ? prefSlot.start.getHour() : 6;
         int minute = prefSlot.start != null ? prefSlot.start.getMinute() : 0;
 
         new TimePickerDialog(requireContext(), (picker, h, m) -> {
             prefSlot.start = LocalTime.of(h, m);
-            String formattedTime = prefSlot.start.format(DateTimeFormatter.ofPattern("HH:mm"));
-            timeView.setText(getString(R.string.task_editor_pref_slot_time_button, formattedTime));
-            timeView.setContentDescription(getString(
-                R.string.task_editor_pref_slot_time_content_description,
-                formattedTime
-            ));
+            rebuildPrefSlotUI();
         }, hour, minute, true).show();
     }
 

@@ -157,9 +157,12 @@ public class TaskViewModel extends AndroidViewModel {
      */
     public void sortList() {
         Comparator<ViewSlot> comparator = activeListConfig.comparator();
-        boolean groupByTaskParent = activeListConfig.groupByTaskParent;
 
-        masterList.sort(groupByTaskParent, comparator);
+        if (activeListConfig.groupByTaskParent) {
+            masterList.sortByTask(comparator);
+        } else {
+            masterList.sortBySlot(comparator);
+        }
         displayList.setValue(masterList.displaySlots);
     }
 

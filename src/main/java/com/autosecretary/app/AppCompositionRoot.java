@@ -14,6 +14,9 @@ import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
+import com.autosecretary.features.budget.application.importing.StatementFileParser;
+import com.autosecretary.features.budget.data.BudgetRoomRepository;
+import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
 import com.autosecretary.features.task.ui.TaskViewModelFactory;
 
 import java.util.concurrent.ExecutorService;
@@ -23,6 +26,7 @@ public class AppCompositionRoot {
     private final Application app;
     private final ExecutorService taskUseCaseExecutor;
     private TaskViewModelFactory taskViewModelFactory;
+    private BudgetViewModelFactory budgetViewModelFactory;
 
     public AppCompositionRoot(Application app) {
         this.app = app;
@@ -80,5 +84,29 @@ public class AppCompositionRoot {
         );
 
         return taskViewModelFactory;
+    }
+
+    public BudgetViewModelFactory createBudgetViewModelFactory() {
+        if (budgetViewModelFactory != null) {
+            return budgetViewModelFactory;
+        }
+
+        AppDatabase db = AppDatabase.getInstance(app);
+        Handler mainHandler = new Handler(Looper.getMainLooper());
+
+        BudgetRoomRepository repository = new BudgetRoomRepository(
+                db.budgetLookupDao(),
+                db.transactionDao(),
+                db.budgetLimitDao()
+        );
+
+        budgetViewModelFactory = new BudgetViewModelFactory(
+                repository,
+                new StatementFileParser(),
+                taskUseCaseExecutor,
+                mainHandler::post
+        );
+
+        return budgetViewModelFactory;
     }
 }

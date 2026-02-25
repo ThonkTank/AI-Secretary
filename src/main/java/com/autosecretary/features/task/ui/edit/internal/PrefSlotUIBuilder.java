@@ -35,7 +35,7 @@ public class PrefSlotUIBuilder {
     public interface Listener {
         void onDaysClicked(PrefSlotEditState prefSlot, Set<DayOfWeek> takenByOthers);
 
-        void onTimeClicked(PrefSlotEditState prefSlot, TextView timeView);
+        void onTimeClicked(PrefSlotEditState prefSlot);
     }
 
     private final Context context;
@@ -124,7 +124,7 @@ public class PrefSlotUIBuilder {
                     1f
                 );
                 timeView.setLayoutParams(timeParams);
-                timeView.setOnClickListener(v -> listener.onTimeClicked(prefSlot, timeView));
+                timeView.setOnClickListener(v -> listener.onTimeClicked(prefSlot));
 
                 row.addView(daysView);
                 row.addView(timeView);

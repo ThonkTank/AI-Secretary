@@ -52,7 +52,7 @@ public class BudgetTransactionEntity {
     @NonNull
     public TransactionType type = TransactionType.EXPENSE;
 
-    public double amount;
+    public long amountCents;
 
     @NonNull
     public LocalDate bookingDate;
@@ -66,12 +66,12 @@ public class BudgetTransactionEntity {
     public String note;
 
     public BudgetTransactionEntity(@NonNull String accountId, String categoryId,
-                                   @NonNull TransactionType type, double amount,
+                                   @NonNull TransactionType type, long amountCents,
                                    @NonNull LocalDate bookingDate, @NonNull String yearMonth) {
         this.accountId = accountId;
         this.categoryId = categoryId;
         this.type = type;
-        this.amount = amount;
+        this.amountCents = amountCents;
         this.bookingDate = bookingDate;
         this.yearMonth = yearMonth;
     }

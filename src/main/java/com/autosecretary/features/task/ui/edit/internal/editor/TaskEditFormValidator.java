@@ -1,109 +1,75 @@
 package com.autosecretary.features.task.ui.edit.internal.editor;
 
-import android.widget.CheckBox;
 import android.widget.EditText;
+
+import com.autosecretary.features.task.ui.edit.TaskEditFormViews;
 
 public class TaskEditFormValidator {
 
-    public boolean validateAndCollectAllFields(
-        EditText titleView,
-        EditText minDurationView,
-        EditText maxDurationView,
-        EditText cooldownView,
-        CheckBox toggleRepetition,
-        EditText repsView,
-        EditText perPeriodView,
-        CheckBox toggleProgress,
-        EditText targetView,
-        EditText currentView,
-        EditText minPerRepView,
-        EditText maxPerRepView
-    ) {
-        clearFieldErrors(
-            titleView,
-            minDurationView,
-            maxDurationView,
-            cooldownView,
-            repsView,
-            perPeriodView,
-            targetView,
-            currentView,
-            minPerRepView,
-            maxPerRepView
-        );
+    public boolean validate(TaskEditFormViews views) {
+        clearErrors(views);
 
         boolean valid = true;
-        valid &= requireNonEmpty(titleView, "Titel ist erforderlich.");
+        valid &= requireNonEmpty(views.titleView, "Titel ist erforderlich.");
 
-        valid &= validateIntegerField(minDurationView, 1, Integer.MAX_VALUE,
+        valid &= validateIntegerField(views.minDurationView, 1, Integer.MAX_VALUE,
             "Minimale Dauer muss mindestens 1 Minute sein.");
-        valid &= validateIntegerField(maxDurationView, 1, Integer.MAX_VALUE,
+        valid &= validateIntegerField(views.maxDurationView, 1, Integer.MAX_VALUE,
             "Maximale Dauer muss mindestens 1 Minute sein.");
-        valid &= validateIntegerField(cooldownView, 0, Integer.MAX_VALUE,
+        valid &= validateIntegerField(views.cooldownView, 0, Integer.MAX_VALUE,
             "Cooldown muss mindestens 0 Tage sein.");
 
-        if (toggleRepetition.isChecked()) {
-            valid &= validateIntegerField(repsView, 1, Integer.MAX_VALUE,
+        if (views.toggleRepetition.isChecked()) {
+            valid &= validateIntegerField(views.repsView, 1, Integer.MAX_VALUE,
                 "Wiederholungen müssen mindestens 1 sein.");
-            valid &= validateIntegerField(perPeriodView, 1, Integer.MAX_VALUE,
+            valid &= validateIntegerField(views.perPeriodView, 1, Integer.MAX_VALUE,
                 "Intervall muss mindestens 1 sein.");
         }
 
-        if (toggleProgress.isChecked()) {
-            valid &= validateIntegerField(targetView, 1, Integer.MAX_VALUE,
+        if (views.toggleProgress.isChecked()) {
+            valid &= validateIntegerField(views.targetView, 1, Integer.MAX_VALUE,
                 "Ziel muss mindestens 1 sein.");
-            valid &= validateIntegerField(currentView, 0, Integer.MAX_VALUE,
+            valid &= validateIntegerField(views.currentView, 0, Integer.MAX_VALUE,
                 "Aktueller Wert muss mindestens 0 sein.");
-            valid &= validateIntegerField(minPerRepView, 0, Integer.MAX_VALUE,
+            valid &= validateIntegerField(views.minPerRepView, 0, Integer.MAX_VALUE,
                 "Minimum pro Wiederholung muss mindestens 0 sein.");
-            valid &= validateIntegerField(maxPerRepView, 0, Integer.MAX_VALUE,
+            valid &= validateIntegerField(views.maxPerRepView, 0, Integer.MAX_VALUE,
                 "Maximum pro Wiederholung muss mindestens 0 sein.");
         }
 
         if (valid) {
             valid &= validateMinMaxPair(
-                minDurationView,
-                maxDurationView,
+                views.minDurationView,
+                views.maxDurationView,
                 "Minimale Dauer darf nicht größer als maximale Dauer sein.",
                 "Maximale Dauer muss mindestens so groß wie minimale Dauer sein."
             );
         }
 
-        if (valid && toggleProgress.isChecked()) {
+        if (valid && views.toggleProgress.isChecked()) {
             valid &= validateMinMaxPair(
-                minPerRepView,
-                maxPerRepView,
+                views.minPerRepView,
+                views.maxPerRepView,
                 "Minimum pro Wiederholung darf nicht größer als Maximum sein.",
                 "Maximum pro Wiederholung muss mindestens so groß wie das Minimum sein."
             );
-            valid &= validateCurrentNotAboveTarget(currentView, targetView);
+            valid &= validateCurrentNotAboveTarget(views.currentView, views.targetView);
         }
 
         return valid;
     }
 
-    private void clearFieldErrors(
-        EditText titleView,
-        EditText minDurationView,
-        EditText maxDurationView,
-        EditText cooldownView,
-        EditText repsView,
-        EditText perPeriodView,
-        EditText targetView,
-        EditText currentView,
-        EditText minPerRepView,
-        EditText maxPerRepView
-    ) {
-        titleView.setError(null);
-        minDurationView.setError(null);
-        maxDurationView.setError(null);
-        cooldownView.setError(null);
-        repsView.setError(null);
-        perPeriodView.setError(null);
-        targetView.setError(null);
-        currentView.setError(null);
-        minPerRepView.setError(null);
-        maxPerRepView.setError(null);
+    private void clearErrors(TaskEditFormViews views) {
+        views.titleView.setError(null);
+        views.minDurationView.setError(null);
+        views.maxDurationView.setError(null);
+        views.cooldownView.setError(null);
+        views.repsView.setError(null);
+        views.perPeriodView.setError(null);
+        views.targetView.setError(null);
+        views.currentView.setError(null);
+        views.minPerRepView.setError(null);
+        views.maxPerRepView.setError(null);
     }
 
     private boolean requireNonEmpty(EditText field, String message) {

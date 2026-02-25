@@ -1,6 +1,8 @@
 package com.autosecretary.features.budget.data;
 
 import androidx.room.Dao;
+import androidx.room.Insert;
+import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 
 import java.util.List;
@@ -19,4 +21,10 @@ public interface BudgetLookupDao {
 
     @Query("SELECT * FROM budget_account WHERE id = :accountId LIMIT 1")
     BudgetAccount findAccountById(String accountId);
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    void insertAccount(BudgetAccount account);
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    void insertCategory(BudgetCategory category);
 }

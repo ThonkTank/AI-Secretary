@@ -83,9 +83,9 @@ All packages are fully qualified under `com.autosecretary.*`.
 
 ### Layout resource naming rule (`src/main/res/layout/`)
 
-Use the pattern `<feature>_<surface>_<kind>` for all layout file names. Segments are lowercase snake_case, with `kind` being one of: `activity`, `fragment`, `item`, or `widget`.
+Use the pattern `<feature>_<surface>_<kind>` for all layout file names. Segments are lowercase snake_case, with `kind` being one of: `activity`, `fragment`, `item`, `widget`, or `dialog`.
 
-Examples: `app_main_activity.xml`, `task_list_fragment.xml`, `task_row_item.xml`, `task_list_widget.xml`.
+Examples: `app_main_activity.xml`, `task_list_fragment.xml`, `task_row_item.xml`, `task_list_widget.xml`, `budget_add_transaction_dialog.xml`.
 
 ## Architecture
 
@@ -343,15 +343,70 @@ Both scripts parse `SlotGen`-tagged logcat output.
 
 ## Refactoring Status
 
-The app has three feature domains. Only tasks are actively being rebuilt:
-
 | Feature | Status | Location |
 |---------|--------|----------|
-| Task scheduling | **Active** — Room + MVVM + Fragments | `src/main/java/com/autosecretary/` |
-| Budget/Finance | Not migrated | `history/legacy/controller/budgetTab/`, `history/legacy/entities/` |
+| Task scheduling | **Active** — Room + MVVM + Fragments | `src/main/java/com/autosecretary/features/task/` |
+| Budget/Finance | **In progress** — Room + MVVM, basic transaction UI live | `src/main/java/com/autosecretary/features/budget/` |
 | Meal planning | Not migrated | `history/legacy/controller/mealTab/`, `history/legacy/entities/` |
 
 The `history/legacy/` directory contains 80+ Java files spanning widgets, scheduling, budget management (with Claude API integration), meal planning (recipes/ingredients), and a custom SQLite repo layer with hand-written parsers.
+
+## Budget Feature Architecture
+
+The budget feature lives in `features/budget/` and mirrors the task feature's MVVM + Room pattern.
+
+### Package layout
+
+| Path (relative to `features/budget/`) | Role |
+|---------------------------------------|------|
+| `data/BudgetLookupDao` | Read-only queries for accounts and categories |
+| `data/TransactionDao` | Transaction CRUD + monthly aggregations (`getMonthlyOverview`, `getIncomeExpenseSummary`) |
+| `data/BudgetRoomRepository` | Implements `BudgetRepository` interface; wraps lookup, transaction, and limit DAOs |
+| `ui/BudgetViewModel` | Owns all LiveData, orchestrates async DB calls; exposes `BudgetUiState` enum (LOADING/EMPTY/CONTENT/ERROR) and `BudgetTransactionRow` display model |
+| `ui/BudgetViewModelFactory` | Manual DI factory — mirrors `TaskViewModelFactory` pattern |
+| `ui/BudgetFragment` | Observes LiveData, renders transaction list, handles "Add Transaction" dialog and CSV import via file picker |
+| `application/importing/StatementFileParser` | Parses CSV bank statement bytes into `ParsedStatement` (transactions + date range) |
+| `application/importing/BudgetImportUseCase` | Full import pipeline: SHA-256 file dedup, per-transaction `importHash` dedup, batch persist, recurring pattern detection post-import |
+| `application/importing/BudgetTransactionMapper` | Maps between `RecurringBudgetTransaction` domain model and `BudgetTransactionEntity` |
+| `domain/BudgetRepository` | Domain interface for CRUD — implemented by `BudgetRoomRepository` |
+| `domain/BudgetImportRepository` | Separate domain interface for import tracking and recurring template ops — **no Room implementation yet** |
+| `domain/RecurringPatternDetector` | Detects recurring transaction patterns from history; groups by payee → checks amount variance → analyzes date pattern → scores confidence |
+| `domain/PayeeGrouper` | Groups transactions by normalized/similar payee names |
+| `domain/DatePatternDetector` | Detects `WEEKLY`/`MONTHLY`/etc. date patterns from sorted transaction lists |
+| `domain/SuggestionScorer` | Calculates a 0–1 confidence score for a `RecurringSuggestion` |
+| `domain/RecurringSuggestion` | Result record: normalized payee, category, avg/min/max amount, pattern type, confidence score |
+| `domain/RecurringBudgetTransaction` | Domain model used for pattern detection (id, amountCents, transactionDate, payee, categoryId, isRecurring, etc.) |
+| `application/ApplyRecurringSuggestionsUseCase` | (Exists, not yet wired) Applies accepted `RecurringSuggestion` list to DB via `BudgetImportRepository` |
+
+### DI wiring (AppCompositionRoot)
+
+```
+AppDatabase
+  ├── budgetLookupDao()
+  ├── transactionDao()
+  └── budgetLimitDao()
+
+BudgetRoomRepository(lookupDao, transactionDao, limitDao)   ← implements BudgetRepository only
+BudgetTransactionService(repository)
+BudgetViewModelFactory(
+    service, lookupDao, transactionDao,
+    StatementFileParser(),             ← still imported from data/ package (import refactor in progress)
+    taskUseCaseExecutor,               ← shared single-threaded executor
+    Handler(Looper.getMainLooper()).post
+)
+```
+
+> **Note:** `BudgetImportUseCase` and `ApplyRecurringSuggestionsUseCase` exist in source but are **not yet wired** into `AppCompositionRoot`. They require a Room implementation of `BudgetImportRepository` before they can be connected.
+
+### Data flow
+
+- **Init:** `BudgetViewModel` constructor calls `ensureDefaultData()` → seeds default account ("Girokonto") and categories if DB is empty, then loads overview.
+- **Load:** `loadOverview()` sets LOADING → executor queries `TransactionDao.getMonthlyOverview(currentYearMonth)` → builds `BudgetTransactionRow` list → posts CONTENT/EMPTY.
+- **Add:** Fragment shows `budget_add_transaction_dialog.xml` (amount / expense-or-income toggle / note) → calls `vm.addTransaction()` → executor saves, reloads overview.
+- **Import CSV (current path):** Fragment launches file picker → bytes read → `StatementFileParser` converts to entities → bulk insert via `TransactionDao.insertAll()` → status message shows count.
+- **Import CSV (new pipeline, not yet wired):** `BudgetImportUseCase.executeAsync(accountId, fileName, bytes, mimeType, callback)` — SHA-256 hashes file for dedup, creates an `ImportRecord`, parses via `StatementFileParser`, deduplicates each transaction by `importHash` (date+amount+payee fallback), bulk-persists new transactions, marks import COMPLETED, then runs `RecurringPatternDetector.detectPatterns()` on all account transactions and returns `RecurringSuggestion` list in the `ImportResult`.
+
+Threading matches the task feature: all DB work runs on the shared single-threaded `ExecutorService`; results posted to main via `Handler`.
 
 ## Commit Conventions
 
@@ -367,7 +422,9 @@ Common scopes: `ui`, `build`, `domain`, `data`, `scheduling`.
 - Several `AndroidManifest` permissions (`RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `READ_CALENDAR`, `REQUEST_INSTALL_PACKAGES`) are dead declarations from the legacy architecture with no corresponding code.
 - `TaskDAO.deleteCore(String id)` exists but is never called anywhere in the codebase.
 - `Task.setParentId(String id)` exists but is never called.
-- Budget feature (`BudgetFragment`) is partially migrated from legacy code but not fully integrated into the app's main workflow.
+- Budget feature: `BudgetLimitDao` queries and limit-based budget tracking are not yet surfaced in the UI. No date filter UI — always shows current month.
+- Budget import: `BudgetImportUseCase` and `ApplyRecurringSuggestionsUseCase` are implemented but not yet wired — `BudgetImportRepository` has no Room implementation, so the new import pipeline (with deduplication, import tracking, and recurring detection) is not active. The fragment still uses the old direct-insert path.
+- Recurring suggestions returned by `RecurringPatternDetector` are not yet surfaced in the UI — `ApplyRecurringSuggestionsUseCase` exists to accept/apply them but is unwired.
 
 ## Key Technical Details
 

@@ -7,7 +7,7 @@ public class MonthlyTransactionOverviewItem {
     public LocalDate bookingDate;
     public String yearMonth;
     public String type;
-    public double amount;
+    public long amountCents;
     public String note;
     public String accountId;
     public String accountName;

@@ -58,8 +58,15 @@ public class ViewSlotList {
         }
     }
 
-    public void sort(boolean byTaskRelation, Comparator<ViewSlot> comparator) {
-        TreeBuilder<ViewSlot> builder = byTaskRelation ? TREE_BY_TASK : TREE_BY_SLOT;
+    public void sortByTask(Comparator<ViewSlot> comparator) {
+        applySort(TREE_BY_TASK, comparator);
+    }
+
+    public void sortBySlot(Comparator<ViewSlot> comparator) {
+        applySort(TREE_BY_SLOT, comparator);
+    }
+
+    private void applySort(TreeBuilder<ViewSlot> builder, Comparator<ViewSlot> comparator) {
         displaySlots = builder.buildTree(displaySlots);
         builder.sortTree(displaySlots, comparator);
         displaySlots = builder.flattenWithDepth(displaySlots, (vs, depth) -> vs.depth = depth);

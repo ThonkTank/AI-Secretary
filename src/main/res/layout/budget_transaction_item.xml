@@ -5,7 +5,9 @@
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:paddingTop="@dimen/spacing_sm"
-    android:paddingBottom="@dimen/spacing_sm">
+    android:paddingBottom="@dimen/spacing_sm"
+    android:focusable="true"
+    android:importantForAccessibility="yes">
 
     <TextView
         android:id="@+id/BudgetTransactionLabel"
@@ -13,7 +15,8 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:text="@string/budget_demo_transaction_label"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
+        android:importantForAccessibility="no" />
 
     <TextView
         android:id="@+id/BudgetTransactionAmount"
@@ -21,6 +24,7 @@
         android:layout_height="wrap_content"
         android:text="@string/budget_demo_transaction_amount"
         android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:importantForAccessibility="no" />
 
 </LinearLayout>
