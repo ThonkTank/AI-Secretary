@@ -1,5 +1,7 @@
 package com.autosecretary.features.budget.domain;
 
+import com.autosecretary.features.budget.data.BudgetAccount;
+
 import java.time.LocalDate;
 
 public class CalculateFreeBudgetUseCase {
@@ -10,9 +12,7 @@ public class CalculateFreeBudgetUseCase {
     }
 
     public long execute(String accountId, LocalDate today, int lookAheadDays) {
-        LocalDate toDate = today.plusDays(Math.max(0, lookAheadDays));
-        long baseBalance = repository.getCurrentBalanceCents(accountId);
-        long upcomingExpenses = repository.getUpcomingExpenseTemplateCents(accountId, today, toDate);
-        return baseBalance - upcomingExpenses;
+        BudgetAccount account = repository.findAccountById(accountId);
+        return account != null ? account.currentBalanceCents : 0L;
     }
 }

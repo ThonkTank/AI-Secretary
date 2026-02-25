@@ -74,6 +74,14 @@
             android:text="@string/task_list_generate"
             style="?attr/materialButtonOutlinedStyle"/>
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ScheduleConfigButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_xs"
+            android:text="@string/task_schedule_button"
+            style="?attr/materialButtonOutlinedStyle"/>
+
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:id="@+id/TaskListToggle"
             android:layout_width="match_parent"
@@ -105,6 +113,24 @@
                 style="?attr/materialButtonOutlinedStyle" />
 
         </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/TaskSearchLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:visibility="gone"
+            android:hint="@string/task_list_search_hint"
+            app:endIconMode="clear_text"
+            style="@style/Widget.AISecretary.Editor.TextFieldLayout">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/TaskSearchInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:imeOptions="actionDone"
+                style="@style/Widget.AISecretary.Editor.TextField" />
+        </com.google.android.material.textfield.TextInputLayout>
 
     </LinearLayout>
 

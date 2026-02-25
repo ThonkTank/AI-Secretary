@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 import androidx.room.Transaction;
 
+import java.time.LocalTime;
 import java.util.List;
 
 /**
@@ -82,9 +83,29 @@ public interface TaskDAO {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writeSlot(TaskSlot slots);
 
+    @Query("UPDATE task_slots SET realStart = :startTime, realEnd = NULL WHERE id = :slotId")
+    void startTimer(String slotId, LocalTime startTime);
+
+    @Query("UPDATE task_slots SET realEnd = :endTime WHERE id = :slotId")
+    void stopTimer(String slotId, LocalTime endTime);
+
     // ============== Delete ==============
     @Query("DELETE FROM task_core WHERE id = :id")
     void deleteCore(String id);
+
+    @Query("DELETE FROM task_relation WHERE parent = :taskId")
+    void deleteRelationsByParentId(String taskId);
+
+    @Query("DELETE FROM task_prerequisites WHERE prerequisiteId = :taskId")
+    void deletePrerequisitesByDependencyId(String taskId);
+
+    @Transaction
+    default void deleteTaskGraph(String taskId) {
+        deleteRelationsByParentId(taskId);
+        deletePrerequisitesByDependencyId(taskId);
+        deleteCore(taskId);
+    }
+
     @Query("DELETE FROM task_core")
     void deleteAllCore();
 }
