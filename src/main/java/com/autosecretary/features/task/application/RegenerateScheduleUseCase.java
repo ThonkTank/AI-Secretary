@@ -4,8 +4,8 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskSeedDataFactory;
 import com.autosecretary.features.task.domain.TaskPlanningState;
-import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
+import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -50,11 +50,11 @@ public class RegenerateScheduleUseCase {
             for (Task task : tasks) {
                 task.slots.removeIf(slot ->
                         !slot.completed
-                        && slot.realStart == null
-                        && slot.scheduled
-                        && slot.day != null
-                        && !slot.day.isBefore(today)
-                        && slot.day.isBefore(windowEnd));
+                                && slot.realStart == null
+                                && slot.scheduled
+                                && slot.day != null
+                                && !slot.day.isBefore(today)
+                                && slot.day.isBefore(windowEnd));
             }
 
             // 2) Initialize cross-day state from preserved slots (completed/in-progress)

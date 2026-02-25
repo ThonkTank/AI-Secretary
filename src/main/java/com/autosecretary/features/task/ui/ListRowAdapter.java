@@ -1,28 +1,29 @@
 package com.autosecretary.features.task.ui;
 
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.core.content.ContextCompat;
-import androidx.core.view.ViewCompat;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.LayoutInflater;
-import android.widget.TextView;
 import android.widget.CheckBox;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
-import java.util.List;
-import java.util.function.Consumer;
-import java.time.format.DateTimeFormatter;
+import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.autosecretary.R;
 import com.autosecretary.features.task.application.TaskListItem;
 import com.autosecretary.features.task.ui.state.ViewSlotList.ViewSlot;
-import com.autosecretary.R;
+
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.function.Consumer;
 
 /**
- * RecyclerView adapter for task list rows. Renders each {@link ViewSlot} with tree indentation,
- * deadline urgency coloring, in-progress/completed visual states, and streak display.
+ * RecyclerView adapter for task list rows.
  */
 public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowViewHolder> {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
@@ -39,6 +40,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     }
 
     static class TaskRowViewHolder extends RecyclerView.ViewHolder {
+        LinearLayout root;
         TextView title;
         TextView start;
         TextView end;
@@ -46,9 +48,11 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         TextView deadlineCountdown;
         TextView streakDisplay;
         ImageButton editButton;
+        TextView calendarChip;
 
         TaskRowViewHolder(View taskRow) {
             super(taskRow);
+            this.root = taskRow.findViewById(R.id.TaskRowRoot);
             this.title = taskRow.findViewById(R.id.TaskTitle);
             this.start = taskRow.findViewById(R.id.StartTime);
             this.end = taskRow.findViewById(R.id.EndTime);
@@ -56,6 +60,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             this.deadlineCountdown = taskRow.findViewById(R.id.DeadlineCountdown);
             this.streakDisplay = taskRow.findViewById(R.id.StreakDisplay);
             this.editButton = taskRow.findViewById(R.id.EditTaskButton);
+            this.calendarChip = taskRow.findViewById(R.id.CalendarChip);
         }
     }
 
@@ -80,6 +85,13 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
         bindIndentation(holder, viewSlot.depth);
         bindTimeRange(holder, item);
+
+        if (item.isCalendarEvent()) {
+            bindCalendarEventRow(holder);
+            return;
+        }
+
+        bindTaskRow(holder);
         bindDeadline(holder, item);
         bindStreak(holder, item);
         bindProgressState(holder, item);
@@ -93,6 +105,32 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
                 holder.itemView.getPaddingTop(),
                 holder.itemView.getPaddingEnd(),
                 holder.itemView.getPaddingBottom());
+    }
+
+    private void bindTaskRow(TaskRowViewHolder holder) {
+        holder.root.setBackgroundResource(R.drawable.bg_task_row);
+        holder.checkBox.setVisibility(View.VISIBLE);
+        holder.deadlineCountdown.setVisibility(View.VISIBLE);
+        holder.streakDisplay.setVisibility(View.VISIBLE);
+        holder.editButton.setVisibility(View.VISIBLE);
+        holder.calendarChip.setVisibility(View.GONE);
+        holder.itemView.setOnClickListener(null);
+        holder.itemView.setOnLongClickListener(null);
+    }
+
+    private void bindCalendarEventRow(TaskRowViewHolder holder) {
+        Context context = holder.itemView.getContext();
+        holder.root.setBackgroundResource(R.drawable.bg_calendar_row);
+        holder.checkBox.setVisibility(View.GONE);
+        holder.deadlineCountdown.setVisibility(View.GONE);
+        holder.streakDisplay.setVisibility(View.GONE);
+        holder.editButton.setVisibility(View.GONE);
+        holder.calendarChip.setVisibility(View.VISIBLE);
+        holder.calendarChip.setText(context.getString(R.string.task_calendar_label));
+        holder.checkBox.setOnClickListener(null);
+        holder.itemView.setOnLongClickListener(null);
+        holder.itemView.setOnClickListener(null);
+        ViewCompat.setStateDescription(holder.itemView, context.getString(R.string.task_calendar_state_description));
     }
 
     private void bindTimeRange(TaskRowViewHolder holder, TaskListItem item) {
@@ -148,11 +186,10 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     private void bindProgressState(TaskRowViewHolder holder, TaskListItem item) {
         Context context = holder.itemView.getContext();
         if (item.inProgress) {
-            holder.itemView.setBackgroundColor(ContextCompat.getColor(context, R.color.task_in_progress_background));
+            holder.root.setBackgroundColor(ContextCompat.getColor(context, R.color.task_in_progress_background));
             holder.checkBox.setButtonTintList(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.task_in_progress_checkbox_tint)));
             ViewCompat.setStateDescription(holder.itemView, context.getString(R.string.task_in_progress_state_description));
         } else {
-            holder.itemView.setBackgroundColor(ContextCompat.getColor(context, R.color.transparent));
             holder.checkBox.setButtonTintList(null);
             ViewCompat.setStateDescription(holder.itemView, null);
         }
