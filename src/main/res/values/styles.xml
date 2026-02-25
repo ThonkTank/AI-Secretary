@@ -1,12 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar" />
+    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/task_color_primary</item>
+        <item name="colorPrimaryVariant">@color/task_color_primary_variant</item>
+        <item name="colorOnPrimary">@color/task_color_on_primary</item>
+        <item name="colorSecondary">@color/task_color_secondary</item>
+        <item name="colorSurface">@color/task_color_surface</item>
+        <item name="colorBackground">@color/task_color_background</item>
+        <item name="colorOnSurface">@color/task_color_on_surface</item>
+        <item name="colorOutline">@color/task_color_outline</item>
+        <item name="android:windowBackground">@drawable/bg_forest_gradient</item>
+        <item name="bottomNavigationStyle">@style/Widget.AISecretary.BottomNavigation</item>
+    </style>
+
+    <style name="Widget.AISecretary.BottomNavigation" parent="Widget.MaterialComponents.BottomNavigationView.Colored">
+        <item name="android:background">@drawable/bg_surface_card</item>
+        <item name="itemIconTint">@color/task_edit_day_button_text_color</item>
+        <item name="itemTextColor">@color/task_edit_day_button_text_color</item>
+    </style>
 
     <!-- Day picker buttons -->
     <style name="Widget.AutoSecretary.TaskEdit.DayPickerButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="android:textColor">@color/task_edit_day_button_text_color</item>
         <item name="backgroundTint">@color/task_edit_day_button_background_tint</item>
         <item name="strokeColor">@color/task_edit_day_button_stroke_color</item>
+        <item name="cornerRadius">12dp</item>
         <item name="insetTop">0dp</item>
         <item name="insetBottom">0dp</item>
     </style>
@@ -14,6 +32,8 @@
     <!-- Task editor inputs -->
     <style name="Widget.AISecretary.Editor.TextFieldLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
         <item name="boxBackgroundMode">outline</item>
+        <item name="boxStrokeColor">@color/task_color_outline</item>
+        <item name="boxBackgroundColor">@color/task_color_surface</item>
         <item name="boxStrokeWidth">1dp</item>
         <item name="boxStrokeWidthFocused">2dp</item>
     </style>
@@ -24,6 +44,7 @@
 
     <style name="TextAppearance.AISecretary.Editor.Label" parent="TextAppearance.MaterialComponents.Body2">
         <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/task_text_on_surface_emphasis</item>
     </style>
 
     <style name="TextAppearance.AISecretary.Editor.PrefSlotButton" parent="TextAppearance.MaterialComponents.Body2">
@@ -59,7 +80,8 @@
 
     <style name="TextAppearance.Task.Widget.NavAction">
         <item name="android:textSize">@dimen/task_text_md</item>
-        <item name="android:textColor">@color/task_text_on_surface</item>
+        <item name="android:textColor">@color/task_color_primary</item>
+        <item name="android:textStyle">bold</item>
     </style>
 
     <style name="TextAppearance.Task.Widget.NavLabel" parent="TextAppearance.Task.Title">

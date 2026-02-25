@@ -1,45 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base palette -->
-    <color name="task_color_surface">#FFFFFFFF</color>
-    <color name="task_color_on_surface">#FF333333</color>
-    <color name="task_color_on_surface_variant">#FF888888</color>
-    <color name="task_color_on_surface_emphasis">#FF555555</color>
-    <color name="task_color_on_surface_muted">#FF999999</color>
-    <color name="task_color_primary">#FF6200EE</color>
-    <color name="task_color_on_primary">#FFFFFFFF</color>
+    <!-- Nature-inspired base palette -->
+    <color name="task_color_background">#FFF4F1E8</color>
+    <color name="task_color_surface">#FFFFFCF6</color>
+    <color name="task_color_surface_variant">#FFF0E8D6</color>
+    <color name="task_color_on_surface">#FF2F3A2C</color>
+    <color name="task_color_on_surface_variant">#FF5F6C58</color>
+    <color name="task_color_on_surface_emphasis">#FF3F4D3A</color>
+    <color name="task_color_on_surface_muted">#FF7E8878</color>
+    <color name="task_color_outline">#FFC5BFAF</color>
+
+    <color name="task_color_primary">#FF5C7A4D</color>
+    <color name="task_color_primary_variant">#FF49653D</color>
+    <color name="task_color_on_primary">#FFF8F6EE</color>
+    <color name="task_color_secondary">#FF8DAA8C</color>
+    <color name="task_color_accent">#FFCF8F4F</color>
 
     <color name="task_text_on_surface">@color/task_color_on_surface</color>
     <color name="task_text_on_surface_variant">@color/task_color_on_surface_variant</color>
     <color name="task_text_on_surface_emphasis">@color/task_color_on_surface_emphasis</color>
     <color name="task_text_on_surface_muted">@color/task_color_on_surface_muted</color>
-    <color name="task_row_time_divider">@color/task_color_on_surface_variant</color>
+    <color name="task_row_time_divider">@color/task_color_outline</color>
 
     <!-- Day picker colors -->
     <color name="task_edit_day_selected_background">@color/task_color_primary</color>
     <color name="task_edit_day_selected_text">@color/task_color_on_primary</color>
     <color name="task_edit_day_unselected_background">#00000000</color>
     <color name="task_edit_day_unselected_text">@color/task_color_primary</color>
-    <color name="task_edit_day_disabled_background">#146200EE</color>
-    <color name="task_edit_day_disabled_text">#806200EE</color>
-    <color name="task_edit_day_disabled_stroke">#406200EE</color>
+    <color name="task_edit_day_disabled_background">#145C7A4D</color>
+    <color name="task_edit_day_disabled_text">#805C7A4D</color>
+    <color name="task_edit_day_disabled_stroke">#405C7A4D</color>
 
     <!-- Urgency and status colors -->
-    <color name="task_urgency_overdue">#FFFF0000</color>
-    <color name="task_urgency_soon">#FFFF8800</color>
+    <color name="task_urgency_overdue">#FFB4543A</color>
+    <color name="task_urgency_soon">#FFC47E42</color>
     <color name="task_urgency_future">@color/task_color_on_surface_variant</color>
     <color name="task_deadline_overdue">@color/task_urgency_overdue</color>
     <color name="task_deadline_soon">@color/task_urgency_soon</color>
     <color name="task_deadline_future">@color/task_urgency_future</color>
 
-    <color name="task_status_in_progress_background">#1A4CAF50</color>
-    <color name="task_status_in_progress_checkbox_tint">#FF4CAF50</color>
+    <color name="task_status_in_progress_background">#1F5C7A4D</color>
+    <color name="task_status_in_progress_checkbox_tint">#FF5C7A4D</color>
     <color name="task_in_progress_background">@color/task_status_in_progress_background</color>
     <color name="task_in_progress_checkbox_tint">@color/task_status_in_progress_checkbox_tint</color>
 
     <!-- Widget-specific semantic colors mapped to base palette -->
-    <color name="task_widget_surface">#FFFFFFFF</color>
-    <color name="task_widget_surface_secondary">#FFF5F5F5</color>
+    <color name="task_widget_surface">@color/task_color_surface</color>
+    <color name="task_widget_surface_secondary">@color/task_color_surface_variant</color>
     <color name="task_widget_text_primary">@color/task_color_on_surface</color>
     <color name="task_widget_text_secondary">@color/task_color_on_surface_emphasis</color>
     <color name="task_widget_text_muted">@color/task_color_on_surface_muted</color>
