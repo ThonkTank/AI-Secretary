@@ -17,9 +17,7 @@ import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
-import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 /**
  * Coordinates task-list presentation state for the task screen.
@@ -145,7 +143,7 @@ public class TaskViewModel extends AndroidViewModel {
      * </p>
      */
     public void filterList() {
-        Predicate<ViewSlot> predicate = activeListConfig.buildPredicate(day);
+        Predicate<ViewSlot> predicate = slot -> activeListConfig.matches(slot, day);
         masterList.filter(predicate);
         sortList();
     }
@@ -158,7 +156,7 @@ public class TaskViewModel extends AndroidViewModel {
      * </p>
      */
     public void sortList() {
-        Comparator<ViewSlot> comparator = activeListConfig.getComparator();
+        Comparator<ViewSlot> comparator = activeListConfig.comparator();
         boolean groupByTaskParent = activeListConfig.groupByTaskParent;
 
         masterList.sort(groupByTaskParent, comparator);
@@ -182,38 +180,40 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     private enum ListConfig {
-        CHECKLIST(
-                day -> vs -> isOnDay(vs, day) && vs.item.start != null,
-                () -> Comparator.comparing(
-                        (ViewSlot vs) -> vs.item.start,
-                        Comparator.nullsLast(Comparator.naturalOrder())
-                ),
-                false
-        ),
-        MANAGE(
-                day -> vs -> isOnDay(vs, day),
-                () -> Comparator.comparing(vs -> vs.item.title, Comparator.naturalOrder()),
-                true
-        );
+        CHECKLIST(false) {
+            @Override
+            boolean matches(ViewSlot slot, LocalDate day) {
+                return isOnDay(slot, day) && slot.item.start != null;
+            }
 
-        private final Function<LocalDate, Predicate<ViewSlot>> dayAwarePredicateBuilder;
-        private final Supplier<Comparator<ViewSlot>> comparatorProvider;
+            @Override
+            Comparator<ViewSlot> comparator() {
+                return Comparator.comparing(
+                        (ViewSlot slot) -> slot.item.start,
+                        Comparator.nullsLast(Comparator.naturalOrder())
+                );
+            }
+        },
+        MANAGE(true) {
+            @Override
+            boolean matches(ViewSlot slot, LocalDate day) {
+                return isOnDay(slot, day);
+            }
+
+            @Override
+            Comparator<ViewSlot> comparator() {
+                return Comparator.comparing(slot -> slot.item.title, Comparator.naturalOrder());
+            }
+        };
+
         private final boolean groupByTaskParent;
 
-        ListConfig(Function<LocalDate, Predicate<ViewSlot>> dayAwarePredicateBuilder,
-                   Supplier<Comparator<ViewSlot>> comparatorProvider,
-                   boolean groupByTaskParent) {
-            this.dayAwarePredicateBuilder = dayAwarePredicateBuilder;
-            this.comparatorProvider = comparatorProvider;
+        ListConfig(boolean groupByTaskParent) {
             this.groupByTaskParent = groupByTaskParent;
         }
 
-        private Predicate<ViewSlot> buildPredicate(LocalDate day) {
-            return dayAwarePredicateBuilder.apply(day);
-        }
+        abstract boolean matches(ViewSlot slot, LocalDate day);
 
-        private Comparator<ViewSlot> getComparator() {
-            return comparatorProvider.get();
-        }
+        abstract Comparator<ViewSlot> comparator();
     }
 }
