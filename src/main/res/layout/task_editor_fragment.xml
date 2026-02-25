@@ -87,8 +87,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:orientation="vertical"
             android:layout_marginTop="@dimen/spacing_sm">
 
             <TextView
@@ -96,29 +95,36 @@
                 android:layout_height="wrap_content"
                 android:text="@string/task_editor_duration_label"/>
 
-            <EditText
-                android:id="@+id/EditMinDuration"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="@dimen/spacing_sm"
-                android:inputType="number"
-                android:hint="@string/task_editor_hint_min"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="@dimen/spacing_sm">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/task_editor_range_separator"
-                android:layout_marginStart="@dimen/spacing_xs"
-                android:layout_marginEnd="@dimen/spacing_xs"/>
+                <EditText
+                    android:id="@+id/EditMinDuration"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:inputType="number"
+                    android:hint="@string/task_editor_hint_min"/>
 
-            <EditText
-                android:id="@+id/EditMaxDuration"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:inputType="number"
-                android:hint="@string/task_editor_hint_max"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_editor_range_separator"
+                    android:layout_marginStart="@dimen/spacing_xs"
+                    android:layout_marginEnd="@dimen/spacing_xs"/>
+
+                <EditText
+                    android:id="@+id/EditMaxDuration"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:inputType="number"
+                    android:hint="@string/task_editor_hint_max"/>
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Cooldown -->
@@ -155,38 +161,45 @@
             android:id="@+id/RepetitionContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:orientation="vertical"
             android:visibility="gone"
             android:paddingStart="@dimen/editor_section_indent">
 
-            <EditText
-                android:id="@+id/EditReps"
-                android:layout_width="@dimen/compact_input_width"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number"
-                android:gravity="center"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/task_editor_repetition_format"
-                android:layout_marginStart="@dimen/spacing_xs"
-                android:layout_marginEnd="@dimen/spacing_xs"/>
+                <EditText
+                    android:id="@+id/EditReps"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:inputType="number"
+                    android:gravity="center"/>
 
-            <EditText
-                android:id="@+id/EditPerPeriod"
-                android:layout_width="@dimen/compact_input_width"
-                android:layout_height="wrap_content"
-                android:inputType="number"
-                android:gravity="center"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_editor_repetition_format"
+                    android:layout_marginStart="@dimen/spacing_sm"
+                    android:layout_marginEnd="@dimen/spacing_sm"/>
+
+                <EditText
+                    android:id="@+id/EditPerPeriod"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:inputType="number"
+                    android:gravity="center"/>
+            </LinearLayout>
 
             <Spinner
                 android:id="@+id/EditPeriodUnit"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="@dimen/spacing_xs"/>
+                android:layout_marginTop="@dimen/spacing_sm"/>
         </LinearLayout>
 
         <!-- PrefSlots -->
@@ -242,35 +255,48 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:orientation="vertical">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/task_editor_target_label"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
-                <EditText
-                    android:id="@+id/EditTarget"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="@dimen/spacing_sm"
-                    android:inputType="number"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/task_editor_target_label"/>
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/task_editor_current_label"
-                    android:layout_marginStart="@dimen/spacing_lg"/>
+                    <EditText
+                        android:id="@+id/EditTarget"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="@dimen/spacing_sm"
+                        android:inputType="number"/>
+                </LinearLayout>
 
-                <EditText
-                    android:id="@+id/EditCurrent"
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="@dimen/spacing_sm"
-                    android:inputType="number"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="@dimen/spacing_sm">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/task_editor_current_label"/>
+
+                    <EditText
+                        android:id="@+id/EditCurrent"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="@dimen/spacing_sm"
+                        android:inputType="number"/>
+                </LinearLayout>
             </LinearLayout>
 
             <CheckBox
@@ -282,37 +308,43 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:orientation="vertical">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/task_editor_per_repetition_label"/>
 
-                <EditText
-                    android:id="@+id/EditMinPerRep"
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="@dimen/spacing_sm"
-                    android:inputType="number"
-                    android:hint="@string/task_editor_hint_min"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="@dimen/spacing_sm">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/task_editor_range_separator"
-                    android:layout_marginStart="@dimen/spacing_xs"
-                    android:layout_marginEnd="@dimen/spacing_xs"/>
+                    <EditText
+                        android:id="@+id/EditMinPerRep"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:inputType="number"
+                        android:hint="@string/task_editor_hint_min"/>
 
-                <EditText
-                    android:id="@+id/EditMaxPerRep"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:inputType="number"
-                    android:hint="@string/task_editor_hint_max"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/task_editor_range_separator"
+                        android:layout_marginStart="@dimen/spacing_xs"
+                        android:layout_marginEnd="@dimen/spacing_xs"/>
+
+                    <EditText
+                        android:id="@+id/EditMaxPerRep"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:inputType="number"
+                        android:hint="@string/task_editor_hint_max"/>
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
 
