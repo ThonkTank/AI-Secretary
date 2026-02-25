@@ -89,7 +89,7 @@ public class TaskEditStateMapper {
         task.prefSlots = new ArrayList<>();
         for (PrefSlotEditState prefSlotState : state.prefSlots) {
             TaskPrefSlot prefSlot = new TaskPrefSlot();
-            prefSlot.id = prefSlotState.id != null ? prefSlotState.id : prefSlot.id;
+            prefSlot.id = prefSlotState.id; // New slots keep null IDs until persistence assigns one.
             prefSlot.taskId = task.core.id;
             prefSlot.start = prefSlotState.start;
             prefSlot.days = prefSlotState.days != null ? EnumSet.copyOf(prefSlotState.days) : EnumSet.noneOf(DayOfWeek.class);
