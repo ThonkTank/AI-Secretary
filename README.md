@@ -99,6 +99,21 @@ Use the official Android setup guides to verify your environment (JDK, SDK, emul
 - `./gradlew copyToRelease` copies the built debug APK to `ops/release/` and writes the next value to `ops/release/version.txt`.
 - `./gradlew publishReleaseArtifact` depends on `copyToRelease` and `pushToGitHub`; Git push happens only when this task is run.
 
+## First contribution (small safe change)
+
+For your first PR, keep scope tiny and low-risk: update README text (like this section) or adjust one user-facing string in `src/main/res/values/strings.xml`.
+
+Minimal validation in this repo:
+- `./gradlew assembleDebug`
+- `./gradlew testDebugUnitTest`
+
+Done looks like:
+- Build succeeds.
+- App launches and basic navigation still works.
+- No release-side-effect tasks were run.
+
+Reminder: for normal contributions, avoid `copyToRelease` and `publishReleaseArtifact`; see the warning in **Build and release tasks** above.
+
 ## Repository layout
 
 - Active code lives under `src/`.
