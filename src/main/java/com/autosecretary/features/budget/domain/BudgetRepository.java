@@ -18,8 +18,10 @@ public interface BudgetRepository {
     List<BudgetCategory> getActiveCategories();
     List<BudgetTransactionEntity> findAllTransactions();
     List<BudgetTransactionEntity> findTransactionsForAccount(String accountId);
+    BudgetTransactionEntity findTransactionById(String transactionId);
     BudgetLimit findBudgetLimit(String categoryId, String yearMonth);
     void saveTransaction(BudgetTransactionEntity transaction);
+    void updateTransaction(BudgetTransactionEntity transaction);
     void saveTransactions(List<BudgetTransactionEntity> transactions);
     void deleteTransaction(String transactionId);
     void createTransfer(String sourceAccountId, String targetAccountId, long amountCents,

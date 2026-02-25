@@ -39,12 +39,20 @@ public class BudgetRoomRepository implements BudgetRepository {
         return transactionDao.findByAccountId(accountId);
     }
 
+    @Override public BudgetTransactionEntity findTransactionById(String transactionId) {
+        return transactionDao.findById(transactionId);
+    }
+
     @Override public BudgetLimit findBudgetLimit(String categoryId, String yearMonth) {
         return limitDao.getLimitForCategoryAndMonth(categoryId, yearMonth);
     }
 
     @Override public void saveTransaction(BudgetTransactionEntity transaction) {
         transactionDao.insert(transaction);
+    }
+
+    @Override public void updateTransaction(BudgetTransactionEntity transaction) {
+        transactionDao.update(transaction);
     }
 
     @Override public void deleteTransaction(String transactionId) {
