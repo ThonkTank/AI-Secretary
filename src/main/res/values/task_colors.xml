@@ -41,6 +41,18 @@
 
     <color name="task_status_in_progress_background">#1F5C7A4D</color>
     <color name="task_status_in_progress_checkbox_tint">#FF5C7A4D</color>
+    <color name="task_status_completed_background">#245C7A4D</color>
+    <color name="task_status_completed_checkbox_tint">#FF5C7A4D</color>
+    <color name="task_status_completion_flash">#66CF8F4F</color>
+
+    <color name="task_completion_flash">@color/task_status_completion_flash</color>
+    <color name="task_completed_background">@color/task_status_completed_background</color>
+    <color name="task_completed_checkbox_tint">@color/task_status_completed_checkbox_tint</color>
+
+    <!-- Legacy aliases -->
+    <color name="completion_flash">@color/task_completion_flash</color>
+    <color name="surface_complete">@color/task_completed_background</color>
+
     <color name="task_in_progress_background">@color/task_status_in_progress_background</color>
     <color name="task_in_progress_checkbox_tint">@color/task_status_in_progress_checkbox_tint</color>
 
