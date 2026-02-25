@@ -3,4 +3,10 @@
     <color name="task_edit_day_selected_background">#6200EE</color>
     <color name="task_edit_day_selected_text">#FFFFFF</color>
     <color name="task_edit_day_unselected_text">#6200EE</color>
+    <color name="task_deadline_overdue">#FFFF0000</color>
+    <color name="task_deadline_soon">#FFFF8800</color>
+    <color name="task_deadline_future">#FF888888</color>
+    <color name="task_in_progress_background">#1A4CAF50</color>
+    <color name="task_in_progress_checkbox_tint">#FF4CAF50</color>
+    <color name="transparent">#00000000</color>
 </resources>
