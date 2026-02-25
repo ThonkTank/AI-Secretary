@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="task_widget_surface">#FFFFFFFF</color>
+    <color name="task_widget_surface_secondary">#FFF5F5F5</color>
+    <color name="task_widget_text_primary">#FF1F1B24</color>
+    <color name="task_widget_text_secondary">#FF49454F</color>
+    <color name="task_widget_text_muted">#FF79747E</color>
+
     <color name="task_edit_day_selected_background">#6200EE</color>
     <color name="task_edit_day_selected_text">#FFFFFF</color>
     <color name="task_edit_day_unselected_text">#6200EE</color>

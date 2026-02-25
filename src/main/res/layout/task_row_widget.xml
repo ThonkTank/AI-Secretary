@@ -6,7 +6,7 @@
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:padding="4dp"
-    android:background="#FFFFFF">
+    android:background="@color/task_widget_surface">
 
     <!-- Time column -->
     <LinearLayout
@@ -21,7 +21,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="11sp"
-            android:textColor="#555555"
+            android:textColor="@color/task_widget_text_secondary"
             android:fontFamily="monospace" />
 
         <TextView
@@ -29,7 +29,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="11sp"
-            android:textColor="#999999"
+            android:textColor="@color/task_widget_text_muted"
             android:fontFamily="monospace" />
     </LinearLayout>
 
@@ -48,7 +48,7 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:textSize="13sp"
-        android:textColor="#333333"
+        android:textColor="@color/task_widget_text_primary"
         android:ellipsize="end"
         android:maxLines="1" />
 
@@ -58,7 +58,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="11sp"
-        android:textColor="#888888"
+        android:textColor="@color/task_widget_text_muted"
         android:layout_marginStart="4dp" />
 
 </LinearLayout>
