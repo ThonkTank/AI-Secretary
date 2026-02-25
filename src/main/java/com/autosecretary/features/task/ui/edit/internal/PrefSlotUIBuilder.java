@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.autosecretary.R;
 import com.autosecretary.features.task.ui.state.PrefSlotEditState;
 import com.google.android.material.button.MaterialButton;
 
@@ -65,7 +66,7 @@ public class PrefSlotUIBuilder {
 
         for (int key = 1; key <= repsPerDay; key++) {
             TextView header = new TextView(context);
-            header.setText("Wiederholung " + key);
+            header.setText(context.getString(R.string.task_editor_pref_slot_header, key));
             header.setTypeface(null, Typeface.BOLD);
             header.setPadding(0, dpToPx(12), 0, dpToPx(4));
             prefSlotContainer.addView(header);
@@ -79,8 +80,11 @@ public class PrefSlotUIBuilder {
 
                 String formattedDays = formatDaysAsRanges(prefSlot.days);
                 MaterialButton daysView = createInteractiveButton();
-                daysView.setText("Wochentage wählen: " + formattedDays);
-                daysView.setContentDescription("Wochentage wählen. Aktuell: " + formattedDays);
+                daysView.setText(context.getString(R.string.task_editor_pref_slot_days_button, formattedDays));
+                daysView.setContentDescription(context.getString(
+                    R.string.task_editor_pref_slot_days_content_description,
+                    formattedDays
+                ));
 
                 LinearLayout.LayoutParams daysParams = new LinearLayout.LayoutParams(
                     0,
@@ -97,8 +101,11 @@ public class PrefSlotUIBuilder {
                     ? prefSlot.start.format(DateTimeFormatter.ofPattern("HH:mm"))
                     : "--:--";
                 MaterialButton timeView = createInteractiveButton();
-                timeView.setText("Startzeit wählen: " + formattedTime);
-                timeView.setContentDescription("Startzeit wählen. Aktuell: " + formattedTime);
+                timeView.setText(context.getString(R.string.task_editor_pref_slot_time_button, formattedTime));
+                timeView.setContentDescription(context.getString(
+                    R.string.task_editor_pref_slot_time_content_description,
+                    formattedTime
+                ));
                 timeView.setTypeface(Typeface.MONOSPACE);
 
                 LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(
@@ -116,8 +123,8 @@ public class PrefSlotUIBuilder {
         }
     }
 
-    static String formatDaysAsRanges(Set<DayOfWeek> days) {
-        if (days == null || days.isEmpty()) return "Keine Tage";
+    private String formatDaysAsRanges(Set<DayOfWeek> days) {
+        if (days == null || days.isEmpty()) return context.getString(R.string.task_editor_pref_slot_no_days);
 
         List<DayOfWeek> sorted = new ArrayList<>(days);
         Collections.sort(sorted);

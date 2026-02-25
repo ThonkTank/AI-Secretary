@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="task_edit_day_picker_title">Tage auswählen</string>
+    <string name="task_edit_day_picker_positive">Speichern</string>
+    <string name="task_edit_day_picker_negative">Abbrechen</string>
+    <string name="task_edit_dialog_title_create">Aufgabe erstellen</string>
+    <string name="task_edit_dialog_title_edit">Aufgabe bearbeiten</string>
+    <string name="task_edit_dialog_positive">Speichern</string>
+    <string name="task_edit_dialog_negative">Abbrechen</string>
     <string name="task_row_edit">Aufgabe bearbeiten</string>
 
     <string name="task_time_fallback_start">Nicht</string>
@@ -47,6 +53,12 @@
     <string name="task_editor_current_label">Aktuell:</string>
     <string name="task_editor_reset_per_repetition">Reset pro Wiederholung</string>
     <string name="task_editor_per_repetition_label">Pro Wdh.:</string>
+    <string name="task_editor_pref_slot_header">Wiederholung %1$d</string>
+    <string name="task_editor_pref_slot_no_days">Keine Tage</string>
+    <string name="task_editor_pref_slot_days_button">Wochentage auswählen: %1$s</string>
+    <string name="task_editor_pref_slot_days_content_description">Wochentage auswählen. Aktuell: %1$s</string>
+    <string name="task_editor_pref_slot_time_button">Startzeit auswählen: %1$s</string>
+    <string name="task_editor_pref_slot_time_content_description">Startzeit auswählen. Aktuell: %1$s</string>
 
     <string name="widget_day_nav_prev">&#x25C0;</string>
     <string name="widget_day_nav_today">Heute</string>
