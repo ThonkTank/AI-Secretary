@@ -42,7 +42,6 @@ public class ListFragment extends Fragment {
         ListRowAdapter adapter = new ListRowAdapter(
                 new ArrayList<>(),
                 vm::checkOff,
-                viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId),
                 viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId)
         );
 
