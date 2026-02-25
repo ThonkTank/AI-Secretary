@@ -27,6 +27,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
@@ -137,18 +138,22 @@ public class BudgetFragment extends Fragment {
         budgetViewModel.getSummaryData().observe(getViewLifecycleOwner(), data -> {
             if (data == null) return;
             views.summaryIncome.setText(String.format(Locale.GERMAN, "+%.2f €", data.getIncomeCents() / 100.0));
-            views.summaryIncome.setTextColor(Color.parseColor("#4CAF50"));
+            views.summaryIncome.setTextColor(getColorFromResources(R.color.budget_positive));
             views.summaryExpense.setText(String.format(Locale.GERMAN, "-%.2f €", data.getExpenseCents() / 100.0));
-            views.summaryExpense.setTextColor(Color.parseColor("#F44336"));
+            views.summaryExpense.setTextColor(getColorFromResources(R.color.budget_negative));
             long net = data.getNetCents();
             String sign = net >= 0 ? "+" : "-";
             views.summaryNet.setText(String.format(Locale.GERMAN, "%s%.2f €", sign, Math.abs(net) / 100.0));
-            views.summaryNet.setTextColor(Color.parseColor(net >= 0 ? "#4CAF50" : "#F44336"));
+            views.summaryNet.setTextColor(net >= 0
+                    ? getColorFromResources(R.color.budget_positive)
+                    : getColorFromResources(R.color.budget_negative));
 
             long freeBudget = data.getFreeBudgetCents();
             String freeBudgetSign = freeBudget >= 0 ? "+" : "-";
             views.summaryFreeBudget.setText(String.format(Locale.GERMAN, "%s%.2f €", freeBudgetSign, Math.abs(freeBudget) / 100.0));
-            views.summaryFreeBudget.setTextColor(Color.parseColor(freeBudget >= 0 ? "#4CAF50" : "#F44336"));
+            views.summaryFreeBudget.setTextColor(freeBudget >= 0
+                    ? getColorFromResources(R.color.budget_positive)
+                    : getColorFromResources(R.color.budget_negative));
         });
 
         budgetViewModel.getTransactions().observe(getViewLifecycleOwner(),
@@ -615,11 +620,11 @@ public class BudgetFragment extends Fragment {
             if (isValidColorHex(bar.getCategoryColorHex())) {
                 color = Color.parseColor(bar.getCategoryColorHex());
             } else if (pct > 100) {
-                color = Color.parseColor("#F44336");
+                color = getColorFromResources(R.color.budget_negative);
             } else if (pct >= 80) {
-                color = Color.parseColor("#FF9800");
+                color = getColorFromResources(R.color.budget_warning);
             } else {
-                color = Color.parseColor("#4CAF50");
+                color = getColorFromResources(R.color.budget_positive);
             }
             progress.setProgressTintList(ColorStateList.valueOf(color));
             percentText.setTextColor(color);
@@ -650,8 +655,8 @@ public class BudgetFragment extends Fragment {
                 label.setTextColor(Color.parseColor(labelColorHex));
             }
             amount.setTextColor(row.isExpense()
-                    ? Color.parseColor("#F44336")
-                    : Color.parseColor("#4CAF50"));
+                    ? getColorFromResources(R.color.budget_negative)
+                    : getColorFromResources(R.color.budget_positive));
             rowView.setContentDescription(
                     getString(R.string.budget_transaction_content_description,
                             row.getLabel(), row.getAmount()));
@@ -687,6 +692,10 @@ public class BudgetFragment extends Fragment {
     private boolean isValidColorHex(String colorHex) {
         if (colorHex == null) return false;
         return Pattern.matches("^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", colorHex);
+    }
+
+    private int getColorFromResources(int colorResId) {
+        return ContextCompat.getColor(requireContext(), colorResId);
     }
 
     private void showDeleteTransactionDialog(BudgetViewModel.BudgetTransactionRow row) {
@@ -737,14 +746,15 @@ public class BudgetFragment extends Fragment {
                     Math.abs(suggestion.avgAmountCents()) / 100.0));
 
             amount.setTextColor(suggestion.avgAmountCents() >= 0
-                    ? Color.parseColor("#4CAF50") : Color.parseColor("#F44336"));
+                    ? getColorFromResources(R.color.budget_positive)
+                    : getColorFromResources(R.color.budget_negative));
 
             if (suggestion.confidenceScore() >= 0.7) {
-                confidence.setTextColor(Color.parseColor("#4CAF50"));
+                confidence.setTextColor(getColorFromResources(R.color.budget_positive));
             } else if (suggestion.confidenceScore() >= 0.5) {
-                confidence.setTextColor(Color.parseColor("#FF9800"));
+                confidence.setTextColor(getColorFromResources(R.color.budget_warning));
             } else {
-                confidence.setTextColor(Color.parseColor("#9E9E9E"));
+                confidence.setTextColor(getColorFromResources(R.color.budget_neutral));
             }
 
             listContainer.addView(row);
