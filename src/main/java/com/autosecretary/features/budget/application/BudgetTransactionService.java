@@ -36,9 +36,9 @@ public class BudgetTransactionService {
         repository.saveBudgetLimit(limit);
     }
 
-    public BudgetOverview loadOverview(String yearMonth) {
+    public BudgetOverview loadOverview(String yearMonth, String accountId) {
         List<BudgetAccount> accounts = repository.findActiveAccounts();
-        List<BudgetTransactionEntity> transactions = repository.findAllTransactions();
+        List<BudgetTransactionEntity> transactions = repository.findTransactionsForAccount(accountId);
         Summary summary = calculateSummary(transactions, yearMonth);
         return new BudgetOverview(summary, accounts, transactions);
     }

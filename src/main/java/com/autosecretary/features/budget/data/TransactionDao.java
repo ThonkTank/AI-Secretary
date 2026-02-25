@@ -34,9 +34,10 @@ public interface TransactionDao {
             INNER JOIN budget_account a ON a.id = t.accountId
             LEFT JOIN budget_category c ON c.id = t.categoryId
             WHERE t.yearMonth = :yearMonth
+              AND t.accountId = :accountId
             ORDER BY t.bookingDate DESC, t.id DESC
             """)
-    List<MonthlyTransactionOverviewItem> getMonthlyOverview(String yearMonth);
+    List<MonthlyTransactionOverviewItem> getMonthlyOverview(String yearMonth, String accountId);
 
     @Query("""
             SELECT t.id AS transactionId,
