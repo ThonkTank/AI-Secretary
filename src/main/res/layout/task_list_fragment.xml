@@ -21,7 +21,7 @@
             android:id="@+id/DayNavPrev"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="\u25C0"
+            android:text="@string/task_list_day_nav_prev"
             android:textSize="20sp"
             android:padding="@dimen/spacing_md"
             android:clickable="true"
@@ -35,13 +35,13 @@
             android:gravity="center"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:text="Heute" />
+            android:text="@string/task_list_day_nav_today" />
 
         <TextView
             android:id="@+id/DayNavNext"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="\u25B6"
+            android:text="@string/task_list_day_nav_next"
             android:textSize="20sp"
             android:padding="@dimen/spacing_md"
             android:clickable="true"
@@ -57,7 +57,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/Button"
-            android:text="Generieren"/>
+            android:text="@string/task_list_generate"/>
 
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:layout_width="wrap_content"
@@ -69,14 +69,14 @@
             <com.google.android.material.button.MaterialButton 
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Checklist"
+                android:text="@string/task_list_toggle_checklist"
                 android:id="@+id/ChecklistButton"
                 style="?attr/materialButtonOutlinedStyle" />
 
             <com.google.android.material.button.MaterialButton 
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Manage"
+                android:text="@string/task_list_toggle_manage"
                 android:id="@+id/ManagementButton"
                 style="?attr/materialButtonOutlinedStyle" />
 
@@ -103,7 +103,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Noch keine Aufgaben"
+            android:text="@string/task_list_empty_title"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
             android:textAlignment="center" />
 
@@ -111,7 +111,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
-            android:text="Erstelle deine erste Aufgabe, um deinen Tagesplan zu starten"
+            android:text="@string/task_list_empty_subtitle"
             android:textAlignment="center" />
 
         <com.google.android.material.button.MaterialButton
@@ -119,7 +119,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_md"
-            android:text="Erste Aufgabe erstellen" />
+            android:text="@string/task_list_empty_action" />
     </LinearLayout>
 
     <com.google.android.material.button.MaterialButton
@@ -127,7 +127,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/spacing_md"
-        android:text="+ Neue Task"
+        android:text="@string/task_list_new_task"
         android:textSize="16sp"/>
 
 </LinearLayout>
