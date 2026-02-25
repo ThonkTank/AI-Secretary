@@ -13,6 +13,7 @@ import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
+import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.autosecretary.R;
@@ -23,9 +24,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Consumer;
 
-/**
- * RecyclerView adapter for task list rows.
- */
 public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowViewHolder> {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final long CHECKBOX_SCALE_UP_DURATION_MS = 100L;
@@ -304,6 +302,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         boolean timerEnabled = interactionsEnabled && item.slotId != null && !item.completed;
         holder.timerButton.setEnabled(timerEnabled);
 
+        holder.title.setOnClickListener(v -> showDescriptionPopup(v, item));
+
         if (interactionsEnabled) {
             holder.itemView.setOnLongClickListener(v -> {
                 onEdit.accept(viewSlot);
@@ -320,6 +320,17 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             holder.editButton.setOnClickListener(null);
             holder.editButton.setAlpha(0.4f);
         }
+    }
+
+    private void showDescriptionPopup(View view, TaskListItem item) {
+        Context context = view.getContext();
+        if (!(context instanceof FragmentActivity)) {
+            return;
+        }
+
+        FragmentActivity activity = (FragmentActivity) context;
+        TaskDescriptionDialogFragment.newInstance(item.title, item.description)
+                .show(activity.getSupportFragmentManager(), TaskDescriptionDialogFragment.TAG);
     }
 
     private void animateCompletion(TaskRowViewHolder holder, TaskListItem item) {

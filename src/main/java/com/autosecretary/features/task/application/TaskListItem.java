@@ -32,6 +32,7 @@ public class TaskListItem {
     public final String slotParentId;
     public final List<String> parentTaskIds;
     public final String title;
+    public final String description;
     public final LocalDate day;
     public final LocalTime start;
     public final LocalTime end;
@@ -46,17 +47,33 @@ public class TaskListItem {
     public final int progressStepDelta;
     public final boolean timerRunning;
 
-    public TaskListItem(ItemType itemType, String taskId, String slotId, String slotParentId, List<String> parentTaskIds,
-                        String title, LocalDate day, LocalTime start, LocalTime end, LocalDate deadline,
-                        int streak, int score, boolean completed, boolean inProgress,
+    public TaskListItem(ItemType itemType,
+                        String taskId,
+                        String slotId,
+                        String slotParentId,
+                        List<String> parentTaskIds,
+                        String title,
+                        String description,
+                        LocalDate day,
+                        LocalTime start,
+                        LocalTime end,
+                        LocalDate deadline,
+                        int streak,
+                        int score,
+                        boolean completed,
+                        boolean inProgress,
                         boolean timerRunning,
-                        int progressCurrent, int progressTarget, String progressUnit, int progressStepDelta) {
+                        int progressCurrent,
+                        int progressTarget,
+                        String progressUnit,
+                        int progressStepDelta) {
         this.itemType = itemType;
         this.taskId = taskId;
         this.slotId = slotId;
         this.slotParentId = slotParentId;
         this.parentTaskIds = parentTaskIds;
         this.title = title;
+        this.description = description;
         this.day = day;
         this.start = start;
         this.end = end;
@@ -76,11 +93,25 @@ public class TaskListItem {
         return progressTarget > 0;
     }
 
-    public static TaskListItem task(String taskId, String slotId, String slotParentId, List<String> parentTaskIds,
-                                    String title, LocalDate day, LocalTime start, LocalTime end, LocalDate deadline,
-                                    int streak, int score, boolean completed, boolean inProgress,
+    public static TaskListItem task(String taskId,
+                                    String slotId,
+                                    String slotParentId,
+                                    List<String> parentTaskIds,
+                                    String title,
+                                    String description,
+                                    LocalDate day,
+                                    LocalTime start,
+                                    LocalTime end,
+                                    LocalDate deadline,
+                                    int streak,
+                                    int score,
+                                    boolean completed,
+                                    boolean inProgress,
                                     boolean timerRunning,
-                                    int progressCurrent, int progressTarget, String progressUnit, int progressStepDelta) {
+                                    int progressCurrent,
+                                    int progressTarget,
+                                    String progressUnit,
+                                    int progressStepDelta) {
         return new TaskListItem(
                 ItemType.TASK,
                 taskId,
@@ -88,6 +119,7 @@ public class TaskListItem {
                 slotParentId,
                 parentTaskIds,
                 title,
+                description,
                 day,
                 start,
                 end,
@@ -112,6 +144,7 @@ public class TaskListItem {
                 null,
                 List.of(),
                 title,
+                null,
                 day,
                 start,
                 end,
@@ -147,7 +180,7 @@ public class TaskListItem {
         long daysUntil = daysUntilDeadline();
         if (daysUntil < 0) return DeadlineUrgency.OVERDUE;
         if (daysUntil == 0) return DeadlineUrgency.TODAY;
-        if (daysUntil <= 3) return DeadlineUrgency.SOON; // 3 days = "soon" threshold for deadline proximity warning
+        if (daysUntil <= 3) return DeadlineUrgency.SOON;
         return DeadlineUrgency.FUTURE;
     }
 }

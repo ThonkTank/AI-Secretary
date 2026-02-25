@@ -45,6 +45,7 @@ public class TaskListItemMapper {
                 slot.parent,
                 parentTaskIds,
                 task.core.title,
+                task.core.description,
                 slot.day,
                 slot.start,
                 slot.end,
