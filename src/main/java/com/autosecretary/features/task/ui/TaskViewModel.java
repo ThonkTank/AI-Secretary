@@ -24,12 +24,11 @@ import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 
-/**
- * Coordinates task-list presentation state for the task screen.
- */
 public class TaskViewModel extends AndroidViewModel {
     private static final int MAX_DAY_OFFSET = 6;
 
@@ -49,6 +48,7 @@ public class TaskViewModel extends AndroidViewModel {
     private LocalDate day;
     private ListConfig activeListConfig = ListConfig.CHECKLIST;
     private boolean hasCalendarPermission = false;
+    private final Map<String, Boolean> expandedByTaskId = new HashMap<>();
 
     public TaskViewModel(Application app,
                          TaskAsyncDataService taskAsyncDataService,
@@ -127,6 +127,10 @@ public class TaskViewModel extends AndroidViewModel {
         filterList();
     }
 
+    public boolean isManageMode() {
+        return activeListConfig == ListConfig.MANAGE;
+    }
+
     public void updateList() {
         regenerateScheduleUseCase.execute(this::refreshList);
     }
@@ -165,7 +169,7 @@ public class TaskViewModel extends AndroidViewModel {
         Comparator<ViewSlot> comparator = activeListConfig.comparator();
 
         if (activeListConfig.groupByTaskParent) {
-            masterList.sortByTask(comparator);
+            masterList.sortByTask(comparator, slot -> expandedByTaskId.getOrDefault(slot.item.taskId, true));
         } else {
             masterList.sortBySlot(comparator);
         }
@@ -199,6 +203,20 @@ public class TaskViewModel extends AndroidViewModel {
             return;
         }
         taskAsyncDataService.stopTimer(slotId, this::refreshList);
+    }
+
+    public void toggleExpanded(ViewSlot viewSlot) {
+        if (activeListConfig != ListConfig.MANAGE || !viewSlot.hasChildren) {
+            return;
+        }
+        String taskId = viewSlot.item.taskId;
+        boolean currentlyExpanded = expandedByTaskId.getOrDefault(taskId, true);
+        expandedByTaskId.put(taskId, !currentlyExpanded);
+        sortList();
+    }
+
+    public boolean isExpanded(ViewSlot viewSlot) {
+        return expandedByTaskId.getOrDefault(viewSlot.item.taskId, true);
     }
 
     private void refreshList() {

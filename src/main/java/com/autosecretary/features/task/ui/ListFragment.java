@@ -70,8 +70,11 @@ public class ListFragment extends Fragment {
                     }
                 },
                 vm::incrementProgress,
-                vm::decrementProgress
+                vm::decrementProgress,
+                vm::toggleExpanded,
+                vm::isExpanded
         );
+        adapter.setManageMode(vm.isManageMode());
 
         recyclerView.setAdapter(adapter);
         vm.getList().observe(getViewLifecycleOwner(), items -> {
@@ -130,6 +133,7 @@ public class ListFragment extends Fragment {
                 } else {
                     vm.applyManagePreset();
                 }
+                adapter.setManageMode(vm.isManageMode());
             }
         });
     }
