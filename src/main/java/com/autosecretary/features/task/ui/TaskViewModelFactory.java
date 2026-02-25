@@ -7,7 +7,9 @@ import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
+import com.autosecretary.features.task.application.DecrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.DeleteTaskUseCase;
+import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
@@ -19,19 +21,25 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
     private final DeleteTaskUseCase deleteTaskUseCase;
     private final CalendarReader calendarReader;
+    private final IncrementTaskProgressUseCase incrementTaskProgressUseCase;
+    private final DecrementTaskProgressUseCase decrementTaskProgressUseCase;
 
     public TaskViewModelFactory(Application app,
                                 TaskAsyncDataService taskAsyncDataService,
                                 CheckOffTaskUseCase checkOffTaskUseCase,
                                 RegenerateScheduleUseCase regenerateScheduleUseCase,
                                 DeleteTaskUseCase deleteTaskUseCase,
-                                CalendarReader calendarReader) {
+                                CalendarReader calendarReader,
+                                IncrementTaskProgressUseCase incrementTaskProgressUseCase,
+                                DecrementTaskProgressUseCase decrementTaskProgressUseCase) {
         this.app = app;
         this.taskAsyncDataService = taskAsyncDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
         this.deleteTaskUseCase = deleteTaskUseCase;
         this.calendarReader = calendarReader;
+        this.incrementTaskProgressUseCase = incrementTaskProgressUseCase;
+        this.decrementTaskProgressUseCase = decrementTaskProgressUseCase;
     }
 
     @NonNull
@@ -45,7 +53,9 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
                     checkOffTaskUseCase,
                     regenerateScheduleUseCase,
                     deleteTaskUseCase,
-                    calendarReader
+                    calendarReader,
+                    incrementTaskProgressUseCase,
+                    decrementTaskProgressUseCase
             );
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());

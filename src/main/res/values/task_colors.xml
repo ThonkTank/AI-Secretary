@@ -55,6 +55,10 @@
 
     <color name="task_in_progress_background">@color/task_status_in_progress_background</color>
     <color name="task_in_progress_checkbox_tint">@color/task_status_in_progress_checkbox_tint</color>
+    <color name="task_progress_text">@color/task_text_on_surface_emphasis</color>
+    <color name="task_progress_text_disabled">@color/task_text_on_surface_muted</color>
+    <color name="task_progress_button_tint">@color/task_color_primary</color>
+    <color name="task_progress_button_tint_disabled">@color/task_color_on_surface_muted</color>
 
     <color name="task_calendar_background">#FFEAF2FA</color>
     <color name="task_calendar_outline">#FF9BB7D4</color>

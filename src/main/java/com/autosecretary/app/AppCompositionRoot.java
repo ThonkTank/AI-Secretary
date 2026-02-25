@@ -6,16 +6,6 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.autosecretary.database.AppDatabase;
-import com.autosecretary.features.task.application.CheckOffTaskUseCase;
-import com.autosecretary.features.task.application.DeleteTaskUseCase;
-import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
-import com.autosecretary.features.task.application.TaskAsyncDataService;
-import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
-import com.autosecretary.features.task.application.TaskListItemMapper;
-import com.autosecretary.features.task.data.TaskDAO;
-import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
-import com.autosecretary.features.task.domain.TaskCompletionService;
-import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.application.importing.ClaudeApiKeyStore;
@@ -24,8 +14,20 @@ import com.autosecretary.features.budget.application.importing.StatementFilePars
 import com.autosecretary.features.budget.data.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
+import com.autosecretary.features.task.application.CheckOffTaskUseCase;
+import com.autosecretary.features.task.application.DecrementTaskProgressUseCase;
+import com.autosecretary.features.task.application.DeleteTaskUseCase;
+import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
+import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
+import com.autosecretary.features.task.application.TaskAsyncDataService;
+import com.autosecretary.features.task.application.TaskListItemMapper;
 import com.autosecretary.features.task.application.TaskScheduleConfigRepository;
 import com.autosecretary.features.task.application.TaskScheduleConfigService;
+import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
+import com.autosecretary.features.task.data.TaskDAO;
+import com.autosecretary.features.task.domain.TaskCompletionService;
+import com.autosecretary.features.task.domain.TaskLifecycleManager;
+import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 import com.autosecretary.features.task.ui.TaskViewModelFactory;
 
 import java.util.concurrent.ExecutorService;
@@ -95,6 +97,14 @@ public class AppCompositionRoot {
                 taskUseCaseExecutor,
                 mainHandler::post
         );
+        IncrementTaskProgressUseCase incrementTaskProgressUseCase = new IncrementTaskProgressUseCase(
+                taskDao,
+                taskUseCaseExecutor
+        );
+        DecrementTaskProgressUseCase decrementTaskProgressUseCase = new DecrementTaskProgressUseCase(
+                taskDao,
+                taskUseCaseExecutor
+        );
 
         this.taskScheduleConfigService = new TaskScheduleConfigService(
                 scheduleConfigRepository,
@@ -108,7 +118,9 @@ public class AppCompositionRoot {
                 checkOffTaskUseCase,
                 regenerateScheduleUseCase,
                 deleteTaskUseCase,
-                calendarReader
+                calendarReader,
+                incrementTaskProgressUseCase,
+                decrementTaskProgressUseCase
         );
 
         return taskViewModelFactory;

@@ -40,11 +40,17 @@ public class TaskListItem {
     public final int score;
     public final boolean completed;
     public final boolean inProgress;
+    public final int progressCurrent;
+    public final int progressTarget;
+    public final String progressUnit;
+    public final int progressStepDelta;
     public final boolean timerRunning;
 
     public TaskListItem(ItemType itemType, String taskId, String slotId, String slotParentId, List<String> parentTaskIds,
                         String title, LocalDate day, LocalTime start, LocalTime end, LocalDate deadline,
-                        int streak, int score, boolean completed, boolean inProgress, boolean timerRunning) {
+                        int streak, int score, boolean completed, boolean inProgress,
+                        boolean timerRunning,
+                        int progressCurrent, int progressTarget, String progressUnit, int progressStepDelta) {
         this.itemType = itemType;
         this.taskId = taskId;
         this.slotId = slotId;
@@ -60,12 +66,21 @@ public class TaskListItem {
         this.completed = completed;
         this.inProgress = inProgress;
         this.timerRunning = timerRunning;
+        this.progressCurrent = progressCurrent;
+        this.progressTarget = progressTarget;
+        this.progressUnit = progressUnit;
+        this.progressStepDelta = progressStepDelta;
+    }
+
+    public boolean hasProgressTarget() {
+        return progressTarget > 0;
     }
 
     public static TaskListItem task(String taskId, String slotId, String slotParentId, List<String> parentTaskIds,
                                     String title, LocalDate day, LocalTime start, LocalTime end, LocalDate deadline,
                                     int streak, int score, boolean completed, boolean inProgress,
-                                    boolean timerRunning) {
+                                    boolean timerRunning,
+                                    int progressCurrent, int progressTarget, String progressUnit, int progressStepDelta) {
         return new TaskListItem(
                 ItemType.TASK,
                 taskId,
@@ -81,7 +96,11 @@ public class TaskListItem {
                 score,
                 completed,
                 inProgress,
-                timerRunning
+                timerRunning,
+                progressCurrent,
+                progressTarget,
+                progressUnit,
+                progressStepDelta
         );
     }
 
@@ -101,7 +120,11 @@ public class TaskListItem {
                 0,
                 false,
                 false,
-                false
+                false,
+                0,
+                0,
+                "",
+                0
         );
     }
 

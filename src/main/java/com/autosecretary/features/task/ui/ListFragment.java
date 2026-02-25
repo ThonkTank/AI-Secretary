@@ -68,7 +68,9 @@ public class ListFragment extends Fragment {
                     } else {
                         vm.startTimer(viewSlot.item.slotId);
                     }
-                }
+                },
+                vm::incrementProgress,
+                vm::decrementProgress
         );
 
         recyclerView.setAdapter(adapter);
