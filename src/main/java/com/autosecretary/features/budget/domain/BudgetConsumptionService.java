@@ -3,7 +3,6 @@ package com.autosecretary.features.budget.domain;
 import com.autosecretary.features.budget.data.BudgetLimit;
 import com.autosecretary.features.budget.data.Transaction;
 
-import java.time.LocalDate;
 import java.util.List;
 
 public class BudgetConsumptionService {
@@ -17,7 +16,7 @@ public class BudgetConsumptionService {
             if (!budgetLimit.categoryId.equals(tx.categoryId)) {
                 continue;
             }
-            String monthOfTransaction = toYearMonth(tx.transactionDate);
+            String monthOfTransaction = YearMonthKey.from(tx.transactionDate);
             if (!budgetLimit.yearMonth.equals(monthOfTransaction)) {
                 continue;
             }
@@ -30,9 +29,6 @@ public class BudgetConsumptionService {
         return new BudgetConsumption(spent, remaining, usage, remaining < 0);
     }
 
-    private String toYearMonth(LocalDate date) {
-        return String.format("%d-%02d", date.getYear(), date.getMonthValue());
-    }
 
     public record BudgetConsumption(
             int spentCents,

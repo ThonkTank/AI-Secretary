@@ -5,8 +5,8 @@ import com.autosecretary.features.budget.data.BudgetRepository;
 import com.autosecretary.features.budget.data.Transaction;
 import com.autosecretary.features.budget.domain.AccountBalanceRecalculationService;
 import com.autosecretary.features.budget.domain.BudgetConsumptionService;
+import com.autosecretary.features.budget.domain.YearMonthKey;
 
-import java.time.LocalDate;
 import java.util.List;
 
 public class CreateOrUpdateTransactionUseCase {
@@ -44,7 +44,7 @@ public class CreateOrUpdateTransactionUseCase {
         if (transaction.isIncome || transaction.categoryId == null || transaction.transactionDate == null) {
             return;
         }
-        String yearMonth = toYearMonth(transaction.transactionDate);
+        String yearMonth = YearMonthKey.from(transaction.transactionDate);
         BudgetLimit limit = repository.findBudgetLimit(transaction.categoryId, yearMonth);
         if (limit == null) {
             return;
@@ -54,7 +54,4 @@ public class CreateOrUpdateTransactionUseCase {
         repository.saveBudgetLimit(limit);
     }
 
-    private String toYearMonth(LocalDate date) {
-        return String.format("%d-%02d", date.getYear(), date.getMonthValue());
-    }
 }

@@ -5,8 +5,7 @@ import com.autosecretary.features.budget.data.BudgetRepository;
 import com.autosecretary.features.budget.data.Transaction;
 import com.autosecretary.features.budget.domain.AccountBalanceRecalculationService;
 import com.autosecretary.features.budget.domain.BudgetConsumptionService;
-
-import java.time.LocalDate;
+import com.autosecretary.features.budget.domain.YearMonthKey;
 
 public class DeleteTransactionUseCase {
     private final BudgetRepository repository;
@@ -37,7 +36,7 @@ public class DeleteTransactionUseCase {
         }
 
         if (!transaction.isIncome && transaction.categoryId != null && transaction.transactionDate != null) {
-            String yearMonth = toYearMonth(transaction.transactionDate);
+            String yearMonth = YearMonthKey.from(transaction.transactionDate);
             BudgetLimit limit = repository.findBudgetLimit(transaction.categoryId, yearMonth);
             if (limit != null) {
                 limit.spentCents = consumptionService
@@ -48,7 +47,4 @@ public class DeleteTransactionUseCase {
         }
     }
 
-    private String toYearMonth(LocalDate date) {
-        return String.format("%d-%02d", date.getYear(), date.getMonthValue());
-    }
 }

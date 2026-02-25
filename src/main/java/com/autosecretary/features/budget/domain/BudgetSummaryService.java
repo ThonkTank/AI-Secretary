@@ -3,7 +3,6 @@ package com.autosecretary.features.budget.domain;
 import com.autosecretary.features.budget.data.Account;
 import com.autosecretary.features.budget.data.Transaction;
 
-import java.time.LocalDate;
 import java.util.List;
 
 public class BudgetSummaryService {
@@ -19,8 +18,7 @@ public class BudgetSummaryService {
         int monthlyIncome = 0;
         int monthlyExpenses = 0;
         for (Transaction tx : transactions) {
-            LocalDate txDate = tx.transactionDate;
-            if (txDate == null || !toYearMonth(txDate).equals(yearMonth)) {
+            if (tx.transactionDate == null || !YearMonthKey.from(tx.transactionDate).equals(yearMonth)) {
                 continue;
             }
             if (tx.isIncome) {
@@ -33,9 +31,6 @@ public class BudgetSummaryService {
         return new Summary(totalBalance, monthlyIncome, monthlyExpenses, monthlyIncome - monthlyExpenses);
     }
 
-    private String toYearMonth(LocalDate date) {
-        return String.format("%d-%02d", date.getYear(), date.getMonthValue());
-    }
 
     public record Summary(
             int totalBalanceCents,
