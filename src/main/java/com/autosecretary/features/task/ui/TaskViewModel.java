@@ -9,8 +9,8 @@ import androidx.lifecycle.MutableLiveData;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
-import com.autosecretary.features.task.ui.model.ViewSlotList;
-import com.autosecretary.features.task.ui.model.ViewSlotList.ViewSlot;
+import com.autosecretary.features.task.ui.state.ViewSlotList;
+import com.autosecretary.features.task.ui.state.ViewSlotList.ViewSlot;
 
 import java.time.LocalDate;
 import java.util.Comparator;

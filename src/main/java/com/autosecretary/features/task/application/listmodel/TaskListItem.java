@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.application.model;
+package com.autosecretary.features.task.application.listmodel;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -9,7 +9,7 @@ import java.util.List;
  * Flat, immutable display model extracted from {@link com.autosecretary.features.task.data.Task}
  * and {@link com.autosecretary.features.task.data.TaskSlot} by
  * {@link com.autosecretary.features.task.application.mapper.TaskListItemMapper}.
- * Used by {@link com.autosecretary.views.models.ViewSlotList} for filtering, sorting, and display.
+ * Used by {@link com.autosecretary.features.task.ui.state.ViewSlotList} for filtering, sorting, and display.
  */
 public class TaskListItem {
     /** Categorizes deadline proximity for color-coded display in the list. */

@@ -8,7 +8,7 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.internal.mapper.TaskEditStateMapper;
-import com.autosecretary.features.task.ui.model.TaskEditState;
+import com.autosecretary.features.task.ui.state.TaskEditState;
 
 import java.util.ArrayList;
 
