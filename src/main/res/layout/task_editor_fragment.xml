@@ -42,6 +42,43 @@
                 android:minLines="2"/>
         </com.google.android.material.textfield.TextInputLayout>
 
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/TextAppearance.AISecretary.Editor.Label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/task_editor_goal_appearance_label"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xs"
+                android:hint="@string/task_editor_goal_icon_hint">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/EditGoalIcon"
+                    style="@style/Widget.AISecretary.Editor.TextField"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:maxLength="2"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <GridLayout
+                android:id="@+id/GoalColorGrid"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xs"
+                android:columnCount="5"/>
+        </LinearLayout>
+
         <Spinner
             android:id="@+id/EditPriority"
             style="@style/Widget.AISecretary.Editor.Spinner"

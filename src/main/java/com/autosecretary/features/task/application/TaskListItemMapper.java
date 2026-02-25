@@ -2,6 +2,7 @@ package com.autosecretary.features.task.application;
 
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskRelation;
+import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskSlot;
 
 import java.time.LocalDate;
@@ -51,7 +52,10 @@ public class TaskListItemMapper {
                 task.core.history.currentStreak,
                 slot.score,
                 slot.completed,
-                slot.realStart != null && !slot.completed
+                slot.realStart != null && !slot.completed,
+                task.core.progress != null && task.core.progress.target > 0,
+                task.core.goalIcon != null ? task.core.goalIcon : TaskCore.DEFAULT_GOAL_ICON,
+                task.core.goalColorHex != null ? task.core.goalColorHex : TaskCore.DEFAULT_GOAL_COLOR_HEX
         );
     }
 }

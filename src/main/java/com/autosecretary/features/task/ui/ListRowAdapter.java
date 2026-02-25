@@ -5,6 +5,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.LayoutInflater;
@@ -40,6 +41,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     static class TaskRowViewHolder extends RecyclerView.ViewHolder {
         TextView title;
+        TextView goalIcon;
         TextView start;
         TextView end;
         CheckBox checkBox;
@@ -50,6 +52,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         TaskRowViewHolder(View taskRow) {
             super(taskRow);
             this.title = taskRow.findViewById(R.id.TaskTitle);
+            this.goalIcon = taskRow.findViewById(R.id.GoalIcon);
             this.start = taskRow.findViewById(R.id.StartTime);
             this.end = taskRow.findViewById(R.id.EndTime);
             this.checkBox = taskRow.findViewById(R.id.TaskCheckBox);
@@ -80,6 +83,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
         bindIndentation(holder, viewSlot.depth);
         bindTimeRange(holder, item);
+        bindGoalAppearance(holder, item);
         bindDeadline(holder, item);
         bindStreak(holder, item);
         bindProgressState(holder, item);
@@ -105,6 +109,22 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
                 : context.getString(R.string.task_time_fallback_end);
         holder.start.setText(startString);
         holder.end.setText(endString);
+    }
+
+
+    private void bindGoalAppearance(TaskRowViewHolder holder, TaskListItem item) {
+        if (!item.goalTask || item.goalIcon == null || item.goalIcon.trim().isEmpty()) {
+            holder.goalIcon.setVisibility(View.GONE);
+            return;
+        }
+
+        holder.goalIcon.setText(item.goalIcon);
+        try {
+            holder.goalIcon.setTextColor(Color.parseColor(item.goalColorHex));
+        } catch (Exception ex) {
+            holder.goalIcon.setTextColor(holder.title.getCurrentTextColor());
+        }
+        holder.goalIcon.setVisibility(View.VISIBLE);
     }
 
     private void bindDeadline(TaskRowViewHolder holder, TaskListItem item) {

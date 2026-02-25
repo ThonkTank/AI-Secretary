@@ -3,6 +3,7 @@ package com.autosecretary.features.task.ui.edit;
 import android.app.Dialog;
 import android.app.TimePickerDialog;
 import android.os.Bundle;
+import android.graphics.Color;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -27,6 +28,7 @@ import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormValid
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditSectionBinder;
 import com.autosecretary.features.task.ui.edit.TaskEditFormViews;
 import com.autosecretary.features.task.ui.edit.internal.mapper.TaskEditStateMapper;
+import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.ui.TaskViewModel;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputLayout;
@@ -48,6 +50,11 @@ public class TaskEditDialog extends DialogFragment {
 
     private static final int WEEK_DAY_COUNT = 7;
     private static final int DAY_PICKER_COLUMN_COUNT = 4;
+    private static final int GOAL_COLOR_COLUMN_COUNT = 5;
+    private static final String[] GOAL_COLORS = {
+        "#FFE53935", "#FFD81B60", "#FF8E24AA", "#FF5E35B1", "#FF1E88E5",
+        "#FF00ACC1", "#FF00897B", "#FF43A047", "#FFFB8C00", "#FF6D4C41"
+    };
 
     private TaskViewModel vm;
     private TaskEditSessionController editSessionController;
@@ -61,6 +68,9 @@ public class TaskEditDialog extends DialogFragment {
     private EditText titleView;
     private EditText descriptionView;
     private Spinner priorityView;
+    private EditText goalIconView;
+    private GridLayout goalColorGrid;
+    private String selectedGoalColorHex;
 
     private EditText deadlineView;
     private TextInputLayout deadlineInputLayout;
@@ -107,6 +117,12 @@ public class TaskEditDialog extends DialogFragment {
         titleView = basicInfoViews.titleView;
         descriptionView = basicInfoViews.descriptionView;
         priorityView = basicInfoViews.priorityView;
+
+        goalIconView = rootView.findViewById(R.id.EditGoalIcon);
+        goalColorGrid = rootView.findViewById(R.id.GoalColorGrid);
+        goalIconView.setText(editState.goalIcon != null ? editState.goalIcon : TaskCore.DEFAULT_GOAL_ICON);
+        selectedGoalColorHex = editState.goalColorHex != null ? editState.goalColorHex : TaskCore.DEFAULT_GOAL_COLOR_HEX;
+        buildGoalColorGrid();
 
         TaskEditSectionBinder.SchedulingViews schedulingViews = sectionBinder.bindScheduling();
         deadlineView = schedulingViews.deadlineView;
@@ -310,6 +326,53 @@ public class TaskEditDialog extends DialogFragment {
     }
 
 
+
+    private void buildGoalColorGrid() {
+        goalColorGrid.removeAllViews();
+        goalColorGrid.setColumnCount(GOAL_COLOR_COLUMN_COUNT);
+
+        for (int i = 0; i < GOAL_COLORS.length; i++) {
+            String hex = GOAL_COLORS[i];
+            View swatch = new View(requireContext());
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams(
+                GridLayout.spec(i / GOAL_COLOR_COLUMN_COUNT, 1f),
+                GridLayout.spec(i % GOAL_COLOR_COLUMN_COUNT, 1f)
+            );
+            int size = dimenPx(R.dimen.task_editor_goal_color_size);
+            int margin = dimenPx(R.dimen.task_editor_goal_color_margin);
+            params.width = size;
+            params.height = size;
+            params.setMargins(margin, margin, margin, margin);
+            swatch.setLayoutParams(params);
+
+            try {
+                swatch.setBackgroundColor(Color.parseColor(hex));
+            } catch (IllegalArgumentException ex) {
+                continue;
+            }
+
+            swatch.setTag(hex);
+            swatch.setOnClickListener(v -> {
+                selectedGoalColorHex = hex;
+                updateGoalColorSelection();
+            });
+            goalColorGrid.addView(swatch);
+        }
+
+        updateGoalColorSelection();
+    }
+
+    private void updateGoalColorSelection() {
+        for (int i = 0; i < goalColorGrid.getChildCount(); i++) {
+            View swatch = goalColorGrid.getChildAt(i);
+            Object tag = swatch.getTag();
+            boolean selected = tag instanceof String && ((String) tag).equals(selectedGoalColorHex);
+            swatch.setScaleX(selected ? 1.25f : 1.0f);
+            swatch.setScaleY(selected ? 1.25f : 1.0f);
+            swatch.setAlpha(selected ? 1.0f : 0.75f);
+        }
+    }
+
     private int dimenPx(@DimenRes int dimenResId) {
         return requireContext().getResources().getDimensionPixelSize(dimenResId);
     }
@@ -322,6 +385,12 @@ public class TaskEditDialog extends DialogFragment {
             (Priority) priorityView.getSelectedItem(),
             TaskEditPresenter.InputDefaults.PRIORITY
         );
+        input.goalIcon = goalIconView.getText() != null && !goalIconView.getText().toString().trim().isEmpty()
+            ? goalIconView.getText().toString().trim()
+            : TaskEditPresenter.InputDefaults.GOAL_ICON;
+        input.goalColorHex = selectedGoalColorHex != null
+            ? selectedGoalColorHex
+            : TaskEditPresenter.InputDefaults.GOAL_COLOR_HEX;
 
         input.closeOnMiss = closeOnMissView.isChecked();
         input.minDuration = TaskEditPresenter.parseIntSafe(

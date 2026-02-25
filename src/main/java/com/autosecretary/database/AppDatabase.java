@@ -42,7 +42,7 @@ import com.autosecretary.features.task.data.TaskSlot;
                 BudgetImportEntity.class,
                 BudgetRecurringTemplateEntity.class
         },
-        version = 11,
+        version = 12,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -110,6 +110,17 @@ public abstract class AppDatabase extends RoomDatabase {
             database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_yearMonth ON budget_transaction(yearMonth)");
             database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_bookingDate ON budget_transaction(bookingDate)");
             database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_importHash ON budget_transaction(importHash)");
+
+            database.execSQL("ALTER TABLE budget_category ADD COLUMN icon TEXT NOT NULL DEFAULT '🏷️'");
+            database.execSQL("ALTER TABLE budget_category ADD COLUMN colorHex TEXT NOT NULL DEFAULT '#9E9E9E'");
+        }
+    };
+
+    private static final Migration MIGRATION_11_12 = new Migration(11, 12) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE task_core ADD COLUMN goalIcon TEXT NOT NULL DEFAULT '" + TaskCore.DEFAULT_GOAL_ICON + "'");
+            database.execSQL("ALTER TABLE task_core ADD COLUMN goalColorHex TEXT NOT NULL DEFAULT '" + TaskCore.DEFAULT_GOAL_COLOR_HEX + "'");
         }
     };
 
@@ -125,21 +136,13 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public abstract BudgetRecurringTemplateDao budgetRecurringTemplateDao();
 
-    private static final Migration MIGRATION_10_11 = new Migration(10, 11) {
-        @Override
-        public void migrate(SupportSQLiteDatabase database) {
-            database.execSQL("ALTER TABLE budget_category ADD COLUMN icon TEXT NOT NULL DEFAULT '🏷️'");
-            database.execSQL("ALTER TABLE budget_category ADD COLUMN colorHex TEXT NOT NULL DEFAULT '#9E9E9E'");
-        }
-    };
-
     // Singleton-Pattern
     private static AppDatabase instance;
 
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context, AppDatabase.class, "autosecretary.db")
-                    .addMigrations(MIGRATION_10_11)
+                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12)
                     .fallbackToDestructiveMigration()
                     .build();
         }

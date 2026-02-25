@@ -48,6 +48,15 @@
         android:layout_height="wrap_content"
         android:buttonTint="@color/task_color_primary"/>
 
+
+    <TextView
+        android:id="@+id/GoalIcon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/spacing_xs"
+        android:textAppearance="@style/TextAppearance.Task.Title"
+        android:visibility="gone"/>
+
     <TextView
         android:id="@+id/TaskTitle"
         android:layout_width="0dp"

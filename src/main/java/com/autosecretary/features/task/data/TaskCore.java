@@ -19,11 +19,16 @@ import androidx.annotation.NonNull;
  */
 @Entity (tableName = "task_core")
 public class TaskCore {
+    public static final String DEFAULT_GOAL_ICON = "🎯";
+    public static final String DEFAULT_GOAL_COLOR_HEX = "#FF5E35B1";
+
     // Basic
     @PrimaryKey() @NonNull
     public String id = UUID.randomUUID().toString();
     public String title;
     public String description;
+    @NonNull public String goalIcon = DEFAULT_GOAL_ICON;
+    @NonNull public String goalColorHex = DEFAULT_GOAL_COLOR_HEX;
 
     //scheduling
     public Priority priority = Priority.MEDIUM;
@@ -118,4 +123,3 @@ public class TaskCore {
 
 
 }
-

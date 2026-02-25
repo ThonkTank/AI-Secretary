@@ -33,6 +33,8 @@
 
     <string name="task_editor_hint_title">Titel</string>
     <string name="task_editor_hint_description">Beschreibung</string>
+    <string name="task_editor_goal_appearance_label">Goal-Darstellung</string>
+    <string name="task_editor_goal_icon_hint">Emoji</string>
     <string name="task_editor_deadline_label">Frist:</string>
     <string name="task_editor_deadline_none">Keine Frist</string>
     <string name="task_editor_deadline_pick_content_description">Frist auswählen</string>

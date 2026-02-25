@@ -4,6 +4,7 @@ import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskPrefSlot;
+import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.edit.internal.mapper.TaskEditStateMapper;
 
@@ -95,6 +96,8 @@ public class TaskEditPresenter {
         editState.title = safeInput.title;
         editState.description = safeInput.description;
         editState.priority = coalesce(safeInput.priority, InputDefaults.PRIORITY);
+        editState.goalIcon = safeInput.goalIcon != null ? safeInput.goalIcon : InputDefaults.GOAL_ICON;
+        editState.goalColorHex = safeInput.goalColorHex != null ? safeInput.goalColorHex : InputDefaults.GOAL_COLOR_HEX;
 
         editState.closeOnMiss = safeInput.closeOnMiss;
         editState.minDuration = safeInput.minDuration;
@@ -192,6 +195,9 @@ public class TaskEditPresenter {
         public static final int REPETITION_PER_PERIOD = 1;
         public static final Period REPETITION_PERIOD_UNIT = Period.DAY;
 
+        public static final String GOAL_ICON = TaskCore.DEFAULT_GOAL_ICON;
+        public static final String GOAL_COLOR_HEX = TaskCore.DEFAULT_GOAL_COLOR_HEX;
+
         public static final String UNIT = "";
         public static final int TARGET = 0;
         public static final int CURRENT = 0;
@@ -204,6 +210,8 @@ public class TaskEditPresenter {
         public String title;
         public String description;
         public Priority priority = InputDefaults.PRIORITY;
+        public String goalIcon = InputDefaults.GOAL_ICON;
+        public String goalColorHex = InputDefaults.GOAL_COLOR_HEX;
 
         public boolean closeOnMiss;
         public int minDuration = InputDefaults.MIN_DURATION;
