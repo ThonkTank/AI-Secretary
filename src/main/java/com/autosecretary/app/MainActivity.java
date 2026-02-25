@@ -28,7 +28,7 @@ public class MainActivity extends AppCompatActivity {
             if (item.getItemId() == R.id.tab_schedule) {
                 fragment = new ListFragment();
             } else {
-                //Placeholder
+                // Temporary fallback: non-schedule tabs intentionally route to ListFragment until dedicated tab fragments are implemented.
                 fragment = new ListFragment();
             }
             getSupportFragmentManager().beginTransaction()
