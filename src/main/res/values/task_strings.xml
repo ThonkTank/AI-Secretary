@@ -73,6 +73,13 @@
     <string name="budget_summary">Erfasse Buchungen oder importiere einen Kontoauszug.</string>
     <string name="budget_add_transaction">Transaktion hinzufügen</string>
     <string name="budget_import_statement">Kontoauszug importieren</string>
+    <string name="budget_add_transfer">Überweisung</string>
+    <string name="budget_transfer_title">Überweisung</string>
+    <string name="budget_transfer_save">Überweisen</string>
+    <string name="budget_transfer_source_account">Quellkonto</string>
+    <string name="budget_transfer_target_account">Zielkonto</string>
+    <string name="budget_transfer_date_hint">Datum (YYYY-MM-DD)</string>
+    <string name="budget_transfer_requires_two_accounts">Für Überweisungen werden mindestens zwei Konten benötigt.</string>
     <string name="budget_empty_state">Noch keine Buchungen. Starte mit „Transaktion hinzufügen“.</string>
     <string name="budget_loading">Budget wird geladen</string>
     <string name="budget_retry">Erneut versuchen</string>
@@ -80,16 +87,20 @@
     <string name="budget_demo_transaction_amount">-42,90 €</string>
 
     <string name="budget_dialog_title">Transaktion hinzufügen</string>
+    <string name="budget_dialog_edit_title">Transaktion bearbeiten</string>
     <string name="budget_dialog_amount_hint">Betrag (z.B. 42,90)</string>
     <string name="budget_dialog_note_hint">Beschreibung (optional)</string>
     <string name="budget_dialog_type_expense">Ausgabe</string>
     <string name="budget_dialog_type_income">Einnahme</string>
     <string name="budget_dialog_save">Hinzufügen</string>
+    <string name="budget_dialog_update">Speichern</string>
     <string name="budget_dialog_cancel">Abbrechen</string>
     <string name="budget_import_success">%1$d Buchungen importiert.</string>
     <string name="budget_import_error">Import fehlgeschlagen: %1$s</string>
     <string name="budget_transaction_content_description">Transaktion: %1$s, %2$s</string>
     <string name="budget_dialog_category_label">Kategorie</string>
+    <string name="budget_dialog_account_label">Konto</string>
+    <string name="budget_dialog_date_hint">Datum (YYYY-MM-DD)</string>
     <string name="budget_month_previous">Vorheriger Monat</string>
     <string name="budget_month_next">Nächster Monat</string>
     <string name="budget_delete_title">Transaktion löschen?</string>
@@ -107,9 +118,15 @@
     <string name="budget_recurring_pattern_interval">Alle %1$d Tage</string>
     <string name="budget_recurring_pattern_unknown">Unbekanntes Muster</string>
 
+    <string name="budget_account_selector">Konto auswählen</string>
+    <string name="budget_range_30d">30T</string>
+    <string name="budget_range_3m">3M</string>
+    <string name="budget_range_12m">12M</string>
+    <string name="budget_chart_title">Saldo-Verlauf</string>
     <string name="budget_summary_income">Einnahmen</string>
     <string name="budget_summary_expense">Ausgaben</string>
     <string name="budget_summary_net">Saldo</string>
+    <string name="budget_summary_free_budget">Freies Budget (7 Tage)</string>
     <string name="budget_limits_header">Budgetlimits</string>
     <string name="budget_set_limit_button">Budgetlimit setzen</string>
     <string name="budget_edit_limit_title">Budgetlimit bearbeiten</string>

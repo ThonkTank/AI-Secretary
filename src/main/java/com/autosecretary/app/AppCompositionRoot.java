@@ -16,11 +16,13 @@ import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
+import com.autosecretary.features.budget.application.importing.ClaudeApiKeyStore;
+import com.autosecretary.features.budget.application.importing.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
+import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.data.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
-import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
 import com.autosecretary.features.task.ui.TaskViewModelFactory;
 
 import java.util.concurrent.ExecutorService;
@@ -101,18 +103,22 @@ public class AppCompositionRoot {
         BudgetRoomRepository repository = new BudgetRoomRepository(
                 db.budgetLookupDao(),
                 db.transactionDao(),
-                db.budgetLimitDao()
+                db.budgetLimitDao(),
+                db.budgetRecurringTemplateDao()
         );
 
         BudgetImportRoomRepository importRepository = new BudgetImportRoomRepository(
                 db.budgetImportDao(),
                 db.budgetRecurringTemplateDao(),
                 db.transactionDao(),
-                db.budgetLookupDao(),
-                () -> BudgetWidgetProvider.notifyWidgetUpdate(app)
+                db.budgetLookupDao()
         );
 
-        StatementFileParser parser = new StatementFileParser();
+        StatementFileParser parser = new StatementFileParser(
+                new ClaudeStatementApiClient(),
+                new ClaudeApiKeyStore(app),
+                importRepository
+        );
 
         BudgetImportUseCase importUseCase = new BudgetImportUseCase(
                 importRepository, parser, taskUseCaseExecutor
@@ -122,6 +128,9 @@ public class AppCompositionRoot {
                 importRepository, taskUseCaseExecutor
         );
 
+        CalculateFreeBudgetUseCase calculateFreeBudgetUseCase =
+                new CalculateFreeBudgetUseCase(repository);
+
         budgetViewModelFactory = new BudgetViewModelFactory(
                 repository,
                 parser,
@@ -129,7 +138,7 @@ public class AppCompositionRoot {
                 mainHandler::post,
                 importUseCase,
                 applyRecurringUseCase,
-                () -> BudgetWidgetProvider.notifyWidgetUpdate(app)
+                calculateFreeBudgetUseCase
         );
 
         return budgetViewModelFactory;
