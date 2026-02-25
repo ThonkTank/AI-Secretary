@@ -3,6 +3,7 @@ package com.autosecretary.features.budget.data;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 
 public class BudgetRoomRepository implements BudgetRepository {
@@ -47,7 +48,56 @@ public class BudgetRoomRepository implements BudgetRepository {
     }
 
     @Override public void deleteTransaction(String transactionId) {
-        transactionDao.deleteById(transactionId);
+        transactionDao.deleteWithLinked(transactionId);
+    }
+
+    @Override
+    public void createTransfer(String sourceAccountId,
+                               String targetAccountId,
+                               long amountCents,
+                               LocalDate bookingDate,
+                               String note) {
+        String yearMonth = YearMonth.from(bookingDate).toString();
+
+        BudgetTransactionEntity debit = new BudgetTransactionEntity(
+                sourceAccountId,
+                null,
+                BudgetTransactionEntity.TransactionType.EXPENSE,
+                amountCents,
+                bookingDate,
+                yearMonth
+        );
+        debit.note = note;
+
+        BudgetTransactionEntity credit = new BudgetTransactionEntity(
+                targetAccountId,
+                null,
+                BudgetTransactionEntity.TransactionType.INCOME,
+                amountCents,
+                bookingDate,
+                yearMonth
+        );
+        credit.note = note;
+
+        transactionDao.createTransferPair(debit, credit);
+    }
+
+    @Override
+    public boolean updateTransfer(String transactionId,
+                                  String sourceAccountId,
+                                  String targetAccountId,
+                                  long amountCents,
+                                  LocalDate bookingDate,
+                                  String note) {
+        return transactionDao.updateTransferPair(
+                transactionId,
+                sourceAccountId,
+                targetAccountId,
+                amountCents,
+                bookingDate,
+                YearMonth.from(bookingDate).toString(),
+                note
+        );
     }
 
     @Override public void saveBudgetLimit(BudgetLimit budgetLimit) {

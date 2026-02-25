@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.autosecretary.features.budget.application.CreateTransferUseCase;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
@@ -159,6 +160,7 @@ public class BudgetViewModel extends ViewModel {
     private final Consumer<Runnable> postToMain;
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
+    private final CreateTransferUseCase createTransferUseCase;
     private final AccountBalanceTimelineService balanceTimelineService;
 
     public BudgetViewModel(BudgetRepository repository,
@@ -173,6 +175,7 @@ public class BudgetViewModel extends ViewModel {
         this.postToMain = postToMain;
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
+        this.createTransferUseCase = new CreateTransferUseCase(repository);
         this.balanceTimelineService = new AccountBalanceTimelineService();
         ensureDefaultData();
     }
@@ -216,6 +219,7 @@ public class BudgetViewModel extends ViewModel {
             List<BudgetAccount> accountList = repository.findActiveAccounts();
             if (accountList.isEmpty()) {
                 repository.insertAccount(new BudgetAccount("Girokonto"));
+                repository.insertAccount(new BudgetAccount("Tagesgeld"));
                 repository.insertCategory(new BudgetCategory("Sonstiges", "EXPENSE"));
                 repository.insertCategory(new BudgetCategory("Gehalt", "INCOME"));
                 accountList = repository.findActiveAccounts();
@@ -332,8 +336,11 @@ public class BudgetViewModel extends ViewModel {
 
         for (MonthlyTransactionOverviewItem item : items) {
             boolean isExpense = "EXPENSE".equals(item.type);
+            boolean isTransfer = "INTERNAL_TRANSFER".equals(item.transactionKind);
             String label;
-            if (item.categoryName != null) {
+            if (isTransfer) {
+                label = item.note != null && !item.note.isBlank() ? "Überweisung · " + item.note : "Überweisung";
+            } else if (item.categoryName != null) {
                 label = item.categoryName;
             } else if (item.note != null) {
                 label = item.note;
@@ -348,10 +355,12 @@ public class BudgetViewModel extends ViewModel {
             );
             rows.add(new BudgetTransactionRow(item.transactionId, label, formattedAmount, isExpense));
 
-            if (isExpense) {
-                totalExpenseCents += item.amountCents;
-            } else {
-                totalIncomeCents += item.amountCents;
+            if (!isTransfer) {
+                if (isExpense) {
+                    totalExpenseCents += item.amountCents;
+                } else {
+                    totalIncomeCents += item.amountCents;
+                }
             }
         }
 
@@ -445,6 +454,80 @@ public class BudgetViewModel extends ViewModel {
             entity.note = note;
 
             repository.saveTransaction(entity);
+            loadOverviewOnExecutor();
+        });
+    }
+
+    public void addTransfer(String sourceAccountId,
+                            String targetAccountId,
+                            String amountStr,
+                            LocalDate date,
+                            String note) {
+        executor.execute(() -> {
+            long amountCents;
+            try {
+                String normalized = amountStr.replace(',', '.');
+                amountCents = Math.round(Double.parseDouble(normalized) * 100);
+            } catch (NumberFormatException e) {
+                postToMain.accept(() -> {
+                    uiState.setValue(BudgetUiState.ERROR);
+                    statusMessage.setValue("Ungültiger Betrag");
+                });
+                return;
+            }
+
+            CreateTransferUseCase.Result result = createTransferUseCase.execute(
+                    sourceAccountId,
+                    targetAccountId,
+                    amountCents,
+                    date,
+                    note
+            );
+            if (!result.success()) {
+                postToMain.accept(() -> {
+                    uiState.setValue(BudgetUiState.ERROR);
+                    statusMessage.setValue(result.errorMessage());
+                });
+                return;
+            }
+            loadOverviewOnExecutor();
+        });
+    }
+
+    public void updateTransfer(String transactionId,
+                               String sourceAccountId,
+                               String targetAccountId,
+                               String amountStr,
+                               LocalDate date,
+                               String note) {
+        executor.execute(() -> {
+            long amountCents;
+            try {
+                String normalized = amountStr.replace(',', '.');
+                amountCents = Math.round(Double.parseDouble(normalized) * 100);
+            } catch (NumberFormatException e) {
+                postToMain.accept(() -> {
+                    uiState.setValue(BudgetUiState.ERROR);
+                    statusMessage.setValue("Ungültiger Betrag");
+                });
+                return;
+            }
+
+            CreateTransferUseCase.Result result = createTransferUseCase.update(
+                    transactionId,
+                    sourceAccountId,
+                    targetAccountId,
+                    amountCents,
+                    date,
+                    note
+            );
+            if (!result.success()) {
+                postToMain.accept(() -> {
+                    uiState.setValue(BudgetUiState.ERROR);
+                    statusMessage.setValue(result.errorMessage());
+                });
+                return;
+            }
             loadOverviewOnExecutor();
         });
     }

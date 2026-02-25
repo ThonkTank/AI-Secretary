@@ -84,6 +84,16 @@ public class Converters {
         return value != null ? BudgetTransactionEntity.TransactionType.valueOf(value) : null;
     }
 
+
+    @TypeConverter
+    public static String fromBudgetTransactionKind(BudgetTransactionEntity.TransactionKind kind) {
+        return kind != null ? kind.name() : null;
+    }
+
+    @TypeConverter
+    public static BudgetTransactionEntity.TransactionKind toBudgetTransactionKind(String value) {
+        return value != null ? BudgetTransactionEntity.TransactionKind.valueOf(value) : null;
+    }
     @TypeConverter
     public static String fromDaySet(Set<DayOfWeek> days) {
         return days != null ? days.stream().map(DayOfWeek::name).collect(Collectors.joining(",")) : null;

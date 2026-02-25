@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -96,6 +97,7 @@ public class BudgetFragment extends Fragment {
         TextView summaryNet = view.findViewById(R.id.BudgetSummaryNet);
         TextView status = view.findViewById(R.id.BudgetStatusMessage);
         Button addTransaction = view.findViewById(R.id.BudgetAddTransactionButton);
+        Button addTransfer = view.findViewById(R.id.BudgetAddTransferButton);
         Button importStatement = view.findViewById(R.id.BudgetImportStatementButton);
         Button retry = view.findViewById(R.id.BudgetRetryButton);
         LinearLayout transactionList = view.findViewById(R.id.BudgetTransactionList);
@@ -202,6 +204,7 @@ public class BudgetFragment extends Fragment {
         monthPrev.setOnClickListener(v -> budgetViewModel.navigateMonth(-1));
         monthNext.setOnClickListener(v -> budgetViewModel.navigateMonth(1));
         addTransaction.setOnClickListener(v -> showAddTransactionDialog());
+        addTransfer.setOnClickListener(v -> showTransferDialog());
         importStatement.setOnClickListener(v ->
                 csvPickerLauncher.launch(new String[]{"text/csv", "text/plain", "application/pdf", "*/*"}));
         retry.setOnClickListener(v -> budgetViewModel.retry());
@@ -254,6 +257,76 @@ public class BudgetFragment extends Fragment {
 
                     budgetViewModel.addTransaction(amountStr, isExpense, categoryId,
                             note.isEmpty() ? null : note, LocalDate.now());
+                })
+                .setNegativeButton(R.string.budget_dialog_cancel, null)
+                .show();
+    }
+
+    private void showTransferDialog() {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.budget_transfer_dialog, null);
+        Spinner sourceAccountSpinner = dialogView.findViewById(R.id.BudgetTransferSourceAccount);
+        Spinner targetAccountSpinner = dialogView.findViewById(R.id.BudgetTransferTargetAccount);
+        TextInputEditText amountInput = dialogView.findViewById(R.id.BudgetTransferAmount);
+        TextInputEditText dateInput = dialogView.findViewById(R.id.BudgetTransferDate);
+        TextInputEditText noteInput = dialogView.findViewById(R.id.BudgetTransferNote);
+
+        List<BudgetAccount> accounts = budgetViewModel.getAccounts().getValue();
+        if (accounts == null || accounts.size() < 2) {
+            new AlertDialog.Builder(requireContext())
+                    .setMessage(R.string.budget_transfer_requires_two_accounts)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+            return;
+        }
+
+        List<String> accountNames = new ArrayList<>();
+        for (BudgetAccount account : accounts) {
+            accountNames.add(account.name);
+        }
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
+                android.R.layout.simple_spinner_item, accountNames);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        sourceAccountSpinner.setAdapter(adapter);
+        targetAccountSpinner.setAdapter(adapter);
+        if (accounts.size() > 1) {
+            targetAccountSpinner.setSelection(1);
+        }
+
+        dateInput.setText(LocalDate.now().toString());
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.budget_transfer_title)
+                .setView(dialogView)
+                .setPositiveButton(R.string.budget_transfer_save, (dialog, which) -> {
+                    int sourceIdx = sourceAccountSpinner.getSelectedItemPosition();
+                    int targetIdx = targetAccountSpinner.getSelectedItemPosition();
+                    String amountStr = amountInput.getText() != null
+                            ? amountInput.getText().toString().trim() : "";
+                    String note = noteInput.getText() != null
+                            ? noteInput.getText().toString().trim() : "";
+                    String dateStr = dateInput.getText() != null
+                            ? dateInput.getText().toString().trim() : "";
+
+                    LocalDate bookingDate;
+                    try {
+                        bookingDate = LocalDate.parse(dateStr);
+                    } catch (DateTimeParseException ex) {
+                        bookingDate = LocalDate.now();
+                    }
+
+                    if (sourceIdx < 0 || sourceIdx >= accounts.size()
+                            || targetIdx < 0 || targetIdx >= accounts.size()) {
+                        return;
+                    }
+
+                    budgetViewModel.addTransfer(
+                            accounts.get(sourceIdx).id,
+                            accounts.get(targetIdx).id,
+                            amountStr,
+                            bookingDate,
+                            note.isEmpty() ? null : note
+                    );
                 })
                 .setNegativeButton(R.string.budget_dialog_cancel, null)
                 .show();
