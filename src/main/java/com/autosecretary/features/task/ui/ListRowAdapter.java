@@ -30,12 +30,14 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     List<ViewSlot> viewSlots;
     Consumer<ViewSlot> onCheck;
     Consumer<ViewSlot> onEdit;
+    Consumer<ViewSlot> onTimerToggle;
     boolean interactionsEnabled = true;
 
-    public ListRowAdapter(List<ViewSlot> viewSlots, Consumer<ViewSlot> onCheck, Consumer<ViewSlot> onEdit) {
+    public ListRowAdapter(List<ViewSlot> viewSlots, Consumer<ViewSlot> onCheck, Consumer<ViewSlot> onEdit, Consumer<ViewSlot> onTimerToggle) {
         this.viewSlots = viewSlots;
         this.onCheck = onCheck;
         this.onEdit = onEdit;
+        this.onTimerToggle = onTimerToggle;
     }
 
     static class TaskRowViewHolder extends RecyclerView.ViewHolder {
@@ -45,6 +47,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         CheckBox checkBox;
         TextView deadlineCountdown;
         TextView streakDisplay;
+        ImageButton timerButton;
         ImageButton editButton;
 
         TaskRowViewHolder(View taskRow) {
@@ -55,6 +58,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             this.checkBox = taskRow.findViewById(R.id.TaskCheckBox);
             this.deadlineCountdown = taskRow.findViewById(R.id.DeadlineCountdown);
             this.streakDisplay = taskRow.findViewById(R.id.StreakDisplay);
+            this.timerButton = taskRow.findViewById(R.id.TaskTimerButton);
             this.editButton = taskRow.findViewById(R.id.EditTaskButton);
         }
     }
@@ -83,6 +87,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         bindDeadline(holder, item);
         bindStreak(holder, item);
         bindProgressState(holder, item);
+        bindTimerState(holder, item);
         bindInteractions(holder, item, viewSlot);
     }
 
@@ -158,6 +163,17 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         }
     }
 
+    private void bindTimerState(TaskRowViewHolder holder, TaskListItem item) {
+        Context context = holder.itemView.getContext();
+        holder.timerButton.setImageResource(item.timerRunning
+                ? android.R.drawable.ic_media_pause
+                : android.R.drawable.ic_media_play);
+        holder.timerButton.setContentDescription(context.getString(
+                item.timerRunning ? R.string.task_timer_stop : R.string.task_timer_start));
+        ViewCompat.setStateDescription(holder.timerButton, context.getString(
+                item.timerRunning ? R.string.task_timer_running : R.string.task_timer_stopped));
+    }
+
     private void bindInteractions(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
         holder.checkBox.setOnClickListener(v -> {
             holder.checkBox.setChecked(item.completed);
@@ -168,15 +184,22 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.checkBox.setEnabled(checkable);
         holder.checkBox.setAlpha(interactionsEnabled ? 1.0f : 0.4f);
 
+        boolean timerEnabled = interactionsEnabled && item.slotId != null && !item.completed;
+        holder.timerButton.setEnabled(timerEnabled);
+
         if (interactionsEnabled) {
             holder.itemView.setOnLongClickListener(v -> {
                 onEdit.accept(viewSlot);
                 return true;
             });
+            holder.timerButton.setOnClickListener(v -> onTimerToggle.accept(viewSlot));
+            holder.timerButton.setAlpha(timerEnabled ? 1.0f : 0.4f);
             holder.editButton.setOnClickListener(v -> onEdit.accept(viewSlot));
             holder.editButton.setAlpha(1.0f);
         } else {
             holder.itemView.setOnLongClickListener(null);
+            holder.timerButton.setOnClickListener(null);
+            holder.timerButton.setAlpha(0.4f);
             holder.editButton.setOnClickListener(null);
             holder.editButton.setAlpha(0.4f);
         }

@@ -8,6 +8,10 @@
     <string name="task_edit_dialog_positive">Speichern</string>
     <string name="task_edit_dialog_negative">Abbrechen</string>
     <string name="task_row_edit">Aufgabe bearbeiten</string>
+    <string name="task_timer_start">Timer starten</string>
+    <string name="task_timer_stop">Timer stoppen</string>
+    <string name="task_timer_running">Timer läuft</string>
+    <string name="task_timer_stopped">Timer nicht aktiv</string>
 
     <string name="task_time_fallback_start">Nicht</string>
     <string name="task_time_fallback_end">Heute</string>
