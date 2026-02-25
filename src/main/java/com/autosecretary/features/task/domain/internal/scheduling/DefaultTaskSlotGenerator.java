@@ -135,7 +135,14 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
             }
             if (!daySlots.isEmpty()) {
                 totalDaySlots += daySlots.size();
-                log("  " + t.core.title + ": " + daySlots.size() + " slots [" + formatSlotsSummary(daySlots) + "]");
+                StringBuilder summary = new StringBuilder();
+                for (TaskSlot slot : daySlots) {
+                    if (summary.length() > 0) {
+                        summary.append(", ");
+                    }
+                    summary.append(formatSlot(slot));
+                }
+                log("  " + t.core.title + ": " + daySlots.size() + " slots [" + summary + "]");
             } else {
                 log("  " + t.core.title + ": unscheduled");
             }
@@ -321,17 +328,6 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
         scorer.onSlotAssigned(task, slot.start);
         scheduledInSession.add(task.core.id);
         newSlots++;
-    }
-
-    private String formatSlotsSummary(List<TaskSlot> slots) {
-        StringBuilder sb = new StringBuilder();
-        for (TaskSlot slot : slots) {
-            if (sb.length() > 0) {
-                sb.append(", ");
-            }
-            sb.append(formatSlot(slot));
-        }
-        return sb.toString();
     }
 
     private String formatSlot(TaskSlot slot) {
