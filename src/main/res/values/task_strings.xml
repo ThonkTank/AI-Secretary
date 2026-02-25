@@ -70,8 +70,12 @@
     <string name="nav_manage">Budget</string>
 
     <string name="budget_title">Budgetübersicht</string>
-    <string name="budget_summary">Monatliches Budget im Blick behalten.</string>
-    <string name="budget_demo_section_title">Letzte Buchung</string>
+    <string name="budget_summary">Erfasse Buchungen oder importiere einen Kontoauszug.</string>
+    <string name="budget_add_transaction">Transaktion hinzufügen</string>
+    <string name="budget_import_statement">Kontoauszug importieren</string>
+    <string name="budget_empty_state">Noch keine Buchungen. Starte mit „Transaktion hinzufügen“.</string>
+    <string name="budget_loading">Budget wird geladen</string>
+    <string name="budget_retry">Erneut versuchen</string>
     <string name="budget_demo_transaction_label">Lebensmittel</string>
     <string name="budget_demo_transaction_amount">-42,90 €</string>
 
