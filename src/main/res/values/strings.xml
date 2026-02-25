@@ -3,6 +3,17 @@
     <string name="task_edit_day_picker_title">Tage auswählen</string>
     <string name="task_row_edit">Aufgabe bearbeiten</string>
 
+    <string name="task_time_fallback_start">Nicht</string>
+    <string name="task_time_fallback_end">Heute</string>
+    <string name="task_deadline_overdue_label">! Fällig</string>
+    <string name="task_deadline_today_label">! Heute fällig</string>
+    <string name="task_deadline_in_days_label">in %1$dd</string>
+    <string name="task_deadline_overdue_content_description">Überfällig</string>
+    <string name="task_deadline_today_content_description">Heute fällig</string>
+    <string name="task_deadline_in_days_content_description">Fällig in %1$d Tagen</string>
+    <string name="task_streak_display">%1$dx</string>
+    <string name="task_in_progress_state_description">In Bearbeitung</string>
+
     <string-array name="task_edit_weekday_short_labels">
         <item>Mo</item>
         <item>Di</item>
