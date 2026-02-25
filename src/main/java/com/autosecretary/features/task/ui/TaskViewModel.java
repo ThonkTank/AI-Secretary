@@ -171,6 +171,20 @@ public class TaskViewModel extends AndroidViewModel {
         checkOffTaskUseCase.execute(viewSlot.item, this::refreshList);
     }
 
+    public void startTimer(String slotId) {
+        if (slotId == null) {
+            return;
+        }
+        taskAsyncDataService.startTimer(slotId, this::refreshList);
+    }
+
+    public void stopTimer(String slotId) {
+        if (slotId == null) {
+            return;
+        }
+        taskAsyncDataService.stopTimer(slotId, this::refreshList);
+    }
+
     private void refreshList() {
         taskAsyncDataService.loadAllMapped(items -> {
             masterList.fromList(items);

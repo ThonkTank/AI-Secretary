@@ -40,10 +40,11 @@ public class TaskListItem {
     public final int score;
     public final boolean completed;
     public final boolean inProgress;
+    public final boolean timerRunning;
 
     public TaskListItem(ItemType itemType, String taskId, String slotId, String slotParentId, List<String> parentTaskIds,
                         String title, LocalDate day, LocalTime start, LocalTime end, LocalDate deadline,
-                        int streak, int score, boolean completed, boolean inProgress) {
+                        int streak, int score, boolean completed, boolean inProgress, boolean timerRunning) {
         this.itemType = itemType;
         this.taskId = taskId;
         this.slotId = slotId;
@@ -58,11 +59,13 @@ public class TaskListItem {
         this.score = score;
         this.completed = completed;
         this.inProgress = inProgress;
+        this.timerRunning = timerRunning;
     }
 
     public static TaskListItem task(String taskId, String slotId, String slotParentId, List<String> parentTaskIds,
                                     String title, LocalDate day, LocalTime start, LocalTime end, LocalDate deadline,
-                                    int streak, int score, boolean completed, boolean inProgress) {
+                                    int streak, int score, boolean completed, boolean inProgress,
+                                    boolean timerRunning) {
         return new TaskListItem(
                 ItemType.TASK,
                 taskId,
@@ -77,7 +80,8 @@ public class TaskListItem {
                 streak,
                 score,
                 completed,
-                inProgress
+                inProgress,
+                timerRunning
         );
     }
 
@@ -95,6 +99,7 @@ public class TaskListItem {
                 null,
                 0,
                 0,
+                false,
                 false,
                 false
         );

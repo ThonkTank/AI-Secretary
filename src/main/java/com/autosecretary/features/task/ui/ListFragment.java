@@ -61,7 +61,14 @@ public class ListFragment extends Fragment {
         ListRowAdapter adapter = new ListRowAdapter(
                 new ArrayList<>(),
                 vm::checkOff,
-                viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId)
+                viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId),
+                viewSlot -> {
+                    if (viewSlot.item.timerRunning) {
+                        vm.stopTimer(viewSlot.item.slotId);
+                    } else {
+                        vm.startTimer(viewSlot.item.slotId);
+                    }
+                }
         );
 
         recyclerView.setAdapter(adapter);

@@ -93,6 +93,17 @@
     </LinearLayout>
 
     <ImageButton
+        android:id="@+id/TaskTimerButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/spacing_xs"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/task_timer_start"
+        android:padding="@dimen/task_row_edit_button_padding"
+        android:src="@android:drawable/ic_media_play"
+        android:tint="@color/task_text_on_surface_emphasis"/>
+
+    <ImageButton
         android:id="@+id/EditTaskButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
