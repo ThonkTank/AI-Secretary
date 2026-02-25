@@ -6,7 +6,11 @@ import android.text.TextWatcher;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.Spinner;
 
 import androidx.fragment.app.DialogFragment;
 
@@ -25,29 +29,26 @@ public class TaskEditSectionBinder {
     private final View rootView;
     private final TaskEditState editState;
     private final TaskEditPresenter presenter;
-    private final TaskEditFormViews formViews;
 
     public TaskEditSectionBinder(
         DialogFragment fragment,
         View rootView,
         TaskEditState editState,
-        TaskEditPresenter presenter,
-        TaskEditFormViews formViews
+        TaskEditPresenter presenter
     ) {
         this.fragment = fragment;
         this.rootView = rootView;
         this.editState = editState;
         this.presenter = presenter;
-        this.formViews = formViews;
     }
 
-    public void bindBasicInfo() {
-        formViews.titleView = rootView.findViewById(R.id.EditTitle);
-        formViews.descriptionView = rootView.findViewById(R.id.EditDescription);
-        formViews.priorityView = rootView.findViewById(R.id.EditPriority);
+    public BasicInfoViews bindBasicInfo() {
+        EditText titleView = rootView.findViewById(R.id.EditTitle);
+        EditText descriptionView = rootView.findViewById(R.id.EditDescription);
+        Spinner priorityView = rootView.findViewById(R.id.EditPriority);
 
-        formViews.titleView.setText(editState.title);
-        formViews.descriptionView.setText(editState.description);
+        titleView.setText(editState.title);
+        descriptionView.setText(editState.description);
 
         ArrayAdapter<Priority> adapter = new ArrayAdapter<>(
             fragment.requireContext(),
@@ -55,48 +56,70 @@ public class TaskEditSectionBinder {
             Priority.values()
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        formViews.priorityView.setAdapter(adapter);
-        formViews.priorityView.setSelection(editState.priority.ordinal());
+        priorityView.setAdapter(adapter);
+        priorityView.setSelection(editState.priority.ordinal());
+
+        return new BasicInfoViews(titleView, descriptionView, priorityView);
     }
 
-    public void bindScheduling() {
-        formViews.deadlineView = rootView.findViewById(R.id.EditDeadline);
-        formViews.deadlineInputLayout = rootView.findViewById(R.id.DeadlineInputLayout);
+    public SchedulingViews bindScheduling() {
+        EditText deadlineView = rootView.findViewById(R.id.EditDeadline);
+        com.google.android.material.textfield.TextInputLayout deadlineInputLayout = rootView.findViewById(R.id.DeadlineInputLayout);
         ImageButton clearDeadline = rootView.findViewById(R.id.ClearDeadline);
-        formViews.closeOnMissView = rootView.findViewById(R.id.EditCloseOnMiss);
-        formViews.minDurationView = rootView.findViewById(R.id.EditMinDuration);
-        formViews.maxDurationView = rootView.findViewById(R.id.EditMaxDuration);
-        formViews.cooldownView = rootView.findViewById(R.id.EditCooldown);
-        formViews.adaptiveView = rootView.findViewById(R.id.EditAdaptive);
+        CheckBox closeOnMissView = rootView.findViewById(R.id.EditCloseOnMiss);
+        EditText minDurationView = rootView.findViewById(R.id.EditMinDuration);
+        EditText maxDurationView = rootView.findViewById(R.id.EditMaxDuration);
+        EditText cooldownView = rootView.findViewById(R.id.EditCooldown);
+        CheckBox adaptiveView = rootView.findViewById(R.id.EditAdaptive);
 
-        updateDeadlineDisplay();
-        formViews.deadlineView.setOnClickListener(v -> showDatePicker());
-        formViews.deadlineInputLayout.setEndIconOnClickListener(v -> showDatePicker());
+        SchedulingViews views = new SchedulingViews(
+            deadlineView,
+            deadlineInputLayout,
+            closeOnMissView,
+            minDurationView,
+            maxDurationView,
+            cooldownView,
+            adaptiveView
+        );
+
+        updateDeadlineDisplay(views);
+        deadlineView.setOnClickListener(v -> showDatePicker(views));
+        deadlineInputLayout.setEndIconOnClickListener(v -> showDatePicker(views));
         clearDeadline.setOnClickListener(v -> {
             presenter.setEditableDeadline(null);
-            updateDeadlineDisplay();
+            updateDeadlineDisplay(views);
         });
 
-        formViews.closeOnMissView.setChecked(editState.closeOnMiss);
-        formViews.minDurationView.setText(String.valueOf(editState.minDuration));
-        formViews.maxDurationView.setText(String.valueOf(editState.maxDuration));
-        formViews.cooldownView.setText(String.valueOf(editState.cooldown));
-        formViews.adaptiveView.setChecked(editState.adaptive);
+        closeOnMissView.setChecked(editState.closeOnMiss);
+        minDurationView.setText(String.valueOf(editState.minDuration));
+        maxDurationView.setText(String.valueOf(editState.maxDuration));
+        cooldownView.setText(String.valueOf(editState.cooldown));
+        adaptiveView.setChecked(editState.adaptive);
+
+        return views;
     }
 
-    public void bindRepetition(Runnable onRepetitionChanged) {
-        formViews.toggleRepetition = rootView.findViewById(R.id.ToggleRepetition);
-        formViews.repetitionContainer = rootView.findViewById(R.id.RepetitionContainer);
-        formViews.repsView = rootView.findViewById(R.id.EditReps);
-        formViews.perPeriodView = rootView.findViewById(R.id.EditPerPeriod);
-        formViews.periodUnitView = rootView.findViewById(R.id.EditPeriodUnit);
+    public RepetitionViews bindRepetition(Runnable onRepetitionChanged) {
+        CheckBox toggleRepetition = rootView.findViewById(R.id.ToggleRepetition);
+        LinearLayout repetitionContainer = rootView.findViewById(R.id.RepetitionContainer);
+        EditText repsView = rootView.findViewById(R.id.EditReps);
+        EditText perPeriodView = rootView.findViewById(R.id.EditPerPeriod);
+        Spinner periodUnitView = rootView.findViewById(R.id.EditPeriodUnit);
+
+        RepetitionViews views = new RepetitionViews(
+            toggleRepetition,
+            repetitionContainer,
+            repsView,
+            perPeriodView,
+            periodUnitView
+        );
 
         boolean hasRepetition = editState.reps > 0;
-        formViews.toggleRepetition.setChecked(hasRepetition);
-        formViews.repetitionContainer.setVisibility(hasRepetition ? View.VISIBLE : View.GONE);
+        toggleRepetition.setChecked(hasRepetition);
+        repetitionContainer.setVisibility(hasRepetition ? View.VISIBLE : View.GONE);
 
-        formViews.repsView.setText(String.valueOf(editState.reps > 0 ? editState.reps : 1));
-        formViews.perPeriodView.setText(String.valueOf(editState.perPeriod > 0 ? editState.perPeriod : 1));
+        repsView.setText(String.valueOf(editState.reps > 0 ? editState.reps : 1));
+        perPeriodView.setText(String.valueOf(editState.perPeriod > 0 ? editState.perPeriod : 1));
 
         ArrayAdapter<Period> periodAdapter = new ArrayAdapter<>(
             fragment.requireContext(),
@@ -104,18 +127,18 @@ public class TaskEditSectionBinder {
             Period.values()
         );
         periodAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        formViews.periodUnitView.setAdapter(periodAdapter);
-        formViews.periodUnitView.setSelection((editState.periodUnit != null ? editState.periodUnit : Period.DAY).ordinal());
+        periodUnitView.setAdapter(periodAdapter);
+        periodUnitView.setSelection((editState.periodUnit != null ? editState.periodUnit : Period.DAY).ordinal());
 
         presenter.initializeRepetitionState(
-            formViews.toggleRepetition.isChecked(),
-            formViews.repsView.getText().toString(),
-            formViews.perPeriodView.getText().toString(),
-            (Period) formViews.periodUnitView.getSelectedItem()
+            toggleRepetition.isChecked(),
+            repsView.getText().toString(),
+            perPeriodView.getText().toString(),
+            (Period) periodUnitView.getSelectedItem()
         );
 
-        formViews.toggleRepetition.setOnCheckedChangeListener((btn, checked) -> {
-            formViews.repetitionContainer.setVisibility(checked ? View.VISIBLE : View.GONE);
+        toggleRepetition.setOnCheckedChangeListener((btn, checked) -> {
+            repetitionContainer.setVisibility(checked ? View.VISIBLE : View.GONE);
             onRepetitionChanged.run();
         });
 
@@ -125,59 +148,167 @@ public class TaskEditSectionBinder {
                 onRepetitionChanged.run();
             }
         };
-        formViews.repsView.addTextChangedListener(repWatcher);
-        formViews.perPeriodView.addTextChangedListener(repWatcher);
+        repsView.addTextChangedListener(repWatcher);
+        perPeriodView.addTextChangedListener(repWatcher);
 
-        formViews.periodUnitView.setOnItemSelectedListener(new SimpleItemSelectedListener() {
+        periodUnitView.setOnItemSelectedListener(new SimpleItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 onRepetitionChanged.run();
             }
         });
+
+        return views;
     }
 
-    public void bindProgress() {
-        formViews.toggleProgress = rootView.findViewById(R.id.ToggleProgress);
-        formViews.progressContainer = rootView.findViewById(R.id.ProgressContainer);
-        formViews.unitView = rootView.findViewById(R.id.EditUnit);
-        formViews.targetView = rootView.findViewById(R.id.EditTarget);
-        formViews.currentView = rootView.findViewById(R.id.EditCurrent);
-        formViews.resetPerRepView = rootView.findViewById(R.id.EditResetPerRep);
-        formViews.minPerRepView = rootView.findViewById(R.id.EditMinPerRep);
-        formViews.maxPerRepView = rootView.findViewById(R.id.EditMaxPerRep);
+    public ProgressViews bindProgress() {
+        CheckBox toggleProgress = rootView.findViewById(R.id.ToggleProgress);
+        LinearLayout progressContainer = rootView.findViewById(R.id.ProgressContainer);
+        EditText unitView = rootView.findViewById(R.id.EditUnit);
+        EditText targetView = rootView.findViewById(R.id.EditTarget);
+        EditText currentView = rootView.findViewById(R.id.EditCurrent);
+        CheckBox resetPerRepView = rootView.findViewById(R.id.EditResetPerRep);
+        EditText minPerRepView = rootView.findViewById(R.id.EditMinPerRep);
+        EditText maxPerRepView = rootView.findViewById(R.id.EditMaxPerRep);
+
+        ProgressViews views = new ProgressViews(
+            toggleProgress,
+            progressContainer,
+            unitView,
+            targetView,
+            currentView,
+            resetPerRepView,
+            minPerRepView,
+            maxPerRepView
+        );
 
         boolean hasProgress = editState.target > 0;
-        formViews.toggleProgress.setChecked(hasProgress);
-        formViews.progressContainer.setVisibility(hasProgress ? View.VISIBLE : View.GONE);
+        toggleProgress.setChecked(hasProgress);
+        progressContainer.setVisibility(hasProgress ? View.VISIBLE : View.GONE);
 
-        formViews.unitView.setText(editState.unit != null ? editState.unit : "");
-        formViews.targetView.setText(String.valueOf(editState.target));
-        formViews.currentView.setText(String.valueOf(editState.current));
-        formViews.resetPerRepView.setChecked(editState.resetPerRep);
-        formViews.minPerRepView.setText(String.valueOf(editState.minPerRep));
-        formViews.maxPerRepView.setText(String.valueOf(editState.maxPerRep));
+        unitView.setText(editState.unit != null ? editState.unit : "");
+        targetView.setText(String.valueOf(editState.target));
+        currentView.setText(String.valueOf(editState.current));
+        resetPerRepView.setChecked(editState.resetPerRep);
+        minPerRepView.setText(String.valueOf(editState.minPerRep));
+        maxPerRepView.setText(String.valueOf(editState.maxPerRep));
 
-        formViews.toggleProgress.setOnCheckedChangeListener((btn, checked) ->
-            formViews.progressContainer.setVisibility(checked ? View.VISIBLE : View.GONE));
+        toggleProgress.setOnCheckedChangeListener((btn, checked) ->
+            progressContainer.setVisibility(checked ? View.VISIBLE : View.GONE));
+
+        return views;
     }
 
-    private void updateDeadlineDisplay() {
+    private void updateDeadlineDisplay(SchedulingViews views) {
         if (presenter.getEditableDeadline() != null) {
             String deadlineText = presenter.getEditableDeadline().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
-            formViews.deadlineView.setText(deadlineText);
-            formViews.deadlineView.setContentDescription("Frist auswählen. Aktuell: " + deadlineText);
+            views.deadlineView.setText(deadlineText);
+            views.deadlineView.setContentDescription("Frist auswählen. Aktuell: " + deadlineText);
         } else {
-            formViews.deadlineView.setText("Keine Frist");
-            formViews.deadlineView.setContentDescription("Frist auswählen. Aktuell: Keine Frist");
+            views.deadlineView.setText("Keine Frist");
+            views.deadlineView.setContentDescription("Frist auswählen. Aktuell: Keine Frist");
         }
     }
 
-    private void showDatePicker() {
+    private void showDatePicker(SchedulingViews views) {
         LocalDate current = presenter.getEditableDeadline() != null ? presenter.getEditableDeadline() : LocalDate.now();
         new DatePickerDialog(fragment.requireContext(), (picker, year, month, day) -> {
             presenter.setEditableDeadline(LocalDate.of(year, month + 1, day));
-            updateDeadlineDisplay();
+            updateDeadlineDisplay(views);
         }, current.getYear(), current.getMonthValue() - 1, current.getDayOfMonth()).show();
+    }
+
+    public static final class BasicInfoViews {
+        public final EditText titleView;
+        public final EditText descriptionView;
+        public final Spinner priorityView;
+
+        private BasicInfoViews(EditText titleView, EditText descriptionView, Spinner priorityView) {
+            this.titleView = titleView;
+            this.descriptionView = descriptionView;
+            this.priorityView = priorityView;
+        }
+    }
+
+    public static final class SchedulingViews {
+        public final EditText deadlineView;
+        public final com.google.android.material.textfield.TextInputLayout deadlineInputLayout;
+        public final CheckBox closeOnMissView;
+        public final EditText minDurationView;
+        public final EditText maxDurationView;
+        public final EditText cooldownView;
+        public final CheckBox adaptiveView;
+
+        private SchedulingViews(
+            EditText deadlineView,
+            com.google.android.material.textfield.TextInputLayout deadlineInputLayout,
+            CheckBox closeOnMissView,
+            EditText minDurationView,
+            EditText maxDurationView,
+            EditText cooldownView,
+            CheckBox adaptiveView
+        ) {
+            this.deadlineView = deadlineView;
+            this.deadlineInputLayout = deadlineInputLayout;
+            this.closeOnMissView = closeOnMissView;
+            this.minDurationView = minDurationView;
+            this.maxDurationView = maxDurationView;
+            this.cooldownView = cooldownView;
+            this.adaptiveView = adaptiveView;
+        }
+    }
+
+    public static final class RepetitionViews {
+        public final CheckBox toggleRepetition;
+        public final LinearLayout repetitionContainer;
+        public final EditText repsView;
+        public final EditText perPeriodView;
+        public final Spinner periodUnitView;
+
+        private RepetitionViews(
+            CheckBox toggleRepetition,
+            LinearLayout repetitionContainer,
+            EditText repsView,
+            EditText perPeriodView,
+            Spinner periodUnitView
+        ) {
+            this.toggleRepetition = toggleRepetition;
+            this.repetitionContainer = repetitionContainer;
+            this.repsView = repsView;
+            this.perPeriodView = perPeriodView;
+            this.periodUnitView = periodUnitView;
+        }
+    }
+
+    public static final class ProgressViews {
+        public final CheckBox toggleProgress;
+        public final LinearLayout progressContainer;
+        public final EditText unitView;
+        public final EditText targetView;
+        public final EditText currentView;
+        public final CheckBox resetPerRepView;
+        public final EditText minPerRepView;
+        public final EditText maxPerRepView;
+
+        private ProgressViews(
+            CheckBox toggleProgress,
+            LinearLayout progressContainer,
+            EditText unitView,
+            EditText targetView,
+            EditText currentView,
+            CheckBox resetPerRepView,
+            EditText minPerRepView,
+            EditText maxPerRepView
+        ) {
+            this.toggleProgress = toggleProgress;
+            this.progressContainer = progressContainer;
+            this.unitView = unitView;
+            this.targetView = targetView;
+            this.currentView = currentView;
+            this.resetPerRepView = resetPerRepView;
+            this.minPerRepView = minPerRepView;
+            this.maxPerRepView = maxPerRepView;
+        }
     }
 
     private static abstract class SimpleTextWatcher implements TextWatcher {

@@ -7,7 +7,10 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
@@ -17,15 +20,15 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.R;
 import com.autosecretary.constants.Period;
+import com.autosecretary.constants.Priority;
 import com.autosecretary.features.task.ui.internal.PrefSlotUIBuilder;
-import com.autosecretary.features.task.ui.internal.editor.TaskEditFormInputBuilder;
 import com.autosecretary.features.task.ui.internal.editor.TaskEditFormValidator;
-import com.autosecretary.features.task.ui.internal.editor.TaskEditFormViews;
 import com.autosecretary.features.task.ui.internal.editor.TaskEditSectionBinder;
 import com.autosecretary.features.task.ui.internal.mapper.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.state.TaskEditState;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
@@ -56,8 +59,34 @@ public class TaskEditDialog extends DialogFragment {
     private PrefSlotUIBuilder prefSlotUIBuilder;
     private TaskEditSectionBinder sectionBinder;
     private TaskEditFormValidator formValidator;
-    private TaskEditFormInputBuilder formInputBuilder;
-    private final TaskEditFormViews formViews = new TaskEditFormViews();
+
+    private EditText titleView;
+    private EditText descriptionView;
+    private Spinner priorityView;
+
+    private EditText deadlineView;
+    private TextInputLayout deadlineInputLayout;
+    private CheckBox closeOnMissView;
+    private CheckBox adaptiveView;
+    private EditText minDurationView;
+    private EditText maxDurationView;
+    private EditText cooldownView;
+
+    private CheckBox toggleRepetition;
+    private LinearLayout repetitionContainer;
+    private EditText repsView;
+    private EditText perPeriodView;
+    private Spinner periodUnitView;
+
+    private CheckBox toggleProgress;
+    private LinearLayout progressContainer;
+    private EditText unitView;
+    private EditText targetView;
+    private EditText currentView;
+    private EditText minPerRepView;
+    private EditText maxPerRepView;
+    private CheckBox resetPerRepView;
+
     private View rootView;
 
     // PrefSlots
@@ -70,17 +99,43 @@ public class TaskEditDialog extends DialogFragment {
         editState = editSessionController.requireSelectedTask();
         presenter = new TaskEditPresenter(editState, new TaskEditStateMapper());
         formValidator = new TaskEditFormValidator();
-        formInputBuilder = new TaskEditFormInputBuilder();
 
         rootView = LayoutInflater.from(getContext())
             .inflate(R.layout.task_editor_fragment, null);
         prefSlotUIBuilder = new PrefSlotUIBuilder(requireContext());
-        sectionBinder = new TaskEditSectionBinder(this, rootView, editState, presenter, formViews);
+        sectionBinder = new TaskEditSectionBinder(this, rootView, editState, presenter);
 
-        sectionBinder.bindBasicInfo();
-        sectionBinder.bindScheduling();
-        sectionBinder.bindRepetition(this::onRepetitionChanged);
-        sectionBinder.bindProgress();
+        TaskEditSectionBinder.BasicInfoViews basicInfoViews = sectionBinder.bindBasicInfo();
+        titleView = basicInfoViews.titleView;
+        descriptionView = basicInfoViews.descriptionView;
+        priorityView = basicInfoViews.priorityView;
+
+        TaskEditSectionBinder.SchedulingViews schedulingViews = sectionBinder.bindScheduling();
+        deadlineView = schedulingViews.deadlineView;
+        deadlineInputLayout = schedulingViews.deadlineInputLayout;
+        closeOnMissView = schedulingViews.closeOnMissView;
+        minDurationView = schedulingViews.minDurationView;
+        maxDurationView = schedulingViews.maxDurationView;
+        cooldownView = schedulingViews.cooldownView;
+        adaptiveView = schedulingViews.adaptiveView;
+
+        TaskEditSectionBinder.RepetitionViews repetitionViews = sectionBinder.bindRepetition(this::onRepetitionChanged);
+        toggleRepetition = repetitionViews.toggleRepetition;
+        repetitionContainer = repetitionViews.repetitionContainer;
+        repsView = repetitionViews.repsView;
+        perPeriodView = repetitionViews.perPeriodView;
+        periodUnitView = repetitionViews.periodUnitView;
+
+        TaskEditSectionBinder.ProgressViews progressViews = sectionBinder.bindProgress();
+        toggleProgress = progressViews.toggleProgress;
+        progressContainer = progressViews.progressContainer;
+        unitView = progressViews.unitView;
+        targetView = progressViews.targetView;
+        currentView = progressViews.currentView;
+        resetPerRepView = progressViews.resetPerRepView;
+        minPerRepView = progressViews.minPerRepView;
+        maxPerRepView = progressViews.maxPerRepView;
+
         rebuildPrefSlotUI();
 
         return new AlertDialog.Builder(requireContext())
@@ -101,10 +156,23 @@ public class TaskEditDialog extends DialogFragment {
         }
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            if (!formValidator.validateAndCollectAllFields(formViews)) {
+            if (!formValidator.validateAndCollectAllFields(
+                titleView,
+                minDurationView,
+                maxDurationView,
+                cooldownView,
+                toggleRepetition,
+                repsView,
+                perPeriodView,
+                toggleProgress,
+                targetView,
+                currentView,
+                minPerRepView,
+                maxPerRepView
+            )) {
                 return;
             }
-            presenter.applyForm(formInputBuilder.buildFormInput(formViews));
+            presenter.applyForm(readFormInput());
             editSessionController.saveEditedTask(presenter.toTaskForSave(editSessionController.requireSelectedBaseTask()));
             dismiss();
         });
@@ -113,10 +181,10 @@ public class TaskEditDialog extends DialogFragment {
     // Repetition field change triggers prefSlot count recalculation and UI rebuild
     private void onRepetitionChanged() {
         boolean changed = presenter.onRepetitionChanged(
-            formViews.toggleRepetition.isChecked(),
-            formViews.repsView.getText().toString(),
-            formViews.perPeriodView.getText().toString(),
-            (Period) formViews.periodUnitView.getSelectedItem()
+            toggleRepetition.isChecked(),
+            repsView.getText().toString(),
+            perPeriodView.getText().toString(),
+            (Period) periodUnitView.getSelectedItem()
         );
         if (changed) {
             rebuildPrefSlotUI();
@@ -126,10 +194,10 @@ public class TaskEditDialog extends DialogFragment {
     private void rebuildPrefSlotUI() {
         prefSlotContainer = rootView.findViewById(R.id.PrefSlotContainer);
         int repsPerDay = presenter.computeCurrentRepsPerDay(
-            formViews.toggleRepetition.isChecked(),
-            formViews.repsView.getText().toString(),
-            formViews.perPeriodView.getText().toString(),
-            (Period) formViews.periodUnitView.getSelectedItem()
+            toggleRepetition.isChecked(),
+            repsView.getText().toString(),
+            perPeriodView.getText().toString(),
+            (Period) periodUnitView.getSelectedItem()
         );
 
         prefSlotUIBuilder.rebuild(prefSlotContainer, presenter.getEditablePrefSlots(), repsPerDay,
@@ -254,5 +322,66 @@ public class TaskEditDialog extends DialogFragment {
 
     private int dpToPx(int dp) {
         return (int) (dp * requireContext().getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private TaskEditPresenter.FormInput readFormInput() {
+        TaskEditPresenter.FormInput input = new TaskEditPresenter.FormInput();
+        input.title = titleView.getText().toString();
+        input.description = descriptionView.getText().toString();
+        input.priority = TaskEditPresenter.coalesce(
+            (Priority) priorityView.getSelectedItem(),
+            TaskEditPresenter.InputDefaults.PRIORITY
+        );
+
+        input.closeOnMiss = closeOnMissView.isChecked();
+        input.minDuration = TaskEditPresenter.parseIntSafe(
+            minDurationView.getText().toString(),
+            TaskEditPresenter.InputDefaults.MIN_DURATION
+        );
+        input.maxDuration = TaskEditPresenter.parseIntSafe(
+            maxDurationView.getText().toString(),
+            TaskEditPresenter.InputDefaults.MAX_DURATION
+        );
+        input.cooldown = TaskEditPresenter.parseIntSafe(
+            cooldownView.getText().toString(),
+            TaskEditPresenter.InputDefaults.COOLDOWN
+        );
+        input.adaptive = adaptiveView.isChecked();
+
+        input.repetitionEnabled = toggleRepetition.isChecked();
+        input.reps = TaskEditPresenter.parseIntSafe(
+            repsView.getText().toString(),
+            TaskEditPresenter.InputDefaults.REPETITION_REPS
+        );
+        input.perPeriod = TaskEditPresenter.parseIntSafe(
+            perPeriodView.getText().toString(),
+            TaskEditPresenter.InputDefaults.REPETITION_PER_PERIOD
+        );
+        input.periodUnit = TaskEditPresenter.coalesce(
+            (Period) periodUnitView.getSelectedItem(),
+            TaskEditPresenter.InputDefaults.REPETITION_PERIOD_UNIT
+        );
+
+        input.progressEnabled = toggleProgress.isChecked();
+        input.unit = unitView.getText().toString();
+        input.target = TaskEditPresenter.parseIntSafe(
+            targetView.getText().toString(),
+            TaskEditPresenter.InputDefaults.TARGET
+        );
+        input.current = TaskEditPresenter.parseIntSafe(
+            currentView.getText().toString(),
+            TaskEditPresenter.InputDefaults.CURRENT
+        );
+        input.resetPerRep = resetPerRepView.isChecked();
+        input.minPerRep = TaskEditPresenter.parseIntSafe(
+            minPerRepView.getText().toString(),
+            TaskEditPresenter.InputDefaults.MIN_PER_REP
+        );
+        input.maxPerRep = TaskEditPresenter.parseIntSafe(
+            maxPerRepView.getText().toString(),
+            TaskEditPresenter.InputDefaults.MAX_PER_REP
+        );
+
+        return input;
     }
 }
