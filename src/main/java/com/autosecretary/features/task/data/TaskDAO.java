@@ -36,12 +36,7 @@ public interface TaskDAO {
             writeCore(task.core);
         }
         for (Task task : tasks) {
-            writeSlots(task.slots);
-            writePrefSlots(task.prefSlots);
-            writePrerequisites(task.prerequisites);
-            for (Task child : task.children) {
-                writeRelation(new TaskRelation(task.core.id, child.core.id));
-            }
+            writeDependents(task);
         }
     }
 
@@ -51,6 +46,13 @@ public interface TaskDAO {
     @Transaction
     default void write(Task task) {
         writeCore(task.core);
+        writeDependents(task);
+    }
+
+    /**
+     * Writes dependent rows that reference a task core row.
+     */
+    default void writeDependents(Task task) {
         writeSlots(task.slots);
         writePrefSlots(task.prefSlots);
         writePrerequisites(task.prerequisites);
