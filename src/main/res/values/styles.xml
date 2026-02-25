@@ -26,6 +26,10 @@
         <item name="android:textStyle">bold</item>
     </style>
 
+    <style name="TextAppearance.AISecretary.Editor.PrefSlotButton" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textSize">@dimen/task_editor_pref_slot_button_text_size</item>
+    </style>
+
     <style name="Widget.AISecretary.Editor.Spinner" parent="Widget.AppCompat.Spinner">
         <item name="android:background">@drawable/editor_selector_background</item>
         <item name="android:minHeight">48dp</item>
