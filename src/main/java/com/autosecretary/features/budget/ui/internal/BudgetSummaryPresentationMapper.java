@@ -1,8 +1,8 @@
 package com.autosecretary.features.budget.ui.internal;
 
-import com.autosecretary.features.budget.data.BudgetCategory;
-import com.autosecretary.features.budget.data.CategorySpendTotal;
-import com.autosecretary.features.budget.data.MonthlyTransactionOverviewItem;
+import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.data.projection.CategorySpendTotal;
+import com.autosecretary.features.budget.data.projection.MonthlyTransactionOverviewItem;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
 import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
 
