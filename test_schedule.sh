@@ -102,7 +102,7 @@ count_days_with_task() {
         if [ "$in_block" -eq 1 ] && echo "$line" | grep -q "${task_name}:" && echo "$line" | grep -q "slots"; then
             found_in_block=1
         fi
-        if echo "$line" | grep -q "^Gesamt:"; then
+        if echo "$line" | grep -q "Gesamt:"; then
             if [ "$found_in_block" -eq 1 ]; then
                 count=$((count + 1))
             fi

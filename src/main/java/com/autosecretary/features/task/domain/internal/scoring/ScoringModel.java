@@ -2,7 +2,9 @@ package com.autosecretary.features.task.domain.internal.scoring;
 
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class ScoringModel {
     private ScoringModel() {
@@ -24,9 +26,21 @@ public final class ScoringModel {
     }
 
     public record PreferenceFitState(List<TaskPrefSlot> todayPrefSlots,
-                                     boolean hasDayConstraints) {
+                                     boolean hasDayConstraints,
+                                     Set<String> consumedPrefSlotIds) {
         public PreferenceFitState {
             todayPrefSlots = List.copyOf(todayPrefSlots);
+            consumedPrefSlotIds = Set.copyOf(consumedPrefSlotIds);
+        }
+
+        public PreferenceFitState(List<TaskPrefSlot> todayPrefSlots, boolean hasDayConstraints) {
+            this(todayPrefSlots, hasDayConstraints, Set.of());
+        }
+
+        public PreferenceFitState withConsumedPrefSlot(String prefSlotId) {
+            Set<String> newConsumed = new HashSet<>(consumedPrefSlotIds);
+            newConsumed.add(prefSlotId);
+            return new PreferenceFitState(todayPrefSlots, hasDayConstraints, newConsumed);
         }
     }
 
@@ -49,6 +63,19 @@ public final class ScoringModel {
                     completionState.withIncrementedScheduledToday(),
                     urgencyState,
                     preferenceFitState,
+                    multiDayStateSnapshot,
+                    sinceLast,
+                    agingForce,
+                    repsPerDay,
+                    maxChildPriority
+            );
+        }
+
+        public TaskScoringSnapshot withConsumedPrefSlot(String prefSlotId) {
+            return new TaskScoringSnapshot(
+                    completionState.withIncrementedScheduledToday(),
+                    urgencyState,
+                    preferenceFitState.withConsumedPrefSlot(prefSlotId),
                     multiDayStateSnapshot,
                     sinceLast,
                     agingForce,

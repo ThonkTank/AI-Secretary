@@ -130,7 +130,7 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
             for (TaskSlot slot : t.slots) {
                 if (slot.day.equals(schedulingDay) && (slot.completed || slot.realStart != null)) {
                     scheduledInSession.add(t.core.id);
-                    scorer.onSlotAssigned(t);
+                    scorer.onSlotAssigned(t, slot.start);
                 }
             }
         }
@@ -203,7 +203,9 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
 
         for (Task task : tasks) {
             appendScoreSeparator(scores);
-            if (hasUnmetPrerequisites(task)) {
+
+            // Fast path: if prerequisites are unmet even at the latest possible time, skip entirely
+            if (hasUnmetPrerequisites(task, windowEnd)) {
                 scores.append(formatPrerequisiteBlockedScore(task));
                 continue;
             }
@@ -213,20 +215,24 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
             for (Interval gap : gaps) {
                 LocalDateTime gapEnd = gap.end.isBefore(windowEnd) ? gap.end : windowEnd;
 
-                int gapScore = scorer.score(task, gap.start, gapEnd);
-                if (gapScore > taskBestScore) {
-                    taskBestScore = gapScore;
-                }
-                if (gapScore > bestScore) {
-                    bestScore = gapScore;
-                    bestTask = task;
-                    bestStart = gap.start;
+                if (!hasUnmetPrerequisites(task, gap.start)) {
+                    int gapScore = scorer.score(task, gap.start, gapEnd);
+                    if (gapScore > taskBestScore) {
+                        taskBestScore = gapScore;
+                    }
+                    if (gapScore > bestScore) {
+                        bestScore = gapScore;
+                        bestTask = task;
+                        bestStart = gap.start;
+                    }
                 }
 
                 for (TaskPrefSlot ps : task.prefSlots) {
                     if (ps.days == null || !ps.days.contains(today)) continue;
+                    if (scorer.isPrefSlotConsumed(task.core.id, ps.id)) continue;
                     LocalDateTime prefStart = schedulingDay.atTime(ps.start);
                     if (!prefStart.isAfter(gap.start) || !prefStart.isBefore(gap.end)) continue;
+                    if (hasUnmetPrerequisites(task, prefStart)) continue;
                     int prefScore = scorer.score(task, prefStart, gapEnd);
                     if (prefScore > taskBestScore) {
                         taskBestScore = prefScore;
@@ -314,7 +320,7 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
     private void finalizeAssignment(Task task, TaskSlot slot, int score) {
         slot.score = score;
         task.slots.add(slot);
-        scorer.onSlotAssigned(task);
+        scorer.onSlotAssigned(task, slot.start);
         scheduledInSession.add(task.core.id);
         newSlots++;
     }
@@ -350,22 +356,36 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
         return task.core.title + ": " + score;
     }
 
-    private boolean hasUnmetPrerequisites(Task task) {
+    private boolean hasUnmetPrerequisites(Task task, LocalDateTime candidateStart) {
         if (task.prerequisites == null || task.prerequisites.isEmpty()) return false;
         for (TaskPrerequisite prereq : task.prerequisites) {
-            if (scheduledInSession.contains(prereq.prerequisiteId)) continue;
             Task prereqTask = allTasksById.get(prereq.prerequisiteId);
             if (prereqTask == null) continue;
-            boolean satisfied = false;
-            for (TaskSlot slot : prereqTask.slots) {
-                if (slot.day.equals(schedulingDay) && (slot.completed || slot.scheduled)) {
-                    satisfied = true;
-                    break;
+
+            TaskSlot prereqSlot = findScheduledSlotForDay(prereqTask, schedulingDay);
+            if (prereqSlot == null) {
+                if (!scheduledInSession.contains(prereq.prerequisiteId)) return true;
+                return true;
+            }
+
+            if (prereq.minGapMinutes > 0 && prereqSlot.end != null) {
+                LocalDateTime earliestStart = schedulingDay.atTime(prereqSlot.end)
+                        .plusMinutes(prereq.minGapMinutes);
+                if (candidateStart.isBefore(earliestStart)) {
+                    return true;
                 }
             }
-            if (!satisfied) return true;
         }
         return false;
+    }
+
+    private TaskSlot findScheduledSlotForDay(Task task, LocalDate day) {
+        for (TaskSlot slot : task.slots) {
+            if (slot.day.equals(day) && (slot.completed || slot.scheduled)) {
+                return slot;
+            }
+        }
+        return null;
     }
 
     private void log(String message) {
