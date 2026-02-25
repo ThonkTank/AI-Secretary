@@ -45,21 +45,21 @@ public class BudgetTransactionService {
 
     private Summary calculateSummary(List<BudgetTransactionEntity> transactions, String yearMonth) {
         double totalBalance = 0d;
-        for (BudgetTransactionEntity tx : transactions) {
-            totalBalance += tx.type == BudgetTransactionEntity.TransactionType.INCOME
-                    ? Math.abs(tx.amount) : -Math.abs(tx.amount);
-        }
-
         double monthlyIncome = 0d;
         double monthlyExpenses = 0d;
         for (BudgetTransactionEntity tx : transactions) {
-            if (!yearMonth.equals(tx.yearMonth)) {
-                continue;
-            }
-            if (tx.type == BudgetTransactionEntity.TransactionType.INCOME) {
-                monthlyIncome += Math.abs(tx.amount);
-            } else {
-                monthlyExpenses += Math.abs(tx.amount);
+            double absoluteAmount = Math.abs(tx.amount);
+            boolean isIncome = tx.type == BudgetTransactionEntity.TransactionType.INCOME;
+            double signedAmount = isIncome ? absoluteAmount : -absoluteAmount;
+
+            totalBalance += signedAmount;
+
+            if (yearMonth.equals(tx.yearMonth)) {
+                if (isIncome) {
+                    monthlyIncome += absoluteAmount;
+                } else {
+                    monthlyExpenses += absoluteAmount;
+                }
             }
         }
 
