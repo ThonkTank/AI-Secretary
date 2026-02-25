@@ -69,6 +69,19 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     @Override
+    public boolean isKnownCategory(String categoryId) {
+        if (categoryId == null || categoryId.isBlank()) {
+            return false;
+        }
+        return lookupDao.findCategoryById(categoryId) != null;
+    }
+
+    @Override
+    public List<BudgetCategory> loadActiveCategoriesForImport() {
+        return lookupDao.getActiveCategories();
+    }
+
+    @Override
     public void saveTransactionsBatch(List<BudgetTransactionEntity> transactions) {
         transactionDao.insertAll(transactions);
     }

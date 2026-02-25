@@ -63,6 +63,7 @@ public class BudgetFragment extends Fragment {
                     String fileName = getFileName(uri);
                     String mimeType = requireContext().getContentResolver().getType(uri);
                     try {
+                        budgetViewModel.setImportStatus("Datei wird geladen: " + fileName);
                         byte[] bytes = readUriBytes(uri);
                         budgetViewModel.importFromCsv(fileName, bytes, mimeType);
                     } catch (IOException e) {
@@ -202,7 +203,7 @@ public class BudgetFragment extends Fragment {
         monthNext.setOnClickListener(v -> budgetViewModel.navigateMonth(1));
         addTransaction.setOnClickListener(v -> showAddTransactionDialog());
         importStatement.setOnClickListener(v ->
-                csvPickerLauncher.launch(new String[]{"text/csv", "text/plain", "*/*"}));
+                csvPickerLauncher.launch(new String[]{"text/csv", "text/plain", "application/pdf", "*/*"}));
         retry.setOnClickListener(v -> budgetViewModel.retry());
         setLimitButton.setOnClickListener(v -> showEditLimitDialog(null, null, 0));
     }
