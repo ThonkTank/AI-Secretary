@@ -114,6 +114,24 @@
 
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/TaskSearchLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:visibility="gone"
+            android:hint="@string/task_list_search_hint"
+            app:endIconMode="clear_text"
+            style="@style/Widget.AISecretary.Editor.TextFieldLayout">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/TaskSearchInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:imeOptions="actionDone"
+                style="@style/Widget.AISecretary.Editor.TextField" />
+        </com.google.android.material.textfield.TextInputLayout>
+
     </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
