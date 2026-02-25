@@ -7,6 +7,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
+import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
@@ -49,12 +50,17 @@ public class TaskViewModel extends AndroidViewModel {
     public TaskViewModel(Application app,
                          TaskAsyncDataService taskAsyncDataService,
                          CheckOffTaskUseCase checkOffTaskUseCase,
-                         RegenerateScheduleUseCase regenerateScheduleUseCase) {
+                         RegenerateScheduleUseCase regenerateScheduleUseCase,
+                         DeleteTaskUseCase deleteTaskUseCase) {
         super(app);
         this.taskAsyncDataService = taskAsyncDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
-        this.taskEditSessionController = new TaskEditSessionController(taskAsyncDataService, this::refreshList);
+        this.taskEditSessionController = new TaskEditSessionController(
+                taskAsyncDataService,
+                deleteTaskUseCase,
+                this::refreshList
+        );
 
         this.masterList = new ViewSlotList();
         applyChecklistPreset();

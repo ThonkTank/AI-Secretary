@@ -1,5 +1,6 @@
 package com.autosecretary.features.task.data;
 
+import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
@@ -10,13 +11,14 @@ import java.time.LocalTime;
 public class TaskScheduleConfig {
 
     @PrimaryKey
+    @NonNull
     public DayOfWeek dayOfWeek;
 
     public LocalTime startTime;
 
     public LocalTime endTime;
 
-    public TaskScheduleConfig(DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
+    public TaskScheduleConfig(@NonNull DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
         this.dayOfWeek = dayOfWeek;
         this.startTime = startTime;
         this.endTime = endTime;

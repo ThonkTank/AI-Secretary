@@ -2,6 +2,7 @@ package com.autosecretary.features.budget.data;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 import java.util.UUID;
@@ -32,10 +33,15 @@ public class BudgetCategory {
 
     public boolean archived = false;
 
+    public BudgetCategory() {
+    }
+
+    @Ignore
     public BudgetCategory(@NonNull String name, @NonNull String type) {
         this(name, type, DEFAULT_ICON, DEFAULT_COLOR_HEX);
     }
 
+    @Ignore
     public BudgetCategory(@NonNull String name, @NonNull String type,
                           @NonNull String icon, @NonNull String colorHex) {
         this.name = name;

@@ -96,6 +96,7 @@ public class TaskScheduleConfigDialog extends DialogFragment {
                 config = new TaskScheduleConfig(day, LocalTime.of(6, 0), LocalTime.of(21, 0));
                 draftByDay.put(day, config);
             }
+            final TaskScheduleConfig rowConfig = config;
 
             View row = inflater.inflate(R.layout.task_schedule_day_item, container, false);
             TextView dayLabel = row.findViewById(R.id.ScheduleDayLabel);
@@ -103,15 +104,15 @@ public class TaskScheduleConfigDialog extends DialogFragment {
             Button endButton = row.findViewById(R.id.ScheduleEndButton);
 
             dayLabel.setText(day.getDisplayName(TextStyle.FULL, Locale.GERMAN));
-            startButton.setText(config.startTime.format(timeFormat));
-            endButton.setText(config.endTime.format(timeFormat));
+            startButton.setText(rowConfig.startTime.format(timeFormat));
+            endButton.setText(rowConfig.endTime.format(timeFormat));
 
-            startButton.setOnClickListener(v -> showTimePicker(config.startTime, picked -> {
-                config.startTime = picked;
+            startButton.setOnClickListener(v -> showTimePicker(rowConfig.startTime, picked -> {
+                rowConfig.startTime = picked;
                 startButton.setText(picked.format(timeFormat));
             }));
-            endButton.setOnClickListener(v -> showTimePicker(config.endTime, picked -> {
-                config.endTime = picked;
+            endButton.setOnClickListener(v -> showTimePicker(rowConfig.endTime, picked -> {
+                rowConfig.endTime = picked;
                 endButton.setText(picked.format(timeFormat));
             }));
 
