@@ -1,19 +1,14 @@
 package com.autosecretary.features.budget.ui;
 
-import android.content.ContentResolver;
 import android.content.res.ColorStateList;
-import android.database.Cursor;
 import android.graphics.Color;
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.OpenableColumns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -22,8 +17,6 @@ import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -36,13 +29,11 @@ import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.budget.data.BudgetAccount;
 import com.autosecretary.features.budget.data.BudgetCategory;
-import com.autosecretary.features.budget.domain.RecurringSuggestion;
+import com.autosecretary.features.budget.ui.internal.BudgetImportPickerController;
+import com.autosecretary.features.budget.ui.internal.BudgetRecurringSuggestionsDialogController;
+import com.autosecretary.features.budget.ui.internal.BudgetTransferDialogController;
 import com.google.android.material.textfield.TextInputEditText;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -58,27 +49,41 @@ public class BudgetFragment extends Fragment {
 
     private BudgetViewModel budgetViewModel;
     private boolean shouldOpenAddTransactionDialog;
-    private ActivityResultLauncher<String[]> csvPickerLauncher;
+    private BudgetImportPickerController importPickerController;
+    private BudgetTransferDialogController transferDialogController;
+    private BudgetRecurringSuggestionsDialogController recurringSuggestionsDialogController;
     private List<BudgetAccount> accountItems = new ArrayList<>();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        csvPickerLauncher = registerForActivityResult(
-                new ActivityResultContracts.OpenDocument(),
-                uri -> {
-                    if (uri == null || budgetViewModel == null) return;
-                    String fileName = getFileName(uri);
-                    String mimeType = requireContext().getContentResolver().getType(uri);
-                    try {
-                        budgetViewModel.setImportStatus("Datei wird geladen: " + fileName);
-                        byte[] bytes = readUriBytes(uri);
-                        budgetViewModel.importFromCsv(fileName, bytes, mimeType);
-                    } catch (IOException e) {
-                        budgetViewModel.onImportReadFailed();
-                    }
-                }
-        );
+        importPickerController = new BudgetImportPickerController(this, new BudgetImportPickerController.Listener() {
+            @Override
+            public void onImportPicked(String fileName, byte[] bytes, String mimeType) {
+                if (budgetViewModel == null) return;
+                budgetViewModel.setImportStatus("Datei wird geladen: " + fileName);
+                budgetViewModel.importFromCsv(fileName, bytes, mimeType);
+            }
+
+            @Override
+            public void onImportReadFailed() {
+                if (budgetViewModel == null) return;
+                budgetViewModel.onImportReadFailed();
+            }
+        });
+        importPickerController.register();
+
+        transferDialogController = new BudgetTransferDialogController(this,
+                (sourceAccountId, targetAccountId, amount, bookingDate, note) -> {
+                    if (budgetViewModel == null) return;
+                    budgetViewModel.addTransfer(sourceAccountId, targetAccountId, amount, bookingDate, note);
+                });
+
+        recurringSuggestionsDialogController = new BudgetRecurringSuggestionsDialogController(this,
+                suggestions -> {
+                    if (budgetViewModel == null) return;
+                    budgetViewModel.applyRecurringSuggestions(suggestions);
+                });
     }
 
     @Nullable
@@ -203,7 +208,7 @@ public class BudgetFragment extends Fragment {
 
         budgetViewModel.getImportResult().observe(getViewLifecycleOwner(), result -> {
             if (result != null && !result.recurringSuggestions().isEmpty()) {
-                showRecurringSuggestionsDialog(result.recurringSuggestions());
+                recurringSuggestionsDialogController.show(result.recurringSuggestions());
                 budgetViewModel.clearImportResult();
             }
         });
@@ -237,8 +242,7 @@ public class BudgetFragment extends Fragment {
         views.monthNext.setOnClickListener(v -> budgetViewModel.navigateMonth(1));
         views.addTransaction.setOnClickListener(v -> showAddTransactionDialog());
         views.addTransfer.setOnClickListener(v -> showTransferDialog());
-        views.importStatement.setOnClickListener(v ->
-                csvPickerLauncher.launch(new String[]{"text/csv", "text/plain", "application/pdf", "*/*"}));
+        views.importStatement.setOnClickListener(v -> importPickerController.launchPicker());
         views.retry.setOnClickListener(v -> budgetViewModel.retry());
         views.setLimitButton.setOnClickListener(v -> showEditLimitDialog(null, null, 0));
     }
@@ -423,73 +427,8 @@ public class BudgetFragment extends Fragment {
     }
 
     private void showTransferDialog() {
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.budget_transfer_dialog, null);
-        Spinner sourceAccountSpinner = dialogView.findViewById(R.id.BudgetTransferSourceAccount);
-        Spinner targetAccountSpinner = dialogView.findViewById(R.id.BudgetTransferTargetAccount);
-        TextInputEditText amountInput = dialogView.findViewById(R.id.BudgetTransferAmount);
-        TextInputEditText dateInput = dialogView.findViewById(R.id.BudgetTransferDate);
-        TextInputEditText noteInput = dialogView.findViewById(R.id.BudgetTransferNote);
-
-        List<BudgetAccount> accounts = budgetViewModel.getAccounts().getValue();
-        if (accounts == null || accounts.size() < 2) {
-            new AlertDialog.Builder(requireContext())
-                    .setMessage(R.string.budget_transfer_requires_two_accounts)
-                    .setPositiveButton(android.R.string.ok, null)
-                    .show();
-            return;
-        }
-
-        List<String> accountNames = new ArrayList<>();
-        for (BudgetAccount account : accounts) {
-            accountNames.add(account.name);
-        }
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_item, accountNames);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        sourceAccountSpinner.setAdapter(adapter);
-        targetAccountSpinner.setAdapter(adapter);
-        if (accounts.size() > 1) {
-            targetAccountSpinner.setSelection(1);
-        }
-
-        dateInput.setText(LocalDate.now().toString());
-
-        new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.budget_transfer_title)
-                .setView(dialogView)
-                .setPositiveButton(R.string.budget_transfer_save, (dialog, which) -> {
-                    int sourceIdx = sourceAccountSpinner.getSelectedItemPosition();
-                    int targetIdx = targetAccountSpinner.getSelectedItemPosition();
-                    String amountStr = amountInput.getText() != null
-                            ? amountInput.getText().toString().trim() : "";
-                    String note = noteInput.getText() != null
-                            ? noteInput.getText().toString().trim() : "";
-                    String dateStr = dateInput.getText() != null
-                            ? dateInput.getText().toString().trim() : "";
-
-                    LocalDate bookingDate;
-                    try {
-                        bookingDate = LocalDate.parse(dateStr);
-                    } catch (DateTimeParseException ex) {
-                        bookingDate = LocalDate.now();
-                    }
-
-                    if (sourceIdx < 0 || sourceIdx >= accounts.size()
-                            || targetIdx < 0 || targetIdx >= accounts.size()) {
-                        return;
-                    }
-
-                    budgetViewModel.addTransfer(
-                            accounts.get(sourceIdx).id,
-                            accounts.get(targetIdx).id,
-                            amountStr,
-                            bookingDate,
-                            note.isEmpty() ? null : note
-                    );
-                })
-                .setNegativeButton(R.string.budget_dialog_cancel, null)
-                .show();
+        if (transferDialogController == null || budgetViewModel == null) return;
+        transferDialogController.show(budgetViewModel.getAccounts().getValue());
     }
 
     private void populateCategorySpinner(Spinner spinner, List<BudgetCategory> allCategories,
@@ -708,145 +647,6 @@ public class BudgetFragment extends Fragment {
                 .show();
     }
 
-    private void showRecurringSuggestionsDialog(List<RecurringSuggestion> suggestions) {
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.budget_recurring_suggestions_dialog, null);
-        LinearLayout listContainer = dialogView.findViewById(R.id.BudgetRecurringSuggestionList);
-        TextView selectionInfo = dialogView.findViewById(R.id.BudgetRecurringSelectionInfo);
-
-        boolean[] selections = new boolean[suggestions.size()];
-        for (int i = 0; i < selections.length; i++) {
-            selections[i] = true;
-        }
-
-        LayoutInflater inflater = LayoutInflater.from(requireContext());
-        List<CheckBox> checkBoxes = new ArrayList<>();
-
-        for (int i = 0; i < suggestions.size(); i++) {
-            RecurringSuggestion suggestion = suggestions.get(i);
-            View row = inflater.inflate(R.layout.budget_recurring_suggestion_item, listContainer, false);
-
-            CheckBox checkbox = row.findViewById(R.id.BudgetSuggestionCheckbox);
-            TextView payee = row.findViewById(R.id.BudgetSuggestionPayee);
-            TextView pattern = row.findViewById(R.id.BudgetSuggestionPattern);
-            TextView count = row.findViewById(R.id.BudgetSuggestionCount);
-            TextView confidence = row.findViewById(R.id.BudgetSuggestionConfidence);
-            TextView amount = row.findViewById(R.id.BudgetSuggestionAmount);
-
-            checkbox.setChecked(true);
-            checkBoxes.add(checkbox);
-
-            payee.setText(suggestion.displayPayee());
-            pattern.setText(getPatternDescription(suggestion));
-            count.setText(getString(R.string.budget_recurring_transactions_count,
-                    suggestion.transactionIds().size()));
-            confidence.setText(getString(R.string.budget_recurring_confidence,
-                    suggestion.confidenceScore() * 100));
-            amount.setText(String.format(Locale.GERMAN, "%.2f €",
-                    Math.abs(suggestion.avgAmountCents()) / 100.0));
-
-            amount.setTextColor(suggestion.avgAmountCents() >= 0
-                    ? getColorFromResources(R.color.budget_positive)
-                    : getColorFromResources(R.color.budget_negative));
-
-            if (suggestion.confidenceScore() >= 0.7) {
-                confidence.setTextColor(getColorFromResources(R.color.budget_positive));
-            } else if (suggestion.confidenceScore() >= 0.5) {
-                confidence.setTextColor(getColorFromResources(R.color.budget_warning));
-            } else {
-                confidence.setTextColor(getColorFromResources(R.color.budget_neutral));
-            }
-
-            listContainer.addView(row);
-        }
-
-        updateSelectionInfo(selectionInfo, selections);
-
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.budget_recurring_title)
-                .setView(dialogView)
-                .setPositiveButton(getString(R.string.budget_recurring_create, countSelected(selections)),
-                        null)
-                .setNegativeButton(R.string.budget_recurring_skip, null)
-                .create();
-
-        dialog.setOnShowListener(d -> {
-            Button createButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-            createButton.setOnClickListener(v -> {
-                List<RecurringSuggestion> selected = new ArrayList<>();
-                for (int i = 0; i < suggestions.size(); i++) {
-                    if (selections[i]) selected.add(suggestions.get(i));
-                }
-                if (!selected.isEmpty()) {
-                    budgetViewModel.applyRecurringSuggestions(selected);
-                }
-                dialog.dismiss();
-            });
-
-            for (int i = 0; i < checkBoxes.size(); i++) {
-                int index = i;
-                View row = listContainer.getChildAt(i);
-                row.setOnClickListener(rv -> {
-                    selections[index] = !selections[index];
-                    checkBoxes.get(index).setChecked(selections[index]);
-                    updateSelectionInfo(selectionInfo, selections);
-                    updateCreateButton(createButton, selections);
-                });
-            }
-        });
-
-        dialog.show();
-    }
-
-    private void updateSelectionInfo(TextView info, boolean[] selections) {
-        info.setText(getString(R.string.budget_recurring_selection_info,
-                countSelected(selections), selections.length));
-    }
-
-    private void updateCreateButton(Button button, boolean[] selections) {
-        int count = countSelected(selections);
-        button.setText(getString(R.string.budget_recurring_create, count));
-        button.setEnabled(count > 0);
-    }
-
-    private int countSelected(boolean[] selections) {
-        int count = 0;
-        for (boolean sel : selections) {
-            if (sel) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    private String getPatternDescription(RecurringSuggestion suggestion) {
-        if (suggestion.suggestedType() == null) {
-            return getString(R.string.budget_recurring_pattern_unknown);
-        }
-        return switch (suggestion.suggestedType()) {
-            case MONTHLY_DAY -> getString(R.string.budget_recurring_pattern_monthly_day,
-                    suggestion.suggestedValue());
-            case MONTHLY_LAST -> getString(R.string.budget_recurring_pattern_monthly_last);
-            case WEEKLY -> getString(R.string.budget_recurring_pattern_weekly,
-                    getDayName(suggestion.suggestedDayOfWeek()));
-            case INTERVAL -> getString(R.string.budget_recurring_pattern_interval,
-                    suggestion.suggestedValue());
-        };
-    }
-
-    private String getDayName(DayOfWeek dow) {
-        if (dow == null) return "";
-        return switch (dow) {
-            case MONDAY -> "Mo";
-            case TUESDAY -> "Di";
-            case WEDNESDAY -> "Mi";
-            case THURSDAY -> "Do";
-            case FRIDAY -> "Fr";
-            case SATURDAY -> "Sa";
-            case SUNDAY -> "So";
-        };
-    }
-
     private void showEditLimitDialog(String preSelectedCategoryId,
                                      String preSelectedCategoryName,
                                      double currentAmount) {
@@ -922,36 +722,4 @@ public class BudgetFragment extends Fragment {
                 .show();
     }
 
-    private String getFileName(Uri uri) {
-        String result = null;
-        if ("content".equals(uri.getScheme())) {
-            try (Cursor cursor = requireContext().getContentResolver()
-                    .query(uri, null, null, null, null)) {
-                if (cursor != null && cursor.moveToFirst()) {
-                    int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-                    if (nameIndex >= 0) {
-                        result = cursor.getString(nameIndex);
-                    }
-                }
-            }
-        }
-        if (result == null) {
-            result = uri.getLastPathSegment();
-        }
-        return result != null ? result : "import.csv";
-    }
-
-    private byte[] readUriBytes(Uri uri) throws IOException {
-        ContentResolver cr = requireContext().getContentResolver();
-        try (InputStream is = cr.openInputStream(uri)) {
-            if (is == null) throw new IOException("Dateistream konnte nicht geöffnet werden: " + uri);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            byte[] buffer = new byte[4096];
-            int read;
-            while ((read = is.read(buffer)) != -1) {
-                baos.write(buffer, 0, read);
-            }
-            return baos.toByteArray();
-        }
-    }
 }
