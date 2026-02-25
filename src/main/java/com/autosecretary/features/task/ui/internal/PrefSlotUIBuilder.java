@@ -7,7 +7,7 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.autosecretary.features.task.ui.model.PrefSlotEditState;
+import com.autosecretary.features.task.ui.state.PrefSlotEditState;
 import com.google.android.material.button.MaterialButton;
 
 import java.time.DayOfWeek;

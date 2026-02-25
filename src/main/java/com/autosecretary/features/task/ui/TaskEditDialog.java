@@ -29,8 +29,8 @@ import com.autosecretary.constants.Period;
 import com.autosecretary.constants.Priority;
 import com.autosecretary.features.task.ui.internal.PrefSlotUIBuilder;
 import com.autosecretary.features.task.ui.internal.mapper.TaskEditStateMapper;
-import com.autosecretary.features.task.ui.model.PrefSlotEditState;
-import com.autosecretary.features.task.ui.model.TaskEditState;
+import com.autosecretary.features.task.ui.state.PrefSlotEditState;
+import com.autosecretary.features.task.ui.state.TaskEditState;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputLayout;
 

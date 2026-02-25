@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui.model;
+package com.autosecretary.features.task.ui.state;
 
 import com.autosecretary.constants.Period;
 import com.autosecretary.constants.Priority;
