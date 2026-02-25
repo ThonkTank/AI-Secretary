@@ -88,9 +88,9 @@ public class TaskViewModel extends AndroidViewModel {
 
     public void beginEditTask(String taskId) {
         taskAsyncDataService.loadTask(taskId, task -> {
-            selectedBaseTask.postValue(task);
-            selectedTask.postValue(taskEditStateMapper.fromTask(task));
-            isNewTask.postValue(false);
+            selectedBaseTask.setValue(task);
+            selectedTask.setValue(taskEditStateMapper.fromTask(task));
+            isNewTask.setValue(false);
         });
     }
 
@@ -111,7 +111,7 @@ public class TaskViewModel extends AndroidViewModel {
 
     public void saveEditedTask(Task mappedTask) {
         taskAsyncDataService.saveTask(mappedTask, () -> {
-            isNewTask.postValue(false);
+            isNewTask.setValue(false);
             refreshList();
         });
     }
@@ -207,7 +207,7 @@ public class TaskViewModel extends AndroidViewModel {
         }
 
         masterList.sort(groupByTaskParent, comparator);
-        displayList.postValue(masterList.displaySlots);
+        displayList.setValue(masterList.displaySlots);
     }
 
     public Task requireSelectedBaseTask() {
