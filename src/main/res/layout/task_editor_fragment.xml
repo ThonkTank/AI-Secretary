@@ -15,13 +15,13 @@
             android:id="@+id/EditTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Titel"/>
+            android:hint="@string/task_editor_hint_title"/>
 
         <EditText
             android:id="@+id/EditDescription"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Beschreibung"
+            android:hint="@string/task_editor_hint_description"
             android:minLines="2"/>
 
         <Spinner
@@ -40,7 +40,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Frist:"/>
+                android:text="@string/task_editor_deadline_label"/>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/DeadlineInputLayout"
@@ -50,7 +50,7 @@
                 android:layout_marginStart="@dimen/spacing_sm"
                 app:endIconMode="custom"
                 app:endIconDrawable="@android:drawable/ic_menu_my_calendar"
-                app:endIconContentDescription="Frist auswählen">
+                app:endIconContentDescription="@string/task_editor_deadline_pick_content_description">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/EditDeadline"
@@ -62,8 +62,8 @@
                     android:clickable="true"
                     android:longClickable="false"
                     android:inputType="none"
-                    android:text="Keine Frist"
-                    android:contentDescription="Frist auswählen"/>
+                    android:text="@string/task_editor_deadline_none"
+                    android:contentDescription="@string/task_editor_deadline_pick_content_description"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <ImageButton
@@ -74,14 +74,14 @@
                 android:minHeight="48dp"
                 android:src="@android:drawable/ic_menu_close_clear_cancel"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Frist löschen"/>
+                android:contentDescription="@string/task_editor_deadline_clear_content_description"/>
         </LinearLayout>
 
         <CheckBox
             android:id="@+id/EditCloseOnMiss"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Bei Überschreitung schließen"/>
+            android:text="@string/task_editor_close_on_miss"/>
 
         <!-- Duration -->
         <LinearLayout
@@ -94,7 +94,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Dauer (Min):"/>
+                android:text="@string/task_editor_duration_label"/>
 
             <EditText
                 android:id="@+id/EditMinDuration"
@@ -103,12 +103,12 @@
                 android:layout_weight="1"
                 android:layout_marginStart="@dimen/spacing_sm"
                 android:inputType="number"
-                android:hint="Min"/>
+                android:hint="@string/task_editor_hint_min"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=" - "
+                android:text="@string/task_editor_range_separator"
                 android:layout_marginStart="@dimen/spacing_xs"
                 android:layout_marginEnd="@dimen/spacing_xs"/>
 
@@ -118,7 +118,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:inputType="number"
-                android:hint="Max"/>
+                android:hint="@string/task_editor_hint_max"/>
         </LinearLayout>
 
         <!-- Cooldown -->
@@ -132,7 +132,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Cooldown (Tage):"/>
+                android:text="@string/task_editor_cooldown_label"/>
 
             <EditText
                 android:id="@+id/EditCooldown"
@@ -149,7 +149,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_md"
-            android:text="Wiederholung"/>
+            android:text="@string/task_editor_repetition_toggle"/>
 
         <LinearLayout
             android:id="@+id/RepetitionContainer"
@@ -170,7 +170,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=" mal pro "
+                android:text="@string/task_editor_repetition_format"
                 android:layout_marginStart="@dimen/spacing_xs"
                 android:layout_marginEnd="@dimen/spacing_xs"/>
 
@@ -201,7 +201,7 @@
             android:id="@+id/EditAdaptive"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Adaptive Zeiten"/>
+            android:text="@string/task_editor_adaptive_times"/>
 
         <!-- Progress -->
         <CheckBox
@@ -209,7 +209,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_md"
-            android:text="Fortschritt"/>
+            android:text="@string/task_editor_progress_toggle"/>
 
         <LinearLayout
             android:id="@+id/ProgressContainer"
@@ -228,7 +228,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Einheit:"/>
+                    android:text="@string/task_editor_unit_label"/>
 
                 <EditText
                     android:id="@+id/EditUnit"
@@ -236,7 +236,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginStart="@dimen/spacing_sm"
-                    android:hint="z.B. Seiten"/>
+                    android:hint="@string/task_editor_hint_unit_example"/>
             </LinearLayout>
 
             <LinearLayout
@@ -248,7 +248,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Ziel:"/>
+                    android:text="@string/task_editor_target_label"/>
 
                 <EditText
                     android:id="@+id/EditTarget"
@@ -261,7 +261,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Aktuell:"
+                    android:text="@string/task_editor_current_label"
                     android:layout_marginStart="@dimen/spacing_lg"/>
 
                 <EditText
@@ -277,7 +277,7 @@
                 android:id="@+id/EditResetPerRep"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Reset pro Wiederholung"/>
+                android:text="@string/task_editor_reset_per_repetition"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -288,7 +288,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Pro Wdh.:"/>
+                    android:text="@string/task_editor_per_repetition_label"/>
 
                 <EditText
                     android:id="@+id/EditMinPerRep"
@@ -297,12 +297,12 @@
                     android:layout_weight="1"
                     android:layout_marginStart="@dimen/spacing_sm"
                     android:inputType="number"
-                    android:hint="Min"/>
+                    android:hint="@string/task_editor_hint_min"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text=" - "
+                    android:text="@string/task_editor_range_separator"
                     android:layout_marginStart="@dimen/spacing_xs"
                     android:layout_marginEnd="@dimen/spacing_xs"/>
 
@@ -312,7 +312,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:inputType="number"
-                    android:hint="Max"/>
+                    android:hint="@string/task_editor_hint_max"/>
             </LinearLayout>
         </LinearLayout>
 

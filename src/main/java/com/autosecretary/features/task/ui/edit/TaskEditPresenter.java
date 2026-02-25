@@ -1,11 +1,11 @@
-package com.autosecretary.features.task.ui;
+package com.autosecretary.features.task.ui.edit;
 
 import com.autosecretary.constants.Period;
 import com.autosecretary.constants.Priority;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
-import com.autosecretary.features.task.ui.internal.mapper.TaskEditStateMapper;
+import com.autosecretary.features.task.ui.edit.internal.mapper.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.state.TaskEditState;
 
@@ -13,7 +13,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Form logic coordinator for {@link com.autosecretary.features.task.ui.TaskEditDialog TaskEditDialog}.
+ * Form logic coordinator for {@link com.autosecretary.features.task.ui.edit.TaskEditDialog TaskEditDialog}.
  * Handles repetition-to-prefSlot reactivity ({@link #onRepetitionChanged} recalculates repsPerDay
  * and adjusts the prefSlot count), form input application ({@link #applyForm}), and Task
  * reconstitution for persistence ({@link #toTaskForSave}).
