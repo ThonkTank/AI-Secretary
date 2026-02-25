@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -51,6 +52,8 @@ public class TaskEditDialog extends DialogFragment {
     private static final int DAY_PICKER_VERTICAL_PADDING_DP = 16;
     private static final int DAY_BUTTON_HORIZONTAL_PADDING_DP = 4;
     private static final int DAY_BUTTON_HORIZONTAL_MARGIN_DP = 2;
+    private static final int DAY_BUTTON_VERTICAL_MARGIN_DP = 4;
+    private static final int DAY_PICKER_COLUMN_COUNT = 4;
 
     private TaskViewModel vm;
     private TaskEditSessionController editSessionController;
@@ -225,15 +228,16 @@ public class TaskEditDialog extends DialogFragment {
             throw new IllegalStateException("Expected exactly 7 localized weekday labels.");
         }
 
-        LinearLayout layout = new LinearLayout(requireContext());
-        layout.setOrientation(LinearLayout.HORIZONTAL);
+        GridLayout layout = new GridLayout(requireContext());
+        layout.setColumnCount(DAY_PICKER_COLUMN_COUNT);
         layout.setPadding(
             dpToPx(DAY_PICKER_HORIZONTAL_PADDING_DP),
             dpToPx(DAY_PICKER_VERTICAL_PADDING_DP),
             dpToPx(DAY_PICKER_HORIZONTAL_PADDING_DP),
             dpToPx(DAY_PICKER_VERTICAL_PADDING_DP)
         );
-        layout.setGravity(Gravity.CENTER);
+        layout.setUseDefaultMargins(false);
+        layout.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
 
         boolean[] selected = new boolean[WEEK_DAY_COUNT];
 
@@ -247,6 +251,7 @@ public class TaskEditDialog extends DialogFragment {
             MaterialButton btn = new MaterialButton(requireContext(), null, 0,
                 R.style.Widget_AutoSecretary_TaskEdit_DayPickerButton);
             btn.setText(labels[i]);
+            btn.setMaxLines(2);
             btn.setMinWidth(0);
             btn.setMinimumWidth(0);
             btn.setCheckable(true);
@@ -255,9 +260,19 @@ public class TaskEditDialog extends DialogFragment {
             btn.setInsetBottom(0);
             btn.setPadding(dpToPx(DAY_BUTTON_HORIZONTAL_PADDING_DP), 0, dpToPx(DAY_BUTTON_HORIZONTAL_PADDING_DP), 0);
 
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-            params.setMargins(dpToPx(DAY_BUTTON_HORIZONTAL_MARGIN_DP), 0, dpToPx(DAY_BUTTON_HORIZONTAL_MARGIN_DP), 0);
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams(
+                GridLayout.spec(i / DAY_PICKER_COLUMN_COUNT, 1f),
+                GridLayout.spec(i % DAY_PICKER_COLUMN_COUNT, 1f)
+            );
+            params.width = 0;
+            params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            params.setGravity(Gravity.FILL_HORIZONTAL);
+            params.setMargins(
+                dpToPx(DAY_BUTTON_HORIZONTAL_MARGIN_DP),
+                dpToPx(DAY_BUTTON_VERTICAL_MARGIN_DP),
+                dpToPx(DAY_BUTTON_HORIZONTAL_MARGIN_DP),
+                dpToPx(DAY_BUTTON_VERTICAL_MARGIN_DP)
+            );
             btn.setLayoutParams(params);
 
             if (isTaken) {
