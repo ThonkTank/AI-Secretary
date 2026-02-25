@@ -1,4 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar" />
+
+    <style name="TextAppearance.Task.Title">
+        <item name="android:textSize">@dimen/task_text_sm</item>
+        <item name="android:textColor">#333333</item>
+    </style>
+
+    <style name="TextAppearance.Task.Metadata">
+        <item name="android:textSize">@dimen/task_text_xs</item>
+        <item name="android:textColor">#888888</item>
+        <item name="android:fontFamily">monospace</item>
+    </style>
+
+    <style name="TextAppearance.Task.Time.Primary" parent="TextAppearance.Task.Metadata">
+        <item name="android:textColor">#555555</item>
+    </style>
+
+    <style name="TextAppearance.Task.Time.Secondary" parent="TextAppearance.Task.Metadata">
+        <item name="android:textColor">#999999</item>
+    </style>
+
+    <style name="TextAppearance.Task.Widget.NavAction">
+        <item name="android:textSize">@dimen/task_text_md</item>
+        <item name="android:textColor">#333333</item>
+    </style>
+
+    <style name="TextAppearance.Task.Widget.NavLabel" parent="TextAppearance.Task.Title">
+        <item name="android:textSize">@dimen/task_text_md</item>
+        <item name="android:textStyle">bold</item>
+    </style>
 </resources>
