@@ -30,6 +30,11 @@
     <string name="task_deadline_today_content_description">Heute fällig</string>
     <string name="task_deadline_in_days_content_description">Fällig in %1$d Tagen</string>
     <string name="task_streak_display">%1$dx</string>
+    <string name="task_streak_content_description">Streak %1$d, Tier %2$s</string>
+    <string name="task_streak_tier_common">Common</string>
+    <string name="task_streak_tier_rare">Rare</string>
+    <string name="task_streak_tier_epic">Epic</string>
+    <string name="task_streak_tier_legendary">Legendary</string>
     <string name="task_in_progress_state_description">In Bearbeitung</string>
     <string name="task_progress_display">%1$d/%2$d %3$s</string>
     <string name="task_progress_increment">Fortschritt erhöhen</string>
