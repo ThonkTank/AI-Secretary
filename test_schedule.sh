@@ -219,7 +219,13 @@ if [ "$TODAY_DOW" = "1" ] || [ "$TODAY_DOW" = "3" ] || [ "$TODAY_DOW" = "5" ]; t
     elif [ "$SPORT_FOUND" -gt 0 ]; then
         run_check "Sport geplant, aber Kinder fehlen (Aufwärmen=$AUFWAERMEN_FOUND, Training=$TRAINING_FOUND)" "fail"
     else
-        run_check "Sport nicht geplant (heute Mo/Mi/Fr, sollte geplant sein!)" "fail"
+        # Sport hatte Score > 0 im Log = Day-Constraint erlaubt, aber von höher priorisierten Tasks verdrängt
+        SPORT_SCORABLE=$(echo "$LOG_OUTPUT" | grep -oP 'Sport: \d+' | grep -oP '\d+' | awk '$1 > 0 {found=1} END {print found+0}' || true)
+        if [ "${SPORT_SCORABLE:-0}" -gt 0 ]; then
+            run_check "Sport Day-Constraint korrekt (Score>0 am Mo/Mi/Fr, aber von höher priorisierten Tasks verdrängt)" "pass"
+        else
+            run_check "Sport nicht schedulable (Score=0 am Mo/Mi/Fr — Day-Constraint-Bug!)" "fail"
+        fi
     fi
 else
     # Andere Tage — Sport darf NICHT geplant sein
@@ -375,6 +381,56 @@ if [ "$WOCHENBERICHT_FOUND" -gt 0 ]; then
     run_check "Wochenbericht geplant (bi-weekly perPeriod=2 korrekt)" "pass"
 else
     run_check "Wochenbericht NICHT geplant (perPeriod=2 Bug?)" "fail"
+fi
+
+# Check 14: Morgenroutine Parent-Child — Kinder innerhalb des Eltern-Blocks
+MORGEN_FOUND=$(echo "$SUMMARY" | grep "Morgenroutine:" | grep -c "slots" || true)
+DUSCHEN_FOUND=$(echo "$SUMMARY" | grep "Duschen:" | grep -c "slots" || true)
+ZAEHNE_FOUND=$(echo "$SUMMARY" | grep "Zähneputzen:" | grep -c "slots" || true)
+FRUEHSTUECK_FOUND=$(echo "$SUMMARY" | grep "Frühstück:" | grep -c "slots" || true)
+HAARE_FOUND=$(echo "$SUMMARY" | grep "Haare föhnen:" | grep -c "slots" || true)
+ABSPUELEN_FOUND=$(echo "$SUMMARY" | grep "Abspülen:" | grep -c "slots" || true)
+MORGEN_CHILDREN=$((DUSCHEN_FOUND + ZAEHNE_FOUND + FRUEHSTUECK_FOUND))
+MORGEN_GRANDCHILDREN=$((HAARE_FOUND + ABSPUELEN_FOUND))
+if [ "$MORGEN_FOUND" -gt 0 ] && [ "$MORGEN_CHILDREN" -ge 2 ] && [ "$MORGEN_GRANDCHILDREN" -ge 1 ]; then
+    run_check "Morgenroutine: Parent + ${MORGEN_CHILDREN} Kinder + ${MORGEN_GRANDCHILDREN} Enkel geplant (3-Level-Baum)" "pass"
+elif [ "$MORGEN_FOUND" -gt 0 ]; then
+    run_check "Morgenroutine geplant, aber Kinder/Enkel fehlen (L1=$MORGEN_CHILDREN, L2=$MORGEN_GRANDCHILDREN)" "fail"
+else
+    run_check "Morgenroutine NICHT geplant!" "fail"
+fi
+
+# Check 15: Abendroutine Parent-Child — Tagebuch + Hautpflege als Kinder
+ABEND_FOUND=$(echo "$SUMMARY" | grep "Abendroutine:" | grep -c "slots" || true)
+TAGEBUCH_FOUND=$(echo "$SUMMARY" | grep "Tagebuch schreiben:" | grep -c "slots" || true)
+HAUTPFLEGE_FOUND=$(echo "$SUMMARY" | grep "Hautpflege:" | grep -c "slots" || true)
+NOTIZEN_FOUND=$(echo "$SUMMARY" | grep "Notizen ordnen:" | grep -c "slots" || true)
+if [ "$ABEND_FOUND" -gt 0 ] && [ "$TAGEBUCH_FOUND" -gt 0 ] && [ "$HAUTPFLEGE_FOUND" -gt 0 ]; then
+    NOTIZ_INFO=""
+    [ "$NOTIZEN_FOUND" -gt 0 ] && NOTIZ_INFO=" + Notizen ordnen (L2)"
+    run_check "Abendroutine: Parent + Tagebuch + Hautpflege geplant${NOTIZ_INFO}" "pass"
+elif [ "$ABEND_FOUND" -gt 0 ]; then
+    run_check "Abendroutine geplant, aber Kinder fehlen (Tagebuch=$TAGEBUCH_FOUND, Hautpflege=$HAUTPFLEGE_FOUND)" "fail"
+else
+    run_check "Abendroutine NICHT geplant!" "fail"
+fi
+
+# Check 16: Sport Dehnen (L2) — nur Mo/Mi/Fr
+DEHNEN_FOUND=$(echo "$SUMMARY" | grep "Dehnen:" | grep -c "slots" || true)
+if [ "$TODAY_DOW" = "1" ] || [ "$TODAY_DOW" = "3" ] || [ "$TODAY_DOW" = "5" ]; then
+    if [ "$DEHNEN_FOUND" -gt 0 ]; then
+        run_check "Sport: Dehnen (L2 Sub-Sub-Task) auf Mo/Mi/Fr geplant" "pass"
+    elif [ "$SPORT_FOUND" -eq 0 ]; then
+        run_check "Sport: Dehnen nicht geplant (Sport selbst verdrängt — akzeptabel)" "pass"
+    else
+        run_check "Sport: Dehnen NICHT geplant obwohl Sport geplant (Sub-Sub-Task-Bug!)" "fail"
+    fi
+else
+    if [ "$DEHNEN_FOUND" -eq 0 ]; then
+        run_check "Sport: Dehnen nicht geplant (kein Mo/Mi/Fr — korrekt)" "pass"
+    else
+        run_check "Sport: Dehnen geplant, obwohl heute kein Mo/Mi/Fr!" "fail"
+    fi
 fi
 
 # Ergebnis

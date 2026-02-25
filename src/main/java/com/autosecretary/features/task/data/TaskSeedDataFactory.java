@@ -22,22 +22,47 @@ public final class TaskSeedDataFactory {
         List<Task> newTasks = new ArrayList<>();
         Task t;
 
-        // 1. Morning routine — HIGH, adaptive, history
-        t = new Task("Morgenroutine", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 20);
-        t.core.priority = Priority.HIGH;
-        t.core.adaptive = true;
-        t.core.minDuration = 10;
-        t.core.description = "Duschen, Zähneputzen, Anziehen";
-        t.core.history.currentStreak = 12;
-        t.core.history.completions = 30;
-        t.core.history.trackedCompletions = 28;
-        t.core.history.totalDuration = 700;
-        newTasks.add(t);
+        // 1. Morgenroutine (Parent) — HIGH, adaptive, history
+        //    L0: Morgenroutine
+        //    ├── L1: Duschen
+        //    │   └── L2: Haare föhnen
+        //    ├── L1: Zähneputzen
+        //    └── L1: Frühstück
+        //        └── L2: Abspülen
+        Task morgen = new Task("Morgenroutine", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 60);
+        morgen.core.priority = Priority.HIGH;
+        morgen.core.adaptive = true;
+        morgen.core.minDuration = 30;
+        morgen.core.history.currentStreak = 12;
+        morgen.core.history.completions = 30;
+        morgen.core.history.trackedCompletions = 28;
+        morgen.core.history.totalDuration = 700;
+        newTasks.add(morgen);
 
-        // 2. Breakfast — MEDIUM, all days, 06:30
-        t = new Task("Frühstück", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 30), 20);
-        t.core.minDuration = 10;
-        newTasks.add(t);
+        // 1a. Duschen (L1 Kind von Morgenroutine)
+        Task duschen = new Task("Duschen", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 15);
+        duschen.core.minDuration = 5;
+        morgen.children.add(duschen);
+
+        // 1b. Haare föhnen (L2 Kind von Duschen — Sub-Sub-Task)
+        t = new Task("Haare föhnen", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 5);
+        t.core.minDuration = 5;
+        duschen.children.add(t);
+
+        // 1c. Zähneputzen (L1 Kind von Morgenroutine)
+        t = new Task("Zähneputzen", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 5);
+        t.core.minDuration = 5;
+        morgen.children.add(t);
+
+        // 1d. Frühstück (L1 Kind von Morgenroutine)
+        Task fruehstueck = new Task("Frühstück", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 25);
+        fruehstueck.core.minDuration = 10;
+        morgen.children.add(fruehstueck);
+
+        // 1e. Abspülen (L2 Kind von Frühstück — Sub-Sub-Task)
+        t = new Task("Abspülen", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 10);
+        t.core.minDuration = 5;
+        fruehstueck.children.add(t);
 
         // 3. Meditation — MEDIUM, all days, 07:00, history
         t = new Task("Meditation", 1, 1, Period.DAY, null, 1, LocalTime.of(7, 0), 15);
@@ -62,13 +87,22 @@ public final class TaskSeedDataFactory {
         sport.children.add(aufwaermen);
 
         // 6. Training (child of Sport) — MEDIUM, prereq: Warm-up
-        t = new Task("Training", 3, 1, Period.WEEK, null, 1, LocalTime.of(7, 30), 45);
-        t.core.priority = Priority.MEDIUM;
-        t.core.minDuration = 20;
-        t.prerequisites.add(new TaskPrerequisite(t.core.id, aufwaermen.core.id));
+        //    L1: Training
+        //    └── L2: Dehnen
+        Task training = new Task("Training", 3, 1, Period.WEEK, null, 1, LocalTime.of(7, 30), 45);
+        training.core.priority = Priority.MEDIUM;
+        training.core.minDuration = 20;
+        training.prerequisites.add(new TaskPrerequisite(training.core.id, aufwaermen.core.id));
+        training.prefSlots.clear();
+        training.prefSlots.add(TaskPrefSlotFactory.create(training.core.id, EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY), LocalTime.of(7, 30)));
+        sport.children.add(training);
+
+        // 6a. Dehnen (L2 Kind von Training — Sub-Sub-Task)
+        t = new Task("Dehnen", 3, 1, Period.WEEK, null, 1, LocalTime.of(7, 30), 10);
+        t.core.minDuration = 5;
         t.prefSlots.clear();
         t.prefSlots.add(TaskPrefSlotFactory.create(t.core.id, EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY), LocalTime.of(7, 30)));
-        sport.children.add(t);
+        training.children.add(t);
 
         // 7. Work — MEDIUM, Mon-Fri, 180min
         t = new Task("Arbeit", 1, 1, Period.DAY, null, 1, LocalTime.of(9, 0), 180);
@@ -176,11 +210,30 @@ public final class TaskSeedDataFactory {
         t.core.minDuration = 5;
         newTasks.add(t);
 
-        // 20. Write diary — MEDIUM, daily, adaptive, 20:00
-        t = new Task("Tagebuch schreiben", 1, 1, Period.DAY, null, 1, LocalTime.of(20, 0), 20);
-        t.core.adaptive = true;
-        t.core.minDuration = 10;
-        newTasks.add(t);
+        // 20. Abendroutine (Parent) — MEDIUM, daily, 20:00
+        //    L0: Abendroutine
+        //    ├── L1: Tagebuch schreiben (adaptive)
+        //    │   └── L2: Notizen ordnen
+        //    └── L1: Hautpflege
+        Task abend = new Task("Abendroutine", 1, 1, Period.DAY, null, 1, LocalTime.of(20, 0), 40);
+        abend.core.minDuration = 20;
+        newTasks.add(abend);
+
+        // 20a. Tagebuch schreiben (L1 Kind von Abendroutine) — adaptive
+        Task tagebuch = new Task("Tagebuch schreiben", 1, 1, Period.DAY, null, 1, LocalTime.of(20, 0), 20);
+        tagebuch.core.adaptive = true;
+        tagebuch.core.minDuration = 10;
+        abend.children.add(tagebuch);
+
+        // 20b. Notizen ordnen (L2 Kind von Tagebuch — Sub-Sub-Task)
+        t = new Task("Notizen ordnen", 1, 1, Period.DAY, null, 1, LocalTime.of(20, 0), 10);
+        t.core.minDuration = 5;
+        tagebuch.children.add(t);
+
+        // 20c. Hautpflege (L1 Kind von Abendroutine)
+        t = new Task("Hautpflege", 1, 1, Period.DAY, null, 1, LocalTime.of(20, 0), 10);
+        t.core.minDuration = 5;
+        abend.children.add(t);
 
         // 21. Weekly report — HIGH, bi-weekly (perPeriod=2), 20:30
         t = new Task("Wochenbericht", 1, 2, Period.WEEK, null, 1, LocalTime.of(20, 30), 45);
