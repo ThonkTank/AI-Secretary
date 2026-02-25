@@ -1,5 +1,6 @@
 package com.autosecretary.features.task.ui;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.view.LayoutInflater;
@@ -27,6 +28,9 @@ import java.util.function.Consumer;
  */
 public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowViewHolder> {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final long CHECKBOX_SCALE_UP_DURATION_MS = 100L;
+    private static final long CHECKBOX_SCALE_DOWN_DURATION_MS = 100L;
+    private static final long COMPLETION_FLASH_DURATION_MS = 300L;
 
     List<ViewSlot> viewSlots;
     Consumer<ViewSlot> onCheck;
@@ -48,6 +52,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         TextView deadlineCountdown;
         TextView streakDisplay;
         ImageButton editButton;
+        ValueAnimator completionAnimator;
         TextView calendarChip;
 
         TaskRowViewHolder(View taskRow) {
@@ -185,7 +190,16 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     private void bindProgressState(TaskRowViewHolder holder, TaskListItem item) {
         Context context = holder.itemView.getContext();
-        if (item.inProgress) {
+        if (holder.completionAnimator != null) {
+            holder.completionAnimator.cancel();
+            holder.completionAnimator = null;
+        }
+
+        if (item.completed) {
+            holder.root.setBackgroundColor(ContextCompat.getColor(context, R.color.task_completed_background));
+            holder.checkBox.setButtonTintList(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.task_completed_checkbox_tint)));
+            ViewCompat.setStateDescription(holder.itemView, null);
+        } else if (item.inProgress) {
             holder.root.setBackgroundColor(ContextCompat.getColor(context, R.color.task_in_progress_background));
             holder.checkBox.setButtonTintList(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.task_in_progress_checkbox_tint)));
             ViewCompat.setStateDescription(holder.itemView, context.getString(R.string.task_in_progress_state_description));
@@ -197,6 +211,10 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     private void bindInteractions(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
         holder.checkBox.setOnClickListener(v -> {
+            boolean shouldAnimateCompletion = interactionsEnabled && item.slotId != null && !item.completed;
+            if (shouldAnimateCompletion) {
+                animateCompletion(holder, item);
+            }
             holder.checkBox.setChecked(item.completed);
             onCheck.accept(viewSlot);
         });
@@ -217,6 +235,42 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             holder.editButton.setOnClickListener(null);
             holder.editButton.setAlpha(0.4f);
         }
+    }
+
+    private void animateCompletion(TaskRowViewHolder holder, TaskListItem item) {
+        holder.checkBox.animate().cancel();
+        holder.checkBox.setScaleX(1f);
+        holder.checkBox.setScaleY(1f);
+        holder.checkBox.animate()
+                .scaleX(1.3f)
+                .scaleY(1.3f)
+                .setDuration(CHECKBOX_SCALE_UP_DURATION_MS)
+                .withEndAction(() -> holder.checkBox.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(CHECKBOX_SCALE_DOWN_DURATION_MS)
+                        .start())
+                .start();
+
+        if (holder.completionAnimator != null) {
+            holder.completionAnimator.cancel();
+        }
+
+        Context context = holder.itemView.getContext();
+        int flashColor = ContextCompat.getColor(context, R.color.task_completion_flash);
+        int finalColor = resolveCompletedStateBackground(item, context);
+        holder.completionAnimator = ValueAnimator.ofArgb(flashColor, finalColor);
+        holder.completionAnimator.setDuration(COMPLETION_FLASH_DURATION_MS);
+        holder.completionAnimator.addUpdateListener(animation ->
+                holder.root.setBackgroundColor((int) animation.getAnimatedValue()));
+        holder.completionAnimator.start();
+    }
+
+    private int resolveCompletedStateBackground(TaskListItem item, Context context) {
+        if (item.inProgress) {
+            return ContextCompat.getColor(context, R.color.task_in_progress_background);
+        }
+        return ContextCompat.getColor(context, R.color.task_completed_background);
     }
 
     public void setList(List<ViewSlot> viewSlots) {
