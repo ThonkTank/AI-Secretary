@@ -27,8 +27,17 @@ These are the entities registered in `AppDatabase` version 8 and should be used 
 - **Read-model/projection classes**: query results for summaries, charting, and widgets.
   - `IncomeExpenseSummary`, `MonthlyTransactionOverviewItem`, `CategorySpendTotal`, `AccountBalanceTotal`, `AccountDailyDeltaPoint`, `AccountMonthlyDeltaPoint`
 
-## Placement rule for new code
+Import metadata entities live in `data/importing`.
 
-- Add new budget persistence entities, DAOs, repositories, and query projection models directly in `features/budget/data/`.
-- Keep canonical budget persistence on the `budget_*` schema classes listed above.
-- Do not add references to `data/importing` or `data/legacy` while this package remains flat.
+
+## Placement convention (single predictable rule)
+
+Place new data-layer files in exactly one of these packages:
+
+- `data/entity`: persisted Room entities for canonical budget tables.
+- `data/dao`: DAO interfaces for canonical entity access and aggregate queries.
+- `data/repository`: Room-backed implementations of domain repositories.
+- `data/projection`: read/query models returned by DAO projections.
+- `data/importing`: import-specific entities, DAOs, and recurring templates.
+
+Avoid adding new classes directly under `data/`; use one of the packages above.

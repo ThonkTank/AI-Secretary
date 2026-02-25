@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.data;
+package com.autosecretary.features.budget.data.importing;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
@@ -8,6 +8,7 @@ import androidx.room.PrimaryKey;
 
 import java.time.LocalDate;
 import java.util.UUID;
+import com.autosecretary.features.budget.data.entity.BudgetAccount;
 
 @Entity(
         tableName = "budget_import",
