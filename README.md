@@ -68,12 +68,15 @@ Use the official Android setup guides to verify your environment (JDK, SDK, emul
 
 ## Where to start reading
 
-- `views/MainActivity.java` (navigation host): start here to see how top-level navigation and app entry flow are wired before diving into feature internals.
-- `features/task/ui/ListFragment.java` (main UI interactions): read next to understand how users trigger task actions and how UI events are captured.
-- `features/task/ui/TaskViewModel.java` (state/filter/sort orchestration): this shows how UI intents are translated into observable state, filtering, and sorting decisions.
-- `features/task/application/*UseCase*.java` (application boundary): review these classes to see where business operations are coordinated between UI-facing logic and domain rules.
-- `features/task/domain/SlotGenerator.java` and `TaskScorer.java` (scheduling logic): these files contain the core scheduling heuristics, so they explain why task ordering and slot assignment behave as they do.
-- `features/task/data/*` + `database/AppDatabase.java` (Room persistence): finish here to understand how entities are stored, queried, and persisted through the Room database layer.
+- `src/main/java/com/autosecretary/app/MainActivity.java` (navigation host): start here to understand app entry and top-level screen wiring.
+- `src/main/java/com/autosecretary/features/task/ui/ListFragment.java` (main UI interactions): read next to see how task list actions are triggered from the primary screen.
+- `src/main/java/com/autosecretary/features/task/ui/TaskViewModel.java` (state/filter/sort orchestration): this is where UI intents are converted into observable list state.
+- `src/main/java/com/autosecretary/features/task/application/*UseCase*.java` (application boundary): follow these classes to see task operations coordinated between UI and domain services.
+- `src/main/java/com/autosecretary/features/task/domain/TaskSlotGenerator.java` (domain scheduling contract): this interface defines how task slot generation is expected to behave.
+- `src/main/java/com/autosecretary/features/task/domain/internal/scheduling/DefaultTaskSlotGenerator.java` (default scheduler): this implementation contains the concrete scheduling flow.
+- `src/main/java/com/autosecretary/features/task/domain/internal/scheduling/TaskScorer.java` (slot scoring heuristics): this class ranks candidate slots and drives ordering decisions.
+- `src/main/java/com/autosecretary/features/task/data/*` (Room entities and DAO surface): inspect this package for persisted task models and database access definitions.
+- `src/main/java/com/autosecretary/database/AppDatabase.java` (Room database root): finish here to see the central Room configuration that binds entities and DAOs.
 
 ## Build and release tasks
 
