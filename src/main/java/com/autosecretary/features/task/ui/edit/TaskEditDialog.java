@@ -14,7 +14,6 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
 
@@ -238,11 +237,6 @@ public class TaskEditDialog extends DialogFragment {
 
         boolean[] selected = new boolean[WEEK_DAY_COUNT];
 
-        int selectedBackgroundColor = ContextCompat.getColor(requireContext(), R.color.task_edit_day_selected_background);
-        int selectedTextColor = ContextCompat.getColor(requireContext(), R.color.task_edit_day_selected_text);
-        int unselectedTextColor = ContextCompat.getColor(requireContext(), R.color.task_edit_day_unselected_text);
-        int transparentBackgroundColor = ContextCompat.getColor(requireContext(), android.R.color.transparent);
-
         for (int i = 0; i < WEEK_DAY_COUNT; i++) {
             DayOfWeek day = weekDays[i];
             boolean isSelected = prefSlot.days != null && prefSlot.days.contains(day);
@@ -250,11 +244,13 @@ public class TaskEditDialog extends DialogFragment {
 
             selected[i] = isSelected;
 
-            MaterialButton btn = new MaterialButton(requireContext(), null,
-                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+            MaterialButton btn = new MaterialButton(requireContext(), null, 0,
+                R.style.Widget_AutoSecretary_TaskEdit_DayPickerButton);
             btn.setText(labels[i]);
             btn.setMinWidth(0);
             btn.setMinimumWidth(0);
+            btn.setCheckable(true);
+            btn.setChecked(isSelected);
             btn.setInsetTop(0);
             btn.setInsetBottom(0);
             btn.setPadding(dpToPx(DAY_BUTTON_HORIZONTAL_PADDING_DP), 0, dpToPx(DAY_BUTTON_HORIZONTAL_PADDING_DP), 0);
@@ -267,24 +263,10 @@ public class TaskEditDialog extends DialogFragment {
             if (isTaken) {
                 btn.setEnabled(false);
             } else {
-                if (isSelected) {
-                    btn.setBackgroundColor(selectedBackgroundColor);
-                    btn.setTextColor(selectedTextColor);
-                } else {
-                    btn.setBackgroundColor(transparentBackgroundColor);
-                    btn.setTextColor(unselectedTextColor);
-                }
-
                 final int index = i;
                 btn.setOnClickListener(v -> {
                     selected[index] = !selected[index];
-                    if (selected[index]) {
-                        btn.setBackgroundColor(selectedBackgroundColor);
-                        btn.setTextColor(selectedTextColor);
-                    } else {
-                        btn.setBackgroundColor(transparentBackgroundColor);
-                        btn.setTextColor(unselectedTextColor);
-                    }
+                    btn.setChecked(selected[index]);
                 });
             }
 

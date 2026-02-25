@@ -2,7 +2,11 @@
 <resources>
     <color name="task_edit_day_selected_background">#6200EE</color>
     <color name="task_edit_day_selected_text">#FFFFFF</color>
+    <color name="task_edit_day_unselected_background">#00000000</color>
     <color name="task_edit_day_unselected_text">#6200EE</color>
+    <color name="task_edit_day_disabled_background">#146200EE</color>
+    <color name="task_edit_day_disabled_text">#806200EE</color>
+    <color name="task_edit_day_disabled_stroke">#406200EE</color>
     <color name="task_deadline_overdue">#FFFF0000</color>
     <color name="task_deadline_soon">#FFFF8800</color>
     <color name="task_deadline_future">#FF888888</color>
