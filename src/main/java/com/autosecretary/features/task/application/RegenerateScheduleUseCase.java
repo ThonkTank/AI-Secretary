@@ -4,7 +4,7 @@ import com.autosecretary.config.Preferences;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskSeedDataFactory;
-import com.autosecretary.features.task.domain.SlotGenerator;
+import com.autosecretary.features.task.domain.TaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
 
 import java.time.LocalDate;
@@ -14,7 +14,7 @@ import java.util.concurrent.ExecutorService;
 
 /**
  * Entry point for schedule generation. Reads all tasks from the database, generates
- * a 7-day schedule (today + 6 days) using {@link SlotGenerator} with cross-day state
+ * a 7-day schedule (today + 6 days) using {@link TaskSlotGenerator} with cross-day state
  * tracking, and writes scheduled results back. Seeds default tasks on first run when
  * the DB is empty.
  */
@@ -22,12 +22,12 @@ public class RegenerateScheduleUseCase {
     private static final int PLANNING_DAYS = 7;
 
     private final TaskDAO taskDao;
-    private final SlotGenerator generator;
+    private final TaskSlotGenerator generator;
     private final Preferences preferences;
     private final ExecutorService executor;
 
     public RegenerateScheduleUseCase(TaskDAO taskDao,
-                                     SlotGenerator generator,
+                                     TaskSlotGenerator generator,
                                      Preferences preferences,
                                      ExecutorService executor) {
         this.taskDao = taskDao;
@@ -62,7 +62,7 @@ public class RegenerateScheduleUseCase {
             }
 
             // 2) Initialize cross-day state from preserved slots (completed/in-progress)
-            SlotGenerator.PlanningState state = generator.createPlanningState();
+            TaskSlotGenerator.PlanningState state = generator.createPlanningState();
             generator.recordPreservedSlots(tasks, today, windowEnd, state);
 
             // 3) Flatten once, then schedule day by day
