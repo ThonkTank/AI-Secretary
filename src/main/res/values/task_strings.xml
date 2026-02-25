@@ -11,6 +11,7 @@
 
     <string name="task_time_fallback_start">Nicht</string>
     <string name="task_time_fallback_end">Heute</string>
+    <string name="task_description_fallback">Keine Beschreibung</string>
     <string name="task_deadline_overdue_label">! Fällig</string>
     <string name="task_deadline_today_label">! Heute fällig</string>
     <string name="task_deadline_in_days_label">in %1$dd</string>
