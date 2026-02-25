@@ -636,6 +636,7 @@ public class BudgetViewModel extends ViewModel {
                 return;
             }
 
+            // Create flow: validates input and persists a new transfer.
             CreateTransferUseCase.Result result = createTransferUseCase.execute(
                     sourceAccountId,
                     targetAccountId,
@@ -673,6 +674,7 @@ public class BudgetViewModel extends ViewModel {
                 return;
             }
 
+            // Update flow: validates input and updates the existing transfer pair.
             CreateTransferUseCase.Result result = createTransferUseCase.update(
                     transactionId,
                     sourceAccountId,
