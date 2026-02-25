@@ -18,6 +18,8 @@ public class BudgetAccount {
     @NonNull
     public String currency = "EUR";
 
+    public long currentBalanceCents = 0;
+
     public boolean archived = false;
 
     public BudgetAccount(@NonNull String name) {

@@ -2,20 +2,25 @@ package com.autosecretary.features.budget.data;
 
 import com.autosecretary.features.budget.domain.BudgetRepository;
 
+import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
-import java.util.ArrayList;
+import java.util.Map;
 
 public class BudgetRoomRepository implements BudgetRepository {
     private final BudgetLookupDao lookupDao;
     private final TransactionDao transactionDao;
     private final BudgetLimitDao limitDao;
+    private final BudgetRecurringTemplateDao recurringTemplateDao;
 
     public BudgetRoomRepository(BudgetLookupDao lookupDao,
                                  TransactionDao transactionDao,
-                                 BudgetLimitDao limitDao) {
+                                 BudgetLimitDao limitDao,
+                                 BudgetRecurringTemplateDao recurringTemplateDao) {
         this.lookupDao = lookupDao;
         this.transactionDao = transactionDao;
         this.limitDao = limitDao;
+        this.recurringTemplateDao = recurringTemplateDao;
     }
 
     @Override public BudgetAccount findAccountById(String accountId) {
@@ -44,10 +49,12 @@ public class BudgetRoomRepository implements BudgetRepository {
 
     @Override public void saveTransaction(BudgetTransactionEntity transaction) {
         transactionDao.insert(transaction);
+        recalculateAccountBalances();
     }
 
     @Override public void deleteTransaction(String transactionId) {
         transactionDao.deleteById(transactionId);
+        recalculateAccountBalances();
     }
 
     @Override public void saveBudgetLimit(BudgetLimit budgetLimit) {
@@ -60,6 +67,7 @@ public class BudgetRoomRepository implements BudgetRepository {
 
     @Override public void saveTransactions(List<BudgetTransactionEntity> transactions) {
         transactionDao.insertAll(transactions);
+        recalculateAccountBalances();
     }
 
     @Override public void insertAccount(BudgetAccount account) {
@@ -76,5 +84,47 @@ public class BudgetRoomRepository implements BudgetRepository {
 
     @Override public List<CategorySpendTotal> getCategorySpendTotals(String yearMonth) {
         return limitDao.getCategorySpendTotals(yearMonth);
+    }
+
+    @Override
+    public long getCurrentBalanceCents(String accountId) {
+        if (accountId != null) {
+            Long value = lookupDao.findCurrentBalanceCentsByAccountId(accountId);
+            return value == null ? 0L : value;
+        }
+        return lookupDao.sumCurrentBalanceCentsForActiveAccounts();
+    }
+
+    @Override
+    public long getUpcomingExpenseTemplateCents(String accountId, LocalDate fromDate, LocalDate toDate) {
+        List<BudgetRecurringTemplateEntity> templates = findActiveExpenseTemplates(accountId, fromDate, toDate);
+        long total = 0;
+        for (BudgetRecurringTemplateEntity template : templates) {
+            total += Math.abs(template.avgAmountCents);
+        }
+        return total;
+    }
+
+    @Override
+    public List<BudgetRecurringTemplateEntity> findActiveExpenseTemplates(String accountId,
+                                                                          LocalDate fromDate,
+                                                                          LocalDate toDate) {
+        if (accountId != null) {
+            return recurringTemplateDao.findActiveExpenseTemplatesForAccountInRange(accountId, fromDate, toDate);
+        }
+        return recurringTemplateDao.findActiveExpenseTemplatesForActiveAccountsInRange(fromDate, toDate);
+    }
+
+    private void recalculateAccountBalances() {
+        List<AccountBalanceTotal> totals = transactionDao.getAccountBalanceTotals();
+        Map<String, Long> balancesByAccount = new HashMap<>();
+        for (AccountBalanceTotal total : totals) {
+            balancesByAccount.put(total.accountId, total.balanceCents);
+        }
+
+        for (BudgetAccount account : lookupDao.getActiveAccounts()) {
+            long balance = balancesByAccount.getOrDefault(account.id, 0L);
+            lookupDao.updateCurrentBalanceCents(account.id, balance);
+        }
     }
 }

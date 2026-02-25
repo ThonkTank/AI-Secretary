@@ -6,7 +6,9 @@ import com.autosecretary.features.budget.data.BudgetLimit;
 import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.CategorySpendTotal;
 import com.autosecretary.features.budget.data.MonthlyTransactionOverviewItem;
+import com.autosecretary.features.budget.data.BudgetRecurringTemplateEntity;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface BudgetRepository {
@@ -24,4 +26,8 @@ public interface BudgetRepository {
     void insertCategory(BudgetCategory category);
     List<MonthlyTransactionOverviewItem> getMonthlyOverview(String yearMonth);
     List<CategorySpendTotal> getCategorySpendTotals(String yearMonth);
+
+    long getCurrentBalanceCents(String accountId);
+    long getUpcomingExpenseTemplateCents(String accountId, LocalDate fromDate, LocalDate toDate);
+    List<BudgetRecurringTemplateEntity> findActiveExpenseTemplates(String accountId, LocalDate fromDate, LocalDate toDate);
 }

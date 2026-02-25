@@ -110,6 +110,7 @@
     <string name="budget_summary_income">Einnahmen</string>
     <string name="budget_summary_expense">Ausgaben</string>
     <string name="budget_summary_net">Saldo</string>
+    <string name="budget_summary_free_budget">Freies Budget (7 Tage)</string>
     <string name="budget_limits_header">Budgetlimits</string>
     <string name="budget_set_limit_button">Budgetlimit setzen</string>
     <string name="budget_edit_limit_title">Budgetlimit bearbeiten</string>

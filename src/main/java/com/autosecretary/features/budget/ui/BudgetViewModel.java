@@ -14,6 +14,7 @@ import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.CategorySpendTotal;
 import com.autosecretary.features.budget.data.MonthlyTransactionOverviewItem;
 import com.autosecretary.features.budget.domain.BudgetRepository;
+import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
 import java.time.LocalDate;
@@ -68,16 +69,19 @@ public class BudgetViewModel extends ViewModel {
         private final long incomeCents;
         private final long expenseCents;
         private final long netCents;
+        private final long freeBudgetCents;
 
-        public BudgetSummaryData(long incomeCents, long expenseCents) {
+        public BudgetSummaryData(long incomeCents, long expenseCents, long freeBudgetCents) {
             this.incomeCents = incomeCents;
             this.expenseCents = expenseCents;
             this.netCents = incomeCents - expenseCents;
+            this.freeBudgetCents = freeBudgetCents;
         }
 
         public long getIncomeCents() { return incomeCents; }
         public long getExpenseCents() { return expenseCents; }
         public long getNetCents() { return netCents; }
+        public long getFreeBudgetCents() { return freeBudgetCents; }
     }
 
     public static class BudgetLimitBar {
@@ -123,19 +127,22 @@ public class BudgetViewModel extends ViewModel {
     private final Consumer<Runnable> postToMain;
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
+    private final CalculateFreeBudgetUseCase calculateFreeBudgetUseCase;
 
     public BudgetViewModel(BudgetRepository repository,
                            StatementFileParser parser,
                            ExecutorService executor,
                            Consumer<Runnable> postToMain,
                            BudgetImportUseCase importUseCase,
-                           ApplyRecurringSuggestionsUseCase applyRecurringUseCase) {
+                           ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
+                           CalculateFreeBudgetUseCase calculateFreeBudgetUseCase) {
         this.repository = repository;
         this.parser = parser;
         this.executor = executor;
         this.postToMain = postToMain;
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
+        this.calculateFreeBudgetUseCase = calculateFreeBudgetUseCase;
         ensureDefaultData();
     }
 
@@ -278,13 +285,16 @@ public class BudgetViewModel extends ViewModel {
             }
         }
 
+        long freeBudgetCents = calculateFreeBudgetUseCase.execute(null, LocalDate.now(), 7);
+
         long finalTotalIncomeCents = totalIncomeCents;
         long finalTotalExpenseCents = totalExpenseCents;
+        long finalFreeBudgetCents = freeBudgetCents;
         List<BudgetTransactionRow> finalRows = rows;
 
         postToMain.accept(() -> {
             transactions.setValue(finalRows);
-            summaryData.setValue(new BudgetSummaryData(finalTotalIncomeCents, finalTotalExpenseCents));
+            summaryData.setValue(new BudgetSummaryData(finalTotalIncomeCents, finalTotalExpenseCents, finalFreeBudgetCents));
             if (!finalRows.isEmpty()) {
                 uiState.setValue(BudgetUiState.CONTENT);
                 statusMessage.setValue("Letzte Buchungen");

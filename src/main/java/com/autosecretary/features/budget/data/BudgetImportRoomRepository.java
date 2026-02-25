@@ -5,7 +5,6 @@ import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Room-Implementierung der BudgetImportRepository-Schnittstelle.
@@ -50,6 +49,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
                                      int autoCategorized, LocalDate periodStart, LocalDate periodEnd) {
         importDao.markCompleted(importId, totalTransactions, importedTransactions,
                 autoCategorized, periodStart, periodEnd);
+        synchronizeRecurringTemplateState(LocalDate.now());
     }
 
     @Override
@@ -71,6 +71,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     @Override
     public void saveTransactionsBatch(List<BudgetTransactionEntity> transactions) {
         transactionDao.insertAll(transactions);
+        updateAccountBalances();
     }
 
     @Override
@@ -93,9 +94,11 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
         entity.maxAmountCents = suggestion.maxAmountCents();
         entity.recurringValue = suggestion.suggestedValue();
         entity.recurringDayOfWeek = suggestion.suggestedDayOfWeek();
-        entity.nextDue = nextDueDate;
+        entity.nextDue = nextDueDate != null ? nextDueDate : LocalDate.now();
+        entity.active = true;
 
         templateDao.insert(entity);
+        synchronizeRecurringTemplateState(LocalDate.now());
         return entity.id;
     }
 
@@ -106,7 +109,59 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     @Override
+    public void synchronizeRecurringTemplateState(LocalDate referenceDate) {
+        for (BudgetRecurringTemplateEntity template : templateDao.findAllActiveTemplates()) {
+            LocalDate dueDate = template.nextDue != null ? template.nextDue : referenceDate;
+            boolean active = true;
+
+            if ("WEEKLY".equals(template.recurringType) && template.recurringDayOfWeek != null) {
+                while (dueDate.isBefore(referenceDate)
+                        || dueDate.getDayOfWeek() != template.recurringDayOfWeek) {
+                    dueDate = dueDate.plusDays(1);
+                }
+            } else if ("INTERVAL".equals(template.recurringType)) {
+                int intervalDays = Math.max(1, template.recurringValue);
+                while (dueDate.isBefore(referenceDate)) {
+                    dueDate = dueDate.plusDays(intervalDays);
+                }
+            } else if ("MONTHLY_DAY".equals(template.recurringType)) {
+                if (template.recurringValue < 1 || template.recurringValue > 31) {
+                    active = false;
+                } else {
+                    while (dueDate.isBefore(referenceDate)) {
+                        LocalDate nextMonth = dueDate.plusMonths(1);
+                        dueDate = nextMonth.withDayOfMonth(Math.min(template.recurringValue, nextMonth.lengthOfMonth()));
+                    }
+                }
+            } else if ("MONTHLY_LAST".equals(template.recurringType)) {
+                while (dueDate.isBefore(referenceDate)) {
+                    LocalDate nextMonth = dueDate.plusMonths(1);
+                    dueDate = nextMonth.withDayOfMonth(nextMonth.lengthOfMonth());
+                }
+            } else if (template.nextDue == null) {
+                active = false;
+            }
+
+            templateDao.updateNextDueAndStatus(template.id, dueDate, active);
+        }
+    }
+
+    @Override
     public void notifyBudgetDataUpdated() {
         // No-Op: UI-Refresh passiert über die Callback-Kette im ViewModel.
+    }
+
+    private void updateAccountBalances() {
+        List<AccountBalanceTotal> totals = transactionDao.getAccountBalanceTotals();
+        for (BudgetAccount account : lookupDao.getActiveAccounts()) {
+            long balance = 0;
+            for (AccountBalanceTotal total : totals) {
+                if (account.id.equals(total.accountId)) {
+                    balance = total.balanceCents;
+                    break;
+                }
+            }
+            lookupDao.updateCurrentBalanceCents(account.id, balance);
+        }
     }
 }
