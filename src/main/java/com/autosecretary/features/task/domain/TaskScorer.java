@@ -413,27 +413,27 @@ public class TaskScorer {
     private int applyPreferredTimeFit(int baseScore, ScoringContext context) {
         PreferenceFitState fitState = context.snapshot.preferenceFitState;
 
-        LocalTime prefStart = null;
-        long minDiff = Long.MAX_VALUE;
-        for (TaskPrefSlot slot : fitState.todayPrefSlots) {
-            long slotDiff = Math.abs(Duration.between(context.start.toLocalTime(), slot.start).toMinutes());
-            if (slotDiff < minDiff) {
-                minDiff = slotDiff;
-                prefStart = slot.start;
-            }
-        }
-
-        if (prefStart == null && fitState.hasDayConstraints) {
-            return 0;
-        }
-
+        LocalTime prefStart = findClosestPreferredStart(fitState.todayPrefSlots, context.start.toLocalTime());
         if (prefStart == null) {
-            return baseScore;
+            return fitState.hasDayConstraints ? 0 : baseScore;
         }
 
         double dif = Duration.between(context.start.toLocalTime(), prefStart).toMinutes() / 60.0;
         double fit = Math.max(0, 1 - Math.abs(dif / preferredStartDeviationHours));
         return (int) (baseScore * fit);
+    }
+
+    private LocalTime findClosestPreferredStart(List<TaskPrefSlot> preferredSlots, LocalTime candidateStart) {
+        LocalTime preferredStart = null;
+        long minDiff = Long.MAX_VALUE;
+        for (TaskPrefSlot slot : preferredSlots) {
+            long slotDiff = Math.abs(Duration.between(candidateStart, slot.start).toMinutes());
+            if (slotDiff < minDiff) {
+                minDiff = slotDiff;
+                preferredStart = slot.start;
+            }
+        }
+        return preferredStart;
     }
 
     private int applyUrgencyMultiplier(int score, ScoringContext context) {
