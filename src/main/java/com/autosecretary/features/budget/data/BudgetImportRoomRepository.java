@@ -69,6 +69,19 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     @Override
+    public boolean isKnownCategory(String categoryId) {
+        if (categoryId == null || categoryId.isBlank()) {
+            return false;
+        }
+        return lookupDao.findCategoryById(categoryId) != null;
+    }
+
+    @Override
+    public List<BudgetCategory> loadActiveCategoriesForImport() {
+        return lookupDao.getActiveCategories();
+    }
+
+    @Override
     public void saveTransactionsBatch(List<BudgetTransactionEntity> transactions) {
         transactionDao.insertAll(transactions);
         updateAccountBalances();
@@ -104,8 +117,10 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
 
     @Override
     public void linkTransactionsToTemplate(List<String> transactionIds, String templateId) {
-        // No-Op: BudgetTransactionEntity hat noch kein templateId-Feld.
-        // Wird in einem späteren Schritt ergänzt.
+        if (transactionIds == null || transactionIds.isEmpty() || templateId == null || templateId.isBlank()) {
+            return;
+        }
+        transactionDao.updateTemplateIdForTransactions(transactionIds, templateId);
     }
 
     @Override

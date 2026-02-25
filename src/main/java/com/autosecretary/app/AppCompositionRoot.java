@@ -16,6 +16,8 @@ import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
+import com.autosecretary.features.budget.application.importing.ClaudeApiKeyStore;
+import com.autosecretary.features.budget.application.importing.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
 import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.data.BudgetImportRoomRepository;
@@ -112,7 +114,11 @@ public class AppCompositionRoot {
                 db.budgetLookupDao()
         );
 
-        StatementFileParser parser = new StatementFileParser();
+        StatementFileParser parser = new StatementFileParser(
+                new ClaudeStatementApiClient(),
+                new ClaudeApiKeyStore(app),
+                importRepository
+        );
 
         BudgetImportUseCase importUseCase = new BudgetImportUseCase(
                 importRepository, parser, taskUseCaseExecutor

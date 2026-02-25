@@ -25,20 +25,41 @@ import java.util.UUID;
                         childColumns = "categoryId",
                         onDelete = ForeignKey.SET_NULL,
                         onUpdate = ForeignKey.CASCADE
+                ),
+                @ForeignKey(
+                        entity = BudgetTransactionEntity.class,
+                        parentColumns = "id",
+                        childColumns = "linkedTransactionId",
+                        onDelete = ForeignKey.SET_NULL,
+                        onUpdate = ForeignKey.CASCADE
+                ),
+                @ForeignKey(
+                        entity = BudgetRecurringTemplateEntity.class,
+                        parentColumns = "id",
+                        childColumns = "templateId",
+                        onDelete = ForeignKey.SET_NULL,
+                        onUpdate = ForeignKey.CASCADE
                 )
         },
         indices = {
                 @Index("accountId"),
                 @Index("categoryId"),
+                @Index("templateId"),
                 @Index("yearMonth"),
                 @Index("bookingDate"),
-                @Index("importHash")
+                @Index("importHash"),
+                @Index("linkedTransactionId")
         }
 )
 public class BudgetTransactionEntity {
     public enum TransactionType {
         INCOME,
         EXPENSE
+    }
+
+    public enum TransactionKind {
+        STANDARD,
+        INTERNAL_TRANSFER
     }
 
     @PrimaryKey
@@ -50,8 +71,15 @@ public class BudgetTransactionEntity {
 
     public String categoryId;
 
+    public String templateId;
+
     @NonNull
     public TransactionType type = TransactionType.EXPENSE;
+
+    @NonNull
+    public TransactionKind transactionKind = TransactionKind.STANDARD;
+
+    public String linkedTransactionId;
 
     public long amountCents;
 

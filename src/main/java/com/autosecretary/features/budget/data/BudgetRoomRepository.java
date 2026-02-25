@@ -3,24 +3,20 @@ package com.autosecretary.features.budget.data;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 
 import java.time.LocalDate;
-import java.util.HashMap;
+import java.time.YearMonth;
 import java.util.List;
-import java.util.Map;
 
 public class BudgetRoomRepository implements BudgetRepository {
     private final BudgetLookupDao lookupDao;
     private final TransactionDao transactionDao;
     private final BudgetLimitDao limitDao;
-    private final BudgetRecurringTemplateDao recurringTemplateDao;
 
     public BudgetRoomRepository(BudgetLookupDao lookupDao,
                                  TransactionDao transactionDao,
-                                 BudgetLimitDao limitDao,
-                                 BudgetRecurringTemplateDao recurringTemplateDao) {
+                                 BudgetLimitDao limitDao) {
         this.lookupDao = lookupDao;
         this.transactionDao = transactionDao;
         this.limitDao = limitDao;
-        this.recurringTemplateDao = recurringTemplateDao;
     }
 
     @Override public BudgetAccount findAccountById(String accountId) {
@@ -43,18 +39,73 @@ public class BudgetRoomRepository implements BudgetRepository {
         return transactionDao.findByAccountId(accountId);
     }
 
+    @Override public BudgetTransactionEntity findTransactionById(String transactionId) {
+        return transactionDao.findById(transactionId);
+    }
+
     @Override public BudgetLimit findBudgetLimit(String categoryId, String yearMonth) {
         return limitDao.getLimitForCategoryAndMonth(categoryId, yearMonth);
     }
 
     @Override public void saveTransaction(BudgetTransactionEntity transaction) {
         transactionDao.insert(transaction);
-        recalculateAccountBalances();
+    }
+
+    @Override public void updateTransaction(BudgetTransactionEntity transaction) {
+        transactionDao.update(transaction);
     }
 
     @Override public void deleteTransaction(String transactionId) {
-        transactionDao.deleteById(transactionId);
-        recalculateAccountBalances();
+        transactionDao.deleteWithLinked(transactionId);
+    }
+
+    @Override
+    public void createTransfer(String sourceAccountId,
+                               String targetAccountId,
+                               long amountCents,
+                               LocalDate bookingDate,
+                               String note) {
+        String yearMonth = YearMonth.from(bookingDate).toString();
+
+        BudgetTransactionEntity debit = new BudgetTransactionEntity(
+                sourceAccountId,
+                null,
+                BudgetTransactionEntity.TransactionType.EXPENSE,
+                amountCents,
+                bookingDate,
+                yearMonth
+        );
+        debit.note = note;
+
+        BudgetTransactionEntity credit = new BudgetTransactionEntity(
+                targetAccountId,
+                null,
+                BudgetTransactionEntity.TransactionType.INCOME,
+                amountCents,
+                bookingDate,
+                yearMonth
+        );
+        credit.note = note;
+
+        transactionDao.createTransferPair(debit, credit);
+    }
+
+    @Override
+    public boolean updateTransfer(String transactionId,
+                                  String sourceAccountId,
+                                  String targetAccountId,
+                                  long amountCents,
+                                  LocalDate bookingDate,
+                                  String note) {
+        return transactionDao.updateTransferPair(
+                transactionId,
+                sourceAccountId,
+                targetAccountId,
+                amountCents,
+                bookingDate,
+                YearMonth.from(bookingDate).toString(),
+                note
+        );
     }
 
     @Override public void saveBudgetLimit(BudgetLimit budgetLimit) {
@@ -67,7 +118,6 @@ public class BudgetRoomRepository implements BudgetRepository {
 
     @Override public void saveTransactions(List<BudgetTransactionEntity> transactions) {
         transactionDao.insertAll(transactions);
-        recalculateAccountBalances();
     }
 
     @Override public void insertAccount(BudgetAccount account) {
@@ -82,49 +132,25 @@ public class BudgetRoomRepository implements BudgetRepository {
         return transactionDao.getMonthlyOverview(yearMonth);
     }
 
+    @Override public List<MonthlyTransactionOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId) {
+        return transactionDao.getMonthlyOverviewForAccount(yearMonth, accountId);
+    }
+
     @Override public List<CategorySpendTotal> getCategorySpendTotals(String yearMonth) {
         return limitDao.getCategorySpendTotals(yearMonth);
     }
 
-    @Override
-    public long getCurrentBalanceCents(String accountId) {
-        if (accountId != null) {
-            Long value = lookupDao.findCurrentBalanceCentsByAccountId(accountId);
-            return value == null ? 0L : value;
-        }
-        return lookupDao.sumCurrentBalanceCentsForActiveAccounts();
+    @Override public List<AccountDailyDeltaPoint> getDailyDeltasForAccount(
+            String accountId, LocalDate fromDate, LocalDate toDate) {
+        return transactionDao.getDailyDeltasForAccount(accountId, fromDate, toDate);
     }
 
-    @Override
-    public long getUpcomingExpenseTemplateCents(String accountId, LocalDate fromDate, LocalDate toDate) {
-        List<BudgetRecurringTemplateEntity> templates = findActiveExpenseTemplates(accountId, fromDate, toDate);
-        long total = 0;
-        for (BudgetRecurringTemplateEntity template : templates) {
-            total += Math.abs(template.avgAmountCents);
-        }
-        return total;
+    @Override public List<AccountMonthlyDeltaPoint> getMonthlyDeltasForAccount(
+            String accountId, String fromYearMonth, String toYearMonth) {
+        return transactionDao.getMonthlyDeltasForAccount(accountId, fromYearMonth, toYearMonth);
     }
 
-    @Override
-    public List<BudgetRecurringTemplateEntity> findActiveExpenseTemplates(String accountId,
-                                                                          LocalDate fromDate,
-                                                                          LocalDate toDate) {
-        if (accountId != null) {
-            return recurringTemplateDao.findActiveExpenseTemplatesForAccountInRange(accountId, fromDate, toDate);
-        }
-        return recurringTemplateDao.findActiveExpenseTemplatesForActiveAccountsInRange(fromDate, toDate);
-    }
-
-    private void recalculateAccountBalances() {
-        List<AccountBalanceTotal> totals = transactionDao.getAccountBalanceTotals();
-        Map<String, Long> balancesByAccount = new HashMap<>();
-        for (AccountBalanceTotal total : totals) {
-            balancesByAccount.put(total.accountId, total.balanceCents);
-        }
-
-        for (BudgetAccount account : lookupDao.getActiveAccounts()) {
-            long balance = balancesByAccount.getOrDefault(account.id, 0L);
-            lookupDao.updateCurrentBalanceCents(account.id, balance);
-        }
+    @Override public long getNetAmountBeforeDateForAccount(String accountId, LocalDate beforeDate) {
+        return transactionDao.getNetAmountBeforeDateForAccount(accountId, beforeDate);
     }
 }

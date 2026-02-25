@@ -4,6 +4,7 @@ import androidx.room.TypeConverter;
 
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
+import com.autosecretary.features.budget.data.BudgetAccount;
 import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -82,6 +83,26 @@ public class Converters {
     @TypeConverter
     public static BudgetTransactionEntity.TransactionType toBudgetTransactionType(String value) {
         return value != null ? BudgetTransactionEntity.TransactionType.valueOf(value) : null;
+    }
+
+
+    @TypeConverter
+    public static String fromBudgetTransactionKind(BudgetTransactionEntity.TransactionKind kind) {
+        return kind != null ? kind.name() : null;
+    }
+
+    @TypeConverter
+    public static BudgetTransactionEntity.TransactionKind toBudgetTransactionKind(String value) {
+        return value != null ? BudgetTransactionEntity.TransactionKind.valueOf(value) : null;
+    }
+    @TypeConverter
+    public static String fromBudgetAccountType(BudgetAccount.AccountType type) {
+        return type != null ? type.name() : null;
+    }
+
+    @TypeConverter
+    public static BudgetAccount.AccountType toBudgetAccountType(String value) {
+        return value != null ? BudgetAccount.AccountType.valueOf(value) : null;
     }
 
     @TypeConverter
