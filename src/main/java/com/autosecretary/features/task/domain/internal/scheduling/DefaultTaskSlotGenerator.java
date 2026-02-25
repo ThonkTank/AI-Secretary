@@ -97,6 +97,10 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
 
     @Override
     public void generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
+        generateSlotsForDayInternal(tasks, windowStart, windowEnd, state);
+    }
+
+    private void generateSlotsForDayInternal(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
         schedulingDay = windowStart.toLocalDate();
         newSlots = 0;
         scorer.reset();

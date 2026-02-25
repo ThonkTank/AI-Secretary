@@ -29,6 +29,10 @@
         <item name="insetBottom">0dp</item>
     </style>
 
+    <!-- Base task text appearances -->
+    <style name="TextAppearance.Task" parent="TextAppearance.MaterialComponents.Body2" />
+    <style name="TextAppearance.Task.Widget" parent="TextAppearance.Task" />
+
     <!-- Task editor inputs -->
     <style name="Widget.AISecretary.Editor.TextFieldLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
         <item name="boxBackgroundMode">outline</item>

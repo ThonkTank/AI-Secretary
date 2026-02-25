@@ -7,6 +7,7 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ContextThemeWrapper;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.GridLayout;
@@ -246,8 +247,9 @@ public class TaskEditDialog extends DialogFragment {
 
             selected[i] = isSelected;
 
-            MaterialButton btn = new MaterialButton(requireContext(), null, 0,
-                R.style.Widget_AutoSecretary_TaskEdit_DayPickerButton);
+            ContextThemeWrapper themedContext =
+                new ContextThemeWrapper(requireContext(), R.style.Widget_AutoSecretary_TaskEdit_DayPickerButton);
+            MaterialButton btn = new MaterialButton(themedContext, null, 0);
             btn.setText(labels[i]);
             btn.setMaxLines(2);
             btn.setMinWidth(0);

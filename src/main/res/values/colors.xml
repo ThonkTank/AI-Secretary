@@ -2,4 +2,5 @@
 <resources>
     <!-- Global rule: app-wide tokens stay in generic files; feature-specific resources belong in feature-prefixed files (for example task_colors.xml). -->
     <color name="transparent">#00000000</color>
+    <color name="launcher_icon_background">#0D3B52</color>
 </resources>
