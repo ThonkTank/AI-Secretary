@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.domain.BudgetTransaction;
+import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
 import java.time.LocalDate;
@@ -83,13 +83,13 @@ public class ApplyRecurringSuggestionsUseCase {
         }
     }
 
-    public BudgetTransaction.Builder configureTemplateBuilder(BudgetTransaction.Builder builder,
+    public RecurringBudgetTransaction.Builder configureTemplateBuilder(RecurringBudgetTransaction.Builder builder,
                                                               RecurringSuggestion suggestion) {
         return switch (suggestion.suggestedType()) {
             case MONTHLY_DAY -> builder.recurringMonthlyDay(suggestion.suggestedValue());
             case MONTHLY_LAST -> builder.recurringMonthlyLast();
             case WEEKLY -> builder.recurringWeekly(suggestion.suggestedDayOfWeek());
-            case INTERVAL -> builder.recurringInterval(suggestion.suggestedValue(), BudgetTransaction.RepUnit.DAY);
+            case INTERVAL -> builder.recurringInterval(suggestion.suggestedValue(), RecurringBudgetTransaction.RepUnit.DAY);
         };
     }
 }

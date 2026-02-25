@@ -34,7 +34,12 @@ import java.util.UUID;
                 @Index("bookingDate")
         }
 )
-public class BudgetTransaction {
+public class BudgetTransactionEntity {
+    public enum TransactionType {
+        INCOME,
+        EXPENSE
+    }
+
     @PrimaryKey
     @NonNull
     public String id = UUID.randomUUID().toString();
@@ -44,11 +49,8 @@ public class BudgetTransaction {
 
     public String categoryId;
 
-    /**
-     * Allowed values: INCOME, EXPENSE.
-     */
     @NonNull
-    public String type = "EXPENSE";
+    public TransactionType type = TransactionType.EXPENSE;
 
     public double amount;
 
@@ -63,8 +65,9 @@ public class BudgetTransaction {
 
     public String note;
 
-    public BudgetTransaction(@NonNull String accountId, String categoryId, @NonNull String type,
-                             double amount, @NonNull LocalDate bookingDate, @NonNull String yearMonth) {
+    public BudgetTransactionEntity(@NonNull String accountId, String categoryId,
+                                   @NonNull TransactionType type, double amount,
+                                   @NonNull LocalDate bookingDate, @NonNull String yearMonth) {
         this.accountId = accountId;
         this.categoryId = categoryId;
         this.type = type;

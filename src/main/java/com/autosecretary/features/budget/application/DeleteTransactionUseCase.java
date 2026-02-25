@@ -2,7 +2,7 @@ package com.autosecretary.features.budget.application;
 
 import com.autosecretary.features.budget.data.BudgetLimit;
 import com.autosecretary.features.budget.data.BudgetRepository;
-import com.autosecretary.features.budget.data.BudgetTransaction;
+import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.AccountBalanceRecalculationService;
 import com.autosecretary.features.budget.domain.BudgetConsumptionService;
 
@@ -20,14 +20,14 @@ public class DeleteTransactionUseCase {
         this.consumptionService = consumptionService;
     }
 
-    public void execute(BudgetTransaction transaction) {
+    public void execute(BudgetTransactionEntity transaction) {
         if (transaction == null || transaction.id == null) {
             return;
         }
 
         repository.deleteTransaction(transaction.id);
 
-        if ("EXPENSE".equalsIgnoreCase(transaction.type) && transaction.categoryId != null) {
+        if (transaction.type == BudgetTransactionEntity.TransactionType.EXPENSE && transaction.categoryId != null) {
             BudgetLimit limit = repository.findBudgetLimit(transaction.categoryId, transaction.yearMonth);
             if (limit != null) {
                 // Recalculate for side-effects/consistency checks in canonical model.

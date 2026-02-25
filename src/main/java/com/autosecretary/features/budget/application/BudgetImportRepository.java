@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.domain.BudgetTransaction;
+import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
 import java.time.LocalDate;
@@ -37,9 +37,9 @@ public interface BudgetImportRepository {
 
     Long findDefaultCategoryId(boolean income);
 
-    void saveTransactionsBatch(List<BudgetTransaction> transactions);
+    void saveTransactionsBatch(List<BudgetTransactionEntity> transactions);
 
-    List<BudgetTransaction> loadTransactionsForAccount(Long accountId);
+    List<BudgetTransactionEntity> loadTransactionsForAccount(Long accountId);
 
     Long createRecurringTemplate(RecurringSuggestion suggestion, Long accountId, LocalDate nextDueDate);
 

@@ -1,6 +1,7 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.domain.BudgetTransaction;
+import com.autosecretary.features.budget.data.BudgetTransactionEntity;
+import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 import com.autosecretary.features.budget.domain.RecurringPatternDetector;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
@@ -19,13 +20,22 @@ public class BudgetImportUseCase {
     private final BudgetImportRepository repository;
     private final StatementFileParser parser;
     private final ExecutorService executor;
+    private final BudgetTransactionMapper mapper;
 
     public BudgetImportUseCase(BudgetImportRepository repository,
                                StatementFileParser parser,
                                ExecutorService executor) {
+        this(repository, parser, executor, new BudgetTransactionMapper());
+    }
+
+    BudgetImportUseCase(BudgetImportRepository repository,
+                        StatementFileParser parser,
+                        ExecutorService executor,
+                        BudgetTransactionMapper mapper) {
         this.repository = repository;
         this.parser = parser;
         this.executor = executor;
+        this.mapper = mapper;
     }
 
     public void executeAsync(Long accountId,
@@ -47,7 +57,7 @@ public class BudgetImportUseCase {
                 callback.onProgress("Verarbeite Transaktionen...");
                 ImportComputation computation = buildTransactions(accountId, imp.id(), parsed.transactions());
                 if (!computation.newTransactions.isEmpty()) {
-                    repository.saveTransactionsBatch(computation.newTransactions);
+                    repository.saveTransactionsBatch(computation.newTransactions.stream().map(mapper::toEntity).toList());
                 }
 
                 repository.markImportCompleted(
@@ -62,7 +72,10 @@ public class BudgetImportUseCase {
                 repository.notifyBudgetDataUpdated();
 
                 callback.onProgress("Suche wiederkehrende Muster...");
-                List<BudgetTransaction> accountTransactions = repository.loadTransactionsForAccount(accountId);
+                List<BudgetTransactionEntity> accountTransactionEntities = repository.loadTransactionsForAccount(accountId);
+                List<RecurringBudgetTransaction> accountTransactions = accountTransactionEntities.stream()
+                        .map(mapper::toDomain)
+                        .toList();
                 List<RecurringSuggestion> suggestions = RecurringPatternDetector.detectPatterns(accountTransactions);
 
                 callback.onSuccess(new ImportResult(
@@ -83,7 +96,7 @@ public class BudgetImportUseCase {
     private ImportComputation buildTransactions(Long accountId,
                                                 Long importId,
                                                 List<StatementFileParser.ParsedTransaction> parsedTransactions) {
-        List<BudgetTransaction> newTransactions = new ArrayList<>();
+        List<RecurringBudgetTransaction> newTransactions = new ArrayList<>();
         int duplicates = 0;
         int autoCategorized = 0;
 
@@ -105,7 +118,7 @@ public class BudgetImportUseCase {
                 autoCategorized++;
             }
 
-            BudgetTransaction tx = new BudgetTransaction.Builder(
+            RecurringBudgetTransaction tx = new RecurringBudgetTransaction.Builder(
                     accountId,
                     parsed.amountCents(),
                     parsed.date(),
@@ -163,7 +176,7 @@ public class BudgetImportUseCase {
     ) {
     }
 
-    private record ImportComputation(List<BudgetTransaction> newTransactions,
+    private record ImportComputation(List<RecurringBudgetTransaction> newTransactions,
                                      int duplicates,
                                      int autoCategorized) {
     }

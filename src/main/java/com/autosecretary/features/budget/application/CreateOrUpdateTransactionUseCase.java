@@ -2,7 +2,7 @@ package com.autosecretary.features.budget.application;
 
 import com.autosecretary.features.budget.data.BudgetLimit;
 import com.autosecretary.features.budget.data.BudgetRepository;
-import com.autosecretary.features.budget.data.BudgetTransaction;
+import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.AccountBalanceRecalculationService;
 import com.autosecretary.features.budget.domain.BudgetConsumptionService;
 
@@ -20,13 +20,13 @@ public class CreateOrUpdateTransactionUseCase {
         this.consumptionService = consumptionService;
     }
 
-    public void execute(BudgetTransaction transaction) {
+    public void execute(BudgetTransactionEntity transaction) {
         repository.saveTransaction(transaction);
         recalculateCategoryBudget(transaction);
     }
 
-    private void recalculateCategoryBudget(BudgetTransaction transaction) {
-        if (!"EXPENSE".equalsIgnoreCase(transaction.type) || transaction.categoryId == null) {
+    private void recalculateCategoryBudget(BudgetTransactionEntity transaction) {
+        if (transaction.type != BudgetTransactionEntity.TransactionType.EXPENSE || transaction.categoryId == null) {
             return;
         }
         BudgetLimit limit = repository.findBudgetLimit(transaction.categoryId, transaction.yearMonth);

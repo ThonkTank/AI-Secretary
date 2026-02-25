@@ -6,7 +6,7 @@ import java.time.LocalDate;
 /**
  * Budget-Transaktion inkl. Felder für Import- und Recurring-Verknüpfungen.
  */
-public class BudgetTransaction {
+public class RecurringBudgetTransaction {
     public enum RecurringType {
         MONTHLY_DAY,
         MONTHLY_LAST,
@@ -44,7 +44,7 @@ public class BudgetTransaction {
     public int occurrenceCount;
 
     public static class Builder {
-        private final BudgetTransaction tx = new BudgetTransaction();
+        private final RecurringBudgetTransaction tx = new RecurringBudgetTransaction();
 
         public Builder(Long accountId, int amountCents, LocalDate date, Long categoryId) {
             tx.accountId = accountId;
@@ -106,7 +106,7 @@ public class BudgetTransaction {
             return this;
         }
 
-        public BudgetTransaction build() {
+        public RecurringBudgetTransaction build() {
             return tx;
         }
     }

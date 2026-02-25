@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.domain;
 
-import com.autosecretary.features.budget.data.BudgetTransaction;
+import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 
 import java.util.List;
 
@@ -12,16 +12,16 @@ import java.util.List;
  */
 public class AccountBalanceRecalculationService {
 
-    public double recalculateBalance(List<BudgetTransaction> accountTransactions) {
+    public double recalculateBalance(List<BudgetTransactionEntity> accountTransactions) {
         double balance = 0d;
-        for (BudgetTransaction transaction : accountTransactions) {
+        for (BudgetTransactionEntity transaction : accountTransactions) {
             balance += signedAmount(transaction);
         }
         return balance;
     }
 
-    private double signedAmount(BudgetTransaction transaction) {
-        return "INCOME".equalsIgnoreCase(transaction.type)
+    private double signedAmount(BudgetTransactionEntity transaction) {
+        return transaction.type == BudgetTransactionEntity.TransactionType.INCOME
                 ? Math.abs(transaction.amount)
                 : -Math.abs(transaction.amount);
     }

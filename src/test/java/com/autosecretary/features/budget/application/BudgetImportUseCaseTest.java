@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.domain.BudgetTransaction;
+import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
 import org.junit.Assert;
@@ -58,12 +58,13 @@ public class BudgetImportUseCaseTest {
         Assert.assertEquals(1, resultRef.get().newTransactions());
         Assert.assertEquals(1, resultRef.get().duplicates());
         Assert.assertEquals(1, repo.savedTransactions.size());
+        Assert.assertEquals(BudgetTransactionEntity.TransactionType.EXPENSE, repo.savedTransactions.get(0).type);
         Assert.assertEquals(1, repo.notifyCalls);
     }
 
     static class FakeRepo implements BudgetImportRepository {
         final List<String> existingImportHashes = new ArrayList<>();
-        final List<BudgetTransaction> savedTransactions = new ArrayList<>();
+        final List<BudgetTransactionEntity> savedTransactions = new ArrayList<>();
         int notifyCalls;
 
         @Override
@@ -92,12 +93,12 @@ public class BudgetImportUseCaseTest {
         }
 
         @Override
-        public void saveTransactionsBatch(List<BudgetTransaction> transactions) {
+        public void saveTransactionsBatch(List<BudgetTransactionEntity> transactions) {
             savedTransactions.addAll(transactions);
         }
 
         @Override
-        public List<BudgetTransaction> loadTransactionsForAccount(Long accountId) {
+        public List<BudgetTransactionEntity> loadTransactionsForAccount(Long accountId) {
             return new ArrayList<>(savedTransactions);
         }
 

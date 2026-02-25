@@ -22,17 +22,17 @@ public final class RecurringPatternDetector {
     private RecurringPatternDetector() {
     }
 
-    public static List<RecurringSuggestion> detectPatterns(List<BudgetTransaction> transactions) {
+    public static List<RecurringSuggestion> detectPatterns(List<RecurringBudgetTransaction> transactions) {
         return detectPatterns(transactions, MIN_OCCURRENCES_DEFAULT);
     }
 
-    public static List<RecurringSuggestion> detectPatterns(List<BudgetTransaction> transactions,
+    public static List<RecurringSuggestion> detectPatterns(List<RecurringBudgetTransaction> transactions,
                                                            int minOccurrences) {
         if (transactions == null || transactions.isEmpty()) {
             return new ArrayList<>();
         }
 
-        List<BudgetTransaction> eligible = transactions.stream()
+        List<RecurringBudgetTransaction> eligible = transactions.stream()
                 .filter(tx -> !tx.isRecurring)
                 .filter(tx -> !tx.isPredicted)
                 .filter(tx -> tx.parentRecurringId == null)
@@ -44,8 +44,8 @@ public final class RecurringPatternDetector {
             return new ArrayList<>();
         }
 
-        Map<String, List<BudgetTransaction>> groupedByPayee = new HashMap<>();
-        for (BudgetTransaction tx : eligible) {
+        Map<String, List<RecurringBudgetTransaction>> groupedByPayee = new HashMap<>();
+        for (RecurringBudgetTransaction tx : eligible) {
             String normalized = normalizePayee(tx.payee);
             if (normalized.isEmpty()) {
                 continue;
@@ -59,8 +59,8 @@ public final class RecurringPatternDetector {
         }
 
         List<RecurringSuggestion> candidates = new ArrayList<>();
-        for (Map.Entry<String, List<BudgetTransaction>> group : groupedByPayee.entrySet()) {
-            List<BudgetTransaction> txList = group.getValue();
+        for (Map.Entry<String, List<RecurringBudgetTransaction>> group : groupedByPayee.entrySet()) {
+            List<RecurringBudgetTransaction> txList = group.getValue();
             if (txList.size() < minOccurrences) {
                 continue;
             }
@@ -108,7 +108,7 @@ public final class RecurringPatternDetector {
     }
 
     private static RecurringSuggestion analyzePattern(String normalizedPayee,
-                                                      List<BudgetTransaction> transactions) {
+                                                      List<RecurringBudgetTransaction> transactions) {
         int sumAmounts = 0;
         int minAmount = Integer.MAX_VALUE;
         int maxAmount = Integer.MIN_VALUE;
@@ -116,7 +116,7 @@ public final class RecurringPatternDetector {
         List<Long> txIds = new ArrayList<>();
         String displayPayee = transactions.get(0).payee;
 
-        for (BudgetTransaction tx : transactions) {
+        for (RecurringBudgetTransaction tx : transactions) {
             int absAmount = Math.abs(tx.amountCents);
             sumAmounts += absAmount;
             minAmount = Math.min(minAmount, absAmount);
@@ -164,7 +164,7 @@ public final class RecurringPatternDetector {
         );
     }
 
-    private static PatternResult detectDatePattern(List<BudgetTransaction> transactions) {
+    private static PatternResult detectDatePattern(List<RecurringBudgetTransaction> transactions) {
         if (transactions.size() < 2) {
             return null;
         }
@@ -201,7 +201,7 @@ public final class RecurringPatternDetector {
                         || (d >= 28 && mode <= 3));
 
         if (allMatch) {
-            return new PatternResult(BudgetTransaction.RecurringType.MONTHLY_DAY, mode, null);
+            return new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_DAY, mode, null);
         }
         return null;
     }
@@ -212,7 +212,7 @@ public final class RecurringPatternDetector {
             return date.getDayOfMonth() >= lastDay - 2;
         });
         if (allLastDays) {
-            return new PatternResult(BudgetTransaction.RecurringType.MONTHLY_LAST, 0, null);
+            return new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_LAST, 0, null);
         }
         return null;
     }
@@ -231,7 +231,7 @@ public final class RecurringPatternDetector {
             List<Long> intervals = calculateIntervals(dates);
             double avgInterval = intervals.stream().mapToLong(Long::longValue).average().orElse(0);
             if (avgInterval >= 5 && avgInterval <= 9) {
-                return new PatternResult(BudgetTransaction.RecurringType.WEEKLY, 0, mode);
+                return new PatternResult(RecurringBudgetTransaction.RecurringType.WEEKLY, 0, mode);
             }
         }
         return null;
@@ -248,13 +248,13 @@ public final class RecurringPatternDetector {
                 .allMatch(i -> Math.abs(i - avgInterval) <= avgInterval * 0.2 + 2);
 
         if (consistent && avgInterval >= 3) {
-            return new PatternResult(BudgetTransaction.RecurringType.INTERVAL,
+            return new PatternResult(RecurringBudgetTransaction.RecurringType.INTERVAL,
                     (int) Math.round(avgInterval), null);
         }
         return null;
     }
 
-    private static boolean hasConsistentAmounts(List<BudgetTransaction> txList) {
+    private static boolean hasConsistentAmounts(List<RecurringBudgetTransaction> txList) {
         if (txList.size() < 2) {
             return true;
         }
@@ -310,7 +310,7 @@ public final class RecurringPatternDetector {
         return dp[a.length()][b.length()];
     }
 
-    private static double calculateConfidence(List<BudgetTransaction> txList,
+    private static double calculateConfidence(List<RecurringBudgetTransaction> txList,
                                               PatternResult pattern,
                                               int avgAmount,
                                               int minAmount,
@@ -351,7 +351,7 @@ public final class RecurringPatternDetector {
         return false;
     }
 
-    private record PatternResult(BudgetTransaction.RecurringType type,
+    private record PatternResult(RecurringBudgetTransaction.RecurringType type,
                                  int value,
                                  DayOfWeek dayOfWeek) {
     }

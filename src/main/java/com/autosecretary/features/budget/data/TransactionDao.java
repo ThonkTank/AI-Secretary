@@ -60,16 +60,16 @@ public interface TransactionDao {
     IncomeExpenseSummary getIncomeExpenseSummary(String yearMonth);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insert(BudgetTransaction transaction);
+    void insert(BudgetTransactionEntity transaction);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertAll(List<BudgetTransaction> transactions);
+    void insertAll(List<BudgetTransactionEntity> transactions);
 
     @Update
-    void update(BudgetTransaction transaction);
+    void update(BudgetTransactionEntity transaction);
 
     @Delete
-    void delete(BudgetTransaction transaction);
+    void delete(BudgetTransactionEntity transaction);
 
     @Query("DELETE FROM budget_transaction WHERE id = :transactionId")
     void deleteById(String transactionId);
