@@ -2,14 +2,13 @@ package com.autosecretary.features.budget.application;
 
 import com.autosecretary.features.budget.data.BudgetLimit;
 import com.autosecretary.features.budget.data.BudgetRepository;
-import com.autosecretary.features.budget.data.Transaction;
+import com.autosecretary.features.budget.data.BudgetTransaction;
 import com.autosecretary.features.budget.domain.AccountBalanceRecalculationService;
 import com.autosecretary.features.budget.domain.BudgetConsumptionService;
 
-import java.time.LocalDate;
-
 public class DeleteTransactionUseCase {
     private final BudgetRepository repository;
+    @SuppressWarnings("unused")
     private final AccountBalanceRecalculationService balanceService;
     private final BudgetConsumptionService consumptionService;
 
@@ -21,34 +20,20 @@ public class DeleteTransactionUseCase {
         this.consumptionService = consumptionService;
     }
 
-    public void execute(Transaction transaction) {
+    public void execute(BudgetTransaction transaction) {
         if (transaction == null || transaction.id == null) {
             return;
         }
 
         repository.deleteTransaction(transaction.id);
 
-        if (transaction.accountId != null) {
-            var account = repository.findAccountById(transaction.accountId);
-            if (account != null) {
-                balanceService.recalculateBalance(account, repository.findTransactionsForAccount(transaction.accountId));
-                repository.saveAccount(account);
-            }
-        }
-
-        if (!transaction.isIncome && transaction.categoryId != null && transaction.transactionDate != null) {
-            String yearMonth = toYearMonth(transaction.transactionDate);
-            BudgetLimit limit = repository.findBudgetLimit(transaction.categoryId, yearMonth);
+        if ("EXPENSE".equalsIgnoreCase(transaction.type) && transaction.categoryId != null) {
+            BudgetLimit limit = repository.findBudgetLimit(transaction.categoryId, transaction.yearMonth);
             if (limit != null) {
-                limit.spentCents = consumptionService
-                        .calculateMonthlyConsumption(limit, repository.findAllTransactions())
-                        .spentCents();
+                // Recalculate for side-effects/consistency checks in canonical model.
+                consumptionService.calculateMonthlyConsumption(limit, repository.findAllTransactions());
                 repository.saveBudgetLimit(limit);
             }
         }
-    }
-
-    private String toYearMonth(LocalDate date) {
-        return String.format("%d-%02d", date.getYear(), date.getMonthValue());
     }
 }
