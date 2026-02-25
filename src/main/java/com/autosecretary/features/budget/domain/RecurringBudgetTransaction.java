@@ -20,19 +20,19 @@ public class RecurringBudgetTransaction {
         MONTH
     }
 
-    public Long id;
-    public Long accountId;
+    public String id;
+    public String accountId;
     public int amountCents;
     public LocalDate transactionDate;
-    public Long categoryId;
+    public String categoryId;
     public String description;
     public String payee;
     public String importHash;
-    public Long importId;
+    public String importId;
 
     public boolean isRecurring;
     public boolean isPredicted;
-    public Long parentRecurringId;
+    public String parentRecurringId;
     public RecurringType recurringType;
     public int recurringValue;
     public DayOfWeek recurringDayOfWeek;
@@ -41,7 +41,7 @@ public class RecurringBudgetTransaction {
     public static class Builder {
         private final RecurringBudgetTransaction tx = new RecurringBudgetTransaction();
 
-        public Builder(Long accountId, int amountCents, LocalDate date, Long categoryId) {
+        public Builder(String accountId, int amountCents, LocalDate date, String categoryId) {
             tx.accountId = accountId;
             tx.amountCents = amountCents;
             tx.transactionDate = date;
@@ -63,7 +63,7 @@ public class RecurringBudgetTransaction {
             return this;
         }
 
-        public Builder importId(Long importId) {
+        public Builder importId(String importId) {
             tx.importId = importId;
             return this;
         }

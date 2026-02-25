@@ -89,6 +89,32 @@
     <string name="budget_import_success">%1$d Buchungen importiert.</string>
     <string name="budget_import_error">Import fehlgeschlagen: %1$s</string>
     <string name="budget_transaction_content_description">Transaktion: %1$s, %2$s</string>
+    <string name="budget_dialog_category_label">Kategorie</string>
+    <string name="budget_month_previous">Vorheriger Monat</string>
+    <string name="budget_month_next">Nächster Monat</string>
+    <string name="budget_delete_title">Transaktion löschen?</string>
+    <string name="budget_delete_message">Diese Buchung wirklich löschen?</string>
+    <string name="budget_delete_confirm">Löschen</string>
+    <string name="budget_recurring_title">Wiederkehrende Buchungen erkannt</string>
+    <string name="budget_recurring_skip">Überspringen</string>
+    <string name="budget_recurring_create">Erstellen (%1$d)</string>
+    <string name="budget_recurring_selection_info">%1$d von %2$d ausgewählt</string>
+    <string name="budget_recurring_transactions_count">%1$d Transaktionen</string>
+    <string name="budget_recurring_confidence">%1$.0f%% sicher</string>
+    <string name="budget_recurring_pattern_monthly_day">Monatlich am %1$d.</string>
+    <string name="budget_recurring_pattern_monthly_last">Monatlich am Monatsende</string>
+    <string name="budget_recurring_pattern_weekly">Wöchentlich %1$s</string>
+    <string name="budget_recurring_pattern_interval">Alle %1$d Tage</string>
+    <string name="budget_recurring_pattern_unknown">Unbekanntes Muster</string>
+
+    <string name="budget_summary_income">Einnahmen</string>
+    <string name="budget_summary_expense">Ausgaben</string>
+    <string name="budget_summary_net">Saldo</string>
+    <string name="budget_limits_header">Budgetlimits</string>
+    <string name="budget_set_limit_button">Budgetlimit setzen</string>
+    <string name="budget_edit_limit_title">Budgetlimit bearbeiten</string>
+    <string name="budget_limit_amount_hint">Monatliches Limit (z.B. 100,00)</string>
+    <string name="budget_limit_save">Speichern</string>
 
     <string-array name="task_edit_weekday_short_labels">
         <item>Mo</item>

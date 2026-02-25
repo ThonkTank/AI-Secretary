@@ -79,4 +79,10 @@ public interface TransactionDao {
 
     @Query("DELETE FROM budget_transaction WHERE id = :transactionId")
     void deleteById(String transactionId);
+
+    @Query("SELECT COUNT(*) > 0 FROM budget_transaction WHERE importHash = :importHash")
+    boolean existsByImportHash(String importHash);
+
+    @Query("SELECT id FROM budget_category WHERE type = :type AND archived = 0 LIMIT 1")
+    String findDefaultCategoryId(String type);
 }

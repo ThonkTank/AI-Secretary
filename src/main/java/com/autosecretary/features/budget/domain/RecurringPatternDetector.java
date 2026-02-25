@@ -67,8 +67,8 @@ public final class RecurringPatternDetector {
         int sumAmounts = 0;
         int minAmount = Integer.MAX_VALUE;
         int maxAmount = Integer.MIN_VALUE;
-        Map<Long, Integer> categoryCounts = new HashMap<>();
-        List<Long> txIds = new ArrayList<>();
+        Map<String, Integer> categoryCounts = new HashMap<>();
+        List<String> txIds = new ArrayList<>();
         String displayPayee = transactions.get(0).payee;
 
         for (RecurringBudgetTransaction tx : transactions) {
@@ -85,7 +85,7 @@ public final class RecurringPatternDetector {
         }
 
         int avgAmount = sumAmounts / transactions.size();
-        Long categoryId = categoryCounts.entrySet().stream()
+        String categoryId = categoryCounts.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
                 .orElse(null);

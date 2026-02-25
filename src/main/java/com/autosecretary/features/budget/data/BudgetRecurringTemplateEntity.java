@@ -6,11 +6,12 @@ import androidx.room.ForeignKey;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity(
-        tableName = "budget_transaction",
+        tableName = "budget_recurring_template",
         foreignKeys = {
                 @ForeignKey(
                         entity = BudgetAccount.class,
@@ -29,17 +30,10 @@ import java.util.UUID;
         },
         indices = {
                 @Index("accountId"),
-                @Index("categoryId"),
-                @Index("yearMonth"),
-                @Index("bookingDate"),
-                @Index("importHash")
+                @Index("categoryId")
         }
 )
-public class BudgetTransactionEntity {
-    public enum TransactionType {
-        INCOME,
-        EXPENSE
-    }
+public class BudgetRecurringTemplateEntity {
 
     @PrimaryKey
     @NonNull
@@ -48,38 +42,35 @@ public class BudgetTransactionEntity {
     @NonNull
     public String accountId;
 
+    @NonNull
+    public String normalizedPayee;
+
+    public String displayPayee;
+
     public String categoryId;
 
+    public int avgAmountCents;
+
+    public int minAmountCents;
+
+    public int maxAmountCents;
+
     @NonNull
-    public TransactionType type = TransactionType.EXPENSE;
+    public String recurringType;
 
-    public long amountCents;
+    public int recurringValue;
 
-    @NonNull
-    public LocalDate bookingDate;
+    public DayOfWeek recurringDayOfWeek;
 
-    /**
-     * Normalized value in format yyyy-MM for fast monthly queries.
-     */
-    @NonNull
-    public String yearMonth;
+    public LocalDate nextDue;
 
-    public String note;
+    public boolean active = true;
 
-    public String importHash;
-
-    public String payee;
-
-    public String importId;
-
-    public BudgetTransactionEntity(@NonNull String accountId, String categoryId,
-                                   @NonNull TransactionType type, long amountCents,
-                                   @NonNull LocalDate bookingDate, @NonNull String yearMonth) {
+    public BudgetRecurringTemplateEntity(@NonNull String accountId,
+                                         @NonNull String normalizedPayee,
+                                         @NonNull String recurringType) {
         this.accountId = accountId;
-        this.categoryId = categoryId;
-        this.type = type;
-        this.amountCents = amountCents;
-        this.bookingDate = bookingDate;
-        this.yearMonth = yearMonth;
+        this.normalizedPayee = normalizedPayee;
+        this.recurringType = recurringType;
     }
 }

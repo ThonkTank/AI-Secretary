@@ -39,7 +39,7 @@ public class BudgetImportUseCase {
         this.mapper = mapper;
     }
 
-    public void executeAsync(Long accountId,
+    public void executeAsync(String accountId,
                              String fileName,
                              byte[] fileBytes,
                              String mimeType,
@@ -65,11 +65,11 @@ public class BudgetImportUseCase {
         });
     }
 
-    ImportPipelineResult runImportPipeline(Long accountId,
+    ImportPipelineResult runImportPipeline(String accountId,
                                            String fileName,
                                            byte[] fileBytes,
                                            String mimeType) {
-        Long importId = null;
+        String importId = null;
         try {
             String fileHash = sha256(fileBytes);
             BudgetImportRepository.ImportRecord importRecord = repository.createImport(accountId, fileName, fileHash);
@@ -119,8 +119,8 @@ public class BudgetImportUseCase {
         }
     }
 
-    private ImportComputation buildTransactions(Long accountId,
-                                                Long importId,
+    private ImportComputation buildTransactions(String accountId,
+                                                String importId,
                                                 List<StatementFileParser.ParsedTransaction> parsedTransactions) {
         List<RecurringBudgetTransaction> newTransactions = new ArrayList<>();
         int duplicates = 0;
@@ -137,7 +137,7 @@ public class BudgetImportUseCase {
                 continue;
             }
 
-            Long categoryId = parsed.categoryId();
+            String categoryId = parsed.categoryId() != null ? String.valueOf(parsed.categoryId()) : null;
             if (categoryId == null) {
                 categoryId = repository.findDefaultCategoryId(parsed.amountCents() > 0);
             } else {
@@ -214,16 +214,16 @@ public class BudgetImportUseCase {
     }
 
     private static class ImportPipelineException extends RuntimeException {
-        private final Long importId;
+        private final String importId;
         private final String userMessage;
 
-        ImportPipelineException(Long importId, String userMessage, Throwable cause) {
+        ImportPipelineException(String importId, String userMessage, Throwable cause) {
             super(userMessage, cause);
             this.importId = importId;
             this.userMessage = userMessage;
         }
 
-        Long importId() {
+        String importId() {
             return importId;
         }
 

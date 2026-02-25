@@ -14,7 +14,10 @@ import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
+import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
+import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
+import com.autosecretary.features.budget.data.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
 import com.autosecretary.features.task.ui.TaskViewModelFactory;
@@ -100,11 +103,30 @@ public class AppCompositionRoot {
                 db.budgetLimitDao()
         );
 
+        BudgetImportRoomRepository importRepository = new BudgetImportRoomRepository(
+                db.budgetImportDao(),
+                db.budgetRecurringTemplateDao(),
+                db.transactionDao(),
+                db.budgetLookupDao()
+        );
+
+        StatementFileParser parser = new StatementFileParser();
+
+        BudgetImportUseCase importUseCase = new BudgetImportUseCase(
+                importRepository, parser, taskUseCaseExecutor
+        );
+
+        ApplyRecurringSuggestionsUseCase applyRecurringUseCase = new ApplyRecurringSuggestionsUseCase(
+                importRepository, taskUseCaseExecutor
+        );
+
         budgetViewModelFactory = new BudgetViewModelFactory(
                 repository,
-                new StatementFileParser(),
+                parser,
                 taskUseCaseExecutor,
-                mainHandler::post
+                mainHandler::post,
+                importUseCase,
+                applyRecurringUseCase
         );
 
         return budgetViewModelFactory;

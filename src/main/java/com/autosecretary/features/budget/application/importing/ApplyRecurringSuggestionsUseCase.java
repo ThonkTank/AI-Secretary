@@ -20,16 +20,16 @@ public class ApplyRecurringSuggestionsUseCase {
         this.executor = executor;
     }
 
-    public void executeAsync(Long accountId,
+    public void executeAsync(String accountId,
                              List<RecurringSuggestion> suggestions,
                              Runnable onCompleted,
                              java.util.function.Consumer<String> onError) {
         executor.execute(() -> {
             try {
-                List<Long> templateIds = new ArrayList<>();
+                List<String> templateIds = new ArrayList<>();
                 for (RecurringSuggestion suggestion : suggestions) {
                     LocalDate nextDue = calculateNextDue(suggestion);
-                    Long templateId = repository.createRecurringTemplate(suggestion, accountId, nextDue);
+                    String templateId = repository.createRecurringTemplate(suggestion, accountId, nextDue);
                     templateIds.add(templateId);
                     repository.linkTransactionsToTemplate(suggestion.transactionIds(), templateId);
                 }

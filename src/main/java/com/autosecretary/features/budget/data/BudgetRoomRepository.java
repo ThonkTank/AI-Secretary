@@ -26,6 +26,10 @@ public class BudgetRoomRepository implements BudgetRepository {
         return lookupDao.getActiveAccounts();
     }
 
+    @Override public List<BudgetCategory> getActiveCategories() {
+        return lookupDao.getActiveCategories();
+    }
+
     @Override public List<BudgetTransactionEntity> findAllTransactions() {
         return transactionDao.findAll();
     }
@@ -68,5 +72,9 @@ public class BudgetRoomRepository implements BudgetRepository {
 
     @Override public List<MonthlyTransactionOverviewItem> getMonthlyOverview(String yearMonth) {
         return transactionDao.getMonthlyOverview(yearMonth);
+    }
+
+    @Override public List<CategorySpendTotal> getCategorySpendTotals(String yearMonth) {
+        return limitDao.getCategorySpendTotals(yearMonth);
     }
 }

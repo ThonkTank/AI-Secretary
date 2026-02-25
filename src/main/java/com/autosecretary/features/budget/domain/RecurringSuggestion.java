@@ -7,14 +7,14 @@ import java.util.List;
 public record RecurringSuggestion(
         String normalizedPayee,
         String displayPayee,
-        Long categoryId,
+        String categoryId,
         int avgAmountCents,
         int minAmountCents,
         int maxAmountCents,
         RecurringBudgetTransaction.RecurringType suggestedType,
         int suggestedValue,
         DayOfWeek suggestedDayOfWeek,
-        List<Long> transactionIds,
+        List<String> transactionIds,
         double confidenceScore
 ) {
 }

@@ -1,17 +1,24 @@
 package com.autosecretary.features.budget.ui;
 
 import android.content.ContentResolver;
+import android.content.res.ColorStateList;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -25,13 +32,18 @@ import androidx.lifecycle.ViewModelProvider;
 import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
+import com.autosecretary.features.budget.data.BudgetCategory;
+import com.autosecretary.features.budget.domain.RecurringSuggestion;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class BudgetFragment extends Fragment {
 
@@ -74,17 +86,36 @@ public class BudgetFragment extends Fragment {
         budgetViewModel = new ViewModelProvider(this, factory).get(BudgetViewModel.class);
 
         TextView title = view.findViewById(R.id.BudgetTitle);
-        TextView summary = view.findViewById(R.id.BudgetSummary);
+        View summaryCard = view.findViewById(R.id.BudgetSummaryCard);
+        TextView summaryIncome = view.findViewById(R.id.BudgetSummaryIncome);
+        TextView summaryExpense = view.findViewById(R.id.BudgetSummaryExpense);
+        TextView summaryNet = view.findViewById(R.id.BudgetSummaryNet);
         TextView status = view.findViewById(R.id.BudgetStatusMessage);
         Button addTransaction = view.findViewById(R.id.BudgetAddTransactionButton);
         Button importStatement = view.findViewById(R.id.BudgetImportStatementButton);
         Button retry = view.findViewById(R.id.BudgetRetryButton);
         LinearLayout transactionList = view.findViewById(R.id.BudgetTransactionList);
         ProgressBar loading = view.findViewById(R.id.BudgetLoading);
+        TextView monthLabel = view.findViewById(R.id.BudgetMonthLabel);
+        ImageButton monthPrev = view.findViewById(R.id.BudgetMonthPrevButton);
+        ImageButton monthNext = view.findViewById(R.id.BudgetMonthNextButton);
+        LinearLayout limitBarsContainer = view.findViewById(R.id.BudgetLimitBarsContainer);
+        Button setLimitButton = view.findViewById(R.id.BudgetSetLimitButton);
 
         budgetViewModel.getTitle().observe(getViewLifecycleOwner(), title::setText);
-        budgetViewModel.getSummary().observe(getViewLifecycleOwner(), summary::setText);
         budgetViewModel.getStatusMessage().observe(getViewLifecycleOwner(), status::setText);
+
+        budgetViewModel.getSummaryData().observe(getViewLifecycleOwner(), data -> {
+            if (data == null) return;
+            summaryIncome.setText(String.format(Locale.GERMAN, "+%.2f €", data.getIncomeCents() / 100.0));
+            summaryIncome.setTextColor(Color.parseColor("#4CAF50"));
+            summaryExpense.setText(String.format(Locale.GERMAN, "-%.2f €", data.getExpenseCents() / 100.0));
+            summaryExpense.setTextColor(Color.parseColor("#F44336"));
+            long net = data.getNetCents();
+            String sign = net >= 0 ? "+" : "-";
+            summaryNet.setText(String.format(Locale.GERMAN, "%s%.2f €", sign, Math.abs(net) / 100.0));
+            summaryNet.setTextColor(Color.parseColor(net >= 0 ? "#4CAF50" : "#F44336"));
+        });
 
         budgetViewModel.getTransactions().observe(getViewLifecycleOwner(),
                 rows -> renderTransactions(rows, transactionList));
@@ -92,24 +123,55 @@ public class BudgetFragment extends Fragment {
         budgetViewModel.getUiState().observe(getViewLifecycleOwner(), state -> {
             boolean isLoading = state == BudgetViewModel.BudgetUiState.LOADING;
             boolean isError = state == BudgetViewModel.BudgetUiState.ERROR;
+            boolean isContent = state == BudgetViewModel.BudgetUiState.CONTENT;
             loading.setVisibility(isLoading ? View.VISIBLE : View.GONE);
             retry.setVisibility(isError ? View.VISIBLE : View.GONE);
-            transactionList.setVisibility(state == BudgetViewModel.BudgetUiState.CONTENT
-                    ? View.VISIBLE : View.GONE);
+            transactionList.setVisibility(isContent ? View.VISIBLE : View.GONE);
+            summaryCard.setVisibility(isContent ? View.VISIBLE : View.GONE);
         });
 
+        budgetViewModel.getCurrentMonth().observe(getViewLifecycleOwner(), month ->
+                monthLabel.setText(budgetViewModel.formatMonth(month)));
+
+        budgetViewModel.getLimits().observe(getViewLifecycleOwner(),
+                bars -> renderLimitBars(bars, limitBarsContainer, setLimitButton));
+
+        budgetViewModel.getImportResult().observe(getViewLifecycleOwner(), result -> {
+            if (result != null && !result.recurringSuggestions().isEmpty()) {
+                showRecurringSuggestionsDialog(result.recurringSuggestions());
+                budgetViewModel.clearImportResult();
+            }
+        });
+
+        monthPrev.setOnClickListener(v -> budgetViewModel.navigateMonth(-1));
+        monthNext.setOnClickListener(v -> budgetViewModel.navigateMonth(1));
         addTransaction.setOnClickListener(v -> showAddTransactionDialog());
         importStatement.setOnClickListener(v ->
                 csvPickerLauncher.launch(new String[]{"text/csv", "text/plain", "*/*"}));
         retry.setOnClickListener(v -> budgetViewModel.retry());
+        setLimitButton.setOnClickListener(v -> showEditLimitDialog(null, null, 0));
     }
+
+    // --- Add Transaction Dialog (with category picker) ---
 
     private void showAddTransactionDialog() {
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.budget_add_transaction_dialog, null);
         TextInputEditText amountInput = dialogView.findViewById(R.id.BudgetDialogAmount);
         RadioButton expenseRadio = dialogView.findViewById(R.id.BudgetDialogTypeExpense);
+        RadioGroup typeGroup = dialogView.findViewById(R.id.BudgetDialogTypeGroup);
+        Spinner categorySpinner = dialogView.findViewById(R.id.BudgetDialogCategory);
         TextInputEditText noteInput = dialogView.findViewById(R.id.BudgetDialogNote);
+
+        List<BudgetCategory> allCategories = budgetViewModel.getCategories().getValue();
+        if (allCategories == null) allCategories = new ArrayList<>();
+        List<BudgetCategory> allCats = allCategories;
+
+        populateCategorySpinner(categorySpinner, allCats, true);
+
+        typeGroup.setOnCheckedChangeListener((group, checkedId) ->
+                populateCategorySpinner(categorySpinner, allCats,
+                        checkedId == R.id.BudgetDialogTypeExpense));
 
         new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.budget_dialog_title)
@@ -120,12 +182,91 @@ public class BudgetFragment extends Fragment {
                     boolean isExpense = expenseRadio.isChecked();
                     String note = noteInput.getText() != null
                             ? noteInput.getText().toString().trim() : "";
-                    budgetViewModel.addTransaction(amountStr, isExpense,
+                    String categoryId = getSelectedCategoryId(categorySpinner, allCats, isExpense);
+
+                    budgetViewModel.addTransaction(amountStr, isExpense, categoryId,
                             note.isEmpty() ? null : note, LocalDate.now());
                 })
                 .setNegativeButton(R.string.budget_dialog_cancel, null)
                 .show();
     }
+
+    private void populateCategorySpinner(Spinner spinner, List<BudgetCategory> allCategories,
+                                          boolean isExpense) {
+        String filterType = isExpense ? "EXPENSE" : "INCOME";
+        List<String> names = new ArrayList<>();
+        for (BudgetCategory cat : allCategories) {
+            if (filterType.equals(cat.type)) {
+                names.add(cat.name);
+            }
+        }
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
+                android.R.layout.simple_spinner_item, names);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+    }
+
+    private String getSelectedCategoryId(Spinner spinner, List<BudgetCategory> allCategories,
+                                          boolean isExpense) {
+        int position = spinner.getSelectedItemPosition();
+        if (position < 0) return null;
+        String filterType = isExpense ? "EXPENSE" : "INCOME";
+        int index = 0;
+        for (BudgetCategory cat : allCategories) {
+            if (filterType.equals(cat.type)) {
+                if (index == position) return cat.id;
+                index++;
+            }
+        }
+        return null;
+    }
+
+    // --- Budget Limit Bars ---
+
+    private void renderLimitBars(List<BudgetViewModel.BudgetLimitBar> bars,
+                                  LinearLayout container, Button setLimitButton) {
+        container.removeAllViews();
+        if (bars == null || bars.isEmpty()) {
+            container.setVisibility(View.GONE);
+            setLimitButton.setVisibility(View.VISIBLE);
+            return;
+        }
+        container.setVisibility(View.VISIBLE);
+        setLimitButton.setVisibility(View.VISIBLE);
+        LayoutInflater inflater = LayoutInflater.from(container.getContext());
+
+        for (BudgetViewModel.BudgetLimitBar bar : bars) {
+            View row = inflater.inflate(R.layout.budget_limit_bar_item, container, false);
+            TextView name = row.findViewById(R.id.BudgetLimitBarName);
+            TextView spentText = row.findViewById(R.id.BudgetLimitBarSpentText);
+            TextView percentText = row.findViewById(R.id.BudgetLimitBarPercent);
+            ProgressBar progress = row.findViewById(R.id.BudgetLimitBarProgress);
+
+            name.setText(bar.getCategoryName());
+            spentText.setText(String.format(Locale.GERMAN, "%.2f / %.2f €",
+                    bar.getSpentCents() / 100.0, bar.getLimitEuros()));
+            int pct = bar.getPercentage();
+            percentText.setText(String.format(Locale.GERMAN, "%d%%", pct));
+            progress.setProgress(Math.min(pct, 100));
+
+            int color;
+            if (pct > 100) {
+                color = Color.parseColor("#F44336");
+            } else if (pct >= 80) {
+                color = Color.parseColor("#FF9800");
+            } else {
+                color = Color.parseColor("#4CAF50");
+            }
+            progress.setProgressTintList(ColorStateList.valueOf(color));
+            percentText.setTextColor(color);
+
+            row.setOnClickListener(v ->
+                    showEditLimitDialog(bar.getCategoryId(), bar.getCategoryName(), bar.getLimitEuros()));
+            container.addView(row);
+        }
+    }
+
+    // --- Transaction list rendering (with long-press delete) ---
 
     private void renderTransactions(List<BudgetViewModel.BudgetTransactionRow> rows,
             LinearLayout container) {
@@ -141,9 +282,223 @@ public class BudgetFragment extends Fragment {
             rowView.setContentDescription(
                     getString(R.string.budget_transaction_content_description,
                             row.getLabel(), row.getAmount()));
+
+            rowView.setOnLongClickListener(v -> {
+                showDeleteTransactionDialog(row);
+                return true;
+            });
+
             container.addView(rowView);
         }
     }
+
+    private void showDeleteTransactionDialog(BudgetViewModel.BudgetTransactionRow row) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.budget_delete_title)
+                .setMessage(R.string.budget_delete_message)
+                .setPositiveButton(R.string.budget_delete_confirm, (dialog, which) ->
+                        budgetViewModel.deleteTransaction(row.getTransactionId()))
+                .setNegativeButton(R.string.budget_dialog_cancel, null)
+                .show();
+    }
+
+    // --- Recurring Suggestions Dialog ---
+
+    private void showRecurringSuggestionsDialog(List<RecurringSuggestion> suggestions) {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.budget_recurring_suggestions_dialog, null);
+        LinearLayout listContainer = dialogView.findViewById(R.id.BudgetRecurringSuggestionList);
+        TextView selectionInfo = dialogView.findViewById(R.id.BudgetRecurringSelectionInfo);
+
+        boolean[] selections = new boolean[suggestions.size()];
+        for (int i = 0; i < selections.length; i++) {
+            selections[i] = true;
+        }
+
+        LayoutInflater inflater = LayoutInflater.from(requireContext());
+        List<CheckBox> checkBoxes = new ArrayList<>();
+
+        for (int i = 0; i < suggestions.size(); i++) {
+            RecurringSuggestion suggestion = suggestions.get(i);
+            View row = inflater.inflate(R.layout.budget_recurring_suggestion_item, listContainer, false);
+
+            CheckBox checkbox = row.findViewById(R.id.BudgetSuggestionCheckbox);
+            TextView payee = row.findViewById(R.id.BudgetSuggestionPayee);
+            TextView pattern = row.findViewById(R.id.BudgetSuggestionPattern);
+            TextView count = row.findViewById(R.id.BudgetSuggestionCount);
+            TextView confidence = row.findViewById(R.id.BudgetSuggestionConfidence);
+            TextView amount = row.findViewById(R.id.BudgetSuggestionAmount);
+
+            checkbox.setChecked(true);
+            checkBoxes.add(checkbox);
+
+            payee.setText(suggestion.displayPayee());
+            pattern.setText(getPatternDescription(suggestion));
+            count.setText(getString(R.string.budget_recurring_transactions_count,
+                    suggestion.transactionIds().size()));
+            confidence.setText(getString(R.string.budget_recurring_confidence,
+                    suggestion.confidenceScore() * 100));
+            amount.setText(String.format(Locale.GERMAN, "%.2f €",
+                    Math.abs(suggestion.avgAmountCents()) / 100.0));
+
+            amount.setTextColor(suggestion.avgAmountCents() >= 0
+                    ? Color.parseColor("#4CAF50") : Color.parseColor("#F44336"));
+
+            if (suggestion.confidenceScore() >= 0.7) {
+                confidence.setTextColor(Color.parseColor("#4CAF50"));
+            } else if (suggestion.confidenceScore() >= 0.5) {
+                confidence.setTextColor(Color.parseColor("#FF9800"));
+            } else {
+                confidence.setTextColor(Color.parseColor("#9E9E9E"));
+            }
+
+            listContainer.addView(row);
+        }
+
+        updateSelectionInfo(selectionInfo, selections);
+
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.budget_recurring_title)
+                .setView(dialogView)
+                .setPositiveButton(getString(R.string.budget_recurring_create, countSelected(selections)),
+                        null)
+                .setNegativeButton(R.string.budget_recurring_skip, null)
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            Button createButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            createButton.setOnClickListener(v -> {
+                List<RecurringSuggestion> selected = new ArrayList<>();
+                for (int i = 0; i < suggestions.size(); i++) {
+                    if (selections[i]) selected.add(suggestions.get(i));
+                }
+                if (!selected.isEmpty()) {
+                    budgetViewModel.applyRecurringSuggestions(selected);
+                }
+                dialog.dismiss();
+            });
+
+            for (int i = 0; i < checkBoxes.size(); i++) {
+                int index = i;
+                View row = listContainer.getChildAt(i);
+                row.setOnClickListener(rv -> {
+                    selections[index] = !selections[index];
+                    checkBoxes.get(index).setChecked(selections[index]);
+                    updateSelectionInfo(selectionInfo, selections);
+                    updateCreateButton(createButton, selections);
+                });
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void updateSelectionInfo(TextView info, boolean[] selections) {
+        info.setText(getString(R.string.budget_recurring_selection_info,
+                countSelected(selections), selections.length));
+    }
+
+    private void updateCreateButton(Button button, boolean[] selections) {
+        int count = countSelected(selections);
+        button.setText(getString(R.string.budget_recurring_create, count));
+        button.setEnabled(count > 0);
+    }
+
+    private int countSelected(boolean[] selections) {
+        int count = 0;
+        for (boolean sel : selections) {
+            if (sel) count++;
+        }
+        return count;
+    }
+
+    private String getPatternDescription(RecurringSuggestion suggestion) {
+        if (suggestion.suggestedType() == null) {
+            return getString(R.string.budget_recurring_pattern_unknown);
+        }
+        return switch (suggestion.suggestedType()) {
+            case MONTHLY_DAY -> getString(R.string.budget_recurring_pattern_monthly_day,
+                    suggestion.suggestedValue());
+            case MONTHLY_LAST -> getString(R.string.budget_recurring_pattern_monthly_last);
+            case WEEKLY -> getString(R.string.budget_recurring_pattern_weekly,
+                    getDayName(suggestion.suggestedDayOfWeek()));
+            case INTERVAL -> getString(R.string.budget_recurring_pattern_interval,
+                    suggestion.suggestedValue());
+        };
+    }
+
+    private String getDayName(DayOfWeek dow) {
+        if (dow == null) return "";
+        return switch (dow) {
+            case MONDAY -> "Mo";
+            case TUESDAY -> "Di";
+            case WEDNESDAY -> "Mi";
+            case THURSDAY -> "Do";
+            case FRIDAY -> "Fr";
+            case SATURDAY -> "Sa";
+            case SUNDAY -> "So";
+        };
+    }
+
+    // --- Edit Budget Limit Dialog ---
+
+    private void showEditLimitDialog(String preSelectedCategoryId,
+                                      String preSelectedCategoryName,
+                                      double currentAmount) {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.budget_edit_limit_dialog, null);
+        Spinner categorySpinner = dialogView.findViewById(R.id.BudgetLimitDialogCategory);
+        TextInputEditText amountInput = dialogView.findViewById(R.id.BudgetLimitDialogAmount);
+
+        List<BudgetCategory> allCategories = budgetViewModel.getCategories().getValue();
+        if (allCategories == null) allCategories = new ArrayList<>();
+        List<BudgetCategory> allCats = allCategories;
+
+        populateCategorySpinner(categorySpinner, allCats, true);
+
+        if (preSelectedCategoryId != null) {
+            int index = 0;
+            for (BudgetCategory cat : allCats) {
+                if ("EXPENSE".equals(cat.type)) {
+                    if (preSelectedCategoryId.equals(cat.id)) {
+                        categorySpinner.setSelection(index);
+                        break;
+                    }
+                    index++;
+                }
+            }
+        }
+
+        if (currentAmount > 0) {
+            amountInput.setText(String.format(Locale.GERMAN, "%.2f", currentAmount));
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.budget_edit_limit_title)
+                .setView(dialogView)
+                .setPositiveButton(R.string.budget_limit_save, (dialog, which) -> {
+                    String amountStr = amountInput.getText() != null
+                            ? amountInput.getText().toString().trim() : "";
+                    if (amountStr.isEmpty()) return;
+
+                    String normalized = amountStr.replace(',', '.');
+                    double amountEuros;
+                    try {
+                        amountEuros = Double.parseDouble(normalized);
+                    } catch (NumberFormatException e) {
+                        return;
+                    }
+
+                    String categoryId = getSelectedCategoryId(categorySpinner, allCats, true);
+                    if (categoryId == null) return;
+
+                    budgetViewModel.saveBudgetLimit(categoryId, amountEuros);
+                })
+                .setNegativeButton(R.string.budget_dialog_cancel, null)
+                .show();
+    }
+
+    // --- File utilities ---
 
     private String getFileName(Uri uri) {
         String result = null;

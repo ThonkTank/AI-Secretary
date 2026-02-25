@@ -58,8 +58,8 @@ public class BudgetTransactionMapper {
                         : BudgetTransactionEntity.TransactionType.EXPENSE;
 
         BudgetTransactionEntity entity = new BudgetTransactionEntity(
-                String.valueOf(domainTransaction.accountId),
-                domainTransaction.categoryId != null ? String.valueOf(domainTransaction.categoryId) : null,
+                domainTransaction.accountId,
+                domainTransaction.categoryId,
                 type,
                 Math.abs(domainTransaction.amountCents),
                 domainTransaction.transactionDate,
@@ -67,9 +67,12 @@ public class BudgetTransactionMapper {
         );
 
         if (domainTransaction.id != null) {
-            entity.id = String.valueOf(domainTransaction.id);
+            entity.id = domainTransaction.id;
         }
         entity.note = domainTransaction.description;
+        entity.importHash = domainTransaction.importHash;
+        entity.payee = domainTransaction.payee;
+        entity.importId = domainTransaction.importId;
         return entity;
     }
 
@@ -78,8 +81,10 @@ public class BudgetTransactionMapper {
             return null;
         }
 
-        long accountId = parseRequiredLong(entity.accountId, "accountId");
-        Long categoryId = parseNullableLong(entity.categoryId);
+        if (entity.accountId == null) {
+            throw new IllegalArgumentException("accountId must not be null");
+        }
+
         int signedAmountCents = (int) entity.amountCents;
         if (entity.type == BudgetTransactionEntity.TransactionType.EXPENSE) {
             signedAmountCents = -Math.abs(signedAmountCents);
@@ -88,32 +93,18 @@ public class BudgetTransactionMapper {
         }
 
         RecurringBudgetTransaction tx = new RecurringBudgetTransaction.Builder(
-                accountId,
+                entity.accountId,
                 signedAmountCents,
                 entity.bookingDate,
-                categoryId
-        ).description(entity.note).build();
+                entity.categoryId
+        )
+                .description(entity.note)
+                .payee(entity.payee)
+                .importHash(entity.importHash)
+                .importId(entity.importId)
+                .build();
 
-        tx.id = parseNullableLong(entity.id);
+        tx.id = entity.id;
         return tx;
-    }
-
-    private long parseRequiredLong(String value, String fieldName) {
-        Long parsed = parseNullableLong(value);
-        if (parsed == null) {
-            throw new IllegalArgumentException(fieldName + " must be numeric");
-        }
-        return parsed;
-    }
-
-    private Long parseNullableLong(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(value);
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid numeric value: " + value, e);
-        }
     }
 }

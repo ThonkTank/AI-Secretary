@@ -10,8 +10,12 @@ import androidx.room.TypeConverters;
 import com.autosecretary.features.budget.data.BudgetAccount;
 import com.autosecretary.features.budget.data.BudgetCategory;
 import com.autosecretary.features.budget.data.BudgetLimit;
+import com.autosecretary.features.budget.data.BudgetImportDao;
+import com.autosecretary.features.budget.data.BudgetImportEntity;
 import com.autosecretary.features.budget.data.BudgetLimitDao;
 import com.autosecretary.features.budget.data.BudgetLookupDao;
+import com.autosecretary.features.budget.data.BudgetRecurringTemplateDao;
+import com.autosecretary.features.budget.data.BudgetRecurringTemplateEntity;
 import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.TransactionDao;
 import com.autosecretary.features.task.data.TaskCore;
@@ -31,9 +35,11 @@ import com.autosecretary.features.task.data.TaskSlot;
                 BudgetAccount.class,
                 BudgetCategory.class,
                 BudgetTransactionEntity.class,
-                BudgetLimit.class
+                BudgetLimit.class,
+                BudgetImportEntity.class,
+                BudgetRecurringTemplateEntity.class
         },
-        version = 9,
+        version = 10,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -46,6 +52,10 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract TransactionDao transactionDao();
 
     public abstract BudgetLimitDao budgetLimitDao();
+
+    public abstract BudgetImportDao budgetImportDao();
+
+    public abstract BudgetRecurringTemplateDao budgetRecurringTemplateDao();
 
     // Singleton-Pattern
     private static AppDatabase instance;

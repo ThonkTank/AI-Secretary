@@ -4,6 +4,8 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
+import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 
@@ -16,22 +18,30 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
     private final StatementFileParser parser;
     private final ExecutorService executor;
     private final Consumer<Runnable> postToMain;
+    private final BudgetImportUseCase importUseCase;
+    private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
 
     public BudgetViewModelFactory(BudgetRepository repository,
                                   StatementFileParser parser,
                                   ExecutorService executor,
-                                  Consumer<Runnable> postToMain) {
+                                  Consumer<Runnable> postToMain,
+                                  BudgetImportUseCase importUseCase,
+                                  ApplyRecurringSuggestionsUseCase applyRecurringUseCase) {
         this.repository = repository;
         this.parser = parser;
         this.executor = executor;
         this.postToMain = postToMain;
+        this.importUseCase = importUseCase;
+        this.applyRecurringUseCase = applyRecurringUseCase;
     }
 
     @NonNull
     @Override
     public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
         if (modelClass.isAssignableFrom(BudgetViewModel.class)) {
-            return modelClass.cast(new BudgetViewModel(repository, parser, executor, postToMain));
+            return modelClass.cast(new BudgetViewModel(
+                    repository, parser, executor, postToMain,
+                    importUseCase, applyRecurringUseCase));
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
     }

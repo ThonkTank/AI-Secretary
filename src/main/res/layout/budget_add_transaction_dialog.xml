@@ -38,6 +38,19 @@
             android:text="@string/budget_dialog_type_income" />
     </RadioGroup>
 
+    <TextView
+        android:id="@+id/BudgetDialogCategoryLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:text="@string/budget_dialog_category_label"
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
+
+    <Spinner
+        android:id="@+id/BudgetDialogCategory"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/BudgetDialogNoteLayout"
         android:layout_width="match_parent"
