@@ -95,13 +95,7 @@ Use the official Android setup guides to verify your environment (JDK, SDK, emul
 
 ### Feature package layout rule (`features/task`)
 
-- **Public entry points stay in stable packages:**
-  - `features/task/ui/ListFragment`
-  - `features/task/ui/TaskViewModelFactory`
-  - `features/task/application/*UseCase`
-- **Non-entry helpers must live under internal packages:**
-  - `features/task/internal/...`, or
-  - `features/task/{domain,ui}/internal/...`
-- Start migration with high-churn helpers (mappers/builders). Current examples:
-  - `TaskEditStateMapper` → `features/task/ui/internal/mapper`
-  - `PrefSlotUIBuilder` → `features/task/ui/internal`
+- `features/task` keeps four top-level folders only: `ui`, `application`, `domain`, and `data`.
+- Entry points remain in stable packages.
+- Implementation helpers go under `*/internal`.
+- Avoid introducing new generic buckets such as `helpers` or `utils` anywhere under `features/task`.
