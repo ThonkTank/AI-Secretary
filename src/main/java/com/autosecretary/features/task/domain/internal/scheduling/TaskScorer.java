@@ -2,19 +2,23 @@ package com.autosecretary.features.task.domain.internal.scheduling;
 
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
+import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.internal.scoring.ScoringOutputs.CompletionState;
 import com.autosecretary.features.task.domain.internal.scoring.ScoringInputs.MultiDayStateSnapshot;
-import com.autosecretary.features.task.domain.internal.scoring.PreferenceFitCalculator;
 import com.autosecretary.features.task.domain.internal.scoring.ScoringOutputs.PreferenceFitState;
 import com.autosecretary.features.task.domain.internal.scoring.ScoringInputs.TaskScoringSnapshot;
-import com.autosecretary.features.task.domain.internal.scoring.UrgencyCalculator;
 import com.autosecretary.features.task.domain.internal.scoring.ScoringOutputs.UrgencyState;
+import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,9 +38,8 @@ final class TaskScorer {
 
     private final TaskLifecycleManager lifecycleManager;
     private final double maxAgingMultiplier;
+    private final double preferredStartDeviationHours;
     private final Map<String, TaskScoringSnapshot> caches = new HashMap<>();
-    private final UrgencyCalculator urgencyCalculator;
-    private final PreferenceFitCalculator preferenceFitCalculator;
 
     TaskScorer(TaskLifecycleManager lifecycleManager) {
         this(lifecycleManager, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
@@ -45,8 +48,7 @@ final class TaskScorer {
     TaskScorer(TaskLifecycleManager lifecycleManager, double maxAgingMultiplier, double preferredStartDeviationHours) {
         this.lifecycleManager = lifecycleManager;
         this.maxAgingMultiplier = maxAgingMultiplier;
-        this.urgencyCalculator = new UrgencyCalculator();
-        this.preferenceFitCalculator = new PreferenceFitCalculator(preferredStartDeviationHours);
+        this.preferredStartDeviationHours = preferredStartDeviationHours;
     }
 
     void reset() {
@@ -75,8 +77,8 @@ final class TaskScorer {
         advanceTaskPeriod(task, day);
         SlotScanResult slotScanResult = scanSlots(task, day);
         CompletionState completionState = computeCompletionState(task, slotScanResult);
-        UrgencyState urgencyState = urgencyCalculator.computeState(task, day);
-        PreferenceFitState preferenceFitState = preferenceFitCalculator.computeTodayPrefSlots(task, day.getDayOfWeek());
+        UrgencyState urgencyState = computeUrgencyState(task, day);
+        PreferenceFitState preferenceFitState = computePreferenceFitState(task, day.getDayOfWeek());
         MultiDayStateSnapshot multiDayStateSnapshot = computeMultiDaySnapshot(task, state, day);
 
         int sinceLast = (int) ChronoUnit.DAYS.between(completionState.lastCompletion(), day);
@@ -184,7 +186,7 @@ final class TaskScorer {
      *   <li><b>Child influence</b> — parent inherits the highest child priority when it exceeds its own.</li>
      *   <li><b>Day constraint</b> — returns 0 if prefSlots specify days but none match today.</li>
      *   <li><b>Preferred time fit</b> — linear decay from 1.0 at exact match to 0.0 at
-     *       {@code PreferenceFitCalculator}'s configured deviation hours.</li>
+     *       TaskScorer's configured preferred start deviation hours.</li>
      *   <li><b>Urgency</b> — {@code 1 + requiredDays / remainingDays}; overdue tasks use a fixed high value.</li>
      *   <li><b>Aging</b> — snapshot aging force, pre-computed in maintenance, capped at {@link #maxAgingMultiplier}.</li>
      * </ol>
@@ -206,7 +208,7 @@ final class TaskScorer {
         if (totalPrio <= 0) {
             return 0;
         }
-        totalPrio = urgencyCalculator.applyMultiplier(totalPrio, context.task, context.snapshot.urgencyState());
+        totalPrio = applyUrgencyMultiplier(totalPrio, context.task, context.snapshot.urgencyState());
         return applyAgingAndSpreadModifiers(totalPrio, context);
     }
 
@@ -232,12 +234,76 @@ final class TaskScorer {
         return Math.max(context.task.core.priority.value, context.snapshot.maxChildPriority());
     }
 
+    private UrgencyState computeUrgencyState(Task task, LocalDate day) {
+        TaskCore.Repetition rep = task.core.repetition;
+        double remainingDays;
+        if (task.core.deadline != null) {
+            remainingDays = (double) ChronoUnit.DAYS.between(day, task.core.deadline);
+        } else if (rep != null && rep.reps > 0 && rep.periodUnit != null) {
+            LocalDate periodEnd = rep.periodEnd();
+            remainingDays = periodEnd != null
+                    ? (double) ChronoUnit.DAYS.between(day, periodEnd)
+                    : rep.periodInDays();
+        } else {
+            remainingDays = 1;
+        }
+
+        double requiredDays = task.requiredDays();
+        boolean deadlineExpired = task.core.closeOnMiss && task.core.deadline != null && day.isAfter(task.core.deadline);
+        return new UrgencyState(remainingDays, requiredDays, deadlineExpired);
+    }
+
+    private int applyUrgencyMultiplier(int score, Task task, UrgencyState urgencyState) {
+        double urgency;
+        if (urgencyState.remainingDays() <= 0) {
+            urgency = 100;
+        } else if (task.core.deadline != null || (task.core.repetition != null && task.core.repetition.reps > 0)) {
+            urgency = 1.0 + urgencyState.requiredDays() / urgencyState.remainingDays();
+        } else {
+            urgency = 1.0;
+        }
+        return (int) (score * urgency);
+    }
+
+    private PreferenceFitState computePreferenceFitState(Task task, DayOfWeek dayOfWeek) {
+        List<TaskPrefSlot> todayPrefSlots = new ArrayList<>();
+        boolean hasDayConstraints = false;
+        for (TaskPrefSlot ps : task.prefSlots) {
+            if (ps.days != null && !ps.days.isEmpty()) {
+                hasDayConstraints = true;
+                if (ps.days.contains(dayOfWeek)) {
+                    todayPrefSlots.add(ps);
+                }
+            }
+        }
+        return new PreferenceFitState(todayPrefSlots, hasDayConstraints);
+    }
+
     private int applyPreferredTimeFit(int baseScore, ScoringContext context) {
-        return preferenceFitCalculator.applyPreferredTimeFit(
-                baseScore,
-                context.snapshot.preferenceFitState(),
+        LocalTime prefStart = findClosestPreferredStart(
+                context.snapshot.preferenceFitState().todayPrefSlots(),
                 context.start.toLocalTime()
         );
+        if (prefStart == null) {
+            return context.snapshot.preferenceFitState().hasDayConstraints() ? 0 : baseScore;
+        }
+
+        double dif = Duration.between(context.start.toLocalTime(), prefStart).toMinutes() / 60.0;
+        double fit = Math.max(0, 1 - Math.abs(dif / preferredStartDeviationHours));
+        return (int) (baseScore * fit);
+    }
+
+    private LocalTime findClosestPreferredStart(List<TaskPrefSlot> preferredSlots, LocalTime candidateStart) {
+        LocalTime preferredStart = null;
+        long minDiff = Long.MAX_VALUE;
+        for (TaskPrefSlot slot : preferredSlots) {
+            long slotDiff = Math.abs(Duration.between(candidateStart, slot.start).toMinutes());
+            if (slotDiff < minDiff) {
+                minDiff = slotDiff;
+                preferredStart = slot.start;
+            }
+        }
+        return preferredStart;
     }
 
     private int applyAgingAndSpreadModifiers(int score, ScoringContext context) {
