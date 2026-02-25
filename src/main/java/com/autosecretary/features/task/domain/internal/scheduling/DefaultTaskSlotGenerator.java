@@ -23,7 +23,7 @@ import java.util.function.Consumer;
 
 /**
  * Internal scheduler implementation of the {@link com.autosecretary.features.task.domain.TaskSlotGenerator}
- * contract that assigns tasks to time slots within a {@link TimeWindow}.
+ * contract that assigns tasks to time slots within a given window.
  */
 public class DefaultTaskSlotGenerator implements com.autosecretary.features.task.domain.TaskSlotGenerator {
 
@@ -97,7 +97,7 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
 
     @Override
     public void generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
-        generateSlotsForDay(tasks, new TimeWindow(windowStart, windowEnd), state);
+        generateSlotsForDay(tasks, windowStart, windowEnd, state);
     }
 
     @Override
@@ -111,8 +111,8 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
         }
     }
 
-    private void generateSlotsForDay(List<Task> tasks, TimeWindow window, TaskPlanningState state) {
-        schedulingDay = window.start().toLocalDate();
+    private void generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
+        schedulingDay = windowStart.toLocalDate();
         newSlots = 0;
         scorer.reset();
 
@@ -135,11 +135,11 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
             }
         }
 
-        long windowMin = ChronoUnit.MINUTES.between(window.start(), window.end());
-        log("=== Generierung " + schedulingDay + " === Fenster " + window.start().format(HMM) + "-" + window.end().format(HMM) + " (" + windowMin + "min), " + taskTree.size() + " root tasks");
+        long windowMin = ChronoUnit.MINUTES.between(windowStart, windowEnd);
+        log("=== Generierung " + schedulingDay + " === Fenster " + windowStart.format(HMM) + "-" + windowEnd.format(HMM) + " (" + windowMin + "min), " + taskTree.size() + " root tasks");
 
         List<Interval> occupied = collectOccupiedIntervals(allTasks, schedulingDay);
-        assignGlobalBestFit(taskTree, window.start(), window.end(), null, 0, occupied);
+        assignGlobalBestFit(taskTree, windowStart, windowEnd, null, 0, occupied);
 
         log("=== Zusammenfassung " + schedulingDay + " ===");
         int totalDaySlots = 0;
