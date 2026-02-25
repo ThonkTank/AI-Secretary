@@ -1,28 +1,43 @@
 package com.autosecretary.features.task.ui;
 
-import androidx.fragment.app.Fragment;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import android.view.View;
-import android.view.LayoutInflater;
-import android.view.ViewGroup;
-import com.google.android.material.button.MaterialButtonToggleGroup;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Locale;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.task.ui.edit.TaskEditDialog;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
+import com.google.android.material.button.MaterialButtonToggleGroup;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Locale;
 
 public class ListFragment extends Fragment {
+    private TaskViewModel vm;
+
+    private final ActivityResultLauncher<String> calendarPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (vm != null) {
+                    vm.onCalendarPermissionChanged(granted);
+                }
+            });
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -34,9 +49,11 @@ public class ListFragment extends Fragment {
         AutoSecretaryApplication app = AutoSecretaryApplication.from(requireContext());
         AppCompositionRoot compositionRoot = app.getAppCompositionRoot();
         TaskViewModelFactory viewModelFactory = compositionRoot.createTaskViewModelFactory();
-        // Keep one ViewModel tied to the activity so list/edit state survives fragment swaps and dialogs.
-        TaskViewModel vm = new ViewModelProvider(requireActivity(), viewModelFactory).get(TaskViewModel.class);
+        vm = new ViewModelProvider(requireActivity(), viewModelFactory).get(TaskViewModel.class);
         TaskEditSessionController editSessionController = vm.getTaskEditSessionController();
+
+        ensureCalendarPermission();
+
         RecyclerView recyclerView = view.findViewById(R.id.TaskList);
         View emptyStateContainer = view.findViewById(R.id.EmptyStateContainer);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -56,12 +73,14 @@ public class ListFragment extends Fragment {
         });
 
         Button generateButton = view.findViewById(R.id.Button);
+        Button scheduleConfigButton = view.findViewById(R.id.ScheduleConfigButton);
         View newTaskButton = view.findViewById(R.id.NewTaskButton);
-        // Generate rebuilds the schedule using current rules, then pushes the refreshed rows to this list.
         generateButton.setOnClickListener(v -> vm.updateList());
+        scheduleConfigButton.setOnClickListener(v ->
+                new TaskScheduleConfigDialog().show(getParentFragmentManager(), "schedule_config")
+        );
 
         View.OnClickListener createTaskClickListener = v -> {
-            // Start from a blank task in shared state, then open the dialog so the user fills details.
             editSessionController.createNewTask();
             new TaskEditDialog().show(getParentFragmentManager(), "create");
         };
@@ -69,7 +88,6 @@ public class ListFragment extends Fragment {
         newTaskButton.setOnClickListener(createTaskClickListener);
         view.findViewById(R.id.EmptyStateNewTaskButton).setOnClickListener(createTaskClickListener);
 
-        // Day navigation: arrows to browse today through today+6
         TextView dayNavPrev = view.findViewById(R.id.DayNavPrev);
         TextView dayNavLabel = view.findViewById(R.id.DayNavLabel);
         TextView dayNavNext = view.findViewById(R.id.DayNavNext);
@@ -96,7 +114,6 @@ public class ListFragment extends Fragment {
         });
 
         MaterialButtonToggleGroup toggle = view.findViewById(R.id.TaskListToggle);
-        // Checklist vs Manage toggles between focused presets for quick completion and planning workflows.
         toggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (isChecked) {
                 if (checkedId == R.id.ChecklistButton) {
@@ -107,10 +124,18 @@ public class ListFragment extends Fragment {
             }
         });
     }
+
+    private void ensureCalendarPermission() {
+        boolean granted = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CALENDAR)
+                == PackageManager.PERMISSION_GRANTED;
+        vm.onCalendarPermissionChanged(granted);
+        if (!granted) {
+            calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR);
+        }
+    }
+
     private void openEditDialog(TaskEditSessionController editSessionController, String taskId) {
-        // Explicit edit callback shared by row edit controls and optional long-press shortcut.
         editSessionController.beginEditTask(taskId);
         new TaskEditDialog().show(getParentFragmentManager(), "edit");
     }
-
 }
