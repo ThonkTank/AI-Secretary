@@ -38,11 +38,6 @@ public class RecurringBudgetTransaction {
     public DayOfWeek recurringDayOfWeek;
     public RepUnit recurringUnit;
     public LocalDate nextDue;
-    public Integer amountMinCents;
-    public Integer amountMaxCents;
-    public Integer amountAvgCents;
-    public int occurrenceCount;
-
     public static class Builder {
         private final RecurringBudgetTransaction tx = new RecurringBudgetTransaction();
 

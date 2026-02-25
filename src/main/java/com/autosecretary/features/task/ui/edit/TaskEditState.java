@@ -1,7 +1,7 @@
-package com.autosecretary.features.task.ui.state;
+package com.autosecretary.features.task.ui.edit;
 
-import com.autosecretary.constants.Period;
-import com.autosecretary.constants.Priority;
+import com.autosecretary.shared.Period;
+import com.autosecretary.shared.Priority;
 
 import java.time.LocalDate;
 import java.util.ArrayList;

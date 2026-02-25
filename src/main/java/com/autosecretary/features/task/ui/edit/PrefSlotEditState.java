@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui.state;
+package com.autosecretary.features.task.ui.edit;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;

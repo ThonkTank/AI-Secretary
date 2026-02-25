@@ -2,13 +2,9 @@ package com.autosecretary.database;
 
 import androidx.room.TypeConverter;
 
-import com.autosecretary.constants.Period;
-import com.autosecretary.constants.Priority;
+import com.autosecretary.shared.Period;
+import com.autosecretary.shared.Priority;
 import com.autosecretary.features.budget.data.BudgetTransactionEntity;
-import com.autosecretary.features.budget.data.importing.BudgetImportEntity;
-import com.autosecretary.features.budget.data.legacy.Account;
-import com.autosecretary.features.budget.data.legacy.Transaction;
-
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -76,46 +72,6 @@ public class Converters {
     @TypeConverter
     public static Period toPeriod(String value) {
         return value != null ? Period.valueOf(value) : null;
-    }
-
-    @TypeConverter
-    public static String fromAccountType(Account.AccountType type) {
-        return type != null ? type.name() : null;
-    }
-
-    @TypeConverter
-    public static Account.AccountType toAccountType(String value) {
-        return value != null ? Account.AccountType.valueOf(value) : null;
-    }
-
-    @TypeConverter
-    public static String fromRecurringType(Transaction.RecurringType type) {
-        return type != null ? type.name() : null;
-    }
-
-    @TypeConverter
-    public static Transaction.RecurringType toRecurringType(String value) {
-        return value != null ? Transaction.RecurringType.valueOf(value) : null;
-    }
-
-    @TypeConverter
-    public static String fromRepUnit(Transaction.RepUnits unit) {
-        return unit != null ? unit.name() : null;
-    }
-
-    @TypeConverter
-    public static Transaction.RepUnits toRepUnit(String value) {
-        return value != null ? Transaction.RepUnits.valueOf(value) : null;
-    }
-
-    @TypeConverter
-    public static String fromImportStatus(BudgetImportEntity.ImportStatus status) {
-        return status != null ? status.name() : null;
-    }
-
-    @TypeConverter
-    public static BudgetImportEntity.ImportStatus toImportStatus(String value) {
-        return value != null ? BudgetImportEntity.ImportStatus.valueOf(value) : null;
     }
 
     @TypeConverter

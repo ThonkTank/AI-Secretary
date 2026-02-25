@@ -1,6 +1,6 @@
 package com.autosecretary.features.task.application;
 
-import com.autosecretary.config.Preferences;
+import com.autosecretary.app.Preferences;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskSeedDataFactory;

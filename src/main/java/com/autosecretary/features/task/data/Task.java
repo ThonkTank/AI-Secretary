@@ -11,7 +11,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.autosecretary.constants.Period;
+import com.autosecretary.shared.Period;
 
 /**
  * Room POJO assembled via {@code @Embedded} + {@code @Relation} from five tables

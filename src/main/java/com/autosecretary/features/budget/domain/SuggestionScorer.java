@@ -9,8 +9,8 @@ public final class SuggestionScorer {
     private static final double OCCURRENCE_CAP = 10.0;
     private static final double OCCURRENCE_WEIGHT = 0.3;
     private static final double AMOUNT_VARIANCE_WEIGHT = 0.3;
-    private static final double PATTERN_MATCH_WEIGHT = 0.3;
-    private static final double KNOWN_SUBSCRIPTION_BONUS = 0.1;
+    private static final double PATTERN_TYPE_WEIGHT = 0.3;
+    private static final double KNOWN_SUBSCRIPTION_WEIGHT = 0.1;
 
     private static final String[] KNOWN_SUBSCRIPTION_PATTERNS = {
             "NETFLIX", "SPOTIFY", "AMAZON PRIME", "DISNEY", "APPLE",
@@ -36,40 +36,12 @@ public final class SuggestionScorer {
         }
 
         if (pattern.type() != null) {
-            score += PATTERN_MATCH_WEIGHT;
+            score += PATTERN_TYPE_WEIGHT;
         }
 
         String normalized = txList.get(0).payee != null ? PayeeGrouper.normalizePayee(txList.get(0).payee) : "";
         if (isKnownSubscription(normalized)) {
-            score += KNOWN_SUBSCRIPTION_BONUS;
-        }
-
-        return Math.min(score, 1.0);
-    }
-
-    public static double calculateConfidence(List<RecurringBudgetTransaction> txList,
-                                             DatePatternDetector.PatternResult pattern,
-                                             int avgAmount,
-                                             int minAmount,
-                                             int maxAmount,
-                                             PatternDetectionConfig config) {
-        PatternDetectionConfig.ScoringWeights weights = config.scoringWeights;
-
-        double score = 0;
-        score += Math.min(txList.size() / OCCURRENCE_CAP, weights.occurrenceWeight);
-
-        if (avgAmount != 0) {
-            double variance = Math.abs(maxAmount - minAmount) / (double) Math.abs(avgAmount);
-            score += Math.max(weights.amountVarianceWeight - variance, 0);
-        }
-
-        if (pattern.type() != null) {
-            score += weights.patternTypeWeight;
-        }
-
-        String normalized = txList.get(0).payee != null ? PayeeGrouper.normalizePayee(txList.get(0).payee) : "";
-        if (config.knownSubscriptionPatterns.matches(normalized)) {
-            score += weights.knownSubscriptionWeight;
+            score += KNOWN_SUBSCRIPTION_WEIGHT;
         }
 
         return Math.min(score, 1.0);

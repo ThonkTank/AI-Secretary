@@ -12,10 +12,46 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build Commands
 
 - `./gradlew assembleDebug` only builds the debug APK (`AutoSecretary.apk`) and has no Git side effects.
+- `./gradlew installDebug` builds the debug APK and installs it directly to a connected device/emulator.
 - `./gradlew copyToRelease` copies the built debug APK to `ops/release/` and writes the next value to `ops/release/version.txt`.
 - `./gradlew publishReleaseArtifact` depends on `copyToRelease` and `pushToGitHub`; Git push happens only when this task is run.
 
-**No automated tests.** At this stage they add unnecessary overhead. Do not write tests.
+**No automated tests — this is a strict project rule.** Automated tests (unit tests, instrumented tests, Robolectric, etc.) are not used in this project and must not be added. Do not write tests, do not suggest writing tests, and do not add any test framework dependencies to `build.gradle.kts`. PRs that introduce automated tests will be rejected. Validation is done manually via `./gradlew assembleDebug` and manual test scripts such as `ops/check_only.sh`.
+
+## Quick Start
+
+### Prerequisites
+
+- **Java 17** — source and target compatibility are set to Java 17. Ensure your `JAVA_HOME` points to JDK 17.
+- **Android SDK Platform 35** and **Android Build Tools 35.x** (required for `compileSdk = 35` / `targetSdk = 35`).
+- **Gradle wrapper** — use `./gradlew` (not system Gradle); it's preconfigured for version 8.10.2.
+
+### Verify it works
+
+Build a debug APK locally (safe, no side effects):
+```bash
+./gradlew assembleDebug
+```
+
+Success looks like:
+- Build completes without errors.
+- APK appears at `build/outputs/apk/debug/AutoSecretary.apk`.
+- App launches and shows the task list screen with a "Generieren" button and "+ Neue Task" button.
+
+## Glossary
+
+Quick reference for terminology used throughout the codebase:
+
+- **Task**: Main work item (Java `Task` / `TaskCore`). Stores title, scheduling parameters, and progress. Created by "Neue Task" button.
+- **Slot**: One concrete scheduled execution window of a task (Java `TaskSlot`, DB table `task_slots`). Displayed as start/end times in list rows.
+- **PrefSlot**: Preferred day/time pattern for scheduling (Java `TaskPrefSlot`, DB table `task_pref_slots`). Set via the editor's day picker + time picker section.
+- **Repetition**: How often a task repeats in a period window (Java `TaskCore.Repetition`). Controlled by "Wiederholung" fields in the editor.
+- **Period**: Unit of repetition window — day, week, or month (Java enum `Period`). Selected via `EditPeriodUnit` dropdown.
+- **Streak**: Count of consecutive successful periods (Java `TaskCore.History.currentStreak`). Displayed in rows as `3x`.
+- **Adaptive**: Flag to auto-adjust preferred times from real completion times (Java `TaskCore.adaptive`). Checkbox "Adaptive Zeiten" in editor.
+- **closeOnMiss**: Flag to close tasks when deadline/period limits are missed (Java `TaskCore.closeOnMiss`). Checkbox "Bei Überschreitung schließen" in editor.
+- **Checklist mode**: List view optimized for quick checking off (filtered to today, scheduled slots only, sorted by time).
+- **Manage mode**: List view optimized for editing/organizing (filtered to today, includes unscheduled tasks, grouped by task hierarchy, sorted by title).
 
 ## Project Layout
 
@@ -27,8 +63,10 @@ Standard Android project structure (single module, no `app/` directory):
 | `src/main/res/` | Android resources |
 | `src/main/AndroidManifest.xml` | Manifest |
 | `history/legacy/` | Legacy snapshots (reference-only, not part of active source set) |
+| `history/old/` | Older archived code (meal/nutrition tabs, services) |
 | `build.gradle.kts` | Single-module Kotlin DSL build |
 | `ops/release/` | Built APK + version counter |
+| `ops/test_schedule.sh`, `ops/check_only.sh` | Manual validation scripts |
 
 All packages are fully qualified under `com.autosecretary.*`.
 
@@ -43,27 +81,33 @@ All packages are fully qualified under `com.autosecretary.*`.
   - `features/task/{domain,ui}/internal/...`
 - Prioritize high-churn helpers (mappers/builders) when migrating classes.
 
+### Layout resource naming rule (`src/main/res/layout/`)
+
+Use the pattern `<feature>_<surface>_<kind>` for all layout file names. Segments are lowercase snake_case, with `kind` being one of: `activity`, `fragment`, `item`, or `widget`.
+
+Examples: `app_main_activity.xml`, `task_list_fragment.xml`, `task_row_item.xml`, `task_list_widget.xml`.
+
 ## Architecture
 
 **MVVM with Room** — feature-based package structure with clean layering (UI → Application → Domain → Data).
 
 ```
-views/                          → MainActivity (fragment host), AppCompositionRoot (DI wiring)
-views/models/                   → ViewSlotList (presentation model with filtering/sorting)
+app/                            → MainActivity (fragment host), AppCompositionRoot (DI wiring), AutoSecretaryApplication
 features/task/ui/               → ListFragment, TaskViewModel, ListRowAdapter, TaskEditDialog,
-                                   TaskEditPresenter, PrefSlotUIBuilder, TaskViewModelFactory
-features/task/ui/model/         → TaskEditState, PrefSlotEditState (mutable UI edit models)
-features/task/ui/mapper/        → TaskEditStateMapper (Task ↔ TaskEditState conversion)
-features/task/application/      → TaskAsyncDataService, CheckOffTaskUseCase, RegenerateScheduleUseCase
-features/task/application/model/ → TaskListItem (flat read-only display model)
-features/task/application/mapper/ → TaskListItemMapper (Task → TaskListItem)
+                                   TaskEditPresenter, PrefSlotUIBuilder, TaskViewModelFactory, TaskEditSessionController
+features/task/ui/state/         → TaskEditState, PrefSlotEditState, ViewSlotList (mutable UI + presentation models)
+features/task/ui/edit/          → TaskEditDialog, TaskEditPresenter
+features/task/ui/edit/internal/ → TaskEditStateMapper, TaskEditFormValidator, TaskEditSectionBinder, PrefSlotUIBuilder
+features/task/application/      → TaskAsyncDataService, CheckOffTaskUseCase, RegenerateScheduleUseCase,
+                                   TaskListItem (flat read-only display model), TaskListItemMapper (Task → TaskListItem)
 features/task/data/             → Task, TaskCore, TaskSlot, TaskPrefSlot, TaskPrefSlotFactory,
                                    TaskPrerequisite, TaskRelation, TaskDAO, TaskSeedDataFactory
-features/task/domain/           → SlotGenerator, TaskScorer, TaskLifecycleManager,
-                                   TaskCompletionService, TaskTreeOperations, TimeWindow
+features/task/domain/           → TaskSlotGenerator (interface), TaskLifecycleManager,
+                                   TaskCompletionService, TaskTreeOperations, TaskPlanningState
+features/task/domain/internal/scheduling/ → DefaultTaskSlotGenerator (implementation), TaskScorer (scoring engine)
 database/                       → AppDatabase, Converters
 config/                         → Preferences (SharedPreferences wrappers)
-constants/                      → Period, Priority (enums)
+shared/                         → Period, Priority (shared domain enums)
 util/                           → TreeBuilder<T> (generic tree build/flatten/sort)
 ```
 
@@ -71,24 +115,24 @@ All paths above are relative to `src/main/java/com/autosecretary/`.
 
 ### Dependency Injection
 
-`AppCompositionRoot` (in `views/`) is the manual DI root. It wires the full dependency graph:
+`AppCompositionRoot` (in `app/`) is the manual DI root. It wires the full dependency graph:
 
 ```
 AppDatabase → TaskDAO → TaskAsyncDataService, CheckOffTaskUseCase, RegenerateScheduleUseCase
-TaskLifecycleManager → TaskCompletionService, TaskScorer → SlotGenerator
+TaskLifecycleManager → TaskCompletionService, TaskScorer → TaskSlotGenerator (DefaultTaskSlotGenerator)
 TaskListItemMapper → TaskAsyncDataService
 All → TaskViewModelFactory → TaskViewModel
 ```
 
 Created fresh in `ListFragment.onViewCreated()`. The single-threaded `ExecutorService` is created here with an `UncaughtExceptionHandler` that logs to `Log.e("TaskUseCase", ...)`.
 
-`TimeWindow` is supplied to `RegenerateScheduleUseCase` via a `Supplier<TimeWindow>` lambda, so times are always fresh on each generation (no stale midnight issue).
+`TaskPlanningState` is created by `TaskSlotGenerator.createPlanningState()` and passed through the multi-day generation loop to track which tasks have been scheduled across days, ensuring intelligent distribution across the week (no stale midnight issue).
 
 ### Navigation
 
 `MainActivity` hosts a `FragmentContainerView` + `BottomNavigationView` with two tabs:
 - **Tasks** (`tab_schedule`) → `ListFragment`
-- **placeholder** (`tab_manage`) → placeholder `ListFragment` (no management UI exists yet)
+- **Budget** (`tab_manage`) → `BudgetFragment`
 
 `ListFragment` has an internal `MaterialButtonToggleGroup` that switches between two display modes:
 - **Checklist** — filtered to today, only scheduled slots, sorted by time
@@ -120,7 +164,9 @@ TaskViewModel constructor:
 ListFragment "Generieren" button → vm.updateList():
   → regenerateScheduleUseCase.execute(onDone)
       → executor: taskDao.readAll()
-      → generator.generateSlots(tasks, windowSupplier.get())   // fresh TimeWindow each time
+      → generator.createPlanningState() + multi-day loop:
+         - generator.recordPreservedSlots() to track cross-day scheduling
+         - for each day: generator.generateSlotsForDay(), generator.recordScheduledSlotsForDay()
       → taskDao.writeList(scheduledTasks)
       → onDone → refreshList() (same as above)
 
@@ -217,9 +263,9 @@ Processing pipeline:
 
 ### Scoring algorithm
 
-**Scoring lives in `TaskScorer`** (in `features/task/domain/`). It holds a `Map<String, ScoringCache>` keyed by task ID. `TaskScorer` is constructed with a `TaskLifecycleManager` dependency. The dependency graph is wired in `AppCompositionRoot`: `TaskLifecycleManager` → `TaskScorer` → `SlotGenerator`.
+**Scoring lives in `TaskScorer`** (in `features/task/domain/internal/scheduling/`). It holds a `Map<String, TaskScoringSnapshot>` keyed by task ID. `TaskScorer` is constructed with a `TaskLifecycleManager` dependency. The dependency graph is wired in `AppCompositionRoot`: `TaskLifecycleManager` → `TaskScorer` → `TaskSlotGenerator` (DefaultTaskSlotGenerator).
 
-**Maintenance + caching:** `TaskScorer.maintenance(task)` is called once per task before the scoring loop. It delegates daily upkeep to `TaskLifecycleManager.advancePeriods(task)` and pre-computes scoring constants into a `ScoringCache`. `score()` reads from the cache; if `maintenance()` was never called, `score()` lazily calls it as a fallback. `onSlotAssigned()` increments the cached `scheduledToday` counter. `reset()` clears all caches at the start of each `generateSlots()` run.
+**Maintenance + caching:** `TaskScorer.maintenance(task)` is called once per task before the scoring loop. It delegates daily upkeep to `TaskLifecycleManager.advancePeriods(task)` and pre-computes scoring constants into a `TaskScoringSnapshot`. `score()` reads from the cache; if `maintenance()` was never called, `score()` lazily calls it as a fallback. `onSlotAssigned()` increments the cached `scheduledToday` counter. `reset()` clears all caches at the start of each daily generation run.
 
 **Lifecycle methods live in `TaskLifecycleManager`** (in `features/task/domain/`). It is stateless — all methods take `Task` as a parameter and mutate it directly. Used by both `TaskScorer` (via `advancePeriods` during maintenance), `CheckOffTaskUseCase` (via `updateStreak` and `adaptPrefSlot`), and `TaskCompletionService` (passed as parameter to `checkOff()`).
 
@@ -241,17 +287,59 @@ Processing pipeline:
 
 ### Slot generation
 
-`SlotGenerator` assigns tasks to time slots using composite scores with preferred-time-aware placement. It takes a `TaskScorer` and optional `Consumer<String> logger` as constructor dependencies. Its main method is `generateSlots(List<Task> tasks, TimeWindow window)` which returns all tasks (flat list) with slots assigned.
+`TaskSlotGenerator` (interface) defines the multi-day scheduling contract. `DefaultTaskSlotGenerator` (implementation in `features/task/domain/internal/scheduling/`) assigns tasks to time slots using composite scores with preferred-time-aware placement.
 
+**Multi-day orchestration:**
+1. `createPlanningState()` → returns `TaskPlanningState` to track which tasks are scheduled across days
+2. `recordPreservedSlots()` → loads existing slots from database for the planning window
+3. Loop for each day:
+   - `generateSlotsForDay(tasks, windowStart, windowEnd, state)` → runs the daily scoring engine
+   - `recordScheduledSlotsForDay()` → updates planning state with newly scheduled tasks
+
+**Daily generation flow:**
 Before the scoring loop: `scorer.reset()` → `TaskTreeOperations.buildTree(tasks)` → `flatten()` → `scorer.maintenance(task)` on all tasks → build `allTasksById` lookup map. A `scheduledInSession` set tracks which tasks have been assigned slots in the current generation run.
 
-**Preferred-time placement:** `selectBestCandidate()` evaluates each task at two kinds of start times: (1) the current cursor position (greedy), and (2) each of the task's today-matching `TaskPrefSlot.start` times that fall in `(cursor, end)`. The `(task, startTime)` pair with the highest score wins. Since `TaskScorer.score()` maximizes the fit factor at the preferred time (fit=1.0), tasks naturally gravitate toward their preferred times, leaving gaps when preferred times are spread apart.
+**Preferred-time placement:** Evaluates each task at two kinds of start times: (1) the current cursor position (greedy), and (2) each of the task's day-matching `TaskPrefSlot.start` times. The `(task, startTime)` pair with the highest score wins. Since `TaskScorer.score()` maximizes the fit factor at preferred times (fit=1.0), tasks naturally gravitate toward their preferred times, leaving gaps when spread apart.
 
-**Recursive gap-filling:** When the best candidate's start time is after the cursor, the gap `[cursor, startTime)` is filled recursively using the same algorithm. The "anchored" task is excluded from gap-filling via a `Set<String> excluded` parameter to prevent premature placement. Unfillable gaps remain as free time. Recursion terminates because each level has a strictly smaller window and a growing exclusion set.
+**Recursive gap-filling:** When the best candidate's start time is after the cursor, the gap is filled recursively using the same algorithm. The "anchored" task is excluded from gap-filling to prevent premature placement. Unfillable gaps remain as free time. Recursion terminates with strictly smaller windows and growing exclusion sets.
 
-**Prerequisite enforcement:** Before scoring each task, `hasUnmetPrerequisites()` checks all `TaskPrerequisite` entries. A prerequisite is satisfied if the referenced task is either in `scheduledInSession` or already has a scheduled/completed `TaskSlot` for today. Tasks with unmet prerequisites are skipped.
+**Prerequisite enforcement:** Before scoring each task, checks all `TaskPrerequisite` entries. A prerequisite is satisfied if the referenced task is either in `scheduledInSession` or already has a scheduled/completed `TaskSlot` for today. Tasks with unmet prerequisites are skipped.
 
-Children are scheduled **inside** their parent's time block — child slots inherit the parent's cursor as their start. `scheduleChildren()` calls the 5-parameter `assignSlot()` (no exclusion set), so children compete freely within their parent's time block.
+Children are scheduled **inside** their parent's time block — child slots inherit the parent's cursor as their start. Child scheduling calls the assignment algorithm recursively, so children compete freely within their parent's time block.
+
+## Where to Start Learning
+
+For new developers, follow this reading path to understand the codebase:
+
+1. **[MainActivity.java](src/main/java/com/autosecretary/app/MainActivity.java)** — Start here. Single Activity + FragmentContainerView + BottomNavigationView. Sets up the app's navigation skeleton and DI root.
+
+2. **[ListFragment.java](src/main/java/com/autosecretary/features/task/ui/ListFragment.java)** — Main UI interactions. Observe how user intents (button clicks, checkbox taps, long-presses) trigger ViewModel methods.
+
+3. **[TaskViewModel.java](src/main/java/com/autosecretary/features/task/ui/TaskViewModel.java)** — State and filtering/sorting orchestration. Understand how `masterList` → `filterList()` → `sortList()` → `displayList.postValue()` works.
+
+4. **[TaskAsyncDataService.java](src/main/java/com/autosecretary/features/task/application/TaskAsyncDataService.java)** — Application-layer boundary. See how database reads/writes are coordinated on the single-threaded executor.
+
+5. **[CheckOffTaskUseCase.java](src/main/java/com/autosecretary/features/task/application/CheckOffTaskUseCase.java)** — Completion flow. Shows how two-phase checkOff (started → completed) updates the Task and refreshes the UI.
+
+6. **[RegenerateScheduleUseCase.java](src/main/java/com/autosecretary/features/task/application/RegenerateScheduleUseCase.java)** — Multi-day slot generation. Traces the full flow: planning state → daily generation → DAO write → refresh.
+
+7. **[TaskSlotGenerator.java](src/main/java/com/autosecretary/features/task/domain/TaskSlotGenerator.java)** — Domain scheduling interface. Read the contract before diving into the implementation.
+
+8. **[DefaultTaskSlotGenerator.java](src/main/java/com/autosecretary/features/task/domain/internal/scheduling/DefaultTaskSlotGenerator.java)** — Scheduling implementation. Understand the daily generation loop, preferred-time placement, and gap-filling.
+
+9. **[TaskScorer.java](src/main/java/com/autosecretary/features/task/domain/internal/scheduling/TaskScorer.java)** — Scoring algorithm. Covers the seven-layer prioritization (hard constraints → priority → child influence → day constraints → preferred time fit → urgency → aging).
+
+10. **[TaskDAO.java](src/main/java/com/autosecretary/features/task/data/TaskDAO.java)** and **[AppDatabase.java](src/main/java/com/autosecretary/database/AppDatabase.java)** — Room persistence layer. See how `Task` POJOs are assembled from five tables via `@Embedded` + `@Relation`.
+
+## Manual Testing
+
+Two validation scripts are available. Both require a connected device/emulator with USB debugging.
+
+**`./ops/test_schedule.sh`** — full end-to-end: builds APK, uninstalls/installs it, launches the app, taps "Generieren", waits 10s, then runs 22 checks (today's schedule: time order, day constraints, parent-child scheduling, prerequisites; plus multi-day distribution). Supports `--verbose` and `--pull-db` flags.
+
+**`./ops/check_only.sh`** — log-only shortcut: reads existing logcat (no build or install). Validates that 6 seed tasks (Sport, Einkaufen, Arbeit, Morgenroutine, Wäsche waschen, Abendspaziergang) are distributed across the correct number of days. Use this after `ops/test_schedule.sh` has already run the app.
+
+Both scripts parse `SlotGen`-tagged logcat output.
 
 ## Refactoring Status
 
@@ -265,12 +353,21 @@ The app has three feature domains. Only tasks are actively being rebuilt:
 
 The `history/legacy/` directory contains 80+ Java files spanning widgets, scheduling, budget management (with Claude API integration), meal planning (recipes/ingredients), and a custom SQLite repo layer with hand-written parsers.
 
+## Commit Conventions
+
+Short imperative subject lines. Conventional Commit prefixes are optional but welcome for scoped changes:
+- `fix(scope): ...` for bug fixes
+- `feat(scope): ...` for new features
+- `refactor(scope): ...` for structural changes without behavior change
+
+Common scopes: `ui`, `build`, `domain`, `data`, `scheduling`.
+
 ## Not Yet Implemented
 
-- `MainActivity`'s second tab is still a placeholder (`ListFragment` again). A management fragment still needs to be built.
 - Several `AndroidManifest` permissions (`RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `READ_CALENDAR`, `REQUEST_INSTALL_PACKAGES`) are dead declarations from the legacy architecture with no corresponding code.
 - `TaskDAO.deleteCore(String id)` exists but is never called anywhere in the codebase.
 - `Task.setParentId(String id)` exists but is never called.
+- Budget feature (`BudgetFragment`) is partially migrated from legacy code but not fully integrated into the app's main workflow.
 
 ## Key Technical Details
 
@@ -281,8 +378,8 @@ The `history/legacy/` directory contains 80+ Java files spanning widgets, schedu
 - **Room DB version 6**, `exportSchema = false`, `fallbackToDestructiveMigration()` enabled — any schema change just needs a version bump (data will be destroyed on upgrade). No manual migrations exist. `AppDatabase.getInstance()` is `synchronized` (thread-safe singleton)
 - **`android.nonTransitiveRClass=true`** in `gradle.properties` — resource references must use the app's own R class
 - **Package**: `com.autosecretary`
-- **Single Activity + Fragments**: `views.MainActivity` hosts fragments via `FragmentContainerView`
-- **`TimeWindow`** is a Java `record` (Java 16+ syntax, consistent with Java 17 target)
+- **Single Activity + Fragments**: `app.MainActivity` hosts fragments via `FragmentContainerView`
+- **`TaskPlanningState`** tracks cross-day scheduling state (which tasks scheduled on which days, total reps)
 - **Type converters** in `Converters.java` handle `LocalDate`, `LocalTime`, `DayOfWeek`, `Set<DayOfWeek>`, `Priority`, `Period` — all serialized to `String` (set uses comma-joined names)
 - **Preferences**: `readPrefTime(LocalDate, boolean)` returns `LocalTime` (defaults: `06:00` start, `16:00` end); `writePrefTime(DayOfWeek, boolean, LocalTime)` — note the asymmetry: read takes `LocalDate`, write takes `DayOfWeek`
 - **ListRowAdapter**: Uses `R.dimen.indent_step` (24dp) × `viewSlot.depth` for tree indentation padding; `notifyDataSetChanged()` on every update (no DiffUtil). Takes two callbacks: `Consumer<ViewSlot> onCheck` (checkbox → two-phase checkOff) and `Consumer<ViewSlot> onLongPress` (long-press → edit dialog). Row displays include deadline urgency (color-coded via `TaskListItem.DeadlineUrgency`: red OVERDUE, orange TODAY/SOON, gray FUTURE), streak counter (`streak + "x"`), and green background tint for in-progress items. Checkbox is disabled when `completed` or `slotId == null`

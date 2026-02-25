@@ -12,7 +12,7 @@ import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.autosecretary.features.task.ui.state.ViewSlotList;
 import com.autosecretary.features.task.ui.state.ViewSlotList.ViewSlot;
-import com.autosecretary.features.task.widget.TaskWidgetProvider;
+import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 import java.time.LocalDate;
 import java.util.Comparator;

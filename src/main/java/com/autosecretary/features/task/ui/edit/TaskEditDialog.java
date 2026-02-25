@@ -21,15 +21,13 @@ import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.R;
-import com.autosecretary.constants.Period;
-import com.autosecretary.constants.Priority;
+import com.autosecretary.shared.Period;
+import com.autosecretary.shared.Priority;
 import com.autosecretary.features.task.ui.edit.internal.PrefSlotUIBuilder;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormValidator;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditSectionBinder;
 import com.autosecretary.features.task.ui.edit.internal.mapper.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.TaskViewModel;
-import com.autosecretary.features.task.ui.state.PrefSlotEditState;
-import com.autosecretary.features.task.ui.state.TaskEditState;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputLayout;
 

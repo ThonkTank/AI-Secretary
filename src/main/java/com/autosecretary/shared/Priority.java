@@ -1,4 +1,4 @@
-package com.autosecretary.constants;
+package com.autosecretary.shared;
 
 public enum Priority {
     LOW(100),

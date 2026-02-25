@@ -15,10 +15,10 @@ import android.widget.Spinner;
 import androidx.fragment.app.DialogFragment;
 
 import com.autosecretary.R;
-import com.autosecretary.constants.Period;
-import com.autosecretary.constants.Priority;
+import com.autosecretary.shared.Period;
+import com.autosecretary.shared.Priority;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
-import com.autosecretary.features.task.ui.state.TaskEditState;
+import com.autosecretary.features.task.ui.edit.TaskEditState;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;

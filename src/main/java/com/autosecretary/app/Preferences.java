@@ -1,4 +1,4 @@
-package com.autosecretary.config;
+package com.autosecretary.app;
 
 import android.content.Context;
 import android.content.SharedPreferences;

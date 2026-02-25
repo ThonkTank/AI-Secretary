@@ -12,16 +12,13 @@ import java.util.stream.Collectors;
  * Erkennung von Datums-Patterns (monatlich, wöchentlich, Intervalle).
  */
 public final class DatePatternDetector {
+    private static final int WEEKLY_INTERVAL_MIN_DAYS = 5;
+    private static final int WEEKLY_INTERVAL_MAX_DAYS = 9;
 
     private DatePatternDetector() {
     }
 
     public static PatternResult detectDatePattern(List<RecurringBudgetTransaction> transactions) {
-        return detectDatePattern(transactions, null);
-    }
-
-    public static PatternResult detectDatePattern(List<RecurringBudgetTransaction> transactions,
-                                                   PatternDetectionConfig config) {
         if (transactions.size() < 2) {
             return null;
         }
@@ -40,9 +37,7 @@ public final class DatePatternDetector {
             return monthlyLast;
         }
 
-        int minDays = config != null ? config.weeklyIntervalMinDays : 5;
-        int maxDays = config != null ? config.weeklyIntervalMaxDays : 9;
-        PatternResult weekly = checkWeekly(dates, minDays, maxDays);
+        PatternResult weekly = checkWeekly(dates, WEEKLY_INTERVAL_MIN_DAYS, WEEKLY_INTERVAL_MAX_DAYS);
         if (weekly != null) {
             return weekly;
         }
@@ -74,10 +69,6 @@ public final class DatePatternDetector {
             return new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_LAST, 0, null);
         }
         return null;
-    }
-
-    static PatternResult checkWeekly(List<LocalDate> dates) {
-        return checkWeekly(dates, 5, 9);
     }
 
     static PatternResult checkWeekly(List<LocalDate> dates, int minDays, int maxDays) {

@@ -23,7 +23,7 @@
         </activity>
 
         <receiver
-            android:name=".features.task.widget.TaskWidgetProvider"
+            android:name=".features.task.ui.widget.TaskWidgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -34,7 +34,7 @@
         </receiver>
 
         <service
-            android:name=".features.task.widget.TaskWidgetService"
+            android:name=".features.task.ui.widget.TaskWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false" />
     </application>

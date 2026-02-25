@@ -1,7 +1,7 @@
 package com.autosecretary.features.task.data;
 
-import com.autosecretary.constants.Period;
-import com.autosecretary.constants.Priority;
+import com.autosecretary.shared.Period;
+import com.autosecretary.shared.Priority;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;

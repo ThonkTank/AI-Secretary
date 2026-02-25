@@ -105,12 +105,14 @@ For your first PR, keep scope tiny and low-risk: update README text (like this s
 
 Minimal validation in this repo:
 - `./gradlew assembleDebug`
-- `./gradlew testDebugUnitTest`
 
 Done looks like:
 - Build succeeds.
 - App launches and basic navigation still works.
 - No release-side-effect tasks were run.
+
+> [!IMPORTANT]
+> **Automated tests are not permitted in this project.** PRs that add unit tests, instrumented tests, or any test framework dependencies will be rejected. Validation is done manually — either by running the app or by using manual test scripts such as `test_schedule.sh`.
 
 Reminder: for normal contributions, avoid `copyToRelease` and `publishReleaseArtifact`; see the warning in **Build and release tasks** above.
 

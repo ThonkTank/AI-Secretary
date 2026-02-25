@@ -1,7 +1,6 @@
-package com.autosecretary.features.budget.application.importing;
+package com.autosecretary.features.budget.domain;
 
 import com.autosecretary.features.budget.data.BudgetTransactionEntity;
-import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
 import java.time.LocalDate;
 import java.util.List;

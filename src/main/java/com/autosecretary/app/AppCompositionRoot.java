@@ -5,12 +5,11 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import com.autosecretary.config.Preferences;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
-import com.autosecretary.features.task.application.mapper.TaskListItemMapper;
+import com.autosecretary.features.task.application.TaskListItemMapper;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.TaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskCompletionService;

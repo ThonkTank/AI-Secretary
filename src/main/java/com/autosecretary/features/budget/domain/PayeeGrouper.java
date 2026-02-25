@@ -19,11 +19,6 @@ public final class PayeeGrouper {
         return groupBySimilarPayee(transactions, PAYEE_SIMILARITY_THRESHOLD);
     }
 
-    public static Map<String, List<RecurringBudgetTransaction>> groupBySimilarPayee(List<RecurringBudgetTransaction> transactions,
-                                                                            PatternDetectionConfig config) {
-        return groupBySimilarPayee(transactions, config.payeeSimilarityThreshold);
-    }
-
     private static Map<String, List<RecurringBudgetTransaction>> groupBySimilarPayee(List<RecurringBudgetTransaction> transactions,
                                                                              double similarityThreshold) {
         Map<String, List<RecurringBudgetTransaction>> groupedByPayee = new HashMap<>();
@@ -68,10 +63,6 @@ public final class PayeeGrouper {
             return 1.0;
         }
         return 1.0 - ((double) distance / maxLength);
-    }
-
-    static String findMatchingGroup(String normalized, Set<String> keys) {
-        return findMatchingGroup(normalized, keys, PAYEE_SIMILARITY_THRESHOLD);
     }
 
     static String findMatchingGroup(String normalized, Set<String> keys, double similarityThreshold) {

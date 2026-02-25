@@ -1,4 +1,8 @@
-package com.autosecretary.features.budget.data;
+package com.autosecretary.features.budget.domain;
+
+import com.autosecretary.features.budget.data.BudgetAccount;
+import com.autosecretary.features.budget.data.BudgetLimit;
+import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 
 import java.util.List;
 

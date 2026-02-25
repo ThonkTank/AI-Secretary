@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.time.format.DateTimeFormatter;
 
-import com.autosecretary.features.task.application.listmodel.TaskListItem;
+import com.autosecretary.features.task.application.TaskListItem;
 import com.autosecretary.features.task.ui.state.ViewSlotList.ViewSlot;
 import com.autosecretary.R;
 

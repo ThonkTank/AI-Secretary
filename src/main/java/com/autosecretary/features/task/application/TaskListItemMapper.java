@@ -1,6 +1,5 @@
-package com.autosecretary.features.task.application.mapper;
+package com.autosecretary.features.task.application;
 
-import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskRelation;
 import com.autosecretary.features.task.data.TaskSlot;

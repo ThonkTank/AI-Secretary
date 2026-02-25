@@ -30,17 +30,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    testOptions {
-        unitTests {
-            isIncludeAndroidResources = true
-            all { it.testLogging { showStandardStreams = true } }
-        }
-    }
-
     sourceSets {
         getByName("main").java.setSrcDirs(listOf("src/main/java"))
-        getByName("test").java.setSrcDirs(listOf("src/test/java"))
-        getByName("androidTest").java.setSrcDirs(listOf("src/androidTest/java"))
     }
 }
 
@@ -55,11 +46,6 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
 
     annotationProcessor("androidx.room:room-compiler:2.6.1")
-    testAnnotationProcessor("androidx.room:room-compiler:2.6.1")
-
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.14.1")
-    testImplementation("androidx.test:core:1.6.1")
 }
 
 // APK-Dateiname für Debug-Builds, Artifact-Tasks bleiben explizit

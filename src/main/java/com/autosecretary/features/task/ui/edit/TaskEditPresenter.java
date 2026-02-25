@@ -1,13 +1,11 @@
 package com.autosecretary.features.task.ui.edit;
 
-import com.autosecretary.constants.Period;
-import com.autosecretary.constants.Priority;
+import com.autosecretary.shared.Period;
+import com.autosecretary.shared.Priority;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.edit.internal.mapper.TaskEditStateMapper;
-import com.autosecretary.features.task.ui.state.PrefSlotEditState;
-import com.autosecretary.features.task.ui.state.TaskEditState;
 
 import java.time.LocalDate;
 import java.util.List;

@@ -4,8 +4,8 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
-import com.autosecretary.constants.Priority;
-import com.autosecretary.constants.Period;
+import com.autosecretary.shared.Priority;
+import com.autosecretary.shared.Period;
 import androidx.room.Embedded;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;

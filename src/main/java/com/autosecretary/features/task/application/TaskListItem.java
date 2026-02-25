@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.application.listmodel;
+package com.autosecretary.features.task.application;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * Flat, immutable display model extracted from {@link com.autosecretary.features.task.data.Task}
  * and {@link com.autosecretary.features.task.data.TaskSlot} by
- * {@link com.autosecretary.features.task.application.mapper.TaskListItemMapper}.
+ * {@link TaskListItemMapper}.
  * Used by {@link com.autosecretary.features.task.ui.state.ViewSlotList} for filtering, sorting, and display.
  */
 public class TaskListItem {

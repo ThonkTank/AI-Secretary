@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.application.importing;
+package com.autosecretary.features.budget.data;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
