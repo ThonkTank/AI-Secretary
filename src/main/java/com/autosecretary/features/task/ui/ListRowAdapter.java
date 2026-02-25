@@ -1,64 +1,103 @@
 package com.autosecretary.features.task.ui;
 
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.core.content.ContextCompat;
-import androidx.core.view.ViewCompat;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.LayoutInflater;
-import android.widget.TextView;
 import android.widget.CheckBox;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
-import java.util.List;
-import java.util.function.Consumer;
-import java.time.format.DateTimeFormatter;
+import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
+import androidx.fragment.app.FragmentActivity;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.autosecretary.R;
 import com.autosecretary.features.task.application.TaskListItem;
 import com.autosecretary.features.task.ui.state.ViewSlotList.ViewSlot;
-import com.autosecretary.R;
 
-/**
- * RecyclerView adapter for task list rows. Renders each {@link ViewSlot} with tree indentation,
- * deadline urgency coloring, in-progress/completed visual states, and streak display.
- */
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
 public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowViewHolder> {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final long CHECKBOX_SCALE_UP_DURATION_MS = 100L;
+    private static final long CHECKBOX_SCALE_DOWN_DURATION_MS = 100L;
+    private static final long COMPLETION_FLASH_DURATION_MS = 300L;
 
     List<ViewSlot> viewSlots;
     Consumer<ViewSlot> onCheck;
     Consumer<ViewSlot> onEdit;
+    Consumer<ViewSlot> onTimerToggle;
+    Consumer<ViewSlot> onProgressPlus;
+    Consumer<ViewSlot> onProgressMinus;
+    Consumer<ViewSlot> onToggleExpand;
+    Function<ViewSlot, Boolean> isExpanded;
     boolean interactionsEnabled = true;
+    boolean manageMode = false;
 
-    public ListRowAdapter(List<ViewSlot> viewSlots, Consumer<ViewSlot> onCheck, Consumer<ViewSlot> onEdit) {
+    public ListRowAdapter(List<ViewSlot> viewSlots,
+                          Consumer<ViewSlot> onCheck,
+                          Consumer<ViewSlot> onEdit,
+                          Consumer<ViewSlot> onTimerToggle,
+                          Consumer<ViewSlot> onProgressPlus,
+                          Consumer<ViewSlot> onProgressMinus,
+                          Consumer<ViewSlot> onToggleExpand,
+                          Function<ViewSlot, Boolean> isExpanded) {
         this.viewSlots = viewSlots;
         this.onCheck = onCheck;
         this.onEdit = onEdit;
+        this.onTimerToggle = onTimerToggle;
+        this.onProgressPlus = onProgressPlus;
+        this.onProgressMinus = onProgressMinus;
+        this.onToggleExpand = onToggleExpand;
+        this.isExpanded = isExpanded;
     }
 
     static class TaskRowViewHolder extends RecyclerView.ViewHolder {
+        LinearLayout root;
         TextView title;
         TextView goalIcon;
         TextView start;
         TextView end;
         CheckBox checkBox;
+        View progressContainer;
+        ImageButton progressMinus;
+        ImageButton progressPlus;
+        TextView progressText;
         TextView deadlineCountdown;
         TextView streakDisplay;
+        ImageButton timerButton;
         ImageButton editButton;
+        TextView expandToggle;
+        ValueAnimator completionAnimator;
+        TextView calendarChip;
 
         TaskRowViewHolder(View taskRow) {
             super(taskRow);
+            this.root = taskRow.findViewById(R.id.TaskRowRoot);
             this.title = taskRow.findViewById(R.id.TaskTitle);
             this.goalIcon = taskRow.findViewById(R.id.GoalIcon);
             this.start = taskRow.findViewById(R.id.StartTime);
             this.end = taskRow.findViewById(R.id.EndTime);
             this.checkBox = taskRow.findViewById(R.id.TaskCheckBox);
+            this.progressContainer = taskRow.findViewById(R.id.progress_container);
+            this.progressMinus = taskRow.findViewById(R.id.btn_progress_minus);
+            this.progressPlus = taskRow.findViewById(R.id.btn_progress_plus);
+            this.progressText = taskRow.findViewById(R.id.progress_text);
             this.deadlineCountdown = taskRow.findViewById(R.id.DeadlineCountdown);
             this.streakDisplay = taskRow.findViewById(R.id.StreakDisplay);
+            this.timerButton = taskRow.findViewById(R.id.TaskTimerButton);
             this.editButton = taskRow.findViewById(R.id.EditTaskButton);
+            this.expandToggle = taskRow.findViewById(R.id.ExpandToggle);
+            this.calendarChip = taskRow.findViewById(R.id.CalendarChip);
         }
     }
 
@@ -83,10 +122,20 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
         bindIndentation(holder, viewSlot.depth);
         bindTimeRange(holder, item);
+
+        if (item.isCalendarEvent()) {
+            bindCalendarEventRow(holder);
+            return;
+        }
+
+        bindTaskRow(holder);
         bindGoalAppearance(holder, item);
         bindDeadline(holder, item);
         bindStreak(holder, item);
         bindProgressState(holder, item);
+        bindCompletionMode(holder, item, viewSlot);
+        bindTimerState(holder, item);
+        bindExpandToggle(holder, viewSlot);
         bindInteractions(holder, item, viewSlot);
     }
 
@@ -99,18 +148,18 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
                 holder.itemView.getPaddingBottom());
     }
 
-    private void bindTimeRange(TaskRowViewHolder holder, TaskListItem item) {
-        Context context = holder.itemView.getContext();
-        String startString = item.start != null
-                ? item.start.format(TIME_FORMATTER)
-                : context.getString(R.string.task_time_fallback_start);
-        String endString = item.end != null
-                ? item.end.format(TIME_FORMATTER)
-                : context.getString(R.string.task_time_fallback_end);
-        holder.start.setText(startString);
-        holder.end.setText(endString);
+    private void bindTaskRow(TaskRowViewHolder holder) {
+        holder.root.setBackgroundResource(R.drawable.bg_task_row);
+        holder.checkBox.setVisibility(View.VISIBLE);
+        holder.deadlineCountdown.setVisibility(View.VISIBLE);
+        holder.streakDisplay.setVisibility(View.VISIBLE);
+        holder.timerButton.setVisibility(View.VISIBLE);
+        holder.editButton.setVisibility(View.VISIBLE);
+        holder.expandToggle.setVisibility(View.GONE);
+        holder.calendarChip.setVisibility(View.GONE);
+        holder.itemView.setOnClickListener(null);
+        holder.itemView.setOnLongClickListener(null);
     }
-
 
     private void bindGoalAppearance(TaskRowViewHolder holder, TaskListItem item) {
         if (!item.goalTask || item.goalIcon == null || item.goalIcon.trim().isEmpty()) {
@@ -125,6 +174,52 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             holder.goalIcon.setTextColor(holder.title.getCurrentTextColor());
         }
         holder.goalIcon.setVisibility(View.VISIBLE);
+    }
+
+    private void bindExpandToggle(TaskRowViewHolder holder, ViewSlot viewSlot) {
+        if (!manageMode || !viewSlot.hasChildren) {
+            holder.expandToggle.setVisibility(View.GONE);
+            holder.expandToggle.setOnClickListener(null);
+            return;
+        }
+
+        holder.expandToggle.setVisibility(View.VISIBLE);
+        boolean expanded = isExpanded.apply(viewSlot);
+        holder.expandToggle.setText(expanded ? "▾" : "▸");
+        holder.expandToggle.setContentDescription(holder.itemView.getContext().getString(
+                expanded ? R.string.task_row_collapse_children : R.string.task_row_expand_children));
+        holder.expandToggle.setOnClickListener(v -> onToggleExpand.accept(viewSlot));
+    }
+
+    private void bindCalendarEventRow(TaskRowViewHolder holder) {
+        Context context = holder.itemView.getContext();
+        holder.root.setBackgroundResource(R.drawable.bg_calendar_row);
+        holder.checkBox.setVisibility(View.GONE);
+        holder.goalIcon.setVisibility(View.GONE);
+        holder.progressContainer.setVisibility(View.GONE);
+        holder.deadlineCountdown.setVisibility(View.GONE);
+        holder.streakDisplay.setVisibility(View.GONE);
+        holder.timerButton.setVisibility(View.GONE);
+        holder.editButton.setVisibility(View.GONE);
+        holder.expandToggle.setVisibility(View.GONE);
+        holder.calendarChip.setVisibility(View.VISIBLE);
+        holder.calendarChip.setText(context.getString(R.string.task_calendar_label));
+        holder.checkBox.setOnClickListener(null);
+        holder.itemView.setOnLongClickListener(null);
+        holder.itemView.setOnClickListener(null);
+        ViewCompat.setStateDescription(holder.itemView, context.getString(R.string.task_calendar_state_description));
+    }
+
+    private void bindTimeRange(TaskRowViewHolder holder, TaskListItem item) {
+        Context context = holder.itemView.getContext();
+        String startString = item.start != null
+                ? item.start.format(TIME_FORMATTER)
+                : context.getString(R.string.task_time_fallback_start);
+        String endString = item.end != null
+                ? item.end.format(TIME_FORMATTER)
+                : context.getString(R.string.task_time_fallback_end);
+        holder.start.setText(startString);
+        holder.end.setText(endString);
     }
 
     private void bindDeadline(TaskRowViewHolder holder, TaskListItem item) {
@@ -167,19 +262,41 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     private void bindProgressState(TaskRowViewHolder holder, TaskListItem item) {
         Context context = holder.itemView.getContext();
-        if (item.inProgress) {
-            holder.itemView.setBackgroundColor(ContextCompat.getColor(context, R.color.task_in_progress_background));
+        if (holder.completionAnimator != null) {
+            holder.completionAnimator.cancel();
+            holder.completionAnimator = null;
+        }
+
+        if (item.completed) {
+            holder.root.setBackgroundColor(ContextCompat.getColor(context, R.color.task_completed_background));
+            holder.checkBox.setButtonTintList(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.task_completed_checkbox_tint)));
+            ViewCompat.setStateDescription(holder.itemView, null);
+        } else if (item.inProgress) {
+            holder.root.setBackgroundColor(ContextCompat.getColor(context, R.color.task_in_progress_background));
             holder.checkBox.setButtonTintList(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.task_in_progress_checkbox_tint)));
             ViewCompat.setStateDescription(holder.itemView, context.getString(R.string.task_in_progress_state_description));
         } else {
-            holder.itemView.setBackgroundColor(ContextCompat.getColor(context, R.color.transparent));
             holder.checkBox.setButtonTintList(null);
             ViewCompat.setStateDescription(holder.itemView, null);
         }
     }
 
-    private void bindInteractions(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
+    private void bindCompletionMode(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
+        if (item.hasProgressTarget()) {
+            bindProgressControls(holder, item, viewSlot);
+        } else {
+            bindCheckboxControls(holder, item, viewSlot);
+        }
+    }
+
+    private void bindCheckboxControls(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
+        holder.checkBox.setVisibility(View.VISIBLE);
+        holder.progressContainer.setVisibility(View.GONE);
         holder.checkBox.setOnClickListener(v -> {
+            boolean shouldAnimateCompletion = interactionsEnabled && item.slotId != null && !item.completed;
+            if (shouldAnimateCompletion) {
+                animateCompletion(holder, item);
+            }
             holder.checkBox.setChecked(item.completed);
             onCheck.accept(viewSlot);
         });
@@ -187,19 +304,117 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         boolean checkable = !item.completed && item.slotId != null && interactionsEnabled;
         holder.checkBox.setEnabled(checkable);
         holder.checkBox.setAlpha(interactionsEnabled ? 1.0f : 0.4f);
+    }
+
+    private void bindProgressControls(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
+        Context context = holder.itemView.getContext();
+        holder.checkBox.setVisibility(View.GONE);
+        holder.checkBox.setOnClickListener(null);
+        holder.progressContainer.setVisibility(View.VISIBLE);
+
+        int current = Math.max(0, item.progressCurrent);
+        int target = Math.max(0, item.progressTarget);
+        String unit = item.progressUnit == null ? "" : item.progressUnit;
+        holder.progressText.setText(context.getString(R.string.task_progress_display, current, target, unit));
+
+        boolean canDecrease = interactionsEnabled && current > 0;
+        boolean canIncrease = interactionsEnabled && current < target;
+
+        holder.progressMinus.setEnabled(canDecrease);
+        holder.progressPlus.setEnabled(canIncrease);
+        holder.progressMinus.setAlpha(canDecrease ? 1.0f : 0.4f);
+        holder.progressPlus.setAlpha(canIncrease ? 1.0f : 0.4f);
+        holder.progressMinus.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(context,
+                canDecrease ? R.color.task_progress_button_tint : R.color.task_progress_button_tint_disabled)));
+        holder.progressPlus.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(context,
+                canIncrease ? R.color.task_progress_button_tint : R.color.task_progress_button_tint_disabled)));
+        holder.progressText.setTextColor(ContextCompat.getColor(context,
+                interactionsEnabled ? R.color.task_progress_text : R.color.task_progress_text_disabled));
+
+        holder.progressMinus.setOnClickListener(v -> onProgressMinus.accept(viewSlot));
+        holder.progressPlus.setOnClickListener(v -> onProgressPlus.accept(viewSlot));
+    }
+
+    private void bindTimerState(TaskRowViewHolder holder, TaskListItem item) {
+        Context context = holder.itemView.getContext();
+        holder.timerButton.setImageResource(item.timerRunning
+                ? android.R.drawable.ic_media_pause
+                : android.R.drawable.ic_media_play);
+        holder.timerButton.setContentDescription(context.getString(
+                item.timerRunning ? R.string.task_timer_stop : R.string.task_timer_start));
+        ViewCompat.setStateDescription(holder.timerButton, context.getString(
+                item.timerRunning ? R.string.task_timer_running : R.string.task_timer_stopped));
+    }
+
+    private void bindInteractions(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
+        boolean timerEnabled = interactionsEnabled && item.slotId != null && !item.completed;
+        holder.timerButton.setEnabled(timerEnabled);
+
+        holder.title.setOnClickListener(v -> showDescriptionPopup(v, item));
 
         if (interactionsEnabled) {
             holder.itemView.setOnLongClickListener(v -> {
                 onEdit.accept(viewSlot);
                 return true;
             });
+            holder.timerButton.setOnClickListener(v -> onTimerToggle.accept(viewSlot));
+            holder.timerButton.setAlpha(timerEnabled ? 1.0f : 0.4f);
             holder.editButton.setOnClickListener(v -> onEdit.accept(viewSlot));
             holder.editButton.setAlpha(1.0f);
         } else {
             holder.itemView.setOnLongClickListener(null);
+            holder.timerButton.setOnClickListener(null);
+            holder.timerButton.setAlpha(0.4f);
             holder.editButton.setOnClickListener(null);
             holder.editButton.setAlpha(0.4f);
         }
+    }
+
+    private void showDescriptionPopup(View view, TaskListItem item) {
+        Context context = view.getContext();
+        if (!(context instanceof FragmentActivity)) {
+            return;
+        }
+
+        FragmentActivity activity = (FragmentActivity) context;
+        TaskDescriptionDialogFragment.newInstance(item.title, item.description)
+                .show(activity.getSupportFragmentManager(), TaskDescriptionDialogFragment.TAG);
+    }
+
+    private void animateCompletion(TaskRowViewHolder holder, TaskListItem item) {
+        holder.checkBox.animate().cancel();
+        holder.checkBox.setScaleX(1f);
+        holder.checkBox.setScaleY(1f);
+        holder.checkBox.animate()
+                .scaleX(1.3f)
+                .scaleY(1.3f)
+                .setDuration(CHECKBOX_SCALE_UP_DURATION_MS)
+                .withEndAction(() -> holder.checkBox.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(CHECKBOX_SCALE_DOWN_DURATION_MS)
+                        .start())
+                .start();
+
+        if (holder.completionAnimator != null) {
+            holder.completionAnimator.cancel();
+        }
+
+        Context context = holder.itemView.getContext();
+        int flashColor = ContextCompat.getColor(context, R.color.task_completion_flash);
+        int finalColor = resolveCompletedStateBackground(item, context);
+        holder.completionAnimator = ValueAnimator.ofArgb(flashColor, finalColor);
+        holder.completionAnimator.setDuration(COMPLETION_FLASH_DURATION_MS);
+        holder.completionAnimator.addUpdateListener(animation ->
+                holder.root.setBackgroundColor((int) animation.getAnimatedValue()));
+        holder.completionAnimator.start();
+    }
+
+    private int resolveCompletedStateBackground(TaskListItem item, Context context) {
+        if (item.inProgress) {
+            return ContextCompat.getColor(context, R.color.task_in_progress_background);
+        }
+        return ContextCompat.getColor(context, R.color.task_completed_background);
     }
 
     public void setList(List<ViewSlot> viewSlots) {
@@ -212,5 +427,10 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             this.interactionsEnabled = enabled;
             notifyDataSetChanged();
         }
+    }
+
+    public void setManageMode(boolean manageMode) {
+        this.manageMode = manageMode;
+        notifyDataSetChanged();
     }
 }
