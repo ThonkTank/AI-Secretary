@@ -66,7 +66,7 @@ public class TaskCompletionService {
         // Only track duration in history when the elapsed time is meaningful
         boolean trackDuration = !isQuickTap && !isStale;
 
-        lifecycleManager.updateStreak(task, slot);
+        lifecycleManager.updateStreakForCompletion(task, slot);
         task.recordCompletion(durationSeconds / 60, trackDuration);
 
         if (trackDuration && task.core.adaptive) {

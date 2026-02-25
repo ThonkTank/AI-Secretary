@@ -15,7 +15,7 @@ import java.time.temporal.ChronoUnit;
  * Stateless domain service managing task period advancement, streak tracking, and
  * adaptive preferred-time adjustment. All methods mutate the passed {@link Task} directly.
  * Used by {@code TaskScorer} ({@link #advancePeriods} during maintenance) and
- * {@code CheckOffTaskUseCase} ({@link #updateStreak} and {@link #adaptPrefSlot} on completion).
+ * {@code CheckOffTaskUseCase} ({@link #updateStreakForCompletion} and {@link #adaptPrefSlot} on completion).
  */
 public class TaskLifecycleManager {
 
@@ -77,29 +77,56 @@ public class TaskLifecycleManager {
     }
 
     /**
-     * Increments {@code periodCompletions} by counting completed slots in the current period,
-     * then increments {@code currentStreak} only when the period goal is exactly met
-     * ({@code periodCompletions == reps}). Streaks are period-based, not consecutive-day-based.
+     * Applies a single completion event to period counters and streaks.
+     *
+     * <p>Uses the provided {@code completedSlot} for an incremental update: after advancing
+     * periods to "today", {@code periodCompletions} is incremented only when the slot day
+     * belongs to the active half-open range {@code [periodStart, periodEnd)}. Then
+     * {@code currentStreak} is incremented only when the period goal is exactly met
+     * ({@code periodCompletions == reps}). Streaks are period-based, not consecutive-day-based.</p>
      */
-    public void updateStreak(Task task, TaskSlot completedSlot) {
+    public void updateStreakForCompletion(Task task, TaskSlot completedSlot) {
         if (task.core.repetition == null || task.core.repetition.reps <= 0
                 || task.core.repetition.periodUnit == null) return;
 
         advancePeriods(task);
 
-        LocalDate ps = task.core.repetition.periodStart != null ? task.core.repetition.periodStart : task.core.created;
-        LocalDate pe = task.core.repetition.periodEnd();
+        TaskCore.Repetition rep = task.core.repetition;
+        LocalDate periodStart = rep.periodStart != null ? rep.periodStart : task.core.created;
+        LocalDate periodEnd = rep.periodEnd();
+        boolean belongsToActivePeriod = periodEnd != null
+                && !completedSlot.day.isBefore(periodStart)
+                && completedSlot.day.isBefore(periodEnd);
+
+        if (belongsToActivePeriod) {
+            rep.periodCompletions++;
+        }
+
+        if (rep.periodCompletions == rep.reps) {
+            task.core.history.currentStreak++;
+        }
+    }
+
+    /**
+     * Rebuilds {@code periodCompletions} by scanning all slots in the active period.
+     * Intended for repair/resync scenarios where incremental counters may have drifted.
+     */
+    public void recountPeriodCompletions(Task task) {
+        if (task.core.repetition == null || task.core.repetition.reps <= 0
+                || task.core.repetition.periodUnit == null) return;
+
+        TaskCore.Repetition rep = task.core.repetition;
+        LocalDate periodStart = rep.periodStart != null ? rep.periodStart : task.core.created;
+        LocalDate periodEnd = rep.periodEnd();
+        if (periodEnd == null) return;
+
         int count = 0;
-        for (TaskSlot s : task.slots) {
-            if (s.completed && pe != null && !s.day.isBefore(ps) && s.day.isBefore(pe)) {
+        for (TaskSlot slot : task.slots) {
+            if (slot.completed && !slot.day.isBefore(periodStart) && slot.day.isBefore(periodEnd)) {
                 count++;
             }
         }
-        task.core.repetition.periodCompletions = count;
-
-        if (count == task.core.repetition.reps) {
-            task.core.history.currentStreak++;
-        }
+        rep.periodCompletions = count;
     }
 
     /**
