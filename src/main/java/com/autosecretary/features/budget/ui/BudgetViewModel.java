@@ -360,7 +360,9 @@ public class BudgetViewModel extends ViewModel {
             public void onSuccess(BudgetImportUseCase.ImportResult result) {
                 loadOverview();
                 postToMain.accept(() -> {
-                    String msg = result.newTransactions() + " neu, " + result.duplicates() + " Duplikate.";
+                    String msg = result.newTransactions() + " neu, "
+                            + result.duplicates() + " Duplikate, "
+                            + result.autoCategorized() + " auto-kategorisiert.";
                     statusMessage.setValue(msg);
                     importResult.setValue(result);
                 });
@@ -379,8 +381,12 @@ public class BudgetViewModel extends ViewModel {
     public void onImportReadFailed() {
         postToMain.accept(() -> {
             uiState.setValue(BudgetUiState.ERROR);
-            statusMessage.setValue("Datei konnte nicht gelesen werden.");
+            statusMessage.setValue("Datei konnte nicht gelesen werden. Prüfe Berechtigung und Dateiformat.");
         });
+    }
+
+    public void setImportStatus(String message) {
+        postToMain.accept(() -> statusMessage.setValue(message));
     }
 
     public void applyRecurringSuggestions(List<RecurringSuggestion> suggestions) {

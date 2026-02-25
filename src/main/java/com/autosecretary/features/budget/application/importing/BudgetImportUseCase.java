@@ -47,6 +47,7 @@ public class BudgetImportUseCase {
         executor.execute(() -> {
             try {
                 callback.onProgress("Starte Import...");
+                callback.onProgress("Datei wird analysiert...");
                 ImportPipelineResult pipelineResult = runImportPipeline(accountId, fileName, fileBytes, mimeType);
                 callback.onProgress("Import abgeschlossen.");
 
@@ -54,6 +55,7 @@ public class BudgetImportUseCase {
                         pipelineResult.totalTransactions(),
                         pipelineResult.newTransactions(),
                         pipelineResult.duplicates(),
+                        pipelineResult.autoCategorized(),
                         pipelineResult.recurringSuggestions()
                 ));
             } catch (ImportPipelineException e) {
@@ -137,8 +139,10 @@ public class BudgetImportUseCase {
                 continue;
             }
 
-            String categoryId = parsed.categoryId() != null ? String.valueOf(parsed.categoryId()) : null;
-            if (categoryId == null) {
+            String categoryId = parsed.categoryId();
+            boolean hasAutoCategory = categoryId != null && repository.isKnownCategory(categoryId);
+
+            if (!hasAutoCategory) {
                 categoryId = repository.findDefaultCategoryId(parsed.amountCents() > 0);
             } else {
                 autoCategorized++;
@@ -198,6 +202,7 @@ public class BudgetImportUseCase {
             int totalTransactions,
             int newTransactions,
             int duplicates,
+            int autoCategorized,
             List<RecurringSuggestion> recurringSuggestions
     ) {
     }
