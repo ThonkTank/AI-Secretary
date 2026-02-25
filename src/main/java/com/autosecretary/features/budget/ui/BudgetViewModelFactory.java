@@ -20,19 +20,22 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
     private final Consumer<Runnable> postToMain;
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
+    private final Runnable onBudgetDataChanged;
 
     public BudgetViewModelFactory(BudgetRepository repository,
                                   StatementFileParser parser,
                                   ExecutorService executor,
                                   Consumer<Runnable> postToMain,
                                   BudgetImportUseCase importUseCase,
-                                  ApplyRecurringSuggestionsUseCase applyRecurringUseCase) {
+                                  ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
+                                  Runnable onBudgetDataChanged) {
         this.repository = repository;
         this.parser = parser;
         this.executor = executor;
         this.postToMain = postToMain;
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
+        this.onBudgetDataChanged = onBudgetDataChanged;
     }
 
     @NonNull
@@ -41,7 +44,7 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
         if (modelClass.isAssignableFrom(BudgetViewModel.class)) {
             return modelClass.cast(new BudgetViewModel(
                     repository, parser, executor, postToMain,
-                    importUseCase, applyRecurringUseCase));
+                    importUseCase, applyRecurringUseCase, onBudgetDataChanged));
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
     }

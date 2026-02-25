@@ -59,6 +59,13 @@ public interface TransactionDao {
             """)
     IncomeExpenseSummary getIncomeExpenseSummary(String yearMonth);
 
+
+    @Query("""
+            SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END), 0)
+            FROM budget_transaction
+            """)
+    long getNetBalanceCents();
+
     @Query("SELECT * FROM budget_transaction ORDER BY bookingDate DESC")
     List<BudgetTransactionEntity> findAll();
 

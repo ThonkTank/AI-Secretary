@@ -123,19 +123,22 @@ public class BudgetViewModel extends ViewModel {
     private final Consumer<Runnable> postToMain;
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
+    private final Runnable onBudgetDataChanged;
 
     public BudgetViewModel(BudgetRepository repository,
                            StatementFileParser parser,
                            ExecutorService executor,
                            Consumer<Runnable> postToMain,
                            BudgetImportUseCase importUseCase,
-                           ApplyRecurringSuggestionsUseCase applyRecurringUseCase) {
+                           ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
+                           Runnable onBudgetDataChanged) {
         this.repository = repository;
         this.parser = parser;
         this.executor = executor;
         this.postToMain = postToMain;
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
+        this.onBudgetDataChanged = onBudgetDataChanged;
         ensureDefaultData();
     }
 
@@ -212,6 +215,7 @@ public class BudgetViewModel extends ViewModel {
         addDemoTx(entities, accountId, reference, 15, expense,   3450, "Restaurant",     maxDay);
         addDemoTx(entities, accountId, reference, 18, expense,   6520, "Tankstelle",     maxDay);
         repository.saveTransactions(entities);
+        onBudgetDataChanged.run();
     }
 
     private void addDemoTx(List<BudgetTransactionEntity> out, String accountId,
@@ -324,6 +328,7 @@ public class BudgetViewModel extends ViewModel {
             entity.note = note;
 
             repository.saveTransaction(entity);
+            onBudgetDataChanged.run();
             loadOverviewOnExecutor();
         });
     }
@@ -331,6 +336,7 @@ public class BudgetViewModel extends ViewModel {
     public void deleteTransaction(String transactionId) {
         executor.execute(() -> {
             repository.deleteTransaction(transactionId);
+            onBudgetDataChanged.run();
             loadOverviewOnExecutor();
         });
     }
@@ -358,6 +364,7 @@ public class BudgetViewModel extends ViewModel {
 
             @Override
             public void onSuccess(BudgetImportUseCase.ImportResult result) {
+                onBudgetDataChanged.run();
                 loadOverview();
                 postToMain.accept(() -> {
                     String msg = result.newTransactions() + " neu, " + result.duplicates() + " Duplikate.";
@@ -391,7 +398,10 @@ public class BudgetViewModel extends ViewModel {
         applyRecurringUseCase.executeAsync(
                 accountId,
                 suggestions,
-                () -> postToMain.accept(this::loadOverview),
+                () -> {
+                    onBudgetDataChanged.run();
+                    postToMain.accept(this::loadOverview);
+                },
                 error -> postToMain.accept(() -> statusMessage.setValue("Fehler: " + error))
         );
     }
@@ -424,6 +434,7 @@ public class BudgetViewModel extends ViewModel {
             String yearMonthStr = month.toString();
             BudgetLimit limit = new BudgetLimit(categoryId, yearMonthStr, amountEuros);
             repository.saveBudgetLimit(limit);
+            onBudgetDataChanged.run();
             loadOverviewOnExecutor();
         });
     }

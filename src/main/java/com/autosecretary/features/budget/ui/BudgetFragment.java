@@ -47,7 +47,10 @@ import java.util.Locale;
 
 public class BudgetFragment extends Fragment {
 
+    public static final String ARG_OPEN_ADD_TRANSACTION = "open_add_transaction";
+
     private BudgetViewModel budgetViewModel;
+    private boolean shouldOpenAddTransactionDialog;
     private ActivityResultLauncher<String[]> csvPickerLauncher;
 
     @Override
@@ -84,6 +87,8 @@ public class BudgetFragment extends Fragment {
                 AutoSecretaryApplication.from(requireContext()).getAppCompositionRoot();
         BudgetViewModelFactory factory = compositionRoot.createBudgetViewModelFactory();
         budgetViewModel = new ViewModelProvider(this, factory).get(BudgetViewModel.class);
+        shouldOpenAddTransactionDialog = getArguments() != null
+                && getArguments().getBoolean(ARG_OPEN_ADD_TRANSACTION, false);
 
         TextView title = view.findViewById(R.id.BudgetTitle);
         View summaryCard = view.findViewById(R.id.BudgetSummaryCard);
@@ -150,6 +155,11 @@ public class BudgetFragment extends Fragment {
                 csvPickerLauncher.launch(new String[]{"text/csv", "text/plain", "*/*"}));
         retry.setOnClickListener(v -> budgetViewModel.retry());
         setLimitButton.setOnClickListener(v -> showEditLimitDialog(null, null, 0));
+
+        if (shouldOpenAddTransactionDialog) {
+            shouldOpenAddTransactionDialog = false;
+            view.post(this::showAddTransactionDialog);
+        }
     }
 
     // --- Add Transaction Dialog (with category picker) ---

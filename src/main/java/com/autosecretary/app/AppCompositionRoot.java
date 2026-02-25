@@ -20,6 +20,7 @@ import com.autosecretary.features.budget.application.importing.StatementFilePars
 import com.autosecretary.features.budget.data.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
+import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
 import com.autosecretary.features.task.ui.TaskViewModelFactory;
 
 import java.util.concurrent.ExecutorService;
@@ -107,7 +108,8 @@ public class AppCompositionRoot {
                 db.budgetImportDao(),
                 db.budgetRecurringTemplateDao(),
                 db.transactionDao(),
-                db.budgetLookupDao()
+                db.budgetLookupDao(),
+                () -> BudgetWidgetProvider.notifyWidgetUpdate(app)
         );
 
         StatementFileParser parser = new StatementFileParser();
@@ -126,7 +128,8 @@ public class AppCompositionRoot {
                 taskUseCaseExecutor,
                 mainHandler::post,
                 importUseCase,
-                applyRecurringUseCase
+                applyRecurringUseCase,
+                () -> BudgetWidgetProvider.notifyWidgetUpdate(app)
         );
 
         return budgetViewModelFactory;
