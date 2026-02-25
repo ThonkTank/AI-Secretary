@@ -5,7 +5,6 @@ import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Room-Implementierung der BudgetImportRepository-Schnittstelle.
@@ -15,15 +14,18 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     private final BudgetRecurringTemplateDao templateDao;
     private final TransactionDao transactionDao;
     private final BudgetLookupDao lookupDao;
+    private final Runnable onBudgetDataUpdated;
 
     public BudgetImportRoomRepository(BudgetImportDao importDao,
                                        BudgetRecurringTemplateDao templateDao,
                                        TransactionDao transactionDao,
-                                       BudgetLookupDao lookupDao) {
+                                       BudgetLookupDao lookupDao,
+                                       Runnable onBudgetDataUpdated) {
         this.importDao = importDao;
         this.templateDao = templateDao;
         this.transactionDao = transactionDao;
         this.lookupDao = lookupDao;
+        this.onBudgetDataUpdated = onBudgetDataUpdated;
     }
 
     @Override
@@ -50,6 +52,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
                                      int autoCategorized, LocalDate periodStart, LocalDate periodEnd) {
         importDao.markCompleted(importId, totalTransactions, importedTransactions,
                 autoCategorized, periodStart, periodEnd);
+        synchronizeRecurringTemplateState(LocalDate.now());
     }
 
     @Override
@@ -69,8 +72,22 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     @Override
+    public boolean isKnownCategory(String categoryId) {
+        if (categoryId == null || categoryId.isBlank()) {
+            return false;
+        }
+        return lookupDao.findCategoryById(categoryId) != null;
+    }
+
+    @Override
+    public List<BudgetCategory> loadActiveCategoriesForImport() {
+        return lookupDao.getActiveCategories();
+    }
+
+    @Override
     public void saveTransactionsBatch(List<BudgetTransactionEntity> transactions) {
         transactionDao.insertAll(transactions);
+        updateAccountBalances();
     }
 
     @Override
@@ -93,20 +110,76 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
         entity.maxAmountCents = suggestion.maxAmountCents();
         entity.recurringValue = suggestion.suggestedValue();
         entity.recurringDayOfWeek = suggestion.suggestedDayOfWeek();
-        entity.nextDue = nextDueDate;
+        entity.nextDue = nextDueDate != null ? nextDueDate : LocalDate.now();
+        entity.active = true;
 
         templateDao.insert(entity);
+        synchronizeRecurringTemplateState(LocalDate.now());
         return entity.id;
     }
 
     @Override
     public void linkTransactionsToTemplate(List<String> transactionIds, String templateId) {
-        // No-Op: BudgetTransactionEntity hat noch kein templateId-Feld.
-        // Wird in einem späteren Schritt ergänzt.
+        if (transactionIds == null || transactionIds.isEmpty() || templateId == null || templateId.isBlank()) {
+            return;
+        }
+        transactionDao.updateTemplateIdForTransactions(transactionIds, templateId);
+    }
+
+    @Override
+    public void synchronizeRecurringTemplateState(LocalDate referenceDate) {
+        for (BudgetRecurringTemplateEntity template : templateDao.findAllActiveTemplates()) {
+            LocalDate dueDate = template.nextDue != null ? template.nextDue : referenceDate;
+            boolean active = true;
+
+            if ("WEEKLY".equals(template.recurringType) && template.recurringDayOfWeek != null) {
+                while (dueDate.isBefore(referenceDate)
+                        || dueDate.getDayOfWeek() != template.recurringDayOfWeek) {
+                    dueDate = dueDate.plusDays(1);
+                }
+            } else if ("INTERVAL".equals(template.recurringType)) {
+                int intervalDays = Math.max(1, template.recurringValue);
+                while (dueDate.isBefore(referenceDate)) {
+                    dueDate = dueDate.plusDays(intervalDays);
+                }
+            } else if ("MONTHLY_DAY".equals(template.recurringType)) {
+                if (template.recurringValue < 1 || template.recurringValue > 31) {
+                    active = false;
+                } else {
+                    while (dueDate.isBefore(referenceDate)) {
+                        LocalDate nextMonth = dueDate.plusMonths(1);
+                        dueDate = nextMonth.withDayOfMonth(Math.min(template.recurringValue, nextMonth.lengthOfMonth()));
+                    }
+                }
+            } else if ("MONTHLY_LAST".equals(template.recurringType)) {
+                while (dueDate.isBefore(referenceDate)) {
+                    LocalDate nextMonth = dueDate.plusMonths(1);
+                    dueDate = nextMonth.withDayOfMonth(nextMonth.lengthOfMonth());
+                }
+            } else if (template.nextDue == null) {
+                active = false;
+            }
+
+            templateDao.updateNextDueAndStatus(template.id, dueDate, active);
+        }
     }
 
     @Override
     public void notifyBudgetDataUpdated() {
-        // No-Op: UI-Refresh passiert über die Callback-Kette im ViewModel.
+        onBudgetDataUpdated.run();
+    }
+
+    private void updateAccountBalances() {
+        List<AccountBalanceTotal> totals = transactionDao.getAccountBalanceTotals();
+        for (BudgetAccount account : lookupDao.getActiveAccounts()) {
+            long balance = 0;
+            for (AccountBalanceTotal total : totals) {
+                if (account.id.equals(total.accountId)) {
+                    balance = total.balanceCents;
+                    break;
+                }
+            }
+            lookupDao.updateCurrentBalanceCents(account.id, balance);
+        }
     }
 }

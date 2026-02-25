@@ -4,11 +4,11 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.autosecretary.features.budget.application.CalculateEffectiveBudgetLimitUseCase;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
 import com.autosecretary.features.budget.domain.BudgetRepository;
+import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
@@ -21,7 +21,7 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
     private final Consumer<Runnable> postToMain;
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
-    private final CalculateEffectiveBudgetLimitUseCase calculateEffectiveBudgetLimitUseCase;
+    private final CalculateFreeBudgetUseCase calculateFreeBudgetUseCase;
 
     public BudgetViewModelFactory(BudgetRepository repository,
                                   StatementFileParser parser,
@@ -29,14 +29,14 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
                                   Consumer<Runnable> postToMain,
                                   BudgetImportUseCase importUseCase,
                                   ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
-                                  CalculateEffectiveBudgetLimitUseCase calculateEffectiveBudgetLimitUseCase) {
+                                  CalculateFreeBudgetUseCase calculateFreeBudgetUseCase) {
         this.repository = repository;
         this.parser = parser;
         this.executor = executor;
         this.postToMain = postToMain;
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
-        this.calculateEffectiveBudgetLimitUseCase = calculateEffectiveBudgetLimitUseCase;
+        this.calculateFreeBudgetUseCase = calculateFreeBudgetUseCase;
     }
 
     @NonNull
@@ -45,7 +45,7 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
         if (modelClass.isAssignableFrom(BudgetViewModel.class)) {
             return modelClass.cast(new BudgetViewModel(
                     repository, parser, executor, postToMain,
-                    importUseCase, applyRecurringUseCase, calculateEffectiveBudgetLimitUseCase));
+                    importUseCase, applyRecurringUseCase, calculateFreeBudgetUseCase));
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
     }

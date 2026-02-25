@@ -36,9 +36,9 @@ public class BudgetTransactionService {
         repository.saveBudgetLimit(limit);
     }
 
-    public BudgetOverview loadOverview(String yearMonth) {
+    public BudgetOverview loadOverview(String yearMonth, String accountId) {
         List<BudgetAccount> accounts = repository.findActiveAccounts();
-        List<BudgetTransactionEntity> transactions = repository.findAllTransactions();
+        List<BudgetTransactionEntity> transactions = repository.findTransactionsForAccount(accountId);
         Summary summary = calculateSummary(transactions, yearMonth);
         return new BudgetOverview(summary, accounts, transactions);
     }
@@ -51,7 +51,8 @@ public class BudgetTransactionService {
             boolean isIncome = tx.type == BudgetTransactionEntity.TransactionType.INCOME;
             totalBalanceCents += isIncome ? tx.amountCents : -tx.amountCents;
 
-            if (yearMonth.equals(tx.yearMonth)) {
+            if (yearMonth.equals(tx.yearMonth)
+                    && tx.transactionKind != BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER) {
                 if (isIncome) {
                     monthlyIncomeCents += tx.amountCents;
                 } else {

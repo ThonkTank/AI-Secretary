@@ -14,10 +14,12 @@ import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
-import com.autosecretary.features.budget.application.CalculateEffectiveBudgetLimitUseCase;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
+import com.autosecretary.features.budget.application.importing.ClaudeApiKeyStore;
+import com.autosecretary.features.budget.application.importing.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
+import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.data.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
@@ -101,7 +103,8 @@ public class AppCompositionRoot {
         BudgetRoomRepository repository = new BudgetRoomRepository(
                 db.budgetLookupDao(),
                 db.transactionDao(),
-                db.budgetLimitDao()
+                db.budgetLimitDao(),
+                db.budgetRecurringTemplateDao()
         );
 
         BudgetImportRoomRepository importRepository = new BudgetImportRoomRepository(
@@ -111,7 +114,11 @@ public class AppCompositionRoot {
                 db.budgetLookupDao()
         );
 
-        StatementFileParser parser = new StatementFileParser();
+        StatementFileParser parser = new StatementFileParser(
+                new ClaudeStatementApiClient(),
+                new ClaudeApiKeyStore(app),
+                importRepository
+        );
 
         BudgetImportUseCase importUseCase = new BudgetImportUseCase(
                 importRepository, parser, taskUseCaseExecutor
@@ -121,8 +128,8 @@ public class AppCompositionRoot {
                 importRepository, taskUseCaseExecutor
         );
 
-        CalculateEffectiveBudgetLimitUseCase calculateEffectiveBudgetLimitUseCase =
-                new CalculateEffectiveBudgetLimitUseCase(repository);
+        CalculateFreeBudgetUseCase calculateFreeBudgetUseCase =
+                new CalculateFreeBudgetUseCase(repository);
 
         budgetViewModelFactory = new BudgetViewModelFactory(
                 repository,
@@ -131,7 +138,7 @@ public class AppCompositionRoot {
                 mainHandler::post,
                 importUseCase,
                 applyRecurringUseCase,
-                calculateEffectiveBudgetLimitUseCase
+                calculateFreeBudgetUseCase
         );
 
         return budgetViewModelFactory;
