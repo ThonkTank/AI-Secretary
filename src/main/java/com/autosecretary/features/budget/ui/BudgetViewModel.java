@@ -39,12 +39,15 @@ public class BudgetViewModel extends ViewModel {
         private final String label;
         private final String amount;
         private final boolean isExpense;
+        private final String categoryColorHex;
 
-        public BudgetTransactionRow(String transactionId, String label, String amount, boolean isExpense) {
+        public BudgetTransactionRow(String transactionId, String label, String amount,
+                                    boolean isExpense, String categoryColorHex) {
             this.transactionId = transactionId;
             this.label = label;
             this.amount = amount;
             this.isExpense = isExpense;
+            this.categoryColorHex = categoryColorHex;
         }
 
         public String getTransactionId() {
@@ -61,6 +64,10 @@ public class BudgetViewModel extends ViewModel {
 
         public boolean isExpense() {
             return isExpense;
+        }
+
+        public String getCategoryColorHex() {
+            return categoryColorHex;
         }
     }
 
@@ -83,13 +90,16 @@ public class BudgetViewModel extends ViewModel {
     public static class BudgetLimitBar {
         private final String categoryId;
         private final String categoryName;
+        private final String categoryColorHex;
         private final long spentCents;
         private final double limitEuros;
         private final int percentage;
 
-        public BudgetLimitBar(String categoryId, String categoryName, long spentCents, double limitEuros) {
+        public BudgetLimitBar(String categoryId, String categoryName, String categoryColorHex,
+                              long spentCents, double limitEuros) {
             this.categoryId = categoryId;
             this.categoryName = categoryName;
+            this.categoryColorHex = categoryColorHex;
             this.spentCents = spentCents;
             this.limitEuros = limitEuros;
             this.percentage = limitEuros > 0
@@ -99,6 +109,7 @@ public class BudgetViewModel extends ViewModel {
 
         public String getCategoryId() { return categoryId; }
         public String getCategoryName() { return categoryName; }
+        public String getCategoryColorHex() { return categoryColorHex; }
         public long getSpentCents() { return spentCents; }
         public double getLimitEuros() { return limitEuros; }
         public int getPercentage() { return percentage; }
@@ -184,9 +195,8 @@ public class BudgetViewModel extends ViewModel {
             List<BudgetAccount> accounts = repository.findActiveAccounts();
             if (accounts.isEmpty()) {
                 repository.insertAccount(new BudgetAccount("Girokonto"));
-                repository.insertCategory(new BudgetCategory("Sonstiges", "EXPENSE"));
-                repository.insertCategory(new BudgetCategory("Gehalt", "INCOME"));
             }
+            ensureDefaultCategories();
             if (repository.findAllTransactions().isEmpty()) {
                 String accountId = repository.findActiveAccounts().get(0).id;
                 LocalDate today = LocalDate.now();
@@ -198,32 +208,62 @@ public class BudgetViewModel extends ViewModel {
         });
     }
 
+    private void ensureDefaultCategories() {
+        List<BudgetCategory> existing = repository.getActiveCategories();
+        if (!existing.isEmpty()) {
+            return;
+        }
+        repository.insertCategory(new BudgetCategory("Sonstiges", "EXPENSE", "🏷️", "#9E9E9E"));
+        repository.insertCategory(new BudgetCategory("Miete", "EXPENSE", "🏠", "#FF7043"));
+        repository.insertCategory(new BudgetCategory("Lebensmittel", "EXPENSE", "🛒", "#8BC34A"));
+        repository.insertCategory(new BudgetCategory("Mobilität", "EXPENSE", "🚗", "#03A9F4"));
+        repository.insertCategory(new BudgetCategory("Freizeit", "EXPENSE", "🎉", "#AB47BC"));
+        repository.insertCategory(new BudgetCategory("Gehalt", "INCOME", "💰", "#4CAF50"));
+    }
+
     private void seedDemoTransactions(String accountId, LocalDate reference) {
+        List<BudgetCategory> categories = repository.getActiveCategories();
+        String incomeCategoryId = findCategoryIdByName(categories, "Gehalt");
+        String housingCategoryId = findCategoryIdByName(categories, "Miete");
+        String groceryCategoryId = findCategoryIdByName(categories, "Lebensmittel");
+        String mobilityCategoryId = findCategoryIdByName(categories, "Mobilität");
+        String leisureCategoryId = findCategoryIdByName(categories, "Freizeit");
+        String otherCategoryId = findCategoryIdByName(categories, "Sonstiges");
+
         int maxDay = reference.getDayOfMonth();
         BudgetTransactionEntity.TransactionType income = BudgetTransactionEntity.TransactionType.INCOME;
         BudgetTransactionEntity.TransactionType expense = BudgetTransactionEntity.TransactionType.EXPENSE;
         List<BudgetTransactionEntity> entities = new ArrayList<>();
-        addDemoTx(entities, accountId, reference,  1, income,  240000, "Gehalt",        maxDay);
-        addDemoTx(entities, accountId, reference,  2, expense,  85000, "Miete",          maxDay);
-        addDemoTx(entities, accountId, reference,  3, expense,   7840, "Lebensmittel",   maxDay);
-        addDemoTx(entities, accountId, reference,  5, expense,   4290, "Strom",          maxDay);
-        addDemoTx(entities, accountId, reference,  8, expense,   2999, "Internet",       maxDay);
-        addDemoTx(entities, accountId, reference, 10, expense,   1990, "Fitnessstudio",  maxDay);
-        addDemoTx(entities, accountId, reference, 15, expense,   3450, "Restaurant",     maxDay);
-        addDemoTx(entities, accountId, reference, 18, expense,   6520, "Tankstelle",     maxDay);
+        addDemoTx(entities, accountId, incomeCategoryId, reference,  1, income,  240000, "Gehalt",       maxDay);
+        addDemoTx(entities, accountId, housingCategoryId, reference,  2, expense,  85000, "Miete",         maxDay);
+        addDemoTx(entities, accountId, groceryCategoryId, reference,  3, expense,   7840, "Lebensmittel",  maxDay);
+        addDemoTx(entities, accountId, otherCategoryId, reference,  5, expense,   4290, "Strom",         maxDay);
+        addDemoTx(entities, accountId, otherCategoryId, reference,  8, expense,   2999, "Internet",      maxDay);
+        addDemoTx(entities, accountId, leisureCategoryId, reference, 10, expense,   1990, "Fitnessstudio", maxDay);
+        addDemoTx(entities, accountId, leisureCategoryId, reference, 15, expense,   3450, "Restaurant",    maxDay);
+        addDemoTx(entities, accountId, mobilityCategoryId, reference, 18, expense,   6520, "Tankstelle",    maxDay);
         repository.saveTransactions(entities);
     }
 
-    private void addDemoTx(List<BudgetTransactionEntity> out, String accountId,
+    private void addDemoTx(List<BudgetTransactionEntity> out, String accountId, String categoryId,
                             LocalDate ref, int day,
                             BudgetTransactionEntity.TransactionType type,
                             long amountCents, String note, int maxDay) {
         if (day > maxDay) return;
         LocalDate date = ref.withDayOfMonth(day);
         BudgetTransactionEntity entity = new BudgetTransactionEntity(
-                accountId, null, type, amountCents, date, YearMonth.from(date).toString());
+                accountId, categoryId, type, amountCents, date, YearMonth.from(date).toString());
         entity.note = note;
         out.add(entity);
+    }
+
+    private String findCategoryIdByName(List<BudgetCategory> categories, String name) {
+        for (BudgetCategory category : categories) {
+            if (name.equals(category.name)) {
+                return category.id;
+            }
+        }
+        return null;
     }
 
     public void navigateMonth(int offset) {
@@ -257,7 +297,9 @@ public class BudgetViewModel extends ViewModel {
             boolean isExpense = "EXPENSE".equals(item.type);
             String label;
             if (item.categoryName != null) {
-                label = item.categoryName;
+                String icon = item.categoryIcon != null && !item.categoryIcon.trim().isEmpty()
+                        ? item.categoryIcon : BudgetCategory.DEFAULT_ICON;
+                label = icon + " " + item.categoryName;
             } else if (item.note != null) {
                 label = item.note;
             } else {
@@ -269,7 +311,7 @@ public class BudgetViewModel extends ViewModel {
                     isExpense ? "-" : "+",
                     item.amountCents / 100.0
             );
-            rows.add(new BudgetTransactionRow(item.transactionId, label, formattedAmount, isExpense));
+            rows.add(new BudgetTransactionRow(item.transactionId, label, formattedAmount, isExpense, item.categoryColorHex));
 
             if (isExpense) {
                 totalExpenseCents += item.amountCents;
@@ -409,8 +451,11 @@ public class BudgetViewModel extends ViewModel {
         List<BudgetLimitBar> bars = new ArrayList<>();
         for (CategorySpendTotal total : totals) {
             if (total.limitAmount > 0) {
+                String icon = total.categoryIcon != null && !total.categoryIcon.trim().isEmpty()
+                        ? total.categoryIcon : BudgetCategory.DEFAULT_ICON;
+                String label = icon + " " + total.categoryName;
                 bars.add(new BudgetLimitBar(
-                        total.categoryId, total.categoryName,
+                        total.categoryId, label, total.categoryColorHex,
                         total.spentCents, total.limitAmount));
             }
         }

@@ -23,7 +23,9 @@ public interface TransactionDao {
                    t.accountId AS accountId,
                    a.name AS accountName,
                    t.categoryId AS categoryId,
-                   c.name AS categoryName
+                   c.name AS categoryName,
+                   c.icon AS categoryIcon,
+                   c.colorHex AS categoryColorHex
             FROM budget_transaction t
             INNER JOIN budget_account a ON a.id = t.accountId
             LEFT JOIN budget_category c ON c.id = t.categoryId
@@ -42,7 +44,9 @@ public interface TransactionDao {
                    t.accountId AS accountId,
                    a.name AS accountName,
                    t.categoryId AS categoryId,
-                   c.name AS categoryName
+                   c.name AS categoryName,
+                   c.icon AS categoryIcon,
+                   c.colorHex AS categoryColorHex
             FROM budget_transaction t
             INNER JOIN budget_account a ON a.id = t.accountId
             LEFT JOIN budget_category c ON c.id = t.categoryId
