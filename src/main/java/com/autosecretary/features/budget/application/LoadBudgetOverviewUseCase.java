@@ -1,8 +1,8 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.data.Account;
+import com.autosecretary.features.budget.data.BudgetAccount;
 import com.autosecretary.features.budget.data.BudgetRepository;
-import com.autosecretary.features.budget.data.Transaction;
+import com.autosecretary.features.budget.data.BudgetTransaction;
 import com.autosecretary.features.budget.domain.BudgetSummaryService;
 
 import java.util.List;
@@ -18,15 +18,15 @@ public class LoadBudgetOverviewUseCase {
     }
 
     public BudgetOverview execute(String yearMonth) {
-        List<Account> accounts = repository.findActiveAccounts();
-        List<Transaction> transactions = repository.findAllTransactions();
+        List<BudgetAccount> accounts = repository.findActiveAccounts();
+        List<BudgetTransaction> transactions = repository.findAllTransactions();
         BudgetSummaryService.Summary summary = summaryService.calculateSummary(accounts, transactions, yearMonth);
         return new BudgetOverview(summary, accounts, transactions);
     }
 
     public record BudgetOverview(
             BudgetSummaryService.Summary summary,
-            List<Account> accounts,
-            List<Transaction> transactions
+            List<BudgetAccount> accounts,
+            List<BudgetTransaction> transactions
     ) {}
 }

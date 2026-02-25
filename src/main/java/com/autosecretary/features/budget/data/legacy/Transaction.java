@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.data;
+package com.autosecretary.features.budget.data.legacy;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
@@ -7,6 +7,14 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * Transitional legacy transaction model kept for historical reference only.
+ *
+ * <p>Canonical budget persistence uses {@code BudgetTransaction} in table
+ * {@code budget_transaction} (introduced by AppDatabase migration v8). Do not use this class
+ * for new code.</p>
+ */
+@Deprecated
 @Entity(tableName = "transactions")
 public class Transaction {
     @PrimaryKey(autoGenerate = true)
