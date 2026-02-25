@@ -6,11 +6,6 @@ import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.TaskPlanningState;
-import com.autosecretary.features.task.domain.internal.scoring.ScoringModel.CompletionState;
-import com.autosecretary.features.task.domain.internal.scoring.ScoringModel.MultiDayStateSnapshot;
-import com.autosecretary.features.task.domain.internal.scoring.ScoringModel.PreferenceFitState;
-import com.autosecretary.features.task.domain.internal.scoring.ScoringModel.TaskScoringSnapshot;
-import com.autosecretary.features.task.domain.internal.scoring.ScoringModel.UrgencyState;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -18,6 +13,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +64,81 @@ final class TaskScorer {
             this.lastCompletion = lastCompletion;
             this.periodCompletions = periodCompletions;
             this.scheduledToday = scheduledToday;
+        }
+    }
+
+    record CompletionState(int completions,
+                           LocalDate lastCompletion,
+                           int periodCompletions,
+                           boolean isComplete,
+                           int scheduledToday) {
+        CompletionState withIncrementedScheduledToday() {
+            return new CompletionState(completions, lastCompletion, periodCompletions, isComplete, scheduledToday + 1);
+        }
+    }
+
+    record UrgencyState(double remainingDays,
+                        double requiredDays,
+                        boolean isDeadlineExpired) {
+    }
+
+    record PreferenceFitState(List<TaskPrefSlot> todayPrefSlots,
+                              boolean hasDayConstraints,
+                              Set<String> consumedPrefSlotIds) {
+        PreferenceFitState {
+            todayPrefSlots = List.copyOf(todayPrefSlots);
+            consumedPrefSlotIds = Set.copyOf(consumedPrefSlotIds);
+        }
+
+        PreferenceFitState(List<TaskPrefSlot> todayPrefSlots, boolean hasDayConstraints) {
+            this(todayPrefSlots, hasDayConstraints, Set.of());
+        }
+
+        PreferenceFitState withConsumedPrefSlot(String prefSlotId) {
+            Set<String> newConsumed = new HashSet<>(consumedPrefSlotIds);
+            newConsumed.add(prefSlotId);
+            return new PreferenceFitState(todayPrefSlots, hasDayConstraints, newConsumed);
+        }
+    }
+
+    record MultiDayStateSnapshot(int totalScheduledReps,
+                                 int totalRepsInPeriod,
+                                 int minDayDistance,
+                                 double expectedDayGap) {
+    }
+
+    record TaskScoringSnapshot(CompletionState completionState,
+                               UrgencyState urgencyState,
+                               PreferenceFitState preferenceFitState,
+                               MultiDayStateSnapshot multiDayStateSnapshot,
+                               int sinceLast,
+                               double agingForce,
+                               int repsPerDay,
+                               int maxChildPriority) {
+        TaskScoringSnapshot withIncrementedScheduledToday() {
+            return new TaskScoringSnapshot(
+                    completionState.withIncrementedScheduledToday(),
+                    urgencyState,
+                    preferenceFitState,
+                    multiDayStateSnapshot,
+                    sinceLast,
+                    agingForce,
+                    repsPerDay,
+                    maxChildPriority
+            );
+        }
+
+        TaskScoringSnapshot withConsumedPrefSlot(String prefSlotId) {
+            return new TaskScoringSnapshot(
+                    completionState.withIncrementedScheduledToday(),
+                    urgencyState,
+                    preferenceFitState.withConsumedPrefSlot(prefSlotId),
+                    multiDayStateSnapshot,
+                    sinceLast,
+                    agingForce,
+                    repsPerDay,
+                    maxChildPriority
+            );
         }
     }
 
