@@ -28,6 +28,7 @@ public class ListFragment extends Fragment {
         TaskViewModelFactory viewModelFactory = compositionRoot.createTaskViewModelFactory();
         // Keep one ViewModel tied to the activity so list/edit state survives fragment swaps and dialogs.
         TaskViewModel vm = new ViewModelProvider(requireActivity(), viewModelFactory).get(TaskViewModel.class);
+        TaskEditSessionController editSessionController = vm.getTaskEditSessionController();
         RecyclerView recyclerView = view.findViewById(R.id.TaskList);
         View emptyStateContainer = view.findViewById(R.id.EmptyStateContainer);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -35,8 +36,8 @@ public class ListFragment extends Fragment {
         ListRowAdapter adapter = new ListRowAdapter(
                 new ArrayList<>(),
                 vm::checkOff,
-                viewSlot -> openEditDialog(vm, viewSlot.item.taskId),
-                viewSlot -> openEditDialog(vm, viewSlot.item.taskId)
+                viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId),
+                viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId)
         );
 
         recyclerView.setAdapter(adapter);
@@ -53,7 +54,7 @@ public class ListFragment extends Fragment {
 
         View.OnClickListener createTaskClickListener = v -> {
             // Start from a blank task in shared state, then open the dialog so the user fills details.
-            vm.createNewTask();
+            editSessionController.createNewTask();
             new TaskEditDialog().show(getParentFragmentManager(), "create");
         };
 
@@ -72,9 +73,9 @@ public class ListFragment extends Fragment {
             }
         });
     }
-    private void openEditDialog(TaskViewModel vm, String taskId) {
+    private void openEditDialog(TaskEditSessionController editSessionController, String taskId) {
         // Explicit edit callback shared by row edit controls and optional long-press shortcut.
-        vm.beginEditTask(taskId);
+        editSessionController.beginEditTask(taskId);
         new TaskEditDialog().show(getParentFragmentManager(), "edit");
     }
 

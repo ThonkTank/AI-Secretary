@@ -58,6 +58,7 @@ public class TaskEditDialog extends DialogFragment {
     private static final int DAY_BUTTON_HORIZONTAL_MARGIN_DP = 2;
 
     private TaskViewModel vm;
+    private TaskEditSessionController editSessionController;
     private TaskEditState editState;
     private TaskEditPresenter presenter;
     private PrefSlotUIBuilder prefSlotUIBuilder;
@@ -91,7 +92,8 @@ public class TaskEditDialog extends DialogFragment {
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         vm = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
-        editState = vm.requireSelectedTask();
+        editSessionController = vm.getTaskEditSessionController();
+        editState = editSessionController.requireSelectedTask();
         presenter = new TaskEditPresenter(editState, new TaskEditStateMapper());
 
         rootView = LayoutInflater.from(getContext())
@@ -105,7 +107,7 @@ public class TaskEditDialog extends DialogFragment {
         rebuildPrefSlotUI();
 
         return new AlertDialog.Builder(requireContext())
-            .setTitle(vm.isNewTask() ? "Task erstellen" : "Task bearbeiten")
+            .setTitle(editSessionController.isNewTask() ? "Task erstellen" : "Task bearbeiten")
             .setView(rootView)
             // Save handler with validation is set in onStart() to prevent dialog auto-dismiss on errors
             .setPositiveButton("Speichern", null)
@@ -125,7 +127,7 @@ public class TaskEditDialog extends DialogFragment {
             if (!validateAndCollectAllFields()) {
                 return;
             }
-            vm.saveEditedTask(presenter.toTaskForSave(vm.requireSelectedBaseTask()));
+            editSessionController.saveEditedTask(presenter.toTaskForSave(editSessionController.requireSelectedBaseTask()));
             dismiss();
         });
     }
