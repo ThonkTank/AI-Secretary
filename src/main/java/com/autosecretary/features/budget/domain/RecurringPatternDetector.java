@@ -16,18 +16,24 @@ import java.util.stream.Collectors;
  */
 public final class RecurringPatternDetector {
     private static final int MIN_OCCURRENCES_DEFAULT = 3;
-    private static final double PAYEE_SIMILARITY_THRESHOLD = 0.75;
-    private static final double AMOUNT_VARIANCE_THRESHOLD = 0.15;
 
     private RecurringPatternDetector() {
     }
 
     public static List<RecurringSuggestion> detectPatterns(List<BudgetTransaction> transactions) {
-        return detectPatterns(transactions, MIN_OCCURRENCES_DEFAULT);
+        return detectPatterns(transactions, MIN_OCCURRENCES_DEFAULT, null);
     }
 
     public static List<RecurringSuggestion> detectPatterns(List<BudgetTransaction> transactions,
                                                            int minOccurrences) {
+        return detectPatterns(transactions, minOccurrences, null);
+    }
+
+    public static List<RecurringSuggestion> detectPatterns(List<BudgetTransaction> transactions,
+                                                           int minOccurrences,
+                                                           PatternDetectionConfig config) {
+        PatternDetectionConfig effectiveConfig = config != null ? config : PatternDetectionConfig.defaults();
+
         if (transactions == null || transactions.isEmpty()) {
             return new ArrayList<>();
         }
@@ -50,7 +56,7 @@ public final class RecurringPatternDetector {
             if (normalized.isEmpty()) {
                 continue;
             }
-            String existingGroup = findMatchingGroup(normalized, groupedByPayee.keySet());
+            String existingGroup = findMatchingGroup(normalized, groupedByPayee.keySet(), effectiveConfig);
             if (existingGroup != null) {
                 groupedByPayee.get(existingGroup).add(tx);
             } else {
@@ -65,11 +71,11 @@ public final class RecurringPatternDetector {
                 continue;
             }
             txList.sort(Comparator.comparing(tx -> tx.transactionDate));
-            if (!hasConsistentAmounts(txList)) {
+            if (!hasConsistentAmounts(txList, effectiveConfig)) {
                 continue;
             }
 
-            RecurringSuggestion candidate = analyzePattern(group.getKey(), txList);
+            RecurringSuggestion candidate = analyzePattern(group.getKey(), txList, effectiveConfig);
             if (candidate != null && candidate.suggestedType() != null) {
                 candidates.add(candidate);
             }
@@ -108,7 +114,8 @@ public final class RecurringPatternDetector {
     }
 
     private static RecurringSuggestion analyzePattern(String normalizedPayee,
-                                                      List<BudgetTransaction> transactions) {
+                                                      List<BudgetTransaction> transactions,
+                                                      PatternDetectionConfig config) {
         int sumAmounts = 0;
         int minAmount = Integer.MAX_VALUE;
         int maxAmount = Integer.MIN_VALUE;
@@ -142,12 +149,12 @@ public final class RecurringPatternDetector {
             maxAmount = -tmp;
         }
 
-        PatternResult pattern = detectDatePattern(transactions);
+        PatternResult pattern = detectDatePattern(transactions, config);
         if (pattern == null) {
             return null;
         }
 
-        double confidence = calculateConfidence(transactions, pattern, avgAmount, minAmount, maxAmount);
+        double confidence = calculateConfidence(transactions, pattern, avgAmount, minAmount, maxAmount, config);
 
         return new RecurringSuggestion(
                 normalizedPayee,
@@ -164,7 +171,8 @@ public final class RecurringPatternDetector {
         );
     }
 
-    private static PatternResult detectDatePattern(List<BudgetTransaction> transactions) {
+    private static PatternResult detectDatePattern(List<BudgetTransaction> transactions,
+                                                   PatternDetectionConfig config) {
         if (transactions.size() < 2) {
             return null;
         }
@@ -183,7 +191,7 @@ public final class RecurringPatternDetector {
             return monthlyLast;
         }
 
-        PatternResult weekly = checkWeekly(dates);
+        PatternResult weekly = checkWeekly(dates, config);
         if (weekly != null) {
             return weekly;
         }
@@ -217,7 +225,8 @@ public final class RecurringPatternDetector {
         return null;
     }
 
-    private static PatternResult checkWeekly(List<LocalDate> dates) {
+    private static PatternResult checkWeekly(List<LocalDate> dates,
+                                             PatternDetectionConfig config) {
         List<DayOfWeek> weekdays = dates.stream().map(LocalDate::getDayOfWeek).collect(Collectors.toList());
         Map<DayOfWeek, Long> counts = weekdays.stream()
                 .collect(Collectors.groupingBy(d -> d, Collectors.counting()));
@@ -230,7 +239,7 @@ public final class RecurringPatternDetector {
         if (modeCount >= dates.size() * 0.8) {
             List<Long> intervals = calculateIntervals(dates);
             double avgInterval = intervals.stream().mapToLong(Long::longValue).average().orElse(0);
-            if (avgInterval >= 5 && avgInterval <= 9) {
+            if (avgInterval >= config.weeklyIntervalMinDays && avgInterval <= config.weeklyIntervalMaxDays) {
                 return new PatternResult(BudgetTransaction.RecurringType.WEEKLY, 0, mode);
             }
         }
@@ -254,7 +263,8 @@ public final class RecurringPatternDetector {
         return null;
     }
 
-    private static boolean hasConsistentAmounts(List<BudgetTransaction> txList) {
+    private static boolean hasConsistentAmounts(List<BudgetTransaction> txList,
+                                                PatternDetectionConfig config) {
         if (txList.size() < 2) {
             return true;
         }
@@ -263,7 +273,7 @@ public final class RecurringPatternDetector {
         if (avg == 0) {
             return false;
         }
-        return amounts.stream().allMatch(amount -> Math.abs(amount - avg) <= avg * AMOUNT_VARIANCE_THRESHOLD);
+        return amounts.stream().allMatch(amount -> Math.abs(amount - avg) <= avg * config.amountVarianceThreshold);
     }
 
     private static List<Long> calculateIntervals(List<LocalDate> dates) {
@@ -280,9 +290,11 @@ public final class RecurringPatternDetector {
                 .orElse(values.get(0));
     }
 
-    private static String findMatchingGroup(String normalized, Set<String> keys) {
+    private static String findMatchingGroup(String normalized,
+                                            Set<String> keys,
+                                            PatternDetectionConfig config) {
         for (String key : keys) {
-            if (payeeSimilarity(normalized, key) >= PAYEE_SIMILARITY_THRESHOLD) {
+            if (payeeSimilarity(normalized, key) >= config.payeeSimilarityThreshold) {
                 return key;
             }
         }
@@ -314,41 +326,28 @@ public final class RecurringPatternDetector {
                                               PatternResult pattern,
                                               int avgAmount,
                                               int minAmount,
-                                              int maxAmount) {
+                                              int maxAmount,
+                                              PatternDetectionConfig config) {
+        PatternDetectionConfig.ScoringWeights weights = config.scoringWeights;
+
         double score = 0;
-        score += Math.min(txList.size() / 10.0, 0.3);
+        score += Math.min(txList.size() / 10.0, weights.occurrenceWeight);
 
         if (avgAmount != 0) {
             double variance = Math.abs(maxAmount - minAmount) / (double) Math.abs(avgAmount);
-            score += Math.max(0.3 - variance, 0);
+            score += Math.max(weights.amountVarianceWeight - variance, 0);
         }
 
         if (pattern.type != null) {
-            score += 0.3;
+            score += weights.patternTypeWeight;
         }
 
         String normalized = txList.get(0).payee != null ? normalizePayee(txList.get(0).payee) : "";
-        if (isKnownSubscription(normalized)) {
-            score += 0.1;
+        if (config.knownSubscriptionPatterns.matches(normalized)) {
+            score += weights.knownSubscriptionWeight;
         }
 
         return Math.min(score, 1.0);
-    }
-
-    private static boolean isKnownSubscription(String normalizedPayee) {
-        String[] knownPatterns = {
-                "NETFLIX", "SPOTIFY", "AMAZON PRIME", "DISNEY", "APPLE",
-                "GOOGLE", "MICROSOFT", "ADOBE", "DROPBOX", "ZOOM",
-                "GYM", "FITNESS", "STUDIO", "TELEKOM", "VODAFONE",
-                "O2", "VERSICHERUNG", "INSURANCE", "RUNDFUNK", "GEZ"
-        };
-
-        for (String pattern : knownPatterns) {
-            if (normalizedPayee.contains(pattern)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private record PatternResult(BudgetTransaction.RecurringType type,
