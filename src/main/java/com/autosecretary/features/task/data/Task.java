@@ -13,6 +13,12 @@ import java.util.List;
 
 import com.autosecretary.constants.Period;
 
+/**
+ * Room POJO assembled via {@code @Embedded} + {@code @Relation} from five tables
+ * (TaskCore, TaskSlot, TaskPrefSlot, TaskRelation, TaskPrerequisite).
+ * Not a {@code @Entity} itself — {@link TaskCore} is the persisted entity.
+ * The {@link #children} list is {@code @Ignore}, used only for in-memory tree building.
+ */
 public class Task {
 
     @Embedded public TaskCore core;
@@ -32,6 +38,10 @@ public class Task {
     @Ignore
     public List<Task> children = new ArrayList<>();
 
+    /**
+     * Returns the number of days remaining until the task's deadline or period end.
+     * Falls back to 1 if neither a deadline nor a repeating period is configured.
+     */
     public double remainingDays() {
         if (core.deadline != null) {
             return (double) ChronoUnit.DAYS.between(LocalDate.now(), core.deadline);
@@ -42,15 +52,25 @@ public class Task {
         return 1;
     }
 
+    /**
+     * Estimates how many days are needed to complete this task, factoring in
+     * progress-based rep requirements and cooldown between repetitions.
+     * Falls back to 1 if no progress or repetition is configured.
+     */
     public double requiredDays() {
-        if (core.progress.target > 0) {
-            return core.progress.resetPerRep ? core.repetition.requiredDays() : core.progress.remaining() / (core.progress.repsRequired(core.minDuration)*(core.cooldown));
-        } else if (core.repetition != null) {
-            return core.repetition.requiredDays();
+        if (core.progress.target > 0 && core.progress.resetPerRep) {
+            return core.progress.remaining() / (core.progress.repsRequired(core.minDuration) * core.cooldown);
+        }
+        if (core.repetition != null && core.repetition.reps > 0) {
+            return Math.max(1, core.repetition.remainingReps()) * core.cooldown;
         }
         return 1;
     }
 
+    /**
+     * Sets the task ID and cascades it to all related entities
+     * (prefSlots, slots, and prerequisites) so their foreign keys stay consistent.
+     */
     @Ignore
     public void setId(String id) {
         core.id = id;
@@ -66,6 +86,10 @@ public class Task {
     }
 
 
+    /**
+     * Increments the completion counter. If {@code trackDuration} is true,
+     * also increments tracked completions and accumulates the duration.
+     */
     public void recordCompletion(long durationMinutes, boolean trackDuration) {
         core.history.completions++;
         if (trackDuration) {
@@ -81,9 +105,9 @@ public class Task {
     }
 
 
-    //Leerer Construktor für Room
+    /** Empty constructor required by Room. */
     public Task() {}
-    //convenience Constructor für mich
+    /** Convenience constructor with default prefSlots. */
     public Task(String title, int reps, int perPeriod, Period periodUnit, LocalDate deadline, int cooldown, LocalTime start, int maxDuration) {
         this.core = new TaskCore();
         this.core.title = title;

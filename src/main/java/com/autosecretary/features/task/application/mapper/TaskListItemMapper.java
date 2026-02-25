@@ -9,6 +9,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Maps {@link Task} + {@link TaskSlot} pairs into flat {@link TaskListItem} instances
+ * for the presentation layer.
+ */
 public class TaskListItemMapper {
 
     public List<TaskListItem> map(List<Task> tasks) {
@@ -19,6 +23,7 @@ public class TaskListItemMapper {
                 items.add(toItem(task, slot));
                 nrSlots++;
             }
+            // Placeholder item for tasks without slots so they still appear in Manage mode
             if (nrSlots == 0) {
                 TaskSlot placeholder = new TaskSlot();
                 placeholder.day = LocalDate.now();

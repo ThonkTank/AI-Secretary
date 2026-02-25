@@ -15,6 +15,11 @@ import androidx.room.Ignore;
 import androidx.room.Index;
 import androidx.annotation.NonNull;
 
+/**
+ * Room entity for scheduled/completed time blocks. Each slot belongs to one task
+ * via {@code taskId}. Tracks planned (start/end) and actual (realStart/realEnd)
+ * execution times. Supports slot-level tree hierarchy via {@code parent}.
+ */
 @Entity(tableName = "task_slots",
     indices = @Index("taskId"),
     foreignKeys = @ForeignKey(
@@ -38,6 +43,7 @@ public class TaskSlot {
     public LocalTime end;
     public boolean scheduled;
     public boolean completed;
+    /** Returns the number of days elapsed since this slot's scheduled day. */
     public int sinceCompleted() {return (int) ChronoUnit.DAYS.between(day, LocalDate.now());}
     public int score;
 

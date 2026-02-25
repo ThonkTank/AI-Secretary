@@ -5,7 +5,14 @@ import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
+/**
+ * Flat, immutable display model extracted from {@link com.autosecretary.features.task.data.Task}
+ * and {@link com.autosecretary.features.task.data.TaskSlot} by
+ * {@link com.autosecretary.features.task.application.mapper.TaskListItemMapper}.
+ * Used by {@link com.autosecretary.views.models.ViewSlotList} for filtering, sorting, and display.
+ */
 public class TaskListItem {
+    /** Categorizes deadline proximity for color-coded display in the list. */
     public enum DeadlineUrgency {
         NONE,
         OVERDUE,
@@ -61,7 +68,7 @@ public class TaskListItem {
         long daysUntil = daysUntilDeadline();
         if (daysUntil < 0) return DeadlineUrgency.OVERDUE;
         if (daysUntil == 0) return DeadlineUrgency.TODAY;
-        if (daysUntil <= 3) return DeadlineUrgency.SOON;
+        if (daysUntil <= 3) return DeadlineUrgency.SOON; // 3 days = "soon" threshold for deadline proximity warning
         return DeadlineUrgency.FUTURE;
     }
 }

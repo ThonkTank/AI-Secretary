@@ -9,6 +9,10 @@ import androidx.annotation.NonNull;
 import java.util.UUID;
 import androidx.room.Ignore;
 
+/**
+ * Room entity for task dependencies. The task identified by {@code taskId} requires the
+ * task identified by {@code prerequisiteId} to be scheduled or completed first.
+ */
 @Entity(tableName = "task_prerequisites",
     indices = @Index("taskId"),
     foreignKeys = @ForeignKey(

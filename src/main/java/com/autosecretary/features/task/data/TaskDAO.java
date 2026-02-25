@@ -8,6 +8,10 @@ import androidx.room.Transaction;
 
 import java.util.List;
 
+/**
+ * Room DAO for task persistence. Provides bulk write ({@link #writeList}), single-task
+ * upsert ({@link #write}), and read operations. All writes use REPLACE conflict strategy (upsert).
+ */
 @Dao
 public interface TaskDAO {
 
@@ -20,9 +24,14 @@ public interface TaskDAO {
     List<Task> readAll();
 
     // ============== Write ==============
-    //Transactions
+    /**
+     * Bulk write for a pre-flattened list of tasks. Used by {@code RegenerateScheduleUseCase}.
+     * Callers must flatten the task tree via {@code TaskTreeOperations.flatten()} before calling.
+     */
     @Transaction
     default void writeList(List<Task> tasks) {
+        // 2-pass: insert all TaskCore rows first (they are FK targets),
+        // then write dependent entities (slots, prefSlots, prerequisites, relations).
         for (Task task : tasks) {
             writeCore(task.core);
         }
@@ -36,6 +45,9 @@ public interface TaskDAO {
         }
     }
 
+    /**
+     * Single-task upsert. Used by {@code saveEditedTask()} and {@code CheckOffTaskUseCase}.
+     */
     @Transaction
     default void write(Task task) {
         writeCore(task.core);

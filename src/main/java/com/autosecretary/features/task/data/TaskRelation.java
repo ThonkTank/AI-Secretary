@@ -10,6 +10,12 @@ import androidx.room.ForeignKey;
 import androidx.room.Index;
 import androidx.annotation.NonNull;
 
+/**
+ * Room entity linking tasks in a parent-child hierarchy. Both {@code child} and
+ * {@code parent} reference task_core IDs. Used by
+ * {@link com.autosecretary.features.task.domain.TaskTreeOperations TaskTreeOperations}
+ * to build/flatten task trees.
+ */
 @Entity (tableName = "task_relation",
     indices = @Index("child"),
     foreignKeys = @ForeignKey(

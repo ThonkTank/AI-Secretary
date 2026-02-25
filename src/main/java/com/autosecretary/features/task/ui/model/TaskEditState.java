@@ -7,6 +7,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Mutable UI POJO holding all editable fields for {@link com.autosecretary.features.task.ui.TaskEditDialog TaskEditDialog}.
+ * Not persisted -- exists only during active editing sessions.
+ */
 public class TaskEditState {
     public String id;
     public String title;

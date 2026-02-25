@@ -4,7 +4,7 @@ set -euo pipefail
 # === Konfiguration ===
 ADB="/home/aaron/Android/Sdk/platform-tools/adb"
 PACKAGE="com.autosecretary"
-ACTIVITY=".views.MainActivity"
+ACTIVITY=".app.MainActivity"
 APK="build/outputs/apk/debug/AutoSecretary.apk"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APK_PATH="$SCRIPT_DIR/$APK"
@@ -192,84 +192,189 @@ run_check() {
     fi
 }
 
-# Check 1: Morgenroutine vor 09:00 geplant?
+TODAY_DOW=$(date +%u) # 1=Mo, 2=Di, ..., 6=Sa, 7=So
+
+# Check 1: Morgenroutine vor 07:00 geplant? (HIGH + perfekter Fit = immer erste Task)
 MORGEN_SLOT=$(echo "$SUMMARY" | grep "Morgenroutine" | grep -oP '\d{2}:\d{2}-\d{2}:\d{2}' | head -1 || true)
 if [ -n "$MORGEN_SLOT" ]; then
     MORGEN_START=$(echo "$MORGEN_SLOT" | cut -d'-' -f1)
     MORGEN_HOUR=$(echo "$MORGEN_START" | cut -d':' -f1 | sed 's/^0//')
-    if [ "$MORGEN_HOUR" -lt 9 ]; then
-        run_check "Morgenroutine vor 09:00 geplant ($MORGEN_SLOT)" "pass"
+    if [ "$MORGEN_HOUR" -lt 7 ]; then
+        run_check "Morgenroutine vor 07:00 geplant ($MORGEN_SLOT)" "pass"
     else
-        run_check "Morgenroutine vor 09:00 geplant (tatsaechlich: $MORGEN_SLOT)" "fail"
+        run_check "Morgenroutine vor 07:00 geplant (tatsaechlich: $MORGEN_SLOT)" "fail"
     fi
 else
     run_check "Morgenroutine geplant (nicht in Zusammenfassung gefunden!)" "fail"
 fi
 
-# Check 2: Sport mit Kindern (Aufwärmen/Training) verschachtelt?
-SPORT_FOUND=$(echo "$SUMMARY" | grep -c "Sport" || true)
-AUFWAERMEN_FOUND=$(echo "$SUMMARY" | grep -c "Aufwärmen" || true)
-TRAINING_FOUND=$(echo "$SUMMARY" | grep -c "Training" || true)
-if [ "$SPORT_FOUND" -gt 0 ] && [ "$AUFWAERMEN_FOUND" -gt 0 ] && [ "$TRAINING_FOUND" -gt 0 ]; then
-    run_check "Sport + Aufwärmen + Training alle geplant" "pass"
-elif [ "$SPORT_FOUND" -gt 0 ]; then
-    run_check "Sport geplant, aber Kinder fehlen (Aufwärmen=$AUFWAERMEN_FOUND, Training=$TRAINING_FOUND)" "fail"
-else
-    TODAY_DOW=$(date +%u) # 1=Mo, 7=So
-    if [ "$TODAY_DOW" = "1" ] || [ "$TODAY_DOW" = "3" ] || [ "$TODAY_DOW" = "5" ]; then
+# Check 2: Sport nur Mo/Mi/Fr (Weekday-Bug gefixt!)
+SPORT_FOUND=$(echo "$SUMMARY" | grep "Sport:" | grep -c "slots" || true)
+AUFWAERMEN_FOUND=$(echo "$SUMMARY" | grep "Aufwärmen:" | grep -c "slots" || true)
+TRAINING_FOUND=$(echo "$SUMMARY" | grep "Training:" | grep -c "slots" || true)
+if [ "$TODAY_DOW" = "1" ] || [ "$TODAY_DOW" = "3" ] || [ "$TODAY_DOW" = "5" ]; then
+    # Mo/Mi/Fr — Sport sollte mit Kindern geplant sein
+    if [ "$SPORT_FOUND" -gt 0 ] && [ "$AUFWAERMEN_FOUND" -gt 0 ] && [ "$TRAINING_FOUND" -gt 0 ]; then
+        run_check "Sport + Aufwärmen + Training auf Mo/Mi/Fr geplant" "pass"
+    elif [ "$SPORT_FOUND" -gt 0 ]; then
+        run_check "Sport geplant, aber Kinder fehlen (Aufwärmen=$AUFWAERMEN_FOUND, Training=$TRAINING_FOUND)" "fail"
+    else
         run_check "Sport nicht geplant (heute Mo/Mi/Fr, sollte geplant sein!)" "fail"
+    fi
+else
+    # Andere Tage — Sport darf NICHT geplant sein
+    if [ "$SPORT_FOUND" -eq 0 ]; then
+        run_check "Sport nicht geplant (kein Mo/Mi/Fr — korrekt)" "pass"
     else
-        run_check "Sport nicht geplant (heute kein Mo/Mi/Fr — Scoring-Bug: trotzdem moeglich)" "pass"
+        run_check "Sport geplant, obwohl heute kein Mo/Mi/Fr!" "fail"
     fi
 fi
 
-# Check 3: Steuererklärung geplant (Deadline-Task)?
-STEUER_FOUND=$(echo "$SUMMARY" | grep -c "Steuererklärung" || true)
-if [ "$STEUER_FOUND" -gt 0 ]; then
-    run_check "Steuererklärung (Deadline-Task) geplant" "pass"
-else
-    run_check "Steuererklärung nicht geplant!" "fail"
-fi
-
-# Check 4: Abend-Tasks Verhalten
-echo -e "  ${YELLOW}[INFO]${NC} Abendspaziergang (18:00 pref): $(echo "$SUMMARY" | grep "Abendspaziergang" || echo "nicht im Log")"
-echo -e "  ${YELLOW}[INFO]${NC} Tagebuch (21:00 pref): $(echo "$SUMMARY" | grep "Tagebuch" || echo "nicht im Log")"
-ABEND_UNSCHED=$(echo "$SUMMARY" | grep "Abendspaziergang" | grep -c "unscheduled" || true)
-TAGEBUCH_UNSCHED=$(echo "$SUMMARY" | grep "Tagebuch" | grep -c "unscheduled" || true)
-if [ "$ABEND_UNSCHED" -gt 0 ] || [ "$TAGEBUCH_UNSCHED" -gt 0 ]; then
-    warn "Abend-Tasks nicht geplant — erwartet bei 06:00-16:00 Fenster"
-fi
-TOTAL=$((TOTAL + 1))
-PASS=$((PASS + 1))
-ok "Abend-Tasks Verhalten dokumentiert (siehe oben)"
-
-# Check 5: Arbeit als langer Block?
+# Check 3: Arbeit nur an Werktagen (Mo-Fr)
 ARBEIT_SLOT=$(echo "$SUMMARY" | grep "Arbeit:" | grep -oP '\d{2}:\d{2}-\d{2}:\d{2}' | head -1 || true)
-if [ -n "$ARBEIT_SLOT" ]; then
-    A_START_MIN=$(echo "$ARBEIT_SLOT" | cut -d'-' -f1 | awk -F: '{print $1*60+$2}')
-    A_END_MIN=$(echo "$ARBEIT_SLOT" | cut -d'-' -f2 | awk -F: '{print $1*60+$2}')
-    A_DURATION=$((A_END_MIN - A_START_MIN))
-    if [ "$A_DURATION" -ge 60 ]; then
-        run_check "Arbeit als langer Block geplant (${A_DURATION}min: $ARBEIT_SLOT)" "pass"
+if [ "$TODAY_DOW" -le 5 ]; then
+    # Werktag — Arbeit als langer Block
+    if [ -n "$ARBEIT_SLOT" ]; then
+        A_START_MIN=$(echo "$ARBEIT_SLOT" | cut -d'-' -f1 | awk -F: '{print $1*60+$2}')
+        A_END_MIN=$(echo "$ARBEIT_SLOT" | cut -d'-' -f2 | awk -F: '{print $1*60+$2}')
+        A_DURATION=$((A_END_MIN - A_START_MIN))
+        if [ "$A_DURATION" -ge 60 ]; then
+            run_check "Arbeit an Werktag als langer Block (${A_DURATION}min: $ARBEIT_SLOT)" "pass"
+        else
+            run_check "Arbeit zu kurz (${A_DURATION}min: $ARBEIT_SLOT, erwartet >=60)" "fail"
+        fi
     else
-        run_check "Arbeit zu kurz (${A_DURATION}min: $ARBEIT_SLOT, erwartet >=60)" "fail"
+        run_check "Arbeit nicht geplant (heute Werktag, sollte geplant sein!)" "fail"
     fi
 else
-    TODAY_DOW=$(date +%u)
-    if [ "$TODAY_DOW" -le 5 ]; then
-        run_check "Arbeit nicht geplant (heute Werktag, sollte geplant sein!)" "fail"
+    # Wochenende — Arbeit darf NICHT geplant sein
+    ARBEIT_FOUND=$(echo "$SUMMARY" | grep "Arbeit:" | grep -c "slots" || true)
+    if [ "$ARBEIT_FOUND" -eq 0 ]; then
+        run_check "Arbeit nicht geplant (Wochenende — korrekt)" "pass"
     else
-        run_check "Arbeit nicht geplant (Wochenende — erwartet)" "pass"
+        run_check "Arbeit geplant, obwohl Wochenende!" "fail"
     fi
 fi
 
-# Check 6: Meditation geplant?
-MEDITATION_FOUND=$(echo "$SUMMARY" | grep "Meditation" | grep -c "slots" || true)
-MEDITATION_UNSCHED=$(echo "$SUMMARY" | grep "Meditation" | grep -c "unscheduled" || true)
-if [ "$MEDITATION_FOUND" -gt 0 ]; then
-    run_check "Meditation geplant" "pass"
+# Check 4: Deadline-Tasks geplant (Steuererklärung UND Zahnarzttermin)
+STEUER_FOUND=$(echo "$SUMMARY" | grep -c "Steuererklärung" || true)
+ZAHNARZT_FOUND=$(echo "$SUMMARY" | grep -c "Zahnarzttermin" || true)
+if [ "$STEUER_FOUND" -gt 0 ] && [ "$ZAHNARZT_FOUND" -gt 0 ]; then
+    run_check "Deadline-Tasks geplant (Steuererklärung + Zahnarzttermin)" "pass"
+elif [ "$STEUER_FOUND" -gt 0 ]; then
+    run_check "Steuererklärung geplant, aber Zahnarzttermin fehlt!" "fail"
+elif [ "$ZAHNARZT_FOUND" -gt 0 ]; then
+    run_check "Zahnarzttermin geplant, aber Steuererklärung fehlt!" "fail"
 else
-    run_check "Meditation NICHT geplant (verdraengt durch hoeher-scorende Tasks)" "fail"
+    run_check "Keine Deadline-Tasks geplant!" "fail"
+fi
+
+# Check 5: Spanisch lernen geplant
+SPANISCH_FOUND=$(echo "$SUMMARY" | grep "Spanisch" | grep -c "slots" || true)
+if [ "$SPANISCH_FOUND" -gt 0 ]; then
+    run_check "Spanisch lernen geplant" "pass"
+else
+    run_check "Spanisch lernen NICHT geplant" "fail"
+fi
+
+# Check 6: Einkaufen nur am Samstag
+EINKAUFEN_FOUND=$(echo "$SUMMARY" | grep "Einkaufen" | grep -c "slots" || true)
+if [ "$TODAY_DOW" = "6" ]; then
+    if [ "$EINKAUFEN_FOUND" -gt 0 ]; then
+        run_check "Einkaufen am Samstag geplant (korrekt)" "pass"
+    else
+        run_check "Einkaufen nicht geplant (heute Samstag, sollte geplant sein!)" "fail"
+    fi
+else
+    if [ "$EINKAUFEN_FOUND" -eq 0 ]; then
+        run_check "Einkaufen nicht geplant (kein Samstag — korrekt)" "pass"
+    else
+        run_check "Einkaufen geplant, obwohl heute kein Samstag!" "fail"
+    fi
+fi
+
+# Check 7: Zeitliche Reihenfolge — Morgenroutine vor Arbeit (wenn beide geplant)
+if [ -n "$MORGEN_SLOT" ] && [ -n "$ARBEIT_SLOT" ]; then
+    M_START_MIN=$(echo "$MORGEN_SLOT" | cut -d'-' -f1 | awk -F: '{print $1*60+$2}')
+    A_START_MIN2=$(echo "$ARBEIT_SLOT" | cut -d'-' -f1 | awk -F: '{print $1*60+$2}')
+    if [ "$M_START_MIN" -lt "$A_START_MIN2" ]; then
+        run_check "Zeitliche Reihenfolge: Morgenroutine vor Arbeit" "pass"
+    else
+        run_check "Zeitliche Reihenfolge: Morgenroutine ($MORGEN_SLOT) NICHT vor Arbeit ($ARBEIT_SLOT)" "fail"
+    fi
+else
+    TOTAL=$((TOTAL + 1))
+    PASS=$((PASS + 1))
+    ok "Zeitliche Reihenfolge: Skip (nicht beide Tasks geplant)"
+fi
+
+# Check 8: Notfallplan aktualisieren — CRITICAL + überfällig + closeOnMiss=false → immer geplant
+NOTFALL_FOUND=$(echo "$SUMMARY" | grep "Notfallplan" | grep -c "slots" || true)
+if [ "$NOTFALL_FOUND" -gt 0 ]; then
+    run_check "Notfallplan aktualisieren geplant (CRITICAL + closeOnMiss=false + abgelaufene Deadline)" "pass"
+else
+    run_check "Notfallplan aktualisieren NICHT geplant (sollte immer geplant sein!)" "fail"
+fi
+
+# Check 9: Abendspaziergang — nur Sonntag (TODAY_DOW=7)
+SPAZIERGANG_FOUND=$(echo "$SUMMARY" | grep "Abendspaziergang" | grep -c "slots" || true)
+if [ "$TODAY_DOW" = "7" ]; then
+    if [ "$SPAZIERGANG_FOUND" -gt 0 ]; then
+        run_check "Abendspaziergang am Sonntag geplant (korrekt)" "pass"
+    else
+        run_check "Abendspaziergang nicht geplant (heute Sonntag, sollte geplant sein!)" "fail"
+    fi
+else
+    if [ "$SPAZIERGANG_FOUND" -eq 0 ]; then
+        run_check "Abendspaziergang nicht geplant (kein Sonntag — korrekt)" "pass"
+    else
+        run_check "Abendspaziergang geplant, obwohl heute kein Sonntag!" "fail"
+    fi
+fi
+
+# Check 10: Podcast hören — 3 Slots (repsPerDay=3)
+PODCAST_SLOTS=$(echo "$SUMMARY" | grep "Podcast hören" | grep -oP '\d+ slots' | grep -oP '^\d+' || true)
+if [ "${PODCAST_SLOTS:-0}" -ge 3 ]; then
+    run_check "Podcast hören: $PODCAST_SLOTS Slots geplant (repsPerDay=3 korrekt)" "pass"
+elif [ "${PODCAST_SLOTS:-0}" -gt 0 ]; then
+    run_check "Podcast hören: nur $PODCAST_SLOTS Slots geplant (erwartet 3)" "fail"
+else
+    run_check "Podcast hören NICHT geplant (sollte 3x täglich geplant sein)" "fail"
+fi
+
+# Check 11: Wäsche aufhängen nach Wäsche waschen (Prereq zwischen nicht-verwandten Tasks)
+WASCHEN_SLOT=$(echo "$SUMMARY" | grep "Wäsche waschen" | grep -oP '\d{2}:\d{2}-\d{2}:\d{2}' | head -1 || true)
+AUFHAENGEN_SLOT=$(echo "$SUMMARY" | grep "Wäsche aufhängen" | grep -oP '\d{2}:\d{2}-\d{2}:\d{2}' | head -1 || true)
+if [ -n "$WASCHEN_SLOT" ] && [ -n "$AUFHAENGEN_SLOT" ]; then
+    WASCHEN_END_MIN=$(echo "$WASCHEN_SLOT" | cut -d'-' -f2 | awk -F: '{print $1*60+$2}')
+    AUFHAENGEN_START_MIN=$(echo "$AUFHAENGEN_SLOT" | cut -d'-' -f1 | awk -F: '{print $1*60+$2}')
+    if [ "$AUFHAENGEN_START_MIN" -ge "$WASCHEN_END_MIN" ]; then
+        run_check "Wäsche aufhängen nach Wäsche waschen (Prereq korrekt: $WASCHEN_SLOT → $AUFHAENGEN_SLOT)" "pass"
+    else
+        run_check "Wäsche aufhängen VOR Wäsche waschen (Prereq verletzt!)" "fail"
+    fi
+elif [ -z "$WASCHEN_SLOT" ] && [ -z "$AUFHAENGEN_SLOT" ]; then
+    run_check "Wäsche waschen + aufhängen nicht geplant (ggf. Wochenkontingent erfüllt — akzeptabel)" "pass"
+elif [ -z "$WASCHEN_SLOT" ] && [ -n "$AUFHAENGEN_SLOT" ]; then
+    run_check "Wäsche aufhängen geplant ohne Wäsche waschen (Prereq verletzt!)" "fail"
+else
+    run_check "Wäsche waschen geplant, Wäsche aufhängen fehlt (Prereq-Bug?)" "fail"
+fi
+
+# Check 12: Abendfenster — mindestens eine Task nach 16:00 geplant
+EVENING_TASK=$(echo "$SUMMARY" | grep -oP '\d{2}:\d{2}-\d{2}:\d{2}' | awk -F'[-:]' '{h=$1; if (h+0 >= 16) print}' | head -1 || true)
+if [ -n "$EVENING_TASK" ]; then
+    run_check "Abendfenster genutzt (Task nach 16:00 geplant)" "pass"
+else
+    run_check "Abendfenster NICHT genutzt (keine Task nach 16:00)" "fail"
+fi
+
+# Check 13: Wochenbericht geplant (bi-weekly, perPeriod=2)
+WOCHENBERICHT_FOUND=$(echo "$SUMMARY" | grep "Wochenbericht" | grep -c "slots" || true)
+if [ "$WOCHENBERICHT_FOUND" -gt 0 ]; then
+    run_check "Wochenbericht geplant (bi-weekly perPeriod=2 korrekt)" "pass"
+else
+    run_check "Wochenbericht NICHT geplant (perPeriod=2 Bug?)" "fail"
 fi
 
 # Ergebnis

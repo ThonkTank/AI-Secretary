@@ -12,6 +12,12 @@ import com.autosecretary.features.task.ui.model.TaskEditState;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Form logic coordinator for {@link com.autosecretary.features.task.ui.TaskEditDialog TaskEditDialog}.
+ * Handles repetition-to-prefSlot reactivity ({@link #onRepetitionChanged} recalculates repsPerDay
+ * and adjusts the prefSlot count), form input application ({@link #applyForm}), and Task
+ * reconstitution for persistence ({@link #toTaskForSave}).
+ */
 public class TaskEditPresenter {
 
     private final TaskEditState editState;
@@ -40,6 +46,7 @@ public class TaskEditPresenter {
         lastRepsPerDay = computeCurrentRepsPerDay(repetitionEnabled, repsText, perPeriodText, periodUnit);
     }
 
+    /** Triggers prefSlot count recalculation when repetition fields change. */
     public boolean onRepetitionChanged(boolean repetitionEnabled, String repsText,
                                        String perPeriodText, Period periodUnit) {
         int newRepsPerDay = computeCurrentRepsPerDay(repetitionEnabled, repsText, perPeriodText, periodUnit);
@@ -158,6 +165,7 @@ public class TaskEditPresenter {
         editState.target = 0;
     }
 
+    /** Maps the current edit state back onto a base Task for DB persistence. */
     public Task toTaskForSave(Task baseTask) {
         return mapper.toTask(editState, baseTask);
     }
@@ -174,6 +182,7 @@ public class TaskEditPresenter {
         return value != null ? value : fallback;
     }
 
+    /** Fallback values for empty or invalid form fields. */
     public static class InputDefaults {
         public static final Priority PRIORITY = Priority.MEDIUM;
 
@@ -192,6 +201,7 @@ public class TaskEditPresenter {
         public static final int MAX_PER_REP = 0;
     }
 
+    /** Raw form field values collected from the dialog UI. */
     public static class FormInput {
         public String title;
         public String description;

@@ -17,9 +17,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Scores tasks for scheduling priority using a multi-layer multiplicative formula.
+ * <p>
+ * Holds a per-task {@link ScoringCache} keyed by task ID. Intended lifecycle per generation run:
+ * {@link #reset()} once, then {@link #maintenance(Task)} for each task to pre-compute caches,
+ * then {@link #score(Task, LocalDateTime, LocalDateTime)} for each candidate placement.
+ * After a slot is assigned, call {@link #onSlotAssigned(Task)} to update the daily counter.
+ */
 public class TaskScorer {
 
+    /** Upper bound for the aging multiplier — score boost caps at 3x no matter how long since last activity. */
     private static final double DEFAULT_MAX_AGING_MULTIPLIER = 3.0;
+    /** Hours of deviation from preferred start at which the fit factor decays to 0.0. */
     private static final double DEFAULT_PREFERRED_START_DEVIATION_HOURS = 8.0;
 
     private final TaskLifecycleManager lifecycleManager;
@@ -41,6 +51,7 @@ public class TaskScorer {
         caches.clear();
     }
 
+    /** Pre-computed per-task scoring data, populated by {@link #maintenance(Task)} and read by {@link #score}. */
     static class ScoringCache {
         int completions;
         LocalDate lastCompletion;
@@ -54,6 +65,7 @@ public class TaskScorer {
         double agingForce;
         int maxChildPriority;
         List<TaskPrefSlot> todayPrefSlots;
+        boolean hasDayConstraints;
         int repsPerDay;
         boolean deadlineExpired;
     }
@@ -155,6 +167,7 @@ public class TaskScorer {
         cache.sinceLast = (int) ChronoUnit.DAYS.between(cache.lastCompletion, today);
         cache.remainingDays = task.remainingDays();
         cache.requiredDays = task.requiredDays();
+        // 10 = aging divisor: each 10 days of inactivity adds 1.0 to the multiplier (capped at maxAgingMultiplier)
         cache.agingForce = Math.min(1 + ((double) cache.sinceLast / 10), maxAgingMultiplier);
         cache.repsPerDay = task.core.repsPerDay();
         cache.deadlineExpired = task.core.closeOnMiss && task.core.deadline != null && today.isAfter(task.core.deadline);
@@ -177,13 +190,33 @@ public class TaskScorer {
      */
     private void computeTodayPrefSlots(Task task, ScoringCache cache, DayOfWeek dayOfWeek) {
         cache.todayPrefSlots = new ArrayList<>();
+        cache.hasDayConstraints = false;
         for (TaskPrefSlot ps : task.prefSlots) {
-            if (ps.days != null && ps.days.contains(dayOfWeek)) {
-                cache.todayPrefSlots.add(ps);
+            if (ps.days != null && !ps.days.isEmpty()) {
+                cache.hasDayConstraints = true;
+                if (ps.days.contains(dayOfWeek)) {
+                    cache.todayPrefSlots.add(ps);
+                }
             }
         }
     }
 
+    /**
+     * Scores a task for a candidate time slot. Returns 0 if the task cannot be scheduled.
+     * <p>
+     * Layers applied in order, each multiplying the running total:
+     * <ol>
+     *   <li><b>Hard constraints</b> — returns 0 if cooldown unmet, slot too short, progress needs
+     *       more time, deadline expired with closeOnMiss, already complete, or daily reps exhausted.</li>
+     *   <li><b>Priority base</b> — {@code task.core.priority.value} (LOW=100 .. CRITICAL=10000).</li>
+     *   <li><b>Child influence</b> — parent inherits the highest child priority when it exceeds its own.</li>
+     *   <li><b>Day constraint</b> — returns 0 if prefSlots specify days but none match today.</li>
+     *   <li><b>Preferred time fit</b> — linear decay from 1.0 at exact match to 0.0 at
+     *       {@link #preferredStartDeviationHours} hours deviation.</li>
+     *   <li><b>Urgency</b> — {@code 1 + requiredDays / remainingDays}; overdue tasks use a fixed high value.</li>
+     *   <li><b>Aging</b> — {@code cache.agingForce}, pre-computed in maintenance, capped at {@link #maxAgingMultiplier}.</li>
+     * </ol>
+     */
     public int score(Task task, LocalDateTime start, LocalDateTime end) {
         ScoringCache cache = caches.get(task.core.id);
         if (cache == null) {
@@ -213,6 +246,10 @@ public class TaskScorer {
             }
         }
 
+        if (prefStart == null && cache.hasDayConstraints) {
+            return 0;
+        }
+
         if (prefStart != null) {
             double dif = Duration.between(start.toLocalTime(), prefStart).toMinutes() / 60.0;
             double fit = Math.max(0, 1 - Math.abs(dif / preferredStartDeviationHours));
@@ -222,11 +259,11 @@ public class TaskScorer {
         // urgency
         double urgency;
         if (cache.remainingDays <= 0) {
-            urgency = 100;
+            urgency = 100; // fixed high urgency for overdue tasks (deadline passed, remainingDays <= 0)
         } else if (task.core.deadline != null || (task.core.repetition != null && task.core.repetition.reps > 0)) {
-            urgency = 1.0 + cache.requiredDays / cache.remainingDays;
+            urgency = 1.0 + cache.requiredDays / cache.remainingDays; // ratio-based: grows as deadline approaches
         } else {
-            urgency = 1.0;
+            urgency = 1.0; // no deadline and no repetition — neutral multiplier
         }
         totalPrio = (int) (totalPrio * urgency);
 

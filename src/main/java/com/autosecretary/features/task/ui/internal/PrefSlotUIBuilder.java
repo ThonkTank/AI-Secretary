@@ -24,6 +24,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Dynamically builds the preferred-slot editing UI for TaskEditDialog.
+ * Groups prefSlots by repetition (one group per daily rep via repsPerDay) and renders
+ * each group with day pickers and time pickers. Rebuilt when repetition fields change.
+ */
 public class PrefSlotUIBuilder {
 
     public interface Listener {
@@ -40,6 +45,10 @@ public class PrefSlotUIBuilder {
         this.context = context;
     }
 
+    /**
+     * Clears and rebuilds the prefSlot UI from current state.
+     * Sorts by time, groups by repetition, renders section headers and rows.
+     */
     public void rebuild(LinearLayout prefSlotContainer, List<PrefSlotEditState> editablePrefSlots,
                         int repsPerDay, Listener listener) {
         prefSlotContainer.removeAllViews();
@@ -141,6 +150,13 @@ public class PrefSlotUIBuilder {
         return day.getDisplayName(TextStyle.SHORT, Locale.GERMAN).replace(".", "");
     }
 
+    /**
+     * Groups prefSlots into N groups (one per daily rep, where N = repsPerDay).
+     * Uses a greedy algorithm: iterates reps 1..N, and for each rep claims all prefSlots
+     * whose days don't overlap with days already taken in that rep's pass. The usedDays
+     * set resets between reps, so the same day can appear in different rep groups.
+     * Returns a map from rep number (1-based) to the prefSlots assigned to that group.
+     */
     private static Map<Integer, List<PrefSlotEditState>> groupByRepetition(List<PrefSlotEditState> sorted,
                                                                        int repsPerDay) {
         Map<Integer, List<PrefSlotEditState>> slotMap = new HashMap<>();
@@ -166,6 +182,7 @@ public class PrefSlotUIBuilder {
         return slotMap;
     }
 
+    /** Returns days already claimed by other prefSlots in the same group, used to disable them in the day picker. */
     private static Set<DayOfWeek> computeTakenDays(PrefSlotEditState current, List<PrefSlotEditState> groupSlots) {
         Set<DayOfWeek> taken = EnumSet.noneOf(DayOfWeek.class);
         for (PrefSlotEditState other : groupSlots) {

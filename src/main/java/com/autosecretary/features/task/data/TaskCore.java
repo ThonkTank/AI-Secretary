@@ -11,6 +11,12 @@ import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 import androidx.annotation.NonNull;
 
+/**
+ * Room {@code @Entity} for the {@code task_core} table. Holds task metadata,
+ * scheduling parameters, and three {@code @Embedded} sub-objects
+ * ({@link Repetition}, {@link Progress}, {@link History}) whose fields are
+ * flattened into columns with corresponding prefixes.
+ */
 @Entity (tableName = "task_core")
 public class TaskCore {
     // Basic
@@ -24,9 +30,9 @@ public class TaskCore {
     public int cooldown = 1;
     public LocalDate deadline;
     public LocalDate created = LocalDate.now();
-    public boolean closeOnMiss = true; // Wenn deadline/perioden Ende etc. überschritten wird, task offen halten oder abschließen?
+    public boolean closeOnMiss = true; // When deadline/period end is exceeded, close the task instead of keeping it open?
 
-    public boolean adaptive;  //prefTimes an Nutzerverhalten anpassen?
+    public boolean adaptive;  // Adapt preferred times to user behavior?
     public int minDuration = 5;
     public int maxDuration = 10;
 
@@ -48,7 +54,10 @@ public class TaskCore {
     @Embedded(prefix = "progress_")
     public Progress progress = new Progress();
 
-    // Repeat amount (5 times, one time, ten times) perPeriod (every, within two) Period (day, weeks).
+    /**
+     * Tracks how often a task repeats within a configurable time window.
+     * E.g. "5 times per 2 weeks" is expressed as reps=5, perPeriod=2, periodUnit=WEEK.
+     */
     public static class Repetition {
         public int reps;
         public int periodCompletions = 0;
@@ -73,12 +82,15 @@ public class TaskCore {
         }
     }
 
+    /**
+     * Tracks incremental progress toward a target value (e.g. pages read, chapters completed).
+     */
     public static class Progress {
-        public String unit;             // Einheit (z.B. "Seiten", "Kapitel")
-        public boolean resetPerRep;          // True = Progress resets jede repetition (muss dafür repetition haben)
+        public String unit;             // Unit of measurement (e.g. "pages", "chapters")
+        public boolean resetPerRep;          // True = progress resets each repetition (requires repetition)
 
-        public int target = 0;              // Zielwert (z.B. 6), 0 = kein Tracking
-        public int current;             // Aktueller Fortschritt (z.B. 3)
+        public int target = 0;              // Target value (e.g. 6), 0 = no tracking
+        public int current;             // Current progress (e.g. 3)
         public int remaining() {return target - current;}
 
         public int minPerRep;
@@ -92,6 +104,7 @@ public class TaskCore {
         public int requiredTimePerRep() {return (int) (minPerRep * timePerProgress());}
     }
 
+    /** Tracks completion statistics, streaks, and cumulative duration. */
     public static class History {
         public int completions;
         public int trackedCompletions;

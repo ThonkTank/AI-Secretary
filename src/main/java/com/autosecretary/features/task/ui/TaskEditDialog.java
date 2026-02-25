@@ -41,6 +41,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
 import java.util.Set;
 
+/**
+ * DialogFragment for creating and editing tasks. Manages five form sections:
+ * basic info, scheduling, repetition, preferred slots, and progress.
+ * Delegates form logic to {@link TaskEditPresenter}. Works with
+ * {@link TaskEditState} (mutable UI model), not {@link com.autosecretary.features.task.data.Task}
+ * directly. On save, collects fields, applies via presenter, and converts
+ * back to Task for persistence.
+ */
 public class TaskEditDialog extends DialogFragment {
 
     private static final int WEEK_DAY_COUNT = 7;
@@ -99,6 +107,7 @@ public class TaskEditDialog extends DialogFragment {
         return new AlertDialog.Builder(requireContext())
             .setTitle(vm.isNewTask() ? "Task erstellen" : "Task bearbeiten")
             .setView(rootView)
+            // Save handler with validation is set in onStart() to prevent dialog auto-dismiss on errors
             .setPositiveButton("Speichern", null)
             .setNegativeButton("Abbrechen", null)
             .create();
@@ -260,6 +269,7 @@ public class TaskEditDialog extends DialogFragment {
             progressContainer.setVisibility(checked ? View.VISIBLE : View.GONE));
     }
 
+    // Repetition field change triggers prefSlot count recalculation and UI rebuild
     private void onRepetitionChanged() {
         boolean changed = presenter.onRepetitionChanged(
             toggleRepetition.isChecked(),
@@ -585,5 +595,9 @@ public class TaskEditDialog extends DialogFragment {
 
     private static abstract class SimpleItemSelectedListener implements AdapterView.OnItemSelectedListener {
         @Override public void onNothingSelected(AdapterView<?> parent) {}
+    }
+
+    private int dpToPx(int dp) {
+        return (int) (dp * requireContext().getResources().getDisplayMetrics().density + 0.5f);
     }
 }

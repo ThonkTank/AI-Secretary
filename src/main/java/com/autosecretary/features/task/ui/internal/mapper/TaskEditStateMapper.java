@@ -10,6 +10,10 @@ import java.time.DayOfWeek;
 import java.util.ArrayList;
 import java.util.EnumSet;
 
+/**
+ * Bidirectional mapper between {@link Task} (data layer) and {@link TaskEditState} (UI edit model).
+ * Handles null safety and default values during conversion.
+ */
 public class TaskEditStateMapper {
 
     public TaskEditState fromTask(Task task) {

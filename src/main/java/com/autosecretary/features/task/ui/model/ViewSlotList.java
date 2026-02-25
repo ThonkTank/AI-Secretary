@@ -10,8 +10,8 @@ import com.autosecretary.features.task.application.model.TaskListItem;
 import com.autosecretary.util.TreeBuilder;
 
 public class ViewSlotList {
-    private List<ViewSlot> viewSlots;
-    public List<ViewSlot> displaySlots;
+    private List<ViewSlot> viewSlots = new ArrayList<>();
+    public List<ViewSlot> displaySlots = new ArrayList<>();
 
     private static final TreeBuilder<ViewSlot> TREE_BY_TASK = new TreeBuilder<>(
             vs -> vs.item.taskId,

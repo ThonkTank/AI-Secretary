@@ -9,6 +9,10 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
+/**
+ * Async wrapper around {@link TaskDAO}. Runs DB operations on a background
+ * {@link ExecutorService} and delivers results via callbacks on the same thread.
+ */
 public class TaskAsyncDataService {
     private final TaskDAO taskDao;
     private final TaskListItemMapper mapper;

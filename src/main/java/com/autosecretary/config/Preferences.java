@@ -24,7 +24,7 @@ public class Preferences {
     public LocalTime readPrefTime(LocalDate day, boolean start) {
         DayOfWeek dayOfWeek = day.getDayOfWeek();
         String key = prefKey(dayOfWeek, start);
-        String defaultValue = start ? "06:00" : "16:00";
+        String defaultValue = start ? "06:00" : "21:00";
         return LocalTime.parse(prefs.getString(key, defaultValue));
     }
     private String prefKey(DayOfWeek day, boolean start) {return day.toString()+"_"+ (start ? "start" : "end");}

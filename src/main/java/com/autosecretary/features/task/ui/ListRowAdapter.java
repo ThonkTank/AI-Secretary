@@ -18,6 +18,10 @@ import com.autosecretary.features.task.application.model.TaskListItem;
 import com.autosecretary.features.task.ui.model.ViewSlotList.ViewSlot;
 import com.autosecretary.R;
 
+/**
+ * RecyclerView adapter for task list rows. Renders each {@link ViewSlot} with tree indentation,
+ * deadline urgency coloring, in-progress/completed visual states, and streak display.
+ */
 public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowViewHolder> {
     List<ViewSlot> viewSlots;
     Consumer<ViewSlot> onCheck;
@@ -67,11 +71,15 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     public void onBindViewHolder(TaskRowViewHolder holder, int position) {
         ViewSlot viewSlot = viewSlots.get(position);
         TaskListItem item = viewSlot.item;
+
+        // Tree indentation: depth × indent_step for parent-child hierarchy
         int step = holder.itemView.getContext().getResources().getDimensionPixelSize(R.dimen.indent_step);
 
+        // Time display: start-end range, fallback text for unscheduled tasks
         holder.title.setText(item.title);
         holder.itemView.setContentDescription(item.title);
 
+        // Time display: start-end range, fallback text for unscheduled tasks
         String startString = item.start != null ? item.start.format(DateTimeFormatter.ofPattern("HH:mm")) : "Nicht";
         String endString = item.end != null ? item.end.format(DateTimeFormatter.ofPattern("HH:mm")) : "Heute";
         holder.start.setText(startString);
@@ -82,20 +90,21 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
                 holder.itemView.getPaddingEnd(),
                 holder.itemView.getPaddingBottom());
 
+        // Deadline urgency: red=overdue, orange=today/soon, gray=future, hidden=none
         TaskListItem.DeadlineUrgency deadlineUrgency = item.deadlineUrgency();
         if (deadlineUrgency != TaskListItem.DeadlineUrgency.NONE) {
             long daysUntil = item.daysUntilDeadline();
             if (deadlineUrgency == TaskListItem.DeadlineUrgency.OVERDUE) {
                 holder.deadlineCountdown.setText("! Fällig");
-                holder.deadlineCountdown.setTextColor(0xFFFF0000);
+                holder.deadlineCountdown.setTextColor(0xFFFF0000); // red = overdue
                 holder.deadlineCountdown.setContentDescription("Überfällig");
             } else if (deadlineUrgency == TaskListItem.DeadlineUrgency.TODAY) {
                 holder.deadlineCountdown.setText("! Heute fällig");
-                holder.deadlineCountdown.setTextColor(0xFFFF8800);
+                holder.deadlineCountdown.setTextColor(0xFFFF8800); // orange = today/soon
                 holder.deadlineCountdown.setContentDescription("Heute fällig");
             } else {
                 holder.deadlineCountdown.setText("in " + daysUntil + "d");
-                holder.deadlineCountdown.setTextColor(deadlineUrgency == TaskListItem.DeadlineUrgency.SOON ? 0xFFFF8800 : 0xFF888888);
+                holder.deadlineCountdown.setTextColor(deadlineUrgency == TaskListItem.DeadlineUrgency.SOON ? 0xFFFF8800 : 0xFF888888); // orange or gray
                 holder.deadlineCountdown.setContentDescription("Fällig in " + daysUntil + " Tagen");
             }
             holder.deadlineCountdown.setVisibility(View.VISIBLE);
@@ -104,6 +113,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             holder.deadlineCountdown.setContentDescription(null);
         }
 
+        // Streak display: consecutive successful periods shown as "Nx"
         if (item.streak > 0) {
             holder.streakDisplay.setText(item.streak + "x");
             holder.streakDisplay.setVisibility(View.VISIBLE);
@@ -111,9 +121,10 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             holder.streakDisplay.setVisibility(View.GONE);
         }
 
+        // In-progress state: green background + checkbox tint when started but not completed
         if (item.inProgress) {
-            holder.itemView.setBackgroundColor(0x1A4CAF50);
-            holder.checkBox.setButtonTintList(ColorStateList.valueOf(0xFF4CAF50));
+            holder.itemView.setBackgroundColor(0x1A4CAF50); // translucent green background
+            holder.checkBox.setButtonTintList(ColorStateList.valueOf(0xFF4CAF50)); // green checkbox
             ViewCompat.setStateDescription(holder.itemView, "In Bearbeitung");
         } else {
             holder.itemView.setBackgroundColor(0x00000000);
@@ -121,6 +132,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             ViewCompat.setStateDescription(holder.itemView, null);
         }
 
+        // Completion state: checkbox enabled only when slot exists and not yet completed
         holder.checkBox.setOnClickListener(v -> {
             holder.checkBox.setChecked(item.completed);
             onCheck.accept(viewSlot);

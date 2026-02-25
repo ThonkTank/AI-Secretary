@@ -1,26 +1,26 @@
 ---
 name: commit
-description: Alle offenen Änderungen committen und zum Remote pushen
+description: Commit all open changes and push to remote
 disable-model-invocation: true
 allowed-tools: Bash
 ---
 
-Committe alle offenen Änderungen und pushe sie zum Remote-Repository.
+Commit all open changes and push them to the remote repository.
 
-## Ablauf
+## Steps
 
-1. Führe `git status` aus, um alle geänderten und untrackten Dateien zu sehen.
-2. Führe `git diff` aus, um die konkreten Änderungen zu verstehen.
-3. Füge ALLE geänderten und neuen Dateien zum Staging hinzu (`git add -A`).
-4. Erstelle eine prägnante, aussagekräftige Commit-Message auf Deutsch, die den Inhalt der Änderungen zusammenfasst. Format: `<typ>: <beschreibung>` (z.B. `fix:`, `feat:`, `refactor:`, `build:`, `docs:`, `test:`).
-5. Committe mit der Message (Co-Authored-By Header anhängen).
-6. Pushe zum Remote (`git push`).
-7. Zeige das Ergebnis an (Commit-Hash, gepushte Änderungen).
+1. Run `git status` to see all changed and untracked files.
+2. Run `git diff` to understand the concrete changes.
+3. Stage ALL changed and new files (`git add -A`).
+4. Write a concise, descriptive commit message in German that summarizes the changes. Format: `<type>: <description>` (e.g. `fix:`, `feat:`, `refactor:`, `build:`, `docs:`).
+5. Commit with the message (append Co-Authored-By header).
+6. Push to remote (`git push`).
+7. Show the result (commit hash, pushed changes).
 
-## Regeln
+## Rules
 
-- Keine interaktiven Git-Befehle (`-i` Flag).
-- Commit-Message IMMER über HEREDOC übergeben.
-- Niemals `--force` pushen.
-- Falls der Push fehlschlägt, den Fehler melden und NICHT automatisch force-pushen.
-- Falls es keine Änderungen gibt, das melden und nichts tun.
+- No interactive git commands (`-i` flag).
+- ALWAYS pass commit message via HEREDOC.
+- Never force push (`--force`).
+- If push fails, report the error and do NOT automatically force push.
+- If there are no changes, report that and do nothing.

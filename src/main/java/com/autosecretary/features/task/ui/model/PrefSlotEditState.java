@@ -5,6 +5,7 @@ import java.time.LocalTime;
 import java.util.EnumSet;
 import java.util.Set;
 
+/** Mutable UI POJO for a single preferred slot's editable fields (days and start time). */
 public class PrefSlotEditState {
     public String id;
     public String taskId;
