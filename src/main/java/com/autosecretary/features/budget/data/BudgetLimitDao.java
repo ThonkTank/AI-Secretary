@@ -29,6 +29,7 @@ public interface BudgetLimitDao {
             LEFT JOIN budget_transaction t
                    ON t.categoryId = c.id
                   AND t.yearMonth = :yearMonth
+                  AND t.transactionKind != 'INTERNAL_TRANSFER'
             LEFT JOIN budget_limit l
                    ON l.categoryId = c.id
                   AND l.yearMonth = :yearMonth
