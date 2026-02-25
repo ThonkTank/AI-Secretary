@@ -20,6 +20,10 @@ public interface BudgetRepository {
     List<BudgetTransactionEntity> findTransactionsForAccount(String accountId);
     BudgetTransactionEntity findTransactionById(String transactionId);
     BudgetLimit findBudgetLimit(String categoryId, String yearMonth);
+    BudgetLimit findPreviousMonthLimit(String categoryId, String targetYearMonth);
+    long getPreviousMonthExpenseCents(String categoryId, String targetYearMonth);
+    long getCategoryExpenseCents(String categoryId, String yearMonth);
+    Long getEffectiveLimitCents(String categoryId, String targetYearMonth);
     void saveTransaction(BudgetTransactionEntity transaction);
     void updateTransaction(BudgetTransactionEntity transaction);
     void saveTransactions(List<BudgetTransactionEntity> transactions);

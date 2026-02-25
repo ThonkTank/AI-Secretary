@@ -132,6 +132,9 @@
     <string name="budget_edit_limit_title">Budgetlimit bearbeiten</string>
     <string name="budget_limit_amount_hint">Monatliches Limit (z.B. 100,00)</string>
     <string name="budget_limit_save">Speichern</string>
+    <string name="budget_rollover_switch">Rollover aus Vormonat aktivieren</string>
+    <string name="budget_rollover_hint">Delta-Regel: Vormonatslimit - Vormonatsausgaben wird auf das Zielmonat angerechnet. Ohne Vormonatslimit ist das Delta 0.</string>
+    <string name="budget_rollover_manual_hint">Manueller Carryover in € (optional, z.B. -10,00)</string>
 
 
     <string name="budget_widget_title">Budget auf einen Blick</string>

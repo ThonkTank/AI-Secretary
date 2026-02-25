@@ -47,6 +47,22 @@ public class BudgetRoomRepository implements BudgetRepository {
         return limitDao.getLimitForCategoryAndMonth(categoryId, yearMonth);
     }
 
+    @Override public BudgetLimit findPreviousMonthLimit(String categoryId, String targetYearMonth) {
+        return limitDao.getPreviousMonthLimit(categoryId, targetYearMonth);
+    }
+
+    @Override public long getPreviousMonthExpenseCents(String categoryId, String targetYearMonth) {
+        return limitDao.getPreviousMonthExpenseCents(categoryId, targetYearMonth);
+    }
+
+    @Override public long getCategoryExpenseCents(String categoryId, String yearMonth) {
+        return limitDao.getExpenseCentsForCategoryAndMonth(categoryId, yearMonth);
+    }
+
+    @Override public Long getEffectiveLimitCents(String categoryId, String targetYearMonth) {
+        return limitDao.getEffectiveLimitCentsForMonth(categoryId, targetYearMonth);
+    }
+
     @Override public void saveTransaction(BudgetTransactionEntity transaction) {
         transactionDao.insert(transaction);
     }
