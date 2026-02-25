@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.data;
+package com.autosecretary.features.budget.data.legacy;
 
 import androidx.room.Dao;
 import androidx.room.Delete;
@@ -6,8 +6,17 @@ import androidx.room.Insert;
 import androidx.room.Query;
 import androidx.room.Update;
 
+import com.autosecretary.features.budget.data.BudgetLimit;
+
 import java.util.List;
 
+/**
+ * Transitional legacy DAO for pre-v8 tables ({@code accounts}, {@code transactions}).
+ *
+ * <p>Canonical budget persistence uses {@code BudgetLookupDao}, {@code TransactionDao}, and
+ * {@code BudgetLimitDao} over the {@code budget_*} schema. Do not use this DAO for new code.</p>
+ */
+@Deprecated
 @Dao
 public interface BudgetDao {
     @Query("SELECT * FROM budget_account WHERE id = :accountId LIMIT 1")

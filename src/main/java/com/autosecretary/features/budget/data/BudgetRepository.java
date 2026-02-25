@@ -11,5 +11,4 @@ public interface BudgetRepository {
     void saveTransaction(BudgetTransaction transaction);
     void deleteTransaction(String transactionId);
     void saveBudgetLimit(BudgetLimit budgetLimit);
-    void saveAccount(BudgetAccount account);
 }

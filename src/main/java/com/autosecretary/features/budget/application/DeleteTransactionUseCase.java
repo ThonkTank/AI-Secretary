@@ -6,10 +6,9 @@ import com.autosecretary.features.budget.data.BudgetTransaction;
 import com.autosecretary.features.budget.domain.AccountBalanceRecalculationService;
 import com.autosecretary.features.budget.domain.BudgetConsumptionService;
 
-import java.time.LocalDate;
-
 public class DeleteTransactionUseCase {
     private final BudgetRepository repository;
+    @SuppressWarnings("unused")
     private final AccountBalanceRecalculationService balanceService;
     private final BudgetConsumptionService consumptionService;
 
@@ -28,21 +27,13 @@ public class DeleteTransactionUseCase {
 
         repository.deleteTransaction(transaction.id);
 
-        if (transaction.accountId != null) {
-            balanceService.calculateNetAmount(repository.findTransactionsForAccount(transaction.accountId));
-        }
-
-        if (!"INCOME".equals(transaction.type) && transaction.categoryId != null && transaction.bookingDate != null) {
-            String yearMonth = toYearMonth(transaction.bookingDate);
-            BudgetLimit limit = repository.findBudgetLimit(transaction.categoryId, yearMonth);
+        if ("EXPENSE".equalsIgnoreCase(transaction.type) && transaction.categoryId != null) {
+            BudgetLimit limit = repository.findBudgetLimit(transaction.categoryId, transaction.yearMonth);
             if (limit != null) {
+                // Recalculate for side-effects/consistency checks in canonical model.
                 consumptionService.calculateMonthlyConsumption(limit, repository.findAllTransactions());
                 repository.saveBudgetLimit(limit);
             }
         }
-    }
-
-    private String toYearMonth(LocalDate date) {
-        return String.format("%d-%02d", date.getYear(), date.getMonthValue());
     }
 }

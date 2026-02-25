@@ -6,10 +6,9 @@ import com.autosecretary.features.budget.data.BudgetTransaction;
 import com.autosecretary.features.budget.domain.AccountBalanceRecalculationService;
 import com.autosecretary.features.budget.domain.BudgetConsumptionService;
 
-import java.time.LocalDate;
-
 public class CreateOrUpdateTransactionUseCase {
     private final BudgetRepository repository;
+    @SuppressWarnings("unused")
     private final AccountBalanceRecalculationService balanceService;
     private final BudgetConsumptionService consumptionService;
 
@@ -23,31 +22,19 @@ public class CreateOrUpdateTransactionUseCase {
 
     public void execute(BudgetTransaction transaction) {
         repository.saveTransaction(transaction);
-        recalculateAccountBalance(transaction.accountId);
         recalculateCategoryBudget(transaction);
     }
 
-    private void recalculateAccountBalance(String accountId) {
-        if (accountId == null) {
-            return;
-        }
-        balanceService.calculateNetAmount(repository.findTransactionsForAccount(accountId));
-    }
-
     private void recalculateCategoryBudget(BudgetTransaction transaction) {
-        if ("INCOME".equals(transaction.type) || transaction.categoryId == null || transaction.bookingDate == null) {
+        if (!"EXPENSE".equalsIgnoreCase(transaction.type) || transaction.categoryId == null) {
             return;
         }
-        String yearMonth = toYearMonth(transaction.bookingDate);
-        BudgetLimit limit = repository.findBudgetLimit(transaction.categoryId, yearMonth);
+        BudgetLimit limit = repository.findBudgetLimit(transaction.categoryId, transaction.yearMonth);
         if (limit == null) {
             return;
         }
+        // Recalculate for side-effects/consistency checks in canonical model.
         consumptionService.calculateMonthlyConsumption(limit, repository.findAllTransactions());
         repository.saveBudgetLimit(limit);
-    }
-
-    private String toYearMonth(LocalDate date) {
-        return String.format("%d-%02d", date.getYear(), date.getMonthValue());
     }
 }

@@ -3,39 +3,46 @@ package com.autosecretary.features.budget.domain;
 import com.autosecretary.features.budget.data.BudgetAccount;
 import com.autosecretary.features.budget.data.BudgetTransaction;
 
-import java.time.LocalDate;
 import java.util.List;
 
 public class BudgetSummaryService {
 
-    public Summary calculateSummary(List<BudgetAccount> accounts, List<BudgetTransaction> transactions, String yearMonth) {
-        int activeAccounts = accounts.size();
-
-        double monthlyIncome = 0;
-        double monthlyExpenses = 0;
+    public Summary calculateSummary(List<BudgetAccount> accounts,
+                                    List<BudgetTransaction> transactions,
+                                    String yearMonth) {
+        double totalBalance = 0d;
         for (BudgetTransaction tx : transactions) {
-            LocalDate txDate = tx.bookingDate;
-            if (txDate == null || !toYearMonth(txDate).equals(yearMonth)) {
+            totalBalance += signedAmount(tx);
+        }
+
+        double monthlyIncome = 0d;
+        double monthlyExpenses = 0d;
+        for (BudgetTransaction tx : transactions) {
+            if (!yearMonth.equals(tx.yearMonth)) {
                 continue;
             }
-            if ("INCOME".equals(tx.type)) {
-                monthlyIncome += tx.amount;
+            if ("INCOME".equalsIgnoreCase(tx.type)) {
+                monthlyIncome += Math.abs(tx.amount);
             } else {
                 monthlyExpenses += Math.abs(tx.amount);
             }
         }
 
-        return new Summary(activeAccounts, monthlyIncome, monthlyExpenses, monthlyIncome - monthlyExpenses);
+        return new Summary(totalBalance, monthlyIncome, monthlyExpenses, monthlyIncome - monthlyExpenses,
+                accounts.size());
     }
 
-    private String toYearMonth(LocalDate date) {
-        return String.format("%d-%02d", date.getYear(), date.getMonthValue());
+    private double signedAmount(BudgetTransaction transaction) {
+        return "INCOME".equalsIgnoreCase(transaction.type)
+                ? Math.abs(transaction.amount)
+                : -Math.abs(transaction.amount);
     }
 
     public record Summary(
-            int activeAccounts,
+            double totalBalance,
             double monthlyIncome,
             double monthlyExpenses,
-            double monthlyNet
+            double monthlyNet,
+            int accountCount
     ) {}
 }

@@ -24,7 +24,9 @@ public class SetBudgetLimitUseCase {
             limit.id = existingLimit.id;
         }
 
+        // Trigger budget consumption recalculation against canonical transactions.
         consumptionService.calculateMonthlyConsumption(limit, repository.findAllTransactions());
+
         repository.saveBudgetLimit(limit);
     }
 }
