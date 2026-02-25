@@ -4,11 +4,8 @@ import com.autosecretary.config.Preferences;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskSeedDataFactory;
-import com.autosecretary.features.task.data.TaskSlot;
-import com.autosecretary.features.task.domain.MultiDayState;
 import com.autosecretary.features.task.domain.SlotGenerator;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
-import com.autosecretary.features.task.domain.TimeWindow;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -65,17 +62,8 @@ public class RegenerateScheduleUseCase {
             }
 
             // 2) Initialize cross-day state from preserved slots (completed/in-progress)
-            MultiDayState state = new MultiDayState();
-            for (Task task : tasks) {
-                for (TaskSlot slot : task.slots) {
-                    if (slot.day != null
-                            && !slot.day.isBefore(today)
-                            && slot.day.isBefore(windowEnd)
-                            && (slot.completed || slot.realStart != null)) {
-                        state.recordScheduled(task.core.id, slot.day);
-                    }
-                }
-            }
+            SlotGenerator.PlanningState state = generator.createPlanningState();
+            generator.recordPreservedSlots(tasks, today, windowEnd, state);
 
             // 3) Flatten once, then schedule day by day
             List<Task> flatTasks = TaskTreeOperations.flatten(
@@ -83,21 +71,15 @@ public class RegenerateScheduleUseCase {
 
             for (int i = 0; i < PLANNING_DAYS; i++) {
                 LocalDate day = today.plusDays(i);
-                TimeWindow window = new TimeWindow(
+                generator.generateSlotsForDay(
+                        flatTasks,
                         LocalDateTime.of(day, preferences.readPrefTime(day, true)),
-                        LocalDateTime.of(day, preferences.readPrefTime(day, false)));
-
-                generator.generateSlotsForDay(flatTasks, window, state);
+                        LocalDateTime.of(day, preferences.readPrefTime(day, false)),
+                        state
+                );
 
                 // Record newly assigned slots into cross-day state
-                for (Task t : flatTasks) {
-                    for (TaskSlot slot : t.slots) {
-                        if (slot.day.equals(day) && slot.scheduled
-                                && !state.getScheduledDays(t.core.id).contains(day)) {
-                            state.recordScheduled(t.core.id, day);
-                        }
-                    }
-                }
+                generator.recordScheduledSlotsForDay(flatTasks, day, state);
             }
 
             taskDao.writeList(flatTasks);

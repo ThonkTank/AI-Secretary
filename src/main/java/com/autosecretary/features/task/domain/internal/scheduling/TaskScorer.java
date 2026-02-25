@@ -1,9 +1,10 @@
-package com.autosecretary.features.task.domain;
+package com.autosecretary.features.task.domain.internal.scheduling;
 
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -23,7 +24,7 @@ import java.util.Map;
  * then {@link #score(Task, LocalDateTime, LocalDateTime)} for each candidate placement.
  * After a slot is assigned, call {@link #onSlotAssigned(Task)} to update the daily counter.
  */
-public class TaskScorer {
+final class TaskScorer {
 
     /** Upper bound for the aging multiplier — score boost caps at 3x no matter how long since last activity. */
     private static final double DEFAULT_MAX_AGING_MULTIPLIER = 3.0;
@@ -35,17 +36,17 @@ public class TaskScorer {
     private final double preferredStartDeviationHours;
     private final Map<String, TaskScoringSnapshot> caches = new HashMap<>();
 
-    public TaskScorer(TaskLifecycleManager lifecycleManager) {
+    TaskScorer(TaskLifecycleManager lifecycleManager) {
         this(lifecycleManager, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
     }
 
-    public TaskScorer(TaskLifecycleManager lifecycleManager, double maxAgingMultiplier, double preferredStartDeviationHours) {
+    TaskScorer(TaskLifecycleManager lifecycleManager, double maxAgingMultiplier, double preferredStartDeviationHours) {
         this.lifecycleManager = lifecycleManager;
         this.maxAgingMultiplier = maxAgingMultiplier;
         this.preferredStartDeviationHours = preferredStartDeviationHours;
     }
 
-    public void reset() {
+    void reset() {
         caches.clear();
     }
 
@@ -162,11 +163,11 @@ public class TaskScorer {
         }
     }
 
-    public void maintenance(Task task) {
+    void maintenance(Task task) {
         maintenance(task, LocalDate.now(), new MultiDayState());
     }
 
-    public void maintenance(Task task, LocalDate day, MultiDayState state) {
+    void maintenance(Task task, LocalDate day, MultiDayState state) {
         advanceTaskPeriod(task, day);
         SlotScanResult slotScanResult = scanSlots(task, day);
         CompletionState completionState = computeCompletionState(task, slotScanResult);
@@ -367,7 +368,7 @@ public class TaskScorer {
      *   <li><b>Aging</b> — snapshot aging force, pre-computed in maintenance, capped at {@link #maxAgingMultiplier}.</li>
      * </ol>
      */
-    public int score(Task task, LocalDateTime start, LocalDateTime end) {
+    int score(Task task, LocalDateTime start, LocalDateTime end) {
         TaskScoringSnapshot snapshot = caches.get(task.core.id);
         if (snapshot == null) {
             maintenance(task);
@@ -462,7 +463,7 @@ public class TaskScorer {
         return adjustedScore;
     }
 
-    public void onSlotAssigned(Task task) {
+    void onSlotAssigned(Task task) {
         TaskScoringSnapshot snapshot = caches.get(task.core.id);
         if (snapshot != null) {
             caches.put(task.core.id, snapshot.withIncrementedScheduledToday());

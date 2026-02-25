@@ -15,7 +15,6 @@ import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.SlotGenerator;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
-import com.autosecretary.features.task.domain.TaskScorer;
 import com.autosecretary.features.task.ui.TaskViewModelFactory;
 
 import java.util.concurrent.ExecutorService;
@@ -49,8 +48,10 @@ public class AppCompositionRoot {
 
         TaskLifecycleManager lifecycleManager = new TaskLifecycleManager();
         TaskCompletionService completionService = new TaskCompletionService();
-        TaskScorer scorer = new TaskScorer(lifecycleManager);
-        SlotGenerator generator = new SlotGenerator(scorer, message -> Log.d("SlotGen", message));
+        SlotGenerator generator = new com.autosecretary.features.task.domain.internal.scheduling.SlotGenerator(
+                lifecycleManager,
+                message -> Log.d("SlotGen", message)
+        );
         TaskListItemMapper mapper = new TaskListItemMapper();
 
         TaskAsyncDataService taskAsyncDataService = new TaskAsyncDataService(
