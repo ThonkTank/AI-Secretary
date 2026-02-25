@@ -6,36 +6,55 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
 /**
- * Async wrapper around {@link TaskDAO}. Runs DB operations on a background
- * {@link ExecutorService} and delivers results via callbacks on the same thread.
+ * Async wrapper around {@link TaskDAO}.
+ * <p>
+ * <strong>Threading contract:</strong>
+ * <ul>
+ *     <li>All DAO work is executed on the provided worker {@link ExecutorService}.</li>
+ *     <li>Every completion callback ({@code callback.accept(...)} / {@code onSaved.run()}) is
+ *     dispatched via {@link #callbackDispatcher}.</li>
+ * </ul>
+ * Callers can therefore assume callbacks are invoked on the dispatcher thread (typically main/UI).
  */
 public class TaskAsyncDataService {
     private final TaskDAO taskDao;
     private final TaskListItemMapper mapper;
-    private final ExecutorService executor;
+    private final ExecutorService workerExecutor;
+    private final Executor callbackDispatcher;
 
-    public TaskAsyncDataService(TaskDAO taskDao, TaskListItemMapper mapper, ExecutorService executor) {
+    public TaskAsyncDataService(TaskDAO taskDao,
+                                TaskListItemMapper mapper,
+                                ExecutorService workerExecutor,
+                                Executor callbackDispatcher) {
         this.taskDao = taskDao;
         this.mapper = mapper;
-        this.executor = executor;
+        this.workerExecutor = workerExecutor;
+        this.callbackDispatcher = callbackDispatcher;
     }
 
     public void loadAllMapped(Consumer<List<TaskListItem>> callback) {
-        executor.execute(() -> callback.accept(mapper.map(taskDao.readAll())));
+        workerExecutor.execute(() -> {
+            List<TaskListItem> items = mapper.map(taskDao.readAll());
+            callbackDispatcher.execute(() -> callback.accept(items));
+        });
     }
 
     public void loadTask(String id, Consumer<Task> callback) {
-        executor.execute(() -> callback.accept(taskDao.read(id)));
+        workerExecutor.execute(() -> {
+            Task task = taskDao.read(id);
+            callbackDispatcher.execute(() -> callback.accept(task));
+        });
     }
 
     public void saveTask(Task task, Runnable onSaved) {
-        executor.execute(() -> {
+        workerExecutor.execute(() -> {
             taskDao.write(task);
-            onSaved.run();
+            callbackDispatcher.execute(onSaved);
         });
     }
 }

@@ -1,6 +1,8 @@
 package com.autosecretary.app;
 
 import android.app.Application;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import com.autosecretary.config.Preferences;
@@ -43,6 +45,7 @@ public class AppCompositionRoot {
         AppDatabase db = AppDatabase.getInstance(app);
         TaskDAO taskDao = db.taskDao();
         Preferences preferences = new Preferences(app);
+        Handler mainHandler = new Handler(Looper.getMainLooper());
 
         TaskLifecycleManager lifecycleManager = new TaskLifecycleManager();
         TaskCompletionService completionService = new TaskCompletionService();
@@ -50,7 +53,12 @@ public class AppCompositionRoot {
         SlotGenerator generator = new SlotGenerator(scorer, message -> Log.d("SlotGen", message));
         TaskListItemMapper mapper = new TaskListItemMapper();
 
-        TaskAsyncDataService taskAsyncDataService = new TaskAsyncDataService(taskDao, mapper, taskUseCaseExecutor);
+        TaskAsyncDataService taskAsyncDataService = new TaskAsyncDataService(
+                taskDao,
+                mapper,
+                taskUseCaseExecutor,
+                mainHandler::post
+        );
         CheckOffTaskUseCase checkOffTaskUseCase = new CheckOffTaskUseCase(
                 taskDao,
                 completionService,

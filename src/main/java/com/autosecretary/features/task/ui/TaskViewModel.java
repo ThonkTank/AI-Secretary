@@ -156,7 +156,7 @@ public class TaskViewModel extends AndroidViewModel {
         }
 
         masterList.sort(groupByTaskParent, comparator);
-        displayList.postValue(masterList.displaySlots);
+        displayList.setValue(masterList.displaySlots);
     }
 
     public void checkOff(ViewSlot viewSlot) {
