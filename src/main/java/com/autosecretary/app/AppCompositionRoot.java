@@ -7,6 +7,7 @@ import android.util.Log;
 
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
+import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.application.TaskListItemMapper;
@@ -81,12 +82,18 @@ public class AppCompositionRoot {
                 preferences,
                 taskUseCaseExecutor
         );
+        DeleteTaskUseCase deleteTaskUseCase = new DeleteTaskUseCase(
+                taskDao,
+                taskUseCaseExecutor,
+                mainHandler::post
+        );
 
         taskViewModelFactory = new TaskViewModelFactory(
                 app,
                 taskAsyncDataService,
                 checkOffTaskUseCase,
-                regenerateScheduleUseCase
+                regenerateScheduleUseCase,
+                deleteTaskUseCase
         );
 
         return taskViewModelFactory;

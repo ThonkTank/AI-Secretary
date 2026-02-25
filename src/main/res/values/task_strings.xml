@@ -6,7 +6,12 @@
     <string name="task_edit_dialog_title_create">Aufgabe erstellen</string>
     <string name="task_edit_dialog_title_edit">Aufgabe bearbeiten</string>
     <string name="task_edit_dialog_positive">Speichern</string>
+    <string name="task_edit_dialog_delete">Löschen</string>
     <string name="task_edit_dialog_negative">Abbrechen</string>
+    <string name="task_edit_delete_title">Aufgabe löschen?</string>
+    <string name="task_edit_delete_message">Möchtest du diese Aufgabe wirklich löschen?</string>
+    <string name="task_edit_delete_confirm">Löschen</string>
+    <string name="task_edit_delete_cancel">Abbrechen</string>
     <string name="task_row_edit">Aufgabe bearbeiten</string>
 
     <string name="task_time_fallback_start">Nicht</string>
