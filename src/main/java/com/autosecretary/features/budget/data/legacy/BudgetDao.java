@@ -8,7 +8,7 @@ import androidx.room.Update;
 
 import com.autosecretary.features.budget.data.BudgetAccount;
 import com.autosecretary.features.budget.data.BudgetLimit;
-import com.autosecretary.features.budget.data.BudgetTransaction;
+import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 
 import java.util.List;
 
@@ -28,22 +28,22 @@ public interface BudgetDao {
     List<BudgetAccount> findActiveAccounts();
 
     @Query("SELECT * FROM budget_transaction")
-    List<BudgetTransaction> findAllTransactions();
+    List<BudgetTransactionEntity> findAllTransactions();
 
     @Query("SELECT * FROM budget_transaction WHERE accountId = :accountId")
-    List<BudgetTransaction> findTransactionsForAccount(String accountId);
+    List<BudgetTransactionEntity> findTransactionsForAccount(String accountId);
 
     @Query("SELECT * FROM budget_limit WHERE categoryId = :categoryId AND yearMonth = :yearMonth LIMIT 1")
     BudgetLimit findBudgetLimit(String categoryId, String yearMonth);
 
     @Insert
-    void insertTransaction(BudgetTransaction transaction);
+    void insertTransaction(BudgetTransactionEntity transaction);
 
     @Update
-    void updateTransaction(BudgetTransaction transaction);
+    void updateTransaction(BudgetTransactionEntity transaction);
 
     @Delete
-    void deleteTransaction(BudgetTransaction transaction);
+    void deleteTransaction(BudgetTransactionEntity transaction);
 
     @Insert
     void insertBudgetLimit(BudgetLimit budgetLimit);

@@ -24,7 +24,7 @@ public class RecurringPatternDetectorConfigParameterizedTest {
                         ),
                         withThresholds(0.75, 0.15, 5, 9),
                         1,
-                        BudgetTransaction.RecurringType.MONTHLY_DAY,
+                        RecurringBudgetTransaction.RecurringType.MONTHLY_DAY,
                         null
                 },
                 {
@@ -48,7 +48,7 @@ public class RecurringPatternDetectorConfigParameterizedTest {
                         ),
                         withThresholds(0.75, 0.15, 5, 9),
                         1,
-                        BudgetTransaction.RecurringType.WEEKLY,
+                        RecurringBudgetTransaction.RecurringType.WEEKLY,
                         0
                 },
                 {
@@ -60,23 +60,23 @@ public class RecurringPatternDetectorConfigParameterizedTest {
                         ),
                         withThresholds(0.75, 0.15, 8, 9),
                         1,
-                        BudgetTransaction.RecurringType.INTERVAL,
+                        RecurringBudgetTransaction.RecurringType.INTERVAL,
                         7
                 }
         });
     }
 
-    private final List<BudgetTransaction> transactions;
+    private final List<RecurringBudgetTransaction> transactions;
     private final PatternDetectionConfig config;
     private final int expectedSuggestionCount;
-    private final BudgetTransaction.RecurringType expectedType;
+    private final RecurringBudgetTransaction.RecurringType expectedType;
     private final Integer expectedValue;
 
     public RecurringPatternDetectorConfigParameterizedTest(String ignoredName,
-                                                           List<BudgetTransaction> transactions,
+                                                           List<RecurringBudgetTransaction> transactions,
                                                            PatternDetectionConfig config,
                                                            int expectedSuggestionCount,
-                                                           BudgetTransaction.RecurringType expectedType,
+                                                           RecurringBudgetTransaction.RecurringType expectedType,
                                                            Integer expectedValue) {
         this.transactions = transactions;
         this.config = config;
@@ -118,7 +118,7 @@ public class RecurringPatternDetectorConfigParameterizedTest {
                 config.knownSubscriptionPatterns
         );
 
-        List<BudgetTransaction> netflixSeries = List.of(
+        List<RecurringBudgetTransaction> netflixSeries = List.of(
                 tx(11L, -1500, LocalDate.of(2025, 1, 1), "NETFLIX"),
                 tx(12L, -1500, LocalDate.of(2025, 2, 1), "NETFLIX"),
                 tx(13L, -1500, LocalDate.of(2025, 3, 1), "NETFLIX")
@@ -148,8 +148,8 @@ public class RecurringPatternDetectorConfigParameterizedTest {
         );
     }
 
-    private static BudgetTransaction tx(Long id, int amount, LocalDate date, String payee) {
-        BudgetTransaction tx = new BudgetTransaction.Builder(10L, amount, date, 5L)
+    private static RecurringBudgetTransaction tx(Long id, int amount, LocalDate date, String payee) {
+        RecurringBudgetTransaction tx = new RecurringBudgetTransaction.Builder(10L, amount, date, 5L)
                 .payee(payee)
                 .build();
         tx.id = id;

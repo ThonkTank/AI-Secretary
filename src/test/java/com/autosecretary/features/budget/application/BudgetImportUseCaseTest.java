@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.domain.BudgetTransaction;
+import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 import org.junit.Assert;
 import org.junit.Test;
@@ -133,7 +133,7 @@ public class BudgetImportUseCaseTest {
 
     static class FakeRepo implements BudgetImportRepository {
         final List<String> existingImportHashes = new ArrayList<>();
-        final List<BudgetTransaction> savedTransactions = new ArrayList<>();
+        final List<BudgetTransactionEntity> savedTransactions = new ArrayList<>();
 
         int notifyCalls;
         int markCompletedCalls;
@@ -172,7 +172,7 @@ public class BudgetImportUseCaseTest {
         }
 
         @Override
-        public void saveTransactionsBatch(List<BudgetTransaction> transactions) {
+        public void saveTransactionsBatch(List<BudgetTransactionEntity> transactions) {
             if (throwOnSave) {
                 throw new RuntimeException("DB offline");
             }
@@ -181,7 +181,7 @@ public class BudgetImportUseCaseTest {
         }
 
         @Override
-        public List<BudgetTransaction> loadTransactionsForAccount(Long accountId) {
+        public List<BudgetTransactionEntity> loadTransactionsForAccount(Long accountId) {
             return new ArrayList<>(savedTransactions);
         }
 

@@ -1,27 +1,27 @@
 package com.autosecretary.features.budget.domain;
 
 import com.autosecretary.features.budget.data.BudgetAccount;
-import com.autosecretary.features.budget.data.BudgetTransaction;
+import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 
 import java.util.List;
 
 public class BudgetSummaryService {
 
     public Summary calculateSummary(List<BudgetAccount> accounts,
-                                    List<BudgetTransaction> transactions,
+                                    List<BudgetTransactionEntity> transactions,
                                     String yearMonth) {
         double totalBalance = 0d;
-        for (BudgetTransaction tx : transactions) {
+        for (BudgetTransactionEntity tx : transactions) {
             totalBalance += signedAmount(tx);
         }
 
         double monthlyIncome = 0d;
         double monthlyExpenses = 0d;
-        for (BudgetTransaction tx : transactions) {
+        for (BudgetTransactionEntity tx : transactions) {
             if (!yearMonth.equals(tx.yearMonth)) {
                 continue;
             }
-            if ("INCOME".equalsIgnoreCase(tx.type)) {
+            if (tx.type == BudgetTransactionEntity.TransactionType.INCOME) {
                 monthlyIncome += Math.abs(tx.amount);
             } else {
                 monthlyExpenses += Math.abs(tx.amount);
@@ -32,8 +32,8 @@ public class BudgetSummaryService {
                 accounts.size());
     }
 
-    private double signedAmount(BudgetTransaction transaction) {
-        return "INCOME".equalsIgnoreCase(transaction.type)
+    private double signedAmount(BudgetTransactionEntity transaction) {
+        return transaction.type == BudgetTransactionEntity.TransactionType.INCOME
                 ? Math.abs(transaction.amount)
                 : -Math.abs(transaction.amount);
     }

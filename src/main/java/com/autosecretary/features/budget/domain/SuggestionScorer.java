@@ -22,7 +22,7 @@ public final class SuggestionScorer {
     private SuggestionScorer() {
     }
 
-    public static double calculateConfidence(List<BudgetTransaction> txList,
+    public static double calculateConfidence(List<RecurringBudgetTransaction> txList,
                                              DatePatternDetector.PatternResult pattern,
                                              int avgAmount,
                                              int minAmount,
@@ -47,7 +47,7 @@ public final class SuggestionScorer {
         return Math.min(score, 1.0);
     }
 
-    public static double calculateConfidence(List<BudgetTransaction> txList,
+    public static double calculateConfidence(List<RecurringBudgetTransaction> txList,
                                              DatePatternDetector.PatternResult pattern,
                                              int avgAmount,
                                              int minAmount,

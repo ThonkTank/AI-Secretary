@@ -1,6 +1,7 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.domain.BudgetTransaction;
+import com.autosecretary.features.budget.data.BudgetTransactionEntity;
+import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
 import org.junit.Assert;
@@ -30,7 +31,7 @@ public class ApplyRecurringSuggestionsUseCaseTest {
                 -1299,
                 -1299,
                 -1299,
-                BudgetTransaction.RecurringType.MONTHLY_DAY,
+                RecurringBudgetTransaction.RecurringType.MONTHLY_DAY,
                 1,
                 DayOfWeek.MONDAY,
                 List.of(10L, 11L, 12L),
@@ -83,11 +84,11 @@ public class ApplyRecurringSuggestionsUseCaseTest {
         }
 
         @Override
-        public void saveTransactionsBatch(List<BudgetTransaction> transactions) {
+        public void saveTransactionsBatch(List<BudgetTransactionEntity> transactions) {
         }
 
         @Override
-        public List<BudgetTransaction> loadTransactionsForAccount(Long accountId) {
+        public List<BudgetTransactionEntity> loadTransactionsForAccount(Long accountId) {
             return List.of();
         }
 

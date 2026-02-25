@@ -16,16 +16,16 @@ public final class RecurringPatternDetector {
     private RecurringPatternDetector() {
     }
 
-    public static List<RecurringSuggestion> detectPatterns(List<BudgetTransaction> transactions) {
+    public static List<RecurringSuggestion> detectPatterns(List<RecurringBudgetTransaction> transactions) {
         return detectPatterns(transactions, MIN_OCCURRENCES_DEFAULT, null);
     }
 
-    public static List<RecurringSuggestion> detectPatterns(List<BudgetTransaction> transactions,
+    public static List<RecurringSuggestion> detectPatterns(List<RecurringBudgetTransaction> transactions,
                                                            int minOccurrences) {
         return detectPatterns(transactions, minOccurrences, null);
     }
 
-    public static List<RecurringSuggestion> detectPatterns(List<BudgetTransaction> transactions,
+    public static List<RecurringSuggestion> detectPatterns(List<RecurringBudgetTransaction> transactions,
                                                            int minOccurrences,
                                                            PatternDetectionConfig config) {
         PatternDetectionConfig effectiveConfig = config != null ? config : PatternDetectionConfig.defaults();
@@ -34,7 +34,7 @@ public final class RecurringPatternDetector {
             return new ArrayList<>();
         }
 
-        List<BudgetTransaction> eligible = transactions.stream()
+        List<RecurringBudgetTransaction> eligible = transactions.stream()
                 .filter(tx -> !tx.isRecurring)
                 .filter(tx -> !tx.isPredicted)
                 .filter(tx -> tx.parentRecurringId == null)
@@ -46,11 +46,11 @@ public final class RecurringPatternDetector {
             return new ArrayList<>();
         }
 
-        Map<String, List<BudgetTransaction>> groupedByPayee = PayeeGrouper.groupBySimilarPayee(eligible, effectiveConfig);
+        Map<String, List<RecurringBudgetTransaction>> groupedByPayee = PayeeGrouper.groupBySimilarPayee(eligible, effectiveConfig);
 
         List<RecurringSuggestion> candidates = new ArrayList<>();
-        for (Map.Entry<String, List<BudgetTransaction>> group : groupedByPayee.entrySet()) {
-            List<BudgetTransaction> txList = group.getValue();
+        for (Map.Entry<String, List<RecurringBudgetTransaction>> group : groupedByPayee.entrySet()) {
+            List<RecurringBudgetTransaction> txList = group.getValue();
             if (txList.size() < minOccurrences) {
                 continue;
             }
@@ -70,7 +70,7 @@ public final class RecurringPatternDetector {
     }
 
     private static RecurringSuggestion analyzePattern(String normalizedPayee,
-                                                      List<BudgetTransaction> transactions,
+                                                      List<RecurringBudgetTransaction> transactions,
                                                       PatternDetectionConfig config) {
         int sumAmounts = 0;
         int minAmount = Integer.MAX_VALUE;
@@ -79,7 +79,7 @@ public final class RecurringPatternDetector {
         List<Long> txIds = new ArrayList<>();
         String displayPayee = transactions.get(0).payee;
 
-        for (BudgetTransaction tx : transactions) {
+        for (RecurringBudgetTransaction tx : transactions) {
             int absAmount = Math.abs(tx.amountCents);
             sumAmounts += absAmount;
             minAmount = Math.min(minAmount, absAmount);
@@ -127,7 +127,7 @@ public final class RecurringPatternDetector {
         );
     }
 
-    private static boolean hasConsistentAmounts(List<BudgetTransaction> txList,
+    private static boolean hasConsistentAmounts(List<RecurringBudgetTransaction> txList,
                                                 PatternDetectionConfig config) {
         if (txList.size() < 2) {
             return true;

@@ -16,11 +16,11 @@ public final class DatePatternDetector {
     private DatePatternDetector() {
     }
 
-    public static PatternResult detectDatePattern(List<BudgetTransaction> transactions) {
+    public static PatternResult detectDatePattern(List<RecurringBudgetTransaction> transactions) {
         return detectDatePattern(transactions, null);
     }
 
-    public static PatternResult detectDatePattern(List<BudgetTransaction> transactions,
+    public static PatternResult detectDatePattern(List<RecurringBudgetTransaction> transactions,
                                                    PatternDetectionConfig config) {
         if (transactions.size() < 2) {
             return null;
@@ -60,7 +60,7 @@ public final class DatePatternDetector {
                         || (d >= 28 && dominantDay <= 3));
 
         if (allMatch) {
-            return new PatternResult(BudgetTransaction.RecurringType.MONTHLY_DAY, dominantDay, null);
+            return new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_DAY, dominantDay, null);
         }
         return null;
     }
@@ -71,7 +71,7 @@ public final class DatePatternDetector {
             return date.getDayOfMonth() >= lastDay - 2;
         });
         if (allLastDays) {
-            return new PatternResult(BudgetTransaction.RecurringType.MONTHLY_LAST, 0, null);
+            return new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_LAST, 0, null);
         }
         return null;
     }
@@ -94,7 +94,7 @@ public final class DatePatternDetector {
             List<Long> intervals = calculateIntervals(dates);
             double avgInterval = intervals.stream().mapToLong(Long::longValue).average().orElse(0);
             if (avgInterval >= minDays && avgInterval <= maxDays) {
-                return new PatternResult(BudgetTransaction.RecurringType.WEEKLY, 0, dominantWeekday);
+                return new PatternResult(RecurringBudgetTransaction.RecurringType.WEEKLY, 0, dominantWeekday);
             }
         }
         return null;
@@ -111,7 +111,7 @@ public final class DatePatternDetector {
                 .allMatch(i -> Math.abs(i - avgInterval) <= avgInterval * 0.2 + 2);
 
         if (consistent && avgInterval >= 3) {
-            return new PatternResult(BudgetTransaction.RecurringType.INTERVAL,
+            return new PatternResult(RecurringBudgetTransaction.RecurringType.INTERVAL,
                     (int) Math.round(avgInterval), null);
         }
         return null;
@@ -131,7 +131,7 @@ public final class DatePatternDetector {
                 .orElse(values.get(0));
     }
 
-    public record PatternResult(BudgetTransaction.RecurringType type,
+    public record PatternResult(RecurringBudgetTransaction.RecurringType type,
                                 int value,
                                 DayOfWeek dayOfWeek) {
     }

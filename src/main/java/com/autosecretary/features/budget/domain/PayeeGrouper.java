@@ -15,19 +15,19 @@ public final class PayeeGrouper {
     private PayeeGrouper() {
     }
 
-    public static Map<String, List<BudgetTransaction>> groupBySimilarPayee(List<BudgetTransaction> transactions) {
+    public static Map<String, List<RecurringBudgetTransaction>> groupBySimilarPayee(List<RecurringBudgetTransaction> transactions) {
         return groupBySimilarPayee(transactions, PAYEE_SIMILARITY_THRESHOLD);
     }
 
-    public static Map<String, List<BudgetTransaction>> groupBySimilarPayee(List<BudgetTransaction> transactions,
+    public static Map<String, List<RecurringBudgetTransaction>> groupBySimilarPayee(List<RecurringBudgetTransaction> transactions,
                                                                             PatternDetectionConfig config) {
         return groupBySimilarPayee(transactions, config.payeeSimilarityThreshold);
     }
 
-    private static Map<String, List<BudgetTransaction>> groupBySimilarPayee(List<BudgetTransaction> transactions,
+    private static Map<String, List<RecurringBudgetTransaction>> groupBySimilarPayee(List<RecurringBudgetTransaction> transactions,
                                                                              double similarityThreshold) {
-        Map<String, List<BudgetTransaction>> groupedByPayee = new HashMap<>();
-        for (BudgetTransaction tx : transactions) {
+        Map<String, List<RecurringBudgetTransaction>> groupedByPayee = new HashMap<>();
+        for (RecurringBudgetTransaction tx : transactions) {
             String normalized = normalizePayee(tx.payee);
             if (normalized.isEmpty()) {
                 continue;

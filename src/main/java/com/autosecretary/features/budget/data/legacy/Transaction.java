@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 /**
  * Transitional legacy transaction model kept for historical reference only.
  *
- * <p>Canonical budget persistence uses {@code BudgetTransaction} in table
+ * <p>Canonical budget persistence uses {@code BudgetTransactionEntity} in table
  * {@code budget_transaction} (introduced by AppDatabase migration v8). Do not use this class
  * for new code.</p>
  */

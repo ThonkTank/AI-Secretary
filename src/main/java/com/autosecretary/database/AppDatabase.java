@@ -14,7 +14,7 @@ import com.autosecretary.features.budget.data.BudgetCategory;
 import com.autosecretary.features.budget.data.BudgetLimit;
 import com.autosecretary.features.budget.data.BudgetLimitDao;
 import com.autosecretary.features.budget.data.BudgetLookupDao;
-import com.autosecretary.features.budget.data.BudgetTransaction;
+import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.TransactionDao;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskDAO;
@@ -32,7 +32,7 @@ import com.autosecretary.features.task.data.TaskSlot;
                 TaskPrerequisite.class,
                 BudgetAccount.class,
                 BudgetCategory.class,
-                BudgetTransaction.class,
+                BudgetTransactionEntity.class,
                 BudgetLimit.class
         },
         version = 8,

@@ -1,17 +1,17 @@
 package com.autosecretary.features.budget.domain;
 
 import com.autosecretary.features.budget.data.BudgetLimit;
-import com.autosecretary.features.budget.data.BudgetTransaction;
+import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 
 import java.util.List;
 
 public class BudgetConsumptionService {
 
     public BudgetConsumption calculateMonthlyConsumption(BudgetLimit budgetLimit,
-                                                         List<BudgetTransaction> transactions) {
+                                                         List<BudgetTransactionEntity> transactions) {
         double spent = 0d;
-        for (BudgetTransaction tx : transactions) {
-            if (tx.categoryId == null || !"EXPENSE".equalsIgnoreCase(tx.type)) {
+        for (BudgetTransactionEntity tx : transactions) {
+            if (tx.categoryId == null || tx.type != BudgetTransactionEntity.TransactionType.EXPENSE) {
                 continue;
             }
             if (!budgetLimit.categoryId.equals(tx.categoryId)) {

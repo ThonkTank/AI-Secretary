@@ -6,7 +6,7 @@ The canonical persisted budget model is the `budget_*` schema introduced in `App
 
 - `BudgetAccount` (`budget_account`)
 - `BudgetCategory` (`budget_category`)
-- `BudgetTransaction` (`budget_transaction`)
+- `BudgetTransactionEntity` (`budget_transaction`)
 - `BudgetLimit` (`budget_limit`)
 
 These are the entities registered in `AppDatabase` version 8 and should be used for all new budget feature work.

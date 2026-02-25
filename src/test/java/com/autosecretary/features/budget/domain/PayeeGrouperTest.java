@@ -18,12 +18,12 @@ public class PayeeGrouperTest {
 
     @Test
     public void groupBySimilarPayee_groupsFuzzyMatches() {
-        BudgetTransaction tx1 = tx(1L, "NETFLIX.COM");
-        BudgetTransaction tx2 = tx(2L, "Netflix 123");
-        BudgetTransaction tx3 = tx(3L, "NETFLIX*ABO");
-        BudgetTransaction tx4 = tx(4L, "SPOTIFY LTD");
+        RecurringBudgetTransaction tx1 = tx(1L, "NETFLIX.COM");
+        RecurringBudgetTransaction tx2 = tx(2L, "Netflix 123");
+        RecurringBudgetTransaction tx3 = tx(3L, "NETFLIX*ABO");
+        RecurringBudgetTransaction tx4 = tx(4L, "SPOTIFY LTD");
 
-        Map<String, List<BudgetTransaction>> grouped = PayeeGrouper.groupBySimilarPayee(List.of(tx1, tx2, tx3, tx4));
+        Map<String, List<RecurringBudgetTransaction>> grouped = PayeeGrouper.groupBySimilarPayee(List.of(tx1, tx2, tx3, tx4));
 
         Assert.assertEquals(2, grouped.size());
         Assert.assertTrue(grouped.keySet().stream().anyMatch(k -> k.contains("NETFLIX")));
@@ -39,8 +39,8 @@ public class PayeeGrouperTest {
         Assert.assertTrue(different < PayeeGrouper.PAYEE_SIMILARITY_THRESHOLD);
     }
 
-    private BudgetTransaction tx(Long id, String payee) {
-        BudgetTransaction tx = new BudgetTransaction.Builder(10L, -1200, LocalDate.of(2025, 1, 1), 5L)
+    private RecurringBudgetTransaction tx(Long id, String payee) {
+        RecurringBudgetTransaction tx = new RecurringBudgetTransaction.Builder(10L, -1200, LocalDate.of(2025, 1, 1), 5L)
                 .payee(payee)
                 .build();
         tx.id = id;
