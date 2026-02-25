@@ -142,11 +142,13 @@ public class TaskEditDialog extends DialogFragment {
         rebuildPrefSlotUI();
 
         return new AlertDialog.Builder(requireContext())
-            .setTitle(editSessionController.isNewTask() ? "Task erstellen" : "Task bearbeiten")
+            .setTitle(editSessionController.isNewTask()
+                ? R.string.task_edit_dialog_title_create
+                : R.string.task_edit_dialog_title_edit)
             .setView(rootView)
             // Save handler with validation is set in onStart() to prevent dialog auto-dismiss on errors
-            .setPositiveButton("Speichern", null)
-            .setNegativeButton("Abbrechen", null)
+            .setPositiveButton(R.string.task_edit_dialog_positive, null)
+            .setNegativeButton(R.string.task_edit_dialog_negative, null)
             .create();
     }
 
@@ -291,7 +293,7 @@ public class TaskEditDialog extends DialogFragment {
         new AlertDialog.Builder(requireContext())
             .setTitle(R.string.task_edit_day_picker_title)
             .setView(layout)
-            .setPositiveButton("OK", (d, w) -> {
+            .setPositiveButton(R.string.task_edit_day_picker_positive, (d, w) -> {
                 EnumSet<DayOfWeek> newDays = EnumSet.noneOf(DayOfWeek.class);
                 for (int i = 0; i < WEEK_DAY_COUNT; i++) {
                     if (selected[i]) {
@@ -301,7 +303,7 @@ public class TaskEditDialog extends DialogFragment {
                 prefSlot.days = newDays;
                 rebuildPrefSlotUI();
             })
-            .setNegativeButton("Abbrechen", null)
+            .setNegativeButton(R.string.task_edit_day_picker_negative, null)
             .show();
     }
 
@@ -312,8 +314,11 @@ public class TaskEditDialog extends DialogFragment {
         new TimePickerDialog(requireContext(), (picker, h, m) -> {
             prefSlot.start = LocalTime.of(h, m);
             String formattedTime = prefSlot.start.format(DateTimeFormatter.ofPattern("HH:mm"));
-            timeView.setText("Startzeit wählen: " + formattedTime);
-            timeView.setContentDescription("Startzeit wählen. Aktuell: " + formattedTime);
+            timeView.setText(getString(R.string.task_editor_pref_slot_time_button, formattedTime));
+            timeView.setContentDescription(getString(
+                R.string.task_editor_pref_slot_time_content_description,
+                formattedTime
+            ));
         }, hour, minute, true).show();
     }
 
