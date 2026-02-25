@@ -6,9 +6,11 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.autosecretary.R;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
+import com.autosecretary.features.task.data.TaskItemType;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.autosecretary.features.task.ui.state.ViewSlotList;
 import com.autosecretary.features.task.ui.state.ViewSlotList.ViewSlot;
@@ -16,6 +18,7 @@ import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -45,6 +48,7 @@ public class TaskViewModel extends AndroidViewModel {
 
     private LocalDate day;
     private ListConfig activeListConfig = ListConfig.CHECKLIST;
+    private EnumSet<TaskItemType> activeTypeFilters = EnumSet.allOf(TaskItemType.class);
 
     public TaskViewModel(Application app,
                          TaskAsyncDataService taskAsyncDataService,
@@ -90,6 +94,33 @@ public class TaskViewModel extends AndroidViewModel {
 
     public TaskEditSessionController getTaskEditSessionController() {
         return taskEditSessionController;
+    }
+
+    public int getTypeFilterLabelRes() {
+        if (activeTypeFilters.equals(EnumSet.allOf(TaskItemType.class))) {
+            return R.string.task_list_filter_all;
+        }
+        if (activeTypeFilters.equals(EnumSet.of(TaskItemType.PROJECT))) {
+            return R.string.task_list_filter_project;
+        }
+        if (activeTypeFilters.equals(EnumSet.of(TaskItemType.GOAL))) {
+            return R.string.task_list_filter_goal;
+        }
+        return R.string.task_list_filter_task;
+    }
+
+    public int cycleTypeFilter() {
+        if (activeTypeFilters.equals(EnumSet.allOf(TaskItemType.class))) {
+            activeTypeFilters = EnumSet.of(TaskItemType.PROJECT);
+        } else if (activeTypeFilters.equals(EnumSet.of(TaskItemType.PROJECT))) {
+            activeTypeFilters = EnumSet.of(TaskItemType.GOAL);
+        } else if (activeTypeFilters.equals(EnumSet.of(TaskItemType.GOAL))) {
+            activeTypeFilters = EnumSet.of(TaskItemType.TASK);
+        } else {
+            activeTypeFilters = EnumSet.allOf(TaskItemType.class);
+        }
+        filterList();
+        return getTypeFilterLabelRes();
     }
 
 
@@ -143,7 +174,8 @@ public class TaskViewModel extends AndroidViewModel {
      * </p>
      */
     public void filterList() {
-        Predicate<ViewSlot> predicate = slot -> activeListConfig.matches(slot, day);
+        Predicate<ViewSlot> predicate = slot -> activeListConfig.matches(slot, day)
+                && activeTypeFilters.contains(slot.item.type);
         masterList.filter(predicate);
         sortList();
     }

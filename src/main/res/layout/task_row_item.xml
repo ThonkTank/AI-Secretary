@@ -49,6 +49,18 @@
         android:buttonTint="@color/task_color_primary"/>
 
     <TextView
+        android:id="@+id/TaskTypeBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/spacing_xs"
+        android:background="@drawable/bg_task_type_badge"
+        android:paddingStart="@dimen/spacing_xs"
+        android:paddingEnd="@dimen/spacing_xs"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp"
+        android:textAppearance="@style/TextAppearance.Task.Metadata"/>
+
+    <TextView
         android:id="@+id/TaskTitle"
         android:layout_width="0dp"
         android:layout_height="wrap_content"

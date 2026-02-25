@@ -31,6 +31,14 @@
     <string name="task_list_empty_action">Erste Aufgabe erstellen</string>
     <string name="task_list_new_task">+ Neue Task</string>
 
+    <string name="task_list_filter_all">Typ: Alle</string>
+    <string name="task_list_filter_project">Typ: Projekte</string>
+    <string name="task_list_filter_goal">Typ: Ziele</string>
+    <string name="task_list_filter_task">Typ: Tasks</string>
+    <string name="task_type_project_short">P</string>
+    <string name="task_type_goal_short">G</string>
+    <string name="task_type_task_short">T</string>
+
     <string name="task_editor_hint_title">Titel</string>
     <string name="task_editor_hint_description">Beschreibung</string>
     <string name="task_editor_deadline_label">Frist:</string>

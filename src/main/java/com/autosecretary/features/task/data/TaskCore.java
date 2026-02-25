@@ -24,6 +24,7 @@ public class TaskCore {
     public String id = UUID.randomUUID().toString();
     public String title;
     public String description;
+    public TaskItemType type = TaskItemType.TASK;
 
     //scheduling
     public Priority priority = Priority.MEDIUM;
@@ -118,4 +119,3 @@ public class TaskCore {
 
 
 }
-

@@ -95,6 +95,11 @@ public class ListFragment extends Fragment {
             adapter.setInteractionsEnabled(isToday);
         });
 
+
+        Button filterTypeButton = view.findViewById(R.id.FilterTypeButton);
+        filterTypeButton.setText(vm.getTypeFilterLabelRes());
+        filterTypeButton.setOnClickListener(v -> filterTypeButton.setText(vm.cycleTypeFilter()));
+
         MaterialButtonToggleGroup toggle = view.findViewById(R.id.TaskListToggle);
         // Checklist vs Manage toggles between focused presets for quick completion and planning workflows.
         toggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {

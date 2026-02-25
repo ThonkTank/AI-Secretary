@@ -22,6 +22,10 @@
     <color name="task_text_on_surface_muted">@color/task_color_on_surface_muted</color>
     <color name="task_row_time_divider">@color/task_color_outline</color>
 
+    <color name="task_type_project_badge">#FF5C7A4D</color>
+    <color name="task_type_goal_badge">#FFCF8F4F</color>
+    <color name="task_type_task_badge">#FF8DAA8C</color>
+
     <!-- Day picker colors -->
     <color name="task_edit_day_selected_background">@color/task_color_primary</color>
     <color name="task_edit_day_selected_text">@color/task_color_on_primary</color>

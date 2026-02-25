@@ -106,6 +106,14 @@
 
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/FilterTypeButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:textAllCaps="false"
+            style="?attr/materialButtonOutlinedStyle" />
+
     </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView

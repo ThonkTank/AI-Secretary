@@ -17,6 +17,7 @@ import java.util.function.Consumer;
 import java.time.format.DateTimeFormatter;
 
 import com.autosecretary.features.task.application.TaskListItem;
+import com.autosecretary.features.task.data.TaskItemType;
 import com.autosecretary.features.task.ui.state.ViewSlotList.ViewSlot;
 import com.autosecretary.R;
 
@@ -40,6 +41,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     static class TaskRowViewHolder extends RecyclerView.ViewHolder {
         TextView title;
+        TextView typeBadge;
         TextView start;
         TextView end;
         CheckBox checkBox;
@@ -50,6 +52,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         TaskRowViewHolder(View taskRow) {
             super(taskRow);
             this.title = taskRow.findViewById(R.id.TaskTitle);
+            this.typeBadge = taskRow.findViewById(R.id.TaskTypeBadge);
             this.start = taskRow.findViewById(R.id.StartTime);
             this.end = taskRow.findViewById(R.id.EndTime);
             this.checkBox = taskRow.findViewById(R.id.TaskCheckBox);
@@ -79,11 +82,35 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.itemView.setContentDescription(item.title);
 
         bindIndentation(holder, viewSlot.depth);
+        bindTypeBadge(holder, item);
         bindTimeRange(holder, item);
         bindDeadline(holder, item);
         bindStreak(holder, item);
         bindProgressState(holder, item);
         bindInteractions(holder, item, viewSlot);
+    }
+
+
+    private void bindTypeBadge(TaskRowViewHolder holder, TaskListItem item) {
+        Context context = holder.itemView.getContext();
+        int labelRes;
+        int colorRes;
+
+        if (item.type == TaskItemType.PROJECT) {
+            labelRes = R.string.task_type_project_short;
+            colorRes = R.color.task_type_project_badge;
+        } else if (item.type == TaskItemType.GOAL) {
+            labelRes = R.string.task_type_goal_short;
+            colorRes = R.color.task_type_goal_badge;
+        } else {
+            labelRes = R.string.task_type_task_short;
+            colorRes = R.color.task_type_task_badge;
+        }
+
+        int color = ContextCompat.getColor(context, colorRes);
+        holder.typeBadge.setText(labelRes);
+        holder.typeBadge.setTextColor(ContextCompat.getColor(context, R.color.task_color_on_primary));
+        holder.typeBadge.setBackgroundTintList(ColorStateList.valueOf(color));
     }
 
     private void bindIndentation(TaskRowViewHolder holder, int depth) {
