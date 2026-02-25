@@ -85,6 +85,16 @@ public class Converters {
         return value != null ? BudgetTransactionEntity.TransactionType.valueOf(value) : null;
     }
 
+
+    @TypeConverter
+    public static String fromBudgetTransactionKind(BudgetTransactionEntity.TransactionKind kind) {
+        return kind != null ? kind.name() : null;
+    }
+
+    @TypeConverter
+    public static BudgetTransactionEntity.TransactionKind toBudgetTransactionKind(String value) {
+        return value != null ? BudgetTransactionEntity.TransactionKind.valueOf(value) : null;
+    }
     @TypeConverter
     public static String fromBudgetAccountType(BudgetAccount.AccountType type) {
         return type != null ? type.name() : null;

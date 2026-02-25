@@ -51,7 +51,8 @@ public class BudgetTransactionService {
             boolean isIncome = tx.type == BudgetTransactionEntity.TransactionType.INCOME;
             totalBalanceCents += isIncome ? tx.amountCents : -tx.amountCents;
 
-            if (yearMonth.equals(tx.yearMonth)) {
+            if (yearMonth.equals(tx.yearMonth)
+                    && tx.transactionKind != BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER) {
                 if (isIncome) {
                     monthlyIncomeCents += tx.amountCents;
                 } else {
