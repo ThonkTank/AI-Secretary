@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="#F5F5F5"
-    android:padding="8dp">
+    android:padding="@dimen/spacing_sm">
 
     <!-- Day navigation header -->
     <LinearLayout
@@ -13,16 +13,15 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingBottom="4dp">
+        android:paddingBottom="@dimen/spacing_xs">
 
         <TextView
             android:id="@+id/widget_prev_day"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:padding="@dimen/spacing_sm"
             android:text="@string/widget_day_nav_prev"
-            android:textSize="16sp"
-            android:padding="8dp"
-            android:textColor="#333333" />
+            android:textAppearance="@style/TextAppearance.Task.Widget.NavAction" />
 
         <TextView
             android:id="@+id/widget_date_label"
@@ -30,19 +29,16 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:textColor="#333333"
-            android:text="@string/widget_day_nav_today" />
+            android:text="@string/widget_day_nav_today"
+            android:textAppearance="@style/TextAppearance.Task.Widget.NavLabel" />
 
         <TextView
             android:id="@+id/widget_next_day"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:padding="@dimen/spacing_sm"
             android:text="@string/widget_day_nav_next"
-            android:textSize="16sp"
-            android:padding="8dp"
-            android:textColor="#333333" />
+            android:textAppearance="@style/TextAppearance.Task.Widget.NavAction" />
     </LinearLayout>
 
     <!-- Action bar: refresh -->
@@ -51,12 +47,12 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="end"
-        android:paddingBottom="4dp">
+        android:paddingBottom="@dimen/spacing_xs">
 
         <ImageButton
             android:id="@+id/widget_refresh"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="@dimen/widget_refresh_button_size"
+            android:layout_height="@dimen/widget_refresh_button_size"
             android:src="@android:drawable/ic_popup_sync"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/widget_refresh_content_description"
@@ -70,7 +66,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:divider="@android:color/transparent"
-        android:dividerHeight="2dp" />
+        android:dividerHeight="@dimen/widget_list_divider_height" />
 
     <!-- Empty state -->
     <TextView
@@ -80,8 +76,7 @@
         android:layout_weight="1"
         android:gravity="center"
         android:text="@string/widget_empty"
-        android:textColor="#888888"
-        android:textSize="14sp"
+        android:textAppearance="@style/TextAppearance.Task.Metadata"
         android:visibility="gone" />
 
 </LinearLayout>
