@@ -67,7 +67,13 @@
     <string name="widget_empty">Keine Aufgaben</string>
 
     <string name="nav_tasks">Tasks</string>
-    <string name="nav_manage">placeholder</string>
+    <string name="nav_manage">Budget</string>
+
+    <string name="budget_title">Budgetübersicht</string>
+    <string name="budget_summary">Monatliches Budget im Blick behalten.</string>
+    <string name="budget_demo_section_title">Letzte Buchung</string>
+    <string name="budget_demo_transaction_label">Lebensmittel</string>
+    <string name="budget_demo_transaction_amount">-42,90 €</string>
 
     <string-array name="task_edit_weekday_short_labels">
         <item>Mo</item>
