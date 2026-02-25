@@ -114,8 +114,10 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
 
     @Override
     public void linkTransactionsToTemplate(List<String> transactionIds, String templateId) {
-        // No-Op: BudgetTransactionEntity hat noch kein templateId-Feld.
-        // Wird in einem späteren Schritt ergänzt.
+        if (transactionIds == null || transactionIds.isEmpty() || templateId == null || templateId.isBlank()) {
+            return;
+        }
+        transactionDao.updateTemplateIdForTransactions(transactionIds, templateId);
     }
 
     @Override
