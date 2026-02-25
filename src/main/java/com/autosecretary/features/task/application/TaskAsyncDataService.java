@@ -5,6 +5,7 @@ import com.autosecretary.features.task.application.TaskListItem;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 
+import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -54,6 +55,20 @@ public class TaskAsyncDataService {
     public void saveTask(Task task, Runnable onSaved) {
         workerExecutor.execute(() -> {
             taskDao.write(task);
+            callbackDispatcher.execute(onSaved);
+        });
+    }
+
+    public void startTimer(String slotId, Runnable onSaved) {
+        workerExecutor.execute(() -> {
+            taskDao.startTimer(slotId, LocalTime.now());
+            callbackDispatcher.execute(onSaved);
+        });
+    }
+
+    public void stopTimer(String slotId, Runnable onSaved) {
+        workerExecutor.execute(() -> {
+            taskDao.stopTimer(slotId, LocalTime.now());
             callbackDispatcher.execute(onSaved);
         });
     }

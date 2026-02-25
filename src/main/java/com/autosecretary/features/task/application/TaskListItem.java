@@ -12,6 +12,11 @@ import java.util.List;
  * Used by {@link com.autosecretary.features.task.ui.state.ViewSlotList} for filtering, sorting, and display.
  */
 public class TaskListItem {
+    public enum ItemType {
+        TASK,
+        CALENDAR_EVENT
+    }
+
     /** Categorizes deadline proximity for color-coded display in the list. */
     public enum DeadlineUrgency {
         NONE,
@@ -21,6 +26,7 @@ public class TaskListItem {
         FUTURE
     }
 
+    public final ItemType itemType;
     public final String taskId;
     public final String slotId;
     public final String slotParentId;
@@ -35,10 +41,33 @@ public class TaskListItem {
     public final int score;
     public final boolean completed;
     public final boolean inProgress;
+    public final int progressCurrent;
+    public final int progressTarget;
+    public final String progressUnit;
+    public final int progressStepDelta;
+    public final boolean timerRunning;
 
-    public TaskListItem(String taskId, String slotId, String slotParentId, List<String> parentTaskIds,
-                        String title, String description, LocalDate day, LocalTime start, LocalTime end, LocalDate deadline,
-                        int streak, int score, boolean completed, boolean inProgress) {
+    public TaskListItem(ItemType itemType,
+                        String taskId,
+                        String slotId,
+                        String slotParentId,
+                        List<String> parentTaskIds,
+                        String title,
+                        String description,
+                        LocalDate day,
+                        LocalTime start,
+                        LocalTime end,
+                        LocalDate deadline,
+                        int streak,
+                        int score,
+                        boolean completed,
+                        boolean inProgress,
+                        boolean timerRunning,
+                        int progressCurrent,
+                        int progressTarget,
+                        String progressUnit,
+                        int progressStepDelta) {
+        this.itemType = itemType;
         this.taskId = taskId;
         this.slotId = slotId;
         this.slotParentId = slotParentId;
@@ -53,6 +82,87 @@ public class TaskListItem {
         this.score = score;
         this.completed = completed;
         this.inProgress = inProgress;
+        this.timerRunning = timerRunning;
+        this.progressCurrent = progressCurrent;
+        this.progressTarget = progressTarget;
+        this.progressUnit = progressUnit;
+        this.progressStepDelta = progressStepDelta;
+    }
+
+    public boolean hasProgressTarget() {
+        return progressTarget > 0;
+    }
+
+    public static TaskListItem task(String taskId,
+                                    String slotId,
+                                    String slotParentId,
+                                    List<String> parentTaskIds,
+                                    String title,
+                                    String description,
+                                    LocalDate day,
+                                    LocalTime start,
+                                    LocalTime end,
+                                    LocalDate deadline,
+                                    int streak,
+                                    int score,
+                                    boolean completed,
+                                    boolean inProgress,
+                                    boolean timerRunning,
+                                    int progressCurrent,
+                                    int progressTarget,
+                                    String progressUnit,
+                                    int progressStepDelta) {
+        return new TaskListItem(
+                ItemType.TASK,
+                taskId,
+                slotId,
+                slotParentId,
+                parentTaskIds,
+                title,
+                description,
+                day,
+                start,
+                end,
+                deadline,
+                streak,
+                score,
+                completed,
+                inProgress,
+                timerRunning,
+                progressCurrent,
+                progressTarget,
+                progressUnit,
+                progressStepDelta
+        );
+    }
+
+    public static TaskListItem calendarEvent(String eventId, String title, LocalDate day, LocalTime start, LocalTime end) {
+        return new TaskListItem(
+                ItemType.CALENDAR_EVENT,
+                eventId,
+                eventId,
+                null,
+                List.of(),
+                title,
+                null,
+                day,
+                start,
+                end,
+                null,
+                0,
+                0,
+                false,
+                false,
+                false,
+                0,
+                0,
+                "",
+                0
+        );
+    }
+
+    public boolean isCalendarEvent() {
+        return itemType == ItemType.CALENDAR_EVENT;
     }
 
     public long daysUntilDeadline() {
@@ -70,7 +180,7 @@ public class TaskListItem {
         long daysUntil = daysUntilDeadline();
         if (daysUntil < 0) return DeadlineUrgency.OVERDUE;
         if (daysUntil == 0) return DeadlineUrgency.TODAY;
-        if (daysUntil <= 3) return DeadlineUrgency.SOON; // 3 days = "soon" threshold for deadline proximity warning
+        if (daysUntil <= 3) return DeadlineUrgency.SOON;
         return DeadlineUrgency.FUTURE;
     }
 }

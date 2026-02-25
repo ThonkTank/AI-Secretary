@@ -6,30 +6,29 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.autosecretary.app.Preferences;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
+import com.autosecretary.features.task.application.DecrementTaskProgressUseCase;
+import com.autosecretary.features.task.application.DeleteTaskUseCase;
+import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
+import com.autosecretary.features.task.application.TaskListItem;
+import com.autosecretary.features.task.application.internal.calendar.CalendarEvent;
+import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.autosecretary.features.task.ui.state.ViewSlotList;
 import com.autosecretary.features.task.ui.state.ViewSlotList.ViewSlot;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 
 /**
  * Coordinates task-list presentation state for the task screen.
- * <p>
- * Raw task slots are loaded into {@link #masterList}, then transformed through a two-step pipeline:
- * filtering ({@link #filterList()}) and sorting ({@link #sortList()}). The resulting
- * {@link ViewSlotList#displaySlots} are published to {@link #displayList} for the UI.
- * </p>
- * <p>
- * Editing lifecycle is delegated to {@link TaskEditSessionController} while this ViewModel keeps
- * list-oriented concerns and scheduling actions.
- * </p>
  */
 public class TaskViewModel extends AndroidViewModel {
     private static final int MAX_DAY_OFFSET = 6;
@@ -37,7 +36,11 @@ public class TaskViewModel extends AndroidViewModel {
     private final TaskAsyncDataService taskAsyncDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
+    private final IncrementTaskProgressUseCase incrementTaskProgressUseCase;
+    private final DecrementTaskProgressUseCase decrementTaskProgressUseCase;
     private final TaskEditSessionController taskEditSessionController;
+    private final Preferences preferences;
+    private final CalendarReader calendarReader;
 
     private final ViewSlotList masterList;
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
@@ -45,16 +48,29 @@ public class TaskViewModel extends AndroidViewModel {
 
     private LocalDate day;
     private ListConfig activeListConfig = ListConfig.CHECKLIST;
+    private boolean hasCalendarPermission = false;
 
     public TaskViewModel(Application app,
                          TaskAsyncDataService taskAsyncDataService,
                          CheckOffTaskUseCase checkOffTaskUseCase,
-                         RegenerateScheduleUseCase regenerateScheduleUseCase) {
+                         RegenerateScheduleUseCase regenerateScheduleUseCase,
+                         DeleteTaskUseCase deleteTaskUseCase,
+                         CalendarReader calendarReader,
+                         IncrementTaskProgressUseCase incrementTaskProgressUseCase,
+                         DecrementTaskProgressUseCase decrementTaskProgressUseCase) {
         super(app);
         this.taskAsyncDataService = taskAsyncDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
-        this.taskEditSessionController = new TaskEditSessionController(taskAsyncDataService, this::refreshList);
+        this.incrementTaskProgressUseCase = incrementTaskProgressUseCase;
+        this.decrementTaskProgressUseCase = decrementTaskProgressUseCase;
+        this.taskEditSessionController = new TaskEditSessionController(
+                taskAsyncDataService,
+                deleteTaskUseCase,
+                this::refreshList
+        );
+        this.calendarReader = calendarReader;
+        this.preferences = new Preferences(app);
 
         this.masterList = new ViewSlotList();
         applyChecklistPreset();
@@ -67,6 +83,11 @@ public class TaskViewModel extends AndroidViewModel {
 
     public LiveData<LocalDate> getSelectedDay() {
         return selectedDay;
+    }
+
+    public void onCalendarPermissionChanged(boolean granted) {
+        hasCalendarPermission = granted;
+        filterList();
     }
 
     public void navigateNextDay() {
@@ -92,35 +113,10 @@ public class TaskViewModel extends AndroidViewModel {
         return taskEditSessionController;
     }
 
-
-    /**
-     * Applies the checklist browsing preset.
-     * <p>
-     * Exact semantics:
-     * <ul>
-     *     <li>Filter to tasks on the currently selected day.</li>
-     *     <li>Hide unscheduled tasks ({@code start == null}).</li>
-     *     <li>Do not group by parent task.</li>
-     *     <li>Sort by time only (ascending, nulls last).</li>
-     * </ul>
-     * </p>
-     */
     public void applyChecklistPreset() {
         applyPreset(selectedDay.getValue(), ListConfig.CHECKLIST);
     }
 
-    /**
-     * Applies the management browsing preset.
-     * <p>
-     * Exact semantics:
-     * <ul>
-     *     <li>Filter to tasks on the currently selected day.</li>
-     *     <li>Include unscheduled tasks.</li>
-     *     <li>Group by parent task.</li>
-     *     <li>Sort by title only (natural ascending order).</li>
-     * </ul>
-     * </p>
-     */
     public void applyManagePreset() {
         applyPreset(selectedDay.getValue(), ListConfig.MANAGE);
     }
@@ -135,26 +131,36 @@ public class TaskViewModel extends AndroidViewModel {
         regenerateScheduleUseCase.execute(this::refreshList);
     }
 
-    /**
-     * Rebuilds the displayed list using the current filter controls.
-     * <p>
-     * Invariant: this method always applies filtering before sorting so that ordering is performed
-     * over the already-filtered subset.
-     * </p>
-     */
     public void filterList() {
         Predicate<ViewSlot> predicate = slot -> activeListConfig.matches(slot, day);
         masterList.filter(predicate);
+
+        if (day != null && hasCalendarPermission) {
+            List<CalendarEvent> events = calendarReader.getEventsForDay(
+                    getApplication(),
+                    day,
+                    preferences.readPrefTime(day, true),
+                    preferences.readPrefTime(day, false)
+            );
+            List<ViewSlot> merged = new ArrayList<>(masterList.displaySlots);
+            int index = 0;
+            for (CalendarEvent event : events) {
+                TaskListItem item = TaskListItem.calendarEvent(
+                        "calendar-" + day + "-" + index,
+                        event.title(),
+                        day,
+                        event.start(),
+                        event.end()
+                );
+                merged.add(new ViewSlot(item));
+                index++;
+            }
+            masterList.displaySlots = merged;
+        }
+
         sortList();
     }
 
-    /**
-     * Re-sorts the current filtered list and publishes it to observers.
-     * <p>
-     * Invariant: this method does not change filter membership; it only updates order/grouping and
-     * then posts {@link ViewSlotList#displaySlots} to {@link #displayList}.
-     * </p>
-     */
     public void sortList() {
         Comparator<ViewSlot> comparator = activeListConfig.comparator();
 
@@ -167,7 +173,32 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void checkOff(ViewSlot viewSlot) {
+        if (viewSlot.item.isCalendarEvent()) {
+            return;
+        }
         checkOffTaskUseCase.execute(viewSlot.item, this::refreshList);
+    }
+
+    public void incrementProgress(ViewSlot viewSlot) {
+        incrementTaskProgressUseCase.execute(viewSlot.item, this::refreshList);
+    }
+
+    public void decrementProgress(ViewSlot viewSlot) {
+        decrementTaskProgressUseCase.execute(viewSlot.item, this::refreshList);
+    }
+
+    public void startTimer(String slotId) {
+        if (slotId == null) {
+            return;
+        }
+        taskAsyncDataService.startTimer(slotId, this::refreshList);
+    }
+
+    public void stopTimer(String slotId) {
+        if (slotId == null) {
+            return;
+        }
+        taskAsyncDataService.stopTimer(slotId, this::refreshList);
     }
 
     private void refreshList() {
@@ -186,6 +217,9 @@ public class TaskViewModel extends AndroidViewModel {
         CHECKLIST(false) {
             @Override
             boolean matches(ViewSlot slot, LocalDate day) {
+                if (slot.item.isCalendarEvent()) {
+                    return isOnDay(slot, day);
+                }
                 return isOnDay(slot, day) && slot.item.start != null;
             }
 
@@ -205,7 +239,9 @@ public class TaskViewModel extends AndroidViewModel {
 
             @Override
             Comparator<ViewSlot> comparator() {
-                return Comparator.comparing(slot -> slot.item.title, Comparator.naturalOrder());
+                return Comparator
+                        .comparing((ViewSlot slot) -> slot.item.isCalendarEvent() ? 1 : 0)
+                        .thenComparing(slot -> slot.item.title, Comparator.naturalOrder());
             }
         };
 

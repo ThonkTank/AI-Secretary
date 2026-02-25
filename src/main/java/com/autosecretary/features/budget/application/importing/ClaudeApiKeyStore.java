@@ -86,7 +86,7 @@ public class ClaudeApiKeyStore {
         return apiKey != null && apiKey.startsWith("sk-ant-") && apiKey.length() > 20;
     }
 
-    private SecretKey getOrCreateSecretKey() throws GeneralSecurityException {
+    private SecretKey getOrCreateSecretKey() throws Exception {
         KeyStore keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
         keyStore.load(null);
 

@@ -7,6 +7,7 @@ import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.TaskPlanningState;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
+import com.autosecretary.features.task.application.internal.calendar.CalendarEvent;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -58,6 +59,8 @@ public class DefaultTaskSlotGenerator {
     }
 
     private final Consumer<String> logger;
+    private final SchedulingWindowProvider schedulingWindowProvider;
+    private final CalendarBlockedIntervalProvider calendarBlockedIntervalProvider;
     private int newSlots;
     private Set<String> scheduledInSession;
     private Map<String, Task> allTasksById;
@@ -65,12 +68,29 @@ public class DefaultTaskSlotGenerator {
     private LocalDate schedulingDay;
 
     public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager) {
-        this(lifecycleManager, null);
+        this(lifecycleManager, null, day -> {
+            LocalDateTime start = LocalDateTime.of(day, java.time.LocalTime.of(6, 0));
+            LocalDateTime end = LocalDateTime.of(day, java.time.LocalTime.of(21, 0));
+            return new SchedulingWindowProvider.SchedulingWindow(start, end);
+        }, CalendarBlockedIntervalProvider.NONE);
     }
 
     public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager, Consumer<String> logger) {
+        this(lifecycleManager, logger, day -> {
+            LocalDateTime start = LocalDateTime.of(day, java.time.LocalTime.of(6, 0));
+            LocalDateTime end = LocalDateTime.of(day, java.time.LocalTime.of(21, 0));
+            return new SchedulingWindowProvider.SchedulingWindow(start, end);
+        }, CalendarBlockedIntervalProvider.NONE);
+    }
+
+    public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager,
+                                    Consumer<String> logger,
+                                    SchedulingWindowProvider schedulingWindowProvider,
+                                    CalendarBlockedIntervalProvider calendarBlockedIntervalProvider) {
         this.scorer = new TaskScorer(lifecycleManager);
         this.logger = logger;
+        this.schedulingWindowProvider = schedulingWindowProvider;
+        this.calendarBlockedIntervalProvider = calendarBlockedIntervalProvider;
     }
 
     private static final DateTimeFormatter HMM = DateTimeFormatter.ofPattern("HH:mm");
@@ -93,10 +113,29 @@ public class DefaultTaskSlotGenerator {
     }
 
     public void generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
-        generateSlotsForDayInternal(tasks, windowStart, windowEnd, state);
+        generateSlotsForDay(tasks, windowStart, windowEnd, state, new ArrayList<>());
     }
 
-    private void generateSlotsForDayInternal(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
+    public void generateSlotsForDay(List<Task> tasks, LocalDate day, TaskPlanningState state) {
+        SchedulingWindowProvider.SchedulingWindow window = schedulingWindowProvider.forDay(day);
+        LocalDateTime windowStart = window.start;
+        LocalDateTime windowEnd = window.end;
+        generateSlotsForDayInternal(tasks, windowStart, windowEnd, state, new ArrayList<>());
+    }
+
+    public void generateSlotsForDay(List<Task> tasks,
+                                    LocalDateTime windowStart,
+                                    LocalDateTime windowEnd,
+                                    TaskPlanningState state,
+                                    List<CalendarEvent> calendarEvents) {
+        generateSlotsForDayInternal(tasks, windowStart, windowEnd, state, calendarEvents);
+    }
+
+    private void generateSlotsForDayInternal(List<Task> tasks,
+                                             LocalDateTime windowStart,
+                                             LocalDateTime windowEnd,
+                                             TaskPlanningState state,
+                                             List<CalendarEvent> calendarEvents) {
         schedulingDay = windowStart.toLocalDate();
         newSlots = 0;
         scorer.reset();
@@ -123,7 +162,12 @@ public class DefaultTaskSlotGenerator {
         long windowMin = ChronoUnit.MINUTES.between(windowStart, windowEnd);
         log("=== Generierung " + schedulingDay + " === Fenster " + windowStart.format(HMM) + "-" + windowEnd.format(HMM) + " (" + windowMin + "min), " + taskTree.size() + " root tasks");
 
-        List<Interval> occupied = collectOccupiedIntervals(allTasks, schedulingDay);
+        List<Interval> occupied = collectOccupiedIntervals(allTasks, schedulingDay, calendarEvents);
+        for (CalendarBlockedIntervalProvider.BlockedInterval blocked :
+                calendarBlockedIntervalProvider.readBlockedIntervals(schedulingDay, windowStart, windowEnd)) {
+            occupied.add(new Interval(blocked.start, blocked.end));
+        }
+        occupied.sort(Interval::compareTo);
         assignGlobalBestFit(taskTree, windowStart, windowEnd, null, 0, occupied);
 
         log("=== Zusammenfassung " + schedulingDay + " ===");
@@ -286,7 +330,7 @@ public class DefaultTaskSlotGenerator {
         return gaps;
     }
 
-    private List<Interval> collectOccupiedIntervals(List<Task> tasks, LocalDate day) {
+    private List<Interval> collectOccupiedIntervals(List<Task> tasks, LocalDate day, List<CalendarEvent> calendarEvents) {
         List<Interval> intervals = new ArrayList<>();
         for (Task task : tasks) {
             for (TaskSlot slot : task.slots) {
@@ -297,6 +341,12 @@ public class DefaultTaskSlotGenerator {
                             day.atTime(slot.end)));
                 }
             }
+        }
+        for (CalendarEvent event : calendarEvents) {
+            if (event.start() == null || event.end() == null || !event.end().isAfter(event.start())) {
+                continue;
+            }
+            intervals.add(new Interval(day.atTime(event.start()), day.atTime(event.end())));
         }
         intervals.sort(Interval::compareTo);
         return intervals;

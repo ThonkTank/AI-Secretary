@@ -6,8 +6,17 @@
     <string name="task_edit_dialog_title_create">Aufgabe erstellen</string>
     <string name="task_edit_dialog_title_edit">Aufgabe bearbeiten</string>
     <string name="task_edit_dialog_positive">Speichern</string>
+    <string name="task_edit_dialog_delete">Löschen</string>
     <string name="task_edit_dialog_negative">Abbrechen</string>
+    <string name="task_edit_delete_title">Aufgabe löschen?</string>
+    <string name="task_edit_delete_message">Möchtest du diese Aufgabe wirklich löschen?</string>
+    <string name="task_edit_delete_confirm">Löschen</string>
+    <string name="task_edit_delete_cancel">Abbrechen</string>
     <string name="task_row_edit">Aufgabe bearbeiten</string>
+    <string name="task_timer_start">Timer starten</string>
+    <string name="task_timer_stop">Timer stoppen</string>
+    <string name="task_timer_running">Timer läuft</string>
+    <string name="task_timer_stopped">Timer nicht aktiv</string>
 
     <string name="task_time_fallback_start">Nicht</string>
     <string name="task_time_fallback_end">Heute</string>
@@ -20,6 +29,12 @@
     <string name="task_deadline_in_days_content_description">Fällig in %1$d Tagen</string>
     <string name="task_streak_display">%1$dx</string>
     <string name="task_in_progress_state_description">In Bearbeitung</string>
+    <string name="task_progress_display">%1$d/%2$d %3$s</string>
+    <string name="task_progress_increment">Fortschritt erhöhen</string>
+    <string name="task_progress_decrement">Fortschritt verringern</string>
+
+    <string name="task_calendar_label">Kalender</string>
+    <string name="task_calendar_state_description">Kalendereintrag</string>
 
     <string name="task_list_day_nav_prev">&#x25C0;</string>
     <string name="task_list_day_nav_today">Heute</string>
@@ -153,4 +168,11 @@
         <item>Sa</item>
         <item>So</item>
     </string-array>
+
+    <string name="task_schedule_button">Zeitfenster</string>
+    <string name="task_schedule_dialog_title">Tagesfenster konfigurieren</string>
+    <string name="task_schedule_dialog_save">Speichern</string>
+    <string name="task_schedule_dialog_cancel">Abbrechen</string>
+    <string name="task_schedule_validation_error">Endzeit muss nach Startzeit liegen.</string>
+    <string name="task_schedule_saved">Zeitfenster gespeichert</string>
 </resources>
