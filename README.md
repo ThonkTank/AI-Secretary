@@ -21,8 +21,9 @@
    ```bash
    ./gradlew assembleDebug
    ```
-2. After a successful build, the APK is produced at:
-   `src/build/outputs/apk/debug/AutoSecretary.apk`
+2. After a successful build, because this repository's app is the root module, the APK is produced at:
+   `build/outputs/apk/debug/AutoSecretary.apk`
+   *(Optional troubleshooting: If the path differs by AGP version, run `find build/outputs -name '*.apk'` from repo root.)*
 
 ### Success criteria
 
