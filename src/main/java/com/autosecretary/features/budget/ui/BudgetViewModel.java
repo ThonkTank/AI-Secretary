@@ -22,6 +22,8 @@ import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -572,15 +574,8 @@ public class BudgetViewModel extends ViewModel {
     public void addTransaction(String amountStr, boolean isExpense, String categoryId,
                                String note, LocalDate date) {
         executor.execute(() -> {
-            long amountCents;
-            try {
-                String normalized = amountStr.replace(',', '.');
-                amountCents = Math.round(Double.parseDouble(normalized) * 100);
-            } catch (NumberFormatException e) {
-                postToMain.accept(() -> {
-                    uiState.setValue(BudgetUiState.ERROR);
-                    statusMessage.setValue("Ungültiger Betrag");
-                });
+            Long amountCents = parseAmountCents(amountStr);
+            if (amountCents == null) {
                 return;
             }
 
@@ -605,15 +600,8 @@ public class BudgetViewModel extends ViewModel {
     public void updateTransaction(String transactionId, String amountStr, boolean isExpense,
                                   String categoryId, String note, LocalDate date, String accountId) {
         executor.execute(() -> {
-            long amountCents;
-            try {
-                String normalized = amountStr.replace(',', '.');
-                amountCents = Math.round(Double.parseDouble(normalized) * 100);
-            } catch (NumberFormatException e) {
-                postToMain.accept(() -> {
-                    uiState.setValue(BudgetUiState.ERROR);
-                    statusMessage.setValue("Ungültiger Betrag");
-                });
+            Long amountCents = parseAmountCents(amountStr);
+            if (amountCents == null) {
                 return;
             }
 
@@ -654,15 +642,8 @@ public class BudgetViewModel extends ViewModel {
                             LocalDate date,
                             String note) {
         executor.execute(() -> {
-            long amountCents;
-            try {
-                String normalized = amountStr.replace(',', '.');
-                amountCents = Math.round(Double.parseDouble(normalized) * 100);
-            } catch (NumberFormatException e) {
-                postToMain.accept(() -> {
-                    uiState.setValue(BudgetUiState.ERROR);
-                    statusMessage.setValue("Ungültiger Betrag");
-                });
+            Long amountCents = parseAmountCents(amountStr);
+            if (amountCents == null) {
                 return;
             }
 
@@ -692,15 +673,8 @@ public class BudgetViewModel extends ViewModel {
                                LocalDate date,
                                String note) {
         executor.execute(() -> {
-            long amountCents;
-            try {
-                String normalized = amountStr.replace(',', '.');
-                amountCents = Math.round(Double.parseDouble(normalized) * 100);
-            } catch (NumberFormatException e) {
-                postToMain.accept(() -> {
-                    uiState.setValue(BudgetUiState.ERROR);
-                    statusMessage.setValue("Ungültiger Betrag");
-                });
+            Long amountCents = parseAmountCents(amountStr);
+            if (amountCents == null) {
                 return;
             }
 
@@ -799,6 +773,53 @@ public class BudgetViewModel extends ViewModel {
 
     public void retry() {
         loadOverview();
+    }
+
+    private Long parseAmountCents(String amountStr) {
+        if (amountStr == null) {
+            showInvalidAmountError();
+            return null;
+        }
+
+        String normalized = amountStr.trim()
+                .replace("\u00A0", "")
+                .replace(" ", "");
+
+        if (normalized.isEmpty()) {
+            showInvalidAmountError();
+            return null;
+        }
+
+        int commaIndex = normalized.lastIndexOf(',');
+        int dotIndex = normalized.lastIndexOf('.');
+
+        if (commaIndex >= 0 && dotIndex >= 0) {
+            int decimalIndex = Math.max(commaIndex, dotIndex);
+            char decimalSeparator = normalized.charAt(decimalIndex);
+            char thousandsSeparator = decimalSeparator == ',' ? '.' : ',';
+            normalized = normalized.replace(String.valueOf(thousandsSeparator), "")
+                    .replace(decimalSeparator, '.');
+        } else if (commaIndex >= 0) {
+            normalized = normalized.replace(',', '.');
+        }
+
+        try {
+            BigDecimal amount = new BigDecimal(normalized);
+            return amount
+                    .multiply(BigDecimal.valueOf(100))
+                    .setScale(0, RoundingMode.HALF_UP)
+                    .longValueExact();
+        } catch (NumberFormatException | ArithmeticException e) {
+            showInvalidAmountError();
+            return null;
+        }
+    }
+
+    private void showInvalidAmountError() {
+        postToMain.accept(() -> {
+            uiState.setValue(BudgetUiState.ERROR);
+            statusMessage.setValue("Ungültiger Betrag");
+        });
     }
 
     private void loadLimitsOnExecutor() {
