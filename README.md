@@ -99,3 +99,9 @@ Use the official Android setup guides to verify your environment (JDK, SDK, emul
 - Entry points remain in stable packages.
 - Implementation helpers go under `*/internal`.
 - Avoid introducing new generic buckets such as `helpers` or `utils` anywhere under `features/task`.
+
+### Layout resource naming rule (`src/main/res/layout`)
+
+- Use the pattern `<feature>_<surface>_<kind>` for layout file names.
+- Keep all segments lowercase snake_case, and use one of these kinds as the suffix: `activity`, `fragment`, `item`, or `widget`.
+- Examples in this repo: `app_main_activity.xml`, `task_list_fragment.xml`, `task_row_item.xml`, `task_list_widget.xml`.

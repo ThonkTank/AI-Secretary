@@ -68,7 +68,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     @Override
     public TaskRowViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View taskRow = LayoutInflater.from(parent.getContext()).inflate(R.layout.task_row, parent, false);
+        View taskRow = LayoutInflater.from(parent.getContext()).inflate(R.layout.task_row_item, parent, false);
         return new TaskRowViewHolder(taskRow);
     }
 
