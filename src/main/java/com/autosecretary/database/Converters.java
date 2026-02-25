@@ -4,8 +4,8 @@ import androidx.room.TypeConverter;
 
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
-import com.autosecretary.features.budget.data.BudgetAccount;
-import com.autosecretary.features.budget.data.BudgetTransactionEntity;
+import com.autosecretary.features.budget.data.entity.BudgetAccount;
+import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

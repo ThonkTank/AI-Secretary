@@ -1,9 +1,12 @@
-package com.autosecretary.features.budget.data;
+package com.autosecretary.features.budget.data.dao;
 
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
+
+import com.autosecretary.features.budget.data.entity.BudgetAccount;
+import com.autosecretary.features.budget.data.entity.BudgetCategory;
 
 import java.util.List;
 

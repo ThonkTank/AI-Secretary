@@ -36,32 +36,39 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     private static final long COMPLETION_FLASH_DURATION_MS = 300L;
 
     List<ViewSlot> viewSlots;
-    Consumer<ViewSlot> onCheck;
-    Consumer<ViewSlot> onEdit;
-    Consumer<ViewSlot> onTimerToggle;
-    Consumer<ViewSlot> onProgressPlus;
-    Consumer<ViewSlot> onProgressMinus;
-    Consumer<ViewSlot> onToggleExpand;
-    Function<ViewSlot, Boolean> isExpanded;
+    TaskRowActions actions;
     boolean interactionsEnabled = true;
     boolean manageMode = false;
 
-    public ListRowAdapter(List<ViewSlot> viewSlots,
-                          Consumer<ViewSlot> onCheck,
-                          Consumer<ViewSlot> onEdit,
-                          Consumer<ViewSlot> onTimerToggle,
-                          Consumer<ViewSlot> onProgressPlus,
-                          Consumer<ViewSlot> onProgressMinus,
-                          Consumer<ViewSlot> onToggleExpand,
-                          Function<ViewSlot, Boolean> isExpanded) {
+    public ListRowAdapter(List<ViewSlot> viewSlots, TaskRowActions actions) {
         this.viewSlots = viewSlots;
-        this.onCheck = onCheck;
-        this.onEdit = onEdit;
-        this.onTimerToggle = onTimerToggle;
-        this.onProgressPlus = onProgressPlus;
-        this.onProgressMinus = onProgressMinus;
-        this.onToggleExpand = onToggleExpand;
-        this.isExpanded = isExpanded;
+        this.actions = actions;
+    }
+
+    public static class TaskRowActions {
+        final Consumer<ViewSlot> onCheck;
+        final Consumer<ViewSlot> onEdit;
+        final Consumer<ViewSlot> onTimerToggle;
+        final Consumer<ViewSlot> onProgressPlus;
+        final Consumer<ViewSlot> onProgressMinus;
+        final Consumer<ViewSlot> onToggleExpand;
+        final Function<ViewSlot, Boolean> isExpanded;
+
+        public TaskRowActions(Consumer<ViewSlot> onCheck,
+                              Consumer<ViewSlot> onEdit,
+                              Consumer<ViewSlot> onTimerToggle,
+                              Consumer<ViewSlot> onProgressPlus,
+                              Consumer<ViewSlot> onProgressMinus,
+                              Consumer<ViewSlot> onToggleExpand,
+                              Function<ViewSlot, Boolean> isExpanded) {
+            this.onCheck = onCheck;
+            this.onEdit = onEdit;
+            this.onTimerToggle = onTimerToggle;
+            this.onProgressPlus = onProgressPlus;
+            this.onProgressMinus = onProgressMinus;
+            this.onToggleExpand = onToggleExpand;
+            this.isExpanded = isExpanded;
+        }
     }
 
     static class TaskRowViewHolder extends RecyclerView.ViewHolder {
@@ -187,11 +194,11 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         }
 
         holder.expandToggle.setVisibility(View.VISIBLE);
-        boolean expanded = isExpanded.apply(viewSlot);
+        boolean expanded = actions.isExpanded.apply(viewSlot);
         holder.expandToggle.setText(expanded ? "▾" : "▸");
         holder.expandToggle.setContentDescription(holder.itemView.getContext().getString(
                 expanded ? R.string.task_row_collapse_children : R.string.task_row_expand_children));
-        holder.expandToggle.setOnClickListener(v -> onToggleExpand.accept(viewSlot));
+        holder.expandToggle.setOnClickListener(v -> actions.onToggleExpand.accept(viewSlot));
     }
 
     private void bindCalendarEventRow(TaskRowViewHolder holder) {
@@ -325,7 +332,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
                 animateCompletion(holder, item);
             }
             holder.checkBox.setChecked(item.completed);
-            onCheck.accept(viewSlot);
+            actions.onCheck.accept(viewSlot);
         });
         holder.checkBox.setChecked(item.completed);
         boolean checkable = !item.completed && item.slotId != null && interactionsEnabled;
@@ -358,8 +365,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.progressText.setTextColor(ContextCompat.getColor(context,
                 interactionsEnabled ? R.color.task_progress_text : R.color.task_progress_text_disabled));
 
-        holder.progressMinus.setOnClickListener(v -> onProgressMinus.accept(viewSlot));
-        holder.progressPlus.setOnClickListener(v -> onProgressPlus.accept(viewSlot));
+        holder.progressMinus.setOnClickListener(v -> actions.onProgressMinus.accept(viewSlot));
+        holder.progressPlus.setOnClickListener(v -> actions.onProgressPlus.accept(viewSlot));
     }
 
     private void bindTimerState(TaskRowViewHolder holder, TaskListItem item) {
@@ -381,12 +388,12 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
         if (interactionsEnabled) {
             holder.itemView.setOnLongClickListener(v -> {
-                onEdit.accept(viewSlot);
+                actions.onEdit.accept(viewSlot);
                 return true;
             });
-            holder.timerButton.setOnClickListener(v -> onTimerToggle.accept(viewSlot));
+            holder.timerButton.setOnClickListener(v -> actions.onTimerToggle.accept(viewSlot));
             holder.timerButton.setAlpha(timerEnabled ? 1.0f : 0.4f);
-            holder.editButton.setOnClickListener(v -> onEdit.accept(viewSlot));
+            holder.editButton.setOnClickListener(v -> actions.onEdit.accept(viewSlot));
             holder.editButton.setAlpha(1.0f);
         } else {
             holder.itemView.setOnLongClickListener(null);

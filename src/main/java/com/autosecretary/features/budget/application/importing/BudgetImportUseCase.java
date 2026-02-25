@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.application.importing;
 
-import com.autosecretary.features.budget.data.BudgetTransactionEntity;
+import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 import com.autosecretary.features.budget.domain.RecurringPatternDetector;

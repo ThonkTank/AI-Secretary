@@ -1,10 +1,20 @@
-package com.autosecretary.features.budget.data;
+package com.autosecretary.features.budget.data.repository;
 
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.autosecretary.features.budget.data.dao.BudgetLookupDao;
+import com.autosecretary.features.budget.data.dao.TransactionDao;
+import com.autosecretary.features.budget.data.entity.BudgetAccount;
+import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
+import com.autosecretary.features.budget.data.importing.BudgetImportDao;
+import com.autosecretary.features.budget.data.importing.BudgetImportEntity;
+import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateDao;
+import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateEntity;
+import com.autosecretary.features.budget.data.projection.AccountBalanceTotal;
 
 /**
  * Room-Implementierung der BudgetImportRepository-Schnittstelle.

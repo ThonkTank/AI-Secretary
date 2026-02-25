@@ -9,7 +9,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
-import com.autosecretary.features.budget.data.BudgetAccount;
+import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.time.LocalDate;

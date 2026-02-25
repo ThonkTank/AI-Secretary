@@ -2,4 +2,6 @@
 <resources>
     <!-- Global rule: app-wide tokens stay in generic files; feature-specific resources belong in feature-prefixed files (for example task_strings.xml). -->
     <string name="app_name">AutoSecretary</string>
+    <string name="task_edit_deadline_none">Keine Frist</string>
+    <string name="task_edit_deadline_content_description">Frist auswählen. Aktuell: %1$s</string>
 </resources>

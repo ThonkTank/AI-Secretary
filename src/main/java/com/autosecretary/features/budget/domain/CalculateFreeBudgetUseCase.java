@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.domain;
 
-import com.autosecretary.features.budget.data.BudgetAccount;
+import com.autosecretary.features.budget.data.entity.BudgetAccount;
 
 import java.time.LocalDate;
 

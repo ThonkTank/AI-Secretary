@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.data;
+package com.autosecretary.features.budget.data.projection;
 
 public class IncomeExpenseSummary {
     public long sumIncomeCents;
