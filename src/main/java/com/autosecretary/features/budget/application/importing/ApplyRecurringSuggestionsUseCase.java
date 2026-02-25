@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.application;
+package com.autosecretary.features.budget.application.importing;
 
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;

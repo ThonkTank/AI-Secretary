@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.application;
+package com.autosecretary.features.budget.application.importing;
 
 import com.autosecretary.features.budget.data.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;

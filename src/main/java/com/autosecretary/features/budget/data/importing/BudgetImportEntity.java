@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.data;
+package com.autosecretary.features.budget.data.importing;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity(tableName = "imports")
-public class Import {
+public class BudgetImportEntity {
     @PrimaryKey(autoGenerate = true)
     public Long id;
     public Long accountId;

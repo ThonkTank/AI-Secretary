@@ -16,5 +16,7 @@ These are the entities registered in `AppDatabase` version 8 and should be used 
 - ✅ Canonical model: `budget_*` entities and DAOs (`BudgetLookupDao`, `TransactionDao`, `BudgetLimitDao`).
 - ⚠️ Transitional legacy model: pre-v8 classes/DAO moved under `data/legacy`.
 
-Legacy classes are retained only to support migration and historical reference. Do **not** add new usages of
-legacy `accounts` / `transactions` tables.
+Legacy classes are retained only to support migration and historical reference and now live under `data/legacy`.
+Do **not** add new usages of legacy `accounts` / `transactions` tables.
+
+Import metadata entities live in `data/importing`.

@@ -5,7 +5,7 @@ import androidx.room.TypeConverter;
 import com.autosecretary.constants.Period;
 import com.autosecretary.constants.Priority;
 import com.autosecretary.features.budget.data.BudgetTransactionEntity;
-import com.autosecretary.features.budget.data.Import;
+import com.autosecretary.features.budget.data.importing.BudgetImportEntity;
 import com.autosecretary.features.budget.data.legacy.Account;
 import com.autosecretary.features.budget.data.legacy.Transaction;
 
@@ -109,13 +109,13 @@ public class Converters {
     }
 
     @TypeConverter
-    public static String fromImportStatus(Import.ImportStatus status) {
+    public static String fromImportStatus(BudgetImportEntity.ImportStatus status) {
         return status != null ? status.name() : null;
     }
 
     @TypeConverter
-    public static Import.ImportStatus toImportStatus(String value) {
-        return value != null ? Import.ImportStatus.valueOf(value) : null;
+    public static BudgetImportEntity.ImportStatus toImportStatus(String value) {
+        return value != null ? BudgetImportEntity.ImportStatus.valueOf(value) : null;
     }
 
     @TypeConverter
