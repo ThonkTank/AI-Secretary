@@ -14,6 +14,7 @@ import android.widget.ImageButton;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.time.format.DateTimeFormatter;
 
 import com.autosecretary.features.task.application.TaskListItem;
@@ -30,12 +31,21 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     List<ViewSlot> viewSlots;
     Consumer<ViewSlot> onCheck;
     Consumer<ViewSlot> onEdit;
+    Consumer<ViewSlot> onToggleExpand;
+    Function<ViewSlot, Boolean> isExpanded;
     boolean interactionsEnabled = true;
+    boolean manageMode = false;
 
-    public ListRowAdapter(List<ViewSlot> viewSlots, Consumer<ViewSlot> onCheck, Consumer<ViewSlot> onEdit) {
+    public ListRowAdapter(List<ViewSlot> viewSlots,
+                          Consumer<ViewSlot> onCheck,
+                          Consumer<ViewSlot> onEdit,
+                          Consumer<ViewSlot> onToggleExpand,
+                          Function<ViewSlot, Boolean> isExpanded) {
         this.viewSlots = viewSlots;
         this.onCheck = onCheck;
         this.onEdit = onEdit;
+        this.onToggleExpand = onToggleExpand;
+        this.isExpanded = isExpanded;
     }
 
     static class TaskRowViewHolder extends RecyclerView.ViewHolder {
@@ -46,6 +56,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         TextView deadlineCountdown;
         TextView streakDisplay;
         ImageButton editButton;
+        TextView expandToggle;
 
         TaskRowViewHolder(View taskRow) {
             super(taskRow);
@@ -56,6 +67,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             this.deadlineCountdown = taskRow.findViewById(R.id.DeadlineCountdown);
             this.streakDisplay = taskRow.findViewById(R.id.StreakDisplay);
             this.editButton = taskRow.findViewById(R.id.EditTaskButton);
+            this.expandToggle = taskRow.findViewById(R.id.ExpandToggle);
         }
     }
 
@@ -83,6 +95,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         bindDeadline(holder, item);
         bindStreak(holder, item);
         bindProgressState(holder, item);
+        bindExpandToggle(holder, viewSlot);
         bindInteractions(holder, item, viewSlot);
     }
 
@@ -158,6 +171,25 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         }
     }
 
+    private void bindExpandToggle(TaskRowViewHolder holder, ViewSlot viewSlot) {
+        if (!manageMode || !viewSlot.hasChildren) {
+            holder.expandToggle.setVisibility(View.GONE);
+            holder.expandToggle.setOnClickListener(null);
+            holder.expandToggle.setContentDescription(null);
+            return;
+        }
+
+        boolean expanded = isExpanded.apply(viewSlot);
+        holder.expandToggle.setText(expanded ? "▾" : "▸");
+        holder.expandToggle.setVisibility(View.VISIBLE);
+        holder.expandToggle.setContentDescription(
+                holder.itemView.getContext().getString(
+                        expanded ? R.string.task_row_collapse_children : R.string.task_row_expand_children
+                )
+        );
+        holder.expandToggle.setOnClickListener(v -> onToggleExpand.accept(viewSlot));
+    }
+
     private void bindInteractions(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
         holder.checkBox.setOnClickListener(v -> {
             holder.checkBox.setChecked(item.completed);
@@ -185,6 +217,13 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     public void setList(List<ViewSlot> viewSlots) {
         this.viewSlots = viewSlots;
         notifyDataSetChanged();
+    }
+
+    public void setManageMode(boolean manageMode) {
+        if (this.manageMode != manageMode) {
+            this.manageMode = manageMode;
+            notifyDataSetChanged();
+        }
     }
 
     public void setInteractionsEnabled(boolean enabled) {

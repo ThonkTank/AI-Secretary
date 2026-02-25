@@ -44,8 +44,11 @@ public class ListFragment extends Fragment {
         ListRowAdapter adapter = new ListRowAdapter(
                 new ArrayList<>(),
                 vm::checkOff,
-                viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId)
+                viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId),
+                vm::toggleExpanded,
+                vm::isExpanded
         );
+        adapter.setManageMode(vm.isManageMode());
 
         recyclerView.setAdapter(adapter);
         vm.getList().observe(getViewLifecycleOwner(), items -> {
@@ -104,6 +107,7 @@ public class ListFragment extends Fragment {
                 } else {
                     vm.applyManagePreset();
                 }
+                adapter.setManageMode(vm.isManageMode());
             }
         });
     }
