@@ -18,6 +18,72 @@
             android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
             android:textStyle="bold" />
 
+        <Spinner
+            android:id="@+id/BudgetAccountSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:contentDescription="@string/budget_account_selector" />
+
+        <RadioGroup
+            android:id="@+id/BudgetRangeGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/BudgetRange30d"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="@string/budget_range_30d" />
+
+            <RadioButton
+                android:id="@+id/BudgetRange3m"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_md"
+                android:text="@string/budget_range_3m" />
+
+            <RadioButton
+                android:id="@+id/BudgetRange12m"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_md"
+                android:text="@string/budget_range_12m" />
+        </RadioGroup>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/BudgetChartCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            app:cardElevation="2dp"
+            app:cardCornerRadius="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/spacing_md">
+
+                <TextView
+                    android:id="@+id/BudgetChartTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/budget_chart_title"
+                    android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
+                    android:textStyle="bold" />
+
+                <com.autosecretary.features.budget.ui.BudgetBalanceChartView
+                    android:id="@+id/BudgetBalanceChart"
+                    android:layout_width="match_parent"
+                    android:layout_height="160dp"
+                    android:layout_marginTop="@dimen/spacing_sm" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -31,8 +97,8 @@
                 android:layout_height="wrap_content"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/budget_month_previous"
-                android:src="@android:drawable/ic_media_previous"
-                android:padding="@dimen/spacing_sm" />
+                android:padding="@dimen/spacing_sm"
+                android:src="@android:drawable/ic_media_previous" />
 
             <TextView
                 android:id="@+id/BudgetMonthLabel"
@@ -48,19 +114,18 @@
                 android:layout_height="wrap_content"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/budget_month_next"
-                android:src="@android:drawable/ic_media_next"
-                android:padding="@dimen/spacing_sm" />
+                android:padding="@dimen/spacing_sm"
+                android:src="@android:drawable/ic_media_next" />
         </LinearLayout>
 
-        <!-- Summary Card: Einnahmen / Ausgaben / Saldo -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/BudgetSummaryCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
             android:visibility="gone"
-            app:cardElevation="2dp"
-            app:cardCornerRadius="8dp">
+            app:cardCornerRadius="8dp"
+            app:cardElevation="2dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -71,14 +136,16 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/budget_summary_income"
                         android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
+
                     <TextView
                         android:id="@+id/BudgetSummaryIncome"
                         android:layout_width="wrap_content"
@@ -91,14 +158,16 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/spacing_sm"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/budget_summary_expense"
                         android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
+
                     <TextView
                         android:id="@+id/BudgetSummaryExpense"
                         android:layout_width="wrap_content"
@@ -117,8 +186,9 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -126,6 +196,7 @@
                         android:text="@string/budget_summary_net"
                         android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
                         android:textStyle="bold" />
+
                     <TextView
                         android:id="@+id/BudgetSummaryNet"
                         android:layout_width="wrap_content"
@@ -137,7 +208,6 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Budget Limit Bars Container -->
         <LinearLayout
             android:id="@+id/BudgetLimitBarsContainer"
             android:layout_width="match_parent"
