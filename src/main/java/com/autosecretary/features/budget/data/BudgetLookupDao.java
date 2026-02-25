@@ -22,6 +22,15 @@ public interface BudgetLookupDao {
     @Query("SELECT * FROM budget_account WHERE id = :accountId LIMIT 1")
     BudgetAccount findAccountById(String accountId);
 
+    @Query("SELECT COALESCE(SUM(currentBalanceCents), 0) FROM budget_account WHERE archived = 0")
+    long sumCurrentBalanceCentsForActiveAccounts();
+
+    @Query("SELECT currentBalanceCents FROM budget_account WHERE id = :accountId LIMIT 1")
+    Long findCurrentBalanceCentsByAccountId(String accountId);
+
+    @Query("UPDATE budget_account SET currentBalanceCents = :balanceCents WHERE id = :accountId")
+    void updateCurrentBalanceCents(String accountId, long balanceCents);
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void insertAccount(BudgetAccount account);
 

@@ -98,6 +98,7 @@ public class BudgetFragment extends Fragment {
         TextView summaryIncome = view.findViewById(R.id.BudgetSummaryIncome);
         TextView summaryExpense = view.findViewById(R.id.BudgetSummaryExpense);
         TextView summaryNet = view.findViewById(R.id.BudgetSummaryNet);
+        TextView summaryFreeBudget = view.findViewById(R.id.BudgetSummaryFreeBudget);
         TextView status = view.findViewById(R.id.BudgetStatusMessage);
         Button addTransaction = view.findViewById(R.id.BudgetAddTransactionButton);
         Button addTransfer = view.findViewById(R.id.BudgetAddTransferButton);
@@ -127,6 +128,11 @@ public class BudgetFragment extends Fragment {
             String sign = net >= 0 ? "+" : "-";
             summaryNet.setText(String.format(Locale.GERMAN, "%s%.2f €", sign, Math.abs(net) / 100.0));
             summaryNet.setTextColor(Color.parseColor(net >= 0 ? "#4CAF50" : "#F44336"));
+
+            long freeBudget = data.getFreeBudgetCents();
+            String freeBudgetSign = freeBudget >= 0 ? "+" : "-";
+            summaryFreeBudget.setText(String.format(Locale.GERMAN, "%s%.2f €", freeBudgetSign, Math.abs(freeBudget) / 100.0));
+            summaryFreeBudget.setTextColor(Color.parseColor(freeBudget >= 0 ? "#4CAF50" : "#F44336"));
         });
 
         budgetViewModel.getTransactions().observe(getViewLifecycleOwner(),

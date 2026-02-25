@@ -49,5 +49,7 @@ public interface BudgetImportRepository {
 
     void linkTransactionsToTemplate(List<String> transactionIds, String templateId);
 
+    void synchronizeRecurringTemplateState(LocalDate referenceDate);
+
     void notifyBudgetDataUpdated();
 }

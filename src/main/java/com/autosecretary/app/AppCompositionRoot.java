@@ -19,6 +19,7 @@ import com.autosecretary.features.budget.application.importing.BudgetImportUseCa
 import com.autosecretary.features.budget.application.importing.ClaudeApiKeyStore;
 import com.autosecretary.features.budget.application.importing.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
+import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.data.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
@@ -102,7 +103,8 @@ public class AppCompositionRoot {
         BudgetRoomRepository repository = new BudgetRoomRepository(
                 db.budgetLookupDao(),
                 db.transactionDao(),
-                db.budgetLimitDao()
+                db.budgetLimitDao(),
+                db.budgetRecurringTemplateDao()
         );
 
         BudgetImportRoomRepository importRepository = new BudgetImportRoomRepository(
@@ -126,13 +128,17 @@ public class AppCompositionRoot {
                 importRepository, taskUseCaseExecutor
         );
 
+        CalculateFreeBudgetUseCase calculateFreeBudgetUseCase =
+                new CalculateFreeBudgetUseCase(repository);
+
         budgetViewModelFactory = new BudgetViewModelFactory(
                 repository,
                 parser,
                 taskUseCaseExecutor,
                 mainHandler::post,
                 importUseCase,
-                applyRecurringUseCase
+                applyRecurringUseCase,
+                calculateFreeBudgetUseCase
         );
 
         return budgetViewModelFactory;

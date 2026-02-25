@@ -128,6 +128,16 @@ public interface TransactionDao {
             """)
     IncomeExpenseSummary getIncomeExpenseSummary(String yearMonth);
 
+
+
+    @Query("""
+            SELECT accountId AS accountId,
+                   COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END), 0) AS balanceCents
+            FROM budget_transaction
+            GROUP BY accountId
+            """)
+    List<AccountBalanceTotal> getAccountBalanceTotals();
+
     @Query("SELECT * FROM budget_transaction ORDER BY bookingDate DESC")
     List<BudgetTransactionEntity> findAll();
 
