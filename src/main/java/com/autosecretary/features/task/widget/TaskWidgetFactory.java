@@ -9,7 +9,7 @@ import android.widget.RemoteViewsService;
 import com.autosecretary.R;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.task.application.mapper.TaskListItemMapper;
-import com.autosecretary.features.task.application.model.TaskListItem;
+import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 
@@ -67,7 +67,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         }
 
         TaskListItem item = items.get(position);
-        RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.widget_task_row);
+        RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.task_row_widget);
 
         rv.setTextViewText(R.id.widget_row_start, item.start != null ? item.start.format(TIME_FORMAT) : "");
         rv.setTextViewText(R.id.widget_row_end, item.end != null ? item.end.format(TIME_FORMAT) : "");

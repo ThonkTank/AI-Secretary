@@ -19,12 +19,14 @@ import java.util.Locale;
 import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
+import com.autosecretary.features.task.ui.edit.TaskEditDialog;
+import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 
 public class ListFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_task_list, container, false);
+        return inflater.inflate(R.layout.task_list_fragment, container, false);
     }
 
     @Override
@@ -42,7 +44,6 @@ public class ListFragment extends Fragment {
         ListRowAdapter adapter = new ListRowAdapter(
                 new ArrayList<>(),
                 vm::checkOff,
-                viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId),
                 viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId)
         );
 
