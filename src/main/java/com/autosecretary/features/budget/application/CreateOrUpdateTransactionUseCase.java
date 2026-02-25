@@ -2,12 +2,11 @@ package com.autosecretary.features.budget.application;
 
 import com.autosecretary.features.budget.data.BudgetLimit;
 import com.autosecretary.features.budget.data.BudgetRepository;
-import com.autosecretary.features.budget.data.Transaction;
+import com.autosecretary.features.budget.data.BudgetTransaction;
 import com.autosecretary.features.budget.domain.AccountBalanceRecalculationService;
 import com.autosecretary.features.budget.domain.BudgetConsumptionService;
 
 import java.time.LocalDate;
-import java.util.List;
 
 public class CreateOrUpdateTransactionUseCase {
     private final BudgetRepository repository;
@@ -22,35 +21,29 @@ public class CreateOrUpdateTransactionUseCase {
         this.consumptionService = consumptionService;
     }
 
-    public void execute(Transaction transaction) {
+    public void execute(BudgetTransaction transaction) {
         repository.saveTransaction(transaction);
         recalculateAccountBalance(transaction.accountId);
         recalculateCategoryBudget(transaction);
     }
 
-    private void recalculateAccountBalance(Long accountId) {
+    private void recalculateAccountBalance(String accountId) {
         if (accountId == null) {
             return;
         }
-        var account = repository.findAccountById(accountId);
-        if (account == null) {
-            return;
-        }
-        balanceService.recalculateBalance(account, repository.findTransactionsForAccount(accountId));
-        repository.saveAccount(account);
+        balanceService.calculateNetAmount(repository.findTransactionsForAccount(accountId));
     }
 
-    private void recalculateCategoryBudget(Transaction transaction) {
-        if (transaction.isIncome || transaction.categoryId == null || transaction.transactionDate == null) {
+    private void recalculateCategoryBudget(BudgetTransaction transaction) {
+        if ("INCOME".equals(transaction.type) || transaction.categoryId == null || transaction.bookingDate == null) {
             return;
         }
-        String yearMonth = toYearMonth(transaction.transactionDate);
+        String yearMonth = toYearMonth(transaction.bookingDate);
         BudgetLimit limit = repository.findBudgetLimit(transaction.categoryId, yearMonth);
         if (limit == null) {
             return;
         }
-        List<Transaction> allTransactions = repository.findAllTransactions();
-        limit.spentCents = consumptionService.calculateMonthlyConsumption(limit, allTransactions).spentCents();
+        consumptionService.calculateMonthlyConsumption(limit, repository.findAllTransactions());
         repository.saveBudgetLimit(limit);
     }
 

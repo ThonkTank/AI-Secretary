@@ -24,10 +24,7 @@ public class SetBudgetLimitUseCase {
             limit.id = existingLimit.id;
         }
 
-        limit.spentCents = consumptionService
-                .calculateMonthlyConsumption(limit, repository.findAllTransactions())
-                .spentCents();
-
+        consumptionService.calculateMonthlyConsumption(limit, repository.findAllTransactions());
         repository.saveBudgetLimit(limit);
     }
 }

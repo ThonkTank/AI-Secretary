@@ -1,36 +1,31 @@
 package com.autosecretary.features.budget.domain;
 
-import com.autosecretary.features.budget.data.Account;
-import com.autosecretary.features.budget.data.Transaction;
+import com.autosecretary.features.budget.data.BudgetAccount;
+import com.autosecretary.features.budget.data.BudgetTransaction;
 
 import java.time.LocalDate;
 import java.util.List;
 
 public class BudgetSummaryService {
 
-    public Summary calculateSummary(List<Account> accounts, List<Transaction> transactions, String yearMonth) {
-        int totalBalance = 0;
-        for (Account account : accounts) {
-            if (account.includeInTotal) {
-                totalBalance += account.currentBalanceCents;
-            }
-        }
+    public Summary calculateSummary(List<BudgetAccount> accounts, List<BudgetTransaction> transactions, String yearMonth) {
+        int activeAccounts = accounts.size();
 
-        int monthlyIncome = 0;
-        int monthlyExpenses = 0;
-        for (Transaction tx : transactions) {
-            LocalDate txDate = tx.transactionDate;
+        double monthlyIncome = 0;
+        double monthlyExpenses = 0;
+        for (BudgetTransaction tx : transactions) {
+            LocalDate txDate = tx.bookingDate;
             if (txDate == null || !toYearMonth(txDate).equals(yearMonth)) {
                 continue;
             }
-            if (tx.isIncome) {
-                monthlyIncome += tx.amountCents;
+            if ("INCOME".equals(tx.type)) {
+                monthlyIncome += tx.amount;
             } else {
-                monthlyExpenses += Math.abs(tx.amountCents);
+                monthlyExpenses += Math.abs(tx.amount);
             }
         }
 
-        return new Summary(totalBalance, monthlyIncome, monthlyExpenses, monthlyIncome - monthlyExpenses);
+        return new Summary(activeAccounts, monthlyIncome, monthlyExpenses, monthlyIncome - monthlyExpenses);
     }
 
     private String toYearMonth(LocalDate date) {
@@ -38,9 +33,9 @@ public class BudgetSummaryService {
     }
 
     public record Summary(
-            int totalBalanceCents,
-            int monthlyIncomeCents,
-            int monthlyExpensesCents,
-            int monthlyNetCents
+            int activeAccounts,
+            double monthlyIncome,
+            double monthlyExpenses,
+            double monthlyNet
     ) {}
 }

@@ -1,32 +1,32 @@
 package com.autosecretary.features.budget.domain;
 
 import com.autosecretary.features.budget.data.BudgetLimit;
-import com.autosecretary.features.budget.data.Transaction;
+import com.autosecretary.features.budget.data.BudgetTransaction;
 
 import java.time.LocalDate;
 import java.util.List;
 
 public class BudgetConsumptionService {
 
-    public BudgetConsumption calculateMonthlyConsumption(BudgetLimit budgetLimit, List<Transaction> transactions) {
-        int spent = 0;
-        for (Transaction tx : transactions) {
-            if (tx.isIncome || tx.categoryId == null || tx.transactionDate == null) {
+    public BudgetConsumption calculateMonthlyConsumption(BudgetLimit budgetLimit, List<BudgetTransaction> transactions) {
+        double spent = 0d;
+        for (BudgetTransaction tx : transactions) {
+            if ("INCOME".equals(tx.type) || tx.categoryId == null || tx.bookingDate == null) {
                 continue;
             }
             if (!budgetLimit.categoryId.equals(tx.categoryId)) {
                 continue;
             }
-            String monthOfTransaction = toYearMonth(tx.transactionDate);
+            String monthOfTransaction = toYearMonth(tx.bookingDate);
             if (!budgetLimit.yearMonth.equals(monthOfTransaction)) {
                 continue;
             }
-            spent += Math.abs(tx.amountCents);
+            spent += Math.abs(tx.amount);
         }
 
-        int budgetBase = budgetLimit.limitCents + budgetLimit.rolloverCents;
-        int remaining = budgetBase - spent;
-        double usage = budgetBase > 0 ? ((double) spent / budgetBase) : 0d;
+        double budgetBase = budgetLimit.amount;
+        double remaining = budgetBase - spent;
+        double usage = budgetBase > 0 ? (spent / budgetBase) : 0d;
         return new BudgetConsumption(spent, remaining, usage, remaining < 0);
     }
 
@@ -35,8 +35,8 @@ public class BudgetConsumptionService {
     }
 
     public record BudgetConsumption(
-            int spentCents,
-            int remainingCents,
+            double spentAmount,
+            double remainingAmount,
             double usageRatio,
             boolean overBudget
     ) {}
