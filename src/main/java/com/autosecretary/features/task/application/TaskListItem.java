@@ -12,6 +12,11 @@ import java.util.List;
  * Used by {@link com.autosecretary.features.task.ui.state.ViewSlotList} for filtering, sorting, and display.
  */
 public class TaskListItem {
+    public enum ItemType {
+        TASK,
+        CALENDAR_EVENT
+    }
+
     /** Categorizes deadline proximity for color-coded display in the list. */
     public enum DeadlineUrgency {
         NONE,
@@ -21,6 +26,7 @@ public class TaskListItem {
         FUTURE
     }
 
+    public final ItemType itemType;
     public final String taskId;
     public final String slotId;
     public final String slotParentId;
@@ -35,9 +41,10 @@ public class TaskListItem {
     public final boolean completed;
     public final boolean inProgress;
 
-    public TaskListItem(String taskId, String slotId, String slotParentId, List<String> parentTaskIds,
+    public TaskListItem(ItemType itemType, String taskId, String slotId, String slotParentId, List<String> parentTaskIds,
                         String title, LocalDate day, LocalTime start, LocalTime end, LocalDate deadline,
                         int streak, int score, boolean completed, boolean inProgress) {
+        this.itemType = itemType;
         this.taskId = taskId;
         this.slotId = slotId;
         this.slotParentId = slotParentId;
@@ -51,6 +58,50 @@ public class TaskListItem {
         this.score = score;
         this.completed = completed;
         this.inProgress = inProgress;
+    }
+
+    public static TaskListItem task(String taskId, String slotId, String slotParentId, List<String> parentTaskIds,
+                                    String title, LocalDate day, LocalTime start, LocalTime end, LocalDate deadline,
+                                    int streak, int score, boolean completed, boolean inProgress) {
+        return new TaskListItem(
+                ItemType.TASK,
+                taskId,
+                slotId,
+                slotParentId,
+                parentTaskIds,
+                title,
+                day,
+                start,
+                end,
+                deadline,
+                streak,
+                score,
+                completed,
+                inProgress
+        );
+    }
+
+    public static TaskListItem calendarEvent(String eventId, String title, LocalDate day, LocalTime start, LocalTime end) {
+        return new TaskListItem(
+                ItemType.CALENDAR_EVENT,
+                eventId,
+                eventId,
+                null,
+                List.of(),
+                title,
+                day,
+                start,
+                end,
+                null,
+                0,
+                0,
+                false,
+                false
+        );
+    }
+
+    public boolean isCalendarEvent() {
+        return itemType == ItemType.CALENDAR_EVENT;
     }
 
     public long daysUntilDeadline() {

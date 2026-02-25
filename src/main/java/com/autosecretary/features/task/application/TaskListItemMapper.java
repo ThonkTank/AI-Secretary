@@ -38,20 +38,20 @@ public class TaskListItemMapper {
             parentTaskIds.add(rel.parent);
         }
 
-        return new TaskListItem(
-                task.core.id,
-                slot.id,
-                slot.parent,
-                parentTaskIds,
-                task.core.title,
-                slot.day,
-                slot.start,
-                slot.end,
-                task.core.deadline,
-                task.core.history.currentStreak,
-                slot.score,
-                slot.completed,
-                slot.realStart != null && !slot.completed
+        return TaskListItem.task(
+            task.core.id,
+            slot.id,
+            slot.parent,
+            parentTaskIds,
+            task.core.title,
+            slot.day,
+            slot.start,
+            slot.end,
+            task.core.deadline,
+            task.core.history.currentStreak,
+            slot.score,
+            slot.completed,
+            slot.realStart != null && !slot.completed
         );
     }
 }

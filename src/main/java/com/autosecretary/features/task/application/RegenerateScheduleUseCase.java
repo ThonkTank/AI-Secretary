@@ -1,15 +1,20 @@
 package com.autosecretary.features.task.application;
 
+import android.content.Context;
+
 import com.autosecretary.app.Preferences;
+import com.autosecretary.features.task.application.internal.calendar.CalendarEvent;
+import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskSeedDataFactory;
 import com.autosecretary.features.task.domain.TaskPlanningState;
-import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
+import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -25,15 +30,21 @@ public class RegenerateScheduleUseCase {
     private final TaskDAO taskDao;
     private final DefaultTaskSlotGenerator generator;
     private final Preferences preferences;
+    private final CalendarReader calendarReader;
+    private final Context context;
     private final ExecutorService executor;
 
     public RegenerateScheduleUseCase(TaskDAO taskDao,
                                      DefaultTaskSlotGenerator generator,
                                      Preferences preferences,
+                                     CalendarReader calendarReader,
+                                     Context context,
                                      ExecutorService executor) {
         this.taskDao = taskDao;
         this.generator = generator;
         this.preferences = preferences;
+        this.calendarReader = calendarReader;
+        this.context = context;
         this.executor = executor;
     }
 
@@ -55,11 +66,11 @@ public class RegenerateScheduleUseCase {
             for (Task task : tasks) {
                 task.slots.removeIf(slot ->
                         !slot.completed
-                        && slot.realStart == null
-                        && slot.scheduled
-                        && slot.day != null
-                        && !slot.day.isBefore(today)
-                        && slot.day.isBefore(windowEnd));
+                                && slot.realStart == null
+                                && slot.scheduled
+                                && slot.day != null
+                                && !slot.day.isBefore(today)
+                                && slot.day.isBefore(windowEnd));
             }
 
             // 2) Initialize cross-day state from preserved slots (completed/in-progress)
@@ -72,11 +83,21 @@ public class RegenerateScheduleUseCase {
 
             for (int i = 0; i < PLANNING_DAYS; i++) {
                 LocalDate day = today.plusDays(i);
+                LocalTime windowStart = preferences.readPrefTime(day, true);
+                LocalTime windowEndTime = preferences.readPrefTime(day, false);
+                List<CalendarEvent> calendarEvents = calendarReader.getEventsForDay(
+                        context,
+                        day,
+                        windowStart,
+                        windowEndTime
+                );
+
                 generator.generateSlotsForDay(
                         flatTasks,
-                        LocalDateTime.of(day, preferences.readPrefTime(day, true)),
-                        LocalDateTime.of(day, preferences.readPrefTime(day, false)),
-                        state
+                        LocalDateTime.of(day, windowStart),
+                        LocalDateTime.of(day, windowEndTime),
+                        state,
+                        calendarEvents
                 );
 
                 // Record newly assigned slots into cross-day state

@@ -9,6 +9,7 @@ import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
+import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
 import com.autosecretary.features.task.application.TaskListItemMapper;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
@@ -62,6 +63,7 @@ public class AppCompositionRoot {
                 message -> Log.d("SlotGen", message)
         );
         TaskListItemMapper mapper = new TaskListItemMapper();
+        CalendarReader calendarReader = new CalendarReader();
 
         TaskAsyncDataService taskAsyncDataService = new TaskAsyncDataService(
                 taskDao,
@@ -79,6 +81,8 @@ public class AppCompositionRoot {
                 taskDao,
                 generator,
                 preferences,
+                calendarReader,
+                app,
                 taskUseCaseExecutor
         );
 
@@ -86,7 +90,8 @@ public class AppCompositionRoot {
                 app,
                 taskAsyncDataService,
                 checkOffTaskUseCase,
-                regenerateScheduleUseCase
+                regenerateScheduleUseCase,
+                calendarReader
         );
 
         return taskViewModelFactory;

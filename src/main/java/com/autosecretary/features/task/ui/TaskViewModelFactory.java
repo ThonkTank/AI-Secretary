@@ -9,21 +9,25 @@ import androidx.lifecycle.ViewModelProvider;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
+import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
 
 public class TaskViewModelFactory implements ViewModelProvider.Factory {
     private final Application app;
     private final TaskAsyncDataService taskAsyncDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
+    private final CalendarReader calendarReader;
 
     public TaskViewModelFactory(Application app,
                                 TaskAsyncDataService taskAsyncDataService,
                                 CheckOffTaskUseCase checkOffTaskUseCase,
-                                RegenerateScheduleUseCase regenerateScheduleUseCase) {
+                                RegenerateScheduleUseCase regenerateScheduleUseCase,
+                                CalendarReader calendarReader) {
         this.app = app;
         this.taskAsyncDataService = taskAsyncDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
+        this.calendarReader = calendarReader;
     }
 
     @NonNull
@@ -35,7 +39,8 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
                     app,
                     taskAsyncDataService,
                     checkOffTaskUseCase,
-                    regenerateScheduleUseCase
+                    regenerateScheduleUseCase,
+                    calendarReader
             );
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
