@@ -66,19 +66,20 @@ public class ListFragment extends Fragment {
 
         ListRowAdapter adapter = new ListRowAdapter(
                 new ArrayList<>(),
-                vm::checkOff,
-                viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId),
-                viewSlot -> {
-                    if (viewSlot.item.timerRunning) {
-                        vm.stopTimer(viewSlot.item.slotId);
-                    } else {
-                        vm.startTimer(viewSlot.item.slotId);
-                    }
-                },
-                vm::incrementProgress,
-                vm::decrementProgress,
-                vm::toggleExpanded,
-                vm::isExpanded
+                new ListRowAdapter.TaskRowActions(
+                        vm::checkOff,
+                        viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId),
+                        viewSlot -> {
+                            if (viewSlot.item.timerRunning) {
+                                vm.stopTimer(viewSlot.item.slotId);
+                            } else {
+                                vm.startTimer(viewSlot.item.slotId);
+                            }
+                        },
+                        vm::incrementProgress,
+                        vm::decrementProgress,
+                        vm::toggleExpanded,
+                        vm::isExpanded)
         );
         adapter.setManageMode(vm.isManageMode());
 

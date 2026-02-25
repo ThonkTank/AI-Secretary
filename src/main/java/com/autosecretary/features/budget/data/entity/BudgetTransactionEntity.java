@@ -6,6 +6,8 @@ import androidx.room.ForeignKey;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
+import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateEntity;
+
 import java.time.LocalDate;
 import java.util.UUID;
 

@@ -11,13 +11,21 @@ The canonical persisted budget model is the `budget_*` schema introduced in `App
 
 These are the entities registered in `AppDatabase` version 8 and should be used for all new budget feature work.
 
-## Migration status
+## Current package layout (flat `data/`)
 
-- ✅ Canonical model: `budget_*` entities and DAOs (`BudgetLookupDao`, `TransactionDao`, `BudgetLimitDao`).
-- ⚠️ Transitional legacy model: pre-v8 classes/DAO moved under `data/legacy`.
+`features/budget/data/` is currently a flat package. The classes here are grouped by purpose:
 
-Legacy classes are retained only to support migration and historical reference and now live under `data/legacy`.
-Do **not** add new usages of legacy `accounts` / `transactions` tables.
+- **Canonical entities + DAOs**: core persisted budget schema and CRUD/query access.
+  - `BudgetAccount`, `BudgetCategory`, `BudgetTransactionEntity`, `BudgetLimit`
+  - `BudgetLookupDao`, `TransactionDao`, `BudgetLimitDao`
+- **Import metadata persistence**: import bookkeeping storage.
+  - `BudgetImportEntity`, `BudgetImportDao`, `BudgetImportRoomRepository`
+- **Recurring template persistence**: recurring suggestion templates persisted for import workflows.
+  - `BudgetRecurringTemplateEntity`, `BudgetRecurringTemplateDao`
+- **Repository implementations**: adapters used by application/UI layers.
+  - `BudgetRoomRepository`, `BudgetWidgetRoomRepository`
+- **Read-model/projection classes**: query results for summaries, charting, and widgets.
+  - `IncomeExpenseSummary`, `MonthlyTransactionOverviewItem`, `CategorySpendTotal`, `AccountBalanceTotal`, `AccountDailyDeltaPoint`, `AccountMonthlyDeltaPoint`
 
 Import metadata entities live in `data/importing`.
 

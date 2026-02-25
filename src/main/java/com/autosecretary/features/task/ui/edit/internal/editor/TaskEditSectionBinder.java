@@ -203,10 +203,15 @@ public class TaskEditSectionBinder {
         if (presenter.getEditableDeadline() != null) {
             String deadlineText = presenter.getEditableDeadline().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
             views.deadlineView.setText(deadlineText);
-            views.deadlineView.setContentDescription("Frist auswählen. Aktuell: " + deadlineText);
+            views.deadlineView.setContentDescription(
+                fragment.getString(R.string.task_edit_deadline_content_description, deadlineText)
+            );
         } else {
-            views.deadlineView.setText("Keine Frist");
-            views.deadlineView.setContentDescription("Frist auswählen. Aktuell: Keine Frist");
+            String noDeadlineText = fragment.getString(R.string.task_edit_deadline_none);
+            views.deadlineView.setText(noDeadlineText);
+            views.deadlineView.setContentDescription(
+                fragment.getString(R.string.task_edit_deadline_content_description, noDeadlineText)
+            );
         }
     }
 

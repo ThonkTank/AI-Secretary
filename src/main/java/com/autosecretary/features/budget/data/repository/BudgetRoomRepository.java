@@ -14,6 +14,10 @@ import com.autosecretary.features.budget.data.entity.BudgetLimit;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateDao;
 import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateEntity;
+import com.autosecretary.features.budget.data.projection.AccountDailyDeltaPoint;
+import com.autosecretary.features.budget.data.projection.AccountMonthlyDeltaPoint;
+import com.autosecretary.features.budget.data.projection.CategorySpendTotal;
+import com.autosecretary.features.budget.data.projection.MonthlyTransactionOverviewItem;
 
 public class BudgetRoomRepository implements BudgetRepository {
     private final BudgetLookupDao lookupDao;
