@@ -7,6 +7,7 @@ import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
 
+import com.autosecretary.features.budget.ui.BudgetFragment;
 import com.autosecretary.features.task.ui.ListFragment;
 
 public class MainActivity extends AppCompatActivity {
@@ -27,8 +28,9 @@ public class MainActivity extends AppCompatActivity {
             Fragment fragment;
             if (item.getItemId() == R.id.tab_schedule) {
                 fragment = new ListFragment();
+            } else if (item.getItemId() == R.id.tab_manage) {
+                fragment = new BudgetFragment();
             } else {
-                // Temporary fallback: non-schedule tabs intentionally route to ListFragment until dedicated tab fragments are implemented.
                 fragment = new ListFragment();
             }
             getSupportFragmentManager().beginTransaction()
