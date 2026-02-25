@@ -26,6 +26,7 @@ public class TaskListItem {
     public final String slotParentId;
     public final List<String> parentTaskIds;
     public final String title;
+    public final String description;
     public final LocalDate day;
     public final LocalTime start;
     public final LocalTime end;
@@ -36,13 +37,14 @@ public class TaskListItem {
     public final boolean inProgress;
 
     public TaskListItem(String taskId, String slotId, String slotParentId, List<String> parentTaskIds,
-                        String title, LocalDate day, LocalTime start, LocalTime end, LocalDate deadline,
+                        String title, String description, LocalDate day, LocalTime start, LocalTime end, LocalDate deadline,
                         int streak, int score, boolean completed, boolean inProgress) {
         this.taskId = taskId;
         this.slotId = slotId;
         this.slotParentId = slotParentId;
         this.parentTaskIds = parentTaskIds;
         this.title = title;
+        this.description = description;
         this.day = day;
         this.start = start;
         this.end = end;

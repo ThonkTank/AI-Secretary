@@ -1,6 +1,7 @@
 package com.autosecretary.features.task.ui;
 
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.fragment.app.FragmentActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import android.content.Context;
@@ -168,6 +169,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.checkBox.setEnabled(checkable);
         holder.checkBox.setAlpha(interactionsEnabled ? 1.0f : 0.4f);
 
+        holder.title.setOnClickListener(v -> showDescriptionPopup(v, item));
+
         if (interactionsEnabled) {
             holder.itemView.setOnLongClickListener(v -> {
                 onEdit.accept(viewSlot);
@@ -180,6 +183,17 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             holder.editButton.setOnClickListener(null);
             holder.editButton.setAlpha(0.4f);
         }
+    }
+
+    private void showDescriptionPopup(View view, TaskListItem item) {
+        Context context = view.getContext();
+        if (!(context instanceof FragmentActivity)) {
+            return;
+        }
+
+        FragmentActivity activity = (FragmentActivity) context;
+        TaskDescriptionDialogFragment.newInstance(item.title, item.description)
+                .show(activity.getSupportFragmentManager(), TaskDescriptionDialogFragment.TAG);
     }
 
     public void setList(List<ViewSlot> viewSlots) {
