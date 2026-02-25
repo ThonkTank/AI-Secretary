@@ -402,9 +402,8 @@ public class BudgetViewModel extends ViewModel {
         if (month == null) month = YearMonth.now();
         String yearMonthStr = month.toString();
 
-        List<BudgetAccount> accountList = repository.findActiveAccounts();
-        String accountId = resolveSelectedAccountId(accountList);
-        if (accountId == null) {
+        AccountContext accountContext = resolveAccountContext();
+        if (accountContext.accountId == null) {
             postToMain.accept(() -> {
                 uiState.setValue(BudgetUiState.EMPTY);
                 statusMessage.setValue("Kein Konto vorhanden.");
@@ -415,44 +414,37 @@ public class BudgetViewModel extends ViewModel {
         }
 
         postToMain.accept(() -> {
-            accounts.setValue(accountList);
+            accounts.setValue(accountContext.accounts);
             if (selectedAccountId.getValue() == null) {
-                selectedAccountId.setValue(accountId);
+                selectedAccountId.setValue(accountContext.accountId);
             }
         });
 
         List<MonthlyTransactionOverviewItem> items =
-                repository.getMonthlyOverviewForAccount(yearMonthStr, accountId);
+                repository.getMonthlyOverviewForAccount(yearMonthStr, accountContext.accountId);
 
+        List<BudgetTransactionRow> rows = buildTransactionRows(items);
+        BudgetSummaryData summary = computeSummary(items, accountContext.accountId);
+        List<BudgetChartPoint> balancePoints = loadBalanceChartData(accountContext.accountId);
+
+        publishOverviewState(rows, balancePoints, summary);
+        loadLimitsOnExecutor();
+    }
+
+    private AccountContext resolveAccountContext() {
+        List<BudgetAccount> accountList = repository.findActiveAccounts();
+        String accountId = resolveSelectedAccountId(accountList);
+        return new AccountContext(accountList, accountId);
+    }
+
+    private List<BudgetTransactionRow> buildTransactionRows(List<MonthlyTransactionOverviewItem> items) {
         List<BudgetTransactionRow> rows = new ArrayList<>();
-        long totalIncomeCents = 0;
-        long totalExpenseCents = 0;
-
         for (MonthlyTransactionOverviewItem item : items) {
             boolean isExpense = "EXPENSE".equals(item.type);
-            boolean isTransfer = "INTERNAL_TRANSFER".equals(item.transactionKind);
-            String label;
-            if (isTransfer) {
-                label = item.note != null && !item.note.isBlank() ? "Überweisung · " + item.note : "Überweisung";
-            } else if (item.categoryName != null) {
-                String icon = item.categoryIcon != null && !item.categoryIcon.trim().isEmpty()
-                        ? item.categoryIcon : BudgetCategory.DEFAULT_ICON;
-                label = icon + " " + item.categoryName;
-            } else if (item.note != null) {
-                label = item.note;
-            } else {
-                label = "Buchung";
-            }
-            String formattedAmount = String.format(
-                    Locale.GERMAN,
-                    "%s%.2f €",
-                    isExpense ? "-" : "+",
-                    item.amountCents / 100.0
-            );
             rows.add(new BudgetTransactionRow(
                     item.transactionId,
-                    label,
-                    formattedAmount,
+                    buildTransactionLabel(item),
+                    formatTransactionAmount(item.amountCents, isExpense),
                     isExpense,
                     item.categoryColorHex,
                     item.amountCents,
@@ -461,34 +453,39 @@ public class BudgetViewModel extends ViewModel {
                     item.categoryId,
                     item.note,
                     item.bookingDate,
-                    item.accountId));
+                    item.accountId
+            ));
+        }
+        return rows;
+    }
 
-            if (!isTransfer) {
-                if (isExpense) {
-                    totalExpenseCents += item.amountCents;
-                } else {
-                    totalIncomeCents += item.amountCents;
-                }
+    private BudgetSummaryData computeSummary(List<MonthlyTransactionOverviewItem> items, String accountId) {
+        long totalIncomeCents = 0;
+        long totalExpenseCents = 0;
+
+        for (MonthlyTransactionOverviewItem item : items) {
+            if ("INTERNAL_TRANSFER".equals(item.transactionKind)) {
+                continue;
+            }
+            if ("EXPENSE".equals(item.type)) {
+                totalExpenseCents += item.amountCents;
+            } else {
+                totalIncomeCents += item.amountCents;
             }
         }
 
-        List<BudgetChartPoint> balancePoints = loadBalanceChartData(accountId);
         long freeBudgetCents = calculateFreeBudgetUseCase.execute(accountId, LocalDate.now(), 7);
+        return new BudgetSummaryData(totalIncomeCents, totalExpenseCents, freeBudgetCents);
+    }
 
-        long finalTotalIncomeCents = totalIncomeCents;
-        long finalTotalExpenseCents = totalExpenseCents;
-        long finalFreeBudgetCents = freeBudgetCents;
-        List<BudgetTransactionRow> finalRows = rows;
-
+    private void publishOverviewState(List<BudgetTransactionRow> rows,
+                                      List<BudgetChartPoint> balancePoints,
+                                      BudgetSummaryData summary) {
         postToMain.accept(() -> {
-            transactions.setValue(finalRows);
+            transactions.setValue(rows);
             chartPoints.setValue(balancePoints);
-            summaryData.setValue(new BudgetSummaryData(
-                    finalTotalIncomeCents,
-                    finalTotalExpenseCents,
-                    finalFreeBudgetCents
-            ));
-            if (!finalRows.isEmpty()) {
+            summaryData.setValue(summary);
+            if (!rows.isEmpty()) {
                 uiState.setValue(BudgetUiState.CONTENT);
                 statusMessage.setValue("Letzte Buchungen");
             } else {
@@ -496,7 +493,40 @@ public class BudgetViewModel extends ViewModel {
                 statusMessage.setValue("Noch keine Buchungen. Starte mit \"Transaktion hinzufügen\".");
             }
         });
-        loadLimitsOnExecutor();
+    }
+
+    private String buildTransactionLabel(MonthlyTransactionOverviewItem item) {
+        if ("INTERNAL_TRANSFER".equals(item.transactionKind)) {
+            return item.note != null && !item.note.isBlank() ? "Überweisung · " + item.note : "Überweisung";
+        }
+        if (item.categoryName != null) {
+            String icon = item.categoryIcon != null && !item.categoryIcon.trim().isEmpty()
+                    ? item.categoryIcon : BudgetCategory.DEFAULT_ICON;
+            return icon + " " + item.categoryName;
+        }
+        if (item.note != null) {
+            return item.note;
+        }
+        return "Buchung";
+    }
+
+    private String formatTransactionAmount(long amountCents, boolean isExpense) {
+        return String.format(
+                Locale.GERMAN,
+                "%s%.2f €",
+                isExpense ? "-" : "+",
+                amountCents / 100.0
+        );
+    }
+
+    private static class AccountContext {
+        private final List<BudgetAccount> accounts;
+        private final String accountId;
+
+        private AccountContext(List<BudgetAccount> accounts, String accountId) {
+            this.accounts = accounts;
+            this.accountId = accountId;
+        }
     }
 
     private List<BudgetChartPoint> loadBalanceChartData(String accountId) {

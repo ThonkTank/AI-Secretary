@@ -98,77 +98,88 @@ public class BudgetFragment extends Fragment {
         shouldOpenAddTransactionDialog = getArguments() != null
                 && getArguments().getBoolean(ARG_OPEN_ADD_TRANSACTION, false);
 
-        TextView title = view.findViewById(R.id.BudgetTitle);
-        View summaryCard = view.findViewById(R.id.BudgetSummaryCard);
-        TextView summaryIncome = view.findViewById(R.id.BudgetSummaryIncome);
-        TextView summaryExpense = view.findViewById(R.id.BudgetSummaryExpense);
-        TextView summaryNet = view.findViewById(R.id.BudgetSummaryNet);
-        TextView summaryFreeBudget = view.findViewById(R.id.BudgetSummaryFreeBudget);
-        TextView status = view.findViewById(R.id.BudgetStatusMessage);
-        Button addTransaction = view.findViewById(R.id.BudgetAddTransactionButton);
-        Button addTransfer = view.findViewById(R.id.BudgetAddTransferButton);
-        Button importStatement = view.findViewById(R.id.BudgetImportStatementButton);
-        Button retry = view.findViewById(R.id.BudgetRetryButton);
-        LinearLayout transactionList = view.findViewById(R.id.BudgetTransactionList);
-        ProgressBar loading = view.findViewById(R.id.BudgetLoading);
-        TextView monthLabel = view.findViewById(R.id.BudgetMonthLabel);
-        ImageButton monthPrev = view.findViewById(R.id.BudgetMonthPrevButton);
-        ImageButton monthNext = view.findViewById(R.id.BudgetMonthNextButton);
-        LinearLayout limitBarsContainer = view.findViewById(R.id.BudgetLimitBarsContainer);
-        Button setLimitButton = view.findViewById(R.id.BudgetSetLimitButton);
-        Spinner accountSpinner = view.findViewById(R.id.BudgetAccountSpinner);
-        RadioGroup rangeGroup = view.findViewById(R.id.BudgetRangeGroup);
-        BudgetBalanceChartView chartView = view.findViewById(R.id.BudgetBalanceChart);
+        BudgetOverviewViews views = bindViews(view);
+        observeViewModel(views);
+        setupUserActions(views);
+        restoreDeferredActions(view);
+    }
 
-        budgetViewModel.getTitle().observe(getViewLifecycleOwner(), title::setText);
-        budgetViewModel.getStatusMessage().observe(getViewLifecycleOwner(), status::setText);
+    private BudgetOverviewViews bindViews(@NonNull View rootView) {
+        return new BudgetOverviewViews(
+                rootView.findViewById(R.id.BudgetTitle),
+                rootView.findViewById(R.id.BudgetSummaryCard),
+                rootView.findViewById(R.id.BudgetSummaryIncome),
+                rootView.findViewById(R.id.BudgetSummaryExpense),
+                rootView.findViewById(R.id.BudgetSummaryNet),
+                rootView.findViewById(R.id.BudgetSummaryFreeBudget),
+                rootView.findViewById(R.id.BudgetStatusMessage),
+                rootView.findViewById(R.id.BudgetAddTransactionButton),
+                rootView.findViewById(R.id.BudgetAddTransferButton),
+                rootView.findViewById(R.id.BudgetImportStatementButton),
+                rootView.findViewById(R.id.BudgetRetryButton),
+                rootView.findViewById(R.id.BudgetTransactionList),
+                rootView.findViewById(R.id.BudgetLoading),
+                rootView.findViewById(R.id.BudgetMonthLabel),
+                rootView.findViewById(R.id.BudgetMonthPrevButton),
+                rootView.findViewById(R.id.BudgetMonthNextButton),
+                rootView.findViewById(R.id.BudgetLimitBarsContainer),
+                rootView.findViewById(R.id.BudgetSetLimitButton),
+                rootView.findViewById(R.id.BudgetAccountSpinner),
+                rootView.findViewById(R.id.BudgetRangeGroup),
+                rootView.findViewById(R.id.BudgetBalanceChart)
+        );
+    }
+
+    private void observeViewModel(@NonNull BudgetOverviewViews views) {
+        budgetViewModel.getTitle().observe(getViewLifecycleOwner(), views.title::setText);
+        budgetViewModel.getStatusMessage().observe(getViewLifecycleOwner(), views.status::setText);
 
         budgetViewModel.getSummaryData().observe(getViewLifecycleOwner(), data -> {
             if (data == null) return;
-            summaryIncome.setText(String.format(Locale.GERMAN, "+%.2f €", data.getIncomeCents() / 100.0));
-            summaryIncome.setTextColor(Color.parseColor("#4CAF50"));
-            summaryExpense.setText(String.format(Locale.GERMAN, "-%.2f €", data.getExpenseCents() / 100.0));
-            summaryExpense.setTextColor(Color.parseColor("#F44336"));
+            views.summaryIncome.setText(String.format(Locale.GERMAN, "+%.2f €", data.getIncomeCents() / 100.0));
+            views.summaryIncome.setTextColor(Color.parseColor("#4CAF50"));
+            views.summaryExpense.setText(String.format(Locale.GERMAN, "-%.2f €", data.getExpenseCents() / 100.0));
+            views.summaryExpense.setTextColor(Color.parseColor("#F44336"));
             long net = data.getNetCents();
             String sign = net >= 0 ? "+" : "-";
-            summaryNet.setText(String.format(Locale.GERMAN, "%s%.2f €", sign, Math.abs(net) / 100.0));
-            summaryNet.setTextColor(Color.parseColor(net >= 0 ? "#4CAF50" : "#F44336"));
+            views.summaryNet.setText(String.format(Locale.GERMAN, "%s%.2f €", sign, Math.abs(net) / 100.0));
+            views.summaryNet.setTextColor(Color.parseColor(net >= 0 ? "#4CAF50" : "#F44336"));
 
             long freeBudget = data.getFreeBudgetCents();
             String freeBudgetSign = freeBudget >= 0 ? "+" : "-";
-            summaryFreeBudget.setText(String.format(Locale.GERMAN, "%s%.2f €", freeBudgetSign, Math.abs(freeBudget) / 100.0));
-            summaryFreeBudget.setTextColor(Color.parseColor(freeBudget >= 0 ? "#4CAF50" : "#F44336"));
+            views.summaryFreeBudget.setText(String.format(Locale.GERMAN, "%s%.2f €", freeBudgetSign, Math.abs(freeBudget) / 100.0));
+            views.summaryFreeBudget.setTextColor(Color.parseColor(freeBudget >= 0 ? "#4CAF50" : "#F44336"));
         });
 
         budgetViewModel.getTransactions().observe(getViewLifecycleOwner(),
-                rows -> renderTransactions(rows, transactionList));
+                rows -> renderTransactions(rows, views.transactionList));
 
-        budgetViewModel.getChartPoints().observe(getViewLifecycleOwner(), chartView::setPoints);
+        budgetViewModel.getChartPoints().observe(getViewLifecycleOwner(), views.chartView::setPoints);
 
         budgetViewModel.getUiState().observe(getViewLifecycleOwner(), state -> {
             boolean isLoading = state == BudgetViewModel.BudgetUiState.LOADING;
             boolean isError = state == BudgetViewModel.BudgetUiState.ERROR;
             boolean isContent = state == BudgetViewModel.BudgetUiState.CONTENT;
-            loading.setVisibility(isLoading ? View.VISIBLE : View.GONE);
-            retry.setVisibility(isError ? View.VISIBLE : View.GONE);
-            transactionList.setVisibility(isContent ? View.VISIBLE : View.GONE);
-            summaryCard.setVisibility(isContent ? View.VISIBLE : View.GONE);
+            views.loading.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+            views.retry.setVisibility(isError ? View.VISIBLE : View.GONE);
+            views.transactionList.setVisibility(isContent ? View.VISIBLE : View.GONE);
+            views.summaryCard.setVisibility(isContent ? View.VISIBLE : View.GONE);
         });
 
         budgetViewModel.getCurrentMonth().observe(getViewLifecycleOwner(), month ->
-                monthLabel.setText(budgetViewModel.formatMonth(month)));
+                views.monthLabel.setText(budgetViewModel.formatMonth(month)));
 
         budgetViewModel.getLimits().observe(getViewLifecycleOwner(),
-                bars -> renderLimitBars(bars, limitBarsContainer, setLimitButton));
+                bars -> renderLimitBars(bars, views.limitBarsContainer, views.setLimitButton));
 
         budgetViewModel.getAccounts().observe(getViewLifecycleOwner(), accounts ->
-                renderAccountSpinner(accounts, accountSpinner));
+                renderAccountSpinner(accounts, views.accountSpinner));
 
         budgetViewModel.getSelectedAccountId().observe(getViewLifecycleOwner(), selectedId -> {
             if (selectedId == null || accountItems.isEmpty()) return;
             for (int i = 0; i < accountItems.size(); i++) {
-                if (selectedId.equals(accountItems.get(i).id) && accountSpinner.getSelectedItemPosition() != i) {
-                    accountSpinner.setSelection(i, false);
+                if (selectedId.equals(accountItems.get(i).id) && views.accountSpinner.getSelectedItemPosition() != i) {
+                    views.accountSpinner.setSelection(i, false);
                     break;
                 }
             }
@@ -180,8 +191,8 @@ public class BudgetFragment extends Fragment {
                 case MONTHS_3 -> R.id.BudgetRange3m;
                 case MONTHS_12 -> R.id.BudgetRange12m;
             };
-            if (rangeGroup.getCheckedRadioButtonId() != checkedId) {
-                rangeGroup.check(checkedId);
+            if (views.rangeGroup.getCheckedRadioButtonId() != checkedId) {
+                views.rangeGroup.check(checkedId);
             }
         });
 
@@ -191,8 +202,10 @@ public class BudgetFragment extends Fragment {
                 budgetViewModel.clearImportResult();
             }
         });
+    }
 
-        accountSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+    private void setupUserActions(@NonNull BudgetOverviewViews views) {
+        views.accountSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View v, int position, long id) {
                 if (position >= 0 && position < accountItems.size()) {
@@ -205,7 +218,7 @@ public class BudgetFragment extends Fragment {
             }
         });
 
-        rangeGroup.setOnCheckedChangeListener((group, checkedId) -> {
+        views.rangeGroup.setOnCheckedChangeListener((group, checkedId) -> {
             if (checkedId == R.id.BudgetRange30d) {
                 budgetViewModel.setTimeRangeFilter(BudgetViewModel.TimeRangeFilter.DAYS_30);
             } else if (checkedId == R.id.BudgetRange3m) {
@@ -215,18 +228,88 @@ public class BudgetFragment extends Fragment {
             }
         });
 
-        monthPrev.setOnClickListener(v -> budgetViewModel.navigateMonth(-1));
-        monthNext.setOnClickListener(v -> budgetViewModel.navigateMonth(1));
-        addTransaction.setOnClickListener(v -> showAddTransactionDialog());
-        addTransfer.setOnClickListener(v -> showTransferDialog());
-        importStatement.setOnClickListener(v ->
+        views.monthPrev.setOnClickListener(v -> budgetViewModel.navigateMonth(-1));
+        views.monthNext.setOnClickListener(v -> budgetViewModel.navigateMonth(1));
+        views.addTransaction.setOnClickListener(v -> showAddTransactionDialog());
+        views.addTransfer.setOnClickListener(v -> showTransferDialog());
+        views.importStatement.setOnClickListener(v ->
                 csvPickerLauncher.launch(new String[]{"text/csv", "text/plain", "application/pdf", "*/*"}));
-        retry.setOnClickListener(v -> budgetViewModel.retry());
-        setLimitButton.setOnClickListener(v -> showEditLimitDialog(null, null, 0));
+        views.retry.setOnClickListener(v -> budgetViewModel.retry());
+        views.setLimitButton.setOnClickListener(v -> showEditLimitDialog(null, null, 0));
+    }
 
+    private void restoreDeferredActions(@NonNull View rootView) {
         if (shouldOpenAddTransactionDialog) {
             shouldOpenAddTransactionDialog = false;
-            view.post(this::showAddTransactionDialog);
+            rootView.post(this::showAddTransactionDialog);
+        }
+    }
+
+    private static class BudgetOverviewViews {
+        private final TextView title;
+        private final View summaryCard;
+        private final TextView summaryIncome;
+        private final TextView summaryExpense;
+        private final TextView summaryNet;
+        private final TextView summaryFreeBudget;
+        private final TextView status;
+        private final Button addTransaction;
+        private final Button addTransfer;
+        private final Button importStatement;
+        private final Button retry;
+        private final LinearLayout transactionList;
+        private final ProgressBar loading;
+        private final TextView monthLabel;
+        private final ImageButton monthPrev;
+        private final ImageButton monthNext;
+        private final LinearLayout limitBarsContainer;
+        private final Button setLimitButton;
+        private final Spinner accountSpinner;
+        private final RadioGroup rangeGroup;
+        private final BudgetBalanceChartView chartView;
+
+        private BudgetOverviewViews(TextView title,
+                                    View summaryCard,
+                                    TextView summaryIncome,
+                                    TextView summaryExpense,
+                                    TextView summaryNet,
+                                    TextView summaryFreeBudget,
+                                    TextView status,
+                                    Button addTransaction,
+                                    Button addTransfer,
+                                    Button importStatement,
+                                    Button retry,
+                                    LinearLayout transactionList,
+                                    ProgressBar loading,
+                                    TextView monthLabel,
+                                    ImageButton monthPrev,
+                                    ImageButton monthNext,
+                                    LinearLayout limitBarsContainer,
+                                    Button setLimitButton,
+                                    Spinner accountSpinner,
+                                    RadioGroup rangeGroup,
+                                    BudgetBalanceChartView chartView) {
+            this.title = title;
+            this.summaryCard = summaryCard;
+            this.summaryIncome = summaryIncome;
+            this.summaryExpense = summaryExpense;
+            this.summaryNet = summaryNet;
+            this.summaryFreeBudget = summaryFreeBudget;
+            this.status = status;
+            this.addTransaction = addTransaction;
+            this.addTransfer = addTransfer;
+            this.importStatement = importStatement;
+            this.retry = retry;
+            this.transactionList = transactionList;
+            this.loading = loading;
+            this.monthLabel = monthLabel;
+            this.monthPrev = monthPrev;
+            this.monthNext = monthNext;
+            this.limitBarsContainer = limitBarsContainer;
+            this.setLimitButton = setLimitButton;
+            this.accountSpinner = accountSpinner;
+            this.rangeGroup = rangeGroup;
+            this.chartView = chartView;
         }
     }
 
