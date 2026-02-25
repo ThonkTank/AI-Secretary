@@ -178,22 +178,15 @@ public class TaskViewModel extends AndroidViewModel {
      * </ol>
      */
     private static Predicate<ViewSlot> buildChecklistPredicate(LocalDate day) {
-        Predicate<ViewSlot> predicate = vs -> true;
-
-        if (day != null) {
-            predicate = predicate.and(vs -> vs.item.day.equals(day));
-        }
-        predicate = predicate.and(vs -> vs.item.start != null);
-        return predicate;
+        return vs -> isOnDay(vs, day) && vs.item.start != null;
     }
 
     private static Predicate<ViewSlot> buildManagePredicate(LocalDate day) {
-        Predicate<ViewSlot> predicate = vs -> true;
+        return vs -> isOnDay(vs, day);
+    }
 
-        if (day != null) {
-            predicate = predicate.and(vs -> vs.item.day.equals(day));
-        }
-        return predicate;
+    private static boolean isOnDay(ViewSlot viewSlot, LocalDate day) {
+        return day == null || viewSlot.item.day.equals(day);
     }
 
     /**
