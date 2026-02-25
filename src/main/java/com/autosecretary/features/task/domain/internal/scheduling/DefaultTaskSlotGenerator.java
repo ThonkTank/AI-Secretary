@@ -23,7 +23,7 @@ import java.util.function.Consumer;
 
 /**
  * Internal scheduler implementation of the {@link com.autosecretary.features.task.domain.TaskSlotGenerator}
- * contract that assigns tasks to time slots within a {@link TimeWindow}.
+ * contract that assigns tasks to time slots within a daily window.
  */
 public class DefaultTaskSlotGenerator implements com.autosecretary.features.task.domain.TaskSlotGenerator {
 
@@ -97,7 +97,7 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
 
     @Override
     public void generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
-        generateSlotsForDay(tasks, new TimeWindow(windowStart, windowEnd), state);
+        generateSlotsForDay(tasks, windowStart, windowEnd, state);
     }
 
     @Override
@@ -111,8 +111,8 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
         }
     }
 
-    private void generateSlotsForDay(List<Task> tasks, TimeWindow window, TaskPlanningState state) {
-        schedulingDay = window.start().toLocalDate();
+    private void generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
+        schedulingDay = windowStart.toLocalDate();
         newSlots = 0;
         scorer.reset();
 
@@ -135,11 +135,11 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
             }
         }
 
-        long windowMin = ChronoUnit.MINUTES.between(window.start(), window.end());
-        log("=== Generierung " + schedulingDay + " === Fenster " + window.start().format(HMM) + "-" + window.end().format(HMM) + " (" + windowMin + "min), " + taskTree.size() + " root tasks");
+        long windowMin = ChronoUnit.MINUTES.between(windowStart, windowEnd);
+        log("=== Generierung " + schedulingDay + " === Fenster " + windowStart.format(HMM) + "-" + windowEnd.format(HMM) + " (" + windowMin + "min), " + taskTree.size() + " root tasks");
 
         List<Interval> occupied = collectOccupiedIntervals(allTasks, schedulingDay);
-        assignGlobalBestFit(taskTree, window.start(), window.end(), null, 0, occupied);
+        assignGlobalBestFit(taskTree, windowStart, windowEnd, null, 0, occupied);
 
         log("=== Zusammenfassung " + schedulingDay + " ===");
         int totalDaySlots = 0;
@@ -150,7 +150,14 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
             }
             if (!daySlots.isEmpty()) {
                 totalDaySlots += daySlots.size();
-                log("  " + t.core.title + ": " + daySlots.size() + " slots [" + formatSlotsSummary(daySlots) + "]");
+                StringBuilder summary = new StringBuilder();
+                for (TaskSlot slot : daySlots) {
+                    if (summary.length() > 0) {
+                        summary.append(", ");
+                    }
+                    summary.append(formatSlot(slot));
+                }
+                log("  " + t.core.title + ": " + daySlots.size() + " slots [" + summary + "]");
             } else {
                 log("  " + t.core.title + ": unscheduled");
             }
@@ -202,9 +209,11 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
         DayOfWeek today = schedulingDay.getDayOfWeek();
 
         for (Task task : tasks) {
-            appendScoreSeparator(scores);
+            if (scores.length() > 0) {
+                scores.append("  |  ");
+            }
             if (hasUnmetPrerequisites(task)) {
-                scores.append(formatPrerequisiteBlockedScore(task));
+                scores.append(task.core.title).append(": 0 (Voraussetzung)");
                 continue;
             }
 
@@ -240,7 +249,7 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
                 }
             }
 
-            scores.append(formatScore(task, taskBestScore));
+            scores.append(task.core.title).append(": ").append(taskBestScore);
         }
 
         return new CandidateSelection(bestTask, bestScore, bestStart, scores.toString());
@@ -319,35 +328,10 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
         newSlots++;
     }
 
-    private String formatSlotsSummary(List<TaskSlot> slots) {
-        StringBuilder sb = new StringBuilder();
-        for (TaskSlot slot : slots) {
-            if (sb.length() > 0) {
-                sb.append(", ");
-            }
-            sb.append(formatSlot(slot));
-        }
-        return sb.toString();
-    }
-
     private String formatSlot(TaskSlot slot) {
         String start = slot.start != null ? slot.start.format(HMM) : "?";
         String end = slot.end != null ? slot.end.format(HMM) : "?";
         return start + "-" + end + "(" + slot.score + ")";
-    }
-
-    private void appendScoreSeparator(StringBuilder scores) {
-        if (scores.length() > 0) {
-            scores.append("  |  ");
-        }
-    }
-
-    private String formatPrerequisiteBlockedScore(Task task) {
-        return task.core.title + ": 0 (Voraussetzung)";
-    }
-
-    private String formatScore(Task task, int score) {
-        return task.core.title + ": " + score;
     }
 
     private boolean hasUnmetPrerequisites(Task task) {
