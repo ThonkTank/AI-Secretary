@@ -2,6 +2,7 @@ package com.autosecretary.features.task.domain.internal.scoring;
 
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskPrefSlot;
+import com.autosecretary.features.task.domain.internal.scoring.ScoringModel.PreferenceFitState;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalTime;

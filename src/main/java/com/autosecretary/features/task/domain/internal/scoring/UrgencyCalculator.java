@@ -2,6 +2,7 @@ package com.autosecretary.features.task.domain.internal.scoring;
 
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
+import com.autosecretary.features.task.domain.internal.scoring.ScoringModel.UrgencyState;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 

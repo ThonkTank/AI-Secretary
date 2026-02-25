@@ -29,15 +29,13 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     List<ViewSlot> viewSlots;
     Consumer<ViewSlot> onCheck;
-    Consumer<ViewSlot> onLongPress;
-    Consumer<ViewSlot> onEditClick;
+    Consumer<ViewSlot> onEdit;
     boolean interactionsEnabled = true;
 
-    public ListRowAdapter(List<ViewSlot> viewSlots, Consumer<ViewSlot> onCheck, Consumer<ViewSlot> onLongPress, Consumer<ViewSlot> onEditClick) {
+    public ListRowAdapter(List<ViewSlot> viewSlots, Consumer<ViewSlot> onCheck, Consumer<ViewSlot> onEdit) {
         this.viewSlots = viewSlots;
         this.onCheck = onCheck;
-        this.onLongPress = onLongPress;
-        this.onEditClick = onEditClick;
+        this.onEdit = onEdit;
     }
 
     static class TaskRowViewHolder extends RecyclerView.ViewHolder {
@@ -68,7 +66,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     @Override
     public TaskRowViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View taskRow = LayoutInflater.from(parent.getContext()).inflate(R.layout.task_row, parent, false);
+        View taskRow = LayoutInflater.from(parent.getContext()).inflate(R.layout.task_row_item, parent, false);
         return new TaskRowViewHolder(taskRow);
     }
 
@@ -172,10 +170,10 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
         if (interactionsEnabled) {
             holder.itemView.setOnLongClickListener(v -> {
-                onLongPress.accept(viewSlot);
+                onEdit.accept(viewSlot);
                 return true;
             });
-            holder.editButton.setOnClickListener(v -> onEditClick.accept(viewSlot));
+            holder.editButton.setOnClickListener(v -> onEdit.accept(viewSlot));
             holder.editButton.setAlpha(1.0f);
         } else {
             holder.itemView.setOnLongClickListener(null);

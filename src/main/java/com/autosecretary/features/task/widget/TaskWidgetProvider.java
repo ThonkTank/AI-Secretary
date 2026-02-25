@@ -78,7 +78,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     }
 
     private void updateWidget(Context context, AppWidgetManager manager, int widgetId) {
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_task_list);
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.task_list_widget);
 
         // Day label
         int offset = getSelectedDayOffset(context);
