@@ -3,4 +3,8 @@
     <!-- Global rule: app-wide tokens stay in generic files; feature-specific resources belong in feature-prefixed files (for example task_colors.xml). -->
     <color name="transparent">#00000000</color>
     <color name="launcher_icon_background">#0D3B52</color>
+    <color name="budget_positive">#4CAF50</color>
+    <color name="budget_negative">#F44336</color>
+    <color name="budget_warning">#FF9800</color>
+    <color name="budget_neutral">#9E9E9E</color>
 </resources>
