@@ -13,6 +13,7 @@
     <color name="task_text_on_surface_variant">@color/task_color_on_surface_variant</color>
     <color name="task_text_on_surface_emphasis">@color/task_color_on_surface_emphasis</color>
     <color name="task_text_on_surface_muted">@color/task_color_on_surface_muted</color>
+    <color name="task_row_time_divider">@color/task_color_on_surface_variant</color>
 
     <!-- Day picker colors -->
     <color name="task_edit_day_selected_background">@color/task_color_primary</color>
