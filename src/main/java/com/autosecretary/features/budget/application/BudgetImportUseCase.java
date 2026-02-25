@@ -34,50 +34,75 @@ public class BudgetImportUseCase {
                              String mimeType,
                              ImportCallback callback) {
         executor.execute(() -> {
-            Long importId = null;
             try {
-                callback.onProgress("Prüfe Datei...");
-                String fileHash = sha256(fileBytes);
-                BudgetImportRepository.ImportRecord imp = repository.createImport(accountId, fileName, fileHash);
-                importId = imp.id();
-
-                callback.onProgress("Parse Datei...");
-                StatementFileParser.ParsedStatement parsed = parser.parse(fileName, fileBytes, mimeType);
-
-                callback.onProgress("Verarbeite Transaktionen...");
-                ImportComputation computation = buildTransactions(accountId, imp.id(), parsed.transactions());
-                if (!computation.newTransactions.isEmpty()) {
-                    repository.saveTransactionsBatch(computation.newTransactions);
-                }
-
-                repository.markImportCompleted(
-                        importId,
-                        parsed.transactions().size(),
-                        computation.newTransactions.size(),
-                        computation.autoCategorized,
-                        parsed.periodStart(),
-                        parsed.periodEnd()
-                );
-
-                repository.notifyBudgetDataUpdated();
-
-                callback.onProgress("Suche wiederkehrende Muster...");
-                List<BudgetTransaction> accountTransactions = repository.loadTransactionsForAccount(accountId);
-                List<RecurringSuggestion> suggestions = RecurringPatternDetector.detectPatterns(accountTransactions);
+                callback.onProgress("Starte Import...");
+                ImportPipelineResult pipelineResult = runImportPipeline(accountId, fileName, fileBytes, mimeType);
+                callback.onProgress("Import abgeschlossen.");
 
                 callback.onSuccess(new ImportResult(
-                        parsed.transactions().size(),
-                        computation.newTransactions.size(),
-                        computation.duplicates,
-                        suggestions
+                        pipelineResult.totalTransactions(),
+                        pipelineResult.newTransactions(),
+                        pipelineResult.duplicates(),
+                        pipelineResult.recurringSuggestions()
                 ));
-            } catch (Exception e) {
-                if (importId != null) {
-                    repository.markImportFailed(importId, e.getMessage());
+            } catch (ImportPipelineException e) {
+                if (e.importId() != null) {
+                    repository.markImportFailed(e.importId(), e.userMessage());
                 }
-                callback.onError(e.getMessage());
+                callback.onError(e.userMessage());
             }
         });
+    }
+
+    ImportPipelineResult runImportPipeline(Long accountId,
+                                           String fileName,
+                                           byte[] fileBytes,
+                                           String mimeType) {
+        Long importId = null;
+        try {
+            String fileHash = sha256(fileBytes);
+            BudgetImportRepository.ImportRecord importRecord = repository.createImport(accountId, fileName, fileHash);
+            importId = importRecord.id();
+
+            StatementFileParser.ParsedStatement parsed = parser.parse(fileName, fileBytes, mimeType);
+
+            ImportComputation computation = buildTransactions(accountId, importId, parsed.transactions());
+            if (!computation.newTransactions.isEmpty()) {
+                repository.saveTransactionsBatch(computation.newTransactions);
+            }
+
+            repository.markImportCompleted(
+                    importId,
+                    parsed.transactions().size(),
+                    computation.newTransactions.size(),
+                    computation.autoCategorized,
+                    parsed.periodStart(),
+                    parsed.periodEnd()
+            );
+
+            repository.notifyBudgetDataUpdated();
+
+            List<BudgetTransaction> accountTransactions = repository.loadTransactionsForAccount(accountId);
+            List<RecurringSuggestion> suggestions = RecurringPatternDetector.detectPatterns(accountTransactions);
+
+            return new ImportPipelineResult(
+                    parsed.transactions().size(),
+                    computation.newTransactions.size(),
+                    computation.duplicates,
+                    computation.autoCategorized,
+                    parsed.periodStart(),
+                    parsed.periodEnd(),
+                    suggestions
+            );
+        } catch (IllegalArgumentException e) {
+            throw new ImportPipelineException(importId,
+                    "Validierungsfehler beim Import: " + safeErrorMessage(e),
+                    e);
+        } catch (Exception e) {
+            throw new ImportPipelineException(importId,
+                    "Technischer Fehler beim Import: " + safeErrorMessage(e),
+                    e);
+        }
     }
 
     private ImportComputation buildTransactions(Long accountId,
@@ -163,8 +188,46 @@ public class BudgetImportUseCase {
     ) {
     }
 
+    record ImportPipelineResult(
+            int totalTransactions,
+            int newTransactions,
+            int duplicates,
+            int autoCategorized,
+            LocalDate periodStart,
+            LocalDate periodEnd,
+            List<RecurringSuggestion> recurringSuggestions
+    ) {
+    }
+
+    private static class ImportPipelineException extends RuntimeException {
+        private final Long importId;
+        private final String userMessage;
+
+        ImportPipelineException(Long importId, String userMessage, Throwable cause) {
+            super(userMessage, cause);
+            this.importId = importId;
+            this.userMessage = userMessage;
+        }
+
+        Long importId() {
+            return importId;
+        }
+
+        String userMessage() {
+            return userMessage;
+        }
+    }
+
     private record ImportComputation(List<BudgetTransaction> newTransactions,
                                      int duplicates,
                                      int autoCategorized) {
+    }
+
+    private String safeErrorMessage(Exception exception) {
+        String message = exception.getMessage();
+        if (message == null || message.isBlank()) {
+            return "unbekannte Ursache";
+        }
+        return message;
     }
 }
