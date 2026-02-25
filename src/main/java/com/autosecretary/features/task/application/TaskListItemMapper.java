@@ -51,7 +51,11 @@ public class TaskListItemMapper {
                 task.core.history.currentStreak,
                 slot.score,
                 slot.completed,
-                slot.realStart != null && !slot.completed
+                slot.realStart != null && !slot.completed,
+                task.core.progress.current,
+                task.core.progress.target,
+                task.core.progress.unit,
+                Math.max(1, task.core.progress.minPerRep)
         );
     }
 }

@@ -30,12 +30,20 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     List<ViewSlot> viewSlots;
     Consumer<ViewSlot> onCheck;
     Consumer<ViewSlot> onEdit;
+    Consumer<ViewSlot> onProgressPlus;
+    Consumer<ViewSlot> onProgressMinus;
     boolean interactionsEnabled = true;
 
-    public ListRowAdapter(List<ViewSlot> viewSlots, Consumer<ViewSlot> onCheck, Consumer<ViewSlot> onEdit) {
+    public ListRowAdapter(List<ViewSlot> viewSlots,
+                          Consumer<ViewSlot> onCheck,
+                          Consumer<ViewSlot> onEdit,
+                          Consumer<ViewSlot> onProgressPlus,
+                          Consumer<ViewSlot> onProgressMinus) {
         this.viewSlots = viewSlots;
         this.onCheck = onCheck;
         this.onEdit = onEdit;
+        this.onProgressPlus = onProgressPlus;
+        this.onProgressMinus = onProgressMinus;
     }
 
     static class TaskRowViewHolder extends RecyclerView.ViewHolder {
@@ -43,6 +51,10 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         TextView start;
         TextView end;
         CheckBox checkBox;
+        View progressContainer;
+        ImageButton progressMinus;
+        ImageButton progressPlus;
+        TextView progressText;
         TextView deadlineCountdown;
         TextView streakDisplay;
         ImageButton editButton;
@@ -53,6 +65,10 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             this.start = taskRow.findViewById(R.id.StartTime);
             this.end = taskRow.findViewById(R.id.EndTime);
             this.checkBox = taskRow.findViewById(R.id.TaskCheckBox);
+            this.progressContainer = taskRow.findViewById(R.id.progress_container);
+            this.progressMinus = taskRow.findViewById(R.id.btn_progress_minus);
+            this.progressPlus = taskRow.findViewById(R.id.btn_progress_plus);
+            this.progressText = taskRow.findViewById(R.id.progress_text);
             this.deadlineCountdown = taskRow.findViewById(R.id.DeadlineCountdown);
             this.streakDisplay = taskRow.findViewById(R.id.StreakDisplay);
             this.editButton = taskRow.findViewById(R.id.EditTaskButton);
@@ -83,7 +99,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         bindDeadline(holder, item);
         bindStreak(holder, item);
         bindProgressState(holder, item);
-        bindInteractions(holder, item, viewSlot);
+        bindCompletionMode(holder, item, viewSlot);
+        bindInteractions(holder, viewSlot);
     }
 
     private void bindIndentation(TaskRowViewHolder holder, int depth) {
@@ -158,7 +175,17 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         }
     }
 
-    private void bindInteractions(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
+    private void bindCompletionMode(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
+        if (item.hasProgressTarget()) {
+            bindProgressControls(holder, item, viewSlot);
+        } else {
+            bindCheckboxControls(holder, item, viewSlot);
+        }
+    }
+
+    private void bindCheckboxControls(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
+        holder.checkBox.setVisibility(View.VISIBLE);
+        holder.progressContainer.setVisibility(View.GONE);
         holder.checkBox.setOnClickListener(v -> {
             holder.checkBox.setChecked(item.completed);
             onCheck.accept(viewSlot);
@@ -167,7 +194,38 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         boolean checkable = !item.completed && item.slotId != null && interactionsEnabled;
         holder.checkBox.setEnabled(checkable);
         holder.checkBox.setAlpha(interactionsEnabled ? 1.0f : 0.4f);
+    }
 
+    private void bindProgressControls(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
+        Context context = holder.itemView.getContext();
+        holder.checkBox.setVisibility(View.GONE);
+        holder.checkBox.setOnClickListener(null);
+        holder.progressContainer.setVisibility(View.VISIBLE);
+
+        int current = Math.max(0, item.progressCurrent);
+        int target = Math.max(0, item.progressTarget);
+        String unit = item.progressUnit == null ? "" : item.progressUnit;
+        holder.progressText.setText(context.getString(R.string.task_progress_display, current, target, unit));
+
+        boolean canDecrease = interactionsEnabled && current > 0;
+        boolean canIncrease = interactionsEnabled && current < target;
+
+        holder.progressMinus.setEnabled(canDecrease);
+        holder.progressPlus.setEnabled(canIncrease);
+        holder.progressMinus.setAlpha(canDecrease ? 1.0f : 0.4f);
+        holder.progressPlus.setAlpha(canIncrease ? 1.0f : 0.4f);
+        holder.progressMinus.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(context,
+                canDecrease ? R.color.task_progress_button_tint : R.color.task_progress_button_tint_disabled)));
+        holder.progressPlus.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(context,
+                canIncrease ? R.color.task_progress_button_tint : R.color.task_progress_button_tint_disabled)));
+        holder.progressText.setTextColor(ContextCompat.getColor(context,
+                interactionsEnabled ? R.color.task_progress_text : R.color.task_progress_text_disabled));
+
+        holder.progressMinus.setOnClickListener(v -> onProgressMinus.accept(viewSlot));
+        holder.progressPlus.setOnClickListener(v -> onProgressPlus.accept(viewSlot));
+    }
+
+    private void bindInteractions(TaskRowViewHolder holder, ViewSlot viewSlot) {
         if (interactionsEnabled) {
             holder.itemView.setOnLongClickListener(v -> {
                 onEdit.accept(viewSlot);

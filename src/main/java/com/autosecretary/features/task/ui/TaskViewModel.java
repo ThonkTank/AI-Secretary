@@ -7,6 +7,8 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
+import com.autosecretary.features.task.application.DecrementTaskProgressUseCase;
+import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
@@ -37,6 +39,8 @@ public class TaskViewModel extends AndroidViewModel {
     private final TaskAsyncDataService taskAsyncDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
+    private final IncrementTaskProgressUseCase incrementTaskProgressUseCase;
+    private final DecrementTaskProgressUseCase decrementTaskProgressUseCase;
     private final TaskEditSessionController taskEditSessionController;
 
     private final ViewSlotList masterList;
@@ -49,11 +53,15 @@ public class TaskViewModel extends AndroidViewModel {
     public TaskViewModel(Application app,
                          TaskAsyncDataService taskAsyncDataService,
                          CheckOffTaskUseCase checkOffTaskUseCase,
-                         RegenerateScheduleUseCase regenerateScheduleUseCase) {
+                         RegenerateScheduleUseCase regenerateScheduleUseCase,
+                         IncrementTaskProgressUseCase incrementTaskProgressUseCase,
+                         DecrementTaskProgressUseCase decrementTaskProgressUseCase) {
         super(app);
         this.taskAsyncDataService = taskAsyncDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
+        this.incrementTaskProgressUseCase = incrementTaskProgressUseCase;
+        this.decrementTaskProgressUseCase = decrementTaskProgressUseCase;
         this.taskEditSessionController = new TaskEditSessionController(taskAsyncDataService, this::refreshList);
 
         this.masterList = new ViewSlotList();
@@ -168,6 +176,14 @@ public class TaskViewModel extends AndroidViewModel {
 
     public void checkOff(ViewSlot viewSlot) {
         checkOffTaskUseCase.execute(viewSlot.item, this::refreshList);
+    }
+
+    public void incrementProgress(ViewSlot viewSlot) {
+        incrementTaskProgressUseCase.execute(viewSlot.item, this::refreshList);
+    }
+
+    public void decrementProgress(ViewSlot viewSlot) {
+        decrementTaskProgressUseCase.execute(viewSlot.item, this::refreshList);
     }
 
     private void refreshList() {

@@ -7,6 +7,8 @@ import android.util.Log;
 
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
+import com.autosecretary.features.task.application.DecrementTaskProgressUseCase;
+import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.application.TaskListItemMapper;
@@ -81,12 +83,22 @@ public class AppCompositionRoot {
                 preferences,
                 taskUseCaseExecutor
         );
+        IncrementTaskProgressUseCase incrementTaskProgressUseCase = new IncrementTaskProgressUseCase(
+                taskDao,
+                taskUseCaseExecutor
+        );
+        DecrementTaskProgressUseCase decrementTaskProgressUseCase = new DecrementTaskProgressUseCase(
+                taskDao,
+                taskUseCaseExecutor
+        );
 
         taskViewModelFactory = new TaskViewModelFactory(
                 app,
                 taskAsyncDataService,
                 checkOffTaskUseCase,
-                regenerateScheduleUseCase
+                regenerateScheduleUseCase,
+                incrementTaskProgressUseCase,
+                decrementTaskProgressUseCase
         );
 
         return taskViewModelFactory;

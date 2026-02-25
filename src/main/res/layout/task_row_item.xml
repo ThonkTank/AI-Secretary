@@ -48,6 +48,43 @@
         android:layout_height="wrap_content"
         android:buttonTint="@color/task_color_primary"/>
 
+    <LinearLayout
+        android:id="@+id/progress_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/spacing_xs"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <ImageButton
+            android:id="@+id/btn_progress_minus"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/task_progress_decrement"
+            android:src="@android:drawable/ic_media_previous"
+            android:tint="@color/task_progress_button_tint"/>
+
+        <TextView
+            android:id="@+id/progress_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_xs"
+            android:layout_marginEnd="@dimen/spacing_xs"
+            android:textAppearance="@style/TextAppearance.Task.Metadata"
+            android:textColor="@color/task_progress_text"/>
+
+        <ImageButton
+            android:id="@+id/btn_progress_plus"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/task_progress_increment"
+            android:src="@android:drawable/ic_input_add"
+            android:tint="@color/task_progress_button_tint"/>
+    </LinearLayout>
+
     <TextView
         android:id="@+id/TaskTitle"
         android:layout_width="0dp"

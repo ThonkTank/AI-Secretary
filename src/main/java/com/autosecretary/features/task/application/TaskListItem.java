@@ -34,10 +34,15 @@ public class TaskListItem {
     public final int score;
     public final boolean completed;
     public final boolean inProgress;
+    public final int progressCurrent;
+    public final int progressTarget;
+    public final String progressUnit;
+    public final int progressStepDelta;
 
     public TaskListItem(String taskId, String slotId, String slotParentId, List<String> parentTaskIds,
                         String title, LocalDate day, LocalTime start, LocalTime end, LocalDate deadline,
-                        int streak, int score, boolean completed, boolean inProgress) {
+                        int streak, int score, boolean completed, boolean inProgress,
+                        int progressCurrent, int progressTarget, String progressUnit, int progressStepDelta) {
         this.taskId = taskId;
         this.slotId = slotId;
         this.slotParentId = slotParentId;
@@ -51,6 +56,14 @@ public class TaskListItem {
         this.score = score;
         this.completed = completed;
         this.inProgress = inProgress;
+        this.progressCurrent = progressCurrent;
+        this.progressTarget = progressTarget;
+        this.progressUnit = progressUnit;
+        this.progressStepDelta = progressStepDelta;
+    }
+
+    public boolean hasProgressTarget() {
+        return progressTarget > 0;
     }
 
     public long daysUntilDeadline() {
