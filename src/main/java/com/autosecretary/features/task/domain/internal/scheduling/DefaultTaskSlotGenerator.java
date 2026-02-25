@@ -22,10 +22,9 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * Internal scheduler implementation of the {@link com.autosecretary.features.task.domain.TaskSlotGenerator}
- * contract that assigns tasks to time slots within a given window.
+ * Internal scheduler that assigns tasks to time slots within a given window.
  */
-public class DefaultTaskSlotGenerator implements com.autosecretary.features.task.domain.TaskSlotGenerator {
+public class DefaultTaskSlotGenerator {
 
 
     private static class CandidateSelection {
@@ -76,12 +75,10 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
 
     private static final DateTimeFormatter HMM = DateTimeFormatter.ofPattern("HH:mm");
 
-    @Override
     public TaskPlanningState createPlanningState() {
         return new TaskPlanningState();
     }
 
-    @Override
     public void recordPreservedSlots(List<Task> tasks, LocalDate startInclusive, LocalDate endExclusive, TaskPlanningState state) {
         for (Task task : tasks) {
             for (TaskSlot slot : task.slots) {
@@ -95,7 +92,6 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
         }
     }
 
-    @Override
     public void generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
         generateSlotsForDayInternal(tasks, windowStart, windowEnd, state);
     }
@@ -154,7 +150,6 @@ public class DefaultTaskSlotGenerator implements com.autosecretary.features.task
         log("Gesamt: " + totalDaySlots + " slots (neu: " + newSlots + ")");
     }
 
-    @Override
     public void recordScheduledSlotsForDay(List<Task> tasks, LocalDate day, TaskPlanningState state) {
         for (Task task : tasks) {
             for (TaskSlot slot : task.slots) {

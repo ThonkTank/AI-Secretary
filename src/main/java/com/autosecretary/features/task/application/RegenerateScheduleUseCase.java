@@ -5,7 +5,7 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskSeedDataFactory;
 import com.autosecretary.features.task.domain.TaskPlanningState;
-import com.autosecretary.features.task.domain.TaskSlotGenerator;
+import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
 
 import java.time.LocalDate;
@@ -15,7 +15,7 @@ import java.util.concurrent.ExecutorService;
 
 /**
  * Entry point for schedule generation. Reads all tasks from the database, generates
- * a 7-day schedule (today + 6 days) using {@link TaskSlotGenerator} with cross-day state
+ * a 7-day schedule (today + 6 days) using {@link DefaultTaskSlotGenerator} with cross-day state
  * tracking, and writes scheduled results back. Seeds default tasks on first run when
  * the DB is empty.
  */
@@ -23,12 +23,12 @@ public class RegenerateScheduleUseCase {
     private static final int PLANNING_DAYS = 7;
 
     private final TaskDAO taskDao;
-    private final TaskSlotGenerator generator;
+    private final DefaultTaskSlotGenerator generator;
     private final Preferences preferences;
     private final ExecutorService executor;
 
     public RegenerateScheduleUseCase(TaskDAO taskDao,
-                                     TaskSlotGenerator generator,
+                                     DefaultTaskSlotGenerator generator,
                                      Preferences preferences,
                                      ExecutorService executor) {
         this.taskDao = taskDao;
