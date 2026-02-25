@@ -162,6 +162,15 @@
             android:layout_marginTop="@dimen/spacing_lg"
             android:text="@string/budget_add_transaction" />
 
+
+        <Button
+            android:id="@+id/BudgetAddTransferButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:text="@string/budget_add_transfer" />
+
         <Button
             android:id="@+id/BudgetImportStatementButton"
             android:layout_width="match_parent"

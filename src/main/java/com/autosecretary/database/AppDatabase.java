@@ -6,12 +6,14 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
+import androidx.room.migration.Migration;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.autosecretary.features.budget.data.BudgetAccount;
 import com.autosecretary.features.budget.data.BudgetCategory;
-import com.autosecretary.features.budget.data.BudgetLimit;
 import com.autosecretary.features.budget.data.BudgetImportDao;
 import com.autosecretary.features.budget.data.BudgetImportEntity;
+import com.autosecretary.features.budget.data.BudgetLimit;
 import com.autosecretary.features.budget.data.BudgetLimitDao;
 import com.autosecretary.features.budget.data.BudgetLookupDao;
 import com.autosecretary.features.budget.data.BudgetRecurringTemplateDao;
@@ -39,7 +41,7 @@ import com.autosecretary.features.task.data.TaskSlot;
                 BudgetImportEntity.class,
                 BudgetRecurringTemplateEntity.class
         },
-        version = 10,
+        version = 11,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -57,12 +59,59 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public abstract BudgetRecurringTemplateDao budgetRecurringTemplateDao();
 
+    private static final Migration MIGRATION_10_11 = new Migration(10, 11) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE budget_transaction RENAME TO budget_transaction_old");
+            database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS budget_transaction (
+                        id TEXT NOT NULL,
+                        accountId TEXT NOT NULL,
+                        categoryId TEXT,
+                        type TEXT NOT NULL,
+                        transactionKind TEXT NOT NULL DEFAULT 'STANDARD',
+                        linkedTransactionId TEXT,
+                        amountCents INTEGER NOT NULL,
+                        bookingDate TEXT NOT NULL,
+                        yearMonth TEXT NOT NULL,
+                        note TEXT,
+                        importHash TEXT,
+                        payee TEXT,
+                        importId TEXT,
+                        PRIMARY KEY(id),
+                        FOREIGN KEY(accountId) REFERENCES budget_account(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+                        FOREIGN KEY(categoryId) REFERENCES budget_category(id) ON UPDATE CASCADE ON DELETE SET NULL,
+                        FOREIGN KEY(linkedTransactionId) REFERENCES budget_transaction(id) ON UPDATE CASCADE ON DELETE SET NULL
+                    )
+                    """);
+
+            database.execSQL("""
+                    INSERT INTO budget_transaction (
+                        id, accountId, categoryId, type, transactionKind, linkedTransactionId,
+                        amountCents, bookingDate, yearMonth, note, importHash, payee, importId
+                    )
+                    SELECT id, accountId, categoryId, type, 'STANDARD', NULL,
+                           amountCents, bookingDate, yearMonth, note, importHash, payee, importId
+                    FROM budget_transaction_old
+                    """);
+
+            database.execSQL("DROP TABLE budget_transaction_old");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_accountId ON budget_transaction(accountId)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_categoryId ON budget_transaction(categoryId)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_yearMonth ON budget_transaction(yearMonth)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_bookingDate ON budget_transaction(bookingDate)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_importHash ON budget_transaction(importHash)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_linkedTransactionId ON budget_transaction(linkedTransactionId)");
+        }
+    };
+
     // Singleton-Pattern
     private static AppDatabase instance;
 
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context, AppDatabase.class, "autosecretary.db")
+                    .addMigrations(MIGRATION_10_11)
                     .fallbackToDestructiveMigration()
                     .build();
         }

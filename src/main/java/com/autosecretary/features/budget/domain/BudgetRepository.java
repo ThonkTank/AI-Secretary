@@ -19,6 +19,10 @@ public interface BudgetRepository {
     void saveTransaction(BudgetTransactionEntity transaction);
     void saveTransactions(List<BudgetTransactionEntity> transactions);
     void deleteTransaction(String transactionId);
+    void createTransfer(String sourceAccountId, String targetAccountId, long amountCents,
+                        java.time.LocalDate bookingDate, String note);
+    boolean updateTransfer(String transactionId, String sourceAccountId, String targetAccountId,
+                           long amountCents, java.time.LocalDate bookingDate, String note);
     void saveBudgetLimit(BudgetLimit budgetLimit);
     void insertAccount(BudgetAccount account);
     void insertCategory(BudgetCategory category);
