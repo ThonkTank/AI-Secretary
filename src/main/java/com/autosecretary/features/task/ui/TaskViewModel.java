@@ -155,6 +155,16 @@ public class TaskViewModel extends AndroidViewModel {
 
     public void filterList() {
         String normalizedSearchQuery = normalizeSearchQuery(searchQuery.getValue());
+        filterMasterSlots(normalizedSearchQuery);
+
+        if (day != null && hasCalendarPermission) {
+            mergeCalendarEvents(day);
+        }
+
+        sortList();
+    }
+
+    private void filterMasterSlots(String normalizedSearchQuery) {
         Predicate<ViewSlot> predicate = slot -> {
             if (!activeListConfig.matches(slot, day)) {
                 return false;
@@ -166,32 +176,37 @@ public class TaskViewModel extends AndroidViewModel {
             String title = slot.item.title == null ? "" : slot.item.title;
             return title.toLowerCase(Locale.ROOT).contains(normalizedSearchQuery);
         };
-        masterList.filter(predicate);
 
-        if (day != null && hasCalendarPermission) {
-            List<CalendarEvent> events = calendarReader.getEventsForDay(
-                    getApplication(),
+        masterList.filter(predicate);
+    }
+
+    private void mergeCalendarEvents(LocalDate day) {
+        List<CalendarEvent> events = calendarReader.getEventsForDay(
+                getApplication(),
+                day,
+                preferences.readPrefTime(day, true),
+                preferences.readPrefTime(day, false)
+        );
+
+        List<ViewSlot> mergedSlots = new ArrayList<>(masterList.displaySlots);
+        int index = 0;
+        for (CalendarEvent event : events) {
+            TaskListItem item = TaskListItem.calendarEvent(
+                    "calendar-" + day + "-" + index,
+                    event.title(),
                     day,
-                    preferences.readPrefTime(day, true),
-                    preferences.readPrefTime(day, false)
+                    event.start(),
+                    event.end()
             );
-            List<ViewSlot> merged = new ArrayList<>(masterList.displaySlots);
-            int index = 0;
-            for (CalendarEvent event : events) {
-                TaskListItem item = TaskListItem.calendarEvent(
-                        "calendar-" + day + "-" + index,
-                        event.title(),
-                        day,
-                        event.start(),
-                        event.end()
-                );
-                merged.add(new ViewSlot(item));
-                index++;
-            }
-            masterList.displaySlots = merged;
+            mergedSlots.add(new ViewSlot(item));
+            index++;
         }
 
-        sortList();
+        updateDisplaySlots(mergedSlots);
+    }
+
+    private void updateDisplaySlots(List<ViewSlot> updatedSlots) {
+        masterList.displaySlots = updatedSlots;
     }
 
     private static String normalizeSearchQuery(String query) {
