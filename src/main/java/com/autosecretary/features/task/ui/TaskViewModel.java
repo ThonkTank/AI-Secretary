@@ -16,7 +16,9 @@ import com.autosecretary.features.task.widget.TaskWidgetProvider;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * Coordinates task-list presentation state for the task screen.
@@ -142,17 +144,7 @@ public class TaskViewModel extends AndroidViewModel {
      * </p>
      */
     public void filterList() {
-        Predicate<ViewSlot> predicate;
-        switch (activeListConfig) {
-            case CHECKLIST:
-                predicate = buildChecklistPredicate(day);
-                break;
-            case MANAGE:
-                predicate = buildManagePredicate(day);
-                break;
-            default:
-                throw new IllegalStateException("Unsupported list mode: " + activeListConfig);
-        }
+        Predicate<ViewSlot> predicate = activeListConfig.buildPredicate(day);
         masterList.filter(predicate);
         sortList();
     }
@@ -165,21 +157,8 @@ public class TaskViewModel extends AndroidViewModel {
      * </p>
      */
     public void sortList() {
-        Comparator<ViewSlot> comparator;
-        boolean groupByTaskParent;
-
-        switch (activeListConfig) {
-            case CHECKLIST:
-                comparator = buildChecklistComparator();
-                groupByTaskParent = false;
-                break;
-            case MANAGE:
-                comparator = buildManageComparator();
-                groupByTaskParent = true;
-                break;
-            default:
-                throw new IllegalStateException("Unsupported list mode: " + activeListConfig);
-        }
+        Comparator<ViewSlot> comparator = activeListConfig.getComparator();
+        boolean groupByTaskParent = activeListConfig.groupByTaskParent;
 
         masterList.sort(groupByTaskParent, comparator);
         displayList.setValue(masterList.displaySlots);
@@ -197,41 +176,43 @@ public class TaskViewModel extends AndroidViewModel {
         });
     }
 
-    /**
-     * Builds the checklist predicate in fixed order:
-     * <ol>
-     *     <li>If {@code day != null}, require {@code vs.item.day.equals(day)}.</li>
-     *     <li>Always require {@code vs.item.start != null} to hide unscheduled items.</li>
-     * </ol>
-     */
-    private static Predicate<ViewSlot> buildChecklistPredicate(LocalDate day) {
-        return vs -> isOnDay(vs, day) && vs.item.start != null;
-    }
-
-    private static Predicate<ViewSlot> buildManagePredicate(LocalDate day) {
-        return vs -> isOnDay(vs, day);
-    }
-
     private static boolean isOnDay(ViewSlot viewSlot, LocalDate day) {
         return day == null || viewSlot.item.day.equals(day);
     }
 
-    /**
-     * Checklist sorts by start time only (ascending, nulls last).
-     */
-    private static Comparator<ViewSlot> buildChecklistComparator() {
-        return Comparator.comparing(
-                (ViewSlot vs) -> vs.item.start,
-                Comparator.nullsLast(Comparator.naturalOrder())
-        );
-    }
-
-    private static Comparator<ViewSlot> buildManageComparator() {
-        return Comparator.comparing(vs -> vs.item.title, Comparator.naturalOrder());
-    }
-
     private enum ListConfig {
-        CHECKLIST,
-        MANAGE
+        CHECKLIST(
+                day -> vs -> isOnDay(vs, day) && vs.item.start != null,
+                () -> Comparator.comparing(
+                        (ViewSlot vs) -> vs.item.start,
+                        Comparator.nullsLast(Comparator.naturalOrder())
+                ),
+                false
+        ),
+        MANAGE(
+                day -> vs -> isOnDay(vs, day),
+                () -> Comparator.comparing(vs -> vs.item.title, Comparator.naturalOrder()),
+                true
+        );
+
+        private final Function<LocalDate, Predicate<ViewSlot>> dayAwarePredicateBuilder;
+        private final Supplier<Comparator<ViewSlot>> comparatorProvider;
+        private final boolean groupByTaskParent;
+
+        ListConfig(Function<LocalDate, Predicate<ViewSlot>> dayAwarePredicateBuilder,
+                   Supplier<Comparator<ViewSlot>> comparatorProvider,
+                   boolean groupByTaskParent) {
+            this.dayAwarePredicateBuilder = dayAwarePredicateBuilder;
+            this.comparatorProvider = comparatorProvider;
+            this.groupByTaskParent = groupByTaskParent;
+        }
+
+        private Predicate<ViewSlot> buildPredicate(LocalDate day) {
+            return dayAwarePredicateBuilder.apply(day);
+        }
+
+        private Comparator<ViewSlot> getComparator() {
+            return comparatorProvider.get();
+        }
     }
 }
