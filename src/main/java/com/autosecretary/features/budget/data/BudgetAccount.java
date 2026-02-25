@@ -2,6 +2,7 @@ package com.autosecretary.features.budget.data;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 import java.util.UUID;
@@ -34,10 +35,15 @@ public class BudgetAccount {
 
     public boolean archived = false;
 
+    public BudgetAccount() {
+    }
+
+    @Ignore
     public BudgetAccount(@NonNull String name) {
         this.name = name;
     }
 
+    @Ignore
     public BudgetAccount(@NonNull String name,
                          @NonNull AccountType accountType,
                          long currentBalanceCents,

@@ -1,0 +1,95 @@
+package com.autosecretary.features.task.application.internal.calendar;
+
+import android.content.ContentUris;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.CalendarContract;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Reads calendar events from the local device using {@link CalendarContract.Instances}.
+ */
+public class CalendarReader {
+
+    public List<CalendarEvent> getEventsForDay(Context context,
+                                               LocalDate day,
+                                               LocalTime scheduleStart,
+                                               LocalTime scheduleEnd) {
+        if (context.checkSelfPermission(android.Manifest.permission.READ_CALENDAR)
+                != PackageManager.PERMISSION_GRANTED) {
+            return new ArrayList<>();
+        }
+
+        ZoneId zoneId = ZoneId.systemDefault();
+        long dayStartMillis = day.atStartOfDay(zoneId).toInstant().toEpochMilli();
+        long dayEndMillis = day.atTime(23, 59, 59).atZone(zoneId).toInstant().toEpochMilli();
+
+        Uri.Builder builder = CalendarContract.Instances.CONTENT_URI.buildUpon();
+        ContentUris.appendId(builder, dayStartMillis);
+        ContentUris.appendId(builder, dayEndMillis);
+
+        String[] projection = {
+                CalendarContract.Instances.TITLE,
+                CalendarContract.Instances.BEGIN,
+                CalendarContract.Instances.END,
+                CalendarContract.Instances.ALL_DAY
+        };
+
+        List<CalendarEvent> events = new ArrayList<>();
+        Cursor cursor = context.getContentResolver().query(
+                builder.build(),
+                projection,
+                null,
+                null,
+                CalendarContract.Instances.BEGIN + " ASC"
+        );
+
+        if (cursor == null) {
+            return events;
+        }
+
+        try {
+            while (cursor.moveToNext()) {
+                String title = cursor.getString(0);
+                long beginMillis = cursor.getLong(1);
+                long endMillis = cursor.getLong(2);
+                boolean allDay = cursor.getInt(3) != 0;
+
+                if (allDay) {
+                    continue;
+                }
+
+                LocalTime eventStart = Instant.ofEpochMilli(beginMillis)
+                        .atZone(zoneId).toLocalTime();
+                LocalTime eventEnd = Instant.ofEpochMilli(endMillis)
+                        .atZone(zoneId).toLocalTime();
+
+                if (!eventStart.isBefore(scheduleEnd) || !eventEnd.isAfter(scheduleStart)) {
+                    continue;
+                }
+
+                if (eventStart.isBefore(scheduleStart)) {
+                    eventStart = scheduleStart;
+                }
+                if (eventEnd.isAfter(scheduleEnd)) {
+                    eventEnd = scheduleEnd;
+                }
+
+                String safeTitle = (title == null || title.isBlank()) ? "Termin" : title;
+                events.add(new CalendarEvent(safeTitle, eventStart, eventEnd));
+            }
+        } finally {
+            cursor.close();
+        }
+
+        return events;
+    }
+}

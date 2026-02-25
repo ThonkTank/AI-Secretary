@@ -39,7 +39,7 @@ public class TaskListItemMapper {
             parentTaskIds.add(rel.parent);
         }
 
-        return new TaskListItem(
+        return TaskListItem.task(
                 task.core.id,
                 slot.id,
                 slot.parent,
