@@ -85,4 +85,7 @@ public interface TransactionDao {
 
     @Query("SELECT id FROM budget_category WHERE type = :type AND archived = 0 LIMIT 1")
     String findDefaultCategoryId(String type);
+
+    @Query("UPDATE budget_transaction SET templateId = :templateId WHERE id IN (:transactionIds)")
+    void updateTemplateIdForTransactions(List<String> transactionIds, String templateId);
 }
