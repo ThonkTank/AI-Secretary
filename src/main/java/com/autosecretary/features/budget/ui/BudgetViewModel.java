@@ -39,12 +39,26 @@ public class BudgetViewModel extends ViewModel {
         private final String label;
         private final String amount;
         private final boolean isExpense;
+        private final long amountCents;
+        private final BudgetTransactionEntity.TransactionType type;
+        private final String categoryId;
+        private final String note;
+        private final LocalDate bookingDate;
+        private final String accountId;
 
-        public BudgetTransactionRow(String transactionId, String label, String amount, boolean isExpense) {
+        public BudgetTransactionRow(String transactionId, String label, String amount, boolean isExpense,
+                                    long amountCents, BudgetTransactionEntity.TransactionType type,
+                                    String categoryId, String note, LocalDate bookingDate, String accountId) {
             this.transactionId = transactionId;
             this.label = label;
             this.amount = amount;
             this.isExpense = isExpense;
+            this.amountCents = amountCents;
+            this.type = type;
+            this.categoryId = categoryId;
+            this.note = note;
+            this.bookingDate = bookingDate;
+            this.accountId = accountId;
         }
 
         public String getTransactionId() {
@@ -61,6 +75,30 @@ public class BudgetViewModel extends ViewModel {
 
         public boolean isExpense() {
             return isExpense;
+        }
+
+        public long getAmountCents() {
+            return amountCents;
+        }
+
+        public BudgetTransactionEntity.TransactionType getType() {
+            return type;
+        }
+
+        public String getCategoryId() {
+            return categoryId;
+        }
+
+        public String getNote() {
+            return note;
+        }
+
+        public LocalDate getBookingDate() {
+            return bookingDate;
+        }
+
+        public String getAccountId() {
+            return accountId;
         }
     }
 
@@ -115,6 +153,7 @@ public class BudgetViewModel extends ViewModel {
     private final MutableLiveData<BudgetImportUseCase.ImportResult> importResult = new MutableLiveData<>();
     private final MutableLiveData<YearMonth> currentMonth = new MutableLiveData<>(YearMonth.now());
     private final MutableLiveData<List<BudgetCategory>> categories = new MutableLiveData<>(new ArrayList<>());
+    private final MutableLiveData<List<BudgetAccount>> accounts = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<List<BudgetLimitBar>> budgetLimits = new MutableLiveData<>(new ArrayList<>());
 
     private final BudgetRepository repository;
@@ -171,6 +210,10 @@ public class BudgetViewModel extends ViewModel {
         return categories;
     }
 
+    public LiveData<List<BudgetAccount>> getAccounts() {
+        return accounts;
+    }
+
     public LiveData<List<BudgetLimitBar>> getLimits() {
         return budgetLimits;
     }
@@ -193,7 +236,11 @@ public class BudgetViewModel extends ViewModel {
                 seedDemoTransactions(accountId, today);
             }
             List<BudgetCategory> cats = repository.getActiveCategories();
-            postToMain.accept(() -> categories.setValue(cats));
+            List<BudgetAccount> freshAccounts = repository.findActiveAccounts();
+            postToMain.accept(() -> {
+                categories.setValue(cats);
+                accounts.setValue(freshAccounts);
+            });
             loadOverviewOnExecutor();
         });
     }
@@ -269,7 +316,18 @@ public class BudgetViewModel extends ViewModel {
                     isExpense ? "-" : "+",
                     item.amountCents / 100.0
             );
-            rows.add(new BudgetTransactionRow(item.transactionId, label, formattedAmount, isExpense));
+            rows.add(new BudgetTransactionRow(
+                    item.transactionId,
+                    label,
+                    formattedAmount,
+                    isExpense,
+                    item.amountCents,
+                    isExpense ? BudgetTransactionEntity.TransactionType.EXPENSE
+                            : BudgetTransactionEntity.TransactionType.INCOME,
+                    item.categoryId,
+                    item.note,
+                    item.bookingDate,
+                    item.accountId));
 
             if (isExpense) {
                 totalExpenseCents += item.amountCents;
@@ -324,6 +382,52 @@ public class BudgetViewModel extends ViewModel {
             entity.note = note;
 
             repository.saveTransaction(entity);
+            loadOverviewOnExecutor();
+        });
+    }
+
+    public void updateTransaction(String transactionId, String amountStr, boolean isExpense,
+                                  String categoryId, String note, LocalDate date, String accountId) {
+        executor.execute(() -> {
+            long amountCents;
+            try {
+                String normalized = amountStr.replace(',', '.');
+                amountCents = Math.round(Double.parseDouble(normalized) * 100);
+            } catch (NumberFormatException e) {
+                postToMain.accept(() -> {
+                    uiState.setValue(BudgetUiState.ERROR);
+                    statusMessage.setValue("Ungültiger Betrag");
+                });
+                return;
+            }
+
+            BudgetTransactionEntity existing = repository.findTransactionById(transactionId);
+            BudgetTransactionEntity entity;
+            if (existing != null) {
+                entity = existing;
+            } else {
+                entity = new BudgetTransactionEntity(
+                        accountId,
+                        categoryId,
+                        isExpense ? BudgetTransactionEntity.TransactionType.EXPENSE
+                                : BudgetTransactionEntity.TransactionType.INCOME,
+                        amountCents,
+                        date,
+                        YearMonth.from(date).toString());
+                entity.id = transactionId;
+            }
+
+            entity.accountId = accountId;
+            entity.categoryId = categoryId;
+            entity.type = isExpense
+                    ? BudgetTransactionEntity.TransactionType.EXPENSE
+                    : BudgetTransactionEntity.TransactionType.INCOME;
+            entity.amountCents = amountCents;
+            entity.bookingDate = date;
+            entity.yearMonth = YearMonth.from(date).toString();
+            entity.note = (note == null || note.trim().isEmpty()) ? null : note.trim();
+
+            repository.updateTransaction(entity);
             loadOverviewOnExecutor();
         });
     }

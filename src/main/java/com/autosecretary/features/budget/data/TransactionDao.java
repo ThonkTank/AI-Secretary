@@ -65,6 +65,9 @@ public interface TransactionDao {
     @Query("SELECT * FROM budget_transaction WHERE accountId = :accountId ORDER BY bookingDate DESC")
     List<BudgetTransactionEntity> findByAccountId(String accountId);
 
+    @Query("SELECT * FROM budget_transaction WHERE id = :transactionId LIMIT 1")
+    BudgetTransactionEntity findById(String transactionId);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(BudgetTransactionEntity transaction);
 
