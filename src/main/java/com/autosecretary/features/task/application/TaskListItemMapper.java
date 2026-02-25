@@ -25,6 +25,7 @@ public class TaskListItemMapper {
             // Placeholder item for tasks without slots so they still appear in Manage mode
             if (nrSlots == 0) {
                 TaskSlot placeholder = new TaskSlot();
+                placeholder.id = null;
                 placeholder.day = LocalDate.now();
                 items.add(toItem(task, placeholder));
             }
@@ -38,12 +39,13 @@ public class TaskListItemMapper {
             parentTaskIds.add(rel.parent);
         }
 
-        return new TaskListItem(
+        return TaskListItem.task(
                 task.core.id,
                 slot.id,
                 slot.parent,
                 parentTaskIds,
                 task.core.title,
+                task.core.description,
                 slot.day,
                 slot.start,
                 slot.end,
@@ -51,7 +53,13 @@ public class TaskListItemMapper {
                 task.core.history.currentStreak,
                 slot.score,
                 slot.completed,
-                slot.realStart != null && !slot.completed
+                slot.realStart != null && !slot.completed,
+                slot.realStart != null && slot.realEnd == null && !slot.completed
+                ,
+                task.core.progress.current,
+                task.core.progress.target,
+                task.core.progress.unit,
+                Math.max(1, task.core.progress.minPerRep)
         );
     }
 }

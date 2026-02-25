@@ -41,8 +41,28 @@
 
     <color name="task_status_in_progress_background">#1F5C7A4D</color>
     <color name="task_status_in_progress_checkbox_tint">#FF5C7A4D</color>
+    <color name="task_status_completed_background">#245C7A4D</color>
+    <color name="task_status_completed_checkbox_tint">#FF5C7A4D</color>
+    <color name="task_status_completion_flash">#66CF8F4F</color>
+
+    <color name="task_completion_flash">@color/task_status_completion_flash</color>
+    <color name="task_completed_background">@color/task_status_completed_background</color>
+    <color name="task_completed_checkbox_tint">@color/task_status_completed_checkbox_tint</color>
+
+    <!-- Legacy aliases -->
+    <color name="completion_flash">@color/task_completion_flash</color>
+    <color name="surface_complete">@color/task_completed_background</color>
+
     <color name="task_in_progress_background">@color/task_status_in_progress_background</color>
     <color name="task_in_progress_checkbox_tint">@color/task_status_in_progress_checkbox_tint</color>
+    <color name="task_progress_text">@color/task_text_on_surface_emphasis</color>
+    <color name="task_progress_text_disabled">@color/task_text_on_surface_muted</color>
+    <color name="task_progress_button_tint">@color/task_color_primary</color>
+    <color name="task_progress_button_tint_disabled">@color/task_color_on_surface_muted</color>
+
+    <color name="task_calendar_background">#FFEAF2FA</color>
+    <color name="task_calendar_outline">#FF9BB7D4</color>
+    <color name="task_calendar_chip_background">#FFD6E7F7</color>
 
     <!-- Widget-specific semantic colors mapped to base palette -->
     <color name="task_widget_surface">@color/task_color_surface</color>
