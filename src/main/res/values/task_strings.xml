@@ -26,6 +26,7 @@
     <string name="task_list_generate">Generieren</string>
     <string name="task_list_toggle_checklist">Checkliste</string>
     <string name="task_list_toggle_manage">Verwalten</string>
+    <string name="task_list_search_hint">Aufgaben suchen</string>
     <string name="task_list_empty_title">Noch keine Aufgaben</string>
     <string name="task_list_empty_subtitle">Erstelle deine erste Aufgabe, um deinen Tagesplan zu starten</string>
     <string name="task_list_empty_action">Erste Aufgabe erstellen</string>

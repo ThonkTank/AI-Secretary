@@ -17,6 +17,7 @@ import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Predicate;
 
 /**
@@ -42,6 +43,7 @@ public class TaskViewModel extends AndroidViewModel {
     private final ViewSlotList masterList;
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
     private final MutableLiveData<LocalDate> selectedDay = new MutableLiveData<>(LocalDate.now());
+    private final MutableLiveData<String> searchQuery = new MutableLiveData<>("");
 
     private LocalDate day;
     private ListConfig activeListConfig = ListConfig.CHECKLIST;
@@ -67,6 +69,22 @@ public class TaskViewModel extends AndroidViewModel {
 
     public LiveData<LocalDate> getSelectedDay() {
         return selectedDay;
+    }
+
+    public LiveData<String> getSearchQuery() {
+        return searchQuery;
+    }
+
+    public void setSearchQuery(String query) {
+        String normalizedQuery = query == null ? "" : query;
+        String currentQuery = searchQuery.getValue();
+
+        if (normalizedQuery.equals(currentQuery)) {
+            return;
+        }
+
+        searchQuery.setValue(normalizedQuery);
+        filterList();
     }
 
     public void navigateNextDay() {
@@ -143,9 +161,27 @@ public class TaskViewModel extends AndroidViewModel {
      * </p>
      */
     public void filterList() {
-        Predicate<ViewSlot> predicate = slot -> activeListConfig.matches(slot, day);
+        String normalizedSearchQuery = normalizeSearchQuery(searchQuery.getValue());
+        Predicate<ViewSlot> predicate = slot -> {
+            if (!activeListConfig.matches(slot, day)) {
+                return false;
+            }
+            if (activeListConfig != ListConfig.MANAGE || normalizedSearchQuery.isEmpty()) {
+                return true;
+            }
+
+            String title = slot.item.title == null ? "" : slot.item.title;
+            return title.toLowerCase(Locale.ROOT).contains(normalizedSearchQuery);
+        };
         masterList.filter(predicate);
         sortList();
+    }
+
+    private static String normalizeSearchQuery(String query) {
+        if (query == null) {
+            return "";
+        }
+        return query.trim().toLowerCase(Locale.ROOT);
     }
 
     /**

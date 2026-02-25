@@ -2,6 +2,8 @@ package com.autosecretary.features.task.ui;
 
 import androidx.fragment.app.Fragment;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.widget.Button;
 import android.widget.TextView;
 import androidx.lifecycle.ViewModelProvider;
@@ -11,6 +13,8 @@ import android.view.View;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
 import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -39,6 +43,8 @@ public class ListFragment extends Fragment {
         TaskEditSessionController editSessionController = vm.getTaskEditSessionController();
         RecyclerView recyclerView = view.findViewById(R.id.TaskList);
         View emptyStateContainer = view.findViewById(R.id.EmptyStateContainer);
+        TextInputLayout taskSearchLayout = view.findViewById(R.id.TaskSearchLayout);
+        TextInputEditText taskSearchInput = view.findViewById(R.id.TaskSearchInput);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         ListRowAdapter adapter = new ListRowAdapter(
@@ -53,6 +59,30 @@ public class ListFragment extends Fragment {
             boolean hasItems = items != null && !items.isEmpty();
             recyclerView.setVisibility(hasItems ? View.VISIBLE : View.GONE);
             emptyStateContainer.setVisibility(hasItems ? View.GONE : View.VISIBLE);
+        });
+
+        vm.getSearchQuery().observe(getViewLifecycleOwner(), query -> {
+            String currentValue = taskSearchInput.getText() == null ? "" : taskSearchInput.getText().toString();
+            String normalizedQuery = query == null ? "" : query;
+            if (!normalizedQuery.equals(currentValue)) {
+                taskSearchInput.setText(normalizedQuery);
+                taskSearchInput.setSelection(normalizedQuery.length());
+            }
+        });
+
+        taskSearchInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                vm.setSearchQuery(s == null ? "" : s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
         });
 
         Button generateButton = view.findViewById(R.id.Button);
@@ -100,17 +130,21 @@ public class ListFragment extends Fragment {
         toggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (isChecked) {
                 if (checkedId == R.id.ChecklistButton) {
+                    taskSearchLayout.setVisibility(View.GONE);
                     vm.applyChecklistPreset();
                 } else {
+                    taskSearchLayout.setVisibility(View.VISIBLE);
                     vm.applyManagePreset();
                 }
             }
         });
+
+        taskSearchLayout.setVisibility(toggle.getCheckedButtonId() == R.id.ManagementButton ? View.VISIBLE : View.GONE);
     }
+
     private void openEditDialog(TaskEditSessionController editSessionController, String taskId) {
         // Explicit edit callback shared by row edit controls and optional long-press shortcut.
         editSessionController.beginEditTask(taskId);
         new TaskEditDialog().show(getParentFragmentManager(), "edit");
     }
-
 }
