@@ -1,5 +1,13 @@
 # AI-Secretary
 
+## What this project does
+
+AI-Secretary is an Android app for planning everyday tasks and turning them into clear, checkable time slots. It helps users create tasks, choose when they prefer to do them, and keep track of progress over time. The app's goal is to make personal scheduling easier to understand and easier to follow day to day.
+
+This project is a good fit for Android contributors working on UI, ViewModel/state flow, and Room persistence, as well as contributors interested in improving task scoring and scheduling behavior.
+
+Current scope is split clearly: active product code lives in `src/`, legacy reference snapshots live in `history/legacy/`, and release/process artifacts live in `ops/`.
+
 ## Quick Start (first successful run)
 
 ### Prerequisites
