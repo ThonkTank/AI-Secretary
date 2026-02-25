@@ -15,6 +15,8 @@
     <dimen name="task_editor_day_button_horizontal_padding">4dp</dimen>
     <dimen name="task_editor_day_button_horizontal_margin">2dp</dimen>
     <dimen name="task_editor_day_button_vertical_margin">4dp</dimen>
+    <dimen name="task_editor_goal_color_size">32dp</dimen>
+    <dimen name="task_editor_goal_color_margin">4dp</dimen>
 
     <dimen name="task_editor_pref_slot_header_padding_top">12dp</dimen>
     <dimen name="task_editor_pref_slot_header_padding_bottom">4dp</dimen>

@@ -1,5 +1,6 @@
 package com.autosecretary.features.task.ui.edit;
 
+import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
 
@@ -15,6 +16,8 @@ public class TaskEditState {
     public String id;
     public String title;
     public String description;
+    public String goalIcon = TaskCore.DEFAULT_GOAL_ICON;
+    public String goalColorHex = TaskCore.DEFAULT_GOAL_COLOR_HEX;
     public Priority priority = Priority.MEDIUM;
 
     public LocalDate deadline;

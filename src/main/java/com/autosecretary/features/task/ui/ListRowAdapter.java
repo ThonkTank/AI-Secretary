@@ -3,6 +3,7 @@ package com.autosecretary.features.task.ui;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -63,6 +64,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     static class TaskRowViewHolder extends RecyclerView.ViewHolder {
         LinearLayout root;
         TextView title;
+        TextView goalIcon;
         TextView start;
         TextView end;
         CheckBox checkBox;
@@ -82,6 +84,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             super(taskRow);
             this.root = taskRow.findViewById(R.id.TaskRowRoot);
             this.title = taskRow.findViewById(R.id.TaskTitle);
+            this.goalIcon = taskRow.findViewById(R.id.GoalIcon);
             this.start = taskRow.findViewById(R.id.StartTime);
             this.end = taskRow.findViewById(R.id.EndTime);
             this.checkBox = taskRow.findViewById(R.id.TaskCheckBox);
@@ -126,6 +129,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         }
 
         bindTaskRow(holder);
+        bindGoalAppearance(holder, item);
         bindDeadline(holder, item);
         bindStreak(holder, item);
         bindProgressState(holder, item);
@@ -157,6 +161,21 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.itemView.setOnLongClickListener(null);
     }
 
+    private void bindGoalAppearance(TaskRowViewHolder holder, TaskListItem item) {
+        if (!item.goalTask || item.goalIcon == null || item.goalIcon.trim().isEmpty()) {
+            holder.goalIcon.setVisibility(View.GONE);
+            return;
+        }
+
+        holder.goalIcon.setText(item.goalIcon);
+        try {
+            holder.goalIcon.setTextColor(Color.parseColor(item.goalColorHex));
+        } catch (Exception ex) {
+            holder.goalIcon.setTextColor(holder.title.getCurrentTextColor());
+        }
+        holder.goalIcon.setVisibility(View.VISIBLE);
+    }
+
     private void bindExpandToggle(TaskRowViewHolder holder, ViewSlot viewSlot) {
         if (!manageMode || !viewSlot.hasChildren) {
             holder.expandToggle.setVisibility(View.GONE);
@@ -176,6 +195,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         Context context = holder.itemView.getContext();
         holder.root.setBackgroundResource(R.drawable.bg_calendar_row);
         holder.checkBox.setVisibility(View.GONE);
+        holder.goalIcon.setVisibility(View.GONE);
         holder.progressContainer.setVisibility(View.GONE);
         holder.deadlineCountdown.setVisibility(View.GONE);
         holder.streakDisplay.setVisibility(View.GONE);

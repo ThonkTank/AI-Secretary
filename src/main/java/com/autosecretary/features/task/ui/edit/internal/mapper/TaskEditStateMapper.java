@@ -22,6 +22,8 @@ public class TaskEditStateMapper {
         state.title = task.core.title;
         state.description = task.core.description;
         state.priority = task.core.priority;
+        state.goalIcon = task.core.goalIcon != null ? task.core.goalIcon : TaskCore.DEFAULT_GOAL_ICON;
+        state.goalColorHex = task.core.goalColorHex != null ? task.core.goalColorHex : TaskCore.DEFAULT_GOAL_COLOR_HEX;
 
         state.deadline = task.core.deadline;
         state.closeOnMiss = task.core.closeOnMiss;
@@ -65,6 +67,8 @@ public class TaskEditStateMapper {
         task.core.title = state.title;
         task.core.description = state.description;
         task.core.priority = state.priority;
+        task.core.goalIcon = state.goalIcon != null ? state.goalIcon : TaskCore.DEFAULT_GOAL_ICON;
+        task.core.goalColorHex = state.goalColorHex != null ? state.goalColorHex : TaskCore.DEFAULT_GOAL_COLOR_HEX;
 
         task.core.deadline = state.deadline;
         task.core.closeOnMiss = state.closeOnMiss;

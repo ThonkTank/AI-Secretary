@@ -5,19 +5,12 @@ import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-/**
- * Flat, immutable display model extracted from {@link com.autosecretary.features.task.data.Task}
- * and {@link com.autosecretary.features.task.data.TaskSlot} by
- * {@link TaskListItemMapper}.
- * Used by {@link com.autosecretary.features.task.ui.state.ViewSlotList} for filtering, sorting, and display.
- */
 public class TaskListItem {
     public enum ItemType {
         TASK,
         CALENDAR_EVENT
     }
 
-    /** Categorizes deadline proximity for color-coded display in the list. */
     public enum DeadlineUrgency {
         NONE,
         OVERDUE,
@@ -41,11 +34,14 @@ public class TaskListItem {
     public final int score;
     public final boolean completed;
     public final boolean inProgress;
+    public final boolean timerRunning;
     public final int progressCurrent;
     public final int progressTarget;
     public final String progressUnit;
     public final int progressStepDelta;
-    public final boolean timerRunning;
+    public final boolean goalTask;
+    public final String goalIcon;
+    public final String goalColorHex;
 
     public TaskListItem(ItemType itemType,
                         String taskId,
@@ -66,7 +62,10 @@ public class TaskListItem {
                         int progressCurrent,
                         int progressTarget,
                         String progressUnit,
-                        int progressStepDelta) {
+                        int progressStepDelta,
+                        boolean goalTask,
+                        String goalIcon,
+                        String goalColorHex) {
         this.itemType = itemType;
         this.taskId = taskId;
         this.slotId = slotId;
@@ -87,6 +86,9 @@ public class TaskListItem {
         this.progressTarget = progressTarget;
         this.progressUnit = progressUnit;
         this.progressStepDelta = progressStepDelta;
+        this.goalTask = goalTask;
+        this.goalIcon = goalIcon;
+        this.goalColorHex = goalColorHex;
     }
 
     public boolean hasProgressTarget() {
@@ -111,7 +113,10 @@ public class TaskListItem {
                                     int progressCurrent,
                                     int progressTarget,
                                     String progressUnit,
-                                    int progressStepDelta) {
+                                    int progressStepDelta,
+                                    boolean goalTask,
+                                    String goalIcon,
+                                    String goalColorHex) {
         return new TaskListItem(
                 ItemType.TASK,
                 taskId,
@@ -132,7 +137,10 @@ public class TaskListItem {
                 progressCurrent,
                 progressTarget,
                 progressUnit,
-                progressStepDelta
+                progressStepDelta,
+                goalTask,
+                goalIcon,
+                goalColorHex
         );
     }
 
@@ -157,7 +165,10 @@ public class TaskListItem {
                 0,
                 0,
                 "",
-                0
+                0,
+                false,
+                null,
+                null
         );
     }
 
