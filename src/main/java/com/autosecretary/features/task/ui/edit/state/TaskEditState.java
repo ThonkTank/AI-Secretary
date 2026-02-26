@@ -5,6 +5,7 @@ import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +26,12 @@ public class TaskEditState {
     public int minDuration = 5;
     public int maxDuration = 10;
     public int cooldown = 1;
+    public long budgetRequirementCents = 0L;
     public boolean adaptive;
+    public boolean isFixedAppointment;
+    public LocalDate fixedDate;
+    public LocalTime fixedStart;
+    public int fixedDurationMinutes;
 
     public int reps;
     public int perPeriod = 1;

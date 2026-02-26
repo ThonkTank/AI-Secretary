@@ -14,11 +14,14 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
@@ -27,89 +30,54 @@ import java.util.function.Consumer;
 public class DefaultTaskSlotGenerator {
 
 
-    private static class CandidateSelection {
-        private final Task task;
-        private final int grossScore;
-        private final int netScore;
-        private final LocalDateTime startTime;
-        private final List<TaskSlot> displacedSlots;
-        private final String scoreLog;
-
-        private CandidateSelection(Task task,
-                                   int grossScore,
-                                   int netScore,
-                                   LocalDateTime startTime,
-                                   List<TaskSlot> displacedSlots,
-                                   String scoreLog) {
-            this.task = task;
-            this.grossScore = grossScore;
-            this.netScore = netScore;
-            this.startTime = startTime;
-            this.displacedSlots = displacedSlots;
-            this.scoreLog = scoreLog;
-        }
-    }
-
-    private static class CandidateOption {
+    private static class PlannedSlot {
         private final Task task;
         private final LocalDateTime start;
-        private final int grossScore;
-        private final int netScore;
-        private final List<TaskSlot> displacedSlots;
+        private final LocalDateTime end;
+        private final int score;
+        private final int chainOrder;
 
-        private CandidateOption(Task task,
-                                LocalDateTime start,
-                                int grossScore,
-                                int netScore,
-                                List<TaskSlot> displacedSlots) {
+        private PlannedSlot(Task task, LocalDateTime start, LocalDateTime end, int score, int chainOrder) {
             this.task = task;
             this.start = start;
-            this.grossScore = grossScore;
-            this.netScore = netScore;
-            this.displacedSlots = displacedSlots;
+            this.end = end;
+            this.score = score;
+            this.chainOrder = chainOrder;
         }
     }
 
-    private static class BestCandidateTracker {
-        private CandidateOption bestOption;
+    private static class ChainPlan {
+        private final String chainId;
+        private final List<PlannedSlot> plannedSlots;
+        private final int score;
+        private final String logLabel;
 
-        private void update(CandidateOption option) {
-            if (option == null || option.netScore <= 0) {
-                return;
-            }
-            if (bestOption == null || option.netScore > bestOption.netScore) {
-                bestOption = option;
-            }
+        private ChainPlan(String chainId, List<PlannedSlot> plannedSlots, int score, String logLabel) {
+            this.chainId = chainId;
+            this.plannedSlots = plannedSlots;
+            this.score = score;
+            this.logLabel = logLabel;
         }
+    }
 
-        private CandidateSelection toSelection(String scoreLog) {
-            if (bestOption == null) {
-                return new CandidateSelection(null, 0, 0, null, List.of(), scoreLog);
-            }
-            return new CandidateSelection(
-                    bestOption.task,
-                    bestOption.grossScore,
-                    bestOption.netScore,
-                    bestOption.start,
-                    bestOption.displacedSlots,
-                    scoreLog
-            );
+    private static class CandidateSelection {
+        private final ChainPlan chainPlan;
+        private final String scoreLog;
+
+        private CandidateSelection(ChainPlan chainPlan, String scoreLog) {
+            this.chainPlan = chainPlan;
+            this.scoreLog = scoreLog;
         }
     }
 
     private static class ScoreLogBuilder {
         private final StringBuilder scores = new StringBuilder();
 
-        private void appendTaskPrerequisiteBlocked(Task task) {
+        private void appendEntry(String label, int score, String suffix) {
             appendSeparatorIfNeeded();
-            scores.append(task.core.title).append(": 0 (Voraussetzung)");
-        }
-
-        private void appendTaskScore(Task task, int taskBestScore, List<String> prefDetails) {
-            appendSeparatorIfNeeded();
-            scores.append(task.core.title).append(": ").append(taskBestScore);
-            for (String detail : prefDetails) {
-                scores.append(detail);
+            scores.append(label).append(": ").append(score);
+            if (suffix != null && !suffix.isEmpty()) {
+                scores.append(' ').append(suffix);
             }
         }
 
@@ -123,7 +91,6 @@ public class DefaultTaskSlotGenerator {
             }
         }
     }
-
 
     private static class Interval implements Comparable<Interval> {
         final LocalDateTime start;
@@ -149,6 +116,7 @@ public class DefaultTaskSlotGenerator {
     private Map<String, Task> allTasksById;
     private final TaskScorer scorer;
     private LocalDate schedulingDay;
+    private long availableBudgetCents = Long.MAX_VALUE;
 
     public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager) {
         this(lifecycleManager, null, day -> {
@@ -180,6 +148,10 @@ public class DefaultTaskSlotGenerator {
 
     public TaskPlanningState createPlanningState() {
         return new TaskPlanningState();
+    }
+
+    public void setAvailableBudgetCents(long availableBudgetCents) {
+        this.availableBudgetCents = Math.max(0L, availableBudgetCents);
     }
 
     public void recordPreservedSlots(List<Task> tasks, LocalDate startInclusive, LocalDate endExclusive, TaskPlanningState state) {
@@ -251,6 +223,7 @@ public class DefaultTaskSlotGenerator {
             occupied.add(new Interval(blocked.start, blocked.end));
         }
         occupied.sort(Interval::compareTo);
+        scheduleFixedAppointments(taskTree, windowStart, windowEnd, occupied);
         assignGlobalBestFit(taskTree, windowStart, windowEnd, null, 0, occupied);
 
         log("=== Zusammenfassung " + schedulingDay + " ===");
@@ -274,7 +247,7 @@ public class DefaultTaskSlotGenerator {
                 log("  " + t.core.title + ": unscheduled");
             }
         }
-        log("Gesamt: " + totalDaySlots + " slots (neu: " + newSlots + ")");
+        log("Gesamt: " + totalDaySlots + " slots (neu: " + newSlots + "), Restbudget=" + availableBudgetCents + "c");
     }
 
     public void recordScheduledSlotsForDay(List<Task> tasks, LocalDate day, TaskPlanningState state) {
@@ -287,9 +260,85 @@ public class DefaultTaskSlotGenerator {
         }
     }
 
+    private void scheduleFixedAppointments(List<Task> tasks,
+                                           LocalDateTime windowStart,
+                                           LocalDateTime windowEnd,
+                                           List<Interval> occupied) {
+        for (Task task : TaskTreeOperations.flatten(tasks)) {
+            if (!isFixedForSchedulingDay(task)) {
+                continue;
+            }
+            placeFixedAppointment(task, windowStart, windowEnd, occupied);
+        }
+    }
+
+    private boolean isFixedForSchedulingDay(Task task) {
+        if (task.core == null || !task.core.isFixedAppointment) {
+            return false;
+        }
+        return schedulingDay.equals(task.core.fixedDate) && task.core.fixedStart != null;
+    }
+
+    private void placeFixedAppointment(Task task,
+                                       LocalDateTime windowStart,
+                                       LocalDateTime windowEnd,
+                                       List<Interval> occupied) {
+        if (hasScheduledSlotForDay(task, schedulingDay)) {
+            return;
+        }
+
+        int durationMinutes = resolveFixedDurationMinutes(task);
+        LocalDateTime fixedStart = LocalDateTime.of(schedulingDay, task.core.fixedStart);
+        LocalDateTime fixedEnd = fixedStart.plusMinutes(durationMinutes);
+
+        TaskSlot slot = createScheduledSlot(task, fixedStart, Integer.MAX_VALUE, null);
+        slot.end = fixedEnd.toLocalTime();
+        finalizeAssignment(task, slot, Integer.MAX_VALUE);
+
+        boolean outsideWindow = fixedStart.isBefore(windowStart) || fixedEnd.isAfter(windowEnd);
+        boolean hasCollision = hasCollision(occupied, fixedStart, fixedEnd);
+
+        if (outsideWindow || hasCollision) {
+            log("  ⚠ Fixtermin-Konflikt: " + task.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM) + "]");
+        } else {
+            log("  ✓ Fixtermin gesetzt: " + task.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM) + "]");
+        }
+
+        insertSorted(occupied, new Interval(fixedStart, fixedEnd));
+    }
+
+    private boolean hasScheduledSlotForDay(Task task, LocalDate day) {
+        for (TaskSlot slot : task.slots) {
+            if (slot.day != null && slot.day.equals(day) && slot.scheduled) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int resolveFixedDurationMinutes(Task task) {
+        if (task.core.fixedDurationMinutes != null && task.core.fixedDurationMinutes > 0) {
+            return task.core.fixedDurationMinutes;
+        }
+        if (task.core.maxDuration > 0) {
+            return task.core.maxDuration;
+        }
+        return 1;
+    }
+
+    private boolean hasCollision(List<Interval> occupied, LocalDateTime start, LocalDateTime end) {
+        for (Interval interval : occupied) {
+            if (start.isBefore(interval.end) && end.isAfter(interval.start)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void assignGlobalBestFit(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd,
                                      TaskSlot parentSlot, int depth, List<Interval> occupied) {
         String indent = "  ".repeat(depth);
+        Set<String> budgetBlockedTaskIds = new HashSet<>();
 
         while (true) {
             List<Interval> gaps = findGaps(occupied, windowStart, windowEnd);
@@ -304,136 +353,318 @@ public class DefaultTaskSlotGenerator {
             }
             log(indent + "--- Lückensuche [depth=" + depth + "], " + gaps.size() + " Lücken, " + totalFreeMin + "min frei ---");
 
-            List<TaskSlot> movableSlots = collectMovableDaySlots(windowStart, windowEnd);
-            CandidateSelection selection = evaluateAllCandidates(tasks, gaps, movableSlots, windowEnd);
+            List<Task> eligibleTasks;
+            if (budgetBlockedTaskIds.isEmpty()) {
+                eligibleTasks = tasks;
+            } else {
+                eligibleTasks = new ArrayList<>();
+                for (Task t : tasks) {
+                    if (!budgetBlockedTaskIds.contains(t.core.id)) {
+                        eligibleTasks.add(t);
+                    }
+                }
+            }
+            CandidateSelection selection = evaluateAllCandidates(eligibleTasks, gaps, windowEnd);
             log(indent + "  " + selection.scoreLog);
 
-            if (selection.task == null || selection.netScore <= 0) {
-                log(indent + "  → (keine Task mit positivem Netto-Gewinn, Abbruch)");
+            if (selection.chainPlan == null || selection.chainPlan.score <= 0) {
+                log(indent + "  → (keine Task/Chain qualifiziert, Abbruch)");
                 break;
             }
 
-            for (TaskSlot displaced : selection.displacedSlots) {
-                Task owner = allTasksById.get(displaced.taskId);
-                if (owner != null) {
-                    owner.slots.remove(displaced);
-                }
+            long chainBudgetCents = 0L;
+            for (PlannedSlot ps : selection.chainPlan.plannedSlots) {
+                chainBudgetCents += Math.max(0L, ps.task.core.budgetRequirementCents);
             }
-
-            TaskSlot slot = createScheduledSlot(selection.task, selection.startTime, selection.grossScore, parentSlot);
-            slot.chainId = selection.displacedSlots.isEmpty() ? slot.id : selection.displacedSlots.get(0).id;
-            LocalDateTime slotEnd = scheduleChildrenGapAware(selection.task, selection.startTime, slot, depth);
-            slot.end = slotEnd.toLocalTime();
-            finalizeAssignment(selection.task, slot, selection.grossScore);
-
-            log(indent + "  → " + selection.task.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM)
-                    + "] gross=" + selection.grossScore + ", net=" + selection.netScore
-                    + (selection.displacedSlots.isEmpty() ? "" : ", displaced=" + selection.displacedSlots.size()));
-
-            insertSorted(occupied, new Interval(selection.startTime, slotEnd));
+            if (chainBudgetCents > availableBudgetCents) {
+                log(indent + "  ↷ skip chain (Budget: benötigt=" + chainBudgetCents + "c, rest=" + availableBudgetCents + "c)");
+                for (PlannedSlot ps : selection.chainPlan.plannedSlots) {
+                    budgetBlockedTaskIds.add(ps.task.core.id);
+                }
+                continue;
+            }
+            commitChainPlan(selection.chainPlan, parentSlot, depth, occupied, indent);
+            availableBudgetCents = Math.max(0L, availableBudgetCents - chainBudgetCents);
         }
     }
 
     private CandidateSelection evaluateAllCandidates(List<Task> tasks,
                                                      List<Interval> gaps,
-                                                     List<TaskSlot> movableSlots,
                                                      LocalDateTime windowEnd) {
-        BestCandidateTracker tracker = new BestCandidateTracker();
         ScoreLogBuilder scoreLogBuilder = new ScoreLogBuilder();
-        DayOfWeek today = schedulingDay.getDayOfWeek();
+        List<List<Task>> schedulingUnits = resolveChainUnits(tasks);
+
+        ChainPlan bestPlan = null;
+        for (List<Task> unit : schedulingUnits) {
+            ChainPlan unitBestPlan = null;
+            for (Interval gap : gaps) {
+                LocalDateTime gapEnd = gap.end.isBefore(windowEnd) ? gap.end : windowEnd;
+                ChainPlan plan = simulateChainPlan(unit, gap.start, gapEnd);
+                if (plan == null) {
+                    continue;
+                }
+                if (unitBestPlan == null || plan.score > unitBestPlan.score) {
+                    unitBestPlan = plan;
+                }
+                if (bestPlan == null || plan.score > bestPlan.score) {
+                    bestPlan = plan;
+                }
+            }
+
+            String label = unit.size() == 1 ? unit.get(0).core.title : "Chain(" + unit.size() + "):" + unit.get(0).core.title;
+            scoreLogBuilder.appendEntry(label, unitBestPlan != null ? unitBestPlan.score : 0,
+                    unitBestPlan != null ? unitBestPlan.logLabel : "(kein Fit)");
+        }
+
+        return new CandidateSelection(bestPlan, scoreLogBuilder.build());
+    }
+
+    private List<List<Task>> resolveChainUnits(List<Task> tasks) {
+        Map<String, Task> taskMap = new HashMap<>();
+        for (Task task : tasks) {
+            taskMap.put(task.core.id, task);
+        }
+
+        Map<String, Set<String>> undirected = new HashMap<>();
+        for (Task task : tasks) {
+            undirected.put(task.core.id, new HashSet<>());
+        }
 
         for (Task task : tasks) {
-            if (hasUnmetPrerequisites(task, windowEnd)) {
-                scoreLogBuilder.appendTaskPrerequisiteBlocked(task);
+            if (task.prerequisites == null) {
                 continue;
             }
-
-            int taskBestNetScore = 0;
-            List<String> prefDetails = new ArrayList<>();
-
-            for (Interval gap : gaps) {
-                CandidateOption gapOption = scoreCandidate(task, gap.start, windowEnd, movableSlots);
-                if (gapOption.netScore > taskBestNetScore) {
-                    taskBestNetScore = gapOption.netScore;
+            for (TaskPrerequisite prereq : task.prerequisites) {
+                if (!taskMap.containsKey(prereq.prerequisiteId)) {
+                    continue;
                 }
-                tracker.update(gapOption);
-
-                for (TaskPrefSlot ps : task.prefSlots) {
-                    if (ps.days == null || !ps.days.contains(today)) continue;
-                    if (scorer.isPrefSlotConsumed(task.core.id, ps.id)) continue;
-                    LocalDateTime prefStart = schedulingDay.atTime(ps.start);
-                    if (!prefStart.isAfter(gap.start) || !prefStart.isBefore(gap.end)) continue;
-
-                    CandidateOption prefOption = scoreCandidate(task, prefStart, windowEnd, movableSlots);
-                    if (prefOption.netScore > taskBestNetScore) {
-                        taskBestNetScore = prefOption.netScore;
-                    }
-
-                    CandidateOption previousBest = tracker.bestOption;
-                    tracker.update(prefOption);
-                    if (tracker.bestOption != null && tracker.bestOption != previousBest
-                            && tracker.bestOption.task == task
-                            && tracker.bestOption.start.equals(prefStart)) {
-                        prefDetails.add("@" + ps.start.format(HMM) + "=" + prefOption.netScore);
-                    }
-                }
+                undirected.get(task.core.id).add(prereq.prerequisiteId);
+                undirected.get(prereq.prerequisiteId).add(task.core.id);
             }
-
-            for (TaskSlot movable : movableSlots) {
-                LocalDateTime displacedStart = schedulingDay.atTime(movable.start);
-                CandidateOption displacedOption = scoreCandidate(task, displacedStart, windowEnd, movableSlots);
-                if (displacedOption.netScore > taskBestNetScore) {
-                    taskBestNetScore = displacedOption.netScore;
-                }
-                tracker.update(displacedOption);
-            }
-
-            scoreLogBuilder.appendTaskScore(task, taskBestNetScore, prefDetails);
         }
 
-        return tracker.toSelection(scoreLogBuilder.build());
-    }
+        List<List<Task>> units = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
 
-    private CandidateOption scoreCandidate(Task task,
-                                           LocalDateTime candidateStart,
-                                           LocalDateTime windowEnd,
-                                           List<TaskSlot> movableSlots) {
-        if (hasUnmetPrerequisites(task, candidateStart)) {
-            return new CandidateOption(task, candidateStart, 0, 0, List.of());
-        }
-
-        int candidateScore = scorer.score(task, candidateStart, windowEnd);
-        if (candidateScore <= 0) {
-            return new CandidateOption(task, candidateStart, 0, 0, List.of());
-        }
-
-        LocalDateTime candidateEnd = candidateStart.plusMinutes(task.core.maxDuration);
-        List<TaskSlot> displaced = new ArrayList<>();
-        int displacedScore = 0;
-        for (TaskSlot slot : movableSlots) {
-            if (slot.start == null || slot.end == null) {
+        for (Task task : tasks) {
+            if (visited.contains(task.core.id)) {
                 continue;
             }
-            LocalDateTime slotStart = schedulingDay.atTime(slot.start);
-            LocalDateTime slotEnd = schedulingDay.atTime(slot.end);
-            if (candidateStart.isBefore(slotEnd) && candidateEnd.isAfter(slotStart)) {
-                displaced.add(slot);
-                displacedScore += displacementScore(slot);
+            List<Task> component = new ArrayList<>();
+            collectComponent(task.core.id, taskMap, undirected, visited, component);
+
+            if (component.size() == 1) {
+                units.add(component);
+            } else {
+                units.add(orderChainComponent(component));
             }
         }
 
-        int netScore = candidateScore - displacedScore;
-        if (!displaced.isEmpty() && netScore <= 0) {
-            return new CandidateOption(task, candidateStart, candidateScore, 0, displaced);
-        }
-        return new CandidateOption(task, candidateStart, candidateScore, netScore, displaced);
+        units.sort((a, b) -> Integer.compare(b.size(), a.size()));
+        return units;
     }
 
-    private int displacementScore(TaskSlot slot) {
-        if (slot.comparisonScore > 0) {
-            return slot.comparisonScore;
+    private void collectComponent(String startId,
+                                  Map<String, Task> taskMap,
+                                  Map<String, Set<String>> undirected,
+                                  Set<String> visited,
+                                  List<Task> out) {
+        List<String> queue = new ArrayList<>();
+        queue.add(startId);
+        visited.add(startId);
+
+        for (int i = 0; i < queue.size(); i++) {
+            String current = queue.get(i);
+            Task currentTask = taskMap.get(current);
+            if (currentTask != null) {
+                out.add(currentTask);
+            }
+            for (String next : undirected.getOrDefault(current, Collections.emptySet())) {
+                if (visited.add(next)) {
+                    queue.add(next);
+                }
+            }
         }
-        return Math.max(0, slot.score);
+    }
+
+    private List<Task> orderChainComponent(List<Task> component) {
+        Map<String, Task> componentMap = new HashMap<>();
+        Map<String, Integer> indegree = new HashMap<>();
+        Map<String, List<String>> outgoing = new HashMap<>();
+        for (Task task : component) {
+            componentMap.put(task.core.id, task);
+            indegree.put(task.core.id, 0);
+            outgoing.put(task.core.id, new ArrayList<>());
+        }
+
+        for (Task task : component) {
+            if (task.prerequisites == null) {
+                continue;
+            }
+            for (TaskPrerequisite prereq : task.prerequisites) {
+                if (!componentMap.containsKey(prereq.prerequisiteId)) {
+                    continue;
+                }
+                outgoing.get(prereq.prerequisiteId).add(task.core.id);
+                indegree.put(task.core.id, indegree.get(task.core.id) + 1);
+            }
+        }
+
+        List<Task> ordered = new ArrayList<>();
+        List<Task> ready = new ArrayList<>();
+        for (Task task : component) {
+            if (indegree.get(task.core.id) == 0) {
+                ready.add(task);
+            }
+        }
+
+        Comparator<Task> comparator = Comparator
+                .comparingInt((Task t) -> t.core.priority.value).reversed()
+                .thenComparing(t -> t.core.title);
+
+        while (!ready.isEmpty()) {
+            ready.sort(comparator);
+            Task current = ready.remove(0);
+            ordered.add(current);
+
+            for (String childId : outgoing.getOrDefault(current.core.id, Collections.emptyList())) {
+                int next = indegree.get(childId) - 1;
+                indegree.put(childId, next);
+                if (next == 0) {
+                    ready.add(componentMap.get(childId));
+                }
+            }
+        }
+
+        if (ordered.size() != component.size()) {
+            component.sort(comparator);
+            return component;
+        }
+
+        return ordered;
+    }
+
+    private ChainPlan simulateChainPlan(List<Task> orderedTasks, LocalDateTime start, LocalDateTime gapEnd) {
+        if (orderedTasks.isEmpty()) {
+            return null;
+        }
+
+        String chainId = orderedTasks.size() > 1 ? "chain-" + UUID.randomUUID() : null;
+        List<PlannedSlot> planned = new ArrayList<>();
+        Map<String, PlannedSlot> plannedByTask = new HashMap<>();
+        LocalDateTime cursor = start;
+        int totalScore = 0;
+
+        for (int i = 0; i < orderedTasks.size(); i++) {
+            Task task = orderedTasks.get(i);
+            LocalDateTime candidateStart = cursor;
+
+            if (task.prerequisites != null) {
+                for (TaskPrerequisite prereq : task.prerequisites) {
+                    PlannedSlot prereqPlanned = plannedByTask.get(prereq.prerequisiteId);
+                    if (prereqPlanned != null) {
+                        candidateStart = max(candidateStart, prereqPlanned.end.plusMinutes(prereq.minGapMinutes));
+                        continue;
+                    }
+                    Task prereqTask = allTasksById.get(prereq.prerequisiteId);
+                    if (prereqTask == null) {
+                        continue;
+                    }
+                    TaskSlot existing = findScheduledSlotForDay(prereqTask, schedulingDay);
+                    if (existing == null || existing.end == null) {
+                        return null;
+                    }
+                    candidateStart = max(candidateStart,
+                            schedulingDay.atTime(existing.end).plusMinutes(prereq.minGapMinutes));
+                }
+            }
+
+            List<LocalDateTime> startCandidates = findPreferredStartCandidates(task, candidateStart, gapEnd);
+            PlannedSlot bestSlot = null;
+            for (LocalDateTime preferredStart : startCandidates) {
+                if (hasUnmetPrerequisites(task, preferredStart, plannedByTask)) {
+                    continue;
+                }
+                LocalDateTime slotEnd = preferredStart.plusMinutes(task.core.maxDuration);
+                if (slotEnd.isAfter(gapEnd)) {
+                    continue;
+                }
+
+                int score = scorer.score(task, preferredStart, slotEnd);
+                if (score <= 0) {
+                    continue;
+                }
+
+                PlannedSlot candidate = new PlannedSlot(task, preferredStart, slotEnd, score, i);
+                if (bestSlot == null || candidate.score > bestSlot.score) {
+                    bestSlot = candidate;
+                }
+            }
+
+            if (bestSlot == null) {
+                return null;
+            }
+
+            planned.add(bestSlot);
+            plannedByTask.put(task.core.id, bestSlot);
+            cursor = bestSlot.end;
+            totalScore += bestSlot.score;
+        }
+
+        String label = "[" + planned.get(0).start.format(HMM) + "-" + planned.get(planned.size() - 1).end.format(HMM) + "]";
+        return new ChainPlan(chainId, planned, totalScore, label);
+    }
+
+    private List<LocalDateTime> findPreferredStartCandidates(Task task, LocalDateTime baseStart, LocalDateTime gapEnd) {
+        List<LocalDateTime> starts = new ArrayList<>();
+        starts.add(baseStart);
+
+        DayOfWeek today = schedulingDay.getDayOfWeek();
+        for (TaskPrefSlot ps : task.prefSlots) {
+            if (ps.days == null || !ps.days.contains(today)) continue;
+            if (scorer.isPrefSlotConsumed(task.core.id, ps.id)) continue;
+            LocalDateTime prefStart = schedulingDay.atTime(ps.start);
+            if (prefStart.isBefore(baseStart) || !prefStart.isBefore(gapEnd)) continue;
+            starts.add(prefStart);
+        }
+
+        starts.sort(LocalDateTime::compareTo);
+        return starts;
+    }
+
+    private LocalDateTime max(LocalDateTime left, LocalDateTime right) {
+        return left.isAfter(right) ? left : right;
+    }
+
+    private void commitChainPlan(ChainPlan plan,
+                                 TaskSlot parentSlot,
+                                 int depth,
+                                 List<Interval> occupied,
+                                 String indent) {
+        List<TaskSlot> committed = new ArrayList<>();
+        for (PlannedSlot planned : plan.plannedSlots) {
+            TaskSlot slot = createScheduledSlot(planned.task, planned.start, planned.score, parentSlot, plan.chainId, planned.chainOrder);
+            LocalDateTime slotEnd = scheduleChildrenGapAware(planned.task, planned.start, slot, depth);
+            slot.end = slotEnd.toLocalTime();
+            committed.add(slot);
+            insertSorted(occupied, new Interval(planned.start, slotEnd));
+        }
+
+        for (TaskSlot slot : committed) {
+            Task task = allTasksById.get(slot.taskId);
+            finalizeAssignment(task, slot);
+        }
+
+        if (plan.plannedSlots.size() == 1) {
+            TaskSlot slot = committed.get(0);
+            Task task = allTasksById.get(slot.taskId);
+            log(indent + "  → " + task.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM) + "] score=" + slot.score);
+        } else {
+            TaskSlot first = committed.get(0);
+            TaskSlot last = committed.get(committed.size() - 1);
+            log(indent + "  → Chain committed (" + committed.size() + " Tasks) ["
+                    + first.start.format(HMM) + "-" + last.end.format(HMM) + "] score=" + plan.score);
+        }
     }
 
     private LocalDateTime scheduleChildrenGapAware(Task task, LocalDateTime parentStart, TaskSlot parentSlot, int depth) {
@@ -488,31 +719,6 @@ public class DefaultTaskSlotGenerator {
         return intervals;
     }
 
-    private List<TaskSlot> collectMovableDaySlots(LocalDateTime windowStart, LocalDateTime windowEnd) {
-        List<TaskSlot> movable = new ArrayList<>();
-        for (Task task : allTasksById.values()) {
-            for (TaskSlot slot : task.slots) {
-                if (slot.day == null || !slot.day.equals(schedulingDay)) {
-                    continue;
-                }
-                if (!slot.scheduled || slot.completed || slot.realStart != null) {
-                    continue;
-                }
-                if (slot.start == null || slot.end == null) {
-                    continue;
-                }
-
-                LocalDateTime slotStart = schedulingDay.atTime(slot.start);
-                LocalDateTime slotEnd = schedulingDay.atTime(slot.end);
-                if (!slotEnd.isAfter(windowStart) || !slotStart.isBefore(windowEnd)) {
-                    continue;
-                }
-                movable.add(slot);
-            }
-        }
-        return movable;
-    }
-
     private void insertSorted(List<Interval> intervals, Interval newInterval) {
         int i = 0;
         while (i < intervals.size() && intervals.get(i).start.compareTo(newInterval.start) <= 0) {
@@ -521,21 +727,25 @@ public class DefaultTaskSlotGenerator {
         intervals.add(i, newInterval);
     }
 
-    private TaskSlot createScheduledSlot(Task task, LocalDateTime cursor, int score, TaskSlot parentSlot) {
+    private TaskSlot createScheduledSlot(Task task,
+                                        LocalDateTime cursor,
+                                        int score,
+                                        TaskSlot parentSlot,
+                                        String chainId,
+                                        int chainOrder) {
         TaskSlot slot = new TaskSlot();
         slot.taskId = task.core.id;
         slot.score = score;
-        slot.comparisonScore = score;
         slot.day = cursor.toLocalDate();
         slot.start = cursor.toLocalTime();
         slot.scheduled = true;
         slot.parent = parentSlot != null ? parentSlot.id : null;
+        slot.chainId = chainId;
+        slot.chainOrder = chainOrder;
         return slot;
     }
 
-    private void finalizeAssignment(Task task, TaskSlot slot, int score) {
-        slot.score = score;
-        slot.comparisonScore = score;
+    private void finalizeAssignment(Task task, TaskSlot slot) {
         task.slots.add(slot);
         scorer.onSlotAssigned(task, slot.start);
         scheduledInSession.add(task.core.id);
@@ -549,8 +759,23 @@ public class DefaultTaskSlotGenerator {
     }
 
     private boolean hasUnmetPrerequisites(Task task, LocalDateTime candidateStart) {
+        return hasUnmetPrerequisites(task, candidateStart, Collections.emptyMap());
+    }
+
+    private boolean hasUnmetPrerequisites(Task task,
+                                          LocalDateTime candidateStart,
+                                          Map<String, PlannedSlot> plannedByTask) {
         if (task.prerequisites == null || task.prerequisites.isEmpty()) return false;
         for (TaskPrerequisite prereq : task.prerequisites) {
+            PlannedSlot plannedSlot = plannedByTask.get(prereq.prerequisiteId);
+            if (plannedSlot != null) {
+                LocalDateTime earliest = plannedSlot.end.plusMinutes(prereq.minGapMinutes);
+                if (candidateStart.isBefore(earliest)) {
+                    return true;
+                }
+                continue;
+            }
+
             Task prereqTask = allTasksById.get(prereq.prerequisiteId);
             if (prereqTask == null) continue;
 
@@ -559,7 +784,7 @@ public class DefaultTaskSlotGenerator {
                 return true;
             }
 
-            if (prereq.minGapMinutes > 0 && prereqSlot.end != null) {
+            if (prereqSlot.end != null) {
                 LocalDateTime earliestStart = schedulingDay.atTime(prereqSlot.end)
                         .plusMinutes(prereq.minGapMinutes);
                 if (candidateStart.isBefore(earliestStart)) {
@@ -571,12 +796,20 @@ public class DefaultTaskSlotGenerator {
     }
 
     private TaskSlot findScheduledSlotForDay(Task task, LocalDate day) {
+        TaskSlot latest = null;
         for (TaskSlot slot : task.slots) {
-            if (slot.day.equals(day) && (slot.completed || slot.scheduled)) {
-                return slot;
+            if (!slot.day.equals(day) || (!slot.completed && !slot.scheduled)) {
+                continue;
+            }
+            if (latest == null) {
+                latest = slot;
+                continue;
+            }
+            if (slot.end != null && latest.end != null && slot.end.isAfter(latest.end)) {
+                latest = slot;
             }
         }
-        return null;
+        return latest;
     }
 
     private void log(String message) {

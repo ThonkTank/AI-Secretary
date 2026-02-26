@@ -1,6 +1,7 @@
 package com.autosecretary.features.task.data;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
@@ -33,6 +34,7 @@ public class TaskCore {
     //scheduling
     public Priority priority = Priority.MEDIUM;
     public int cooldown = 1;
+    public long budgetRequirementCents = 0L;
     public LocalDate deadline;
     public LocalDate created = LocalDate.now();
     public boolean closeOnMiss = true; // When deadline/period end is exceeded, close the task instead of keeping it open?
@@ -40,6 +42,11 @@ public class TaskCore {
     public boolean adaptive;  // Adapt preferred times to user behavior?
     public int minDuration = 5;
     public int maxDuration = 10;
+
+    public boolean isFixedAppointment = false;
+    public LocalDate fixedDate;
+    public LocalTime fixedStart;
+    public Integer fixedDurationMinutes;
 
     @Embedded(prefix = "history_")
     public History history = new History();

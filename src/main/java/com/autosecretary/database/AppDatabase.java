@@ -45,7 +45,7 @@ import com.autosecretary.features.task.data.TaskSlot;
                 BudgetImportEntity.class,
                 BudgetRecurringTemplateEntity.class
         },
-        version = 14,
+        version = 17,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -154,9 +154,10 @@ public abstract class AppDatabase extends RoomDatabase {
     private static final Migration MIGRATION_13_14 = new Migration(13, 14) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
-            database.execSQL("ALTER TABLE task_slots ADD COLUMN comparisonScore INTEGER NOT NULL DEFAULT 0");
-            database.execSQL("ALTER TABLE task_slots ADD COLUMN chainId TEXT");
-            database.execSQL("UPDATE task_slots SET comparisonScore = score WHERE comparisonScore = 0");
+            database.execSQL("ALTER TABLE task_core ADD COLUMN isFixedAppointment INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE task_core ADD COLUMN fixedDate TEXT");
+            database.execSQL("ALTER TABLE task_core ADD COLUMN fixedStart TEXT");
+            database.execSQL("ALTER TABLE task_core ADD COLUMN fixedDurationMinutes INTEGER");
         }
     };
 

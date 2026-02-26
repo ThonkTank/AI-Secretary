@@ -6,6 +6,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.autosecretary.database.AppDatabase;
+import com.autosecretary.features.budget.application.CalculateEffectiveBudgetLimitUseCase;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.application.importing.ClaudeApiKeyStore;
@@ -23,6 +24,7 @@ import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
+import com.autosecretary.features.task.application.TaskBudgetProvider;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
@@ -79,6 +81,34 @@ public class AppCompositionRoot {
         TaskListItemMapper mapper = new TaskListItemMapper();
         TaskCalendarService taskCalendarService = new CalendarReader(app);
 
+        BudgetRoomRepository budgetRepository = new BudgetRoomRepository(
+                db.budgetLookupDao(),
+                db.transactionDao(),
+                db.budgetLimitDao()
+        );
+        CalculateEffectiveBudgetLimitUseCase calculateEffectiveBudgetLimitUseCase =
+                new CalculateEffectiveBudgetLimitUseCase(budgetRepository);
+        TaskBudgetProvider taskBudgetProvider = day -> {
+            long totalBalanceCents = 0L;
+            for (com.autosecretary.features.budget.data.entity.BudgetAccount account : budgetRepository.findActiveAccounts()) {
+                totalBalanceCents += account.currentBalanceCents;
+            }
+
+            String yearMonth = day.getYear() + "-" + String.format("%02d", day.getMonthValue());
+            long totalCategoryRemainingCents = 0L;
+            for (com.autosecretary.features.budget.data.entity.BudgetCategory category : budgetRepository.getActiveCategories()) {
+                CalculateEffectiveBudgetLimitUseCase.Result result =
+                        calculateEffectiveBudgetLimitUseCase.execute(category.id, yearMonth);
+                long categoryRemaining = Math.max(0L, result.getEffectiveLimitCents() - result.getSpentCents());
+                totalCategoryRemainingCents += categoryRemaining;
+            }
+
+            if (totalCategoryRemainingCents > 0L) {
+                return Math.min(Math.max(0L, totalBalanceCents), totalCategoryRemainingCents);
+            }
+            return Math.max(0L, totalBalanceCents);
+        };
+
         TaskAsyncDataService taskAsyncDataService = new TaskAsyncDataService(
                 taskDao,
                 mapper,
@@ -95,6 +125,7 @@ public class AppCompositionRoot {
         RegenerateScheduleUseCase regenerateScheduleUseCase = new RegenerateScheduleUseCase(
                 taskDao,
                 generator,
+                taskBudgetProvider,
                 taskUseCaseExecutor
         );
         DeleteTaskUseCase deleteTaskUseCase = new DeleteTaskUseCase(
