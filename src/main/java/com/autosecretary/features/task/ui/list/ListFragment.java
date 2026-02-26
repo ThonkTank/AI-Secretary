@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui;
+package com.autosecretary.features.task.ui.list;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
+import com.autosecretary.features.task.ui.TaskScheduleConfigDialog;
 import com.autosecretary.features.task.ui.edit.TaskEditDialog;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.google.android.material.button.MaterialButtonToggleGroup;

@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui;
+package com.autosecretary.features.task.ui.list;
 
 import android.animation.ValueAnimator;
 import android.content.Context;
@@ -19,7 +19,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.autosecretary.R;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
-import com.autosecretary.features.task.ui.state.ViewSlotList.ViewSlot;
+import com.autosecretary.features.task.ui.TaskDescriptionDialogFragment;
+import com.autosecretary.features.task.ui.list.state.ViewSlotList.ViewSlot;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui.state;
+package com.autosecretary.features.task.ui.list.state;
 
 import java.util.List;
 import java.util.ArrayList;
