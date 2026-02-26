@@ -1,5 +1,8 @@
 package com.autosecretary.features.meal.domain;
 
+import com.autosecretary.features.meal.domain.internal.HouseholdEnergyService;
+import com.autosecretary.features.meal.domain.internal.WeeklyFoodTargetService;
+
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +13,9 @@ import java.util.Map;
  * Wird sowohl fuer 7-Tage-Wochenziele als auch periodenlaengen-skaliert genutzt.
  */
 public class WeeklyFoodTarget {
+
+    private static final WeeklyFoodTargetService TARGET_SERVICE =
+            new WeeklyFoodTargetService(new HouseholdEnergyService());
 
     public Long id;
     public String periodKey;
@@ -44,19 +50,7 @@ public class WeeklyFoodTarget {
      * Berechnet DGE-Wochenziele basierend auf Haushaltsmitgliedern.
      */
     public static WeeklyFoodTarget calculate(String periodKey, List<HouseholdMember> members) {
-        WeeklyFoodTarget t = new WeeklyFoodTarget();
-        t.periodKey = periodKey;
-
-        double totalFactor = 0;
-        for (HouseholdMember m : members) {
-            if (m.isActive) totalFactor += m.getFoodFactor();
-        }
-
-        for (Ingredient.FoodGroup fg : Ingredient.FoodGroup.values()) {
-            int target = (int) (fg.weeklyGramsPerAdult * totalFactor);
-            setTargetFor(t, fg, target);
-        }
-        return t;
+        return TARGET_SERVICE.calculate(periodKey, members, java.time.LocalDate.now());
     }
 
     public int getTargetFor(Ingredient.FoodGroup group) {

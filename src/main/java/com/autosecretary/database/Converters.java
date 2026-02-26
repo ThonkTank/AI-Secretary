@@ -4,6 +4,7 @@ import androidx.room.TypeConverter;
 
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
+import com.autosecretary.features.meal.domain.MealType;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
@@ -77,6 +78,16 @@ public class Converters {
     @TypeConverter
     public static TaskCore.SchedulingType toSchedulingType(String value) {
         return value != null ? TaskCore.SchedulingType.valueOf(value) : null;
+    }
+
+    @TypeConverter
+    public static String fromMealType(MealType mealType) {
+        return mealType != null ? mealType.name() : null;
+    }
+
+    @TypeConverter
+    public static MealType toMealType(String value) {
+        return value != null ? MealType.valueOf(value) : null;
     }
 
     @TypeConverter

@@ -1,12 +1,15 @@
 package com.autosecretary.features.meal.domain;
 
+import com.autosecretary.features.meal.domain.internal.ShelfLifeService;
+
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 
 /**
  * Vorratsartikel im Haushalt.
  */
 public class PantryItem {
+
+    private static final ShelfLifeService SHELF_LIFE_SERVICE = new ShelfLifeService();
 
     public Long id;
     public long ingredientId;
@@ -36,12 +39,11 @@ public class PantryItem {
     }
 
     public boolean isExpired() {
-        return expiryDate != null && !LocalDate.now().isBefore(expiryDate);
+        return SHELF_LIFE_SERVICE.isExpired(expiryDate, LocalDate.now());
     }
 
     public int getDaysUntilExpiry() {
-        if (expiryDate == null) return Integer.MAX_VALUE;
-        return (int) ChronoUnit.DAYS.between(LocalDate.now(), expiryDate);
+        return SHELF_LIFE_SERVICE.daysUntilExpiry(expiryDate, LocalDate.now());
     }
 
     public String getFormattedAmount() {

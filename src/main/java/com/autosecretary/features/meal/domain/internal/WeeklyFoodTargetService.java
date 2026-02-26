@@ -1,0 +1,40 @@
+package com.autosecretary.features.meal.domain.internal;
+
+import com.autosecretary.features.meal.domain.HouseholdMember;
+import com.autosecretary.features.meal.domain.Ingredient;
+import com.autosecretary.features.meal.domain.WeeklyFoodTarget;
+
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ * Berechnet DGE-Wochenziele anhand der aktiven Haushaltsmitglieder.
+ */
+public class WeeklyFoodTargetService {
+
+    private final HouseholdEnergyService householdEnergyService;
+
+    public WeeklyFoodTargetService(HouseholdEnergyService householdEnergyService) {
+        this.householdEnergyService = householdEnergyService;
+    }
+
+    public WeeklyFoodTarget calculate(String periodKey, List<HouseholdMember> members, LocalDate referenceDate) {
+        WeeklyFoodTarget target = new WeeklyFoodTarget();
+        target.periodKey = periodKey;
+
+        double totalFactor = 0.0;
+        if (members != null) {
+            for (HouseholdMember member : members) {
+                if (member != null && member.isActive) {
+                    totalFactor += householdEnergyService.calculateDgeFoodFactor(member, referenceDate);
+                }
+            }
+        }
+
+        for (Ingredient.FoodGroup group : Ingredient.FoodGroup.values()) {
+            int grams = (int) (group.weeklyGramsPerAdult * totalFactor);
+            WeeklyFoodTarget.setTargetFor(target, group, grams);
+        }
+        return target;
+    }
+}
