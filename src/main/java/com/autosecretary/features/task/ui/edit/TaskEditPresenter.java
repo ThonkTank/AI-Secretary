@@ -11,6 +11,7 @@ import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 /**
@@ -105,7 +106,12 @@ public class TaskEditPresenter {
         editState.minDuration = safeInput.minDuration;
         editState.maxDuration = safeInput.maxDuration;
         editState.cooldown = safeInput.cooldown;
+        editState.budgetRequirementCents = Math.max(0L, safeInput.budgetRequirementCents);
         editState.adaptive = safeInput.adaptive;
+        editState.isFixedAppointment = safeInput.isFixedAppointment;
+        editState.fixedDate = safeInput.fixedDate;
+        editState.fixedStart = safeInput.fixedStart;
+        editState.fixedDurationMinutes = safeInput.fixedDurationMinutes;
 
         updateOrResetRepetition(safeInput);
         updateOrResetProgress(safeInput);
@@ -192,6 +198,8 @@ public class TaskEditPresenter {
         public static final int MIN_DURATION = 5;
         public static final int MAX_DURATION = 10;
         public static final int COOLDOWN = 1;
+        public static final long BUDGET_REQUIREMENT_CENTS = 0L;
+        public static final int FIXED_DURATION_MINUTES = 10;
 
         public static final int REPETITION_REPS = 1;
         public static final int REPETITION_PER_PERIOD = 1;
@@ -219,7 +227,12 @@ public class TaskEditPresenter {
         public int minDuration = InputDefaults.MIN_DURATION;
         public int maxDuration = InputDefaults.MAX_DURATION;
         public int cooldown = InputDefaults.COOLDOWN;
+        public long budgetRequirementCents = InputDefaults.BUDGET_REQUIREMENT_CENTS;
         public boolean adaptive;
+        public boolean isFixedAppointment;
+        public LocalDate fixedDate;
+        public LocalTime fixedStart;
+        public int fixedDurationMinutes = InputDefaults.FIXED_DURATION_MINUTES;
 
         public boolean repetitionEnabled;
         public int reps = InputDefaults.REPETITION_REPS;

@@ -18,6 +18,15 @@ public class TaskEditFormValidator {
             "Maximale Dauer muss mindestens 1 Minute sein.");
         valid &= validateIntegerField(views.cooldownView, 0, Integer.MAX_VALUE,
             "Cooldown muss mindestens 0 Tage sein.");
+        valid &= validateLongField(views.budgetRequirementCentsView, 0L, Long.MAX_VALUE,
+            "Budgetbedarf muss mindestens 0 Cent sein.");
+
+        if (views.fixedAppointmentView.isChecked()) {
+            valid &= requireNonEmpty(views.fixedDateView, "Termin-Datum ist erforderlich.");
+            valid &= requireNonEmpty(views.fixedStartView, "Termin-Startzeit ist erforderlich.");
+            valid &= validateIntegerField(views.fixedDurationView, 1, Integer.MAX_VALUE,
+                "Termin-Dauer muss mindestens 1 Minute sein.");
+        }
 
         if (views.toggleRepetition.isChecked()) {
             valid &= validateIntegerField(views.repsView, 1, Integer.MAX_VALUE,
@@ -64,6 +73,10 @@ public class TaskEditFormValidator {
         views.minDurationView.setError(null);
         views.maxDurationView.setError(null);
         views.cooldownView.setError(null);
+        views.budgetRequirementCentsView.setError(null);
+        views.fixedDateView.setError(null);
+        views.fixedStartView.setError(null);
+        views.fixedDurationView.setError(null);
         views.repsView.setError(null);
         views.perPeriodView.setError(null);
         views.targetView.setError(null);
@@ -88,6 +101,26 @@ public class TaskEditFormValidator {
         }
         try {
             int parsed = Integer.parseInt(value);
+            if (parsed < min || parsed > max) {
+                field.setError(rangeMessage);
+                return false;
+            }
+            return true;
+        } catch (NumberFormatException e) {
+            field.setError("Bitte eine ganze Zahl eingeben. " + rangeMessage);
+            return false;
+        }
+    }
+
+
+    private boolean validateLongField(EditText field, long min, long max, String rangeMessage) {
+        String value = field.getText() != null ? field.getText().toString().trim() : "";
+        if (value.isEmpty()) {
+            field.setError("Pflichtfeld. " + rangeMessage);
+            return false;
+        }
+        try {
+            long parsed = Long.parseLong(value);
             if (parsed < min || parsed > max) {
                 field.setError(rangeMessage);
                 return false;

@@ -22,13 +22,16 @@ public class RegenerateScheduleUseCase {
 
     private final TaskDAO taskDao;
     private final DefaultTaskSlotGenerator generator;
+    private final TaskBudgetProvider taskBudgetProvider;
     private final ExecutorService executor;
 
     public RegenerateScheduleUseCase(TaskDAO taskDao,
                                      DefaultTaskSlotGenerator generator,
+                                     TaskBudgetProvider taskBudgetProvider,
                                      ExecutorService executor) {
         this.taskDao = taskDao;
         this.generator = generator;
+        this.taskBudgetProvider = taskBudgetProvider;
         this.executor = executor;
     }
 
@@ -61,10 +64,19 @@ public class RegenerateScheduleUseCase {
             TaskPlanningState state = generator.createPlanningState();
             generator.recordPreservedSlots(tasks, today, windowEnd, state);
 
-            // 3) Flatten once, then schedule across the full planning week
+            // 3) Flatten once, then schedule day by day
             List<Task> flatTasks = TaskTreeOperations.flatten(
                     TaskTreeOperations.buildTree(tasks));
-            generator.generateSlotsForWeek(flatTasks, today, PLANNING_DAYS, state);
+
+            for (int i = 0; i < PLANNING_DAYS; i++) {
+                LocalDate day = today.plusDays(i);
+                long availableBudgetCents = taskBudgetProvider.getAvailableBudgetCents(day);
+                generator.setAvailableBudgetCents(availableBudgetCents);
+                generator.generateSlotsForDay(flatTasks, day, state);
+
+                // Record newly assigned slots into cross-day state
+                generator.recordScheduledSlotsForDay(flatTasks, day, state);
+            }
 
             taskDao.writeList(flatTasks);
             onDone.run();
