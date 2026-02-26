@@ -35,6 +35,7 @@ public class TaskSlot {
     public String id = UUID.randomUUID().toString();
     public String taskId;
     public String parent;
+    public String chainId;
     @Ignore
     public List<TaskSlot> children = new ArrayList<>();
 
