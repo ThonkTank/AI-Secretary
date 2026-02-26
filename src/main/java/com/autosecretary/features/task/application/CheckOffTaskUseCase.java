@@ -1,12 +1,18 @@
 package com.autosecretary.features.task.application;
 
+import android.content.Context;
+
+import com.autosecretary.database.AppDatabase;
+import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
 import com.autosecretary.features.task.application.internal.actions.TaskSlotToggleAction;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
+import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskTransitionStatDao;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
+import java.time.LocalDate;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
@@ -25,18 +31,27 @@ public class CheckOffTaskUseCase {
     private final TaskTransitionStatDao transitionDao;
     private final ExecutorService executor;
     private final Executor callbackDispatcher;
+    private final BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase;
+    private final AppDatabase database;
+    private final Context appContext;
 
     public CheckOffTaskUseCase(TaskDAO taskDao, TaskCompletionService completionService,
                                TaskLifecycleManager lifecycleManager,
                                TaskTransitionStatDao transitionDao,
                                ExecutorService executor,
-                               Executor callbackDispatcher) {
+                               Executor callbackDispatcher,
+                               BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase,
+                               AppDatabase database,
+                               Context appContext) {
         this.taskDao = taskDao;
         this.completionService = completionService;
         this.lifecycleManager = lifecycleManager;
         this.transitionDao = transitionDao;
         this.executor = executor;
         this.callbackDispatcher = callbackDispatcher;
+        this.bookTaskCompletionExpenseUseCase = bookTaskCompletionExpenseUseCase;
+        this.database = database;
+        this.appContext = appContext;
     }
 
     /**
@@ -56,7 +71,14 @@ public class CheckOffTaskUseCase {
                 listItem.taskId,
                 listItem.slotId,
                 callbackDispatcher,
-                onChanged
+                onChanged,
+                task -> {
+                    boolean booked = bookTaskCompletionExpenseUseCase.execute(task, LocalDate.now());
+                    if (booked) {
+                        BudgetWidgetProvider.notifyWidgetUpdate(appContext);
+                    }
+                },
+                database
         ));
     }
 }
