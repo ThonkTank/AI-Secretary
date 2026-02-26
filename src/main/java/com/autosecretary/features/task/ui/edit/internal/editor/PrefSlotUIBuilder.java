@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui.edit.internal;
+package com.autosecretary.features.task.ui.edit.internal.editor;
 
 import android.content.Context;
 import android.graphics.Typeface;

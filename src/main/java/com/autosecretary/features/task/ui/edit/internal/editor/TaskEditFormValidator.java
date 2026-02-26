@@ -2,7 +2,6 @@ package com.autosecretary.features.task.ui.edit.internal.editor;
 
 import android.widget.EditText;
 
-import com.autosecretary.features.task.ui.edit.TaskEditFormViews;
 
 public class TaskEditFormValidator {
 

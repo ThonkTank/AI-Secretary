@@ -42,7 +42,7 @@ public final class TaskProgressAdjustAction {
         boolean completed = next >= target;
         task.core.completed = completed;
 
-        TaskSlot slot = findSlot(task, slotId);
+        TaskSlot slot = task.findSlot(slotId);
         if (slot != null) {
             slot.completed = completed;
         }
@@ -54,15 +54,4 @@ public final class TaskProgressAdjustAction {
         }
     }
 
-    private static TaskSlot findSlot(Task task, String slotId) {
-        if (slotId == null || task.slots == null) {
-            return null;
-        }
-        for (TaskSlot slot : task.slots) {
-            if (slotId.equals(slot.id)) {
-                return slot;
-            }
-        }
-        return null;
-    }
 }

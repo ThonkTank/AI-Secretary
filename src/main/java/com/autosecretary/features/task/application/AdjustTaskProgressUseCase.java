@@ -1,38 +1,40 @@
 package com.autosecretary.features.task.application;
 
-import com.autosecretary.features.task.application.internal.actions.TaskProgressAdjustAction;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
+import com.autosecretary.features.task.application.internal.actions.TaskProgressAdjustAction;
 import com.autosecretary.features.task.data.TaskDAO;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 /**
- * Increases progress for a task while keeping progress bounds and completion flags in sync.
+ * Increases or decreases progress for a task while keeping progress bounds and
+ * completion flags in sync.
  *
  * Contract: DAO work runs on {@code executor}; when present, {@code onChanged}
  * runs on {@code callbackDispatcher}.
  */
-public class IncrementTaskProgressUseCase {
+public class AdjustTaskProgressUseCase {
     private final TaskDAO taskDao;
     private final ExecutorService executor;
     private final Executor callbackDispatcher;
 
-    public IncrementTaskProgressUseCase(TaskDAO taskDao,
-                                        ExecutorService executor,
-                                        Executor callbackDispatcher) {
+    public AdjustTaskProgressUseCase(TaskDAO taskDao,
+                                     ExecutorService executor,
+                                     Executor callbackDispatcher) {
         this.taskDao = taskDao;
         this.executor = executor;
         this.callbackDispatcher = callbackDispatcher;
     }
 
-    public void execute(TaskListItem listItem, Runnable onChanged) {
+    public void execute(TaskListItem listItem, boolean increment, Runnable onChanged) {
         int step = Math.max(1, listItem.progressStepDelta);
+        int delta = increment ? step : -step;
         executor.execute(() -> TaskProgressAdjustAction.execute(
                 taskDao,
                 listItem.taskId,
                 listItem.slotId,
-                step,
+                delta,
                 callbackDispatcher,
                 onChanged
         ));

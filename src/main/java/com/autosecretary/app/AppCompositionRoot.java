@@ -17,10 +17,8 @@ import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.budget.domain.AccountBalanceTimelineService;
 import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
+import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
-import com.autosecretary.features.task.application.DecrementTaskProgressUseCase;
-import com.autosecretary.features.task.application.DeleteTaskUseCase;
-import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
@@ -31,6 +29,7 @@ import com.autosecretary.features.task.application.internal.calendar.CalendarRea
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
+import com.autosecretary.features.task.domain.TaskSlotGenerator;
 import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
 
@@ -70,7 +69,7 @@ public class AppCompositionRoot {
         TaskScheduleConfigRepository scheduleConfigRepository =
                 new TaskScheduleConfigRepository(db.taskScheduleConfigDao());
 
-        DefaultTaskSlotGenerator generator = new DefaultTaskSlotGenerator(
+        TaskSlotGenerator generator = new DefaultTaskSlotGenerator(
                 lifecycleManager,
                 message -> Log.d("SlotGen", message),
                 scheduleConfigRepository,
@@ -97,17 +96,7 @@ public class AppCompositionRoot {
                 generator,
                 taskUseCaseExecutor
         );
-        DeleteTaskUseCase deleteTaskUseCase = new DeleteTaskUseCase(
-                taskDao,
-                taskUseCaseExecutor,
-                mainHandler::post
-        );
-        IncrementTaskProgressUseCase incrementTaskProgressUseCase = new IncrementTaskProgressUseCase(
-                taskDao,
-                taskUseCaseExecutor,
-                mainHandler::post
-        );
-        DecrementTaskProgressUseCase decrementTaskProgressUseCase = new DecrementTaskProgressUseCase(
+        AdjustTaskProgressUseCase adjustTaskProgressUseCase = new AdjustTaskProgressUseCase(
                 taskDao,
                 taskUseCaseExecutor,
                 mainHandler::post
@@ -124,10 +113,8 @@ public class AppCompositionRoot {
                 taskAsyncDataService,
                 checkOffTaskUseCase,
                 regenerateScheduleUseCase,
-                deleteTaskUseCase,
                 taskCalendarService,
-                incrementTaskProgressUseCase,
-                decrementTaskProgressUseCase
+                adjustTaskProgressUseCase
         );
 
         return taskViewModelFactory;

@@ -7,10 +7,8 @@ import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.app.Preferences;
+import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
-import com.autosecretary.features.task.application.DecrementTaskProgressUseCase;
-import com.autosecretary.features.task.application.DeleteTaskUseCase;
-import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
@@ -21,27 +19,21 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
     private final TaskAsyncDataService taskAsyncDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
-    private final DeleteTaskUseCase deleteTaskUseCase;
     private final TaskCalendarService taskCalendarService;
-    private final IncrementTaskProgressUseCase incrementTaskProgressUseCase;
-    private final DecrementTaskProgressUseCase decrementTaskProgressUseCase;
+    private final AdjustTaskProgressUseCase adjustTaskProgressUseCase;
 
     public TaskViewModelFactory(Application app,
                                 TaskAsyncDataService taskAsyncDataService,
                                 CheckOffTaskUseCase checkOffTaskUseCase,
                                 RegenerateScheduleUseCase regenerateScheduleUseCase,
-                                DeleteTaskUseCase deleteTaskUseCase,
                                 TaskCalendarService taskCalendarService,
-                                IncrementTaskProgressUseCase incrementTaskProgressUseCase,
-                                DecrementTaskProgressUseCase decrementTaskProgressUseCase) {
+                                AdjustTaskProgressUseCase adjustTaskProgressUseCase) {
         this.app = app;
         this.taskAsyncDataService = taskAsyncDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
-        this.deleteTaskUseCase = deleteTaskUseCase;
         this.taskCalendarService = taskCalendarService;
-        this.incrementTaskProgressUseCase = incrementTaskProgressUseCase;
-        this.decrementTaskProgressUseCase = decrementTaskProgressUseCase;
+        this.adjustTaskProgressUseCase = adjustTaskProgressUseCase;
     }
 
     @NonNull
@@ -50,8 +42,7 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
     public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
         if (modelClass.isAssignableFrom(TaskViewModel.class)) {
             TaskEditSessionController taskEditSessionController = new TaskEditSessionController(
-                    taskAsyncDataService,
-                    deleteTaskUseCase
+                    taskAsyncDataService
             );
             TaskListProjectionService taskListProjectionService = new TaskListProjectionService(
                     taskCalendarService,
@@ -63,8 +54,7 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
                     taskAsyncDataService,
                     checkOffTaskUseCase,
                     regenerateScheduleUseCase,
-                    incrementTaskProgressUseCase,
-                    decrementTaskProgressUseCase,
+                    adjustTaskProgressUseCase,
                     taskEditSessionController,
                     taskListProjectionService
             );

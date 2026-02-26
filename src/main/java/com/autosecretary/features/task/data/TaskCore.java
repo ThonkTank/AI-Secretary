@@ -48,11 +48,7 @@ public class TaskCore {
     @Embedded(prefix = "repetition_")
     public Repetition repetition = new Repetition();
     public int repsPerDay() {
-        if (repetition != null) {
-                return repetition.repsPerDay();
-        } else {
-            return 1;
-        }
+        return repetition.repsPerDay();
     }
 
     //completion tracking

@@ -6,9 +6,8 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
-import com.autosecretary.features.task.application.DecrementTaskProgressUseCase;
-import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
@@ -28,8 +27,7 @@ public class TaskViewModel extends AndroidViewModel {
     private final TaskAsyncDataService taskAsyncDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
-    private final IncrementTaskProgressUseCase incrementTaskProgressUseCase;
-    private final DecrementTaskProgressUseCase decrementTaskProgressUseCase;
+    private final AdjustTaskProgressUseCase adjustTaskProgressUseCase;
     private final TaskEditSessionController taskEditSessionController;
     private final TaskListProjectionService taskListProjectionService;
 
@@ -47,16 +45,14 @@ public class TaskViewModel extends AndroidViewModel {
                          TaskAsyncDataService taskAsyncDataService,
                          CheckOffTaskUseCase checkOffTaskUseCase,
                          RegenerateScheduleUseCase regenerateScheduleUseCase,
-                         IncrementTaskProgressUseCase incrementTaskProgressUseCase,
-                         DecrementTaskProgressUseCase decrementTaskProgressUseCase,
+                         AdjustTaskProgressUseCase adjustTaskProgressUseCase,
                          TaskEditSessionController taskEditSessionController,
                          TaskListProjectionService taskListProjectionService) {
         super(app);
         this.taskAsyncDataService = taskAsyncDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
-        this.incrementTaskProgressUseCase = incrementTaskProgressUseCase;
-        this.decrementTaskProgressUseCase = decrementTaskProgressUseCase;
+        this.adjustTaskProgressUseCase = adjustTaskProgressUseCase;
         this.taskEditSessionController = taskEditSessionController;
         this.taskEditSessionController.setOnTaskChanged(this::refreshList);
         this.taskListProjectionService = taskListProjectionService;
@@ -160,11 +156,11 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void incrementProgress(ViewSlot viewSlot) {
-        incrementTaskProgressUseCase.execute(viewSlot.item, this::refreshList);
+        adjustTaskProgressUseCase.execute(viewSlot.item, true, this::refreshList);
     }
 
     public void decrementProgress(ViewSlot viewSlot) {
-        decrementTaskProgressUseCase.execute(viewSlot.item, this::refreshList);
+        adjustTaskProgressUseCase.execute(viewSlot.item, false, this::refreshList);
     }
 
     public void startTimer(String slotId) {

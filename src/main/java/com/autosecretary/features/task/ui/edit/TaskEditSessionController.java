@@ -3,7 +3,6 @@ package com.autosecretary.features.task.ui.edit;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
@@ -18,7 +17,6 @@ import java.util.ArrayList;
  */
 public class TaskEditSessionController {
     private final TaskAsyncDataService taskAsyncDataService;
-    private final DeleteTaskUseCase deleteTaskUseCase;
     private Runnable onTaskChanged = () -> { };
     private final TaskEditStateMapper taskEditStateMapper = new TaskEditStateMapper();
 
@@ -26,10 +24,8 @@ public class TaskEditSessionController {
     private final MutableLiveData<Task> selectedBaseTask = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isNewTask = new MutableLiveData<>(false);
 
-    public TaskEditSessionController(TaskAsyncDataService taskAsyncDataService,
-                                     DeleteTaskUseCase deleteTaskUseCase) {
+    public TaskEditSessionController(TaskAsyncDataService taskAsyncDataService) {
         this.taskAsyncDataService = taskAsyncDataService;
-        this.deleteTaskUseCase = deleteTaskUseCase;
     }
 
     public void setOnTaskChanged(Runnable onTaskChanged) {
@@ -93,7 +89,7 @@ public class TaskEditSessionController {
 
     public void deleteSelectedTask(Runnable onDeleted) {
         String taskId = requireSelectedBaseTask().core.id;
-        deleteTaskUseCase.execute(taskId, () -> {
+        taskAsyncDataService.deleteTask(taskId, () -> {
             onTaskChanged.run();
             if (onDeleted != null) {
                 onDeleted.run();

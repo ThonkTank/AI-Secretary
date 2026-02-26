@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.domain.internal.scheduling;
+package com.autosecretary.features.task.domain;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

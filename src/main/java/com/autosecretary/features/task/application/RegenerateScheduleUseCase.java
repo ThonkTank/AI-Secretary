@@ -2,10 +2,10 @@ package com.autosecretary.features.task.application;
 
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
-import com.autosecretary.features.task.data.TaskSeedDataFactory;
+import com.autosecretary.features.task.application.internal.TaskSeedDataFactory;
 import com.autosecretary.features.task.domain.TaskPlanningState;
+import com.autosecretary.features.task.domain.TaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
-import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -13,7 +13,7 @@ import java.util.concurrent.ExecutorService;
 
 /**
  * Entry point for schedule generation. Reads all tasks from the database, generates
- * a 7-day schedule (today + 6 days) using {@link DefaultTaskSlotGenerator} with cross-day state
+ * a 7-day schedule (today + 6 days) using {@link TaskSlotGenerator} with cross-day state
  * tracking, and writes scheduled results back. Seeds default tasks on first run when
  * the DB is empty.
  */
@@ -21,11 +21,11 @@ public class RegenerateScheduleUseCase {
     private static final int PLANNING_DAYS = 7;
 
     private final TaskDAO taskDao;
-    private final DefaultTaskSlotGenerator generator;
+    private final TaskSlotGenerator generator;
     private final ExecutorService executor;
 
     public RegenerateScheduleUseCase(TaskDAO taskDao,
-                                     DefaultTaskSlotGenerator generator,
+                                     TaskSlotGenerator generator,
                                      ExecutorService executor) {
         this.taskDao = taskDao;
         this.generator = generator;
@@ -58,7 +58,7 @@ public class RegenerateScheduleUseCase {
             }
 
             // 2) Initialize cross-day state from preserved slots (completed/in-progress)
-            TaskPlanningState state = generator.createPlanningState();
+            TaskPlanningState state = new TaskPlanningState();
             generator.recordPreservedSlots(tasks, today, windowEnd, state);
 
             // 3) Flatten once, then schedule day by day

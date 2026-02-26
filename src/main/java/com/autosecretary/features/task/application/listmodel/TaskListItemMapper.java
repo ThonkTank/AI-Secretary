@@ -14,16 +14,15 @@ public class TaskListItemMapper {
     public List<TaskListItem> map(List<Task> tasks) {
         List<TaskListItem> items = new ArrayList<>();
         for (Task task : tasks) {
-            int nrSlots = 0;
-            for (TaskSlot slot : task.slots) {
-                items.add(toItem(task, slot));
-                nrSlots++;
-            }
-            if (nrSlots == 0) {
+            if (task.slots.isEmpty()) {
                 TaskSlot placeholder = new TaskSlot();
                 placeholder.id = null;
                 placeholder.day = LocalDate.now();
                 items.add(toItem(task, placeholder));
+            } else {
+                for (TaskSlot slot : task.slots) {
+                    items.add(toItem(task, slot));
+                }
             }
         }
         return items;

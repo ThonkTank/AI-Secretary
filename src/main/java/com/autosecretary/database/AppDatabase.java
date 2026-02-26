@@ -27,7 +27,7 @@ import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskRelation;
 import com.autosecretary.features.task.data.TaskScheduleConfig;
-import com.autosecretary.features.task.data.TaskScheduleConfigDao;
+import com.autosecretary.features.task.data.TaskScheduleConfigDAO;
 import com.autosecretary.features.task.data.TaskSlot;
 
 @Database(
@@ -153,7 +153,7 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public abstract TaskDAO taskDao();
 
-    public abstract TaskScheduleConfigDao taskScheduleConfigDao();
+    public abstract TaskScheduleConfigDAO taskScheduleConfigDao();
 
     public abstract BudgetLookupDao budgetLookupDao();
 

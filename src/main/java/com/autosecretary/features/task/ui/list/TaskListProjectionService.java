@@ -1,7 +1,7 @@
 package com.autosecretary.features.task.ui.list;
 
 import com.autosecretary.app.Preferences;
-import com.autosecretary.features.task.application.calendar.TaskCalendarEvent;
+import com.autosecretary.features.task.domain.TaskCalendarEvent;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList;

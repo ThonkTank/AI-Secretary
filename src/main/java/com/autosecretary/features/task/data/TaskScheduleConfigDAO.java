@@ -8,7 +8,7 @@ import androidx.room.Query;
 import java.util.List;
 
 @Dao
-public interface TaskScheduleConfigDao {
+public interface TaskScheduleConfigDAO {
 
     @Query("SELECT * FROM task_schedule_config")
     List<TaskScheduleConfig> readAll();

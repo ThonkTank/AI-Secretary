@@ -8,7 +8,7 @@ import android.provider.CalendarContract;
 
 import androidx.core.content.ContextCompat;
 
-import com.autosecretary.features.task.domain.internal.scheduling.CalendarBlockedIntervalProvider;
+import com.autosecretary.features.task.domain.CalendarBlockedIntervalProvider;
 
 import java.time.Instant;
 import java.time.LocalDate;

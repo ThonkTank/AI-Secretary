@@ -4,8 +4,12 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.domain.CalendarBlockedIntervalProvider;
+import com.autosecretary.features.task.domain.SchedulingWindowProvider;
+import com.autosecretary.features.task.domain.TaskCalendarEvent;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.TaskPlanningState;
+import com.autosecretary.features.task.domain.TaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
 
 import java.time.DayOfWeek;
@@ -24,7 +28,7 @@ import java.util.function.Consumer;
 /**
  * Internal scheduler that assigns tasks to time slots within a given window.
  */
-public class DefaultTaskSlotGenerator {
+public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
 
 
     private static class CandidateSelection {
@@ -149,10 +153,6 @@ public class DefaultTaskSlotGenerator {
 
     private static final DateTimeFormatter HMM = DateTimeFormatter.ofPattern("HH:mm");
 
-    public TaskPlanningState createPlanningState() {
-        return new TaskPlanningState();
-    }
-
     public void recordPreservedSlots(List<Task> tasks, LocalDate startInclusive, LocalDate endExclusive, TaskPlanningState state) {
         for (Task task : tasks) {
             for (TaskSlot slot : task.slots) {
@@ -181,7 +181,7 @@ public class DefaultTaskSlotGenerator {
                                     LocalDateTime windowStart,
                                     LocalDateTime windowEnd,
                                     TaskPlanningState state,
-                                    List<CalendarEvent> calendarEvents) {
+                                    List<TaskCalendarEvent> calendarEvents) {
         generateSlotsForDayInternal(tasks, windowStart, windowEnd, state, calendarEvents);
     }
 
@@ -189,7 +189,7 @@ public class DefaultTaskSlotGenerator {
                                              LocalDateTime windowStart,
                                              LocalDateTime windowEnd,
                                              TaskPlanningState state,
-                                             List<CalendarEvent> calendarEvents) {
+                                             List<TaskCalendarEvent> calendarEvents) {
         schedulingDay = windowStart.toLocalDate();
         newSlots = 0;
         scorer.reset();
@@ -397,7 +397,7 @@ public class DefaultTaskSlotGenerator {
         return gaps;
     }
 
-    private List<Interval> collectOccupiedIntervals(List<Task> tasks, LocalDate day, List<CalendarEvent> calendarEvents) {
+    private List<Interval> collectOccupiedIntervals(List<Task> tasks, LocalDate day, List<TaskCalendarEvent> calendarEvents) {
         List<Interval> intervals = new ArrayList<>();
         for (Task task : tasks) {
             for (TaskSlot slot : task.slots) {
@@ -409,7 +409,7 @@ public class DefaultTaskSlotGenerator {
                 }
             }
         }
-        for (CalendarEvent event : calendarEvents) {
+        for (TaskCalendarEvent event : calendarEvents) {
             if (event.start() == null || event.end() == null || !event.end().isAfter(event.start())) {
                 continue;
             }

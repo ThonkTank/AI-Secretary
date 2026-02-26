@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.data;
+package com.autosecretary.features.task.application.internal;
 
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
@@ -9,6 +9,10 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+
+import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.data.TaskPrefSlotFactory;
+import com.autosecretary.features.task.data.TaskPrerequisite;
 
 /**
  * Creates default demo tasks for first-run DB seeding.

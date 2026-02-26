@@ -67,6 +67,15 @@ public class Task {
         return 1;
     }
 
+    /** Returns the slot with the given id, or {@code null} if not found. */
+    public TaskSlot findSlot(String slotId) {
+        if (slotId == null || slots == null) return null;
+        for (TaskSlot slot : slots) {
+            if (slotId.equals(slot.id)) return slot;
+        }
+        return null;
+    }
+
     /**
      * Sets the task ID and cascades it to all related entities
      * (prefSlots, slots, and prerequisites) so their foreign keys stay consistent.
@@ -97,13 +106,6 @@ public class Task {
             core.history.totalDuration += (int) durationMinutes;
         }
     }
-
-    public void setParentId(String id) {
-        for (TaskRelation parent : parents) {
-            parent.parent = id;
-        }
-    }
-
 
     /** Empty constructor required by Room. */
     public Task() {}

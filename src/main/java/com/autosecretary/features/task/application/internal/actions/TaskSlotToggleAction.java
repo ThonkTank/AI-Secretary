@@ -37,7 +37,7 @@ public final class TaskSlotToggleAction {
             return;
         }
 
-        TaskSlot slot = findSlot(task, slotId);
+        TaskSlot slot = task.findSlot(slotId);
         if (slot == null) {
             return;
         }
@@ -100,16 +100,4 @@ public final class TaskSlotToggleAction {
         return null;
     }
 
-    private static TaskSlot findSlot(Task task, String slotId) {
-        if (task.slots == null) {
-            return null;
-        }
-
-        for (TaskSlot slot : task.slots) {
-            if (slotId.equals(slot.id)) {
-                return slot;
-            }
-        }
-        return null;
-    }
 }

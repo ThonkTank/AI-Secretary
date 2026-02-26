@@ -23,16 +23,6 @@ public class TaskLifecycleManager {
     // EMA smoothing factor: lower values adapt more slowly, higher values respond faster to recent completions
     private static final double DEFAULT_PREF_SLOT_EMA_ALPHA = 0.2;
 
-    private final double prefSlotEmaAlpha;
-
-    public TaskLifecycleManager() {
-        this(DEFAULT_PREF_SLOT_EMA_ALPHA);
-    }
-
-    public TaskLifecycleManager(double prefSlotEmaAlpha) {
-        this.prefSlotEmaAlpha = prefSlotEmaAlpha;
-    }
-
     /**
      * Advances {@code periodStart} to the current period boundary if the repetition period
      * has expired. Evaluates whether the rep goal was met in the expired period and breaks
@@ -109,28 +99,6 @@ public class TaskLifecycleManager {
     }
 
     /**
-     * Rebuilds {@code periodCompletions} by scanning all slots in the active period.
-     * Intended for repair/resync scenarios where incremental counters may have drifted.
-     */
-    public void recountPeriodCompletions(Task task) {
-        if (task.core.repetition == null || task.core.repetition.reps <= 0
-                || task.core.repetition.periodUnit == null) return;
-
-        TaskCore.Repetition rep = task.core.repetition;
-        LocalDate periodStart = rep.periodStart != null ? rep.periodStart : task.core.created;
-        LocalDate periodEnd = rep.periodEnd();
-        if (periodEnd == null) return;
-
-        int count = 0;
-        for (TaskSlot slot : task.slots) {
-            if (slot.completed && !slot.day.isBefore(periodStart) && slot.day.isBefore(periodEnd)) {
-                count++;
-            }
-        }
-        rep.periodCompletions = count;
-    }
-
-    /**
      * Shifts the best-matching {@link TaskPrefSlot#start} toward the actual completion time
      * ({@code slot.realStart}) using an exponential moving average. The smoothing factor
      * {@code alpha} controls adaptation speed (default 0.2). Result is rounded to 5 minutes.
@@ -156,7 +124,7 @@ public class TaskLifecycleManager {
 
         long prefMinutes = bestMatch.start.toSecondOfDay() / 60;
         long actualMinutes = slot.realStart.toSecondOfDay() / 60;
-        long newMinutes = Math.round(prefMinutes * (1 - prefSlotEmaAlpha) + actualMinutes * prefSlotEmaAlpha);
+        long newMinutes = Math.round(prefMinutes * (1 - DEFAULT_PREF_SLOT_EMA_ALPHA) + actualMinutes * DEFAULT_PREF_SLOT_EMA_ALPHA);
         newMinutes = Math.round(newMinutes / 5.0) * 5; // Round to nearest 5-minute granularity
 
         bestMatch.start = LocalTime.of((int) (newMinutes / 60), (int) (newMinutes % 60));
@@ -179,7 +147,7 @@ public class TaskLifecycleManager {
         long actualGapMinutes = Duration.between(prereqSlot.realEnd, dependentSlot.realStart).toMinutes();
         if (actualGapMinutes < 0) actualGapMinutes += 24 * 60;
 
-        long newGap = Math.round(prereq.minGapMinutes * (1 - prefSlotEmaAlpha) + actualGapMinutes * prefSlotEmaAlpha);
+        long newGap = Math.round(prereq.minGapMinutes * (1 - DEFAULT_PREF_SLOT_EMA_ALPHA) + actualGapMinutes * DEFAULT_PREF_SLOT_EMA_ALPHA);
         newGap = Math.round(newGap / 5.0) * 5;
         newGap = Math.max(0, newGap);
 

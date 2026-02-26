@@ -1,5 +1,7 @@
 package com.autosecretary.features.task.application.calendar;
 
+import com.autosecretary.features.task.domain.TaskCalendarEvent;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;

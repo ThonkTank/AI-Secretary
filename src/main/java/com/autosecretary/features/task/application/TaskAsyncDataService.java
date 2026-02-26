@@ -72,4 +72,11 @@ public class TaskAsyncDataService {
             callbackDispatcher.execute(onSaved);
         });
     }
+
+    public void deleteTask(String taskId, Runnable onDeleted) {
+        workerExecutor.execute(() -> {
+            taskDao.deleteTaskGraph(taskId);
+            callbackDispatcher.execute(onDeleted);
+        });
+    }
 }
