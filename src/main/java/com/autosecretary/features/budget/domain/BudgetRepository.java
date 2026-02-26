@@ -4,10 +4,6 @@ import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.data.entity.BudgetLimit;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
-import com.autosecretary.features.budget.data.projection.AccountDailyDeltaPoint;
-import com.autosecretary.features.budget.data.projection.AccountMonthlyDeltaPoint;
-import com.autosecretary.features.budget.data.projection.CategorySpendTotal;
-import com.autosecretary.features.budget.data.projection.MonthlyTransactionOverviewItem;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -37,10 +33,10 @@ public interface BudgetRepository {
     void saveBudgetLimit(BudgetLimit budgetLimit);
     void insertAccount(BudgetAccount account);
     void insertCategory(BudgetCategory category);
-    List<MonthlyTransactionOverviewItem> getMonthlyOverview(String yearMonth);
-    List<MonthlyTransactionOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId);
-    List<CategorySpendTotal> getCategorySpendTotals(String yearMonth);
-    List<AccountDailyDeltaPoint> getDailyDeltasForAccount(String accountId, LocalDate fromDate, LocalDate toDate);
-    List<AccountMonthlyDeltaPoint> getMonthlyDeltasForAccount(String accountId, String fromYearMonth, String toYearMonth);
+    List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth);
+    List<MonthlyOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId);
+    List<CategorySpendSummary> getCategorySpendTotals(String yearMonth);
+    List<DailyDeltaPoint> getDailyDeltasForAccount(String accountId, LocalDate fromDate, LocalDate toDate);
+    List<MonthlyDeltaPoint> getMonthlyDeltasForAccount(String accountId, String fromYearMonth, String toYearMonth);
     long getNetAmountBeforeDateForAccount(String accountId, LocalDate beforeDate);
 }

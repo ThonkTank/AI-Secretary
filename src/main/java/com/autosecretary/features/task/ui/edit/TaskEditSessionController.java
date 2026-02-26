@@ -9,6 +9,7 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.edit.internal.mapper.TaskEditStateMapper;
+import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 import java.util.ArrayList;
 

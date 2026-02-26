@@ -7,6 +7,8 @@ import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.edit.internal.mapper.TaskEditStateMapper;
+import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
+import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 import java.time.LocalDate;
 import java.util.List;

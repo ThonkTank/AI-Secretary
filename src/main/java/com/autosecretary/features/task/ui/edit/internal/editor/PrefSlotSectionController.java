@@ -18,7 +18,7 @@ import androidx.fragment.app.DialogFragment;
 
 import com.autosecretary.R;
 import com.autosecretary.shared.Period;
-import com.autosecretary.features.task.ui.edit.PrefSlotEditState;
+import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 import com.autosecretary.features.task.ui.edit.internal.PrefSlotUIBuilder;
 import com.google.android.material.button.MaterialButton;

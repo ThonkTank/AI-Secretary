@@ -23,7 +23,7 @@ import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
-import com.autosecretary.features.task.application.TaskListItemMapper;
+import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.TaskScheduleConfigRepository;
 import com.autosecretary.features.task.application.TaskScheduleConfigService;
 import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
@@ -31,7 +31,7 @@ import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
-import com.autosecretary.features.task.ui.TaskViewModelFactory;
+import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

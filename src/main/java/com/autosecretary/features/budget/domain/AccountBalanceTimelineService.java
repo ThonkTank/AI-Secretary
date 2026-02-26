@@ -1,8 +1,5 @@
 package com.autosecretary.features.budget.domain;
 
-import com.autosecretary.features.budget.data.projection.AccountDailyDeltaPoint;
-import com.autosecretary.features.budget.data.projection.AccountMonthlyDeltaPoint;
-
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -15,9 +12,9 @@ public class AccountBalanceTimelineService {
     public List<BalanceTimelinePoint> reconstructDaily(LocalDate fromDate,
                                                        LocalDate toDate,
                                                        long startBalanceCents,
-                                                       List<AccountDailyDeltaPoint> dailyDeltas) {
+                                                       List<DailyDeltaPoint> dailyDeltas) {
         Map<LocalDate, Long> deltaByDate = new HashMap<>();
-        for (AccountDailyDeltaPoint point : dailyDeltas) {
+        for (DailyDeltaPoint point : dailyDeltas) {
             if (point != null && point.bucketDate != null) {
                 deltaByDate.put(point.bucketDate, point.deltaCents);
             }
@@ -37,9 +34,9 @@ public class AccountBalanceTimelineService {
     public List<BalanceTimelinePoint> reconstructMonthly(YearMonth fromMonth,
                                                          YearMonth toMonth,
                                                          long startBalanceCents,
-                                                         List<AccountMonthlyDeltaPoint> monthlyDeltas) {
+                                                         List<MonthlyDeltaPoint> monthlyDeltas) {
         Map<YearMonth, Long> deltaByMonth = new HashMap<>();
-        for (AccountMonthlyDeltaPoint point : monthlyDeltas) {
+        for (MonthlyDeltaPoint point : monthlyDeltas) {
             if (point == null || point.yearMonth == null) continue;
             deltaByMonth.put(YearMonth.parse(point.yearMonth), point.deltaCents);
         }
