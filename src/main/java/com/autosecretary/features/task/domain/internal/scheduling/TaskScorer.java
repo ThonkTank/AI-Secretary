@@ -379,6 +379,7 @@ final class TaskScorer {
 
     private boolean isBelowRequiredProgressDuration(ScoringContext context) {
         return context.task.core.progress != null
+                && context.task.core.progress.hasTrackingTarget()
                 && context.availableTime < context.task.core.progress.requiredTimePerRep();
     }
 

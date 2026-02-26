@@ -503,7 +503,8 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                 return null;
             }
 
-            LocalDateTime end = cursor.plusMinutes(task.core.maxDuration);
+            int taskDuration = task.core.plannedDurationMinutes();
+            LocalDateTime end = cursor.plusMinutes(taskDuration);
             if (!end.isAfter(cursor) || end.isAfter(windowEnd)) {
                 return null;
             }
@@ -615,7 +616,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                         continue;
                     }
                     LocalDateTime start = chainStarts.get(i);
-                    prereqEnd = start.plusMinutes(n.task.core.maxDuration);
+                    prereqEnd = start.plusMinutes(n.task.core.plannedDurationMinutes());
                     break;
                 }
             }
@@ -723,13 +724,14 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             Task task = placement.chain.get(i).task;
             LocalDateTime start = placement.starts.get(i);
             TaskSlot slot = createScheduledSlot(task, start, placement.gainScore / placement.chain.size(), null);
-            slot.end = start.plusMinutes(task.core.maxDuration).toLocalTime();
+            int plannedDuration = task.core.plannedDurationMinutes();
+            slot.end = start.plusMinutes(plannedDuration).toLocalTime();
             slot.chainId = chainId;
             finalizeAssignment(task, slot, slot.score);
             if (planningState != null) {
                 planningState.recordScheduled(task.core.id, slot.day);
             }
-            occupied.add(new OccupiedInterval(start, start.plusMinutes(task.core.maxDuration), toCandidate(task, slot, true)));
+            occupied.add(new OccupiedInterval(start, start.plusMinutes(plannedDuration), toCandidate(task, slot, true)));
         }
         occupied.sort(Interval::compareTo);
     }
@@ -861,7 +863,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         if (task.core.fixedEnd != null) {
             return LocalDateTime.of(start.toLocalDate(), task.core.fixedEnd);
         }
-        int duration = task.core.fixedDuration != null ? task.core.fixedDuration : task.core.maxDuration;
+        int duration = task.core.fixedDuration != null ? task.core.fixedDuration : task.core.plannedDurationMinutes();
         return duration > 0 ? start.plusMinutes(duration) : null;
     }
 

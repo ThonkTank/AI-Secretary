@@ -48,7 +48,7 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
                 BudgetImportEntity.class,
                 BudgetRecurringTemplateEntity.class
         },
-        version = 19,
+        version = 20,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -217,6 +217,32 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+
+    private static final Migration MIGRATION_19_20 = new Migration(19, 20) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("""
+                    UPDATE task_core
+                    SET progress_totalTime = CASE
+                        WHEN progress_totalTime IS NULL OR progress_totalTime <= 0 THEN CASE
+                            WHEN maxDuration > 0 THEN maxDuration
+                            WHEN minDuration > 0 THEN minDuration
+                            ELSE 10
+                        END
+                        ELSE progress_totalTime
+                    END,
+                    progress_totalProgress = CASE
+                        WHEN progress_totalProgress < 0 THEN 0
+                        ELSE progress_totalProgress
+                    END,
+                    progress_minPerRep = CASE
+                        WHEN progress_target > 0 AND progress_minPerRep <= 0 THEN 1
+                        ELSE progress_minPerRep
+                    END
+                    """);
+        }
+    };
+
     public abstract TaskDAO taskDao();
 
     public abstract TaskScheduleConfigDAO taskScheduleConfigDao();
@@ -238,7 +264,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context, AppDatabase.class, DB_NAME)
-                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
+                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
                     .fallbackToDestructiveMigration()
                     .build();
         }
