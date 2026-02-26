@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.application.importing;
 
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.domain.ImportCategory;
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
 
 import java.nio.charset.StandardCharsets;
@@ -59,7 +59,7 @@ public class StatementFileParser {
                     "Kein Claude API-Key hinterlegt. Bitte in den Budget-Einstellungen setzen."
             );
         }
-        List<BudgetCategory> categories = importRepository.loadActiveCategoriesForImport();
+        List<ImportCategory> categories = importRepository.loadActiveCategoriesForImport();
         return claudeApiClient.parsePdf(apiKey, fileBytes, categories);
     }
 
