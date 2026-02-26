@@ -170,6 +170,8 @@ public class BudgetViewModel extends ViewModel {
                            Consumer<Runnable> postToMain,
                            BudgetImportUseCase importUseCase,
                            ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
+                           CreateTransferUseCase createTransferUseCase,
+                           AccountBalanceTimelineService balanceTimelineService,
                            CalculateFreeBudgetUseCase calculateFreeBudgetUseCase) {
         this.repository = repository;
         this.parser = parser;
@@ -177,8 +179,8 @@ public class BudgetViewModel extends ViewModel {
         this.postToMain = postToMain;
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
-        this.createTransferUseCase = new CreateTransferUseCase(repository);
-        this.balanceTimelineService = new AccountBalanceTimelineService();
+        this.createTransferUseCase = createTransferUseCase;
+        this.balanceTimelineService = balanceTimelineService;
         this.calculateFreeBudgetUseCase = calculateFreeBudgetUseCase;
         this.chartStateMapper = new BudgetChartStateMapper(DAILY_POINT_LABEL, MONTHLY_POINT_LABEL);
         this.summaryPresentationMapper = new BudgetSummaryPresentationMapper();
