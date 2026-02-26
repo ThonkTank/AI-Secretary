@@ -20,6 +20,7 @@ public class TaskEditFormInputReader {
     private final EditText minDurationView;
     private final EditText maxDurationView;
     private final EditText cooldownView;
+    private final EditText budgetRequirementCentsView;
     private final CheckBox adaptiveView;
 
     private final CheckBox toggleRepetition;
@@ -44,6 +45,7 @@ public class TaskEditFormInputReader {
         EditText minDurationView,
         EditText maxDurationView,
         EditText cooldownView,
+        EditText budgetRequirementCentsView,
         CheckBox adaptiveView,
         CheckBox toggleRepetition,
         EditText repsView,
@@ -67,6 +69,7 @@ public class TaskEditFormInputReader {
         this.minDurationView = minDurationView;
         this.maxDurationView = maxDurationView;
         this.cooldownView = cooldownView;
+        this.budgetRequirementCentsView = budgetRequirementCentsView;
         this.adaptiveView = adaptiveView;
 
         this.toggleRepetition = toggleRepetition;
@@ -112,6 +115,10 @@ public class TaskEditFormInputReader {
             cooldownView.getText().toString(),
             TaskEditPresenter.InputDefaults.COOLDOWN
         );
+        input.budgetRequirementCents = parseLongSafe(
+            budgetRequirementCentsView.getText().toString(),
+            TaskEditPresenter.InputDefaults.BUDGET_REQUIREMENT_CENTS
+        );
         input.adaptive = adaptiveView.isChecked();
 
         input.repetitionEnabled = toggleRepetition.isChecked();
@@ -150,4 +157,13 @@ public class TaskEditFormInputReader {
 
         return input;
     }
+
+    private long parseLongSafe(String s, long fallback) {
+        try {
+            return Long.parseLong(s.trim());
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
 }
+

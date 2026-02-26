@@ -69,6 +69,8 @@
     <string name="task_editor_range_separator">\u0020-\u0020</string>
     <string name="task_editor_hint_max">Max</string>
     <string name="task_editor_cooldown_label">Cooldown (Tage):</string>
+    <string name="task_editor_budget_requirement_label">Budgetbedarf (Cent):</string>
+    <string name="task_editor_budget_requirement_hint">z.B. 1500</string>
     <string name="task_editor_repetition_toggle">Wiederholung</string>
     <string name="task_editor_repetition_format">\u0020mal pro\u0020</string>
     <string name="task_editor_adaptive_times">Adaptive Zeiten</string>

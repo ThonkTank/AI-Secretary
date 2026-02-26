@@ -232,6 +232,37 @@
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 
+        <!-- Task-Budget (Cent) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="@dimen/spacing_sm">
+
+            <TextView
+                style="@style/TextAppearance.AISecretary.Editor.Label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/task_editor_budget_requirement_label"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="@dimen/spacing_sm"
+                android:hint="@string/task_editor_budget_requirement_hint">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/EditBudgetRequirementCents"
+                    style="@style/Widget.AISecretary.Editor.TextField"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"/>
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
         <!-- Repetition -->
         <CheckBox
             android:id="@+id/ToggleRepetition"

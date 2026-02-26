@@ -33,6 +33,7 @@ public class TaskCore {
     //scheduling
     public Priority priority = Priority.MEDIUM;
     public int cooldown = 1;
+    public long budgetRequirementCents = 0L;
     public LocalDate deadline;
     public LocalDate created = LocalDate.now();
     public boolean closeOnMiss = true; // When deadline/period end is exceeded, close the task instead of keeping it open?

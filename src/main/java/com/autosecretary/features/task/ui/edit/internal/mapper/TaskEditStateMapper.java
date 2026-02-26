@@ -30,6 +30,7 @@ public class TaskEditStateMapper {
         state.minDuration = task.core.minDuration;
         state.maxDuration = task.core.maxDuration;
         state.cooldown = task.core.cooldown;
+        state.budgetRequirementCents = task.core.budgetRequirementCents;
         state.adaptive = task.core.adaptive;
 
         state.reps = task.core.repetition.reps;
@@ -75,6 +76,7 @@ public class TaskEditStateMapper {
         task.core.minDuration = state.minDuration;
         task.core.maxDuration = state.maxDuration;
         task.core.cooldown = state.cooldown;
+        task.core.budgetRequirementCents = Math.max(0L, state.budgetRequirementCents);
         task.core.adaptive = state.adaptive;
 
         task.core.repetition.reps = state.reps;

@@ -25,6 +25,7 @@ public class TaskEditState {
     public int minDuration = 5;
     public int maxDuration = 10;
     public int cooldown = 1;
+    public long budgetRequirementCents = 0L;
     public boolean adaptive;
 
     public int reps;

@@ -70,6 +70,7 @@ public class TaskEditSectionBinder {
         EditText minDurationView = rootView.findViewById(R.id.EditMinDuration);
         EditText maxDurationView = rootView.findViewById(R.id.EditMaxDuration);
         EditText cooldownView = rootView.findViewById(R.id.EditCooldown);
+        EditText budgetRequirementCentsView = rootView.findViewById(R.id.EditBudgetRequirementCents);
         CheckBox adaptiveView = rootView.findViewById(R.id.EditAdaptive);
 
         SchedulingViews views = new SchedulingViews(
@@ -79,6 +80,7 @@ public class TaskEditSectionBinder {
             minDurationView,
             maxDurationView,
             cooldownView,
+            budgetRequirementCentsView,
             adaptiveView
         );
 
@@ -94,6 +96,7 @@ public class TaskEditSectionBinder {
         minDurationView.setText(String.valueOf(editState.minDuration));
         maxDurationView.setText(String.valueOf(editState.maxDuration));
         cooldownView.setText(String.valueOf(editState.cooldown));
+        budgetRequirementCentsView.setText(String.valueOf(editState.budgetRequirementCents));
         adaptiveView.setChecked(editState.adaptive);
 
         return views;
@@ -242,6 +245,7 @@ public class TaskEditSectionBinder {
         public final EditText minDurationView;
         public final EditText maxDurationView;
         public final EditText cooldownView;
+        public final EditText budgetRequirementCentsView;
         public final CheckBox adaptiveView;
 
         private SchedulingViews(
@@ -251,6 +255,7 @@ public class TaskEditSectionBinder {
             EditText minDurationView,
             EditText maxDurationView,
             EditText cooldownView,
+            EditText budgetRequirementCentsView,
             CheckBox adaptiveView
         ) {
             this.deadlineView = deadlineView;
@@ -259,6 +264,7 @@ public class TaskEditSectionBinder {
             this.minDurationView = minDurationView;
             this.maxDurationView = maxDurationView;
             this.cooldownView = cooldownView;
+            this.budgetRequirementCentsView = budgetRequirementCentsView;
             this.adaptiveView = adaptiveView;
         }
     }

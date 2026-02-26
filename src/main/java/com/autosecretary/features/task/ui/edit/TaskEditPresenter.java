@@ -105,6 +105,7 @@ public class TaskEditPresenter {
         editState.minDuration = safeInput.minDuration;
         editState.maxDuration = safeInput.maxDuration;
         editState.cooldown = safeInput.cooldown;
+        editState.budgetRequirementCents = Math.max(0L, safeInput.budgetRequirementCents);
         editState.adaptive = safeInput.adaptive;
 
         updateOrResetRepetition(safeInput);
@@ -192,6 +193,7 @@ public class TaskEditPresenter {
         public static final int MIN_DURATION = 5;
         public static final int MAX_DURATION = 10;
         public static final int COOLDOWN = 1;
+        public static final long BUDGET_REQUIREMENT_CENTS = 0L;
 
         public static final int REPETITION_REPS = 1;
         public static final int REPETITION_PER_PERIOD = 1;
@@ -219,6 +221,7 @@ public class TaskEditPresenter {
         public int minDuration = InputDefaults.MIN_DURATION;
         public int maxDuration = InputDefaults.MAX_DURATION;
         public int cooldown = InputDefaults.COOLDOWN;
+        public long budgetRequirementCents = InputDefaults.BUDGET_REQUIREMENT_CENTS;
         public boolean adaptive;
 
         public boolean repetitionEnabled;

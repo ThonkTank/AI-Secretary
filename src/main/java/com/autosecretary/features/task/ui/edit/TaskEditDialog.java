@@ -48,6 +48,7 @@ public class TaskEditDialog extends DialogFragment {
     private EditText minDurationView;
     private EditText maxDurationView;
     private EditText cooldownView;
+    private EditText budgetRequirementCentsView;
 
     private CheckBox toggleRepetition;
     private EditText repsView;
@@ -82,6 +83,7 @@ public class TaskEditDialog extends DialogFragment {
         minDurationView = sectionBindings.minDurationView;
         maxDurationView = sectionBindings.maxDurationView;
         cooldownView = sectionBindings.cooldownView;
+        budgetRequirementCentsView = sectionBindings.budgetRequirementCentsView;
         toggleRepetition = sectionBindings.toggleRepetition;
         repsView = sectionBindings.repsView;
         perPeriodView = sectionBindings.perPeriodView;
@@ -183,6 +185,7 @@ public class TaskEditDialog extends DialogFragment {
             minDurationView,
             maxDurationView,
             cooldownView,
+            budgetRequirementCentsView,
             adaptiveView,
             toggleRepetition,
             repsView,
@@ -204,6 +207,7 @@ public class TaskEditDialog extends DialogFragment {
             minDurationView,
             maxDurationView,
             cooldownView,
+            budgetRequirementCentsView,
             toggleRepetition,
             repsView,
             perPeriodView,
@@ -224,6 +228,7 @@ public class TaskEditDialog extends DialogFragment {
         private final EditText minDurationView;
         private final EditText maxDurationView;
         private final EditText cooldownView;
+        private final EditText budgetRequirementCentsView;
         private final CheckBox toggleRepetition;
         private final EditText repsView;
         private final EditText perPeriodView;
@@ -251,6 +256,7 @@ public class TaskEditDialog extends DialogFragment {
             minDurationView = schedulingViews.minDurationView;
             maxDurationView = schedulingViews.maxDurationView;
             cooldownView = schedulingViews.cooldownView;
+            budgetRequirementCentsView = schedulingViews.budgetRequirementCentsView;
 
             toggleRepetition = repetitionViews.toggleRepetition;
             repsView = repetitionViews.repsView;
