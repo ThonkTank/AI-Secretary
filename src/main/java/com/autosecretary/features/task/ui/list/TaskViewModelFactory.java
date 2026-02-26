@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.autosecretary.app.Preferences;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.DecrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.DeleteTaskUseCase;
@@ -13,6 +14,7 @@ import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
 import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
+import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 
 public class TaskViewModelFactory implements ViewModelProvider.Factory {
     private final Application app;
@@ -47,15 +49,25 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
     @SuppressWarnings("unchecked")
     public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
         if (modelClass.isAssignableFrom(TaskViewModel.class)) {
+            TaskEditSessionController taskEditSessionController = new TaskEditSessionController(
+                    taskAsyncDataService,
+                    deleteTaskUseCase
+            );
+            TaskListProjectionService taskListProjectionService = new TaskListProjectionService(
+                    app,
+                    calendarReader,
+                    new Preferences(app)
+            );
+
             return (T) new TaskViewModel(
                     app,
                     taskAsyncDataService,
                     checkOffTaskUseCase,
                     regenerateScheduleUseCase,
-                    deleteTaskUseCase,
-                    calendarReader,
                     incrementTaskProgressUseCase,
-                    decrementTaskProgressUseCase
+                    decrementTaskProgressUseCase,
+                    taskEditSessionController,
+                    taskListProjectionService
             );
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
