@@ -15,6 +15,7 @@ import com.autosecretary.R;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
 import java.time.DayOfWeek;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -159,24 +160,11 @@ public class BudgetRecurringSuggestionsDialogController {
                     suggestion.suggestedValue());
             case MONTHLY_LAST -> fragment.getString(R.string.budget_recurring_pattern_monthly_last);
             case WEEKLY -> fragment.getString(R.string.budget_recurring_pattern_weekly,
-                    getDayName(suggestion.suggestedDayOfWeek()));
+                    suggestion.suggestedDayOfWeek() != null
+                            ? suggestion.suggestedDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.GERMAN)
+                            : "");
             case INTERVAL -> fragment.getString(R.string.budget_recurring_pattern_interval,
                     suggestion.suggestedValue());
-        };
-    }
-
-    private String getDayName(DayOfWeek dow) {
-        if (dow == null) {
-            return "";
-        }
-        return switch (dow) {
-            case MONDAY -> "Mo";
-            case TUESDAY -> "Di";
-            case WEDNESDAY -> "Mi";
-            case THURSDAY -> "Do";
-            case FRIDAY -> "Fr";
-            case SATURDAY -> "Sa";
-            case SUNDAY -> "So";
         };
     }
 

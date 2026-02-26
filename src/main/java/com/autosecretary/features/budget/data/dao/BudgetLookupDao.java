@@ -34,6 +34,9 @@ public interface BudgetLookupDao {
     @Query("UPDATE budget_account SET currentBalanceCents = :balanceCents WHERE id = :accountId")
     void updateCurrentBalanceCents(String accountId, long balanceCents);
 
+    @Query("SELECT id FROM budget_category WHERE type = :type AND archived = 0 LIMIT 1")
+    String findDefaultCategoryId(String type);
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void insertAccount(BudgetAccount account);
 

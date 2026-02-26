@@ -1,4 +1,6 @@
-package com.autosecretary.features.budget.domain;
+package com.autosecretary.features.budget.domain.internal.recurring;
+
+import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 
 import java.util.List;
 
@@ -9,7 +11,7 @@ public final class SuggestionScorer {
     private static final double OCCURRENCE_CAP = 10.0;
     private static final double OCCURRENCE_WEIGHT = 0.3;
     private static final double AMOUNT_VARIANCE_WEIGHT = 0.3;
-    private static final double PATTERN_TYPE_WEIGHT = 0.3;
+    private static final double PATTERN_TYPE_BONUS = 0.3;
     private static final double KNOWN_SUBSCRIPTION_WEIGHT = 0.1;
 
     private static final String[] KNOWN_SUBSCRIPTION_PATTERNS = {
@@ -35,9 +37,7 @@ public final class SuggestionScorer {
             score += Math.max(AMOUNT_VARIANCE_WEIGHT - variance, 0);
         }
 
-        if (pattern.type() != null) {
-            score += PATTERN_TYPE_WEIGHT;
-        }
+        score += PATTERN_TYPE_BONUS;
 
         String normalized = txList.get(0).payee != null ? PayeeGrouper.normalizePayee(txList.get(0).payee) : "";
         if (isKnownSubscription(normalized)) {

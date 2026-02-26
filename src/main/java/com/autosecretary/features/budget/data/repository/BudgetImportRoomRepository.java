@@ -10,12 +10,15 @@ import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateD
 import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateEntity;
 import com.autosecretary.features.budget.data.projection.AccountBalanceTotal;
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
-import com.autosecretary.features.budget.domain.ImportCategory;
-import com.autosecretary.features.budget.domain.ImportTransactionRecord;
+import com.autosecretary.features.budget.domain.importing.ImportCategory;
+import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
+import com.autosecretary.features.budget.domain.internal.RecurringTemplateScheduler;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Room-Implementierung der BudgetImportRepository-Schnittstelle.
@@ -86,7 +89,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     @Override
     public String findDefaultCategoryId(boolean income) {
         String type = income ? "INCOME" : "EXPENSE";
-        return transactionDao.findDefaultCategoryId(type);
+        return lookupDao.findDefaultCategoryId(type);
     }
 
     @Override
@@ -149,38 +152,9 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     @Override
     public void synchronizeRecurringTemplateState(LocalDate referenceDate) {
         for (BudgetRecurringTemplateEntity template : templateDao.findAllActiveTemplates()) {
-            LocalDate dueDate = template.nextDue != null ? template.nextDue : referenceDate;
-            boolean active = true;
-
-            if ("WEEKLY".equals(template.recurringType) && template.recurringDayOfWeek != null) {
-                while (dueDate.isBefore(referenceDate)
-                        || dueDate.getDayOfWeek() != template.recurringDayOfWeek) {
-                    dueDate = dueDate.plusDays(1);
-                }
-            } else if ("INTERVAL".equals(template.recurringType)) {
-                int intervalDays = Math.max(1, template.recurringValue);
-                while (dueDate.isBefore(referenceDate)) {
-                    dueDate = dueDate.plusDays(intervalDays);
-                }
-            } else if ("MONTHLY_DAY".equals(template.recurringType)) {
-                if (template.recurringValue < 1 || template.recurringValue > 31) {
-                    active = false;
-                } else {
-                    while (dueDate.isBefore(referenceDate)) {
-                        LocalDate nextMonth = dueDate.plusMonths(1);
-                        dueDate = nextMonth.withDayOfMonth(Math.min(template.recurringValue, nextMonth.lengthOfMonth()));
-                    }
-                }
-            } else if ("MONTHLY_LAST".equals(template.recurringType)) {
-                while (dueDate.isBefore(referenceDate)) {
-                    LocalDate nextMonth = dueDate.plusMonths(1);
-                    dueDate = nextMonth.withDayOfMonth(nextMonth.lengthOfMonth());
-                }
-            } else if (template.nextDue == null) {
-                active = false;
-            }
-
-            templateDao.updateNextDueAndStatus(template.id, dueDate, active);
+            LocalDate nextDue = RecurringTemplateScheduler.computeNextDue(template, referenceDate);
+            boolean active = nextDue != null;
+            templateDao.updateNextDueAndStatus(template.id, active ? nextDue : template.nextDue, active);
         }
     }
 
@@ -191,36 +165,34 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
 
     private void updateAccountBalances() {
         List<AccountBalanceTotal> totals = transactionDao.getAccountBalanceTotals();
+        Map<String, Long> balanceByAccount = new HashMap<>();
+        for (AccountBalanceTotal total : totals) {
+            balanceByAccount.put(total.accountId, total.balanceCents);
+        }
         for (BudgetAccount account : lookupDao.getActiveAccounts()) {
-            long balance = 0;
-            for (AccountBalanceTotal total : totals) {
-                if (account.id.equals(total.accountId)) {
-                    balance = total.balanceCents;
-                    break;
-                }
-            }
+            long balance = balanceByAccount.getOrDefault(account.id, 0L);
             lookupDao.updateCurrentBalanceCents(account.id, balance);
         }
     }
 
     private BudgetTransactionEntity toEntity(ImportTransactionRecord record) {
         BudgetTransactionEntity.TransactionType txType =
-                "EXPENSE".equals(record.type) ? BudgetTransactionEntity.TransactionType.EXPENSE
+                "EXPENSE".equals(record.type()) ? BudgetTransactionEntity.TransactionType.EXPENSE
                         : BudgetTransactionEntity.TransactionType.INCOME;
         BudgetTransactionEntity entity = new BudgetTransactionEntity(
-                record.accountId,
-                record.categoryId,
+                record.accountId(),
+                record.categoryId(),
                 txType,
-                record.amountCents,
-                record.bookingDate,
-                record.yearMonth
+                record.amountCents(),
+                record.bookingDate(),
+                record.yearMonth()
         );
-        entity.id = record.id;
-        entity.note = record.note;
-        entity.importHash = record.importHash;
-        entity.payee = record.payee;
-        entity.importId = record.importId;
-        entity.templateId = record.templateId;
+        entity.id = record.id();
+        entity.note = record.note();
+        entity.importHash = record.importHash();
+        entity.payee = record.payee();
+        entity.importId = record.importId();
+        entity.templateId = record.templateId();
         return entity;
     }
 

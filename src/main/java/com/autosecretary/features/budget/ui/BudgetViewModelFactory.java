@@ -8,11 +8,8 @@ import com.autosecretary.features.budget.application.AmountParser;
 import com.autosecretary.features.budget.application.BudgetSeedService;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
-import com.autosecretary.features.budget.application.importing.StatementFileParser;
 import com.autosecretary.features.budget.application.CreateTransferUseCase;
-import com.autosecretary.features.budget.domain.AccountBalanceTimelineService;
 import com.autosecretary.features.budget.domain.BudgetRepository;
-import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.ui.internal.BudgetChartStateMapper;
 import com.autosecretary.features.budget.ui.internal.BudgetOverviewLoader;
 import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
@@ -30,33 +27,24 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
             DateTimeFormatter.ofPattern("MMM yy", Locale.GERMAN);
 
     private final BudgetRepository repository;
-    private final StatementFileParser parser;
     private final ExecutorService executor;
     private final Consumer<Runnable> postToMain;
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
     private final CreateTransferUseCase createTransferUseCase;
-    private final AccountBalanceTimelineService balanceTimelineService;
-    private final CalculateFreeBudgetUseCase calculateFreeBudgetUseCase;
 
     public BudgetViewModelFactory(BudgetRepository repository,
-                                  StatementFileParser parser,
                                   ExecutorService executor,
                                   Consumer<Runnable> postToMain,
                                   BudgetImportUseCase importUseCase,
                                   ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
-                                  CreateTransferUseCase createTransferUseCase,
-                                  AccountBalanceTimelineService balanceTimelineService,
-                                  CalculateFreeBudgetUseCase calculateFreeBudgetUseCase) {
+                                  CreateTransferUseCase createTransferUseCase) {
         this.repository = repository;
-        this.parser = parser;
         this.executor = executor;
         this.postToMain = postToMain;
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
         this.createTransferUseCase = createTransferUseCase;
-        this.balanceTimelineService = balanceTimelineService;
-        this.calculateFreeBudgetUseCase = calculateFreeBudgetUseCase;
     }
 
     @NonNull
@@ -69,12 +57,10 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
             BudgetSummaryPresentationMapper summaryPresentationMapper = new BudgetSummaryPresentationMapper();
             BudgetOverviewLoader overviewLoader = new BudgetOverviewLoader(
                     repository,
-                    calculateFreeBudgetUseCase,
                     summaryPresentationMapper,
-                    balanceTimelineService,
                     chartStateMapper);
             return modelClass.cast(new BudgetViewModel(
-                    repository, parser, executor, postToMain,
+                    repository, executor, postToMain,
                     importUseCase,
                     applyRecurringUseCase,
                     createTransferUseCase,

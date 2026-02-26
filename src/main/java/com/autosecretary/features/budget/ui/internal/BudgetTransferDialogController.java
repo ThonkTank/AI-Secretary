@@ -2,7 +2,6 @@ package com.autosecretary.features.budget.ui.internal;
 
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 
 import androidx.appcompat.app.AlertDialog;
@@ -56,11 +55,8 @@ public class BudgetTransferDialogController {
         for (BudgetAccount account : accounts) {
             accountNames.add(account.name);
         }
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(fragment.requireContext(),
-                android.R.layout.simple_spinner_item, accountNames);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        sourceAccountSpinner.setAdapter(adapter);
-        targetAccountSpinner.setAdapter(adapter);
+        SpinnerHelper.bindNames(sourceAccountSpinner, accountNames, fragment.requireContext());
+        SpinnerHelper.bindNames(targetAccountSpinner, accountNames, fragment.requireContext());
         targetAccountSpinner.setSelection(1);
 
         dateInput.setText(LocalDate.now().toString());

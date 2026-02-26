@@ -2,7 +2,7 @@ package com.autosecretary.features.budget.application.importing;
 
 import android.util.Base64;
 
-import com.autosecretary.features.budget.domain.ImportCategory;
+import com.autosecretary.features.budget.domain.importing.ImportCategory;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -104,32 +104,24 @@ public class ClaudeStatementApiClient {
         return body;
     }
 
-    private String buildSystemPrompt(List<ImportCategory> categories) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Du extrahierst Banktransaktionen aus Kontoauszügen. ")
-                .append("Antwortformat: JSON Objekt mit Feldern period_start, period_end, transactions. ")
-                .append("transactions ist ein Array von Objekten mit date (YYYY-MM-DD), amount_cents (int), ")
-                .append("payee (string|null), description (string|null), category_id (string|null), hash (string|null). ")
-                .append("Nutze nur gültige category_id aus dieser Liste: ");
-        if (categories == null || categories.isEmpty()) {
-            sb.append("[]");
-        } else {
-            sb.append("[");
-            for (int i = 0; i < categories.size(); i++) {
-                ImportCategory category = categories.get(i);
-                if (i > 0) {
-                    sb.append(", ");
-                }
-                sb.append("{")
-                        .append("id:").append(category.id)
-                        .append(",name:").append(category.name)
-                        .append(",type:").append(category.type)
-                        .append("}");
+    private String buildSystemPrompt(List<ImportCategory> categories) throws JSONException {
+        JSONArray categoryArray = new JSONArray();
+        if (categories != null) {
+            for (ImportCategory category : categories) {
+                JSONObject cat = new JSONObject();
+                cat.put("id", category.id());
+                cat.put("name", category.name());
+                cat.put("type", category.type());
+                categoryArray.put(cat);
             }
-            sb.append("]");
         }
-        sb.append(" Kein Markdown, keine Kommentare.");
-        return sb.toString();
+        return "Du extrahierst Banktransaktionen aus Kontoauszügen. "
+                + "Antwortformat: JSON Objekt mit Feldern period_start, period_end, transactions. "
+                + "transactions ist ein Array von Objekten mit date (YYYY-MM-DD), amount_cents (int), "
+                + "payee (string|null), description (string|null), category_id (string|null), hash (string|null). "
+                + "Nutze nur gültige category_id aus dieser Liste: "
+                + categoryArray
+                + " Kein Markdown, keine Kommentare.";
     }
 
     private StatementFileParser.ParsedStatement parseSuccessResponse(String responseBody) throws JSONException {

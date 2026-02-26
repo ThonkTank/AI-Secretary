@@ -6,5 +6,5 @@ public class CategorySpendSummary {
     public String categoryIcon;
     public String categoryColorHex;
     public long spentCents;
-    public double limitAmount;
+    public long limitAmountCents;
 }

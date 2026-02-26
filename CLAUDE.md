@@ -432,7 +432,7 @@ Common scopes: `ui`, `build`, `domain`, `data`, `scheduling`.
 - **Room 2.6.1** for persistence, annotation processor (not KSP)
 - **AGP 8.7.3**, **Gradle 8.10.2** (use `./gradlew` wrapper)
 - **XML layouts** in `src/main/res/layout/` (`activity_main`, `fragment_task_list`, `task_row`, `fragment_task_editor`), menu in `src/main/res/menu/bottom_nav.xml`
-- **Room DB version 6**, `exportSchema = false`, `fallbackToDestructiveMigration()` enabled — any schema change just needs a version bump (data will be destroyed on upgrade). No manual migrations exist. `AppDatabase.getInstance()` is `synchronized` (thread-safe singleton)
+- **Room DB version 13**, `exportSchema = false`. Schema changes require only a version bump — Room destroys and recreates the database automatically (`fallbackToDestructiveMigration()`). **Manual migrations (`Migration` subclasses, `.addMigrations(...)`) are strictly forbidden — do not add them.** `AppDatabase.getInstance()` is `synchronized` (thread-safe singleton)
 - **`android.nonTransitiveRClass=true`** in `gradle.properties` — resource references must use the app's own R class
 - **Package**: `com.autosecretary`
 - **Single Activity + Fragments**: `app.MainActivity` hosts fragments via `FragmentContainerView`

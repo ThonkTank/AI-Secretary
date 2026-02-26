@@ -1,4 +1,6 @@
-package com.autosecretary.features.budget.domain;
+package com.autosecretary.features.budget.domain.internal.recurring;
+
+import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -59,9 +61,6 @@ public final class PayeeGrouper {
 
         int distance = levenshteinDistance(a, b);
         int maxLength = Math.max(a.length(), b.length());
-        if (maxLength == 0) {
-            return 1.0;
-        }
         return 1.0 - ((double) distance / maxLength);
     }
 

@@ -1,5 +1,9 @@
 package com.autosecretary.features.budget.domain;
 
+import com.autosecretary.features.budget.domain.internal.recurring.DatePatternDetector;
+import com.autosecretary.features.budget.domain.internal.recurring.PayeeGrouper;
+import com.autosecretary.features.budget.domain.internal.recurring.SuggestionScorer;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -90,6 +94,8 @@ public final class RecurringPatternDetector {
                 .map(Map.Entry::getKey)
                 .orElse(null);
 
+        // Restore sign: amounts were computed as absolute values; if expense, negate and swap
+        // min↔max because negating reverses ordering.
         if (transactions.get(0).amountCents < 0) {
             avgAmount = -avgAmount;
             int tmp = minAmount;

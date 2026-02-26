@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.ui.internal;
 
-import com.autosecretary.features.budget.domain.BalanceTimelinePoint;
+import com.autosecretary.features.budget.domain.timeline.BalanceTimelinePoint;
 import com.autosecretary.features.budget.ui.BudgetViewModel;
 import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
 
@@ -23,9 +23,9 @@ public class BudgetChartStateMapper {
         List<BudgetChartPoint> points = new ArrayList<>();
         for (BalanceTimelinePoint point : series) {
             String label = filter == BudgetViewModel.TimeRangeFilter.DAYS_30
-                    ? point.getDate().format(dailyLabelFormatter)
-                    : point.getDate().format(monthlyLabelFormatter);
-            points.add(new BudgetChartPoint(label, point.getBalanceCents()));
+                    ? point.date().format(dailyLabelFormatter)
+                    : point.date().format(monthlyLabelFormatter);
+            points.add(new BudgetChartPoint(label, point.balanceCents()));
         }
         return points;
     }

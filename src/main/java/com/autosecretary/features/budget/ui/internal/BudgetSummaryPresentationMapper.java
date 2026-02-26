@@ -34,7 +34,7 @@ public class BudgetSummaryPresentationMapper {
                                              String yearMonth) {
         List<BudgetLimitBar> bars = new ArrayList<>();
         for (CategorySpendSummary total : totals) {
-            if (total.limitAmount <= 0) {
+            if (total.limitAmountCents <= 0) {
                 continue;
             }
             String icon = total.categoryIcon != null && !total.categoryIcon.trim().isEmpty()
@@ -43,14 +43,14 @@ public class BudgetSummaryPresentationMapper {
             Long effectiveLimitCents = effectiveLimitProvider.getEffectiveLimitCents(total.categoryId, yearMonth);
             double effectiveLimitEuros = effectiveLimitCents != null
                     ? (effectiveLimitCents / 100.0)
-                    : total.limitAmount;
+                    : (total.limitAmountCents / 100.0);
 
             bars.add(new BudgetLimitBar(
                     total.categoryId,
                     label,
                     total.categoryColorHex,
                     total.spentCents,
-                    total.limitAmount,
+                    total.limitAmountCents / 100.0,
                     effectiveLimitEuros));
         }
         return bars;

@@ -9,7 +9,6 @@ import com.autosecretary.features.budget.application.AmountParser;
 import com.autosecretary.features.budget.application.BudgetSeedService;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
-import com.autosecretary.features.budget.application.importing.StatementFileParser;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.data.entity.BudgetLimit;
@@ -23,6 +22,7 @@ import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
 import com.autosecretary.features.budget.ui.state.BudgetImportDialogState;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
 import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
+import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -48,81 +48,6 @@ public class BudgetViewModel extends ViewModel {
         MONTHS_12
     }
 
-    public static class BudgetTransactionRow {
-        private final String transactionId;
-        private final String label;
-        private final String amount;
-        private final boolean isExpense;
-        private final String categoryColorHex;
-        private final long amountCents;
-        private final BudgetTransactionEntity.TransactionType type;
-        private final String categoryId;
-        private final String note;
-        private final LocalDate bookingDate;
-        private final String accountId;
-
-        public BudgetTransactionRow(String transactionId, String label, String amount, boolean isExpense,
-                                    String categoryColorHex, long amountCents,
-                                    BudgetTransactionEntity.TransactionType type, String categoryId,
-                                    String note, LocalDate bookingDate, String accountId) {
-            this.transactionId = transactionId;
-            this.label = label;
-            this.amount = amount;
-            this.isExpense = isExpense;
-            this.categoryColorHex = categoryColorHex;
-            this.amountCents = amountCents;
-            this.type = type;
-            this.categoryId = categoryId;
-            this.note = note;
-            this.bookingDate = bookingDate;
-            this.accountId = accountId;
-        }
-
-        public String getTransactionId() {
-            return transactionId;
-        }
-
-        public String getLabel() {
-            return label;
-        }
-
-        public String getAmount() {
-            return amount;
-        }
-
-        public boolean isExpense() {
-            return isExpense;
-        }
-
-        public String getCategoryColorHex() {
-            return categoryColorHex;
-        }
-
-        public long getAmountCents() {
-            return amountCents;
-        }
-
-        public BudgetTransactionEntity.TransactionType getType() {
-            return type;
-        }
-
-        public String getCategoryId() {
-            return categoryId;
-        }
-
-        public String getNote() {
-            return note;
-        }
-
-        public LocalDate getBookingDate() {
-            return bookingDate;
-        }
-
-        public String getAccountId() {
-            return accountId;
-        }
-    }
-
     private static final DateTimeFormatter MONTH_FORMATTER =
             DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN);
 
@@ -141,7 +66,6 @@ public class BudgetViewModel extends ViewModel {
     private final MutableLiveData<List<BudgetLimitBar>> budgetLimits = new MutableLiveData<>(new ArrayList<>());
 
     private final BudgetRepository repository;
-    private final StatementFileParser parser;
     private final ExecutorService executor;
     private final Consumer<Runnable> postToMain;
     private final BudgetImportUseCase importUseCase;
@@ -153,7 +77,6 @@ public class BudgetViewModel extends ViewModel {
     private final AmountParser amountParser;
 
     public BudgetViewModel(BudgetRepository repository,
-                           StatementFileParser parser,
                            ExecutorService executor,
                            Consumer<Runnable> postToMain,
                            BudgetImportUseCase importUseCase,
@@ -163,7 +86,6 @@ public class BudgetViewModel extends ViewModel {
                            BudgetOverviewLoader budgetOverviewLoader,
                            AmountParser amountParser) {
         this.repository = repository;
-        this.parser = parser;
         this.executor = executor;
         this.postToMain = postToMain;
         this.importUseCase = importUseCase;
@@ -214,10 +136,10 @@ public class BudgetViewModel extends ViewModel {
         executor.execute(() -> {
             BudgetSeedService.SeedResult seedResult = budgetSeedService.ensureDefaultData(selectedAccountId.getValue());
             postToMain.accept(() -> {
-                categories.setValue(seedResult.getCategories());
-                accounts.setValue(seedResult.getAccounts());
-                if (selectedAccountId.getValue() == null && seedResult.getSelectedAccountId() != null) {
-                    selectedAccountId.setValue(seedResult.getSelectedAccountId());
+                categories.setValue(seedResult.categories());
+                accounts.setValue(seedResult.accounts());
+                if (selectedAccountId.getValue() == null && seedResult.selectedAccountId() != null) {
+                    selectedAccountId.setValue(seedResult.selectedAccountId());
                 }
             });
             loadOverviewOnExecutor();
@@ -450,44 +372,38 @@ public class BudgetViewModel extends ViewModel {
     public void importFromCsv(String fileName, byte[] bytes, String mimeType) {
         postToMain.accept(() -> uiState.setValue(BudgetUiState.LOADING));
 
-        String accountId;
-        List<BudgetAccount> accountList = repository.findActiveAccounts();
-        accountId = BudgetOverviewLoader.resolveSelectedAccountId(selectedAccountId.getValue(), accountList);
-        if (accountId == null) {
-            postToMain.accept(() -> {
-                uiState.setValue(BudgetUiState.ERROR);
-                statusMessage.setValue("Kein Konto vorhanden.");
-            });
-            return;
-        }
-
-        importUseCase.executeAsync(accountId, fileName, bytes, mimeType, new BudgetImportUseCase.ImportCallback() {
-            @Override
-            public void onProgress(String message) {
-                postToMain.accept(() -> statusMessage.setValue(message));
-            }
-
-            @Override
-            public void onSuccess(BudgetImportUseCase.ImportResult result) {
-                loadOverview();
-                postToMain.accept(() -> {
-                    String msg = result.newTransactions() + " neu, "
-                            + result.duplicates() + " Duplikate, "
-                            + result.autoCategorized() + " auto-kategorisiert.";
-                    statusMessage.setValue(msg);
-                    importDialogState.setValue(result == null
-                            ? null
-                            : new BudgetImportDialogState(result.recurringSuggestions()));
-                });
-            }
-
-            @Override
-            public void onError(String errorMessage) {
+        executor.execute(() -> {
+            List<BudgetAccount> accountList = repository.findActiveAccounts();
+            String accountId = BudgetOverviewLoader.resolveSelectedAccountId(selectedAccountId.getValue(), accountList);
+            if (accountId == null) {
                 postToMain.accept(() -> {
                     uiState.setValue(BudgetUiState.ERROR);
-                    statusMessage.setValue("Import fehlgeschlagen: " + errorMessage);
+                    statusMessage.setValue("Kein Konto vorhanden.");
                 });
+                return;
             }
+
+            importUseCase.executeAsync(accountId, fileName, bytes, mimeType, new BudgetImportUseCase.ImportCallback() {
+                @Override
+                public void onSuccess(BudgetImportUseCase.ImportResult result) {
+                    loadOverview();
+                    postToMain.accept(() -> {
+                        String msg = result.newTransactions() + " neu, "
+                                + result.duplicates() + " Duplikate, "
+                                + result.autoCategorized() + " auto-kategorisiert.";
+                        statusMessage.setValue(msg);
+                        importDialogState.setValue(new BudgetImportDialogState(result.recurringSuggestions()));
+                    });
+                }
+
+                @Override
+                public void onError(String errorMessage) {
+                    postToMain.accept(() -> {
+                        uiState.setValue(BudgetUiState.ERROR);
+                        statusMessage.setValue("Import fehlgeschlagen: " + errorMessage);
+                    });
+                }
+            });
         });
     }
 
@@ -549,7 +465,7 @@ public class BudgetViewModel extends ViewModel {
             YearMonth month = currentMonth.getValue();
             if (month == null) month = YearMonth.now();
             String yearMonthStr = month.toString();
-            BudgetLimit limit = new BudgetLimit(categoryId, yearMonthStr, amountEuros);
+            BudgetLimit limit = new BudgetLimit(categoryId, yearMonthStr, Math.round(amountEuros * 100));
             limit.rolloverEnabled = rolloverEnabled;
             limit.rolloverCarryoverCents = rolloverCarryoverCents;
             repository.saveBudgetLimit(limit);

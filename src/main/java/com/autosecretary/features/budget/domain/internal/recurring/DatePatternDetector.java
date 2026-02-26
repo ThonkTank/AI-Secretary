@@ -1,4 +1,6 @@
-package com.autosecretary.features.budget.domain;
+package com.autosecretary.features.budget.domain.internal.recurring;
+
+import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;

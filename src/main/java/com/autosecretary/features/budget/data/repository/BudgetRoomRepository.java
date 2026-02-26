@@ -2,8 +2,8 @@ package com.autosecretary.features.budget.data.repository;
 
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
-import com.autosecretary.features.budget.domain.DailyDeltaPoint;
-import com.autosecretary.features.budget.domain.MonthlyDeltaPoint;
+import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
+import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 
 import java.time.LocalDate;
@@ -18,22 +18,12 @@ import com.autosecretary.features.budget.data.entity.BudgetLimit;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateDao;
 import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateEntity;
-import com.autosecretary.features.budget.data.projection.AccountDailyDeltaPoint;
-import com.autosecretary.features.budget.data.projection.AccountMonthlyDeltaPoint;
-import com.autosecretary.features.budget.data.projection.CategorySpendTotal;
-import com.autosecretary.features.budget.data.projection.MonthlyTransactionOverviewItem;
 
 public class BudgetRoomRepository implements BudgetRepository {
     private final BudgetLookupDao lookupDao;
     private final TransactionDao transactionDao;
     private final BudgetLimitDao limitDao;
     private final BudgetRecurringTemplateDao recurringTemplateDao;
-
-    public BudgetRoomRepository(BudgetLookupDao lookupDao,
-                                 TransactionDao transactionDao,
-                                 BudgetLimitDao limitDao) {
-        this(lookupDao, transactionDao, limitDao, null);
-    }
 
     public BudgetRoomRepository(BudgetLookupDao lookupDao,
                                  TransactionDao transactionDao,
@@ -98,9 +88,6 @@ public class BudgetRoomRepository implements BudgetRepository {
     }
 
     @Override public long getUpcomingExpenseTemplateCents(String accountId, LocalDate fromDate, LocalDate toDate) {
-        if (recurringTemplateDao == null) {
-            return 0L;
-        }
         List<BudgetRecurringTemplateEntity> templates = (accountId == null || accountId.isBlank())
                 ? recurringTemplateDao.findActiveExpenseTemplatesForActiveAccountsInRange(fromDate, toDate)
                 : recurringTemplateDao.findActiveExpenseTemplatesForAccountInRange(accountId, fromDate, toDate);
@@ -174,10 +161,6 @@ public class BudgetRoomRepository implements BudgetRepository {
     }
 
     @Override public void saveBudgetLimit(BudgetLimit budgetLimit) {
-        BudgetLimit existing = limitDao.getLimitForCategoryAndMonth(budgetLimit.categoryId, budgetLimit.yearMonth);
-        if (existing != null) {
-            budgetLimit.id = existing.id;
-        }
         limitDao.insert(budgetLimit);
     }
 
@@ -194,80 +177,28 @@ public class BudgetRoomRepository implements BudgetRepository {
     }
 
     @Override public List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth) {
-        return mapMonthlyOverviewItems(transactionDao.getMonthlyOverview(yearMonth));
+        return transactionDao.getMonthlyOverview(yearMonth);
     }
 
     @Override public List<MonthlyOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId) {
-        return mapMonthlyOverviewItems(transactionDao.getMonthlyOverviewForAccount(yearMonth, accountId));
+        return transactionDao.getMonthlyOverviewForAccount(yearMonth, accountId);
     }
 
     @Override public List<CategorySpendSummary> getCategorySpendTotals(String yearMonth) {
-        return mapCategorySpendTotals(limitDao.getCategorySpendTotals(yearMonth));
+        return limitDao.getCategorySpendTotals(yearMonth);
     }
 
     @Override public List<DailyDeltaPoint> getDailyDeltasForAccount(
             String accountId, LocalDate fromDate, LocalDate toDate) {
-        return mapDailyDeltas(transactionDao.getDailyDeltasForAccount(accountId, fromDate, toDate));
+        return transactionDao.getDailyDeltasForAccount(accountId, fromDate, toDate);
     }
 
     @Override public List<MonthlyDeltaPoint> getMonthlyDeltasForAccount(
             String accountId, String fromYearMonth, String toYearMonth) {
-        return mapMonthlyDeltas(transactionDao.getMonthlyDeltasForAccount(accountId, fromYearMonth, toYearMonth));
+        return transactionDao.getMonthlyDeltasForAccount(accountId, fromYearMonth, toYearMonth);
     }
 
     @Override public long getNetAmountBeforeDateForAccount(String accountId, LocalDate beforeDate) {
         return transactionDao.getNetAmountBeforeDateForAccount(accountId, beforeDate);
-    }
-
-    private List<MonthlyOverviewItem> mapMonthlyOverviewItems(List<MonthlyTransactionOverviewItem> rows) {
-        return rows.stream().map(row -> {
-            MonthlyOverviewItem item = new MonthlyOverviewItem();
-            item.transactionId = row.transactionId;
-            item.bookingDate = row.bookingDate;
-            item.yearMonth = row.yearMonth;
-            item.type = row.type;
-            item.transactionKind = row.transactionKind;
-            item.amountCents = row.amountCents;
-            item.note = row.note;
-            item.accountId = row.accountId;
-            item.accountName = row.accountName;
-            item.categoryId = row.categoryId;
-            item.categoryName = row.categoryName;
-            item.categoryIcon = row.categoryIcon;
-            item.categoryColorHex = row.categoryColorHex;
-            item.linkedTransactionId = row.linkedTransactionId;
-            return item;
-        }).toList();
-    }
-
-    private List<CategorySpendSummary> mapCategorySpendTotals(List<CategorySpendTotal> rows) {
-        return rows.stream().map(row -> {
-            CategorySpendSummary item = new CategorySpendSummary();
-            item.categoryId = row.categoryId;
-            item.categoryName = row.categoryName;
-            item.categoryIcon = row.categoryIcon;
-            item.categoryColorHex = row.categoryColorHex;
-            item.spentCents = row.spentCents;
-            item.limitAmount = row.limitAmount;
-            return item;
-        }).toList();
-    }
-
-    private List<DailyDeltaPoint> mapDailyDeltas(List<AccountDailyDeltaPoint> rows) {
-        return rows.stream().map(row -> {
-            DailyDeltaPoint item = new DailyDeltaPoint();
-            item.bucketDate = row.bucketDate;
-            item.deltaCents = row.deltaCents;
-            return item;
-        }).toList();
-    }
-
-    private List<MonthlyDeltaPoint> mapMonthlyDeltas(List<AccountMonthlyDeltaPoint> rows) {
-        return rows.stream().map(row -> {
-            MonthlyDeltaPoint item = new MonthlyDeltaPoint();
-            item.yearMonth = row.yearMonth;
-            item.deltaCents = row.deltaCents;
-            return item;
-        }).toList();
     }
 }

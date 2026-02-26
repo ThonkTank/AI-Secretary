@@ -3,16 +3,16 @@ package com.autosecretary.features.budget.ui.internal;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
-import com.autosecretary.features.budget.domain.AccountBalanceTimelineService;
-import com.autosecretary.features.budget.domain.BalanceTimelinePoint;
 import com.autosecretary.features.budget.domain.BudgetRepository;
-import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
-import com.autosecretary.features.budget.domain.DailyDeltaPoint;
-import com.autosecretary.features.budget.domain.MonthlyDeltaPoint;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
+import com.autosecretary.features.budget.domain.timeline.AccountBalanceTimelineService;
+import com.autosecretary.features.budget.domain.timeline.BalanceTimelinePoint;
+import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
+import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
 import com.autosecretary.features.budget.ui.BudgetViewModel;
 import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
 import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
+import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -25,13 +25,13 @@ public class BudgetOverviewLoader {
     public static class OverviewData {
         private final List<BudgetAccount> accounts;
         private final String accountId;
-        private final List<BudgetViewModel.BudgetTransactionRow> rows;
+        private final List<BudgetTransactionRow> rows;
         private final BudgetSummaryData summary;
         private final List<BudgetChartPoint> chartPoints;
 
         public OverviewData(List<BudgetAccount> accounts,
                             String accountId,
-                            List<BudgetViewModel.BudgetTransactionRow> rows,
+                            List<BudgetTransactionRow> rows,
                             BudgetSummaryData summary,
                             List<BudgetChartPoint> chartPoints) {
             this.accounts = accounts;
@@ -49,7 +49,7 @@ public class BudgetOverviewLoader {
             return accountId;
         }
 
-        public List<BudgetViewModel.BudgetTransactionRow> getRows() {
+        public List<BudgetTransactionRow> getRows() {
             return rows;
         }
 
@@ -63,20 +63,14 @@ public class BudgetOverviewLoader {
     }
 
     private final BudgetRepository repository;
-    private final CalculateFreeBudgetUseCase calculateFreeBudgetUseCase;
     private final BudgetSummaryPresentationMapper summaryPresentationMapper;
-    private final AccountBalanceTimelineService balanceTimelineService;
     private final BudgetChartStateMapper chartStateMapper;
 
     public BudgetOverviewLoader(BudgetRepository repository,
-                                CalculateFreeBudgetUseCase calculateFreeBudgetUseCase,
                                 BudgetSummaryPresentationMapper summaryPresentationMapper,
-                                AccountBalanceTimelineService balanceTimelineService,
                                 BudgetChartStateMapper chartStateMapper) {
         this.repository = repository;
-        this.calculateFreeBudgetUseCase = calculateFreeBudgetUseCase;
         this.summaryPresentationMapper = summaryPresentationMapper;
-        this.balanceTimelineService = balanceTimelineService;
         this.chartStateMapper = chartStateMapper;
     }
 
@@ -92,7 +86,7 @@ public class BudgetOverviewLoader {
         List<MonthlyOverviewItem> items =
                 repository.getMonthlyOverviewForAccount(month.toString(), accountId);
 
-        List<BudgetViewModel.BudgetTransactionRow> rows = buildTransactionRows(items);
+        List<BudgetTransactionRow> rows = buildTransactionRows(items);
         BudgetSummaryData summary = computeSummary(items, accountId);
         List<BudgetChartPoint> points = loadBalanceChartData(accountId, filter);
 
@@ -109,11 +103,11 @@ public class BudgetOverviewLoader {
         return null;
     }
 
-    private List<BudgetViewModel.BudgetTransactionRow> buildTransactionRows(List<MonthlyOverviewItem> items) {
-        List<BudgetViewModel.BudgetTransactionRow> rows = new ArrayList<>();
+    private List<BudgetTransactionRow> buildTransactionRows(List<MonthlyOverviewItem> items) {
+        List<BudgetTransactionRow> rows = new ArrayList<>();
         for (MonthlyOverviewItem item : items) {
             boolean isExpense = "EXPENSE".equals(item.type);
-            rows.add(new BudgetViewModel.BudgetTransactionRow(
+            rows.add(new BudgetTransactionRow(
                     item.transactionId,
                     buildTransactionLabel(item),
                     formatTransactionAmount(item.amountCents, isExpense),
@@ -132,7 +126,8 @@ public class BudgetOverviewLoader {
     }
 
     private BudgetSummaryData computeSummary(List<MonthlyOverviewItem> items, String accountId) {
-        long freeBudgetCents = calculateFreeBudgetUseCase.execute(accountId, LocalDate.now(), 7);
+        BudgetAccount account = repository.findAccountById(accountId);
+        long freeBudgetCents = account != null ? account.currentBalanceCents : 0L;
         return summaryPresentationMapper.toSummary(items, freeBudgetCents);
     }
 
@@ -175,7 +170,7 @@ public class BudgetOverviewLoader {
                     + repository.getNetAmountBeforeDateForAccount(accountId, fromDate);
             List<DailyDeltaPoint> deltas =
                     repository.getDailyDeltasForAccount(accountId, fromDate, now);
-            series = balanceTimelineService.reconstructDaily(fromDate, now, startBalance, deltas);
+            series = AccountBalanceTimelineService.reconstructDaily(fromDate, now, startBalance, deltas);
         } else {
             int months = resolvedFilter == BudgetViewModel.TimeRangeFilter.MONTHS_3 ? 3 : 12;
             YearMonth toMonth = YearMonth.from(now);
@@ -188,7 +183,7 @@ public class BudgetOverviewLoader {
                     fromMonth.toString(),
                     toMonth.toString()
             );
-            series = balanceTimelineService.reconstructMonthly(fromMonth, toMonth, startBalance, deltas);
+            series = AccountBalanceTimelineService.reconstructMonthly(fromMonth, toMonth, startBalance, deltas);
         }
 
         return chartStateMapper.map(resolvedFilter, series);

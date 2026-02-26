@@ -16,6 +16,7 @@ import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.task.application.internal.actions.TaskSlotToggleAction;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.TaskCompletionService;
+import com.autosecretary.features.task.data.TaskTransitionStatDao;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
 import java.time.LocalDate;
@@ -159,10 +160,12 @@ public class TaskWidgetProvider extends AppWidgetProvider {
                 TaskCompletionService completionService = new TaskCompletionService();
                 TaskLifecycleManager lifecycleManager = new TaskLifecycleManager();
 
+                TaskTransitionStatDao transitionDao = db.taskTransitionStatDao();
                 TaskSlotToggleAction.execute(
                         dao,
                         completionService,
                         lifecycleManager,
+                        transitionDao,
                         taskId,
                         slotId,
                         Runnable::run,

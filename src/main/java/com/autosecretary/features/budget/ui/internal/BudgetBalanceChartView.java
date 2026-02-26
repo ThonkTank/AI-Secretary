@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.ui;
+package com.autosecretary.features.budget.ui.internal;
 
 import android.content.Context;
 import android.graphics.Canvas;

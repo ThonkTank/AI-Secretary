@@ -5,6 +5,7 @@ import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
+import androidx.room.RoomWarnings;
 import androidx.room.Transaction;
 import androidx.room.Update;
 
@@ -12,10 +13,10 @@ import java.time.LocalDate;
 import java.util.List;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.projection.AccountBalanceTotal;
-import com.autosecretary.features.budget.data.projection.AccountDailyDeltaPoint;
-import com.autosecretary.features.budget.data.projection.AccountMonthlyDeltaPoint;
 import com.autosecretary.features.budget.data.projection.IncomeExpenseSummary;
-import com.autosecretary.features.budget.data.projection.MonthlyTransactionOverviewItem;
+import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
+import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
+import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
 
 @Dao
 public interface TransactionDao {
@@ -41,7 +42,7 @@ public interface TransactionDao {
             WHERE t.yearMonth = :yearMonth
             ORDER BY t.bookingDate DESC, t.id DESC
             """)
-    List<MonthlyTransactionOverviewItem> getMonthlyOverview(String yearMonth);
+    List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth);
 
     @Query("""
             SELECT t.id AS transactionId,
@@ -57,8 +58,6 @@ public interface TransactionDao {
                    c.name AS categoryName,
                    c.icon AS categoryIcon,
                    c.colorHex AS categoryColorHex,
-                   c.icon AS categoryIcon,
-                   c.colorHex AS categoryColorHex,
                    t.linkedTransactionId AS linkedTransactionId
             FROM budget_transaction t
             INNER JOIN budget_account a ON a.id = t.accountId
@@ -67,8 +66,9 @@ public interface TransactionDao {
               AND t.accountId = :accountId
             ORDER BY t.bookingDate DESC, t.id DESC
             """)
-    List<MonthlyTransactionOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId);
+    List<MonthlyOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId);
 
+    @SuppressWarnings(RoomWarnings.CURSOR_MISMATCH)
     @Query("""
             SELECT t.id AS transactionId,
                    t.bookingDate AS bookingDate,
@@ -88,7 +88,7 @@ public interface TransactionDao {
             WHERE t.bookingDate BETWEEN :fromDate AND :toDate
             ORDER BY t.bookingDate DESC, t.id DESC
             """)
-    List<MonthlyTransactionOverviewItem> getOverviewInDateRange(LocalDate fromDate, LocalDate toDate);
+    List<MonthlyOverviewItem> getOverviewInDateRange(LocalDate fromDate, LocalDate toDate);
 
     @Query("""
             SELECT bookingDate AS bucketDate,
@@ -99,7 +99,7 @@ public interface TransactionDao {
             GROUP BY bookingDate
             ORDER BY bookingDate ASC
             """)
-    List<AccountDailyDeltaPoint> getDailyDeltasForAccount(
+    List<DailyDeltaPoint> getDailyDeltasForAccount(
             String accountId,
             LocalDate fromDate,
             LocalDate toDate
@@ -114,7 +114,7 @@ public interface TransactionDao {
             GROUP BY yearMonth
             ORDER BY yearMonth ASC
             """)
-    List<AccountMonthlyDeltaPoint> getMonthlyDeltasForAccount(
+    List<MonthlyDeltaPoint> getMonthlyDeltasForAccount(
             String accountId,
             String fromYearMonth,
             String toYearMonth
@@ -182,9 +182,6 @@ public interface TransactionDao {
     @Query("SELECT COUNT(*) > 0 FROM budget_transaction WHERE importHash = :importHash")
     boolean existsByImportHash(String importHash);
 
-    @Query("SELECT id FROM budget_category WHERE type = :type AND archived = 0 LIMIT 1")
-    String findDefaultCategoryId(String type);
-
     @Query("UPDATE budget_transaction SET templateId = :templateId WHERE id IN (:transactionIds)")
     void updateTemplateIdForTransactions(List<String> transactionIds, String templateId);
 
@@ -200,8 +197,6 @@ public interface TransactionDao {
 
         insert(debit);
         insert(credit);
-        updateLinkedTransactionId(debit.id, credit.id);
-        updateLinkedTransactionId(credit.id, debit.id);
     }
 
     @Transaction

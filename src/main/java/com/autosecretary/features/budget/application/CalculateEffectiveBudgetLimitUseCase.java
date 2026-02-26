@@ -10,51 +10,14 @@ import com.autosecretary.features.budget.domain.BudgetRepository;
  */
 public class CalculateEffectiveBudgetLimitUseCase {
 
-    public static class Result {
-        private final long baseLimitCents;
-        private final long spentCents;
-        private final long rawDeltaCents;
-        private final long appliedDeltaCents;
-        private final long effectiveLimitCents;
-        private final boolean rolloverApplied;
-
-        public Result(long baseLimitCents,
-                      long spentCents,
-                      long rawDeltaCents,
-                      long appliedDeltaCents,
-                      long effectiveLimitCents,
-                      boolean rolloverApplied) {
-            this.baseLimitCents = baseLimitCents;
-            this.spentCents = spentCents;
-            this.rawDeltaCents = rawDeltaCents;
-            this.appliedDeltaCents = appliedDeltaCents;
-            this.effectiveLimitCents = effectiveLimitCents;
-            this.rolloverApplied = rolloverApplied;
-        }
-
-        public long getBaseLimitCents() {
-            return baseLimitCents;
-        }
-
-        public long getSpentCents() {
-            return spentCents;
-        }
-
-        public long getRawDeltaCents() {
-            return rawDeltaCents;
-        }
-
-        public long getAppliedDeltaCents() {
-            return appliedDeltaCents;
-        }
-
-        public long getEffectiveLimitCents() {
-            return effectiveLimitCents;
-        }
-
-        public boolean isRolloverApplied() {
-            return rolloverApplied;
-        }
+    public record Result(
+            long baseLimitCents,
+            long spentCents,
+            long rawDeltaCents,
+            long appliedDeltaCents,
+            long effectiveLimitCents,
+            boolean rolloverApplied
+    ) {
     }
 
     private final BudgetRepository repository;
@@ -70,7 +33,7 @@ public class CalculateEffectiveBudgetLimitUseCase {
             return new Result(0L, spentCents, 0L, 0L, 0L, false);
         }
 
-        long baseLimitCents = eurosToCents(target.amount);
+        long baseLimitCents = target.limitAmountCents;
         if (!target.rolloverEnabled) {
             return new Result(baseLimitCents, spentCents, 0L, 0L, Math.max(baseLimitCents, 0L), false);
         }
@@ -79,9 +42,8 @@ public class CalculateEffectiveBudgetLimitUseCase {
         // Sonderfall: kein Vormonatslimit => kein Delta.
         long rawDeltaCents = 0L;
         if (previous != null) {
-            long previousLimitCents = eurosToCents(previous.amount);
             long previousSpentCents = repository.getPreviousMonthExpenseCents(categoryId, targetYearMonth);
-            rawDeltaCents = previousLimitCents - previousSpentCents;
+            rawDeltaCents = previous.limitAmountCents - previousSpentCents;
         }
 
         long appliedDelta = applyDeltaCaps(rawDeltaCents, target.rolloverCapPositiveCents, target.rolloverCapNegativeCents);
@@ -102,9 +64,5 @@ public class CalculateEffectiveBudgetLimitUseCase {
             capped = Math.max(capped, -Math.abs(capNegativeCents));
         }
         return capped;
-    }
-
-    private long eurosToCents(double amountEuros) {
-        return Math.round(amountEuros * 100.0);
     }
 }

@@ -126,8 +126,8 @@ public class TaskCore {
     }
 
 
-}
     public enum SchedulingType {
         TASK,
         TERMIN
     }
+}

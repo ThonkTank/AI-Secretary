@@ -14,8 +14,6 @@ import com.autosecretary.features.budget.application.importing.StatementFilePars
 import com.autosecretary.features.budget.application.CreateTransferUseCase;
 import com.autosecretary.features.budget.data.repository.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
-import com.autosecretary.features.budget.domain.AccountBalanceTimelineService;
-import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
 import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
@@ -140,7 +138,8 @@ public class AppCompositionRoot {
         BudgetRoomRepository repository = new BudgetRoomRepository(
                 db.budgetLookupDao(),
                 db.transactionDao(),
-                db.budgetLimitDao()
+                db.budgetLimitDao(),
+                db.budgetRecurringTemplateDao()
         );
 
         BudgetImportRoomRepository importRepository = new BudgetImportRoomRepository(
@@ -166,21 +165,14 @@ public class AppCompositionRoot {
         );
 
         CreateTransferUseCase createTransferUseCase = new CreateTransferUseCase(repository);
-        AccountBalanceTimelineService balanceTimelineService = new AccountBalanceTimelineService();
-
-        CalculateFreeBudgetUseCase calculateFreeBudgetUseCase =
-                new CalculateFreeBudgetUseCase(repository);
 
         budgetViewModelFactory = new BudgetViewModelFactory(
                 repository,
-                parser,
                 taskUseCaseExecutor,
                 mainHandler::post,
                 importUseCase,
                 applyRecurringUseCase,
-                createTransferUseCase,
-                balanceTimelineService,
-                calculateFreeBudgetUseCase
+                createTransferUseCase
         );
 
         return budgetViewModelFactory;

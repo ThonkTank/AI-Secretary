@@ -24,8 +24,8 @@ These are the entities registered in `AppDatabase` version 8 and should be used 
   - `BudgetRecurringTemplateEntity`, `BudgetRecurringTemplateDao`
 - **Repository implementations**: adapters used by application/UI layers.
   - `BudgetRoomRepository`, `BudgetWidgetRoomRepository`
-- **Read-model/projection classes**: query results for summaries, charting, and widgets.
-  - `IncomeExpenseSummary`, `MonthlyTransactionOverviewItem`, `CategorySpendTotal`, `AccountBalanceTotal`, `AccountDailyDeltaPoint`, `AccountMonthlyDeltaPoint`
+- **Read-model/projection classes**: query results for internal use (no domain mirror exists).
+  - `IncomeExpenseSummary`, `AccountBalanceTotal`
 
 Import metadata entities live in `data/importing`.
 

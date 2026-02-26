@@ -4,6 +4,8 @@ import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.data.entity.BudgetLimit;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
+import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
+import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -11,7 +13,9 @@ import java.util.List;
 public interface BudgetRepository {
     BudgetAccount findAccountById(String accountId);
     List<BudgetAccount> findActiveAccounts();
+    void insertAccount(BudgetAccount account);
     List<BudgetCategory> getActiveCategories();
+    void insertCategory(BudgetCategory category);
     List<BudgetTransactionEntity> findAllTransactions();
     List<BudgetTransactionEntity> findTransactionsForAccount(String accountId);
     BudgetTransactionEntity findTransactionById(String transactionId);
@@ -31,8 +35,6 @@ public interface BudgetRepository {
     boolean updateTransfer(String transactionId, String sourceAccountId, String targetAccountId,
                            long amountCents, java.time.LocalDate bookingDate, String note);
     void saveBudgetLimit(BudgetLimit budgetLimit);
-    void insertAccount(BudgetAccount account);
-    void insertCategory(BudgetCategory category);
     List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth);
     List<MonthlyOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId);
     List<CategorySpendSummary> getCategorySpendTotals(String yearMonth);

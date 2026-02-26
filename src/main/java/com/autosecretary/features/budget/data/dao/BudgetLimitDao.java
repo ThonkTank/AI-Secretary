@@ -9,7 +9,7 @@ import androidx.room.Update;
 
 import java.util.List;
 import com.autosecretary.features.budget.data.entity.BudgetLimit;
-import com.autosecretary.features.budget.data.projection.CategorySpendTotal;
+import com.autosecretary.features.budget.domain.CategorySpendSummary;
 
 @Dao
 public interface BudgetLimitDao {
@@ -46,12 +46,12 @@ public interface BudgetLimitDao {
 
     @Query("""
             SELECT CASE
-                     WHEN target.rolloverEnabled = 0 THEN CAST(ROUND(target.amount * 100.0) AS INTEGER)
+                     WHEN target.rolloverEnabled = 0 THEN target.limitAmountCents
                      ELSE MAX(
                             0,
-                            CAST(ROUND(target.amount * 100.0) AS INTEGER)
+                            target.limitAmountCents
                             + target.rolloverCarryoverCents
-                            + COALESCE(CAST(ROUND(prev.amount * 100.0) AS INTEGER), 0)
+                            + COALESCE(prev.limitAmountCents, 0)
                             - COALESCE(prevSpent.spentCents, 0)
                           )
                    END AS effectiveLimitCents
@@ -78,7 +78,7 @@ public interface BudgetLimitDao {
                    c.icon AS categoryIcon,
                    c.colorHex AS categoryColorHex,
                    COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amountCents ELSE 0 END), 0) AS spentCents,
-                   l.amount AS limitAmount
+                   l.limitAmountCents AS limitAmountCents
             FROM budget_category c
             LEFT JOIN budget_transaction t
                    ON t.categoryId = c.id
@@ -88,10 +88,10 @@ public interface BudgetLimitDao {
                    ON l.categoryId = c.id
                   AND l.yearMonth = :yearMonth
             WHERE c.archived = 0
-            GROUP BY c.id, c.name, c.icon, c.colorHex, l.amount
+            GROUP BY c.id, c.name, c.icon, c.colorHex, l.limitAmountCents
             ORDER BY spentCents DESC, c.name COLLATE NOCASE ASC
             """)
-    List<CategorySpendTotal> getCategorySpendTotals(String yearMonth);
+    List<CategorySpendSummary> getCategorySpendTotals(String yearMonth);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(BudgetLimit budgetLimit);

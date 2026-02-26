@@ -752,7 +752,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private void appendNoGapConflictsForWindow(List<Task> tasks, LocalDate startDay, int days) {
         LocalDate endExclusive = startDay.plusDays(days);
         for (Task task : tasks) {
-            if (task.core == null || task.core.id == null || task.core.done) {
+            if (task.core == null || task.core.id == null || task.core.completed) {
                 continue;
             }
             boolean hasWindowSlot = task.slots.stream().anyMatch(slot ->

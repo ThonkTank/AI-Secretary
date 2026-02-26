@@ -12,28 +12,11 @@ import java.util.List;
 
 public class BudgetSeedService {
 
-    public static class SeedResult {
-        private final List<BudgetCategory> categories;
-        private final List<BudgetAccount> accounts;
-        private final String selectedAccountId;
-
-        public SeedResult(List<BudgetCategory> categories, List<BudgetAccount> accounts, String selectedAccountId) {
-            this.categories = categories;
-            this.accounts = accounts;
-            this.selectedAccountId = selectedAccountId;
-        }
-
-        public List<BudgetCategory> getCategories() {
-            return categories;
-        }
-
-        public List<BudgetAccount> getAccounts() {
-            return accounts;
-        }
-
-        public String getSelectedAccountId() {
-            return selectedAccountId;
-        }
+    public record SeedResult(
+            List<BudgetCategory> categories,
+            List<BudgetAccount> accounts,
+            String selectedAccountId
+    ) {
     }
 
     private final BudgetRepository repository;

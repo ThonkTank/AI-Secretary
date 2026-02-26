@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.domain;
+package com.autosecretary.features.budget.domain.timeline;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -7,17 +7,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class AccountBalanceTimelineService {
+public final class AccountBalanceTimelineService {
 
-    public List<BalanceTimelinePoint> reconstructDaily(LocalDate fromDate,
-                                                       LocalDate toDate,
-                                                       long startBalanceCents,
-                                                       List<DailyDeltaPoint> dailyDeltas) {
+    private AccountBalanceTimelineService() {
+    }
+
+    public static List<BalanceTimelinePoint> reconstructDaily(LocalDate fromDate,
+                                                              LocalDate toDate,
+                                                              long startBalanceCents,
+                                                              List<DailyDeltaPoint> dailyDeltas) {
         Map<LocalDate, Long> deltaByDate = new HashMap<>();
         for (DailyDeltaPoint point : dailyDeltas) {
-            if (point != null && point.bucketDate != null) {
-                deltaByDate.put(point.bucketDate, point.deltaCents);
-            }
+            if (point == null || point.bucketDate() == null) continue;
+            deltaByDate.put(point.bucketDate(), point.deltaCents());
         }
 
         List<BalanceTimelinePoint> points = new ArrayList<>();
@@ -31,14 +33,14 @@ public class AccountBalanceTimelineService {
         return points;
     }
 
-    public List<BalanceTimelinePoint> reconstructMonthly(YearMonth fromMonth,
-                                                         YearMonth toMonth,
-                                                         long startBalanceCents,
-                                                         List<MonthlyDeltaPoint> monthlyDeltas) {
+    public static List<BalanceTimelinePoint> reconstructMonthly(YearMonth fromMonth,
+                                                                YearMonth toMonth,
+                                                                long startBalanceCents,
+                                                                List<MonthlyDeltaPoint> monthlyDeltas) {
         Map<YearMonth, Long> deltaByMonth = new HashMap<>();
         for (MonthlyDeltaPoint point : monthlyDeltas) {
-            if (point == null || point.yearMonth == null) continue;
-            deltaByMonth.put(YearMonth.parse(point.yearMonth), point.deltaCents);
+            if (point == null || point.yearMonth() == null) continue;
+            deltaByMonth.put(YearMonth.parse(point.yearMonth()), point.deltaCents());
         }
 
         List<BalanceTimelinePoint> points = new ArrayList<>();

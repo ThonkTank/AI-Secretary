@@ -34,7 +34,7 @@ public class BudgetLimit {
     @NonNull
     public String yearMonth;
 
-    public double amount;
+    public long limitAmountCents;
 
     /**
      * Wenn aktiviert, wird die Differenz aus Vormonat als Carryover auf das Zielmonat addiert.
@@ -56,9 +56,9 @@ public class BudgetLimit {
      */
     public Long rolloverCapNegativeCents;
 
-    public BudgetLimit(@NonNull String categoryId, @NonNull String yearMonth, double amount) {
+    public BudgetLimit(@NonNull String categoryId, @NonNull String yearMonth, long limitAmountCents) {
         this.categoryId = categoryId;
         this.yearMonth = yearMonth;
-        this.amount = amount;
+        this.limitAmountCents = limitAmountCents;
     }
 }

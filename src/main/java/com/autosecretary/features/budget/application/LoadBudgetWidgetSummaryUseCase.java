@@ -20,11 +20,10 @@ public class LoadBudgetWidgetSummaryUseCase {
         List<CategorySpendSummary> spendTotals = repository.getCategorySpendTotals(yearMonth);
         long freeBudgetCents = 0;
         for (CategorySpendSummary total : spendTotals) {
-            if (total.limitAmount <= 0) {
+            if (total.limitAmountCents <= 0) {
                 continue;
             }
-            long limitCents = Math.round(total.limitAmount * 100.0);
-            freeBudgetCents += limitCents - total.spentCents;
+            freeBudgetCents += total.limitAmountCents - total.spentCents;
         }
 
         return new BudgetWidgetSummary(netBalanceCents, freeBudgetCents);

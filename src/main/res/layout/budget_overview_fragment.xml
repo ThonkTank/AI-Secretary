@@ -76,7 +76,7 @@
                     android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
                     android:textStyle="bold" />
 
-                <com.autosecretary.features.budget.ui.BudgetBalanceChartView
+                <com.autosecretary.features.budget.ui.internal.BudgetBalanceChartView
                     android:id="@+id/BudgetBalanceChart"
                     android:layout_width="match_parent"
                     android:layout_height="160dp"

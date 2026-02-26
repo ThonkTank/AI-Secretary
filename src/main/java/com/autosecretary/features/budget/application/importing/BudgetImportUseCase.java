@@ -25,17 +25,10 @@ public class BudgetImportUseCase {
     public BudgetImportUseCase(BudgetImportRepository repository,
                                StatementFileParser parser,
                                ExecutorService executor) {
-        this(repository, parser, executor, new BudgetTransactionMapper());
-    }
-
-    BudgetImportUseCase(BudgetImportRepository repository,
-                        StatementFileParser parser,
-                        ExecutorService executor,
-                        BudgetTransactionMapper mapper) {
         this.repository = repository;
         this.parser = parser;
         this.executor = executor;
-        this.mapper = mapper;
+        this.mapper = new BudgetTransactionMapper();
     }
 
     public void executeAsync(String accountId,
@@ -45,18 +38,8 @@ public class BudgetImportUseCase {
                              ImportCallback callback) {
         executor.execute(() -> {
             try {
-                callback.onProgress("Starte Import...");
-                callback.onProgress("Datei wird analysiert...");
-                ImportPipelineResult pipelineResult = runImportPipeline(accountId, fileName, fileBytes, mimeType);
-                callback.onProgress("Import abgeschlossen.");
-
-                callback.onSuccess(new ImportResult(
-                        pipelineResult.totalTransactions(),
-                        pipelineResult.newTransactions(),
-                        pipelineResult.duplicates(),
-                        pipelineResult.autoCategorized(),
-                        pipelineResult.recurringSuggestions()
-                ));
+                ImportResult result = runImportPipeline(accountId, fileName, fileBytes, mimeType);
+                callback.onSuccess(result);
             } catch (ImportPipelineException e) {
                 if (e.importId() != null) {
                     repository.markImportFailed(e.importId(), e.userMessage());
@@ -66,10 +49,10 @@ public class BudgetImportUseCase {
         });
     }
 
-    ImportPipelineResult runImportPipeline(String accountId,
-                                           String fileName,
-                                           byte[] fileBytes,
-                                           String mimeType) {
+    ImportResult runImportPipeline(String accountId,
+                                   String fileName,
+                                   byte[] fileBytes,
+                                   String mimeType) {
         String importId = null;
         try {
             String fileHash = sha256(fileBytes);
@@ -99,7 +82,7 @@ public class BudgetImportUseCase {
                     .toList();
             List<RecurringSuggestion> suggestions = RecurringPatternDetector.detectPatterns(accountTransactions);
 
-            return new ImportPipelineResult(
+            return new ImportResult(
                     parsed.transactions().size(),
                     computation.newTransactions.size(),
                     computation.duplicates,
@@ -144,17 +127,15 @@ public class BudgetImportUseCase {
                 autoCategorized++;
             }
 
-            RecurringBudgetTransaction tx = new RecurringBudgetTransaction.Builder(
-                    accountId,
-                    parsed.amountCents(),
-                    parsed.date(),
-                    categoryId
-            )
-                    .description(parsed.description())
-                    .payee(parsed.payee())
-                    .importHash(txHash)
-                    .importId(importId)
-                    .build();
+            RecurringBudgetTransaction tx = new RecurringBudgetTransaction();
+            tx.accountId = accountId;
+            tx.amountCents = parsed.amountCents();
+            tx.transactionDate = parsed.date();
+            tx.categoryId = categoryId;
+            tx.description = parsed.description();
+            tx.payee = parsed.payee();
+            tx.importHash = txHash;
+            tx.importId = importId;
 
             newTransactions.add(tx);
         }
@@ -187,23 +168,12 @@ public class BudgetImportUseCase {
     }
 
     public interface ImportCallback {
-        void onProgress(String message);
-
         void onSuccess(ImportResult result);
 
         void onError(String errorMessage);
     }
 
     public record ImportResult(
-            int totalTransactions,
-            int newTransactions,
-            int duplicates,
-            int autoCategorized,
-            List<RecurringSuggestion> recurringSuggestions
-    ) {
-    }
-
-    record ImportPipelineResult(
             int totalTransactions,
             int newTransactions,
             int duplicates,

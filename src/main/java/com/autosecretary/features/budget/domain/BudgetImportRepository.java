@@ -1,5 +1,8 @@
 package com.autosecretary.features.budget.domain;
 
+import com.autosecretary.features.budget.domain.importing.ImportCategory;
+import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
+
 import java.time.LocalDate;
 import java.util.List;
 

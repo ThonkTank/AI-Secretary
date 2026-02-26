@@ -29,10 +29,13 @@ import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.ui.internal.BudgetBalanceChartView;
 import com.autosecretary.features.budget.ui.internal.BudgetImportPickerController;
 import com.autosecretary.features.budget.ui.internal.BudgetRecurringSuggestionsDialogController;
 import com.autosecretary.features.budget.ui.internal.BudgetTransferDialogController;
+import com.autosecretary.features.budget.ui.internal.SpinnerHelper;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
+import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.time.LocalDate;
@@ -348,11 +351,11 @@ public class BudgetFragment extends Fragment {
         showTransactionDialog(null);
     }
 
-    private void showEditTransactionDialog(BudgetViewModel.BudgetTransactionRow row) {
+    private void showEditTransactionDialog(BudgetTransactionRow row) {
         showTransactionDialog(row);
     }
 
-    private void showTransactionDialog(@Nullable BudgetViewModel.BudgetTransactionRow existingRow) {
+    private void showTransactionDialog(@Nullable BudgetTransactionRow existingRow) {
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.budget_add_transaction_dialog, null);
         TextInputEditText amountInput = dialogView.findViewById(R.id.BudgetDialogAmount);
@@ -446,10 +449,7 @@ public class BudgetFragment extends Fragment {
         for (BudgetCategory cat : filteredCategories) {
             names.add(buildCategoryDisplayLabel(cat));
         }
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_item, names);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
+        SpinnerHelper.bindNames(spinner, names, requireContext());
     }
 
     private String getSelectedCategoryId(Spinner spinner, List<BudgetCategory> allCategories,
@@ -474,10 +474,7 @@ public class BudgetFragment extends Fragment {
         for (BudgetAccount account : activeAccounts) {
             names.add(account.name);
         }
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_item, names);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
+        SpinnerHelper.bindNames(spinner, names, requireContext());
     }
 
     private String getSelectedAccountId(Spinner spinner, List<BudgetAccount> accounts) {
@@ -601,13 +598,13 @@ public class BudgetFragment extends Fragment {
         }
     }
 
-    private void renderTransactions(List<BudgetViewModel.BudgetTransactionRow> rows,
+    private void renderTransactions(List<BudgetTransactionRow> rows,
                                     LinearLayout container) {
         container.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(container.getContext());
         Map<String, String> categoryColorsByLabel = getCategoryColorsByDisplayLabel();
 
-        for (BudgetViewModel.BudgetTransactionRow row : rows) {
+        for (BudgetTransactionRow row : rows) {
             View rowView = inflater.inflate(R.layout.budget_transaction_item, container, false);
             TextView label = rowView.findViewById(R.id.BudgetTransactionLabel);
             TextView amount = rowView.findViewById(R.id.BudgetTransactionAmount);
@@ -664,7 +661,7 @@ public class BudgetFragment extends Fragment {
         return ContextCompat.getColor(requireContext(), colorResId);
     }
 
-    private void showDeleteTransactionDialog(BudgetViewModel.BudgetTransactionRow row) {
+    private void showDeleteTransactionDialog(BudgetTransactionRow row) {
         new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.budget_delete_title)
                 .setMessage(R.string.budget_delete_message)
@@ -691,19 +688,7 @@ public class BudgetFragment extends Fragment {
         List<BudgetCategory> allCats = allCategories;
 
         populateCategorySpinner(categorySpinner, allCats, true);
-
-        if (preSelectedCategoryId != null) {
-            int index = 0;
-            for (BudgetCategory cat : allCats) {
-                if ("EXPENSE".equals(cat.type)) {
-                    if (preSelectedCategoryId.equals(cat.id)) {
-                        categorySpinner.setSelection(index);
-                        break;
-                    }
-                    index++;
-                }
-            }
-        }
+        setCategorySelection(categorySpinner, allCats, true, preSelectedCategoryId);
 
         if (currentAmount > 0) {
             amountInput.setText(String.format(Locale.GERMAN, "%.2f", currentAmount));
