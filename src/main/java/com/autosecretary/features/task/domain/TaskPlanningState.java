@@ -22,6 +22,19 @@ public final class TaskPlanningState {
         totalScheduledReps.merge(taskId, 1, Integer::sum);
     }
 
+    public void removeScheduled(String taskId, LocalDate day) {
+        Set<LocalDate> days = scheduledDays.get(taskId);
+        if (days != null && days.remove(day) && days.isEmpty()) {
+            scheduledDays.remove(taskId);
+        }
+        totalScheduledReps.compute(taskId, (key, value) -> {
+            if (value == null || value <= 1) {
+                return null;
+            }
+            return value - 1;
+        });
+    }
+
     public Set<LocalDate> getScheduledDays(String taskId) {
         return scheduledDays.getOrDefault(taskId, Collections.emptySet());
     }
