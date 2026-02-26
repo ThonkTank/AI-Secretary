@@ -15,6 +15,7 @@ import com.autosecretary.app.update.UpdateChecker;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.ui.BudgetFragment;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
+import com.autosecretary.features.meal.ui.MealPlannerFragment;
 import com.autosecretary.features.task.ui.list.TaskListFragment;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 import com.google.android.material.appbar.MaterialToolbar;
@@ -53,6 +54,8 @@ public class MainActivity extends AppCompatActivity {
         tabBar.setOnItemSelectedListener(item -> {
             if (item.getItemId() == R.id.tab_manage) {
                 showBudgetFragment(false);
+            } else if (item.getItemId() == R.id.tab_meal) {
+                showMealFragment();
             } else {
                 showTaskFragment();
             }
@@ -121,6 +124,10 @@ public class MainActivity extends AppCompatActivity {
             fragment.setArguments(args);
         }
         replaceContent(fragment);
+    }
+
+    private void showMealFragment() {
+        replaceContent(new MealPlannerFragment());
     }
 
     private void replaceContent(Fragment fragment) {

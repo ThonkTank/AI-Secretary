@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_meal">Mahlzeiten</string>
+
+    <string name="meal_title">Meal-Planung</string>
+    <string name="meal_tab_week">Wochenplan</string>
+    <string name="meal_tab_recipes">Rezepte</string>
+    <string name="meal_tab_stock">Vorrat &amp; Einkauf</string>
+
+    <string name="meal_week_title">Wochenplan</string>
+    <string name="meal_add_plan">+ Rezept planen</string>
+    <string name="meal_mark_done">Erledigt</string>
+    <string name="meal_mark_open">Offen</string>
+
+    <string name="meal_recipe_title">Rezepte</string>
+    <string name="meal_recipe_detail_placeholder">Rezept wählen, um Details anzuzeigen.</string>
+
+    <string name="meal_stock_title">Vorrat &amp; Einkauf</string>
+    <string name="meal_pantry_title">Vorrat</string>
+    <string name="meal_shopping_title">Einkauf heute</string>
+    <string name="meal_add_need">+ Bedarf in Einkauf</string>
+    <string name="meal_add_pantry">+ Vorratseintrag</string>
+
+    <string name="meal_plan_dialog_title">Rezept planen</string>
+    <string name="meal_plan_dialog_save">Planen</string>
+    <string name="meal_need_dialog_title">Bedarf in Einkauf übernehmen</string>
+    <string name="meal_need_dialog_save">Übernehmen</string>
+    <string name="meal_pantry_dialog_title">Vorrat anlegen</string>
+    <string name="meal_pantry_dialog_save">Anlegen</string>
+
+    <string name="meal_hint_date">Datum (YYYY-MM-DD)</string>
+    <string name="meal_hint_servings">Portionen</string>
+    <string name="meal_hint_name">Name</string>
+    <string name="meal_hint_amount">Menge</string>
+    <string name="meal_hint_unit">Einheit</string>
+    <string name="meal_hint_shelf_life_days">Haltbarkeit (Tage)</string>
+</resources>
