@@ -4,6 +4,7 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.data.TaskTransitionStatDao;
 import com.autosecretary.features.task.domain.CalendarBlockedIntervalProvider;
 import com.autosecretary.features.task.domain.SchedulingWindowProvider;
 import com.autosecretary.features.task.domain.TaskCalendarEvent;
@@ -145,6 +146,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private final SchedulingWindowProvider schedulingWindowProvider;
     private final CalendarBlockedIntervalProvider calendarBlockedIntervalProvider;
     private final TaskScorer scorer;
+    private final TaskTransitionStatDao transitionStatDao;
     private final List<SchedulingConflict> lastConflicts = new ArrayList<>();
 
     private int newSlots;
@@ -175,7 +177,16 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                     Consumer<String> logger,
                                     SchedulingWindowProvider schedulingWindowProvider,
                                     CalendarBlockedIntervalProvider calendarBlockedIntervalProvider) {
-        this.scorer = new TaskScorer(lifecycleManager);
+        this(lifecycleManager, logger, schedulingWindowProvider, calendarBlockedIntervalProvider, null);
+    }
+
+    public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager,
+                                    Consumer<String> logger,
+                                    SchedulingWindowProvider schedulingWindowProvider,
+                                    CalendarBlockedIntervalProvider calendarBlockedIntervalProvider,
+                                    TaskTransitionStatDao transitionStatDao) {
+        this.scorer = new TaskScorer(lifecycleManager, logger);
+        this.transitionStatDao = transitionStatDao;
         this.logger = logger;
         this.schedulingWindowProvider = schedulingWindowProvider;
         this.calendarBlockedIntervalProvider = calendarBlockedIntervalProvider;
@@ -211,6 +222,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
 
         newSlots = 0;
         scorer.reset();
+        scorer.setTransitionStats(transitionStatDao != null ? transitionStatDao.readAll() : new ArrayList<>());
         lastConflicts.clear();
         planningState = state;
 
@@ -258,6 +270,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         planningState = state;
         newSlots = 0;
         scorer.reset();
+        scorer.setTransitionStats(transitionStatDao != null ? transitionStatDao.readAll() : new ArrayList<>());
         lastConflicts.clear();
 
         List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
@@ -485,7 +498,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
 
             expandToFullChains(overlaps, occupied, toDisplace);
             scorer.maintenance(task, cursor.toLocalDate(), planningState != null ? planningState : new TaskPlanningState());
-            int score = scorer.score(task, cursor, windowEnd.isBefore(end) ? windowEnd : end);
+            int score = scorer.score(task, cursor, windowEnd.isBefore(end) ? windowEnd : end, findPreviousTaskIdForContext(cursor, starts, chain, i, occupied));
             if (score <= 0) {
                 return null;
             }
@@ -501,6 +514,38 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
 
         return new ChainPlacement(new ArrayList<>(chain), starts, toDisplace, gain, loss, firstStart.toLocalDate());
+    }
+
+    private String findPreviousTaskIdForContext(LocalDateTime candidateStart,
+                                                List<LocalDateTime> chainStarts,
+                                                List<ChainNode> chain,
+                                                int currentIndex,
+                                                List<OccupiedInterval> occupied) {
+        LocalDateTime latest = null;
+        String taskId = null;
+
+        for (int i = 0; i < currentIndex; i++) {
+            LocalDateTime chainStart = chainStarts.get(i);
+            if (!chainStart.isAfter(candidateStart) && (latest == null || chainStart.isAfter(latest))) {
+                latest = chainStart;
+                taskId = chain.get(i).task.core.id;
+            }
+        }
+
+        for (OccupiedInterval interval : occupied) {
+            if (interval.candidate == null || interval.end == null || interval.end.isAfter(candidateStart)) {
+                continue;
+            }
+            String occupiedTaskId = interval.candidate.task != null ? interval.candidate.task.core.id : interval.candidate.slot.taskId;
+            if (occupiedTaskId == null) {
+                continue;
+            }
+            if (latest == null || interval.end.isAfter(latest)) {
+                latest = interval.end;
+                taskId = occupiedTaskId;
+            }
+        }
+        return taskId;
     }
 
     private int computeAtomicLoss(Set<DisplacementCandidate> candidates) {

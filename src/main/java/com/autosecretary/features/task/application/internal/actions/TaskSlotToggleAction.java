@@ -4,6 +4,7 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.data.TaskTransitionStatDao;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskCompletionService.CompletionPhase;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
@@ -24,6 +25,7 @@ public final class TaskSlotToggleAction {
     public static void execute(TaskDAO taskDao,
                                TaskCompletionService completionService,
                                TaskLifecycleManager lifecycleManager,
+                               TaskTransitionStatDao transitionDao,
                                String taskId,
                                String slotId,
                                Executor callbackDispatcher,
@@ -55,6 +57,9 @@ public final class TaskSlotToggleAction {
                 adaptPrerequisiteGaps(taskDao, lifecycleManager, task, slot);
             }
             taskDao.write(task);
+            TaskTransitionRecorder.record(taskDao, transitionDao, slot, 2);
+        } else if (phase == CompletionPhase.STARTED) {
+            TaskTransitionRecorder.record(taskDao, transitionDao, slot, 1);
         }
         taskDao.writeSlot(slot);
 

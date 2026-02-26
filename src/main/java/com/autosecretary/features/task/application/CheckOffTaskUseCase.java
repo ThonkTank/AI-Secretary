@@ -3,6 +3,7 @@ package com.autosecretary.features.task.application;
 import com.autosecretary.features.task.application.internal.actions.TaskSlotToggleAction;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.TaskDAO;
+import com.autosecretary.features.task.data.TaskTransitionStatDao;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
@@ -21,16 +22,19 @@ public class CheckOffTaskUseCase {
     private final TaskDAO taskDao;
     private final TaskCompletionService completionService;
     private final TaskLifecycleManager lifecycleManager;
+    private final TaskTransitionStatDao transitionDao;
     private final ExecutorService executor;
     private final Executor callbackDispatcher;
 
     public CheckOffTaskUseCase(TaskDAO taskDao, TaskCompletionService completionService,
                                TaskLifecycleManager lifecycleManager,
+                               TaskTransitionStatDao transitionDao,
                                ExecutorService executor,
                                Executor callbackDispatcher) {
         this.taskDao = taskDao;
         this.completionService = completionService;
         this.lifecycleManager = lifecycleManager;
+        this.transitionDao = transitionDao;
         this.executor = executor;
         this.callbackDispatcher = callbackDispatcher;
     }
@@ -48,6 +52,7 @@ public class CheckOffTaskUseCase {
                 taskDao,
                 completionService,
                 lifecycleManager,
+                transitionDao,
                 listItem.taskId,
                 listItem.slotId,
                 callbackDispatcher,
