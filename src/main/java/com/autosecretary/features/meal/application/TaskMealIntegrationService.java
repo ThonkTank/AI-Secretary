@@ -7,6 +7,7 @@ import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.RecipeRepository;
+import com.autosecretary.features.meal.domain.internal.RecipeScalingService;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskPlannedMeal;
 
@@ -26,6 +27,7 @@ public class TaskMealIntegrationService {
     private final MealRepository mealRepository;
     private final RecipeRepository recipeRepository;
     private final PantryRepository pantryRepository;
+    private final RecipeScalingService recipeScalingService;
 
     public TaskMealIntegrationService(MealRepository mealRepository,
                                       RecipeRepository recipeRepository,
@@ -33,6 +35,7 @@ public class TaskMealIntegrationService {
         this.mealRepository = mealRepository;
         this.recipeRepository = recipeRepository;
         this.pantryRepository = pantryRepository;
+        this.recipeScalingService = new RecipeScalingService();
     }
 
     public TaskPlannedMeal resolvePlannedMeal(Task task, LocalDate date) {
@@ -79,8 +82,8 @@ public class TaskMealIntegrationService {
         List<PantryItem> pantryItems = new ArrayList<>(pantryRepository.getPantryItems());
         pantryItems.sort(Comparator.comparing(item -> item.expiryDate, Comparator.nullsLast(Comparator.naturalOrder())));
 
-        double recipeBaseServings = Math.max(1, recipe.servings);
-        double factor = Math.max(0.0, servings) / recipeBaseServings;
+        RecipeScalingService.ScalingResult scalingResult = recipeScalingService.scaleRecipe(recipe, servings);
+        double factor = Math.max(0.0, scalingResult.factor());
 
         for (Recipe.RecipeIngredient ingredient : recipe.ingredients) {
             if (ingredient.ingredientId() == null) {
