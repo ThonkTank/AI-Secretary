@@ -1,0 +1,37 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <EditText
+        android:id="@+id/MealPantryName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/meal_hint_name" />
+
+    <EditText
+        android:id="@+id/MealPantryAmount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/meal_hint_amount"
+        android:inputType="numberDecimal" />
+
+    <EditText
+        android:id="@+id/MealPantryUnit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/meal_hint_unit" />
+
+    <EditText
+        android:id="@+id/MealPantryShelfLifeDays"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/meal_hint_shelf_life_days"
+        android:inputType="number" />
+
+    <Spinner
+        android:id="@+id/MealPantryLocation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+</LinearLayout>

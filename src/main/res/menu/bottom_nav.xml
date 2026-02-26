@@ -7,4 +7,8 @@
         android:id="@+id/tab_manage"
         android:icon="@android:drawable/ic_menu_agenda"
         android:title="@string/nav_manage"/>
+    <item
+        android:id="@+id/tab_meal"
+        android:icon="@android:drawable/ic_menu_compass"
+        android:title="@string/nav_meal"/>
 </menu>
