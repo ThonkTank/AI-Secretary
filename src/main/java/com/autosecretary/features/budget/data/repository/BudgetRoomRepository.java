@@ -1,6 +1,10 @@
 package com.autosecretary.features.budget.data.repository;
 
 import com.autosecretary.features.budget.domain.BudgetRepository;
+import com.autosecretary.features.budget.domain.CategorySpendSummary;
+import com.autosecretary.features.budget.domain.DailyDeltaPoint;
+import com.autosecretary.features.budget.domain.MonthlyDeltaPoint;
+import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -189,29 +193,81 @@ public class BudgetRoomRepository implements BudgetRepository {
         lookupDao.insertCategory(category);
     }
 
-    @Override public List<MonthlyTransactionOverviewItem> getMonthlyOverview(String yearMonth) {
-        return transactionDao.getMonthlyOverview(yearMonth);
+    @Override public List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth) {
+        return mapMonthlyOverviewItems(transactionDao.getMonthlyOverview(yearMonth));
     }
 
-    @Override public List<MonthlyTransactionOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId) {
-        return transactionDao.getMonthlyOverviewForAccount(yearMonth, accountId);
+    @Override public List<MonthlyOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId) {
+        return mapMonthlyOverviewItems(transactionDao.getMonthlyOverviewForAccount(yearMonth, accountId));
     }
 
-    @Override public List<CategorySpendTotal> getCategorySpendTotals(String yearMonth) {
-        return limitDao.getCategorySpendTotals(yearMonth);
+    @Override public List<CategorySpendSummary> getCategorySpendTotals(String yearMonth) {
+        return mapCategorySpendTotals(limitDao.getCategorySpendTotals(yearMonth));
     }
 
-    @Override public List<AccountDailyDeltaPoint> getDailyDeltasForAccount(
+    @Override public List<DailyDeltaPoint> getDailyDeltasForAccount(
             String accountId, LocalDate fromDate, LocalDate toDate) {
-        return transactionDao.getDailyDeltasForAccount(accountId, fromDate, toDate);
+        return mapDailyDeltas(transactionDao.getDailyDeltasForAccount(accountId, fromDate, toDate));
     }
 
-    @Override public List<AccountMonthlyDeltaPoint> getMonthlyDeltasForAccount(
+    @Override public List<MonthlyDeltaPoint> getMonthlyDeltasForAccount(
             String accountId, String fromYearMonth, String toYearMonth) {
-        return transactionDao.getMonthlyDeltasForAccount(accountId, fromYearMonth, toYearMonth);
+        return mapMonthlyDeltas(transactionDao.getMonthlyDeltasForAccount(accountId, fromYearMonth, toYearMonth));
     }
 
     @Override public long getNetAmountBeforeDateForAccount(String accountId, LocalDate beforeDate) {
         return transactionDao.getNetAmountBeforeDateForAccount(accountId, beforeDate);
+    }
+
+    private List<MonthlyOverviewItem> mapMonthlyOverviewItems(List<MonthlyTransactionOverviewItem> rows) {
+        return rows.stream().map(row -> {
+            MonthlyOverviewItem item = new MonthlyOverviewItem();
+            item.transactionId = row.transactionId;
+            item.bookingDate = row.bookingDate;
+            item.yearMonth = row.yearMonth;
+            item.type = row.type;
+            item.transactionKind = row.transactionKind;
+            item.amountCents = row.amountCents;
+            item.note = row.note;
+            item.accountId = row.accountId;
+            item.accountName = row.accountName;
+            item.categoryId = row.categoryId;
+            item.categoryName = row.categoryName;
+            item.categoryIcon = row.categoryIcon;
+            item.categoryColorHex = row.categoryColorHex;
+            item.linkedTransactionId = row.linkedTransactionId;
+            return item;
+        }).toList();
+    }
+
+    private List<CategorySpendSummary> mapCategorySpendTotals(List<CategorySpendTotal> rows) {
+        return rows.stream().map(row -> {
+            CategorySpendSummary item = new CategorySpendSummary();
+            item.categoryId = row.categoryId;
+            item.categoryName = row.categoryName;
+            item.categoryIcon = row.categoryIcon;
+            item.categoryColorHex = row.categoryColorHex;
+            item.spentCents = row.spentCents;
+            item.limitAmount = row.limitAmount;
+            return item;
+        }).toList();
+    }
+
+    private List<DailyDeltaPoint> mapDailyDeltas(List<AccountDailyDeltaPoint> rows) {
+        return rows.stream().map(row -> {
+            DailyDeltaPoint item = new DailyDeltaPoint();
+            item.bucketDate = row.bucketDate;
+            item.deltaCents = row.deltaCents;
+            return item;
+        }).toList();
+    }
+
+    private List<MonthlyDeltaPoint> mapMonthlyDeltas(List<AccountMonthlyDeltaPoint> rows) {
+        return rows.stream().map(row -> {
+            MonthlyDeltaPoint item = new MonthlyDeltaPoint();
+            item.yearMonth = row.yearMonth;
+            item.deltaCents = row.deltaCents;
+            return item;
+        }).toList();
     }
 }

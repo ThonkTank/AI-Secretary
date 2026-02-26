@@ -1,6 +1,5 @@
 package com.autosecretary.features.budget.application.importing;
 
-import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 import com.autosecretary.features.budget.domain.RecurringPatternDetector;
@@ -81,7 +80,7 @@ public class BudgetImportUseCase {
 
             ImportComputation computation = buildTransactions(accountId, importId, parsed.transactions());
             if (!computation.newTransactions.isEmpty()) {
-                repository.saveTransactionsBatch(computation.newTransactions.stream().map(mapper::toEntity).toList());
+                repository.saveTransactionsBatch(computation.newTransactions.stream().map(mapper::toRecord).toList());
             }
 
             repository.markImportCompleted(
@@ -95,8 +94,7 @@ public class BudgetImportUseCase {
 
             repository.notifyBudgetDataUpdated();
 
-            List<BudgetTransactionEntity> accountTransactionEntities = repository.loadTransactionsForAccount(accountId);
-            List<RecurringBudgetTransaction> accountTransactions = accountTransactionEntities.stream()
+            List<RecurringBudgetTransaction> accountTransactions = repository.loadTransactionsForAccount(accountId).stream()
                     .map(mapper::toDomain)
                     .toList();
             List<RecurringSuggestion> suggestions = RecurringPatternDetector.detectPatterns(accountTransactions);

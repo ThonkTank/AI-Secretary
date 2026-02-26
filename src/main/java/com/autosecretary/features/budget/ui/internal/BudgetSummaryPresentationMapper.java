@@ -1,8 +1,8 @@
 package com.autosecretary.features.budget.ui.internal;
 
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
-import com.autosecretary.features.budget.data.projection.CategorySpendTotal;
-import com.autosecretary.features.budget.data.projection.MonthlyTransactionOverviewItem;
+import com.autosecretary.features.budget.domain.CategorySpendSummary;
+import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
 import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
 
@@ -11,11 +11,11 @@ import java.util.List;
 
 public class BudgetSummaryPresentationMapper {
 
-    public BudgetSummaryData toSummary(List<MonthlyTransactionOverviewItem> items, long freeBudgetCents) {
+    public BudgetSummaryData toSummary(List<MonthlyOverviewItem> items, long freeBudgetCents) {
         long totalIncomeCents = 0;
         long totalExpenseCents = 0;
 
-        for (MonthlyTransactionOverviewItem item : items) {
+        for (MonthlyOverviewItem item : items) {
             if ("INTERNAL_TRANSFER".equals(item.transactionKind)) {
                 continue;
             }
@@ -29,11 +29,11 @@ public class BudgetSummaryPresentationMapper {
         return new BudgetSummaryData(totalIncomeCents, totalExpenseCents, freeBudgetCents);
     }
 
-    public List<BudgetLimitBar> toLimitBars(List<CategorySpendTotal> totals,
+    public List<BudgetLimitBar> toLimitBars(List<CategorySpendSummary> totals,
                                              EffectiveLimitProvider effectiveLimitProvider,
                                              String yearMonth) {
         List<BudgetLimitBar> bars = new ArrayList<>();
-        for (CategorySpendTotal total : totals) {
+        for (CategorySpendSummary total : totals) {
             if (total.limitAmount <= 0) {
                 continue;
             }
