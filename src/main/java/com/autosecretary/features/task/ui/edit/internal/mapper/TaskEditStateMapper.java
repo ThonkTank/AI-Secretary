@@ -42,6 +42,8 @@ public class TaskEditStateMapper {
         state.periodUnit = task.core.repetition.periodUnit;
         state.periodCompletions = task.core.repetition.periodCompletions;
         state.periodStart = task.core.repetition.periodStart;
+        state.completeFirst = task.core.repetition.completeFirst;
+        state.carryoverDebt = task.core.repetition.carryoverDebt;
 
         state.unit = task.core.progress.unit;
         state.target = task.core.progress.target;
@@ -92,6 +94,8 @@ public class TaskEditStateMapper {
         task.core.repetition.periodUnit = state.periodUnit;
         task.core.repetition.periodCompletions = state.periodCompletions;
         task.core.repetition.periodStart = state.periodStart;
+        task.core.repetition.completeFirst = state.completeFirst;
+        task.core.repetition.carryoverDebt = state.carryoverDebt;
 
         task.core.progress.unit = state.unit;
         task.core.progress.target = state.target;

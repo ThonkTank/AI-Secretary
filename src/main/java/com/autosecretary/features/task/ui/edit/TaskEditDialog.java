@@ -59,6 +59,7 @@ public class TaskEditDialog extends DialogFragment {
     private EditText repsView;
     private EditText perPeriodView;
     private Spinner periodUnitView;
+    private CheckBox completeFirstView;
 
     private CheckBox toggleProgress;
     private EditText unitView;
@@ -97,6 +98,7 @@ public class TaskEditDialog extends DialogFragment {
         repsView = sectionBindings.repsView;
         perPeriodView = sectionBindings.perPeriodView;
         periodUnitView = sectionBindings.periodUnitView;
+        completeFirstView = sectionBindings.completeFirstView;
         toggleProgress = sectionBindings.toggleProgress;
         unitView = sectionBindings.unitView;
         targetView = sectionBindings.targetView;
@@ -204,6 +206,7 @@ public class TaskEditDialog extends DialogFragment {
             repsView,
             perPeriodView,
             periodUnitView,
+            completeFirstView,
             toggleProgress,
             unitView,
             targetView,
@@ -249,6 +252,7 @@ public class TaskEditDialog extends DialogFragment {
         private final EditText repsView;
         private final EditText perPeriodView;
         private final Spinner periodUnitView;
+        private final CheckBox completeFirstView;
         private final CheckBox toggleProgress;
         private final EditText unitView;
         private final EditText targetView;
@@ -282,6 +286,7 @@ public class TaskEditDialog extends DialogFragment {
             repsView = repetitionViews.repsView;
             perPeriodView = repetitionViews.perPeriodView;
             periodUnitView = repetitionViews.periodUnitView;
+            completeFirstView = repetitionViews.completeFirstView;
 
             toggleProgress = progressViews.toggleProgress;
             unitView = progressViews.unitView;

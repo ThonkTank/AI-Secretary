@@ -138,10 +138,12 @@ public class TaskEditPresenter {
         editState.reps = newReps;
         editState.perPeriod = newPerPeriod;
         editState.periodUnit = newPeriodUnit;
+        editState.completeFirst = input.completeFirst;
 
         if (periodChanged || editState.periodStart == null) {
             editState.periodStart = LocalDate.now();
             editState.periodCompletions = 0;
+            editState.carryoverDebt = 0;
         }
     }
 
@@ -151,6 +153,8 @@ public class TaskEditPresenter {
         editState.periodUnit = Period.DAY;
         editState.periodCompletions = 0;
         editState.periodStart = null;
+        editState.completeFirst = false;
+        editState.carryoverDebt = 0;
     }
 
     private void updateOrResetProgress(FormInput input) {
@@ -238,6 +242,7 @@ public class TaskEditPresenter {
         public int reps = InputDefaults.REPETITION_REPS;
         public int perPeriod = InputDefaults.REPETITION_PER_PERIOD;
         public Period periodUnit = InputDefaults.REPETITION_PERIOD_UNIT;
+        public boolean completeFirst;
 
         public boolean progressEnabled;
         public String unit;
