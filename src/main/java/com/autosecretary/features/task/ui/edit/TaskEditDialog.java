@@ -44,6 +44,11 @@ public class TaskEditDialog extends DialogFragment {
     private EditText descriptionView;
     private Spinner priorityView;
 
+    private Spinner schedulingTypeView;
+    private EditText fixedDateView;
+    private EditText fixedStartView;
+    private EditText fixedEndView;
+    private EditText fixedDurationView;
     private CheckBox closeOnMissView;
     private CheckBox adaptiveView;
     private EditText minDurationView;
@@ -78,6 +83,11 @@ public class TaskEditDialog extends DialogFragment {
         titleView = sectionBindings.titleView;
         descriptionView = sectionBindings.descriptionView;
         priorityView = sectionBindings.priorityView;
+        schedulingTypeView = sectionBindings.schedulingTypeView;
+        fixedDateView = sectionBindings.fixedDateView;
+        fixedStartView = sectionBindings.fixedStartView;
+        fixedEndView = sectionBindings.fixedEndView;
+        fixedDurationView = sectionBindings.fixedDurationView;
         closeOnMissView = sectionBindings.closeOnMissView;
         adaptiveView = sectionBindings.adaptiveView;
         minDurationView = sectionBindings.minDurationView;
@@ -180,6 +190,11 @@ public class TaskEditDialog extends DialogFragment {
             descriptionView,
             priorityView,
             goalSectionController,
+            schedulingTypeView,
+            fixedDateView,
+            fixedStartView,
+            fixedEndView,
+            fixedDurationView,
             closeOnMissView,
             minDurationView,
             maxDurationView,
@@ -220,6 +235,11 @@ public class TaskEditDialog extends DialogFragment {
         private final EditText titleView;
         private final EditText descriptionView;
         private final Spinner priorityView;
+        private final Spinner schedulingTypeView;
+        private final EditText fixedDateView;
+        private final EditText fixedStartView;
+        private final EditText fixedEndView;
+        private final EditText fixedDurationView;
         private final CheckBox closeOnMissView;
         private final CheckBox adaptiveView;
         private final EditText minDurationView;
@@ -247,6 +267,11 @@ public class TaskEditDialog extends DialogFragment {
             descriptionView = basicInfoViews.descriptionView;
             priorityView = basicInfoViews.priorityView;
 
+            schedulingTypeView = schedulingViews.schedulingTypeView;
+            fixedDateView = schedulingViews.fixedDateView;
+            fixedStartView = schedulingViews.fixedStartView;
+            fixedEndView = schedulingViews.fixedEndView;
+            fixedDurationView = schedulingViews.fixedDurationView;
             closeOnMissView = schedulingViews.closeOnMissView;
             adaptiveView = schedulingViews.adaptiveView;
             minDurationView = schedulingViews.minDurationView;

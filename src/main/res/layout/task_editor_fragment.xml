@@ -136,6 +136,79 @@
                 android:contentDescription="@string/task_editor_deadline_clear_content_description"/>
         </LinearLayout>
 
+
+
+        <Spinner
+            android:id="@+id/EditSchedulingType"
+            style="@style/Widget.AISecretary.Editor.Spinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"/>
+
+        <LinearLayout
+            android:id="@+id/FixedSchedulingContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/task_editor_fixed_date_label">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/EditFixedDate"
+                    style="@style/Widget.AISecretary.Editor.TextField"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="date"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/task_editor_fixed_start_label">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/EditFixedStart"
+                    style="@style/Widget.AISecretary.Editor.TextField"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="time"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/task_editor_fixed_end_label">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/EditFixedEnd"
+                    style="@style/Widget.AISecretary.Editor.TextField"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="time"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/task_editor_fixed_duration_label">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/EditFixedDuration"
+                    style="@style/Widget.AISecretary.Editor.TextField"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"/>
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
         <CheckBox
             android:id="@+id/EditCloseOnMiss"
             android:layout_width="match_parent"

@@ -11,6 +11,7 @@ import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 /**
@@ -100,6 +101,11 @@ public class TaskEditPresenter {
         editState.priority = coalesce(safeInput.priority, InputDefaults.PRIORITY);
         editState.goalIcon = safeInput.goalIcon != null ? safeInput.goalIcon : InputDefaults.GOAL_ICON;
         editState.goalColorHex = safeInput.goalColorHex != null ? safeInput.goalColorHex : InputDefaults.GOAL_COLOR_HEX;
+        editState.schedulingType = coalesce(safeInput.schedulingType, InputDefaults.SCHEDULING_TYPE);
+        editState.fixedDate = safeInput.fixedDate;
+        editState.fixedStart = safeInput.fixedStart;
+        editState.fixedEnd = safeInput.fixedEnd;
+        editState.fixedDuration = safeInput.fixedDuration;
 
         editState.closeOnMiss = safeInput.closeOnMiss;
         editState.minDuration = safeInput.minDuration;
@@ -189,6 +195,8 @@ public class TaskEditPresenter {
     public static class InputDefaults {
         public static final Priority PRIORITY = Priority.MEDIUM;
 
+        public static final TaskCore.SchedulingType SCHEDULING_TYPE = TaskCore.SchedulingType.TASK;
+
         public static final int MIN_DURATION = 5;
         public static final int MAX_DURATION = 10;
         public static final int COOLDOWN = 1;
@@ -214,6 +222,11 @@ public class TaskEditPresenter {
         public Priority priority = InputDefaults.PRIORITY;
         public String goalIcon = InputDefaults.GOAL_ICON;
         public String goalColorHex = InputDefaults.GOAL_COLOR_HEX;
+        public TaskCore.SchedulingType schedulingType = InputDefaults.SCHEDULING_TYPE;
+        public LocalDate fixedDate;
+        public LocalTime fixedStart;
+        public LocalTime fixedEnd;
+        public Integer fixedDuration;
 
         public boolean closeOnMiss;
         public int minDuration = InputDefaults.MIN_DURATION;

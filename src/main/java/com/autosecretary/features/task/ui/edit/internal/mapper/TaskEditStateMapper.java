@@ -22,10 +22,15 @@ public class TaskEditStateMapper {
         state.title = task.core.title;
         state.description = task.core.description;
         state.priority = task.core.priority;
+        state.schedulingType = task.core.schedulingType;
         state.goalIcon = task.core.goalIcon != null ? task.core.goalIcon : TaskCore.DEFAULT_GOAL_ICON;
         state.goalColorHex = task.core.goalColorHex != null ? task.core.goalColorHex : TaskCore.DEFAULT_GOAL_COLOR_HEX;
 
         state.deadline = task.core.deadline;
+        state.fixedDate = task.core.fixedDate;
+        state.fixedStart = task.core.fixedStart;
+        state.fixedEnd = task.core.fixedEnd;
+        state.fixedDuration = task.core.fixedDuration;
         state.closeOnMiss = task.core.closeOnMiss;
         state.minDuration = task.core.minDuration;
         state.maxDuration = task.core.maxDuration;
@@ -67,10 +72,15 @@ public class TaskEditStateMapper {
         task.core.title = state.title;
         task.core.description = state.description;
         task.core.priority = state.priority;
+        task.core.schedulingType = state.schedulingType;
         task.core.goalIcon = state.goalIcon != null ? state.goalIcon : TaskCore.DEFAULT_GOAL_ICON;
         task.core.goalColorHex = state.goalColorHex != null ? state.goalColorHex : TaskCore.DEFAULT_GOAL_COLOR_HEX;
 
         task.core.deadline = state.deadline;
+        task.core.fixedDate = state.fixedDate;
+        task.core.fixedStart = state.fixedStart;
+        task.core.fixedEnd = state.fixedEnd;
+        task.core.fixedDuration = state.fixedDuration;
         task.core.closeOnMiss = state.closeOnMiss;
         task.core.minDuration = state.minDuration;
         task.core.maxDuration = state.maxDuration;

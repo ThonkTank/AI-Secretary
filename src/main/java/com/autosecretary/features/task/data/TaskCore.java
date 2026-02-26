@@ -1,6 +1,7 @@
 package com.autosecretary.features.task.data;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
@@ -32,8 +33,13 @@ public class TaskCore {
 
     //scheduling
     public Priority priority = Priority.MEDIUM;
+    public SchedulingType schedulingType = SchedulingType.TASK;
     public int cooldown = 1;
     public LocalDate deadline;
+    public LocalDate fixedDate;
+    public LocalTime fixedStart;
+    public LocalTime fixedEnd;
+    public Integer fixedDuration;
     public LocalDate created = LocalDate.now();
     public boolean closeOnMiss = true; // When deadline/period end is exceeded, close the task instead of keeping it open?
 
@@ -119,3 +125,7 @@ public class TaskCore {
 
 
 }
+    public enum SchedulingType {
+        TASK,
+        TERMIN
+    }

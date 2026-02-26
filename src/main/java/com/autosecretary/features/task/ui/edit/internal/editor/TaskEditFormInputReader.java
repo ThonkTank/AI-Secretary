@@ -5,6 +5,10 @@ import android.widget.EditText;
 import android.widget.Spinner;
 
 import com.autosecretary.shared.Period;
+import com.autosecretary.features.task.data.TaskCore;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
 import com.autosecretary.shared.Priority;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 
@@ -15,6 +19,12 @@ public class TaskEditFormInputReader {
     private final Spinner priorityView;
     private final EditText goalIconView;
     private final GoalSectionController goalSectionController;
+
+    private final Spinner schedulingTypeView;
+    private final EditText fixedDateView;
+    private final EditText fixedStartView;
+    private final EditText fixedEndView;
+    private final EditText fixedDurationView;
 
     private final CheckBox closeOnMissView;
     private final EditText minDurationView;
@@ -40,6 +50,11 @@ public class TaskEditFormInputReader {
         EditText descriptionView,
         Spinner priorityView,
         GoalSectionController goalSectionController,
+        Spinner schedulingTypeView,
+        EditText fixedDateView,
+        EditText fixedStartView,
+        EditText fixedEndView,
+        EditText fixedDurationView,
         CheckBox closeOnMissView,
         EditText minDurationView,
         EditText maxDurationView,
@@ -63,6 +78,12 @@ public class TaskEditFormInputReader {
         this.goalSectionController = goalSectionController;
         this.goalIconView = goalSectionController.getGoalIconView();
 
+        this.schedulingTypeView = schedulingTypeView;
+        this.fixedDateView = fixedDateView;
+        this.fixedStartView = fixedStartView;
+        this.fixedEndView = fixedEndView;
+        this.fixedDurationView = fixedDurationView;
+
         this.closeOnMissView = closeOnMissView;
         this.minDurationView = minDurationView;
         this.maxDurationView = maxDurationView;
@@ -83,6 +104,31 @@ public class TaskEditFormInputReader {
         this.maxPerRepView = maxPerRepView;
     }
 
+
+    private LocalDate parseDateSafe(String value) {
+        try {
+            return value == null || value.trim().isEmpty() ? null : LocalDate.parse(value.trim());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private LocalTime parseTimeSafe(String value) {
+        try {
+            return value == null || value.trim().isEmpty() ? null : LocalTime.parse(value.trim());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Integer parseIntegerNullable(String value) {
+        try {
+            return value == null || value.trim().isEmpty() ? null : Integer.parseInt(value.trim());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public TaskEditPresenter.FormInput read() {
         TaskEditPresenter.FormInput input = new TaskEditPresenter.FormInput();
         input.title = titleView.getText().toString();
@@ -98,6 +144,14 @@ public class TaskEditFormInputReader {
             goalSectionController.getSelectedGoalColorHex(),
             TaskEditPresenter.InputDefaults.GOAL_COLOR_HEX
         );
+        input.schedulingType = TaskEditPresenter.coalesce(
+            (TaskCore.SchedulingType) schedulingTypeView.getSelectedItem(),
+            TaskEditPresenter.InputDefaults.SCHEDULING_TYPE
+        );
+        input.fixedDate = parseDateSafe(fixedDateView.getText().toString());
+        input.fixedStart = parseTimeSafe(fixedStartView.getText().toString());
+        input.fixedEnd = parseTimeSafe(fixedEndView.getText().toString());
+        input.fixedDuration = parseIntegerNullable(fixedDurationView.getText().toString());
 
         input.closeOnMiss = closeOnMissView.isChecked();
         input.minDuration = TaskEditPresenter.parseIntSafe(

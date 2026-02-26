@@ -1,6 +1,7 @@
 package com.autosecretary.features.task.domain.internal.scheduling;
 
 import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskSlot;
@@ -116,6 +117,13 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
+
+    private static class FixedInterval extends Interval {
+        FixedInterval(LocalDateTime start, LocalDateTime end) {
+            super(start, end);
+        }
+    }
+
     private final Consumer<String> logger;
     private final SchedulingWindowProvider schedulingWindowProvider;
     private final CalendarBlockedIntervalProvider calendarBlockedIntervalProvider;
@@ -124,6 +132,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private Map<String, Task> allTasksById;
     private final TaskScorer scorer;
     private LocalDate schedulingDay;
+    private final List<SchedulingConflict> lastConflicts = new ArrayList<>();
 
     public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager) {
         this(lifecycleManager, null, day -> {
@@ -193,6 +202,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         schedulingDay = windowStart.toLocalDate();
         newSlots = 0;
         scorer.reset();
+        lastConflicts.clear();
 
         List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
         List<Task> allTasks = TaskTreeOperations.flatten(taskTree);
@@ -222,6 +232,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             occupied.add(new Interval(blocked.start, blocked.end));
         }
         occupied.sort(Interval::compareTo);
+        scheduleFixedTasks(taskTree, windowStart, windowEnd, occupied);
         assignGlobalBestFit(taskTree, windowStart, windowEnd, null, 0, occupied);
 
         log("=== Zusammenfassung " + schedulingDay + " ===");
@@ -300,6 +311,9 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         DayOfWeek today = schedulingDay.getDayOfWeek();
 
         for (Task task : tasks) {
+            if (task.core.schedulingType == TaskCore.SchedulingType.TERMIN) {
+                continue;
+            }
             // Fast path: if prerequisites are unmet even at the latest possible time, skip entirely
             if (hasUnmetPrerequisites(task, windowEnd)) {
                 scoreLogBuilder.appendTaskPrerequisiteBlocked(task);
@@ -375,6 +389,81 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         List<Interval> childOccupied = new ArrayList<>();
         assignGlobalBestFit(task.children, parentStart, parentEnd, parentSlot, depth + 1, childOccupied);
         return parentEnd;
+    }
+
+
+    public List<SchedulingConflict> getLastConflicts() {
+        return new ArrayList<>(lastConflicts);
+    }
+
+    private void scheduleFixedTasks(List<Task> tasks,
+                                    LocalDateTime windowStart,
+                                    LocalDateTime windowEnd,
+                                    List<Interval> occupied) {
+        List<Task> fixedTasks = new ArrayList<>();
+        collectFixedTasks(tasks, fixedTasks);
+        fixedTasks.sort((a, b) -> {
+            if (a.core.fixedStart == null && b.core.fixedStart == null) return 0;
+            if (a.core.fixedStart == null) return 1;
+            if (b.core.fixedStart == null) return -1;
+            return a.core.fixedStart.compareTo(b.core.fixedStart);
+        });
+
+        for (Task task : fixedTasks) {
+            if (task.core.fixedDate == null || !task.core.fixedDate.equals(schedulingDay) || task.core.fixedStart == null) {
+                continue;
+            }
+            LocalDateTime start = LocalDateTime.of(task.core.fixedDate, task.core.fixedStart);
+            LocalDateTime end = computeFixedEnd(task, start);
+            if (end == null || !end.isAfter(start) || start.isBefore(windowStart) || end.isAfter(windowEnd)) {
+                lastConflicts.add(new SchedulingConflict(task.core.id, task.core.title,
+                    SchedulingConflict.Reason.DAY_BOUNDARY, start, end,
+                    "Termin liegt außerhalb der Tagesgrenzen"));
+                continue;
+            }
+            Interval overlap = findOverlap(occupied, start, end);
+            if (overlap != null) {
+                SchedulingConflict.Reason reason = overlap instanceof FixedInterval
+                    ? SchedulingConflict.Reason.FIXED_VS_FIXED
+                    : SchedulingConflict.Reason.CALENDAR_OVERLAP;
+                lastConflicts.add(new SchedulingConflict(task.core.id, task.core.title,
+                    reason, start, end, "Termin überschneidet belegte Zeit"));
+                continue;
+            }
+            TaskSlot slot = createScheduledSlot(task, start, Integer.MAX_VALUE / 2, null);
+            slot.end = end.toLocalTime();
+            finalizeAssignment(task, slot, Integer.MAX_VALUE / 2);
+            occupied.add(new FixedInterval(start, end));
+            occupied.sort(Interval::compareTo);
+        }
+    }
+
+    private void collectFixedTasks(List<Task> tasks, List<Task> fixedTasks) {
+        for (Task task : tasks) {
+            if (task.core.schedulingType == TaskCore.SchedulingType.TERMIN) {
+                fixedTasks.add(task);
+            }
+            if (task.children != null && !task.children.isEmpty()) {
+                collectFixedTasks(task.children, fixedTasks);
+            }
+        }
+    }
+
+    private LocalDateTime computeFixedEnd(Task task, LocalDateTime start) {
+        if (task.core.fixedEnd != null) {
+            return LocalDateTime.of(start.toLocalDate(), task.core.fixedEnd);
+        }
+        int duration = task.core.fixedDuration != null ? task.core.fixedDuration : task.core.maxDuration;
+        return duration > 0 ? start.plusMinutes(duration) : null;
+    }
+
+    private Interval findOverlap(List<Interval> occupied, LocalDateTime start, LocalDateTime end) {
+        for (Interval interval : occupied) {
+            if (start.isBefore(interval.end) && end.isAfter(interval.start)) {
+                return interval;
+            }
+        }
+        return null;
     }
 
     private List<Interval> findGaps(List<Interval> occupied, LocalDateTime windowStart, LocalDateTime windowEnd) {

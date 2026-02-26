@@ -5,6 +5,7 @@ import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,8 +20,13 @@ public class TaskEditState {
     public String goalIcon = TaskCore.DEFAULT_GOAL_ICON;
     public String goalColorHex = TaskCore.DEFAULT_GOAL_COLOR_HEX;
     public Priority priority = Priority.MEDIUM;
+    public TaskCore.SchedulingType schedulingType = TaskCore.SchedulingType.TASK;
 
     public LocalDate deadline;
+    public LocalDate fixedDate;
+    public LocalTime fixedStart;
+    public LocalTime fixedEnd;
+    public Integer fixedDuration;
     public boolean closeOnMiss = true;
     public int minDuration = 5;
     public int maxDuration = 10;
