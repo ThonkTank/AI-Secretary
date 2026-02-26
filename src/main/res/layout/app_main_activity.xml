@@ -7,6 +7,16 @@
     android:fitsSystemWindows="true"
     android:background="@drawable/bg_forest_gradient">
 
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/MainToolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/spacing_md"
+        android:layout_marginTop="@dimen/spacing_md"
+        android:background="@drawable/bg_surface_card"
+        android:elevation="0dp"
+        app:title="@string/app_name" />
+
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/Container"
         android:layout_width="match_parent"

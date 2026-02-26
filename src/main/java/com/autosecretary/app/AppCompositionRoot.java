@@ -187,4 +187,11 @@ public class AppCompositionRoot {
 
         return budgetViewModelFactory;
     }
+
+    public synchronized void resetForDataReload() {
+        taskViewModelFactory = null;
+        regenerateScheduleUseCase = null;
+        budgetViewModelFactory = null;
+        taskScheduleConfigService = null;
+    }
 }

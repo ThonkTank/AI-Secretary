@@ -1,23 +1,35 @@
 package com.autosecretary.app;
 
-import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
-
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
+import com.autosecretary.app.settings.SettingsController;
+import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.ui.BudgetFragment;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
 import com.autosecretary.features.task.ui.list.TaskListFragment;
+import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
+
+    private SettingsController settingsController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.app_main_activity);
+
+        MaterialToolbar toolbar = findViewById(R.id.MainToolbar);
+        setSupportActionBar(toolbar);
+
+        settingsController = new SettingsController(this, this::reloadUiStateAfterDataReset);
 
         BottomNavigationView tabBar = findViewById(R.id.TabBar);
 
@@ -44,6 +56,21 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_toolbar_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.action_settings) {
+            settingsController.showSettingsMenu();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
     private boolean shouldOpenBudgetFromIntent() {
         return BudgetWidgetProvider.TAB_BUDGET.equals(
                 getIntent().getStringExtra(BudgetWidgetProvider.EXTRA_OPEN_TAB)
@@ -68,5 +95,13 @@ public class MainActivity extends AppCompatActivity {
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.Container, fragment)
                 .commit();
+    }
+
+    private void reloadUiStateAfterDataReset() {
+        AppDatabase.closeAndReset();
+        AutoSecretaryApplication.from(this)
+                .getAppCompositionRoot()
+                .resetForDataReload();
+        recreate();
     }
 }
