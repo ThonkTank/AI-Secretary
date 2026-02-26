@@ -1,6 +1,7 @@
 package com.autosecretary.features.task.ui.edit.internal.editor;
 
 import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
@@ -21,6 +22,7 @@ import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
 public class TaskEditSectionBinder {
@@ -72,6 +74,13 @@ public class TaskEditSectionBinder {
         EditText cooldownView = rootView.findViewById(R.id.EditCooldown);
         EditText budgetRequirementCentsView = rootView.findViewById(R.id.EditBudgetRequirementCents);
         CheckBox adaptiveView = rootView.findViewById(R.id.EditAdaptive);
+        CheckBox fixedAppointmentView = rootView.findViewById(R.id.EditIsFixedAppointment);
+        EditText fixedDateView = rootView.findViewById(R.id.EditFixedDate);
+        com.google.android.material.textfield.TextInputLayout fixedDateInputLayout = rootView.findViewById(R.id.FixedDateInputLayout);
+        EditText fixedStartView = rootView.findViewById(R.id.EditFixedStart);
+        com.google.android.material.textfield.TextInputLayout fixedStartInputLayout = rootView.findViewById(R.id.FixedStartInputLayout);
+        EditText fixedDurationView = rootView.findViewById(R.id.EditFixedDurationMinutes);
+        LinearLayout fixedAppointmentContainer = rootView.findViewById(R.id.FixedAppointmentContainer);
 
         SchedulingViews views = new SchedulingViews(
             deadlineView,
@@ -81,7 +90,14 @@ public class TaskEditSectionBinder {
             maxDurationView,
             cooldownView,
             budgetRequirementCentsView,
-            adaptiveView
+            adaptiveView,
+            fixedAppointmentView,
+            fixedAppointmentContainer,
+            fixedDateView,
+            fixedDateInputLayout,
+            fixedStartView,
+            fixedStartInputLayout,
+            fixedDurationView
         );
 
         updateDeadlineDisplay(views);
@@ -98,6 +114,19 @@ public class TaskEditSectionBinder {
         cooldownView.setText(String.valueOf(editState.cooldown));
         budgetRequirementCentsView.setText(String.valueOf(editState.budgetRequirementCents));
         adaptiveView.setChecked(editState.adaptive);
+
+        fixedAppointmentView.setChecked(editState.isFixedAppointment);
+        fixedAppointmentContainer.setVisibility(editState.isFixedAppointment ? View.VISIBLE : View.GONE);
+        fixedDurationView.setText(String.valueOf(editState.fixedDurationMinutes > 0 ? editState.fixedDurationMinutes : editState.maxDuration));
+        updateFixedDateDisplay(views);
+        updateFixedStartDisplay(views);
+
+        fixedAppointmentView.setOnCheckedChangeListener((btn, checked) ->
+            fixedAppointmentContainer.setVisibility(checked ? View.VISIBLE : View.GONE));
+        fixedDateView.setOnClickListener(v -> showFixedDatePicker(views));
+        fixedDateInputLayout.setEndIconOnClickListener(v -> showFixedDatePicker(views));
+        fixedStartView.setOnClickListener(v -> showFixedTimePicker(views));
+        fixedStartInputLayout.setEndIconOnClickListener(v -> showFixedTimePicker(views));
 
         return views;
     }
@@ -218,6 +247,40 @@ public class TaskEditSectionBinder {
         }
     }
 
+    private void updateFixedDateDisplay(SchedulingViews views) {
+        if (editState.fixedDate != null) {
+            views.fixedDateView.setText(editState.fixedDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")));
+        } else {
+            views.fixedDateView.setText("");
+        }
+    }
+
+    private void updateFixedStartDisplay(SchedulingViews views) {
+        if (editState.fixedStart != null) {
+            views.fixedStartView.setText(editState.fixedStart.format(HMM));
+        } else {
+            views.fixedStartView.setText("");
+        }
+    }
+
+    private void showFixedDatePicker(SchedulingViews views) {
+        LocalDate current = editState.fixedDate != null ? editState.fixedDate : LocalDate.now();
+        new DatePickerDialog(fragment.requireContext(), (picker, year, month, day) -> {
+            editState.fixedDate = LocalDate.of(year, month + 1, day);
+            updateFixedDateDisplay(views);
+        }, current.getYear(), current.getMonthValue() - 1, current.getDayOfMonth()).show();
+    }
+
+    private void showFixedTimePicker(SchedulingViews views) {
+        LocalTime current = editState.fixedStart != null ? editState.fixedStart : LocalTime.of(9, 0);
+        new TimePickerDialog(fragment.requireContext(), (picker, hour, minute) -> {
+            editState.fixedStart = LocalTime.of(hour, minute);
+            updateFixedStartDisplay(views);
+        }, current.getHour(), current.getMinute(), true).show();
+    }
+
+    private static final DateTimeFormatter HMM = DateTimeFormatter.ofPattern("HH:mm");
+
     private void showDatePicker(SchedulingViews views) {
         LocalDate current = presenter.getEditableDeadline() != null ? presenter.getEditableDeadline() : LocalDate.now();
         new DatePickerDialog(fragment.requireContext(), (picker, year, month, day) -> {
@@ -247,6 +310,13 @@ public class TaskEditSectionBinder {
         public final EditText cooldownView;
         public final EditText budgetRequirementCentsView;
         public final CheckBox adaptiveView;
+        public final CheckBox fixedAppointmentView;
+        public final LinearLayout fixedAppointmentContainer;
+        public final EditText fixedDateView;
+        public final com.google.android.material.textfield.TextInputLayout fixedDateInputLayout;
+        public final EditText fixedStartView;
+        public final com.google.android.material.textfield.TextInputLayout fixedStartInputLayout;
+        public final EditText fixedDurationView;
 
         private SchedulingViews(
             EditText deadlineView,
@@ -256,7 +326,14 @@ public class TaskEditSectionBinder {
             EditText maxDurationView,
             EditText cooldownView,
             EditText budgetRequirementCentsView,
-            CheckBox adaptiveView
+            CheckBox adaptiveView,
+            CheckBox fixedAppointmentView,
+            LinearLayout fixedAppointmentContainer,
+            EditText fixedDateView,
+            com.google.android.material.textfield.TextInputLayout fixedDateInputLayout,
+            EditText fixedStartView,
+            com.google.android.material.textfield.TextInputLayout fixedStartInputLayout,
+            EditText fixedDurationView
         ) {
             this.deadlineView = deadlineView;
             this.deadlineInputLayout = deadlineInputLayout;
@@ -266,6 +343,13 @@ public class TaskEditSectionBinder {
             this.cooldownView = cooldownView;
             this.budgetRequirementCentsView = budgetRequirementCentsView;
             this.adaptiveView = adaptiveView;
+            this.fixedAppointmentView = fixedAppointmentView;
+            this.fixedAppointmentContainer = fixedAppointmentContainer;
+            this.fixedDateView = fixedDateView;
+            this.fixedDateInputLayout = fixedDateInputLayout;
+            this.fixedStartView = fixedStartView;
+            this.fixedStartInputLayout = fixedStartInputLayout;
+            this.fixedDurationView = fixedDurationView;
         }
     }
 

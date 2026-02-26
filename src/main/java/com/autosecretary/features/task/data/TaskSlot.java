@@ -43,6 +43,8 @@ public class TaskSlot {
     public LocalTime end;
     public boolean scheduled;
     public boolean completed;
+    public String chainId;
+    public int chainOrder = -1;
     /** Returns the number of days elapsed since this slot's scheduled day. */
     public int sinceCompleted() {return (int) ChronoUnit.DAYS.between(day, LocalDate.now());}
     public int score;

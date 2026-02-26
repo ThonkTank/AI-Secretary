@@ -21,6 +21,13 @@ public class TaskEditFormValidator {
         valid &= validateLongField(views.budgetRequirementCentsView, 0L, Long.MAX_VALUE,
             "Budgetbedarf muss mindestens 0 Cent sein.");
 
+        if (views.fixedAppointmentView.isChecked()) {
+            valid &= requireNonEmpty(views.fixedDateView, "Termin-Datum ist erforderlich.");
+            valid &= requireNonEmpty(views.fixedStartView, "Termin-Startzeit ist erforderlich.");
+            valid &= validateIntegerField(views.fixedDurationView, 1, Integer.MAX_VALUE,
+                "Termin-Dauer muss mindestens 1 Minute sein.");
+        }
+
         if (views.toggleRepetition.isChecked()) {
             valid &= validateIntegerField(views.repsView, 1, Integer.MAX_VALUE,
                 "Wiederholungen müssen mindestens 1 sein.");
@@ -67,6 +74,9 @@ public class TaskEditFormValidator {
         views.maxDurationView.setError(null);
         views.cooldownView.setError(null);
         views.budgetRequirementCentsView.setError(null);
+        views.fixedDateView.setError(null);
+        views.fixedStartView.setError(null);
+        views.fixedDurationView.setError(null);
         views.repsView.setError(null);
         views.perPeriodView.setError(null);
         views.targetView.setError(null);

@@ -8,6 +8,9 @@ import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+
 public class TaskEditFormInputReader {
 
     private final EditText titleView;
@@ -22,6 +25,10 @@ public class TaskEditFormInputReader {
     private final EditText cooldownView;
     private final EditText budgetRequirementCentsView;
     private final CheckBox adaptiveView;
+    private final CheckBox fixedAppointmentView;
+    private final EditText fixedDateView;
+    private final EditText fixedStartView;
+    private final EditText fixedDurationView;
 
     private final CheckBox toggleRepetition;
     private final EditText repsView;
@@ -47,6 +54,10 @@ public class TaskEditFormInputReader {
         EditText cooldownView,
         EditText budgetRequirementCentsView,
         CheckBox adaptiveView,
+        CheckBox fixedAppointmentView,
+        EditText fixedDateView,
+        EditText fixedStartView,
+        EditText fixedDurationView,
         CheckBox toggleRepetition,
         EditText repsView,
         EditText perPeriodView,
@@ -71,6 +82,10 @@ public class TaskEditFormInputReader {
         this.cooldownView = cooldownView;
         this.budgetRequirementCentsView = budgetRequirementCentsView;
         this.adaptiveView = adaptiveView;
+        this.fixedAppointmentView = fixedAppointmentView;
+        this.fixedDateView = fixedDateView;
+        this.fixedStartView = fixedStartView;
+        this.fixedDurationView = fixedDurationView;
 
         this.toggleRepetition = toggleRepetition;
         this.repsView = repsView;
@@ -84,6 +99,29 @@ public class TaskEditFormInputReader {
         this.resetPerRepView = resetPerRepView;
         this.minPerRepView = minPerRepView;
         this.maxPerRepView = maxPerRepView;
+    }
+
+    private LocalDate parseDateSafe(String value) {
+        try {
+            String[] parts = value.trim().split("\\.");
+            if (parts.length != 3) return null;
+            int day = Integer.parseInt(parts[0]);
+            int month = Integer.parseInt(parts[1]);
+            int year = Integer.parseInt(parts[2]);
+            return LocalDate.of(year, month, day);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private LocalTime parseTimeSafe(String value) {
+        try {
+            String[] parts = value.trim().split(":");
+            if (parts.length != 2) return null;
+            return LocalTime.of(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public TaskEditPresenter.FormInput read() {
@@ -120,6 +158,13 @@ public class TaskEditFormInputReader {
             TaskEditPresenter.InputDefaults.BUDGET_REQUIREMENT_CENTS
         );
         input.adaptive = adaptiveView.isChecked();
+        input.isFixedAppointment = fixedAppointmentView.isChecked();
+        input.fixedDate = parseDateSafe(fixedDateView.getText() != null ? fixedDateView.getText().toString() : "");
+        input.fixedStart = parseTimeSafe(fixedStartView.getText() != null ? fixedStartView.getText().toString() : "");
+        input.fixedDurationMinutes = TaskEditPresenter.parseIntSafe(
+            fixedDurationView.getText().toString(),
+            TaskEditPresenter.InputDefaults.FIXED_DURATION_MINUTES
+        );
 
         input.repetitionEnabled = toggleRepetition.isChecked();
         input.reps = TaskEditPresenter.parseIntSafe(
