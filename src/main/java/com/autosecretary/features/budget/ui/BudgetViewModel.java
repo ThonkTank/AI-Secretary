@@ -17,7 +17,6 @@ import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
-import com.autosecretary.features.budget.ui.internal.BudgetImportDialogStateMapper;
 import com.autosecretary.features.budget.ui.internal.BudgetOverviewLoader;
 import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
 import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
@@ -149,7 +148,6 @@ public class BudgetViewModel extends ViewModel {
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
     private final CreateTransferUseCase createTransferUseCase;
     private final BudgetSummaryPresentationMapper summaryPresentationMapper;
-    private final BudgetImportDialogStateMapper importDialogStateMapper;
     private final BudgetSeedService budgetSeedService;
     private final BudgetOverviewLoader budgetOverviewLoader;
     private final AmountParser amountParser;
@@ -172,7 +170,6 @@ public class BudgetViewModel extends ViewModel {
         this.applyRecurringUseCase = applyRecurringUseCase;
         this.createTransferUseCase = createTransferUseCase;
         this.summaryPresentationMapper = new BudgetSummaryPresentationMapper();
-        this.importDialogStateMapper = new BudgetImportDialogStateMapper();
         this.budgetSeedService = budgetSeedService;
         this.budgetOverviewLoader = budgetOverviewLoader;
         this.amountParser = amountParser;
@@ -486,7 +483,9 @@ public class BudgetViewModel extends ViewModel {
                             + result.duplicates() + " Duplikate, "
                             + result.autoCategorized() + " auto-kategorisiert.";
                     statusMessage.setValue(msg);
-                    importDialogState.setValue(importDialogStateMapper.map(result));
+                    importDialogState.setValue(result == null
+                            ? null
+                            : new BudgetImportDialogState(result.recurringSuggestions()));
                 });
             }
 
