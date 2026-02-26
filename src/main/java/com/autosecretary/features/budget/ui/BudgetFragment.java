@@ -230,12 +230,16 @@ public class BudgetFragment extends Fragment {
         });
 
         views.rangeGroup.setOnCheckedChangeListener((group, checkedId) -> {
-            BudgetViewModel.TimeRangeFilter filter = switch (checkedId) {
-                case R.id.BudgetRange30d -> BudgetViewModel.TimeRangeFilter.DAYS_30;
-                case R.id.BudgetRange3m -> BudgetViewModel.TimeRangeFilter.MONTHS_3;
-                case R.id.BudgetRange12m -> BudgetViewModel.TimeRangeFilter.MONTHS_12;
-                default -> null;
-            };
+            BudgetViewModel.TimeRangeFilter filter;
+            if (checkedId == R.id.BudgetRange30d) {
+                filter = BudgetViewModel.TimeRangeFilter.DAYS_30;
+            } else if (checkedId == R.id.BudgetRange3m) {
+                filter = BudgetViewModel.TimeRangeFilter.MONTHS_3;
+            } else if (checkedId == R.id.BudgetRange12m) {
+                filter = BudgetViewModel.TimeRangeFilter.MONTHS_12;
+            } else {
+                filter = null;
+            }
 
             if (filter != null) {
                 budgetViewModel.setTimeRangeFilter(filter);
