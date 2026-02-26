@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 
+import com.autosecretary.features.task.application.internal.scheduling.DailyPlanningScheduler;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 public class AutoSecretaryApplication extends Application {
@@ -15,6 +16,7 @@ public class AutoSecretaryApplication extends Application {
     public void onCreate() {
         super.onCreate();
         appCompositionRoot = new AppCompositionRoot(this);
+        DailyPlanningScheduler.scheduleDaily(this);
         registerWidgetRefreshOnUnlock();
     }
 
