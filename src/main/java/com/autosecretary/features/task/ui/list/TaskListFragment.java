@@ -34,7 +34,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Locale;
 
-public class ListFragment extends Fragment {
+public class TaskListFragment extends Fragment {
     private TaskViewModel vm;
 
     private final ActivityResultLauncher<String> calendarPermissionLauncher =

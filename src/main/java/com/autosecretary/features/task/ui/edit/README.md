@@ -14,4 +14,4 @@
 - `internal/mapper/` contains `TaskEditStateMapper` for edit-state ↔ task mapping.
 - `internal/PrefSlotUIBuilder` is edit-specific preferred-slot UI construction.
 
-List-screen classes live in `features.task.ui.list`.
+List-screen classes live in `features.task.ui.list` (for example: `TaskListFragment`, `ListRowAdapter`, `TaskViewModel`).
