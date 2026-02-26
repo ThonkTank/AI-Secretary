@@ -45,7 +45,7 @@ import com.autosecretary.features.task.data.TaskSlot;
                 BudgetImportEntity.class,
                 BudgetRecurringTemplateEntity.class
         },
-        version = 14,
+        version = 15,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
