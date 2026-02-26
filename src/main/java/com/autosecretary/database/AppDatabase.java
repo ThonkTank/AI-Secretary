@@ -48,7 +48,7 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
                 BudgetImportEntity.class,
                 BudgetRecurringTemplateEntity.class
         },
-        version = 18,
+        version = 19,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -206,6 +206,15 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    private static final Migration MIGRATION_18_19 = new Migration(18, 19) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE task_core ADD COLUMN budgetRequiredCents INTEGER");
+            database.execSQL("ALTER TABLE task_core ADD COLUMN budgetAccountId TEXT");
+            database.execSQL("ALTER TABLE task_core ADD COLUMN budgetCategoryId TEXT");
+        }
+    };
+
     public abstract TaskDAO taskDao();
 
     public abstract TaskScheduleConfigDAO taskScheduleConfigDao();
@@ -227,7 +236,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context, AppDatabase.class, "autosecretary.db")
-                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
+                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
                     .fallbackToDestructiveMigration()
                     .build();
         }

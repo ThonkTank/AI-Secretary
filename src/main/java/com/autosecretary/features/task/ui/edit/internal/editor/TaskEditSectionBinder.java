@@ -73,6 +73,9 @@ public class TaskEditSectionBinder {
         EditText fixedStartView = rootView.findViewById(R.id.EditFixedStart);
         EditText fixedEndView = rootView.findViewById(R.id.EditFixedEnd);
         EditText fixedDurationView = rootView.findViewById(R.id.EditFixedDuration);
+        EditText budgetRequiredCentsView = rootView.findViewById(R.id.EditBudgetRequiredCents);
+        EditText budgetAccountIdView = rootView.findViewById(R.id.EditBudgetAccountId);
+        EditText budgetCategoryIdView = rootView.findViewById(R.id.EditBudgetCategoryId);
         CheckBox closeOnMissView = rootView.findViewById(R.id.EditCloseOnMiss);
         EditText minDurationView = rootView.findViewById(R.id.EditMinDuration);
         EditText maxDurationView = rootView.findViewById(R.id.EditMaxDuration);
@@ -88,6 +91,9 @@ public class TaskEditSectionBinder {
             fixedStartView,
             fixedEndView,
             fixedDurationView,
+            budgetRequiredCentsView,
+            budgetAccountIdView,
+            budgetCategoryIdView,
             closeOnMissView,
             minDurationView,
             maxDurationView,
@@ -116,6 +122,9 @@ public class TaskEditSectionBinder {
         fixedStartView.setText(editState.fixedStart != null ? editState.fixedStart.toString() : "");
         fixedEndView.setText(editState.fixedEnd != null ? editState.fixedEnd.toString() : "");
         fixedDurationView.setText(editState.fixedDuration != null ? String.valueOf(editState.fixedDuration) : "");
+        budgetRequiredCentsView.setText(editState.budgetRequiredCents != null ? String.valueOf(editState.budgetRequiredCents) : "");
+        budgetAccountIdView.setText(editState.budgetAccountId != null ? editState.budgetAccountId : "");
+        budgetCategoryIdView.setText(editState.budgetCategoryId != null ? editState.budgetCategoryId : "");
         fixedSchedulingContainer.setVisibility((editState.schedulingType == TaskCore.SchedulingType.TERMIN) ? View.VISIBLE : View.GONE);
         schedulingTypeView.setOnItemSelectedListener(new SimpleItemSelectedListener() {
             @Override
@@ -125,7 +134,7 @@ public class TaskEditSectionBinder {
             }
         });
 
-                closeOnMissView.setChecked(editState.closeOnMiss);
+        closeOnMissView.setChecked(editState.closeOnMiss);
         minDurationView.setText(String.valueOf(editState.minDuration));
         maxDurationView.setText(String.valueOf(editState.maxDuration));
         cooldownView.setText(String.valueOf(editState.cooldown));
@@ -282,6 +291,9 @@ public class TaskEditSectionBinder {
         public final EditText fixedStartView;
         public final EditText fixedEndView;
         public final EditText fixedDurationView;
+        public final EditText budgetRequiredCentsView;
+        public final EditText budgetAccountIdView;
+        public final EditText budgetCategoryIdView;
         public final CheckBox closeOnMissView;
         public final EditText minDurationView;
         public final EditText maxDurationView;
@@ -297,6 +309,9 @@ public class TaskEditSectionBinder {
             EditText fixedStartView,
             EditText fixedEndView,
             EditText fixedDurationView,
+            EditText budgetRequiredCentsView,
+            EditText budgetAccountIdView,
+            EditText budgetCategoryIdView,
             CheckBox closeOnMissView,
             EditText minDurationView,
             EditText maxDurationView,
@@ -311,6 +326,9 @@ public class TaskEditSectionBinder {
             this.fixedStartView = fixedStartView;
             this.fixedEndView = fixedEndView;
             this.fixedDurationView = fixedDurationView;
+            this.budgetRequiredCentsView = budgetRequiredCentsView;
+            this.budgetAccountIdView = budgetAccountIdView;
+            this.budgetCategoryIdView = budgetCategoryIdView;
             this.closeOnMissView = closeOnMissView;
             this.minDurationView = minDurationView;
             this.maxDurationView = maxDurationView;

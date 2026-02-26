@@ -25,6 +25,9 @@ public class TaskEditStateMapper {
         state.schedulingType = task.core.schedulingType;
         state.goalIcon = task.core.goalIcon != null ? task.core.goalIcon : TaskCore.DEFAULT_GOAL_ICON;
         state.goalColorHex = task.core.goalColorHex != null ? task.core.goalColorHex : TaskCore.DEFAULT_GOAL_COLOR_HEX;
+        state.budgetRequiredCents = task.core.budgetRequiredCents;
+        state.budgetAccountId = task.core.budgetAccountId;
+        state.budgetCategoryId = task.core.budgetCategoryId;
 
         state.deadline = task.core.deadline;
         state.fixedDate = task.core.fixedDate;
@@ -77,6 +80,9 @@ public class TaskEditStateMapper {
         task.core.schedulingType = state.schedulingType;
         task.core.goalIcon = state.goalIcon != null ? state.goalIcon : TaskCore.DEFAULT_GOAL_ICON;
         task.core.goalColorHex = state.goalColorHex != null ? state.goalColorHex : TaskCore.DEFAULT_GOAL_COLOR_HEX;
+        task.core.budgetRequiredCents = state.budgetRequiredCents;
+        task.core.budgetAccountId = state.budgetAccountId;
+        task.core.budgetCategoryId = state.budgetCategoryId;
 
         task.core.deadline = state.deadline;
         task.core.fixedDate = state.fixedDate;

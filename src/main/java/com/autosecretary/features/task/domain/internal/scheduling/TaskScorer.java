@@ -5,6 +5,7 @@ import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.data.TaskTransitionStat;
+import com.autosecretary.features.task.domain.TaskBudgetEligibilityService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.TaskPlanningState;
 import java.time.DayOfWeek;
@@ -46,21 +47,28 @@ final class TaskScorer {
     private final Map<String, TaskScoringSnapshot> caches = new HashMap<>();
     private final Map<String, Map<String, TaskTransitionStat>> transitionStats = new HashMap<>();
     private final Consumer<String> logger;
+    private final TaskBudgetEligibilityService budgetEligibilityService;
 
     TaskScorer(TaskLifecycleManager lifecycleManager) {
-        this(lifecycleManager, null, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
+        this(lifecycleManager, null, null, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
     }
 
     TaskScorer(TaskLifecycleManager lifecycleManager, Consumer<String> logger) {
-        this(lifecycleManager, logger, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
+        this(lifecycleManager, logger, null, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
+    }
+
+    TaskScorer(TaskLifecycleManager lifecycleManager, Consumer<String> logger, TaskBudgetEligibilityService budgetEligibilityService) {
+        this(lifecycleManager, logger, budgetEligibilityService, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
     }
 
     TaskScorer(TaskLifecycleManager lifecycleManager,
                Consumer<String> logger,
+               TaskBudgetEligibilityService budgetEligibilityService,
                double maxAgingMultiplier,
                double preferredStartDeviationHours) {
         this.lifecycleManager = lifecycleManager;
         this.logger = logger;
+        this.budgetEligibilityService = budgetEligibilityService;
         this.maxAgingMultiplier = maxAgingMultiplier;
         this.preferredStartDeviationHours = preferredStartDeviationHours;
     }
@@ -317,6 +325,7 @@ final class TaskScorer {
 
     private boolean passesHardConstraintGate(ScoringContext context) {
         if (isAlreadyCompleteForCurrentCycle(context)) return false;
+        if (isBudgetInsufficient(context)) return false;
         if (hasReachedDailyRepetitionLimit(context)) return false;
         if (isWithinCooldownWindow(context)) return false;
         if (violatesMinimumInterDaySpacing(context)) return false;
@@ -329,6 +338,15 @@ final class TaskScorer {
 
     private boolean isAlreadyCompleteForCurrentCycle(ScoringContext context) {
         return context.snapshot.completionState().isComplete();
+    }
+
+
+    private boolean isBudgetInsufficient(ScoringContext context) {
+        if (budgetEligibilityService == null) {
+            return false;
+        }
+        TaskBudgetEligibilityService.BudgetEligibility eligibility = budgetEligibilityService.eligibilityFor(context.task);
+        return !eligibility.enoughBudget();
     }
 
     private boolean hasReachedDailyRepetitionLimit(ScoringContext context) {

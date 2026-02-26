@@ -9,6 +9,7 @@ import com.autosecretary.features.task.domain.CalendarBlockedIntervalProvider;
 import com.autosecretary.features.task.domain.SchedulingWindowProvider;
 import com.autosecretary.features.task.domain.SchedulingConflict;
 import com.autosecretary.features.task.domain.TaskCalendarEvent;
+import com.autosecretary.features.task.domain.TaskBudgetEligibilityService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.TaskPlanningState;
 import com.autosecretary.features.task.domain.TaskSlotGenerator;
@@ -184,7 +185,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                     Consumer<String> logger,
                                     SchedulingWindowProvider schedulingWindowProvider,
                                     CalendarBlockedIntervalProvider calendarBlockedIntervalProvider) {
-        this(lifecycleManager, logger, schedulingWindowProvider, calendarBlockedIntervalProvider, null);
+        this(lifecycleManager, logger, schedulingWindowProvider, calendarBlockedIntervalProvider, null, null);
     }
 
     public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager,
@@ -192,7 +193,16 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                     SchedulingWindowProvider schedulingWindowProvider,
                                     CalendarBlockedIntervalProvider calendarBlockedIntervalProvider,
                                     TaskTransitionStatDao transitionStatDao) {
-        this.scorer = new TaskScorer(lifecycleManager, logger);
+        this(lifecycleManager, logger, schedulingWindowProvider, calendarBlockedIntervalProvider, transitionStatDao, null);
+    }
+
+    public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager,
+                                    Consumer<String> logger,
+                                    SchedulingWindowProvider schedulingWindowProvider,
+                                    CalendarBlockedIntervalProvider calendarBlockedIntervalProvider,
+                                    TaskTransitionStatDao transitionStatDao,
+                                    TaskBudgetEligibilityService taskBudgetEligibilityService) {
+        this.scorer = new TaskScorer(lifecycleManager, logger, taskBudgetEligibilityService);
         this.transitionStatDao = transitionStatDao;
         this.logger = logger;
         this.schedulingWindowProvider = schedulingWindowProvider;

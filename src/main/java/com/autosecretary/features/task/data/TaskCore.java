@@ -30,6 +30,9 @@ public class TaskCore {
     public String description;
     @NonNull public String goalIcon = DEFAULT_GOAL_ICON;
     @NonNull public String goalColorHex = DEFAULT_GOAL_COLOR_HEX;
+    public Integer budgetRequiredCents;
+    public String budgetAccountId;
+    public String budgetCategoryId;
 
     //scheduling
     public Priority priority = Priority.MEDIUM;

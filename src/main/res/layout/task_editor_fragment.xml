@@ -209,6 +209,46 @@
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/task_editor_budget_required_cents_label">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/EditBudgetRequiredCents"
+                style="@style/Widget.AISecretary.Editor.TextField"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/task_editor_budget_account_id_label">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/EditBudgetAccountId"
+                style="@style/Widget.AISecretary.Editor.TextField"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/task_editor_budget_category_id_label">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/EditBudgetCategoryId"
+                style="@style/Widget.AISecretary.Editor.TextField"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
         <CheckBox
             android:id="@+id/EditCloseOnMiss"
             android:layout_width="match_parent"
