@@ -35,6 +35,9 @@ public class Task {
     @Relation(parentColumn = "id", entityColumn = "taskId")
     public List<TaskPrerequisite> prerequisites;
 
+    @Relation(parentColumn = "id", entityColumn = "taskId")
+    public List<TaskPlannedMeal> plannedMeals;
+
     @Ignore
     public List<Task> children = new ArrayList<>();
 
@@ -76,6 +79,27 @@ public class Task {
         return null;
     }
 
+    public TaskPlannedMeal getPlannedMealForDate(LocalDate date) {
+        if (date == null || plannedMeals == null) {
+            return null;
+        }
+        for (TaskPlannedMeal meal : plannedMeals) {
+            if (date.equals(meal.day)) {
+                return meal;
+            }
+        }
+        return null;
+    }
+
+    public boolean completePlannedMeal(LocalDate date, int actualServings) {
+        TaskPlannedMeal meal = getPlannedMealForDate(date);
+        if (meal == null || meal.completed) {
+            return false;
+        }
+        meal.markCompleted(actualServings);
+        return true;
+    }
+
     /**
      * Sets the task ID and cascades it to all related entities
      * (prefSlots, slots, and prerequisites) so their foreign keys stay consistent.
@@ -91,6 +115,9 @@ public class Task {
         }
         for (TaskPrerequisite prereq : prerequisites) {
             prereq.taskId = id;
+        }
+        for (TaskPlannedMeal meal : plannedMeals) {
+            meal.taskId = id;
         }
     }
 
@@ -126,6 +153,7 @@ public class Task {
         this.prefSlots = new ArrayList<>();
         this.parents = new ArrayList<>();
         this.prerequisites = new ArrayList<>();
+        this.plannedMeals = new ArrayList<>();
 
         int repsPerDay = core.repsPerDay();
         for (int i = 0; i < repsPerDay; i++) {

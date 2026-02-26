@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import com.autosecretary.shared.Priority;
 import com.autosecretary.shared.Period;
+import com.autosecretary.features.meal.domain.MealType;
 import androidx.room.Embedded;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
@@ -33,6 +34,7 @@ public class TaskCore {
     public Integer budgetRequiredCents;
     public String budgetAccountId;
     public String budgetCategoryId;
+    public MealType mealType;
 
     //scheduling
     public Priority priority = Priority.MEDIUM;

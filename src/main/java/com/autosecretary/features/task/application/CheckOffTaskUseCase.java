@@ -4,6 +4,7 @@ import android.content.Context;
 
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
+import com.autosecretary.features.meal.application.TaskMealIntegrationService;
 import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
@@ -34,6 +35,7 @@ public class CheckOffTaskUseCase {
     private final BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase;
     private final AppDatabase database;
     private final Context appContext;
+    private final TaskMealIntegrationService taskMealIntegrationService;
 
     public CheckOffTaskUseCase(TaskDAO taskDao, TaskCompletionService completionService,
                                TaskLifecycleManager lifecycleManager,
@@ -42,7 +44,8 @@ public class CheckOffTaskUseCase {
                                Executor callbackDispatcher,
                                BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase,
                                AppDatabase database,
-                               Context appContext) {
+                               Context appContext,
+                               TaskMealIntegrationService taskMealIntegrationService) {
         this.taskDao = taskDao;
         this.completionService = completionService;
         this.lifecycleManager = lifecycleManager;
@@ -52,6 +55,7 @@ public class CheckOffTaskUseCase {
         this.bookTaskCompletionExpenseUseCase = bookTaskCompletionExpenseUseCase;
         this.database = database;
         this.appContext = appContext;
+        this.taskMealIntegrationService = taskMealIntegrationService;
     }
 
     /**
@@ -76,6 +80,10 @@ public class CheckOffTaskUseCase {
                     boolean booked = bookTaskCompletionExpenseUseCase.execute(task, LocalDate.now());
                     if (booked) {
                         BudgetWidgetProvider.notifyWidgetUpdate(appContext);
+                    }
+                    boolean mealUpdated = taskMealIntegrationService.completeMealTask(task, LocalDate.now(), 0);
+                    if (mealUpdated) {
+                        taskDao.write(task);
                     }
                 },
                 database

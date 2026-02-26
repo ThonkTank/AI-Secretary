@@ -23,6 +23,7 @@ import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.dao.TransactionDao;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskDAO;
+import com.autosecretary.features.task.data.TaskPlannedMeal;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskRelation;
@@ -39,6 +40,7 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
                 TaskCore.class,
                 TaskSlot.class,
                 TaskPrerequisite.class,
+                TaskPlannedMeal.class,
                 TaskScheduleConfig.class,
                 TaskTransitionStat.class,
                 BudgetAccount.class,
@@ -48,7 +50,7 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
                 BudgetImportEntity.class,
                 BudgetRecurringTemplateEntity.class
         },
-        version = 20,
+        version = 21,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -243,6 +245,26 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    private static final Migration MIGRATION_20_21 = new Migration(20, 21) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE task_core ADD COLUMN mealType TEXT");
+            database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS task_planned_meals (
+                        taskId TEXT NOT NULL,
+                        day TEXT NOT NULL,
+                        recipeId INTEGER NOT NULL,
+                        plannedServings INTEGER NOT NULL,
+                        completed INTEGER NOT NULL,
+                        actualServings INTEGER NOT NULL,
+                        PRIMARY KEY(taskId, day),
+                        FOREIGN KEY(taskId) REFERENCES task_core(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """);
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_task_planned_meals_taskId ON task_planned_meals(taskId)");
+        }
+    };
+
     public abstract TaskDAO taskDao();
 
     public abstract TaskScheduleConfigDAO taskScheduleConfigDao();
@@ -264,7 +286,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context, AppDatabase.class, DB_NAME)
-                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
+                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
                     .fallbackToDestructiveMigration()
                     .build();
         }

@@ -15,6 +15,11 @@ import com.autosecretary.features.budget.application.CreateTransferUseCase;
 import com.autosecretary.features.budget.data.repository.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
+import com.autosecretary.features.meal.application.TaskMealIntegrationService;
+import com.autosecretary.features.meal.data.internal.repository.StorageMealRepository;
+import com.autosecretary.features.meal.data.internal.repository.StoragePantryRepository;
+import com.autosecretary.features.meal.data.internal.repository.StorageRecipeRepository;
+import com.autosecretary.features.meal.data.internal.storage.InMemoryMealStorage;
 import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
@@ -95,6 +100,12 @@ public class AppCompositionRoot {
         );
         BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase =
                 new BookTaskCompletionExpenseUseCase(budgetRepository);
+        InMemoryMealStorage mealStorage = new InMemoryMealStorage();
+        TaskMealIntegrationService taskMealIntegrationService = new TaskMealIntegrationService(
+                new StorageMealRepository(mealStorage),
+                new StorageRecipeRepository(mealStorage),
+                new StoragePantryRepository(mealStorage)
+        );
 
         CheckOffTaskUseCase checkOffTaskUseCase = new CheckOffTaskUseCase(
                 taskDao,
@@ -105,7 +116,8 @@ public class AppCompositionRoot {
                 mainHandler::post,
                 bookTaskCompletionExpenseUseCase,
                 db,
-                app
+                app,
+                taskMealIntegrationService
         );
         regenerateScheduleUseCase = new RegenerateScheduleUseCase(
                 taskDao,
