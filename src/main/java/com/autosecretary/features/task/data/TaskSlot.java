@@ -46,6 +46,10 @@ public class TaskSlot {
     /** Returns the number of days elapsed since this slot's scheduled day. */
     public int sinceCompleted() {return (int) ChronoUnit.DAYS.between(day, LocalDate.now());}
     public int score;
+    /** Deterministic baseline score used for displacement decisions. */
+    public int comparisonScore;
+    /** Groups slots created in one replacement chain to keep displacement reasoning traceable. */
+    public String chainId;
 
     public LocalTime realStart;
     public LocalTime realEnd;

@@ -29,33 +29,71 @@ public class DefaultTaskSlotGenerator {
 
     private static class CandidateSelection {
         private final Task task;
-        private final int score;
+        private final int grossScore;
+        private final int netScore;
         private final LocalDateTime startTime;
+        private final List<TaskSlot> displacedSlots;
         private final String scoreLog;
 
-        private CandidateSelection(Task task, int score, LocalDateTime startTime, String scoreLog) {
+        private CandidateSelection(Task task,
+                                   int grossScore,
+                                   int netScore,
+                                   LocalDateTime startTime,
+                                   List<TaskSlot> displacedSlots,
+                                   String scoreLog) {
             this.task = task;
-            this.score = score;
+            this.grossScore = grossScore;
+            this.netScore = netScore;
             this.startTime = startTime;
+            this.displacedSlots = displacedSlots;
             this.scoreLog = scoreLog;
         }
     }
 
-    private static class BestCandidateTracker {
-        private Task bestTask;
-        private int bestScore;
-        private LocalDateTime bestStart;
+    private static class CandidateOption {
+        private final Task task;
+        private final LocalDateTime start;
+        private final int grossScore;
+        private final int netScore;
+        private final List<TaskSlot> displacedSlots;
 
-        private void updateBestCandidate(Task task, int score, LocalDateTime start) {
-            if (score > bestScore) {
-                bestScore = score;
-                bestTask = task;
-                bestStart = start;
+        private CandidateOption(Task task,
+                                LocalDateTime start,
+                                int grossScore,
+                                int netScore,
+                                List<TaskSlot> displacedSlots) {
+            this.task = task;
+            this.start = start;
+            this.grossScore = grossScore;
+            this.netScore = netScore;
+            this.displacedSlots = displacedSlots;
+        }
+    }
+
+    private static class BestCandidateTracker {
+        private CandidateOption bestOption;
+
+        private void update(CandidateOption option) {
+            if (option == null || option.netScore <= 0) {
+                return;
+            }
+            if (bestOption == null || option.netScore > bestOption.netScore) {
+                bestOption = option;
             }
         }
 
         private CandidateSelection toSelection(String scoreLog) {
-            return new CandidateSelection(bestTask, bestScore, bestStart, scoreLog);
+            if (bestOption == null) {
+                return new CandidateSelection(null, 0, 0, null, List.of(), scoreLog);
+            }
+            return new CandidateSelection(
+                    bestOption.task,
+                    bestOption.grossScore,
+                    bestOption.netScore,
+                    bestOption.start,
+                    bestOption.displacedSlots,
+                    scoreLog
+            );
         }
     }
 
@@ -86,15 +124,6 @@ public class DefaultTaskSlotGenerator {
         }
     }
 
-    private static class GapScore {
-        private final int score;
-        private final LocalDateTime start;
-
-        private GapScore(int score, LocalDateTime start) {
-            this.score = score;
-            this.start = start;
-        }
-    }
 
     private static class Interval implements Comparable<Interval> {
         final LocalDateTime start;
@@ -275,96 +304,136 @@ public class DefaultTaskSlotGenerator {
             }
             log(indent + "--- Lückensuche [depth=" + depth + "], " + gaps.size() + " Lücken, " + totalFreeMin + "min frei ---");
 
-            CandidateSelection selection = evaluateAllCandidates(tasks, gaps, windowEnd);
+            List<TaskSlot> movableSlots = collectMovableDaySlots(windowStart, windowEnd);
+            CandidateSelection selection = evaluateAllCandidates(tasks, gaps, movableSlots, windowEnd);
             log(indent + "  " + selection.scoreLog);
 
-            if (selection.task == null || selection.score <= 0) {
-                log(indent + "  → (keine Task qualifiziert, Abbruch)");
+            if (selection.task == null || selection.netScore <= 0) {
+                log(indent + "  → (keine Task mit positivem Netto-Gewinn, Abbruch)");
                 break;
             }
 
-            TaskSlot slot = createScheduledSlot(selection.task, selection.startTime, selection.score, parentSlot);
+            for (TaskSlot displaced : selection.displacedSlots) {
+                Task owner = allTasksById.get(displaced.taskId);
+                if (owner != null) {
+                    owner.slots.remove(displaced);
+                }
+            }
+
+            TaskSlot slot = createScheduledSlot(selection.task, selection.startTime, selection.grossScore, parentSlot);
+            slot.chainId = selection.displacedSlots.isEmpty() ? slot.id : selection.displacedSlots.get(0).id;
             LocalDateTime slotEnd = scheduleChildrenGapAware(selection.task, selection.startTime, slot, depth);
             slot.end = slotEnd.toLocalTime();
-            finalizeAssignment(selection.task, slot, selection.score);
+            finalizeAssignment(selection.task, slot, selection.grossScore);
 
-            log(indent + "  → " + selection.task.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM) + "] score=" + selection.score);
+            log(indent + "  → " + selection.task.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM)
+                    + "] gross=" + selection.grossScore + ", net=" + selection.netScore
+                    + (selection.displacedSlots.isEmpty() ? "" : ", displaced=" + selection.displacedSlots.size()));
 
             insertSorted(occupied, new Interval(selection.startTime, slotEnd));
         }
     }
 
-    private CandidateSelection evaluateAllCandidates(List<Task> tasks, List<Interval> gaps, LocalDateTime windowEnd) {
+    private CandidateSelection evaluateAllCandidates(List<Task> tasks,
+                                                     List<Interval> gaps,
+                                                     List<TaskSlot> movableSlots,
+                                                     LocalDateTime windowEnd) {
         BestCandidateTracker tracker = new BestCandidateTracker();
         ScoreLogBuilder scoreLogBuilder = new ScoreLogBuilder();
         DayOfWeek today = schedulingDay.getDayOfWeek();
 
         for (Task task : tasks) {
-            // Fast path: if prerequisites are unmet even at the latest possible time, skip entirely
             if (hasUnmetPrerequisites(task, windowEnd)) {
                 scoreLogBuilder.appendTaskPrerequisiteBlocked(task);
                 continue;
             }
 
-            int taskBestScore = 0;
+            int taskBestNetScore = 0;
             List<String> prefDetails = new ArrayList<>();
 
             for (Interval gap : gaps) {
-                GapScore gapScore = scoreGapStart(task, gap, windowEnd);
-                if (gapScore.score > taskBestScore) {
-                    taskBestScore = gapScore.score;
+                CandidateOption gapOption = scoreCandidate(task, gap.start, windowEnd, movableSlots);
+                if (gapOption.netScore > taskBestNetScore) {
+                    taskBestNetScore = gapOption.netScore;
                 }
-                tracker.updateBestCandidate(task, gapScore.score, gapScore.start);
+                tracker.update(gapOption);
 
-                int prefBestScore = scorePreferredStartsInGap(task, gap, windowEnd, today, tracker, prefDetails);
-                if (prefBestScore > taskBestScore) {
-                    taskBestScore = prefBestScore;
+                for (TaskPrefSlot ps : task.prefSlots) {
+                    if (ps.days == null || !ps.days.contains(today)) continue;
+                    if (scorer.isPrefSlotConsumed(task.core.id, ps.id)) continue;
+                    LocalDateTime prefStart = schedulingDay.atTime(ps.start);
+                    if (!prefStart.isAfter(gap.start) || !prefStart.isBefore(gap.end)) continue;
+
+                    CandidateOption prefOption = scoreCandidate(task, prefStart, windowEnd, movableSlots);
+                    if (prefOption.netScore > taskBestNetScore) {
+                        taskBestNetScore = prefOption.netScore;
+                    }
+
+                    CandidateOption previousBest = tracker.bestOption;
+                    tracker.update(prefOption);
+                    if (tracker.bestOption != null && tracker.bestOption != previousBest
+                            && tracker.bestOption.task == task
+                            && tracker.bestOption.start.equals(prefStart)) {
+                        prefDetails.add("@" + ps.start.format(HMM) + "=" + prefOption.netScore);
+                    }
                 }
             }
 
-            scoreLogBuilder.appendTaskScore(task, taskBestScore, prefDetails);
+            for (TaskSlot movable : movableSlots) {
+                LocalDateTime displacedStart = schedulingDay.atTime(movable.start);
+                CandidateOption displacedOption = scoreCandidate(task, displacedStart, windowEnd, movableSlots);
+                if (displacedOption.netScore > taskBestNetScore) {
+                    taskBestNetScore = displacedOption.netScore;
+                }
+                tracker.update(displacedOption);
+            }
+
+            scoreLogBuilder.appendTaskScore(task, taskBestNetScore, prefDetails);
         }
 
         return tracker.toSelection(scoreLogBuilder.build());
     }
 
-    private GapScore scoreGapStart(Task task, Interval gap, LocalDateTime windowEnd) {
-        if (hasUnmetPrerequisites(task, gap.start)) {
-            return new GapScore(0, gap.start);
+    private CandidateOption scoreCandidate(Task task,
+                                           LocalDateTime candidateStart,
+                                           LocalDateTime windowEnd,
+                                           List<TaskSlot> movableSlots) {
+        if (hasUnmetPrerequisites(task, candidateStart)) {
+            return new CandidateOption(task, candidateStart, 0, 0, List.of());
         }
-        LocalDateTime gapEnd = gap.end.isBefore(windowEnd) ? gap.end : windowEnd;
-        int score = scorer.score(task, gap.start, gapEnd);
-        return new GapScore(score, gap.start);
+
+        int candidateScore = scorer.score(task, candidateStart, windowEnd);
+        if (candidateScore <= 0) {
+            return new CandidateOption(task, candidateStart, 0, 0, List.of());
+        }
+
+        LocalDateTime candidateEnd = candidateStart.plusMinutes(task.core.maxDuration);
+        List<TaskSlot> displaced = new ArrayList<>();
+        int displacedScore = 0;
+        for (TaskSlot slot : movableSlots) {
+            if (slot.start == null || slot.end == null) {
+                continue;
+            }
+            LocalDateTime slotStart = schedulingDay.atTime(slot.start);
+            LocalDateTime slotEnd = schedulingDay.atTime(slot.end);
+            if (candidateStart.isBefore(slotEnd) && candidateEnd.isAfter(slotStart)) {
+                displaced.add(slot);
+                displacedScore += displacementScore(slot);
+            }
+        }
+
+        int netScore = candidateScore - displacedScore;
+        if (!displaced.isEmpty() && netScore <= 0) {
+            return new CandidateOption(task, candidateStart, candidateScore, 0, displaced);
+        }
+        return new CandidateOption(task, candidateStart, candidateScore, netScore, displaced);
     }
 
-    private int scorePreferredStartsInGap(Task task,
-                                          Interval gap,
-                                          LocalDateTime windowEnd,
-                                          DayOfWeek today,
-                                          BestCandidateTracker tracker,
-                                          List<String> prefDetails) {
-        int bestPrefScore = 0;
-        LocalDateTime gapEnd = gap.end.isBefore(windowEnd) ? gap.end : windowEnd;
-
-        for (TaskPrefSlot ps : task.prefSlots) {
-            if (ps.days == null || !ps.days.contains(today)) continue;
-            if (scorer.isPrefSlotConsumed(task.core.id, ps.id)) continue;
-            LocalDateTime prefStart = schedulingDay.atTime(ps.start);
-            if (!prefStart.isAfter(gap.start) || !prefStart.isBefore(gap.end)) continue;
-            if (hasUnmetPrerequisites(task, prefStart)) continue;
-            int prefScore = scorer.score(task, prefStart, gapEnd);
-            if (prefScore > bestPrefScore) {
-                bestPrefScore = prefScore;
-            }
-
-            int previousBestScore = tracker.bestScore;
-            tracker.updateBestCandidate(task, prefScore, prefStart);
-            if (tracker.bestScore > previousBestScore) {
-                prefDetails.add("@" + ps.start.format(HMM) + "=" + prefScore);
-            }
+    private int displacementScore(TaskSlot slot) {
+        if (slot.comparisonScore > 0) {
+            return slot.comparisonScore;
         }
-
-        return bestPrefScore;
+        return Math.max(0, slot.score);
     }
 
     private LocalDateTime scheduleChildrenGapAware(Task task, LocalDateTime parentStart, TaskSlot parentSlot, int depth) {
@@ -419,6 +488,31 @@ public class DefaultTaskSlotGenerator {
         return intervals;
     }
 
+    private List<TaskSlot> collectMovableDaySlots(LocalDateTime windowStart, LocalDateTime windowEnd) {
+        List<TaskSlot> movable = new ArrayList<>();
+        for (Task task : allTasksById.values()) {
+            for (TaskSlot slot : task.slots) {
+                if (slot.day == null || !slot.day.equals(schedulingDay)) {
+                    continue;
+                }
+                if (!slot.scheduled || slot.completed || slot.realStart != null) {
+                    continue;
+                }
+                if (slot.start == null || slot.end == null) {
+                    continue;
+                }
+
+                LocalDateTime slotStart = schedulingDay.atTime(slot.start);
+                LocalDateTime slotEnd = schedulingDay.atTime(slot.end);
+                if (!slotEnd.isAfter(windowStart) || !slotStart.isBefore(windowEnd)) {
+                    continue;
+                }
+                movable.add(slot);
+            }
+        }
+        return movable;
+    }
+
     private void insertSorted(List<Interval> intervals, Interval newInterval) {
         int i = 0;
         while (i < intervals.size() && intervals.get(i).start.compareTo(newInterval.start) <= 0) {
@@ -431,6 +525,7 @@ public class DefaultTaskSlotGenerator {
         TaskSlot slot = new TaskSlot();
         slot.taskId = task.core.id;
         slot.score = score;
+        slot.comparisonScore = score;
         slot.day = cursor.toLocalDate();
         slot.start = cursor.toLocalTime();
         slot.scheduled = true;
@@ -440,6 +535,7 @@ public class DefaultTaskSlotGenerator {
 
     private void finalizeAssignment(Task task, TaskSlot slot, int score) {
         slot.score = score;
+        slot.comparisonScore = score;
         task.slots.add(slot);
         scorer.onSlotAssigned(task, slot.start);
         scheduledInSession.add(task.core.id);
