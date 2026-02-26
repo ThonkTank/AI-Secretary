@@ -1,5 +1,6 @@
 package com.autosecretary.app;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -15,6 +16,7 @@ import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.ui.BudgetFragment;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
 import com.autosecretary.features.task.ui.list.TaskListFragment;
+import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
@@ -43,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
                 showBudgetFragment(openAddDialog);
                 tabBar.setSelectedItemId(R.id.tab_manage);
             } else {
-                showTaskFragment();
+                showTaskFragment(shouldOpenTaskCreateFromIntent(getIntent()));
                 tabBar.setSelectedItemId(R.id.tab_schedule);
             }
         }
@@ -89,8 +91,26 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
+    private boolean shouldOpenTaskCreateFromIntent(Intent intent) {
+        if (intent == null) {
+            return false;
+        }
+        return TaskWidgetProvider.ACTION_ADD_TASK.equals(intent.getAction())
+                || intent.getBooleanExtra(TaskWidgetProvider.EXTRA_OPEN_TASK_FLOW, false);
+    }
+
     private void showTaskFragment() {
-        replaceContent(new TaskListFragment());
+        showTaskFragment(false);
+    }
+
+    private void showTaskFragment(boolean openCreateDialog) {
+        TaskListFragment fragment = new TaskListFragment();
+        if (openCreateDialog) {
+            Bundle args = new Bundle();
+            args.putBoolean(TaskListFragment.ARG_OPEN_CREATE_TASK, true);
+            fragment.setArguments(args);
+        }
+        replaceContent(fragment);
     }
 
     private void showBudgetFragment(boolean openAddDialog) {
@@ -107,6 +127,24 @@ public class MainActivity extends AppCompatActivity {
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.Container, fragment)
                 .commit();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (shouldOpenBudgetFromIntent()) {
+            showBudgetFragment(BudgetWidgetProvider.ACTION_ADD_TRANSACTION.equals(
+                    getIntent().getStringExtra(BudgetWidgetProvider.EXTRA_BUDGET_ACTION)));
+            BottomNavigationView tabBar = findViewById(R.id.TabBar);
+            tabBar.setSelectedItemId(R.id.tab_manage);
+            return;
+        }
+        if (shouldOpenTaskCreateFromIntent(intent)) {
+            showTaskFragment(true);
+            BottomNavigationView tabBar = findViewById(R.id.TabBar);
+            tabBar.setSelectedItemId(R.id.tab_schedule);
+        }
     }
 
     private void reloadUiStateAfterDataReset() {

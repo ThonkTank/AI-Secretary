@@ -39,6 +39,7 @@
     <string name="task_progress_display">%1$d/%2$d %3$s</string>
     <string name="task_progress_increment">Fortschritt erhöhen</string>
     <string name="task_progress_decrement">Fortschritt verringern</string>
+    <string name="widget_add_content_description">Aufgabe hinzufügen</string>
 
     <string name="task_calendar_label">Kalender</string>
     <string name="task_calendar_state_description">Kalendereintrag</string>

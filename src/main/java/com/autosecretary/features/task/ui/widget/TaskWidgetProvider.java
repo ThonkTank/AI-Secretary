@@ -30,6 +30,8 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     private static final String ACTION_REFRESH = "com.autosecretary.widget.REFRESH";
     private static final String ACTION_PREV_DAY = "com.autosecretary.widget.PREV_DAY";
     private static final String ACTION_NEXT_DAY = "com.autosecretary.widget.NEXT_DAY";
+    public static final String ACTION_ADD_TASK = "com.autosecretary.widget.ADD_TASK";
+    public static final String EXTRA_OPEN_TASK_FLOW = "widget_open_task_flow";
 
     static final String EXTRA_ACTION = "widget_action";
     static final String EXTRA_TASK_ID = "widget_task_id";
@@ -101,6 +103,15 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         // Refresh intent
         views.setOnClickPendingIntent(R.id.widget_refresh,
                 buildActionIntent(context, ACTION_REFRESH, widgetId));
+
+        // Add task intent
+        Intent addTaskIntent = new Intent(context, MainActivity.class);
+        addTaskIntent.setAction(ACTION_ADD_TASK);
+        addTaskIntent.putExtra(EXTRA_OPEN_TASK_FLOW, true);
+        addTaskIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent addTaskPending = PendingIntent.getActivity(context, widgetId, addTaskIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        views.setOnClickPendingIntent(R.id.widget_add, addTaskPending);
 
         // Date label click opens the app
         Intent launchApp = new Intent(context, MainActivity.class);
