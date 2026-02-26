@@ -103,6 +103,26 @@ public class BudgetRoomRepository implements BudgetRepository {
         transactionDao.insert(transaction);
     }
 
+    public String findDefaultActiveAccountId() {
+        List<BudgetAccount> accounts = lookupDao.getActiveAccounts();
+        if (accounts == null || accounts.isEmpty()) {
+            return null;
+        }
+        return accounts.get(0).id;
+    }
+
+    public void applyExpenseToAccountBalance(String accountId, long expenseCents) {
+        if (accountId == null || accountId.isBlank() || expenseCents <= 0) {
+            return;
+        }
+        BudgetAccount account = lookupDao.findAccountById(accountId);
+        if (account == null) {
+            return;
+        }
+        long updatedBalance = account.currentBalanceCents - expenseCents;
+        lookupDao.updateCurrentBalanceCents(accountId, updatedBalance);
+    }
+
     @Override public void updateTransaction(BudgetTransactionEntity transaction) {
         transactionDao.update(transaction);
     }

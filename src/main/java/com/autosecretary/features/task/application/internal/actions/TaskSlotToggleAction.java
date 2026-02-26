@@ -9,8 +9,13 @@ import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskCompletionService.CompletionPhase;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
+import android.util.Log;
+
+import androidx.room.RoomDatabase;
+
 import java.time.LocalDate;
 import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 
 /**
  * Shared operation for toggling a task slot completion state and persisting resulting writes.
@@ -29,7 +34,9 @@ public final class TaskSlotToggleAction {
                                String taskId,
                                String slotId,
                                Executor callbackDispatcher,
-                               Runnable postWriteAction) {
+                               Runnable postWriteAction,
+                               Consumer<Task> completedPhaseHook,
+                               RoomDatabase database) {
         if (taskId == null || slotId == null) {
             return;
         }
@@ -53,15 +60,26 @@ public final class TaskSlotToggleAction {
         // on the TaskCore. STARTED only touches the slot (set realStart), so writing
         // just the slot avoids an unnecessary full-task upsert.
         if (phase == CompletionPhase.COMPLETED) {
-            if (task.core != null && task.core.adaptive) {
-                adaptPrerequisiteGaps(taskDao, lifecycleManager, task, slot);
+            try {
+                database.runInTransaction(() -> {
+                    if (task.core != null && task.core.adaptive) {
+                        adaptPrerequisiteGaps(taskDao, lifecycleManager, task, slot);
+                    }
+                    taskDao.write(task);
+                    if (completedPhaseHook != null) {
+                        completedPhaseHook.accept(task);
+                    }
+                    TaskTransitionRecorder.record(taskDao, transitionDao, slot, 2);
+                    taskDao.writeSlot(slot);
+                });
+            } catch (RuntimeException e) {
+                Log.e("TaskSlotToggle", "Completion write failed", e);
+                return;
             }
-            taskDao.write(task);
-            TaskTransitionRecorder.record(taskDao, transitionDao, slot, 2);
         } else if (phase == CompletionPhase.STARTED) {
             TaskTransitionRecorder.record(taskDao, transitionDao, slot, 1);
+            taskDao.writeSlot(slot);
         }
-        taskDao.writeSlot(slot);
 
         if (postWriteAction != null && callbackDispatcher != null) {
             callbackDispatcher.execute(postWriteAction);
