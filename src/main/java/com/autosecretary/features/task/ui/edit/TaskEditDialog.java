@@ -20,6 +20,7 @@ import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormInput
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormValidator;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditSectionBinder;
 import com.autosecretary.features.task.ui.edit.internal.mapper.TaskEditStateMapper;
+import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 /**
  * DialogFragment for creating and editing tasks. Manages five form sections:

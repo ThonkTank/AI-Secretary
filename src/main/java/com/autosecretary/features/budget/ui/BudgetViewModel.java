@@ -8,19 +8,26 @@ import com.autosecretary.features.budget.application.CreateTransferUseCase;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
-import com.autosecretary.features.budget.data.AccountDailyDeltaPoint;
-import com.autosecretary.features.budget.data.AccountMonthlyDeltaPoint;
-import com.autosecretary.features.budget.data.BudgetAccount;
-import com.autosecretary.features.budget.data.BudgetCategory;
-import com.autosecretary.features.budget.data.BudgetLimit;
-import com.autosecretary.features.budget.data.BudgetTransactionEntity;
-import com.autosecretary.features.budget.data.CategorySpendTotal;
-import com.autosecretary.features.budget.data.MonthlyTransactionOverviewItem;
+import com.autosecretary.features.budget.data.projection.AccountDailyDeltaPoint;
+import com.autosecretary.features.budget.data.projection.AccountMonthlyDeltaPoint;
+import com.autosecretary.features.budget.data.entity.BudgetAccount;
+import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetLimit;
+import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
+import com.autosecretary.features.budget.data.projection.CategorySpendTotal;
+import com.autosecretary.features.budget.data.projection.MonthlyTransactionOverviewItem;
 import com.autosecretary.features.budget.domain.AccountBalanceTimelineService;
 import com.autosecretary.features.budget.domain.BalanceTimelinePoint;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
+import com.autosecretary.features.budget.ui.internal.BudgetChartStateMapper;
+import com.autosecretary.features.budget.ui.internal.BudgetImportDialogStateMapper;
+import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
+import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
+import com.autosecretary.features.budget.ui.state.BudgetImportDialogState;
+import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
+import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -46,24 +53,6 @@ public class BudgetViewModel extends ViewModel {
         DAYS_30,
         MONTHS_3,
         MONTHS_12
-    }
-
-    public static class BudgetChartPoint {
-        private final String label;
-        private final long balanceCents;
-
-        public BudgetChartPoint(String label, long balanceCents) {
-            this.label = label;
-            this.balanceCents = balanceCents;
-        }
-
-        public String getLabel() {
-            return label;
-        }
-
-        public long getBalanceCents() {
-            return balanceCents;
-        }
     }
 
     public static class BudgetTransactionRow {
@@ -141,60 +130,6 @@ public class BudgetViewModel extends ViewModel {
         }
     }
 
-    public static class BudgetSummaryData {
-        private final long incomeCents;
-        private final long expenseCents;
-        private final long netCents;
-        private final long freeBudgetCents;
-
-        public BudgetSummaryData(long incomeCents, long expenseCents) {
-            this(incomeCents, expenseCents, 0L);
-        }
-
-        public BudgetSummaryData(long incomeCents, long expenseCents, long freeBudgetCents) {
-            this.incomeCents = incomeCents;
-            this.expenseCents = expenseCents;
-            this.netCents = incomeCents - expenseCents;
-            this.freeBudgetCents = freeBudgetCents;
-        }
-
-        public long getIncomeCents() { return incomeCents; }
-        public long getExpenseCents() { return expenseCents; }
-        public long getNetCents() { return netCents; }
-        public long getFreeBudgetCents() { return freeBudgetCents; }
-    }
-
-    public static class BudgetLimitBar {
-        private final String categoryId;
-        private final String categoryName;
-        private final String categoryColorHex;
-        private final long spentCents;
-        private final double baseLimitEuros;
-        private final double effectiveLimitEuros;
-        private final int percentage;
-
-        public BudgetLimitBar(String categoryId, String categoryName, String categoryColorHex,
-                              long spentCents, double baseLimitEuros, double effectiveLimitEuros) {
-            this.categoryId = categoryId;
-            this.categoryName = categoryName;
-            this.categoryColorHex = categoryColorHex;
-            this.spentCents = spentCents;
-            this.baseLimitEuros = baseLimitEuros;
-            this.effectiveLimitEuros = effectiveLimitEuros;
-            this.percentage = effectiveLimitEuros > 0
-                    ? (int) ((spentCents / 100.0) / effectiveLimitEuros * 100)
-                    : 0;
-        }
-
-        public String getCategoryId() { return categoryId; }
-        public String getCategoryName() { return categoryName; }
-        public String getCategoryColorHex() { return categoryColorHex; }
-        public long getSpentCents() { return spentCents; }
-        public double getBaseLimitEuros() { return baseLimitEuros; }
-        public double getEffectiveLimitEuros() { return effectiveLimitEuros; }
-        public int getPercentage() { return percentage; }
-    }
-
     private static final DateTimeFormatter MONTH_FORMATTER =
             DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN);
     private static final DateTimeFormatter DAILY_POINT_LABEL =
@@ -207,7 +142,7 @@ public class BudgetViewModel extends ViewModel {
     private final MutableLiveData<BudgetUiState> uiState = new MutableLiveData<>(BudgetUiState.LOADING);
     private final MutableLiveData<String> statusMessage = new MutableLiveData<>("");
     private final MutableLiveData<List<BudgetTransactionRow>> transactions = new MutableLiveData<>(new ArrayList<>());
-    private final MutableLiveData<BudgetImportUseCase.ImportResult> importResult = new MutableLiveData<>();
+    private final MutableLiveData<BudgetImportDialogState> importDialogState = new MutableLiveData<>();
     private final MutableLiveData<YearMonth> currentMonth = new MutableLiveData<>(YearMonth.now());
     private final MutableLiveData<List<BudgetCategory>> categories = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<List<BudgetAccount>> accounts = new MutableLiveData<>(new ArrayList<>());
@@ -225,6 +160,9 @@ public class BudgetViewModel extends ViewModel {
     private final CreateTransferUseCase createTransferUseCase;
     private final AccountBalanceTimelineService balanceTimelineService;
     private final CalculateFreeBudgetUseCase calculateFreeBudgetUseCase;
+    private final BudgetChartStateMapper chartStateMapper;
+    private final BudgetSummaryPresentationMapper summaryPresentationMapper;
+    private final BudgetImportDialogStateMapper importDialogStateMapper;
 
     public BudgetViewModel(BudgetRepository repository,
                            StatementFileParser parser,
@@ -242,6 +180,9 @@ public class BudgetViewModel extends ViewModel {
         this.createTransferUseCase = new CreateTransferUseCase(repository);
         this.balanceTimelineService = new AccountBalanceTimelineService();
         this.calculateFreeBudgetUseCase = calculateFreeBudgetUseCase;
+        this.chartStateMapper = new BudgetChartStateMapper(DAILY_POINT_LABEL, MONTHLY_POINT_LABEL);
+        this.summaryPresentationMapper = new BudgetSummaryPresentationMapper();
+        this.importDialogStateMapper = new BudgetImportDialogStateMapper();
         ensureDefaultData();
     }
 
@@ -250,7 +191,7 @@ public class BudgetViewModel extends ViewModel {
     public LiveData<BudgetUiState> getUiState() { return uiState; }
     public LiveData<String> getStatusMessage() { return statusMessage; }
     public LiveData<List<BudgetTransactionRow>> getTransactions() { return transactions; }
-    public LiveData<BudgetImportUseCase.ImportResult> getImportResult() { return importResult; }
+    public LiveData<BudgetImportDialogState> getImportDialogState() { return importDialogState; }
     public LiveData<YearMonth> getCurrentMonth() { return currentMonth; }
     public LiveData<List<BudgetCategory>> getCategories() { return categories; }
     public LiveData<List<BudgetAccount>> getAccounts() { return accounts; }
@@ -276,7 +217,7 @@ public class BudgetViewModel extends ViewModel {
     }
 
     public void clearImportResult() {
-        importResult.setValue(null);
+        importDialogState.setValue(null);
     }
 
     private void ensureDefaultData() {
@@ -462,22 +403,8 @@ public class BudgetViewModel extends ViewModel {
     }
 
     private BudgetSummaryData computeSummary(List<MonthlyTransactionOverviewItem> items, String accountId) {
-        long totalIncomeCents = 0;
-        long totalExpenseCents = 0;
-
-        for (MonthlyTransactionOverviewItem item : items) {
-            if ("INTERNAL_TRANSFER".equals(item.transactionKind)) {
-                continue;
-            }
-            if ("EXPENSE".equals(item.type)) {
-                totalExpenseCents += item.amountCents;
-            } else {
-                totalIncomeCents += item.amountCents;
-            }
-        }
-
         long freeBudgetCents = calculateFreeBudgetUseCase.execute(accountId, LocalDate.now(), 7);
-        return new BudgetSummaryData(totalIncomeCents, totalExpenseCents, freeBudgetCents);
+        return summaryPresentationMapper.toSummary(items, freeBudgetCents);
     }
 
     private void publishOverviewState(List<BudgetTransactionRow> rows,
@@ -561,14 +488,7 @@ public class BudgetViewModel extends ViewModel {
             series = balanceTimelineService.reconstructMonthly(fromMonth, toMonth, startBalance, deltas);
         }
 
-        List<BudgetChartPoint> points = new ArrayList<>();
-        for (BalanceTimelinePoint point : series) {
-            String label = filter == TimeRangeFilter.DAYS_30
-                    ? point.getDate().format(DAILY_POINT_LABEL)
-                    : point.getDate().format(MONTHLY_POINT_LABEL);
-            points.add(new BudgetChartPoint(label, point.getBalanceCents()));
-        }
-        return points;
+        return chartStateMapper.map(filter, series);
     }
 
     public void addTransaction(String amountStr, boolean isExpense, String categoryId,
@@ -733,7 +653,7 @@ public class BudgetViewModel extends ViewModel {
                             + result.duplicates() + " Duplikate, "
                             + result.autoCategorized() + " auto-kategorisiert.";
                     statusMessage.setValue(msg);
-                    importResult.setValue(result);
+                    importDialogState.setValue(importDialogStateMapper.map(result));
                 });
             }
 
@@ -828,21 +748,11 @@ public class BudgetViewModel extends ViewModel {
         String yearMonthStr = month.toString();
 
         List<CategorySpendTotal> totals = repository.getCategorySpendTotals(yearMonthStr);
-        List<BudgetLimitBar> bars = new ArrayList<>();
-        for (CategorySpendTotal total : totals) {
-            if (total.limitAmount > 0) {
-                String icon = total.categoryIcon != null && !total.categoryIcon.trim().isEmpty()
-                        ? total.categoryIcon : BudgetCategory.DEFAULT_ICON;
-                String label = icon + " " + total.categoryName;
-                Long effectiveLimitCents = repository.getEffectiveLimitCents(total.categoryId, yearMonthStr);
-                double effectiveLimitEuros = effectiveLimitCents != null
-                        ? (effectiveLimitCents / 100.0)
-                        : total.limitAmount;
-                bars.add(new BudgetLimitBar(
-                        total.categoryId, label, total.categoryColorHex,
-                        total.spentCents, total.limitAmount, effectiveLimitEuros));
-            }
-        }
+        List<BudgetLimitBar> bars = summaryPresentationMapper.toLimitBars(
+                totals,
+                repository::getEffectiveLimitCents,
+                yearMonthStr
+        );
         postToMain.accept(() -> budgetLimits.setValue(bars));
     }
 

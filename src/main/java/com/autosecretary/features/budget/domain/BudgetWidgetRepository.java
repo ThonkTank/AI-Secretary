@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.domain;
 
-import com.autosecretary.features.budget.data.CategorySpendTotal;
+import com.autosecretary.features.budget.data.projection.CategorySpendTotal;
 
 import java.util.List;
 
