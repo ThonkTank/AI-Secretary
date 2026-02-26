@@ -7,10 +7,12 @@ import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.data.TaskTransitionStatDao;
 import com.autosecretary.features.task.domain.CalendarBlockedIntervalProvider;
 import com.autosecretary.features.task.domain.SchedulingWindowProvider;
+import com.autosecretary.features.task.domain.SchedulingConflict;
 import com.autosecretary.features.task.domain.TaskCalendarEvent;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.TaskPlanningState;
 import com.autosecretary.features.task.domain.TaskSlotGenerator;
+import com.autosecretary.features.task.domain.TaskSlotGenerationResult;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
 
 import java.time.LocalDate;
@@ -31,6 +33,11 @@ import java.util.function.Consumer;
  * Internal scheduler that assigns tasks to time slots within a given window.
  */
 public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
+
+    private static final String REASON_OUTSIDE_WINDOW = "OUTSIDE_WINDOW";
+    private static final String REASON_CALENDAR_OVERLAP = "CALENDAR_OVERLAP";
+    private static final String REASON_PREREQUISITE_BLOCKED = "PREREQUISITE_BLOCKED";
+    private static final String REASON_NO_MATCHING_GAP = "NO_MATCHING_GAP";
 
     private static class Interval implements Comparable<Interval> {
         final LocalDateTime start;
@@ -205,19 +212,20 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
-    public void generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
-        generateSlotsForDay(tasks, windowStart, windowEnd, state, new ArrayList<>());
-    }
-
-    public void generateSlotsForDay(List<Task> tasks, LocalDate day, TaskPlanningState state) {
-        SchedulingWindowProvider.SchedulingWindow window = schedulingWindowProvider.forDay(day);
-        generateSlotsForDayInternal(tasks, window.start, window.end, state, new ArrayList<>());
+    public TaskSlotGenerationResult generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
+        return generateSlotsForDay(tasks, windowStart, windowEnd, state, new ArrayList<>());
     }
 
     @Override
-    public void generateSlotsForWindow(List<Task> tasks, LocalDate startDay, int days, TaskPlanningState state) {
+    public TaskSlotGenerationResult generateSlotsForDay(List<Task> tasks, LocalDate day, TaskPlanningState state) {
+        SchedulingWindowProvider.SchedulingWindow window = schedulingWindowProvider.forDay(day);
+        return generateSlotsForDayInternal(tasks, window.start, window.end, state, new ArrayList<>());
+    }
+
+    @Override
+    public TaskSlotGenerationResult generateSlotsForWindow(List<Task> tasks, LocalDate startDay, int days, TaskPlanningState state) {
         if (days <= 0) {
-            return;
+            return new TaskSlotGenerationResult(0, new ArrayList<>());
         }
 
         newSlots = 0;
@@ -250,18 +258,20 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
 
         assignGlobalBestFitAcrossWindow(taskTree, contexts);
+        appendNoGapConflictsForWindow(allTasks, startDay, days);
         logWindowSummary(allTasks, contexts);
+        return new TaskSlotGenerationResult(newSlots, lastConflicts);
     }
 
-    public void generateSlotsForDay(List<Task> tasks,
+    public TaskSlotGenerationResult generateSlotsForDay(List<Task> tasks,
                                     LocalDateTime windowStart,
                                     LocalDateTime windowEnd,
                                     TaskPlanningState state,
                                     List<TaskCalendarEvent> calendarEvents) {
-        generateSlotsForDayInternal(tasks, windowStart, windowEnd, state, calendarEvents);
+        return generateSlotsForDayInternal(tasks, windowStart, windowEnd, state, calendarEvents);
     }
 
-    private void generateSlotsForDayInternal(List<Task> tasks,
+    private TaskSlotGenerationResult generateSlotsForDayInternal(List<Task> tasks,
                                              LocalDateTime windowStart,
                                              LocalDateTime windowEnd,
                                              TaskPlanningState state,
@@ -322,6 +332,8 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             }
         }
         log("Gesamt: " + totalDaySlots + " slots (neu: " + newSlots + ")");
+        appendNoGapConflictsForWindow(allTasks, schedulingDay, 1);
+        return new TaskSlotGenerationResult(newSlots, lastConflicts);
     }
 
     public void recordScheduledSlotsForDay(List<Task> tasks, LocalDate day, TaskPlanningState state) {
@@ -599,11 +611,15 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             }
 
             if (prereqEnd == null) {
+                addConflict(task, candidateStart.toLocalDate(), REASON_PREREQUISITE_BLOCKED,
+                        "Vorgängeraufgabe noch nicht geplant: " + prereq.prerequisiteId);
                 return true;
             }
 
             LocalDateTime earliestStart = prereqEnd.plusMinutes(Math.max(0, prereq.minGapMinutes));
             if (candidateStart.isBefore(earliestStart)) {
+                addConflict(task, candidateStart.toLocalDate(), REASON_PREREQUISITE_BLOCKED,
+                        "Frühester Start nach Prerequisite: " + earliestStart.toLocalTime());
                 return true;
             }
         }
@@ -733,6 +749,41 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return new ArrayList<>(lastConflicts);
     }
 
+    private void appendNoGapConflictsForWindow(List<Task> tasks, LocalDate startDay, int days) {
+        LocalDate endExclusive = startDay.plusDays(days);
+        for (Task task : tasks) {
+            if (task.core == null || task.core.id == null || task.core.done) {
+                continue;
+            }
+            boolean hasWindowSlot = task.slots.stream().anyMatch(slot ->
+                    slot.day != null
+                            && !slot.day.isBefore(startDay)
+                            && slot.day.isBefore(endExclusive)
+                            && slot.scheduled);
+            if (hasWindowSlot) {
+                continue;
+            }
+            LocalDate conflictDay = task.core.fixedDate != null ? task.core.fixedDate : startDay;
+            addConflict(task, conflictDay, REASON_NO_MATCHING_GAP,
+                    "Keine passende Lücke im Planungsfenster gefunden");
+        }
+    }
+
+    private void addConflict(Task task, LocalDate day, String reasonCode, String details) {
+        SchedulingConflict conflict = new SchedulingConflict(
+                task.core != null ? task.core.id : null,
+                task.core != null ? task.core.title : "",
+                day,
+                reasonCode,
+                details);
+        lastConflicts.add(conflict);
+        log("[SCHED_CONFLICT] {taskId=" + conflict.taskId
+                + ", title=" + conflict.title
+                + ", day=" + conflict.day
+                + ", reasonCode=" + conflict.reasonCode
+                + ", details=" + conflict.details + "}");
+    }
+
     private void scheduleFixedTasks(List<Task> tasks,
                                     LocalDateTime windowStart,
                                     LocalDateTime windowEnd,
@@ -761,15 +812,14 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             LocalDateTime start = LocalDateTime.of(task.core.fixedDate, task.core.fixedStart);
             LocalDateTime end = computeFixedEnd(task, start);
             if (end == null || !end.isAfter(start) || start.isBefore(windowStart) || end.isAfter(windowEnd)) {
-                lastConflicts.add(new SchedulingConflict(task.core.id, task.core.title,
-                        SchedulingConflict.Reason.DAY_BOUNDARY, start, end,
-                        "Termin liegt außerhalb der Tagesgrenzen"));
+                addConflict(task, day, REASON_OUTSIDE_WINDOW, "Termin liegt außerhalb der Tagesgrenzen");
                 continue;
             }
-            if (!findOverlappingIntervals(occupied, start, end).isEmpty()) {
-                lastConflicts.add(new SchedulingConflict(task.core.id, task.core.title,
-                        SchedulingConflict.Reason.FIXED_VS_FIXED, start, end,
-                        "Termin überschneidet belegte Zeit"));
+            Set<OccupiedInterval> overlaps = findOverlappingIntervals(occupied, start, end);
+            if (!overlaps.isEmpty()) {
+                boolean overlapsCalendar = overlaps.stream().anyMatch(interval -> interval.candidate == null);
+                addConflict(task, day, overlapsCalendar ? REASON_CALENDAR_OVERLAP : REASON_OUTSIDE_WINDOW,
+                        "Termin überschneidet belegte Zeit");
                 continue;
             }
             TaskSlot slot = createScheduledSlot(task, start, Integer.MAX_VALUE / 2, null);

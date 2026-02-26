@@ -1,15 +1,18 @@
 package com.autosecretary.features.task.application;
 
+import com.autosecretary.features.task.application.internal.TaskSeedDataFactory;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
-import com.autosecretary.features.task.application.internal.TaskSeedDataFactory;
+import com.autosecretary.features.task.domain.SchedulingConflict;
 import com.autosecretary.features.task.domain.TaskPlanningState;
+import com.autosecretary.features.task.domain.TaskSlotGenerationResult;
 import com.autosecretary.features.task.domain.TaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 
 /**
  * Entry point for schedule generation. Reads all tasks from the database, generates
@@ -19,6 +22,16 @@ import java.util.concurrent.ExecutorService;
  */
 public class RegenerateScheduleUseCase {
     private static final int PLANNING_DAYS = 7;
+
+    public static class Result {
+        public final int createdSlots;
+        public final List<SchedulingConflict> conflicts;
+
+        public Result(int createdSlots, List<SchedulingConflict> conflicts) {
+            this.createdSlots = createdSlots;
+            this.conflicts = conflicts;
+        }
+    }
 
     private final TaskDAO taskDao;
     private final TaskSlotGenerator generator;
@@ -32,11 +45,9 @@ public class RegenerateScheduleUseCase {
         this.executor = executor;
     }
 
-    public void execute(Runnable onDone) {
+    public void execute(Consumer<Result> onDone) {
         executor.execute(() -> {
             List<Task> tasks = taskDao.readAll();
-            // First run: seed default tasks when DB is empty. Flatten tree before
-            // writing (Room needs a flat list), then re-read to get proper @Relation assembly.
             if (tasks.isEmpty()) {
                 List<Task> seedTasks = TaskSeedDataFactory.createDefaultTasks();
                 taskDao.writeList(TaskTreeOperations.flatten(seedTasks));
@@ -46,7 +57,6 @@ public class RegenerateScheduleUseCase {
             LocalDate today = LocalDate.now();
             LocalDate windowEnd = today.plusDays(PLANNING_DAYS);
 
-            // 1) Remove unstarted scheduled slots in the 7-day planning window
             for (Task task : tasks) {
                 task.slots.removeIf(slot ->
                         !slot.completed
@@ -57,17 +67,16 @@ public class RegenerateScheduleUseCase {
                                 && slot.day.isBefore(windowEnd));
             }
 
-            // 2) Initialize cross-day state from preserved slots (completed/in-progress)
             TaskPlanningState state = new TaskPlanningState();
             generator.recordPreservedSlots(tasks, today, windowEnd, state);
 
-            // 3) Flatten once, then run one global placement pass over the full 7-day window.
             List<Task> flatTasks = TaskTreeOperations.flatten(
                     TaskTreeOperations.buildTree(tasks));
-            generator.generateSlotsForWindow(flatTasks, today, PLANNING_DAYS, state);
+            TaskSlotGenerationResult generationResult =
+                    generator.generateSlotsForWindow(flatTasks, today, PLANNING_DAYS, state);
 
             taskDao.writeList(flatTasks);
-            onDone.run();
+            onDone.accept(new Result(generationResult.createdSlots, generationResult.conflicts));
         });
     }
 }

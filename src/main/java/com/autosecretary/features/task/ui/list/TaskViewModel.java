@@ -10,6 +10,7 @@ import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
+import com.autosecretary.features.task.domain.SchedulingConflict;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList.ViewSlot;
@@ -35,6 +36,7 @@ public class TaskViewModel extends AndroidViewModel {
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
     private final MutableLiveData<LocalDate> selectedDay = new MutableLiveData<>(LocalDate.now());
     private final MutableLiveData<String> searchQuery = new MutableLiveData<>("");
+    private final MutableLiveData<List<SchedulingConflict>> scheduleConflicts = new MutableLiveData<>();
 
     private LocalDate day;
     private ListConfig activeListConfig = ListConfig.CHECKLIST;
@@ -72,6 +74,10 @@ public class TaskViewModel extends AndroidViewModel {
 
     public LiveData<String> getSearchQuery() {
         return searchQuery;
+    }
+
+    public LiveData<List<SchedulingConflict>> getScheduleConflicts() {
+        return scheduleConflicts;
     }
 
     public void setSearchQuery(String query) {
@@ -133,7 +139,10 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void updateList() {
-        regenerateScheduleUseCase.execute(this::refreshList);
+        regenerateScheduleUseCase.execute(result -> {
+            scheduleConflicts.postValue(result.conflicts);
+            refreshList();
+        });
     }
 
     public void filterList() {
