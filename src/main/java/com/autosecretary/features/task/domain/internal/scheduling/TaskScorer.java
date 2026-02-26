@@ -128,7 +128,9 @@ final class TaskScorer {
             );
         }
 
-        TaskScoringSnapshot withConsumedPrefSlot(String prefSlotId) {
+        // Assigning a slot always schedules one repetition for today; when it matches a preference slot,
+        // we also mark that preference slot as consumed to avoid reusing it.
+        TaskScoringSnapshot withAssignedPrefSlot(String prefSlotId) {
             return new TaskScoringSnapshot(
                     completionState.withIncrementedScheduledToday(),
                     urgencyState,
@@ -419,7 +421,7 @@ final class TaskScorer {
         );
 
         if (match != null) {
-            caches.put(task.core.id, snapshot.withConsumedPrefSlot(match.prefSlot.id));
+            caches.put(task.core.id, snapshot.withAssignedPrefSlot(match.prefSlot.id));
         } else {
             caches.put(task.core.id, snapshot.withIncrementedScheduledToday());
         }
