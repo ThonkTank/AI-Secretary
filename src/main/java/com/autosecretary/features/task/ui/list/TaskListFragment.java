@@ -37,7 +37,17 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 public class TaskListFragment extends Fragment {
+    public static final String ARG_OPEN_CREATE_TASK = "open_create_task";
+
     private TaskViewModel vm;
+    private boolean shouldOpenCreateTask;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        shouldOpenCreateTask = getArguments() != null
+                && getArguments().getBoolean(ARG_OPEN_CREATE_TASK, false);
+    }
 
     private final ActivityResultLauncher<String> calendarPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
@@ -141,13 +151,15 @@ public class TaskListFragment extends Fragment {
                 new TaskScheduleConfigDialog().show(getParentFragmentManager(), "schedule_config")
         );
 
-        View.OnClickListener createTaskClickListener = v -> {
-            editSessionController.createNewTask();
-            new TaskEditDialog().show(getParentFragmentManager(), "create");
-        };
+        View.OnClickListener createTaskClickListener = v -> openCreateTaskDialog(editSessionController);
 
         newTaskButton.setOnClickListener(createTaskClickListener);
         view.findViewById(R.id.EmptyStateNewTaskButton).setOnClickListener(createTaskClickListener);
+
+        if (shouldOpenCreateTask) {
+            shouldOpenCreateTask = false;
+            view.post(() -> openCreateTaskDialog(editSessionController));
+        }
 
         TextView dayNavPrev = view.findViewById(R.id.DayNavPrev);
         TextView dayNavLabel = view.findViewById(R.id.DayNavLabel);
@@ -203,5 +215,10 @@ public class TaskListFragment extends Fragment {
     private void openEditDialog(TaskEditSessionController editSessionController, String taskId) {
         editSessionController.beginEditTask(taskId);
         new TaskEditDialog().show(getParentFragmentManager(), "edit");
+    }
+
+    private void openCreateTaskDialog(TaskEditSessionController editSessionController) {
+        editSessionController.createNewTask();
+        new TaskEditDialog().show(getParentFragmentManager(), "create");
     }
 }
