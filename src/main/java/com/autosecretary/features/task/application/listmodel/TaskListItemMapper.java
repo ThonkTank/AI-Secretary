@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.application;
+package com.autosecretary.features.task.application.listmodel;
 
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;

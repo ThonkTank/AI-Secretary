@@ -21,7 +21,7 @@ import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
-import com.autosecretary.features.task.application.TaskListItemMapper;
+import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.TaskScheduleConfigRepository;
 import com.autosecretary.features.task.application.TaskScheduleConfigService;
 import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
