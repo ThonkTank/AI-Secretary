@@ -1,5 +1,6 @@
 package com.autosecretary.features.task.application;
 
+import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.TaskDAO;
 
 import java.util.concurrent.ExecutorService;

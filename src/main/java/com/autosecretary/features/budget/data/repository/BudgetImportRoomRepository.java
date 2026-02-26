@@ -1,20 +1,21 @@
 package com.autosecretary.features.budget.data.repository;
 
-import com.autosecretary.features.budget.domain.BudgetImportRepository;
-import com.autosecretary.features.budget.domain.RecurringSuggestion;
-
-import java.time.LocalDate;
-import java.util.List;
 import com.autosecretary.features.budget.data.dao.BudgetLookupDao;
 import com.autosecretary.features.budget.data.dao.TransactionDao;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.importing.BudgetImportDao;
 import com.autosecretary.features.budget.data.importing.BudgetImportEntity;
 import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateDao;
 import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateEntity;
 import com.autosecretary.features.budget.data.projection.AccountBalanceTotal;
+import com.autosecretary.features.budget.domain.BudgetImportRepository;
+import com.autosecretary.features.budget.domain.ImportCategory;
+import com.autosecretary.features.budget.domain.ImportTransactionRecord;
+import com.autosecretary.features.budget.domain.RecurringSuggestion;
+
+import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Room-Implementierung der BudgetImportRepository-Schnittstelle.
@@ -97,19 +98,21 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     @Override
-    public List<BudgetCategory> loadActiveCategoriesForImport() {
-        return lookupDao.getActiveCategories();
+    public List<ImportCategory> loadActiveCategoriesForImport() {
+        return lookupDao.getActiveCategories().stream()
+                .map(category -> new ImportCategory(category.id, category.name, category.type))
+                .toList();
     }
 
     @Override
-    public void saveTransactionsBatch(List<BudgetTransactionEntity> transactions) {
-        transactionDao.insertAll(transactions);
+    public void saveTransactionsBatch(List<ImportTransactionRecord> transactions) {
+        transactionDao.insertAll(transactions.stream().map(this::toEntity).toList());
         updateAccountBalances();
     }
 
     @Override
-    public List<BudgetTransactionEntity> loadTransactionsForAccount(String accountId) {
-        return transactionDao.findByAccountId(accountId);
+    public List<ImportTransactionRecord> loadTransactionsForAccount(String accountId) {
+        return transactionDao.findByAccountId(accountId).stream().map(this::toRecord).toList();
     }
 
     @Override
@@ -198,5 +201,44 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
             }
             lookupDao.updateCurrentBalanceCents(account.id, balance);
         }
+    }
+
+    private BudgetTransactionEntity toEntity(ImportTransactionRecord record) {
+        BudgetTransactionEntity.TransactionType txType =
+                "EXPENSE".equals(record.type) ? BudgetTransactionEntity.TransactionType.EXPENSE
+                        : BudgetTransactionEntity.TransactionType.INCOME;
+        BudgetTransactionEntity entity = new BudgetTransactionEntity(
+                record.accountId,
+                record.categoryId,
+                txType,
+                record.amountCents,
+                record.bookingDate,
+                record.yearMonth
+        );
+        entity.id = record.id;
+        entity.note = record.note;
+        entity.importHash = record.importHash;
+        entity.payee = record.payee;
+        entity.importId = record.importId;
+        entity.templateId = record.templateId;
+        return entity;
+    }
+
+    private ImportTransactionRecord toRecord(BudgetTransactionEntity entity) {
+        String type = entity.type == BudgetTransactionEntity.TransactionType.EXPENSE ? "EXPENSE" : "INCOME";
+        return new ImportTransactionRecord(
+                entity.id,
+                entity.accountId,
+                entity.categoryId,
+                type,
+                entity.amountCents,
+                entity.bookingDate,
+                entity.yearMonth,
+                entity.note,
+                entity.importHash,
+                entity.payee,
+                entity.importId,
+                entity.templateId
+        );
     }
 }

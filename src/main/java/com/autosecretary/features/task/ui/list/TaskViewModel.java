@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui;
+package com.autosecretary.features.task.ui.list;
 
 import android.app.Application;
 
@@ -13,12 +13,12 @@ import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
-import com.autosecretary.features.task.application.TaskListItem;
+import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.application.internal.calendar.CalendarEvent;
 import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
-import com.autosecretary.features.task.ui.state.ViewSlotList;
-import com.autosecretary.features.task.ui.state.ViewSlotList.ViewSlot;
+import com.autosecretary.features.task.ui.list.state.ViewSlotList;
+import com.autosecretary.features.task.ui.list.state.ViewSlotList.ViewSlot;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 import java.time.LocalDate;

@@ -2,7 +2,7 @@ package com.autosecretary.features.budget.application.importing;
 
 import android.util.Base64;
 
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.domain.ImportCategory;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -34,7 +34,7 @@ public class ClaudeStatementApiClient {
     public StatementFileParser.ParsedStatement parsePdf(
             String apiKey,
             byte[] fileBytes,
-            List<BudgetCategory> categories
+            List<ImportCategory> categories
     ) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new ApiException("Kein Claude API-Key konfiguriert.");
@@ -73,7 +73,7 @@ public class ClaudeStatementApiClient {
         }
     }
 
-    private JSONObject buildRequestBody(byte[] fileBytes, List<BudgetCategory> categories) throws JSONException {
+    private JSONObject buildRequestBody(byte[] fileBytes, List<ImportCategory> categories) throws JSONException {
         JSONObject body = new JSONObject();
         body.put("model", MODEL);
         body.put("max_tokens", MAX_TOKENS);
@@ -104,7 +104,7 @@ public class ClaudeStatementApiClient {
         return body;
     }
 
-    private String buildSystemPrompt(List<BudgetCategory> categories) {
+    private String buildSystemPrompt(List<ImportCategory> categories) {
         StringBuilder sb = new StringBuilder();
         sb.append("Du extrahierst Banktransaktionen aus Kontoauszügen. ")
                 .append("Antwortformat: JSON Objekt mit Feldern period_start, period_end, transactions. ")
@@ -116,7 +116,7 @@ public class ClaudeStatementApiClient {
         } else {
             sb.append("[");
             for (int i = 0; i < categories.size(); i++) {
-                BudgetCategory category = categories.get(i);
+                ImportCategory category = categories.get(i);
                 if (i > 0) {
                     sb.append(", ");
                 }

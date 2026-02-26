@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui.state;
+package com.autosecretary.features.task.ui.list.state;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -6,7 +6,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.function.Predicate;
 
-import com.autosecretary.features.task.application.TaskListItem;
+import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.util.TreeBuilder;
 
 public class ViewSlotList {

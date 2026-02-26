@@ -14,7 +14,7 @@ import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.data.entity.BudgetLimit;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
-import com.autosecretary.features.budget.data.projection.CategorySpendTotal;
+import com.autosecretary.features.budget.domain.CategorySpendSummary;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 import com.autosecretary.features.budget.ui.internal.BudgetImportDialogStateMapper;
@@ -282,7 +282,6 @@ public class BudgetViewModel extends ViewModel {
         publishOverviewState(overview.getRows(), overview.getChartPoints(), overview.getSummary());
         loadLimitsOnExecutor();
     }
-
     private void publishOverviewState(List<BudgetTransactionRow> rows,
                                       List<BudgetChartPoint> balancePoints,
                                       BudgetSummaryData summary) {
@@ -299,7 +298,6 @@ public class BudgetViewModel extends ViewModel {
             }
         });
     }
-
 
     public void addTransaction(String amountStr, boolean isExpense, String categoryId,
                                String note, LocalDate date) {
@@ -519,8 +517,9 @@ public class BudgetViewModel extends ViewModel {
     private void loadLimitsOnExecutor() {
         YearMonth month = currentMonth.getValue();
         if (month == null) month = YearMonth.now();
+        String yearMonthStr = month.toString();
 
-        List<CategorySpendTotal> totals = repository.getCategorySpendTotals(yearMonthStr);
+        List<CategorySpendSummary> totals = repository.getCategorySpendTotals(yearMonthStr);
         List<BudgetLimitBar> bars = summaryPresentationMapper.toLimitBars(
                 totals,
                 repository::getEffectiveLimitCents,

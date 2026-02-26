@@ -3,13 +3,13 @@ package com.autosecretary.features.budget.ui.internal;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
-import com.autosecretary.features.budget.data.projection.AccountDailyDeltaPoint;
-import com.autosecretary.features.budget.data.projection.AccountMonthlyDeltaPoint;
-import com.autosecretary.features.budget.data.projection.MonthlyTransactionOverviewItem;
 import com.autosecretary.features.budget.domain.AccountBalanceTimelineService;
 import com.autosecretary.features.budget.domain.BalanceTimelinePoint;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
+import com.autosecretary.features.budget.domain.DailyDeltaPoint;
+import com.autosecretary.features.budget.domain.MonthlyDeltaPoint;
+import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import com.autosecretary.features.budget.ui.BudgetViewModel;
 import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
 import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
@@ -89,7 +89,7 @@ public class BudgetOverviewLoader {
             return new OverviewData(accounts, null, new ArrayList<>(), null, new ArrayList<>());
         }
 
-        List<MonthlyTransactionOverviewItem> items =
+        List<MonthlyOverviewItem> items =
                 repository.getMonthlyOverviewForAccount(month.toString(), accountId);
 
         List<BudgetViewModel.BudgetTransactionRow> rows = buildTransactionRows(items);
@@ -109,9 +109,9 @@ public class BudgetOverviewLoader {
         return null;
     }
 
-    private List<BudgetViewModel.BudgetTransactionRow> buildTransactionRows(List<MonthlyTransactionOverviewItem> items) {
+    private List<BudgetViewModel.BudgetTransactionRow> buildTransactionRows(List<MonthlyOverviewItem> items) {
         List<BudgetViewModel.BudgetTransactionRow> rows = new ArrayList<>();
-        for (MonthlyTransactionOverviewItem item : items) {
+        for (MonthlyOverviewItem item : items) {
             boolean isExpense = "EXPENSE".equals(item.type);
             rows.add(new BudgetViewModel.BudgetTransactionRow(
                     item.transactionId,
@@ -131,12 +131,12 @@ public class BudgetOverviewLoader {
         return rows;
     }
 
-    private BudgetSummaryData computeSummary(List<MonthlyTransactionOverviewItem> items, String accountId) {
+    private BudgetSummaryData computeSummary(List<MonthlyOverviewItem> items, String accountId) {
         long freeBudgetCents = calculateFreeBudgetUseCase.execute(accountId, LocalDate.now(), 7);
         return summaryPresentationMapper.toSummary(items, freeBudgetCents);
     }
 
-    private String buildTransactionLabel(MonthlyTransactionOverviewItem item) {
+    private String buildTransactionLabel(MonthlyOverviewItem item) {
         if ("INTERNAL_TRANSFER".equals(item.transactionKind)) {
             return item.note != null && !item.note.isBlank() ? "Überweisung · " + item.note : "Überweisung";
         }
@@ -173,7 +173,7 @@ public class BudgetOverviewLoader {
             LocalDate fromDate = now.minusDays(29);
             long startBalance = openingBalanceCents
                     + repository.getNetAmountBeforeDateForAccount(accountId, fromDate);
-            List<AccountDailyDeltaPoint> deltas =
+            List<DailyDeltaPoint> deltas =
                     repository.getDailyDeltasForAccount(accountId, fromDate, now);
             series = balanceTimelineService.reconstructDaily(fromDate, now, startBalance, deltas);
         } else {
@@ -183,7 +183,7 @@ public class BudgetOverviewLoader {
             LocalDate startDate = fromMonth.atDay(1);
             long startBalance = openingBalanceCents
                     + repository.getNetAmountBeforeDateForAccount(accountId, startDate);
-            List<AccountMonthlyDeltaPoint> deltas = repository.getMonthlyDeltasForAccount(
+            List<MonthlyDeltaPoint> deltas = repository.getMonthlyDeltasForAccount(
                     accountId,
                     fromMonth.toString(),
                     toMonth.toString()
