@@ -10,7 +10,7 @@ import java.math.RoundingMode;
  * non-breaking spaces ({@code \u00A0}) commonly injected by German bank statement exports.
  * Returns {@code null} on unparseable input rather than throwing.
  */
-public class AmountParser {
+public final class AmountParser {
 
     /**
      * Parses {@code amountStr} and returns the value in cents, or {@code null} if the string

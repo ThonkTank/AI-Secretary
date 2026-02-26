@@ -2,6 +2,7 @@ package com.autosecretary.features.budget.application.importing;
 
 import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
+import com.autosecretary.features.budget.domain.TransactionDirection;
 
 /**
  * Explicit mapper between domain import/recurring model and persistence forms.
@@ -10,19 +11,19 @@ public class BudgetTransactionMapper {
 
     public ImportTransactionRecord toRecord(RecurringBudgetTransaction domainTransaction) {
         if (domainTransaction == null) {
-            return null;
+            throw new IllegalArgumentException("domainTransaction must not be null");
         }
 
         if (domainTransaction.accountId == null || domainTransaction.transactionDate == null) {
             throw new IllegalArgumentException("accountId and transactionDate are required");
         }
 
-        String type = domainTransaction.amountCents < 0 ? "EXPENSE" : "INCOME";
+        TransactionDirection direction = TransactionDirection.fromAmountCents(domainTransaction.amountCents);
         return new ImportTransactionRecord(
                 domainTransaction.id,
                 domainTransaction.accountId,
                 domainTransaction.categoryId,
-                type,
+                direction.name(),
                 Math.abs(domainTransaction.amountCents),
                 domainTransaction.transactionDate,
                 domainTransaction.description,
@@ -35,32 +36,32 @@ public class BudgetTransactionMapper {
 
     public RecurringBudgetTransaction toDomain(ImportTransactionRecord record) {
         if (record == null) {
-            return null;
+            throw new IllegalArgumentException("record must not be null");
         }
 
         if (record.accountId() == null) {
             throw new IllegalArgumentException("accountId must not be null");
         }
 
-        int signedAmountCents = (int) record.amountCents();
-        if ("EXPENSE".equals(record.type())) {
-            signedAmountCents = -Math.abs(signedAmountCents);
-        } else {
-            signedAmountCents = Math.abs(signedAmountCents);
+        if (ImportTransactionRecord.TYPE_TRANSFER.equals(record.type())) {
+            throw new IllegalArgumentException(
+                    "Transfer records must not be mapped via BudgetTransactionMapper.toDomain; handle transfers separately.");
         }
 
-        RecurringBudgetTransaction tx = new RecurringBudgetTransaction();
-        tx.id = record.id();
-        tx.accountId = record.accountId();
-        tx.amountCents = signedAmountCents;
-        tx.transactionDate = record.bookingDate();
-        tx.categoryId = record.categoryId();
-        tx.description = record.note();
-        tx.payee = record.payee();
-        tx.importHash = record.importHash();
-        tx.importId = record.importId();
-        tx.parentRecurringId = record.templateId();
-        tx.isRecurring = tx.parentRecurringId != null && !tx.parentRecurringId.isBlank();
-        return tx;
+        TransactionDirection direction = TransactionDirection.valueOf(record.type());
+        long signedAmountCents = direction.toSignedCents(record.amountCents());
+
+        return RecurringBudgetTransaction.forImport(
+                record.id(),
+                record.accountId(),
+                signedAmountCents,
+                record.bookingDate(),
+                record.categoryId(),
+                record.note(),
+                record.payee(),
+                record.importHash(),
+                record.importId(),
+                record.templateId()
+        );
     }
 }

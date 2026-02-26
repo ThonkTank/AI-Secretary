@@ -7,6 +7,6 @@ import com.autosecretary.features.meal.domain.CookingPreferences;
 
 public class CookingPreferencesDao extends BaseCollectionDao<CookingPreferences> {
     public CookingPreferencesDao(MealStorage storage) {
-        super(MealCollections.COOKING_PREFERENCES, storage, new CookingPreferencesRowMapper(), preferences -> preferences.id);
+        super(MealCollections.COOKING_PREFERENCES, storage, new CookingPreferencesRowMapper(), preferences -> preferences.id, (preferences, id) -> preferences.id = id);
     }
 }

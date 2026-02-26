@@ -31,7 +31,7 @@ public class CreateShoppingListItemUseCase {
     public ShoppingListItem execute(long ingredientId, double neededAmount, String periodKey) {
         Ingredient ingredient = recipeRepository.findIngredientById(ingredientId);
         if (ingredient == null) {
-            return null;
+            throw new IllegalArgumentException("Ingredient not found: id=" + ingredientId);
         }
         ShoppingListItem shoppingListItem = shoppingPackagingService.createShoppingItem(
                 ingredient,

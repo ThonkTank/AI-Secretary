@@ -68,7 +68,7 @@
         android:paddingBottom="@dimen/spacing_sm">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/Button"
+            android:id="@+id/GenerateScheduleButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/task_list_generate"

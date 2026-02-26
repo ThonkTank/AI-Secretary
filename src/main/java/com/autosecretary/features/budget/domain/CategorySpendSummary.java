@@ -1,10 +1,10 @@
 package com.autosecretary.features.budget.domain;
 
-public class CategorySpendSummary {
-    public String categoryId;
-    public String categoryName;
-    public String categoryIcon;
-    public String categoryColorHex;
-    public long spentCents;
-    public long limitAmountCents;
-}
+public record CategorySpendSummary(
+        String categoryId,
+        String categoryName,
+        String categoryIcon,
+        String categoryColorHex,
+        long spentCents,
+        long limitAmountCents
+) {}

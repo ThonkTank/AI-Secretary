@@ -1,5 +1,6 @@
 package com.autosecretary.features.budget.ui.internal;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Spinner;
@@ -35,15 +36,16 @@ public class BudgetTransferDialogController {
     }
 
     public void show(List<BudgetAccount> accounts) {
+        Context ctx = fragment.requireContext();
         if (accounts == null || accounts.size() < 2) {
-            new AlertDialog.Builder(fragment.requireContext())
+            new AlertDialog.Builder(ctx)
                     .setMessage(R.string.budget_transfer_requires_two_accounts)
                     .setPositiveButton(android.R.string.ok, null)
                     .show();
             return;
         }
 
-        View dialogView = LayoutInflater.from(fragment.requireContext())
+        View dialogView = LayoutInflater.from(ctx)
                 .inflate(R.layout.budget_transfer_dialog, null);
         Spinner sourceAccountSpinner = dialogView.findViewById(R.id.BudgetTransferSourceAccount);
         Spinner targetAccountSpinner = dialogView.findViewById(R.id.BudgetTransferTargetAccount);
@@ -55,13 +57,13 @@ public class BudgetTransferDialogController {
         for (BudgetAccount account : accounts) {
             accountNames.add(account.name);
         }
-        SpinnerHelper.bindNames(sourceAccountSpinner, accountNames, fragment.requireContext());
-        SpinnerHelper.bindNames(targetAccountSpinner, accountNames, fragment.requireContext());
+        SpinnerHelper.bindNames(sourceAccountSpinner, accountNames, ctx);
+        SpinnerHelper.bindNames(targetAccountSpinner, accountNames, ctx);
         targetAccountSpinner.setSelection(1);
 
         dateInput.setText(LocalDate.now().toString());
 
-        new AlertDialog.Builder(fragment.requireContext())
+        new AlertDialog.Builder(ctx)
                 .setTitle(R.string.budget_transfer_title)
                 .setView(dialogView)
                 .setPositiveButton(R.string.budget_transfer_save, (dialog, which) -> {
@@ -72,12 +74,9 @@ public class BudgetTransferDialogController {
                         return;
                     }
 
-                    String amountStr = amountInput.getText() != null
-                            ? amountInput.getText().toString().trim() : "";
-                    String note = noteInput.getText() != null
-                            ? noteInput.getText().toString().trim() : "";
-                    String dateStr = dateInput.getText() != null
-                            ? dateInput.getText().toString().trim() : "";
+                    String amountStr = textOf(amountInput);
+                    String note = textOf(noteInput);
+                    String dateStr = textOf(dateInput);
 
                     LocalDate bookingDate;
                     try {
@@ -96,5 +95,9 @@ public class BudgetTransferDialogController {
                 })
                 .setNegativeButton(R.string.budget_dialog_cancel, null)
                 .show();
+    }
+
+    private static String textOf(TextInputEditText input) {
+        return input.getText() != null ? input.getText().toString().trim() : "";
     }
 }

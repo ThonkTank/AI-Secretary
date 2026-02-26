@@ -33,8 +33,10 @@ import com.autosecretary.features.budget.ui.internal.BudgetBalanceChartView;
 import com.autosecretary.features.budget.ui.internal.BudgetImportPickerController;
 import com.autosecretary.features.budget.ui.internal.BudgetRecurringSuggestionsDialogController;
 import com.autosecretary.features.budget.ui.internal.BudgetTransferDialogController;
+import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
 import com.autosecretary.features.budget.ui.internal.SpinnerHelper;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
+import com.autosecretary.features.budget.ui.state.TimeRangeFilter;
 import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
 import com.autosecretary.features.budget.ui.state.UiText;
 import com.google.android.material.textfield.TextInputEditText;
@@ -48,6 +50,9 @@ import java.util.regex.Pattern;
 public class BudgetFragment extends Fragment {
 
     public static final String ARG_OPEN_ADD_TRANSACTION = "open_add_transaction";
+
+    private static final Pattern COLOR_HEX_PATTERN =
+            Pattern.compile("^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$");
 
     private BudgetViewModel budgetViewModel;
     private boolean shouldOpenAddTransactionDialog;
@@ -145,9 +150,9 @@ public class BudgetFragment extends Fragment {
 
         budgetViewModel.getSummaryData().observe(getViewLifecycleOwner(), data -> {
             if (data == null) return;
-            views.summaryIncome.setText(String.format(Locale.GERMAN, "+%.2f €", data.getIncomeCents() / 100.0));
+            views.summaryIncome.setText(CurrencyFormatter.eurosAlwaysSigned(data.getIncomeCents()));
             views.summaryIncome.setTextColor(getColorFromResources(R.color.budget_positive));
-            views.summaryExpense.setText(String.format(Locale.GERMAN, "-%.2f €", data.getExpenseCents() / 100.0));
+            views.summaryExpense.setText(CurrencyFormatter.eurosAlwaysSigned(-data.getExpenseCents()));
             views.summaryExpense.setTextColor(getColorFromResources(R.color.budget_negative));
             bindSignedAmount(views.summaryNet, data.getNetCents());
             bindSignedAmount(views.summaryFreeBudget, data.getFreeBudgetCents());
@@ -238,7 +243,7 @@ public class BudgetFragment extends Fragment {
         views.addTransfer.setOnClickListener(v -> showTransferDialog());
         views.importStatement.setOnClickListener(v -> importPickerController.launchPicker());
         views.retry.setOnClickListener(v -> budgetViewModel.retry());
-        views.setLimitButton.setOnClickListener(v -> showEditLimitDialog(null, null, 0));
+        views.setLimitButton.setOnClickListener(v -> showEditLimitDialog(null, 0));
     }
 
     private void restoreDeferredActions(@NonNull View rootView) {
@@ -388,7 +393,7 @@ public class BudgetFragment extends Fragment {
                 : TransactionDirection.INCOME;
         List<BudgetCategory> filtered = new ArrayList<>();
         for (BudgetCategory category : allCategories) {
-            if (filterType == category.type) {
+            if (filterType == category.direction) {
                 filtered.add(category);
             }
         }
@@ -437,7 +442,7 @@ public class BudgetFragment extends Fragment {
 
             name.setText(bar.getCategoryName());
             spentText.setText(String.format(Locale.GERMAN, "%.2f / %.2f €",
-                    bar.getSpentCents() / 100.0, bar.getEffectiveLimitEuros()));
+                    bar.getSpentCents() / 100.0, bar.getEffectiveLimitCents() / 100.0));
             int pct = bar.getPercentage();
             percentText.setText(String.format(Locale.GERMAN, "%d%%", pct));
             progress.setProgress(Math.min(pct, 100));
@@ -456,7 +461,7 @@ public class BudgetFragment extends Fragment {
             percentText.setTextColor(color);
 
             row.setOnClickListener(v ->
-                    showEditLimitDialog(bar.getCategoryId(), bar.getCategoryName(), bar.getBaseLimitEuros()));
+                    showEditLimitDialog(bar.getCategoryId(), bar.getBaseLimitCents() / 100.0));
             container.addView(row);
         }
     }
@@ -500,14 +505,13 @@ public class BudgetFragment extends Fragment {
         return icon + " " + category.name;
     }
 
-    private boolean isValidColorHex(String colorHex) {
+    private static boolean isValidColorHex(String colorHex) {
         if (colorHex == null) return false;
-        return Pattern.matches("^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", colorHex);
+        return COLOR_HEX_PATTERN.matcher(colorHex).matches();
     }
 
     private void bindSignedAmount(TextView view, long cents) {
-        String sign = cents >= 0 ? "+" : "-";
-        view.setText(String.format(Locale.GERMAN, "%s%.2f €", sign, Math.abs(cents) / 100.0));
+        view.setText(CurrencyFormatter.eurosAlwaysSigned(cents));
         view.setTextColor(getColorFromResources(
                 cents >= 0 ? R.color.budget_positive : R.color.budget_negative));
     }
@@ -527,7 +531,6 @@ public class BudgetFragment extends Fragment {
     }
 
     private void showEditLimitDialog(String preSelectedCategoryId,
-                                     String preSelectedCategoryName,
                                      double currentAmount) {
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.budget_edit_limit_dialog, null);
@@ -566,11 +569,10 @@ public class BudgetFragment extends Fragment {
                             ? rolloverCarryoverInput.getText().toString().trim() : "";
                     long rolloverCarryoverCents = 0L;
                     if (!rolloverCarryoverStr.isEmpty()) {
-                        try {
-                            rolloverCarryoverCents = Math.round(Double.parseDouble(rolloverCarryoverStr.replace(',', '.')) * 100.0);
-                        } catch (NumberFormatException e) {
-                            return;
-                        }
+                        Long parsed = new com.autosecretary.features.budget.domain.AmountParser()
+                                .parseAmountCents(rolloverCarryoverStr);
+                        if (parsed == null) return;
+                        rolloverCarryoverCents = parsed;
                     }
 
                     budgetViewModel.saveBudgetLimitFromString(

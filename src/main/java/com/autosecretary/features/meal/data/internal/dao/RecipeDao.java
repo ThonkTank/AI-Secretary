@@ -7,6 +7,6 @@ import com.autosecretary.features.meal.domain.Recipe;
 
 public class RecipeDao extends BaseCollectionDao<Recipe> {
     public RecipeDao(MealStorage storage) {
-        super(MealCollections.RECIPES, storage, new RecipeRowMapper(), recipe -> recipe.id);
+        super(MealCollections.RECIPES, storage, new RecipeRowMapper(), recipe -> recipe.id, (recipe, id) -> recipe.id = id);
     }
 }

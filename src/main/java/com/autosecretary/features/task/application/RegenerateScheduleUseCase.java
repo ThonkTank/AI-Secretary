@@ -9,7 +9,10 @@ import com.autosecretary.features.task.domain.TaskSlotGenerationResult;
 import com.autosecretary.features.task.domain.TaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
 
+import android.util.Log;
+
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
@@ -47,36 +50,41 @@ public class RegenerateScheduleUseCase {
 
     public void execute(Consumer<Result> onDone) {
         executor.execute(() -> {
-            List<Task> tasks = taskDao.readAll();
-            if (tasks.isEmpty()) {
-                List<Task> seedTasks = TaskSeedDataFactory.createDefaultTasks();
-                taskDao.writeList(TaskTreeOperations.flatten(seedTasks));
-                tasks = taskDao.readAll();
+            try {
+                List<Task> tasks = taskDao.readAll();
+                if (tasks.isEmpty()) {
+                    List<Task> seedTasks = TaskSeedDataFactory.createDefaultTasks();
+                    taskDao.writeList(TaskTreeOperations.flatten(seedTasks));
+                    tasks = taskDao.readAll();
+                }
+
+                LocalDate today = LocalDate.now();
+                LocalDate windowEnd = today.plusDays(PLANNING_DAYS);
+
+                for (Task task : tasks) {
+                    task.slots.removeIf(slot ->
+                            !slot.completed
+                                    && slot.realStart == null
+                                    && slot.scheduled
+                                    && slot.day != null
+                                    && !slot.day.isBefore(today)
+                                    && slot.day.isBefore(windowEnd));
+                }
+
+                TaskPlanningState state = new TaskPlanningState();
+                generator.recordPreservedSlots(tasks, today, windowEnd, state);
+
+                List<Task> flatTasks = TaskTreeOperations.flatten(
+                        TaskTreeOperations.buildTree(tasks));
+                TaskSlotGenerationResult generationResult =
+                        generator.generateSlotsForWindow(flatTasks, today, PLANNING_DAYS, state);
+
+                taskDao.writeList(flatTasks);
+                onDone.accept(new Result(generationResult.createdSlots, generationResult.conflicts));
+            } catch (Exception e) {
+                Log.e("RegenerateSchedule", "Schedule regeneration failed", e);
+                onDone.accept(new Result(0, Collections.emptyList()));
             }
-
-            LocalDate today = LocalDate.now();
-            LocalDate windowEnd = today.plusDays(PLANNING_DAYS);
-
-            for (Task task : tasks) {
-                task.slots.removeIf(slot ->
-                        !slot.completed
-                                && slot.realStart == null
-                                && slot.scheduled
-                                && slot.day != null
-                                && !slot.day.isBefore(today)
-                                && slot.day.isBefore(windowEnd));
-            }
-
-            TaskPlanningState state = new TaskPlanningState();
-            generator.recordPreservedSlots(tasks, today, windowEnd, state);
-
-            List<Task> flatTasks = TaskTreeOperations.flatten(
-                    TaskTreeOperations.buildTree(tasks));
-            TaskSlotGenerationResult generationResult =
-                    generator.generateSlotsForWindow(flatTasks, today, PLANNING_DAYS, state);
-
-            taskDao.writeList(flatTasks);
-            onDone.accept(new Result(generationResult.createdSlots, generationResult.conflicts));
         });
     }
 }

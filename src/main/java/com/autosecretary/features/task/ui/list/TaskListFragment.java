@@ -108,7 +108,8 @@ public class TaskListFragment extends Fragment {
             if (conflicts == null || conflicts.isEmpty()) {
                 return;
             }
-            String message = "Planung mit " + conflicts.size() + " Konflikt(en) abgeschlossen";
+            String message = getResources().getQuantityString(
+                    R.plurals.task_list_schedule_complete, conflicts.size(), conflicts.size());
             Snackbar.make(view, message, Snackbar.LENGTH_LONG).show();
             for (com.autosecretary.features.task.domain.SchedulingConflict conflict : conflicts) {
                 Log.w("TaskScheduleConflict", "{taskId=" + conflict.taskId
@@ -143,7 +144,7 @@ public class TaskListFragment extends Fragment {
             }
         });
 
-        Button generateButton = view.findViewById(R.id.Button);
+        Button generateButton = view.findViewById(R.id.GenerateScheduleButton);
         Button scheduleConfigButton = view.findViewById(R.id.ScheduleConfigButton);
         View newTaskButton = view.findViewById(R.id.NewTaskButton);
         generateButton.setOnClickListener(v -> vm.updateList());
@@ -176,7 +177,7 @@ public class TaskListFragment extends Fragment {
             dayNavPrev.setEnabled(!isToday);
             dayNavPrev.setAlpha(isToday ? 0.3f : 1.0f);
 
-            boolean canGoForward = day.isBefore(LocalDate.now().plusDays(6));
+            boolean canGoForward = day.isBefore(LocalDate.now().plusDays(TaskViewModel.MAX_DAY_OFFSET));
             dayNavNext.setEnabled(canGoForward);
             dayNavNext.setAlpha(canGoForward ? 1.0f : 0.3f);
 

@@ -41,10 +41,7 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public void saveMealPlan(MealPlan mealPlan) {
-        long id = mealPlanDao.save(mealPlan);
-        if (mealPlan.id == null) {
-            mealPlan.id = id;
-        }
+        mealPlanDao.save(mealPlan);
     }
 
     @Override
@@ -59,10 +56,7 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public void saveConsumptionLog(ConsumptionLog consumptionLog) {
-        long id = consumptionLogDao.save(consumptionLog);
-        if (consumptionLog.id == null) {
-            consumptionLog.id = id;
-        }
+        consumptionLogDao.save(consumptionLog);
     }
 
     @Override
@@ -72,10 +66,7 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public void saveHouseholdMember(HouseholdMember member) {
-        long id = householdMemberDao.save(member);
-        if (member.id == null) {
-            member.id = id;
-        }
+        householdMemberDao.save(member);
     }
 
     @Override
@@ -91,10 +82,27 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public void saveCookingPreferences(CookingPreferences preferences) {
-        if (preferences.id == null) {
-            preferences.id = SINGLETON_PREFERENCES_ID;
+        // Clone preferences if ID is missing to avoid mutating the caller's object
+        CookingPreferences toSave = preferences.id == null ? cloneCookingPreferences(preferences) : preferences;
+        if (toSave.id == null) {
+            toSave.id = SINGLETON_PREFERENCES_ID;
         }
-        cookingPreferencesDao.save(preferences);
+        cookingPreferencesDao.save(toSave);
+    }
+
+    private CookingPreferences cloneCookingPreferences(CookingPreferences original) {
+        CookingPreferences clone = new CookingPreferences();
+        clone.id = original.id;
+        clone.maxBreakfastCooking = original.maxBreakfastCooking;
+        clone.maxLunchCooking = original.maxLunchCooking;
+        clone.maxDinnerCooking = original.maxDinnerCooking;
+        clone.maxSnackCooking = original.maxSnackCooking;
+        clone.breakfastCookingDays = original.breakfastCookingDays;
+        clone.lunchCookingDays = original.lunchCookingDays;
+        clone.dinnerCookingDays = original.dinnerCookingDays;
+        clone.snackCookingDays = original.snackCookingDays;
+        clone.quickPrepMaxMinutes = original.quickPrepMaxMinutes;
+        return clone;
     }
 
     @Override
@@ -104,9 +112,6 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public void saveWeeklyFoodTarget(WeeklyFoodTarget weeklyFoodTarget) {
-        long id = weeklyFoodTargetDao.save(weeklyFoodTarget);
-        if (weeklyFoodTarget.id == null) {
-            weeklyFoodTarget.id = id;
-        }
+        weeklyFoodTargetDao.save(weeklyFoodTarget);
     }
 }

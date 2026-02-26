@@ -31,7 +31,6 @@ public final class AccountBalanceTimelineService {
                                                               List<DailyDeltaPoint> dailyDeltas) {
         Map<LocalDate, Long> deltaByDate = new HashMap<>();
         for (DailyDeltaPoint point : dailyDeltas) {
-            if (point == null || point.bucketDate() == null) continue;
             deltaByDate.put(point.bucketDate(), point.deltaCents());
         }
 
@@ -65,8 +64,7 @@ public final class AccountBalanceTimelineService {
                                                                 List<MonthlyDeltaPoint> monthlyDeltas) {
         Map<YearMonth, Long> deltaByMonth = new HashMap<>();
         for (MonthlyDeltaPoint point : monthlyDeltas) {
-            if (point == null || point.yearMonth() == null) continue;
-            deltaByMonth.put(YearMonth.parse(point.yearMonth()), point.deltaCents());
+            deltaByMonth.put(point.yearMonth(), point.deltaCents());
         }
 
         List<BalanceTimelinePoint> points = new ArrayList<>();

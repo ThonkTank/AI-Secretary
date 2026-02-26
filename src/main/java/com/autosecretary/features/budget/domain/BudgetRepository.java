@@ -8,6 +8,7 @@ import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
 import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 
 public interface BudgetRepository {
@@ -45,6 +46,16 @@ public interface BudgetRepository {
     /** Persists an already-constructed transaction entity (e.g. during CSV import). */
     void saveTransaction(BudgetTransactionEntity transaction);
 
+    /**
+     * Atomically inserts {@code transaction} and deducts {@code expenseCents} from the
+     * stored balance of {@code accountId} in a single database transaction.
+     * Use this instead of calling {@link #saveTransaction} and
+     * {@link #applyExpenseToAccountBalance} separately to prevent partial writes.
+     */
+    void saveTransactionAndDeductBalance(BudgetTransactionEntity transaction,
+                                         String accountId,
+                                         long expenseCents);
+
     /** Convenience overload used by the "Add Transaction" dialog — builds the entity internally. */
     void saveTransaction(String accountId, String categoryId, TransactionDirection type,
                          long amountCents, LocalDate bookingDate, String note);
@@ -76,7 +87,7 @@ public interface BudgetRepository {
     List<MonthlyOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId);
     List<CategorySpendSummary> getCategorySpendTotals(String yearMonth);
     List<DailyDeltaPoint> getDailyDeltasForAccount(String accountId, LocalDate fromDate, LocalDate toDate);
-    List<MonthlyDeltaPoint> getMonthlyDeltasForAccount(String accountId, String fromYearMonth, String toYearMonth);
+    List<MonthlyDeltaPoint> getMonthlyDeltasForAccount(String accountId, YearMonth fromYearMonth, YearMonth toYearMonth);
 
     /**
      * Returns the cumulative net balance (income minus expenses) for {@code accountId} for all

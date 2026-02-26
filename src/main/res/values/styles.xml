@@ -20,7 +20,7 @@
     </style>
 
     <!-- Day picker buttons -->
-    <style name="Widget.AutoSecretary.TaskEdit.DayPickerButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
+    <style name="Widget.AISecretary.TaskEdit.DayPickerButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="android:textColor">@color/task_edit_day_button_text_color</item>
         <item name="backgroundTint">@color/task_edit_day_button_background_tint</item>
         <item name="strokeColor">@color/task_edit_day_button_stroke_color</item>

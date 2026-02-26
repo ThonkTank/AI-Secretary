@@ -15,6 +15,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -102,32 +103,32 @@ public class Converters {
     }
 
     @TypeConverter
-    public static String fromBudgetTransactionDirection(TransactionDirection type) {
+    public static String fromTransactionDirection(TransactionDirection type) {
         return type != null ? type.name() : null;
     }
 
     @TypeConverter
-    public static TransactionDirection toBudgetTransactionDirection(String value) {
+    public static TransactionDirection toTransactionDirection(String value) {
         return value != null ? TransactionDirection.valueOf(value) : null;
     }
 
-
     @TypeConverter
-    public static String fromBudgetTransactionKind(BudgetTransactionEntity.TransactionKind kind) {
+    public static String fromTransactionKind(BudgetTransactionEntity.TransactionKind kind) {
         return kind != null ? kind.name() : null;
     }
 
     @TypeConverter
-    public static BudgetTransactionEntity.TransactionKind toBudgetTransactionKind(String value) {
+    public static BudgetTransactionEntity.TransactionKind toTransactionKind(String value) {
         return value != null ? BudgetTransactionEntity.TransactionKind.valueOf(value) : null;
     }
+
     @TypeConverter
-    public static String fromBudgetAccountType(BudgetAccount.AccountType type) {
+    public static String fromAccountType(BudgetAccount.AccountType type) {
         return type != null ? type.name() : null;
     }
 
     @TypeConverter
-    public static BudgetAccount.AccountType toBudgetAccountType(String value) {
+    public static BudgetAccount.AccountType toAccountType(String value) {
         return value != null ? BudgetAccount.AccountType.valueOf(value) : null;
     }
 
@@ -152,12 +153,23 @@ public class Converters {
     }
 
     @TypeConverter
+    public static String fromYearMonth(YearMonth yearMonth) {
+        return yearMonth != null ? yearMonth.toString() : null;
+    }
+
+    @TypeConverter
+    public static YearMonth toYearMonth(String value) {
+        return value != null ? YearMonth.parse(value) : null;
+    }
+
+    @TypeConverter
     public static String fromDaySet(Set<DayOfWeek> days) {
         return days != null ? days.stream().map(DayOfWeek::name).collect(Collectors.joining(",")) : null;
     }
 
     @TypeConverter
     public static Set<DayOfWeek> toDaySet(String value) {
-        return value != null ? Arrays.stream(value.split(",")).map(DayOfWeek::valueOf).collect(Collectors.toSet()) : null;
+        if (value == null || value.isEmpty()) return null;
+        return Arrays.stream(value.split(",")).map(DayOfWeek::valueOf).collect(Collectors.toSet());
     }
 }

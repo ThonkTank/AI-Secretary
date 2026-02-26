@@ -1,15 +1,12 @@
 package com.autosecretary.features.meal.domain;
 
-import com.autosecretary.features.meal.domain.internal.ShelfLifeService;
-
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Vorratsartikel im Haushalt.
  */
 public class PantryItem {
-
-    private static final ShelfLifeService SHELF_LIFE_SERVICE = new ShelfLifeService();
 
     public Long id;
     public long ingredientId;
@@ -35,15 +32,17 @@ public class PantryItem {
     }
 
     public boolean isExpiringSoon() {
-        return getDaysUntilExpiry() >= 0 && getDaysUntilExpiry() < 3;
+        int days = getDaysUntilExpiry();
+        return days >= 0 && days < 3;
     }
 
     public boolean isExpired() {
-        return SHELF_LIFE_SERVICE.isExpired(expiryDate, LocalDate.now());
+        return expiryDate != null && !LocalDate.now().isBefore(expiryDate);
     }
 
     public int getDaysUntilExpiry() {
-        return SHELF_LIFE_SERVICE.daysUntilExpiry(expiryDate, LocalDate.now());
+        if (expiryDate == null) return Integer.MAX_VALUE;
+        return (int) ChronoUnit.DAYS.between(LocalDate.now(), expiryDate);
     }
 
     public String getFormattedAmount() {
@@ -73,7 +72,6 @@ public class PantryItem {
             p.location = StorageLocation.PANTRY;
         }
 
-        public Builder expiry(LocalDate v) { p.expiryDate = v; return this; }
         public Builder expiryDate(LocalDate v) { p.expiryDate = v; return this; }
         public Builder purchaseDate(LocalDate v) { p.purchaseDate = v; return this; }
         public Builder location(StorageLocation v) { p.location = v; return this; }

@@ -19,24 +19,27 @@ public class RecurringTemplateScheduler {
 
         switch (template.recurringType) {
             case WEEKLY:
-                if (template.recurringDayOfWeek == null) break;
-                while (dueDate.isBefore(referenceDate) || dueDate.getDayOfWeek() != template.recurringDayOfWeek) {
-                    dueDate = dueDate.plusDays(1);
+                if (template.recurringDayOfWeek == null) return null;
+                // Align to the target day of week, then skip full weeks instead of advancing day-by-day.
+                dueDate = dueDate.plusDays(
+                        (template.recurringDayOfWeek.getValue() - dueDate.getDayOfWeek().getValue() + 7) % 7);
+                while (dueDate.isBefore(referenceDate)) {
+                    dueDate = dueDate.plusWeeks(1);
                 }
                 break;
             case INTERVAL:
-                int intervalDays = Math.max(1, template.schedulingParam);
+                int intervalDays = Math.max(1, template.recurringValue);
                 while (dueDate.isBefore(referenceDate)) {
                     dueDate = dueDate.plusDays(intervalDays);
                 }
                 break;
             case MONTHLY_DAY:
-                if (template.schedulingParam < 1 || template.schedulingParam > 31) {
+                if (template.recurringValue < 1 || template.recurringValue > 31) {
                     return null;
                 }
                 while (dueDate.isBefore(referenceDate)) {
                     LocalDate nextMonth = dueDate.plusMonths(1);
-                    dueDate = nextMonth.withDayOfMonth(Math.min(template.schedulingParam, nextMonth.lengthOfMonth()));
+                    dueDate = nextMonth.withDayOfMonth(Math.min(template.recurringValue, nextMonth.lengthOfMonth()));
                 }
                 break;
             case MONTHLY_LAST:

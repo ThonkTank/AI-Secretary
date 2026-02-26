@@ -24,11 +24,12 @@ public class BudgetImportUseCase {
 
     public BudgetImportUseCase(BudgetImportRepository repository,
                                StatementFileParser parser,
-                               ExecutorService executor) {
+                               ExecutorService executor,
+                               BudgetTransactionMapper mapper) {
         this.repository = repository;
         this.parser = parser;
         this.executor = executor;
-        this.mapper = new BudgetTransactionMapper();
+        this.mapper = mapper;
     }
 
     public void executeAsync(String accountId,
@@ -77,10 +78,17 @@ public class BudgetImportUseCase {
 
             repository.notifyBudgetDataUpdated();
 
-            List<RecurringBudgetTransaction> accountTransactions = repository.loadTransactionsForAccount(accountId).stream()
-                    .map(mapper::toDomain)
-                    .toList();
-            List<RecurringSuggestion> suggestions = RecurringPatternDetector.detectPatterns(accountTransactions);
+            // Pattern detection runs after import is fully committed.
+            // Failures here must not mark the import as failed.
+            List<RecurringSuggestion> suggestions;
+            try {
+                List<RecurringBudgetTransaction> accountTransactions = repository.loadTransactionsForAccount(accountId).stream()
+                        .map(mapper::toDomain)
+                        .toList();
+                suggestions = RecurringPatternDetector.detectPatterns(accountTransactions);
+            } catch (Exception e) {
+                suggestions = List.of();
+            }
 
             return new ImportResult(
                     parsed.transactions().size(),
@@ -127,22 +135,23 @@ public class BudgetImportUseCase {
                 autoCategorized++;
             }
 
-            RecurringBudgetTransaction tx = new RecurringBudgetTransaction();
-            tx.accountId = accountId;
-            tx.amountCents = parsed.amountCents();
-            tx.transactionDate = parsed.date();
-            tx.categoryId = categoryId;
-            tx.description = parsed.description();
-            tx.payee = parsed.payee();
-            tx.importHash = txHash;
-            tx.importId = importId;
-
-            newTransactions.add(tx);
+            newTransactions.add(RecurringBudgetTransaction.forImport(
+                    null,
+                    accountId,
+                    parsed.amountCents(),
+                    parsed.date(),
+                    categoryId,
+                    parsed.description(),
+                    parsed.payee(),
+                    txHash,
+                    importId,
+                    null
+            ));
         }
         return new ImportComputation(newTransactions, duplicates, autoCategorized);
     }
 
-    private String sha256(byte[] data) {
+    private static String sha256(byte[] data) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(data);
@@ -152,11 +161,11 @@ public class BudgetImportUseCase {
             }
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {
-            return "len" + data.length + "_" + (data.length > 0 ? data[0] : 0);
+            throw new IllegalStateException("SHA-256 unavailable", e);
         }
     }
 
-    private String generateTransactionHash(LocalDate date, int amountCents, String payee) {
+    private static String generateTransactionHash(LocalDate date, int amountCents, String payee) {
         String payeePart;
         if (payee == null) {
             payeePart = "";
@@ -184,12 +193,10 @@ public class BudgetImportUseCase {
 
     private static class ImportPipelineException extends RuntimeException {
         private final String importId;
-        private final String userMessage;
 
         ImportPipelineException(String importId, String userMessage, Throwable cause) {
             super(userMessage, cause);
             this.importId = importId;
-            this.userMessage = userMessage;
         }
 
         String importId() {
@@ -197,7 +204,7 @@ public class BudgetImportUseCase {
         }
 
         String userMessage() {
-            return userMessage;
+            return getMessage();
         }
     }
 

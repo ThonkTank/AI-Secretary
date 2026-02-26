@@ -1,15 +1,9 @@
 package com.autosecretary.features.meal.domain;
 
-import com.autosecretary.features.meal.domain.internal.HouseholdEnergyService;
-
-import java.time.LocalDate;
-
 /**
  * Haushaltsmitglied fuer DGE-Bedarfsberechnung und Meal-Planning.
  */
 public class HouseholdMember {
-
-    private static final HouseholdEnergyService ENERGY_SERVICE = new HouseholdEnergyService();
 
     public Long id;
     public String name;
@@ -39,32 +33,6 @@ public class HouseholdMember {
             this.factor = factor;
             this.label = label;
         }
-    }
-
-    public int getAge() {
-        return ENERGY_SERVICE.calculateAge(this, LocalDate.now());
-    }
-
-    /**
-     * Grundumsatz nach Mifflin-St Jeor (kcal/Tag).
-     */
-    public int calculateBMR() {
-        return ENERGY_SERVICE.calculateBmr(this, LocalDate.now());
-    }
-
-    /**
-     * Tagesbedarf (Total Daily Energy Expenditure) in kcal.
-     */
-    public int calculateTDEE() {
-        return ENERGY_SERVICE.calculateTdee(this, LocalDate.now());
-    }
-
-    /**
-     * DGE-Skalierungsfaktor fuer Lebensmittelgruppen-Empfehlungen.
-     * Basis: 2000 kcal Referenz-Erwachsener.
-     */
-    public double getFoodFactor() {
-        return ENERGY_SERVICE.calculateDgeFoodFactor(this, LocalDate.now());
     }
 
     // Builder

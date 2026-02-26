@@ -24,6 +24,11 @@ import java.util.function.Consumer;
  * callbacks are dispatched through {@code callbackDispatcher}.
  */
 public final class TaskSlotToggleMutation {
+    // Transition stat weights: completed transitions count double vs. started,
+    // so the scheduler gives stronger preference to pairs the user actually finishes.
+    private static final int TRANSITION_WEIGHT_STARTED = 1;
+    private static final int TRANSITION_WEIGHT_COMPLETED = 2;
+
     private TaskSlotToggleMutation() {
     }
 
@@ -69,7 +74,7 @@ public final class TaskSlotToggleMutation {
                     if (completedPhaseHook != null) {
                         completedPhaseHook.accept(task);
                     }
-                    TaskTransitionRecorder.record(taskDao, transitionDao, slot, 2);
+                    TaskTransitionRecorder.record(taskDao, transitionDao, slot, TRANSITION_WEIGHT_COMPLETED);
                     taskDao.writeSlot(slot);
                 });
             } catch (RuntimeException e) {
@@ -77,8 +82,15 @@ public final class TaskSlotToggleMutation {
                 return;
             }
         } else if (phase == CompletionPhase.STARTED) {
-            TaskTransitionRecorder.record(taskDao, transitionDao, slot, 1);
-            taskDao.writeSlot(slot);
+            try {
+                database.runInTransaction(() -> {
+                    TaskTransitionRecorder.record(taskDao, transitionDao, slot, TRANSITION_WEIGHT_STARTED);
+                    taskDao.writeSlot(slot);
+                });
+            } catch (RuntimeException e) {
+                Log.e("TaskSlotToggle", "Start write failed", e);
+                return;
+            }
         }
 
         if (postWriteAction != null && callbackDispatcher != null) {

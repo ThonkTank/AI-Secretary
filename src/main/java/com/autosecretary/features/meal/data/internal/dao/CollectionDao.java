@@ -5,6 +5,6 @@ import java.util.List;
 public interface CollectionDao<T> {
     T findById(long id);
     List<T> findAll();
-    long save(T value);
+    void save(T value);
     void deleteById(long id);
 }

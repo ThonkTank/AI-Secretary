@@ -49,14 +49,16 @@ public class TaskListItemMapper {
                 slot.score,
                 slot.completed,
                 slot.realStart != null && !slot.completed,
+                // timerRunning is reserved for future "stop without complete" feature;
+                // currently identical to inProgress since completion always sets realEnd.
                 slot.realStart != null && slot.realEnd == null && !slot.completed,
                 task.core.progress.current,
                 task.core.progress.target,
                 task.core.progress.unit,
                 Math.max(1, task.core.progress.minPerRep),
-                task.core.progress != null && task.core.progress.target > 0,
-                task.core.goalIcon != null ? task.core.goalIcon : TaskCore.DEFAULT_GOAL_ICON,
-                task.core.goalColorHex != null ? task.core.goalColorHex : TaskCore.DEFAULT_GOAL_COLOR_HEX
+                task.core.progress.target > 0,
+                task.core.goalIcon,
+                task.core.goalColorHex
         );
     }
 }

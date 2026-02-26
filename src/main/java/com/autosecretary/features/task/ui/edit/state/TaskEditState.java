@@ -17,10 +17,10 @@ public class TaskEditState {
     public String id;
     public String title;
     public String description;
-    public String goalIcon = TaskCore.DEFAULT_GOAL_ICON;
-    public String goalColorHex = TaskCore.DEFAULT_GOAL_COLOR_HEX;
-    public Priority priority = Priority.MEDIUM;
-    public TaskCore.SchedulingType schedulingType = TaskCore.SchedulingType.TASK;
+    public String goalIcon = TaskEditDefaults.GOAL_ICON;
+    public String goalColorHex = TaskEditDefaults.GOAL_COLOR_HEX;
+    public Priority priority = TaskEditDefaults.PRIORITY;
+    public TaskCore.SchedulingType schedulingType = TaskEditDefaults.SCHEDULING_TYPE;
     public Integer budgetRequiredCents;
     public String budgetAccountId;
     public String budgetCategoryId;
@@ -31,14 +31,14 @@ public class TaskEditState {
     public LocalTime fixedEnd;
     public Integer fixedDuration;
     public boolean closeOnMiss = true;
-    public int minDuration = 5;
-    public int maxDuration = 10;
-    public int cooldown = 1;
+    public int minDuration = TaskEditDefaults.MIN_DURATION;
+    public int maxDuration = TaskEditDefaults.MAX_DURATION;
+    public int cooldown = TaskEditDefaults.COOLDOWN;
     public boolean adaptive;
 
     public int reps;
-    public int perPeriod = 1;
-    public Period periodUnit = Period.DAY;
+    public int perPeriod = TaskEditDefaults.REPETITION_PER_PERIOD;
+    public Period periodUnit = TaskEditDefaults.REPETITION_PERIOD_UNIT;
     public int periodCompletions;
     public LocalDate periodStart;
     public boolean completeFirst;

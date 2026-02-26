@@ -163,10 +163,10 @@ public class ClaudeStatementApiClient {
     private StatementFileParser.ParsedTransaction parseTransaction(JSONObject tx) throws JSONException {
         LocalDate date = LocalDate.parse(tx.getString("date"));
         int amountCents = toInt(tx.get("amount_cents"));
-        String payee = emptyToNull(tx.optString("payee", null));
-        String description = emptyToNull(tx.optString("description", null));
-        String categoryId = emptyToNull(tx.optString("category_id", null));
-        String hash = emptyToNull(tx.optString("hash", null));
+        String payee = StatementFileParser.emptyToNull(tx.optString("payee", null));
+        String description = StatementFileParser.emptyToNull(tx.optString("description", null));
+        String categoryId = StatementFileParser.emptyToNull(tx.optString("category_id", null));
+        String hash = StatementFileParser.emptyToNull(tx.optString("hash", null));
         return new StatementFileParser.ParsedTransaction(date, amountCents, payee, description, categoryId, hash);
     }
 
@@ -189,19 +189,19 @@ public class ClaudeStatementApiClient {
     }
 
     private String readResponseBody(HttpURLConnection connection, int responseCode) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
                 responseCode >= 200 && responseCode < 300
                         ? connection.getInputStream()
                         : connection.getErrorStream(),
                 StandardCharsets.UTF_8
-        ));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
+        ))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append('\n');
+            }
+            return sb.toString();
         }
-        reader.close();
-        return sb.toString();
     }
 
     private ApiException parseErrorResponse(int responseCode, String responseBody) {
@@ -236,14 +236,6 @@ public class ClaudeStatementApiClient {
             }
         }
         return trimmed.trim();
-    }
-
-    private String emptyToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 
     public static class ApiException extends RuntimeException {

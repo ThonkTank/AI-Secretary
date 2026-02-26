@@ -20,6 +20,7 @@ import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.ui.internal.BudgetOverviewLoader;
 import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
 import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
+import com.autosecretary.features.budget.ui.state.TimeRangeFilter;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
 import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
 import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
@@ -200,7 +201,7 @@ public class BudgetViewModel extends ViewModel {
         });
 
         publishOverviewState(overview.getRows(), overview.getChartPoints(), overview.getSummary());
-        loadLimitsOnExecutor();
+        loadLimitsOnExecutor(month);
     }
 
     private void publishOverviewState(List<BudgetTransactionRow> rows,
@@ -396,9 +397,7 @@ public class BudgetViewModel extends ViewModel {
         });
     }
 
-    private void loadLimitsOnExecutor() {
-        YearMonth month = currentMonth.getValue();
-        if (month == null) month = YearMonth.now();
+    private void loadLimitsOnExecutor(YearMonth month) {
         String yearMonthStr = month.toString();
 
         List<CategorySpendSummary> totals = repository.getCategorySpendTotals(yearMonthStr);
@@ -410,19 +409,6 @@ public class BudgetViewModel extends ViewModel {
         postToMain.accept(() -> budgetLimits.setValue(bars));
     }
 
-    public void saveBudgetLimit(String categoryId, double amountEuros, boolean rolloverEnabled, long rolloverCarryoverCents) {
-        executor.execute(() -> {
-            YearMonth month = currentMonth.getValue();
-            if (month == null) month = YearMonth.now();
-            String yearMonthStr = month.toString();
-            BudgetLimit limit = new BudgetLimit(categoryId, yearMonthStr, Math.round(amountEuros * 100));
-            limit.rolloverEnabled = rolloverEnabled;
-            limit.rolloverCarryoverCents = rolloverCarryoverCents;
-            repository.saveBudgetLimit(limit);
-            loadOverviewOnExecutor();
-        });
-    }
-
     public void saveBudgetLimitFromString(String categoryId, String amountStr,
                                           boolean rolloverEnabled, long rolloverCarryoverCents) {
         Long amountCents = amountParser.parseAmountCents(amountStr);
@@ -430,6 +416,15 @@ public class BudgetViewModel extends ViewModel {
             showInvalidAmountError();
             return;
         }
-        saveBudgetLimit(categoryId, amountCents / 100.0, rolloverEnabled, rolloverCarryoverCents);
+        executor.execute(() -> {
+            YearMonth month = currentMonth.getValue();
+            if (month == null) month = YearMonth.now();
+            String yearMonthStr = month.toString();
+            BudgetLimit limit = new BudgetLimit(categoryId, yearMonthStr, amountCents);
+            limit.rolloverEnabled = rolloverEnabled;
+            limit.rolloverCarryoverCents = rolloverCarryoverCents;
+            repository.saveBudgetLimit(limit);
+            loadOverviewOnExecutor();
+        });
     }
 }

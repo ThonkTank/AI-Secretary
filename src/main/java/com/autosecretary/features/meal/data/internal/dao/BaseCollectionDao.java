@@ -6,23 +6,28 @@ import com.autosecretary.features.meal.data.internal.storage.MealStorage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class BaseCollectionDao<T> implements CollectionDao<T> {
 
-    private final String collection;
-    private final MealStorage storage;
-    private final RowMapper<T> mapper;
+    protected final String collection;
+    protected final MealStorage storage;
+    protected final RowMapper<T> mapper;
     private final Function<T, Long> idAccessor;
+    private final BiConsumer<T, Long> idSetter;
 
     public BaseCollectionDao(String collection,
                              MealStorage storage,
                              RowMapper<T> mapper,
-                             Function<T, Long> idAccessor) {
+                             Function<T, Long> idAccessor,
+                             BiConsumer<T, Long> idSetter) {
         this.collection = collection;
         this.storage = storage;
         this.mapper = mapper;
         this.idAccessor = idAccessor;
+        this.idSetter = idSetter;
     }
 
     @Override
@@ -41,14 +46,27 @@ public class BaseCollectionDao<T> implements CollectionDao<T> {
     }
 
     @Override
-    public long save(T value) {
+    public void save(T value) {
         Long id = idAccessor.apply(value);
         long storedId = storage.upsert(collection, id, mapper.toRow(value));
-        return storedId;
+        if (id == null) {
+            idSetter.accept(value, storedId);
+        }
     }
 
     @Override
     public void deleteById(long id) {
         storage.delete(collection, id);
+    }
+
+    protected List<T> findAll(Predicate<T> filter) {
+        List<T> result = new ArrayList<>();
+        for (Map<String, Object> row : storage.findAll(collection)) {
+            T value = mapper.fromRow(row);
+            if (filter.test(value)) {
+                result.add(value);
+            }
+        }
+        return result;
     }
 }

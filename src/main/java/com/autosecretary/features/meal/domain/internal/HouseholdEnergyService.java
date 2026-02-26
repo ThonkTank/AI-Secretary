@@ -33,11 +33,10 @@ public class HouseholdEnergyService {
     }
 
     public int calculateTdee(HouseholdMember member, LocalDate referenceDate) {
-        int bmr = calculateBmr(member, referenceDate);
         if (member == null || member.activityLevel == null) {
-            return bmr;
+            return calculateBmr(member, referenceDate);
         }
-        return (int) (bmr * member.activityLevel.factor);
+        return (int) (calculateBmr(member, referenceDate) * member.activityLevel.factor);
     }
 
     public double calculateDgeFoodFactor(HouseholdMember member, LocalDate referenceDate) {

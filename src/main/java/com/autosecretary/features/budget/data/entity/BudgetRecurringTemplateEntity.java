@@ -13,6 +13,7 @@ import java.util.UUID;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
+import com.autosecretary.features.budget.domain.RecurringSuggestion;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
 @Entity(
@@ -64,7 +65,8 @@ public class BudgetRecurringTemplateEntity {
     public RecurringBudgetTransaction.RecurringType recurringType;
 
     @NonNull
-    public TransactionDirection transactionType = TransactionDirection.EXPENSE;
+    @ColumnInfo(name = "transactionType")
+    public TransactionDirection direction = TransactionDirection.EXPENSE;
 
     /**
      * Scheduling parameter whose meaning depends on recurringType:
@@ -73,8 +75,7 @@ public class BudgetRecurringTemplateEntity {
      * - WEEKLY: unused (0); day is stored in recurringDayOfWeek
      * - MONTHLY_LAST: unused (0)
      */
-    @ColumnInfo(name = "recurringValue")
-    public int schedulingParam;
+    public int recurringValue;
 
     public DayOfWeek recurringDayOfWeek;
 
@@ -88,6 +89,30 @@ public class BudgetRecurringTemplateEntity {
         this.accountId = accountId;
         this.normalizedPayee = normalizedPayee;
         this.recurringType = recurringType;
+    }
+
+    /**
+     * Creates a fully-initialized template entity from a recurring suggestion, preventing
+     * half-built inserts if fields are added to the entity in the future.
+     */
+    public static BudgetRecurringTemplateEntity fromSuggestion(@NonNull RecurringSuggestion suggestion,
+                                                               @NonNull String accountId,
+                                                               @NonNull LocalDate nextDue) {
+        BudgetRecurringTemplateEntity entity = new BudgetRecurringTemplateEntity(
+                accountId,
+                suggestion.normalizedPayee(),
+                suggestion.suggestedType()
+        );
+        entity.displayPayee = suggestion.displayPayee();
+        entity.categoryId = suggestion.categoryId();
+        entity.avgAmountCents = suggestion.avgAmountCents();
+        entity.minAmountCents = suggestion.minAmountCents();
+        entity.maxAmountCents = suggestion.maxAmountCents();
+        entity.direction = suggestion.transactionType();
+        entity.recurringValue = suggestion.suggestedValue();
+        entity.recurringDayOfWeek = suggestion.suggestedDayOfWeek();
+        entity.nextDue = nextDue;
+        return entity;
     }
 
 }

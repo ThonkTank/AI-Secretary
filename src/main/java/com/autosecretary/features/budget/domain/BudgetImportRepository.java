@@ -39,10 +39,9 @@ public interface BudgetImportRepository {
             String errorMessage
     ) {
         public static ImportRecord pending(String id, String accountId,
-                                    String fileName, String fileHash,
-                                    ImportStatus status) {
+                                    String fileName, String fileHash) {
             return new ImportRecord(id, accountId, fileName, fileHash,
-                    null, null, 0, 0, 0, status, null);
+                    null, null, 0, 0, 0, ImportStatus.PENDING, null);
         }
     }
 

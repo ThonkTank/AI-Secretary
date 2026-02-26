@@ -15,7 +15,7 @@ public class RecurringBudgetTransaction {
 
     public String id;
     public String accountId;
-    public int amountCents;
+    public long amountCents;
     public LocalDate transactionDate;
     public String categoryId;
     public String description;
@@ -31,4 +31,36 @@ public class RecurringBudgetTransaction {
     public boolean isPredicted;
     /** ID of the {@code BudgetRecurringTemplateEntity} that produced this transaction. Null for manual or unlinked transactions. */
     public String parentRecurringId;
+
+    public RecurringBudgetTransaction() {
+    }
+
+    /** Factory for transactions created during the import pipeline (CSV or PDF). */
+    public static RecurringBudgetTransaction forImport(
+            String id,
+            String accountId,
+            long amountCents,
+            LocalDate transactionDate,
+            String categoryId,
+            String description,
+            String payee,
+            String importHash,
+            String importId,
+            String parentRecurringId) {
+        if (accountId == null) throw new IllegalArgumentException("accountId must not be null");
+        if (transactionDate == null) throw new IllegalArgumentException("transactionDate must not be null");
+        RecurringBudgetTransaction tx = new RecurringBudgetTransaction();
+        tx.id = id;
+        tx.accountId = accountId;
+        tx.amountCents = amountCents;
+        tx.transactionDate = transactionDate;
+        tx.categoryId = categoryId;
+        tx.description = description;
+        tx.payee = payee;
+        tx.importHash = importHash;
+        tx.importId = importId;
+        tx.parentRecurringId = parentRecurringId;
+        tx.isRecurring = parentRecurringId != null && !parentRecurringId.isBlank();
+        return tx;
+    }
 }

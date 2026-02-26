@@ -29,7 +29,7 @@ public interface TaskTransitionStatDao {
 
         int updated = incrementWeight(fromTaskId, toTaskId, delta, lastSeen);
         if (updated == 0) {
-            insert(new TaskTransitionStat(fromTaskId, toTaskId, Math.max(1, delta), lastSeen));
+            insert(new TaskTransitionStat(fromTaskId, toTaskId, 1, lastSeen));
             if (delta > 1) {
                 incrementWeight(fromTaskId, toTaskId, delta - 1, lastSeen);
             }

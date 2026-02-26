@@ -8,7 +8,6 @@ import androidx.room.Query;
 import java.time.LocalDate;
 
 import com.autosecretary.features.budget.data.entity.BudgetImportEntity;
-import com.autosecretary.features.budget.domain.importing.ImportStatus;
 
 @Dao
 public interface BudgetImportDao {
@@ -19,13 +18,24 @@ public interface BudgetImportDao {
     @Query("SELECT * FROM budget_import WHERE fileHash = :fileHash LIMIT 1")
     BudgetImportEntity findByFileHash(String fileHash);
 
-    @Query("UPDATE budget_import SET status = :status, " +
-            "totalTransactions = :total, importedTransactions = :imported, " +
-            "autoCategorized = :autoCat, periodStart = :periodStart, " +
-            "periodEnd = :periodEnd WHERE id = :id")
-    void markCompleted(String id, ImportStatus status, int total, int imported, int autoCat,
+    @Query("""
+            UPDATE budget_import
+            SET status = 'COMPLETED',
+                totalTransactions = :total,
+                importedTransactions = :imported,
+                autoCategorized = :autoCat,
+                periodStart = :periodStart,
+                periodEnd = :periodEnd
+            WHERE id = :id
+            """)
+    void markCompleted(String id, int total, int imported, int autoCat,
                        LocalDate periodStart, LocalDate periodEnd);
 
-    @Query("UPDATE budget_import SET status = :status, errorMessage = :errorMessage WHERE id = :id")
-    void markFailed(String id, ImportStatus status, String errorMessage);
+    @Query("""
+            UPDATE budget_import
+            SET status = 'FAILED',
+                errorMessage = :errorMessage
+            WHERE id = :id
+            """)
+    void markFailed(String id, String errorMessage);
 }

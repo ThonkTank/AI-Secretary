@@ -4,6 +4,7 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskSlot;
 
+import java.time.LocalTime;
 import java.util.concurrent.Executor;
 
 /**
@@ -45,6 +46,9 @@ public final class TaskProgressAdjustMutation {
         TaskSlot slot = task.findSlot(slotId);
         if (slot != null) {
             slot.completed = completed;
+            if (completed && slot.realEnd == null) {
+                slot.realEnd = LocalTime.now();
+            }
         }
 
         taskDao.write(task);

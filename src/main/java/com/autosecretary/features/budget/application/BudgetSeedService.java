@@ -30,8 +30,6 @@ public class BudgetSeedService {
         if (accountList.isEmpty()) {
             repository.insertAccount(new BudgetAccount("Girokonto"));
             repository.insertAccount(new BudgetAccount("Tagesgeld"));
-            repository.insertCategory(new BudgetCategory("Sonstiges", TransactionDirection.EXPENSE));
-            repository.insertCategory(new BudgetCategory("Gehalt", TransactionDirection.INCOME));
             accountList = repository.findActiveAccounts();
         }
         ensureDefaultCategories();
@@ -41,13 +39,12 @@ public class BudgetSeedService {
         }
 
         List<BudgetCategory> categories = repository.getActiveCategories();
-        List<BudgetAccount> accounts = repository.findActiveAccounts();
         String resolvedSelected = selectedAccountId;
-        if ((resolvedSelected == null || resolvedSelected.isBlank()) && !accounts.isEmpty()) {
-            resolvedSelected = accounts.get(0).id;
+        if ((resolvedSelected == null || resolvedSelected.isBlank()) && !accountList.isEmpty()) {
+            resolvedSelected = accountList.get(0).id;
         }
 
-        return new SeedResult(categories, accounts, resolvedSelected);
+        return new SeedResult(categories, accountList, resolvedSelected);
     }
 
     private void ensureDefaultCategories() {

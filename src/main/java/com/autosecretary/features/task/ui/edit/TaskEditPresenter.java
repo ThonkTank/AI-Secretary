@@ -8,6 +8,7 @@ import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.edit.internal.mapper.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
+import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 import java.time.LocalDate;
@@ -72,7 +73,6 @@ public class TaskEditPresenter {
     private PrefSlotEditState createDefaultPrefSlotState(String taskId) {
         TaskPrefSlot defaultSlot = TaskPrefSlotFactory.createDefault(taskId);
         PrefSlotEditState newSlot = new PrefSlotEditState();
-        newSlot.taskId = defaultSlot.taskId;
         newSlot.days = defaultSlot.days;
         newSlot.start = defaultSlot.start;
         return newSlot;
@@ -87,7 +87,7 @@ public class TaskEditPresenter {
         int reps = parseIntSafe(repsText, InputDefaults.REPETITION_REPS);
         int perPeriod = parseIntSafe(perPeriodText, InputDefaults.REPETITION_PER_PERIOD);
         Period safePeriodUnit = periodUnit != null ? periodUnit : InputDefaults.REPETITION_PERIOD_UNIT;
-        int periodInDays = safePeriodUnit.value * perPeriod;
+        int periodInDays = safePeriodUnit.dayCount * perPeriod;
         if (periodInDays <= 0) {
             periodInDays = 1;
         }
@@ -178,7 +178,12 @@ public class TaskEditPresenter {
     }
 
     private void resetProgress() {
+        editState.unit = null;
         editState.target = 0;
+        editState.current = 0;
+        editState.resetPerRep = false;
+        editState.minPerRep = 0;
+        editState.maxPerRep = 0;
     }
 
     /** Maps the current edit state back onto a base Task for DB persistence. */
@@ -198,23 +203,22 @@ public class TaskEditPresenter {
         return value != null ? value : fallback;
     }
 
-    /** Fallback values for empty or invalid form fields. */
+    /** Fallback values for empty or invalid form fields. Shared defaults delegate to {@link TaskEditDefaults}. */
     public static class InputDefaults {
-        public static final Priority PRIORITY = Priority.MEDIUM;
+        public static final Priority PRIORITY = TaskEditDefaults.PRIORITY;
+        public static final TaskCore.SchedulingType SCHEDULING_TYPE = TaskEditDefaults.SCHEDULING_TYPE;
 
-        public static final TaskCore.SchedulingType SCHEDULING_TYPE = TaskCore.SchedulingType.TASK;
-
-        public static final int MIN_DURATION = 5;
-        public static final int MAX_DURATION = 10;
-        public static final int COOLDOWN = 1;
+        public static final int MIN_DURATION = TaskEditDefaults.MIN_DURATION;
+        public static final int MAX_DURATION = TaskEditDefaults.MAX_DURATION;
+        public static final int COOLDOWN = TaskEditDefaults.COOLDOWN;
         public static final int BUDGET_REQUIRED_CENTS = 0;
 
-        public static final int REPETITION_REPS = 1;
-        public static final int REPETITION_PER_PERIOD = 1;
-        public static final Period REPETITION_PERIOD_UNIT = Period.DAY;
+        public static final int REPETITION_REPS = TaskEditDefaults.REPETITION_REPS;
+        public static final int REPETITION_PER_PERIOD = TaskEditDefaults.REPETITION_PER_PERIOD;
+        public static final Period REPETITION_PERIOD_UNIT = TaskEditDefaults.REPETITION_PERIOD_UNIT;
 
-        public static final String GOAL_ICON = TaskCore.DEFAULT_GOAL_ICON;
-        public static final String GOAL_COLOR_HEX = TaskCore.DEFAULT_GOAL_COLOR_HEX;
+        public static final String GOAL_ICON = TaskEditDefaults.GOAL_ICON;
+        public static final String GOAL_COLOR_HEX = TaskEditDefaults.GOAL_COLOR_HEX;
 
         public static final String UNIT = "";
         public static final int TARGET = 0;

@@ -20,7 +20,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:padding="@dimen/spacing_sm"
-            android:text="@string/widget_day_nav_prev"
+            android:text="@string/task_list_day_nav_prev"
             android:textAppearance="@style/TextAppearance.Task.Widget.NavAction" />
 
         <TextView
@@ -29,7 +29,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="@string/widget_day_nav_today"
+            android:text="@string/task_list_day_nav_today"
             android:textAppearance="@style/TextAppearance.Task.Widget.NavLabel" />
 
         <TextView
@@ -37,7 +37,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:padding="@dimen/spacing_sm"
-            android:text="@string/widget_day_nav_next"
+            android:text="@string/task_list_day_nav_next"
             android:textAppearance="@style/TextAppearance.Task.Widget.NavAction" />
     </LinearLayout>
 

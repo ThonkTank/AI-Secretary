@@ -11,16 +11,23 @@ public class TaskEditFormViews {
     public final CheckBox toggleProgress;
     public final EditText targetView, currentView, minPerRepView, maxPerRepView;
 
-    public TaskEditFormViews(EditText titleView, EditText minDurationView, EditText maxDurationView,
-                             EditText cooldownView, CheckBox toggleRepetition, EditText repsView,
-                             EditText perPeriodView, CheckBox toggleProgress, EditText targetView,
-                             EditText currentView, EditText minPerRepView, EditText maxPerRepView) {
-        this.titleView = titleView;
-        this.minDurationView = minDurationView; this.maxDurationView = maxDurationView;
-        this.cooldownView = cooldownView; this.toggleRepetition = toggleRepetition;
-        this.repsView = repsView; this.perPeriodView = perPeriodView;
-        this.toggleProgress = toggleProgress;
-        this.targetView = targetView; this.currentView = currentView;
-        this.minPerRepView = minPerRepView; this.maxPerRepView = maxPerRepView;
+    public TaskEditFormViews(
+        TaskEditSectionBinder.BasicInfoViews basicInfoViews,
+        TaskEditSectionBinder.SchedulingViews schedulingViews,
+        TaskEditSectionBinder.RepetitionViews repetitionViews,
+        TaskEditSectionBinder.ProgressViews progressViews
+    ) {
+        this.titleView = basicInfoViews.titleView;
+        this.minDurationView = schedulingViews.minDurationView;
+        this.maxDurationView = schedulingViews.maxDurationView;
+        this.cooldownView = schedulingViews.cooldownView;
+        this.toggleRepetition = repetitionViews.toggleRepetition;
+        this.repsView = repetitionViews.repsView;
+        this.perPeriodView = repetitionViews.perPeriodView;
+        this.toggleProgress = progressViews.toggleProgress;
+        this.targetView = progressViews.targetView;
+        this.currentView = progressViews.currentView;
+        this.minPerRepView = progressViews.minPerRepView;
+        this.maxPerRepView = progressViews.maxPerRepView;
     }
 }

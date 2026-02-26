@@ -22,6 +22,7 @@ public class BudgetBalanceChartView extends View {
     private final Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint pointPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
+    private float density;
     private float leftPad, rightPad, topPad, bottomPad;
 
     private List<BudgetChartPoint> points = new ArrayList<>();
@@ -36,6 +37,7 @@ public class BudgetBalanceChartView extends View {
 
     public BudgetBalanceChartView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        density = context.getResources().getDisplayMetrics().density;
         int chartLine = ContextCompat.getColor(context, R.color.budget_chart_line);
         linePaint.setColor(chartLine);
         linePaint.setStrokeWidth(dp(2f));
@@ -73,7 +75,7 @@ public class BudgetBalanceChartView extends View {
         canvas.drawLine(leftPad, bottomY, leftPad + width, bottomY, axisPaint);
 
         if (points.isEmpty()) {
-            canvas.drawText("Keine Chart-Daten", leftPad, topPad + height / 2f, labelPaint);
+            canvas.drawText(getContext().getString(R.string.budget_chart_no_data), leftPad, topPad + height / 2f, labelPaint);
             return;
         }
 
@@ -106,8 +108,8 @@ public class BudgetBalanceChartView extends View {
             lastY = y;
         }
 
-        canvas.drawText(formatEuro(max), leftPad, topPad + dp(2f), labelPaint);
-        canvas.drawText(formatEuro(min), leftPad, bottomY - dp(4f), labelPaint);
+        canvas.drawText(CurrencyFormatter.euros(max), leftPad, topPad + dp(2f), labelPaint);
+        canvas.drawText(CurrencyFormatter.euros(min), leftPad, bottomY - dp(4f), labelPaint);
 
         BudgetChartPoint first = points.get(0);
         BudgetChartPoint last = points.get(points.size() - 1);
@@ -116,11 +118,7 @@ public class BudgetBalanceChartView extends View {
         canvas.drawText(last.getLabel(), leftPad + width - endLabelWidth, getHeight() - dp(8f), labelPaint);
     }
 
-    private String formatEuro(long cents) {
-        return String.format("%.0f €", cents / 100f);
-    }
-
     private float dp(float value) {
-        return value * getResources().getDisplayMetrics().density;
+        return value * density;
     }
 }

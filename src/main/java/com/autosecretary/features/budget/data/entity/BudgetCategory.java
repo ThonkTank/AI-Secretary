@@ -1,6 +1,7 @@
 package com.autosecretary.features.budget.data.entity;
 
 import androidx.annotation.NonNull;
+import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
@@ -22,7 +23,8 @@ public class BudgetCategory {
     public String name;
 
     @NonNull
-    public TransactionDirection type = TransactionDirection.EXPENSE;
+    @ColumnInfo(name = "type")
+    public TransactionDirection direction = TransactionDirection.EXPENSE;
 
     @NonNull
     public String icon = DEFAULT_ICON;
@@ -35,15 +37,15 @@ public class BudgetCategory {
     public BudgetCategory() {
     }
     @Ignore
-    public BudgetCategory(@NonNull String name, @NonNull TransactionDirection type) {
-        this(name, type, DEFAULT_ICON, DEFAULT_COLOR_HEX);
+    public BudgetCategory(@NonNull String name, @NonNull TransactionDirection direction) {
+        this(name, direction, DEFAULT_ICON, DEFAULT_COLOR_HEX);
     }
 
     @Ignore
-    public BudgetCategory(@NonNull String name, @NonNull TransactionDirection type,
+    public BudgetCategory(@NonNull String name, @NonNull TransactionDirection direction,
                           @NonNull String icon, @NonNull String colorHex) {
         this.name = name;
-        this.type = type;
+        this.direction = direction;
         this.icon = icon;
         this.colorHex = colorHex;
     }

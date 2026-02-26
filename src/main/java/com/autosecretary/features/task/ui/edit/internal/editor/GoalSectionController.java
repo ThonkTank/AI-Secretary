@@ -10,7 +10,6 @@ import androidx.fragment.app.DialogFragment;
 
 import com.autosecretary.R;
 import com.autosecretary.features.task.data.TaskCore;
-import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 public class GoalSectionController {
@@ -46,9 +45,7 @@ public class GoalSectionController {
     }
 
     public String getSelectedGoalColorHex() {
-        return selectedGoalColorHex != null
-            ? selectedGoalColorHex
-            : TaskEditPresenter.InputDefaults.GOAL_COLOR_HEX;
+        return selectedGoalColorHex;
     }
 
     private void buildGoalColorGrid() {

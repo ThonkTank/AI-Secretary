@@ -27,14 +27,12 @@ public class HouseholdMemberRowMapper implements RowMapper<HouseholdMember> {
         member.id = MapperSupport.asNullableLong(row.get("id"));
         member.name = (String) row.get("name");
         member.birthYear = MapperSupport.asInt(row.get("birthYear"));
-        String gender = (String) row.get("gender");
-        member.gender = gender == null ? null : HouseholdMember.Gender.valueOf(gender);
+        member.gender = MapperSupport.asEnum(HouseholdMember.Gender.class, row.get("gender"), null);
         member.weightKg = MapperSupport.asInt(row.get("weightKg"));
         member.heightCm = MapperSupport.asInt(row.get("heightCm"));
         member.targetWeightKg = MapperSupport.asInt(row.get("targetWeightKg"));
-        String activityLevel = (String) row.get("activityLevel");
-        member.activityLevel = activityLevel == null ? null : HouseholdMember.ActivityLevel.valueOf(activityLevel);
-        member.isActive = Boolean.TRUE.equals(MapperSupport.asBoolean(row.get("isActive")));
+        member.activityLevel = MapperSupport.asEnum(HouseholdMember.ActivityLevel.class, row.get("activityLevel"), null);
+        member.isActive = MapperSupport.asBoolean(row.get("isActive"));
         return member;
     }
 }

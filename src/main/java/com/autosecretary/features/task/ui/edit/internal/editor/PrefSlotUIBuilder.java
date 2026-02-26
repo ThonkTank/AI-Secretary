@@ -32,6 +32,8 @@ import java.util.Set;
  */
 public class PrefSlotUIBuilder {
 
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+
     public interface Listener {
         void onDaysClicked(PrefSlotEditState prefSlot, Set<DayOfWeek> takenByOthers);
 
@@ -108,7 +110,7 @@ public class PrefSlotUIBuilder {
                 daysView.setOnClickListener(v -> listener.onDaysClicked(prefSlot, takenByOthers));
 
                 String formattedTime = prefSlot.start != null
-                    ? prefSlot.start.format(DateTimeFormatter.ofPattern("HH:mm"))
+                    ? prefSlot.start.format(TIME_FORMATTER)
                     : "--:--";
                 MaterialButton timeView = createInteractiveButton();
                 timeView.setText(context.getString(R.string.task_editor_pref_slot_time_button, formattedTime));

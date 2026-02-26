@@ -31,10 +31,7 @@ public class StoragePantryRepository implements PantryRepository {
 
     @Override
     public void savePantryItem(PantryItem pantryItem) {
-        long id = pantryItemDao.save(pantryItem);
-        if (pantryItem.id == null) {
-            pantryItem.id = id;
-        }
+        pantryItemDao.save(pantryItem);
     }
 
     @Override
@@ -49,10 +46,7 @@ public class StoragePantryRepository implements PantryRepository {
 
     @Override
     public void saveShoppingListItem(ShoppingListItem shoppingListItem) {
-        long id = shoppingListDao.save(shoppingListItem);
-        if (shoppingListItem.id == null) {
-            shoppingListItem.id = id;
-        }
+        shoppingListDao.save(shoppingListItem);
     }
 
     @Override

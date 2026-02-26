@@ -33,8 +33,7 @@ public class PantryItemRowMapper implements RowMapper<PantryItem> {
         pantryItem.purchaseDate = purchaseDate == null ? null : LocalDate.parse(purchaseDate);
         String expiryDate = (String) row.get("expiryDate");
         pantryItem.expiryDate = expiryDate == null ? null : LocalDate.parse(expiryDate);
-        String location = (String) row.get("location");
-        pantryItem.location = location == null ? null : PantryItem.StorageLocation.valueOf(location);
+        pantryItem.location = MapperSupport.asEnum(PantryItem.StorageLocation.class, row.get("location"), null);
         return pantryItem;
     }
 }

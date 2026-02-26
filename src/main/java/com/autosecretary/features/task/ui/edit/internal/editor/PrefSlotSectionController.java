@@ -6,11 +6,8 @@ import android.view.ContextThemeWrapper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CheckBox;
-import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
-import android.widget.Spinner;
 
 import androidx.annotation.DimenRes;
 import androidx.appcompat.app.AlertDialog;
@@ -36,10 +33,7 @@ public class PrefSlotSectionController {
     private final View rootView;
     private final TaskEditPresenter presenter;
     private final PrefSlotUIBuilder prefSlotUIBuilder;
-    private final CheckBox toggleRepetition;
-    private final EditText repsView;
-    private final EditText perPeriodView;
-    private final Spinner periodUnitView;
+    private final TaskEditSectionBinder.RepetitionViews repetitionViews;
 
     private LinearLayout prefSlotContainer;
 
@@ -47,28 +41,20 @@ public class PrefSlotSectionController {
         DialogFragment fragment,
         View rootView,
         TaskEditPresenter presenter,
-        CheckBox toggleRepetition,
-        EditText repsView,
-        EditText perPeriodView,
-        Spinner periodUnitView
+        TaskEditSectionBinder.RepetitionViews repetitionViews
     ) {
         this.fragment = fragment;
         this.rootView = rootView;
         this.presenter = presenter;
         this.prefSlotUIBuilder = new PrefSlotUIBuilder(fragment.requireContext());
-        this.toggleRepetition = toggleRepetition;
-        this.repsView = repsView;
-        this.perPeriodView = perPeriodView;
-        this.periodUnitView = periodUnitView;
+        this.repetitionViews = repetitionViews;
     }
 
     public void rebuildPrefSlotUI() {
         prefSlotContainer = rootView.findViewById(R.id.PrefSlotContainer);
+        RepetitionSnapshot rep = readRepetitionState();
         int repsPerDay = presenter.computeCurrentRepsPerDay(
-            toggleRepetition.isChecked(),
-            repsView.getText().toString(),
-            perPeriodView.getText().toString(),
-            (Period) periodUnitView.getSelectedItem()
+            rep.enabled, rep.reps, rep.perPeriod, rep.period
         );
 
         prefSlotUIBuilder.rebuild(prefSlotContainer, presenter.getEditablePrefSlots(), repsPerDay,
@@ -86,14 +72,35 @@ public class PrefSlotSectionController {
     }
 
     public void onRepetitionChanged() {
+        RepetitionSnapshot rep = readRepetitionState();
         boolean changed = presenter.onRepetitionChanged(
-            toggleRepetition.isChecked(),
-            repsView.getText().toString(),
-            perPeriodView.getText().toString(),
-            (Period) periodUnitView.getSelectedItem()
+            rep.enabled, rep.reps, rep.perPeriod, rep.period
         );
         if (changed) {
             rebuildPrefSlotUI();
+        }
+    }
+
+    private RepetitionSnapshot readRepetitionState() {
+        return new RepetitionSnapshot(
+            repetitionViews.toggleRepetition.isChecked(),
+            repetitionViews.repsView.getText().toString(),
+            repetitionViews.perPeriodView.getText().toString(),
+            (Period) repetitionViews.periodUnitView.getSelectedItem()
+        );
+    }
+
+    private static final class RepetitionSnapshot {
+        final boolean enabled;
+        final String reps;
+        final String perPeriod;
+        final Period period;
+
+        RepetitionSnapshot(boolean enabled, String reps, String perPeriod, Period period) {
+            this.enabled = enabled;
+            this.reps = reps;
+            this.perPeriod = perPeriod;
+            this.period = period;
         }
     }
 
@@ -125,40 +132,9 @@ public class PrefSlotSectionController {
             DayOfWeek day = weekDays[i];
             boolean isSelected = prefSlot.days != null && prefSlot.days.contains(day);
             boolean isTaken = takenByOthers.contains(day);
-
             selected[i] = isSelected;
 
-            ContextThemeWrapper themedContext =
-                new ContextThemeWrapper(fragment.requireContext(), R.style.Widget_AutoSecretary_TaskEdit_DayPickerButton);
-            MaterialButton btn = new MaterialButton(themedContext, null, 0);
-            btn.setText(labels[i]);
-            btn.setMaxLines(2);
-            btn.setMinWidth(0);
-            btn.setMinimumWidth(0);
-            btn.setCheckable(true);
-            btn.setChecked(isSelected);
-            btn.setInsetTop(0);
-            btn.setInsetBottom(0);
-            int dayButtonHorizontalPadding = dimenPx(R.dimen.task_editor_day_button_horizontal_padding);
-            btn.setPadding(dayButtonHorizontalPadding, 0, dayButtonHorizontalPadding, 0);
-
-            GridLayout.LayoutParams params = new GridLayout.LayoutParams(
-                GridLayout.spec(i / DAY_PICKER_COLUMN_COUNT, 1f),
-                GridLayout.spec(i % DAY_PICKER_COLUMN_COUNT, 1f)
-            );
-            params.width = 0;
-            params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-            params.setGravity(Gravity.FILL_HORIZONTAL);
-            int dayButtonHorizontalMargin = dimenPx(R.dimen.task_editor_day_button_horizontal_margin);
-            int dayButtonVerticalMargin = dimenPx(R.dimen.task_editor_day_button_vertical_margin);
-            params.setMargins(
-                dayButtonHorizontalMargin,
-                dayButtonVerticalMargin,
-                dayButtonHorizontalMargin,
-                dayButtonVerticalMargin
-            );
-            btn.setLayoutParams(params);
-
+            MaterialButton btn = createDayButton(labels[i], isSelected, i);
             if (isTaken) {
                 btn.setEnabled(false);
             } else {
@@ -187,6 +163,36 @@ public class PrefSlotSectionController {
             })
             .setNegativeButton(R.string.task_edit_day_picker_negative, null)
             .show();
+    }
+
+    private MaterialButton createDayButton(String label, boolean isSelected, int gridIndex) {
+        ContextThemeWrapper themedContext =
+            new ContextThemeWrapper(fragment.requireContext(), R.style.Widget_AISecretary_TaskEdit_DayPickerButton);
+        MaterialButton btn = new MaterialButton(themedContext, null, 0);
+        btn.setText(label);
+        btn.setMaxLines(2);
+        btn.setMinWidth(0);
+        btn.setMinimumWidth(0);
+        btn.setCheckable(true);
+        btn.setChecked(isSelected);
+        btn.setInsetTop(0);
+        btn.setInsetBottom(0);
+        int horizontalPadding = dimenPx(R.dimen.task_editor_day_button_horizontal_padding);
+        btn.setPadding(horizontalPadding, 0, horizontalPadding, 0);
+
+        GridLayout.LayoutParams params = new GridLayout.LayoutParams(
+            GridLayout.spec(gridIndex / DAY_PICKER_COLUMN_COUNT, 1f),
+            GridLayout.spec(gridIndex % DAY_PICKER_COLUMN_COUNT, 1f)
+        );
+        params.width = 0;
+        params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        params.setGravity(Gravity.FILL_HORIZONTAL);
+        int horizontalMargin = dimenPx(R.dimen.task_editor_day_button_horizontal_margin);
+        int verticalMargin = dimenPx(R.dimen.task_editor_day_button_vertical_margin);
+        params.setMargins(horizontalMargin, verticalMargin, horizontalMargin, verticalMargin);
+        btn.setLayoutParams(params);
+
+        return btn;
     }
 
     private void showTimePicker(PrefSlotEditState prefSlot) {

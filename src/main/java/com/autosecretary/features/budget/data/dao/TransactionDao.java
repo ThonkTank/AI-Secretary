@@ -11,6 +11,7 @@ import androidx.room.Transaction;
 import androidx.room.Update;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
@@ -24,7 +25,7 @@ public interface TransactionDao {
             SELECT t.id AS transactionId,
                    t.bookingDate AS bookingDate,
                    t.yearMonth AS yearMonth,
-                   t.type AS type,
+                   t.type AS direction,
                    t.transactionKind AS transactionKind,
                    t.amountCents AS amountCents,
                    t.note AS note,
@@ -51,7 +52,7 @@ public interface TransactionDao {
             SELECT t.id AS transactionId,
                    t.bookingDate AS bookingDate,
                    t.yearMonth AS yearMonth,
-                   t.type AS type,
+                   t.type AS direction,
                    t.amountCents AS amountCents,
                    t.note AS note,
                    t.accountId AS accountId,
@@ -94,8 +95,8 @@ public interface TransactionDao {
             """)
     List<MonthlyDeltaPoint> getMonthlyDeltasForAccount(
             String accountId,
-            String fromYearMonth,
-            String toYearMonth
+            YearMonth fromYearMonth,
+            YearMonth toYearMonth
     );
 
     @Query("""
@@ -107,28 +108,10 @@ public interface TransactionDao {
     long getNetAmountBeforeDateForAccount(String accountId, LocalDate beforeDate);
 
     @Query("""
-            SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' AND transactionKind != 'INTERNAL_TRANSFER' THEN amountCents ELSE 0 END), 0) AS sumIncomeCents,
-                   COALESCE(SUM(CASE WHEN type = 'EXPENSE' AND transactionKind != 'INTERNAL_TRANSFER' THEN amountCents ELSE 0 END), 0) AS sumExpenseCents
-            FROM budget_transaction
-            WHERE yearMonth = :yearMonth
-            """)
-    IncomeExpenseSummary getIncomeExpenseSummary(String yearMonth);
-
-    @Query("""
             SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END), 0)
             FROM budget_transaction
             """)
     long getNetBalanceCents();
-
-
-
-    @Query("""
-            SELECT accountId AS accountId,
-                   COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END), 0) AS balanceCents
-            FROM budget_transaction
-            GROUP BY accountId
-            """)
-    List<AccountBalanceTotal> getAccountBalanceTotals();
 
     @Query("SELECT * FROM budget_transaction ORDER BY bookingDate DESC")
     List<BudgetTransactionEntity> findAll();

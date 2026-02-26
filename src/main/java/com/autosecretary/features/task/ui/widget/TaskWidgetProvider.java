@@ -11,6 +11,7 @@ import android.util.Log;
 import android.widget.RemoteViews;
 
 import com.autosecretary.R;
+import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.app.MainActivity;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
@@ -87,7 +88,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         LocalDate selectedDate = LocalDate.now().plusDays(offset);
         boolean isToday = offset == 0;
         String label = isToday ? "Heute" : selectedDate.format(DATE_FORMAT);
-        Log.d(TAG, "updateWidget offset=" + offset + " label=" + label, new Throwable("caller"));
+        Log.d(TAG, "updateWidget offset=" + offset + " label=" + label);
         views.setTextViewText(R.id.widget_date_label, label);
 
         // Arrow states
@@ -166,10 +167,13 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         PendingResult result = goAsync();
         new Thread(() -> {
             try {
+                AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
+                var compositionRoot = app.getAppCompositionRoot();
+
                 AppDatabase db = AppDatabase.getInstance(context);
-                TaskDAO dao = db.taskDao();
-                TaskCompletionService completionService = new TaskCompletionService();
-                TaskLifecycleManager lifecycleManager = new TaskLifecycleManager();
+                TaskDAO dao = compositionRoot.getTaskDAO();
+                TaskCompletionService completionService = compositionRoot.getTaskCompletionService();
+                TaskLifecycleManager lifecycleManager = compositionRoot.getTaskLifecycleManager();
 
                 TaskTransitionStatDao transitionDao = db.taskTransitionStatDao();
                 TaskSlotToggleMutation.execute(
@@ -216,7 +220,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     // --- Public refresh trigger ---
 
     public static void notifyWidgetUpdate(Context context) {
-        Log.d(TAG, "notifyWidgetUpdate called", new Throwable("caller"));
+        Log.d(TAG, "notifyWidgetUpdate called");
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         ComponentName widget = new ComponentName(context, TaskWidgetProvider.class);
         int[] widgetIds = manager.getAppWidgetIds(widget);

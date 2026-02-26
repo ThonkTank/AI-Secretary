@@ -6,10 +6,6 @@ public class BudgetSummaryData {
     private final long netCents;
     private final long freeBudgetCents;
 
-    public BudgetSummaryData(long incomeCents, long expenseCents) {
-        this(incomeCents, expenseCents, 0L);
-    }
-
     public BudgetSummaryData(long incomeCents, long expenseCents, long freeBudgetCents) {
         this.incomeCents = incomeCents;
         this.expenseCents = expenseCents;

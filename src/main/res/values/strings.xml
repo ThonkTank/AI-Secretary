@@ -2,8 +2,6 @@
 <resources>
     <!-- Global rule: app-wide tokens stay in generic files; feature-specific resources belong in feature-prefixed files (for example task_strings.xml). -->
     <string name="app_name">AutoSecretary</string>
-    <string name="task_edit_deadline_none">Keine Frist</string>
-    <string name="task_edit_deadline_content_description">Frist auswählen. Aktuell: %1$s</string>
 
     <string name="settings_title">Einstellungen</string>
     <string name="settings_option_restore_backup">Backup wiederherstellen</string>
@@ -31,4 +29,12 @@
 
     <string name="settings_about_title">Über AutoSecretary</string>
     <string name="settings_about_message">Version: %1$s (Build %2$d)</string>
+
+    <string name="update_available_title">Update verfügbar</string>
+    <string name="update_available_message">Version %1$d ist verfügbar. Jetzt herunterladen?</string>
+    <string name="update_action_install">Update</string>
+    <string name="update_action_later">Später</string>
+    <string name="update_download_failed_title">Download fehlgeschlagen</string>
+    <string name="update_download_failed_message">Das Update konnte nicht geladen oder installiert werden.\n\n%1$s</string>
+    <string name="update_download_failed_unknown">Unbekannter Fehler</string>
 </resources>

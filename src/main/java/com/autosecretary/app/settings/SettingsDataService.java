@@ -66,7 +66,10 @@ public class SettingsDataService {
 
     public boolean factoryReset() {
         try {
-            createManualBackup();
+            File backup = createManualBackup();
+            if (backup == null) {
+                return false;
+            }
             AppDatabase.closeAndReset();
             appContext.deleteDatabase(AppDatabase.DB_NAME);
             clearSidecarFiles();

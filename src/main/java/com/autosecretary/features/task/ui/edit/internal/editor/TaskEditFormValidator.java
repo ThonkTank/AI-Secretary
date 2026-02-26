@@ -1,47 +1,55 @@
 package com.autosecretary.features.task.ui.edit.internal.editor;
 
+import android.content.Context;
 import android.widget.EditText;
 
+import com.autosecretary.R;
 
 public class TaskEditFormValidator {
+
+    private final Context context;
+
+    public TaskEditFormValidator(Context context) {
+        this.context = context;
+    }
 
     public boolean validate(TaskEditFormViews views) {
         clearErrors(views);
 
         boolean valid = true;
-        valid &= requireNonEmpty(views.titleView, "Titel ist erforderlich.");
+        valid &= requireNonEmpty(views.titleView, R.string.task_edit_validation_title_required);
 
         valid &= validateIntegerField(views.minDurationView, 1, Integer.MAX_VALUE,
-            "Minimale Dauer muss mindestens 1 Minute sein.");
+            R.string.task_edit_validation_min_duration);
         valid &= validateIntegerField(views.maxDurationView, 1, Integer.MAX_VALUE,
-            "Maximale Dauer muss mindestens 1 Minute sein.");
+            R.string.task_edit_validation_max_duration);
         valid &= validateIntegerField(views.cooldownView, 0, Integer.MAX_VALUE,
-            "Cooldown muss mindestens 0 Tage sein.");
+            R.string.task_edit_validation_cooldown);
 
         if (views.toggleRepetition.isChecked()) {
             valid &= validateIntegerField(views.repsView, 1, Integer.MAX_VALUE,
-                "Wiederholungen müssen mindestens 1 sein.");
+                R.string.task_edit_validation_reps);
             valid &= validateIntegerField(views.perPeriodView, 1, Integer.MAX_VALUE,
-                "Intervall muss mindestens 1 sein.");
+                R.string.task_edit_validation_per_period);
         }
 
         if (views.toggleProgress.isChecked()) {
             valid &= validateIntegerField(views.targetView, 1, Integer.MAX_VALUE,
-                "Ziel muss mindestens 1 sein.");
+                R.string.task_edit_validation_target);
             valid &= validateIntegerField(views.currentView, 0, Integer.MAX_VALUE,
-                "Aktueller Wert muss mindestens 0 sein.");
+                R.string.task_edit_validation_current);
             valid &= validateIntegerField(views.minPerRepView, 0, Integer.MAX_VALUE,
-                "Minimum pro Wiederholung muss mindestens 0 sein.");
+                R.string.task_edit_validation_min_per_rep);
             valid &= validateIntegerField(views.maxPerRepView, 0, Integer.MAX_VALUE,
-                "Maximum pro Wiederholung muss mindestens 0 sein.");
+                R.string.task_edit_validation_max_per_rep);
         }
 
         if (valid) {
             valid &= validateMinMaxPair(
                 views.minDurationView,
                 views.maxDurationView,
-                "Minimale Dauer darf nicht größer als maximale Dauer sein.",
-                "Maximale Dauer muss mindestens so groß wie minimale Dauer sein."
+                R.string.task_edit_validation_duration_min_exceeds_max,
+                R.string.task_edit_validation_duration_max_below_min
             );
         }
 
@@ -49,8 +57,8 @@ public class TaskEditFormValidator {
             valid &= validateMinMaxPair(
                 views.minPerRepView,
                 views.maxPerRepView,
-                "Minimum pro Wiederholung darf nicht größer als Maximum sein.",
-                "Maximum pro Wiederholung muss mindestens so groß wie das Minimum sein."
+                R.string.task_edit_validation_per_rep_min_exceeds_max,
+                R.string.task_edit_validation_per_rep_max_below_min
             );
             valid &= validateCurrentNotAboveTarget(views.currentView, views.targetView);
         }
@@ -71,53 +79,66 @@ public class TaskEditFormValidator {
         views.maxPerRepView.setError(null);
     }
 
-    private boolean requireNonEmpty(EditText field, String message) {
+    private boolean requireNonEmpty(EditText field, int messageResId) {
         if (field.getText() == null || field.getText().toString().trim().isEmpty()) {
-            field.setError(message);
+            field.setError(context.getString(messageResId));
             return false;
         }
         return true;
     }
 
-    private boolean validateIntegerField(EditText field, int min, int max, String rangeMessage) {
+    private boolean validateIntegerField(EditText field, int min, int max, int rangeMessageResId) {
         String value = field.getText() != null ? field.getText().toString().trim() : "";
         if (value.isEmpty()) {
-            field.setError("Pflichtfeld. " + rangeMessage);
+            field.setError(context.getString(R.string.task_edit_validation_required_format,
+                context.getString(rangeMessageResId)));
             return false;
         }
         try {
             int parsed = Integer.parseInt(value);
             if (parsed < min || parsed > max) {
-                field.setError(rangeMessage);
+                field.setError(context.getString(rangeMessageResId));
                 return false;
             }
             return true;
         } catch (NumberFormatException e) {
-            field.setError("Bitte eine ganze Zahl eingeben. " + rangeMessage);
+            field.setError(context.getString(R.string.task_edit_validation_number_format,
+                context.getString(rangeMessageResId)));
             return false;
         }
     }
 
     private boolean validateMinMaxPair(EditText minField, EditText maxField,
-                                       String minMessage, String maxMessage) {
-        int minValue = Integer.parseInt(minField.getText().toString().trim());
-        int maxValue = Integer.parseInt(maxField.getText().toString().trim());
-        if (minValue <= maxValue) {
-            return true;
-        }
-        minField.setError(minMessage);
-        maxField.setError(maxMessage);
-        return false;
+                                       int minMessageResId, int maxMessageResId) {
+        return validateFieldComparison(minField, maxField,
+            (a, b) -> a <= b, minMessageResId, maxMessageResId);
     }
 
     private boolean validateCurrentNotAboveTarget(EditText currentView, EditText targetView) {
-        int current = Integer.parseInt(currentView.getText().toString().trim());
-        int target = Integer.parseInt(targetView.getText().toString().trim());
-        if (current <= target) {
-            return true;
+        return validateFieldComparison(currentView, targetView,
+            (a, b) -> a <= b,
+            R.string.task_edit_validation_current_above_target,
+            R.string.task_edit_validation_target_below_current);
+    }
+
+    private boolean validateFieldComparison(EditText fieldA, EditText fieldB,
+                                             java.util.function.BiPredicate<Integer, Integer> valid,
+                                             int errorResA, int errorResB) {
+        try {
+            int valueA = Integer.parseInt(fieldA.getText().toString().trim());
+            int valueB = Integer.parseInt(fieldB.getText().toString().trim());
+            if (valid.test(valueA, valueB)) {
+                return true;
+            }
+            fieldA.setError(context.getString(errorResA));
+            fieldB.setError(context.getString(errorResB));
+            return false;
+        } catch (NumberFormatException e) {
+            fieldA.setError(context.getString(R.string.task_edit_validation_number_format,
+                context.getString(errorResA)));
+            fieldB.setError(context.getString(R.string.task_edit_validation_number_format,
+                context.getString(errorResB)));
+            return false;
         }
-        currentView.setError("Aktuell darf nicht größer als Ziel sein.");
-        targetView.setError("Ziel muss mindestens so groß wie Aktuell sein.");
-        return false;
     }
 }

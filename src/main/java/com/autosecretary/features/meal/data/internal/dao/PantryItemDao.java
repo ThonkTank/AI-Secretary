@@ -7,6 +7,6 @@ import com.autosecretary.features.meal.domain.PantryItem;
 
 public class PantryItemDao extends BaseCollectionDao<PantryItem> {
     public PantryItemDao(MealStorage storage) {
-        super(MealCollections.PANTRY_ITEMS, storage, new PantryItemRowMapper(), pantryItem -> pantryItem.id);
+        super(MealCollections.PANTRY_ITEMS, storage, new PantryItemRowMapper(), pantryItem -> pantryItem.id, (pantryItem, id) -> pantryItem.id = id);
     }
 }

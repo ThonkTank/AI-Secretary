@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 public class TaskViewModel extends AndroidViewModel {
-    private static final int MAX_DAY_OFFSET = 6;
+    static final int MAX_DAY_OFFSET = 6;
 
     private final TaskDataService taskDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
@@ -38,7 +38,6 @@ public class TaskViewModel extends AndroidViewModel {
     private final MutableLiveData<String> searchQuery = new MutableLiveData<>("");
     private final MutableLiveData<List<SchedulingConflict>> scheduleConflicts = new MutableLiveData<>();
 
-    private LocalDate day;
     private ListConfig activeListConfig = ListConfig.CHECKLIST;
     private boolean hasCalendarPermission = false;
     private final Map<String, Boolean> expandedByTaskId = new HashMap<>();
@@ -129,7 +128,6 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     private void applyPreset(LocalDate day, ListConfig config) {
-        this.day = day;
         this.activeListConfig = config;
         filterList();
     }
@@ -149,12 +147,12 @@ public class TaskViewModel extends AndroidViewModel {
         taskListProjectionService.project(
                 masterList,
                 activeListConfig,
-                day,
+                selectedDay.getValue(),
                 searchQuery.getValue(),
                 hasCalendarPermission,
                 expandedByTaskId
         );
-        displayList.setValue(masterList.displaySlots);
+        displayList.setValue(masterList.getDisplaySlots());
     }
 
     public void checkOff(ViewSlot viewSlot) {
@@ -187,7 +185,7 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void toggleExpanded(ViewSlot viewSlot) {
-        if (activeListConfig != ListConfig.MANAGE || !viewSlot.hasChildren) {
+        if (activeListConfig != ListConfig.MANAGE || !viewSlot.hasChildren()) {
             return;
         }
         String taskId = viewSlot.item.taskId;
@@ -212,7 +210,7 @@ public class TaskViewModel extends AndroidViewModel {
         return day == null || viewSlot.item.day.equals(day);
     }
 
-    static enum ListConfig {
+    enum ListConfig {
         CHECKLIST(false) {
             @Override
             boolean matches(ViewSlot slot, LocalDate day) {

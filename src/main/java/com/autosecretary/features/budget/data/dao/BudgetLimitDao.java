@@ -20,17 +20,6 @@ public interface BudgetLimitDao {
     @Query("SELECT * FROM budget_limit WHERE categoryId = :categoryId AND yearMonth = :yearMonth LIMIT 1")
     BudgetLimit getLimitForCategoryAndMonth(String categoryId, String yearMonth);
 
-    @Query("SELECT * FROM budget_limit WHERE categoryId = :categoryId AND yearMonth = :prevYearMonth LIMIT 1")
-    BudgetLimit getPreviousMonthLimit(String categoryId, String prevYearMonth);
-
-    @Query("""
-            SELECT COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amountCents ELSE 0 END), 0)
-            FROM budget_transaction
-            WHERE categoryId = :categoryId
-              AND yearMonth = :prevYearMonth
-            """)
-    long getPreviousMonthExpenseCents(String categoryId, String prevYearMonth);
-
     @Query("""
             SELECT COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amountCents ELSE 0 END), 0)
             FROM budget_transaction

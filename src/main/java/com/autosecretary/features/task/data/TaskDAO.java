@@ -53,10 +53,15 @@ public interface TaskDAO {
 
     /**
      * Writes dependent rows that reference a task core row.
+     * PrefSlots and prerequisites are replaced wholesale (delete + insert) so that
+     * rows removed during editing do not silently accumulate as orphans.
+     * Slots are upserted without prior deletion to preserve historical completed slots.
      */
     default void writeDependents(Task task) {
         writeSlots(task.slots);
+        deletePrefSlotsByTaskId(task.core.id);
         writePrefSlots(task.prefSlots);
+        deletePrerequisitesByTaskId(task.core.id);
         writePrerequisites(task.prerequisites);
         writePlannedMeals(task.plannedMeals);
         for (Task child : task.children) {
@@ -68,10 +73,16 @@ public interface TaskDAO {
     void writeCore(TaskCore core);
 
     //Pref Slots
+    @Query("DELETE FROM task_pref_slots WHERE taskId = :taskId")
+    void deletePrefSlotsByTaskId(String taskId);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writePrefSlots(List<TaskPrefSlot> prefSlots);
 
     //Prerequisites
+    @Query("DELETE FROM task_prerequisites WHERE taskId = :taskId")
+    void deletePrerequisitesByTaskId(String taskId);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writePrerequisites(List<TaskPrerequisite> prerequisites);
 

@@ -120,7 +120,7 @@ public class TaskMealIntegrationService {
         int carbs = (int) Math.round(recipe.totalCarbs * scale);
         int fat = (int) Math.round(recipe.totalFat * scale);
 
-        ConsumptionLog log = new ConsumptionLog.Builder(completionDate, parseTaskId(task.core.id), DEFAULT_MEMBER_ID)
+        ConsumptionLog log = new ConsumptionLog.Builder(completionDate, 0L, DEFAULT_MEMBER_ID)
                 .recipeId(recipe.id != null ? recipe.id : 0L)
                 .servings(servings)
                 .calories(calories)
@@ -134,7 +134,7 @@ public class TaskMealIntegrationService {
     private void completeMealPlanEntry(Task task, TaskPlannedMeal plannedMeal, LocalDate completionDate, int servings) {
         List<MealPlan> plans = mealRepository.getMealPlans(completionDate, completionDate);
         for (MealPlan plan : plans) {
-            if (plan.date == null || !completionDate.equals(plan.date)) {
+            if (plan.date == null) {
                 continue;
             }
             if (plan.mealType != task.core.mealType || plan.recipeId != plannedMeal.recipeId) {
@@ -148,14 +148,4 @@ public class TaskMealIntegrationService {
         }
     }
 
-    private long parseTaskId(String taskId) {
-        if (taskId == null) {
-            return 0L;
-        }
-        try {
-            return Long.parseLong(taskId);
-        } catch (NumberFormatException ignored) {
-            return 0L;
-        }
-    }
 }

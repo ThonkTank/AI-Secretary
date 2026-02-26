@@ -1,10 +1,6 @@
 package com.autosecretary.features.meal.domain;
 
-import com.autosecretary.features.meal.domain.internal.HouseholdEnergyService;
-import com.autosecretary.features.meal.domain.internal.WeeklyFoodTargetService;
-
 import java.util.EnumMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -13,9 +9,6 @@ import java.util.Map;
  * Wird sowohl fuer 7-Tage-Wochenziele als auch periodenlaengen-skaliert genutzt.
  */
 public class WeeklyFoodTarget {
-
-    private static final WeeklyFoodTargetService TARGET_SERVICE =
-            new WeeklyFoodTargetService(new HouseholdEnergyService());
 
     public Long id;
     public String periodKey;
@@ -45,13 +38,6 @@ public class WeeklyFoodTarget {
     public int fatPlanned;
     public int legumePlanned;
     public int nutPlanned;
-
-    /**
-     * Berechnet DGE-Wochenziele basierend auf Haushaltsmitgliedern.
-     */
-    public static WeeklyFoodTarget calculate(String periodKey, List<HouseholdMember> members) {
-        return TARGET_SERVICE.calculate(periodKey, members, java.time.LocalDate.now());
-    }
 
     public int getTargetFor(Ingredient.FoodGroup group) {
         return switch (group) {
@@ -116,19 +102,19 @@ public class WeeklyFoodTarget {
         return result;
     }
 
-    public static void setTargetFor(WeeklyFoodTarget t, Ingredient.FoodGroup group, int grams) {
+    public void setTargetFor(Ingredient.FoodGroup group, int grams) {
         switch (group) {
-            case GRAIN -> t.grainGrams = grams;
-            case POTATO -> t.potatoGrams = grams;
-            case VEGETABLE -> t.vegetableGrams = grams;
-            case FRUIT -> t.fruitGrams = grams;
-            case DAIRY -> t.dairyGrams = grams;
-            case MEAT -> t.meatGrams = grams;
-            case FISH -> t.fishGrams = grams;
-            case EGG -> t.eggGrams = grams;
-            case FAT -> t.fatGrams = grams;
-            case LEGUME -> t.legumeGrams = grams;
-            case NUT -> t.nutGrams = grams;
+            case GRAIN -> grainGrams = grams;
+            case POTATO -> potatoGrams = grams;
+            case VEGETABLE -> vegetableGrams = grams;
+            case FRUIT -> fruitGrams = grams;
+            case DAIRY -> dairyGrams = grams;
+            case MEAT -> meatGrams = grams;
+            case FISH -> fishGrams = grams;
+            case EGG -> eggGrams = grams;
+            case FAT -> fatGrams = grams;
+            case LEGUME -> legumeGrams = grams;
+            case NUT -> nutGrams = grams;
             case OTHER -> {} // ignorieren
         }
     }

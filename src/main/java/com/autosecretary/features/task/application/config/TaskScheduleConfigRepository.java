@@ -31,38 +31,34 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
         dao.writeAll(buildCompleteWeek(configs != null ? configs : new ArrayList<>()));
     }
 
-    private List<TaskScheduleConfig> buildCompleteWeek(Iterable<TaskScheduleConfig> source) {
+    private Map<DayOfWeek, TaskScheduleConfig> buildAsMap(Iterable<TaskScheduleConfig> source) {
         Map<DayOfWeek, TaskScheduleConfig> byDay = new EnumMap<>(DayOfWeek.class);
         for (TaskScheduleConfig config : source) {
             if (config != null && config.dayOfWeek != null) {
                 byDay.put(config.dayOfWeek, normalize(config.dayOfWeek, config.startTime, config.endTime));
             }
         }
+        for (DayOfWeek day : DayOfWeek.values()) {
+            byDay.computeIfAbsent(day, d -> new TaskScheduleConfig(d, DEFAULT_START, DEFAULT_END));
+        }
+        return byDay;
+    }
+
+    private List<TaskScheduleConfig> buildCompleteWeek(Iterable<TaskScheduleConfig> source) {
+        Map<DayOfWeek, TaskScheduleConfig> byDay = buildAsMap(source);
         List<TaskScheduleConfig> completeWeek = new ArrayList<>();
         for (DayOfWeek day : DayOfWeek.values()) {
-            TaskScheduleConfig config = byDay.get(day);
-            if (config == null) {
-                config = new TaskScheduleConfig(day, DEFAULT_START, DEFAULT_END);
-            }
-            completeWeek.add(config);
+            completeWeek.add(byDay.get(day));
         }
         return completeWeek;
     }
 
     @Override
     public SchedulingWindow forDay(LocalDate day) {
-        DayOfWeek dayOfWeek = day.getDayOfWeek();
-        for (TaskScheduleConfig config : loadAll()) {
-            if (config.dayOfWeek == dayOfWeek) {
-                return new SchedulingWindowProvider.SchedulingWindow(
-                        LocalDateTime.of(day, config.startTime),
-                        LocalDateTime.of(day, config.endTime)
-                );
-            }
-        }
+        TaskScheduleConfig config = buildAsMap(dao.readAll()).get(day.getDayOfWeek());
         return new SchedulingWindowProvider.SchedulingWindow(
-                LocalDateTime.of(day, DEFAULT_START),
-                LocalDateTime.of(day, DEFAULT_END)
+                LocalDateTime.of(day, config.startTime),
+                LocalDateTime.of(day, config.endTime)
         );
     }
 

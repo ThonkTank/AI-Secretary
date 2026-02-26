@@ -32,10 +32,7 @@ public class RecipeScalingService {
         return new ScalingResult(finalServings, factor, ingredients);
     }
 
-    public double resolveServings(Recipe recipe, double requestedServings) {
-        if (recipe == null) {
-            return 0;
-        }
+    private double resolveServings(Recipe recipe, double requestedServings) {
         double minServings = Math.max(0.1, recipe.minServings);
         double maxServings = Math.max(minServings, recipe.maxServings);
         double clamped = Math.min(maxServings, Math.max(minServings, requestedServings));

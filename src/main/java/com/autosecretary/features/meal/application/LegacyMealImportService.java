@@ -192,7 +192,31 @@ public class LegacyMealImportService {
         }
     }
 
-    private void importConsumption(List<Map<String, Object>> rows, LegacyImportReport report) { for (int i=0;i<rows.size();i++){ Map<String,Object> row=rows.get(i); LocalDate date=asDate(row.get("date")); long itemId=asInt(row.get("item_id"),0); long memberId=asInt(row.get("member_id"),0); if (date==null||itemId<=0||memberId<=0){ report.addFailure(SOURCE_CONSUMPTION,i,"required fields invalid: date/item_id/member_id"); continue;} ConsumptionLog log=new ConsumptionLog(); log.id=asLong(row.get("id")); log.date=date; log.itemId=itemId; log.memberId=memberId; log.recipeId=asInt(row.get("recipe_id"),0); log.servingsConsumed=asDouble(row.get("servings_consumed"),0.0); log.calories=asInt(row.get("calories"),0); log.protein=asInt(row.get("protein"),0); log.carbs=asInt(row.get("carbs"),0); log.fat=asInt(row.get("fat"),0); mealRepository.saveConsumptionLog(log); report.markMigrated(SOURCE_CONSUMPTION);} }
+    private void importConsumption(List<Map<String, Object>> rows, LegacyImportReport report) {
+        for (int i = 0; i < rows.size(); i++) {
+            Map<String, Object> row = rows.get(i);
+            LocalDate date = asDate(row.get("date"));
+            long itemId = asInt(row.get("item_id"), 0);
+            long memberId = asInt(row.get("member_id"), 0);
+            if (date == null || itemId <= 0 || memberId <= 0) {
+                report.addFailure(SOURCE_CONSUMPTION, i, "required fields invalid: date/item_id/member_id");
+                continue;
+            }
+            ConsumptionLog log = new ConsumptionLog();
+            log.id = asLong(row.get("id"));
+            log.date = date;
+            log.itemId = itemId;
+            log.memberId = memberId;
+            log.recipeId = asInt(row.get("recipe_id"), 0);
+            log.servingsConsumed = asDouble(row.get("servings_consumed"), 0.0);
+            log.calories = asInt(row.get("calories"), 0);
+            log.protein = asInt(row.get("protein"), 0);
+            log.carbs = asInt(row.get("carbs"), 0);
+            log.fat = asInt(row.get("fat"), 0);
+            mealRepository.saveConsumptionLog(log);
+            report.markMigrated(SOURCE_CONSUMPTION);
+        }
+    }
 
     private void importPantry(List<Map<String, Object>> rows, LegacyImportReport report) {
         for (int i = 0; i < rows.size(); i++) {
@@ -368,12 +392,37 @@ public class LegacyMealImportService {
         return null;
     }
 
-    private static String asString(Object raw) { return raw == null ? null : raw.toString(); }
-    private static Long asLong(Object raw) { if (raw == null) return null; if (raw instanceof Number n) return n.longValue(); try { return Long.parseLong(raw.toString().trim()); } catch (NumberFormatException ignored) { return null; } }
-    private static int asInt(Object raw, int fallback) { if (raw == null) return fallback; if (raw instanceof Number n) return n.intValue(); try { return Integer.parseInt(raw.toString().trim()); } catch (NumberFormatException ignored) { return fallback; } }
-    private static Integer asNullableInt(Object raw) { if (raw == null) return null; if (raw instanceof Number n) return n.intValue(); String value = raw.toString().trim(); if (value.isEmpty()) return null; try { return Integer.parseInt(value); } catch (NumberFormatException ignored) { return null; } }
-    private static double asDouble(Object raw, double fallback) { if (raw == null) return fallback; if (raw instanceof Number n) return n.doubleValue(); try { return Double.parseDouble(raw.toString().trim()); } catch (NumberFormatException ignored) { return fallback; } }
-    private static boolean asBoolean(Object raw, boolean fallback) { if (raw == null) return fallback; if (raw instanceof Boolean b) return b; if (raw instanceof Number n) return n.intValue() != 0; String value = raw.toString().trim().toLowerCase(); if ("1".equals(value) || "true".equals(value)) return true; if ("0".equals(value) || "false".equals(value)) return false; return fallback; }
+    private static String asString(Object raw) {
+        return raw == null ? null : raw.toString();
+    }
+
+    private static Long asLong(Object raw) {
+        if (raw == null) return null;
+        if (raw instanceof Number n) return n.longValue();
+        try { return Long.parseLong(raw.toString().trim()); } catch (NumberFormatException ignored) { return null; }
+    }
+
+    private static int asInt(Object raw, int fallback) {
+        if (raw == null) return fallback;
+        if (raw instanceof Number n) return n.intValue();
+        try { return Integer.parseInt(raw.toString().trim()); } catch (NumberFormatException ignored) { return fallback; }
+    }
+
+    private static double asDouble(Object raw, double fallback) {
+        if (raw == null) return fallback;
+        if (raw instanceof Number n) return n.doubleValue();
+        try { return Double.parseDouble(raw.toString().trim()); } catch (NumberFormatException ignored) { return fallback; }
+    }
+
+    private static boolean asBoolean(Object raw, boolean fallback) {
+        if (raw == null) return fallback;
+        if (raw instanceof Boolean b) return b;
+        if (raw instanceof Number n) return n.intValue() != 0;
+        String value = raw.toString().trim().toLowerCase();
+        if ("1".equals(value) || "true".equals(value)) return true;
+        if ("0".equals(value) || "false".equals(value)) return false;
+        return fallback;
+    }
 
     private static EnumSet<MealType> parseMealTypes(String raw) {
         EnumSet<MealType> result = EnumSet.noneOf(MealType.class);

@@ -1,12 +1,14 @@
 package com.autosecretary.features.budget.ui.state;
 
+import com.autosecretary.features.budget.domain.TransactionDirection;
+import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
+
 import java.time.LocalDate;
 
 public class BudgetTransactionRow {
     private final String transactionId;
     private final String label;
-    private final String amount;
-    private final boolean isExpense;
+    private final TransactionDirection direction;
     private final String categoryColorHex;
     private final long amountCents;
     private final String categoryId;
@@ -14,13 +16,13 @@ public class BudgetTransactionRow {
     private final LocalDate bookingDate;
     private final String accountId;
 
-    public BudgetTransactionRow(String transactionId, String label, String amount, boolean isExpense,
+    public BudgetTransactionRow(String transactionId, String label,
+                                TransactionDirection direction,
                                 String categoryColorHex, long amountCents,
                                 String categoryId, String note, LocalDate bookingDate, String accountId) {
         this.transactionId = transactionId;
         this.label = label;
-        this.amount = amount;
-        this.isExpense = isExpense;
+        this.direction = direction;
         this.categoryColorHex = categoryColorHex;
         this.amountCents = amountCents;
         this.categoryId = categoryId;
@@ -37,12 +39,18 @@ public class BudgetTransactionRow {
         return label;
     }
 
+    /** Returns a formatted Euro amount with direction sign, e.g. {@code "-3.50 €"} or {@code "+12.00 €"}. */
     public String getAmount() {
-        return amount;
+        return CurrencyFormatter.eurosWithSign(amountCents, direction);
     }
 
+    public TransactionDirection getDirection() {
+        return direction;
+    }
+
+    /** Convenience method for UI boolean checks. */
     public boolean isExpense() {
-        return isExpense;
+        return direction == TransactionDirection.EXPENSE;
     }
 
     public String getCategoryColorHex() {

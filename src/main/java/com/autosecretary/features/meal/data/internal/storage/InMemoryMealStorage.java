@@ -36,11 +36,15 @@ public class InMemoryMealStorage implements MealStorage {
 
     @Override
     public List<Map<String, Object>> findByField(String collection, String field, Object value) {
+        Map<Long, Map<String, Object>> rows = collections.get(collection);
+        if (rows == null) {
+            return List.of();
+        }
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> row : findAll(collection)) {
+        for (Map<String, Object> row : rows.values()) {
             Object candidate = row.get(field);
             if (value == null ? candidate == null : value.equals(candidate)) {
-                result.add(row);
+                result.add(new HashMap<>(row));
             }
         }
         return result;
@@ -49,11 +53,16 @@ public class InMemoryMealStorage implements MealStorage {
     @Override
     public long upsert(String collection, Long id, Map<String, Object> row) {
         Map<Long, Map<String, Object>> rows = collections.computeIfAbsent(collection, key -> new LinkedHashMap<>());
-        long targetId = id != null ? id : nextId(collection);
+        long targetId;
+        if (id != null) {
+            targetId = id;
+            counters.put(collection, Math.max(counters.getOrDefault(collection, 0L), targetId));
+        } else {
+            targetId = nextId(collection);
+        }
         Map<String, Object> copy = new HashMap<>(row);
         copy.put("id", targetId);
         rows.put(targetId, copy);
-        counters.put(collection, Math.max(counters.getOrDefault(collection, 0L), targetId));
         return targetId;
     }
 

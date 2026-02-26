@@ -10,7 +10,7 @@ public class ShoppingPackagingService {
 
     public PackagingResult roundToPackage(double neededAmount, int packageAmount) {
         if (neededAmount <= 0 || packageAmount <= 0) {
-            return new PackagingResult(Math.max(0.0, neededAmount), 0.0, neededAmount > 0 ? 1 : 0);
+            return new PackagingResult(Math.max(0.0, neededAmount), 0.0, 0);
         }
         int packageCount = (int) Math.ceil(neededAmount / packageAmount);
         double roundedAmount = packageCount * packageAmount;
@@ -32,7 +32,6 @@ public class ShoppingPackagingService {
                 .periodKey(periodKey)
                 .foodGroup(ingredient.foodGroup == null ? null : ingredient.foodGroup.label)
                 .build();
-        item.amount = result.roundedAmount();
         return item;
     }
 

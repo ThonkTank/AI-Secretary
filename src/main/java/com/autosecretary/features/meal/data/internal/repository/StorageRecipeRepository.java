@@ -31,10 +31,7 @@ public class StorageRecipeRepository implements RecipeRepository {
 
     @Override
     public void saveRecipe(Recipe recipe) {
-        long id = recipeDao.save(recipe);
-        if (recipe.id == null) {
-            recipe.id = id;
-        }
+        recipeDao.save(recipe);
     }
 
     @Override
@@ -54,10 +51,7 @@ public class StorageRecipeRepository implements RecipeRepository {
 
     @Override
     public void saveIngredient(Ingredient ingredient) {
-        long id = ingredientDao.save(ingredient);
-        if (ingredient.id == null) {
-            ingredient.id = id;
-        }
+        ingredientDao.save(ingredient);
     }
 
     @Override

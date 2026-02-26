@@ -102,7 +102,8 @@ public class Task {
 
     /**
      * Sets the task ID and cascades it to all related entities
-     * (prefSlots, slots, and prerequisites) so their foreign keys stay consistent.
+     * (prefSlots, slots, prerequisites, plannedMeals, and parent relations)
+     * so their foreign keys stay consistent.
      */
     @Ignore
     public void setId(String id) {
@@ -118,6 +119,9 @@ public class Task {
         }
         for (TaskPlannedMeal meal : plannedMeals) {
             meal.taskId = id;
+        }
+        for (TaskRelation rel : parents) {
+            rel.child = id;
         }
     }
 

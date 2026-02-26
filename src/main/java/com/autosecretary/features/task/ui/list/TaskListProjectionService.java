@@ -62,11 +62,11 @@ class TaskListProjectionService {
     private void mergeCalendarEvents(ViewSlotList masterList, LocalDate day) {
         List<TaskCalendarEvent> events = taskCalendarService.getEventsForDay(
                 day,
-                preferences.readPrefTime(day, true),
-                preferences.readPrefTime(day, false)
+                preferences.readPrefTime(day.getDayOfWeek(), true),
+                preferences.readPrefTime(day.getDayOfWeek(), false)
         );
 
-        List<ViewSlot> mergedSlots = new ArrayList<>(masterList.displaySlots);
+        List<ViewSlot> calendarSlots = new ArrayList<>();
         int index = 0;
         for (TaskCalendarEvent event : events) {
             TaskListItem item = TaskListItem.calendarEvent(
@@ -76,11 +76,11 @@ class TaskListProjectionService {
                     event.start(),
                     event.end()
             );
-            mergedSlots.add(new ViewSlot(item));
+            calendarSlots.add(new ViewSlot(item));
             index++;
         }
 
-        masterList.displaySlots = mergedSlots;
+        masterList.appendToDisplay(calendarSlots);
     }
 
     private void sortList(ViewSlotList masterList,

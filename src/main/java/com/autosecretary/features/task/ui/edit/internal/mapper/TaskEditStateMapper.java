@@ -60,7 +60,6 @@ public class TaskEditStateMapper {
             for (TaskPrefSlot prefSlot : task.prefSlots) {
                 PrefSlotEditState slotState = new PrefSlotEditState();
                 slotState.id = prefSlot.id;
-                slotState.taskId = prefSlot.taskId;
                 slotState.start = prefSlot.start;
                 slotState.days = prefSlot.days != null ? EnumSet.copyOf(prefSlot.days) : EnumSet.noneOf(DayOfWeek.class);
                 state.prefSlots.add(slotState);
@@ -123,6 +122,7 @@ public class TaskEditStateMapper {
         task.slots = task.slots != null ? task.slots : new ArrayList<>();
         task.parents = task.parents != null ? task.parents : new ArrayList<>();
         task.prerequisites = task.prerequisites != null ? task.prerequisites : new ArrayList<>();
+        task.plannedMeals = task.plannedMeals != null ? task.plannedMeals : new ArrayList<>();
         return task;
     }
 }

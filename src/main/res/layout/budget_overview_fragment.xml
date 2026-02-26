@@ -201,7 +201,7 @@
                     android:layout_height="1dp"
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:layout_marginBottom="@dimen/spacing_sm"
-                    android:background="#DDDDDD" />
+                    android:background="@color/budget_divider" />
 
                 <LinearLayout
                     android:layout_width="match_parent"

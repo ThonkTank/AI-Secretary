@@ -5,20 +5,20 @@ public class BudgetLimitBar {
     private final String categoryName;
     private final String categoryColorHex;
     private final long spentCents;
-    private final double baseLimitEuros;      // The configured monthly spending limit
-    private final double effectiveLimitEuros; // Limit after applying rollover carryover (may exceed base)
+    private final long baseLimitCents;      // The configured monthly spending limit
+    private final long effectiveLimitCents; // Limit after applying rollover carryover (may exceed base)
     private final int percentage;
 
     public BudgetLimitBar(String categoryId, String categoryName, String categoryColorHex,
-                          long spentCents, double baseLimitEuros, double effectiveLimitEuros) {
+                          long spentCents, long baseLimitCents, long effectiveLimitCents) {
         this.categoryId = categoryId;
         this.categoryName = categoryName;
         this.categoryColorHex = categoryColorHex;
         this.spentCents = spentCents;
-        this.baseLimitEuros = baseLimitEuros;
-        this.effectiveLimitEuros = effectiveLimitEuros;
-        this.percentage = effectiveLimitEuros > 0
-                ? (int) ((spentCents / 100.0) / effectiveLimitEuros * 100)
+        this.baseLimitCents = baseLimitCents;
+        this.effectiveLimitCents = effectiveLimitCents;
+        this.percentage = effectiveLimitCents > 0
+                ? (int) ((double) spentCents / effectiveLimitCents * 100)
                 : 0;
     }
 
@@ -38,12 +38,12 @@ public class BudgetLimitBar {
         return spentCents;
     }
 
-    public double getBaseLimitEuros() {
-        return baseLimitEuros;
+    public long getBaseLimitCents() {
+        return baseLimitCents;
     }
 
-    public double getEffectiveLimitEuros() {
-        return effectiveLimitEuros;
+    public long getEffectiveLimitCents() {
+        return effectiveLimitCents;
     }
 
     public int getPercentage() {

@@ -2,7 +2,6 @@ package com.autosecretary.features.task.data;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -44,8 +43,6 @@ public class TaskSlot {
     public LocalTime end;
     public boolean scheduled;
     public boolean completed;
-    /** Returns the number of days elapsed since this slot's scheduled day. */
-    public int sinceCompleted() {return (int) ChronoUnit.DAYS.between(day, LocalDate.now());}
     public int score;
     /**
      * Persisted displacement value used as reproducible loss baseline during re-planning.

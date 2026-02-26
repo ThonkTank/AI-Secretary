@@ -25,7 +25,7 @@ public class TaskBudgetEligibilityFromBudgetLookup implements TaskBudgetEligibil
         }
 
         long availableCents;
-        if (task.core.budgetAccountId != null && !task.core.budgetAccountId.trim().isEmpty()) {
+        if (task.core.budgetAccountId != null && !task.core.budgetAccountId.isBlank()) {
             Long accountBalance = budgetLookupDao.findCurrentBalanceCentsByAccountId(task.core.budgetAccountId);
             availableCents = accountBalance != null ? accountBalance : 0L;
         } else {

@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:minWidth="320dp"
-    android:paddingTop="8dp">
+    android:paddingTop="@dimen/spacing_sm">
 
     <ProgressBar
         android:id="@+id/ScheduleConfigLoading"

@@ -41,8 +41,7 @@ public class BookTaskCompletionExpenseUseCase {
         );
         transaction.note = "Task: " + task.core.title;
 
-        repository.saveTransaction(transaction);
-        repository.applyExpenseToAccountBalance(accountId, expenseCents);
+        repository.saveTransactionAndDeductBalance(transaction, accountId, expenseCents);
         return true;
     }
 

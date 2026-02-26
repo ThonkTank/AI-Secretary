@@ -6,6 +6,8 @@ import android.view.View;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
 
+import androidx.core.content.ContextCompat;
+
 import com.autosecretary.R;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
@@ -23,10 +25,17 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
     private final Context context;
+    private final int colorInProgress;
+    private final int colorCompleted;
+    private final int colorDefault;
     private List<TaskListItem> items = new ArrayList<>();
+    private boolean isToday;
 
     public TaskWidgetFactory(Context context) {
         this.context = context;
+        this.colorInProgress = ContextCompat.getColor(context, R.color.task_widget_title_in_progress);
+        this.colorCompleted = ContextCompat.getColor(context, R.color.task_widget_title_completed);
+        this.colorDefault = ContextCompat.getColor(context, R.color.task_widget_title_default);
     }
 
     @Override
@@ -43,7 +52,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         List<TaskListItem> allItems = mapper.map(tasks);
 
         LocalDate selectedDate = TaskWidgetProvider.getSelectedDate(context);
-        boolean isToday = selectedDate.equals(LocalDate.now());
+        isToday = selectedDate.equals(LocalDate.now());
 
         List<TaskListItem> filtered = new ArrayList<>();
         for (TaskListItem item : allItems) {
@@ -82,7 +91,6 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
 
         rv.setCompoundButtonChecked(R.id.widget_row_checkbox, item.completed);
 
-        boolean isToday = TaskWidgetProvider.isShowingToday(context);
         if (isToday && item.slotId != null && !item.completed) {
             // Interactive: set fill-in intent for checkbox toggle
             Intent fillIn = new Intent();
@@ -102,11 +110,11 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
 
         // In-progress visual hint
         if (item.inProgress) {
-            rv.setInt(R.id.widget_row_title, "setTextColor", 0xFF4CAF50);
+            rv.setInt(R.id.widget_row_title, "setTextColor", colorInProgress);
         } else if (item.completed) {
-            rv.setInt(R.id.widget_row_title, "setTextColor", 0xFF999999);
+            rv.setInt(R.id.widget_row_title, "setTextColor", colorCompleted);
         } else {
-            rv.setInt(R.id.widget_row_title, "setTextColor", 0xFF333333);
+            rv.setInt(R.id.widget_row_title, "setTextColor", colorDefault);
         }
 
         return rv;

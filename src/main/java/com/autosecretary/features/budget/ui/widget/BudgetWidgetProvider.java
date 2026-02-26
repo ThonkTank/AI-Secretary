@@ -14,13 +14,17 @@ import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseCase;
 import com.autosecretary.features.budget.data.repository.BudgetWidgetRoomRepository;
 
-import java.util.Locale;
+import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
 
 public class BudgetWidgetProvider extends AppWidgetProvider {
     public static final String EXTRA_OPEN_TAB = "open_tab";
     public static final String EXTRA_BUDGET_ACTION = "budget_action";
     public static final String TAB_BUDGET = "budget";
     public static final String ACTION_ADD_TRANSACTION = "add_transaction";
+
+    // Number of distinct PendingIntent slots reserved per widget instance.
+    // Each slot maps to one button action; offset within the slot identifies the action.
+    private static final int ACTIONS_PER_WIDGET = 10;
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
@@ -42,43 +46,36 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
         LoadBudgetWidgetSummaryUseCase useCase = new LoadBudgetWidgetSummaryUseCase(repository);
         LoadBudgetWidgetSummaryUseCase.BudgetWidgetSummary summary = useCase.loadCurrentMonth();
 
-        views.setTextViewText(R.id.budget_widget_total_value, formatCurrency(summary.netBalanceCents()));
-        views.setTextViewText(R.id.budget_widget_free_value, formatCurrency(summary.freeBudgetCents()));
+        views.setTextViewText(R.id.budget_widget_total_value, CurrencyFormatter.eurosNet(summary.netBalanceCents()));
+        views.setTextViewText(R.id.budget_widget_free_value, CurrencyFormatter.eurosNet(summary.freeBudgetCents()));
 
         views.setOnClickPendingIntent(
                 R.id.budget_widget_open_button,
-                buildOpenBudgetIntent(context, widgetId, false)
+                buildPendingIntent(context, widgetId, 0, null)
         );
         views.setOnClickPendingIntent(
                 R.id.budget_widget_add_button,
-                buildOpenBudgetIntent(context, widgetId, true)
+                buildPendingIntent(context, widgetId, 1, ACTION_ADD_TRANSACTION)
         );
 
         manager.updateAppWidget(widgetId, views);
     }
 
-    private PendingIntent buildOpenBudgetIntent(Context context, int widgetId, boolean openAddDialog) {
+    // Unique per widget instance + action: Android requires distinct request codes
+    // for PendingIntents that carry different extras. offset identifies the action slot.
+    private PendingIntent buildPendingIntent(Context context, int widgetId, int offset, String budgetAction) {
         Intent launchIntent = new Intent(context, MainActivity.class);
         launchIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         launchIntent.putExtra(EXTRA_OPEN_TAB, TAB_BUDGET);
-        if (openAddDialog) {
-            launchIntent.putExtra(EXTRA_BUDGET_ACTION, ACTION_ADD_TRANSACTION);
+        if (budgetAction != null) {
+            launchIntent.putExtra(EXTRA_BUDGET_ACTION, budgetAction);
         }
-
-        // Unique per widget instance + action: Android requires distinct request codes
-        // for PendingIntents that carry different extras.
-        int requestCode = widgetId * 10 + (openAddDialog ? 1 : 0);
         return PendingIntent.getActivity(
                 context,
-                requestCode,
+                widgetId * ACTIONS_PER_WIDGET + offset,
                 launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
-    }
-
-    private String formatCurrency(long amountCents) {
-        String sign = amountCents < 0 ? "-" : "";
-        return String.format(Locale.GERMAN, "%s%.2f €", sign, Math.abs(amountCents) / 100.0);
     }
 
     public static void notifyWidgetUpdate(Context context) {

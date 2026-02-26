@@ -16,7 +16,28 @@ import java.util.stream.Collectors;
  */
 public final class RecurringPatternDetector {
     private static final int MIN_OCCURRENCES_DEFAULT = 3;
+    /** Maximum allowed per-element deviation from average, as a fraction of the average. */
     private static final double AMOUNT_VARIANCE_THRESHOLD = 0.15;
+
+    private record AmountStats(long avg, long min, long max) {
+        /** True when every transaction's amount is within {@link #AMOUNT_VARIANCE_THRESHOLD} of avg. */
+        boolean isConsistent(List<RecurringBudgetTransaction> txList) {
+            if (avg == 0) return false;
+            return txList.stream()
+                    .allMatch(tx -> Math.abs(Math.abs(tx.amountCents) - avg) <= avg * AMOUNT_VARIANCE_THRESHOLD);
+        }
+
+        static AmountStats from(List<RecurringBudgetTransaction> txList) {
+            long sum = 0, min = Long.MAX_VALUE, max = Long.MIN_VALUE;
+            for (RecurringBudgetTransaction tx : txList) {
+                long abs = Math.abs(tx.amountCents);
+                sum += abs;
+                if (abs < min) min = abs;
+                if (abs > max) max = abs;
+            }
+            return new AmountStats(sum / txList.size(), min, max);
+        }
+    }
 
     private RecurringPatternDetector() {
     }
@@ -52,11 +73,12 @@ public final class RecurringPatternDetector {
                 continue;
             }
             txList.sort(Comparator.comparing(tx -> tx.transactionDate));
-            if (!hasConsistentAmounts(txList)) {
+            AmountStats amountStats = AmountStats.from(txList);
+            if (!amountStats.isConsistent(txList)) {
                 continue;
             }
 
-            RecurringSuggestion candidate = analyzePattern(group.getKey(), txList);
+            RecurringSuggestion candidate = analyzePattern(group.getKey(), txList, amountStats);
             if (candidate != null && candidate.suggestedType() != null) {
                 candidates.add(candidate);
             }
@@ -67,19 +89,13 @@ public final class RecurringPatternDetector {
     }
 
     private static RecurringSuggestion analyzePattern(String normalizedPayee,
-                                                      List<RecurringBudgetTransaction> transactions) {
-        long sumAmounts = 0;
-        long minAmount = Long.MAX_VALUE;
-        long maxAmount = Long.MIN_VALUE;
+                                                      List<RecurringBudgetTransaction> transactions,
+                                                      AmountStats amountStats) {
         Map<String, Integer> categoryCounts = new HashMap<>();
         List<String> txIds = new ArrayList<>();
         String displayPayee = transactions.get(0).payee;
 
         for (RecurringBudgetTransaction tx : transactions) {
-            long absAmount = Math.abs((long) tx.amountCents);
-            sumAmounts += absAmount;
-            minAmount = Math.min(minAmount, absAmount);
-            maxAmount = Math.max(maxAmount, absAmount);
             if (tx.id != null) {
                 txIds.add(tx.id);
             }
@@ -88,7 +104,6 @@ public final class RecurringPatternDetector {
             }
         }
 
-        long avgAmount = sumAmounts / transactions.size();
         String categoryId = categoryCounts.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
@@ -103,15 +118,16 @@ public final class RecurringPatternDetector {
             return null;
         }
 
-        double confidence = SuggestionScorer.calculateConfidence(transactions, pattern, avgAmount, minAmount, maxAmount);
+        double confidence = SuggestionScorer.calculateConfidence(
+                transactions, pattern, amountStats.avg(), amountStats.min(), amountStats.max(), normalizedPayee);
 
         return new RecurringSuggestion(
                 normalizedPayee,
                 displayPayee,
                 categoryId,
-                avgAmount,
-                minAmount,
-                maxAmount,
+                amountStats.avg(),
+                amountStats.min(),
+                amountStats.max(),
                 transactionType,
                 pattern.type(),
                 pattern.value(),
@@ -119,17 +135,5 @@ public final class RecurringPatternDetector {
                 txIds,
                 confidence
         );
-    }
-
-    private static boolean hasConsistentAmounts(List<RecurringBudgetTransaction> txList) {
-        if (txList.size() < 2) {
-            return true;
-        }
-        List<Long> amounts = txList.stream().map(tx -> Math.abs((long) tx.amountCents)).collect(Collectors.toList());
-        long avg = amounts.stream().mapToLong(Long::longValue).sum() / amounts.size();
-        if (avg == 0) {
-            return false;
-        }
-        return amounts.stream().allMatch(amount -> Math.abs(amount - avg) <= avg * AMOUNT_VARIANCE_THRESHOLD);
     }
 }

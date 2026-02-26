@@ -31,8 +31,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     private static final int STREAK_COMMON_MAX = 3;
     private static final int STREAK_RARE_MAX = 7;
     private static final int STREAK_EPIC_MAX = 14;
-    private static final long CHECKBOX_SCALE_UP_DURATION_MS = 100L;
-    private static final long CHECKBOX_SCALE_DOWN_DURATION_MS = 100L;
+    private static final long CHECKBOX_SCALE_DURATION_MS = 100L;
     private static final long COMPLETION_FLASH_DURATION_MS = 300L;
 
     List<ViewSlot> viewSlots;
@@ -187,7 +186,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     }
 
     private void bindExpandToggle(TaskRowViewHolder holder, ViewSlot viewSlot) {
-        if (!manageMode || !viewSlot.hasChildren) {
+        if (!manageMode || !viewSlot.hasChildren()) {
             holder.expandToggle.setVisibility(View.GONE);
             holder.expandToggle.setOnClickListener(null);
             return;
@@ -195,7 +194,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
         holder.expandToggle.setVisibility(View.VISIBLE);
         boolean expanded = actions.isExpanded.apply(viewSlot);
-        holder.expandToggle.setText(expanded ? "▾" : "▸");
+        holder.expandToggle.setText(expanded ? R.string.task_row_toggle_expanded : R.string.task_row_toggle_collapsed);
         holder.expandToggle.setContentDescription(holder.itemView.getContext().getString(
                 expanded ? R.string.task_row_collapse_children : R.string.task_row_expand_children));
         holder.expandToggle.setOnClickListener(v -> actions.onToggleExpand.accept(viewSlot));
@@ -331,7 +330,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             if (shouldAnimateCompletion) {
                 animateCompletion(holder, item);
             }
-            holder.checkBox.setChecked(item.completed);
             actions.onCheck.accept(viewSlot);
         });
         holder.checkBox.setChecked(item.completed);
@@ -354,19 +352,20 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         boolean canDecrease = interactionsEnabled && current > 0;
         boolean canIncrease = interactionsEnabled && current < target;
 
-        holder.progressMinus.setEnabled(canDecrease);
-        holder.progressPlus.setEnabled(canIncrease);
-        holder.progressMinus.setAlpha(canDecrease ? 1.0f : 0.4f);
-        holder.progressPlus.setAlpha(canIncrease ? 1.0f : 0.4f);
-        holder.progressMinus.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(context,
-                canDecrease ? R.color.task_progress_button_tint : R.color.task_progress_button_tint_disabled)));
-        holder.progressPlus.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(context,
-                canIncrease ? R.color.task_progress_button_tint : R.color.task_progress_button_tint_disabled)));
+        applyProgressButtonState(context, holder.progressMinus, canDecrease);
+        applyProgressButtonState(context, holder.progressPlus, canIncrease);
         holder.progressText.setTextColor(ContextCompat.getColor(context,
                 interactionsEnabled ? R.color.task_progress_text : R.color.task_progress_text_disabled));
 
         holder.progressMinus.setOnClickListener(v -> actions.onProgressMinus.accept(viewSlot));
         holder.progressPlus.setOnClickListener(v -> actions.onProgressPlus.accept(viewSlot));
+    }
+
+    private void applyProgressButtonState(Context context, ImageButton button, boolean enabled) {
+        button.setEnabled(enabled);
+        button.setAlpha(enabled ? 1.0f : 0.4f);
+        button.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(context,
+                enabled ? R.color.task_progress_button_tint : R.color.task_progress_button_tint_disabled)));
     }
 
     private void bindTimerState(TaskRowViewHolder holder, TaskListItem item) {
@@ -425,11 +424,11 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.checkBox.animate()
                 .scaleX(1.3f)
                 .scaleY(1.3f)
-                .setDuration(CHECKBOX_SCALE_UP_DURATION_MS)
+                .setDuration(CHECKBOX_SCALE_DURATION_MS)
                 .withEndAction(() -> holder.checkBox.animate()
                         .scaleX(1f)
                         .scaleY(1f)
-                        .setDuration(CHECKBOX_SCALE_DOWN_DURATION_MS)
+                        .setDuration(CHECKBOX_SCALE_DURATION_MS)
                         .start())
                 .start();
 

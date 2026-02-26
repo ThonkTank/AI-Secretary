@@ -22,6 +22,10 @@ import java.util.Locale;
 
 public class BudgetRecurringSuggestionsDialogController {
 
+    private static final double HIGH_CONFIDENCE_THRESHOLD   = 0.7;
+    private static final double MEDIUM_CONFIDENCE_THRESHOLD = 0.5;
+
+
     public interface Listener {
         void onApplyRecurringSuggestions(List<RecurringSuggestion> suggestions);
     }
@@ -34,6 +38,17 @@ public class BudgetRecurringSuggestionsDialogController {
         this.listener = listener;
     }
 
+    /** Holds the view reference and selection state for a single suggestion row. */
+    private static class SuggestionRow {
+        final CheckBox checkbox;
+        boolean selected;
+
+        SuggestionRow(CheckBox checkbox) {
+            this.checkbox = checkbox;
+            this.selected = true;
+        }
+    }
+
     public void show(List<RecurringSuggestion> suggestions) {
         if (suggestions == null || suggestions.isEmpty()) {
             return;
@@ -44,27 +59,22 @@ public class BudgetRecurringSuggestionsDialogController {
         LinearLayout listContainer = dialogView.findViewById(R.id.BudgetRecurringSuggestionList);
         TextView selectionInfo = dialogView.findViewById(R.id.BudgetRecurringSelectionInfo);
 
-        boolean[] selections = new boolean[suggestions.size()];
-        for (int i = 0; i < selections.length; i++) {
-            selections[i] = true;
-        }
-
         LayoutInflater inflater = LayoutInflater.from(fragment.requireContext());
-        List<CheckBox> checkBoxes = new ArrayList<>();
+        List<SuggestionRow> rows = new ArrayList<>();
 
-        for (int i = 0; i < suggestions.size(); i++) {
-            RecurringSuggestion suggestion = suggestions.get(i);
-            View row = inflater.inflate(R.layout.budget_recurring_suggestion_item, listContainer, false);
+        for (RecurringSuggestion suggestion : suggestions) {
+            View rowView = inflater.inflate(R.layout.budget_recurring_suggestion_item, listContainer, false);
 
-            CheckBox checkbox = row.findViewById(R.id.BudgetSuggestionCheckbox);
-            TextView payee = row.findViewById(R.id.BudgetSuggestionPayee);
-            TextView pattern = row.findViewById(R.id.BudgetSuggestionPattern);
-            TextView count = row.findViewById(R.id.BudgetSuggestionCount);
-            TextView confidence = row.findViewById(R.id.BudgetSuggestionConfidence);
-            TextView amount = row.findViewById(R.id.BudgetSuggestionAmount);
+            CheckBox checkbox = rowView.findViewById(R.id.BudgetSuggestionCheckbox);
+            TextView payee = rowView.findViewById(R.id.BudgetSuggestionPayee);
+            TextView pattern = rowView.findViewById(R.id.BudgetSuggestionPattern);
+            TextView count = rowView.findViewById(R.id.BudgetSuggestionCount);
+            TextView confidence = rowView.findViewById(R.id.BudgetSuggestionConfidence);
+            TextView amount = rowView.findViewById(R.id.BudgetSuggestionAmount);
 
+            SuggestionRow row = new SuggestionRow(checkbox);
             checkbox.setChecked(true);
-            checkBoxes.add(checkbox);
+            rows.add(row);
 
             payee.setText(suggestion.displayPayee());
             pattern.setText(getPatternDescription(suggestion));
@@ -79,23 +89,23 @@ public class BudgetRecurringSuggestionsDialogController {
                     ? getColorFromResources(R.color.budget_positive)
                     : getColorFromResources(R.color.budget_negative));
 
-            if (suggestion.confidenceScore() >= 0.7) {
+            if (suggestion.confidenceScore() >= HIGH_CONFIDENCE_THRESHOLD) {
                 confidence.setTextColor(getColorFromResources(R.color.budget_positive));
-            } else if (suggestion.confidenceScore() >= 0.5) {
+            } else if (suggestion.confidenceScore() >= MEDIUM_CONFIDENCE_THRESHOLD) {
                 confidence.setTextColor(getColorFromResources(R.color.budget_warning));
             } else {
                 confidence.setTextColor(getColorFromResources(R.color.budget_neutral));
             }
 
-            listContainer.addView(row);
+            listContainer.addView(rowView);
         }
 
-        updateSelectionInfo(selectionInfo, selections);
+        updateSelectionInfo(selectionInfo, rows);
 
         AlertDialog dialog = new AlertDialog.Builder(fragment.requireContext())
                 .setTitle(R.string.budget_recurring_title)
                 .setView(dialogView)
-                .setPositiveButton(fragment.getString(R.string.budget_recurring_create, countSelected(selections)),
+                .setPositiveButton(fragment.getString(R.string.budget_recurring_create, countSelected(rows)),
                         null)
                 .setNegativeButton(R.string.budget_recurring_skip, null)
                 .create();
@@ -105,7 +115,7 @@ public class BudgetRecurringSuggestionsDialogController {
             createButton.setOnClickListener(v -> {
                 List<RecurringSuggestion> selected = new ArrayList<>();
                 for (int i = 0; i < suggestions.size(); i++) {
-                    if (selections[i]) {
+                    if (rows.get(i).selected) {
                         selected.add(suggestions.get(i));
                     }
                 }
@@ -115,14 +125,14 @@ public class BudgetRecurringSuggestionsDialogController {
                 dialog.dismiss();
             });
 
-            for (int i = 0; i < checkBoxes.size(); i++) {
-                int index = i;
-                View row = listContainer.getChildAt(i);
-                row.setOnClickListener(rv -> {
-                    selections[index] = !selections[index];
-                    checkBoxes.get(index).setChecked(selections[index]);
-                    updateSelectionInfo(selectionInfo, selections);
-                    updateCreateButton(createButton, selections);
+            for (int i = 0; i < rows.size(); i++) {
+                SuggestionRow row = rows.get(i);
+                View rowView = listContainer.getChildAt(i);
+                rowView.setOnClickListener(rv -> {
+                    row.selected = !row.selected;
+                    row.checkbox.setChecked(row.selected);
+                    updateSelectionInfo(selectionInfo, rows);
+                    updateCreateButton(createButton, rows);
                 });
             }
         });
@@ -130,21 +140,21 @@ public class BudgetRecurringSuggestionsDialogController {
         dialog.show();
     }
 
-    private void updateSelectionInfo(TextView info, boolean[] selections) {
+    private void updateSelectionInfo(TextView info, List<SuggestionRow> rows) {
         info.setText(fragment.getString(R.string.budget_recurring_selection_info,
-                countSelected(selections), selections.length));
+                countSelected(rows), rows.size()));
     }
 
-    private void updateCreateButton(Button button, boolean[] selections) {
-        int count = countSelected(selections);
+    private void updateCreateButton(Button button, List<SuggestionRow> rows) {
+        int count = countSelected(rows);
         button.setText(fragment.getString(R.string.budget_recurring_create, count));
         button.setEnabled(count > 0);
     }
 
-    private int countSelected(boolean[] selections) {
+    private int countSelected(List<SuggestionRow> rows) {
         int count = 0;
-        for (boolean sel : selections) {
-            if (sel) {
+        for (SuggestionRow row : rows) {
+            if (row.selected) {
                 count++;
             }
         }

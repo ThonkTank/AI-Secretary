@@ -21,6 +21,8 @@ import java.util.List;
  * Android-backed implementation of {@link TaskCalendarService}.
  */
 public class CalendarReader implements TaskCalendarService {
+    private static final String FALLBACK_TITLE = "Termin";
+
     private final Context context;
 
     public CalendarReader(Context context) {
@@ -38,7 +40,7 @@ public class CalendarReader implements TaskCalendarService {
 
         ZoneId zoneId = ZoneId.systemDefault();
         long dayStartMillis = day.atStartOfDay(zoneId).toInstant().toEpochMilli();
-        long dayEndMillis = day.atTime(23, 59, 59).atZone(zoneId).toInstant().toEpochMilli();
+        long dayEndMillis = day.atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli();
 
         Uri.Builder builder = CalendarContract.Instances.CONTENT_URI.buildUpon();
         ContentUris.appendId(builder, dayStartMillis);
@@ -65,11 +67,16 @@ public class CalendarReader implements TaskCalendarService {
         }
 
         try {
+            int titleCol  = cursor.getColumnIndexOrThrow(CalendarContract.Instances.TITLE);
+            int beginCol  = cursor.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN);
+            int endCol    = cursor.getColumnIndexOrThrow(CalendarContract.Instances.END);
+            int allDayCol = cursor.getColumnIndexOrThrow(CalendarContract.Instances.ALL_DAY);
+
             while (cursor.moveToNext()) {
-                String title = cursor.getString(0);
-                long beginMillis = cursor.getLong(1);
-                long endMillis = cursor.getLong(2);
-                boolean allDay = cursor.getInt(3) != 0;
+                String title = cursor.getString(titleCol);
+                long beginMillis = cursor.getLong(beginCol);
+                long endMillis = cursor.getLong(endCol);
+                boolean allDay = cursor.getInt(allDayCol) != 0;
 
                 if (allDay) {
                     continue;
@@ -91,7 +98,7 @@ public class CalendarReader implements TaskCalendarService {
                     eventEnd = scheduleEnd;
                 }
 
-                String safeTitle = (title == null || title.isBlank()) ? "Termin" : title;
+                String safeTitle = (title == null || title.isBlank()) ? FALLBACK_TITLE : title;
                 events.add(new TaskCalendarEvent(safeTitle, eventStart, eventEnd));
             }
         } finally {

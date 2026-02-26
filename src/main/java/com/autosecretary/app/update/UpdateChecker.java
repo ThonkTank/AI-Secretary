@@ -11,6 +11,8 @@ import android.os.Looper;
 
 import androidx.core.content.FileProvider;
 
+import com.autosecretary.R;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -19,7 +21,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class UpdateChecker {
 
@@ -37,10 +38,10 @@ public class UpdateChecker {
     private final Handler mainHandler;
     private final ExecutorService backgroundExecutor;
 
-    public UpdateChecker(Activity activity) {
+    public UpdateChecker(Activity activity, ExecutorService executor) {
         this.activity = activity;
         this.mainHandler = new Handler(Looper.getMainLooper());
-        this.backgroundExecutor = Executors.newSingleThreadExecutor();
+        this.backgroundExecutor = executor;
     }
 
     public void checkForUpdate() {
@@ -87,10 +88,10 @@ public class UpdateChecker {
         }
 
         new AlertDialog.Builder(activity)
-                .setTitle("Update verfügbar")
-                .setMessage("Version " + newVersion + " ist verfügbar. Jetzt herunterladen?")
-                .setPositiveButton("Update", (dialog, which) -> downloadAndInstall())
-                .setNegativeButton("Später", null)
+                .setTitle(R.string.update_available_title)
+                .setMessage(activity.getString(R.string.update_available_message, newVersion))
+                .setPositiveButton(R.string.update_action_install, (dialog, which) -> downloadAndInstall())
+                .setNegativeButton(R.string.update_action_later, null)
                 .show();
     }
 
@@ -153,11 +154,13 @@ public class UpdateChecker {
             return;
         }
 
-        String detail = error.getMessage() == null ? "Unbekannter Fehler" : error.getMessage();
+        String detail = error.getMessage() == null
+                ? activity.getString(R.string.update_download_failed_unknown)
+                : error.getMessage();
         new AlertDialog.Builder(activity)
-                .setTitle("Download fehlgeschlagen")
-                .setMessage("Das Update konnte nicht geladen oder installiert werden.\n\n" + detail)
-                .setPositiveButton("OK", null)
+                .setTitle(R.string.update_download_failed_title)
+                .setMessage(activity.getString(R.string.update_download_failed_message, detail))
+                .setPositiveButton(android.R.string.ok, null)
                 .show();
     }
 

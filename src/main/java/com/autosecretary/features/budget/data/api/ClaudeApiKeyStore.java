@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
+import android.util.Log;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -20,6 +21,7 @@ import javax.crypto.spec.GCMParameterSpec;
  * Verwaltet Claude API-Keys verschlüsselt via Android Keystore.
  */
 public class ClaudeApiKeyStore {
+    private static final String TAG = "ClaudeApiKeyStore";
     private static final String PREF_NAME = "budget_secure_settings";
     private static final String KEY_API_KEY = "claude_api_key_enc";
     private static final String KEY_IV = "claude_api_key_iv";
@@ -49,7 +51,7 @@ public class ClaudeApiKeyStore {
                     .putString(KEY_API_KEY, encryptedB64)
                     .putString(KEY_IV, ivB64)
                     .apply();
-        } catch (Exception e) {
+        } catch (GeneralSecurityException | IOException e) {
             throw new IllegalStateException("API-Key konnte nicht sicher gespeichert werden", e);
         }
     }
@@ -68,23 +70,20 @@ public class ClaudeApiKeyStore {
             cipher.init(Cipher.DECRYPT_MODE, getOrCreateSecretKey(), new GCMParameterSpec(128, iv));
             byte[] decrypted = cipher.doFinal(encrypted);
             return new String(decrypted, StandardCharsets.UTF_8);
-        } catch (Exception e) {
+        } catch (GeneralSecurityException e) {
+            // Key is permanently unreadable (e.g. after factory reset or key invalidation) — wipe.
+            Log.w(TAG, "API-Key-Entschlüsselung dauerhaft fehlgeschlagen, Schlüssel wird gelöscht", e);
             clearApiKey();
+            return null;
+        } catch (IOException e) {
+            // Keystore temporarily unavailable — do not wipe, just return null.
+            Log.w(TAG, "Android Keystore vorübergehend nicht verfügbar", e);
             return null;
         }
     }
 
-    public boolean hasApiKey() {
-        String key = getApiKey();
-        return key != null && !key.isBlank();
-    }
-
     public void clearApiKey() {
         preferences.edit().remove(KEY_API_KEY).remove(KEY_IV).apply();
-    }
-
-    public static boolean isValidFormat(String apiKey) {
-        return apiKey != null && apiKey.startsWith("sk-ant-") && apiKey.length() > 20;
     }
 
     private SecretKey getOrCreateSecretKey() throws GeneralSecurityException, IOException {

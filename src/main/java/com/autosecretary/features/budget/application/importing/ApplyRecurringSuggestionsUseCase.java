@@ -4,6 +4,7 @@ import com.autosecretary.features.budget.domain.BudgetImportRepository;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -35,11 +36,13 @@ public class ApplyRecurringSuggestionsUseCase {
                 }
 
                 if (!templateIds.isEmpty()) {
+                    repository.synchronizeRecurringTemplateState(LocalDate.now());
                     repository.notifyBudgetDataUpdated();
                 }
                 onCompleted.run();
             } catch (Exception e) {
-                onError.accept(e.getMessage());
+                String msg = e.getMessage();
+                onError.accept(msg != null ? msg : e.getClass().getSimpleName());
             }
         });
     }
@@ -65,10 +68,7 @@ public class ApplyRecurringSuggestionsUseCase {
                 return endOfMonth;
             }
             case WEEKLY -> {
-                LocalDate nextOccurrence = today;
-                while (nextOccurrence.getDayOfWeek() != suggestion.suggestedDayOfWeek()) {
-                    nextOccurrence = nextOccurrence.plusDays(1);
-                }
+                LocalDate nextOccurrence = today.with(TemporalAdjusters.nextOrSame(suggestion.suggestedDayOfWeek()));
                 if (!nextOccurrence.isAfter(today)) {
                     return nextOccurrence.plusWeeks(1);
                 }

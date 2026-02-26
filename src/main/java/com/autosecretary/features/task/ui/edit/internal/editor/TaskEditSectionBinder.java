@@ -26,6 +26,8 @@ import java.time.format.DateTimeFormatter;
 
 public class TaskEditSectionBinder {
 
+    private static final DateTimeFormatter DEADLINE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
     private final DialogFragment fragment;
     private final View rootView;
     private final TaskEditState editState;
@@ -51,13 +53,7 @@ public class TaskEditSectionBinder {
         titleView.setText(editState.title);
         descriptionView.setText(editState.description);
 
-        ArrayAdapter<Priority> adapter = new ArrayAdapter<>(
-            fragment.requireContext(),
-            android.R.layout.simple_spinner_item,
-            Priority.values()
-        );
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        priorityView.setAdapter(adapter);
+        bindEnumSpinner(priorityView, Priority.values());
         priorityView.setSelection(editState.priority.ordinal());
 
         return new BasicInfoViews(titleView, descriptionView, priorityView);
@@ -110,13 +106,7 @@ public class TaskEditSectionBinder {
         });
 
 
-        ArrayAdapter<TaskCore.SchedulingType> schedulingTypeAdapter = new ArrayAdapter<>(
-            fragment.requireContext(),
-            android.R.layout.simple_spinner_item,
-            TaskCore.SchedulingType.values()
-        );
-        schedulingTypeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        schedulingTypeView.setAdapter(schedulingTypeAdapter);
+        bindEnumSpinner(schedulingTypeView, TaskCore.SchedulingType.values());
         schedulingTypeView.setSelection((editState.schedulingType != null ? editState.schedulingType : TaskCore.SchedulingType.TASK).ordinal());
         fixedDateView.setText(editState.fixedDate != null ? editState.fixedDate.toString() : "");
         fixedStartView.setText(editState.fixedStart != null ? editState.fixedStart.toString() : "");
@@ -167,13 +157,7 @@ public class TaskEditSectionBinder {
         repsView.setText(String.valueOf(editState.reps > 0 ? editState.reps : 1));
         perPeriodView.setText(String.valueOf(editState.perPeriod > 0 ? editState.perPeriod : 1));
 
-        ArrayAdapter<Period> periodAdapter = new ArrayAdapter<>(
-            fragment.requireContext(),
-            android.R.layout.simple_spinner_item,
-            Period.values()
-        );
-        periodAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        periodUnitView.setAdapter(periodAdapter);
+        bindEnumSpinner(periodUnitView, Period.values());
         periodUnitView.setSelection((editState.periodUnit != null ? editState.periodUnit : Period.DAY).ordinal());
         completeFirstView.setChecked(editState.completeFirst);
 
@@ -246,15 +230,25 @@ public class TaskEditSectionBinder {
         return views;
     }
 
+    private <E> void bindEnumSpinner(Spinner spinner, E[] values) {
+        ArrayAdapter<E> adapter = new ArrayAdapter<>(
+            fragment.requireContext(),
+            android.R.layout.simple_spinner_item,
+            values
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+    }
+
     private void updateDeadlineDisplay(SchedulingViews views) {
         if (presenter.getEditableDeadline() != null) {
-            String deadlineText = presenter.getEditableDeadline().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+            String deadlineText = presenter.getEditableDeadline().format(DEADLINE_FORMATTER);
             views.deadlineView.setText(deadlineText);
             views.deadlineView.setContentDescription(
                 fragment.getString(R.string.task_edit_deadline_content_description, deadlineText)
             );
         } else {
-            String noDeadlineText = fragment.getString(R.string.task_edit_deadline_none);
+            String noDeadlineText = fragment.getString(R.string.task_editor_deadline_none);
             views.deadlineView.setText(noDeadlineText);
             views.deadlineView.setContentDescription(
                 fragment.getString(R.string.task_edit_deadline_content_description, noDeadlineText)

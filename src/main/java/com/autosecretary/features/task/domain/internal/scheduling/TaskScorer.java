@@ -36,10 +36,18 @@ final class TaskScorer {
     private static final double DEFAULT_MAX_AGING_MULTIPLIER = 3.0;
     /** Hours of deviation from preferred start at which the fit factor decays to 0.0. */
     private static final double DEFAULT_PREFERRED_START_DEVIATION_HOURS = 8.0;
+    /** Days between completions at which the aging multiplier increases by 1.0. */
+    private static final int AGING_SCALE_DAYS = 10;
     private static final double FOLLOW_UP_MULTIPLIER_PER_WEIGHT = 0.08;
     private static final double FOLLOW_UP_ADDITIVE_PER_WEIGHT = 120.0;
     private static final double FOLLOW_UP_MULTIPLIER_CAP = 1.6;
     private static final double FOLLOW_UP_ADDITIVE_CAP = 1800.0;
+    /** Urgency multiplier applied when a task's deadline has already passed. */
+    private static final double OVERDUE_URGENCY_FACTOR = 100.0;
+    /** Minimum spread factor — a task with zero day distance still receives this fraction of its score. */
+    private static final double SPREAD_FLOOR = 0.1;
+    /** Complementary spread range — fraction of score that scales linearly with day-distance ratio. */
+    private static final double SPREAD_RANGE = 0.9;
 
     private final TaskLifecycleManager lifecycleManager;
     private final double maxAgingMultiplier;
@@ -85,20 +93,6 @@ final class TaskScorer {
         for (TaskTransitionStat stat : stats) {
             transitionStats.computeIfAbsent(stat.fromTaskId, key -> new HashMap<>())
                     .put(stat.toTaskId, stat);
-        }
-    }
-
-    static final class SlotScanResult {
-        final int completions;
-        final LocalDate lastCompletion;
-        final int periodCompletions;
-        final int scheduledToday;
-
-        SlotScanResult(int completions, LocalDate lastCompletion, int periodCompletions, int scheduledToday) {
-            this.completions = completions;
-            this.lastCompletion = lastCompletion;
-            this.periodCompletions = periodCompletions;
-            this.scheduledToday = scheduledToday;
         }
     }
 
@@ -185,14 +179,14 @@ final class TaskScorer {
 
     void maintenance(Task task, LocalDate day, TaskPlanningState state) {
         advanceTaskPeriod(task, day);
-        SlotScanResult slotScanResult = scanSlots(task, day);
-        CompletionState completionState = computeCompletionState(task, slotScanResult);
+        CompletionState completionState = scanSlots(task, day);
+        syncPeriodCompletions(task, completionState);
         UrgencyState urgencyState = computeUrgencyState(task, day);
         PreferenceFitState preferenceFitState = computePreferenceFitState(task, day.getDayOfWeek());
         MultiDayStateSnapshot multiDayStateSnapshot = computeMultiDaySnapshot(task, state, day);
 
         int sinceLast = (int) ChronoUnit.DAYS.between(completionState.lastCompletion(), day);
-        double agingForce = Math.min(1 + ((double) sinceLast / 10), maxAgingMultiplier);
+        double agingForce = Math.min(1 + ((double) sinceLast / AGING_SCALE_DAYS), maxAgingMultiplier);
         int maxChildPriority = computeMaxChildPriority(task);
 
         TaskScoringSnapshot snapshot = new TaskScoringSnapshot(
@@ -212,7 +206,20 @@ final class TaskScorer {
         lifecycleManager.advancePeriods(task, day);
     }
 
-    private SlotScanResult scanSlots(Task task, LocalDate today) {
+    /**
+     * Writes the recomputed period-completion count back into the domain object so that
+     * {@link TaskLifecycleManager} reads the correct value on subsequent calls.
+     * {@link TaskLifecycleManager#advancePeriods} resets {@code periodCompletions} to 0;
+     * {@link #scanSlots} recomputes it from the slot list; this method commits the result.
+     */
+    private void syncPeriodCompletions(Task task, CompletionState completionState) {
+        TaskCore.Repetition rep = task.core.repetition;
+        if (rep != null && rep.reps > 0 && rep.periodUnit != null) {
+            rep.periodCompletions = completionState.periodCompletions();
+        }
+    }
+
+    private CompletionState scanSlots(Task task, LocalDate today) {
         int completions = 0;
         int scheduledToday = 0;
         LocalDate lastCompletion = task.core.created.minusDays(1);
@@ -237,31 +244,16 @@ final class TaskScorer {
             }
         }
 
-        return new SlotScanResult(completions, lastCompletion, periodCompletions, scheduledToday);
-    }
-
-    private CompletionState computeCompletionState(Task task, SlotScanResult slotScanResult) {
-        TaskCore.Repetition rep = task.core.repetition;
-        boolean isComplete;
-        if (rep != null && rep.reps > 0 && rep.periodUnit != null) {
-            rep.periodCompletions = slotScanResult.periodCompletions;
-            isComplete = slotScanResult.periodCompletions >= rep.reps;
-        } else {
-            isComplete = slotScanResult.completions > 0;
-        }
-        return new CompletionState(
-                slotScanResult.completions,
-                slotScanResult.lastCompletion,
-                slotScanResult.periodCompletions,
-                isComplete,
-                slotScanResult.scheduledToday
-        );
+        boolean isComplete = (rep != null && rep.reps > 0 && rep.periodUnit != null)
+                ? periodCompletions >= rep.reps
+                : completions > 0;
+        return new CompletionState(completions, lastCompletion, periodCompletions, isComplete, scheduledToday);
     }
 
     private int computeMaxChildPriority(Task task) {
         int maxChildPriority = 0;
         for (Task child : task.children) {
-            maxChildPriority = Math.max(maxChildPriority, child.core.priority.value);
+            maxChildPriority = Math.max(maxChildPriority, child.core.priority.scoringWeight);
         }
         return maxChildPriority;
     }
@@ -288,11 +280,14 @@ final class TaskScorer {
     /**
      * Scores a task for a candidate time slot. Returns 0 if the task cannot be scheduled.
      * <p>
+     * {@link #maintenance(Task, LocalDate, TaskPlanningState)} must be called for this task
+     * before invoking {@code score()}; an {@link IllegalStateException} is thrown otherwise.
+     * <p>
      * Layers applied in order, each multiplying the running total:
      * <ol>
      *   <li><b>Hard constraints</b> — returns 0 if cooldown unmet, slot too short, progress needs
      *       more time, deadline expired with closeOnMiss, already complete, or daily reps exhausted.</li>
-     *   <li><b>Priority base</b> — {@code task.core.priority.value} (LOW=100 .. CRITICAL=10000).</li>
+     *   <li><b>Priority base</b> — {@code task.core.priority.scoringWeight} (LOW=100 .. CRITICAL=10000).</li>
      *   <li><b>Child influence</b> — parent inherits the highest child priority when it exceeds its own.</li>
      *   <li><b>Day constraint</b> — returns 0 if prefSlots specify days but none match today.</li>
      *   <li><b>Preferred time fit</b> — linear decay from 1.0 at exact match to 0.0 at
@@ -304,8 +299,8 @@ final class TaskScorer {
     int score(Task task, LocalDateTime start, LocalDateTime end, String previousTaskId) {
         TaskScoringSnapshot snapshot = caches.get(task.core.id);
         if (snapshot == null) {
-            maintenance(task);
-            snapshot = caches.get(task.core.id);
+            throw new IllegalStateException(
+                    "maintenance() must be called before score() for task: " + task.core.id);
         }
 
         ScoringContext context = new ScoringContext(task, snapshot, start, end);
@@ -388,7 +383,7 @@ final class TaskScorer {
     }
 
     private int applyBasePriorityAndChildInfluence(ScoringContext context) {
-        return Math.max(context.task.core.priority.value, context.snapshot.maxChildPriority());
+        return Math.max(context.task.core.priority.scoringWeight, context.snapshot.maxChildPriority());
     }
 
     private UrgencyState computeUrgencyState(Task task, LocalDate day) {
@@ -413,7 +408,7 @@ final class TaskScorer {
     private int applyUrgencyMultiplier(int score, Task task, UrgencyState urgencyState) {
         double urgency;
         if (urgencyState.remainingDays() <= 0) {
-            urgency = 100;
+            urgency = OVERDUE_URGENCY_FACTOR;
         } else if (task.core.deadline != null || (task.core.repetition != null && task.core.repetition.reps > 0)) {
             urgency = 1.0 + urgencyState.requiredDays() / urgencyState.remainingDays();
         } else {
@@ -528,7 +523,7 @@ final class TaskScorer {
                 && multiDay.minDayDistance() < Integer.MAX_VALUE
                 && multiDay.minDayDistance() < multiDay.expectedDayGap()) {
             double ratio = multiDay.minDayDistance() / multiDay.expectedDayGap();
-            double spread = Math.min(1.0, 0.1 + ratio * 0.9);
+            double spread = Math.min(1.0, SPREAD_FLOOR + ratio * SPREAD_RANGE);
             adjustedScore = (int) (adjustedScore * spread);
         }
         return adjustedScore;

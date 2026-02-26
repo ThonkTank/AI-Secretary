@@ -33,25 +33,17 @@ public class MainActivity extends AppCompatActivity {
         MaterialToolbar toolbar = findViewById(R.id.MainToolbar);
         setSupportActionBar(toolbar);
 
-        settingsController = new SettingsController(this, this::reloadUiStateAfterDataReset);
+        settingsController = new SettingsController(this, this::reloadUiStateAfterDataReset,
+                AutoSecretaryApplication.from(this).getAppCompositionRoot().getSharedExecutor());
 
         BottomNavigationView tabBar = findViewById(R.id.TabBar);
 
         if (savedInstanceState == null) {
-            if (shouldOpenBudgetFromIntent()) {
-                boolean openAddDialog = BudgetWidgetProvider.ACTION_ADD_TRANSACTION.equals(
-                        getIntent().getStringExtra(BudgetWidgetProvider.EXTRA_BUDGET_ACTION)
-                );
-                showBudgetFragment(openAddDialog);
-                tabBar.setSelectedItemId(R.id.tab_manage);
-            } else {
-                showTaskFragment(shouldOpenTaskCreateFromIntent(getIntent()));
-                tabBar.setSelectedItemId(R.id.tab_schedule);
-            }
+            navigateToIntentTarget(getIntent(), tabBar);
         }
 
         tabBar.setOnItemSelectedListener(item -> {
-            if (item.getItemId() == R.id.tab_manage) {
+            if (item.getItemId() == R.id.nav_budget) {
                 showBudgetFragment(false);
             } else {
                 showTaskFragment();
@@ -67,7 +59,9 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         updateCheckStarted = true;
-        new UpdateChecker(this).checkForUpdate();
+        new UpdateChecker(this,
+                AutoSecretaryApplication.from(this).getAppCompositionRoot().getSharedExecutor())
+                .checkForUpdate();
     }
 
     @Override
@@ -133,17 +127,19 @@ public class MainActivity extends AppCompatActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        BottomNavigationView tabBar = findViewById(R.id.TabBar);
+        navigateToIntentTarget(intent, tabBar);
+    }
+
+    private void navigateToIntentTarget(Intent intent, BottomNavigationView tabBar) {
         if (shouldOpenBudgetFromIntent()) {
-            showBudgetFragment(BudgetWidgetProvider.ACTION_ADD_TRANSACTION.equals(
-                    getIntent().getStringExtra(BudgetWidgetProvider.EXTRA_BUDGET_ACTION)));
-            BottomNavigationView tabBar = findViewById(R.id.TabBar);
-            tabBar.setSelectedItemId(R.id.tab_manage);
-            return;
-        }
-        if (shouldOpenTaskCreateFromIntent(intent)) {
-            showTaskFragment(true);
-            BottomNavigationView tabBar = findViewById(R.id.TabBar);
-            tabBar.setSelectedItemId(R.id.tab_schedule);
+            boolean openAddDialog = BudgetWidgetProvider.ACTION_ADD_TRANSACTION.equals(
+                    intent.getStringExtra(BudgetWidgetProvider.EXTRA_BUDGET_ACTION));
+            showBudgetFragment(openAddDialog);
+            tabBar.setSelectedItemId(R.id.nav_budget);
+        } else {
+            showTaskFragment(shouldOpenTaskCreateFromIntent(intent));
+            tabBar.setSelectedItemId(R.id.nav_schedule);
         }
     }
 

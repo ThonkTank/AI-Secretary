@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Groups transactions by payee using fuzzy (Levenshtein-based) string matching.
@@ -21,7 +22,11 @@ import java.util.Set;
  * maxLength)}, so identical strings score 1.0 and completely different strings score 0.0.
  */
 public final class PayeeGrouper {
-    static final double PAYEE_SIMILARITY_THRESHOLD = 0.75;
+    private static final double PAYEE_SIMILARITY_THRESHOLD = 0.75;
+
+    private static final Pattern DIGITS_AND_SPECIAL = Pattern.compile("[0-9#*]+");
+    private static final Pattern NON_LETTER_CHARS = Pattern.compile("[^A-ZÄÖÜ\\s]");
+    private static final Pattern MULTI_WHITESPACE = Pattern.compile("\\s+");
 
     private PayeeGrouper() {
     }
@@ -52,12 +57,10 @@ public final class PayeeGrouper {
         if (payee == null) {
             return "";
         }
-        return payee
-                .toUpperCase()
-                .replaceAll("[0-9#*]+", "")
-                .replaceAll("[^A-ZÄÖÜ\\s]", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
+        String upper = payee.toUpperCase();
+        String noDigits = DIGITS_AND_SPECIAL.matcher(upper).replaceAll("");
+        String lettersOnly = NON_LETTER_CHARS.matcher(noDigits).replaceAll(" ");
+        return MULTI_WHITESPACE.matcher(lettersOnly).replaceAll(" ").trim();
     }
 
     public static double payeeSimilarity(String a, String b) {

@@ -36,7 +36,7 @@ public class ShoppingListItemRowMapper implements RowMapper<ShoppingListItem> {
         item.unit = (String) row.get("unit");
         item.foodGroupLabel = (String) row.get("foodGroupLabel");
         item.suggestedStore = (String) row.get("suggestedStore");
-        item.isPurchased = Boolean.TRUE.equals(MapperSupport.asBoolean(row.get("isPurchased")));
+        item.isPurchased = MapperSupport.asBoolean(row.get("isPurchased"));
         item.periodKey = (String) row.get("periodKey");
         item.estimatedPriceCents = MapperSupport.asInt(row.get("estimatedPriceCents"));
         return item;

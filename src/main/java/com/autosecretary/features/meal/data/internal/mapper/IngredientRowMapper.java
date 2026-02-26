@@ -12,7 +12,7 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
         Map<String, Object> row = new HashMap<>();
         row.put("id", ingredient.id);
         row.put("name", ingredient.name);
-        row.put("foodGroup", ingredient.foodGroup);
+        row.put("foodGroup", ingredient.foodGroup == null ? null : ingredient.foodGroup.name());
         row.put("defaultUnit", ingredient.defaultUnit);
         row.put("gramsPerUnit", ingredient.gramsPerUnit);
         row.put("caloriesPer100", ingredient.caloriesPer100);
@@ -34,7 +34,7 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
         Ingredient ingredient = new Ingredient();
         ingredient.id = MapperSupport.asNullableLong(row.get("id"));
         ingredient.name = (String) row.get("name");
-        ingredient.foodGroup = (Ingredient.FoodGroup) row.get("foodGroup");
+        ingredient.foodGroup = MapperSupport.asEnum(Ingredient.FoodGroup.class, row.get("foodGroup"), null);
         ingredient.defaultUnit = (String) row.get("defaultUnit");
         ingredient.gramsPerUnit = MapperSupport.asInt(row.get("gramsPerUnit"));
         ingredient.caloriesPer100 = MapperSupport.asInt(row.get("caloriesPer100"));
@@ -43,9 +43,9 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
         ingredient.fatPer100 = MapperSupport.asInt(row.get("fatPer100"));
         ingredient.fiberPer100 = MapperSupport.asInt(row.get("fiberPer100"));
         ingredient.shelfLifeDays = MapperSupport.asInt(row.get("shelfLifeDays"));
-        ingredient.requiresRefrigeration = Boolean.TRUE.equals(MapperSupport.asBoolean(row.get("requiresRefrigeration")));
-        ingredient.isWholeUnit = Boolean.TRUE.equals(MapperSupport.asBoolean(row.get("isWholeUnit")));
-        ingredient.isPerishable = Boolean.TRUE.equals(MapperSupport.asBoolean(row.get("isPerishable")));
+        ingredient.requiresRefrigeration = MapperSupport.asBoolean(row.get("requiresRefrigeration"));
+        ingredient.isWholeUnit = MapperSupport.asBoolean(row.get("isWholeUnit"));
+        ingredient.isPerishable = MapperSupport.asBoolean(row.get("isPerishable"));
         ingredient.storePackages = (java.util.List<Ingredient.StorePackage>) row.getOrDefault("storePackages", new ArrayList<>());
         return ingredient;
     }

@@ -7,6 +7,6 @@ import com.autosecretary.features.meal.domain.HouseholdMember;
 
 public class HouseholdMemberDao extends BaseCollectionDao<HouseholdMember> {
     public HouseholdMemberDao(MealStorage storage) {
-        super(MealCollections.HOUSEHOLD_MEMBERS, storage, new HouseholdMemberRowMapper(), member -> member.id);
+        super(MealCollections.HOUSEHOLD_MEMBERS, storage, new HouseholdMemberRowMapper(), member -> member.id, (member, id) -> member.id = id);
     }
 }

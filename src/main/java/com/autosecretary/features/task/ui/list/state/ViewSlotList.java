@@ -11,7 +11,17 @@ import com.autosecretary.util.TreeBuilder;
 
 public class ViewSlotList {
     private List<ViewSlot> viewSlots = new ArrayList<>();
-    public List<ViewSlot> displaySlots = new ArrayList<>();
+    private List<ViewSlot> displaySlots = new ArrayList<>();
+
+    public List<ViewSlot> getDisplaySlots() {
+        return displaySlots;
+    }
+
+    public void appendToDisplay(List<ViewSlot> extra) {
+        List<ViewSlot> merged = new ArrayList<>(displaySlots);
+        merged.addAll(extra);
+        displaySlots = merged;
+    }
 
     private static final TreeBuilder<ViewSlot> TREE_BY_TASK = new TreeBuilder<>(
             vs -> vs.item.taskId,
@@ -34,12 +44,15 @@ public class ViewSlotList {
     public static class ViewSlot {
         public final TaskListItem item;
         public int depth;
-        public boolean hasChildren;
 
         private List<ViewSlot> children = new ArrayList<>();
 
         public ViewSlot(TaskListItem item) {
             this.item = item;
+        }
+
+        public boolean hasChildren() {
+            return !children.isEmpty();
         }
     }
 
@@ -57,10 +70,6 @@ public class ViewSlotList {
                 displaySlots.add(vs);
             }
         }
-    }
-
-    public void sortByTask(Comparator<ViewSlot> comparator) {
-        sortByTask(comparator, slot -> true);
     }
 
     public void sortByTask(Comparator<ViewSlot> comparator, Predicate<ViewSlot> isExpanded) {
@@ -88,9 +97,8 @@ public class ViewSlotList {
                                   List<ViewSlot> target) {
         for (ViewSlot slot : source) {
             slot.depth = depth;
-            slot.hasChildren = !slot.children.isEmpty();
             target.add(slot);
-            if (slot.hasChildren && isExpanded.test(slot)) {
+            if (slot.hasChildren() && isExpanded.test(slot)) {
                 flattenWithDepth(slot.children, depth + 1, isExpanded, target);
             }
         }

@@ -33,12 +33,15 @@ public class CreatePantryItemUseCase {
     public PantryItem execute(long ingredientId, double amount, LocalDate purchaseDate) {
         Ingredient ingredient = recipeRepository.findIngredientById(ingredientId);
         if (ingredient == null) {
-            return null;
+            throw new IllegalArgumentException("Ingredient not found: id=" + ingredientId);
         }
 
+        if (ingredient.id == null) {
+            throw new IllegalStateException("Ingredient found by id=" + ingredientId + " has null id");
+        }
         LocalDate safePurchaseDate = purchaseDate == null ? LocalDate.now() : purchaseDate;
         PantryItem pantryItem = new PantryItem.Builder(
-                ingredient.id == null ? 0L : ingredient.id,
+                ingredient.id,
                 ingredient.name,
                 amount,
                 ingredient.defaultUnit

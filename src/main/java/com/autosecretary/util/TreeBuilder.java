@@ -89,25 +89,6 @@ public class TreeBuilder<T> {
         }
     }
 
-    public List<T> flattenWithDepth(List<T> roots, BiConsumer<T, Integer> depthSetter) {
-        Set<T> visited = new HashSet<>();
-        List<T> result = new ArrayList<>();
-        flattenWithDepthRecurse(roots, result, visited, 0, depthSetter);
-        return result;
-    }
-
-    private void flattenWithDepthRecurse(
-            List<T> nodes, List<T> result, Set<T> visited,
-            int depth, BiConsumer<T, Integer> depthSetter) {
-        for (T node : nodes) {
-            depthSetter.accept(node, depth);
-            if (!visited.add(node)) continue;
-            result.add(node);
-            flattenWithDepthRecurse(getChildren.apply(node), result, visited,
-                    depth + 1, depthSetter);
-        }
-    }
-
     public void sortTree(List<T> roots, Comparator<T> comparator) {
         if (roots.isEmpty()) return;
         roots.sort(comparator);

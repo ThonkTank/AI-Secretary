@@ -1,6 +1,7 @@
 package com.autosecretary.features.budget.data.entity;
 
 import androidx.annotation.NonNull;
+import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
@@ -74,11 +75,17 @@ public class BudgetTransactionEntity {
     public String templateId;
 
     @NonNull
-    public TransactionDirection type = TransactionDirection.EXPENSE;
+    @ColumnInfo(name = "type")
+    public TransactionDirection direction = TransactionDirection.EXPENSE;
 
     @NonNull
     public TransactionKind transactionKind = TransactionKind.STANDARD;
 
+    /**
+     * References the paired transaction in a transfer relationship (when {@code transactionKind = INTERNAL_TRANSFER}).
+     * Invariant: {@code linkedTransactionId} must never equal {@code id} (self-reference is forbidden).
+     * This is enforced at the application level; the database FK does not prevent it.
+     */
     public String linkedTransactionId;
 
     public long amountCents;
@@ -102,11 +109,11 @@ public class BudgetTransactionEntity {
     public String importId;
 
     public BudgetTransactionEntity(@NonNull String accountId, String categoryId,
-                                   @NonNull TransactionDirection type, long amountCents,
+                                   @NonNull TransactionDirection direction, long amountCents,
                                    @NonNull LocalDate bookingDate) {
         this.accountId = accountId;
         this.categoryId = categoryId;
-        this.type = type;
+        this.direction = direction;
         this.amountCents = amountCents;
         setBookingDate(bookingDate);
     }

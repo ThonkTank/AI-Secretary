@@ -36,6 +36,12 @@ public final class SuggestionScorer {
     // Known-subscription match is a weaker tie-breaker, not a primary signal.
     private static final double KNOWN_SUBSCRIPTION_WEIGHT = 0.1;
 
+    /**
+     * Scores at or above this threshold are considered high-confidence and suitable for
+     * auto-applying a recurring template without user confirmation.
+     */
+    public static final double AUTO_APPLY_THRESHOLD = 0.7;
+
     private static final String[] KNOWN_SUBSCRIPTION_PATTERNS = {
             "NETFLIX", "SPOTIFY", "AMAZON PRIME", "DISNEY", "APPLE",
             "GOOGLE", "MICROSOFT", "ADOBE", "DROPBOX", "ZOOM",
@@ -50,19 +56,21 @@ public final class SuggestionScorer {
                                              DatePatternDetector.PatternResult pattern,
                                              long avgAmount,
                                              long minAmount,
-                                             long maxAmount) {
+                                             long maxAmount,
+                                             String normalizedPayee) {
         double score = 0;
-        score += Math.min(txList.size() / OCCURRENCE_CAP, OCCURRENCE_WEIGHT);
+        score += Math.min((txList.size() / OCCURRENCE_CAP) * OCCURRENCE_WEIGHT, OCCURRENCE_WEIGHT);
 
         if (avgAmount != 0) {
             double variance = Math.abs(maxAmount - minAmount) / (double) Math.abs(avgAmount);
             score += Math.max(AMOUNT_VARIANCE_WEIGHT - variance, 0);
         }
 
-        score += PATTERN_TYPE_BONUS;
+        if (pattern != null) {
+            score += PATTERN_TYPE_BONUS;
+        }
 
-        String normalized = txList.get(0).payee != null ? PayeeGrouper.normalizePayee(txList.get(0).payee) : "";
-        if (isKnownSubscription(normalized)) {
+        if (isKnownSubscription(normalizedPayee)) {
             score += KNOWN_SUBSCRIPTION_WEIGHT;
         }
 

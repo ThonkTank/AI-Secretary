@@ -1,14 +1,14 @@
 package com.autosecretary.features.budget.ui.internal;
 
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import com.autosecretary.features.budget.domain.timeline.AccountBalanceTimelineService;
 import com.autosecretary.features.budget.domain.timeline.BalanceTimelinePoint;
 import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
 import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
-import com.autosecretary.features.budget.ui.TimeRangeFilter;
+import com.autosecretary.features.budget.ui.state.TimeRangeFilter;
 import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
 import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
 import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
@@ -113,12 +113,10 @@ public class BudgetOverviewLoader {
     private List<BudgetTransactionRow> buildTransactionRows(List<MonthlyOverviewItem> items) {
         List<BudgetTransactionRow> rows = new ArrayList<>();
         for (MonthlyOverviewItem item : items) {
-            boolean isExpense = "EXPENSE".equals(item.type);
             rows.add(new BudgetTransactionRow(
                     item.transactionId,
                     buildTransactionLabel(item),
-                    formatTransactionAmount(item.amountCents, isExpense),
-                    isExpense,
+                    item.direction,
                     item.categoryColorHex,
                     item.amountCents,
                     item.categoryId,
@@ -138,27 +136,16 @@ public class BudgetOverviewLoader {
     }
 
     private String buildTransactionLabel(MonthlyOverviewItem item) {
-        if ("INTERNAL_TRANSFER".equals(item.transactionKind)) {
+        if (item.transactionKind == BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER) {
             return item.note != null && !item.note.isBlank() ? "Überweisung · " + item.note : "Überweisung";
         }
         if (item.categoryName != null) {
-            String icon = item.categoryIcon != null && !item.categoryIcon.trim().isEmpty()
-                    ? item.categoryIcon : BudgetCategory.DEFAULT_ICON;
-            return icon + " " + item.categoryName;
+            return BudgetSummaryPresentationMapper.categoryLabel(item.categoryIcon, item.categoryName);
         }
         if (item.note != null) {
             return item.note;
         }
         return "Buchung";
-    }
-
-    private String formatTransactionAmount(long amountCents, boolean isExpense) {
-        return String.format(
-                Locale.GERMAN,
-                "%s%.2f €",
-                isExpense ? "-" : "+",
-                amountCents / 100.0
-        );
     }
 
     private List<BudgetChartPoint> loadBalanceChartData(String accountId, TimeRangeFilter filter) {
@@ -174,15 +161,15 @@ public class BudgetOverviewLoader {
                     repository.getDailyDeltasForAccount(accountId, fromDate, now);
             series = AccountBalanceTimelineService.reconstructDaily(fromDate, now, startBalance, deltas);
         } else {
-            int months = resolvedFilter == TimeRangeFilter.MONTHS_3 ? 3 : 12;
+            int months = resolvedFilter.months;
             YearMonth toMonth = YearMonth.from(now);
             YearMonth fromMonth = toMonth.minusMonths(months - 1L);
             LocalDate startDate = fromMonth.atDay(1);
             long startBalance = repository.getNetAmountBeforeDateForAccount(accountId, startDate);
             List<MonthlyDeltaPoint> deltas = repository.getMonthlyDeltasForAccount(
                     accountId,
-                    fromMonth.toString(),
-                    toMonth.toString()
+                    fromMonth,
+                    toMonth
             );
             series = AccountBalanceTimelineService.reconstructMonthly(fromMonth, toMonth, startBalance, deltas);
         }

@@ -33,7 +33,7 @@ public class WeeklyFoodTargetService {
 
         for (Ingredient.FoodGroup group : Ingredient.FoodGroup.values()) {
             int grams = (int) (group.weeklyGramsPerAdult * totalFactor);
-            WeeklyFoodTarget.setTargetFor(target, group, grams);
+            target.setTargetFor(group, grams);
         }
         return target;
     }

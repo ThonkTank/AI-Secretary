@@ -18,8 +18,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_marginTop="8dp"
-        android:padding="8dp"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:padding="@dimen/spacing_sm"
         android:background="@drawable/bg_surface_card">
 
         <TextView
@@ -34,7 +34,7 @@
             android:id="@+id/budget_widget_total_value"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="0,00 €"
+            android:text=""
             android:textColor="@android:color/black"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -42,7 +42,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/spacing_sm"
             android:text="@string/budget_widget_free_label"
             android:textStyle="bold"
             android:textColor="@android:color/black"
@@ -52,7 +52,7 @@
             android:id="@+id/budget_widget_free_value"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="0,00 €"
+            android:text=""
             android:textColor="@android:color/black"
             android:textSize="16sp" />
     </LinearLayout>
@@ -61,7 +61,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="8dp">
+        android:layout_marginTop="@dimen/spacing_sm">
 
         <Button
             android:id="@+id/budget_widget_open_button"
@@ -75,7 +75,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="@dimen/spacing_xs"
             android:text="@string/budget_widget_add" />
     </LinearLayout>
 

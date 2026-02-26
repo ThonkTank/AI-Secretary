@@ -31,6 +31,23 @@ import java.util.stream.Collectors;
 public final class DatePatternDetector {
     private static final int WEEKLY_INTERVAL_MIN_DAYS = 5;
     private static final int WEEKLY_INTERVAL_MAX_DAYS = 9;
+    /** Minimum fraction of transactions that must fall on the dominant day of week to qualify as WEEKLY. */
+    private static final double WEEKLY_DAY_MATCH_RATIO = 0.8;
+
+    /** ±N day tolerance when matching a transaction's day-of-month to the dominant day. */
+    private static final int MONTHLY_DAY_TOLERANCE = 2;
+    /** Day-of-month threshold above which a date is considered "near month end" for wrap-around detection. */
+    private static final int MONTHLY_END_WRAP_THRESHOLD = 28;
+    /** Day-of-month threshold below which a date is considered "early in month" for wrap-around detection. */
+    private static final int MONTHLY_EARLY_WRAP_THRESHOLD = 3;
+    /** Transactions within the last N days of their month qualify as MONTHLY_LAST. */
+    private static final int MONTHLY_LAST_TAIL_DAYS = 3;
+    /** Minimum average interval (days) to be classified as a fixed INTERVAL pattern. */
+    private static final int INTERVAL_MIN_DAYS = 3;
+    /** Relative tolerance: an interval gap may deviate by up to this fraction of the average. */
+    private static final double INTERVAL_RELATIVE_TOLERANCE = 0.2;
+    /** Absolute tolerance: an interval gap may deviate by up to this many days regardless of average. */
+    private static final long INTERVAL_ABSOLUTE_TOLERANCE_DAYS = 2L;
 
     private DatePatternDetector() {
     }
@@ -67,9 +84,9 @@ public final class DatePatternDetector {
         int dominantDay = mode(daysOfMonth);
 
         boolean allMatch = daysOfMonth.stream()
-                .allMatch(d -> Math.abs(d - dominantDay) <= 2
-                        || (dominantDay >= 28 && d <= 3)
-                        || (d >= 28 && dominantDay <= 3));
+                .allMatch(d -> Math.abs(d - dominantDay) <= MONTHLY_DAY_TOLERANCE
+                        || (dominantDay >= MONTHLY_END_WRAP_THRESHOLD && d <= MONTHLY_EARLY_WRAP_THRESHOLD)
+                        || (d >= MONTHLY_END_WRAP_THRESHOLD && dominantDay <= MONTHLY_EARLY_WRAP_THRESHOLD));
 
         if (allMatch) {
             return new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_DAY, dominantDay, null);
@@ -80,7 +97,7 @@ public final class DatePatternDetector {
     static PatternResult checkMonthlyLast(List<LocalDate> dates) {
         boolean allLastDays = dates.stream().allMatch(date -> {
             int lastDay = date.lengthOfMonth();
-            return date.getDayOfMonth() >= lastDay - 2;
+            return date.getDayOfMonth() > lastDay - MONTHLY_LAST_TAIL_DAYS;
         });
         if (allLastDays) {
             return new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_LAST, 0, null);
@@ -98,7 +115,7 @@ public final class DatePatternDetector {
                 .orElse(null);
 
         long modeCount = counts.getOrDefault(dominantWeekday, 0L);
-        if (modeCount >= dates.size() * 0.8) {
+        if (modeCount >= dates.size() * WEEKLY_DAY_MATCH_RATIO) {
             List<Long> intervals = calculateIntervals(dates);
             double avgInterval = intervals.stream().mapToLong(Long::longValue).average().orElse(0);
             if (avgInterval >= minDays && avgInterval <= maxDays) {
@@ -116,9 +133,9 @@ public final class DatePatternDetector {
 
         double avgInterval = intervals.stream().mapToLong(Long::longValue).average().orElse(0);
         boolean consistent = intervals.stream()
-                .allMatch(i -> Math.abs(i - avgInterval) <= avgInterval * 0.2 + 2);
+                .allMatch(i -> Math.abs(i - avgInterval) <= avgInterval * INTERVAL_RELATIVE_TOLERANCE + INTERVAL_ABSOLUTE_TOLERANCE_DAYS);
 
-        if (consistent && avgInterval >= 3) {
+        if (consistent && avgInterval >= INTERVAL_MIN_DAYS) {
             return new PatternResult(RecurringBudgetTransaction.RecurringType.INTERVAL,
                     (int) Math.round(avgInterval), null);
         }
@@ -136,7 +153,7 @@ public final class DatePatternDetector {
     static int mode(List<Integer> values) {
         Map<Integer, Long> counts = values.stream().collect(Collectors.groupingBy(v -> v, Collectors.counting()));
         return counts.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
-                .orElse(values.get(0));
+                .orElseThrow(() -> new IllegalStateException("mode() called on empty list"));
     }
 
     /**

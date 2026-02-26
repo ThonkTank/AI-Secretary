@@ -106,8 +106,8 @@ public class StatementFileParser {
     }
 
     boolean accepts(String fileName, String mimeType) {
-        String lowerName = fileName == null ? "" : fileName.toLowerCase();
-        String lowerMime = mimeType == null ? "" : mimeType.toLowerCase();
+        String lowerName = normalise(fileName);
+        String lowerMime = normalise(mimeType);
         return lowerName.endsWith(".csv")
                 || "text/csv".equals(lowerMime)
                 || "application/vnd.ms-excel".equals(lowerMime)
@@ -115,12 +115,14 @@ public class StatementFileParser {
     }
 
     private boolean isPdf(String fileName, String mimeType) {
-        String lowerName = fileName == null ? "" : fileName.toLowerCase();
-        String lowerMime = mimeType == null ? "" : mimeType.toLowerCase();
-        return lowerName.endsWith(".pdf") || "application/pdf".equals(lowerMime);
+        return normalise(fileName).endsWith(".pdf") || "application/pdf".equals(normalise(mimeType));
     }
 
-    private String emptyToNull(String value) {
+    private static String normalise(String s) {
+        return s == null ? "" : s.toLowerCase();
+    }
+
+    static String emptyToNull(String value) {
         String trimmed = value == null ? "" : value.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }

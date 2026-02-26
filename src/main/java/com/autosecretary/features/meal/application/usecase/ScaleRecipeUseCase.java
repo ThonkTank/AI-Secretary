@@ -24,6 +24,9 @@ public class ScaleRecipeUseCase {
 
     public RecipeScalingService.ScalingResult execute(long recipeId, double requestedServings) {
         Recipe recipe = recipeRepository.findRecipeById(recipeId);
+        if (recipe == null) {
+            throw new IllegalArgumentException("Recipe not found: id=" + recipeId);
+        }
         return recipeScalingService.scaleRecipe(recipe, requestedServings);
     }
 }

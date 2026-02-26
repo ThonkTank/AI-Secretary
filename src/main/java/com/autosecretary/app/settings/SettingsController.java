@@ -2,6 +2,8 @@ package com.autosecretary.app.settings;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -14,19 +16,25 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class SettingsController {
+
+    private static final int OPTION_RESTORE_BACKUP = 0;
+    private static final int OPTION_MANUAL_BACKUP = 1;
+    private static final int OPTION_FACTORY_RESET = 2;
+    private static final int OPTION_ABOUT = 3;
 
     private final Context context;
     private final SettingsDataService settingsDataService;
     private final ExecutorService executorService;
     private final Runnable onDataChanged;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    public SettingsController(@NonNull Context context, @NonNull Runnable onDataChanged) {
+    public SettingsController(@NonNull Context context, @NonNull Runnable onDataChanged,
+                              @NonNull ExecutorService executorService) {
         this.context = context;
         this.settingsDataService = new SettingsDataService(context);
-        this.executorService = Executors.newSingleThreadExecutor();
+        this.executorService = executorService;
         this.onDataChanged = onDataChanged;
     }
 
@@ -41,13 +49,13 @@ public class SettingsController {
         new AlertDialog.Builder(context)
                 .setTitle(R.string.settings_title)
                 .setItems(options, (dialog, which) -> {
-                    if (which == 0) {
+                    if (which == OPTION_RESTORE_BACKUP) {
                         showBackupRestoreDialog();
-                    } else if (which == 1) {
+                    } else if (which == OPTION_MANUAL_BACKUP) {
                         createManualBackup();
-                    } else if (which == 2) {
+                    } else if (which == OPTION_FACTORY_RESET) {
                         confirmFactoryReset();
-                    } else {
+                    } else if (which == OPTION_ABOUT) {
                         showAboutDialog();
                     }
                 })
@@ -146,8 +154,6 @@ public class SettingsController {
     }
 
     private void runOnUiThread(@NonNull Runnable runnable) {
-        if (context instanceof android.app.Activity) {
-            ((android.app.Activity) context).runOnUiThread(runnable);
-        }
+        mainHandler.post(runnable);
     }
 }

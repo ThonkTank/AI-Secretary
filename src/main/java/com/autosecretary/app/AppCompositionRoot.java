@@ -8,6 +8,7 @@ import android.util.Log;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
+import com.autosecretary.features.budget.application.importing.BudgetTransactionMapper;
 import com.autosecretary.features.budget.data.api.ClaudeApiKeyStore;
 import com.autosecretary.features.budget.application.importing.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
@@ -48,6 +49,10 @@ public class AppCompositionRoot {
     private RegenerateScheduleUseCase regenerateScheduleUseCase;
     private BudgetViewModelFactory budgetViewModelFactory;
     private TaskScheduleConfigService taskScheduleConfigService;
+    private TaskDAO taskDAO;
+    private BudgetRoomRepository budgetRoomRepository;
+    private TaskCompletionService taskCompletionService;
+    private TaskLifecycleManager taskLifecycleManager;
 
     public AppCompositionRoot(Application app) {
         this.app = app;
@@ -60,6 +65,10 @@ public class AppCompositionRoot {
         });
     }
 
+    public ExecutorService getSharedExecutor() {
+        return taskUseCaseExecutor;
+    }
+
     public TaskViewModelFactory createTaskViewModelFactory() {
         if (taskViewModelFactory != null) {
             return taskViewModelFactory;
@@ -69,14 +78,11 @@ public class AppCompositionRoot {
         TaskDAO taskDao = db.taskDao();
         Handler mainHandler = new Handler(Looper.getMainLooper());
 
-        TaskLifecycleManager lifecycleManager = new TaskLifecycleManager();
-        TaskCompletionService completionService = new TaskCompletionService();
-
         TaskScheduleConfigRepository scheduleConfigRepository =
                 new TaskScheduleConfigRepository(db.taskScheduleConfigDao());
 
         TaskSlotGenerator generator = new DefaultTaskSlotGenerator(
-                lifecycleManager,
+                getTaskLifecycleManager(),
                 message -> Log.d("SlotGen", message),
                 scheduleConfigRepository,
                 new DeviceCalendarBlockedIntervalProvider(app),
@@ -92,14 +98,8 @@ public class AppCompositionRoot {
                 taskUseCaseExecutor,
                 mainHandler::post
         );
-        BudgetRoomRepository budgetRepository = new BudgetRoomRepository(
-                db.budgetLookupDao(),
-                db.transactionDao(),
-                db.budgetLimitDao(),
-                db.budgetRecurringTemplateDao()
-        );
         BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase =
-                new BookTaskCompletionExpenseUseCase(budgetRepository);
+                new BookTaskCompletionExpenseUseCase(getBudgetRoomRepository());
         InMemoryMealStorage mealStorage = new InMemoryMealStorage();
         TaskMealIntegrationService taskMealIntegrationService = new TaskMealIntegrationService(
                 new StorageMealRepository(mealStorage),
@@ -109,8 +109,8 @@ public class AppCompositionRoot {
 
         CheckOffTaskUseCase checkOffTaskUseCase = new CheckOffTaskUseCase(
                 taskDao,
-                completionService,
-                lifecycleManager,
+                getTaskCompletionService(),
+                getTaskLifecycleManager(),
                 db.taskTransitionStatDao(),
                 taskUseCaseExecutor,
                 mainHandler::post,
@@ -170,12 +170,7 @@ public class AppCompositionRoot {
         AppDatabase db = AppDatabase.getInstance(app);
         Handler mainHandler = new Handler(Looper.getMainLooper());
 
-        BudgetRoomRepository repository = new BudgetRoomRepository(
-                db.budgetLookupDao(),
-                db.transactionDao(),
-                db.budgetLimitDao(),
-                db.budgetRecurringTemplateDao()
-        );
+        BudgetRoomRepository repository = getBudgetRoomRepository();
 
         BudgetImportRoomRepository importRepository = new BudgetImportRoomRepository(
                 db.budgetImportDao(),
@@ -192,7 +187,7 @@ public class AppCompositionRoot {
         );
 
         BudgetImportUseCase importUseCase = new BudgetImportUseCase(
-                importRepository, parser, taskUseCaseExecutor
+                importRepository, parser, taskUseCaseExecutor, new BudgetTransactionMapper()
         );
 
         ApplyRecurringSuggestionsUseCase applyRecurringUseCase = new ApplyRecurringSuggestionsUseCase(
@@ -213,10 +208,49 @@ public class AppCompositionRoot {
         return budgetViewModelFactory;
     }
 
+    private synchronized BudgetRoomRepository getBudgetRoomRepository() {
+        if (budgetRoomRepository == null) {
+            AppDatabase db = AppDatabase.getInstance(app);
+            budgetRoomRepository = new BudgetRoomRepository(
+                    db.budgetLookupDao(),
+                    db.transactionDao(),
+                    db.budgetLimitDao(),
+                    db.budgetRecurringTemplateDao(),
+                    db
+            );
+        }
+        return budgetRoomRepository;
+    }
+
+    public synchronized TaskDAO getTaskDAO() {
+        if (taskDAO == null) {
+            taskDAO = AppDatabase.getInstance(app).taskDao();
+        }
+        return taskDAO;
+    }
+
+    public synchronized TaskCompletionService getTaskCompletionService() {
+        if (taskCompletionService == null) {
+            taskCompletionService = new TaskCompletionService();
+        }
+        return taskCompletionService;
+    }
+
+    public synchronized TaskLifecycleManager getTaskLifecycleManager() {
+        if (taskLifecycleManager == null) {
+            taskLifecycleManager = new TaskLifecycleManager();
+        }
+        return taskLifecycleManager;
+    }
+
     public synchronized void resetForDataReload() {
         taskViewModelFactory = null;
         regenerateScheduleUseCase = null;
         budgetViewModelFactory = null;
         taskScheduleConfigService = null;
+        taskDAO = null;
+        budgetRoomRepository = null;
+        taskCompletionService = null;
+        taskLifecycleManager = null;
     }
 }

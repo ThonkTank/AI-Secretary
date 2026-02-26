@@ -7,7 +7,6 @@ import com.autosecretary.features.budget.data.dao.BudgetImportDao;
 import com.autosecretary.features.budget.data.entity.BudgetImportEntity;
 import com.autosecretary.features.budget.data.dao.BudgetRecurringTemplateDao;
 import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEntity;
-import com.autosecretary.features.budget.domain.importing.ImportStatus;
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
 import com.autosecretary.features.budget.domain.importing.ImportCategory;
 import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
@@ -52,21 +51,20 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     public ImportRecord createImport(String accountId, String fileName, String fileHash) {
         BudgetImportEntity entity = new BudgetImportEntity(accountId, fileName, fileHash);
         importDao.insert(entity);
-        return ImportRecord.pending(entity.id, entity.accountId, entity.fileName,
-                entity.fileHash, entity.status);
+        return ImportRecord.pending(entity.id, entity.accountId, entity.fileName, entity.fileHash);
     }
 
     @Override
     public void markImportCompleted(String importId, int totalTransactions, int importedTransactions,
                                      int autoCategorized, LocalDate periodStart, LocalDate periodEnd) {
-        importDao.markCompleted(importId, ImportStatus.COMPLETED, totalTransactions, importedTransactions,
+        importDao.markCompleted(importId, totalTransactions, importedTransactions,
                 autoCategorized, periodStart, periodEnd);
         synchronizeRecurringTemplateState(LocalDate.now());
     }
 
     @Override
     public void markImportFailed(String importId, String errorMessage) {
-        importDao.markFailed(importId, ImportStatus.FAILED, errorMessage);
+        importDao.markFailed(importId, errorMessage);
     }
 
     @Override
@@ -93,7 +91,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     @Override
     public List<ImportCategory> loadActiveCategoriesForImport() {
         return lookupDao.getActiveCategories().stream()
-                .map(category -> new ImportCategory(category.id, category.name, category.type))
+                .map(category -> new ImportCategory(category.id, category.name, category.direction))
                 .toList();
     }
 
@@ -112,22 +110,12 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     public String createRecurringTemplate(RecurringSuggestion suggestion, String accountId,
                                            LocalDate nextDueDate) {
         LocalDate due = nextDueDate != null ? nextDueDate : LocalDate.now();
-        BudgetRecurringTemplateEntity entity = new BudgetRecurringTemplateEntity(
+        BudgetRecurringTemplateEntity entity = BudgetRecurringTemplateEntity.fromSuggestion(
+                suggestion,
                 accountId,
-                suggestion.normalizedPayee(),
-                suggestion.suggestedType()
+                due
         );
-        entity.transactionType    = suggestion.transactionType();
-        entity.avgAmountCents     = suggestion.avgAmountCents();
-        entity.minAmountCents     = suggestion.minAmountCents();
-        entity.maxAmountCents     = suggestion.maxAmountCents();
-        entity.displayPayee       = suggestion.displayPayee();
-        entity.categoryId         = suggestion.categoryId();
-        entity.schedulingParam    = suggestion.suggestedValue();
-        entity.recurringDayOfWeek = suggestion.suggestedDayOfWeek();
-        entity.nextDue            = due;
         templateDao.insert(entity);
-        synchronizeRecurringTemplateState(LocalDate.now());
         return entity.id;
     }
 
@@ -181,7 +169,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     private ImportTransactionRecord toRecord(BudgetTransactionEntity entity) {
         String type = entity.transactionKind == BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER
                 ? ImportTransactionRecord.TYPE_TRANSFER
-                : entity.type.name();
+                : entity.direction.name();
         return new ImportTransactionRecord(
                 entity.id,
                 entity.accountId,

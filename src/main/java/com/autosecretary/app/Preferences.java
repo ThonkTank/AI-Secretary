@@ -4,11 +4,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 import java.time.LocalTime;
-import java.time.LocalDate;
 import java.time.DayOfWeek;
 
 public class Preferences {
-    private Context context; 
+    private final Context context;
     private SharedPreferences prefs;
 
     public Preferences(Context c) {
@@ -21,9 +20,8 @@ public class Preferences {
         String key = prefKey(day, start);
         prefs.edit().putString(key, value.toString()).apply();
     }
-    public LocalTime readPrefTime(LocalDate day, boolean start) {
-        DayOfWeek dayOfWeek = day.getDayOfWeek();
-        String key = prefKey(dayOfWeek, start);
+    public LocalTime readPrefTime(DayOfWeek day, boolean start) {
+        String key = prefKey(day, start);
         String defaultValue = start ? "06:00" : "21:00";
         return LocalTime.parse(prefs.getString(key, defaultValue));
     }

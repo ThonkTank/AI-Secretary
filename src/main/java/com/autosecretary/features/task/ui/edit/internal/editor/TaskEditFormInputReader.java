@@ -1,9 +1,5 @@
 package com.autosecretary.features.task.ui.edit.internal.editor;
 
-import android.widget.CheckBox;
-import android.widget.EditText;
-import android.widget.Spinner;
-
 import com.autosecretary.shared.Period;
 import com.autosecretary.features.task.data.TaskCore;
 
@@ -14,108 +10,25 @@ import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 
 public class TaskEditFormInputReader {
 
-    private final EditText titleView;
-    private final EditText descriptionView;
-    private final Spinner priorityView;
-    private final EditText goalIconView;
+    private final TaskEditSectionBinder.BasicInfoViews basicInfoViews;
+    private final TaskEditSectionBinder.SchedulingViews schedulingViews;
+    private final TaskEditSectionBinder.RepetitionViews repetitionViews;
+    private final TaskEditSectionBinder.ProgressViews progressViews;
     private final GoalSectionController goalSectionController;
 
-    private final Spinner schedulingTypeView;
-    private final EditText fixedDateView;
-    private final EditText fixedStartView;
-    private final EditText fixedEndView;
-    private final EditText fixedDurationView;
-    private final EditText budgetRequiredCentsView;
-    private final EditText budgetAccountIdView;
-    private final EditText budgetCategoryIdView;
-
-    private final CheckBox closeOnMissView;
-    private final EditText minDurationView;
-    private final EditText maxDurationView;
-    private final EditText cooldownView;
-    private final CheckBox adaptiveView;
-
-    private final CheckBox toggleRepetition;
-    private final EditText repsView;
-    private final EditText perPeriodView;
-    private final Spinner periodUnitView;
-    private final CheckBox completeFirstView;
-
-    private final CheckBox toggleProgress;
-    private final EditText unitView;
-    private final EditText targetView;
-    private final EditText currentView;
-    private final CheckBox resetPerRepView;
-    private final EditText minPerRepView;
-    private final EditText maxPerRepView;
-
     public TaskEditFormInputReader(
-        EditText titleView,
-        EditText descriptionView,
-        Spinner priorityView,
-        GoalSectionController goalSectionController,
-        Spinner schedulingTypeView,
-        EditText fixedDateView,
-        EditText fixedStartView,
-        EditText fixedEndView,
-        EditText fixedDurationView,
-        EditText budgetRequiredCentsView,
-        EditText budgetAccountIdView,
-        EditText budgetCategoryIdView,
-        CheckBox closeOnMissView,
-        EditText minDurationView,
-        EditText maxDurationView,
-        EditText cooldownView,
-        CheckBox adaptiveView,
-        CheckBox toggleRepetition,
-        EditText repsView,
-        EditText perPeriodView,
-        Spinner periodUnitView,
-        CheckBox completeFirstView,
-        CheckBox toggleProgress,
-        EditText unitView,
-        EditText targetView,
-        EditText currentView,
-        CheckBox resetPerRepView,
-        EditText minPerRepView,
-        EditText maxPerRepView
+        TaskEditSectionBinder.BasicInfoViews basicInfoViews,
+        TaskEditSectionBinder.SchedulingViews schedulingViews,
+        TaskEditSectionBinder.RepetitionViews repetitionViews,
+        TaskEditSectionBinder.ProgressViews progressViews,
+        GoalSectionController goalSectionController
     ) {
-        this.titleView = titleView;
-        this.descriptionView = descriptionView;
-        this.priorityView = priorityView;
+        this.basicInfoViews = basicInfoViews;
+        this.schedulingViews = schedulingViews;
+        this.repetitionViews = repetitionViews;
+        this.progressViews = progressViews;
         this.goalSectionController = goalSectionController;
-        this.goalIconView = goalSectionController.getGoalIconView();
-
-        this.schedulingTypeView = schedulingTypeView;
-        this.fixedDateView = fixedDateView;
-        this.fixedStartView = fixedStartView;
-        this.fixedEndView = fixedEndView;
-        this.fixedDurationView = fixedDurationView;
-        this.budgetRequiredCentsView = budgetRequiredCentsView;
-        this.budgetAccountIdView = budgetAccountIdView;
-        this.budgetCategoryIdView = budgetCategoryIdView;
-
-        this.closeOnMissView = closeOnMissView;
-        this.minDurationView = minDurationView;
-        this.maxDurationView = maxDurationView;
-        this.cooldownView = cooldownView;
-        this.adaptiveView = adaptiveView;
-
-        this.toggleRepetition = toggleRepetition;
-        this.repsView = repsView;
-        this.perPeriodView = perPeriodView;
-        this.periodUnitView = periodUnitView;
-        this.completeFirstView = completeFirstView;
-
-        this.toggleProgress = toggleProgress;
-        this.unitView = unitView;
-        this.targetView = targetView;
-        this.currentView = currentView;
-        this.resetPerRepView = resetPerRepView;
-        this.minPerRepView = minPerRepView;
-        this.maxPerRepView = maxPerRepView;
     }
-
 
     private LocalDate parseDateSafe(String value) {
         try {
@@ -151,81 +64,86 @@ public class TaskEditFormInputReader {
 
     public TaskEditPresenter.FormInput read() {
         TaskEditPresenter.FormInput input = new TaskEditPresenter.FormInput();
-        input.title = titleView.getText().toString();
-        input.description = descriptionView.getText().toString();
+        input.title = basicInfoViews.titleView.getText().toString();
+        input.description = basicInfoViews.descriptionView.getText().toString();
         input.priority = TaskEditPresenter.coalesce(
-            (Priority) priorityView.getSelectedItem(),
+            (Priority) basicInfoViews.priorityView.getSelectedItem(),
             TaskEditPresenter.InputDefaults.PRIORITY
         );
-        input.goalIcon = goalIconView.getText() != null && !goalIconView.getText().toString().trim().isEmpty()
-            ? goalIconView.getText().toString().trim()
-            : TaskEditPresenter.InputDefaults.GOAL_ICON;
+
+        String goalIconText = goalSectionController.getGoalIconView().getText() != null
+            ? goalSectionController.getGoalIconView().getText().toString().trim()
+            : "";
+        input.goalIcon = goalIconText.isEmpty()
+            ? TaskEditPresenter.InputDefaults.GOAL_ICON
+            : goalIconText;
         input.goalColorHex = TaskEditPresenter.coalesce(
             goalSectionController.getSelectedGoalColorHex(),
             TaskEditPresenter.InputDefaults.GOAL_COLOR_HEX
         );
+
         input.schedulingType = TaskEditPresenter.coalesce(
-            (TaskCore.SchedulingType) schedulingTypeView.getSelectedItem(),
+            (TaskCore.SchedulingType) schedulingViews.schedulingTypeView.getSelectedItem(),
             TaskEditPresenter.InputDefaults.SCHEDULING_TYPE
         );
-        input.fixedDate = parseDateSafe(fixedDateView.getText().toString());
-        input.fixedStart = parseTimeSafe(fixedStartView.getText().toString());
-        input.fixedEnd = parseTimeSafe(fixedEndView.getText().toString());
-        input.fixedDuration = parseIntegerNullable(fixedDurationView.getText().toString());
-        Integer parsedBudgetRequiredCents = parseIntegerNullable(budgetRequiredCentsView.getText().toString());
+        input.fixedDate = parseDateSafe(schedulingViews.fixedDateView.getText().toString());
+        input.fixedStart = parseTimeSafe(schedulingViews.fixedStartView.getText().toString());
+        input.fixedEnd = parseTimeSafe(schedulingViews.fixedEndView.getText().toString());
+        input.fixedDuration = parseIntegerNullable(schedulingViews.fixedDurationView.getText().toString());
+        Integer parsedBudgetRequiredCents = parseIntegerNullable(schedulingViews.budgetRequiredCentsView.getText().toString());
         input.budgetRequiredCents = parsedBudgetRequiredCents != null && parsedBudgetRequiredCents > 0
             ? parsedBudgetRequiredCents
             : null;
-        input.budgetAccountId = normalizeNullableString(budgetAccountIdView.getText().toString());
-        input.budgetCategoryId = normalizeNullableString(budgetCategoryIdView.getText().toString());
+        input.budgetAccountId = normalizeNullableString(schedulingViews.budgetAccountIdView.getText().toString());
+        input.budgetCategoryId = normalizeNullableString(schedulingViews.budgetCategoryIdView.getText().toString());
 
-        input.closeOnMiss = closeOnMissView.isChecked();
+        input.closeOnMiss = schedulingViews.closeOnMissView.isChecked();
         input.minDuration = TaskEditPresenter.parseIntSafe(
-            minDurationView.getText().toString(),
+            schedulingViews.minDurationView.getText().toString(),
             TaskEditPresenter.InputDefaults.MIN_DURATION
         );
         input.maxDuration = TaskEditPresenter.parseIntSafe(
-            maxDurationView.getText().toString(),
+            schedulingViews.maxDurationView.getText().toString(),
             TaskEditPresenter.InputDefaults.MAX_DURATION
         );
         input.cooldown = TaskEditPresenter.parseIntSafe(
-            cooldownView.getText().toString(),
+            schedulingViews.cooldownView.getText().toString(),
             TaskEditPresenter.InputDefaults.COOLDOWN
         );
-        input.adaptive = adaptiveView.isChecked();
+        input.adaptive = schedulingViews.adaptiveView.isChecked();
 
-        input.repetitionEnabled = toggleRepetition.isChecked();
+        input.repetitionEnabled = repetitionViews.toggleRepetition.isChecked();
         input.reps = TaskEditPresenter.parseIntSafe(
-            repsView.getText().toString(),
+            repetitionViews.repsView.getText().toString(),
             TaskEditPresenter.InputDefaults.REPETITION_REPS
         );
         input.perPeriod = TaskEditPresenter.parseIntSafe(
-            perPeriodView.getText().toString(),
+            repetitionViews.perPeriodView.getText().toString(),
             TaskEditPresenter.InputDefaults.REPETITION_PER_PERIOD
         );
         input.periodUnit = TaskEditPresenter.coalesce(
-            (Period) periodUnitView.getSelectedItem(),
+            (Period) repetitionViews.periodUnitView.getSelectedItem(),
             TaskEditPresenter.InputDefaults.REPETITION_PERIOD_UNIT
         );
-        input.completeFirst = completeFirstView.isChecked();
+        input.completeFirst = repetitionViews.completeFirstView.isChecked();
 
-        input.progressEnabled = toggleProgress.isChecked();
-        input.unit = unitView.getText().toString();
+        input.progressEnabled = progressViews.toggleProgress.isChecked();
+        input.unit = progressViews.unitView.getText().toString();
         input.target = TaskEditPresenter.parseIntSafe(
-            targetView.getText().toString(),
+            progressViews.targetView.getText().toString(),
             TaskEditPresenter.InputDefaults.TARGET
         );
         input.current = TaskEditPresenter.parseIntSafe(
-            currentView.getText().toString(),
+            progressViews.currentView.getText().toString(),
             TaskEditPresenter.InputDefaults.CURRENT
         );
-        input.resetPerRep = resetPerRepView.isChecked();
+        input.resetPerRep = progressViews.resetPerRepView.isChecked();
         input.minPerRep = TaskEditPresenter.parseIntSafe(
-            minPerRepView.getText().toString(),
+            progressViews.minPerRepView.getText().toString(),
             TaskEditPresenter.InputDefaults.MIN_PER_REP
         );
         input.maxPerRep = TaskEditPresenter.parseIntSafe(
-            maxPerRepView.getText().toString(),
+            progressViews.maxPerRepView.getText().toString(),
             TaskEditPresenter.InputDefaults.MAX_PER_REP
         );
 
