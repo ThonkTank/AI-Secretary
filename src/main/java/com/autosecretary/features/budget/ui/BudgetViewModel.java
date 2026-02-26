@@ -336,35 +336,55 @@ public class BudgetViewModel extends ViewModel {
                 return;
             }
 
-            BudgetTransactionEntity existing = repository.findTransactionById(transactionId);
-            BudgetTransactionEntity entity;
-            if (existing != null) {
-                entity = existing;
-            } else {
-                entity = new BudgetTransactionEntity(
-                        accountId,
-                        categoryId,
-                        isExpense ? BudgetTransactionEntity.TransactionType.EXPENSE
-                                : BudgetTransactionEntity.TransactionType.INCOME,
-                        amountCents,
-                        date,
-                        YearMonth.from(date).toString());
-                entity.id = transactionId;
-            }
-
-            entity.accountId = accountId;
-            entity.categoryId = categoryId;
-            entity.type = isExpense
+            BudgetTransactionEntity.TransactionType type = isExpense
                     ? BudgetTransactionEntity.TransactionType.EXPENSE
                     : BudgetTransactionEntity.TransactionType.INCOME;
-            entity.amountCents = amountCents;
-            entity.bookingDate = date;
-            entity.yearMonth = YearMonth.from(date).toString();
-            entity.note = (note == null || note.trim().isEmpty()) ? null : note.trim();
+
+            BudgetTransactionEntity entity = resolveOrCreateTransactionEntity(
+                    transactionId, accountId, categoryId, type, amountCents, date);
+            applyEditableTransactionFields(entity, accountId, categoryId, type, amountCents, date, note);
 
             repository.updateTransaction(entity);
             loadOverviewOnExecutor();
         });
+    }
+
+    private BudgetTransactionEntity resolveOrCreateTransactionEntity(String transactionId,
+                                                                     String accountId,
+                                                                     String categoryId,
+                                                                     BudgetTransactionEntity.TransactionType type,
+                                                                     long amountCents,
+                                                                     LocalDate bookingDate) {
+        BudgetTransactionEntity existing = repository.findTransactionById(transactionId);
+        if (existing != null) {
+            return existing;
+        }
+
+        BudgetTransactionEntity entity = new BudgetTransactionEntity(
+                accountId,
+                categoryId,
+                type,
+                amountCents,
+                bookingDate,
+                YearMonth.from(bookingDate).toString());
+        entity.id = transactionId;
+        return entity;
+    }
+
+    private void applyEditableTransactionFields(BudgetTransactionEntity entity,
+                                                String accountId,
+                                                String categoryId,
+                                                BudgetTransactionEntity.TransactionType type,
+                                                long amountCents,
+                                                LocalDate bookingDate,
+                                                String note) {
+        entity.accountId = accountId;
+        entity.categoryId = categoryId;
+        entity.type = type;
+        entity.amountCents = amountCents;
+        entity.bookingDate = bookingDate;
+        entity.yearMonth = YearMonth.from(bookingDate).toString();
+        entity.note = (note == null || note.trim().isEmpty()) ? null : note.trim();
     }
 
     public void addTransfer(String sourceAccountId,
