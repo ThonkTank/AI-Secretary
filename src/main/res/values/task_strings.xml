@@ -69,6 +69,9 @@
     <string name="task_editor_fixed_start_label">Fixer Start (HH:MM)</string>
     <string name="task_editor_fixed_end_label">Fixes Ende (HH:MM, optional)</string>
     <string name="task_editor_fixed_duration_label">Fixe Dauer in Minuten (optional)</string>
+    <string name="task_editor_budget_required_cents_label">Budget benötigt (Cent, optional)</string>
+    <string name="task_editor_budget_account_id_label">Budget-Konto-ID (optional)</string>
+    <string name="task_editor_budget_category_id_label">Budget-Kategorie-ID (optional)</string>
     <string name="task_editor_close_on_miss">Bei Überschreitung schließen</string>
     <string name="task_editor_duration_label">Dauer (Min):</string>
     <string name="task_editor_hint_min">Min</string>

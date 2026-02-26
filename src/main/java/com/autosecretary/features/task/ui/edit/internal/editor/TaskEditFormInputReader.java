@@ -25,6 +25,9 @@ public class TaskEditFormInputReader {
     private final EditText fixedStartView;
     private final EditText fixedEndView;
     private final EditText fixedDurationView;
+    private final EditText budgetRequiredCentsView;
+    private final EditText budgetAccountIdView;
+    private final EditText budgetCategoryIdView;
 
     private final CheckBox closeOnMissView;
     private final EditText minDurationView;
@@ -56,6 +59,9 @@ public class TaskEditFormInputReader {
         EditText fixedStartView,
         EditText fixedEndView,
         EditText fixedDurationView,
+        EditText budgetRequiredCentsView,
+        EditText budgetAccountIdView,
+        EditText budgetCategoryIdView,
         CheckBox closeOnMissView,
         EditText minDurationView,
         EditText maxDurationView,
@@ -85,6 +91,9 @@ public class TaskEditFormInputReader {
         this.fixedStartView = fixedStartView;
         this.fixedEndView = fixedEndView;
         this.fixedDurationView = fixedDurationView;
+        this.budgetRequiredCentsView = budgetRequiredCentsView;
+        this.budgetAccountIdView = budgetAccountIdView;
+        this.budgetCategoryIdView = budgetCategoryIdView;
 
         this.closeOnMissView = closeOnMissView;
         this.minDurationView = minDurationView;
@@ -124,6 +133,14 @@ public class TaskEditFormInputReader {
         }
     }
 
+    private String normalizeNullableString(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     private Integer parseIntegerNullable(String value) {
         try {
             return value == null || value.trim().isEmpty() ? null : Integer.parseInt(value.trim());
@@ -155,6 +172,12 @@ public class TaskEditFormInputReader {
         input.fixedStart = parseTimeSafe(fixedStartView.getText().toString());
         input.fixedEnd = parseTimeSafe(fixedEndView.getText().toString());
         input.fixedDuration = parseIntegerNullable(fixedDurationView.getText().toString());
+        Integer parsedBudgetRequiredCents = parseIntegerNullable(budgetRequiredCentsView.getText().toString());
+        input.budgetRequiredCents = parsedBudgetRequiredCents != null && parsedBudgetRequiredCents > 0
+            ? parsedBudgetRequiredCents
+            : null;
+        input.budgetAccountId = normalizeNullableString(budgetAccountIdView.getText().toString());
+        input.budgetCategoryId = normalizeNullableString(budgetCategoryIdView.getText().toString());
 
         input.closeOnMiss = closeOnMissView.isChecked();
         input.minDuration = TaskEditPresenter.parseIntSafe(

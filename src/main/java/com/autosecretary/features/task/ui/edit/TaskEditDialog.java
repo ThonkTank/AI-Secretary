@@ -49,6 +49,9 @@ public class TaskEditDialog extends DialogFragment {
     private EditText fixedStartView;
     private EditText fixedEndView;
     private EditText fixedDurationView;
+    private EditText budgetRequiredCentsView;
+    private EditText budgetAccountIdView;
+    private EditText budgetCategoryIdView;
     private CheckBox closeOnMissView;
     private CheckBox adaptiveView;
     private EditText minDurationView;
@@ -89,6 +92,9 @@ public class TaskEditDialog extends DialogFragment {
         fixedStartView = sectionBindings.fixedStartView;
         fixedEndView = sectionBindings.fixedEndView;
         fixedDurationView = sectionBindings.fixedDurationView;
+        budgetRequiredCentsView = sectionBindings.budgetRequiredCentsView;
+        budgetAccountIdView = sectionBindings.budgetAccountIdView;
+        budgetCategoryIdView = sectionBindings.budgetCategoryIdView;
         closeOnMissView = sectionBindings.closeOnMissView;
         adaptiveView = sectionBindings.adaptiveView;
         minDurationView = sectionBindings.minDurationView;
@@ -197,6 +203,9 @@ public class TaskEditDialog extends DialogFragment {
             fixedStartView,
             fixedEndView,
             fixedDurationView,
+            budgetRequiredCentsView,
+            budgetAccountIdView,
+            budgetCategoryIdView,
             closeOnMissView,
             minDurationView,
             maxDurationView,
@@ -243,6 +252,9 @@ public class TaskEditDialog extends DialogFragment {
         private final EditText fixedStartView;
         private final EditText fixedEndView;
         private final EditText fixedDurationView;
+        private final EditText budgetRequiredCentsView;
+        private final EditText budgetAccountIdView;
+        private final EditText budgetCategoryIdView;
         private final CheckBox closeOnMissView;
         private final CheckBox adaptiveView;
         private final EditText minDurationView;
@@ -276,6 +288,9 @@ public class TaskEditDialog extends DialogFragment {
             fixedStartView = schedulingViews.fixedStartView;
             fixedEndView = schedulingViews.fixedEndView;
             fixedDurationView = schedulingViews.fixedDurationView;
+            budgetRequiredCentsView = schedulingViews.budgetRequiredCentsView;
+            budgetAccountIdView = schedulingViews.budgetAccountIdView;
+            budgetCategoryIdView = schedulingViews.budgetCategoryIdView;
             closeOnMissView = schedulingViews.closeOnMissView;
             adaptiveView = schedulingViews.adaptiveView;
             minDurationView = schedulingViews.minDurationView;

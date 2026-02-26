@@ -21,6 +21,9 @@ public class TaskEditState {
     public String goalColorHex = TaskCore.DEFAULT_GOAL_COLOR_HEX;
     public Priority priority = Priority.MEDIUM;
     public TaskCore.SchedulingType schedulingType = TaskCore.SchedulingType.TASK;
+    public Integer budgetRequiredCents;
+    public String budgetAccountId;
+    public String budgetCategoryId;
 
     public LocalDate deadline;
     public LocalDate fixedDate;

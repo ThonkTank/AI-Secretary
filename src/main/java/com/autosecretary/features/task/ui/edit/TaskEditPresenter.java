@@ -106,6 +106,9 @@ public class TaskEditPresenter {
         editState.fixedStart = safeInput.fixedStart;
         editState.fixedEnd = safeInput.fixedEnd;
         editState.fixedDuration = safeInput.fixedDuration;
+        editState.budgetRequiredCents = safeInput.budgetRequiredCents;
+        editState.budgetAccountId = safeInput.budgetAccountId;
+        editState.budgetCategoryId = safeInput.budgetCategoryId;
 
         editState.closeOnMiss = safeInput.closeOnMiss;
         editState.minDuration = safeInput.minDuration;
@@ -204,6 +207,7 @@ public class TaskEditPresenter {
         public static final int MIN_DURATION = 5;
         public static final int MAX_DURATION = 10;
         public static final int COOLDOWN = 1;
+        public static final int BUDGET_REQUIRED_CENTS = 0;
 
         public static final int REPETITION_REPS = 1;
         public static final int REPETITION_PER_PERIOD = 1;
@@ -231,6 +235,9 @@ public class TaskEditPresenter {
         public LocalTime fixedStart;
         public LocalTime fixedEnd;
         public Integer fixedDuration;
+        public Integer budgetRequiredCents;
+        public String budgetAccountId;
+        public String budgetCategoryId;
 
         public boolean closeOnMiss;
         public int minDuration = InputDefaults.MIN_DURATION;

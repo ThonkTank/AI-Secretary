@@ -23,6 +23,7 @@ import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
 import com.autosecretary.features.task.application.config.TaskScheduleConfigService;
+import com.autosecretary.features.task.application.internal.budget.TaskBudgetEligibilityFromBudgetLookup;
 import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.TaskCompletionService;
@@ -72,7 +73,8 @@ public class AppCompositionRoot {
                 message -> Log.d("SlotGen", message),
                 scheduleConfigRepository,
                 new DeviceCalendarBlockedIntervalProvider(app),
-                db.taskTransitionStatDao()
+                db.taskTransitionStatDao(),
+                new TaskBudgetEligibilityFromBudgetLookup(db.budgetLookupDao())
         );
         TaskListItemMapper mapper = new TaskListItemMapper();
         TaskCalendarService taskCalendarService = new CalendarReader(app);
