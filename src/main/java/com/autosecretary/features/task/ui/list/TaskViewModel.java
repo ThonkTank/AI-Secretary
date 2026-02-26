@@ -13,9 +13,9 @@ import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
+import com.autosecretary.features.task.application.TaskCalendarEvent;
+import com.autosecretary.features.task.application.TaskCalendarService;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
-import com.autosecretary.features.task.application.internal.calendar.CalendarEvent;
-import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList.ViewSlot;
@@ -40,7 +40,7 @@ public class TaskViewModel extends AndroidViewModel {
     private final DecrementTaskProgressUseCase decrementTaskProgressUseCase;
     private final TaskEditSessionController taskEditSessionController;
     private final Preferences preferences;
-    private final CalendarReader calendarReader;
+    private final TaskCalendarService taskCalendarService;
 
     private final ViewSlotList masterList;
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
@@ -57,7 +57,7 @@ public class TaskViewModel extends AndroidViewModel {
                          CheckOffTaskUseCase checkOffTaskUseCase,
                          RegenerateScheduleUseCase regenerateScheduleUseCase,
                          DeleteTaskUseCase deleteTaskUseCase,
-                         CalendarReader calendarReader,
+                         TaskCalendarService taskCalendarService,
                          IncrementTaskProgressUseCase incrementTaskProgressUseCase,
                          DecrementTaskProgressUseCase decrementTaskProgressUseCase) {
         super(app);
@@ -71,7 +71,7 @@ public class TaskViewModel extends AndroidViewModel {
                 deleteTaskUseCase,
                 this::refreshList
         );
-        this.calendarReader = calendarReader;
+        this.taskCalendarService = taskCalendarService;
         this.preferences = new Preferences(app);
 
         this.masterList = new ViewSlotList();
@@ -181,8 +181,7 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     private void mergeCalendarEvents(LocalDate day) {
-        List<CalendarEvent> events = calendarReader.getEventsForDay(
-                getApplication(),
+        List<TaskCalendarEvent> events = taskCalendarService.getEventsForDay(
                 day,
                 preferences.readPrefTime(day, true),
                 preferences.readPrefTime(day, false)
@@ -190,7 +189,7 @@ public class TaskViewModel extends AndroidViewModel {
 
         List<ViewSlot> mergedSlots = new ArrayList<>(masterList.displaySlots);
         int index = 0;
-        for (CalendarEvent event : events) {
+        for (TaskCalendarEvent event : events) {
             TaskListItem item = TaskListItem.calendarEvent(
                     "calendar-" + day + "-" + index,
                     event.title(),
