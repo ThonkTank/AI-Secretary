@@ -63,6 +63,12 @@
     <string name="task_editor_deadline_none">Keine Frist</string>
     <string name="task_editor_deadline_pick_content_description">Frist auswählen</string>
     <string name="task_editor_deadline_clear_content_description">Frist löschen</string>
+    <string name="task_editor_scheduling_type_label_task">Task (flexibel)</string>
+    <string name="task_editor_scheduling_type_label_termin">Termin (fix)</string>
+    <string name="task_editor_fixed_date_label">Fixes Datum (YYYY-MM-DD)</string>
+    <string name="task_editor_fixed_start_label">Fixer Start (HH:MM)</string>
+    <string name="task_editor_fixed_end_label">Fixes Ende (HH:MM, optional)</string>
+    <string name="task_editor_fixed_duration_label">Fixe Dauer in Minuten (optional)</string>
     <string name="task_editor_close_on_miss">Bei Überschreitung schließen</string>
     <string name="task_editor_duration_label">Dauer (Min):</string>
     <string name="task_editor_hint_min">Min</string>

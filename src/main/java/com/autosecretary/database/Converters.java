@@ -4,6 +4,7 @@ import androidx.room.TypeConverter;
 
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
+import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import java.time.DayOfWeek;
@@ -63,6 +64,17 @@ public class Converters {
     @TypeConverter
     public static Priority toPriority(String value) {
         return value != null ? Priority.valueOf(value) : null;
+    }
+
+
+    @TypeConverter
+    public static String fromSchedulingType(TaskCore.SchedulingType schedulingType) {
+        return schedulingType != null ? schedulingType.name() : null;
+    }
+
+    @TypeConverter
+    public static TaskCore.SchedulingType toSchedulingType(String value) {
+        return value != null ? TaskCore.SchedulingType.valueOf(value) : null;
     }
 
     @TypeConverter

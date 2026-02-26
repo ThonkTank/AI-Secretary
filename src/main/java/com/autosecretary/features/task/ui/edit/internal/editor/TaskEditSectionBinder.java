@@ -17,6 +17,7 @@ import androidx.fragment.app.DialogFragment;
 import com.autosecretary.R;
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
+import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
@@ -66,6 +67,12 @@ public class TaskEditSectionBinder {
         EditText deadlineView = rootView.findViewById(R.id.EditDeadline);
         com.google.android.material.textfield.TextInputLayout deadlineInputLayout = rootView.findViewById(R.id.DeadlineInputLayout);
         ImageButton clearDeadline = rootView.findViewById(R.id.ClearDeadline);
+        Spinner schedulingTypeView = rootView.findViewById(R.id.EditSchedulingType);
+        LinearLayout fixedSchedulingContainer = rootView.findViewById(R.id.FixedSchedulingContainer);
+        EditText fixedDateView = rootView.findViewById(R.id.EditFixedDate);
+        EditText fixedStartView = rootView.findViewById(R.id.EditFixedStart);
+        EditText fixedEndView = rootView.findViewById(R.id.EditFixedEnd);
+        EditText fixedDurationView = rootView.findViewById(R.id.EditFixedDuration);
         CheckBox closeOnMissView = rootView.findViewById(R.id.EditCloseOnMiss);
         EditText minDurationView = rootView.findViewById(R.id.EditMinDuration);
         EditText maxDurationView = rootView.findViewById(R.id.EditMaxDuration);
@@ -75,6 +82,12 @@ public class TaskEditSectionBinder {
         SchedulingViews views = new SchedulingViews(
             deadlineView,
             deadlineInputLayout,
+            schedulingTypeView,
+            fixedSchedulingContainer,
+            fixedDateView,
+            fixedStartView,
+            fixedEndView,
+            fixedDurationView,
             closeOnMissView,
             minDurationView,
             maxDurationView,
@@ -90,7 +103,29 @@ public class TaskEditSectionBinder {
             updateDeadlineDisplay(views);
         });
 
-        closeOnMissView.setChecked(editState.closeOnMiss);
+
+        ArrayAdapter<TaskCore.SchedulingType> schedulingTypeAdapter = new ArrayAdapter<>(
+            fragment.requireContext(),
+            android.R.layout.simple_spinner_item,
+            TaskCore.SchedulingType.values()
+        );
+        schedulingTypeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        schedulingTypeView.setAdapter(schedulingTypeAdapter);
+        schedulingTypeView.setSelection((editState.schedulingType != null ? editState.schedulingType : TaskCore.SchedulingType.TASK).ordinal());
+        fixedDateView.setText(editState.fixedDate != null ? editState.fixedDate.toString() : "");
+        fixedStartView.setText(editState.fixedStart != null ? editState.fixedStart.toString() : "");
+        fixedEndView.setText(editState.fixedEnd != null ? editState.fixedEnd.toString() : "");
+        fixedDurationView.setText(editState.fixedDuration != null ? String.valueOf(editState.fixedDuration) : "");
+        fixedSchedulingContainer.setVisibility((editState.schedulingType == TaskCore.SchedulingType.TERMIN) ? View.VISIBLE : View.GONE);
+        schedulingTypeView.setOnItemSelectedListener(new SimpleItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                TaskCore.SchedulingType selected = (TaskCore.SchedulingType) schedulingTypeView.getSelectedItem();
+                fixedSchedulingContainer.setVisibility(selected == TaskCore.SchedulingType.TERMIN ? View.VISIBLE : View.GONE);
+            }
+        });
+
+                closeOnMissView.setChecked(editState.closeOnMiss);
         minDurationView.setText(String.valueOf(editState.minDuration));
         maxDurationView.setText(String.valueOf(editState.maxDuration));
         cooldownView.setText(String.valueOf(editState.cooldown));
@@ -238,6 +273,12 @@ public class TaskEditSectionBinder {
     public static final class SchedulingViews {
         public final EditText deadlineView;
         public final com.google.android.material.textfield.TextInputLayout deadlineInputLayout;
+        public final Spinner schedulingTypeView;
+        public final LinearLayout fixedSchedulingContainer;
+        public final EditText fixedDateView;
+        public final EditText fixedStartView;
+        public final EditText fixedEndView;
+        public final EditText fixedDurationView;
         public final CheckBox closeOnMissView;
         public final EditText minDurationView;
         public final EditText maxDurationView;
@@ -247,6 +288,12 @@ public class TaskEditSectionBinder {
         private SchedulingViews(
             EditText deadlineView,
             com.google.android.material.textfield.TextInputLayout deadlineInputLayout,
+            Spinner schedulingTypeView,
+            LinearLayout fixedSchedulingContainer,
+            EditText fixedDateView,
+            EditText fixedStartView,
+            EditText fixedEndView,
+            EditText fixedDurationView,
             CheckBox closeOnMissView,
             EditText minDurationView,
             EditText maxDurationView,
@@ -255,6 +302,12 @@ public class TaskEditSectionBinder {
         ) {
             this.deadlineView = deadlineView;
             this.deadlineInputLayout = deadlineInputLayout;
+            this.schedulingTypeView = schedulingTypeView;
+            this.fixedSchedulingContainer = fixedSchedulingContainer;
+            this.fixedDateView = fixedDateView;
+            this.fixedStartView = fixedStartView;
+            this.fixedEndView = fixedEndView;
+            this.fixedDurationView = fixedDurationView;
             this.closeOnMissView = closeOnMissView;
             this.minDurationView = minDurationView;
             this.maxDurationView = maxDurationView;
