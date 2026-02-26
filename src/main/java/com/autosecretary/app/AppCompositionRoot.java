@@ -39,6 +39,7 @@ public class AppCompositionRoot {
     private final Application app;
     private final ExecutorService taskUseCaseExecutor;
     private TaskViewModelFactory taskViewModelFactory;
+    private RegenerateScheduleUseCase regenerateScheduleUseCase;
     private BudgetViewModelFactory budgetViewModelFactory;
     private TaskScheduleConfigService taskScheduleConfigService;
 
@@ -93,7 +94,7 @@ public class AppCompositionRoot {
                 taskUseCaseExecutor,
                 mainHandler::post
         );
-        RegenerateScheduleUseCase regenerateScheduleUseCase = new RegenerateScheduleUseCase(
+        regenerateScheduleUseCase = new RegenerateScheduleUseCase(
                 taskDao,
                 generator,
                 taskUseCaseExecutor
@@ -127,6 +128,13 @@ public class AppCompositionRoot {
             createTaskViewModelFactory();
         }
         return taskScheduleConfigService;
+    }
+
+    public RegenerateScheduleUseCase getRegenerateScheduleUseCase() {
+        if (regenerateScheduleUseCase == null) {
+            createTaskViewModelFactory();
+        }
+        return regenerateScheduleUseCase;
     }
 
     public BudgetViewModelFactory createBudgetViewModelFactory() {
