@@ -13,7 +13,7 @@ import android.widget.RemoteViews;
 import com.autosecretary.R;
 import com.autosecretary.app.MainActivity;
 import com.autosecretary.database.AppDatabase;
-import com.autosecretary.features.task.application.TaskSlotToggleAction;
+import com.autosecretary.features.task.application.internal.actions.TaskSlotToggleAction;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
