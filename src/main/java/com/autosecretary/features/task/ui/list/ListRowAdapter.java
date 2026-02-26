@@ -382,27 +382,30 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     }
 
     private void bindInteractions(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
-        boolean timerEnabled = interactionsEnabled && item.slotId != null && !item.completed;
+        boolean timerEligible = item.slotId != null && !item.completed;
+        boolean timerEnabled = interactionsEnabled && timerEligible;
         holder.timerButton.setEnabled(timerEnabled);
 
         holder.title.setOnClickListener(v -> showDescriptionPopup(v, item));
 
-        if (interactionsEnabled) {
-            holder.itemView.setOnLongClickListener(v -> {
-                actions.onEdit.accept(viewSlot);
-                return true;
-            });
-            holder.timerButton.setOnClickListener(v -> actions.onTimerToggle.accept(viewSlot));
-            holder.timerButton.setAlpha(timerEnabled ? 1.0f : 0.4f);
-            holder.editButton.setOnClickListener(v -> actions.onEdit.accept(viewSlot));
-            holder.editButton.setAlpha(1.0f);
-        } else {
-            holder.itemView.setOnLongClickListener(null);
-            holder.timerButton.setOnClickListener(null);
-            holder.timerButton.setAlpha(0.4f);
-            holder.editButton.setOnClickListener(null);
-            holder.editButton.setAlpha(0.4f);
-        }
+        View.OnLongClickListener longClickListener = interactionsEnabled
+                ? v -> {
+                    actions.onEdit.accept(viewSlot);
+                    return true;
+                }
+                : null;
+        View.OnClickListener timerClickListener = interactionsEnabled
+                ? v -> actions.onTimerToggle.accept(viewSlot)
+                : null;
+        View.OnClickListener editClickListener = interactionsEnabled
+                ? v -> actions.onEdit.accept(viewSlot)
+                : null;
+
+        holder.itemView.setOnLongClickListener(longClickListener);
+        holder.timerButton.setOnClickListener(timerClickListener);
+        holder.timerButton.setAlpha(interactionsEnabled && timerEligible ? 1.0f : 0.4f);
+        holder.editButton.setOnClickListener(editClickListener);
+        holder.editButton.setAlpha(interactionsEnabled ? 1.0f : 0.4f);
     }
 
     private void showDescriptionPopup(View view, TaskListItem item) {
