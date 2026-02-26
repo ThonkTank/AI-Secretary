@@ -6,29 +6,21 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.autosecretary.app.Preferences;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.DecrementTaskProgressUseCase;
-import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
-import com.autosecretary.features.task.application.listmodel.TaskListItem;
-import com.autosecretary.features.task.application.internal.calendar.CalendarEvent;
-import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList.ViewSlot;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.function.Predicate;
 
 public class TaskViewModel extends AndroidViewModel {
     private static final int MAX_DAY_OFFSET = 6;
@@ -39,8 +31,7 @@ public class TaskViewModel extends AndroidViewModel {
     private final IncrementTaskProgressUseCase incrementTaskProgressUseCase;
     private final DecrementTaskProgressUseCase decrementTaskProgressUseCase;
     private final TaskEditSessionController taskEditSessionController;
-    private final Preferences preferences;
-    private final CalendarReader calendarReader;
+    private final TaskListProjectionService taskListProjectionService;
 
     private final ViewSlotList masterList;
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
@@ -56,23 +47,19 @@ public class TaskViewModel extends AndroidViewModel {
                          TaskAsyncDataService taskAsyncDataService,
                          CheckOffTaskUseCase checkOffTaskUseCase,
                          RegenerateScheduleUseCase regenerateScheduleUseCase,
-                         DeleteTaskUseCase deleteTaskUseCase,
-                         CalendarReader calendarReader,
                          IncrementTaskProgressUseCase incrementTaskProgressUseCase,
-                         DecrementTaskProgressUseCase decrementTaskProgressUseCase) {
+                         DecrementTaskProgressUseCase decrementTaskProgressUseCase,
+                         TaskEditSessionController taskEditSessionController,
+                         TaskListProjectionService taskListProjectionService) {
         super(app);
         this.taskAsyncDataService = taskAsyncDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
         this.incrementTaskProgressUseCase = incrementTaskProgressUseCase;
         this.decrementTaskProgressUseCase = decrementTaskProgressUseCase;
-        this.taskEditSessionController = new TaskEditSessionController(
-                taskAsyncDataService,
-                deleteTaskUseCase,
-                this::refreshList
-        );
-        this.calendarReader = calendarReader;
-        this.preferences = new Preferences(app);
+        this.taskEditSessionController = taskEditSessionController;
+        this.taskEditSessionController.setOnTaskChanged(this::refreshList);
+        this.taskListProjectionService = taskListProjectionService;
 
         this.masterList = new ViewSlotList();
         applyChecklistPreset();
@@ -154,76 +141,14 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void filterList() {
-        String normalizedSearchQuery = normalizeSearchQuery(searchQuery.getValue());
-        filterMasterSlots(normalizedSearchQuery);
-
-        if (day != null && hasCalendarPermission) {
-            mergeCalendarEvents(day);
-        }
-
-        sortList();
-    }
-
-    private void filterMasterSlots(String normalizedSearchQuery) {
-        Predicate<ViewSlot> predicate = slot -> {
-            if (!activeListConfig.matches(slot, day)) {
-                return false;
-            }
-            if (activeListConfig != ListConfig.MANAGE || normalizedSearchQuery.isEmpty()) {
-                return true;
-            }
-
-            String title = slot.item.title == null ? "" : slot.item.title;
-            return title.toLowerCase(Locale.ROOT).contains(normalizedSearchQuery);
-        };
-
-        masterList.filter(predicate);
-    }
-
-    private void mergeCalendarEvents(LocalDate day) {
-        List<CalendarEvent> events = calendarReader.getEventsForDay(
-                getApplication(),
+        taskListProjectionService.project(
+                masterList,
+                activeListConfig,
                 day,
-                preferences.readPrefTime(day, true),
-                preferences.readPrefTime(day, false)
+                searchQuery.getValue(),
+                hasCalendarPermission,
+                expandedByTaskId
         );
-
-        List<ViewSlot> mergedSlots = new ArrayList<>(masterList.displaySlots);
-        int index = 0;
-        for (CalendarEvent event : events) {
-            TaskListItem item = TaskListItem.calendarEvent(
-                    "calendar-" + day + "-" + index,
-                    event.title(),
-                    day,
-                    event.start(),
-                    event.end()
-            );
-            mergedSlots.add(new ViewSlot(item));
-            index++;
-        }
-
-        updateDisplaySlots(mergedSlots);
-    }
-
-    private void updateDisplaySlots(List<ViewSlot> updatedSlots) {
-        masterList.displaySlots = updatedSlots;
-    }
-
-    private static String normalizeSearchQuery(String query) {
-        if (query == null) {
-            return "";
-        }
-        return query.trim().toLowerCase(Locale.ROOT);
-    }
-
-    public void sortList() {
-        Comparator<ViewSlot> comparator = activeListConfig.comparator();
-
-        if (activeListConfig.groupByTaskParent) {
-            masterList.sortByTask(comparator, slot -> expandedByTaskId.getOrDefault(slot.item.taskId, true));
-        } else {
-            masterList.sortBySlot(comparator);
-        }
         displayList.setValue(masterList.displaySlots);
     }
 
@@ -263,7 +188,7 @@ public class TaskViewModel extends AndroidViewModel {
         String taskId = viewSlot.item.taskId;
         boolean currentlyExpanded = expandedByTaskId.getOrDefault(taskId, true);
         expandedByTaskId.put(taskId, !currentlyExpanded);
-        sortList();
+        filterList();
     }
 
     public boolean isExpanded(ViewSlot viewSlot) {
@@ -282,7 +207,7 @@ public class TaskViewModel extends AndroidViewModel {
         return day == null || viewSlot.item.day.equals(day);
     }
 
-    private enum ListConfig {
+    static enum ListConfig {
         CHECKLIST(false) {
             @Override
             boolean matches(ViewSlot slot, LocalDate day) {
@@ -323,5 +248,9 @@ public class TaskViewModel extends AndroidViewModel {
         abstract boolean matches(ViewSlot slot, LocalDate day);
 
         abstract Comparator<ViewSlot> comparator();
+
+        boolean groupByTaskParent() {
+            return groupByTaskParent;
+        }
     }
 }

@@ -19,7 +19,7 @@ import java.util.ArrayList;
 public class TaskEditSessionController {
     private final TaskAsyncDataService taskAsyncDataService;
     private final DeleteTaskUseCase deleteTaskUseCase;
-    private final Runnable onTaskChanged;
+    private Runnable onTaskChanged = () -> { };
     private final TaskEditStateMapper taskEditStateMapper = new TaskEditStateMapper();
 
     private final MutableLiveData<TaskEditState> selectedTask = new MutableLiveData<>();
@@ -27,11 +27,13 @@ public class TaskEditSessionController {
     private final MutableLiveData<Boolean> isNewTask = new MutableLiveData<>(false);
 
     public TaskEditSessionController(TaskAsyncDataService taskAsyncDataService,
-                                     DeleteTaskUseCase deleteTaskUseCase,
-                                     Runnable onTaskChanged) {
+                                     DeleteTaskUseCase deleteTaskUseCase) {
         this.taskAsyncDataService = taskAsyncDataService;
         this.deleteTaskUseCase = deleteTaskUseCase;
-        this.onTaskChanged = onTaskChanged;
+    }
+
+    public void setOnTaskChanged(Runnable onTaskChanged) {
+        this.onTaskChanged = onTaskChanged == null ? () -> { } : onTaskChanged;
     }
 
     public LiveData<TaskEditState> getSelectedTask() {
