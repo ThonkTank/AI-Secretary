@@ -434,12 +434,10 @@ public class BudgetFragment extends Fragment {
 
     private void populateCategorySpinner(Spinner spinner, List<BudgetCategory> allCategories,
                                          boolean isExpense) {
-        String filterType = isExpense ? "EXPENSE" : "INCOME";
+        List<BudgetCategory> filteredCategories = categoriesForType(allCategories, isExpense);
         List<String> names = new ArrayList<>();
-        for (BudgetCategory cat : allCategories) {
-            if (filterType.equals(cat.type)) {
-                names.add(buildCategoryDisplayLabel(cat));
-            }
+        for (BudgetCategory cat : filteredCategories) {
+            names.add(buildCategoryDisplayLabel(cat));
         }
         ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
                 android.R.layout.simple_spinner_item, names);
@@ -449,41 +447,25 @@ public class BudgetFragment extends Fragment {
 
     private String getSelectedCategoryId(Spinner spinner, List<BudgetCategory> allCategories,
                                          boolean isExpense) {
-        int position = spinner.getSelectedItemPosition();
-        if (position < 0) return null;
-        String filterType = isExpense ? "EXPENSE" : "INCOME";
-        int index = 0;
-        for (BudgetCategory cat : allCategories) {
-            if (filterType.equals(cat.type)) {
-                if (index == position) return cat.id;
-                index++;
-            }
-        }
-        return null;
+        return categoryIdAtPosition(
+                categoriesForType(allCategories, isExpense),
+                spinner.getSelectedItemPosition());
     }
 
     private void setCategorySelection(Spinner spinner, List<BudgetCategory> allCategories,
                                       boolean isExpense, String categoryId) {
         if (categoryId == null) return;
-        String filterType = isExpense ? "EXPENSE" : "INCOME";
-        int index = 0;
-        for (BudgetCategory cat : allCategories) {
-            if (filterType.equals(cat.type)) {
-                if (categoryId.equals(cat.id)) {
-                    spinner.setSelection(index);
-                    return;
-                }
-                index++;
-            }
+        int index = indexOfCategoryId(categoriesForType(allCategories, isExpense), categoryId);
+        if (index >= 0) {
+            spinner.setSelection(index);
         }
     }
 
     private void populateAccountSpinner(Spinner spinner, List<BudgetAccount> accounts) {
+        List<BudgetAccount> activeAccounts = activeAccounts(accounts);
         List<String> names = new ArrayList<>();
-        for (BudgetAccount account : accounts) {
-            if (!account.archived) {
-                names.add(account.name);
-            }
+        for (BudgetAccount account : activeAccounts) {
+            names.add(account.name);
         }
         ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
                 android.R.layout.simple_spinner_item, names);
@@ -492,30 +474,67 @@ public class BudgetFragment extends Fragment {
     }
 
     private String getSelectedAccountId(Spinner spinner, List<BudgetAccount> accounts) {
-        int position = spinner.getSelectedItemPosition();
-        if (position < 0) return null;
-        int index = 0;
-        for (BudgetAccount account : accounts) {
-            if (!account.archived) {
-                if (index == position) return account.id;
-                index++;
-            }
-        }
-        return null;
+        return accountIdAtPosition(activeAccounts(accounts), spinner.getSelectedItemPosition());
     }
 
     private void setAccountSelection(Spinner spinner, List<BudgetAccount> accounts, String accountId) {
         if (accountId == null) return;
-        int index = 0;
-        for (BudgetAccount account : accounts) {
-            if (!account.archived) {
-                if (accountId.equals(account.id)) {
-                    spinner.setSelection(index);
-                    return;
-                }
-                index++;
+        int index = indexOfAccountId(activeAccounts(accounts), accountId);
+        if (index >= 0) {
+            spinner.setSelection(index);
+        }
+    }
+
+    private List<BudgetCategory> categoriesForType(List<BudgetCategory> allCategories,
+                                                   boolean isExpense) {
+        String filterType = isExpense ? "EXPENSE" : "INCOME";
+        List<BudgetCategory> filtered = new ArrayList<>();
+        for (BudgetCategory category : allCategories) {
+            if (filterType.equals(category.type)) {
+                filtered.add(category);
             }
         }
+        return filtered;
+    }
+
+    private List<BudgetAccount> activeAccounts(List<BudgetAccount> accounts) {
+        List<BudgetAccount> active = new ArrayList<>();
+        for (BudgetAccount account : accounts) {
+            if (!account.archived) {
+                active.add(account);
+            }
+        }
+        return active;
+    }
+
+    @Nullable
+    private String categoryIdAtPosition(List<BudgetCategory> categories, int position) {
+        if (position < 0 || position >= categories.size()) return null;
+        return categories.get(position).id;
+    }
+
+    private int indexOfCategoryId(List<BudgetCategory> categories, String categoryId) {
+        for (int i = 0; i < categories.size(); i++) {
+            if (categoryId.equals(categories.get(i).id)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    @Nullable
+    private String accountIdAtPosition(List<BudgetAccount> accounts, int position) {
+        if (position < 0 || position >= accounts.size()) return null;
+        return accounts.get(position).id;
+    }
+
+    private int indexOfAccountId(List<BudgetAccount> accounts, String accountId) {
+        for (int i = 0; i < accounts.size(); i++) {
+            if (accountId.equals(accounts.get(i).id)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private LocalDate parseDateInput(String dateStr) {
