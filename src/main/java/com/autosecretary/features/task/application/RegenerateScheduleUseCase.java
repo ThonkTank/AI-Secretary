@@ -61,17 +61,10 @@ public class RegenerateScheduleUseCase {
             TaskPlanningState state = new TaskPlanningState();
             generator.recordPreservedSlots(tasks, today, windowEnd, state);
 
-            // 3) Flatten once, then schedule day by day
+            // 3) Flatten once, then run one global placement pass over the full 7-day window.
             List<Task> flatTasks = TaskTreeOperations.flatten(
                     TaskTreeOperations.buildTree(tasks));
-
-            for (int i = 0; i < PLANNING_DAYS; i++) {
-                LocalDate day = today.plusDays(i);
-                generator.generateSlotsForDay(flatTasks, day, state);
-
-                // Record newly assigned slots into cross-day state
-                generator.recordScheduledSlotsForDay(flatTasks, day, state);
-            }
+            generator.generateSlotsForWindow(flatTasks, today, PLANNING_DAYS, state);
 
             taskDao.writeList(flatTasks);
             onDone.run();
