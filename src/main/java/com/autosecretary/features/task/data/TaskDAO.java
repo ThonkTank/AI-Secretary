@@ -58,6 +58,7 @@ public interface TaskDAO {
         writeSlots(task.slots);
         writePrefSlots(task.prefSlots);
         writePrerequisites(task.prerequisites);
+        writePlannedMeals(task.plannedMeals);
         for (Task child : task.children) {
             writeRelation(new TaskRelation(task.core.id, child.core.id));
         }
@@ -83,6 +84,9 @@ public interface TaskDAO {
     void writeSlots(List<TaskSlot> slots);
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writeSlot(TaskSlot slots);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void writePlannedMeals(List<TaskPlannedMeal> plannedMeals);
 
     @Query("UPDATE task_slots SET realStart = :startTime, realEnd = NULL WHERE id = :slotId")
     void startTimer(String slotId, LocalTime startTime);
