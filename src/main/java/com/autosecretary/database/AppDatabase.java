@@ -54,6 +54,8 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
 @TypeConverters(Converters.class)
 public abstract class AppDatabase extends RoomDatabase {
 
+    public static final String DB_NAME = "autosecretary.db";
+
     private static final Migration MIGRATION_10_11 = new Migration(10, 11) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
@@ -235,11 +237,18 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
-            instance = Room.databaseBuilder(context, AppDatabase.class, "autosecretary.db")
+            instance = Room.databaseBuilder(context, AppDatabase.class, DB_NAME)
                     .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
                     .fallbackToDestructiveMigration()
                     .build();
         }
         return instance;
+    }
+
+    public static synchronized void closeAndReset() {
+        if (instance != null) {
+            instance.close();
+            instance = null;
+        }
     }
 }

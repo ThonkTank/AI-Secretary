@@ -4,4 +4,31 @@
     <string name="app_name">AutoSecretary</string>
     <string name="task_edit_deadline_none">Keine Frist</string>
     <string name="task_edit_deadline_content_description">Frist auswählen. Aktuell: %1$s</string>
+
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_option_restore_backup">Backup wiederherstellen</string>
+    <string name="settings_option_manual_backup">Manuelles Backup erstellen</string>
+    <string name="settings_option_factory_reset">Factory Reset</string>
+    <string name="settings_option_about">Über AutoSecretary</string>
+
+    <string name="settings_no_backups">Keine Backups vorhanden.</string>
+    <string name="settings_backup_item_format">%1$s (%2$s)</string>
+    <string name="settings_restore_dialog_title">Backup auswählen</string>
+    <string name="settings_restore_confirm_title">Backup wiederherstellen?</string>
+    <string name="settings_restore_confirm_message">Alle aktuellen Daten werden durch das gewählte Backup ersetzt.</string>
+    <string name="settings_restore_action">Wiederherstellen</string>
+    <string name="settings_restore_success">Backup erfolgreich wiederhergestellt.</string>
+    <string name="settings_restore_failure">Backup konnte nicht wiederhergestellt werden.</string>
+
+    <string name="settings_backup_success">Backup wurde erstellt.</string>
+    <string name="settings_backup_failure">Backup konnte nicht erstellt werden.</string>
+
+    <string name="settings_reset_confirm_title">Alle Daten löschen?</string>
+    <string name="settings_reset_confirm_message">ACHTUNG: Alle Daten werden gelöscht. Vorher wird automatisch ein Backup erstellt.</string>
+    <string name="settings_reset_action">Löschen</string>
+    <string name="settings_reset_success">Factory Reset abgeschlossen.</string>
+    <string name="settings_reset_failure">Factory Reset fehlgeschlagen.</string>
+
+    <string name="settings_about_title">Über AutoSecretary</string>
+    <string name="settings_about_message">Version: %1$s (Build %2$d)</string>
 </resources>
