@@ -13,7 +13,7 @@ import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
-import com.autosecretary.features.task.application.TaskCalendarService;
+import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 
 public class TaskViewModelFactory implements ViewModelProvider.Factory {

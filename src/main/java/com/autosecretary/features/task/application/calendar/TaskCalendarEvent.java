@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.application;
+package com.autosecretary.features.task.application.calendar;
 
 import java.time.LocalTime;
 

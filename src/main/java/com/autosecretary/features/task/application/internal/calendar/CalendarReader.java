@@ -7,8 +7,8 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.CalendarContract;
 
-import com.autosecretary.features.task.application.TaskCalendarEvent;
-import com.autosecretary.features.task.application.TaskCalendarService;
+import com.autosecretary.features.task.application.calendar.TaskCalendarEvent;
+import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 
 import java.time.Instant;
 import java.time.LocalDate;
