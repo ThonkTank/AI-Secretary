@@ -3,18 +3,26 @@ package com.autosecretary.features.task.application;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.TaskDAO;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 /**
  * Increases progress for a task while keeping progress bounds and completion flags in sync.
+ *
+ * Contract: DAO work runs on {@code executor}; when present, {@code onChanged}
+ * runs on {@code callbackDispatcher}.
  */
 public class IncrementTaskProgressUseCase {
     private final TaskDAO taskDao;
     private final ExecutorService executor;
+    private final Executor callbackDispatcher;
 
-    public IncrementTaskProgressUseCase(TaskDAO taskDao, ExecutorService executor) {
+    public IncrementTaskProgressUseCase(TaskDAO taskDao,
+                                        ExecutorService executor,
+                                        Executor callbackDispatcher) {
         this.taskDao = taskDao;
         this.executor = executor;
+        this.callbackDispatcher = callbackDispatcher;
     }
 
     public void execute(TaskListItem listItem, Runnable onChanged) {
@@ -24,6 +32,7 @@ public class IncrementTaskProgressUseCase {
                 listItem.taskId,
                 listItem.slotId,
                 step,
+                callbackDispatcher,
                 onChanged
         ));
     }

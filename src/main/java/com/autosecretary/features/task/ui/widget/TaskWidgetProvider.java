@@ -165,6 +165,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
                         lifecycleManager,
                         taskId,
                         slotId,
+                        Runnable::run,
                         () -> notifyWidgetUpdate(context)
                 );
             } catch (Exception e) {

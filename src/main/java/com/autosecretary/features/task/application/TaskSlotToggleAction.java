@@ -9,9 +9,13 @@ import com.autosecretary.features.task.domain.TaskCompletionService.CompletionPh
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
 import java.time.LocalDate;
+import java.util.concurrent.Executor;
 
 /**
  * Shared operation for toggling a task slot completion state and persisting resulting writes.
+ *
+ * Contract: call from a worker thread for DAO reads/writes; when present,
+ * callbacks are dispatched through {@code callbackDispatcher}.
  */
 public final class TaskSlotToggleAction {
     private TaskSlotToggleAction() {
@@ -22,6 +26,7 @@ public final class TaskSlotToggleAction {
                                TaskLifecycleManager lifecycleManager,
                                String taskId,
                                String slotId,
+                               Executor callbackDispatcher,
                                Runnable postWriteAction) {
         if (taskId == null || slotId == null) {
             return;
@@ -53,8 +58,8 @@ public final class TaskSlotToggleAction {
         }
         taskDao.writeSlot(slot);
 
-        if (postWriteAction != null) {
-            postWriteAction.run();
+        if (postWriteAction != null && callbackDispatcher != null) {
+            callbackDispatcher.execute(postWriteAction);
         }
     }
 
