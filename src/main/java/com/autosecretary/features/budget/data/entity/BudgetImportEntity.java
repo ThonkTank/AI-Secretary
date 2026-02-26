@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.data.importing;
+package com.autosecretary.features.budget.data.entity;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
@@ -50,7 +50,7 @@ public class BudgetImportEntity {
     public int autoCategorized;
 
     @NonNull
-    public String status = "PENDING";
+    public ImportStatus status = ImportStatus.PENDING;
 
     public String errorMessage;
 

@@ -1,5 +1,6 @@
 package com.autosecretary.features.budget.domain;
 
+import com.autosecretary.features.budget.data.entity.ImportStatus;
 import com.autosecretary.features.budget.domain.importing.ImportCategory;
 import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
 
@@ -7,7 +8,20 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Persistenz-Abstraktion für Budget-Import und Recurring-Operationen.
+ * Persistence abstraction for two related concerns:
+ *
+ * <ol>
+ *   <li><b>Import lifecycle</b> — tracks CSV file imports (deduplication via SHA-256 file hash
+ *       and per-transaction {@code importHash}) and exposes batch-persist / load operations for
+ *       {@link com.autosecretary.features.budget.domain.importing.ImportTransactionRecord}s.</li>
+ *   <li><b>Recurring template management</b> — creates templates from detected
+ *       {@link RecurringSuggestion}s, links historical transactions to them, and synchronizes
+ *       predicted future occurrences.</li>
+ * </ol>
+ *
+ * <p>The primary consumer is
+ * {@code com.autosecretary.features.budget.application.importing.BudgetImportUseCase}.
+ * Note: this interface has no Room implementation yet — see CLAUDE.md "Not Yet Implemented".
  */
 public interface BudgetImportRepository {
 
@@ -21,7 +35,7 @@ public interface BudgetImportRepository {
             int totalTransactions,
             int importedTransactions,
             int autoCategorized,
-            String status,
+            ImportStatus status,
             String errorMessage
     ) {
     }
@@ -49,7 +63,20 @@ public interface BudgetImportRepository {
 
     void linkTransactionsToTemplate(List<String> transactionIds, String templateId);
 
+    /**
+     * Walks all active recurring templates, advances each template's {@code nextDue} date via
+     * {@code RecurringTemplateScheduler.computeNextDue()}, deactivates templates whose computed
+     * next-due is {@code null}, and inserts predicted {@code BudgetTransactionEntity} rows for
+     * templates due within a lookahead window from {@code referenceDate}. Should be called once
+     * per app session (e.g. on app resume) to keep predicted transactions up to date.
+     */
     void synchronizeRecurringTemplateState(LocalDate referenceDate);
 
+    /**
+     * Signals the Room implementation to post a LiveData update so the UI refreshes after a
+     * bulk import or template sync. This method exists on the repository interface because the
+     * Room implementation owns the LiveData; it is <em>not</em> a pure persistence operation
+     * and must not be called from domain logic that does not own the UI lifecycle.
+     */
     void notifyBudgetDataUpdated();
 }

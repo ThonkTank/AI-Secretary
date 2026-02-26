@@ -4,11 +4,12 @@ import com.autosecretary.features.budget.data.dao.BudgetLookupDao;
 import com.autosecretary.features.budget.data.dao.TransactionDao;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
-import com.autosecretary.features.budget.data.importing.BudgetImportDao;
-import com.autosecretary.features.budget.data.importing.BudgetImportEntity;
-import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateDao;
-import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateEntity;
-import com.autosecretary.features.budget.data.projection.AccountBalanceTotal;
+import com.autosecretary.features.budget.data.dao.BudgetImportDao;
+import com.autosecretary.features.budget.data.entity.BudgetImportEntity;
+import com.autosecretary.features.budget.data.dao.BudgetRecurringTemplateDao;
+import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEntity;
+import com.autosecretary.features.budget.data.entity.ImportStatus;
+import com.autosecretary.features.budget.data.dao.AccountBalanceTotal;
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
 import com.autosecretary.features.budget.domain.importing.ImportCategory;
 import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
@@ -58,27 +59,27 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
                 entity.accountId,
                 entity.fileName,
                 entity.fileHash,
-                null,
-                null,
-                0,
-                0,
-                0,
+                /* periodStart */      null,
+                /* periodEnd */        null,
+                /* total */            0,
+                /* imported */         0,
+                /* autoCategorized */  0,
                 entity.status,
-                null
+                /* errorMessage */     null
         );
     }
 
     @Override
     public void markImportCompleted(String importId, int totalTransactions, int importedTransactions,
                                      int autoCategorized, LocalDate periodStart, LocalDate periodEnd) {
-        importDao.markCompleted(importId, totalTransactions, importedTransactions,
+        importDao.markCompleted(importId, ImportStatus.COMPLETED, totalTransactions, importedTransactions,
                 autoCategorized, periodStart, periodEnd);
         synchronizeRecurringTemplateState(LocalDate.now());
     }
 
     @Override
     public void markImportFailed(String importId, String errorMessage) {
-        importDao.markFailed(importId, errorMessage);
+        importDao.markFailed(importId, ImportStatus.FAILED, errorMessage);
     }
 
     @Override
@@ -88,7 +89,9 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
 
     @Override
     public String findDefaultCategoryId(boolean income) {
-        String type = income ? "INCOME" : "EXPENSE";
+        BudgetTransactionEntity.TransactionType type = income
+                ? BudgetTransactionEntity.TransactionType.INCOME
+                : BudgetTransactionEntity.TransactionType.EXPENSE;
         return lookupDao.findDefaultCategoryId(type);
     }
 
@@ -103,7 +106,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     @Override
     public List<ImportCategory> loadActiveCategoriesForImport() {
         return lookupDao.getActiveCategories().stream()
-                .map(category -> new ImportCategory(category.id, category.name, category.type))
+                .map(category -> new ImportCategory(category.id, category.name, BudgetTransactionEntity.TransactionType.valueOf(category.type)))
                 .toList();
     }
 
@@ -124,7 +127,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
         BudgetRecurringTemplateEntity entity = new BudgetRecurringTemplateEntity(
                 accountId,
                 suggestion.normalizedPayee(),
-                suggestion.suggestedType().name()
+                suggestion.suggestedType()
         );
         entity.displayPayee = suggestion.displayPayee();
         entity.categoryId = suggestion.categoryId();
@@ -154,7 +157,9 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
         for (BudgetRecurringTemplateEntity template : templateDao.findAllActiveTemplates()) {
             LocalDate nextDue = RecurringTemplateScheduler.computeNextDue(template, referenceDate);
             boolean active = nextDue != null;
-            templateDao.updateNextDueAndStatus(template.id, active ? nextDue : template.nextDue, active);
+            // When deactivating, preserve the existing nextDue rather than overwriting with null
+            LocalDate dueDateToStore = active ? nextDue : template.nextDue;
+            templateDao.updateNextDueAndStatus(template.id, dueDateToStore, active);
         }
     }
 
@@ -197,7 +202,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     private ImportTransactionRecord toRecord(BudgetTransactionEntity entity) {
-        String type = entity.type == BudgetTransactionEntity.TransactionType.EXPENSE ? "EXPENSE" : "INCOME";
+        String type = entity.type.name();
         return new ImportTransactionRecord(
                 entity.id,
                 entity.accountId,

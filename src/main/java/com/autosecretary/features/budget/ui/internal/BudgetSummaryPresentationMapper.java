@@ -8,6 +8,7 @@ import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 public class BudgetSummaryPresentationMapper {
 
@@ -16,6 +17,8 @@ public class BudgetSummaryPresentationMapper {
         long totalExpenseCents = 0;
 
         for (MonthlyOverviewItem item : items) {
+            // Internal transfers move money between accounts — they are neither income nor expense
+            // and must be excluded to avoid distorting the summary totals.
             if ("INTERNAL_TRANSFER".equals(item.transactionKind)) {
                 continue;
             }
@@ -30,7 +33,7 @@ public class BudgetSummaryPresentationMapper {
     }
 
     public List<BudgetLimitBar> toLimitBars(List<CategorySpendSummary> totals,
-                                             EffectiveLimitProvider effectiveLimitProvider,
+                                             BiFunction<String, String, Long> effectiveLimitProvider,
                                              String yearMonth) {
         List<BudgetLimitBar> bars = new ArrayList<>();
         for (CategorySpendSummary total : totals) {
@@ -40,7 +43,7 @@ public class BudgetSummaryPresentationMapper {
             String icon = total.categoryIcon != null && !total.categoryIcon.trim().isEmpty()
                     ? total.categoryIcon : BudgetCategory.DEFAULT_ICON;
             String label = icon + " " + total.categoryName;
-            Long effectiveLimitCents = effectiveLimitProvider.getEffectiveLimitCents(total.categoryId, yearMonth);
+            Long effectiveLimitCents = effectiveLimitProvider.apply(total.categoryId, yearMonth);
             double effectiveLimitEuros = effectiveLimitCents != null
                     ? (effectiveLimitCents / 100.0)
                     : (total.limitAmountCents / 100.0);
@@ -56,7 +59,4 @@ public class BudgetSummaryPresentationMapper {
         return bars;
     }
 
-    public interface EffectiveLimitProvider {
-        Long getEffectiveLimitCents(String categoryId, String yearMonth);
-    }
 }

@@ -12,8 +12,6 @@ import androidx.room.Update;
 import java.time.LocalDate;
 import java.util.List;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
-import com.autosecretary.features.budget.data.projection.AccountBalanceTotal;
-import com.autosecretary.features.budget.data.projection.IncomeExpenseSummary;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
 import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
@@ -44,6 +42,8 @@ public interface TransactionDao {
             """)
     List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth);
 
+    // NOTE: Projection mirrors getMonthlyOverview, differing only by the accountId filter.
+    // Keep both in sync when modifying selected columns or joins.
     @Query("""
             SELECT t.id AS transactionId,
                    t.bookingDate AS bookingDate,
@@ -200,51 +200,9 @@ public interface TransactionDao {
     }
 
     @Transaction
-    default boolean updateTransferPair(String transactionId,
-                                       String sourceAccountId,
-                                       String targetAccountId,
-                                       long amountCents,
-                                       LocalDate bookingDate,
-                                       String yearMonth,
-                                       String note) {
-        BudgetTransactionEntity transaction = findById(transactionId);
-        if (transaction == null || transaction.linkedTransactionId == null) {
-            return false;
-        }
-
-        BudgetTransactionEntity linked = findById(transaction.linkedTransactionId);
-        if (linked == null) {
-            return false;
-        }
-
-        BudgetTransactionEntity debit = transaction.type == BudgetTransactionEntity.TransactionType.EXPENSE
-                ? transaction : linked;
-        BudgetTransactionEntity credit = transaction.type == BudgetTransactionEntity.TransactionType.INCOME
-                ? transaction : linked;
-
-        debit.accountId = sourceAccountId;
-        debit.type = BudgetTransactionEntity.TransactionType.EXPENSE;
-        debit.amountCents = amountCents;
-        debit.bookingDate = bookingDate;
-        debit.yearMonth = yearMonth;
-        debit.note = note;
-        debit.categoryId = null;
-        debit.transactionKind = BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER;
-        debit.linkedTransactionId = credit.id;
-
-        credit.accountId = targetAccountId;
-        credit.type = BudgetTransactionEntity.TransactionType.INCOME;
-        credit.amountCents = amountCents;
-        credit.bookingDate = bookingDate;
-        credit.yearMonth = yearMonth;
-        credit.note = note;
-        credit.categoryId = null;
-        credit.transactionKind = BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER;
-        credit.linkedTransactionId = debit.id;
-
+    default void updateTransferPair(BudgetTransactionEntity debit, BudgetTransactionEntity credit) {
         update(debit);
         update(credit);
-        return true;
     }
 
     @Transaction

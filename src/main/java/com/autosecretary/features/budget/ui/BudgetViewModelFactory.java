@@ -4,27 +4,19 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.autosecretary.features.budget.application.AmountParser;
+import com.autosecretary.features.budget.domain.AmountParser;
 import com.autosecretary.features.budget.application.BudgetSeedService;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.application.CreateTransferUseCase;
 import com.autosecretary.features.budget.domain.BudgetRepository;
-import com.autosecretary.features.budget.ui.internal.BudgetChartStateMapper;
 import com.autosecretary.features.budget.ui.internal.BudgetOverviewLoader;
 import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
 
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
 public class BudgetViewModelFactory implements ViewModelProvider.Factory {
-
-    private static final DateTimeFormatter DAILY_POINT_LABEL =
-            DateTimeFormatter.ofPattern("dd.MM", Locale.GERMAN);
-    private static final DateTimeFormatter MONTHLY_POINT_LABEL =
-            DateTimeFormatter.ofPattern("MMM yy", Locale.GERMAN);
 
     private final BudgetRepository repository;
     private final ExecutorService executor;
@@ -51,14 +43,10 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
     @Override
     public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
         if (modelClass.isAssignableFrom(BudgetViewModel.class)) {
-            BudgetChartStateMapper chartStateMapper = new BudgetChartStateMapper(
-                    DAILY_POINT_LABEL,
-                    MONTHLY_POINT_LABEL);
             BudgetSummaryPresentationMapper summaryPresentationMapper = new BudgetSummaryPresentationMapper();
             BudgetOverviewLoader overviewLoader = new BudgetOverviewLoader(
                     repository,
-                    summaryPresentationMapper,
-                    chartStateMapper);
+                    summaryPresentationMapper);
             return modelClass.cast(new BudgetViewModel(
                     repository, executor, postToMain,
                     importUseCase,
@@ -66,7 +54,8 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
                     createTransferUseCase,
                     new BudgetSeedService(repository),
                     overviewLoader,
-                    new AmountParser()));
+                    new AmountParser(),
+                    summaryPresentationMapper));
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
     }

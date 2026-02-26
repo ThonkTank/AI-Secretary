@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.data.projection;
+package com.autosecretary.features.budget.data.dao;
 
 public class AccountBalanceTotal {
     public String accountId;

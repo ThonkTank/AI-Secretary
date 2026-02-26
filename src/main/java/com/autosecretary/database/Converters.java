@@ -7,6 +7,8 @@ import com.autosecretary.shared.Priority;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
+import com.autosecretary.features.budget.data.entity.ImportStatus;
+import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -115,6 +117,26 @@ public class Converters {
     @TypeConverter
     public static BudgetAccount.AccountType toBudgetAccountType(String value) {
         return value != null ? BudgetAccount.AccountType.valueOf(value) : null;
+    }
+
+    @TypeConverter
+    public static String fromImportStatus(ImportStatus status) {
+        return status != null ? status.name() : null;
+    }
+
+    @TypeConverter
+    public static ImportStatus toImportStatus(String value) {
+        return value != null ? ImportStatus.valueOf(value) : null;
+    }
+
+    @TypeConverter
+    public static String fromRecurringType(RecurringBudgetTransaction.RecurringType type) {
+        return type != null ? type.name() : null;
+    }
+
+    @TypeConverter
+    public static RecurringBudgetTransaction.RecurringType toRecurringType(String value) {
+        return value != null ? RecurringBudgetTransaction.RecurringType.valueOf(value) : null;
     }
 
     @TypeConverter

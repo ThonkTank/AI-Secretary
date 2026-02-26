@@ -1,3 +1,5 @@
 package com.autosecretary.features.budget.domain.importing;
 
-public record ImportCategory(String id, String name, String type) {}
+import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
+
+public record ImportCategory(String id, String name, BudgetTransactionEntity.TransactionType type) {}

@@ -5,8 +5,8 @@ public class BudgetLimitBar {
     private final String categoryName;
     private final String categoryColorHex;
     private final long spentCents;
-    private final double baseLimitEuros;
-    private final double effectiveLimitEuros;
+    private final double baseLimitEuros;      // The configured monthly spending limit
+    private final double effectiveLimitEuros; // Limit after applying rollover carryover (may exceed base)
     private final int percentage;
 
     public BudgetLimitBar(String categoryId, String categoryName, String categoryColorHex,

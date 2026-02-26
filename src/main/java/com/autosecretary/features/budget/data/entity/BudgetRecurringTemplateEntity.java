@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.data.importing;
+package com.autosecretary.features.budget.data.entity;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 
 @Entity(
         tableName = "budget_recurring_template",
@@ -58,7 +59,7 @@ public class BudgetRecurringTemplateEntity {
     public int maxAmountCents;
 
     @NonNull
-    public String recurringType;
+    public RecurringBudgetTransaction.RecurringType recurringType;
 
     public int recurringValue;
 
@@ -70,7 +71,7 @@ public class BudgetRecurringTemplateEntity {
 
     public BudgetRecurringTemplateEntity(@NonNull String accountId,
                                          @NonNull String normalizedPayee,
-                                         @NonNull String recurringType) {
+                                         @NonNull RecurringBudgetTransaction.RecurringType recurringType) {
         this.accountId = accountId;
         this.normalizedPayee = normalizedPayee;
         this.recurringType = recurringType;

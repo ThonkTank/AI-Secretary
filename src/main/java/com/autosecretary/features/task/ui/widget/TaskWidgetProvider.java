@@ -180,7 +180,9 @@ public class TaskWidgetProvider extends AppWidgetProvider {
                         taskId,
                         slotId,
                         Runnable::run,
-                        () -> notifyWidgetUpdate(context)
+                        () -> notifyWidgetUpdate(context),
+                        null,
+                        db
                 );
             } catch (Exception e) {
                 Log.e(TAG, "Toggle failed", e);

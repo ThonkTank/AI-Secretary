@@ -11,7 +11,22 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Erkennung von Datums-Patterns (monatlich, wöchentlich, Intervalle).
+ * Detects recurring date patterns from a list of transaction dates.
+ *
+ * <p>Checks are applied in priority order — the first match wins:
+ * <ol>
+ *   <li>{@code MONTHLY_DAY} — transactions cluster on the same day of month (±2 day tolerance,
+ *       with wrap-around handling for month-end dates).</li>
+ *   <li>{@code MONTHLY_LAST} — all transactions fall within the last 3 days of their month.</li>
+ *   <li>{@code WEEKLY} — transactions fall on the same day of week in ≥ 80% of cases, with an
+ *       average inter-occurrence interval of 5–9 days.</li>
+ *   <li>{@code INTERVAL} — a generic fixed interval (≥ 3 days) where all gaps are within ±20%
+ *       of the average (plus a ±2 day absolute tolerance).</li>
+ * </ol>
+ *
+ * <p>Returns {@code null} if fewer than 2 transactions are provided or no pattern is detected.
+ * Results are returned as a {@link PatternResult}; see its Javadoc for how to interpret
+ * the {@code value} field per pattern type.
  */
 public final class DatePatternDetector {
     private static final int WEEKLY_INTERVAL_MIN_DAYS = 5;
@@ -124,6 +139,19 @@ public final class DatePatternDetector {
                 .orElse(values.get(0));
     }
 
+    /**
+     * Result of a pattern detection run.
+     *
+     * <p>The meaning of {@code value} depends on {@code type}:
+     * <ul>
+     *   <li>{@code MONTHLY_DAY}  — day of month (1–31) on which the transaction recurs</li>
+     *   <li>{@code MONTHLY_LAST} — always 0; the scheduler uses the last day of each month</li>
+     *   <li>{@code WEEKLY}       — always 0; use {@code dayOfWeek} instead</li>
+     *   <li>{@code INTERVAL}     — number of days between occurrences</li>
+     * </ul>
+     *
+     * <p>{@code dayOfWeek} is non-null only for {@code WEEKLY} patterns; null otherwise.
+     */
     public record PatternResult(RecurringBudgetTransaction.RecurringType type,
                                 int value,
                                 DayOfWeek dayOfWeek) {

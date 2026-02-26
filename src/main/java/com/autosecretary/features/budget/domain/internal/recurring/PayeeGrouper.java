@@ -9,7 +9,16 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Hilfsklasse für Payee-Normalisierung und unscharfe Gruppierung.
+ * Groups transactions by payee using fuzzy (Levenshtein-based) string matching.
+ *
+ * <p>Normalization rules applied before comparison: convert to uppercase, strip all digits and
+ * {@code #*} characters, replace remaining non-letter/non-space characters with spaces, and
+ * collapse whitespace. This handles common bank-statement noise such as reference numbers and
+ * transaction IDs embedded in the payee field.
+ *
+ * <p>Two normalized payees are considered the same group when their similarity score is ≥
+ * {@link #PAYEE_SIMILARITY_THRESHOLD} (0.75). Similarity is {@code 1 - (levenshteinDistance /
+ * maxLength)}, so identical strings score 1.0 and completely different strings score 0.0.
  */
 public final class PayeeGrouper {
     static final double PAYEE_SIMILARITY_THRESHOLD = 0.75;

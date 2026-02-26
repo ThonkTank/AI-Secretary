@@ -7,4 +7,7 @@
     <color name="budget_negative">#F44336</color>
     <color name="budget_warning">#FF9800</color>
     <color name="budget_neutral">#9E9E9E</color>
+    <color name="budget_chart_line">#1976D2</color>
+    <color name="budget_chart_axis">#BDBDBD</color>
+    <color name="budget_chart_label">#616161</color>
 </resources>

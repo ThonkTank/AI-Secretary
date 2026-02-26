@@ -7,6 +7,7 @@ import androidx.room.Query;
 
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 
 import java.util.List;
 
@@ -35,7 +36,7 @@ public interface BudgetLookupDao {
     void updateCurrentBalanceCents(String accountId, long balanceCents);
 
     @Query("SELECT id FROM budget_category WHERE type = :type AND archived = 0 LIMIT 1")
-    String findDefaultCategoryId(String type);
+    String findDefaultCategoryId(BudgetTransactionEntity.TransactionType type);
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void insertAccount(BudgetAccount account);

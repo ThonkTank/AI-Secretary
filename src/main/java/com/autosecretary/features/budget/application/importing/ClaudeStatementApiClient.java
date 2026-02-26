@@ -111,7 +111,7 @@ public class ClaudeStatementApiClient {
                 JSONObject cat = new JSONObject();
                 cat.put("id", category.id());
                 cat.put("name", category.name());
-                cat.put("type", category.type());
+                cat.put("type", category.type().name());
                 categoryArray.put(cat);
             }
         }

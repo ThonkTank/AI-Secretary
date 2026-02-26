@@ -24,6 +24,10 @@ android {
         versionName = "$versionMajor.$versionMinor.$versionPatch"
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17

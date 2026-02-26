@@ -2,10 +2,13 @@ package com.autosecretary.features.budget.ui.internal;
 
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.View;
+
+import androidx.core.content.ContextCompat;
+
+import com.autosecretary.R;
 
 import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
 
@@ -19,6 +22,8 @@ public class BudgetBalanceChartView extends View {
     private final Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint pointPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
+    private float leftPad, rightPad, topPad, bottomPad;
+
     private List<BudgetChartPoint> points = new ArrayList<>();
 
     public BudgetBalanceChartView(Context context) {
@@ -31,18 +36,24 @@ public class BudgetBalanceChartView extends View {
 
     public BudgetBalanceChartView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        linePaint.setColor(Color.parseColor("#1976D2"));
+        int chartLine = ContextCompat.getColor(context, R.color.budget_chart_line);
+        linePaint.setColor(chartLine);
         linePaint.setStrokeWidth(dp(2f));
         linePaint.setStyle(Paint.Style.STROKE);
 
-        pointPaint.setColor(Color.parseColor("#1976D2"));
+        pointPaint.setColor(chartLine);
         pointPaint.setStyle(Paint.Style.FILL);
 
-        axisPaint.setColor(Color.parseColor("#BDBDBD"));
+        axisPaint.setColor(ContextCompat.getColor(context, R.color.budget_chart_axis));
         axisPaint.setStrokeWidth(dp(1f));
 
-        labelPaint.setColor(Color.parseColor("#616161"));
+        labelPaint.setColor(ContextCompat.getColor(context, R.color.budget_chart_label));
         labelPaint.setTextSize(dp(10f));
+
+        leftPad   = dp(16f);
+        rightPad  = dp(12f);
+        topPad    = dp(12f);
+        bottomPad = dp(28f);
     }
 
     public void setPoints(List<BudgetChartPoint> points) {
@@ -54,11 +65,6 @@ public class BudgetBalanceChartView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        float leftPad = dp(16f);
-        float rightPad = dp(12f);
-        float topPad = dp(12f);
-        float bottomPad = dp(28f);
-
         float width = getWidth() - leftPad - rightPad;
         float height = getHeight() - topPad - bottomPad;
         if (width <= 0 || height <= 0) return;
@@ -66,7 +72,7 @@ public class BudgetBalanceChartView extends View {
         float bottomY = topPad + height;
         canvas.drawLine(leftPad, bottomY, leftPad + width, bottomY, axisPaint);
 
-        if (points == null || points.isEmpty()) {
+        if (points.isEmpty()) {
             canvas.drawText("Keine Chart-Daten", leftPad, topPad + height / 2f, labelPaint);
             return;
         }

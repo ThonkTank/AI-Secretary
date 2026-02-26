@@ -16,8 +16,8 @@ import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.data.entity.BudgetLimit;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
-import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateDao;
-import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateEntity;
+import com.autosecretary.features.budget.data.dao.BudgetRecurringTemplateDao;
+import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEntity;
 
 public class BudgetRoomRepository implements BudgetRepository {
     private final BudgetLookupDao lookupDao;
@@ -94,7 +94,7 @@ public class BudgetRoomRepository implements BudgetRepository {
 
         long total = 0L;
         for (BudgetRecurringTemplateEntity template : templates) {
-            total += Math.max(0L, -template.avgAmountCents);
+            total += -template.avgAmountCents;  // avgAmountCents < 0 guaranteed by DAO query
         }
         return total;
     }
@@ -123,8 +123,42 @@ public class BudgetRoomRepository implements BudgetRepository {
         lookupDao.updateCurrentBalanceCents(accountId, updatedBalance);
     }
 
+    @Override public void saveTransaction(String accountId, String categoryId, boolean isExpense,
+                                          long amountCents, LocalDate bookingDate, String note) {
+        BudgetTransactionEntity.TransactionType type = isExpense
+                ? BudgetTransactionEntity.TransactionType.EXPENSE
+                : BudgetTransactionEntity.TransactionType.INCOME;
+        BudgetTransactionEntity entity = new BudgetTransactionEntity(
+                accountId, categoryId, type, amountCents, bookingDate,
+                YearMonth.from(bookingDate).toString());
+        entity.note = note;
+        transactionDao.insert(entity);
+    }
+
     @Override public void updateTransaction(BudgetTransactionEntity transaction) {
         transactionDao.update(transaction);
+    }
+
+    @Override public void updateTransaction(String transactionId, String accountId, String categoryId,
+                                            boolean isExpense, long amountCents,
+                                            LocalDate bookingDate, String note) {
+        BudgetTransactionEntity.TransactionType type = isExpense
+                ? BudgetTransactionEntity.TransactionType.EXPENSE
+                : BudgetTransactionEntity.TransactionType.INCOME;
+        BudgetTransactionEntity entity = transactionDao.findById(transactionId);
+        if (entity == null) {
+            entity = new BudgetTransactionEntity(accountId, categoryId, type, amountCents,
+                    bookingDate, YearMonth.from(bookingDate).toString());
+            entity.id = transactionId;
+        }
+        entity.accountId = accountId;
+        entity.categoryId = categoryId;
+        entity.type = type;
+        entity.amountCents = amountCents;
+        entity.bookingDate = bookingDate;
+        entity.yearMonth = YearMonth.from(bookingDate).toString();
+        entity.note = (note == null || note.trim().isEmpty()) ? null : note.trim();
+        transactionDao.update(entity);
     }
 
     @Override public void deleteTransaction(String transactionId) {
@@ -169,15 +203,45 @@ public class BudgetRoomRepository implements BudgetRepository {
                                   long amountCents,
                                   LocalDate bookingDate,
                                   String note) {
-        return transactionDao.updateTransferPair(
-                transactionId,
-                sourceAccountId,
-                targetAccountId,
-                amountCents,
-                bookingDate,
-                YearMonth.from(bookingDate).toString(),
-                note
-        );
+        BudgetTransactionEntity transaction = transactionDao.findById(transactionId);
+        if (transaction == null || transaction.linkedTransactionId == null) {
+            return false;
+        }
+
+        BudgetTransactionEntity linked = transactionDao.findById(transaction.linkedTransactionId);
+        if (linked == null) {
+            return false;
+        }
+
+        BudgetTransactionEntity debit = transaction.type == BudgetTransactionEntity.TransactionType.EXPENSE
+                ? transaction : linked;
+        BudgetTransactionEntity credit = transaction.type == BudgetTransactionEntity.TransactionType.INCOME
+                ? transaction : linked;
+
+        String yearMonth = YearMonth.from(bookingDate).toString();
+
+        debit.accountId = sourceAccountId;
+        debit.type = BudgetTransactionEntity.TransactionType.EXPENSE;
+        debit.amountCents = amountCents;
+        debit.bookingDate = bookingDate;
+        debit.yearMonth = yearMonth;
+        debit.note = note;
+        debit.categoryId = null;
+        debit.transactionKind = BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER;
+        debit.linkedTransactionId = credit.id;
+
+        credit.accountId = targetAccountId;
+        credit.type = BudgetTransactionEntity.TransactionType.INCOME;
+        credit.amountCents = amountCents;
+        credit.bookingDate = bookingDate;
+        credit.yearMonth = yearMonth;
+        credit.note = note;
+        credit.categoryId = null;
+        credit.transactionKind = BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER;
+        credit.linkedTransactionId = debit.id;
+
+        transactionDao.updateTransferPair(debit, credit);
+        return true;
     }
 
     @Override public void saveBudgetLimit(BudgetLimit budgetLimit) {

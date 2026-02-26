@@ -1,7 +1,5 @@
 package com.autosecretary.features.budget.ui.state;
 
-import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
-
 import java.time.LocalDate;
 
 public class BudgetTransactionRow {
@@ -11,7 +9,6 @@ public class BudgetTransactionRow {
     private final boolean isExpense;
     private final String categoryColorHex;
     private final long amountCents;
-    private final BudgetTransactionEntity.TransactionType type;
     private final String categoryId;
     private final String note;
     private final LocalDate bookingDate;
@@ -19,15 +16,13 @@ public class BudgetTransactionRow {
 
     public BudgetTransactionRow(String transactionId, String label, String amount, boolean isExpense,
                                 String categoryColorHex, long amountCents,
-                                BudgetTransactionEntity.TransactionType type, String categoryId,
-                                String note, LocalDate bookingDate, String accountId) {
+                                String categoryId, String note, LocalDate bookingDate, String accountId) {
         this.transactionId = transactionId;
         this.label = label;
         this.amount = amount;
         this.isExpense = isExpense;
         this.categoryColorHex = categoryColorHex;
         this.amountCents = amountCents;
-        this.type = type;
         this.categoryId = categoryId;
         this.note = note;
         this.bookingDate = bookingDate;
@@ -56,10 +51,6 @@ public class BudgetTransactionRow {
 
     public long getAmountCents() {
         return amountCents;
-    }
-
-    public BudgetTransactionEntity.TransactionType getType() {
-        return type;
     }
 
     public String getCategoryId() {

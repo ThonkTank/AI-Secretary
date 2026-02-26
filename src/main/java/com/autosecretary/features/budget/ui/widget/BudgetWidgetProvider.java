@@ -32,6 +32,8 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
     private void updateWidget(Context context, AppWidgetManager manager, int widgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.budget_widget);
 
+        // Synchronous DB read — acceptable here because widget updates run outside the main
+        // Activity thread. Keep this query fast to avoid delaying widget renders.
         AppDatabase db = AppDatabase.getInstance(context);
         BudgetWidgetRoomRepository repository = new BudgetWidgetRoomRepository(
                 db.transactionDao(),
@@ -63,6 +65,8 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
             launchIntent.putExtra(EXTRA_BUDGET_ACTION, ACTION_ADD_TRANSACTION);
         }
 
+        // Unique per widget instance + action: Android requires distinct request codes
+        // for PendingIntents that carry different extras.
         int requestCode = widgetId * 10 + (openAddDialog ? 1 : 0);
         return PendingIntent.getActivity(
                 context,

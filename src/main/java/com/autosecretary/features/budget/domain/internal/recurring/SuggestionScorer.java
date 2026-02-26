@@ -5,13 +5,35 @@ import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 import java.util.List;
 
 /**
- * Scoring-Heuristik für Recurring-Vorschläge.
+ * Calculates a 0–1 confidence score for a detected recurring transaction suggestion.
+ *
+ * <p>Score components (weights sum to 1.0):
+ * <ul>
+ *   <li><b>Occurrence count (0.3)</b> — {@code min(count / 10, 0.3)}. More historical
+ *       occurrences increase confidence; capped at 10 samples (full weight).</li>
+ *   <li><b>Amount variance (0.3)</b> — {@code max(0.3 - variance_ratio, 0)}. Low spread
+ *       between min/max amount relative to the average scores higher; penalised linearly
+ *       toward zero as variance grows.</li>
+ *   <li><b>Pattern type bonus (0.3)</b> — flat bonus awarded whenever a structured date
+ *       pattern (MONTHLY_DAY, WEEKLY, etc.) is detected. Both count and amount variance are
+ *       meaningful only when a pattern exists, so this is equally weighted.</li>
+ *   <li><b>Known subscription (0.1)</b> — small tie-breaker for well-known recurring payees
+ *       (streaming services, gyms, telecoms, etc.) where confidence is inherently higher.</li>
+ * </ul>
+ *
+ * <p>Scores above approximately <b>0.7</b> are considered high-confidence and suitable for
+ * auto-applying without user confirmation. Scores between 0.4–0.7 are surfaced as suggestions
+ * requiring user review.
  */
 public final class SuggestionScorer {
+    // How many occurrences are needed to reach the full occurrence weight (30%).
     private static final double OCCURRENCE_CAP = 10.0;
+    // Occurrence count and amount variance are equally weighted — both are strong, independent signals.
     private static final double OCCURRENCE_WEIGHT = 0.3;
     private static final double AMOUNT_VARIANCE_WEIGHT = 0.3;
+    // A detected structured pattern is as important as the quantitative checks above.
     private static final double PATTERN_TYPE_BONUS = 0.3;
+    // Known-subscription match is a weaker tie-breaker, not a primary signal.
     private static final double KNOWN_SUBSCRIPTION_WEIGHT = 0.1;
 
     private static final String[] KNOWN_SUBSCRIPTION_PATTERNS = {

@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.data.importing;
+package com.autosecretary.features.budget.data.dao;
 
 import androidx.room.Dao;
 import androidx.room.Insert;
@@ -7,6 +7,8 @@ import androidx.room.Query;
 
 import java.time.LocalDate;
 import java.util.List;
+
+import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEntity;
 
 @Dao
 public interface BudgetRecurringTemplateDao {
@@ -18,7 +20,13 @@ public interface BudgetRecurringTemplateDao {
     List<BudgetRecurringTemplateEntity> findActiveTemplates(String accountId);
 
 
-    @Query("SELECT * FROM budget_recurring_template WHERE accountId = :accountId AND active = 1 AND avgAmountCents < 0 AND nextDue BETWEEN :fromDate AND :toDate")
+    @Query("""
+            SELECT * FROM budget_recurring_template
+            WHERE accountId = :accountId
+              AND active = 1
+              AND avgAmountCents < 0
+              AND nextDue BETWEEN :fromDate AND :toDate
+            """)
     List<BudgetRecurringTemplateEntity> findActiveExpenseTemplatesForAccountInRange(String accountId, LocalDate fromDate, LocalDate toDate);
 
     @Query("""

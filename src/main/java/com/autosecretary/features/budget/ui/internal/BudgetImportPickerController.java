@@ -30,6 +30,8 @@ public class BudgetImportPickerController {
         this.listener = listener;
     }
 
+    // Must be called in Fragment.onCreate(), before the fragment reaches the STARTED state
+    // (Android requires ActivityResultLauncher registration before that lifecycle point).
     public void register() {
         csvPickerLauncher = fragment.registerForActivityResult(
                 new ActivityResultContracts.OpenDocument(),

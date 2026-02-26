@@ -12,13 +12,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
-import com.autosecretary.features.budget.data.importing.BudgetImportDao;
-import com.autosecretary.features.budget.data.importing.BudgetImportEntity;
+import com.autosecretary.features.budget.data.dao.BudgetImportDao;
+import com.autosecretary.features.budget.data.entity.BudgetImportEntity;
 import com.autosecretary.features.budget.data.entity.BudgetLimit;
 import com.autosecretary.features.budget.data.dao.BudgetLimitDao;
 import com.autosecretary.features.budget.data.dao.BudgetLookupDao;
-import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateDao;
-import com.autosecretary.features.budget.data.importing.BudgetRecurringTemplateEntity;
+import com.autosecretary.features.budget.data.dao.BudgetRecurringTemplateDao;
+import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEntity;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.dao.TransactionDao;
 import com.autosecretary.features.task.data.TaskCore;

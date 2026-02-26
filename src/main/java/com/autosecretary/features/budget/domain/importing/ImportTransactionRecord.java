@@ -6,6 +6,9 @@ public record ImportTransactionRecord(
         String id,
         String accountId,
         String categoryId,
+        // Raw transaction type from CSV before mapping to the TransactionType enum.
+        // Valid values: "EXPENSE", "INCOME", "TRANSFER". Kept as String so the import
+        // pipeline can accept and validate arbitrary CSV input before enum conversion.
         String type,
         long amountCents,
         LocalDate bookingDate,
