@@ -29,7 +29,7 @@ import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
-import com.autosecretary.features.task.ui.TaskViewModelFactory;
+import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

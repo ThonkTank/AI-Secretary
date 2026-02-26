@@ -13,7 +13,7 @@ import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.R;
-import com.autosecretary.features.task.ui.TaskViewModel;
+import com.autosecretary.features.task.ui.list.TaskViewModel;
 import com.autosecretary.features.task.ui.edit.internal.editor.GoalSectionController;
 import com.autosecretary.features.task.ui.edit.internal.editor.PrefSlotSectionController;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormInputReader;
