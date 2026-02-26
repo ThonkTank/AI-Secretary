@@ -69,6 +69,10 @@
     <string name="task_editor_range_separator">\u0020-\u0020</string>
     <string name="task_editor_hint_max">Max</string>
     <string name="task_editor_cooldown_label">Cooldown (Tage):</string>
+    <string name="task_editor_fixed_appointment_toggle">Termin mit fester Zeit</string>
+    <string name="task_editor_fixed_date_label">Datum</string>
+    <string name="task_editor_fixed_start_label">Startzeit</string>
+    <string name="task_editor_fixed_duration_label">Dauer (Minuten)</string>
     <string name="task_editor_repetition_toggle">Wiederholung</string>
     <string name="task_editor_repetition_format">\u0020mal pro\u0020</string>
     <string name="task_editor_adaptive_times">Adaptive Zeiten</string>

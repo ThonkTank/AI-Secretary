@@ -45,9 +45,13 @@ public class TaskEditDialog extends DialogFragment {
 
     private CheckBox closeOnMissView;
     private CheckBox adaptiveView;
+    private CheckBox fixedAppointmentView;
     private EditText minDurationView;
     private EditText maxDurationView;
     private EditText cooldownView;
+    private EditText fixedDateView;
+    private EditText fixedStartView;
+    private EditText fixedDurationView;
 
     private CheckBox toggleRepetition;
     private EditText repsView;
@@ -184,6 +188,10 @@ public class TaskEditDialog extends DialogFragment {
             maxDurationView,
             cooldownView,
             adaptiveView,
+            fixedAppointmentView,
+            fixedDateView,
+            fixedStartView,
+            fixedDurationView,
             toggleRepetition,
             repsView,
             perPeriodView,
@@ -204,6 +212,10 @@ public class TaskEditDialog extends DialogFragment {
             minDurationView,
             maxDurationView,
             cooldownView,
+            fixedAppointmentView,
+            fixedDateView,
+            fixedStartView,
+            fixedDurationView,
             toggleRepetition,
             repsView,
             perPeriodView,
@@ -221,9 +233,13 @@ public class TaskEditDialog extends DialogFragment {
         private final Spinner priorityView;
         private final CheckBox closeOnMissView;
         private final CheckBox adaptiveView;
+        private final CheckBox fixedAppointmentView;
         private final EditText minDurationView;
         private final EditText maxDurationView;
         private final EditText cooldownView;
+        private final EditText fixedDateView;
+        private final EditText fixedStartView;
+        private final EditText fixedDurationView;
         private final CheckBox toggleRepetition;
         private final EditText repsView;
         private final EditText perPeriodView;
@@ -248,9 +264,13 @@ public class TaskEditDialog extends DialogFragment {
 
             closeOnMissView = schedulingViews.closeOnMissView;
             adaptiveView = schedulingViews.adaptiveView;
+            fixedAppointmentView = schedulingViews.fixedAppointmentView;
             minDurationView = schedulingViews.minDurationView;
             maxDurationView = schedulingViews.maxDurationView;
             cooldownView = schedulingViews.cooldownView;
+            fixedDateView = schedulingViews.fixedDateView;
+            fixedStartView = schedulingViews.fixedStartView;
+            fixedDurationView = schedulingViews.fixedDurationView;
 
             toggleRepetition = repetitionViews.toggleRepetition;
             repsView = repetitionViews.repsView;
