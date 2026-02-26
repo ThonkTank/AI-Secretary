@@ -119,7 +119,7 @@ public class DefaultTaskSlotGenerator {
     private Set<String> scheduledInSession;
     private Map<String, Task> allTasksById;
     private final TaskScorer scorer;
-    private LocalDate schedulingDay;
+    private TaskPlanningState planningState;
 
     public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager) {
         this(lifecycleManager, null, day -> {
@@ -177,6 +177,36 @@ public class DefaultTaskSlotGenerator {
         generateSlotsForDayInternal(tasks, windowStart, windowEnd, state, new ArrayList<>());
     }
 
+    public void generateSlotsForWeek(List<Task> tasks, LocalDate startDay, int planningDays, TaskPlanningState state) {
+        newSlots = 0;
+        scorer.reset();
+        planningState = state;
+
+        List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
+        List<Task> allTasks = TaskTreeOperations.flatten(taskTree);
+
+        scheduledInSession = new HashSet<>();
+        allTasksById = new HashMap<>();
+        for (Task t : allTasks) {
+            allTasksById.put(t.core.id, t);
+        }
+
+        List<Interval> occupied = new ArrayList<>();
+        LocalDate endExclusive = startDay.plusDays(planningDays);
+        for (LocalDate day = startDay; day.isBefore(endExclusive); day = day.plusDays(1)) {
+            SchedulingWindowProvider.SchedulingWindow window = schedulingWindowProvider.forDay(day);
+            occupied.addAll(collectOccupiedIntervals(allTasks, day, new ArrayList<>()));
+            for (CalendarBlockedIntervalProvider.BlockedInterval blocked :
+                    calendarBlockedIntervalProvider.readBlockedIntervals(day, window.start, window.end)) {
+                occupied.add(new Interval(blocked.start, blocked.end));
+            }
+        }
+        occupied.sort(Interval::compareTo);
+
+        log("=== Wochen-Generierung " + startDay + " bis " + endExclusive.minusDays(1) + " ===");
+        assignGlobalBestFit(taskTree, startDay, endExclusive, null, 0, occupied);
+    }
+
     public void generateSlotsForDay(List<Task> tasks,
                                     LocalDateTime windowStart,
                                     LocalDateTime windowEnd,
@@ -190,9 +220,9 @@ public class DefaultTaskSlotGenerator {
                                              LocalDateTime windowEnd,
                                              TaskPlanningState state,
                                              List<CalendarEvent> calendarEvents) {
-        schedulingDay = windowStart.toLocalDate();
         newSlots = 0;
         scorer.reset();
+        planningState = state;
 
         List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
         List<Task> allTasks = TaskTreeOperations.flatten(taskTree);
@@ -201,12 +231,12 @@ public class DefaultTaskSlotGenerator {
         allTasksById = new HashMap<>();
         for (Task t : allTasks) {
             allTasksById.put(t.core.id, t);
-            scorer.maintenance(t, schedulingDay, state);
+            scorer.maintenance(t, windowStart.toLocalDate(), state);
         }
 
         for (Task t : allTasks) {
             for (TaskSlot slot : t.slots) {
-                if (slot.day.equals(schedulingDay) && (slot.completed || slot.realStart != null)) {
+                if (slot.day.equals(windowStart.toLocalDate()) && (slot.completed || slot.realStart != null)) {
                     scheduledInSession.add(t.core.id);
                     scorer.onSlotAssigned(t, slot.start);
                 }
@@ -214,22 +244,22 @@ public class DefaultTaskSlotGenerator {
         }
 
         long windowMin = ChronoUnit.MINUTES.between(windowStart, windowEnd);
-        log("=== Generierung " + schedulingDay + " === Fenster " + windowStart.format(HMM) + "-" + windowEnd.format(HMM) + " (" + windowMin + "min), " + taskTree.size() + " root tasks");
+        log("=== Generierung " + windowStart.toLocalDate() + " === Fenster " + windowStart.format(HMM) + "-" + windowEnd.format(HMM) + " (" + windowMin + "min), " + taskTree.size() + " root tasks");
 
-        List<Interval> occupied = collectOccupiedIntervals(allTasks, schedulingDay, calendarEvents);
+        List<Interval> occupied = collectOccupiedIntervals(allTasks, windowStart.toLocalDate(), calendarEvents);
         for (CalendarBlockedIntervalProvider.BlockedInterval blocked :
-                calendarBlockedIntervalProvider.readBlockedIntervals(schedulingDay, windowStart, windowEnd)) {
+                calendarBlockedIntervalProvider.readBlockedIntervals(windowStart.toLocalDate(), windowStart, windowEnd)) {
             occupied.add(new Interval(blocked.start, blocked.end));
         }
         occupied.sort(Interval::compareTo);
-        assignGlobalBestFit(taskTree, windowStart, windowEnd, null, 0, occupied);
+        assignGlobalBestFit(taskTree, windowStart.toLocalDate(), windowStart.toLocalDate().plusDays(1), null, 0, occupied);
 
-        log("=== Zusammenfassung " + schedulingDay + " ===");
+        log("=== Zusammenfassung " + windowStart.toLocalDate() + " ===");
         int totalDaySlots = 0;
         for (Task t : allTasks) {
             List<TaskSlot> daySlots = new ArrayList<>();
             for (TaskSlot s : t.slots) {
-                if (s.day.equals(schedulingDay) && s.scheduled) daySlots.add(s);
+                if (s.day.equals(windowStart.toLocalDate()) && s.scheduled) daySlots.add(s);
             }
             if (!daySlots.isEmpty()) {
                 totalDaySlots += daySlots.size();
@@ -258,12 +288,13 @@ public class DefaultTaskSlotGenerator {
         }
     }
 
-    private void assignGlobalBestFit(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd,
+    private void assignGlobalBestFit(List<Task> tasks, LocalDate windowStart, LocalDate windowEnd,
                                      TaskSlot parentSlot, int depth, List<Interval> occupied) {
         String indent = "  ".repeat(depth);
+        List<Interval> windows = collectWindows(windowStart, windowEnd);
 
         while (true) {
-            List<Interval> gaps = findGaps(occupied, windowStart, windowEnd);
+            List<Interval> gaps = findGaps(occupied, windows);
             if (gaps.isEmpty()) {
                 log(indent + "--- Keine Lücken übrig [depth=" + depth + "] ---");
                 break;
@@ -275,7 +306,7 @@ public class DefaultTaskSlotGenerator {
             }
             log(indent + "--- Lückensuche [depth=" + depth + "], " + gaps.size() + " Lücken, " + totalFreeMin + "min frei ---");
 
-            CandidateSelection selection = evaluateAllCandidates(tasks, gaps, windowEnd);
+            CandidateSelection selection = evaluateAllCandidates(tasks, gaps);
             log(indent + "  " + selection.scoreLog);
 
             if (selection.task == null || selection.score <= 0) {
@@ -294,14 +325,13 @@ public class DefaultTaskSlotGenerator {
         }
     }
 
-    private CandidateSelection evaluateAllCandidates(List<Task> tasks, List<Interval> gaps, LocalDateTime windowEnd) {
+    private CandidateSelection evaluateAllCandidates(List<Task> tasks, List<Interval> gaps) {
         BestCandidateTracker tracker = new BestCandidateTracker();
         ScoreLogBuilder scoreLogBuilder = new ScoreLogBuilder();
-        DayOfWeek today = schedulingDay.getDayOfWeek();
 
         for (Task task : tasks) {
             // Fast path: if prerequisites are unmet even at the latest possible time, skip entirely
-            if (hasUnmetPrerequisites(task, windowEnd)) {
+            if (gaps.isEmpty() || hasUnmetPrerequisites(task, gaps.get(gaps.size() - 1).end)) {
                 scoreLogBuilder.appendTaskPrerequisiteBlocked(task);
                 continue;
             }
@@ -310,13 +340,13 @@ public class DefaultTaskSlotGenerator {
             List<String> prefDetails = new ArrayList<>();
 
             for (Interval gap : gaps) {
-                GapScore gapScore = scoreGapStart(task, gap, windowEnd);
+                GapScore gapScore = scoreGapStart(task, gap);
                 if (gapScore.score > taskBestScore) {
                     taskBestScore = gapScore.score;
                 }
                 tracker.updateBestCandidate(task, gapScore.score, gapScore.start);
 
-                int prefBestScore = scorePreferredStartsInGap(task, gap, windowEnd, today, tracker, prefDetails);
+                int prefBestScore = scorePreferredStartsInGap(task, gap, tracker, prefDetails);
                 if (prefBestScore > taskBestScore) {
                     taskBestScore = prefBestScore;
                 }
@@ -328,30 +358,31 @@ public class DefaultTaskSlotGenerator {
         return tracker.toSelection(scoreLogBuilder.build());
     }
 
-    private GapScore scoreGapStart(Task task, Interval gap, LocalDateTime windowEnd) {
+    private GapScore scoreGapStart(Task task, Interval gap) {
         if (hasUnmetPrerequisites(task, gap.start)) {
             return new GapScore(0, gap.start);
         }
-        LocalDateTime gapEnd = gap.end.isBefore(windowEnd) ? gap.end : windowEnd;
+        scorer.maintenance(task, gap.start.toLocalDate(), planningState);
+        LocalDateTime gapEnd = gap.end;
         int score = scorer.score(task, gap.start, gapEnd);
         return new GapScore(score, gap.start);
     }
 
     private int scorePreferredStartsInGap(Task task,
                                           Interval gap,
-                                          LocalDateTime windowEnd,
-                                          DayOfWeek today,
                                           BestCandidateTracker tracker,
                                           List<String> prefDetails) {
         int bestPrefScore = 0;
-        LocalDateTime gapEnd = gap.end.isBefore(windowEnd) ? gap.end : windowEnd;
+        LocalDateTime gapEnd = gap.end;
+        DayOfWeek dayOfWeek = gap.start.toLocalDate().getDayOfWeek();
 
         for (TaskPrefSlot ps : task.prefSlots) {
-            if (ps.days == null || !ps.days.contains(today)) continue;
+            if (ps.days == null || !ps.days.contains(dayOfWeek)) continue;
             if (scorer.isPrefSlotConsumed(task.core.id, ps.id)) continue;
-            LocalDateTime prefStart = schedulingDay.atTime(ps.start);
+            LocalDateTime prefStart = gap.start.toLocalDate().atTime(ps.start);
             if (!prefStart.isAfter(gap.start) || !prefStart.isBefore(gap.end)) continue;
             if (hasUnmetPrerequisites(task, prefStart)) continue;
+            scorer.maintenance(task, prefStart.toLocalDate(), planningState);
             int prefScore = scorer.score(task, prefStart, gapEnd);
             if (prefScore > bestPrefScore) {
                 bestPrefScore = prefScore;
@@ -373,28 +404,43 @@ public class DefaultTaskSlotGenerator {
             return parentEnd;
         }
         List<Interval> childOccupied = new ArrayList<>();
-        assignGlobalBestFit(task.children, parentStart, parentEnd, parentSlot, depth + 1, childOccupied);
+        assignGlobalBestFit(task.children, parentStart.toLocalDate(), parentEnd.toLocalDate().plusDays(1), parentSlot, depth + 1, childOccupied);
         return parentEnd;
     }
 
-    private List<Interval> findGaps(List<Interval> occupied, LocalDateTime windowStart, LocalDateTime windowEnd) {
+    private List<Interval> findGaps(List<Interval> occupied, List<Interval> windows) {
         List<Interval> gaps = new ArrayList<>();
-        LocalDateTime cursor = windowStart;
-
-        for (Interval interval : occupied) {
-            if (interval.start.isAfter(cursor)) {
-                gaps.add(new Interval(cursor, interval.start));
+        for (Interval window : windows) {
+            LocalDateTime cursor = window.start;
+            for (Interval interval : occupied) {
+                if (interval.end.isBefore(window.start) || interval.start.isAfter(window.end)) {
+                    continue;
+                }
+                LocalDateTime occupiedStart = interval.start.isBefore(window.start) ? window.start : interval.start;
+                LocalDateTime occupiedEnd = interval.end.isAfter(window.end) ? window.end : interval.end;
+                if (occupiedStart.isAfter(cursor)) {
+                    gaps.add(new Interval(cursor, occupiedStart));
+                }
+                if (occupiedEnd.isAfter(cursor)) {
+                    cursor = occupiedEnd;
+                }
             }
-            if (interval.end.isAfter(cursor)) {
-                cursor = interval.end;
+            if (cursor.isBefore(window.end)) {
+                gaps.add(new Interval(cursor, window.end));
             }
-        }
-
-        if (cursor.isBefore(windowEnd)) {
-            gaps.add(new Interval(cursor, windowEnd));
         }
 
         return gaps;
+    }
+
+    private List<Interval> collectWindows(LocalDate startInclusive, LocalDate endExclusive) {
+        List<Interval> windows = new ArrayList<>();
+        for (LocalDate day = startInclusive; day.isBefore(endExclusive); day = day.plusDays(1)) {
+            SchedulingWindowProvider.SchedulingWindow window = schedulingWindowProvider.forDay(day);
+            windows.add(new Interval(window.start, window.end));
+        }
+        windows.sort(Interval::compareTo);
+        return windows;
     }
 
     private List<Interval> collectOccupiedIntervals(List<Task> tasks, LocalDate day, List<CalendarEvent> calendarEvents) {
@@ -441,6 +487,7 @@ public class DefaultTaskSlotGenerator {
     private void finalizeAssignment(Task task, TaskSlot slot, int score) {
         slot.score = score;
         task.slots.add(slot);
+        planningState.recordScheduled(task.core.id, slot.day);
         scorer.onSlotAssigned(task, slot.start);
         scheduledInSession.add(task.core.id);
         newSlots++;
@@ -458,13 +505,13 @@ public class DefaultTaskSlotGenerator {
             Task prereqTask = allTasksById.get(prereq.prerequisiteId);
             if (prereqTask == null) continue;
 
-            TaskSlot prereqSlot = findScheduledSlotForDay(prereqTask, schedulingDay);
+            TaskSlot prereqSlot = findLatestSlotBefore(prereqTask, candidateStart);
             if (prereqSlot == null) {
                 return true;
             }
 
             if (prereq.minGapMinutes > 0 && prereqSlot.end != null) {
-                LocalDateTime earliestStart = schedulingDay.atTime(prereqSlot.end)
+                LocalDateTime earliestStart = prereqSlot.day.atTime(prereqSlot.end)
                         .plusMinutes(prereq.minGapMinutes);
                 if (candidateStart.isBefore(earliestStart)) {
                     return true;
@@ -474,13 +521,26 @@ public class DefaultTaskSlotGenerator {
         return false;
     }
 
-    private TaskSlot findScheduledSlotForDay(Task task, LocalDate day) {
+    private TaskSlot findLatestSlotBefore(Task task, LocalDateTime candidateStart) {
+        TaskSlot latest = null;
         for (TaskSlot slot : task.slots) {
-            if (slot.day.equals(day) && (slot.completed || slot.scheduled)) {
-                return slot;
+            if (!(slot.completed || slot.scheduled) || slot.day == null) {
+                continue;
+            }
+            LocalDateTime slotStart = slot.start != null ? slot.day.atTime(slot.start) : slot.day.atStartOfDay();
+            if (slotStart.isAfter(candidateStart)) {
+                continue;
+            }
+            if (latest == null) {
+                latest = slot;
+                continue;
+            }
+            LocalDateTime latestStart = latest.start != null ? latest.day.atTime(latest.start) : latest.day.atStartOfDay();
+            if (slotStart.isAfter(latestStart)) {
+                latest = slot;
             }
         }
-        return null;
+        return latest;
     }
 
     private void log(String message) {
