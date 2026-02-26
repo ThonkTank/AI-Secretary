@@ -3,6 +3,7 @@ package com.autosecretary.features.task.ui.list;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -28,6 +29,7 @@ import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -90,6 +92,21 @@ public class TaskListFragment extends Fragment {
             boolean hasItems = items != null && !items.isEmpty();
             recyclerView.setVisibility(hasItems ? View.VISIBLE : View.GONE);
             emptyStateContainer.setVisibility(hasItems ? View.GONE : View.VISIBLE);
+        });
+
+        vm.getScheduleConflicts().observe(getViewLifecycleOwner(), conflicts -> {
+            if (conflicts == null || conflicts.isEmpty()) {
+                return;
+            }
+            String message = "Planung mit " + conflicts.size() + " Konflikt(en) abgeschlossen";
+            Snackbar.make(view, message, Snackbar.LENGTH_LONG).show();
+            for (com.autosecretary.features.task.domain.SchedulingConflict conflict : conflicts) {
+                Log.w("TaskScheduleConflict", "{taskId=" + conflict.taskId
+                        + ", title=" + conflict.title
+                        + ", day=" + conflict.day
+                        + ", reasonCode=" + conflict.reasonCode
+                        + ", details=" + conflict.details + "}");
+            }
         });
 
         vm.getSearchQuery().observe(getViewLifecycleOwner(), query -> {
