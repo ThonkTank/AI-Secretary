@@ -11,8 +11,8 @@ import com.autosecretary.features.budget.application.importing.BudgetImportUseCa
 import com.autosecretary.features.budget.application.importing.ClaudeApiKeyStore;
 import com.autosecretary.features.budget.application.importing.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
-import com.autosecretary.features.budget.data.BudgetImportRoomRepository;
-import com.autosecretary.features.budget.data.BudgetRoomRepository;
+import com.autosecretary.features.budget.data.repository.BudgetImportRoomRepository;
+import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.budget.domain.CalculateFreeBudgetUseCase;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
@@ -21,7 +21,7 @@ import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
-import com.autosecretary.features.task.application.TaskListItemMapper;
+import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.TaskScheduleConfigRepository;
 import com.autosecretary.features.task.application.TaskScheduleConfigService;
 import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
@@ -29,7 +29,7 @@ import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
-import com.autosecretary.features.task.ui.TaskViewModelFactory;
+import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

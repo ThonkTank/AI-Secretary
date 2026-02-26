@@ -3,8 +3,8 @@ package com.autosecretary.features.task.ui.edit.internal.mapper;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
-import com.autosecretary.features.task.ui.edit.PrefSlotEditState;
-import com.autosecretary.features.task.ui.edit.TaskEditState;
+import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
+import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 import java.time.DayOfWeek;
 import java.util.ArrayList;

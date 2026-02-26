@@ -1,13 +1,13 @@
 package com.autosecretary.features.budget.domain;
 
-import com.autosecretary.features.budget.data.BudgetAccount;
-import com.autosecretary.features.budget.data.BudgetCategory;
-import com.autosecretary.features.budget.data.BudgetLimit;
-import com.autosecretary.features.budget.data.BudgetTransactionEntity;
-import com.autosecretary.features.budget.data.AccountDailyDeltaPoint;
-import com.autosecretary.features.budget.data.AccountMonthlyDeltaPoint;
-import com.autosecretary.features.budget.data.CategorySpendTotal;
-import com.autosecretary.features.budget.data.MonthlyTransactionOverviewItem;
+import com.autosecretary.features.budget.data.entity.BudgetAccount;
+import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetLimit;
+import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
+import com.autosecretary.features.budget.data.projection.AccountDailyDeltaPoint;
+import com.autosecretary.features.budget.data.projection.AccountMonthlyDeltaPoint;
+import com.autosecretary.features.budget.data.projection.CategorySpendTotal;
+import com.autosecretary.features.budget.data.projection.MonthlyTransactionOverviewItem;
 
 import java.time.LocalDate;
 import java.util.List;

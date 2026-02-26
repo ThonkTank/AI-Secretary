@@ -1,0 +1,190 @@
+package com.autosecretary.features.task.ui.list;
+
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.TextView;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.autosecretary.R;
+import com.autosecretary.app.AppCompositionRoot;
+import com.autosecretary.app.AutoSecretaryApplication;
+import com.autosecretary.features.task.ui.TaskScheduleConfigDialog;
+import com.autosecretary.features.task.ui.edit.TaskEditDialog;
+import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
+import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Locale;
+
+public class TaskListFragment extends Fragment {
+    private TaskViewModel vm;
+
+    private final ActivityResultLauncher<String> calendarPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (vm != null) {
+                    vm.onCalendarPermissionChanged(granted);
+                }
+            });
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.task_list_fragment, container, false);
+    }
+
+    @Override
+    public void onViewCreated(View view, Bundle savedInstanceState) {
+        AutoSecretaryApplication app = AutoSecretaryApplication.from(requireContext());
+        AppCompositionRoot compositionRoot = app.getAppCompositionRoot();
+        TaskViewModelFactory viewModelFactory = compositionRoot.createTaskViewModelFactory();
+        vm = new ViewModelProvider(requireActivity(), viewModelFactory).get(TaskViewModel.class);
+        TaskEditSessionController editSessionController = vm.getTaskEditSessionController();
+
+        ensureCalendarPermission();
+
+        RecyclerView recyclerView = view.findViewById(R.id.TaskList);
+        View emptyStateContainer = view.findViewById(R.id.EmptyStateContainer);
+        TextInputLayout taskSearchLayout = view.findViewById(R.id.TaskSearchLayout);
+        TextInputEditText taskSearchInput = view.findViewById(R.id.TaskSearchInput);
+        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+
+        ListRowAdapter adapter = new ListRowAdapter(
+                new ArrayList<>(),
+                new ListRowAdapter.TaskRowActions(
+                        vm::checkOff,
+                        viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId),
+                        viewSlot -> {
+                            if (viewSlot.item.timerRunning) {
+                                vm.stopTimer(viewSlot.item.slotId);
+                            } else {
+                                vm.startTimer(viewSlot.item.slotId);
+                            }
+                        },
+                        vm::incrementProgress,
+                        vm::decrementProgress,
+                        vm::toggleExpanded,
+                        vm::isExpanded)
+        );
+        adapter.setManageMode(vm.isManageMode());
+
+        recyclerView.setAdapter(adapter);
+        vm.getList().observe(getViewLifecycleOwner(), items -> {
+            adapter.setList(items);
+            boolean hasItems = items != null && !items.isEmpty();
+            recyclerView.setVisibility(hasItems ? View.VISIBLE : View.GONE);
+            emptyStateContainer.setVisibility(hasItems ? View.GONE : View.VISIBLE);
+        });
+
+        vm.getSearchQuery().observe(getViewLifecycleOwner(), query -> {
+            String currentValue = taskSearchInput.getText() == null ? "" : taskSearchInput.getText().toString();
+            String normalizedQuery = query == null ? "" : query;
+            if (!normalizedQuery.equals(currentValue)) {
+                taskSearchInput.setText(normalizedQuery);
+                taskSearchInput.setSelection(normalizedQuery.length());
+            }
+        });
+
+        taskSearchInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                vm.setSearchQuery(s == null ? "" : s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+
+        Button generateButton = view.findViewById(R.id.Button);
+        Button scheduleConfigButton = view.findViewById(R.id.ScheduleConfigButton);
+        View newTaskButton = view.findViewById(R.id.NewTaskButton);
+        generateButton.setOnClickListener(v -> vm.updateList());
+        scheduleConfigButton.setOnClickListener(v ->
+                new TaskScheduleConfigDialog().show(getParentFragmentManager(), "schedule_config")
+        );
+
+        View.OnClickListener createTaskClickListener = v -> {
+            editSessionController.createNewTask();
+            new TaskEditDialog().show(getParentFragmentManager(), "create");
+        };
+
+        newTaskButton.setOnClickListener(createTaskClickListener);
+        view.findViewById(R.id.EmptyStateNewTaskButton).setOnClickListener(createTaskClickListener);
+
+        TextView dayNavPrev = view.findViewById(R.id.DayNavPrev);
+        TextView dayNavLabel = view.findViewById(R.id.DayNavLabel);
+        TextView dayNavNext = view.findViewById(R.id.DayNavNext);
+        DateTimeFormatter dayFormat = DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN);
+
+        dayNavPrev.setOnClickListener(v -> vm.navigatePreviousDay());
+        dayNavNext.setOnClickListener(v -> vm.navigateNextDay());
+
+        vm.getSelectedDay().observe(getViewLifecycleOwner(), day -> {
+            boolean isToday = day.equals(LocalDate.now());
+            dayNavLabel.setText(isToday ? "Heute" : day.format(dayFormat));
+
+            dayNavPrev.setEnabled(!isToday);
+            dayNavPrev.setAlpha(isToday ? 0.3f : 1.0f);
+
+            boolean canGoForward = day.isBefore(LocalDate.now().plusDays(6));
+            dayNavNext.setEnabled(canGoForward);
+            dayNavNext.setAlpha(canGoForward ? 1.0f : 0.3f);
+
+            generateButton.setVisibility(isToday ? View.VISIBLE : View.GONE);
+            newTaskButton.setVisibility(isToday ? View.VISIBLE : View.GONE);
+
+            adapter.setInteractionsEnabled(isToday);
+        });
+
+        MaterialButtonToggleGroup toggle = view.findViewById(R.id.TaskListToggle);
+        toggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (isChecked) {
+                if (checkedId == R.id.ChecklistButton) {
+                    taskSearchLayout.setVisibility(View.GONE);
+                    vm.applyChecklistPreset();
+                } else {
+                    taskSearchLayout.setVisibility(View.VISIBLE);
+                    vm.applyManagePreset();
+                }
+                adapter.setManageMode(vm.isManageMode());
+            }
+        });
+
+        taskSearchLayout.setVisibility(toggle.getCheckedButtonId() == R.id.ManagementButton ? View.VISIBLE : View.GONE);
+    }
+
+    private void ensureCalendarPermission() {
+        boolean granted = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CALENDAR)
+                == PackageManager.PERMISSION_GRANTED;
+        vm.onCalendarPermissionChanged(granted);
+        if (!granted) {
+            calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR);
+        }
+    }
+
+    private void openEditDialog(TaskEditSessionController editSessionController, String taskId) {
+        editSessionController.beginEditTask(taskId);
+        new TaskEditDialog().show(getParentFragmentManager(), "edit");
+    }
+}

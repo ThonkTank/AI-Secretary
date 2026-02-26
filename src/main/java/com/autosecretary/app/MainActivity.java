@@ -10,7 +10,7 @@ import androidx.fragment.app.Fragment;
 import com.autosecretary.R;
 import com.autosecretary.features.budget.ui.BudgetFragment;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
-import com.autosecretary.features.task.ui.TaskListFragment;
+import com.autosecretary.features.task.ui.list.TaskListFragment;
 
 public class MainActivity extends AppCompatActivity {
 

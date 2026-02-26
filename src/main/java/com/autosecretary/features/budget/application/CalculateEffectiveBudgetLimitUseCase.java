@@ -2,7 +2,7 @@ package com.autosecretary.features.budget.application;
 
 import androidx.annotation.NonNull;
 
-import com.autosecretary.features.budget.data.BudgetLimit;
+import com.autosecretary.features.budget.data.entity.BudgetLimit;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 
 /**

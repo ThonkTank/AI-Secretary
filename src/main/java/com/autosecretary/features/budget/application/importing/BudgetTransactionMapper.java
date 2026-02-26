@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.application.importing;
 
-import com.autosecretary.features.budget.data.BudgetTransactionEntity;
+import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 
 import java.time.YearMonth;

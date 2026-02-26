@@ -5,10 +5,13 @@
 - `TaskEditSessionController`: owns create/edit session state and save flow.
 - `TaskEditPresenter`: applies form input and maps edit state back to persistence model.
 
+## State location
+- Canonical edit session state lives in `state/` (`ui/edit/state`), including `TaskEditState` and `PrefSlotEditState`.
+
 ## Internal boundaries
 - `internal/` is reserved for task-edit-only helpers.
 - `internal/editor/` contains form view wiring, validation, and input collection.
 - `internal/mapper/` contains `TaskEditStateMapper` for edit-state ↔ task mapping.
 - `internal/PrefSlotUIBuilder` is edit-specific preferred-slot UI construction.
 
-List-screen classes (`TaskListFragment`, `ListRowAdapter`, `TaskViewModel`, etc.) remain in `features.task.ui` root.
+List-screen classes live in `features.task.ui.list` (for example: `TaskListFragment`, `ListRowAdapter`, `TaskViewModel`).
