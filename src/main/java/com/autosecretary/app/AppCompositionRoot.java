@@ -73,7 +73,8 @@ public class AppCompositionRoot {
                 lifecycleManager,
                 message -> Log.d("SlotGen", message),
                 scheduleConfigRepository,
-                new DeviceCalendarBlockedIntervalProvider(app)
+                new DeviceCalendarBlockedIntervalProvider(app),
+                db.taskTransitionStatDao()
         );
         TaskListItemMapper mapper = new TaskListItemMapper();
         TaskCalendarService taskCalendarService = new CalendarReader(app);
@@ -88,6 +89,7 @@ public class AppCompositionRoot {
                 taskDao,
                 completionService,
                 lifecycleManager,
+                db.taskTransitionStatDao(),
                 taskUseCaseExecutor,
                 mainHandler::post
         );

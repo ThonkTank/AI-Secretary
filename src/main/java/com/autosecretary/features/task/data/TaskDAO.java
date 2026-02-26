@@ -7,6 +7,7 @@ import androidx.room.Query;
 import androidx.room.Transaction;
 
 import java.time.LocalTime;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -88,6 +89,17 @@ public interface TaskDAO {
 
     @Query("UPDATE task_slots SET realEnd = :endTime WHERE id = :slotId")
     void stopTimer(String slotId, LocalTime endTime);
+
+    @Query("""
+            SELECT taskId
+            FROM task_slots
+            WHERE taskId != :taskId
+              AND (realStart IS NOT NULL OR completed = 1)
+              AND (day < :day OR (day = :day AND COALESCE(realStart, realEnd, end, start) <= :eventTime))
+            ORDER BY day DESC, COALESCE(realStart, realEnd, end, start) DESC
+            LIMIT 1
+            """)
+    String findMostRecentTaskBefore(String taskId, LocalDate day, LocalTime eventTime);
 
     // ============== Delete ==============
     @Query("DELETE FROM task_core WHERE id = :id")

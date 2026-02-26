@@ -4,6 +4,7 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.data.TaskTransitionStat;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.TaskPlanningState;
 import java.time.DayOfWeek;
@@ -18,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * Scores tasks for scheduling priority using a multi-layer multiplicative formula.
@@ -33,24 +35,49 @@ final class TaskScorer {
     private static final double DEFAULT_MAX_AGING_MULTIPLIER = 3.0;
     /** Hours of deviation from preferred start at which the fit factor decays to 0.0. */
     private static final double DEFAULT_PREFERRED_START_DEVIATION_HOURS = 8.0;
+    private static final double FOLLOW_UP_MULTIPLIER_PER_WEIGHT = 0.08;
+    private static final double FOLLOW_UP_ADDITIVE_PER_WEIGHT = 120.0;
+    private static final double FOLLOW_UP_MULTIPLIER_CAP = 1.6;
+    private static final double FOLLOW_UP_ADDITIVE_CAP = 1800.0;
 
     private final TaskLifecycleManager lifecycleManager;
     private final double maxAgingMultiplier;
     private final double preferredStartDeviationHours;
     private final Map<String, TaskScoringSnapshot> caches = new HashMap<>();
+    private final Map<String, Map<String, TaskTransitionStat>> transitionStats = new HashMap<>();
+    private final Consumer<String> logger;
 
     TaskScorer(TaskLifecycleManager lifecycleManager) {
-        this(lifecycleManager, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
+        this(lifecycleManager, null, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
     }
 
-    TaskScorer(TaskLifecycleManager lifecycleManager, double maxAgingMultiplier, double preferredStartDeviationHours) {
+    TaskScorer(TaskLifecycleManager lifecycleManager, Consumer<String> logger) {
+        this(lifecycleManager, logger, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
+    }
+
+    TaskScorer(TaskLifecycleManager lifecycleManager,
+               Consumer<String> logger,
+               double maxAgingMultiplier,
+               double preferredStartDeviationHours) {
         this.lifecycleManager = lifecycleManager;
+        this.logger = logger;
         this.maxAgingMultiplier = maxAgingMultiplier;
         this.preferredStartDeviationHours = preferredStartDeviationHours;
     }
 
     void reset() {
         caches.clear();
+    }
+
+    void setTransitionStats(List<TaskTransitionStat> stats) {
+        transitionStats.clear();
+        if (stats == null) {
+            return;
+        }
+        for (TaskTransitionStat stat : stats) {
+            transitionStats.computeIfAbsent(stat.fromTaskId, key -> new HashMap<>())
+                    .put(stat.toTaskId, stat);
+        }
     }
 
     static final class SlotScanResult {
@@ -266,7 +293,7 @@ final class TaskScorer {
      *   <li><b>Aging</b> — snapshot aging force, pre-computed in maintenance, capped at {@link #maxAgingMultiplier}.</li>
      * </ol>
      */
-    int score(Task task, LocalDateTime start, LocalDateTime end) {
+    int score(Task task, LocalDateTime start, LocalDateTime end, String previousTaskId) {
         TaskScoringSnapshot snapshot = caches.get(task.core.id);
         if (snapshot == null) {
             maintenance(task);
@@ -284,6 +311,7 @@ final class TaskScorer {
             return 0;
         }
         totalPrio = applyUrgencyMultiplier(totalPrio, context.task, context.snapshot.urgencyState());
+        totalPrio = applyFollowUpBoost(totalPrio, context, previousTaskId);
         return applyAgingAndSpreadModifiers(totalPrio, context);
     }
 
@@ -425,6 +453,48 @@ final class TaskScorer {
         return bestSlot != null ? new PrefSlotMatch(bestSlot, bestSlot.start) : null;
     }
 
+    private int applyFollowUpBoost(int score, ScoringContext context, String previousTaskId) {
+        if (previousTaskId == null || previousTaskId.equals(context.task.core.id)) {
+            return score;
+        }
+
+        TaskTransitionStat stat = null;
+        Map<String, TaskTransitionStat> fromMap = transitionStats.get(previousTaskId);
+        if (fromMap != null) {
+            stat = fromMap.get(context.task.core.id);
+        }
+        if (stat == null || stat.weight <= 0) {
+            logFollowBoost(context, previousTaskId, 0, 1.0, 0.0, score, score);
+            return score;
+        }
+
+        double multBoost = Math.min(FOLLOW_UP_MULTIPLIER_CAP, stat.weight * FOLLOW_UP_MULTIPLIER_PER_WEIGHT);
+        double addBoost = Math.min(FOLLOW_UP_ADDITIVE_CAP, stat.weight * FOLLOW_UP_ADDITIVE_PER_WEIGHT);
+        int boosted = (int) Math.round(score * (1.0 + multBoost) + addBoost);
+        logFollowBoost(context, previousTaskId, stat.weight, 1.0 + multBoost, addBoost, score, boosted);
+        return boosted;
+    }
+
+    private void logFollowBoost(ScoringContext context,
+                                String previousTaskId,
+                                int weight,
+                                double multiplier,
+                                double additive,
+                                int base,
+                                int result) {
+        if (logger == null) {
+            return;
+        }
+        logger.accept("follow-boost prev=" + previousTaskId
+                + " -> task=" + context.task.core.title
+                + "(" + context.task.core.id + ")"
+                + " weight=" + weight
+                + " mult=" + String.format(java.util.Locale.US, "%.2f", multiplier)
+                + " add=" + (int) Math.round(additive)
+                + " base=" + base
+                + " result=" + result);
+    }
+
     private int applyAgingAndSpreadModifiers(int score, ScoringContext context) {
         TaskScoringSnapshot snapshot = context.snapshot;
         int adjustedScore = (int) (score * snapshot.agingForce());
@@ -476,3 +546,4 @@ final class TaskScorer {
         }
     }
 }
+
