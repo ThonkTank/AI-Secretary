@@ -104,8 +104,6 @@ public class BudgetImportUseCase {
                     computation.newTransactions.size(),
                     computation.duplicates,
                     computation.autoCategorized,
-                    parsed.periodStart(),
-                    parsed.periodEnd(),
                     suggestions
             );
         } catch (IllegalArgumentException e) {
@@ -210,8 +208,6 @@ public class BudgetImportUseCase {
             int newTransactions,
             int duplicates,
             int autoCategorized,
-            LocalDate periodStart,
-            LocalDate periodEnd,
             List<RecurringSuggestion> recurringSuggestions
     ) {
     }
