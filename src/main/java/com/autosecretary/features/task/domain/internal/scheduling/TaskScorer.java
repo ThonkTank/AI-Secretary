@@ -288,21 +288,50 @@ final class TaskScorer {
     }
 
     private boolean passesHardConstraintGate(ScoringContext context) {
-        Task task = context.task;
-        TaskScoringSnapshot snapshot = context.snapshot;
-        if (snapshot.completionState().isComplete()) return false;
-        if (snapshot.completionState().scheduledToday() >= snapshot.repsPerDay()) return false;
-        if (snapshot.sinceLast() < task.core.cooldown) return false;
+        if (isAlreadyCompleteForCurrentCycle(context)) return false;
+        if (hasReachedDailyRepetitionLimit(context)) return false;
+        if (isWithinCooldownWindow(context)) return false;
+        if (violatesMinimumInterDaySpacing(context)) return false;
+        if (hasReachedPeriodQuota(context)) return false;
+        if (isBelowMinimumSlotDuration(context)) return false;
+        if (isBelowRequiredProgressDuration(context)) return false;
+        return !isPastClosableDeadline(context);
+    }
 
-        MultiDayStateSnapshot multiDay = snapshot.multiDayStateSnapshot();
-        if (multiDay.minDayDistance() > 0
-                && multiDay.minDayDistance() < multiDay.expectedDayGap() * 0.5) {
-            return false;
-        }
-        if (multiDay.totalScheduledReps() >= multiDay.totalRepsInPeriod()) return false;
-        if (context.availableTime < task.core.minDuration) return false;
-        if (task.core.progress != null && context.availableTime < task.core.progress.requiredTimePerRep()) return false;
-        return !snapshot.urgencyState().isDeadlineExpired();
+    private boolean isAlreadyCompleteForCurrentCycle(ScoringContext context) {
+        return context.snapshot.completionState().isComplete();
+    }
+
+    private boolean hasReachedDailyRepetitionLimit(ScoringContext context) {
+        return context.snapshot.completionState().scheduledToday() >= context.snapshot.repsPerDay();
+    }
+
+    private boolean isWithinCooldownWindow(ScoringContext context) {
+        return context.snapshot.sinceLast() < context.task.core.cooldown;
+    }
+
+    private boolean violatesMinimumInterDaySpacing(ScoringContext context) {
+        MultiDayStateSnapshot multiDay = context.snapshot.multiDayStateSnapshot();
+        return multiDay.minDayDistance() > 0
+                && multiDay.minDayDistance() < multiDay.expectedDayGap() * 0.5;
+    }
+
+    private boolean hasReachedPeriodQuota(ScoringContext context) {
+        MultiDayStateSnapshot multiDay = context.snapshot.multiDayStateSnapshot();
+        return multiDay.totalScheduledReps() >= multiDay.totalRepsInPeriod();
+    }
+
+    private boolean isBelowMinimumSlotDuration(ScoringContext context) {
+        return context.availableTime < context.task.core.minDuration;
+    }
+
+    private boolean isBelowRequiredProgressDuration(ScoringContext context) {
+        return context.task.core.progress != null
+                && context.availableTime < context.task.core.progress.requiredTimePerRep();
+    }
+
+    private boolean isPastClosableDeadline(ScoringContext context) {
+        return context.snapshot.urgencyState().isDeadlineExpired();
     }
 
     private int applyBasePriorityAndChildInfluence(ScoringContext context) {
