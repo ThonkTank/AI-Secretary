@@ -71,36 +71,28 @@ public class TaskEditDialog extends DialogFragment {
         formValidator = new TaskEditFormValidator();
 
         View rootView = LayoutInflater.from(getContext()).inflate(R.layout.task_editor_fragment, null);
-        TaskEditSectionBinder sectionBinder = new TaskEditSectionBinder(this, rootView, editState, presenter);
-
-        TaskEditSectionBinder.BasicInfoViews basicInfoViews = sectionBinder.bindBasicInfo();
-        titleView = basicInfoViews.titleView;
-        descriptionView = basicInfoViews.descriptionView;
-        priorityView = basicInfoViews.priorityView;
-
+        EditorSectionBindings sectionBindings = bindEditorSections(rootView, editState);
         GoalSectionController goalSectionController = new GoalSectionController(this, rootView, editState);
 
-        TaskEditSectionBinder.SchedulingViews schedulingViews = sectionBinder.bindScheduling();
-        closeOnMissView = schedulingViews.closeOnMissView;
-        minDurationView = schedulingViews.minDurationView;
-        maxDurationView = schedulingViews.maxDurationView;
-        cooldownView = schedulingViews.cooldownView;
-        adaptiveView = schedulingViews.adaptiveView;
-
-        TaskEditSectionBinder.RepetitionViews repetitionViews = sectionBinder.bindRepetition(this::onRepetitionChanged);
-        toggleRepetition = repetitionViews.toggleRepetition;
-        repsView = repetitionViews.repsView;
-        perPeriodView = repetitionViews.perPeriodView;
-        periodUnitView = repetitionViews.periodUnitView;
-
-        TaskEditSectionBinder.ProgressViews progressViews = sectionBinder.bindProgress();
-        toggleProgress = progressViews.toggleProgress;
-        unitView = progressViews.unitView;
-        targetView = progressViews.targetView;
-        currentView = progressViews.currentView;
-        resetPerRepView = progressViews.resetPerRepView;
-        minPerRepView = progressViews.minPerRepView;
-        maxPerRepView = progressViews.maxPerRepView;
+        titleView = sectionBindings.titleView;
+        descriptionView = sectionBindings.descriptionView;
+        priorityView = sectionBindings.priorityView;
+        closeOnMissView = sectionBindings.closeOnMissView;
+        adaptiveView = sectionBindings.adaptiveView;
+        minDurationView = sectionBindings.minDurationView;
+        maxDurationView = sectionBindings.maxDurationView;
+        cooldownView = sectionBindings.cooldownView;
+        toggleRepetition = sectionBindings.toggleRepetition;
+        repsView = sectionBindings.repsView;
+        perPeriodView = sectionBindings.perPeriodView;
+        periodUnitView = sectionBindings.periodUnitView;
+        toggleProgress = sectionBindings.toggleProgress;
+        unitView = sectionBindings.unitView;
+        targetView = sectionBindings.targetView;
+        currentView = sectionBindings.currentView;
+        minPerRepView = sectionBindings.minPerRepView;
+        maxPerRepView = sectionBindings.maxPerRepView;
+        resetPerRepView = sectionBindings.resetPerRepView;
 
         prefSlotSectionController = new PrefSlotSectionController(
             this,
@@ -113,43 +105,8 @@ public class TaskEditDialog extends DialogFragment {
         );
         prefSlotSectionController.rebuildPrefSlotUI();
 
-        formInputReader = new TaskEditFormInputReader(
-            titleView,
-            descriptionView,
-            priorityView,
-            goalSectionController,
-            closeOnMissView,
-            minDurationView,
-            maxDurationView,
-            cooldownView,
-            adaptiveView,
-            toggleRepetition,
-            repsView,
-            perPeriodView,
-            periodUnitView,
-            toggleProgress,
-            unitView,
-            targetView,
-            currentView,
-            resetPerRepView,
-            minPerRepView,
-            maxPerRepView
-        );
-
-        formViews = new TaskEditFormViews(
-            titleView,
-            minDurationView,
-            maxDurationView,
-            cooldownView,
-            toggleRepetition,
-            repsView,
-            perPeriodView,
-            toggleProgress,
-            targetView,
-            currentView,
-            minPerRepView,
-            maxPerRepView
-        );
+        formInputReader = createFormInputReader(goalSectionController);
+        formViews = createFormViews();
 
         return new AlertDialog.Builder(requireContext())
             .setTitle(editSessionController.isNewTask()
@@ -205,5 +162,108 @@ public class TaskEditDialog extends DialogFragment {
 
     private void onRepetitionChanged() {
         prefSlotSectionController.onRepetitionChanged();
+    }
+
+    private EditorSectionBindings bindEditorSections(View rootView, TaskEditState editState) {
+        TaskEditSectionBinder sectionBinder = new TaskEditSectionBinder(this, rootView, editState, presenter);
+        TaskEditSectionBinder.BasicInfoViews basicInfoViews = sectionBinder.bindBasicInfo();
+        TaskEditSectionBinder.SchedulingViews schedulingViews = sectionBinder.bindScheduling();
+        TaskEditSectionBinder.RepetitionViews repetitionViews = sectionBinder.bindRepetition(this::onRepetitionChanged);
+        TaskEditSectionBinder.ProgressViews progressViews = sectionBinder.bindProgress();
+        return new EditorSectionBindings(basicInfoViews, schedulingViews, repetitionViews, progressViews);
+    }
+
+    private TaskEditFormInputReader createFormInputReader(GoalSectionController goalSectionController) {
+        return new TaskEditFormInputReader(
+            titleView,
+            descriptionView,
+            priorityView,
+            goalSectionController,
+            closeOnMissView,
+            minDurationView,
+            maxDurationView,
+            cooldownView,
+            adaptiveView,
+            toggleRepetition,
+            repsView,
+            perPeriodView,
+            periodUnitView,
+            toggleProgress,
+            unitView,
+            targetView,
+            currentView,
+            resetPerRepView,
+            minPerRepView,
+            maxPerRepView
+        );
+    }
+
+    private TaskEditFormViews createFormViews() {
+        return new TaskEditFormViews(
+            titleView,
+            minDurationView,
+            maxDurationView,
+            cooldownView,
+            toggleRepetition,
+            repsView,
+            perPeriodView,
+            toggleProgress,
+            targetView,
+            currentView,
+            minPerRepView,
+            maxPerRepView
+        );
+    }
+
+    private static final class EditorSectionBindings {
+        private final EditText titleView;
+        private final EditText descriptionView;
+        private final Spinner priorityView;
+        private final CheckBox closeOnMissView;
+        private final CheckBox adaptiveView;
+        private final EditText minDurationView;
+        private final EditText maxDurationView;
+        private final EditText cooldownView;
+        private final CheckBox toggleRepetition;
+        private final EditText repsView;
+        private final EditText perPeriodView;
+        private final Spinner periodUnitView;
+        private final CheckBox toggleProgress;
+        private final EditText unitView;
+        private final EditText targetView;
+        private final EditText currentView;
+        private final EditText minPerRepView;
+        private final EditText maxPerRepView;
+        private final CheckBox resetPerRepView;
+
+        private EditorSectionBindings(
+            TaskEditSectionBinder.BasicInfoViews basicInfoViews,
+            TaskEditSectionBinder.SchedulingViews schedulingViews,
+            TaskEditSectionBinder.RepetitionViews repetitionViews,
+            TaskEditSectionBinder.ProgressViews progressViews
+        ) {
+            titleView = basicInfoViews.titleView;
+            descriptionView = basicInfoViews.descriptionView;
+            priorityView = basicInfoViews.priorityView;
+
+            closeOnMissView = schedulingViews.closeOnMissView;
+            adaptiveView = schedulingViews.adaptiveView;
+            minDurationView = schedulingViews.minDurationView;
+            maxDurationView = schedulingViews.maxDurationView;
+            cooldownView = schedulingViews.cooldownView;
+
+            toggleRepetition = repetitionViews.toggleRepetition;
+            repsView = repetitionViews.repsView;
+            perPeriodView = repetitionViews.perPeriodView;
+            periodUnitView = repetitionViews.periodUnitView;
+
+            toggleProgress = progressViews.toggleProgress;
+            unitView = progressViews.unitView;
+            targetView = progressViews.targetView;
+            currentView = progressViews.currentView;
+            minPerRepView = progressViews.minPerRepView;
+            maxPerRepView = progressViews.maxPerRepView;
+            resetPerRepView = progressViews.resetPerRepView;
+        }
     }
 }
