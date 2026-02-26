@@ -7,7 +7,6 @@ import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.TaskPlanningState;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
-import com.autosecretary.features.task.application.internal.calendar.CalendarEvent;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
