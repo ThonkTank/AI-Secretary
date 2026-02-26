@@ -5,25 +5,33 @@ import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 /**
  * Orchestrates task completion: reads the task from the database, delegates the
  * two-phase check-off logic to {@link TaskCompletionService}, and writes the
  * results back. The write scope depends on the phase returned.
+ *
+ * Contract: DAO work runs on {@code executor}; when present, {@code onChanged}
+ * runs on {@code callbackDispatcher}.
  */
 public class CheckOffTaskUseCase {
     private final TaskDAO taskDao;
     private final TaskCompletionService completionService;
     private final TaskLifecycleManager lifecycleManager;
     private final ExecutorService executor;
+    private final Executor callbackDispatcher;
 
     public CheckOffTaskUseCase(TaskDAO taskDao, TaskCompletionService completionService,
-                               TaskLifecycleManager lifecycleManager, ExecutorService executor) {
+                               TaskLifecycleManager lifecycleManager,
+                               ExecutorService executor,
+                               Executor callbackDispatcher) {
         this.taskDao = taskDao;
         this.completionService = completionService;
         this.lifecycleManager = lifecycleManager;
         this.executor = executor;
+        this.callbackDispatcher = callbackDispatcher;
     }
 
     /**
@@ -41,6 +49,7 @@ public class CheckOffTaskUseCase {
                 lifecycleManager,
                 listItem.taskId,
                 listItem.slotId,
+                callbackDispatcher,
                 onChanged
         ));
     }

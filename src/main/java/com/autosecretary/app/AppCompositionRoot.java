@@ -86,7 +86,8 @@ public class AppCompositionRoot {
                 taskDao,
                 completionService,
                 lifecycleManager,
-                taskUseCaseExecutor
+                taskUseCaseExecutor,
+                mainHandler::post
         );
         RegenerateScheduleUseCase regenerateScheduleUseCase = new RegenerateScheduleUseCase(
                 taskDao,
@@ -100,11 +101,13 @@ public class AppCompositionRoot {
         );
         IncrementTaskProgressUseCase incrementTaskProgressUseCase = new IncrementTaskProgressUseCase(
                 taskDao,
-                taskUseCaseExecutor
+                taskUseCaseExecutor,
+                mainHandler::post
         );
         DecrementTaskProgressUseCase decrementTaskProgressUseCase = new DecrementTaskProgressUseCase(
                 taskDao,
-                taskUseCaseExecutor
+                taskUseCaseExecutor,
+                mainHandler::post
         );
 
         this.taskScheduleConfigService = new TaskScheduleConfigService(

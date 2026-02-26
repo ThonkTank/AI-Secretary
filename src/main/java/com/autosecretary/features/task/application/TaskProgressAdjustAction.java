@@ -4,8 +4,13 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskSlot;
 
+import java.util.concurrent.Executor;
+
 /**
  * Shared operation for adjusting a task's progress counters and persisting the updates.
+ *
+ * Contract: call from a worker thread for DAO reads/writes; when present,
+ * callbacks are dispatched through {@code callbackDispatcher}.
  */
 public final class TaskProgressAdjustAction {
     private TaskProgressAdjustAction() {
@@ -15,6 +20,7 @@ public final class TaskProgressAdjustAction {
                                String taskId,
                                String slotId,
                                int delta,
+                               Executor callbackDispatcher,
                                Runnable postWriteAction) {
         if (taskId == null || delta == 0) {
             return;
@@ -43,8 +49,8 @@ public final class TaskProgressAdjustAction {
 
         taskDao.write(task);
 
-        if (postWriteAction != null) {
-            postWriteAction.run();
+        if (postWriteAction != null && callbackDispatcher != null) {
+            callbackDispatcher.execute(postWriteAction);
         }
     }
 
