@@ -23,12 +23,6 @@ public interface BudgetRepository {
     BudgetLimit findPreviousMonthLimit(String categoryId, String targetYearMonth);
     long getPreviousMonthExpenseCents(String categoryId, String targetYearMonth);
     long getCategoryExpenseCents(String categoryId, String yearMonth);
-    /**
-     * Returns the user-set budget limit for the given category and month. Falls back to the
-     * previous month's limit if no limit is configured for {@code targetYearMonth}. Returns
-     * {@code null} if no limit has ever been set for this category.
-     */
-    Long getEffectiveLimitCents(String categoryId, String targetYearMonth);
 
     long getCurrentBalanceCents(String accountId);
 
@@ -39,16 +33,25 @@ public interface BudgetRepository {
      */
     long getUpcomingExpenseTemplateCents(String accountId, LocalDate fromDate, LocalDate toDate);
 
+    /** Returns the ID of the first active account, or {@code null} if no accounts exist. */
+    String findDefaultActiveAccountId();
+
+    /**
+     * Deducts {@code expenseCents} from the stored balance of {@code accountId}.
+     * No-ops if {@code accountId} is blank or {@code expenseCents} is non-positive.
+     */
+    void applyExpenseToAccountBalance(String accountId, long expenseCents);
+
     /** Persists an already-constructed transaction entity (e.g. during CSV import). */
     void saveTransaction(BudgetTransactionEntity transaction);
 
     /** Convenience overload used by the "Add Transaction" dialog — builds the entity internally. */
-    void saveTransaction(String accountId, String categoryId, boolean isExpense,
+    void saveTransaction(String accountId, String categoryId, TransactionDirection type,
                          long amountCents, LocalDate bookingDate, String note);
 
     void updateTransaction(BudgetTransactionEntity transaction);
     void updateTransaction(String transactionId, String accountId, String categoryId,
-                           boolean isExpense, long amountCents, LocalDate bookingDate, String note);
+                           TransactionDirection type, long amountCents, LocalDate bookingDate, String note);
     void saveTransactions(List<BudgetTransactionEntity> transactions);
     void deleteTransaction(String transactionId);
 

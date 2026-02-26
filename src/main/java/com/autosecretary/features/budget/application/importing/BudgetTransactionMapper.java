@@ -3,8 +3,6 @@ package com.autosecretary.features.budget.application.importing;
 import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 
-import java.time.YearMonth;
-
 /**
  * Explicit mapper between domain import/recurring model and persistence forms.
  */
@@ -27,7 +25,6 @@ public class BudgetTransactionMapper {
                 type,
                 Math.abs(domainTransaction.amountCents),
                 domainTransaction.transactionDate,
-                YearMonth.from(domainTransaction.transactionDate).toString(),
                 domainTransaction.description,
                 domainTransaction.importHash,
                 domainTransaction.payee,

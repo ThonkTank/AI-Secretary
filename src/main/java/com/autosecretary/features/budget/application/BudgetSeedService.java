@@ -4,9 +4,9 @@ import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.BudgetRepository;
+import com.autosecretary.features.budget.domain.TransactionDirection;
 
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,8 +30,8 @@ public class BudgetSeedService {
         if (accountList.isEmpty()) {
             repository.insertAccount(new BudgetAccount("Girokonto"));
             repository.insertAccount(new BudgetAccount("Tagesgeld"));
-            repository.insertCategory(new BudgetCategory("Sonstiges", "EXPENSE"));
-            repository.insertCategory(new BudgetCategory("Gehalt", "INCOME"));
+            repository.insertCategory(new BudgetCategory("Sonstiges", TransactionDirection.EXPENSE));
+            repository.insertCategory(new BudgetCategory("Gehalt", TransactionDirection.INCOME));
             accountList = repository.findActiveAccounts();
         }
         ensureDefaultCategories();
@@ -55,12 +55,12 @@ public class BudgetSeedService {
         if (!existing.isEmpty()) {
             return;
         }
-        repository.insertCategory(new BudgetCategory("Sonstiges", "EXPENSE", "🏷️", "#9E9E9E"));
-        repository.insertCategory(new BudgetCategory("Miete", "EXPENSE", "🏠", "#FF7043"));
-        repository.insertCategory(new BudgetCategory("Lebensmittel", "EXPENSE", "🛒", "#8BC34A"));
-        repository.insertCategory(new BudgetCategory("Mobilität", "EXPENSE", "🚗", "#03A9F4"));
-        repository.insertCategory(new BudgetCategory("Freizeit", "EXPENSE", "🎉", "#AB47BC"));
-        repository.insertCategory(new BudgetCategory("Gehalt", "INCOME", "💰", "#4CAF50"));
+        repository.insertCategory(new BudgetCategory("Sonstiges", TransactionDirection.EXPENSE, "🏷️", "#9E9E9E"));
+        repository.insertCategory(new BudgetCategory("Miete", TransactionDirection.EXPENSE, "🏠", "#FF7043"));
+        repository.insertCategory(new BudgetCategory("Lebensmittel", TransactionDirection.EXPENSE, "🛒", "#8BC34A"));
+        repository.insertCategory(new BudgetCategory("Mobilität", TransactionDirection.EXPENSE, "🚗", "#03A9F4"));
+        repository.insertCategory(new BudgetCategory("Freizeit", TransactionDirection.EXPENSE, "🎉", "#AB47BC"));
+        repository.insertCategory(new BudgetCategory("Gehalt", TransactionDirection.INCOME, "💰", "#4CAF50"));
     }
 
     private void seedDemoTransactions(String accountId, LocalDate reference) {
@@ -73,8 +73,8 @@ public class BudgetSeedService {
         String otherCategoryId = findCategoryIdByName(categories, "Sonstiges");
 
         int maxDay = reference.getDayOfMonth();
-        BudgetTransactionEntity.TransactionType income = BudgetTransactionEntity.TransactionType.INCOME;
-        BudgetTransactionEntity.TransactionType expense = BudgetTransactionEntity.TransactionType.EXPENSE;
+        TransactionDirection income = TransactionDirection.INCOME;
+        TransactionDirection expense = TransactionDirection.EXPENSE;
         List<BudgetTransactionEntity> entities = new ArrayList<>();
         addDemoTx(entities, accountId, incomeCategoryId, reference, 1, income, 240000, "Gehalt", maxDay);
         addDemoTx(entities, accountId, housingCategoryId, reference, 2, expense, 85000, "Miete", maxDay);
@@ -92,7 +92,7 @@ public class BudgetSeedService {
                            String categoryId,
                            LocalDate ref,
                            int day,
-                           BudgetTransactionEntity.TransactionType type,
+                           TransactionDirection type,
                            long amountCents,
                            String note,
                            int maxDay) {
@@ -105,8 +105,7 @@ public class BudgetSeedService {
                 categoryId,
                 type,
                 amountCents,
-                date,
-                YearMonth.from(date).toString());
+                date);
         entity.note = note;
         out.add(entity);
     }

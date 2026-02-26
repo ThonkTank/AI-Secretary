@@ -2,13 +2,10 @@ package com.autosecretary.database;
 
 import android.content.Context;
 
-import androidx.annotation.NonNull;
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
-import androidx.room.migration.Migration;
-import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
@@ -58,213 +55,6 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public static final String DB_NAME = "autosecretary.db";
 
-    private static final Migration MIGRATION_10_11 = new Migration(10, 11) {
-        @Override
-        public void migrate(@NonNull SupportSQLiteDatabase database) {
-            database.execSQL("ALTER TABLE budget_category ADD COLUMN icon TEXT NOT NULL DEFAULT '🏷️'");
-            database.execSQL("ALTER TABLE budget_category ADD COLUMN colorHex TEXT NOT NULL DEFAULT '#9E9E9E'");
-        }
-    };
-
-    private static final Migration MIGRATION_11_12 = new Migration(11, 12) {
-        @Override
-        public void migrate(@NonNull SupportSQLiteDatabase database) {
-            database.execSQL("""
-                    CREATE TABLE IF NOT EXISTS task_schedule_config (
-                        dayOfWeek TEXT NOT NULL,
-                        startTime TEXT,
-                        endTime TEXT,
-                        PRIMARY KEY(dayOfWeek)
-                    )
-                    """);
-
-            database.execSQL("""
-                    CREATE TABLE IF NOT EXISTS budget_transaction_new (
-                        id TEXT NOT NULL,
-                        accountId TEXT NOT NULL,
-                        categoryId TEXT,
-                        templateId TEXT,
-                        type TEXT NOT NULL,
-                        transactionKind TEXT NOT NULL DEFAULT 'STANDARD',
-                        linkedTransactionId TEXT,
-                        amountCents INTEGER NOT NULL,
-                        bookingDate TEXT NOT NULL,
-                        yearMonth TEXT NOT NULL,
-                        note TEXT,
-                        importHash TEXT,
-                        payee TEXT,
-                        importId TEXT,
-                        PRIMARY KEY(id),
-                        FOREIGN KEY(accountId) REFERENCES budget_account(id) ON UPDATE CASCADE ON DELETE RESTRICT,
-                        FOREIGN KEY(categoryId) REFERENCES budget_category(id) ON UPDATE CASCADE ON DELETE SET NULL,
-                        FOREIGN KEY(linkedTransactionId) REFERENCES budget_transaction_new(id) ON UPDATE CASCADE ON DELETE SET NULL,
-                        FOREIGN KEY(templateId) REFERENCES budget_recurring_template(id) ON UPDATE CASCADE ON DELETE SET NULL
-                    )
-                    """);
-
-            database.execSQL("""
-                    INSERT INTO budget_transaction_new (
-                        id,
-                        accountId,
-                        categoryId,
-                        type,
-                        transactionKind,
-                        linkedTransactionId,
-                        amountCents,
-                        bookingDate,
-                        yearMonth,
-                        note,
-                        importHash,
-                        payee,
-                        importId
-                    )
-                    SELECT
-                        id,
-                        accountId,
-                        categoryId,
-                        type,
-                        'STANDARD',
-                        NULL,
-                        amountCents,
-                        bookingDate,
-                        yearMonth,
-                        note,
-                        importHash,
-                        payee,
-                        importId
-                    FROM budget_transaction
-                    """);
-
-            database.execSQL("DROP TABLE budget_transaction");
-            database.execSQL("ALTER TABLE budget_transaction_new RENAME TO budget_transaction");
-
-            database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_accountId ON budget_transaction(accountId)");
-            database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_categoryId ON budget_transaction(categoryId)");
-            database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_templateId ON budget_transaction(templateId)");
-            database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_yearMonth ON budget_transaction(yearMonth)");
-            database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_bookingDate ON budget_transaction(bookingDate)");
-            database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_importHash ON budget_transaction(importHash)");
-            database.execSQL("CREATE INDEX IF NOT EXISTS index_budget_transaction_linkedTransactionId ON budget_transaction(linkedTransactionId)");
-            database.execSQL("ALTER TABLE budget_category ADD COLUMN icon TEXT NOT NULL DEFAULT '🏷️'");
-            database.execSQL("ALTER TABLE budget_category ADD COLUMN colorHex TEXT NOT NULL DEFAULT '#9E9E9E'");
-        }
-    };
-
-    private static final Migration MIGRATION_12_13 = new Migration(12, 13) {
-        @Override
-        public void migrate(@NonNull SupportSQLiteDatabase database) {
-            database.execSQL("ALTER TABLE task_core ADD COLUMN goalIcon TEXT NOT NULL DEFAULT '" + TaskCore.DEFAULT_GOAL_ICON + "'");
-            database.execSQL("ALTER TABLE task_core ADD COLUMN goalColorHex TEXT NOT NULL DEFAULT '" + TaskCore.DEFAULT_GOAL_COLOR_HEX + "'");
-        }
-    };
-
-
-    private static final Migration MIGRATION_13_14 = new Migration(13, 14) {
-        @Override
-        public void migrate(@NonNull SupportSQLiteDatabase database) {
-            database.execSQL("ALTER TABLE task_core ADD COLUMN schedulingType TEXT NOT NULL DEFAULT 'TASK'");
-            database.execSQL("ALTER TABLE task_core ADD COLUMN fixedDate TEXT");
-            database.execSQL("ALTER TABLE task_core ADD COLUMN fixedStart TEXT");
-            database.execSQL("ALTER TABLE task_core ADD COLUMN fixedEnd TEXT");
-            database.execSQL("ALTER TABLE task_core ADD COLUMN fixedDuration INTEGER");
-        }
-    };
-
-    private static final Migration MIGRATION_14_15 = new Migration(14, 15) {
-        @Override
-        public void migrate(@NonNull SupportSQLiteDatabase database) {
-            database.execSQL("ALTER TABLE task_slots ADD COLUMN chainId TEXT");
-        }
-    };
-
-    private static final Migration MIGRATION_15_16 = new Migration(15, 16) {
-        @Override
-        public void migrate(@NonNull SupportSQLiteDatabase database) {
-            database.execSQL("ALTER TABLE task_slots ADD COLUMN displacementScore INTEGER NOT NULL DEFAULT 0");
-            database.execSQL("ALTER TABLE task_slots ADD COLUMN displacementGroupId TEXT");
-            database.execSQL("ALTER TABLE task_slots ADD COLUMN displacementGroupType TEXT");
-        }
-    };
-
-
-    private static final Migration MIGRATION_16_17 = new Migration(16, 17) {
-        @Override
-        public void migrate(@NonNull SupportSQLiteDatabase database) {
-            database.execSQL("""
-                    CREATE TABLE IF NOT EXISTS task_transition_stats (
-                        fromTaskId TEXT NOT NULL,
-                        toTaskId TEXT NOT NULL,
-                        weight INTEGER NOT NULL,
-                        lastSeen TEXT,
-                        PRIMARY KEY(fromTaskId, toTaskId)
-                    )
-                    """);
-        }
-    };
-
-    private static final Migration MIGRATION_17_18 = new Migration(17, 18) {
-        @Override
-        public void migrate(@NonNull SupportSQLiteDatabase database) {
-            database.execSQL("ALTER TABLE task_core ADD COLUMN repetition_completeFirst INTEGER NOT NULL DEFAULT 0");
-            database.execSQL("ALTER TABLE task_core ADD COLUMN repetition_carryoverDebt INTEGER NOT NULL DEFAULT 0");
-        }
-    };
-
-    private static final Migration MIGRATION_18_19 = new Migration(18, 19) {
-        @Override
-        public void migrate(@NonNull SupportSQLiteDatabase database) {
-            database.execSQL("ALTER TABLE task_core ADD COLUMN budgetRequiredCents INTEGER");
-            database.execSQL("ALTER TABLE task_core ADD COLUMN budgetAccountId TEXT");
-            database.execSQL("ALTER TABLE task_core ADD COLUMN budgetCategoryId TEXT");
-        }
-    };
-
-
-    private static final Migration MIGRATION_19_20 = new Migration(19, 20) {
-        @Override
-        public void migrate(@NonNull SupportSQLiteDatabase database) {
-            database.execSQL("""
-                    UPDATE task_core
-                    SET progress_totalTime = CASE
-                        WHEN progress_totalTime IS NULL OR progress_totalTime <= 0 THEN CASE
-                            WHEN maxDuration > 0 THEN maxDuration
-                            WHEN minDuration > 0 THEN minDuration
-                            ELSE 10
-                        END
-                        ELSE progress_totalTime
-                    END,
-                    progress_totalProgress = CASE
-                        WHEN progress_totalProgress < 0 THEN 0
-                        ELSE progress_totalProgress
-                    END,
-                    progress_minPerRep = CASE
-                        WHEN progress_target > 0 AND progress_minPerRep <= 0 THEN 1
-                        ELSE progress_minPerRep
-                    END
-                    """);
-        }
-    };
-
-    private static final Migration MIGRATION_20_21 = new Migration(20, 21) {
-        @Override
-        public void migrate(@NonNull SupportSQLiteDatabase database) {
-            database.execSQL("ALTER TABLE task_core ADD COLUMN mealType TEXT");
-            database.execSQL("""
-                    CREATE TABLE IF NOT EXISTS task_planned_meals (
-                        taskId TEXT NOT NULL,
-                        day TEXT NOT NULL,
-                        recipeId INTEGER NOT NULL,
-                        plannedServings INTEGER NOT NULL,
-                        completed INTEGER NOT NULL,
-                        actualServings INTEGER NOT NULL,
-                        PRIMARY KEY(taskId, day),
-                        FOREIGN KEY(taskId) REFERENCES task_core(id) ON UPDATE NO ACTION ON DELETE CASCADE
-                    )
-                    """);
-            database.execSQL("CREATE INDEX IF NOT EXISTS index_task_planned_meals_taskId ON task_planned_meals(taskId)");
-        }
-    };
-
     public abstract TaskDAO taskDao();
 
     public abstract TaskScheduleConfigDAO taskScheduleConfigDao();
@@ -286,7 +76,6 @@ public abstract class AppDatabase extends RoomDatabase {
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context, AppDatabase.class, DB_NAME)
-                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
                     .fallbackToDestructiveMigration()
                     .build();
         }

@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.domain;
 
-import com.autosecretary.features.budget.data.entity.ImportStatus;
+import com.autosecretary.features.budget.domain.importing.ImportStatus;
 import com.autosecretary.features.budget.domain.importing.ImportCategory;
 import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
 
@@ -38,6 +38,12 @@ public interface BudgetImportRepository {
             ImportStatus status,
             String errorMessage
     ) {
+        public static ImportRecord pending(String id, String accountId,
+                                    String fileName, String fileHash,
+                                    ImportStatus status) {
+            return new ImportRecord(id, accountId, fileName, fileHash,
+                    null, null, 0, 0, 0, status, null);
+        }
     }
 
     ImportRecord createImport(String accountId, String fileName, String fileHash);

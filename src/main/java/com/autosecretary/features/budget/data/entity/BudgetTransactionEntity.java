@@ -7,7 +7,10 @@ import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 
+import com.autosecretary.features.budget.domain.TransactionDirection;
+
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.UUID;
 
 @Entity(
@@ -53,10 +56,6 @@ import java.util.UUID;
         }
 )
 public class BudgetTransactionEntity {
-    public enum TransactionType {
-        INCOME,
-        EXPENSE
-    }
 
     public enum TransactionKind {
         STANDARD,
@@ -75,7 +74,7 @@ public class BudgetTransactionEntity {
     public String templateId;
 
     @NonNull
-    public TransactionType type = TransactionType.EXPENSE;
+    public TransactionDirection type = TransactionDirection.EXPENSE;
 
     @NonNull
     public TransactionKind transactionKind = TransactionKind.STANDARD;
@@ -89,6 +88,7 @@ public class BudgetTransactionEntity {
 
     /**
      * Normalized value in format yyyy-MM for fast monthly queries.
+     * Derived from bookingDate. Do not set directly — use setBookingDate() instead.
      */
     @NonNull
     public String yearMonth;
@@ -102,13 +102,18 @@ public class BudgetTransactionEntity {
     public String importId;
 
     public BudgetTransactionEntity(@NonNull String accountId, String categoryId,
-                                   @NonNull TransactionType type, long amountCents,
-                                   @NonNull LocalDate bookingDate, @NonNull String yearMonth) {
+                                   @NonNull TransactionDirection type, long amountCents,
+                                   @NonNull LocalDate bookingDate) {
         this.accountId = accountId;
         this.categoryId = categoryId;
         this.type = type;
         this.amountCents = amountCents;
-        this.bookingDate = bookingDate;
-        this.yearMonth = yearMonth;
+        setBookingDate(bookingDate);
+    }
+
+    /** Sets bookingDate and derives yearMonth automatically. Use this instead of setting both fields directly. */
+    public void setBookingDate(@NonNull LocalDate date) {
+        this.bookingDate = date;
+        this.yearMonth = YearMonth.from(date).toString();
     }
 }

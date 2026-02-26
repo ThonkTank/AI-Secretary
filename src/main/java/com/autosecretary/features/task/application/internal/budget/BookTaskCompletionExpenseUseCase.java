@@ -1,19 +1,19 @@
 package com.autosecretary.features.task.application.internal.budget;
 
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
-import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
+import com.autosecretary.features.budget.domain.BudgetRepository;
+import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.task.data.Task;
 
 import java.time.LocalDate;
-import java.time.YearMonth;
 
 /**
  * Creates an automatic expense booking when a task completion requires budget.
  */
 public class BookTaskCompletionExpenseUseCase {
-    private final BudgetRoomRepository repository;
+    private final BudgetRepository repository;
 
-    public BookTaskCompletionExpenseUseCase(BudgetRoomRepository repository) {
+    public BookTaskCompletionExpenseUseCase(BudgetRepository repository) {
         this.repository = repository;
     }
 
@@ -35,10 +35,9 @@ public class BookTaskCompletionExpenseUseCase {
         BudgetTransactionEntity transaction = new BudgetTransactionEntity(
                 accountId,
                 task.core.budgetCategoryId,
-                BudgetTransactionEntity.TransactionType.EXPENSE,
+                TransactionDirection.EXPENSE,
                 expenseCents,
-                bookingDate,
-                YearMonth.from(bookingDate).toString()
+                bookingDate
         );
         transaction.note = "Task: " + task.core.title;
 

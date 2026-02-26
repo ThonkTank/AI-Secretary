@@ -8,7 +8,7 @@ import androidx.room.Query;
 import java.time.LocalDate;
 
 import com.autosecretary.features.budget.data.entity.BudgetImportEntity;
-import com.autosecretary.features.budget.data.entity.ImportStatus;
+import com.autosecretary.features.budget.domain.importing.ImportStatus;
 
 @Dao
 public interface BudgetImportDao {

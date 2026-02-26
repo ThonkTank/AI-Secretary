@@ -8,8 +8,9 @@ import com.autosecretary.features.meal.domain.MealType;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
-import com.autosecretary.features.budget.data.entity.ImportStatus;
+import com.autosecretary.features.budget.domain.importing.ImportStatus;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
+import com.autosecretary.features.budget.domain.TransactionDirection;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -101,13 +102,13 @@ public class Converters {
     }
 
     @TypeConverter
-    public static String fromBudgetTransactionType(BudgetTransactionEntity.TransactionType type) {
+    public static String fromBudgetTransactionDirection(TransactionDirection type) {
         return type != null ? type.name() : null;
     }
 
     @TypeConverter
-    public static BudgetTransactionEntity.TransactionType toBudgetTransactionType(String value) {
-        return value != null ? BudgetTransactionEntity.TransactionType.valueOf(value) : null;
+    public static TransactionDirection toBudgetTransactionDirection(String value) {
+        return value != null ? TransactionDirection.valueOf(value) : null;
     }
 
 

@@ -20,21 +20,16 @@ public interface BudgetLimitDao {
     @Query("SELECT * FROM budget_limit WHERE categoryId = :categoryId AND yearMonth = :yearMonth LIMIT 1")
     BudgetLimit getLimitForCategoryAndMonth(String categoryId, String yearMonth);
 
-    @Query("""
-            SELECT * FROM budget_limit
-            WHERE categoryId = :categoryId
-              AND yearMonth = strftime('%Y-%m', date(:targetYearMonth || '-01', '-1 month'))
-            LIMIT 1
-            """)
-    BudgetLimit getPreviousMonthLimit(String categoryId, String targetYearMonth);
+    @Query("SELECT * FROM budget_limit WHERE categoryId = :categoryId AND yearMonth = :prevYearMonth LIMIT 1")
+    BudgetLimit getPreviousMonthLimit(String categoryId, String prevYearMonth);
 
     @Query("""
             SELECT COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amountCents ELSE 0 END), 0)
             FROM budget_transaction
             WHERE categoryId = :categoryId
-              AND yearMonth = strftime('%Y-%m', date(:targetYearMonth || '-01', '-1 month'))
+              AND yearMonth = :prevYearMonth
             """)
-    long getPreviousMonthExpenseCents(String categoryId, String targetYearMonth);
+    long getPreviousMonthExpenseCents(String categoryId, String prevYearMonth);
 
     @Query("""
             SELECT COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amountCents ELSE 0 END), 0)
@@ -43,34 +38,6 @@ public interface BudgetLimitDao {
               AND yearMonth = :yearMonth
             """)
     long getExpenseCentsForCategoryAndMonth(String categoryId, String yearMonth);
-
-    @Query("""
-            SELECT CASE
-                     WHEN target.rolloverEnabled = 0 THEN target.limitAmountCents
-                     ELSE MAX(
-                            0,
-                            target.limitAmountCents
-                            + target.rolloverCarryoverCents
-                            + COALESCE(prev.limitAmountCents, 0)
-                            - COALESCE(prevSpent.spentCents, 0)
-                          )
-                   END AS effectiveLimitCents
-            FROM budget_limit target
-            LEFT JOIN budget_limit prev
-                   ON prev.categoryId = target.categoryId
-                  AND prev.yearMonth = strftime('%Y-%m', date(:targetYearMonth || '-01', '-1 month'))
-            LEFT JOIN (
-                SELECT categoryId,
-                       SUM(CASE WHEN type = 'EXPENSE' THEN amountCents ELSE 0 END) AS spentCents
-                FROM budget_transaction
-                WHERE yearMonth = strftime('%Y-%m', date(:targetYearMonth || '-01', '-1 month'))
-                GROUP BY categoryId
-            ) prevSpent ON prevSpent.categoryId = target.categoryId
-            WHERE target.categoryId = :categoryId
-              AND target.yearMonth = :targetYearMonth
-            LIMIT 1
-            """)
-    Long getEffectiveLimitCentsForMonth(String categoryId, String targetYearMonth);
 
     @Query("""
             SELECT c.id AS categoryId,

@@ -68,15 +68,15 @@ public final class RecurringPatternDetector {
 
     private static RecurringSuggestion analyzePattern(String normalizedPayee,
                                                       List<RecurringBudgetTransaction> transactions) {
-        int sumAmounts = 0;
-        int minAmount = Integer.MAX_VALUE;
-        int maxAmount = Integer.MIN_VALUE;
+        long sumAmounts = 0;
+        long minAmount = Long.MAX_VALUE;
+        long maxAmount = Long.MIN_VALUE;
         Map<String, Integer> categoryCounts = new HashMap<>();
         List<String> txIds = new ArrayList<>();
         String displayPayee = transactions.get(0).payee;
 
         for (RecurringBudgetTransaction tx : transactions) {
-            int absAmount = Math.abs(tx.amountCents);
+            long absAmount = Math.abs((long) tx.amountCents);
             sumAmounts += absAmount;
             minAmount = Math.min(minAmount, absAmount);
             maxAmount = Math.max(maxAmount, absAmount);
@@ -88,20 +88,15 @@ public final class RecurringPatternDetector {
             }
         }
 
-        int avgAmount = sumAmounts / transactions.size();
+        long avgAmount = sumAmounts / transactions.size();
         String categoryId = categoryCounts.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
                 .orElse(null);
 
-        // Restore sign: amounts were computed as absolute values; if expense, negate and swap
-        // min↔max because negating reverses ordering.
-        if (transactions.get(0).amountCents < 0) {
-            avgAmount = -avgAmount;
-            int tmp = minAmount;
-            minAmount = -maxAmount;
-            maxAmount = -tmp;
-        }
+        TransactionDirection transactionType = transactions.get(0).amountCents < 0
+                ? TransactionDirection.EXPENSE
+                : TransactionDirection.INCOME;
 
         DatePatternDetector.PatternResult pattern = DatePatternDetector.detectDatePattern(transactions);
         if (pattern == null) {
@@ -117,6 +112,7 @@ public final class RecurringPatternDetector {
                 avgAmount,
                 minAmount,
                 maxAmount,
+                transactionType,
                 pattern.type(),
                 pattern.value(),
                 pattern.dayOfWeek(),
@@ -129,8 +125,8 @@ public final class RecurringPatternDetector {
         if (txList.size() < 2) {
             return true;
         }
-        List<Integer> amounts = txList.stream().map(tx -> Math.abs(tx.amountCents)).collect(Collectors.toList());
-        int avg = amounts.stream().mapToInt(Integer::intValue).sum() / amounts.size();
+        List<Long> amounts = txList.stream().map(tx -> Math.abs((long) tx.amountCents)).collect(Collectors.toList());
+        long avg = amounts.stream().mapToLong(Long::longValue).sum() / amounts.size();
         if (avg == 0) {
             return false;
         }

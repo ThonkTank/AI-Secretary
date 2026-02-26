@@ -1,5 +1,6 @@
 package com.autosecretary.features.budget.data.dao;
 
+import androidx.annotation.Nullable;
 import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
@@ -38,36 +39,13 @@ public interface TransactionDao {
             INNER JOIN budget_account a ON a.id = t.accountId
             LEFT JOIN budget_category c ON c.id = t.categoryId
             WHERE t.yearMonth = :yearMonth
+              AND (:accountId IS NULL OR t.accountId = :accountId)
             ORDER BY t.bookingDate DESC, t.id DESC
             """)
-    List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth);
+    List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth, @Nullable String accountId);
 
-    // NOTE: Projection mirrors getMonthlyOverview, differing only by the accountId filter.
-    // Keep both in sync when modifying selected columns or joins.
-    @Query("""
-            SELECT t.id AS transactionId,
-                   t.bookingDate AS bookingDate,
-                   t.yearMonth AS yearMonth,
-                   t.type AS type,
-                   t.transactionKind AS transactionKind,
-                   t.amountCents AS amountCents,
-                   t.note AS note,
-                   t.accountId AS accountId,
-                   a.name AS accountName,
-                   t.categoryId AS categoryId,
-                   c.name AS categoryName,
-                   c.icon AS categoryIcon,
-                   c.colorHex AS categoryColorHex,
-                   t.linkedTransactionId AS linkedTransactionId
-            FROM budget_transaction t
-            INNER JOIN budget_account a ON a.id = t.accountId
-            LEFT JOIN budget_category c ON c.id = t.categoryId
-            WHERE t.yearMonth = :yearMonth
-              AND t.accountId = :accountId
-            ORDER BY t.bookingDate DESC, t.id DESC
-            """)
-    List<MonthlyOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId);
-
+    // transactionKind and linkedTransactionId are intentionally omitted — date-range overview
+    // is display-only and neither field is rendered; Room's default values (STANDARD / null) are safe.
     @SuppressWarnings(RoomWarnings.CURSOR_MISMATCH)
     @Query("""
             SELECT t.id AS transactionId,
@@ -187,14 +165,6 @@ public interface TransactionDao {
 
     @Transaction
     default void createTransferPair(BudgetTransactionEntity debit, BudgetTransactionEntity credit) {
-        debit.transactionKind = BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER;
-        debit.categoryId = null;
-        debit.linkedTransactionId = credit.id;
-
-        credit.transactionKind = BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER;
-        credit.categoryId = null;
-        credit.linkedTransactionId = debit.id;
-
         insert(debit);
         insert(credit);
     }

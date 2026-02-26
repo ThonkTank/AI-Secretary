@@ -4,11 +4,13 @@ import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
+import androidx.room.Transaction;
 
 import java.time.LocalDate;
 import java.util.List;
 
 import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEntity;
+import com.autosecretary.features.budget.domain.TemplateStatusUpdate;
 
 @Dao
 public interface BudgetRecurringTemplateDao {
@@ -24,7 +26,7 @@ public interface BudgetRecurringTemplateDao {
             SELECT * FROM budget_recurring_template
             WHERE accountId = :accountId
               AND active = 1
-              AND avgAmountCents < 0
+              AND transactionType = 'EXPENSE'
               AND nextDue BETWEEN :fromDate AND :toDate
             """)
     List<BudgetRecurringTemplateEntity> findActiveExpenseTemplatesForAccountInRange(String accountId, LocalDate fromDate, LocalDate toDate);
@@ -35,7 +37,7 @@ public interface BudgetRecurringTemplateDao {
             INNER JOIN budget_account a ON a.id = t.accountId
             WHERE t.active = 1
               AND a.archived = 0
-              AND t.avgAmountCents < 0
+              AND t.transactionType = 'EXPENSE'
               AND t.nextDue BETWEEN :fromDate AND :toDate
             """)
     List<BudgetRecurringTemplateEntity> findActiveExpenseTemplatesForActiveAccountsInRange(LocalDate fromDate, LocalDate toDate);
@@ -45,4 +47,11 @@ public interface BudgetRecurringTemplateDao {
 
     @Query("UPDATE budget_recurring_template SET nextDue = :nextDue, active = :active WHERE id = :templateId")
     void updateNextDueAndStatus(String templateId, LocalDate nextDue, boolean active);
+
+    @Transaction
+    default void updateAllTemplateStatuses(List<TemplateStatusUpdate> updates) {
+        for (TemplateStatusUpdate u : updates) {
+            updateNextDueAndStatus(u.id(), u.nextDue(), u.active());
+        }
+    }
 }

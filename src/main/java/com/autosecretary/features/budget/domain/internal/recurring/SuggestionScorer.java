@@ -48,9 +48,9 @@ public final class SuggestionScorer {
 
     public static double calculateConfidence(List<RecurringBudgetTransaction> txList,
                                              DatePatternDetector.PatternResult pattern,
-                                             int avgAmount,
-                                             int minAmount,
-                                             int maxAmount) {
+                                             long avgAmount,
+                                             long minAmount,
+                                             long maxAmount) {
         double score = 0;
         score += Math.min(txList.size() / OCCURRENCE_CAP, OCCURRENCE_WEIGHT);
 

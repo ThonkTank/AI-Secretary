@@ -8,6 +8,7 @@ import com.autosecretary.features.budget.domain.AmountParser;
 import com.autosecretary.features.budget.application.BudgetSeedService;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
+import com.autosecretary.features.budget.application.CalculateEffectiveBudgetLimitUseCase;
 import com.autosecretary.features.budget.application.CreateTransferUseCase;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.ui.internal.BudgetOverviewLoader;
@@ -52,6 +53,7 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
                     importUseCase,
                     applyRecurringUseCase,
                     createTransferUseCase,
+                    new CalculateEffectiveBudgetLimitUseCase(repository),
                     new BudgetSeedService(repository),
                     overviewLoader,
                     new AmountParser(),

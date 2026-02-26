@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.autosecretary.features.budget.application.CalculateEffectiveBudgetLimitUseCase;
 import com.autosecretary.features.budget.application.CreateTransferUseCase;
 import com.autosecretary.features.budget.domain.AmountParser;
 import com.autosecretary.features.budget.application.BudgetSeedService;
@@ -15,6 +16,7 @@ import com.autosecretary.features.budget.data.entity.BudgetLimit;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
+import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.ui.internal.BudgetOverviewLoader;
 import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
 import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
@@ -72,6 +74,7 @@ public class BudgetViewModel extends ViewModel {
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
     private final CreateTransferUseCase createTransferUseCase;
+    private final CalculateEffectiveBudgetLimitUseCase calculateEffectiveLimitUseCase;
     private final BudgetSummaryPresentationMapper summaryPresentationMapper;
     private final BudgetSeedService budgetSeedService;
     private final BudgetOverviewLoader budgetOverviewLoader;
@@ -83,6 +86,7 @@ public class BudgetViewModel extends ViewModel {
                            BudgetImportUseCase importUseCase,
                            ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
                            CreateTransferUseCase createTransferUseCase,
+                           CalculateEffectiveBudgetLimitUseCase calculateEffectiveLimitUseCase,
                            BudgetSeedService budgetSeedService,
                            BudgetOverviewLoader budgetOverviewLoader,
                            AmountParser amountParser,
@@ -93,6 +97,7 @@ public class BudgetViewModel extends ViewModel {
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
         this.createTransferUseCase = createTransferUseCase;
+        this.calculateEffectiveLimitUseCase = calculateEffectiveLimitUseCase;
         this.summaryPresentationMapper = summaryPresentationMapper;
         this.budgetSeedService = budgetSeedService;
         this.budgetOverviewLoader = budgetOverviewLoader;
@@ -226,7 +231,9 @@ public class BudgetViewModel extends ViewModel {
                 return;
             }
 
-            repository.saveTransaction(accountId, categoryId, isExpense, amountCents, date, note);
+            repository.saveTransaction(accountId, categoryId,
+                    isExpense ? TransactionDirection.EXPENSE : TransactionDirection.INCOME,
+                    amountCents, date, note);
             loadOverviewOnExecutor();
         });
     }
@@ -240,7 +247,9 @@ public class BudgetViewModel extends ViewModel {
                 return;
             }
 
-            repository.updateTransaction(transactionId, accountId, categoryId, isExpense, amountCents, date, note);
+            repository.updateTransaction(transactionId, accountId, categoryId,
+                    isExpense ? TransactionDirection.EXPENSE : TransactionDirection.INCOME,
+                    amountCents, date, note);
             loadOverviewOnExecutor();
         });
     }
@@ -395,7 +404,7 @@ public class BudgetViewModel extends ViewModel {
         List<CategorySpendSummary> totals = repository.getCategorySpendTotals(yearMonthStr);
         List<BudgetLimitBar> bars = summaryPresentationMapper.toLimitBars(
                 totals,
-                repository::getEffectiveLimitCents,
+                (catId, ym) -> calculateEffectiveLimitUseCase.execute(catId, ym).effectiveLimitCents(),
                 yearMonthStr
         );
         postToMain.accept(() -> budgetLimits.setValue(bars));

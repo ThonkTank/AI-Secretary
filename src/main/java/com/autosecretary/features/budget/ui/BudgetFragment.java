@@ -28,7 +28,7 @@ import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
-import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
+import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.ui.internal.BudgetBalanceChartView;
 import com.autosecretary.features.budget.ui.internal.BudgetImportPickerController;
 import com.autosecretary.features.budget.ui.internal.BudgetRecurringSuggestionsDialogController;
@@ -383,12 +383,12 @@ public class BudgetFragment extends Fragment {
 
     private List<BudgetCategory> categoriesForType(List<BudgetCategory> allCategories,
                                                    boolean isExpense) {
-        BudgetTransactionEntity.TransactionType filterType = isExpense
-                ? BudgetTransactionEntity.TransactionType.EXPENSE
-                : BudgetTransactionEntity.TransactionType.INCOME;
+        TransactionDirection filterType = isExpense
+                ? TransactionDirection.EXPENSE
+                : TransactionDirection.INCOME;
         List<BudgetCategory> filtered = new ArrayList<>();
         for (BudgetCategory category : allCategories) {
-            if (filterType.name().equals(category.type)) {
+            if (filterType == category.type) {
                 filtered.add(category);
             }
         }

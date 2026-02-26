@@ -1,6 +1,7 @@
 package com.autosecretary.features.budget.data.entity;
 
 import androidx.annotation.NonNull;
+import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
@@ -12,6 +13,7 @@ import java.util.UUID;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
+import com.autosecretary.features.budget.domain.TransactionDirection;
 
 @Entity(
         tableName = "budget_recurring_template",
@@ -52,16 +54,27 @@ public class BudgetRecurringTemplateEntity {
 
     public String categoryId;
 
-    public int avgAmountCents;
+    public long avgAmountCents;
 
-    public int minAmountCents;
+    public long minAmountCents;
 
-    public int maxAmountCents;
+    public long maxAmountCents;
 
     @NonNull
     public RecurringBudgetTransaction.RecurringType recurringType;
 
-    public int recurringValue;
+    @NonNull
+    public TransactionDirection transactionType = TransactionDirection.EXPENSE;
+
+    /**
+     * Scheduling parameter whose meaning depends on recurringType:
+     * - MONTHLY_DAY: day of month (1–31)
+     * - INTERVAL: interval in days between occurrences
+     * - WEEKLY: unused (0); day is stored in recurringDayOfWeek
+     * - MONTHLY_LAST: unused (0)
+     */
+    @ColumnInfo(name = "recurringValue")
+    public int schedulingParam;
 
     public DayOfWeek recurringDayOfWeek;
 
@@ -76,4 +89,5 @@ public class BudgetRecurringTemplateEntity {
         this.normalizedPayee = normalizedPayee;
         this.recurringType = recurringType;
     }
+
 }
