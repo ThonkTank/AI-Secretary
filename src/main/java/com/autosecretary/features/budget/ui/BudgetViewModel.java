@@ -227,17 +227,6 @@ public class BudgetViewModel extends ViewModel {
         });
     }
 
-    private String resolveSelectedAccountId(List<BudgetAccount> fallbackAccounts) {
-        String selected = selectedAccountId.getValue();
-        if (selected != null && !selected.isBlank()) {
-            return selected;
-        }
-        if (!fallbackAccounts.isEmpty()) {
-            return fallbackAccounts.get(0).id;
-        }
-        return null;
-    }
-
 
     public void navigateMonth(int offset) {
         YearMonth current = currentMonth.getValue();
@@ -275,8 +264,11 @@ public class BudgetViewModel extends ViewModel {
 
         postToMain.accept(() -> {
             accounts.setValue(overview.getAccounts());
-            if (selectedAccountId.getValue() == null) {
-                selectedAccountId.setValue(overview.getAccountId());
+            String resolvedAccountId = BudgetOverviewLoader.resolveSelectedAccountId(
+                    selectedAccountId.getValue(),
+                    overview.getAccounts());
+            if (resolvedAccountId != null) {
+                selectedAccountId.setValue(resolvedAccountId);
             }
         });
 
@@ -310,7 +302,7 @@ public class BudgetViewModel extends ViewModel {
             }
 
             List<BudgetAccount> accountList = repository.findActiveAccounts();
-            String accountId = resolveSelectedAccountId(accountList);
+            String accountId = BudgetOverviewLoader.resolveSelectedAccountId(selectedAccountId.getValue(), accountList);
             if (accountId == null) return;
 
             BudgetTransactionEntity.TransactionType type = isExpense
@@ -463,7 +455,7 @@ public class BudgetViewModel extends ViewModel {
 
         String accountId;
         List<BudgetAccount> accountList = repository.findActiveAccounts();
-        accountId = resolveSelectedAccountId(accountList);
+        accountId = BudgetOverviewLoader.resolveSelectedAccountId(selectedAccountId.getValue(), accountList);
         if (accountId == null) {
             postToMain.accept(() -> {
                 uiState.setValue(BudgetUiState.ERROR);
@@ -513,7 +505,7 @@ public class BudgetViewModel extends ViewModel {
 
     public void applyRecurringSuggestions(List<RecurringSuggestion> suggestions) {
         List<BudgetAccount> accountList = repository.findActiveAccounts();
-        String accountId = resolveSelectedAccountId(accountList);
+        String accountId = BudgetOverviewLoader.resolveSelectedAccountId(selectedAccountId.getValue(), accountList);
         if (accountId == null) return;
 
         applyRecurringUseCase.executeAsync(

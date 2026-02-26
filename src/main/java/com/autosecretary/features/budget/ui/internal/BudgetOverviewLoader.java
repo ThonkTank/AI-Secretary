@@ -99,7 +99,7 @@ public class BudgetOverviewLoader {
         return new OverviewData(accounts, accountId, rows, summary, points);
     }
 
-    private String resolveSelectedAccountId(String selectedAccountId, List<BudgetAccount> fallbackAccounts) {
+    public static String resolveSelectedAccountId(String selectedAccountId, List<BudgetAccount> fallbackAccounts) {
         if (selectedAccountId != null && !selectedAccountId.isBlank()) {
             return selectedAccountId;
         }
