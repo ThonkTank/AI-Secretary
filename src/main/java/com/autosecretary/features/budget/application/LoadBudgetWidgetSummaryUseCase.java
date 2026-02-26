@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.data.projection.CategorySpendTotal;
+import com.autosecretary.features.budget.domain.CategorySpendSummary;
 import com.autosecretary.features.budget.domain.BudgetWidgetRepository;
 
 import java.time.YearMonth;
@@ -17,9 +17,9 @@ public class LoadBudgetWidgetSummaryUseCase {
         String yearMonth = YearMonth.now().toString();
         long netBalanceCents = repository.getNetBalanceCents();
 
-        List<CategorySpendTotal> spendTotals = repository.getCategorySpendTotals(yearMonth);
+        List<CategorySpendSummary> spendTotals = repository.getCategorySpendTotals(yearMonth);
         long freeBudgetCents = 0;
-        for (CategorySpendTotal total : spendTotals) {
+        for (CategorySpendSummary total : spendTotals) {
             if (total.limitAmount <= 0) {
                 continue;
             }

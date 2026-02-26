@@ -1,6 +1,7 @@
 package com.autosecretary.features.budget.application.importing;
 
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
+import com.autosecretary.features.budget.domain.ImportTransactionRecord;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 
 import java.time.YearMonth;
@@ -8,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Explicit mapper between domain import/recurring model and Room entity.
+ * Explicit mapper between domain import/recurring model and persistence forms.
  */
 public class BudgetTransactionMapper {
 
@@ -43,7 +44,7 @@ public class BudgetTransactionMapper {
         return entity;
     }
 
-    public BudgetTransactionEntity toEntity(RecurringBudgetTransaction domainTransaction) {
+    public ImportTransactionRecord toRecord(RecurringBudgetTransaction domainTransaction) {
         if (domainTransaction == null) {
             return null;
         }
@@ -52,62 +53,54 @@ public class BudgetTransactionMapper {
             throw new IllegalArgumentException("accountId and transactionDate are required");
         }
 
-        BudgetTransactionEntity.TransactionType type =
-                domainTransaction.amountCents >= 0
-                        ? BudgetTransactionEntity.TransactionType.INCOME
-                        : BudgetTransactionEntity.TransactionType.EXPENSE;
-
-        BudgetTransactionEntity entity = new BudgetTransactionEntity(
+        String type = domainTransaction.amountCents < 0 ? "EXPENSE" : "INCOME";
+        return new ImportTransactionRecord(
+                domainTransaction.id,
                 domainTransaction.accountId,
                 domainTransaction.categoryId,
                 type,
                 Math.abs(domainTransaction.amountCents),
                 domainTransaction.transactionDate,
-                YearMonth.from(domainTransaction.transactionDate).toString()
+                YearMonth.from(domainTransaction.transactionDate).toString(),
+                domainTransaction.description,
+                domainTransaction.importHash,
+                domainTransaction.payee,
+                domainTransaction.importId,
+                domainTransaction.parentRecurringId
         );
-
-        if (domainTransaction.id != null) {
-            entity.id = domainTransaction.id;
-        }
-        entity.note = domainTransaction.description;
-        entity.importHash = domainTransaction.importHash;
-        entity.payee = domainTransaction.payee;
-        entity.importId = domainTransaction.importId;
-        entity.templateId = domainTransaction.parentRecurringId;
-        return entity;
     }
 
-    public RecurringBudgetTransaction toDomain(BudgetTransactionEntity entity) {
-        if (entity == null) {
+    public RecurringBudgetTransaction toDomain(ImportTransactionRecord record) {
+        if (record == null) {
             return null;
         }
 
-        if (entity.accountId == null) {
+        if (record.accountId == null) {
             throw new IllegalArgumentException("accountId must not be null");
         }
 
-        int signedAmountCents = (int) entity.amountCents;
-        if (entity.type == BudgetTransactionEntity.TransactionType.EXPENSE) {
+        int signedAmountCents = (int) record.amountCents;
+        if ("EXPENSE".equals(record.type)) {
             signedAmountCents = -Math.abs(signedAmountCents);
         } else {
             signedAmountCents = Math.abs(signedAmountCents);
         }
 
         RecurringBudgetTransaction tx = new RecurringBudgetTransaction.Builder(
-                entity.accountId,
+                record.accountId,
                 signedAmountCents,
-                entity.bookingDate,
-                entity.categoryId
+                record.bookingDate,
+                record.categoryId
         )
-                .description(entity.note)
-                .payee(entity.payee)
-                .importHash(entity.importHash)
-                .importId(entity.importId)
+                .description(record.note)
+                .payee(record.payee)
+                .importHash(record.importHash)
+                .importId(record.importId)
                 .build();
 
-        tx.id = entity.id;
-        tx.parentRecurringId = entity.templateId;
-        tx.isRecurring = entity.templateId != null && !entity.templateId.isBlank();
+        tx.id = record.id;
+        tx.parentRecurringId = record.templateId;
+        tx.isRecurring = record.templateId != null && !record.templateId.isBlank();
         return tx;
     }
 }
