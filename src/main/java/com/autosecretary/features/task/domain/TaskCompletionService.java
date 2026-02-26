@@ -67,7 +67,11 @@ public class TaskCompletionService {
         boolean trackDuration = !isQuickTap && !isStale;
 
         lifecycleManager.updateStreakForCompletion(task, slot);
-        task.recordCompletion(durationSeconds / 60, trackDuration);
+        int durationMinutes = (int) Math.ceil(durationSeconds / 60.0);
+        task.recordCompletion(durationMinutes, trackDuration);
+        if (trackDuration && task.core != null && task.core.progress != null) {
+            task.core.progress.recordTimingSample(durationMinutes);
+        }
 
         if (trackDuration && task.core.adaptive) {
             lifecycleManager.adaptPrefSlot(task, slot);

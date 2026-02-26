@@ -98,6 +98,8 @@ public class TaskCore {
      * Tracks incremental progress toward a target value (e.g. pages read, chapters completed).
      */
     public static class Progress {
+        private static final int DEFAULT_FALLBACK_MINUTES = 10;
+
         public String unit;             // Unit of measurement (e.g. "pages", "chapters")
         public boolean resetPerRep;          // True = progress resets each repetition (requires repetition)
 
@@ -108,12 +110,52 @@ public class TaskCore {
         public int minPerRep;
         public int maxPerRep;
 
+        // Learning statistics for adaptive slot sizing:
+        // totalProgress = observed progress units, totalTime = observed minutes.
         public int totalProgress;
-        public int totalTime = 10;
+        public int totalTime = DEFAULT_FALLBACK_MINUTES;
 
         public double repsRequired(double minDuration) {return resetPerRep ? target : Math.min(minPerRep, minDuration/timePerProgress());}
-        public double timePerProgress() {return totalProgress == 0 ? totalTime : (double) totalTime / (double) totalProgress;}
-        public int requiredTimePerRep() {return (int) (minPerRep * timePerProgress());}
+
+        public boolean hasTrackingTarget() {
+            return target > 0;
+        }
+
+        /**
+         * Uses an implicit 1-unit completion for tasks without explicit progress tracking
+         * to keep legacy completion-duration learning behavior.
+         */
+        public int completionProgressUnits() {
+            if (!hasTrackingTarget()) {
+                return 1;
+            }
+            return Math.max(1, minPerRep);
+        }
+
+        public void recordTimingSample(int durationMinutes) {
+            int boundedDuration = Math.max(1, durationMinutes);
+            if (totalTime < 0) {
+                totalTime = DEFAULT_FALLBACK_MINUTES;
+            }
+            if (totalProgress < 0) {
+                totalProgress = 0;
+            }
+            totalTime += boundedDuration;
+            totalProgress += completionProgressUnits();
+        }
+
+        public double timePerProgress() {
+            int safeTime = totalTime > 0 ? totalTime : DEFAULT_FALLBACK_MINUTES;
+            return totalProgress <= 0 ? safeTime : (double) safeTime / (double) totalProgress;
+        }
+
+        public int requiredTimePerRep() {
+            return (int) Math.ceil(completionProgressUnits() * timePerProgress());
+        }
+
+        public int learnedCompletionDurationMinutes() {
+            return (int) Math.ceil(timePerProgress() * completionProgressUnits());
+        }
     }
 
     /** Tracks completion statistics, streaks, and cumulative duration. */
@@ -132,5 +174,19 @@ public class TaskCore {
     public enum SchedulingType {
         TASK,
         TERMIN
+    }
+
+    public int plannedDurationMinutes() {
+        int fallback = maxDuration > 0 ? maxDuration : Math.max(minDuration, 1);
+        if (progress == null) {
+            return fallback;
+        }
+
+        int learned = progress.learnedCompletionDurationMinutes();
+        int bounded = Math.max(Math.max(minDuration, 1), learned);
+        if (maxDuration > 0) {
+            bounded = Math.min(maxDuration, bounded);
+        }
+        return bounded;
     }
 }
