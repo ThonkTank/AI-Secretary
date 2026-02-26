@@ -222,6 +222,7 @@ public class DefaultTaskSlotGenerator {
             occupied.add(new Interval(blocked.start, blocked.end));
         }
         occupied.sort(Interval::compareTo);
+        scheduleFixedAppointments(taskTree, windowStart, windowEnd, occupied);
         assignGlobalBestFit(taskTree, windowStart, windowEnd, null, 0, occupied);
 
         log("=== Zusammenfassung " + schedulingDay + " ===");
@@ -256,6 +257,81 @@ public class DefaultTaskSlotGenerator {
                 }
             }
         }
+    }
+
+    private void scheduleFixedAppointments(List<Task> tasks,
+                                           LocalDateTime windowStart,
+                                           LocalDateTime windowEnd,
+                                           List<Interval> occupied) {
+        for (Task task : TaskTreeOperations.flatten(tasks)) {
+            if (!isFixedForSchedulingDay(task)) {
+                continue;
+            }
+            placeFixedAppointment(task, windowStart, windowEnd, occupied);
+        }
+    }
+
+    private boolean isFixedForSchedulingDay(Task task) {
+        if (task.core == null || !task.core.isFixedAppointment) {
+            return false;
+        }
+        return schedulingDay.equals(task.core.fixedDate) && task.core.fixedStart != null;
+    }
+
+    private void placeFixedAppointment(Task task,
+                                       LocalDateTime windowStart,
+                                       LocalDateTime windowEnd,
+                                       List<Interval> occupied) {
+        if (hasScheduledSlotForDay(task, schedulingDay)) {
+            return;
+        }
+
+        int durationMinutes = resolveFixedDurationMinutes(task);
+        LocalDateTime fixedStart = LocalDateTime.of(schedulingDay, task.core.fixedStart);
+        LocalDateTime fixedEnd = fixedStart.plusMinutes(durationMinutes);
+
+        TaskSlot slot = createScheduledSlot(task, fixedStart, Integer.MAX_VALUE, null);
+        slot.end = fixedEnd.toLocalTime();
+        finalizeAssignment(task, slot, Integer.MAX_VALUE);
+
+        boolean outsideWindow = fixedStart.isBefore(windowStart) || fixedEnd.isAfter(windowEnd);
+        boolean hasCollision = hasCollision(occupied, fixedStart, fixedEnd);
+
+        if (outsideWindow || hasCollision) {
+            log("  ⚠ Fixtermin-Konflikt: " + task.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM) + "]");
+        } else {
+            log("  ✓ Fixtermin gesetzt: " + task.core.title + " [" + slot.start.format(HMM) + "-" + slot.end.format(HMM) + "]");
+        }
+
+        insertSorted(occupied, new Interval(fixedStart, fixedEnd));
+    }
+
+    private boolean hasScheduledSlotForDay(Task task, LocalDate day) {
+        for (TaskSlot slot : task.slots) {
+            if (slot.day != null && slot.day.equals(day) && slot.scheduled) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int resolveFixedDurationMinutes(Task task) {
+        if (task.core.fixedDurationMinutes != null && task.core.fixedDurationMinutes > 0) {
+            return task.core.fixedDurationMinutes;
+        }
+        if (task.core.maxDuration > 0) {
+            return task.core.maxDuration;
+        }
+        return 1;
+    }
+
+    private boolean hasCollision(List<Interval> occupied, LocalDateTime start, LocalDateTime end) {
+        for (Interval interval : occupied) {
+            if (start.isBefore(interval.end) && end.isAfter(interval.start)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void assignGlobalBestFit(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd,
@@ -300,6 +376,10 @@ public class DefaultTaskSlotGenerator {
         DayOfWeek today = schedulingDay.getDayOfWeek();
 
         for (Task task : tasks) {
+            if (task.core != null && task.core.isFixedAppointment) {
+                scoreLogBuilder.appendTaskScore(task, 0, new ArrayList<>());
+                continue;
+            }
             // Fast path: if prerequisites are unmet even at the latest possible time, skip entirely
             if (hasUnmetPrerequisites(task, windowEnd)) {
                 scoreLogBuilder.appendTaskPrerequisiteBlocked(task);

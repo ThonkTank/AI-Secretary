@@ -232,6 +232,79 @@
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 
+        <CheckBox
+            android:id="@+id/EditIsFixedAppointment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:text="@string/task_editor_fixed_appointment_toggle"/>
+
+        <LinearLayout
+            android:id="@+id/FixedAppointmentContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:paddingStart="@dimen/editor_section_indent">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/FixedDateInputLayout"
+                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:hint="@string/task_editor_fixed_date_label"
+                app:endIconMode="custom"
+                app:endIconDrawable="@android:drawable/ic_menu_my_calendar">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/EditFixedDate"
+                    style="@style/Widget.AISecretary.Editor.TextField"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:clickable="true"
+                    android:inputType="none"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/FixedStartInputLayout"
+                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:hint="@string/task_editor_fixed_start_label"
+                app:endIconMode="custom"
+                app:endIconDrawable="@android:drawable/ic_menu_recent_history">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/EditFixedStart"
+                    style="@style/Widget.AISecretary.Editor.TextField"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:clickable="true"
+                    android:inputType="none"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:hint="@string/task_editor_fixed_duration_label">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/EditFixedDurationMinutes"
+                    style="@style/Widget.AISecretary.Editor.TextField"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"/>
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
         <!-- Repetition -->
         <CheckBox
             android:id="@+id/ToggleRepetition"
