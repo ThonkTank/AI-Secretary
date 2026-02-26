@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui.edit;
+package com.autosecretary.features.task.ui.edit.state;
 
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.shared.Period;

@@ -11,7 +11,7 @@ import androidx.fragment.app.DialogFragment;
 import com.autosecretary.R;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
-import com.autosecretary.features.task.ui.edit.TaskEditState;
+import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 public class GoalSectionController {
 
