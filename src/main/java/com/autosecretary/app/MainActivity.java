@@ -10,6 +10,7 @@ import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
 import com.autosecretary.app.settings.SettingsController;
+import com.autosecretary.app.update.UpdateChecker;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.ui.BudgetFragment;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
@@ -20,6 +21,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 public class MainActivity extends AppCompatActivity {
 
     private SettingsController settingsController;
+    private boolean updateCheckStarted;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +56,16 @@ public class MainActivity extends AppCompatActivity {
             }
             return true;
         });
+
+        startUpdateCheckIfNeeded();
+    }
+
+    private void startUpdateCheckIfNeeded() {
+        if (updateCheckStarted) {
+            return;
+        }
+        updateCheckStarted = true;
+        new UpdateChecker(this).checkForUpdate();
     }
 
     @Override
