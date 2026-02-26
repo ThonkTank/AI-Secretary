@@ -48,21 +48,44 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     }
 
     private static class OccupiedInterval extends Interval {
-        final Task task;
-        final TaskSlot slot;
-        final boolean displaceable;
+        final DisplacementCandidate candidate;
 
-        OccupiedInterval(LocalDateTime start, LocalDateTime end, Task task, TaskSlot slot, boolean displaceable) {
+        OccupiedInterval(LocalDateTime start, LocalDateTime end, DisplacementCandidate candidate) {
             super(start, end);
-            this.task = task;
-            this.slot = slot;
-            this.displaceable = displaceable;
+            this.candidate = candidate;
+        }
+
+        boolean isDisplaceable() {
+            return candidate != null && candidate.displaceable;
         }
     }
 
     private static class FixedInterval extends OccupiedInterval {
         FixedInterval(LocalDateTime start, LocalDateTime end) {
-            super(start, end, null, null, false);
+            super(start, end, null);
+        }
+    }
+
+    private static class DisplacementCandidate {
+        final Task task;
+        final TaskSlot slot;
+        final boolean displaceable;
+        final boolean protectedFromNormalTasks;
+        final int lossScore;
+        final String atomicGroupId;
+
+        DisplacementCandidate(Task task,
+                              TaskSlot slot,
+                              boolean displaceable,
+                              boolean protectedFromNormalTasks,
+                              int lossScore,
+                              String atomicGroupId) {
+            this.task = task;
+            this.slot = slot;
+            this.displaceable = displaceable;
+            this.protectedFromNormalTasks = protectedFromNormalTasks;
+            this.lossScore = lossScore;
+            this.atomicGroupId = atomicGroupId;
         }
     }
 
@@ -79,7 +102,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private static class ChainPlacement {
         final List<ChainNode> chain;
         final List<LocalDateTime> starts;
-        final Set<TaskSlot> toDisplace;
+        final Set<DisplacementCandidate> toDisplace;
         final int gainScore;
         final int lossScore;
         final int netScore;
@@ -87,7 +110,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
 
         ChainPlacement(List<ChainNode> chain,
                        List<LocalDateTime> starts,
-                       Set<TaskSlot> toDisplace,
+                       Set<DisplacementCandidate> toDisplace,
                        int gainScore,
                        int lossScore,
                        LocalDate day) {
@@ -353,8 +376,9 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
 
         StringBuilder displaced = new StringBuilder();
-        for (TaskSlot slot : placement.toDisplace) {
-            Task owner = allTasksById.get(slot.taskId);
+        for (DisplacementCandidate candidate : placement.toDisplace) {
+            TaskSlot slot = candidate.slot;
+            Task owner = candidate.task != null ? candidate.task : allTasksById.get(slot.taskId);
             if (displaced.length() > 0) {
                 displaced.append(", ");
             }
@@ -425,13 +449,17 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                          LocalDateTime windowEnd,
                                          List<OccupiedInterval> occupied) {
         List<LocalDateTime> starts = new ArrayList<>();
-        Set<TaskSlot> toDisplace = new HashSet<>();
+        Set<DisplacementCandidate> toDisplace = new HashSet<>();
         int gain = 0;
+        boolean incomingContainsFixed = false;
 
         LocalDateTime cursor = firstStart;
         for (int i = 0; i < chain.size(); i++) {
             ChainNode node = chain.get(i);
             Task task = node.task;
+            if (task.core.schedulingType == TaskCore.SchedulingType.TERMIN) {
+                incomingContainsFixed = true;
+            }
             if (i > 0) {
                 cursor = cursor.plusMinutes(node.minGapFromPrevious);
             }
@@ -447,7 +475,10 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
 
             Set<OccupiedInterval> overlaps = findOverlappingIntervals(occupied, cursor, end);
             for (OccupiedInterval overlap : overlaps) {
-                if (!overlap.displaceable) {
+                if (!overlap.isDisplaceable()) {
+                    return null;
+                }
+                if (!incomingContainsFixed && overlap.candidate != null && overlap.candidate.protectedFromNormalTasks) {
                     return null;
                 }
             }
@@ -464,12 +495,30 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
 
         gain += chain.size() * 10;
-        int loss = 0;
-        for (TaskSlot slot : toDisplace) {
-            loss += Math.max(0, slot.score);
+        int loss = computeAtomicLoss(toDisplace);
+        if (gain - loss <= 0) {
+            return null;
         }
 
         return new ChainPlacement(new ArrayList<>(chain), starts, toDisplace, gain, loss, firstStart.toLocalDate());
+    }
+
+    private int computeAtomicLoss(Set<DisplacementCandidate> candidates) {
+        int loss = 0;
+        Set<String> seenGroups = new HashSet<>();
+        for (DisplacementCandidate candidate : candidates) {
+            if (candidate == null) {
+                continue;
+            }
+            if (candidate.atomicGroupId != null) {
+                if (seenGroups.add(candidate.atomicGroupId)) {
+                    loss += Math.max(0, candidate.lossScore);
+                }
+            } else {
+                loss += Math.max(0, candidate.lossScore);
+            }
+        }
+        return loss;
     }
 
     private boolean hasUnmetPrerequisites(Task task,
@@ -609,17 +658,18 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             if (planningState != null) {
                 planningState.recordScheduled(task.core.id, slot.day);
             }
-            occupied.add(new OccupiedInterval(start, start.plusMinutes(task.core.maxDuration), task, slot, true));
+            occupied.add(new OccupiedInterval(start, start.plusMinutes(task.core.maxDuration), toCandidate(task, slot, true)));
         }
         occupied.sort(Interval::compareTo);
     }
 
-    private void removeDisplacedSlots(Set<TaskSlot> displaced, List<OccupiedInterval> occupied) {
+    private void removeDisplacedSlots(Set<DisplacementCandidate> displaced, List<OccupiedInterval> occupied) {
         if (displaced.isEmpty()) {
             return;
         }
         Set<String> ids = new HashSet<>();
-        for (TaskSlot slot : displaced) {
+        for (DisplacementCandidate candidate : displaced) {
+            TaskSlot slot = candidate.slot;
             ids.add(slot.id);
             Task owner = allTasksById.get(slot.taskId);
             if (owner != null) {
@@ -629,7 +679,9 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                 planningState.removeScheduled(slot.taskId, slot.day);
             }
         }
-        occupied.removeIf(interval -> interval.slot != null && ids.contains(interval.slot.id));
+        occupied.removeIf(interval -> interval.candidate != null
+                && interval.candidate.slot != null
+                && ids.contains(interval.candidate.slot.id));
     }
 
     public List<SchedulingConflict> getLastConflicts() {
@@ -677,11 +729,14 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             }
             TaskSlot slot = createScheduledSlot(task, start, Integer.MAX_VALUE / 2, null);
             slot.end = end.toLocalTime();
+            slot.displacementScore = Integer.MAX_VALUE / 2;
+            slot.displacementGroupType = "FIXED";
+            slot.displacementGroupId = "fixed:" + task.core.id;
             finalizeAssignment(task, slot, Integer.MAX_VALUE / 2);
             if (planningState != null) {
                 planningState.recordScheduled(task.core.id, slot.day);
             }
-            occupied.add(new FixedInterval(start, end));
+            occupied.add(new OccupiedInterval(start, end, toCandidate(task, slot, false)));
             occupied.sort(Interval::compareTo);
         }
     }
@@ -728,7 +783,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             starts.add(gap.start);
         }
         for (OccupiedInterval interval : occupied) {
-            if (interval.displaceable) {
+            if (interval.isDisplaceable()) {
                 starts.add(interval.start);
             }
         }
@@ -749,19 +804,20 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
 
     private void expandToFullChains(Set<OccupiedInterval> overlapping,
                                     List<OccupiedInterval> occupied,
-                                    Set<TaskSlot> expandedSlots) {
+                                    Set<DisplacementCandidate> expandedCandidates) {
         ArrayDeque<OccupiedInterval> queue = new ArrayDeque<>(overlapping);
-        Set<String> chainIds = new HashSet<>();
+        Set<String> groupIds = new HashSet<>();
 
         while (!queue.isEmpty()) {
             OccupiedInterval interval = queue.poll();
-            if (interval.slot == null) {
+            if (interval.candidate == null || interval.candidate.slot == null) {
                 continue;
             }
-            expandedSlots.add(interval.slot);
-            if (interval.slot.chainId != null && chainIds.add(interval.slot.chainId)) {
+            expandedCandidates.add(interval.candidate);
+            String groupId = interval.candidate.atomicGroupId;
+            if (groupId != null && groupIds.add(groupId)) {
                 for (OccupiedInterval candidate : occupied) {
-                    if (candidate.slot != null && interval.slot.chainId.equals(candidate.slot.chainId)) {
+                    if (candidate.candidate != null && groupId.equals(candidate.candidate.atomicGroupId)) {
                         queue.add(candidate);
                     }
                 }
@@ -775,12 +831,11 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             for (TaskSlot slot : task.slots) {
                 if (slot.day.equals(day) && slot.start != null && slot.end != null) {
                     boolean locked = slot.completed || slot.realStart != null;
+                    boolean fixedTask = task.core.schedulingType == TaskCore.SchedulingType.TERMIN;
                     intervals.add(new OccupiedInterval(
                             day.atTime(slot.start),
                             day.atTime(slot.end),
-                            task,
-                            slot,
-                            !locked));
+                            toCandidate(task, slot, !locked && !fixedTask)));
                 }
             }
         }
@@ -805,8 +860,26 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return slot;
     }
 
+    private DisplacementCandidate toCandidate(Task task, TaskSlot slot, boolean displaceable) {
+        int score = slot.displacementScore != 0 ? slot.displacementScore : slot.score;
+        String atomicGroupId = slot.displacementGroupId;
+        if (atomicGroupId == null || atomicGroupId.isBlank()) {
+            atomicGroupId = slot.chainId != null ? "chain:" + slot.chainId : "slot:" + slot.id;
+        }
+        boolean fixedProtected = "FIXED".equals(slot.displacementGroupType)
+                || task.core.schedulingType == TaskCore.SchedulingType.TERMIN;
+        return new DisplacementCandidate(task, slot, displaceable, fixedProtected, score, atomicGroupId);
+    }
+
     private void finalizeAssignment(Task task, TaskSlot slot, int score) {
         slot.score = score;
+        slot.displacementScore = score;
+        if (slot.displacementGroupType == null) {
+            slot.displacementGroupType = slot.chainId != null ? "CHAIN" : "SINGLE";
+        }
+        if (slot.displacementGroupId == null || slot.displacementGroupId.isBlank()) {
+            slot.displacementGroupId = slot.chainId != null ? "chain:" + slot.chainId : "slot:" + slot.id;
+        }
         task.slots.add(slot);
         scorer.onSlotAssigned(task, slot.start);
         scheduledInSession.add(task.core.id);
