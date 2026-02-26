@@ -321,6 +321,7 @@ final class TaskScorer {
         if (isWithinCooldownWindow(context)) return false;
         if (violatesMinimumInterDaySpacing(context)) return false;
         if (hasReachedPeriodQuota(context)) return false;
+        if (isBlockedByIncompletePriorPeriod(context)) return false;
         if (isBelowMinimumSlotDuration(context)) return false;
         if (isBelowRequiredProgressDuration(context)) return false;
         return !isPastClosableDeadline(context);
@@ -347,6 +348,11 @@ final class TaskScorer {
     private boolean hasReachedPeriodQuota(ScoringContext context) {
         MultiDayStateSnapshot multiDay = context.snapshot.multiDayStateSnapshot();
         return multiDay.totalScheduledReps() >= multiDay.totalRepsInPeriod();
+    }
+
+    private boolean isBlockedByIncompletePriorPeriod(ScoringContext context) {
+        TaskCore.Repetition rep = context.task.core.repetition;
+        return rep != null && rep.completeFirst && rep.carryoverDebt > 0;
     }
 
     private boolean isBelowMinimumSlotDuration(ScoringContext context) {

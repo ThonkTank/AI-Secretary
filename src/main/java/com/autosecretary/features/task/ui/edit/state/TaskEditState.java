@@ -38,6 +38,8 @@ public class TaskEditState {
     public Period periodUnit = Period.DAY;
     public int periodCompletions;
     public LocalDate periodStart;
+    public boolean completeFirst;
+    public int carryoverDebt;
 
     public String unit;
     public int target;

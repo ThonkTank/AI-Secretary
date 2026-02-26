@@ -36,6 +36,7 @@ public class TaskEditFormInputReader {
     private final EditText repsView;
     private final EditText perPeriodView;
     private final Spinner periodUnitView;
+    private final CheckBox completeFirstView;
 
     private final CheckBox toggleProgress;
     private final EditText unitView;
@@ -64,6 +65,7 @@ public class TaskEditFormInputReader {
         EditText repsView,
         EditText perPeriodView,
         Spinner periodUnitView,
+        CheckBox completeFirstView,
         CheckBox toggleProgress,
         EditText unitView,
         EditText targetView,
@@ -94,6 +96,7 @@ public class TaskEditFormInputReader {
         this.repsView = repsView;
         this.perPeriodView = perPeriodView;
         this.periodUnitView = periodUnitView;
+        this.completeFirstView = completeFirstView;
 
         this.toggleProgress = toggleProgress;
         this.unitView = unitView;
@@ -181,6 +184,7 @@ public class TaskEditFormInputReader {
             (Period) periodUnitView.getSelectedItem(),
             TaskEditPresenter.InputDefaults.REPETITION_PERIOD_UNIT
         );
+        input.completeFirst = completeFirstView.isChecked();
 
         input.progressEnabled = toggleProgress.isChecked();
         input.unit = unitView.getText().toString();

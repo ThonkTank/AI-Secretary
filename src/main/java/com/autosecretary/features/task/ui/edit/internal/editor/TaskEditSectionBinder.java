@@ -140,13 +140,15 @@ public class TaskEditSectionBinder {
         EditText repsView = rootView.findViewById(R.id.EditReps);
         EditText perPeriodView = rootView.findViewById(R.id.EditPerPeriod);
         Spinner periodUnitView = rootView.findViewById(R.id.EditPeriodUnit);
+        CheckBox completeFirstView = rootView.findViewById(R.id.EditCompleteFirst);
 
         RepetitionViews views = new RepetitionViews(
             toggleRepetition,
             repetitionContainer,
             repsView,
             perPeriodView,
-            periodUnitView
+            periodUnitView,
+            completeFirstView
         );
 
         boolean hasRepetition = editState.reps > 0;
@@ -164,6 +166,7 @@ public class TaskEditSectionBinder {
         periodAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         periodUnitView.setAdapter(periodAdapter);
         periodUnitView.setSelection((editState.periodUnit != null ? editState.periodUnit : Period.DAY).ordinal());
+        completeFirstView.setChecked(editState.completeFirst);
 
         presenter.initializeRepetitionState(
             toggleRepetition.isChecked(),
@@ -322,19 +325,22 @@ public class TaskEditSectionBinder {
         public final EditText repsView;
         public final EditText perPeriodView;
         public final Spinner periodUnitView;
+        public final CheckBox completeFirstView;
 
         private RepetitionViews(
             CheckBox toggleRepetition,
             LinearLayout repetitionContainer,
             EditText repsView,
             EditText perPeriodView,
-            Spinner periodUnitView
+            Spinner periodUnitView,
+            CheckBox completeFirstView
         ) {
             this.toggleRepetition = toggleRepetition;
             this.repetitionContainer = repetitionContainer;
             this.repsView = repsView;
             this.perPeriodView = perPeriodView;
             this.periodUnitView = periodUnitView;
+            this.completeFirstView = completeFirstView;
         }
     }
 

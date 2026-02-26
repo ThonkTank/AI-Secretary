@@ -69,6 +69,8 @@ public class TaskCore {
         public int reps;
         public int periodCompletions = 0;
         public LocalDate periodStart;
+        public boolean completeFirst;
+        public int carryoverDebt;
 
         public double remainingReps() {return reps - periodCompletions;}
 

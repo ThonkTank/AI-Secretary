@@ -17,6 +17,14 @@ import java.time.temporal.ChronoUnit;
  * adaptive preferred-time adjustment. All methods mutate the passed {@link Task} directly.
  * Used by {@code TaskScorer} ({@link #advancePeriods} during maintenance) and
  * {@code CheckOffTaskUseCase} ({@link #updateStreakForCompletion} and {@link #adaptPrefSlot} on completion).
+ *
+ * <p>Edge cases for {@code repetition.completeFirst}:</p>
+ * <ul>
+ *   <li>Manual backfill: if a user completes an older slot from a previous period, that completion
+ *       reduces carryover debt before the current period can accept new reps.</li>
+ *   <li>Deadline + completeFirst: an overdue deadline with {@code closeOnMiss=true} still wins in
+ *       scoring and can close scheduling even while carryover debt exists.</li>
+ * </ul>
  */
 public class TaskLifecycleManager {
 
@@ -49,6 +57,7 @@ public class TaskLifecycleManager {
 
         // Evaluate expired period
         boolean goalMet = rep.periodCompletions >= rep.reps;
+        int missingReps = Math.max(0, rep.reps - rep.periodCompletions);
         if (!goalMet && task.core.history.currentStreak > 0) {
             task.core.history.nrStreaks++;
             task.core.history.currentStreak = 0;
@@ -57,6 +66,17 @@ public class TaskLifecycleManager {
         // Bulk-jump to current period boundary
         long daysSinceStart = ChronoUnit.DAYS.between(rep.periodStart, referenceDay);
         long fullPeriods = daysSinceStart / periodDays;
+
+        if (rep.completeFirst) {
+            int carryoverDebt = rep.carryoverDebt + missingReps;
+            if (fullPeriods > 1) {
+                carryoverDebt += (int) ((fullPeriods - 1) * rep.reps);
+            }
+            rep.carryoverDebt = Math.max(0, carryoverDebt);
+        } else {
+            rep.carryoverDebt = 0;
+        }
+
         rep.periodStart = rep.periodStart.plusDays(fullPeriods * periodDays);
         rep.periodCompletions = 0;
 
@@ -80,7 +100,7 @@ public class TaskLifecycleManager {
         if (task.core.repetition == null || task.core.repetition.reps <= 0
                 || task.core.repetition.periodUnit == null) return;
 
-        advancePeriods(task);
+        advancePeriods(task, completedSlot.day);
 
         TaskCore.Repetition rep = task.core.repetition;
         LocalDate periodStart = rep.periodStart != null ? rep.periodStart : task.core.created;
@@ -88,6 +108,15 @@ public class TaskLifecycleManager {
         boolean belongsToActivePeriod = periodEnd != null
                 && !completedSlot.day.isBefore(periodStart)
                 && completedSlot.day.isBefore(periodEnd);
+
+        if (rep.completeFirst && rep.carryoverDebt > 0 && completedSlot.day.isBefore(periodStart)) {
+            rep.carryoverDebt = Math.max(0, rep.carryoverDebt - 1);
+            return;
+        }
+
+        if (rep.completeFirst && rep.carryoverDebt > 0) {
+            return;
+        }
 
         if (belongsToActivePeriod) {
             rep.periodCompletions++;

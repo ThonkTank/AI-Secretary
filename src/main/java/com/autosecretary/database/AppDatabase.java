@@ -48,7 +48,7 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
                 BudgetImportEntity.class,
                 BudgetRecurringTemplateEntity.class
         },
-        version = 17,
+        version = 18,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -198,6 +198,14 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    private static final Migration MIGRATION_17_18 = new Migration(17, 18) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE task_core ADD COLUMN repetition_completeFirst INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE task_core ADD COLUMN repetition_carryoverDebt INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
     public abstract TaskDAO taskDao();
 
     public abstract TaskScheduleConfigDAO taskScheduleConfigDao();
@@ -219,7 +227,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context, AppDatabase.class, "autosecretary.db")
-                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
                     .fallbackToDestructiveMigration()
                     .build();
         }

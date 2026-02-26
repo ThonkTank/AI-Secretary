@@ -372,6 +372,13 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_sm"/>
+
+            <CheckBox
+                android:id="@+id/EditCompleteFirst"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:text="@string/task_editor_complete_first"/>
         </LinearLayout>
 
         <!-- PrefSlots -->
