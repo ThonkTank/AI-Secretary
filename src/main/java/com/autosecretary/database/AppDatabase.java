@@ -45,7 +45,7 @@ import com.autosecretary.features.task.data.TaskSlot;
                 BudgetImportEntity.class,
                 BudgetRecurringTemplateEntity.class
         },
-        version = 15,
+        version = 16,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -170,6 +170,15 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    private static final Migration MIGRATION_15_16 = new Migration(15, 16) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE task_slots ADD COLUMN displacementScore INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE task_slots ADD COLUMN displacementGroupId TEXT");
+            database.execSQL("ALTER TABLE task_slots ADD COLUMN displacementGroupType TEXT");
+        }
+    };
+
     public abstract TaskDAO taskDao();
 
     public abstract TaskScheduleConfigDAO taskScheduleConfigDao();
@@ -189,7 +198,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context, AppDatabase.class, "autosecretary.db")
-                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+                    .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
                     .fallbackToDestructiveMigration()
                     .build();
         }

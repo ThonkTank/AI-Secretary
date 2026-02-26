@@ -47,6 +47,18 @@ public class TaskSlot {
     /** Returns the number of days elapsed since this slot's scheduled day. */
     public int sinceCompleted() {return (int) ChronoUnit.DAYS.between(day, LocalDate.now());}
     public int score;
+    /**
+     * Persisted displacement value used as reproducible loss baseline during re-planning.
+     */
+    public int displacementScore;
+    /**
+     * Atomic displacement group id (e.g. prerequisite chain or fixed block group).
+     */
+    public String displacementGroupId;
+    /**
+     * Group type for displacement semantics (e.g. CHAIN, FIXED, SINGLE).
+     */
+    public String displacementGroupType;
 
     public LocalTime realStart;
     public LocalTime realEnd;
