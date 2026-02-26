@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.application;
+package com.autosecretary.features.task.application.config;
 
 import com.autosecretary.features.task.data.TaskScheduleConfig;
 

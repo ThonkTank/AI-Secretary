@@ -18,7 +18,7 @@ import androidx.fragment.app.DialogFragment;
 import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.features.task.application.TaskScheduleConfigService;
+import com.autosecretary.features.task.application.config.TaskScheduleConfigService;
 import com.autosecretary.features.task.data.TaskScheduleConfig;
 
 import java.time.DayOfWeek;
