@@ -23,6 +23,7 @@ import com.autosecretary.features.task.application.DeleteTaskUseCase;
 import com.autosecretary.features.task.application.IncrementTaskProgressUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskAsyncDataService;
+import com.autosecretary.features.task.application.TaskCalendarService;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.TaskScheduleConfigRepository;
 import com.autosecretary.features.task.application.TaskScheduleConfigService;
@@ -76,7 +77,7 @@ public class AppCompositionRoot {
                 new DeviceCalendarBlockedIntervalProvider(app)
         );
         TaskListItemMapper mapper = new TaskListItemMapper();
-        CalendarReader calendarReader = new CalendarReader();
+        TaskCalendarService taskCalendarService = new CalendarReader(app);
 
         TaskAsyncDataService taskAsyncDataService = new TaskAsyncDataService(
                 taskDao,
@@ -121,7 +122,7 @@ public class AppCompositionRoot {
                 checkOffTaskUseCase,
                 regenerateScheduleUseCase,
                 deleteTaskUseCase,
-                calendarReader,
+                taskCalendarService,
                 incrementTaskProgressUseCase,
                 decrementTaskProgressUseCase
         );

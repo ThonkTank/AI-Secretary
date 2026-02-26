@@ -7,6 +7,9 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.CalendarContract;
 
+import com.autosecretary.features.task.application.TaskCalendarEvent;
+import com.autosecretary.features.task.application.TaskCalendarService;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -15,14 +18,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Reads calendar events from the local device using {@link CalendarContract.Instances}.
+ * Android-backed implementation of {@link TaskCalendarService}.
  */
-public class CalendarReader {
+public class CalendarReader implements TaskCalendarService {
+    private final Context context;
 
-    public List<CalendarEvent> getEventsForDay(Context context,
-                                               LocalDate day,
-                                               LocalTime scheduleStart,
-                                               LocalTime scheduleEnd) {
+    public CalendarReader(Context context) {
+        this.context = context.getApplicationContext();
+    }
+
+    @Override
+    public List<TaskCalendarEvent> getEventsForDay(LocalDate day,
+                                                   LocalTime scheduleStart,
+                                                   LocalTime scheduleEnd) {
         if (context.checkSelfPermission(android.Manifest.permission.READ_CALENDAR)
                 != PackageManager.PERMISSION_GRANTED) {
             return new ArrayList<>();
@@ -43,7 +51,7 @@ public class CalendarReader {
                 CalendarContract.Instances.ALL_DAY
         };
 
-        List<CalendarEvent> events = new ArrayList<>();
+        List<TaskCalendarEvent> events = new ArrayList<>();
         Cursor cursor = context.getContentResolver().query(
                 builder.build(),
                 projection,
@@ -84,7 +92,7 @@ public class CalendarReader {
                 }
 
                 String safeTitle = (title == null || title.isBlank()) ? "Termin" : title;
-                events.add(new CalendarEvent(safeTitle, eventStart, eventEnd));
+                events.add(new TaskCalendarEvent(safeTitle, eventStart, eventEnd));
             }
         } finally {
             cursor.close();

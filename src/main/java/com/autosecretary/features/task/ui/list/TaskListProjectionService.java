@@ -1,10 +1,8 @@
 package com.autosecretary.features.task.ui.list;
 
-import android.app.Application;
-
 import com.autosecretary.app.Preferences;
-import com.autosecretary.features.task.application.internal.calendar.CalendarEvent;
-import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
+import com.autosecretary.features.task.application.TaskCalendarEvent;
+import com.autosecretary.features.task.application.TaskCalendarService;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList.ViewSlot;
@@ -18,13 +16,11 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 class TaskListProjectionService {
-    private final Application application;
-    private final CalendarReader calendarReader;
+    private final TaskCalendarService taskCalendarService;
     private final Preferences preferences;
 
-    TaskListProjectionService(Application application, CalendarReader calendarReader, Preferences preferences) {
-        this.application = application;
-        this.calendarReader = calendarReader;
+    TaskListProjectionService(TaskCalendarService taskCalendarService, Preferences preferences) {
+        this.taskCalendarService = taskCalendarService;
         this.preferences = preferences;
     }
 
@@ -64,8 +60,7 @@ class TaskListProjectionService {
     }
 
     private void mergeCalendarEvents(ViewSlotList masterList, LocalDate day) {
-        List<CalendarEvent> events = calendarReader.getEventsForDay(
-                application,
+        List<TaskCalendarEvent> events = taskCalendarService.getEventsForDay(
                 day,
                 preferences.readPrefTime(day, true),
                 preferences.readPrefTime(day, false)
@@ -73,7 +68,7 @@ class TaskListProjectionService {
 
         List<ViewSlot> mergedSlots = new ArrayList<>(masterList.displaySlots);
         int index = 0;
-        for (CalendarEvent event : events) {
+        for (TaskCalendarEvent event : events) {
             TaskListItem item = TaskListItem.calendarEvent(
                     "calendar-" + day + "-" + index,
                     event.title(),
