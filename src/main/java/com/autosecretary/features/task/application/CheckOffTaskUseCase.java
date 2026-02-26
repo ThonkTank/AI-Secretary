@@ -4,7 +4,7 @@ import android.content.Context;
 
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
-import com.autosecretary.features.task.application.internal.actions.TaskSlotToggleAction;
+import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
 import com.autosecretary.features.task.data.TaskDAO;
@@ -63,7 +63,7 @@ public class CheckOffTaskUseCase {
      * @param onChanged callback invoked after a successful write, typically triggers a list refresh
      */
     public void execute(TaskListItem listItem, Runnable onChanged) {
-        executor.execute(() -> TaskSlotToggleAction.execute(
+        executor.execute(() -> TaskSlotToggleMutation.execute(
                 taskDao,
                 completionService,
                 lifecycleManager,

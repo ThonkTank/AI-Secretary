@@ -4,7 +4,7 @@ Use the `application/` layer to orchestrate task feature workflows and expose ap
 
 - **Entry use-cases (`application/`)**
   - Keep top-level use-cases and orchestration actions that are direct entry points from UI flows.
-  - Examples: progress adjustments, check-off/delete, schedule regeneration.
+  - Examples: progress adjustments, check-off/delete, schedule regeneration, and task data reads/writes via `TaskDataService`.
 
 - **Calendar contracts (`application/calendar/`)**
   - Keep calendar-facing service contracts and DTOs used by scheduling/list projections.
@@ -21,5 +21,6 @@ Use the `application/` layer to orchestrate task feature workflows and expose ap
 - **Internal implementations (`application/internal/`)**
   - Keep Android/infrastructure implementations of application contracts under explicit internal subpackages.
   - Example: `internal/calendar/CalendarReader` as the Android-backed implementation of `TaskCalendarService`.
+  - Keep low-level mutation helpers under `internal/mutations/` (for example `TaskSlotToggleMutation`).
 
 Do not introduce `application/model` for task list display objects; use `application/listmodel` consistently.

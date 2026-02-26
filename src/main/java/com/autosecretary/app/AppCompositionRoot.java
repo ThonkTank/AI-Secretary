@@ -18,7 +18,7 @@ import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
 import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
-import com.autosecretary.features.task.application.TaskAsyncDataService;
+import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
@@ -81,7 +81,7 @@ public class AppCompositionRoot {
         TaskListItemMapper mapper = new TaskListItemMapper();
         TaskCalendarService taskCalendarService = new CalendarReader(app);
 
-        TaskAsyncDataService taskAsyncDataService = new TaskAsyncDataService(
+        TaskDataService taskDataService = new TaskDataService(
                 taskDao,
                 mapper,
                 taskUseCaseExecutor,
@@ -126,7 +126,7 @@ public class AppCompositionRoot {
 
         taskViewModelFactory = new TaskViewModelFactory(
                 app,
-                taskAsyncDataService,
+                taskDataService,
                 checkOffTaskUseCase,
                 regenerateScheduleUseCase,
                 taskCalendarService,

@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.application.internal.actions;
+package com.autosecretary.features.task.application.internal.mutations;
 
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskSlot;

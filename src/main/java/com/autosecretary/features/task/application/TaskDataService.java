@@ -22,13 +22,13 @@ import java.util.function.Consumer;
  * </ul>
  * Callers can therefore assume callbacks are invoked on the dispatcher thread (typically main/UI).
  */
-public class TaskAsyncDataService {
+public class TaskDataService {
     private final TaskDAO taskDao;
     private final TaskListItemMapper mapper;
     private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
 
-    public TaskAsyncDataService(TaskDAO taskDao,
+    public TaskDataService(TaskDAO taskDao,
                                 TaskListItemMapper mapper,
                                 ExecutorService workerExecutor,
                                 Executor callbackDispatcher) {

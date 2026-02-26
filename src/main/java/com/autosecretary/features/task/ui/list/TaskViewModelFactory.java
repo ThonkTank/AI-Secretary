@@ -10,26 +10,26 @@ import com.autosecretary.app.Preferences;
 import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
-import com.autosecretary.features.task.application.TaskAsyncDataService;
+import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 
 public class TaskViewModelFactory implements ViewModelProvider.Factory {
     private final Application app;
-    private final TaskAsyncDataService taskAsyncDataService;
+    private final TaskDataService taskDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
     private final TaskCalendarService taskCalendarService;
     private final AdjustTaskProgressUseCase adjustTaskProgressUseCase;
 
     public TaskViewModelFactory(Application app,
-                                TaskAsyncDataService taskAsyncDataService,
+                                TaskDataService taskDataService,
                                 CheckOffTaskUseCase checkOffTaskUseCase,
                                 RegenerateScheduleUseCase regenerateScheduleUseCase,
                                 TaskCalendarService taskCalendarService,
                                 AdjustTaskProgressUseCase adjustTaskProgressUseCase) {
         this.app = app;
-        this.taskAsyncDataService = taskAsyncDataService;
+        this.taskDataService = taskDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
         this.taskCalendarService = taskCalendarService;
@@ -42,7 +42,7 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
     public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
         if (modelClass.isAssignableFrom(TaskViewModel.class)) {
             TaskEditSessionController taskEditSessionController = new TaskEditSessionController(
-                    taskAsyncDataService
+                    taskDataService
             );
             TaskListProjectionService taskListProjectionService = new TaskListProjectionService(
                     taskCalendarService,
@@ -51,7 +51,7 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
 
             return (T) new TaskViewModel(
                     app,
-                    taskAsyncDataService,
+                    taskDataService,
                     checkOffTaskUseCase,
                     regenerateScheduleUseCase,
                     adjustTaskProgressUseCase,

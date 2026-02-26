@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.application.internal.actions;
+package com.autosecretary.features.task.application.internal.mutations;
 
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
@@ -23,8 +23,8 @@ import java.util.function.Consumer;
  * Contract: call from a worker thread for DAO reads/writes; when present,
  * callbacks are dispatched through {@code callbackDispatcher}.
  */
-public final class TaskSlotToggleAction {
-    private TaskSlotToggleAction() {
+public final class TaskSlotToggleMutation {
+    private TaskSlotToggleMutation() {
     }
 
     public static void execute(TaskDAO taskDao,
