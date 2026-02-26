@@ -3,7 +3,7 @@ package com.autosecretary.features.task.ui.edit;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.autosecretary.features.task.application.TaskAsyncDataService;
+import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
@@ -16,7 +16,7 @@ import java.util.ArrayList;
  * Owns the task-editing session lifecycle independently from list concerns.
  */
 public class TaskEditSessionController {
-    private final TaskAsyncDataService taskAsyncDataService;
+    private final TaskDataService taskDataService;
     private Runnable onTaskChanged = () -> { };
     private final TaskEditStateMapper taskEditStateMapper = new TaskEditStateMapper();
 
@@ -24,8 +24,8 @@ public class TaskEditSessionController {
     private final MutableLiveData<Task> selectedBaseTask = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isNewTask = new MutableLiveData<>(false);
 
-    public TaskEditSessionController(TaskAsyncDataService taskAsyncDataService) {
-        this.taskAsyncDataService = taskAsyncDataService;
+    public TaskEditSessionController(TaskDataService taskDataService) {
+        this.taskDataService = taskDataService;
     }
 
     public void setOnTaskChanged(Runnable onTaskChanged) {
@@ -58,7 +58,7 @@ public class TaskEditSessionController {
     }
 
     public void beginEditTask(String taskId) {
-        taskAsyncDataService.loadTask(taskId, task -> {
+        taskDataService.loadTask(taskId, task -> {
             selectedBaseTask.postValue(task);
             selectedTask.postValue(taskEditStateMapper.fromTask(task));
             isNewTask.postValue(false);
@@ -81,7 +81,7 @@ public class TaskEditSessionController {
     }
 
     public void saveEditedTask(Task mappedTask) {
-        taskAsyncDataService.saveTask(mappedTask, () -> {
+        taskDataService.saveTask(mappedTask, () -> {
             isNewTask.postValue(false);
             onTaskChanged.run();
         });
@@ -89,7 +89,7 @@ public class TaskEditSessionController {
 
     public void deleteSelectedTask(Runnable onDeleted) {
         String taskId = requireSelectedBaseTask().core.id;
-        taskAsyncDataService.deleteTask(taskId, () -> {
+        taskDataService.deleteTask(taskId, () -> {
             onTaskChanged.run();
             if (onDeleted != null) {
                 onDeleted.run();

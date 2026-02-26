@@ -9,7 +9,7 @@ import androidx.lifecycle.MutableLiveData;
 import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
-import com.autosecretary.features.task.application.TaskAsyncDataService;
+import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.domain.SchedulingConflict;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList;
@@ -25,7 +25,7 @@ import java.util.Map;
 public class TaskViewModel extends AndroidViewModel {
     private static final int MAX_DAY_OFFSET = 6;
 
-    private final TaskAsyncDataService taskAsyncDataService;
+    private final TaskDataService taskDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
     private final AdjustTaskProgressUseCase adjustTaskProgressUseCase;
@@ -44,14 +44,14 @@ public class TaskViewModel extends AndroidViewModel {
     private final Map<String, Boolean> expandedByTaskId = new HashMap<>();
 
     public TaskViewModel(Application app,
-                         TaskAsyncDataService taskAsyncDataService,
+                         TaskDataService taskDataService,
                          CheckOffTaskUseCase checkOffTaskUseCase,
                          RegenerateScheduleUseCase regenerateScheduleUseCase,
                          AdjustTaskProgressUseCase adjustTaskProgressUseCase,
                          TaskEditSessionController taskEditSessionController,
                          TaskListProjectionService taskListProjectionService) {
         super(app);
-        this.taskAsyncDataService = taskAsyncDataService;
+        this.taskDataService = taskDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
         this.adjustTaskProgressUseCase = adjustTaskProgressUseCase;
@@ -176,14 +176,14 @@ public class TaskViewModel extends AndroidViewModel {
         if (slotId == null) {
             return;
         }
-        taskAsyncDataService.startTimer(slotId, this::refreshList);
+        taskDataService.startTimer(slotId, this::refreshList);
     }
 
     public void stopTimer(String slotId) {
         if (slotId == null) {
             return;
         }
-        taskAsyncDataService.stopTimer(slotId, this::refreshList);
+        taskDataService.stopTimer(slotId, this::refreshList);
     }
 
     public void toggleExpanded(ViewSlot viewSlot) {
@@ -201,7 +201,7 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     private void refreshList() {
-        taskAsyncDataService.loadAllMapped(items -> {
+        taskDataService.loadAllMapped(items -> {
             masterList.fromList(items);
             filterList();
             TaskWidgetProvider.notifyWidgetUpdate(getApplication());

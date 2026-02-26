@@ -1,7 +1,7 @@
 package com.autosecretary.features.task.application;
 
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
-import com.autosecretary.features.task.application.internal.actions.TaskProgressAdjustAction;
+import com.autosecretary.features.task.application.internal.mutations.TaskProgressAdjustMutation;
 import com.autosecretary.features.task.data.TaskDAO;
 
 import java.util.concurrent.Executor;
@@ -30,7 +30,7 @@ public class AdjustTaskProgressUseCase {
     public void execute(TaskListItem listItem, boolean increment, Runnable onChanged) {
         int step = Math.max(1, listItem.progressStepDelta);
         int delta = increment ? step : -step;
-        executor.execute(() -> TaskProgressAdjustAction.execute(
+        executor.execute(() -> TaskProgressAdjustMutation.execute(
                 taskDao,
                 listItem.taskId,
                 listItem.slotId,

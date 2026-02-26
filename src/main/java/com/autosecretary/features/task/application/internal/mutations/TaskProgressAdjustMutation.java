@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.application.internal.actions;
+package com.autosecretary.features.task.application.internal.mutations;
 
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
@@ -12,8 +12,8 @@ import java.util.concurrent.Executor;
  * Contract: call from a worker thread for DAO reads/writes; when present,
  * callbacks are dispatched through {@code callbackDispatcher}.
  */
-public final class TaskProgressAdjustAction {
-    private TaskProgressAdjustAction() {
+public final class TaskProgressAdjustMutation {
+    private TaskProgressAdjustMutation() {
     }
 
     public static void execute(TaskDAO taskDao,
