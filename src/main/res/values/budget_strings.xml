@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="nav_tasks">Aufgaben</string>
-    <string name="nav_budget">Budget</string>
-
     <string name="budget_title">Budgetübersicht</string>
     <string name="budget_summary">Erfasse Buchungen oder importiere einen Kontoauszug.</string>
     <string name="budget_add_transaction">Transaktion hinzufügen</string>
@@ -85,4 +82,5 @@
     <string name="budget_status_file_read_failed">Datei konnte nicht gelesen werden. Prüfe Berechtigung und Dateiformat.</string>
     <string name="budget_status_invalid_amount">Ungültiger Betrag</string>
     <string name="budget_status_error">Fehler: %1$s</string>
+    <string name="budget_status_file_loading">Datei wird geladen: %1$s</string>
 </resources>

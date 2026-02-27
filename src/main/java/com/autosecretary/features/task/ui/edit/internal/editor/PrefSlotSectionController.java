@@ -30,12 +30,10 @@ public class PrefSlotSectionController {
     private static final int DAY_PICKER_COLUMN_COUNT = 4;
 
     private final DialogFragment fragment;
-    private final View rootView;
+    private final LinearLayout prefSlotContainer;
     private final TaskEditPresenter presenter;
     private final PrefSlotUIBuilder prefSlotUIBuilder;
     private final TaskEditSectionBinder.RepetitionViews repetitionViews;
-
-    private LinearLayout prefSlotContainer;
 
     public PrefSlotSectionController(
         DialogFragment fragment,
@@ -44,14 +42,13 @@ public class PrefSlotSectionController {
         TaskEditSectionBinder.RepetitionViews repetitionViews
     ) {
         this.fragment = fragment;
-        this.rootView = rootView;
+        this.prefSlotContainer = rootView.findViewById(R.id.PrefSlotContainer);
         this.presenter = presenter;
         this.prefSlotUIBuilder = new PrefSlotUIBuilder(fragment.requireContext());
         this.repetitionViews = repetitionViews;
     }
 
     public void rebuildPrefSlotUI() {
-        prefSlotContainer = rootView.findViewById(R.id.PrefSlotContainer);
         int repsPerDay = presenter.computeCurrentRepsPerDay(
             repetitionViews.toggleRepetition.isChecked(),
             repetitionViews.repsView.getText().toString(),

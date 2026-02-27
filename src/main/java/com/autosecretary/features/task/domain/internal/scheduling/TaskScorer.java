@@ -4,7 +4,7 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskSlot;
-import com.autosecretary.features.task.data.TaskTransitionStat;
+import com.autosecretary.features.task.domain.TransitionStat;
 import com.autosecretary.features.task.domain.TaskBudgetEligibilityService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.TaskPlanningState;
@@ -53,7 +53,7 @@ final class TaskScorer {
     private final double maxAgingMultiplier;
     private final double preferredStartDeviationHours;
     private final Map<String, TaskScoringSnapshot> caches = new HashMap<>();
-    private final Map<String, Map<String, TaskTransitionStat>> transitionStats = new HashMap<>();
+    private final Map<String, Map<String, TransitionStat>> transitionStats = new HashMap<>();
     private final Consumer<String> logger;
     private final TaskBudgetEligibilityService budgetEligibilityService;
 
@@ -77,14 +77,14 @@ final class TaskScorer {
         caches.clear();
     }
 
-    void setTransitionStats(List<TaskTransitionStat> stats) {
+    void setTransitionStats(List<TransitionStat> stats) {
         transitionStats.clear();
         if (stats == null) {
             return;
         }
-        for (TaskTransitionStat stat : stats) {
-            transitionStats.computeIfAbsent(stat.fromTaskId, key -> new HashMap<>())
-                    .put(stat.toTaskId, stat);
+        for (TransitionStat stat : stats) {
+            transitionStats.computeIfAbsent(stat.fromTaskId(), key -> new HashMap<>())
+                    .put(stat.toTaskId(), stat);
         }
     }
 
@@ -459,17 +459,17 @@ final class TaskScorer {
             return score;
         }
 
-        Map<String, TaskTransitionStat> fromMap = transitionStats.get(previousTaskId);
-        TaskTransitionStat stat = fromMap != null ? fromMap.get(context.task.core.id) : null;
-        if (stat == null || stat.weight <= 0) {
+        Map<String, TransitionStat> fromMap = transitionStats.get(previousTaskId);
+        TransitionStat stat = fromMap != null ? fromMap.get(context.task.core.id) : null;
+        if (stat == null || stat.weight() <= 0) {
             logFollowBoost(context, previousTaskId, 0, 1.0, 0.0, score, score);
             return score;
         }
 
-        double multBoost = Math.min(FOLLOW_UP_MULTIPLIER_CAP, stat.weight * FOLLOW_UP_MULTIPLIER_PER_WEIGHT);
-        double addBoost = Math.min(FOLLOW_UP_ADDITIVE_CAP, stat.weight * FOLLOW_UP_ADDITIVE_PER_WEIGHT);
+        double multBoost = Math.min(FOLLOW_UP_MULTIPLIER_CAP, stat.weight() * FOLLOW_UP_MULTIPLIER_PER_WEIGHT);
+        double addBoost = Math.min(FOLLOW_UP_ADDITIVE_CAP, stat.weight() * FOLLOW_UP_ADDITIVE_PER_WEIGHT);
         int boosted = (int) Math.round(score * (1.0 + multBoost) + addBoost);
-        logFollowBoost(context, previousTaskId, stat.weight, 1.0 + multBoost, addBoost, score, boosted);
+        logFollowBoost(context, previousTaskId, stat.weight(), 1.0 + multBoost, addBoost, score, boosted);
         return boosted;
     }
 

@@ -16,3 +16,5 @@ The interface is explicitly mentioned in CLAUDE.md as a "domain contract used by
 
 **Status:** Deferred pending product decision. If eligibility strategies remain singular, consider removing the interface pattern when no longer needed.
 
+---
+

@@ -153,7 +153,7 @@ public class TaskViewModel extends AndroidViewModel {
         });
     }
 
-    public void filterList() {
+    private void filterList() {
         LocalDate day = selectedDay.getValue();
         String rawQuery = searchQuery.getValue();
         String normalizedSearchQuery = rawQuery == null ? "" : rawQuery.trim().toLowerCase(Locale.ROOT);
@@ -258,9 +258,6 @@ public class TaskViewModel extends AndroidViewModel {
         CHECKLIST(false) {
             @Override
             boolean matches(ViewSlot slot, LocalDate day) {
-                if (slot.item.isCalendarEvent()) {
-                    return isOnDay(slot, day);
-                }
                 return slot.item.isScheduledOn(day);
             }
 

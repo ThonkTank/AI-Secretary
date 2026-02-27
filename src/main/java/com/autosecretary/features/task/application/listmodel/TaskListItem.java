@@ -38,7 +38,6 @@ public class TaskListItem {
     public final int progressTarget;
     public final String progressUnit;
     public final int progressStepDelta;
-    public final boolean goalTask;
     public final String goalIcon;
     public final String goalColorHex;
 
@@ -61,7 +60,6 @@ public class TaskListItem {
                  int progressTarget,
                  String progressUnit,
                  int progressStepDelta,
-                 boolean goalTask,
                  String goalIcon,
                  String goalColorHex) {
         this.itemType = itemType;
@@ -83,7 +81,6 @@ public class TaskListItem {
         this.progressTarget = progressTarget;
         this.progressUnit = progressUnit;
         this.progressStepDelta = progressStepDelta;
-        this.goalTask = goalTask;
         this.goalIcon = goalIcon;
         this.goalColorHex = goalColorHex;
     }
@@ -113,7 +110,6 @@ public class TaskListItem {
                 0,
                 "",
                 0,
-                false,
                 null,
                 null
         );

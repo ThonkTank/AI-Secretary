@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -36,12 +37,12 @@ public class UpdateChecker {
     private static final int DOWNLOAD_READ_TIMEOUT_MS = 30000;
     private static final int DOWNLOAD_BUFFER_SIZE_BYTES = 8192;
 
-    private final Activity activity;
+    private final WeakReference<Activity> activityRef;
     private final Handler mainHandler;
     private final ExecutorService backgroundExecutor;
 
     public UpdateChecker(Activity activity, ExecutorService executor) {
-        this.activity = activity;
+        this.activityRef = new WeakReference<>(activity);
         this.mainHandler = new Handler(Looper.getMainLooper());
         this.backgroundExecutor = executor;
     }
@@ -49,8 +50,10 @@ public class UpdateChecker {
     public void checkForUpdate() {
         backgroundExecutor.execute(() -> {
             try {
+                Activity activity = activityRef.get();
+                if (activity == null) return;
                 int remoteVersion = fetchRemoteVersion();
-                int localVersion = getLocalVersion();
+                int localVersion = getLocalVersion(activity);
                 if (remoteVersion > localVersion) {
                     mainHandler.post(() -> showUpdateDialog(remoteVersion));
                 }
@@ -75,7 +78,7 @@ public class UpdateChecker {
         }
     }
 
-    private int getLocalVersion() {
+    private int getLocalVersion(Activity activity) {
         try {
             PackageInfo info = activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0);
             return (int) info.getLongVersionCode();
@@ -84,14 +87,17 @@ public class UpdateChecker {
         }
     }
 
-    private boolean isActivityAlive() {
-        return !activity.isFinishing() && !activity.isDestroyed();
+    private Activity getAliveActivity() {
+        Activity activity = activityRef.get();
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+            return null;
+        }
+        return activity;
     }
 
     private void showUpdateDialog(int newVersion) {
-        if (!isActivityAlive()) {
-            return;
-        }
+        Activity activity = getAliveActivity();
+        if (activity == null) return;
 
         new AlertDialog.Builder(activity)
                 .setTitle(R.string.update_available_title)
@@ -104,7 +110,9 @@ public class UpdateChecker {
     private void downloadAndInstall() {
         backgroundExecutor.execute(() -> {
             try {
-                File apkFile = downloadApk();
+                Activity activity = activityRef.get();
+                if (activity == null) return;
+                File apkFile = downloadApk(activity);
                 mainHandler.post(() -> installApk(apkFile));
             } catch (Exception e) {
                 mainHandler.post(() -> showDownloadErrorDialog(e));
@@ -112,7 +120,7 @@ public class UpdateChecker {
         });
     }
 
-    private File downloadApk() throws IOException {
+    private File downloadApk(Activity activity) throws IOException {
         File apkFile = new File(activity.getCacheDir(), "update.apk");
 
         HttpURLConnection connection = (HttpURLConnection) new URL(APK_URL).openConnection();
@@ -134,9 +142,8 @@ public class UpdateChecker {
     }
 
     private void installApk(File apkFile) {
-        if (!isActivityAlive()) {
-            return;
-        }
+        Activity activity = getAliveActivity();
+        if (activity == null) return;
 
         try {
             Uri uri = FileProvider.getUriForFile(
@@ -155,9 +162,8 @@ public class UpdateChecker {
     }
 
     private void showDownloadErrorDialog(Exception error) {
-        if (!isActivityAlive()) {
-            return;
-        }
+        Activity activity = getAliveActivity();
+        if (activity == null) return;
 
         String detail = Objects.requireNonNullElse(
                 error.getMessage(),

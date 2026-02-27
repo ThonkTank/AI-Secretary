@@ -20,6 +20,7 @@ import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.ui.internal.BudgetOverviewLoader;
 import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
 import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
+import com.autosecretary.features.budget.ui.state.BudgetUiState;
 import com.autosecretary.features.budget.ui.state.TimeRangeFilter;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
 import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
@@ -45,13 +46,6 @@ import java.util.function.Consumer;
  * (a Handler(Looper.getMainLooper()).post wrapper injected by BudgetViewModelFactory).
  */
 public class BudgetViewModel extends ViewModel {
-
-    public enum BudgetUiState {
-        LOADING,
-        EMPTY,
-        CONTENT,
-        ERROR
-    }
 
     private static final DateTimeFormatter MONTH_FORMATTER =
             DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN);

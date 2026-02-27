@@ -1,7 +1,5 @@
 package com.autosecretary.features.budget.domain;
 
-import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
-
 import java.time.LocalDate;
 
 public class MonthlyOverviewItem {
@@ -9,7 +7,7 @@ public class MonthlyOverviewItem {
     public LocalDate bookingDate;
     public String yearMonth;
     public TransactionDirection direction;
-    public BudgetTransactionEntity.TransactionKind transactionKind;
+    public TransactionKind transactionKind;
     public long amountCents;
     public String note;
     public String accountId;

@@ -34,10 +34,10 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     private static final long CHECKBOX_SCALE_DURATION_MS = 100L;
     private static final long COMPLETION_FLASH_DURATION_MS = 300L;
 
-    List<ViewSlot> viewSlots;
-    TaskRowActions actions;
-    boolean interactionsEnabled = true;
-    boolean manageMode = false;
+    private List<ViewSlot> viewSlots;
+    private final TaskRowActions actions;
+    private boolean interactionsEnabled = true;
+    private boolean manageMode = false;
 
     public ListRowAdapter(List<ViewSlot> viewSlots, TaskRowActions actions) {
         this.viewSlots = viewSlots;
@@ -171,7 +171,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     }
 
     private void bindGoalAppearance(TaskRowViewHolder holder, TaskListItem item) {
-        if (!item.goalTask || item.goalIcon == null || item.goalIcon.trim().isEmpty()) {
+        if (!item.hasProgressTarget() || item.goalIcon == null || item.goalIcon.trim().isEmpty()) {
             holder.goalIcon.setVisibility(View.GONE);
             return;
         }

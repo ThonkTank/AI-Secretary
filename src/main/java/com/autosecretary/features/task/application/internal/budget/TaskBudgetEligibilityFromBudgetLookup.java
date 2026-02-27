@@ -1,6 +1,6 @@
 package com.autosecretary.features.task.application.internal.budget;
 
-import com.autosecretary.features.budget.data.dao.BudgetLookupDao;
+import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.domain.TaskBudgetEligibilityService;
 
@@ -12,10 +12,10 @@ import com.autosecretary.features.task.domain.TaskBudgetEligibilityService;
  */
 public class TaskBudgetEligibilityFromBudgetLookup implements TaskBudgetEligibilityService {
 
-    private final BudgetLookupDao budgetLookupDao;
+    private final BudgetRepository budgetRepository;
 
-    public TaskBudgetEligibilityFromBudgetLookup(BudgetLookupDao budgetLookupDao) {
-        this.budgetLookupDao = budgetLookupDao;
+    public TaskBudgetEligibilityFromBudgetLookup(BudgetRepository budgetRepository) {
+        this.budgetRepository = budgetRepository;
     }
 
     @Override
@@ -24,15 +24,11 @@ public class TaskBudgetEligibilityFromBudgetLookup implements TaskBudgetEligibil
             return BudgetEligibility.passWithoutBudgetRequirement();
         }
 
-        long availableCents = getAvailableBalance(task.core.budgetAccountId);
+        // Intentional: when budgetAccountId is null/blank, getCurrentBalanceCents aggregates
+        // all active accounts (see BudgetRoomRepository.isAllAccounts). Scheduling asks
+        // "can the user afford this at all?" — the separate question of which specific account
+        // to debit is resolved by BookTaskCompletionExpenseUseCase at completion time.
+        long availableCents = budgetRepository.getCurrentBalanceCents(task.core.budgetAccountId);
         return new BudgetEligibility(availableCents >= task.core.budgetRequiredCents, availableCents);
-    }
-
-    private long getAvailableBalance(String accountId) {
-        if (accountId != null && !accountId.isBlank()) {
-            Long balance = budgetLookupDao.findCurrentBalanceCentsByAccountId(accountId);
-            return balance != null ? balance : 0L;
-        }
-        return budgetLookupDao.sumCurrentBalanceCentsForActiveAccounts();
     }
 }

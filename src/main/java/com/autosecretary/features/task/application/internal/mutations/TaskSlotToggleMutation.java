@@ -82,10 +82,10 @@ public final class TaskSlotToggleMutation {
         if (phase == CompletionPhase.COMPLETED) {
             transacted = runTransactionOrAbort(database, "Completion write failed", () -> {
                 if (task.core != null && task.core.adaptive) {
-                    adaptPrerequisiteGaps(taskDao, lifecycleManager, task, slot);
+                    adaptPrerequisiteGaps(task, slot);
                 }
                 taskDao.write(task);
-                recordTransition(taskDao, transitionDao, slot, TRANSITION_WEIGHT_COMPLETED);
+                recordTransition(slot, TRANSITION_WEIGHT_COMPLETED);
                 taskDao.writeSlot(slot);
             });
             if (transacted && completedPhaseHook != null) {
@@ -93,7 +93,7 @@ public final class TaskSlotToggleMutation {
             }
         } else {
             transacted = runTransactionOrAbort(database, "Start write failed", () -> {
-                recordTransition(taskDao, transitionDao, slot, TRANSITION_WEIGHT_STARTED);
+                recordTransition(slot, TRANSITION_WEIGHT_STARTED);
                 taskDao.writeSlot(slot);
             });
         }
@@ -116,10 +116,7 @@ public final class TaskSlotToggleMutation {
         }
     }
 
-    private static void adaptPrerequisiteGaps(TaskDAO taskDao,
-                                              TaskLifecycleManager lifecycleManager,
-                                              Task task,
-                                              TaskSlot completedSlot) {
+    private void adaptPrerequisiteGaps(Task task, TaskSlot completedSlot) {
         if (task.prerequisites == null || task.prerequisites.isEmpty()) {
             return;
         }
@@ -153,11 +150,8 @@ public final class TaskSlotToggleMutation {
         return null;
     }
 
-    private static void recordTransition(TaskDAO taskDao,
-                                         TaskTransitionStatDao transitionDao,
-                                         TaskSlot slot,
-                                         int delta) {
-        if (!canRecordTransition(taskDao, transitionDao, slot)) {
+    private void recordTransition(TaskSlot slot, int delta) {
+        if (!canRecordTransition(slot)) {
             return;
         }
 
@@ -171,9 +165,8 @@ public final class TaskSlotToggleMutation {
         transitionDao.recordTransition(previousTaskId, slot.taskId, Math.max(1, delta), LocalDateTime.now());
     }
 
-    private static boolean canRecordTransition(TaskDAO taskDao, TaskTransitionStatDao transitionDao, TaskSlot slot) {
-        return taskDao != null && transitionDao != null && slot != null
-            && slot.taskId != null && slot.day != null;
+    private static boolean canRecordTransition(TaskSlot slot) {
+        return slot != null && slot.taskId != null && slot.day != null;
     }
 
     private static LocalTime determineEventTime(TaskSlot slot) {

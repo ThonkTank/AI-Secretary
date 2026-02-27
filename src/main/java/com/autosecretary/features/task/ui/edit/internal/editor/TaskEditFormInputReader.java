@@ -32,32 +32,36 @@ public class TaskEditFormInputReader {
     }
 
     private LocalDate parseDateSafe(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
         try {
-            return value == null || value.trim().isEmpty() ? null : LocalDate.parse(value.trim());
+            return trimmed.isEmpty() ? null : LocalDate.parse(trimmed);
         } catch (Exception e) {
             return null;
         }
     }
 
     private LocalTime parseTimeSafe(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
         try {
-            return value == null || value.trim().isEmpty() ? null : LocalTime.parse(value.trim());
+            return trimmed.isEmpty() ? null : LocalTime.parse(trimmed);
         } catch (Exception e) {
             return null;
         }
     }
 
     private String normalizeNullableString(String value) {
-        if (value == null) {
-            return null;
-        }
+        if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }
 
     private Integer parseIntegerNullable(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
         try {
-            return value == null || value.trim().isEmpty() ? null : Integer.parseInt(value.trim());
+            return trimmed.isEmpty() ? null : Integer.parseInt(trimmed);
         } catch (Exception e) {
             return null;
         }

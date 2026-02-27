@@ -6,11 +6,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class WeeklyFoodTargetRowMapper implements RowMapper<WeeklyFoodTarget> {
+
+    public static final String FIELD_PERIOD_KEY = "periodKey";
+
     @Override
     public Map<String, Object> toRow(WeeklyFoodTarget target) {
         Map<String, Object> row = new HashMap<>();
         row.put("id", target.id);
-        row.put("periodKey", target.periodKey);
+        row.put(FIELD_PERIOD_KEY, target.periodKey);
         row.put("grainGrams", target.grainGrams);
         row.put("potatoGrams", target.potatoGrams);
         row.put("vegetableGrams", target.vegetableGrams);
@@ -40,7 +43,7 @@ public class WeeklyFoodTargetRowMapper implements RowMapper<WeeklyFoodTarget> {
     public WeeklyFoodTarget fromRow(Map<String, Object> row) {
         WeeklyFoodTarget target = new WeeklyFoodTarget();
         target.id = MapperSupport.asNullableLong(row.get("id"));
-        target.periodKey = (String) row.get("periodKey");
+        target.periodKey = (String) row.get(FIELD_PERIOD_KEY);
         target.grainGrams = MapperSupport.asInt(row.get("grainGrams"));
         target.potatoGrams = MapperSupport.asInt(row.get("potatoGrams"));
         target.vegetableGrams = MapperSupport.asInt(row.get("vegetableGrams"));

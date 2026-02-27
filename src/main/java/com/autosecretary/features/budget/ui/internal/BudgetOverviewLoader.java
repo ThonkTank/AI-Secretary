@@ -1,8 +1,8 @@
 package com.autosecretary.features.budget.ui.internal;
 
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
-import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.BudgetRepository;
+import com.autosecretary.features.budget.domain.TransactionKind;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import com.autosecretary.features.budget.domain.timeline.AccountBalanceTimelineService;
 import com.autosecretary.features.budget.domain.timeline.BalanceTimelinePoint;
@@ -107,7 +107,7 @@ public class BudgetOverviewLoader {
     }
 
     private String buildTransactionLabel(MonthlyOverviewItem item) {
-        if (item.transactionKind == BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER) {
+        if (item.transactionKind == TransactionKind.INTERNAL_TRANSFER) {
             return item.note != null && !item.note.isBlank() ? "Überweisung · " + item.note : "Überweisung";
         }
         if (item.categoryName != null) {

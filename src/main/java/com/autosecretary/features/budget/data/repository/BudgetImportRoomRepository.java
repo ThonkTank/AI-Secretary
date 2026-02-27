@@ -13,8 +13,10 @@ import com.autosecretary.features.budget.domain.importing.ImportTransactionRecor
 import com.autosecretary.features.budget.domain.importing.ImportTransactionType;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 import com.autosecretary.features.budget.domain.TransactionDirection;
+import com.autosecretary.features.budget.domain.TransactionKind;
 import com.autosecretary.features.budget.domain.TemplateStatusUpdate;
-import com.autosecretary.features.budget.domain.internal.RecurringTemplateScheduler;
+import com.autosecretary.features.budget.domain.RecurringTemplateScheduler;
+import com.autosecretary.features.budget.domain.RecurringScheduleParams;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -121,7 +123,11 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     @Override
     public void synchronizeRecurringTemplateState(LocalDate referenceDate) {
         List<BudgetRecurringTemplateEntity> templates = templateDao.findAllActiveTemplates();
-        List<TemplateStatusUpdate> updates = RecurringTemplateScheduler.computeStatusUpdates(templates, referenceDate);
+        List<RecurringScheduleParams> params = templates.stream()
+                .map(t -> new RecurringScheduleParams(
+                        t.id, t.nextDue, t.recurringType, t.recurringDayOfWeek, t.recurringValue))
+                .toList();
+        List<TemplateStatusUpdate> updates = RecurringTemplateScheduler.computeStatusUpdates(params, referenceDate);
         templateDao.updateAllTemplateStatuses(updates);
     }
 
@@ -133,7 +139,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     private BudgetTransactionEntity toEntity(ImportTransactionRecord record) {
         ImportTransactionType type = record.type() != null ? record.type() : ImportTransactionType.EXPENSE;
         TransactionDirection direction = type.toDirection();
-        BudgetTransactionEntity.TransactionKind kind = type.toKind();
+        TransactionKind kind = type.toKind();
 
         BudgetTransactionEntity entity = new BudgetTransactionEntity(
                 record.accountId(),
@@ -153,7 +159,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     private ImportTransactionRecord toRecord(BudgetTransactionEntity entity) {
-        ImportTransactionType type = entity.transactionKind == BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER
+        ImportTransactionType type = entity.transactionKind == TransactionKind.INTERNAL_TRANSFER
                 ? ImportTransactionType.TRANSFER
                 : ImportTransactionType.fromDirection(entity.direction);
         return new ImportTransactionRecord(

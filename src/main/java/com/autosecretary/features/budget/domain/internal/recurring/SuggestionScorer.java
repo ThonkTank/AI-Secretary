@@ -51,7 +51,7 @@ public final class SuggestionScorer {
     }
 
     public static double calculateConfidence(int occurrenceCount,
-                                             DatePatternDetector.PatternResult pattern,
+                                             boolean hasPattern,
                                              long avgAmount,
                                              long minAmount,
                                              long maxAmount,
@@ -60,7 +60,7 @@ public final class SuggestionScorer {
         score += Math.min((occurrenceCount / OCCURRENCE_CAP) * OCCURRENCE_WEIGHT, OCCURRENCE_WEIGHT);
         score += calculateAmountVarianceScore(avgAmount, minAmount, maxAmount);
 
-        if (pattern != null) {
+        if (hasPattern) {
             score += PATTERN_TYPE_BONUS;
         }
 

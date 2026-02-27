@@ -66,7 +66,7 @@ public class TaskListFragment extends Fragment {
     public void onViewCreated(View view, Bundle savedInstanceState) {
         AutoSecretaryApplication app = AutoSecretaryApplication.from(requireContext());
         AppCompositionRoot compositionRoot = app.getAppCompositionRoot();
-        TaskViewModelFactory viewModelFactory = compositionRoot.createTaskViewModelFactory();
+        TaskViewModelFactory viewModelFactory = compositionRoot.getTaskViewModelFactory();
         vm = new ViewModelProvider(requireActivity(), viewModelFactory).get(TaskViewModel.class);
         TaskEditSessionController editSessionController = vm.getTaskEditSessionController();
 

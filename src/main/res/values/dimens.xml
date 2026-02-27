@@ -7,4 +7,7 @@
     <dimen name="spacing_md">12dp</dimen>
     <dimen name="spacing_lg">16dp</dimen>
     <dimen name="spacing_xl">24dp</dimen>
+
+    <!-- App-wide text scale tokens (sp). Feature-specific sizes live in feature_dimens.xml. -->
+    <dimen name="text_xl">18sp</dimen>
 </resources>

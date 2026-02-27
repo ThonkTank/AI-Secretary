@@ -7,6 +7,7 @@ import com.autosecretary.features.meal.data.internal.mapper.CookingPreferencesRo
 import com.autosecretary.features.meal.data.internal.mapper.HouseholdMemberRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.MealPlanRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.WeeklyFoodTargetRowMapper;
+import static com.autosecretary.features.meal.data.internal.mapper.WeeklyFoodTargetRowMapper.FIELD_PERIOD_KEY;
 import com.autosecretary.features.meal.data.internal.storage.MealStorage;
 import com.autosecretary.features.meal.domain.ConsumptionLog;
 import com.autosecretary.features.meal.domain.CookingPreferences;
@@ -93,7 +94,7 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public WeeklyFoodTarget findWeeklyFoodTarget(String periodKey) {
-        return weeklyFoodTargetDao.findAllByField("periodKey", periodKey).stream().findFirst().orElse(null);
+        return weeklyFoodTargetDao.findAllByField(FIELD_PERIOD_KEY, periodKey).stream().findFirst().orElse(null);
     }
 
     @Override

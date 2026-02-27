@@ -1,7 +1,4 @@
-package com.autosecretary.features.meal.domain.internal;
-
-import com.autosecretary.features.meal.domain.Ingredient;
-import com.autosecretary.features.meal.domain.ShoppingListItem;
+package com.autosecretary.features.meal.domain;
 
 import java.util.Objects;
 

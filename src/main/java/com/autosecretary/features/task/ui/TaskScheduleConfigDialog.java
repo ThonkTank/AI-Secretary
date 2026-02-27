@@ -99,12 +99,7 @@ public class TaskScheduleConfigDialog extends DialogFragment {
         LayoutInflater inflater = LayoutInflater.from(requireContext());
 
         for (DayOfWeek day : DayOfWeek.values()) {
-            TaskScheduleConfig config = draftByDay.get(day);
-            if (config == null) {
-                config = new TaskScheduleConfig(day, LocalTime.of(6, 0), LocalTime.of(21, 0));
-                draftByDay.put(day, config);
-            }
-            final TaskScheduleConfig rowConfig = config;
+            final TaskScheduleConfig rowConfig = draftByDay.get(day);
 
             View row = inflater.inflate(R.layout.task_schedule_day_item, container, false);
             TextView dayLabel = row.findViewById(R.id.ScheduleDayLabel);

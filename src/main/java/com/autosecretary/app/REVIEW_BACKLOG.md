@@ -2,23 +2,11 @@
 
 ## Open Issues
 
-### [consider] Inconsistent synchronization in AppCompositionRoot
-**File:** `AppCompositionRoot.java`
+### [consider] `getTaskViewModelFactory` mixes construction with side-effect field assignments
+**File:** `AppCompositionRoot.java:75–154`
 
-`createTaskViewModelFactory()` (line 73) and `createBudgetViewModelFactory()` (line 165) are not synchronized, even though they do lazy init with null checks. All call sites are on the UI thread (`MainActivity.reloadUiStateAfterDataReset()`), so the mismatch is harmless but signals different threading contracts for similar methods.
+The method constructs and returns a `TaskViewModelFactory` but also silently assigns `regenerateScheduleUseCase` and `taskSlotToggleMutation` as side effects. Callers of `getRegenerateScheduleUseCase()` and `getTaskSlotToggleMutation()` trigger full task-graph initialization as a hidden side effect via delegation to this method. *Note: method was renamed `create→get` in a prior review cycle; naming inconsistency is resolved.*
 
-**Simpler alternative:** Remove `synchronized` from `resetForDataReload()` and add a Javadoc comment stating the method must be called on the UI thread. Alternatively, add `synchronized` to the two factory methods for full consistency.
+**Suggested alternative:** Give `taskSlotToggleMutation` and `regenerateScheduleUseCase` their own lazy-init logic in their respective getters, separated from the factory construction path.
 
-**Tradeoff:** The annotation approach is simpler; consistent synchronization is safer but adds boilerplate.
-
----
-
-### [consider] `createTaskViewModelFactory` mixes construction with side-effect field assignments
-**File:** `AppCompositionRoot.java:73–148`
-
-The method constructs and returns a `TaskViewModelFactory` but also silently assigns `regenerateScheduleUseCase` and `taskSlotToggleMutation` as side effects. Callers of `getRegenerateScheduleUseCase()` and `getTaskSlotToggleMutation()` trigger factory creation as a hidden side effect.
-
-**Simpler alternative:** Give each lazily-initialized field its own getter, or rename `createTaskViewModelFactory()` to `initTaskGraph()` to signal it initializes more than one thing.
-
-**Tradeoff:** Full extraction duplicates some DB/handler setup. The rename is lower-effort.
-
+**Tradeoff:** Splitting out the getters duplicates some DB/handler setup. Lower-effort alternative: extract a private `initTaskGraph()` that populates all three fields, and have all three public getters call it.

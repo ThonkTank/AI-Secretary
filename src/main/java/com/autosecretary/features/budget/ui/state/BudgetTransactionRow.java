@@ -1,7 +1,6 @@
 package com.autosecretary.features.budget.ui.state;
 
 import com.autosecretary.features.budget.domain.TransactionDirection;
-import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
 
 import java.time.LocalDate;
 
@@ -37,11 +36,6 @@ public class BudgetTransactionRow {
 
     public String getLabel() {
         return label;
-    }
-
-    /** Returns a formatted Euro amount with direction sign, e.g. {@code "-3.50 €"} or {@code "+12.00 €"}. */
-    public String getAmount() {
-        return CurrencyFormatter.eurosWithSign(amountCents, direction);
     }
 
     public TransactionDirection getDirection() {

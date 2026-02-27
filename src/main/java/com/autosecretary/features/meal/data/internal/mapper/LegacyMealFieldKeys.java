@@ -1,4 +1,4 @@
-package com.autosecretary.features.meal.data.mapper;
+package com.autosecretary.features.meal.data.internal.mapper;
 
 /**
  * Stable legacy storage keys for reproducible imports from parser-era rows.

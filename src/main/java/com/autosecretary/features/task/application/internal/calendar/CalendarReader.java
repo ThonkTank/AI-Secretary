@@ -29,11 +29,11 @@ public class CalendarReader implements TaskCalendarService {
         this.context = context.getApplicationContext();
     }
 
-    private LocalTime millisToLocalTime(long millis, ZoneId zoneId) {
+    private static LocalTime millisToLocalTime(long millis, ZoneId zoneId) {
         return Instant.ofEpochMilli(millis).atZone(zoneId).toLocalTime();
     }
 
-    private boolean timeRangesOverlap(LocalTime start1, LocalTime end1, LocalTime start2, LocalTime end2) {
+    private static boolean timeRangesOverlap(LocalTime start1, LocalTime end1, LocalTime start2, LocalTime end2) {
         return start1.isBefore(end2) && end1.isAfter(start2);
     }
 

@@ -1,8 +1,6 @@
-package com.autosecretary.features.meal.domain.internal;
+package com.autosecretary.features.meal.domain;
 
-import com.autosecretary.features.meal.domain.HouseholdMember;
-import com.autosecretary.features.meal.domain.Ingredient;
-import com.autosecretary.features.meal.domain.WeeklyFoodTarget;
+import com.autosecretary.features.meal.domain.internal.HouseholdEnergyService;
 
 import java.time.LocalDate;
 import java.util.Collections;

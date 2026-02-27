@@ -14,6 +14,7 @@ import android.util.Log;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
@@ -22,6 +23,9 @@ import java.util.function.Consumer;
  * a 7-day schedule (today + 6 days) using {@link TaskSlotGenerator} with cross-day state
  * tracking, and writes scheduled results back. Seeds default tasks on first run when
  * the DB is empty.
+ *
+ * <strong>Threading contract:</strong> DB work runs on the provided {@link ExecutorService};
+ * the {@code onDone} callback is dispatched via {@code callbackDispatcher} (typically main/UI).
  */
 public class RegenerateScheduleUseCase {
     private static final int PLANNING_DAYS = 7;
@@ -39,13 +43,16 @@ public class RegenerateScheduleUseCase {
     private final TaskDAO taskDao;
     private final TaskSlotGenerator generator;
     private final ExecutorService executor;
+    private final Executor callbackDispatcher;
 
     public RegenerateScheduleUseCase(TaskDAO taskDao,
                                      TaskSlotGenerator generator,
-                                     ExecutorService executor) {
+                                     ExecutorService executor,
+                                     Executor callbackDispatcher) {
         this.taskDao = taskDao;
         this.generator = generator;
         this.executor = executor;
+        this.callbackDispatcher = callbackDispatcher;
     }
 
     public void execute(Consumer<Result> onDone) {
@@ -80,10 +87,11 @@ public class RegenerateScheduleUseCase {
                         generator.generateSlotsForWindow(flatTasks, today, PLANNING_DAYS, state);
 
                 taskDao.writeList(flatTasks);
-                onDone.accept(new Result(generationResult.createdSlots(), generationResult.conflicts()));
+                Result result = new Result(generationResult.createdSlots(), generationResult.conflicts());
+                callbackDispatcher.execute(() -> onDone.accept(result));
             } catch (Exception e) {
                 Log.e("RegenerateSchedule", "Schedule regeneration failed", e);
-                onDone.accept(new Result(0, Collections.emptyList()));
+                callbackDispatcher.execute(() -> onDone.accept(new Result(0, Collections.emptyList())));
             }
         });
     }

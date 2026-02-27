@@ -4,7 +4,7 @@ import com.autosecretary.features.meal.domain.Ingredient;
 import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.RecipeRepository;
-import com.autosecretary.features.meal.domain.internal.ShelfLifeService;
+import com.autosecretary.features.meal.domain.ShelfLifeService;
 
 import java.time.LocalDate;
 import java.util.Objects;

@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Global rule: app-wide tokens stay in generic files; feature-specific resources belong in feature-prefixed files (for example budget_colors.xml). -->
-    <color name="budget_positive">#4CAF50</color>
-    <color name="budget_negative">#F44336</color>
-    <color name="budget_warning">#FF9800</color>
-    <color name="budget_neutral">#9E9E9E</color>
-    <color name="budget_chart_line">#1976D2</color>
-    <color name="budget_chart_axis">#BDBDBD</color>
-    <color name="budget_chart_label">#616161</color>
-    <color name="budget_divider">#DDDDDD</color>
+    <color name="budget_positive">#FF4CAF50</color>
+    <color name="budget_negative">#FFF44336</color>
+    <color name="budget_warning">#FFFF9800</color>
+    <color name="budget_neutral">#FF9E9E9E</color>
+    <color name="budget_chart_line">#FF1976D2</color>
+    <color name="budget_chart_axis">#FFBDBDBD</color>
+    <color name="budget_chart_label">#FF616161</color>
+    <color name="budget_divider">#FFDDDDDD</color>
+
+    <!-- Widget semantic tokens (parallel to task_widget_text_primary etc.) -->
+    <color name="budget_widget_header_text">@android:color/white</color>
+    <color name="budget_widget_card_text">@android:color/black</color>
 </resources>

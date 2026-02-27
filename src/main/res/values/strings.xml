@@ -3,6 +3,9 @@
     <!-- Global rule: app-wide tokens stay in generic files; feature-specific resources belong in feature-prefixed files (for example task_strings.xml). -->
     <string name="app_name">AutoSecretary</string>
 
+    <string name="nav_tasks">Aufgaben</string>
+    <string name="nav_budget">Budget</string>
+
     <string name="settings_title">Einstellungen</string>
     <string name="settings_option_restore_backup">Backup wiederherstellen</string>
     <string name="settings_option_manual_backup">Manuelles Backup erstellen</string>

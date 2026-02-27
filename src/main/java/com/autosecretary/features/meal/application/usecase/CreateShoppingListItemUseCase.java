@@ -4,7 +4,7 @@ import com.autosecretary.features.meal.domain.Ingredient;
 import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.RecipeRepository;
 import com.autosecretary.features.meal.domain.ShoppingListItem;
-import com.autosecretary.features.meal.domain.internal.ShoppingPackagingService;
+import com.autosecretary.features.meal.domain.ShoppingPackagingService;
 
 /**
  * Application-Use-Case fuer Einkaufslisteneintraege mit Packungsrundung/Ueberschuss.

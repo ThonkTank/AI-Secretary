@@ -11,7 +11,7 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
         Map<String, Object> row = new HashMap<>();
         row.put("id", ingredient.id);
         row.put("name", ingredient.name);
-        row.put("foodGroup", ingredient.foodGroup == null ? null : ingredient.foodGroup.name());
+        row.put("foodGroup", MapperSupport.enumNameOrNull(ingredient.foodGroup));
         row.put("defaultUnit", ingredient.defaultUnit);
         row.put("gramsPerUnit", ingredient.gramsPerUnit);
         row.put("caloriesPer100", ingredient.caloriesPer100);

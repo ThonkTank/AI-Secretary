@@ -8,7 +8,8 @@ import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.RecipeRepository;
 import com.autosecretary.features.meal.domain.MealType;
-import com.autosecretary.features.meal.domain.internal.RecipeScalingService;
+import com.autosecretary.features.meal.domain.RecipeScalingResult;
+import com.autosecretary.features.meal.domain.RecipeScalingService;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskPlannedMeal;
 
@@ -82,7 +83,7 @@ public class TaskMealIntegrationService {
         List<PantryItem> pantryItems = new ArrayList<>(pantryRepository.getPantryItems());
         pantryItems.sort(Comparator.nullsLast(Comparator.comparing(item -> item.expiryDate)));
 
-        RecipeScalingService.ScalingResult scalingResult = RecipeScalingService.scaleRecipe(recipe, servings);
+        RecipeScalingResult scalingResult = RecipeScalingService.scaleRecipe(recipe, servings);
         double factor = Math.max(0.0, scalingResult.factor());
 
         for (Recipe.RecipeIngredient ingredient : recipe.ingredients) {

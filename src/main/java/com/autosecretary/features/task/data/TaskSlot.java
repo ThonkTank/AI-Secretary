@@ -30,6 +30,10 @@ import androidx.annotation.NonNull;
 
 public class TaskSlot {
 
+    public enum DisplacementGroupType {
+        CHAIN, FIXED, SINGLE
+    }
+
     @PrimaryKey() @NonNull
     public String id = UUID.randomUUID().toString();
     public String taskId;
@@ -53,9 +57,9 @@ public class TaskSlot {
      */
     public String displacementGroupId;
     /**
-     * Group type for displacement semantics (e.g. CHAIN, FIXED, SINGLE).
+     * Group type for displacement semantics.
      */
-    public String displacementGroupType;
+    public DisplacementGroupType displacementGroupType;
 
     public LocalTime realStart;
     public LocalTime realEnd;

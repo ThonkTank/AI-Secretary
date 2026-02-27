@@ -3,6 +3,7 @@ package com.autosecretary.features.budget.data.repository;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
 import com.autosecretary.features.budget.domain.TransactionDirection;
+import com.autosecretary.features.budget.domain.TransactionKind;
 import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
 import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
@@ -106,11 +107,7 @@ public class BudgetRoomRepository implements BudgetRepository {
         database.runInTransaction(() -> {
             transactionDao.insert(transaction);
             if (!isAllAccounts(accountId) && expenseCents > 0) {
-                BudgetAccount account = lookupDao.findAccountById(accountId);
-                if (account != null) {
-                    lookupDao.updateCurrentBalanceCents(accountId,
-                            account.currentBalanceCents - expenseCents);
-                }
+                lookupDao.adjustCurrentBalanceCents(accountId, -expenseCents);
             }
         });
     }
@@ -125,6 +122,15 @@ public class BudgetRoomRepository implements BudgetRepository {
                 accountId, categoryId, type, amountCents, bookingDate);
         entity.note = normalizeNote(note);
         transactionDao.insert(entity);
+    }
+
+    @Override public void bookExpenseAndDeductBalance(String accountId, String categoryId,
+                                                      long amountCents, LocalDate bookingDate,
+                                                      String note) {
+        BudgetTransactionEntity entity = new BudgetTransactionEntity(
+                accountId, categoryId, TransactionDirection.EXPENSE, amountCents, bookingDate);
+        entity.note = normalizeNote(note);
+        saveTransactionAndDeductBalance(entity, accountId, amountCents);
     }
 
     @Override public void updateTransaction(BudgetTransactionEntity transaction) {
@@ -248,6 +254,10 @@ public class BudgetRoomRepository implements BudgetRepository {
         return transactionDao.getNetAmountBeforeDateForAccount(accountId, beforeDate);
     }
 
+    @Override public long getNetBalanceCents() {
+        return transactionDao.getNetBalanceCents();
+    }
+
     /** Returns true when {@code accountId} is null or blank, meaning "aggregate over all accounts". */
     private static boolean isAllAccounts(String accountId) {
         return accountId == null || accountId.isBlank();
@@ -268,7 +278,7 @@ public class BudgetRoomRepository implements BudgetRepository {
     private static void applyTransferFields(BudgetTransactionEntity entity,
                                             String linkedId,
                                             String note) {
-        entity.transactionKind = BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER;
+        entity.transactionKind = TransactionKind.INTERNAL_TRANSFER;
         entity.categoryId = null;
         entity.note = normalizeNote(note);
         entity.linkedTransactionId = linkedId;

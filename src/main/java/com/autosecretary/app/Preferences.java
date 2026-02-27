@@ -7,12 +7,10 @@ import java.time.LocalTime;
 import java.time.DayOfWeek;
 
 public class Preferences {
-    private final Context context;
     private final SharedPreferences prefs;
 
     public Preferences(Context c) {
-        this.context = c;
-        this.prefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE);
+        this.prefs = c.getSharedPreferences("user_prefs", Context.MODE_PRIVATE);
     }
 
     // planning prefs

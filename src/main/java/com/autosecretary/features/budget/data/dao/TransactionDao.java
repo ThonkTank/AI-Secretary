@@ -108,9 +108,6 @@ public interface TransactionDao {
     @Query("DELETE FROM budget_transaction WHERE id = :transactionId")
     void deleteById(String transactionId);
 
-    @Query("UPDATE budget_transaction SET linkedTransactionId = :linkedTransactionId WHERE id = :transactionId")
-    void updateLinkedTransactionId(String transactionId, String linkedTransactionId);
-
     @Query("SELECT COUNT(*) > 0 FROM budget_transaction WHERE importHash = :importHash")
     boolean existsByImportHash(String importHash);
 

@@ -9,6 +9,7 @@ import androidx.room.PrimaryKey;
 
 
 import com.autosecretary.features.budget.domain.TransactionDirection;
+import com.autosecretary.features.budget.domain.TransactionKind;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -57,11 +58,6 @@ import java.util.UUID;
         }
 )
 public class BudgetTransactionEntity {
-
-    public enum TransactionKind {
-        STANDARD,
-        INTERNAL_TRANSFER
-    }
 
     @PrimaryKey
     @NonNull

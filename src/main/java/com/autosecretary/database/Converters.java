@@ -6,8 +6,9 @@ import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
 import com.autosecretary.features.meal.domain.MealType;
 import com.autosecretary.features.task.data.TaskCore;
+import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
-import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
+import com.autosecretary.features.budget.domain.TransactionKind;
 import com.autosecretary.features.budget.domain.importing.ImportStatus;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 import com.autosecretary.features.budget.domain.TransactionDirection;
@@ -83,6 +84,16 @@ public class Converters {
     }
 
     @TypeConverter
+    public static String fromDisplacementGroupType(TaskSlot.DisplacementGroupType type) {
+        return type != null ? type.name() : null;
+    }
+
+    @TypeConverter
+    public static TaskSlot.DisplacementGroupType toDisplacementGroupType(String value) {
+        return value != null ? TaskSlot.DisplacementGroupType.valueOf(value) : null;
+    }
+
+    @TypeConverter
     public static String fromMealType(MealType mealType) {
         return mealType != null ? mealType.name() : null;
     }
@@ -113,13 +124,13 @@ public class Converters {
     }
 
     @TypeConverter
-    public static String fromTransactionKind(BudgetTransactionEntity.TransactionKind kind) {
+    public static String fromTransactionKind(TransactionKind kind) {
         return kind != null ? kind.name() : null;
     }
 
     @TypeConverter
-    public static BudgetTransactionEntity.TransactionKind toTransactionKind(String value) {
-        return value != null ? BudgetTransactionEntity.TransactionKind.valueOf(value) : null;
+    public static TransactionKind toTransactionKind(String value) {
+        return value != null ? TransactionKind.valueOf(value) : null;
     }
 
     @TypeConverter

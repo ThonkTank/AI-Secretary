@@ -81,6 +81,9 @@ public class ViewSlotList {
     private void applySort(TreeBuilder<ViewSlot> builder,
                            Comparator<ViewSlot> comparator,
                            Predicate<ViewSlot> isExpanded) {
+        for (ViewSlot slot : viewSlots) {
+            slot.children = new ArrayList<>();
+        }
         displaySlots = builder.buildTree(displaySlots);
         builder.sortTree(displaySlots, comparator);
 

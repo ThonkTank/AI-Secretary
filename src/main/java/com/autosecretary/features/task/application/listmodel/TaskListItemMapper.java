@@ -51,7 +51,6 @@ public class TaskListItemMapper {
                 task.core.progress.target,
                 task.core.progress.unit,
                 Math.max(1, task.core.progress.minPerRep),
-                task.core.progress.target > 0,
                 task.core.goalIcon,
                 task.core.goalColorHex
         );

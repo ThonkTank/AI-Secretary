@@ -114,7 +114,7 @@ public final class DatePatternDetector {
         DayOfWeek dominantWeekday = counts.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
-                .orElse(null);
+                .orElseThrow(() -> new IllegalStateException("weekday counts must be non-empty (dates.size() >= 2 is guaranteed by caller)"));
 
         long modeCount = counts.getOrDefault(dominantWeekday, 0L);
         if (modeCount >= dates.size() * WEEKLY_DAY_MATCH_RATIO) {

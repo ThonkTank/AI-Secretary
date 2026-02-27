@@ -98,8 +98,8 @@ public class TaskEditStateMapper {
         task.core.description = state.description;
         task.core.priority = state.priority;
         task.core.schedulingType = state.schedulingType;
-        task.core.goalIcon = orDefault(state.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
-        task.core.goalColorHex = orDefault(state.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
+        task.core.goalIcon = state.goalIcon;
+        task.core.goalColorHex = state.goalColorHex;
         task.core.budgetRequiredCents = state.budgetRequiredCents;
         task.core.budgetAccountId = state.budgetAccountId;
         task.core.budgetCategoryId = state.budgetCategoryId;
@@ -131,7 +131,7 @@ public class TaskEditStateMapper {
         task.core.progress.maxPerRep = state.maxPerRep;
 
         task.prefSlots = new ArrayList<>();
-        for (PrefSlotEditState prefSlotState : ensureNotNull(state.prefSlots)) {
+        for (PrefSlotEditState prefSlotState : state.prefSlots) {
             TaskPrefSlot prefSlot = new TaskPrefSlot();
             prefSlot.id = prefSlotState.id; // New slots keep null IDs until persistence assigns one.
             prefSlot.taskId = task.core.id;

@@ -37,9 +37,11 @@ import com.autosecretary.features.budget.ui.internal.BudgetTransferDialogControl
 import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
 import com.autosecretary.features.budget.ui.internal.SpinnerHelper;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
+import com.autosecretary.features.budget.ui.state.BudgetUiState;
 import com.autosecretary.features.budget.ui.state.TimeRangeFilter;
 import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
 import com.autosecretary.features.budget.ui.state.UiText;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.time.LocalDate;
@@ -69,7 +71,7 @@ public class BudgetFragment extends Fragment {
             @Override
             public void onImportPicked(String fileName, byte[] bytes, String mimeType) {
                 if (budgetViewModel == null) return;
-                budgetViewModel.setImportStatus("Datei wird geladen: " + fileName);
+                budgetViewModel.setImportStatus(getString(R.string.budget_status_file_loading, fileName));
                 budgetViewModel.importFromCsv(fileName, bytes, mimeType);
             }
 
@@ -107,7 +109,7 @@ public class BudgetFragment extends Fragment {
 
         AppCompositionRoot compositionRoot =
                 AutoSecretaryApplication.from(requireContext()).getAppCompositionRoot();
-        BudgetViewModelFactory factory = compositionRoot.createBudgetViewModelFactory();
+        BudgetViewModelFactory factory = compositionRoot.getBudgetViewModelFactory();
         budgetViewModel = new ViewModelProvider(this, factory).get(BudgetViewModel.class);
         shouldOpenAddTransactionDialog = getArguments() != null
                 && getArguments().getBoolean(ARG_OPEN_ADD_TRANSACTION, false);
@@ -152,9 +154,9 @@ public class BudgetFragment extends Fragment {
         budgetViewModel.getSummaryData().observe(getViewLifecycleOwner(), data -> {
             if (data == null) return;
             views.summaryIncome.setText(CurrencyFormatter.eurosAlwaysSigned(data.getIncomeCents()));
-            views.summaryIncome.setTextColor(getColorFromResources(R.color.budget_positive));
+            views.summaryIncome.setTextColor(ContextCompat.getColor(requireContext(),R.color.budget_positive));
             views.summaryExpense.setText(CurrencyFormatter.eurosAlwaysSigned(-data.getExpenseCents()));
-            views.summaryExpense.setTextColor(getColorFromResources(R.color.budget_negative));
+            views.summaryExpense.setTextColor(ContextCompat.getColor(requireContext(),R.color.budget_negative));
             bindSignedAmount(views.summaryNet, data.getNetCents());
             bindSignedAmount(views.summaryFreeBudget, data.getFreeBudgetCents());
         });
@@ -165,9 +167,9 @@ public class BudgetFragment extends Fragment {
         budgetViewModel.getChartPoints().observe(getViewLifecycleOwner(), views.chartView::setPoints);
 
         budgetViewModel.getUiState().observe(getViewLifecycleOwner(), state -> {
-            boolean isLoading = state == BudgetViewModel.BudgetUiState.LOADING;
-            boolean isError = state == BudgetViewModel.BudgetUiState.ERROR;
-            boolean isContent = state == BudgetViewModel.BudgetUiState.CONTENT;
+            boolean isLoading = state == BudgetUiState.LOADING;
+            boolean isError = state == BudgetUiState.ERROR;
+            boolean isContent = state == BudgetUiState.CONTENT;
             views.loading.setVisibility(isLoading ? View.VISIBLE : View.GONE);
             views.retry.setVisibility(isError ? View.VISIBLE : View.GONE);
             views.transactionList.setVisibility(isContent ? View.VISIBLE : View.GONE);
@@ -384,8 +386,8 @@ public class BudgetFragment extends Fragment {
         transferDialogController.show(budgetViewModel.getAccounts().getValue());
     }
 
-    private List<BudgetCategory> categoriesForType(List<BudgetCategory> allCategories,
-                                                   boolean isExpense) {
+    private static List<BudgetCategory> categoriesForType(List<BudgetCategory> allCategories,
+                                                          boolean isExpense) {
         TransactionDirection filterType = isExpense
                 ? TransactionDirection.EXPENSE
                 : TransactionDirection.INCOME;
@@ -398,7 +400,7 @@ public class BudgetFragment extends Fragment {
         return filtered;
     }
 
-    private List<BudgetAccount> activeAccounts(List<BudgetAccount> accounts) {
+    private static List<BudgetAccount> activeAccounts(List<BudgetAccount> accounts) {
         List<BudgetAccount> active = new ArrayList<>();
         for (BudgetAccount account : accounts) {
             if (!account.archived) {
@@ -449,11 +451,11 @@ public class BudgetFragment extends Fragment {
             if (isValidColorHex(bar.getCategoryColorHex())) {
                 color = Color.parseColor(bar.getCategoryColorHex());
             } else if (pct > 100) {
-                color = getColorFromResources(R.color.budget_negative);
+                color = ContextCompat.getColor(requireContext(),R.color.budget_negative);
             } else if (pct >= 80) {
-                color = getColorFromResources(R.color.budget_warning);
+                color = ContextCompat.getColor(requireContext(),R.color.budget_warning);
             } else {
-                color = getColorFromResources(R.color.budget_positive);
+                color = ContextCompat.getColor(requireContext(),R.color.budget_positive);
             }
             progress.setProgressTintList(ColorStateList.valueOf(color));
             percentText.setTextColor(color);
@@ -473,17 +475,18 @@ public class BudgetFragment extends Fragment {
             View rowView = inflater.inflate(R.layout.budget_transaction_item, container, false);
             TextView label = rowView.findViewById(R.id.BudgetTransactionLabel);
             TextView amount = rowView.findViewById(R.id.BudgetTransactionAmount);
+            String formattedAmount = CurrencyFormatter.eurosWithSign(row.getAmountCents(), row.getDirection());
             label.setText(row.getLabel());
-            amount.setText(row.getAmount());
+            amount.setText(formattedAmount);
             if (isValidColorHex(row.getCategoryColorHex())) {
                 label.setTextColor(Color.parseColor(row.getCategoryColorHex()));
             }
             amount.setTextColor(row.isExpense()
-                    ? getColorFromResources(R.color.budget_negative)
-                    : getColorFromResources(R.color.budget_positive));
+                    ? ContextCompat.getColor(requireContext(),R.color.budget_negative)
+                    : ContextCompat.getColor(requireContext(),R.color.budget_positive));
             rowView.setContentDescription(
                     getString(R.string.budget_transaction_content_description,
-                            row.getLabel(), row.getAmount()));
+                            row.getLabel(), formattedAmount));
 
             rowView.setOnClickListener(v -> showEditTransactionDialog(row));
 
@@ -507,12 +510,8 @@ public class BudgetFragment extends Fragment {
 
     private void bindSignedAmount(TextView view, long cents) {
         view.setText(CurrencyFormatter.eurosAlwaysSigned(cents));
-        view.setTextColor(getColorFromResources(
+        view.setTextColor(ContextCompat.getColor(requireContext(),
                 cents >= 0 ? R.color.budget_positive : R.color.budget_negative));
-    }
-
-    private int getColorFromResources(int colorResId) {
-        return ContextCompat.getColor(requireContext(), colorResId);
     }
 
     private void showDeleteTransactionDialog(BudgetTransactionRow row) {
@@ -531,17 +530,18 @@ public class BudgetFragment extends Fragment {
                 .inflate(R.layout.budget_edit_limit_dialog, null);
         Spinner categorySpinner = dialogView.findViewById(R.id.BudgetLimitDialogCategory);
         TextInputEditText amountInput = dialogView.findViewById(R.id.BudgetLimitDialogAmount);
-        com.google.android.material.switchmaterial.SwitchMaterial rolloverSwitch =
+        SwitchMaterial rolloverSwitch =
                 dialogView.findViewById(R.id.BudgetLimitDialogRolloverEnabled);
         TextInputEditText rolloverCarryoverInput =
                 dialogView.findViewById(R.id.BudgetLimitDialogRolloverCarryover);
 
         List<BudgetCategory> cats = budgetViewModel.getCategories().getValue();
         final List<BudgetCategory> allCategories = cats != null ? cats : new ArrayList<>();
+        final List<BudgetCategory> expenseCategories = categoriesForType(allCategories, true);
 
-        SpinnerHelper.bindList(categorySpinner, categoriesForType(allCategories, true),
+        SpinnerHelper.bindList(categorySpinner, expenseCategories,
                 this::buildCategoryDisplayLabel, requireContext());
-        SpinnerHelper.setSelection(categorySpinner, categoriesForType(allCategories, true),
+        SpinnerHelper.setSelection(categorySpinner, expenseCategories,
                 preSelectedCategoryId, c -> c.id);
 
         if (baseLimitCents > 0) {
@@ -556,7 +556,7 @@ public class BudgetFragment extends Fragment {
                             ? amountInput.getText().toString().trim() : "";
                     if (amountStr.isEmpty()) return;
 
-                    String categoryId = SpinnerHelper.idAtPosition(categoriesForType(allCategories, true),
+                    String categoryId = SpinnerHelper.idAtPosition(expenseCategories,
                             categorySpinner.getSelectedItemPosition(), c -> c.id);
                     if (categoryId == null) return;
 

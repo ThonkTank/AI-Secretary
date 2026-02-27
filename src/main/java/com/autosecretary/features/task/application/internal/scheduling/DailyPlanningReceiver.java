@@ -28,8 +28,11 @@ public class DailyPlanningReceiver extends BroadcastReceiver {
                     .getRegenerateScheduleUseCase();
 
             useCase.execute(result -> {
-                TaskWidgetProvider.notifyWidgetUpdate(context);
-                pendingResult.finish();
+                try {
+                    TaskWidgetProvider.notifyWidgetUpdate(context);
+                } finally {
+                    pendingResult.finish();
+                }
             });
         } catch (Exception exception) {
             Log.e(TAG, "Daily planning setup failed", exception);

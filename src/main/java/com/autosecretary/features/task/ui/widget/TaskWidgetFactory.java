@@ -9,7 +9,6 @@ import android.widget.RemoteViewsService;
 import androidx.core.content.ContextCompat;
 
 import com.autosecretary.R;
-import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.Task;
@@ -25,6 +24,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
     private final Context context;
+    private final TaskDAO taskDao;
     private final int colorInProgress;
     private final int colorCompleted;
     private final int colorDefault;
@@ -32,8 +32,9 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
     private List<TaskListItem> items = new ArrayList<>();
     private boolean isToday;
 
-    public TaskWidgetFactory(Context context) {
+    public TaskWidgetFactory(Context context, TaskDAO taskDao) {
         this.context = context;
+        this.taskDao = taskDao;
         this.colorInProgress = ContextCompat.getColor(context, R.color.task_widget_title_in_progress);
         this.colorCompleted = ContextCompat.getColor(context, R.color.task_widget_title_completed);
         this.colorDefault = ContextCompat.getColor(context, R.color.task_widget_title_default);
@@ -46,9 +47,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
 
     @Override
     public void onDataSetChanged() {
-        AppDatabase db = AppDatabase.getInstance(context);
-        TaskDAO dao = db.taskDao();
-        List<Task> tasks = dao.readAll();
+        List<Task> tasks = taskDao.readAll();
         List<TaskListItem> allItems = mapper.map(tasks);
 
         LocalDate selectedDate = TaskWidgetProvider.getSelectedDate(context);
@@ -78,7 +77,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         TaskListItem item = items.get(position);
         RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.task_row_widget);
 
-        rv.setTextViewText(R.id.widget_row_start, item.start.format(TIME_FORMAT));
+        rv.setTextViewText(R.id.widget_row_start, item.start != null ? item.start.format(TIME_FORMAT) : "");
         rv.setTextViewText(R.id.widget_row_end, item.end != null ? item.end.format(TIME_FORMAT) : "");
         rv.setTextViewText(R.id.widget_row_title, item.title);
 

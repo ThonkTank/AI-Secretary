@@ -170,7 +170,8 @@ public class LegacyMealImportService {
             Map<String, Object> row = rows.get(i);
             LocalDate date = asDate(row.get("date"));
             MealType mealType = asEnum(MealType.class, row.get("meal_type"), null);
-            long recipeId = asInt(row.get("recipe_id"), 0);
+            Long recipeIdLong = asLong(row.get("recipe_id"));
+            long recipeId = recipeIdLong != null ? recipeIdLong : 0L;
             if (date == null || mealType == null || recipeId <= 0) {
                 report.addFailure(SOURCE_MEAL_PLANS, i, "required fields invalid: date/meal_type/recipe_id");
                 continue;
@@ -196,8 +197,10 @@ public class LegacyMealImportService {
         for (int i = 0; i < rows.size(); i++) {
             Map<String, Object> row = rows.get(i);
             LocalDate date = asDate(row.get("date"));
-            long itemId = asInt(row.get("item_id"), 0);
-            long memberId = asInt(row.get("member_id"), 0);
+            Long itemIdLong = asLong(row.get("item_id"));
+            long itemId = itemIdLong != null ? itemIdLong : 0L;
+            Long memberIdLong = asLong(row.get("member_id"));
+            long memberId = memberIdLong != null ? memberIdLong : 0L;
             if (date == null || itemId <= 0 || memberId <= 0) {
                 report.addFailure(SOURCE_CONSUMPTION, i, "required fields invalid: date/item_id/member_id");
                 continue;
@@ -207,7 +210,8 @@ public class LegacyMealImportService {
             log.date = date;
             log.itemId = itemId;
             log.memberId = memberId;
-            log.recipeId = asInt(row.get("recipe_id"), 0);
+            Long logRecipeId = asLong(row.get("recipe_id"));
+            log.recipeId = logRecipeId != null ? logRecipeId : 0L;
             log.servingsConsumed = asDouble(row.get("servings_consumed"), 0.0);
             log.calories = asInt(row.get("calories"), 0);
             log.protein = asInt(row.get("protein"), 0);

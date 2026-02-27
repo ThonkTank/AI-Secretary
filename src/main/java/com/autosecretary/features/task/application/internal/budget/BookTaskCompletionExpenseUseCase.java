@@ -1,8 +1,6 @@
 package com.autosecretary.features.task.application.internal.budget;
 
-import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.BudgetRepository;
-import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.task.data.Task;
 
 import java.time.LocalDate;
@@ -29,16 +27,13 @@ public class BookTaskCompletionExpenseUseCase {
             return false;
         }
 
-        BudgetTransactionEntity transaction = new BudgetTransactionEntity(
+        repository.bookExpenseAndDeductBalance(
                 accountId,
                 task.core.budgetCategoryId,
-                TransactionDirection.EXPENSE,
                 expenseCents,
-                bookingDate
+                bookingDate,
+                "Task: " + task.core.title
         );
-        transaction.note = "Task: " + task.core.title;
-
-        repository.saveTransactionAndDeductBalance(transaction, accountId, expenseCents);
         return true;
     }
 

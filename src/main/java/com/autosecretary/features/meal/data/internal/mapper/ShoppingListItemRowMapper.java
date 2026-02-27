@@ -6,6 +6,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ShoppingListItemRowMapper implements RowMapper<ShoppingListItem> {
+
+    public static final String FIELD_PERIOD_KEY = "periodKey";
+
     @Override
     public Map<String, Object> toRow(ShoppingListItem item) {
         Map<String, Object> row = new HashMap<>();
@@ -19,7 +22,7 @@ public class ShoppingListItemRowMapper implements RowMapper<ShoppingListItem> {
         row.put("foodGroupLabel", item.foodGroupLabel);
         row.put("suggestedStore", item.suggestedStore);
         row.put("isPurchased", item.isPurchased);
-        row.put("periodKey", item.periodKey);
+        row.put(FIELD_PERIOD_KEY, item.periodKey);
         row.put("estimatedPriceCents", item.estimatedPriceCents);
         return row;
     }
@@ -37,7 +40,7 @@ public class ShoppingListItemRowMapper implements RowMapper<ShoppingListItem> {
         item.foodGroupLabel = (String) row.get("foodGroupLabel");
         item.suggestedStore = (String) row.get("suggestedStore");
         item.isPurchased = MapperSupport.asBoolean(row.get("isPurchased"));
-        item.periodKey = (String) row.get("periodKey");
+        item.periodKey = (String) row.get(FIELD_PERIOD_KEY);
         item.estimatedPriceCents = MapperSupport.asInt(row.get("estimatedPriceCents"));
         return item;
     }

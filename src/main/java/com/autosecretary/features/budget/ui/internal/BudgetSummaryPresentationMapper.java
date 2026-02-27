@@ -1,10 +1,10 @@
 package com.autosecretary.features.budget.ui.internal;
 
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
-import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import com.autosecretary.features.budget.domain.TransactionDirection;
+import com.autosecretary.features.budget.domain.TransactionKind;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
 import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
 
@@ -21,7 +21,7 @@ public class BudgetSummaryPresentationMapper {
         for (MonthlyOverviewItem item : items) {
             // Internal transfers move money between accounts — they are neither income nor expense
             // and must be excluded to avoid distorting the summary totals.
-            if (item.transactionKind == BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER) {
+            if (item.transactionKind == TransactionKind.INTERNAL_TRANSFER) {
                 continue;
             }
             if (item.direction == TransactionDirection.EXPENSE) {

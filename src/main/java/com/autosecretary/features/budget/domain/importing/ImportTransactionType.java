@@ -1,21 +1,21 @@
 package com.autosecretary.features.budget.domain.importing;
 
 import com.autosecretary.features.budget.domain.TransactionDirection;
-import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
+import com.autosecretary.features.budget.domain.TransactionKind;
 
 /**
  * Type-safe representation of import transaction classifications.
  * Eliminates string-based type checking and provides explicit conversion to entity kinds.
  */
 public enum ImportTransactionType {
-    INCOME(TransactionDirection.INCOME, BudgetTransactionEntity.TransactionKind.STANDARD),
-    EXPENSE(TransactionDirection.EXPENSE, BudgetTransactionEntity.TransactionKind.STANDARD),
-    TRANSFER(TransactionDirection.EXPENSE, BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER);
+    INCOME(TransactionDirection.INCOME, TransactionKind.STANDARD),
+    EXPENSE(TransactionDirection.EXPENSE, TransactionKind.STANDARD),
+    TRANSFER(TransactionDirection.EXPENSE, TransactionKind.INTERNAL_TRANSFER);
 
     private final TransactionDirection direction;
-    private final BudgetTransactionEntity.TransactionKind kind;
+    private final TransactionKind kind;
 
-    ImportTransactionType(TransactionDirection direction, BudgetTransactionEntity.TransactionKind kind) {
+    ImportTransactionType(TransactionDirection direction, TransactionKind kind) {
         this.direction = direction;
         this.kind = kind;
     }
@@ -30,7 +30,7 @@ public enum ImportTransactionType {
     /**
      * Converts to the appropriate TransactionKind.
      */
-    public BudgetTransactionEntity.TransactionKind toKind() {
+    public TransactionKind toKind() {
         return kind;
     }
 

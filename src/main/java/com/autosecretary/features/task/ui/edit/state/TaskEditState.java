@@ -10,8 +10,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Mutable UI POJO holding all editable fields for {@link com.autosecretary.features.task.ui.edit.TaskEditDialog TaskEditDialog}.
- * Not persisted -- exists only during active editing sessions.
+ * Mutable UI POJO for an active editing session in
+ * {@link com.autosecretary.features.task.ui.edit.TaskEditDialog TaskEditDialog}.
+ * Not persisted — exists only during active editing sessions.
+ * <p>
+ * Most fields are directly user-editable via form widgets. Three fields —
+ * {@code periodCompletions}, {@code periodStart}, and {@code carryoverDebt} — are
+ * not exposed in any UI widget. They are preserved for round-trip fidelity: when the
+ * user saves without changing the repetition period, the mapper writes these values back
+ * unchanged so the scheduler's active period progress counters are not silently reset.
  */
 public class TaskEditState {
     // Basic metadata

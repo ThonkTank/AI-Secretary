@@ -1,6 +1,5 @@
 package com.autosecretary.features.meal.data.internal.mapper;
 
-import com.autosecretary.features.meal.data.mapper.LegacyMealFieldKeys;
 import com.autosecretary.features.meal.domain.MealType;
 import com.autosecretary.features.meal.domain.Recipe;
 

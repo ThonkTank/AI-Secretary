@@ -4,6 +4,7 @@ import com.autosecretary.features.meal.data.internal.MealCollections;
 import com.autosecretary.features.meal.data.internal.dao.BaseCollectionDao;
 import com.autosecretary.features.meal.data.internal.mapper.PantryItemRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.ShoppingListItemRowMapper;
+import static com.autosecretary.features.meal.data.internal.mapper.ShoppingListItemRowMapper.FIELD_PERIOD_KEY;
 import com.autosecretary.features.meal.data.internal.storage.MealStorage;
 import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
@@ -43,7 +44,7 @@ public class StoragePantryRepository implements PantryRepository {
 
     @Override
     public List<ShoppingListItem> getShoppingListItems(String periodKey) {
-        return shoppingListDao.findAllByField("periodKey", periodKey);
+        return shoppingListDao.findAllByField(FIELD_PERIOD_KEY, periodKey);
     }
 
     @Override

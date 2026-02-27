@@ -12,9 +12,9 @@ import java.util.stream.Collectors;
 
 public class BaseCollectionDao<T> {
 
-    protected final String collection;
-    protected final MealStorage storage;
-    protected final RowMapper<T> mapper;
+    private final String collection;
+    private final MealStorage storage;
+    private final RowMapper<T> mapper;
     private final Function<T, Long> idAccessor;
     private final BiConsumer<T, Long> idSetter;
 

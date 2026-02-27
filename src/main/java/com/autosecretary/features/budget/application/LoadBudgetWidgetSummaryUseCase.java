@@ -1,26 +1,23 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.data.dao.BudgetLimitDao;
-import com.autosecretary.features.budget.data.dao.TransactionDao;
+import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
 
 import java.time.YearMonth;
 import java.util.List;
 
 public class LoadBudgetWidgetSummaryUseCase {
-    private final TransactionDao transactionDao;
-    private final BudgetLimitDao budgetLimitDao;
+    private final BudgetRepository repository;
 
-    public LoadBudgetWidgetSummaryUseCase(TransactionDao transactionDao, BudgetLimitDao budgetLimitDao) {
-        this.transactionDao = transactionDao;
-        this.budgetLimitDao = budgetLimitDao;
+    public LoadBudgetWidgetSummaryUseCase(BudgetRepository repository) {
+        this.repository = repository;
     }
 
     public BudgetWidgetSummary loadCurrentMonth() {
         String yearMonth = YearMonth.now().toString();
-        long netBalanceCents = transactionDao.getNetBalanceCents();
+        long netBalanceCents = repository.getNetBalanceCents();
 
-        List<CategorySpendSummary> spendTotals = budgetLimitDao.getCategorySpendTotals(yearMonth);
+        List<CategorySpendSummary> spendTotals = repository.getCategorySpendTotals(yearMonth);
         long freeBudgetCents = spendTotals.stream()
                 .filter(t -> t.limitAmountCents() > 0)
                 .mapToLong(t -> t.limitAmountCents() - t.spentCents())

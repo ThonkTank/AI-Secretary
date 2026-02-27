@@ -1,6 +1,4 @@
-package com.autosecretary.features.meal.domain.internal;
-
-import com.autosecretary.features.meal.domain.Recipe;
+package com.autosecretary.features.meal.domain;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,18 +9,18 @@ import java.util.Objects;
  */
 public class RecipeScalingService {
 
-    public static ScalingResult scaleRecipe(Recipe recipe, double requestedServings) {
+    public static RecipeScalingResult scaleRecipe(Recipe recipe, double requestedServings) {
         if (recipe == null) {
-            return new ScalingResult(0, 0, new ArrayList<>());
+            return new RecipeScalingResult(0, 0, new ArrayList<>());
         }
         double finalServings = resolveServings(recipe, requestedServings);
         double baseServings = Math.max(1.0, recipe.servings);
         double factor = finalServings / baseServings;
 
-        List<ScaledIngredient> ingredients = new ArrayList<>();
+        List<RecipeScalingResult.ScaledIngredient> ingredients = new ArrayList<>();
         if (recipe.ingredients != null) {
             for (Recipe.RecipeIngredient ingredient : recipe.ingredients) {
-                ingredients.add(new ScaledIngredient(
+                ingredients.add(new RecipeScalingResult.ScaledIngredient(
                         ingredient.ingredientId(),
                         ingredient.ingredientName(),
                         ingredient.amount() * factor,
@@ -30,7 +28,7 @@ public class RecipeScalingService {
                 ));
             }
         }
-        return new ScalingResult(finalServings, factor, ingredients);
+        return new RecipeScalingResult(finalServings, factor, ingredients);
     }
 
     private static double resolveServings(Recipe recipe, double requestedServings) {
@@ -51,10 +49,6 @@ public class RecipeScalingService {
     private static double clamp(double value, double min, double max) {
         return Math.min(max, Math.max(min, value));
     }
-
-    public record ScaledIngredient(Long ingredientId, String ingredientName, double amount, String unit) {}
-
-    public record ScalingResult(double servings, double factor, List<ScaledIngredient> ingredients) {}
 
     private RecipeScalingService() {}
 }

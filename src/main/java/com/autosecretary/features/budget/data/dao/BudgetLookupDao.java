@@ -35,6 +35,10 @@ public interface BudgetLookupDao {
     @Query("UPDATE budget_account SET currentBalanceCents = :balanceCents WHERE id = :accountId")
     void updateCurrentBalanceCents(String accountId, long balanceCents);
 
+    /** Atomically adjusts the stored balance by {@code deltaCents} (negative to deduct). */
+    @Query("UPDATE budget_account SET currentBalanceCents = currentBalanceCents + :deltaCents WHERE id = :accountId")
+    void adjustCurrentBalanceCents(String accountId, long deltaCents);
+
     @Query("SELECT id FROM budget_account WHERE archived = 0 ORDER BY name COLLATE NOCASE ASC LIMIT 1")
     String findFirstActiveAccountId();
 

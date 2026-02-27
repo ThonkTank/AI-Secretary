@@ -13,4 +13,3 @@ needed methods can be added at that point.
 **Tradeoff:** If the UI work is imminent, keeping the plumbing avoids a future re-add. Given
 the explicit "Not Yet Implemented" note in CLAUDE.md, deferring this deletion is reasonable.
 Mark for removal when the feature is actually built or confirmed dropped.
-

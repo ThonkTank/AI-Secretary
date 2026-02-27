@@ -3,7 +3,7 @@ package com.autosecretary.features.meal.application.usecase;
 import com.autosecretary.features.meal.domain.HouseholdMember;
 import com.autosecretary.features.meal.domain.MealRepository;
 import com.autosecretary.features.meal.domain.WeeklyFoodTarget;
-import com.autosecretary.features.meal.domain.internal.WeeklyFoodTargetService;
+import com.autosecretary.features.meal.domain.WeeklyFoodTargetService;
 
 import java.time.LocalDate;
 import java.util.List;

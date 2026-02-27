@@ -25,12 +25,17 @@ public interface BudgetRepository {
     long getPreviousMonthExpenseCents(String categoryId, String targetYearMonth);
     long getCategoryExpenseCents(String categoryId, String yearMonth);
 
+    /**
+     * Returns the current balance for {@code accountId}. Pass {@code null} or blank to
+     * aggregate across all active accounts.
+     */
     long getCurrentBalanceCents(String accountId);
 
     /**
      * Sums the expected expense amounts for all active recurring templates on {@code accountId}
      * whose next-due date falls within [{@code fromDate}, {@code toDate}]. Used to show
-     * upcoming committed expenses in the budget overview.
+     * upcoming committed expenses in the budget overview. Pass {@code null} or blank to
+     * aggregate across all active accounts.
      */
     long getUpcomingExpenseTemplateCents(String accountId, LocalDate fromDate, LocalDate toDate);
 
@@ -47,6 +52,14 @@ public interface BudgetRepository {
     void saveTransactionAndDeductBalance(BudgetTransactionEntity transaction,
                                          String accountId,
                                          long expenseCents);
+
+    /**
+     * Convenience variant of {@link #saveTransactionAndDeductBalance} that builds the
+     * {@code EXPENSE} transaction entity internally. Use this to avoid leaking
+     * {@code BudgetTransactionEntity} construction into callers outside the budget feature.
+     */
+    void bookExpenseAndDeductBalance(String accountId, String categoryId,
+                                     long amountCents, LocalDate bookingDate, String note);
 
     /** Convenience overload used by the "Add Transaction" dialog — builds the entity internally. */
     void saveTransaction(String accountId, String categoryId, TransactionDirection type,
@@ -88,4 +101,11 @@ public interface BudgetRepository {
      * {@link com.autosecretary.features.budget.domain.timeline.AccountBalanceTimelineService}.
      */
     long getNetAmountBeforeDateForAccount(String accountId, LocalDate beforeDate);
+
+    /**
+     * Returns the total net balance (income minus expenses) computed from all transaction records,
+     * across all accounts. Unlike {@link #getCurrentBalanceCents} this always recomputes from
+     * the transaction table, so it remains accurate even when stored account balances are stale.
+     */
+    long getNetBalanceCents();
 }

@@ -4,7 +4,6 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskSlot;
-import com.autosecretary.features.task.data.TaskTransitionStatDao;
 import com.autosecretary.features.task.domain.CalendarBlockedIntervalProvider;
 import com.autosecretary.features.task.domain.SchedulingWindowProvider;
 import com.autosecretary.features.task.domain.SchedulingConflict;
@@ -14,6 +13,7 @@ import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.TaskPlanningState;
 import com.autosecretary.features.task.domain.TaskSlotGenerator;
 import com.autosecretary.features.task.domain.TaskSlotGenerationResult;
+import com.autosecretary.features.task.domain.TaskTransitionStatLoader;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
 
 import java.time.LocalDate;
@@ -155,7 +155,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private final SchedulingWindowProvider schedulingWindowProvider;
     private final CalendarBlockedIntervalProvider calendarBlockedIntervalProvider;
     private final TaskScorer scorer;
-    private final TaskTransitionStatDao transitionStatDao;
+    private final TaskTransitionStatLoader transitionStatLoader;
     private final List<SchedulingConflict> lastConflicts = new ArrayList<>();
 
     private int newSlots;
@@ -184,18 +184,18 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                     Consumer<String> logger,
                                     SchedulingWindowProvider schedulingWindowProvider,
                                     CalendarBlockedIntervalProvider calendarBlockedIntervalProvider,
-                                    TaskTransitionStatDao transitionStatDao) {
-        this(lifecycleManager, logger, schedulingWindowProvider, calendarBlockedIntervalProvider, transitionStatDao, null);
+                                    TaskTransitionStatLoader transitionStatLoader) {
+        this(lifecycleManager, logger, schedulingWindowProvider, calendarBlockedIntervalProvider, transitionStatLoader, null);
     }
 
     public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager,
                                     Consumer<String> logger,
                                     SchedulingWindowProvider schedulingWindowProvider,
                                     CalendarBlockedIntervalProvider calendarBlockedIntervalProvider,
-                                    TaskTransitionStatDao transitionStatDao,
+                                    TaskTransitionStatLoader transitionStatLoader,
                                     TaskBudgetEligibilityService taskBudgetEligibilityService) {
         this.scorer = new TaskScorer(lifecycleManager, logger, taskBudgetEligibilityService);
-        this.transitionStatDao = transitionStatDao;
+        this.transitionStatLoader = transitionStatLoader;
         this.logger = logger;
         this.schedulingWindowProvider = schedulingWindowProvider;
         this.calendarBlockedIntervalProvider = calendarBlockedIntervalProvider;
@@ -214,7 +214,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
-    public TaskSlotGenerationResult generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
+    TaskSlotGenerationResult generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
         return generateSlotsForDay(tasks, windowStart, windowEnd, state, new ArrayList<>());
     }
 
@@ -232,7 +232,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
 
         newSlots = 0;
         scorer.reset();
-        scorer.setTransitionStats(transitionStatDao != null ? transitionStatDao.readAll() : new ArrayList<>());
+        scorer.setTransitionStats(transitionStatLoader != null ? transitionStatLoader.load() : new ArrayList<>());
         lastConflicts.clear();
         planningState = state;
 
@@ -264,7 +264,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return new TaskSlotGenerationResult(newSlots, lastConflicts);
     }
 
-    public TaskSlotGenerationResult generateSlotsForDay(List<Task> tasks,
+    TaskSlotGenerationResult generateSlotsForDay(List<Task> tasks,
                                     LocalDateTime windowStart,
                                     LocalDateTime windowEnd,
                                     TaskPlanningState state,
@@ -281,7 +281,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         planningState = state;
         newSlots = 0;
         scorer.reset();
-        scorer.setTransitionStats(transitionStatDao != null ? transitionStatDao.readAll() : new ArrayList<>());
+        scorer.setTransitionStats(transitionStatLoader != null ? transitionStatLoader.load() : new ArrayList<>());
         lastConflicts.clear();
 
         List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
@@ -336,8 +336,13 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         assignGlobalBestFitAcrossWindow(tasks, singleDay);
     }
 
+    /** Safety cap for the placement loop — prevents infinite scheduling if a bug prevents convergence. */
+    private static final int MAX_PLACEMENT_ITERATIONS = 10_000;
+
     private void assignGlobalBestFitAcrossWindow(List<Task> tasks, List<DaySchedulingContext> contexts) {
-        while (true) {
+        int iterations = 0;
+        while (iterations < MAX_PLACEMENT_ITERATIONS) {
+            iterations++;
             List<List<ChainNode>> chains = buildTaskChains(tasks);
             ChainPlacement best = null;
             DaySchedulingContext bestContext = null;
@@ -368,6 +373,9 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
 
             logGlobalCompetition(best, bestContext);
             applyPlacement(best, bestContext.occupied);
+        }
+        if (iterations >= MAX_PLACEMENT_ITERATIONS) {
+            log("[WARN] assignGlobalBestFitAcrossWindow hit safety cap of " + MAX_PLACEMENT_ITERATIONS + " iterations");
         }
     }
 
@@ -810,7 +818,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             TaskSlot slot = createScheduledSlot(task, start, Integer.MAX_VALUE / 2, null);
             slot.end = end.toLocalTime();
             slot.displacementScore = Integer.MAX_VALUE / 2;
-            slot.displacementGroupType = "FIXED";
+            slot.displacementGroupType = TaskSlot.DisplacementGroupType.FIXED;
             slot.displacementGroupId = "fixed:" + task.core.id;
             finalizeAssignment(task, slot, Integer.MAX_VALUE / 2);
             if (planningState != null) {
@@ -946,7 +954,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         if (atomicGroupId == null || atomicGroupId.isBlank()) {
             atomicGroupId = slot.chainId != null ? "chain:" + slot.chainId : "slot:" + slot.id;
         }
-        boolean fixedProtected = "FIXED".equals(slot.displacementGroupType)
+        boolean fixedProtected = slot.displacementGroupType == TaskSlot.DisplacementGroupType.FIXED
                 || task.core.schedulingType == TaskCore.SchedulingType.TERMIN;
         return new DisplacementCandidate(task, slot, displaceable, fixedProtected, score, atomicGroupId);
     }
@@ -955,7 +963,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         slot.score = score;
         slot.displacementScore = score;
         if (slot.displacementGroupType == null) {
-            slot.displacementGroupType = slot.chainId != null ? "CHAIN" : "SINGLE";
+            slot.displacementGroupType = slot.chainId != null ? TaskSlot.DisplacementGroupType.CHAIN : TaskSlot.DisplacementGroupType.SINGLE;
         }
         if (slot.displacementGroupId == null || slot.displacementGroupId.isBlank()) {
             slot.displacementGroupId = slot.chainId != null ? "chain:" + slot.chainId : "slot:" + slot.id;

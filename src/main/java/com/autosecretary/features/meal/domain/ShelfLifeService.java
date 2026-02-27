@@ -1,4 +1,4 @@
-package com.autosecretary.features.meal.domain.internal;
+package com.autosecretary.features.meal.domain;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;

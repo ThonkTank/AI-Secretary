@@ -94,31 +94,41 @@ fi
 # ── Autonomous cycle ────────────────────────────────────────────────────────────
 # Hardcoded skill order for --autonomous mode.
 # review-design and review-accessibility are UI-scoped: only run on ui/ and res/ dirs.
+# review-architecture, review-conventions, review-structure are high-level: only run on dirs with subdirs.
 # commit and sync-main are git-ops: run once per occurrence at PROJECT_ROOT.
 # commit checkpoints after every review skill; sync-main integrates upstream once per cycle.
+# review-smells and review-simplicity appear multiple times to catch regressions from structural changes.
 AUTONOMOUS_SKILL_CYCLE=(
-    review-smells          # 1.  Anti-Pattern und Code-Gerüche zuerst beheben
-    commit                 # 2.  Build prüfen + Fortschritt committen
+    review-smells          # 1.  Anti-Pattern und Code-Gerüche
+    commit                 # 2.
     review-simplicity      # 3.  Unnötige Komplexität reduzieren
-    commit                 # 4.  Build prüfen + Fortschritt committen
-    review-elegance        # 5.  Lesbarkeit und Ausdrucksstärke verfeinern
-    commit                 # 6.  Build prüfen + Fortschritt committen
-    review-architecture    # 7.  Architekturelle Korrektheit prüfen
-    commit                 # 8.  Build prüfen + Fortschritt committen
-    review-conventions     # 9.  Konsistenz über das Projekt sicherstellen
-    commit                 # 10. Build prüfen + Fortschritt committen
-    review-structure       # 11. Datei-/Ordnerstruktur optimieren
-    commit                 # 12. Build prüfen + Fortschritt committen
-    review-performance     # 13. Performance-Hotspots angehen
-    commit                 # 14. Build prüfen + Fortschritt committen
-    review-security        # 15. Sicherheitslücken schließen
-    commit                 # 16. Build prüfen + Fortschritt committen
-    review-design          # 17. Visuelles Design (nur ui/- und res/-Ordner)
-    commit                 # 18. Build prüfen + Fortschritt committen
-    review-accessibility   # 19. Barrierefreiheit/UX (nur ui/- und res/-Ordner)
-    commit                 # 20. Build prüfen + Fortschritt committen
-    review-onboarding      # 21. Dokumentation und Kommentare verbessern
-    sync-main              # 22. Upstream integrieren + pushen (einmal pro Zyklus)
+    commit                 # 4.
+    review-elegance        # 5.  Lesbarkeit und Ausdrucksstärke
+    commit                 # 6.
+    review-architecture    # 7.  Architekturelle Korrektheit
+    commit                 # 8.
+    review-smells          # 9.  Smell-Regression nach Architektur-Änderungen
+    commit                 # 10.
+    review-conventions     # 11. Konsistenz sicherstellen
+    commit                 # 12.
+    review-structure       # 13. Datei-/Ordnerstruktur optimieren
+    commit                 # 14.
+    review-simplicity      # 15. Komplexitäts-Regression nach Restrukturierung
+    commit                 # 16.
+    review-performance     # 17. Performance-Hotspots
+    commit                 # 18.
+    review-security        # 19. Sicherheitslücken
+    commit                 # 20.
+    review-design          # 21. Visuelles Design (ui/res only)
+    commit                 # 22.
+    review-accessibility   # 23. Barrierefreiheit/UX (ui/res only)
+    commit                 # 24.
+    review-smells          # 25. Finale Smell-Bereinigung
+    commit                 # 26.
+    review-simplicity      # 27. Finale Vereinfachung
+    commit                 # 28.
+    review-onboarding      # 29. Dokumentation und Kommentare
+    sync-main              # 30. Upstream integrieren + pushen
 )
 
 is_git_op_skill() { [[ "$1" == "sync-main" || "$1" == "commit" ]]; }
@@ -128,6 +138,35 @@ is_ui_skill() { [[ "$1" == "review-design" || "$1" == "review-accessibility" ]];
 is_ui_dir() {
     local dir="$1"
     [[ "$dir" == */ui || "$dir" == */ui/* || "$dir" == */res || "$dir" == */res/* ]]
+}
+
+is_highlevel_skill() {
+    [[ "$1" == "review-architecture" || "$1" == "review-structure" || "$1" == "review-conventions" ]]
+}
+
+is_highlevel_dir() {
+    [[ -n "$(find "$1" -maxdepth 1 -mindepth 1 -type d -print -quit 2>/dev/null)" ]]
+}
+
+_is_cross_cutting() {
+    local dir="$1"
+    local areas=0
+    for subdir in "$dir"/*/; do
+        [[ -d "$subdir" ]] || continue
+        case "$(basename "$subdir")" in
+            ui|domain|data|application)        ((areas++)) ;;
+            task|budget|meal)                  ((areas++)) ;;
+            app|shared|database|util|features) ((areas++)) ;;
+        esac
+    done
+    (( areas >= 2 ))
+}
+
+_should_skip_dir() {
+    local skill="$1" dir="$2"
+    is_ui_skill "$skill" && ! is_ui_dir "$dir" && return 0
+    is_highlevel_skill "$skill" && ! is_highlevel_dir "$dir" && return 0
+    return 1
 }
 
 # Skill complexity tier — drives model selection and turns bonus.
@@ -159,16 +198,24 @@ _size_bucket() {
 }
 
 # Model matrix  (tier × bucket)  — single source of truth; no parallel _select_* functions needed.
+# Cross-cutting dirs (+) get upgraded to opus via _CROSSCUT_UPGRADE below.
 #              xs       s        m        l        xl
 #   LIGHT:    haiku    haiku    haiku    haiku    sonnet
-#   MEDIUM:   haiku    haiku    sonnet   sonnet   sonnet
-#   HIGH:     haiku    sonnet   sonnet   sonnet   opus
-#   CRITICAL: sonnet   sonnet   opus     opus     opus
+#   MEDIUM:   haiku    haiku    sonnet   sonnet   sonnet+
+#   HIGH:     haiku    sonnet   sonnet   sonnet+  opus
+#   CRITICAL: sonnet   sonnet   sonnet+  opus     opus
 declare -A _MODEL_MATRIX=(
     [LIGHT_xs]=haiku    [LIGHT_s]=haiku    [LIGHT_m]=haiku    [LIGHT_l]=haiku    [LIGHT_xl]=sonnet
     [MEDIUM_xs]=haiku   [MEDIUM_s]=haiku   [MEDIUM_m]=sonnet  [MEDIUM_l]=sonnet  [MEDIUM_xl]=sonnet
     [HIGH_xs]=haiku     [HIGH_s]=sonnet    [HIGH_m]=sonnet    [HIGH_l]=sonnet    [HIGH_xl]=opus
-    [CRITICAL_xs]=sonnet [CRITICAL_s]=sonnet [CRITICAL_m]=opus [CRITICAL_l]=opus [CRITICAL_xl]=opus
+    [CRITICAL_xs]=sonnet [CRITICAL_s]=sonnet [CRITICAL_m]=sonnet [CRITICAL_l]=opus [CRITICAL_xl]=opus
+)
+
+# Cross-cutting upgrade: cells marked with + above get opus when the dir spans ≥2 areas.
+declare -A _CROSSCUT_UPGRADE=(
+    [MEDIUM_xl]=opus
+    [HIGH_l]=opus
+    [CRITICAL_m]=opus
 )
 
 # Turns matrix  (tier × bucket)
@@ -206,6 +253,12 @@ select_agent_config() {
     AGENT_MODEL="${_MODEL_MATRIX[$key]}"
     AGENT_TURNS="${_TURNS_MATRIX[$key]}"
     AGENT_LINE_COUNT="$line_count"
+
+    # Cross-cutting upgrade: dirs spanning ≥2 architectural areas get the model from _CROSSCUT_UPGRADE
+    local crosscut="${_CROSSCUT_UPGRADE[$key]:-}"
+    if [[ -n "$crosscut" && -n "$dir" ]] && _is_cross_cutting "$dir"; then
+        AGENT_MODEL="$crosscut"
+    fi
 }
 
 # Tee all stdout/stderr to $RUN_LOG so the run summary is preserved after exit.
@@ -406,10 +459,18 @@ level containing all affected files.
 **If you skip writing a REVIEW_BACKLOG.md for any issue, that issue is permanently lost.**
 
 ### Step 4 — Implement fixes
-Fix issues directly in source files. After implementing EACH individual fix, immediately
-edit the REVIEW_BACKLOG.md to remove that entry — do not batch backlog edits at the end.
-Removing an entry IS the resolution record; do not re-document fixed issues.
-If you cannot fix something (turn budget, risk, scope), leave it in the backlog as-is.
+Fix aggressively. Your goal is to resolve as many issues as possible, not to document them.
+Every issue left in the backlog has to wait for a future cycle to be picked up again — there
+is no other team. If you can fix it now, fix it now. This includes:
+- One-liners and single-file fixes: always fix immediately.
+- Multi-file fixes within your scope (${dir}): fix immediately.
+- Refactors that touch several related files: fix immediately.
+The ONLY valid reason to defer is when a fix requires editing files OUTSIDE ${dir} that you
+cannot access in this run. Everything else is your responsibility right now.
+
+After implementing EACH individual fix, immediately edit the REVIEW_BACKLOG.md to remove
+that entry — do not batch backlog edits at the end. Removing an entry IS the resolution
+record; do not re-document fixed issues.
 
 ### Step 5 — Final backlog cleanup
 Delete any REVIEW_BACKLOG.md that is now empty. No other backlog changes needed —
@@ -424,7 +485,11 @@ Output a structured summary as the very last thing you write. Use exactly this f
 - [SEVERITY] Brief description — file:line
 
 **Deferred to backlog:** *(omit section if none)*
-- [SEVERITY] Brief description — file:line
+- [SEVERITY] Brief description — file:line → path/to/REVIEW_BACKLOG.md (new|existing)
+
+Mark each deferred item with:
+- **new** = discovered in this run
+- **existing** = was already in a REVIEW_BACKLOG.md before this run
 
 **IMPORTANT:** Every item listed under "Deferred to backlog" MUST already exist in a
 REVIEW_BACKLOG.md file written in Step 3. If you list a deferred item here that has no
@@ -564,7 +629,7 @@ _dispatch_dir() {
     local logfile="${skill_log_dir}/${log_filename}.md"
     select_agent_config "$skill" "$dir"
     echo "══════════════════════════════════════════"
-    [[ -n "$cycle" ]] && echo "Cycle ${cycle} · Dir $(( dir_i + 1 ))/${total_dirs} · ${skill} · $(date '+%H:%M:%S')"
+    [[ -n "$cycle" ]] && echo "Cycle ${cycle} · Dir ${dir_i}/${total_dirs} · ${skill} · $(date '+%H:%M:%S')"
     [[ -z "$cycle" ]]  && echo "${skill} · $(date '+%H:%M:%S')"
     echo "${AGENT_LINE_COUNT}L · ${AGENT_MODEL} · ${AGENT_TURNS} turns"
     echo "Folder : $dir"
@@ -786,6 +851,15 @@ You are the crash recovery agent. Do the following in order:
 
                 _cur_dir=""
 
+                # Pre-count eligible dirs for accurate progress display
+                _eligible_count=0
+                for _d in "${dirs[@]}"; do
+                    [[ -d "$_d" ]] || continue
+                    _should_skip_dir "$SKILL" "$_d" && continue
+                    ((_eligible_count++))
+                done
+                _processed_count=0
+
                 while true; do
                     _rebuild_dirs   # fresh snapshot before each agent call
 
@@ -796,7 +870,7 @@ You are the crash recovery agent. Do the following in order:
                         _d="${dirs[$_i]}"
                         [[ -d "$_d" ]] || continue
                         [[ -n "${VISITED_DIRS[$_d]+x}" ]] && continue
-                        if is_ui_skill "$SKILL" && ! is_ui_dir "$_d"; then continue; fi
+                        if _should_skip_dir "$SKILL" "$_d"; then continue; fi
                         _found_dir="$_d"; _found_i="$_i"; break
                     done
                     [[ -z "$_found_dir" ]] && break   # skill complete
@@ -808,8 +882,9 @@ You are the crash recovery agent. Do the following in order:
                     _save_state "$cycle" "$skill_i" "$_found_i" \
                                 "$_cur_dir" "$_found_dir" "$_next_dir"
 
+                    ((_processed_count++))
                     _dispatch_dir "$_found_dir" "$SKILL" "$SKILL_TEXT" "$SKILL_LOG_DIR" \
-                                  "$cycle" "$_found_i" "${#dirs[@]}"
+                                  "$cycle" "$_processed_count" "$_eligible_count"
 
                     _cur_dir="$_found_dir"
                     start_dir_i=0   # always scan from beginning; visited-set handles skips

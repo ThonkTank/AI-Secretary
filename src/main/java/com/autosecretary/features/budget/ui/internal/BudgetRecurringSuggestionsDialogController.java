@@ -74,15 +74,15 @@ public class BudgetRecurringSuggestionsDialogController {
             amount.setText(CurrencyFormatter.eurosMagnitude(suggestion.avgAmountCents()));
 
             amount.setTextColor(suggestion.avgAmountCents() >= 0
-                    ? getColorFromResources(R.color.budget_positive)
-                    : getColorFromResources(R.color.budget_negative));
+                    ? ContextCompat.getColor(ctx,R.color.budget_positive)
+                    : ContextCompat.getColor(ctx,R.color.budget_negative));
 
             if (suggestion.confidenceScore() >= HIGH_CONFIDENCE_THRESHOLD) {
-                confidence.setTextColor(getColorFromResources(R.color.budget_positive));
+                confidence.setTextColor(ContextCompat.getColor(ctx,R.color.budget_positive));
             } else if (suggestion.confidenceScore() >= MEDIUM_CONFIDENCE_THRESHOLD) {
-                confidence.setTextColor(getColorFromResources(R.color.budget_warning));
+                confidence.setTextColor(ContextCompat.getColor(ctx,R.color.budget_warning));
             } else {
-                confidence.setTextColor(getColorFromResources(R.color.budget_neutral));
+                confidence.setTextColor(ContextCompat.getColor(ctx,R.color.budget_neutral));
             }
 
             listContainer.addView(rowView);
@@ -159,7 +159,4 @@ public class BudgetRecurringSuggestionsDialogController {
         };
     }
 
-    private int getColorFromResources(int colorRes) {
-        return ContextCompat.getColor(fragment.requireContext(), colorRes);
-    }
 }
