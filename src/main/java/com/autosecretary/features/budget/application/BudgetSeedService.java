@@ -45,7 +45,7 @@ public class BudgetSeedService {
             seedDemoTransactions(accountId, LocalDate.now());
         }
 
-        List<BudgetCategory> categories = repository.getActiveCategories();
+        List<BudgetCategory> categories = repository.findActiveCategories();
         String resolvedSelected = selectedAccountId;
         if ((resolvedSelected == null || resolvedSelected.isBlank()) && !accountList.isEmpty()) {
             resolvedSelected = accountList.get(0).id;
@@ -55,7 +55,7 @@ public class BudgetSeedService {
     }
 
     private void ensureDefaultCategories() {
-        List<BudgetCategory> existing = repository.getActiveCategories();
+        List<BudgetCategory> existing = repository.findActiveCategories();
         if (!existing.isEmpty()) {
             return;
         }
@@ -68,7 +68,7 @@ public class BudgetSeedService {
     }
 
     private void seedDemoTransactions(String accountId, LocalDate reference) {
-        List<BudgetCategory> categories = repository.getActiveCategories();
+        List<BudgetCategory> categories = repository.findActiveCategories();
         String incomeCategoryId = findCategoryIdByName(categories, CAT_GEHALT);
         String housingCategoryId = findCategoryIdByName(categories, CAT_MIETE);
         String groceryCategoryId = findCategoryIdByName(categories, CAT_LEBENSMITTEL);

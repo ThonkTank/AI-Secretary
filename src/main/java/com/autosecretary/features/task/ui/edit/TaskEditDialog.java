@@ -29,6 +29,8 @@ import com.autosecretary.features.task.ui.edit.state.TaskEditState;
  * back to Task for persistence.
  */
 public class TaskEditDialog extends DialogFragment {
+    public static final String TAG_EDIT = "edit";
+    public static final String TAG_CREATE = "create";
 
     private TaskEditSessionController editSessionController;
     private TaskEditPresenter presenter;

@@ -16,7 +16,7 @@
 
     <Button
         android:id="@+id/ScheduleStartButton"
-        android:layout_width="72dp"
+        android:layout_width="@dimen/task_schedule_day_time_button_width"
         android:layout_height="wrap_content"
         android:textAllCaps="false" />
 
@@ -29,7 +29,7 @@
 
     <Button
         android:id="@+id/ScheduleEndButton"
-        android:layout_width="72dp"
+        android:layout_width="@dimen/task_schedule_day_time_button_width"
         android:layout_height="wrap_content"
         android:textAllCaps="false" />
 

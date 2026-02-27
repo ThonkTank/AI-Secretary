@@ -122,7 +122,7 @@ public class BudgetImportUseCase {
         for (StatementFileParser.ParsedTransaction parsed : parsedTransactions) {
             String txHash = parsed.importHash();
             if (txHash == null || txHash.isBlank()) {
-                txHash = buildTransactionFingerprint(parsed.date(), parsed.amountCents(), parsed.payee());
+                txHash = buildTransactionFingerprint(parsed.bookingDate(), parsed.amountCents(), parsed.payee());
             }
 
             if (repository.existsTransactionByImportHash(txHash)) {
@@ -144,9 +144,9 @@ public class BudgetImportUseCase {
                     null,
                     accountId,
                     parsed.amountCents(),
-                    parsed.date(),
+                    parsed.bookingDate(),
                     categoryId,
-                    parsed.description(),
+                    parsed.note(),
                     parsed.payee(),
                     txHash,
                     importId,

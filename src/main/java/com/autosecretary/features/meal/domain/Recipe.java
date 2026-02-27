@@ -118,8 +118,8 @@ public class Recipe {
         public Builder maxServings(int v) { r.maxServings = v; return this; }
         public Builder precision(ScalingPrecision v) { r.scalingPrecision = v; return this; }
         public Builder effort(PrepEffort v) { r.prepEffort = v; return this; }
-        public Builder ingredient(long id, String name, double amount, String unit) {
-            r.ingredients.add(new RecipeIngredient(id, name, amount, unit));
+        public Builder ingredient(long ingredientId, String ingredientName, double amount, String unit) {
+            r.ingredients.add(new RecipeIngredient(ingredientId, ingredientName, amount, unit));
             return this;
         }
         public Builder tags(String v) { r.tags = v; return this; }

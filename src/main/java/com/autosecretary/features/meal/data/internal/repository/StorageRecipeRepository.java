@@ -22,7 +22,7 @@ public class StorageRecipeRepository implements RecipeRepository {
     }
 
     @Override
-    public List<Recipe> getAllRecipes() {
+    public List<Recipe> getRecipes() {
         return recipeDao.findAll();
     }
 
@@ -42,7 +42,7 @@ public class StorageRecipeRepository implements RecipeRepository {
     }
 
     @Override
-    public List<Ingredient> getAllIngredients() {
+    public List<Ingredient> getIngredients() {
         return ingredientDao.findAll();
     }
 

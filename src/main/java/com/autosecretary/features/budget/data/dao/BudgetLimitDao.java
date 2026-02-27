@@ -13,7 +13,7 @@ import com.autosecretary.features.budget.domain.CategorySpendSummary;
 public interface BudgetLimitDao {
 
     @Query("SELECT * FROM budget_limit WHERE categoryId = :categoryId AND yearMonth = :yearMonth LIMIT 1")
-    BudgetLimit getLimitForCategoryAndMonth(String categoryId, String yearMonth);
+    BudgetLimit findLimitForCategoryAndMonth(String categoryId, String yearMonth);
 
     @Query("""
             SELECT COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amountCents ELSE 0 END), 0)

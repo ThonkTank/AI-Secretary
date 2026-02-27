@@ -170,8 +170,7 @@ public class LegacyMealImportService {
             Map<String, Object> row = rows.get(i);
             LocalDate date = asDate(row.get("date"));
             MealType mealType = asEnum(MealType.class, row.get("meal_type"), null);
-            Long recipeIdLong = asLong(row.get("recipe_id"));
-            long recipeId = recipeIdLong != null ? recipeIdLong : 0L;
+            long recipeId = asLong(row.get("recipe_id"), 0L);
             if (date == null || mealType == null || recipeId <= 0) {
                 report.addFailure(SOURCE_MEAL_PLANS, i, "required fields invalid: date/meal_type/recipe_id");
                 continue;
@@ -222,8 +221,7 @@ public class LegacyMealImportService {
     private void importPantry(List<Map<String, Object>> rows, LegacyImportReport report) {
         for (int i = 0; i < rows.size(); i++) {
             Map<String, Object> row = rows.get(i);
-            Long ingredientIdLong = asLong(row.get("ingredient_id"));
-            long ingredientId = ingredientIdLong != null ? ingredientIdLong : 0L;
+            long ingredientId = asLong(row.get("ingredient_id"), 0L);
             if (ingredientId <= 0) {
                 report.addFailure(SOURCE_PANTRY, i, "missing required field: ingredient_id");
                 continue;
@@ -248,8 +246,7 @@ public class LegacyMealImportService {
         for (int i = 0; i < rows.size(); i++) {
             Map<String, Object> row = rows.get(i);
             String periodKey = asString(row.get("period_key"));
-            Long ingredientIdLong = asLong(row.get("ingredient_id"));
-            long ingredientId = ingredientIdLong != null ? ingredientIdLong : 0L;
+            long ingredientId = asLong(row.get("ingredient_id"), 0L);
             if (periodKey == null || periodKey.isBlank() || ingredientId <= 0) {
                 report.addFailure(SOURCE_SHOPPING, i, "required fields invalid: period_key/ingredient_id");
                 continue;
@@ -364,6 +361,8 @@ public class LegacyMealImportService {
     //   asEnum     — case-insensitive matching + Log.w on unknown value (vs. Enum.valueOf strict + exception)
     //   asDate     — multi-format + epoch-seconds support for old DB exports (vs. ISO-only in MapperSupport)
     //   asDateTime — same multi-format rationale as asDate
+    //   asLong/asInt/asDouble — catch NumberFormatException and return fallback (vs. MapperSupport propagating the exception)
+    //   asBoolean  — returns caller's fallback for unrecognized strings (vs. MapperSupport returning false via Boolean.parseBoolean)
     // Sharing them would either relax the data layer's guarantees or add legacy complexity there.
     private static <E extends Enum<E>> E asEnum(Class<E> type, Object raw, E fallback) {
         if (raw == null) return fallback;
@@ -418,7 +417,9 @@ public class LegacyMealImportService {
     }
 
     private static String asString(Object raw) {
-        return raw == null ? null : raw.toString();
+        if (raw == null) return null;
+        String s = raw.toString().trim();
+        return s.isEmpty() ? null : s;
     }
 
     private static Long asLong(Object raw) {

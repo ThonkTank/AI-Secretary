@@ -99,8 +99,8 @@ public class TaskEditPresenter {
         editState.title = safeInput.title;
         editState.description = safeInput.description;
         editState.priority = coalesce(safeInput.priority, TaskEditDefaults.PRIORITY);
-        editState.goalIcon = safeInput.goalIcon != null ? safeInput.goalIcon : TaskEditDefaults.GOAL_ICON;
-        editState.goalColorHex = safeInput.goalColorHex != null ? safeInput.goalColorHex : TaskEditDefaults.GOAL_COLOR_HEX;
+        editState.goalIcon = coalesce(safeInput.goalIcon, TaskEditDefaults.GOAL_ICON);
+        editState.goalColorHex = coalesce(safeInput.goalColorHex, TaskEditDefaults.GOAL_COLOR_HEX);
         editState.schedulingType = coalesce(safeInput.schedulingType, TaskEditDefaults.SCHEDULING_TYPE);
         editState.fixedDate = safeInput.fixedDate;
         editState.fixedStart = safeInput.fixedStart;

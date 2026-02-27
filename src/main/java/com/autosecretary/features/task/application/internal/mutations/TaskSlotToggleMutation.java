@@ -11,7 +11,7 @@ import android.util.Log;
 import androidx.room.RoomDatabase;
 
 import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskDAO;
+import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.data.TaskTransitionStatDao;
@@ -26,19 +26,21 @@ import com.autosecretary.features.task.domain.TaskLifecycleManager;
  * callbacks are dispatched through {@code callbackDispatcher}.
  */
 public final class TaskSlotToggleMutation {
+    private static final String TAG = "TaskSlotToggle";
+
     // Transition stat weights: completed transitions count double vs. started,
     // so the scheduler gives stronger preference to pairs the user actually finishes.
     private static final int TRANSITION_WEIGHT_STARTED = 1;
     private static final int TRANSITION_WEIGHT_COMPLETED = 2;
 
-    private final TaskDAO taskDao;
+    private final TaskDao taskDao;
     private final TaskCompletionService completionService;
     private final TaskLifecycleManager lifecycleManager;
     private final TaskTransitionStatDao transitionDao;
     private final Executor callbackDispatcher;
     private final RoomDatabase database;
 
-    public TaskSlotToggleMutation(TaskDAO taskDao,
+    public TaskSlotToggleMutation(TaskDao taskDao,
                                   TaskCompletionService completionService,
                                   TaskLifecycleManager lifecycleManager,
                                   TaskTransitionStatDao transitionDao,
@@ -101,9 +103,7 @@ public final class TaskSlotToggleMutation {
             return;
         }
 
-        if (postWriteAction != null && callbackDispatcher != null) {
-            callbackDispatcher.execute(postWriteAction);
-        }
+        callbackDispatcher.execute(postWriteAction);
     }
 
     private static boolean runTransactionOrAbort(RoomDatabase db, String errorMsg, Runnable body) {
@@ -111,7 +111,7 @@ public final class TaskSlotToggleMutation {
             db.runInTransaction(body);
             return true;
         } catch (RuntimeException e) {
-            Log.e("TaskSlotToggle", errorMsg, e);
+            Log.e(TAG, errorMsg, e);
             return false;
         }
     }
@@ -157,7 +157,7 @@ public final class TaskSlotToggleMutation {
 
         LocalTime eventTime = determineEventTime(slot);
 
-        String previousTaskId = taskDao.findMostRecentTaskBefore(slot.taskId, slot.day, eventTime);
+        String previousTaskId = taskDao.readMostRecentTaskBefore(slot.taskId, slot.day, eventTime);
         if (isInvalidTransition(previousTaskId, slot.taskId)) {
             return;
         }

@@ -1,8 +1,7 @@
 package com.autosecretary.features.meal.data.internal;
 
 /**
- * Benannte Collections/Tables fuer Meal-Persistenz.
- * Abgeleitet aus dem Legacy-Table-Konzept.
+ * Named storage collections for meal data persistence.
  */
 public final class MealCollections {
     public static final String RECIPES = "recipes";

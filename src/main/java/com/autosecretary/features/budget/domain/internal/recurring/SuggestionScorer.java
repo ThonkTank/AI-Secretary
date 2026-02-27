@@ -56,7 +56,7 @@ public final class SuggestionScorer {
                                              long minAmount,
                                              long maxAmount,
                                              String normalizedPayee) {
-        double score = 0;
+        double score = 0.0;
         score += Math.min((occurrenceCount / OCCURRENCE_CAP) * OCCURRENCE_WEIGHT, OCCURRENCE_WEIGHT);
         score += calculateAmountVarianceScore(avgAmount, minAmount, maxAmount);
         score += PATTERN_TYPE_BONUS;

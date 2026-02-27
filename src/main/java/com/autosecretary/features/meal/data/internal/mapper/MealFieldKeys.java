@@ -4,6 +4,7 @@ package com.autosecretary.features.meal.data.internal.mapper;
  * Shared field-key constants used by multiple mappers and their repository callers.
  */
 public interface MealFieldKeys {
+    // Shared across ShoppingListItem and WeeklyFoodTarget — kept at top level to avoid duplication.
     String PERIOD_KEY = "periodKey";
 
     interface HouseholdMember {
@@ -48,6 +49,7 @@ public interface MealFieldKeys {
     }
 
     interface ShoppingListItem {
+        // periodKey is shared with WeeklyFoodTarget — use MealFieldKeys.PERIOD_KEY.
         String ID = "id";
         String INGREDIENT_ID = "ingredientId";
         String INGREDIENT_NAME = "ingredientName";
@@ -75,6 +77,7 @@ public interface MealFieldKeys {
     }
 
     interface WeeklyFoodTarget {
+        // periodKey is shared with ShoppingListItem — use MealFieldKeys.PERIOD_KEY.
         String ID = "id";
         String GRAIN_GRAMS = "grainGrams";
         String POTATO_GRAMS = "potatoGrams";

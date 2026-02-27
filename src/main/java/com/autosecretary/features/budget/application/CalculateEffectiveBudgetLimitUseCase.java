@@ -1,7 +1,5 @@
 package com.autosecretary.features.budget.application;
 
-import androidx.annotation.NonNull;
-
 import com.autosecretary.features.budget.data.entity.BudgetLimit;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 
@@ -22,11 +20,11 @@ public class CalculateEffectiveBudgetLimitUseCase {
 
     private final BudgetRepository repository;
 
-    public CalculateEffectiveBudgetLimitUseCase(@NonNull BudgetRepository repository) {
+    public CalculateEffectiveBudgetLimitUseCase(BudgetRepository repository) {
         this.repository = repository;
     }
 
-    public Result execute(@NonNull String categoryId, @NonNull String targetYearMonth) {
+    public Result execute(String categoryId, String targetYearMonth) {
         BudgetLimit target = repository.findBudgetLimit(categoryId, targetYearMonth);
         long spentCents = repository.getCategoryExpenseCents(categoryId, targetYearMonth);
         if (target == null) {

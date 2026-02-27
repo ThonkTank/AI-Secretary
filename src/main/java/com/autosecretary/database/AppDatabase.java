@@ -17,15 +17,15 @@ import com.autosecretary.features.budget.data.dao.BudgetLookupDao;
 import com.autosecretary.features.budget.data.dao.BudgetRecurringTemplateDao;
 import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEntity;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
-import com.autosecretary.features.budget.data.dao.TransactionDao;
+import com.autosecretary.features.budget.data.dao.BudgetTransactionDao;
 import com.autosecretary.features.task.data.TaskCore;
-import com.autosecretary.features.task.data.TaskDAO;
+import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.data.TaskPlannedMeal;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskRelation;
 import com.autosecretary.features.task.data.TaskScheduleConfig;
-import com.autosecretary.features.task.data.TaskScheduleConfigDAO;
+import com.autosecretary.features.task.data.TaskScheduleConfigDao;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.data.TaskTransitionStat;
 import com.autosecretary.features.task.data.TaskTransitionStatDao;
@@ -55,15 +55,15 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public static final String DB_NAME = "autosecretary.db";
 
-    public abstract TaskDAO taskDao();
+    public abstract TaskDao taskDao();
 
-    public abstract TaskScheduleConfigDAO taskScheduleConfigDao();
+    public abstract TaskScheduleConfigDao taskScheduleConfigDao();
 
     public abstract TaskTransitionStatDao taskTransitionStatDao();
 
     public abstract BudgetLookupDao budgetLookupDao();
 
-    public abstract TransactionDao transactionDao();
+    public abstract BudgetTransactionDao budgetTransactionDao();
 
     public abstract BudgetLimitDao budgetLimitDao();
 

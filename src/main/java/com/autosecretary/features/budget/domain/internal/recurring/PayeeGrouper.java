@@ -5,6 +5,7 @@ import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -52,7 +53,7 @@ public final class PayeeGrouper {
         if (payee == null) {
             return "";
         }
-        String upper = payee.toUpperCase();
+        String upper = payee.toUpperCase(Locale.GERMAN);
         String noDigits = DIGITS_AND_SPECIAL.matcher(upper).replaceAll("");
         String lettersOnly = NON_LETTER_CHARS.matcher(noDigits).replaceAll(" ");
         return MULTI_WHITESPACE.matcher(lettersOnly).replaceAll(" ").trim();

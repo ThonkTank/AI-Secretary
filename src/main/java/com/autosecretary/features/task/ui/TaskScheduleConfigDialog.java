@@ -34,7 +34,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 public class TaskScheduleConfigDialog extends DialogFragment {
-    private final DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.GERMAN);
+    public static final String TAG = "schedule_config";
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm", Locale.GERMAN);
     private final Map<DayOfWeek, TaskScheduleConfig> draftByDay = new EnumMap<>(DayOfWeek.class);
 
     private TaskScheduleConfigRepository scheduleConfigRepository;
@@ -107,16 +108,16 @@ public class TaskScheduleConfigDialog extends DialogFragment {
             Button endButton = row.findViewById(R.id.ScheduleEndButton);
 
             dayLabel.setText(day.getDisplayName(TextStyle.FULL, Locale.GERMAN));
-            startButton.setText(rowConfig.startTime.format(timeFormat));
-            endButton.setText(rowConfig.endTime.format(timeFormat));
+            startButton.setText(rowConfig.startTime.format(TIME_FORMATTER));
+            endButton.setText(rowConfig.endTime.format(TIME_FORMATTER));
 
             startButton.setOnClickListener(v -> showTimePicker(rowConfig.startTime, picked -> {
                 rowConfig.startTime = picked;
-                startButton.setText(picked.format(timeFormat));
+                startButton.setText(picked.format(TIME_FORMATTER));
             }));
             endButton.setOnClickListener(v -> showTimePicker(rowConfig.endTime, picked -> {
                 rowConfig.endTime = picked;
-                endButton.setText(picked.format(timeFormat));
+                endButton.setText(picked.format(TIME_FORMATTER));
             }));
 
             container.addView(row);

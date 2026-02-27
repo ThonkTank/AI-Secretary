@@ -45,7 +45,7 @@ public class TaskEditFormValidator {
         }
 
         if (valid) {
-            valid &= validateMinMaxPair(
+            valid &= validateFirstNotAboveSecond(
                 views.minDurationView,
                 views.maxDurationView,
                 R.string.task_edit_validation_duration_min_exceeds_max,
@@ -54,7 +54,7 @@ public class TaskEditFormValidator {
         }
 
         if (valid && views.toggleProgress.isChecked()) {
-            valid &= validateMinMaxPair(
+            valid &= validateFirstNotAboveSecond(
                 views.minPerRepView,
                 views.maxPerRepView,
                 R.string.task_edit_validation_per_rep_min_exceeds_max,
@@ -106,11 +106,6 @@ public class TaskEditFormValidator {
                 context.getString(rangeMessageResId)));
             return false;
         }
-    }
-
-    private boolean validateMinMaxPair(EditText minField, EditText maxField,
-                                       int minMessageResId, int maxMessageResId) {
-        return validateFirstNotAboveSecond(minField, maxField, minMessageResId, maxMessageResId);
     }
 
     private boolean validateCurrentNotAboveTarget(EditText currentView, EditText targetView) {

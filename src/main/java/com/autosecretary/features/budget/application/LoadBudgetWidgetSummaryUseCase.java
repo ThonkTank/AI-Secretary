@@ -13,7 +13,7 @@ public class LoadBudgetWidgetSummaryUseCase {
         this.repository = repository;
     }
 
-    public BudgetWidgetSummary loadCurrentMonth() {
+    public BudgetWidgetSummary execute() {
         String yearMonth = YearMonth.now().toString();
         long netBalanceCents = repository.getNetBalanceCents();
 

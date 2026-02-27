@@ -11,7 +11,7 @@ public record RecurringSuggestion(
         long avgAmountCents,
         long minAmountCents,
         long maxAmountCents,
-        TransactionDirection transactionType,
+        TransactionDirection direction,
         RecurringBudgetTransaction.RecurringType suggestedType,
         int suggestedValue,
         DayOfWeek suggestedDayOfWeek,

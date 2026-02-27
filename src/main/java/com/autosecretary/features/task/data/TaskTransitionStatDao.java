@@ -18,6 +18,8 @@ public interface TaskTransitionStatDao {
     @Query("UPDATE task_transition_stats SET weight = weight + :delta, lastSeen = :lastSeen WHERE fromTaskId = :fromTaskId AND toTaskId = :toTaskId")
     int incrementWeight(String fromTaskId, String toTaskId, int delta, LocalDateTime lastSeen);
 
+    // Named `insert` (not `write`) intentionally: IGNORE conflict strategy is used here, not REPLACE.
+    // Task DAO convention is read*/write* (upsert via REPLACE) / delete*; this is the sole non-upsert write.
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void insert(TaskTransitionStat stat);
 

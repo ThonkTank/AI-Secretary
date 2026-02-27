@@ -107,7 +107,7 @@ public class TaskEditSectionBinder {
         });
 
         bindEnumSpinner(schedulingTypeView, TaskCore.SchedulingType.values());
-        TaskCore.SchedulingType schedulingType = editState.schedulingType != null ? editState.schedulingType : TaskEditDefaults.SCHEDULING_TYPE;
+        TaskCore.SchedulingType schedulingType = TaskEditPresenter.coalesce(editState.schedulingType, TaskEditDefaults.SCHEDULING_TYPE);
         schedulingTypeView.setSelection(schedulingType.ordinal());
         fixedDateView.setText(editState.fixedDate != null ? editState.fixedDate.toString() : "");
         fixedStartView.setText(editState.fixedStart != null ? editState.fixedStart.toString() : "");
@@ -159,7 +159,7 @@ public class TaskEditSectionBinder {
         perPeriodView.setText(String.valueOf(editState.perPeriod > 0 ? editState.perPeriod : 1));
 
         bindEnumSpinner(periodUnitView, Period.values());
-        Period periodUnit = editState.periodUnit != null ? editState.periodUnit : Period.DAY;
+        Period periodUnit = TaskEditPresenter.coalesce(editState.periodUnit, TaskEditDefaults.REPETITION_PERIOD_UNIT);
         periodUnitView.setSelection(periodUnit.ordinal());
         completeFirstView.setChecked(editState.completeFirst);
 

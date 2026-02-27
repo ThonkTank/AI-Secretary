@@ -1,10 +1,14 @@
 package com.autosecretary.features.meal.data.internal.mapper;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 final class MapperSupport {
     private MapperSupport() {
@@ -102,20 +106,47 @@ final class MapperSupport {
         return dateTime == null ? null : dateTime.toString();
     }
 
-    // Safe collection conversions
+    // "Both-paths" collection deserialization: if the stored value is already the target type,
+    // use it directly; otherwise parse it from a String via the supplied parser function.
     @SuppressWarnings("unchecked")
-    static <E> Set<E> asSet(Object value) {
-        if (value instanceof Set<?> set) {
-            return (Set<E>) set;
+    static <T> List<T> asListOrParse(Object value, Function<String, List<T>> parser) {
+        if (value instanceof List<?> list) {
+            return (List<T>) list;
         }
-        return Collections.emptySet();
+        return parser.apply(value instanceof String s ? s : null);
     }
 
     @SuppressWarnings("unchecked")
-    static <E> List<E> asList(Object value) {
-        if (value instanceof List<?> list) {
-            return (List<E>) list;
+    static <T> Set<T> asSetOrParse(Object value, Function<String, Set<T>> parser) {
+        if (value instanceof Set<?> set) {
+            return (Set<T>) set;
         }
-        return Collections.emptyList();
+        return parser.apply(value instanceof String s ? s : null);
+    }
+
+    // DayOfWeek set serialization — comma-separated names, e.g. "MONDAY,WEDNESDAY,FRIDAY"
+    static Set<DayOfWeek> asDayOfWeekSet(Object value) {
+        if (value instanceof Set<?> set) {
+            Set<DayOfWeek> result = EnumSet.noneOf(DayOfWeek.class);
+            for (Object item : set) {
+                DayOfWeek day = asEnum(DayOfWeek.class, item, null);
+                if (day != null) result.add(day);
+            }
+            return result;
+        }
+        if (value == null) return EnumSet.noneOf(DayOfWeek.class);
+        String raw = value.toString().trim();
+        if (raw.isEmpty()) return EnumSet.noneOf(DayOfWeek.class);
+        Set<DayOfWeek> result = EnumSet.noneOf(DayOfWeek.class);
+        for (String part : raw.split(",")) {
+            DayOfWeek day = asEnum(DayOfWeek.class, part.trim(), null);
+            if (day != null) result.add(day);
+        }
+        return result;
+    }
+
+    static String serializeDayOfWeekSet(Set<DayOfWeek> days) {
+        if (days == null || days.isEmpty()) return "";
+        return days.stream().map(Enum::name).collect(Collectors.joining(","));
     }
 }

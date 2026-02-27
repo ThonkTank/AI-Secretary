@@ -111,7 +111,7 @@ public class TaskListItem {
         this.inProgress = false;
         this.progressCurrent = 0;
         this.progressTarget = 0;
-        this.progressUnit = "";
+        this.progressUnit = null;
         this.progressStepDelta = 0;
         this.goalIcon = null;
         this.goalColorHex = null;

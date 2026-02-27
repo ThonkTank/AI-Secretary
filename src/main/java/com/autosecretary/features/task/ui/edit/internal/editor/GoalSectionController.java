@@ -9,7 +9,7 @@ import androidx.annotation.DimenRes;
 import androidx.fragment.app.DialogFragment;
 
 import com.autosecretary.R;
-import com.autosecretary.features.task.data.TaskCore;
+import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 public class GoalSectionController {
@@ -34,12 +34,8 @@ public class GoalSectionController {
         this.goalIconView = rootView.findViewById(R.id.EditGoalIcon);
         this.goalColorGrid = rootView.findViewById(R.id.GoalColorGrid);
 
-        this.goalIconView.setText(editState.goalIcon != null
-            ? editState.goalIcon
-            : TaskCore.DEFAULT_GOAL_ICON);
-        this.selectedGoalColorHex = editState.goalColorHex != null
-            ? editState.goalColorHex
-            : TaskCore.DEFAULT_GOAL_COLOR_HEX;
+        this.goalIconView.setText(editState.goalIcon != null ? editState.goalIcon : TaskEditDefaults.GOAL_ICON);
+        this.selectedGoalColorHex = editState.goalColorHex != null ? editState.goalColorHex : TaskEditDefaults.GOAL_COLOR_HEX;
 
         buildGoalColorGrid();
     }

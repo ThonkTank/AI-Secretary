@@ -2,17 +2,9 @@
 
 ## Open Issues
 
-### [nit] RecipeRowMapper: unescaped delimiters in ingredient/rating serialization
-**File:** `RecipeRowMapper.java:106-143`
+### [consider] No `asString` method in MapperSupport
+**Files:** All `*RowMapper.java` `fromRow()` methods
 
-`serializeIngredients` joins fields with `|` and records with `;`. `serializeRatings` joins with
-`,` and `|`. None of these separators are escaped, so if an `ingredientName` or `unit` ever
-contains `|` or `;`, `parseIngredients` will silently produce wrong data (wrong field alignment
-or dropped records). Same risk applies to ratings if a future field contains separator characters.
+All non-String types (Long, int, double, boolean, Enum, LocalDate, LocalDateTime, DayOfWeek sets) go through safe conversion methods in MapperSupport with null/type-mismatch handling. String fields use raw `(String)` casts with no safety net. Low practical risk since the data layer always reads what it wrote, but inconsistent with the established safe-conversion pattern.
 
-The storage is in-memory so no migration is needed, but the serialized strings are also read from
-legacy import rows where external data is the input.
-
-**Suggested fix:** Either validate that ingredient names/units cannot contain the delimiters, or
-switch to a safer format. At minimum, add a comment in the serialization methods stating the
-delimiter-free constraint.
+**Canonical recommendation:** Defer — the raw cast is safe in the current architecture. If the storage layer changes (e.g., to a database), add a `MapperSupport.asString(Object)` method.

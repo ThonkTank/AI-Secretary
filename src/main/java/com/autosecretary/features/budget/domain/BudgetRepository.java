@@ -15,7 +15,7 @@ public interface BudgetRepository {
     BudgetAccount findAccountById(String accountId);
     List<BudgetAccount> findActiveAccounts();
     void insertAccount(BudgetAccount account);
-    List<BudgetCategory> getActiveCategories();
+    List<BudgetCategory> findActiveCategories();
     void insertCategory(BudgetCategory category);
     List<BudgetTransactionEntity> findAllTransactions();
     List<BudgetTransactionEntity> findTransactionsForAccount(String accountId);

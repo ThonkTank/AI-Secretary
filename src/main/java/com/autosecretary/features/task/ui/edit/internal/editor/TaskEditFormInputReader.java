@@ -67,19 +67,11 @@ public class TaskEditFormInputReader {
         }
     }
 
-    private static int parseIntSafe(String s, int fallback) {
-        return TaskEditPresenter.parseIntSafe(s, fallback);
-    }
-
-    private static <T> T coalesce(T value, T fallback) {
-        return TaskEditPresenter.coalesce(value, fallback);
-    }
-
     public TaskEditPresenter.FormInput read() {
         TaskEditPresenter.FormInput input = new TaskEditPresenter.FormInput();
         input.title = basicInfoViews.titleView.getText().toString();
         input.description = basicInfoViews.descriptionView.getText().toString();
-        input.priority = coalesce(
+        input.priority = TaskEditPresenter.coalesce(
             (Priority) basicInfoViews.priorityView.getSelectedItem(),
             TaskEditDefaults.PRIORITY
         );
@@ -88,12 +80,12 @@ public class TaskEditFormInputReader {
         input.goalIcon = goalIconText.isEmpty()
             ? TaskEditDefaults.GOAL_ICON
             : goalIconText;
-        input.goalColorHex = coalesce(
+        input.goalColorHex = TaskEditPresenter.coalesce(
             goalSectionController.getSelectedGoalColorHex(),
             TaskEditDefaults.GOAL_COLOR_HEX
         );
 
-        input.schedulingType = coalesce(
+        input.schedulingType = TaskEditPresenter.coalesce(
             (TaskCore.SchedulingType) schedulingViews.schedulingTypeView.getSelectedItem(),
             TaskEditDefaults.SCHEDULING_TYPE
         );
@@ -109,30 +101,30 @@ public class TaskEditFormInputReader {
         input.budgetCategoryId = normalizeNullableString(schedulingViews.budgetCategoryIdView.getText().toString());
 
         input.closeOnMiss = schedulingViews.closeOnMissView.isChecked();
-        input.minDuration = parseIntSafe(
+        input.minDuration = TaskEditPresenter.parseIntSafe(
             schedulingViews.minDurationView.getText().toString(),
             TaskEditDefaults.MIN_DURATION
         );
-        input.maxDuration = parseIntSafe(
+        input.maxDuration = TaskEditPresenter.parseIntSafe(
             schedulingViews.maxDurationView.getText().toString(),
             TaskEditDefaults.MAX_DURATION
         );
-        input.cooldown = parseIntSafe(
+        input.cooldown = TaskEditPresenter.parseIntSafe(
             schedulingViews.cooldownView.getText().toString(),
             TaskEditDefaults.COOLDOWN
         );
         input.adaptive = schedulingViews.adaptiveView.isChecked();
 
         input.repetitionEnabled = repetitionViews.toggleRepetition.isChecked();
-        input.reps = parseIntSafe(
+        input.reps = TaskEditPresenter.parseIntSafe(
             repetitionViews.repsView.getText().toString(),
             TaskEditDefaults.REPETITION_REPS
         );
-        input.perPeriod = parseIntSafe(
+        input.perPeriod = TaskEditPresenter.parseIntSafe(
             repetitionViews.perPeriodView.getText().toString(),
             TaskEditDefaults.REPETITION_PER_PERIOD
         );
-        input.periodUnit = coalesce(
+        input.periodUnit = TaskEditPresenter.coalesce(
             (Period) repetitionViews.periodUnitView.getSelectedItem(),
             TaskEditDefaults.REPETITION_PERIOD_UNIT
         );
@@ -140,20 +132,20 @@ public class TaskEditFormInputReader {
 
         input.progressEnabled = progressViews.toggleProgress.isChecked();
         input.unit = progressViews.unitView.getText().toString();
-        input.target = parseIntSafe(
+        input.target = TaskEditPresenter.parseIntSafe(
             progressViews.targetView.getText().toString(),
             TaskEditDefaults.TARGET
         );
-        input.current = parseIntSafe(
+        input.current = TaskEditPresenter.parseIntSafe(
             progressViews.currentView.getText().toString(),
             TaskEditDefaults.CURRENT
         );
         input.resetPerRep = progressViews.resetPerRepView.isChecked();
-        input.minPerRep = parseIntSafe(
+        input.minPerRep = TaskEditPresenter.parseIntSafe(
             progressViews.minPerRepView.getText().toString(),
             TaskEditDefaults.MIN_PER_REP
         );
-        input.maxPerRep = parseIntSafe(
+        input.maxPerRep = TaskEditPresenter.parseIntSafe(
             progressViews.maxPerRepView.getText().toString(),
             TaskEditDefaults.MAX_PER_REP
         );

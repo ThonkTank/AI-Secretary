@@ -17,7 +17,7 @@ import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
 import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
 
 @Dao
-public interface TransactionDao {
+public interface BudgetTransactionDao {
 
     @Query("""
             SELECT t.id AS transactionId,

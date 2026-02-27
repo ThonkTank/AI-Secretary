@@ -1,6 +1,6 @@
 package com.autosecretary.features.task.data;
 
-import androidx.room.Dao; 
+import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
@@ -15,7 +15,7 @@ import java.util.List;
  * upsert ({@link #write}), and read operations. All writes use REPLACE conflict strategy (upsert).
  */
 @Dao
-public interface TaskDAO {
+public interface TaskDao {
 
     // ============== READ ==============
     @Transaction
@@ -115,7 +115,7 @@ public interface TaskDAO {
             ORDER BY day DESC, COALESCE(realStart, realEnd, end, start) DESC
             LIMIT 1
             """)
-    String findMostRecentTaskBefore(String taskId, LocalDate day, LocalTime eventTime);
+    String readMostRecentTaskBefore(String taskId, LocalDate day, LocalTime eventTime);
 
     // ============== Delete ==============
     @Query("DELETE FROM task_core WHERE id = :id")

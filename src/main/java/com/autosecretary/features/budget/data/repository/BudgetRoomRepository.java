@@ -14,7 +14,7 @@ import java.util.List;
 import androidx.room.RoomDatabase;
 import com.autosecretary.features.budget.data.dao.BudgetLimitDao;
 import com.autosecretary.features.budget.data.dao.BudgetLookupDao;
-import com.autosecretary.features.budget.data.dao.TransactionDao;
+import com.autosecretary.features.budget.data.dao.BudgetTransactionDao;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.data.entity.BudgetLimit;
@@ -24,13 +24,13 @@ import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEnti
 
 public class BudgetRoomRepository implements BudgetRepository {
     private final BudgetLookupDao lookupDao;
-    private final TransactionDao transactionDao;
+    private final BudgetTransactionDao transactionDao;
     private final BudgetLimitDao limitDao;
     private final BudgetRecurringTemplateDao recurringTemplateDao;
     private final RoomDatabase database;
 
     public BudgetRoomRepository(BudgetLookupDao lookupDao,
-                                 TransactionDao transactionDao,
+                                 BudgetTransactionDao transactionDao,
                                  BudgetLimitDao limitDao,
                                  BudgetRecurringTemplateDao recurringTemplateDao,
                                  RoomDatabase database) {
@@ -46,11 +46,11 @@ public class BudgetRoomRepository implements BudgetRepository {
     }
 
     @Override public List<BudgetAccount> findActiveAccounts() {
-        return lookupDao.getActiveAccounts();
+        return lookupDao.findActiveAccounts();
     }
 
-    @Override public List<BudgetCategory> getActiveCategories() {
-        return lookupDao.getActiveCategories();
+    @Override public List<BudgetCategory> findActiveCategories() {
+        return lookupDao.findActiveCategories();
     }
 
     @Override public List<BudgetTransactionEntity> findAllTransactions() {
@@ -66,11 +66,11 @@ public class BudgetRoomRepository implements BudgetRepository {
     }
 
     @Override public BudgetLimit findBudgetLimit(String categoryId, String yearMonth) {
-        return limitDao.getLimitForCategoryAndMonth(categoryId, yearMonth);
+        return limitDao.findLimitForCategoryAndMonth(categoryId, yearMonth);
     }
 
     @Override public BudgetLimit findPreviousMonthLimit(String categoryId, String targetYearMonth) {
-        return limitDao.getLimitForCategoryAndMonth(categoryId, previousYearMonth(targetYearMonth));
+        return limitDao.findLimitForCategoryAndMonth(categoryId, previousYearMonth(targetYearMonth));
     }
 
     @Override public long getPreviousMonthExpenseCents(String categoryId, String targetYearMonth) {

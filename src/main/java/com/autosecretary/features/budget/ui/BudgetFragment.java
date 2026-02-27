@@ -374,7 +374,8 @@ public class BudgetFragment extends Fragment {
                                 note.isEmpty() ? null : note, bookingDate, accountId);
                     } else {
                         budgetViewModel.updateTransaction(existingRow.getTransactionId(), amountStr,
-                                selectedExpense, categoryId, note, bookingDate, accountId);
+                                selectedExpense, categoryId, note.isEmpty() ? null : note,
+                                bookingDate, accountId);
                     }
                 })
                 .setNegativeButton(R.string.budget_dialog_cancel, null)

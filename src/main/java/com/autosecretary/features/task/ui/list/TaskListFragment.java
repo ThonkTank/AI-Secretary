@@ -86,13 +86,7 @@ public class TaskListFragment extends Fragment {
                 new ListRowAdapter.TaskRowActions(
                         vm::checkOff,
                         viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId),
-                        viewSlot -> {
-                            if (viewSlot.item.inProgress) {
-                                vm.stopTimer(viewSlot.item.slotId);
-                            } else {
-                                vm.startTimer(viewSlot.item.slotId);
-                            }
-                        },
+                        vm::toggleTimer,
                         vm::incrementProgress,
                         vm::decrementProgress,
                         vm::toggleExpanded,
@@ -151,7 +145,7 @@ public class TaskListFragment extends Fragment {
         View newTaskButton = view.findViewById(R.id.NewTaskButton);
         generateButton.setOnClickListener(v -> vm.updateList());
         scheduleConfigButton.setOnClickListener(v ->
-                new TaskScheduleConfigDialog().show(getParentFragmentManager(), "schedule_config")
+                new TaskScheduleConfigDialog().show(getParentFragmentManager(), TaskScheduleConfigDialog.TAG)
         );
 
         View.OnClickListener createTaskClickListener = v -> openCreateTaskDialog(editSessionController);
@@ -217,11 +211,11 @@ public class TaskListFragment extends Fragment {
 
     private void openEditDialog(TaskEditSessionController editSessionController, String taskId) {
         editSessionController.beginEditTask(taskId);
-        new TaskEditDialog().show(getParentFragmentManager(), "edit");
+        new TaskEditDialog().show(getParentFragmentManager(), TaskEditDialog.TAG_EDIT);
     }
 
     private void openCreateTaskDialog(TaskEditSessionController editSessionController) {
         editSessionController.createNewTask();
-        new TaskEditDialog().show(getParentFragmentManager(), "create");
+        new TaskEditDialog().show(getParentFragmentManager(), TaskEditDialog.TAG_CREATE);
     }
 }

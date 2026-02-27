@@ -1,7 +1,7 @@
 package com.autosecretary.features.budget.data.repository;
 
 import com.autosecretary.features.budget.data.dao.BudgetLookupDao;
-import com.autosecretary.features.budget.data.dao.TransactionDao;
+import com.autosecretary.features.budget.data.dao.BudgetTransactionDao;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.dao.BudgetImportDao;
 import com.autosecretary.features.budget.data.entity.BudgetImportEntity;
@@ -27,13 +27,13 @@ import java.util.List;
 public class BudgetImportRoomRepository implements BudgetImportRepository {
     private final BudgetImportDao importDao;
     private final BudgetRecurringTemplateDao templateDao;
-    private final TransactionDao transactionDao;
+    private final BudgetTransactionDao transactionDao;
     private final BudgetLookupDao lookupDao;
     private final Runnable onBudgetDataUpdated;
 
     public BudgetImportRoomRepository(BudgetImportDao importDao,
                                        BudgetRecurringTemplateDao templateDao,
-                                       TransactionDao transactionDao,
+                                       BudgetTransactionDao transactionDao,
                                        BudgetLookupDao lookupDao,
                                        Runnable onBudgetDataUpdated) {
         this.importDao = importDao;
@@ -83,7 +83,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
 
     @Override
     public List<ImportCategory> loadActiveCategoriesForImport() {
-        return lookupDao.getActiveCategories().stream()
+        return lookupDao.findActiveCategories().stream()
                 .map(category -> new ImportCategory(category.id, category.name, category.direction))
                 .toList();
     }

@@ -1,18 +1,18 @@
 package com.autosecretary.features.meal.application.usecase;
 
 /**
- * Utility for repository lookups with mandatory entity existence.
+ * Hilfsmethode fuer Repository-Lookups mit Pflichtexistenz-Pruefung.
  */
 class EntityLookupHelper {
 
     /**
-     * Ensures an entity was found, throws if null.
+     * Stellt sicher, dass eine Entitaet gefunden wurde; wirft bei null.
      *
-     * @param entity The entity returned from repository lookup
-     * @param entityType Descriptive name for error message (e.g., "Ingredient")
-     * @param id The ID that was looked up
-     * @return the non-null entity
-     * @throws IllegalArgumentException if entity is null
+     * @param entity Das vom Repository zurueckgegebene Objekt
+     * @param entityType Bezeichnung fuer die Fehlermeldung (z. B. "Ingredient")
+     * @param id Die gesuchte ID
+     * @return die nicht-null-Entitaet
+     * @throws IllegalArgumentException wenn entity null ist
      */
     static <T> T requireFound(T entity, String entityType, long id) {
         if (entity == null) {

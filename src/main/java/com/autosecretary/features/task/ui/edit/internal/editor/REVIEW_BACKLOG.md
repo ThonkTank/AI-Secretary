@@ -20,14 +20,6 @@
 
 ---
 
-### [nit] TaskEditFormValidator.java:111-113 — `validateMinMaxPair` passthrough
-
-**File:** `TaskEditFormValidator.java:111-113`
-
-**Concern:** `validateMinMaxPair` is a pure one-line passthrough to `validateFirstNotAboveSecond` with no argument transformation. Inline at the two call sites for directness, or keep as a named wrapper for domain clarity. Deferred — the readability tradeoff is close; keeping it as a named wrapper is defensible.
-
----
-
 ### [nit] PrefSlotSectionController.java:52-57,74-79 — duplicate repetition-field reading
 
 **File:** `PrefSlotSectionController.java:52-57,74-79`
@@ -41,4 +33,3 @@
 **Files:** `GoalSectionController.java:96-98`, `PrefSlotSectionController.java:181-183`
 
 **Concern:** Identical `dimenPx(@DimenRes int)` one-liner helper duplicated in both controllers. Extracting to a shared utility would add a file for negligible gain. Worth revisiting if a third controller appears in this package.
-

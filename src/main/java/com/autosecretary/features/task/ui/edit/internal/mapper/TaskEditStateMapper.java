@@ -3,6 +3,7 @@ package com.autosecretary.features.task.ui.edit.internal.mapper;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
+import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
@@ -16,14 +17,6 @@ import java.util.Set;
  * Handles null safety and default values during conversion.
  */
 public class TaskEditStateMapper {
-
-    /**
-     * Returns the given value if non-null, otherwise returns the default.
-     * Simplifies null-coalescing patterns throughout the mapper.
-     */
-    private <T> T orDefault(T value, T defaultValue) {
-        return value != null ? value : defaultValue;
-    }
 
     /**
      * Safely copies a day set, returning an empty set if the source is null.
@@ -47,8 +40,8 @@ public class TaskEditStateMapper {
         state.description = task.core.description;
         state.priority = task.core.priority;
         state.schedulingType = task.core.schedulingType;
-        state.goalIcon = orDefault(task.core.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
-        state.goalColorHex = orDefault(task.core.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
+        state.goalIcon = TaskEditPresenter.coalesce(task.core.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
+        state.goalColorHex = TaskEditPresenter.coalesce(task.core.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
         state.budgetRequiredCents = task.core.budgetRequiredCents;
         state.budgetAccountId = task.core.budgetAccountId;
         state.budgetCategoryId = task.core.budgetCategoryId;
@@ -100,8 +93,8 @@ public class TaskEditStateMapper {
         task.core.description = state.description;
         task.core.priority = state.priority;
         task.core.schedulingType = state.schedulingType;
-        task.core.goalIcon = orDefault(state.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
-        task.core.goalColorHex = orDefault(state.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
+        task.core.goalIcon = TaskEditPresenter.coalesce(state.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
+        task.core.goalColorHex = TaskEditPresenter.coalesce(state.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
         task.core.budgetRequiredCents = state.budgetRequiredCents;
         task.core.budgetAccountId = state.budgetAccountId;
         task.core.budgetCategoryId = state.budgetCategoryId;

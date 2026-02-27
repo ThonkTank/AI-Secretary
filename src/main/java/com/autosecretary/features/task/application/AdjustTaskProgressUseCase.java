@@ -2,7 +2,7 @@ package com.autosecretary.features.task.application;
 
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskDAO;
+import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
@@ -19,17 +19,17 @@ import java.util.concurrent.ExecutorService;
  * runs on {@code callbackDispatcher}.
  */
 public class AdjustTaskProgressUseCase {
-    private final TaskDAO taskDao;
-    private final ExecutorService executor;
+    private final TaskDao taskDao;
+    private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
     private final TaskLifecycleManager lifecycleManager;
 
-    public AdjustTaskProgressUseCase(TaskDAO taskDao,
-                                     ExecutorService executor,
+    public AdjustTaskProgressUseCase(TaskDao taskDao,
+                                     ExecutorService workerExecutor,
                                      Executor callbackDispatcher,
                                      TaskLifecycleManager lifecycleManager) {
         this.taskDao = taskDao;
-        this.executor = executor;
+        this.workerExecutor = workerExecutor;
         this.callbackDispatcher = callbackDispatcher;
         this.lifecycleManager = lifecycleManager;
     }
@@ -37,7 +37,7 @@ public class AdjustTaskProgressUseCase {
     public void execute(TaskListItem listItem, boolean increment, Runnable onChanged) {
         int step = Math.max(1, listItem.progressStepDelta);
         int delta = increment ? step : -step;
-        executor.execute(() -> {
+        workerExecutor.execute(() -> {
             if (listItem.taskId == null) return;
 
             Task task = taskDao.read(listItem.taskId);
@@ -68,9 +68,7 @@ public class AdjustTaskProgressUseCase {
 
             taskDao.write(task);
 
-            if (onChanged != null && callbackDispatcher != null) {
-                callbackDispatcher.execute(onChanged);
-            }
+            callbackDispatcher.execute(onChanged);
         });
     }
 }

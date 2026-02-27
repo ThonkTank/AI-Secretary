@@ -3,7 +3,7 @@ package com.autosecretary.features.task.application;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskDAO;
+import com.autosecretary.features.task.data.TaskDao;
 
 import java.time.LocalTime;
 import java.util.List;
@@ -12,7 +12,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
 /**
- * Async wrapper around {@link TaskDAO}.
+ * Async wrapper around {@link TaskDao}.
  * <p>
  * <strong>Threading contract:</strong>
  * <ul>
@@ -23,12 +23,12 @@ import java.util.function.Consumer;
  * Callers can therefore assume callbacks are invoked on the dispatcher thread (typically main/UI).
  */
 public class TaskDataService {
-    private final TaskDAO taskDao;
+    private final TaskDao taskDao;
     private final TaskListItemMapper mapper;
     private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
 
-    public TaskDataService(TaskDAO taskDao,
+    public TaskDataService(TaskDao taskDao,
                            TaskListItemMapper mapper,
                            ExecutorService workerExecutor,
                            Executor callbackDispatcher) {

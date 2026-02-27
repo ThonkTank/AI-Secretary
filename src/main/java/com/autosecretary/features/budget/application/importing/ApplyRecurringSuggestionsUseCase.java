@@ -21,10 +21,14 @@ public class ApplyRecurringSuggestionsUseCase {
         this.executor = executor;
     }
 
+    public interface ApplyCallback {
+        void onSuccess();
+        void onError(String errorMessage);
+    }
+
     public void executeAsync(String accountId,
                              List<RecurringSuggestion> suggestions,
-                             Runnable onCompleted,
-                             java.util.function.Consumer<String> onError) {
+                             ApplyCallback callback) {
         executor.execute(() -> {
             try {
                 List<String> templateIds = new ArrayList<>();
@@ -39,10 +43,10 @@ public class ApplyRecurringSuggestionsUseCase {
                     repository.synchronizeRecurringTemplateState(LocalDate.now());
                     repository.notifyBudgetDataUpdated();
                 }
-                onCompleted.run();
+                callback.onSuccess();
             } catch (Exception e) {
                 String msg = e.getMessage();
-                onError.accept(msg != null ? msg : e.getClass().getSimpleName());
+                callback.onError(msg != null ? msg : e.getClass().getSimpleName());
             }
         });
     }

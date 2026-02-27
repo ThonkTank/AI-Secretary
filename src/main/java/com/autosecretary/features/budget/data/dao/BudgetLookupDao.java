@@ -15,10 +15,10 @@ import java.util.List;
 public interface BudgetLookupDao {
 
     @Query("SELECT * FROM budget_category WHERE archived = 0 ORDER BY type ASC, name COLLATE NOCASE ASC")
-    List<BudgetCategory> getActiveCategories();
+    List<BudgetCategory> findActiveCategories();
 
     @Query("SELECT * FROM budget_account WHERE archived = 0 ORDER BY name COLLATE NOCASE ASC")
-    List<BudgetAccount> getActiveAccounts();
+    List<BudgetAccount> findActiveAccounts();
 
     @Query("SELECT * FROM budget_category WHERE id = :categoryId LIMIT 1")
     BudgetCategory findCategoryById(String categoryId);

@@ -12,7 +12,7 @@ import com.autosecretary.R;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskDAO;
+import com.autosecretary.features.task.data.TaskDao;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -21,10 +21,10 @@ import java.util.Comparator;
 import java.util.List;
 
 public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory {
-    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private final Context context;
-    private final TaskDAO taskDao;
+    private final TaskDao taskDao;
     private final int colorInProgress;
     private final int colorCompleted;
     private final int colorDefault;
@@ -32,7 +32,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
     private List<TaskListItem> items = new ArrayList<>();
     private boolean isToday;
 
-    public TaskWidgetFactory(Context context, TaskDAO taskDao) {
+    public TaskWidgetFactory(Context context, TaskDao taskDao) {
         this.context = context;
         this.taskDao = taskDao;
         this.colorInProgress = ContextCompat.getColor(context, R.color.task_widget_title_in_progress);
@@ -77,8 +77,8 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         TaskListItem item = items.get(position);
         RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.task_row_widget);
 
-        rv.setTextViewText(R.id.widget_row_start, item.start != null ? item.start.format(TIME_FORMAT) : "");
-        rv.setTextViewText(R.id.widget_row_end, item.end != null ? item.end.format(TIME_FORMAT) : "");
+        rv.setTextViewText(R.id.widget_row_start, item.start != null ? item.start.format(TIME_FORMATTER) : "");
+        rv.setTextViewText(R.id.widget_row_end, item.end != null ? item.end.format(TIME_FORMATTER) : "");
         rv.setTextViewText(R.id.widget_row_title, item.title);
 
         if (item.streak > 0) {

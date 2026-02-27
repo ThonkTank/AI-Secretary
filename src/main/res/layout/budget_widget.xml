@@ -12,7 +12,7 @@
         android:text="@string/budget_widget_title"
         android:textColor="@color/budget_widget_header_text"
         android:textStyle="bold"
-        android:textSize="@dimen/task_text_md" />
+        android:textSize="@dimen/text_md" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -28,7 +28,7 @@
             android:text="@string/budget_widget_total_label"
             android:textStyle="bold"
             android:textColor="@color/budget_widget_card_text"
-            android:textSize="@dimen/task_text_xs" />
+            android:textSize="@dimen/text_xs" />
 
         <TextView
             android:id="@+id/budget_widget_total_value"
@@ -45,14 +45,14 @@
             android:text="@string/budget_widget_free_label"
             android:textStyle="bold"
             android:textColor="@color/budget_widget_card_text"
-            android:textSize="@dimen/task_text_xs" />
+            android:textSize="@dimen/text_xs" />
 
         <TextView
             android:id="@+id/budget_widget_free_value"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/budget_widget_card_text"
-            android:textSize="@dimen/task_text_md" />
+            android:textSize="@dimen/text_md" />
     </LinearLayout>
 
     <LinearLayout

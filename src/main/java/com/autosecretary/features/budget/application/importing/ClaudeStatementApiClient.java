@@ -141,7 +141,7 @@ public class ClaudeStatementApiClient {
                 JSONObject cat = new JSONObject();
                 cat.put("id", category.id());
                 cat.put("name", category.name());
-                cat.put("type", category.type().name());
+                cat.put("type", category.direction().name());
                 categoryArray.put(cat);
             }
         }
@@ -196,20 +196,20 @@ public class ClaudeStatementApiClient {
     }
 
     private StatementFileParser.ParsedTransaction parseTransaction(JSONObject tx) throws JSONException {
-        LocalDate date = LocalDate.parse(tx.getString(JSON_DATE));
-        int amountCents = toInt(tx.get(JSON_AMOUNT_CENTS));
+        LocalDate bookingDate = LocalDate.parse(tx.getString(JSON_DATE));
+        long amountCents = toLong(tx.get(JSON_AMOUNT_CENTS));
         String payee = StatementFileParser.emptyToNull(tx.optString(JSON_PAYEE, null));
-        String description = StatementFileParser.emptyToNull(tx.optString(JSON_DESCRIPTION, null));
+        String note = StatementFileParser.emptyToNull(tx.optString(JSON_DESCRIPTION, null));
         String categoryId = StatementFileParser.emptyToNull(tx.optString(JSON_CATEGORY_ID, null));
         String hash = StatementFileParser.emptyToNull(tx.optString(JSON_HASH, null));
-        return new StatementFileParser.ParsedTransaction(date, amountCents, payee, description, categoryId, hash);
+        return new StatementFileParser.ParsedTransaction(bookingDate, amountCents, payee, note, categoryId, hash);
     }
 
-    private int toInt(Object value) {
+    private long toLong(Object value) {
         if (value instanceof Number number) {
-            return number.intValue();
+            return number.longValue();
         }
-        return Integer.parseInt(String.valueOf(value));
+        return Long.parseLong(String.valueOf(value));
     }
 
     private LocalDate parseOptionalDate(String value) {

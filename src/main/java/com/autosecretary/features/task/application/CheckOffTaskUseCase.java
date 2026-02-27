@@ -7,7 +7,7 @@ import com.autosecretary.features.meal.application.TaskMealIntegrationService;
 import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
-import com.autosecretary.features.task.data.TaskDAO;
+import com.autosecretary.features.task.data.TaskDao;
 
 import java.time.LocalDate;
 import java.util.concurrent.ExecutorService;
@@ -21,14 +21,14 @@ import java.util.concurrent.ExecutorService;
  */
 public class CheckOffTaskUseCase {
     private final TaskSlotToggleMutation mutation;
-    private final TaskDAO taskDao;
+    private final TaskDao taskDao;
     private final ExecutorService executor;
     private final BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase;
     private final Context appContext;
     private final TaskMealIntegrationService taskMealIntegrationService;
 
     public CheckOffTaskUseCase(TaskSlotToggleMutation mutation,
-                               TaskDAO taskDao,
+                               TaskDao taskDao,
                                ExecutorService executor,
                                BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase,
                                Context appContext,

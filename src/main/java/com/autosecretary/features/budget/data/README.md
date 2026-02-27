@@ -1,43 +1,36 @@
-# Budget data model (canonical as of AppDatabase v8)
+# Budget data layer
 
-## Canonical Room entities
+## Package layout
 
-The canonical persisted budget model is the `budget_*` schema introduced in `AppDatabase` migration `7 -> 8`:
+`features/budget/data/` is split into sub-packages by concern:
 
-- `BudgetAccount` (`budget_account`)
-- `BudgetCategory` (`budget_category`)
-- `BudgetTransactionEntity` (`budget_transaction`)
-- `BudgetLimit` (`budget_limit`)
+- **`entity/`** — Room entity classes persisted to the database.
+  - `BudgetAccount` (`budget_account`)
+  - `BudgetCategory` (`budget_category`)
+  - `BudgetTransactionEntity` (`budget_transaction`)
+  - `BudgetLimit` (`budget_limit`)
+  - `BudgetImportEntity` (`budget_import`)
+  - `BudgetRecurringTemplateEntity` (`budget_recurring_template`)
 
-These are the entities registered in `AppDatabase` version 8 and should be used for all new budget feature work.
+- **`dao/`** — DAO interfaces for entity access and aggregate queries.
+  - `BudgetLookupDao` — accounts, categories, balance adjustments
+  - `BudgetTransactionDao` — transaction CRUD, timeline deltas, balance queries
+  - `BudgetLimitDao` — budget limits and category spend summaries
+  - `BudgetImportDao` — import record lifecycle (pending/completed/failed)
+  - `BudgetRecurringTemplateDao` — recurring template queries and status updates
 
-## Current package layout (flat `data/`)
+- **`repository/`** — Room-backed implementations of domain repository interfaces.
+  - `BudgetRoomRepository` — implements `BudgetRepository`
+  - `BudgetImportRoomRepository` — implements `BudgetImportRepository`
 
-`features/budget/data/` is currently a flat package. The classes here are grouped by purpose:
+- **`api/`** — Non-Room data sources.
+  - `ClaudeApiKeyStore` — encrypted API key storage via Android Keystore
 
-- **Canonical entities + DAOs**: core persisted budget schema and CRUD/query access.
-  - `BudgetAccount`, `BudgetCategory`, `BudgetTransactionEntity`, `BudgetLimit`
-  - `BudgetLookupDao`, `TransactionDao`, `BudgetLimitDao`
-- **Import metadata persistence**: import bookkeeping storage.
-  - `BudgetImportEntity`, `BudgetImportDao`, `BudgetImportRoomRepository`
-- **Recurring template persistence**: recurring suggestion templates persisted for import workflows.
-  - `BudgetRecurringTemplateEntity`, `BudgetRecurringTemplateDao`
-- **Repository implementations**: adapters used by application/UI layers.
-  - `BudgetRoomRepository`
-- **Read-model/projection classes**: query results for internal use (no domain mirror exists).
-  - `IncomeExpenseSummary`, `AccountBalanceTotal`
-
-Import metadata entities live in `data/importing`.
-
-
-## Placement convention (single predictable rule)
+## Placement convention
 
 Place new data-layer files in exactly one of these packages:
 
-- `data/entity`: persisted Room entities for canonical budget tables.
-- `data/dao`: DAO interfaces for canonical entity access and aggregate queries.
-- `data/repository`: Room-backed implementations of domain repositories.
-- `data/projection`: read/query models returned by DAO projections.
-- `data/importing`: import-specific entities, DAOs, and recurring templates.
-
-Avoid adding new classes directly under `data/`; use one of the packages above.
+- `entity/` — persisted Room entities
+- `dao/` — DAO interfaces for entity access and aggregate queries
+- `repository/` — Room-backed implementations of domain repositories
+- `api/` — non-Room data sources (keystore, SharedPreferences, HTTP clients)

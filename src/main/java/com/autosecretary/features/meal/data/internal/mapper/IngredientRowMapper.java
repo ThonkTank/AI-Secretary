@@ -2,8 +2,12 @@ package com.autosecretary.features.meal.data.internal.mapper;
 
 import com.autosecretary.features.meal.domain.Ingredient;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class IngredientRowMapper implements RowMapper<Ingredient> {
     @Override
@@ -23,7 +27,7 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
         row.put(MealFieldKeys.Ingredient.REQUIRES_REFRIGERATION, ingredient.requiresRefrigeration ? 1 : 0);
         row.put(MealFieldKeys.Ingredient.IS_WHOLE_UNIT, ingredient.isWholeUnit ? 1 : 0);
         row.put(MealFieldKeys.Ingredient.IS_PERISHABLE, ingredient.isPerishable ? 1 : 0);
-        row.put(MealFieldKeys.Ingredient.STORE_PACKAGES, ingredient.storePackages);
+        row.put(MealFieldKeys.Ingredient.STORE_PACKAGES, serializeStorePackages(ingredient.storePackages));
         return row;
     }
 
@@ -44,7 +48,37 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
         ingredient.requiresRefrigeration = MapperSupport.asBoolean(row.get(MealFieldKeys.Ingredient.REQUIRES_REFRIGERATION));
         ingredient.isWholeUnit = MapperSupport.asBoolean(row.get(MealFieldKeys.Ingredient.IS_WHOLE_UNIT));
         ingredient.isPerishable = MapperSupport.asBoolean(row.get(MealFieldKeys.Ingredient.IS_PERISHABLE));
-        ingredient.storePackages = MapperSupport.asList(row.get(MealFieldKeys.Ingredient.STORE_PACKAGES));
+        ingredient.storePackages = MapperSupport.asListOrParse(row.get(MealFieldKeys.Ingredient.STORE_PACKAGES), IngredientRowMapper::parseStorePackagesFromString);
         return ingredient;
+    }
+
+    // NOTE: storeName and unit values must not contain '|' or ';' — these are the field/record delimiters.
+    private static String serializeStorePackages(List<Ingredient.StorePackage> packages) {
+        if (packages == null || packages.isEmpty()) return "";
+        return packages.stream()
+                .map(p -> Objects.toString(p.storeName, "")
+                        + "|" + Objects.toString(p.unit, "")
+                        + "|" + p.packageAmount
+                        + "|" + Objects.toString(p.priceCents, "")
+                        + "|" + MapperSupport.toDateString(p.lastPurchased))
+                .collect(Collectors.joining(";"));
+    }
+
+    // NOTE: storeName and unit values must not contain '|' or ';' — these are the field/record delimiters.
+    private static List<Ingredient.StorePackage> parseStorePackagesFromString(String raw) {
+        List<Ingredient.StorePackage> result = new ArrayList<>();
+        if (raw == null || raw.isBlank()) return result;
+        for (String entry : raw.split(";")) {
+            String[] parts = entry.split("\\|", 5);
+            if (parts.length != 5) continue;
+            Ingredient.StorePackage pkg = new Ingredient.StorePackage();
+            pkg.storeName = parts[0].isEmpty() ? null : parts[0];
+            pkg.unit = parts[1].isEmpty() ? null : parts[1];
+            pkg.packageAmount = MapperSupport.asInt(parts[2]);
+            pkg.priceCents = parts[3].isEmpty() ? null : MapperSupport.asInt(parts[3]);
+            pkg.lastPurchased = MapperSupport.asLocalDate(parts[4].isEmpty() ? null : parts[4]);
+            result.add(pkg);
+        }
+        return result;
     }
 }

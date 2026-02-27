@@ -2,7 +2,6 @@ package com.autosecretary.features.task.domain.internal.scheduling;
 
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
-import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.CalendarBlockedIntervalProvider;
@@ -37,10 +36,10 @@ import java.util.function.Consumer;
  */
 public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
 
-    private static final String REASON_OUTSIDE_WINDOW = "OUTSIDE_WINDOW";
-    private static final String REASON_CALENDAR_OVERLAP = "CALENDAR_OVERLAP";
-    private static final String REASON_PREREQUISITE_BLOCKED = "PREREQUISITE_BLOCKED";
-    private static final String REASON_NO_MATCHING_GAP = "NO_MATCHING_GAP";
+    private static final SchedulingConflict.ReasonCode REASON_OUTSIDE_WINDOW = SchedulingConflict.ReasonCode.OUTSIDE_WINDOW;
+    private static final SchedulingConflict.ReasonCode REASON_CALENDAR_OVERLAP = SchedulingConflict.ReasonCode.CALENDAR_OVERLAP;
+    private static final SchedulingConflict.ReasonCode REASON_PREREQUISITE_BLOCKED = SchedulingConflict.ReasonCode.PREREQUISITE_BLOCKED;
+    private static final SchedulingConflict.ReasonCode REASON_NO_MATCHING_GAP = SchedulingConflict.ReasonCode.NO_MATCHING_GAP;
 
     // Flat tiebreaker bonus per slot when evaluating prerequisite chains.
     // Favours longer chains being placed as a unit over individual task placement.
@@ -160,11 +159,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
-    private static final SchedulingWindowProvider DEFAULT_WINDOW = day -> {
-        LocalDateTime start = LocalDateTime.of(day, TaskPrefSlotFactory.DEFAULT_START_TIME);
-        LocalDateTime end = LocalDateTime.of(day, TaskPrefSlotFactory.DEFAULT_END_TIME);
-        return new SchedulingWindowProvider.SchedulingWindow(start, end);
-    };
+    private static final SchedulingWindowProvider DEFAULT_WINDOW = SchedulingWindowProvider.DEFAULT;
 
     private final Consumer<String> logger;
     private final SchedulingWindowProvider schedulingWindowProvider;
@@ -306,7 +301,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
         occupied.sort(Interval::compareTo);
 
-        scheduleFixedTasks(taskTree, windowStart, windowEnd, occupied);
+        scheduleFixedTasks(taskTree, windowStart, windowEnd, occupied, windowStart.toLocalDate());
         assignGlobalBestFit(taskTree, windowStart, windowEnd, occupied);
 
         int totalDaySlots = logDaySummary(allTasks, schedulingDay, true);
@@ -784,7 +779,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
-    private void addConflict(Task task, LocalDate day, String reasonCode, String details) {
+    private void addConflict(Task task, LocalDate day, SchedulingConflict.ReasonCode reasonCode, String details) {
         SchedulingConflict conflict = new SchedulingConflict(
                 task.core != null ? task.core.id : null,
                 task.core != null ? task.core.title : "",
@@ -802,17 +797,9 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private void scheduleFixedTasks(List<Task> tasks,
                                     LocalDateTime windowStart,
                                     LocalDateTime windowEnd,
-                                    List<OccupiedInterval> occupied) {
-        scheduleFixedTasks(tasks, windowStart, windowEnd, occupied, windowStart.toLocalDate());
-    }
-
-    private void scheduleFixedTasks(List<Task> tasks,
-                                    LocalDateTime windowStart,
-                                    LocalDateTime windowEnd,
                                     List<OccupiedInterval> occupied,
                                     LocalDate day) {
-        List<Task> fixedTasks = new ArrayList<>();
-        collectFixedTasks(tasks, fixedTasks);
+        List<Task> fixedTasks = collectFixedTasks(tasks);
         fixedTasks.sort(Comparator.comparing((Task t) -> t.core.fixedStart,
                 Comparator.nullsLast(Comparator.naturalOrder())));
 
@@ -847,15 +834,17 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
-    private void collectFixedTasks(List<Task> tasks, List<Task> fixedTasks) {
+    private List<Task> collectFixedTasks(List<Task> tasks) {
+        List<Task> fixedTasks = new ArrayList<>();
         for (Task task : tasks) {
             if (task.core.schedulingType == TaskCore.SchedulingType.TERMIN) {
                 fixedTasks.add(task);
             }
             if (task.children != null && !task.children.isEmpty()) {
-                collectFixedTasks(task.children, fixedTasks);
+                fixedTasks.addAll(collectFixedTasks(task.children));
             }
         }
+        return fixedTasks;
     }
 
     private LocalDateTime computeFixedEnd(Task task, LocalDateTime start) {

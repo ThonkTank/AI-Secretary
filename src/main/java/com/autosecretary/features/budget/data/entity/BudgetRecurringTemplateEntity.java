@@ -106,7 +106,7 @@ public class BudgetRecurringTemplateEntity {
         entity.avgAmountCents = suggestion.avgAmountCents();
         entity.minAmountCents = suggestion.minAmountCents();
         entity.maxAmountCents = suggestion.maxAmountCents();
-        entity.direction = suggestion.transactionType();
+        entity.direction = suggestion.direction();
         entity.recurringValue = suggestion.suggestedValue();
         entity.recurringDayOfWeek = suggestion.suggestedDayOfWeek();
         entity.nextDue = nextDue;

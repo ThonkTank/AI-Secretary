@@ -57,7 +57,7 @@ public final class DatePatternDetector {
             return null;
         }
         List<LocalDate> dates = transactions.stream()
-                .map(tx -> tx.transactionDate)
+                .map(tx -> tx.bookingDate)
                 .sorted()
                 .toList();
 
@@ -147,7 +147,7 @@ public final class DatePatternDetector {
     }
 
     static double calculateAverageInterval(List<Long> intervals) {
-        return intervals.stream().mapToLong(Long::longValue).average().orElse(0);
+        return intervals.stream().mapToLong(Long::longValue).average().orElse(0.0);
     }
 
     static boolean isConsistentInterval(long interval, double avgInterval) {

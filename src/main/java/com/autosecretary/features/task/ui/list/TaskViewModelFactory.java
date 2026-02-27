@@ -19,21 +19,21 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
     private final TaskDataService taskDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
-    private final TaskCalendarService taskCalendarService;
     private final AdjustTaskProgressUseCase adjustTaskProgressUseCase;
+    private final TaskCalendarService taskCalendarService;
 
     public TaskViewModelFactory(Application app,
                                 TaskDataService taskDataService,
                                 CheckOffTaskUseCase checkOffTaskUseCase,
                                 RegenerateScheduleUseCase regenerateScheduleUseCase,
-                                TaskCalendarService taskCalendarService,
-                                AdjustTaskProgressUseCase adjustTaskProgressUseCase) {
+                                AdjustTaskProgressUseCase adjustTaskProgressUseCase,
+                                TaskCalendarService taskCalendarService) {
         this.app = app;
         this.taskDataService = taskDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
-        this.taskCalendarService = taskCalendarService;
         this.adjustTaskProgressUseCase = adjustTaskProgressUseCase;
+        this.taskCalendarService = taskCalendarService;
     }
 
     @NonNull

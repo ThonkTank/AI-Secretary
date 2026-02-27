@@ -10,46 +10,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
+
 import java.util.stream.Collectors;
 
 public class RecipeRowMapper implements RowMapper<Recipe> {
-    @Override
-    public Recipe fromRow(Map<String, Object> row) {
-        Recipe recipe = new Recipe();
-
-        recipe.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.Recipe.ID));
-        recipe.title = (String) row.get(MealFieldKeys.Recipe.TITLE);
-        recipe.description = (String) row.get(MealFieldKeys.Recipe.DESCRIPTION);
-        recipe.instructions = (String) row.get(MealFieldKeys.Recipe.INSTRUCTIONS);
-
-        recipe.mealTypes = asSetOrParse(row.get(MealFieldKeys.Recipe.MEAL_TYPES));
-        recipe.prepTimeMinutes = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.PREP_TIME_MINUTES));
-        recipe.cookTimeMinutes = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.COOK_TIME_MINUTES));
-        recipe.servings = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.SERVINGS), 2);
-        recipe.minServings = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.MIN_SERVINGS), 1);
-        recipe.maxServings = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.MAX_SERVINGS), 8);
-        recipe.scalingPrecision = MapperSupport.asEnum(Recipe.ScalingPrecision.class,
-                row.get(MealFieldKeys.Recipe.SCALING_PRECISION), Recipe.ScalingPrecision.ROUGH);
-        recipe.prepEffort = MapperSupport.asEnum(Recipe.PrepEffort.class,
-                row.get(MealFieldKeys.Recipe.PREP_EFFORT), Recipe.PrepEffort.MEDIUM);
-
-        recipe.ingredients = asListOrParse(row.get(MealFieldKeys.Recipe.INGREDIENTS), RecipeRowMapper::parseIngredients);
-
-        recipe.tags = (String) row.get(MealFieldKeys.Recipe.TAGS);
-        recipe.lastUsed = MapperSupport.asLocalDate(row.get(MealFieldKeys.Recipe.LAST_USED));
-        recipe.usageCount = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.USAGE_COUNT));
-        recipe.isFavorite = MapperSupport.asBoolean(row.get(MealFieldKeys.Recipe.IS_FAVORITE));
-        recipe.totalCalories = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.TOTAL_CALORIES));
-        recipe.totalProtein = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.TOTAL_PROTEIN));
-        recipe.totalCarbs = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.TOTAL_CARBS));
-        recipe.totalFat = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.TOTAL_FAT));
-        recipe.shelfLifeDays = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.SHELF_LIFE_DAYS));
-
-        recipe.ratings = asListOrParse(row.get(MealFieldKeys.Recipe.RATINGS), RecipeRowMapper::parseRatings);
-        return recipe;
-    }
-
     @Override
     public Map<String, Object> toRow(Recipe recipe) {
         Map<String, Object> row = new HashMap<>();
@@ -79,6 +43,42 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         return row;
     }
 
+    @Override
+    public Recipe fromRow(Map<String, Object> row) {
+        Recipe recipe = new Recipe();
+
+        recipe.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.Recipe.ID));
+        recipe.title = (String) row.get(MealFieldKeys.Recipe.TITLE);
+        recipe.description = (String) row.get(MealFieldKeys.Recipe.DESCRIPTION);
+        recipe.instructions = (String) row.get(MealFieldKeys.Recipe.INSTRUCTIONS);
+
+        recipe.mealTypes = MapperSupport.asSetOrParse(row.get(MealFieldKeys.Recipe.MEAL_TYPES), RecipeRowMapper::parseMealTypes);
+        recipe.prepTimeMinutes = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.PREP_TIME_MINUTES));
+        recipe.cookTimeMinutes = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.COOK_TIME_MINUTES));
+        recipe.servings = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.SERVINGS), 2);
+        recipe.minServings = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.MIN_SERVINGS), 1);
+        recipe.maxServings = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.MAX_SERVINGS), 8);
+        recipe.scalingPrecision = MapperSupport.asEnum(Recipe.ScalingPrecision.class,
+                row.get(MealFieldKeys.Recipe.SCALING_PRECISION), Recipe.ScalingPrecision.ROUGH);
+        recipe.prepEffort = MapperSupport.asEnum(Recipe.PrepEffort.class,
+                row.get(MealFieldKeys.Recipe.PREP_EFFORT), Recipe.PrepEffort.MEDIUM);
+
+        recipe.ingredients = MapperSupport.asListOrParse(row.get(MealFieldKeys.Recipe.INGREDIENTS), RecipeRowMapper::parseIngredients);
+
+        recipe.tags = (String) row.get(MealFieldKeys.Recipe.TAGS);
+        recipe.lastUsed = MapperSupport.asLocalDate(row.get(MealFieldKeys.Recipe.LAST_USED));
+        recipe.usageCount = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.USAGE_COUNT));
+        recipe.isFavorite = MapperSupport.asBoolean(row.get(MealFieldKeys.Recipe.IS_FAVORITE));
+        recipe.totalCalories = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.TOTAL_CALORIES));
+        recipe.totalProtein = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.TOTAL_PROTEIN));
+        recipe.totalCarbs = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.TOTAL_CARBS));
+        recipe.totalFat = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.TOTAL_FAT));
+        recipe.shelfLifeDays = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.SHELF_LIFE_DAYS));
+
+        recipe.ratings = MapperSupport.asListOrParse(row.get(MealFieldKeys.Recipe.RATINGS), RecipeRowMapper::parseRatings);
+        return recipe;
+    }
+
     private static Set<MealType> parseMealTypes(String raw) {
         Set<MealType> result = EnumSet.noneOf(MealType.class);
         if (raw == null || raw.isBlank()) return result;
@@ -94,6 +94,7 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         return mealTypes.stream().map(Enum::name).collect(Collectors.joining(","));
     }
 
+    // NOTE: ingredientName and unit values must not contain '|' or ';' — these are the field/record delimiters.
     private static List<Recipe.RecipeIngredient> parseIngredients(String raw) {
         List<Recipe.RecipeIngredient> result = new ArrayList<>();
         if (raw == null || raw.isBlank()) return result;
@@ -106,6 +107,7 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         return result;
     }
 
+    // NOTE: ingredientName and unit values must not contain '|' or ';' — these are the field/record delimiters.
     private static String serializeIngredients(List<Recipe.RecipeIngredient> ingredients) {
         if (ingredients == null || ingredients.isEmpty()) return "";
         return ingredients.stream()
@@ -132,22 +134,6 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
     private static String serializeRatings(List<Recipe.MemberRating> ratings) {
         if (ratings == null || ratings.isEmpty()) return "";
         return ratings.stream().map(value -> value.memberId() + "|" + value.rating()).collect(Collectors.joining(","));
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Set<MealType> asSetOrParse(Object value) {
-        if (value instanceof Set<?> set) {
-            return (Set<MealType>) set;
-        }
-        return parseMealTypes((String) value);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> List<T> asListOrParse(Object value, Function<String, List<T>> parser) {
-        if (value instanceof List<?> list) {
-            return (List<T>) list;
-        }
-        return parser.apply((String) value);
     }
 
 }

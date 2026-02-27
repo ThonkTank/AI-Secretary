@@ -2,7 +2,7 @@ package com.autosecretary.features.task.application;
 
 import com.autosecretary.features.task.application.internal.TaskSeedDataFactory;
 import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskDAO;
+import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.domain.SchedulingConflict;
 import com.autosecretary.features.task.domain.TaskPlanningState;
 import com.autosecretary.features.task.domain.TaskSlotGenerationResult;
@@ -40,23 +40,23 @@ public class RegenerateScheduleUseCase {
         }
     }
 
-    private final TaskDAO taskDao;
+    private final TaskDao taskDao;
     private final TaskSlotGenerator generator;
-    private final ExecutorService executor;
+    private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
 
-    public RegenerateScheduleUseCase(TaskDAO taskDao,
+    public RegenerateScheduleUseCase(TaskDao taskDao,
                                      TaskSlotGenerator generator,
-                                     ExecutorService executor,
+                                     ExecutorService workerExecutor,
                                      Executor callbackDispatcher) {
         this.taskDao = taskDao;
         this.generator = generator;
-        this.executor = executor;
+        this.workerExecutor = workerExecutor;
         this.callbackDispatcher = callbackDispatcher;
     }
 
     public void execute(Consumer<Result> onDone) {
-        executor.execute(() -> {
+        workerExecutor.execute(() -> {
             try {
                 List<Task> tasks = taskDao.readAll();
                 if (tasks.isEmpty()) {

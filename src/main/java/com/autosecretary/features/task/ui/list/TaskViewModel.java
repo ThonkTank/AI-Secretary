@@ -217,18 +217,15 @@ public class TaskViewModel extends AndroidViewModel {
         adjustTaskProgressUseCase.execute(viewSlot.item, false, this::refreshList);
     }
 
-    public void startTimer(String slotId) {
-        if (slotId == null) {
+    public void toggleTimer(ViewSlot viewSlot) {
+        if (viewSlot.item.slotId == null) {
             return;
         }
-        taskDataService.startTimer(slotId, this::refreshList);
-    }
-
-    public void stopTimer(String slotId) {
-        if (slotId == null) {
-            return;
+        if (viewSlot.item.inProgress) {
+            taskDataService.stopTimer(viewSlot.item.slotId, this::refreshList);
+        } else {
+            taskDataService.startTimer(viewSlot.item.slotId, this::refreshList);
         }
-        taskDataService.stopTimer(slotId, this::refreshList);
     }
 
     public void toggleExpanded(ViewSlot viewSlot) {

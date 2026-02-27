@@ -53,7 +53,7 @@ public final class RecurringPatternDetector {
 
         List<RecurringBudgetTransaction> eligible = transactions.stream()
                 .filter(tx -> !tx.isRecurring && !tx.isPredicted && tx.parentRecurringId == null
-                        && tx.payee != null && !tx.payee.isBlank() && tx.transactionDate != null)
+                        && tx.payee != null && !tx.payee.isBlank() && tx.bookingDate != null)
                 .toList();
 
         if (eligible.size() < minOccurrences) {
@@ -68,7 +68,7 @@ public final class RecurringPatternDetector {
             if (txList.size() < minOccurrences) {
                 continue;
             }
-            txList.sort(Comparator.comparing(tx -> tx.transactionDate));
+            txList.sort(Comparator.comparing(tx -> tx.bookingDate));
             AmountStats amountStats = AmountStats.from(txList);
             if (!amountStats.isConsistent(txList)) {
                 continue;
@@ -105,7 +105,7 @@ public final class RecurringPatternDetector {
                 .map(Map.Entry::getKey)
                 .orElse(null);
 
-        TransactionDirection transactionType = TransactionDirection.fromAmountCents(transactions.get(0).amountCents);
+        TransactionDirection direction = TransactionDirection.fromAmountCents(transactions.get(0).amountCents);
 
         DatePatternDetector.PatternResult pattern = DatePatternDetector.detectDatePattern(transactions);
         if (pattern == null) {
@@ -122,7 +122,7 @@ public final class RecurringPatternDetector {
                 amountStats.avg(),
                 amountStats.min(),
                 amountStats.max(),
-                transactionType,
+                direction,
                 pattern.type(),
                 pattern.value(),
                 pattern.dayOfWeek(),

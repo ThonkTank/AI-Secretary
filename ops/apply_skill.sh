@@ -148,20 +148,6 @@ is_highlevel_dir() {
     [[ -n "$(find "$1" -maxdepth 1 -mindepth 1 -type d -print -quit 2>/dev/null)" ]]
 }
 
-_is_cross_cutting() {
-    local dir="$1"
-    local areas=0
-    for subdir in "$dir"/*/; do
-        [[ -d "$subdir" ]] || continue
-        case "$(basename "$subdir")" in
-            ui|domain|data|application)        ((areas++)) ;;
-            task|budget|meal)                  ((areas++)) ;;
-            app|shared|database|util|features) ((areas++)) ;;
-        esac
-    done
-    (( areas >= 2 ))
-}
-
 _should_skip_dir() {
     local skill="$1" dir="$2"
     is_ui_skill "$skill" && ! is_ui_dir "$dir" && return 0
@@ -169,73 +155,15 @@ _should_skip_dir() {
     return 1
 }
 
-# Skill complexity tier — drives model selection and turns bonus.
-#   CRITICAL = review-architecture, review-conventions, review-security
-#   HIGH     = review-smells, review-performance, review-simplicity
-#   MEDIUM   = review-structure, review-elegance, review-accessibility, sync-main
-#   LIGHT    = review-design, review-onboarding, commit, init (catch-all)
-_skill_tier() {
-    local skill="$1"
-    case "$skill" in
-        review-architecture|review-conventions|review-security) echo "CRITICAL" ;;
-        review-smells|review-performance|review-simplicity)     echo "HIGH"     ;;
-        review-structure|review-elegance|review-accessibility|\
-        sync-main)                                              echo "MEDIUM"   ;;
-        *)                                                       echo "LIGHT"    ;;
-    esac
-}
-
-# Directory size bucket — drives turns baseline and model ceiling.
-#   xs = ≤ 200 lines  |  s = 201–800  |  m = 801–3000  |  l = 3001–8000  |  xl = > 8000
-_size_bucket() {
-    local count="$1"
-    if   (( count <= 200  )); then echo "xs"
-    elif (( count <= 800  )); then echo "s"
-    elif (( count <= 3000 )); then echo "m"
-    elif (( count <= 8000 )); then echo "l"
-    else                          echo "xl"
-    fi
-}
-
-# Model matrix  (tier × bucket)  — single source of truth; no parallel _select_* functions needed.
-# Cross-cutting dirs (+) get upgraded to opus via _CROSSCUT_UPGRADE below.
-#              xs       s        m        l        xl
-#   LIGHT:    haiku    haiku    haiku    haiku    sonnet
-#   MEDIUM:   haiku    haiku    sonnet   sonnet   sonnet+
-#   HIGH:     haiku    sonnet   sonnet   sonnet+  opus
-#   CRITICAL: sonnet   sonnet   sonnet+  opus     opus
-declare -A _MODEL_MATRIX=(
-    [LIGHT_xs]=haiku    [LIGHT_s]=haiku    [LIGHT_m]=haiku    [LIGHT_l]=haiku    [LIGHT_xl]=sonnet
-    [MEDIUM_xs]=haiku   [MEDIUM_s]=haiku   [MEDIUM_m]=sonnet  [MEDIUM_l]=sonnet  [MEDIUM_xl]=sonnet
-    [HIGH_xs]=haiku     [HIGH_s]=sonnet    [HIGH_m]=sonnet    [HIGH_l]=sonnet    [HIGH_xl]=opus
-    [CRITICAL_xs]=sonnet [CRITICAL_s]=sonnet [CRITICAL_m]=sonnet [CRITICAL_l]=opus [CRITICAL_xl]=opus
-)
-
-# Cross-cutting upgrade: cells marked with + above get opus when the dir spans ≥2 areas.
-declare -A _CROSSCUT_UPGRADE=(
-    [MEDIUM_xl]=opus
-    [HIGH_l]=opus
-    [CRITICAL_m]=opus
-)
-
-# Turns matrix  (tier × bucket)
-#              xs   s    m    l    xl
-#   LIGHT:    15   20   30   40   50
-#   MEDIUM:   25   25   35   50   60
-#   HIGH:     30   30   45   55   65
-#   CRITICAL: 35   35   50   65   75
-declare -A _TURNS_MATRIX=(
-    [LIGHT_xs]=15   [LIGHT_s]=20   [LIGHT_m]=30   [LIGHT_l]=40   [LIGHT_xl]=50
-    [MEDIUM_xs]=25  [MEDIUM_s]=25  [MEDIUM_m]=35  [MEDIUM_l]=50  [MEDIUM_xl]=60
-    [HIGH_xs]=30    [HIGH_s]=30    [HIGH_m]=45    [HIGH_l]=55    [HIGH_xl]=65
-    [CRITICAL_xs]=35 [CRITICAL_s]=35 [CRITICAL_m]=50 [CRITICAL_l]=65 [CRITICAL_xl]=75
-)
-
-# Set AGENT_MODEL, AGENT_TURNS, and AGENT_LINE_COUNT globals.
-# Git-op skills pass dir="" and fall back to PROJECT_ROOT for line counting.
+# Model selection — simple LOC-based tiers, no complexity matrix.
+#   <1000 LOC  → haiku  (20 turns)
+#   ≥1000 LOC  → sonnet (40 turns)
+#   Last 10%   → opus   (65 turns)   (largest dirs; deepest-first sort ⇒ last = shallowest)
 select_agent_config() {
     local skill="$1"
     local dir="$2"
+    local dir_i="${3:-0}"         # 1-based position in eligible dirs
+    local total_dirs="${4:-0}"    # total eligible dirs
 
     local count_dir="${dir:-$PROJECT_ROOT}"
     local line_count=0
@@ -245,20 +173,23 @@ select_agent_config() {
         line_count=${line_count:-0}
     fi
 
-    local tier bucket key
-    tier="$(_skill_tier "$skill")"
-    bucket="$(_size_bucket "$line_count")"
-    key="${tier}_${bucket}"
-
-    AGENT_MODEL="${_MODEL_MATRIX[$key]}"
-    AGENT_TURNS="${_TURNS_MATRIX[$key]}"
-    AGENT_LINE_COUNT="$line_count"
-
-    # Cross-cutting upgrade: dirs spanning ≥2 architectural areas get the model from _CROSSCUT_UPGRADE
-    local crosscut="${_CROSSCUT_UPGRADE[$key]:-}"
-    if [[ -n "$crosscut" && -n "$dir" ]] && _is_cross_cutting "$dir"; then
-        AGENT_MODEL="$crosscut"
+    # Default by LOC
+    if (( line_count < 1000 )); then
+        AGENT_MODEL="haiku"; AGENT_TURNS=20
+    else
+        AGENT_MODEL="sonnet"; AGENT_TURNS=40
     fi
+
+    # Last 10% of directories → opus
+    if (( total_dirs > 0 && dir_i > 0 )); then
+        local opus_threshold=$(( total_dirs * 9 / 10 ))
+        (( opus_threshold < 1 )) && opus_threshold=1
+        if (( dir_i > opus_threshold )); then
+            AGENT_MODEL="opus"; AGENT_TURNS=65
+        fi
+    fi
+
+    AGENT_LINE_COUNT="$line_count"
 }
 
 # Tee all stdout/stderr to $RUN_LOG so the run summary is preserved after exit.
@@ -627,7 +558,7 @@ _dispatch_dir() {
     local cycle="${5:-}" dir_i="${6:-}" total_dirs="${7:-}"
     local log_filename="${dir//\//_}"
     local logfile="${skill_log_dir}/${log_filename}.md"
-    select_agent_config "$skill" "$dir"
+    select_agent_config "$skill" "$dir" "$dir_i" "$total_dirs"
     echo "══════════════════════════════════════════"
     [[ -n "$cycle" ]] && echo "Cycle ${cycle} · Dir ${dir_i}/${total_dirs} · ${skill} · $(date '+%H:%M:%S')"
     [[ -z "$cycle" ]]  && echo "${skill} · $(date '+%H:%M:%S')"

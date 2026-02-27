@@ -6,7 +6,7 @@
 
 ---
 
-[simplify] CookingPreferences.java:15-22 — 8 parallel fields (4 `max*Cooking` int + 4 `*CookingDays Set<DayOfWeek>`) dispatched through `getMaxCookingPerWeek` and `getAllowedCookingDays` switch methods. Same pattern as WeeklyFoodTarget. Simpler alternative: two `EnumMap<MealType, …>` fields. Same Room persistence blocker — defer alongside WeeklyFoodTarget.
+[simplify] CookingPreferences.java:15-22 — 8 parallel fields (4 `max*Cooking` int + 4 `*CookingDays Set<DayOfWeek>`) dispatched through `getMaxCookingPerWeek` and `getAllowedCookingDays` switch methods. Same pattern as WeeklyFoodTarget. Simpler alternative: two `EnumMap<MealType, ...>` fields. Same Room persistence blocker — defer alongside WeeklyFoodTarget.
 
 ---
 
@@ -30,5 +30,9 @@
 
 ---
 
-[nit] Recipe.Builder.ingredient(long, String, double, String) — 4 positional params with abbreviated names (`id`, `name`) that don't match the `RecipeIngredient` record component names (`ingredientId`, `ingredientName`). Swapping adjacent same-type args is compile-silent.
-**Fix suggestion:** Rename params to match record, or accept a `RecipeIngredient` directly.
+[consider] RecipeScalingResult.ScaledIngredient vs Recipe.RecipeIngredient — both are records with identical structure: `(Long ingredientId, String ingredientName, double amount, String unit)`. Duplication is conceptually justified (RecipeIngredient = recipe definition; ScaledIngredient = scaling output), but if the two ever diverge they will silently conflict. Worth unifying if meal feature grows.
+
+---
+
+[consider] HouseholdMember.Gender — only enum in the meal domain without a `label` field. All other enums with display needs have one (MealType, ActivityLevel, StorageLocation, FoodGroup). If a meal UI is built, Gender will need localised display text. Low priority until UI is built.
+

@@ -19,7 +19,8 @@ public class ShelfLifeService {
         if (expiryDate == null || referenceDate == null) {
             return false;
         }
-        return !referenceDate.isBefore(expiryDate);
+        // Expiry date is the last valid day (MHD semantics); only expired strictly after.
+        return referenceDate.isAfter(expiryDate);
     }
 
     public static int daysUntilExpiry(LocalDate expiryDate, LocalDate referenceDate) {

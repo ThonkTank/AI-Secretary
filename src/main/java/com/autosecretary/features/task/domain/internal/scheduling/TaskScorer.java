@@ -238,6 +238,7 @@ final class TaskScorer {
         int maxChildPriority = 0;
         for (Task child : task.children) {
             maxChildPriority = Math.max(maxChildPriority, child.core.priority.scoringWeight);
+            maxChildPriority = Math.max(maxChildPriority, computeMaxChildPriority(child));
         }
         return maxChildPriority;
     }
@@ -287,7 +288,7 @@ final class TaskScorer {
                     "maintenance() must be called before score() for task: " + task.core.id);
         }
 
-        ScoringContext context = new ScoringContext(task, snapshot, start, end);
+        ScoringContext context = new ScoringContext(task, snapshot, start, (int) ChronoUnit.MINUTES.between(start, end));
         if (!passesHardConstraintGate(context)) {
             return 0;
         }
@@ -297,7 +298,7 @@ final class TaskScorer {
         if (totalPrio <= 0) {
             return 0;
         }
-        totalPrio = applyUrgencyMultiplier(totalPrio, context.task, context.snapshot.urgencyState());
+        totalPrio = applyUrgencyMultiplier(totalPrio, context.task(), context.snapshot().urgencyState());
         totalPrio = applyFollowUpBoost(totalPrio, context, previousTaskId);
         return applyAgingAndSpreadModifiers(totalPrio, context);
     }
@@ -317,7 +318,7 @@ final class TaskScorer {
     }
 
     private boolean isAlreadyCompleteForCurrentCycle(ScoringContext context) {
-        return context.snapshot.completionState().isComplete();
+        return context.snapshot().completionState().isComplete();
     }
 
 
@@ -325,50 +326,50 @@ final class TaskScorer {
         if (budgetEligibilityService == null) {
             return false;
         }
-        TaskBudgetEligibilityService.BudgetEligibility eligibility = budgetEligibilityService.eligibilityFor(context.task);
+        TaskBudgetEligibilityService.BudgetEligibility eligibility = budgetEligibilityService.eligibilityFor(context.task());
         return !eligibility.enoughBudget();
     }
 
     private boolean hasReachedDailyRepetitionLimit(ScoringContext context) {
-        return context.snapshot.completionState().scheduledToday() >= context.snapshot.repsPerDay();
+        return context.snapshot().completionState().scheduledToday() >= context.snapshot().repsPerDay();
     }
 
     private boolean isWithinCooldownWindow(ScoringContext context) {
-        return context.snapshot.sinceLast() < context.task.core.cooldown;
+        return context.snapshot().sinceLast() < context.task().core.cooldown;
     }
 
     private boolean violatesMinimumInterDaySpacing(ScoringContext context) {
-        MultiDayStateSnapshot multiDay = context.snapshot.multiDayStateSnapshot();
+        MultiDayStateSnapshot multiDay = context.snapshot().multiDayStateSnapshot();
         return multiDay.minDayDistance() > 0
                 && multiDay.minDayDistance() < multiDay.expectedDayGap() * 0.5;
     }
 
     private boolean hasReachedPeriodQuota(ScoringContext context) {
-        MultiDayStateSnapshot multiDay = context.snapshot.multiDayStateSnapshot();
+        MultiDayStateSnapshot multiDay = context.snapshot().multiDayStateSnapshot();
         return multiDay.totalScheduledReps() >= multiDay.totalRepsInPeriod();
     }
 
     private boolean isBlockedByIncompletePriorPeriod(ScoringContext context) {
-        TaskCore.Repetition rep = context.task.core.repetition;
+        TaskCore.Repetition rep = context.task().core.repetition;
         return rep != null && rep.completeFirst && rep.carryoverDebt > 0;
     }
 
     private boolean isBelowMinimumSlotDuration(ScoringContext context) {
-        return context.availableMinutes < context.task.core.minDuration;
+        return context.availableMinutes() < context.task().core.minDuration;
     }
 
     private boolean isBelowRequiredProgressDuration(ScoringContext context) {
-        return context.task.core.progress != null
-                && context.task.core.progress.hasTrackingTarget()
-                && context.availableMinutes < context.task.core.progress.requiredTimePerRep();
+        return context.task().core.progress != null
+                && context.task().core.progress.hasTrackingTarget()
+                && context.availableMinutes() < context.task().core.progress.requiredTimePerRep();
     }
 
     private boolean isPastClosableDeadline(ScoringContext context) {
-        return context.snapshot.urgencyState().isDeadlineExpired();
+        return context.snapshot().urgencyState().isDeadlineExpired();
     }
 
     private int applyBasePriorityAndChildInfluence(ScoringContext context) {
-        return Math.max(context.task.core.priority.scoringWeight, context.snapshot.maxChildPriority());
+        return Math.max(context.task().core.priority.scoringWeight, context.snapshot().maxChildPriority());
     }
 
     private UrgencyState computeUrgencyState(Task task, LocalDate day) {
@@ -419,17 +420,17 @@ final class TaskScorer {
     }
 
     private int applyPreferredTimeFit(int baseScore, ScoringContext context) {
-        Set<String> consumed = context.snapshot.preferenceFitState().consumedPrefSlotIds();
+        Set<String> consumed = context.snapshot().preferenceFitState().consumedPrefSlotIds();
         TaskPrefSlot match = findClosestUnconsumedPrefSlot(
-                context.snapshot.preferenceFitState().todayPrefSlots(),
-                context.start.toLocalTime(),
+                context.snapshot().preferenceFitState().todayPrefSlots(),
+                context.start().toLocalTime(),
                 consumed
         );
         if (match == null) {
-            return context.snapshot.preferenceFitState().hasDayConstraints() ? 0 : baseScore;
+            return context.snapshot().preferenceFitState().hasDayConstraints() ? 0 : baseScore;
         }
 
-        double deviationHours = Duration.between(context.start.toLocalTime(), match.start).toMinutes() / 60.0;
+        double deviationHours = Duration.between(context.start().toLocalTime(), match.start).toMinutes() / 60.0;
         double fit = Math.max(0, 1 - Math.abs(deviationHours / preferredStartDeviationHours));
         return (int) (baseScore * fit);
     }
@@ -451,12 +452,12 @@ final class TaskScorer {
     }
 
     private int applyFollowUpBoost(int score, ScoringContext context, String previousTaskId) {
-        if (previousTaskId == null || previousTaskId.equals(context.task.core.id)) {
+        if (previousTaskId == null || previousTaskId.equals(context.task().core.id)) {
             return score;
         }
 
         Map<String, TransitionStat> fromMap = transitionStats.get(previousTaskId);
-        TransitionStat stat = fromMap != null ? fromMap.get(context.task.core.id) : null;
+        TransitionStat stat = fromMap != null ? fromMap.get(context.task().core.id) : null;
         if (stat == null || stat.weight() <= 0) {
             logFollowBoost(context, previousTaskId, 0, 1.0, 0.0, score, score);
             return score;
@@ -480,8 +481,8 @@ final class TaskScorer {
             return;
         }
         logger.accept("follow-boost prev=" + previousTaskId
-                + " -> task=" + context.task.core.title
-                + "(" + context.task.core.id + ")"
+                + " -> task=" + context.task().core.title
+                + "(" + context.task().core.id + ")"
                 + " weight=" + weight
                 + " mult=" + String.format(java.util.Locale.US, "%.2f", multiplier)
                 + " add=" + (int) Math.round(additive)
@@ -490,7 +491,7 @@ final class TaskScorer {
     }
 
     private int applyAgingAndSpreadModifiers(int score, ScoringContext context) {
-        TaskScoringSnapshot snapshot = context.snapshot;
+        TaskScoringSnapshot snapshot = context.snapshot();
         int adjustedScore = (int) (score * snapshot.agingForce());
         MultiDayStateSnapshot multiDay = snapshot.multiDayStateSnapshot();
         if (multiDay.minDayDistance() > 0
@@ -524,18 +525,6 @@ final class TaskScorer {
                 && snapshot.preferenceFitState().consumedPrefSlotIds().contains(prefSlotId);
     }
 
-    static final class ScoringContext {
-        final Task task;
-        final TaskScoringSnapshot snapshot;
-        final LocalDateTime start;
-        final int availableMinutes;
-
-        ScoringContext(Task task, TaskScoringSnapshot snapshot, LocalDateTime start, LocalDateTime end) {
-            this.task = task;
-            this.snapshot = snapshot;
-            this.start = start;
-            this.availableMinutes = (int) ChronoUnit.MINUTES.between(start, end);
-        }
-    }
+    record ScoringContext(Task task, TaskScoringSnapshot snapshot, LocalDateTime start, int availableMinutes) {}
 }
 

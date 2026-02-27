@@ -332,8 +332,17 @@ public class BudgetViewModel extends ViewModel {
             applyRecurringUseCase.executeAsync(
                     accountId,
                     suggestions,
-                    () -> postToMain.accept(this::loadOverview),
-                    error -> postToMain.accept(() -> statusMessage.setValue(UiText.of(R.string.budget_status_error, error)))
+                    new ApplyRecurringSuggestionsUseCase.ApplyCallback() {
+                        @Override
+                        public void onSuccess() {
+                            postToMain.accept(BudgetViewModel.this::loadOverview);
+                        }
+
+                        @Override
+                        public void onError(String errorMessage) {
+                            postToMain.accept(() -> statusMessage.setValue(UiText.of(R.string.budget_status_error, errorMessage)));
+                        }
+                    }
             );
         });
     }

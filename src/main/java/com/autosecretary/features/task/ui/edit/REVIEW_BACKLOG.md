@@ -24,4 +24,3 @@
 
 **Suggested alternative:** Accept `TaskEditStateMapper` as a constructor parameter in `TaskEditSessionController`, wired from `AppCompositionRoot` or `TaskViewModel`. Deferred — stateless mapper makes the coupling harmless today.
 
-

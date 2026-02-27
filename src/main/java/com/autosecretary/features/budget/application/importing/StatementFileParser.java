@@ -22,10 +22,10 @@ public class StatementFileParser {
     }
 
     public record ParsedTransaction(
-            LocalDate date,
-            int amountCents,
+            LocalDate bookingDate,
+            long amountCents,
             String payee,
-            String description,
+            String note,
             String categoryId,
             String importHash
     ) {
@@ -86,19 +86,19 @@ public class StatementFileParser {
                 throw new IllegalArgumentException("Ungültige CSV-Zeile: " + line);
             }
 
-            LocalDate date = LocalDate.parse(columns[0].trim());
-            int amountCents = Integer.parseInt(columns[1].trim());
+            LocalDate bookingDate = LocalDate.parse(columns[0].trim());
+            long amountCents = Long.parseLong(columns[1].trim());
             String payee = emptyToNull(columns[2]);
-            String description = emptyToNull(columns[3]);
+            String note = emptyToNull(columns[3]);
             String categoryId = columns.length > 4 ? emptyToNull(columns[4]) : null;
             String importHash = columns.length > 5 ? emptyToNull(columns[5]) : null;
 
-            parsedTransactions.add(new ParsedTransaction(date, amountCents, payee, description, categoryId, importHash));
-            if (periodStart == null || date.isBefore(periodStart)) {
-                periodStart = date;
+            parsedTransactions.add(new ParsedTransaction(bookingDate, amountCents, payee, note, categoryId, importHash));
+            if (periodStart == null || bookingDate.isBefore(periodStart)) {
+                periodStart = bookingDate;
             }
-            if (periodEnd == null || date.isAfter(periodEnd)) {
-                periodEnd = date;
+            if (periodEnd == null || bookingDate.isAfter(periodEnd)) {
+                periodEnd = bookingDate;
             }
         }
 

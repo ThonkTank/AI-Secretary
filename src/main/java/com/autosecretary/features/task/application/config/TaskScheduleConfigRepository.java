@@ -2,7 +2,7 @@ package com.autosecretary.features.task.application.config;
 
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.data.TaskScheduleConfig;
-import com.autosecretary.features.task.data.TaskScheduleConfigDAO;
+import com.autosecretary.features.task.data.TaskScheduleConfigDao;
 import com.autosecretary.features.task.domain.SchedulingWindowProvider;
 
 import java.time.DayOfWeek;
@@ -32,10 +32,10 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
     private static final LocalTime DEFAULT_START = TaskPrefSlotFactory.DEFAULT_START_TIME;
     private static final LocalTime DEFAULT_END = TaskPrefSlotFactory.DEFAULT_END_TIME;
 
-    private final TaskScheduleConfigDAO dao;
+    private final TaskScheduleConfigDao dao;
     private Map<DayOfWeek, TaskScheduleConfig> cachedByDay;
 
-    public TaskScheduleConfigRepository(TaskScheduleConfigDAO dao) {
+    public TaskScheduleConfigRepository(TaskScheduleConfigDao dao) {
         this.dao = dao;
     }
 

@@ -8,6 +8,7 @@ import android.content.pm.PackageInfo;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import androidx.core.content.FileProvider;
 
@@ -60,7 +61,7 @@ public class UpdateChecker {
                 }
             } catch (Exception e) {
                 // Fehler beim Prüfen sind nicht kritisch; App-Start darf nicht blockieren.
-                android.util.Log.d("UpdateChecker", "Version check failed", e);
+                Log.d("UpdateChecker", "Version check failed", e);
             }
         });
     }
@@ -85,7 +86,7 @@ public class UpdateChecker {
             PackageInfo info = activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0);
             return (int) info.getLongVersionCode();
         } catch (Exception e) {
-            android.util.Log.w("UpdateChecker", "Failed to read local version", e);
+            Log.w("UpdateChecker", "Failed to read local version", e);
             return 0;
         }
     }
@@ -118,7 +119,7 @@ public class UpdateChecker {
                 File apkFile = downloadApk(activity);
                 mainHandler.post(() -> installApk(apkFile));
             } catch (Exception e) {
-                android.util.Log.e("UpdateChecker", "APK download/install failed", e);
+                Log.e("UpdateChecker", "APK download/install failed", e);
                 mainHandler.post(() -> showDownloadErrorDialog(e));
             }
         });
@@ -163,7 +164,7 @@ public class UpdateChecker {
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
             activity.startActivity(intent);
         } catch (ActivityNotFoundException e) {
-            android.util.Log.e("UpdateChecker", "Failed to find app installer", e);
+            Log.e("UpdateChecker", "Failed to find app installer", e);
             showDownloadErrorDialog(e);
         }
     }

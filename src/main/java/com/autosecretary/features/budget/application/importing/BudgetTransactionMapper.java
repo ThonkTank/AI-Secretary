@@ -17,8 +17,8 @@ public class BudgetTransactionMapper {
             throw new IllegalArgumentException("domainTransaction must not be null");
         }
 
-        if (domainTransaction.accountId == null || domainTransaction.transactionDate == null) {
-            throw new IllegalArgumentException("accountId and transactionDate are required");
+        if (domainTransaction.accountId == null || domainTransaction.bookingDate == null) {
+            throw new IllegalArgumentException("accountId and bookingDate are required");
         }
 
         TransactionDirection direction = TransactionDirection.fromAmountCents(domainTransaction.amountCents);
@@ -29,8 +29,8 @@ public class BudgetTransactionMapper {
                 domainTransaction.categoryId,
                 type,
                 Math.abs(domainTransaction.amountCents),
-                domainTransaction.transactionDate,
-                domainTransaction.description,
+                domainTransaction.bookingDate,
+                domainTransaction.note,
                 domainTransaction.importHash,
                 domainTransaction.payee,
                 domainTransaction.importId,

@@ -17,9 +17,9 @@ public class RecurringBudgetTransaction {
     public String id;
     public String accountId;
     public long amountCents;
-    public LocalDate transactionDate;
+    public LocalDate bookingDate;
     public String categoryId;
-    public String description;
+    public String note;
     public String payee;
     /** SHA-256-based fingerprint (date + amount + payee) used to deduplicate CSV imports. Null for manually entered transactions. */
     public String importHash;
@@ -41,22 +41,22 @@ public class RecurringBudgetTransaction {
             String id,
             String accountId,
             long amountCents,
-            LocalDate transactionDate,
+            LocalDate bookingDate,
             String categoryId,
-            String description,
+            String note,
             String payee,
             String importHash,
             String importId,
             String parentRecurringId) {
         Objects.requireNonNull(accountId, "accountId must not be null");
-        Objects.requireNonNull(transactionDate, "transactionDate must not be null");
+        Objects.requireNonNull(bookingDate, "bookingDate must not be null");
         RecurringBudgetTransaction tx = new RecurringBudgetTransaction();
         tx.id = id;
         tx.accountId = accountId;
         tx.amountCents = amountCents;
-        tx.transactionDate = transactionDate;
+        tx.bookingDate = bookingDate;
         tx.categoryId = categoryId;
-        tx.description = description;
+        tx.note = note;
         tx.payee = payee;
         tx.importHash = importHash;
         tx.importId = importId;

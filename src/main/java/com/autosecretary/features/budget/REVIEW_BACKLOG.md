@@ -12,19 +12,16 @@ The entity stores `recurringValue` with different semantics depending on `recurr
 **Files:** `domain/BudgetRepository.java:65,69`, `data/repository/BudgetRoomRepository.java:119,140`
 `updateTransaction` takes 7 positional parameters; `saveTransaction` takes 6. Callers rely on argument order and mistakes (swapping two `String` arguments, or passing the wrong `LocalDate`) are silently type-safe. The parameters form a natural data clump that also appears in `createTransfer` / `updateTransfer`.
 **Fix suggestion:** Introduce a `TransactionFormInput` value record and replace the parameter lists. Requires changing `BudgetRepository` interface + callers in `BudgetViewModel`, `BudgetFragment`, `CreateTransferUseCase`, etc.
-**Promoted from:** `data/repository/REVIEW_BACKLOG.md`
 
 ### [warning] Volatile duplication in repository mappers
 **Files:** `data/repository/BudgetImportRoomRepository.java:139-178`, `application/importing/BudgetTransactionMapper.java`
 Duplicate mapper methods `toEntity()` (in BudgetImportRoomRepository) and `toRecord()`/`toDomain()` (in BudgetTransactionMapper) mirror each other's field mapping. A bug fix in one must be replicated in the other.
 **Fix suggestion:** Consolidate all mapping logic into `BudgetTransactionMapper`, have `BudgetImportRoomRepository` delegate to it.
-**Promoted from:** `domain/importing/REVIEW_BACKLOG.md`
 
 ### [warning] ImportTransactionRecord has 11 fields (data clump)
 **File:** `domain/importing/ImportTransactionRecord.java:5-17`
 Record has 11 fields consistently grouped. Requires value object decomposition affecting all consuming files.
 **Fix suggestion:** Group into sub-records (e.g. `TransactionCore`, `ImportMetadata`).
-**Promoted from:** `domain/importing/REVIEW_BACKLOG.md`
 
 ### [nit] Duplicate file type detection logic in StatementFileParser
 **File:** `application/importing/StatementFileParser.java:108-120`

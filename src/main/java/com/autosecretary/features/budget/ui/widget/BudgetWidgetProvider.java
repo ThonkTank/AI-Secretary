@@ -49,7 +49,7 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
         // Activity thread. Keep this query fast to avoid delaying widget renders.
         AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
         LoadBudgetWidgetSummaryUseCase useCase = app.getAppCompositionRoot().createLoadBudgetWidgetSummaryUseCase();
-        LoadBudgetWidgetSummaryUseCase.BudgetWidgetSummary summary = useCase.loadCurrentMonth();
+        LoadBudgetWidgetSummaryUseCase.BudgetWidgetSummary summary = useCase.execute();
 
         views.setTextViewText(R.id.budget_widget_total_value, CurrencyFormatter.eurosNet(summary.netBalanceCents()));
         views.setTextViewText(R.id.budget_widget_free_value, CurrencyFormatter.eurosNet(summary.freeBudgetCents()));

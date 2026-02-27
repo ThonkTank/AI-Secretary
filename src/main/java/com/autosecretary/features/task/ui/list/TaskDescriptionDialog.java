@@ -14,14 +14,14 @@ import com.autosecretary.R;
 /**
  * Dialog-based popup displaying the selected task title and description.
  */
-public class TaskDescriptionDialogFragment extends DialogFragment {
+public class TaskDescriptionDialog extends DialogFragment {
     public static final String TAG = "task_description_dialog";
 
     private static final String ARG_TITLE = "arg_title";
     private static final String ARG_DESCRIPTION = "arg_description";
 
-    public static TaskDescriptionDialogFragment newInstance(String title, String description) {
-        TaskDescriptionDialogFragment fragment = new TaskDescriptionDialogFragment();
+    public static TaskDescriptionDialog newInstance(String title, String description) {
+        TaskDescriptionDialog fragment = new TaskDescriptionDialog();
         Bundle args = new Bundle();
         args.putString(ARG_TITLE, title);
         args.putString(ARG_DESCRIPTION, description);

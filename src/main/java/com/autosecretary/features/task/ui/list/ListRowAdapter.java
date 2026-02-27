@@ -44,13 +44,13 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     }
 
     public static class TaskRowActions {
-        final Consumer<ViewSlot> onCheck;
-        final Consumer<ViewSlot> onEdit;
-        final Consumer<ViewSlot> onTimerToggle;
-        final Consumer<ViewSlot> onProgressPlus;
-        final Consumer<ViewSlot> onProgressMinus;
-        final Consumer<ViewSlot> onToggleExpand;
-        final Function<ViewSlot, Boolean> isExpanded;
+        private final Consumer<ViewSlot> onCheck;
+        private final Consumer<ViewSlot> onEdit;
+        private final Consumer<ViewSlot> onTimerToggle;
+        private final Consumer<ViewSlot> onProgressPlus;
+        private final Consumer<ViewSlot> onProgressMinus;
+        private final Consumer<ViewSlot> onToggleExpand;
+        private final Function<ViewSlot, Boolean> isExpanded;
 
         public TaskRowActions(Consumer<ViewSlot> onCheck,
                               Consumer<ViewSlot> onEdit,
@@ -415,8 +415,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         }
 
         FragmentActivity activity = (FragmentActivity) context;
-        TaskDescriptionDialogFragment.newInstance(item.title, item.description)
-                .show(activity.getSupportFragmentManager(), TaskDescriptionDialogFragment.TAG);
+        TaskDescriptionDialog.newInstance(item.title, item.description)
+                .show(activity.getSupportFragmentManager(), TaskDescriptionDialog.TAG);
     }
 
     private void animateCompletion(TaskRowViewHolder holder, TaskListItem item) {

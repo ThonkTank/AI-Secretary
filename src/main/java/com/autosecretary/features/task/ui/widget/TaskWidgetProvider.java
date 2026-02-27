@@ -42,7 +42,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     private static final String KEY_OFFSET = "selected_day_offset";
     private static final int MAX_OFFSET = TaskViewModel.MAX_DAY_OFFSET;
 
-    private static final DateTimeFormatter DATE_FORMAT =
+    private static final DateTimeFormatter DATE_FORMATTER =
             DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN);
 
     private static final float ALPHA_ENABLED = 1.0f;
@@ -91,7 +91,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         int offset = getSelectedDayOffset(context);
         LocalDate selectedDate = LocalDate.now().plusDays(offset);
         boolean isToday = offset == 0;
-        String label = isToday ? context.getString(R.string.task_list_day_nav_today) : selectedDate.format(DATE_FORMAT);
+        String label = isToday ? context.getString(R.string.task_list_day_nav_today) : selectedDate.format(DATE_FORMATTER);
         Log.d(TAG, "updateWidget offset=" + offset + " label=" + label);
         views.setTextViewText(R.id.widget_date_label, label);
 
