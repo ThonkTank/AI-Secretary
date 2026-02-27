@@ -2,7 +2,7 @@ package com.autosecretary.features.budget.application.importing;
 
 import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
 import com.autosecretary.features.budget.domain.importing.ImportTransactionType;
-import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
+import com.autosecretary.features.budget.domain.recurring.RecurringBudgetTransaction;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
 /**

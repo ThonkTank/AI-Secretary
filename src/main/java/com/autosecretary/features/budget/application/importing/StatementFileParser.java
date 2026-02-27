@@ -1,7 +1,10 @@
 package com.autosecretary.features.budget.application.importing;
 
+import com.autosecretary.features.budget.data.api.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.data.api.ClaudeApiKeyStore;
 import com.autosecretary.features.budget.domain.importing.ImportCategory;
+import com.autosecretary.features.budget.domain.importing.ParsedStatement;
+import com.autosecretary.features.budget.domain.importing.ParsedTransaction;
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
 
 import java.nio.charset.StandardCharsets;
@@ -13,23 +16,6 @@ import java.util.List;
  * Statement-Parser: CSV wird lokal geparst, PDF an Claude delegiert.
  */
 public class StatementFileParser {
-
-    public record ParsedStatement(
-            List<ParsedTransaction> transactions,
-            LocalDate periodStart,
-            LocalDate periodEnd
-    ) {
-    }
-
-    public record ParsedTransaction(
-            LocalDate bookingDate,
-            long amountCents,
-            String payee,
-            String note,
-            String categoryId,
-            String importHash
-    ) {
-    }
 
     private final ClaudeStatementApiClient claudeApiClient;
     private final ClaudeApiKeyStore apiKeyStore;

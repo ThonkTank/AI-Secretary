@@ -5,7 +5,9 @@ import com.autosecretary.features.task.data.TaskCore;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.function.Function;
 import com.autosecretary.shared.Priority;
+import com.autosecretary.features.task.ui.edit.FormInput;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 
@@ -31,24 +33,22 @@ public class TaskEditFormInputReader {
         this.goalSectionController = goalSectionController;
     }
 
-    private LocalDate parseDateSafe(String value) {
+    private <T> T parseSafe(String value, Function<String, T> parser) {
         if (value == null) return null;
         String trimmed = value.trim();
         try {
-            return trimmed.isEmpty() ? null : LocalDate.parse(trimmed);
+            return trimmed.isEmpty() ? null : parser.apply(trimmed);
         } catch (Exception e) {
             return null;
         }
     }
 
+    private LocalDate parseDateSafe(String value) {
+        return parseSafe(value, LocalDate::parse);
+    }
+
     private LocalTime parseTimeSafe(String value) {
-        if (value == null) return null;
-        String trimmed = value.trim();
-        try {
-            return trimmed.isEmpty() ? null : LocalTime.parse(trimmed);
-        } catch (Exception e) {
-            return null;
-        }
+        return parseSafe(value, LocalTime::parse);
     }
 
     private String normalizeNullableString(String value) {
@@ -57,34 +57,35 @@ public class TaskEditFormInputReader {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private Integer parseIntegerNullable(String value) {
-        if (value == null) return null;
-        String trimmed = value.trim();
-        try {
-            return trimmed.isEmpty() ? null : Integer.parseInt(trimmed);
-        } catch (Exception e) {
-            return null;
-        }
+    public FormInput read() {
+        FormInput input = new FormInput();
+        readBasicInfo(input);
+        readGoalSection(input);
+        readSchedulingSection(input);
+        readRepetitionSection(input);
+        readProgressSection(input);
+        return input;
     }
 
-    public TaskEditPresenter.FormInput read() {
-        TaskEditPresenter.FormInput input = new TaskEditPresenter.FormInput();
+    private void readBasicInfo(FormInput input) {
         input.title = basicInfoViews.titleView.getText().toString();
         input.description = basicInfoViews.descriptionView.getText().toString();
         input.priority = TaskEditPresenter.coalesce(
             (Priority) basicInfoViews.priorityView.getSelectedItem(),
             TaskEditDefaults.PRIORITY
         );
+    }
 
+    private void readGoalSection(FormInput input) {
         String goalIconText = goalSectionController.getGoalIconView().getText().toString().trim();
-        input.goalIcon = goalIconText.isEmpty()
-            ? TaskEditDefaults.GOAL_ICON
-            : goalIconText;
+        input.goalIcon = goalIconText.isEmpty() ? TaskEditDefaults.GOAL_ICON : goalIconText;
         input.goalColorHex = TaskEditPresenter.coalesce(
             goalSectionController.getSelectedGoalColorHex(),
             TaskEditDefaults.GOAL_COLOR_HEX
         );
+    }
 
+    private void readSchedulingSection(FormInput input) {
         input.schedulingType = TaskEditPresenter.coalesce(
             (TaskCore.SchedulingType) schedulingViews.schedulingTypeView.getSelectedItem(),
             TaskEditDefaults.SCHEDULING_TYPE
@@ -92,64 +93,48 @@ public class TaskEditFormInputReader {
         input.fixedDate = parseDateSafe(schedulingViews.fixedDateView.getText().toString());
         input.fixedStart = parseTimeSafe(schedulingViews.fixedStartView.getText().toString());
         input.fixedEnd = parseTimeSafe(schedulingViews.fixedEndView.getText().toString());
-        input.fixedDuration = parseIntegerNullable(schedulingViews.fixedDurationView.getText().toString());
-        Integer parsedBudgetRequiredCents = parseIntegerNullable(schedulingViews.budgetRequiredCentsView.getText().toString());
+        input.fixedDuration = parseSafe(schedulingViews.fixedDurationView.getText().toString(), Integer::parseInt);
+        Integer parsedBudgetRequiredCents = parseSafe(schedulingViews.budgetRequiredCentsView.getText().toString(), Integer::parseInt);
+        // 0 is treated as unset — only positive values are meaningful
         input.budgetRequiredCents = parsedBudgetRequiredCents != null && parsedBudgetRequiredCents > 0
             ? parsedBudgetRequiredCents
             : null;
         input.budgetAccountId = normalizeNullableString(schedulingViews.budgetAccountIdView.getText().toString());
         input.budgetCategoryId = normalizeNullableString(schedulingViews.budgetCategoryIdView.getText().toString());
-
         input.closeOnMiss = schedulingViews.closeOnMissView.isChecked();
         input.minDuration = TaskEditPresenter.parseIntSafe(
-            schedulingViews.minDurationView.getText().toString(),
-            TaskEditDefaults.MIN_DURATION
-        );
+            schedulingViews.minDurationView.getText().toString(), TaskEditDefaults.MIN_DURATION);
         input.maxDuration = TaskEditPresenter.parseIntSafe(
-            schedulingViews.maxDurationView.getText().toString(),
-            TaskEditDefaults.MAX_DURATION
-        );
+            schedulingViews.maxDurationView.getText().toString(), TaskEditDefaults.MAX_DURATION);
         input.cooldown = TaskEditPresenter.parseIntSafe(
-            schedulingViews.cooldownView.getText().toString(),
-            TaskEditDefaults.COOLDOWN
-        );
+            schedulingViews.cooldownView.getText().toString(), TaskEditDefaults.COOLDOWN);
         input.adaptive = schedulingViews.adaptiveView.isChecked();
+    }
 
+    private void readRepetitionSection(FormInput input) {
         input.repetitionEnabled = repetitionViews.toggleRepetition.isChecked();
         input.reps = TaskEditPresenter.parseIntSafe(
-            repetitionViews.repsView.getText().toString(),
-            TaskEditDefaults.REPETITION_REPS
-        );
+            repetitionViews.repsView.getText().toString(), TaskEditDefaults.REPETITION_REPS);
         input.perPeriod = TaskEditPresenter.parseIntSafe(
-            repetitionViews.perPeriodView.getText().toString(),
-            TaskEditDefaults.REPETITION_PER_PERIOD
-        );
+            repetitionViews.perPeriodView.getText().toString(), TaskEditDefaults.REPETITION_PER_PERIOD);
         input.periodUnit = TaskEditPresenter.coalesce(
             (Period) repetitionViews.periodUnitView.getSelectedItem(),
             TaskEditDefaults.REPETITION_PERIOD_UNIT
         );
         input.completeFirst = repetitionViews.completeFirstView.isChecked();
+    }
 
+    private void readProgressSection(FormInput input) {
         input.progressEnabled = progressViews.toggleProgress.isChecked();
         input.unit = progressViews.unitView.getText().toString();
         input.target = TaskEditPresenter.parseIntSafe(
-            progressViews.targetView.getText().toString(),
-            TaskEditDefaults.TARGET
-        );
+            progressViews.targetView.getText().toString(), TaskEditDefaults.TARGET);
         input.current = TaskEditPresenter.parseIntSafe(
-            progressViews.currentView.getText().toString(),
-            TaskEditDefaults.CURRENT
-        );
+            progressViews.currentView.getText().toString(), TaskEditDefaults.CURRENT);
         input.resetPerRep = progressViews.resetPerRepView.isChecked();
         input.minPerRep = TaskEditPresenter.parseIntSafe(
-            progressViews.minPerRepView.getText().toString(),
-            TaskEditDefaults.MIN_PER_REP
-        );
+            progressViews.minPerRepView.getText().toString(), TaskEditDefaults.MIN_PER_REP);
         input.maxPerRep = TaskEditPresenter.parseIntSafe(
-            progressViews.maxPerRepView.getText().toString(),
-            TaskEditDefaults.MAX_PER_REP
-        );
-
-        return input;
+            progressViews.maxPerRepView.getText().toString(), TaskEditDefaults.MAX_PER_REP);
     }
 }

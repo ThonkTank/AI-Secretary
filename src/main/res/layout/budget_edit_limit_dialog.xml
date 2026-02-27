@@ -6,6 +6,7 @@
     android:padding="@dimen/spacing_lg">
 
     <TextView
+        android:id="@+id/BudgetLimitCategoryLabel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/spacing_xs"

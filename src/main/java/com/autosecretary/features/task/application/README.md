@@ -8,7 +8,8 @@ Use the `application/` layer to orchestrate task feature workflows and expose ap
 
 - **Calendar contracts (`application/calendar/`)**
   - Keep calendar-facing service contracts and DTOs used by scheduling/list projections.
-  - Examples: `TaskCalendarService`, `TaskCalendarEvent`.
+  - Examples: `TaskCalendarService`, `ScheduleWindow`.
+  - Note: `TaskCalendarEvent` lives in `domain/` (domain scheduling code uses it directly).
 
 - **Schedule config (`application/config/`)**
   - Keep schedule configuration repository used by config UI and scheduling window lookup.

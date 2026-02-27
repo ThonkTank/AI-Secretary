@@ -6,7 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 
-import com.autosecretary.features.task.application.internal.scheduling.DailyPlanningScheduler;
+import com.autosecretary.features.task.application.internal.alarms.DailyPlanningScheduler;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 public class AutoSecretaryApplication extends Application {

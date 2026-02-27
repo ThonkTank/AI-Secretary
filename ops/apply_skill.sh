@@ -93,11 +93,10 @@ fi
 
 # ── Autonomous cycle ────────────────────────────────────────────────────────────
 # Hardcoded skill order for --autonomous mode.
-# review-design and review-accessibility are UI-scoped: only run on ui/ and res/ dirs.
 # review-architecture, review-conventions, review-structure are high-level: only run on dirs with subdirs.
 # commit and sync-main are git-ops: run once per occurrence at PROJECT_ROOT.
 # commit checkpoints after every review skill; sync-main integrates upstream once per cycle.
-# review-smells and review-simplicity appear multiple times to catch regressions from structural changes.
+# review-smells and review-simplicity each appear 2× to catch regressions from structural changes.
 AUTONOMOUS_SKILL_CYCLE=(
     review-smells          # 1.  Anti-Pattern und Code-Gerüche
     commit                 # 2.
@@ -107,28 +106,16 @@ AUTONOMOUS_SKILL_CYCLE=(
     commit                 # 6.
     review-architecture    # 7.  Architekturelle Korrektheit
     commit                 # 8.
-    review-smells          # 9.  Smell-Regression nach Architektur-Änderungen
+    review-conventions     # 9.  Konsistenz sicherstellen
     commit                 # 10.
-    review-conventions     # 11. Konsistenz sicherstellen
+    review-smells          # 11. Regression nach Architektur/Conventions
     commit                 # 12.
-    review-structure       # 13. Datei-/Ordnerstruktur optimieren
+    review-simplicity      # 13. Regression nach Architektur/Conventions
     commit                 # 14.
-    review-simplicity      # 15. Komplexitäts-Regression nach Restrukturierung
+    review-structure       # 15. Datei-/Ordnerstruktur optimieren
     commit                 # 16.
-    review-performance     # 17. Performance-Hotspots
+    review-onboarding      # 17. Dokumentation und Kommentare
     commit                 # 18.
-    review-security        # 19. Sicherheitslücken
-    commit                 # 20.
-    review-design          # 21. Visuelles Design (ui/res only)
-    commit                 # 22.
-    review-accessibility   # 23. Barrierefreiheit/UX (ui/res only)
-    commit                 # 24.
-    review-smells          # 25. Finale Smell-Bereinigung
-    commit                 # 26.
-    review-simplicity      # 27. Finale Vereinfachung
-    commit                 # 28.
-    review-onboarding      # 29. Dokumentation und Kommentare
-    sync-main              # 30. Upstream integrieren + pushen
 )
 
 is_git_op_skill() { [[ "$1" == "sync-main" || "$1" == "commit" ]]; }
@@ -153,6 +140,45 @@ _should_skip_dir() {
     is_ui_skill "$skill" && ! is_ui_dir "$dir" && return 0
     is_highlevel_skill "$skill" && ! is_highlevel_dir "$dir" && return 0
     return 1
+}
+
+# Check whether origin/main has commits we don't have, or open PRs exist.
+# Returns 0 (true) if sync is needed, 1 (false) otherwise.
+_upstream_has_changes() {
+    git -C "$PROJECT_ROOT" fetch origin main --quiet 2>/dev/null || return 1
+    local ahead
+    ahead=$(git -C "$PROJECT_ROOT" rev-list HEAD..origin/main --count 2>/dev/null)
+    if (( ahead > 0 )); then
+        echo "[auto-sync] $ahead neue Commits auf origin/main"
+        return 0
+    fi
+    local open_prs
+    open_prs=$(gh pr list --repo "$(git -C "$PROJECT_ROOT" remote get-url origin)" \
+        --state open --base main --json number --jq 'length' 2>/dev/null)
+    if (( open_prs > 0 )); then
+        echo "[auto-sync] $open_prs offene PRs auf main"
+        return 0
+    fi
+    return 1
+}
+
+# Run sync-main if upstream has changes. Loads the skill file on demand.
+_auto_sync_if_needed() {
+    local cycle="${1:-}"
+    _upstream_has_changes || return 0
+    local sync_skill="${SCRIPT_DIR}/skills/sync-main.md"
+    [[ -f "$sync_skill" ]] || { echo "WARNING: sync-main.md nicht gefunden"; return 1; }
+    local sync_log_dir="$LOG_DIR/cycle_$(printf '%03d' "$cycle")/sync-main"
+    mkdir -p "$sync_log_dir"
+    local logfile="$sync_log_dir/_root.md"
+    echo "══════════════════════════════════════════"
+    echo "AUTO-SYNC: origin/main hat Änderungen — starte sync-main"
+    echo "══════════════════════════════════════════"
+    run_with_retry "$PROJECT_ROOT" "$logfile" "$(<"$sync_skill")" "sonnet" 40 \
+        || echo "WARNING: auto-sync exited non-zero"
+    echo "--- Sync preview ---"
+    _show_preview "$logfile"
+    echo ""
 }
 
 # Model selection — simple LOC-based tiers, no complexity matrix.
@@ -752,10 +778,25 @@ You are the crash recovery agent. Do the following in order:
                 echo "Folder : $PROJECT_ROOT  [git-op, root only]"
                 echo "Log    : $logfile"
                 echo "══════════════════════════════════════════"
-                # /init before commit: loads CLAUDE.md + project structure into context
                 if [[ "$SKILL" == "commit" ]]; then
-                    run_with_retry "$PROJECT_ROOT" "$SKILL_LOG_DIR/_init.md" "/init" "haiku" 20 \
-                        || echo "WARNING: /init exited non-zero"
+                    # Auto-sync before commit: integrate upstream if needed
+                    _auto_sync_if_needed "$cycle"
+                    # init before commit: update CLAUDE.md so subsequent agents have accurate context
+                    _init_skill="${SCRIPT_DIR}/skills/init.md"
+                    if [[ -f "$_init_skill" ]]; then
+                        echo "── init: updating CLAUDE.md ──"
+                        run_with_retry "$PROJECT_ROOT" "$SKILL_LOG_DIR/_init.md" \
+                            "$(<"$_init_skill")" "sonnet" 40 \
+                            || echo "WARNING: init exited non-zero"
+                        echo "── init done ──"
+                    fi
+                fi
+                # sync-main as standalone skill: only run if upstream has changes
+                if [[ "$SKILL" == "sync-main" ]] && ! _upstream_has_changes; then
+                    echo "── sync-main: keine Upstream-Änderungen, übersprungen ──"
+                    _save_state "$cycle" $(( skill_i + 1 )) 0
+                    _check_sentinel
+                    continue
                 fi
                 select_agent_config "$SKILL" ""
                 echo "Model  : $AGENT_MODEL  Turns: $AGENT_TURNS  Lines: $AGENT_LINE_COUNT"
@@ -784,12 +825,14 @@ You are the crash recovery agent. Do the following in order:
 
                 # Pre-count eligible dirs for accurate progress display
                 _eligible_count=0
+                _processed_count=0
                 for _d in "${dirs[@]}"; do
                     [[ -d "$_d" ]] || continue
                     _should_skip_dir "$SKILL" "$_d" && continue
                     ((_eligible_count++))
+                    # Count already-visited dirs so counter resumes correctly
+                    [[ -n "${VISITED_DIRS[$_d]+x}" ]] && ((_processed_count++))
                 done
-                _processed_count=0
 
                 while true; do
                     _rebuild_dirs   # fresh snapshot before each agent call

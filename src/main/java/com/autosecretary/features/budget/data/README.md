@@ -23,8 +23,8 @@
   - `BudgetRoomRepository` — implements `BudgetRepository`
   - `BudgetImportRoomRepository` — implements `BudgetImportRepository`
 
-- **`api/`** — Non-Room data sources.
-  - `ClaudeApiKeyStore` — encrypted API key storage via Android Keystore
+- **`keystore/`** — Non-Room secure storage.
+  - `ClaudeApiKeyStore` — encrypted API key storage via Android Keystore + SharedPreferences
 
 ## Placement convention
 
@@ -33,4 +33,5 @@ Place new data-layer files in exactly one of these packages:
 - `entity/` — persisted Room entities
 - `dao/` — DAO interfaces for entity access and aggregate queries
 - `repository/` — Room-backed implementations of domain repositories
-- `api/` — non-Room data sources (keystore, SharedPreferences, HTTP clients)
+- `api/` — external API HTTP clients (e.g. `ClaudeStatementApiClient` for PDF import via Claude API)
+- `keystore/` — non-Room secure storage (Android Keystore, SharedPreferences encryption)

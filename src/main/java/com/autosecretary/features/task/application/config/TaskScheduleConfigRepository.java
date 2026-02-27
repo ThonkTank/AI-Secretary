@@ -3,7 +3,7 @@ package com.autosecretary.features.task.application.config;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.data.TaskScheduleConfig;
 import com.autosecretary.features.task.data.TaskScheduleConfigDao;
-import com.autosecretary.features.task.domain.SchedulingWindowProvider;
+import com.autosecretary.features.task.domain.scheduling.SchedulingWindowProvider;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;

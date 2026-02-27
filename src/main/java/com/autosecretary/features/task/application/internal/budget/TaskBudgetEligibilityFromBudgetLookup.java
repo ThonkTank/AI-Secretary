@@ -2,7 +2,7 @@ package com.autosecretary.features.task.application.internal.budget;
 
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.domain.TaskBudgetEligibilityService;
+import com.autosecretary.features.task.domain.scheduling.TaskBudgetEligibilityService;
 
 /**
  * Default task-budget adapter backed by budget account balances.

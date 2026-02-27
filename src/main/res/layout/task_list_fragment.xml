@@ -17,7 +17,7 @@
         android:layout_marginStart="@dimen/spacing_sm"
         android:layout_marginEnd="@dimen/spacing_sm"
         android:layout_marginBottom="@dimen/spacing_xs"
-        android:background="@drawable/bg_day_nav_chip"
+        android:background="@drawable/task_bg_day_nav_chip"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="@dimen/spacing_md"

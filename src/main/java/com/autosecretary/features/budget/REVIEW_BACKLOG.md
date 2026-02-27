@@ -5,7 +5,7 @@ Cross-cutting issues that span multiple sub-packages.
 ## Open Issues
 
 ### [consider] `BudgetRecurringTemplateEntity.recurringValue` is a dual-purpose field spanning data/domain boundary
-**Files:** `data/entity/BudgetRecurringTemplateEntity.java:76`, `domain/internal/recurring/DatePatternDetector.java:181`
+**Files:** `data/entity/BudgetRecurringTemplateEntity.java:76`, `domain/recurring/internal/DatePatternDetector.java:181`
 The entity stores `recurringValue` with different semantics depending on `recurringType`: day-of-month for `MONTHLY_DAY`, interval days for `INTERVAL`, always 0 for `MONTHLY_LAST`/`WEEKLY`. This is a silent convention that crosses the data/domain boundary. A proper fix would require a schema migration or a sealed hierarchy which is out of scope. Deferred.
 
 ### [warning] `updateTransaction` and `saveTransaction` have too many parameters
@@ -36,3 +36,33 @@ Constructor accepts 10 arguments spanning three logical groups (infrastructure, 
 **File:** `ui/BudgetViewModelFactory.java:44-59`
 `create()` constructs `CalculateEffectiveBudgetLimitUseCase` and `BudgetSeedService` inline rather than receiving them through the constructor. Mixed injection/factory patterns within one class.
 **Fix suggestion:** Inject all collaborators through the factory constructor, or document the intentional inline construction.
+
+### [warning] `BudgetImportRepository.notifyBudgetDataUpdated()` is a UI lifecycle operation on a domain interface
+**File:** `domain/BudgetImportRepository.java:87`
+The method's own Javadoc flags it as a cross-layer concern. Fix: move to a separate `BudgetDataNotifier` interface owned by the application layer, or trigger from the use case.
+**Deferred reason:** Requires coordinated changes to `data/repository/BudgetImportRoomRepository`, `application/importing/BudgetImportUseCase`, and `domain/BudgetImportRepository` — large cross-layer refactor.
+*(Promoted from `domain/REVIEW_BACKLOG.md`)*
+
+### [warning] `MonthlyOverviewItem` is a mutable public-field POJO inconsistent with the rest of the domain layer
+**File:** `domain/MonthlyOverviewItem.java`
+All other domain DTOs are immutable records. Room's field-injection requires the mutable shape for query results, but the correct fix is to split into a Room-only projection (in `data/dao/`) and a proper immutable domain record in `domain/`. Callers: `data/dao/BudgetTransactionDao`, `data/repository/BudgetRoomRepository`, `ui/internal/BudgetSummaryPresentationMapper`, `ui/internal/BudgetOverviewLoader`.
+**Deferred reason:** Cross-layer refactor touching DAO, repository, and presentation mapper.
+*(Promoted from `domain/REVIEW_BACKLOG.md`)*
+
+### [warning] `BudgetRepository` domain interface imports data-layer `@Entity` types
+**File:** `domain/BudgetRepository.java:4-8`
+Imports `BudgetAccount`, `BudgetCategory`, `BudgetLimit`, `BudgetTransactionEntity` from `features.budget.data.entity`. This inverts the dependency hierarchy: any Room annotation or schema change in the entity forces a domain-layer change. Fix: define lightweight domain value objects (no Room annotations) for Account, Category, Transaction, and Limit; have the data layer map to/from those.
+**Deferred reason:** Large-scale cross-layer refactor touching `BudgetRoomRepository`, `BudgetViewModel`, and all application-layer callers.
+*(Promoted from `domain/REVIEW_BACKLOG.md`)*
+
+### [consider] `RecurringBudgetTransaction` is a mutable public-field POJO inconsistent with all other domain DTOs
+**File:** `domain/recurring/RecurringBudgetTransaction.java`
+All sibling domain types (`RecurringSuggestion`, `RecurringScheduleParams`, `TemplateStatusUpdate`, `CategorySpendSummary`) are immutable records. The data-layer mapper (`BudgetImportRoomRepository`) depends on this shape, but the fix is to let the data layer own its own mutable projection and map to an immutable domain record.
+**Deferred reason:** Closely coupled to `data/entity/BudgetRecurringTemplateEntity` and `data/repository/BudgetImportRoomRepository` — same scope as the `BudgetRepository` coupling issue above.
+*(Promoted from `domain/REVIEW_BACKLOG.md`)*
+
+### [inconsistent] `Entity` suffix applied inconsistently across data entities
+**Files:** `data/entity/BudgetAccount.java`, `data/entity/BudgetCategory.java`, `data/entity/BudgetLimit.java` (missing suffix); `data/entity/BudgetTransactionEntity.java`, `data/entity/BudgetRecurringTemplateEntity.java`, `data/entity/BudgetImportEntity.java` (have suffix)
+Makes Room entities indistinguishable from domain objects at a glance. Canonical fix: add `Entity` suffix to the three missing it. Requires updating `domain/BudgetRepository.java` interface (which imports these types directly), `database/AppDatabase.java`, `app/AppCompositionRoot.java`, and all repository/DAO callers — wide blast radius.
+**Deferred reason:** Dependent on the `BudgetRepository` coupling fix above; should be done together.
+*(Promoted from `data/entity/REVIEW_BACKLOG.md`)*

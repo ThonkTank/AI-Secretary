@@ -4,10 +4,10 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskSlot;
-import com.autosecretary.features.task.domain.TransitionStat;
-import com.autosecretary.features.task.domain.TaskBudgetEligibilityService;
+import com.autosecretary.features.task.domain.scheduling.TransitionStat;
+import com.autosecretary.features.task.domain.scheduling.TaskBudgetEligibilityService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
-import com.autosecretary.features.task.domain.TaskPlanningState;
+import com.autosecretary.features.task.domain.scheduling.TaskPlanningState;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -48,6 +49,11 @@ final class TaskScorer {
     private static final double SPREAD_FLOOR = 0.1;
     /** Complementary spread range — fraction of score that scales linearly with day-distance ratio. */
     private static final double SPREAD_RANGE = 0.9;
+    /**
+     * Fraction of the expected inter-day gap below which a task is considered too recently
+     * scheduled on another day and must be skipped (inter-day spacing guard).
+     */
+    private static final double INTER_DAY_SPACING_THRESHOLD = 0.5;
 
     private final TaskLifecycleManager lifecycleManager;
     private final double maxAgingMultiplier;
@@ -313,8 +319,7 @@ final class TaskScorer {
         if (isBlockedByIncompletePriorPeriod(context)) return false;
         if (isBelowMinimumSlotDuration(context)) return false;
         if (isBelowRequiredProgressDuration(context)) return false;
-        if (isPastClosableDeadline(context)) return false;
-        return true;
+        return !isPastClosableDeadline(context);
     }
 
     private boolean isAlreadyCompleteForCurrentCycle(ScoringContext context) {
@@ -341,7 +346,7 @@ final class TaskScorer {
     private boolean violatesMinimumInterDaySpacing(ScoringContext context) {
         MultiDayStateSnapshot multiDay = context.snapshot().multiDayStateSnapshot();
         return multiDay.minDayDistance() > 0
-                && multiDay.minDayDistance() < multiDay.expectedDayGap() * 0.5;
+                && multiDay.minDayDistance() < multiDay.expectedDayGap() * INTER_DAY_SPACING_THRESHOLD;
     }
 
     private boolean hasReachedPeriodQuota(ScoringContext context) {
@@ -484,7 +489,7 @@ final class TaskScorer {
                 + " -> task=" + context.task().core.title
                 + "(" + context.task().core.id + ")"
                 + " weight=" + weight
-                + " mult=" + String.format(java.util.Locale.US, "%.2f", multiplier)
+                + " mult=" + String.format(Locale.US, "%.2f", multiplier)
                 + " add=" + (int) Math.round(additive)
                 + " base=" + base
                 + " result=" + result);

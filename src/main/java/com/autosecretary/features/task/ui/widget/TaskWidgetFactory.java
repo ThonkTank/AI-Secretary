@@ -77,18 +77,18 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         TaskListItem item = items.get(position);
         RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.task_row_widget);
 
-        rv.setTextViewText(R.id.widget_row_start, item.start != null ? item.start.format(TIME_FORMATTER) : "");
-        rv.setTextViewText(R.id.widget_row_end, item.end != null ? item.end.format(TIME_FORMATTER) : "");
-        rv.setTextViewText(R.id.widget_row_title, item.title);
+        rv.setTextViewText(R.id.WidgetRowStart, item.start != null ? item.start.format(TIME_FORMATTER) : "");
+        rv.setTextViewText(R.id.WidgetRowEnd, item.end != null ? item.end.format(TIME_FORMATTER) : "");
+        rv.setTextViewText(R.id.WidgetRowTitle, item.title);
 
         if (item.streak > 0) {
-            rv.setTextViewText(R.id.widget_row_streak, item.streak + "x");
-            rv.setViewVisibility(R.id.widget_row_streak, View.VISIBLE);
+            rv.setTextViewText(R.id.WidgetRowStreak, item.streak + "x");
+            rv.setViewVisibility(R.id.WidgetRowStreak, View.VISIBLE);
         } else {
-            rv.setViewVisibility(R.id.widget_row_streak, View.GONE);
+            rv.setViewVisibility(R.id.WidgetRowStreak, View.GONE);
         }
 
-        rv.setCompoundButtonChecked(R.id.widget_row_checkbox, item.completed);
+        rv.setCompoundButtonChecked(R.id.WidgetRowCheckbox, item.completed);
 
         boolean isInteractive = isToday && item.slotId != null && !item.completed;
 
@@ -98,17 +98,17 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
             fillIn.putExtra(TaskWidgetProvider.EXTRA_ACTION, TaskWidgetProvider.ACTION_TOGGLE);
             fillIn.putExtra(TaskWidgetProvider.EXTRA_TASK_ID, item.taskId);
             fillIn.putExtra(TaskWidgetProvider.EXTRA_SLOT_ID, item.slotId);
-            rv.setOnClickFillInIntent(R.id.widget_row_checkbox, fillIn);
+            rv.setOnClickFillInIntent(R.id.WidgetRowCheckbox, fillIn);
         }
 
         // Visual state for non-interactive days or completed items
-        rv.setBoolean(R.id.widget_row_checkbox, "setEnabled", isInteractive);
+        rv.setBoolean(R.id.WidgetRowCheckbox, "setEnabled", isInteractive);
 
         // In-progress visual hint
         int textColor = item.inProgress ? colorInProgress
                       : item.completed ? colorCompleted
                       : colorDefault;
-        rv.setInt(R.id.widget_row_title, "setTextColor", textColor);
+        rv.setInt(R.id.WidgetRowTitle, "setTextColor", textColor);
 
         return rv;
     }

@@ -1,7 +1,7 @@
 package com.autosecretary.features.meal.data.internal.repository;
 
+import com.autosecretary.features.meal.data.internal.BaseCollectionDao;
 import com.autosecretary.features.meal.data.internal.MealCollections;
-import com.autosecretary.features.meal.data.internal.dao.BaseCollectionDao;
 import com.autosecretary.features.meal.data.internal.mapper.IngredientRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.RecipeRowMapper;
 import com.autosecretary.features.meal.data.internal.storage.MealStorage;

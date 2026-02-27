@@ -3,6 +3,7 @@ package com.autosecretary.features.budget.domain;
 import com.autosecretary.features.budget.domain.importing.ImportStatus;
 import com.autosecretary.features.budget.domain.importing.ImportCategory;
 import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
+import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 
 import java.time.LocalDate;
 import java.util.List;

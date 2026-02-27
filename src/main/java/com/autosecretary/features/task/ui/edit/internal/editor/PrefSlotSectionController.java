@@ -85,11 +85,30 @@ public class PrefSlotSectionController {
     private void showDayPicker(PrefSlotEditState prefSlot, Set<DayOfWeek> takenByOthers) {
         DayOfWeek[] weekDays = DayOfWeek.values();
         String[] labels = fragment.getResources().getStringArray(R.array.task_edit_weekday_short_labels);
-
         if (labels.length != WEEK_DAY_COUNT) {
             throw new IllegalStateException("Expected exactly 7 localized weekday labels.");
         }
+        boolean[] selected = new boolean[WEEK_DAY_COUNT];
+        GridLayout layout = buildDayPickerLayout(weekDays, labels, prefSlot, takenByOthers, selected);
 
+        new AlertDialog.Builder(fragment.requireContext())
+            .setTitle(R.string.task_edit_day_picker_title)
+            .setView(layout)
+            .setPositiveButton(R.string.task_edit_day_picker_positive, (d, w) -> {
+                EnumSet<DayOfWeek> newDays = EnumSet.noneOf(DayOfWeek.class);
+                for (int i = 0; i < WEEK_DAY_COUNT; i++) {
+                    if (selected[i]) newDays.add(weekDays[i]);
+                }
+                prefSlot.days = newDays;
+                rebuildPrefSlotUI();
+            })
+            .setNegativeButton(R.string.task_edit_day_picker_negative, null)
+            .show();
+    }
+
+    private GridLayout buildDayPickerLayout(DayOfWeek[] weekDays, String[] labels,
+                                            PrefSlotEditState prefSlot, Set<DayOfWeek> takenByOthers,
+                                            boolean[] selected) {
         GridLayout layout = new GridLayout(fragment.requireContext());
         layout.setColumnCount(DAY_PICKER_COLUMN_COUNT);
         layout.setPadding(
@@ -101,16 +120,13 @@ public class PrefSlotSectionController {
         layout.setUseDefaultMargins(false);
         layout.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
 
-        boolean[] selected = new boolean[WEEK_DAY_COUNT];
-
         for (int i = 0; i < WEEK_DAY_COUNT; i++) {
             DayOfWeek day = weekDays[i];
             boolean isSelected = prefSlot.days != null && prefSlot.days.contains(day);
-            boolean isTaken = takenByOthers.contains(day);
             selected[i] = isSelected;
 
             MaterialButton btn = createDayButton(labels[i], isSelected, i);
-            if (isTaken) {
+            if (takenByOthers.contains(day)) {
                 btn.setEnabled(false);
             } else {
                 final int index = i;
@@ -119,25 +135,9 @@ public class PrefSlotSectionController {
                     btn.setChecked(selected[index]);
                 });
             }
-
             layout.addView(btn);
         }
-
-        new AlertDialog.Builder(fragment.requireContext())
-            .setTitle(R.string.task_edit_day_picker_title)
-            .setView(layout)
-            .setPositiveButton(R.string.task_edit_day_picker_positive, (d, w) -> {
-                EnumSet<DayOfWeek> newDays = EnumSet.noneOf(DayOfWeek.class);
-                for (int i = 0; i < WEEK_DAY_COUNT; i++) {
-                    if (selected[i]) {
-                        newDays.add(weekDays[i]);
-                    }
-                }
-                prefSlot.days = newDays;
-                rebuildPrefSlotUI();
-            })
-            .setNegativeButton(R.string.task_edit_day_picker_negative, null)
-            .show();
+        return layout;
     }
 
     private MaterialButton createDayButton(String label, boolean isSelected, int gridIndex) {

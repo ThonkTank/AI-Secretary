@@ -10,8 +10,7 @@
 
 ## Internal boundaries
 - `internal/` is reserved for task-edit-only helpers.
-- `internal/editor/` contains form view wiring, validation, and input collection.
-- `internal/mapper/` contains `TaskEditStateMapper` for edit-state ↔ task mapping.
-- `internal/PrefSlotUIBuilder` is edit-specific preferred-slot UI construction.
+- `internal/TaskEditStateMapper` maps edit-state ↔ task (bidirectional, data layer bridge).
+- `internal/editor/` contains form view wiring, validation, input collection, and preferred-slot UI.
 
 List-screen classes live in `features.task.ui.list` (for example: `TaskListFragment`, `ListRowAdapter`, `TaskViewModel`).

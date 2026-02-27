@@ -48,7 +48,7 @@
 
 
         <receiver
-            android:name=".features.task.application.internal.scheduling.DailyPlanningReceiver"
+            android:name=".features.task.application.internal.alarms.DailyPlanningReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.autosecretary.features.task.action.DAILY_PLANNING_ALARM" />
@@ -56,7 +56,7 @@
         </receiver>
 
         <receiver
-            android:name=".features.task.application.internal.scheduling.BootReceiver"
+            android:name=".features.task.application.internal.alarms.BootReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>

@@ -1,9 +1,11 @@
 package com.autosecretary.features.budget.application.importing;
 
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
-import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
-import com.autosecretary.features.budget.domain.RecurringPatternDetector;
-import com.autosecretary.features.budget.domain.RecurringSuggestion;
+import com.autosecretary.features.budget.domain.importing.ParsedStatement;
+import com.autosecretary.features.budget.domain.importing.ParsedTransaction;
+import com.autosecretary.features.budget.domain.recurring.RecurringBudgetTransaction;
+import com.autosecretary.features.budget.domain.recurring.RecurringPatternDetector;
+import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
 import android.util.Log;
@@ -63,7 +65,7 @@ public class BudgetImportUseCase {
             BudgetImportRepository.ImportRecord importRecord = repository.createImport(accountId, fileName, fileHash);
             importId = importRecord.id();
 
-            StatementFileParser.ParsedStatement parsed = parser.parse(fileName, fileBytes, mimeType);
+            ParsedStatement parsed = parser.parse(fileName, fileBytes, mimeType);
 
             ImportComputation computation = buildTransactions(accountId, importId, parsed.transactions());
             if (!computation.newTransactions.isEmpty()) {
@@ -114,12 +116,12 @@ public class BudgetImportUseCase {
 
     private ImportComputation buildTransactions(String accountId,
                                                 String importId,
-                                                List<StatementFileParser.ParsedTransaction> parsedTransactions) {
+                                                List<ParsedTransaction> parsedTransactions) {
         List<RecurringBudgetTransaction> newTransactions = new ArrayList<>();
         int duplicates = 0;
         int autoCategorized = 0;
 
-        for (StatementFileParser.ParsedTransaction parsed : parsedTransactions) {
+        for (ParsedTransaction parsed : parsedTransactions) {
             String txHash = parsed.importHash();
             if (txHash == null || txHash.isBlank()) {
                 txHash = buildTransactionFingerprint(parsed.bookingDate(), parsed.amountCents(), parsed.payee());

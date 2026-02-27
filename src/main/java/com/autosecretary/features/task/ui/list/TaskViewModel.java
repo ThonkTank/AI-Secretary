@@ -14,11 +14,11 @@ import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 import com.autosecretary.features.task.application.calendar.ScheduleWindow;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
-import com.autosecretary.features.task.domain.SchedulingConflict;
+import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
 import com.autosecretary.features.task.domain.TaskCalendarEvent;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList;
-import com.autosecretary.features.task.ui.list.state.ViewSlotList.ViewSlot;
+import com.autosecretary.features.task.ui.list.state.ViewSlot;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 import java.time.LocalDate;
@@ -250,47 +250,4 @@ public class TaskViewModel extends AndroidViewModel {
         });
     }
 
-    enum ListConfig {
-        CHECKLIST(false) {
-            @Override
-            boolean matches(ViewSlot slot, LocalDate day) {
-                return slot.item.isScheduledOn(day);
-            }
-
-            @Override
-            Comparator<ViewSlot> comparator() {
-                return Comparator.comparing(
-                        (ViewSlot slot) -> slot.item.start,
-                        Comparator.nullsLast(Comparator.naturalOrder())
-                );
-            }
-        },
-        MANAGE(true) {
-            @Override
-            boolean matches(ViewSlot slot, LocalDate day) {
-                return day == null || slot.item.day.equals(day);
-            }
-
-            @Override
-            Comparator<ViewSlot> comparator() {
-                return Comparator
-                        .<ViewSlot, Boolean>comparing(slot -> slot.item.isCalendarEvent())
-                        .thenComparing(slot -> slot.item.title, Comparator.nullsLast(Comparator.naturalOrder()));
-            }
-        };
-
-        private final boolean groupByTaskParent;
-
-        ListConfig(boolean groupByTaskParent) {
-            this.groupByTaskParent = groupByTaskParent;
-        }
-
-        abstract boolean matches(ViewSlot slot, LocalDate day);
-
-        abstract Comparator<ViewSlot> comparator();
-
-        boolean groupByTaskParent() {
-            return groupByTaskParent;
-        }
-    }
 }

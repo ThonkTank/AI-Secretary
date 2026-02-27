@@ -10,8 +10,8 @@ import androidx.room.PrimaryKey;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.UUID;
-import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
-import com.autosecretary.features.budget.domain.RecurringSuggestion;
+import com.autosecretary.features.budget.domain.recurring.RecurringBudgetTransaction;
+import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
 @Entity(

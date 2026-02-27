@@ -1,9 +1,9 @@
 package com.autosecretary.features.meal.data.internal.repository;
 
+import com.autosecretary.features.meal.data.internal.BaseCollectionDao;
 import com.autosecretary.features.meal.data.internal.MealCollections;
-import com.autosecretary.features.meal.data.internal.dao.BaseCollectionDao;
 import com.autosecretary.features.meal.data.internal.mapper.PantryItemRowMapper;
-import com.autosecretary.features.meal.data.internal.mapper.MealFieldKeys;
+import com.autosecretary.features.meal.data.internal.MealFieldKeys;
 import com.autosecretary.features.meal.data.internal.mapper.ShoppingListItemRowMapper;
 import com.autosecretary.features.meal.data.internal.storage.MealStorage;
 import com.autosecretary.features.meal.domain.PantryItem;

@@ -1,12 +1,12 @@
 package com.autosecretary.features.meal.data.internal.repository;
 
+import com.autosecretary.features.meal.data.internal.BaseCollectionDao;
 import com.autosecretary.features.meal.data.internal.MealCollections;
-import com.autosecretary.features.meal.data.internal.dao.BaseCollectionDao;
 import com.autosecretary.features.meal.data.internal.mapper.ConsumptionLogRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.CookingPreferencesRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.HouseholdMemberRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.MealPlanRowMapper;
-import com.autosecretary.features.meal.data.internal.mapper.MealFieldKeys;
+import com.autosecretary.features.meal.data.internal.MealFieldKeys;
 import com.autosecretary.features.meal.data.internal.mapper.WeeklyFoodTargetRowMapper;
 import com.autosecretary.features.meal.data.internal.storage.MealStorage;
 import com.autosecretary.features.meal.domain.ConsumptionLog;

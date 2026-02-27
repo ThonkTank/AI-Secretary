@@ -11,12 +11,12 @@ import com.autosecretary.features.budget.domain.BudgetImportRepository;
 import com.autosecretary.features.budget.domain.importing.ImportCategory;
 import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
 import com.autosecretary.features.budget.domain.importing.ImportTransactionType;
-import com.autosecretary.features.budget.domain.RecurringSuggestion;
+import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.domain.TransactionKind;
-import com.autosecretary.features.budget.domain.TemplateStatusUpdate;
-import com.autosecretary.features.budget.domain.RecurringTemplateScheduler;
-import com.autosecretary.features.budget.domain.RecurringScheduleParams;
+import com.autosecretary.features.budget.domain.recurring.TemplateStatusUpdate;
+import com.autosecretary.features.budget.domain.recurring.RecurringTemplateScheduler;
+import com.autosecretary.features.budget.domain.recurring.RecurringScheduleParams;
 
 import java.time.LocalDate;
 import java.util.List;

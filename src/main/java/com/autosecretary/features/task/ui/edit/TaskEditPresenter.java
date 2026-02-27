@@ -6,7 +6,7 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
-import com.autosecretary.features.task.ui.edit.internal.mapper.TaskEditStateMapper;
+import com.autosecretary.features.task.ui.edit.internal.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
@@ -201,40 +201,4 @@ public class TaskEditPresenter {
         return value != null ? value : fallback;
     }
 
-    /** Raw form field values collected from the dialog UI. */
-    public static class FormInput {
-        public String title;
-        public String description;
-        public Priority priority = TaskEditDefaults.PRIORITY;
-        public String goalIcon = TaskEditDefaults.GOAL_ICON;
-        public String goalColorHex = TaskEditDefaults.GOAL_COLOR_HEX;
-        public TaskCore.SchedulingType schedulingType = TaskEditDefaults.SCHEDULING_TYPE;
-        public LocalDate fixedDate;
-        public LocalTime fixedStart;
-        public LocalTime fixedEnd;
-        public Integer fixedDuration;
-        public Integer budgetRequiredCents;
-        public String budgetAccountId;
-        public String budgetCategoryId;
-
-        public boolean closeOnMiss;
-        public int minDuration = TaskEditDefaults.MIN_DURATION;
-        public int maxDuration = TaskEditDefaults.MAX_DURATION;
-        public int cooldown = TaskEditDefaults.COOLDOWN;
-        public boolean adaptive;
-
-        public boolean repetitionEnabled;
-        public int reps = TaskEditDefaults.REPETITION_REPS;
-        public int perPeriod = TaskEditDefaults.REPETITION_PER_PERIOD;
-        public Period periodUnit = TaskEditDefaults.REPETITION_PERIOD_UNIT;
-        public boolean completeFirst;
-
-        public boolean progressEnabled;
-        public String unit;
-        public int target = TaskEditDefaults.TARGET;
-        public int current = TaskEditDefaults.CURRENT;
-        public boolean resetPerRep;
-        public int minPerRep = TaskEditDefaults.MIN_PER_REP;
-        public int maxPerRep = TaskEditDefaults.MAX_PER_REP;
-    }
 }

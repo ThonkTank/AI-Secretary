@@ -39,7 +39,7 @@
     <string name="task_progress_display">%1$d/%2$d %3$s</string>
     <string name="task_progress_increment">Fortschritt erhöhen</string>
     <string name="task_progress_decrement">Fortschritt verringern</string>
-    <string name="widget_add_content_description">Aufgabe hinzufügen</string>
+    <string name="task_widget_add_content_description">Aufgabe hinzufügen</string>
 
     <string name="task_calendar_label">Kalender</string>
     <string name="task_calendar_state_description">Kalendereintrag</string>
@@ -99,8 +99,8 @@
     <string name="task_editor_pref_slot_time_button">Startzeit auswählen: %1$s</string>
     <string name="task_editor_pref_slot_time_content_description">Startzeit auswählen. Aktuell: %1$s</string>
 
-    <string name="widget_refresh_content_description">Aktualisieren</string>
-    <string name="widget_empty">Keine Aufgaben</string>
+    <string name="task_widget_refresh_content_description">Aktualisieren</string>
+    <string name="task_widget_empty">Keine Aufgaben</string>
 
     <string-array name="task_edit_weekday_short_labels">
         <item>Mo</item>

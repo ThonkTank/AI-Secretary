@@ -1,7 +1,7 @@
 package com.autosecretary.features.budget.application.importing;
 
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
-import com.autosecretary.features.budget.domain.RecurringSuggestion;
+import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;

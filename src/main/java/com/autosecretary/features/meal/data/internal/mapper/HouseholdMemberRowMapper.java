@@ -1,5 +1,6 @@
 package com.autosecretary.features.meal.data.internal.mapper;
 
+import com.autosecretary.features.meal.data.internal.MealFieldKeys;
 import com.autosecretary.features.meal.domain.HouseholdMember;
 
 import java.util.HashMap;

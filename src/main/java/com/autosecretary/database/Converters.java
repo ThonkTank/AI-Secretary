@@ -10,7 +10,7 @@ import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.domain.TransactionKind;
 import com.autosecretary.features.budget.domain.importing.ImportStatus;
-import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
+import com.autosecretary.features.budget.domain.recurring.RecurringBudgetTransaction;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import java.time.DayOfWeek;
 import java.time.LocalDate;

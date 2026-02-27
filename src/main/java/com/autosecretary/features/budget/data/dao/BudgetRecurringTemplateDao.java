@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEntity;
-import com.autosecretary.features.budget.domain.TemplateStatusUpdate;
+import com.autosecretary.features.budget.domain.recurring.TemplateStatusUpdate;
 
 @Dao
 public interface BudgetRecurringTemplateDao {

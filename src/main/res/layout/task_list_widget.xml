@@ -16,7 +16,7 @@
         android:paddingBottom="@dimen/spacing_xs">
 
         <TextView
-            android:id="@+id/widget_prev_day"
+            android:id="@+id/WidgetPrevDay"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:padding="@dimen/spacing_sm"
@@ -24,7 +24,7 @@
             android:textAppearance="@style/TextAppearance.Task.Widget.NavAction" />
 
         <TextView
-            android:id="@+id/widget_date_label"
+            android:id="@+id/WidgetDateLabel"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -33,7 +33,7 @@
             android:textAppearance="@style/TextAppearance.Task.Widget.NavLabel" />
 
         <TextView
-            android:id="@+id/widget_next_day"
+            android:id="@+id/WidgetNextDay"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:padding="@dimen/spacing_sm"
@@ -50,28 +50,28 @@
         android:paddingBottom="@dimen/spacing_xs">
 
         <ImageButton
-            android:id="@+id/widget_add"
+            android:id="@+id/WidgetAdd"
             android:layout_width="@dimen/widget_refresh_button_size"
             android:layout_height="@dimen/widget_refresh_button_size"
             android:layout_marginEnd="@dimen/spacing_xs"
             android:src="@android:drawable/ic_input_add"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/widget_add_content_description"
+            android:contentDescription="@string/task_widget_add_content_description"
             android:scaleType="fitCenter" />
 
         <ImageButton
-            android:id="@+id/widget_refresh"
+            android:id="@+id/WidgetRefresh"
             android:layout_width="@dimen/widget_refresh_button_size"
             android:layout_height="@dimen/widget_refresh_button_size"
             android:src="@android:drawable/ic_popup_sync"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/widget_refresh_content_description"
+            android:contentDescription="@string/task_widget_refresh_content_description"
             android:scaleType="fitCenter" />
     </LinearLayout>
 
     <!-- Task list -->
     <ListView
-        android:id="@+id/widget_task_list"
+        android:id="@+id/WidgetTaskList"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -80,12 +80,12 @@
 
     <!-- Empty state -->
     <TextView
-        android:id="@+id/widget_empty"
+        android:id="@+id/WidgetEmpty"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:gravity="center"
-        android:text="@string/widget_empty"
+        android:text="@string/task_widget_empty"
         android:textAppearance="@style/TextAppearance.Task.Metadata"
         android:visibility="gone" />
 

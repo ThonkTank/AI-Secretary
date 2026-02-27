@@ -4,7 +4,7 @@
 
 ---
 
-### [drift] `RoomDatabase` direct reference in application-layer class — `TaskSlotToggleMutation.java:39,83,95`
+### [drift] `RoomDatabase` direct reference in application-layer class — `TaskSlotToggleMutation.java:39,83,95,109`
 
 `TaskSlotToggleMutation` holds a `RoomDatabase` instance to call `runInTransaction()`.
 Room infrastructure types normally stay in the `data/` layer; the application layer
@@ -15,7 +15,7 @@ reference. The cross-DAO transaction requirement (writing `task`, `slot`, and
 direction is inconsistent with the rest of the codebase.
 
 **Why it matters:** Introduces a precedent that future contributors might copy when a
-simpler DAO method would suffice.
+simpler DAO method would suffice. Also makes testing harder (requires mocking `RoomDatabase`).
 
 **Suggested fix (if scope allows):** Expose a `@Transaction`-annotated method on
 `TaskDAO` (making it an abstract class rather than an interface) that encapsulates the
@@ -30,3 +30,4 @@ support, evaluate whether the refactoring complexity is worth the architectural 
 architectural concern originates here.
 
 ---
+

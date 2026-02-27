@@ -19,7 +19,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.autosecretary.R;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
-import com.autosecretary.features.task.ui.list.state.ViewSlotList.ViewSlot;
+import com.autosecretary.features.task.ui.list.state.ViewSlot;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -128,7 +128,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.title.setText(item.title);
         holder.itemView.setContentDescription(item.title);
 
-        bindIndentation(holder, viewSlot.depth);
+        bindIndentation(holder, viewSlot.getDepth());
         bindTimeRange(holder, item);
 
         if (item.isCalendarEvent()) {
@@ -157,7 +157,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     }
 
     private void bindTaskRow(TaskRowViewHolder holder) {
-        holder.root.setBackgroundResource(R.drawable.bg_task_row);
+        holder.root.setBackgroundResource(R.drawable.task_bg_row);
         holder.checkBox.setVisibility(View.VISIBLE);
         holder.deadlineCountdown.setVisibility(View.VISIBLE);
         holder.streakDisplay.setVisibility(View.VISIBLE);
@@ -201,7 +201,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     private void bindCalendarEventRow(TaskRowViewHolder holder) {
         Context context = holder.itemView.getContext();
-        holder.root.setBackgroundResource(R.drawable.bg_calendar_row);
+        holder.root.setBackgroundResource(R.drawable.task_bg_calendar_row);
         holder.checkBox.setVisibility(View.GONE);
         holder.goalIcon.setVisibility(View.GONE);
         holder.progressContainer.setVisibility(View.GONE);

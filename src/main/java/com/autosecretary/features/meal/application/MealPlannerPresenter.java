@@ -8,7 +8,7 @@ import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.RecipeRepository;
 import com.autosecretary.features.meal.domain.ShoppingListItem;
-import com.autosecretary.features.meal.domain.internal.ShelfLifeService;
+import com.autosecretary.features.meal.domain.ShelfLifeService;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,7 +21,6 @@ public class MealPlannerPresenter {
     private final MealRepository mealRepository;
     private final RecipeRepository recipeRepository;
     private final PantryRepository pantryRepository;
-    private final ShelfLifeService shelfLifeService;
 
     public MealPlannerPresenter(MealRepository mealRepository,
                                 RecipeRepository recipeRepository,
@@ -29,7 +28,6 @@ public class MealPlannerPresenter {
         this.mealRepository = mealRepository;
         this.recipeRepository = recipeRepository;
         this.pantryRepository = pantryRepository;
-        this.shelfLifeService = new ShelfLifeService();
     }
 
     public List<MealPlan> getWeekMealPlans() {
@@ -41,7 +39,7 @@ public class MealPlannerPresenter {
     }
 
     public List<Recipe> getRecipes() {
-        List<Recipe> recipes = new ArrayList<>(recipeRepository.getAllRecipes());
+        List<Recipe> recipes = new ArrayList<>(recipeRepository.getRecipes());
         recipes.sort(Comparator.comparing(recipe -> recipe.title));
         if (recipes.isEmpty()) {
             Recipe demo = new Recipe.Builder("Pasta Primavera")
@@ -106,10 +104,10 @@ public class MealPlannerPresenter {
                                  PantryItem.StorageLocation location,
                                  int shelfLifeDays) {
         LocalDate purchaseDate = LocalDate.now();
-        LocalDate expiryDate = shelfLifeService.calculateExpiryDate(purchaseDate, shelfLifeDays);
+        LocalDate expiryDate = ShelfLifeService.calculateExpiryDate(purchaseDate, shelfLifeDays);
         PantryItem item = new PantryItem.Builder(-1, ingredientName, Math.max(0.1, amount), unit)
                 .purchaseDate(purchaseDate)
-                .expiry(expiryDate)
+                .expiryDate(expiryDate)
                 .location(location)
                 .build();
         pantryRepository.savePantryItem(item);

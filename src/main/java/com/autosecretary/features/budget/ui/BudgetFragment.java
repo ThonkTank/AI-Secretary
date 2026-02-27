@@ -11,14 +11,12 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
@@ -27,12 +25,11 @@ import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
-import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.ui.internal.BudgetBalanceChartView;
-import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
 import com.autosecretary.features.budget.ui.internal.BudgetImportPickerController;
+import com.autosecretary.features.budget.ui.internal.BudgetLimitDialogController;
 import com.autosecretary.features.budget.ui.internal.BudgetRecurringSuggestionsDialogController;
+import com.autosecretary.features.budget.ui.internal.BudgetTransactionDialogController;
 import com.autosecretary.features.budget.ui.internal.BudgetTransferDialogController;
 import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
 import com.autosecretary.features.budget.ui.internal.SpinnerHelper;
@@ -41,10 +38,7 @@ import com.autosecretary.features.budget.ui.state.BudgetUiState;
 import com.autosecretary.features.budget.ui.state.TimeRangeFilter;
 import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
 import com.autosecretary.features.budget.ui.state.UiText;
-import com.google.android.material.switchmaterial.SwitchMaterial;
-import com.google.android.material.textfield.TextInputEditText;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -62,6 +56,8 @@ public class BudgetFragment extends Fragment {
     private BudgetImportPickerController importPickerController;
     private BudgetTransferDialogController transferDialogController;
     private BudgetRecurringSuggestionsDialogController recurringSuggestionsDialogController;
+    private BudgetTransactionDialogController transactionDialogController;
+    private BudgetLimitDialogController limitDialogController;
     private List<BudgetAccount> accountItems = new ArrayList<>();
 
     @Override
@@ -93,6 +89,40 @@ public class BudgetFragment extends Fragment {
                 suggestions -> {
                     if (budgetViewModel == null) return;
                     budgetViewModel.applyRecurringSuggestions(suggestions);
+                });
+
+        transactionDialogController = new BudgetTransactionDialogController(this,
+                new BudgetTransactionDialogController.Listener() {
+                    @Override
+                    public void onAddTransaction(String amountStr, boolean isExpense,
+                                                 String categoryId, String note,
+                                                 java.time.LocalDate date, String accountId) {
+                        if (budgetViewModel == null) return;
+                        budgetViewModel.addTransaction(amountStr, isExpense, categoryId, note, date, accountId);
+                    }
+
+                    @Override
+                    public void onUpdateTransaction(String transactionId, String amountStr,
+                                                    boolean isExpense, String categoryId,
+                                                    String note, java.time.LocalDate date,
+                                                    String accountId) {
+                        if (budgetViewModel == null) return;
+                        budgetViewModel.updateTransaction(transactionId, amountStr, isExpense,
+                                categoryId, note, date, accountId);
+                    }
+
+                    @Override
+                    public void onDeleteTransaction(String transactionId) {
+                        if (budgetViewModel == null) return;
+                        budgetViewModel.deleteTransaction(transactionId);
+                    }
+                });
+
+        limitDialogController = new BudgetLimitDialogController(this,
+                (categoryId, amountStr, rolloverEnabled, rolloverCarryoverStr) -> {
+                    if (budgetViewModel == null) return;
+                    budgetViewModel.saveBudgetLimitFromString(categoryId, amountStr,
+                            rolloverEnabled, rolloverCarryoverStr);
                 });
     }
 
@@ -287,99 +317,15 @@ public class BudgetFragment extends Fragment {
         SpinnerHelper.bindList(spinner, accountItems, a -> a.name, requireContext());
     }
 
-    // --- Add/Edit Transaction Dialog (with category + account + date) ---
+    // --- Transaction dialogs ---
 
     private void showAddTransactionDialog() {
-        showTransactionDialog(null);
+        transactionDialogController.showAdd(
+                categoriesValue(), accountsValue());
     }
 
     private void showEditTransactionDialog(BudgetTransactionRow row) {
-        showTransactionDialog(row);
-    }
-
-    private void showTransactionDialog(@Nullable BudgetTransactionRow existingRow) {
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.budget_add_transaction_dialog, null);
-        TextInputEditText amountInput = dialogView.findViewById(R.id.BudgetDialogAmount);
-        RadioButton expenseRadio = dialogView.findViewById(R.id.BudgetDialogTypeExpense);
-        RadioButton incomeRadio = dialogView.findViewById(R.id.BudgetDialogTypeIncome);
-        RadioGroup typeGroup = dialogView.findViewById(R.id.BudgetDialogTypeGroup);
-        Spinner categorySpinner = dialogView.findViewById(R.id.BudgetDialogCategory);
-        TextInputEditText noteInput = dialogView.findViewById(R.id.BudgetDialogNote);
-        TextInputEditText dateInput = dialogView.findViewById(R.id.BudgetDialogDate);
-        Spinner accountSpinner = dialogView.findViewById(R.id.BudgetDialogAccount);
-
-        List<BudgetCategory> cats = budgetViewModel.getCategories().getValue();
-        final List<BudgetCategory> allCategories = cats != null ? cats : new ArrayList<>();
-
-        List<BudgetAccount> accts = budgetViewModel.getAccounts().getValue();
-        final List<BudgetAccount> allAccounts = accts != null ? accts : new ArrayList<>();
-
-        boolean isExpense = existingRow == null || existingRow.isExpense();
-        SpinnerHelper.bindList(categorySpinner, categoriesForType(allCategories, isExpense),
-                this::buildCategoryDisplayLabel, requireContext());
-        SpinnerHelper.bindList(accountSpinner, activeAccounts(allAccounts), a -> a.name, requireContext());
-
-        typeGroup.setOnCheckedChangeListener((group, checkedId) ->
-                SpinnerHelper.bindList(categorySpinner,
-                        categoriesForType(allCategories, checkedId == R.id.BudgetDialogTypeExpense),
-                        this::buildCategoryDisplayLabel, requireContext()));
-
-        LocalDate selectedDate = existingRow != null && existingRow.getBookingDate() != null
-                ? existingRow.getBookingDate() : LocalDate.now();
-
-        if (existingRow != null) {
-            amountInput.setText(String.format(Locale.GERMAN, "%.2f",
-                    Math.abs(existingRow.getAmountCents()) / 100.0));
-            noteInput.setText(existingRow.getNote() != null ? existingRow.getNote() : "");
-            expenseRadio.setChecked(existingRow.isExpense());
-            incomeRadio.setChecked(!existingRow.isExpense());
-            SpinnerHelper.setSelection(categorySpinner, categoriesForType(allCategories, existingRow.isExpense()),
-                    existingRow.getCategoryId(), c -> c.id);
-            SpinnerHelper.setSelection(accountSpinner, activeAccounts(allAccounts),
-                    existingRow.getAccountId(), a -> a.id);
-        }
-
-        dateInput.setText(selectedDate.toString());
-
-        int titleRes = existingRow == null
-                ? R.string.budget_dialog_title
-                : R.string.budget_dialog_edit_title;
-        int positiveRes = existingRow == null
-                ? R.string.budget_dialog_save
-                : R.string.budget_dialog_update;
-
-        new AlertDialog.Builder(requireContext())
-                .setTitle(titleRes)
-                .setView(dialogView)
-                .setPositiveButton(positiveRes, (dialog, which) -> {
-                    String amountStr = amountInput.getText() != null
-                            ? amountInput.getText().toString().trim() : "";
-                    boolean selectedExpense = expenseRadio.isChecked();
-                    String note = noteInput.getText() != null
-                            ? noteInput.getText().toString().trim() : "";
-                    String categoryId = SpinnerHelper.idAtPosition(
-                            categoriesForType(allCategories, selectedExpense),
-                            categorySpinner.getSelectedItemPosition(), c -> c.id);
-                    String accountId = SpinnerHelper.idAtPosition(
-                            activeAccounts(allAccounts),
-                            accountSpinner.getSelectedItemPosition(), a -> a.id);
-                    LocalDate bookingDate = parseDateInput(dateInput.getText() != null
-                            ? dateInput.getText().toString().trim() : "");
-
-                    if (accountId == null) return;
-
-                    if (existingRow == null) {
-                        budgetViewModel.addTransaction(amountStr, selectedExpense, categoryId,
-                                note.isEmpty() ? null : note, bookingDate, accountId);
-                    } else {
-                        budgetViewModel.updateTransaction(existingRow.getTransactionId(), amountStr,
-                                selectedExpense, categoryId, note.isEmpty() ? null : note,
-                                bookingDate, accountId);
-                    }
-                })
-                .setNegativeButton(R.string.budget_dialog_cancel, null)
-                .show();
+        transactionDialogController.showEdit(row, categoriesValue(), accountsValue());
     }
 
     private void showTransferDialog() {
@@ -387,38 +333,19 @@ public class BudgetFragment extends Fragment {
         transferDialogController.show(budgetViewModel.getAccounts().getValue());
     }
 
-    private static List<BudgetCategory> categoriesForType(List<BudgetCategory> allCategories,
-                                                          boolean isExpense) {
-        TransactionDirection filterType = isExpense
-                ? TransactionDirection.EXPENSE
-                : TransactionDirection.INCOME;
-        List<BudgetCategory> filtered = new ArrayList<>();
-        for (BudgetCategory category : allCategories) {
-            if (filterType == category.direction) {
-                filtered.add(category);
-            }
-        }
-        return filtered;
+    private void showEditLimitDialog(@Nullable String preSelectedCategoryId, long baseLimitCents) {
+        limitDialogController.show(preSelectedCategoryId, baseLimitCents, categoriesValue());
     }
 
-    private static List<BudgetAccount> activeAccounts(List<BudgetAccount> accounts) {
-        List<BudgetAccount> active = new ArrayList<>();
-        for (BudgetAccount account : accounts) {
-            if (!account.archived) {
-                active.add(account);
-            }
-        }
-        return active;
+    private List<com.autosecretary.features.budget.data.entity.BudgetCategory> categoriesValue() {
+        List<com.autosecretary.features.budget.data.entity.BudgetCategory> cats =
+                budgetViewModel.getCategories().getValue();
+        return cats != null ? cats : new ArrayList<>();
     }
 
-    private LocalDate parseDateInput(String dateStr) {
-        if (dateStr != null && !dateStr.isEmpty()) {
-            try {
-                return LocalDate.parse(dateStr);
-            } catch (Exception ignored) {
-            }
-        }
-        return LocalDate.now();
+    private List<BudgetAccount> accountsValue() {
+        List<BudgetAccount> accts = budgetViewModel.getAccounts().getValue();
+        return accts != null ? accts : new ArrayList<>();
     }
 
     // --- Budget Limit Bars ---
@@ -439,7 +366,7 @@ public class BudgetFragment extends Fragment {
             TextView name = row.findViewById(R.id.BudgetLimitBarName);
             TextView spentText = row.findViewById(R.id.BudgetLimitBarSpentText);
             TextView percentText = row.findViewById(R.id.BudgetLimitBarPercent);
-            ProgressBar progress = row.findViewById(R.id.BudgetLimitBarProgress);
+            android.widget.ProgressBar progress = row.findViewById(R.id.BudgetLimitBarProgress);
 
             name.setText(bar.getCategoryName());
             spentText.setText(String.format(Locale.GERMAN, "%.2f / %.2f €",
@@ -492,16 +419,12 @@ public class BudgetFragment extends Fragment {
             rowView.setOnClickListener(v -> showEditTransactionDialog(row));
 
             rowView.setOnLongClickListener(v -> {
-                showDeleteTransactionDialog(row);
+                transactionDialogController.showDeleteConfirmation(row);
                 return true;
             });
 
             container.addView(rowView);
         }
-    }
-
-    private String buildCategoryDisplayLabel(BudgetCategory category) {
-        return BudgetSummaryPresentationMapper.categoryLabel(category.icon, category.name);
     }
 
     private static boolean isValidColorHex(String colorHex) {
@@ -514,64 +437,4 @@ public class BudgetFragment extends Fragment {
         view.setTextColor(ContextCompat.getColor(requireContext(),
                 cents >= 0 ? R.color.budget_positive : R.color.budget_negative));
     }
-
-    private void showDeleteTransactionDialog(BudgetTransactionRow row) {
-        new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.budget_delete_title)
-                .setMessage(R.string.budget_delete_message)
-                .setPositiveButton(R.string.budget_delete_confirm, (dialog, which) ->
-                        budgetViewModel.deleteTransaction(row.getTransactionId()))
-                .setNegativeButton(R.string.budget_dialog_cancel, null)
-                .show();
-    }
-
-    private void showEditLimitDialog(String preSelectedCategoryId,
-                                     long baseLimitCents) {
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.budget_edit_limit_dialog, null);
-        Spinner categorySpinner = dialogView.findViewById(R.id.BudgetLimitDialogCategory);
-        TextInputEditText amountInput = dialogView.findViewById(R.id.BudgetLimitDialogAmount);
-        SwitchMaterial rolloverSwitch =
-                dialogView.findViewById(R.id.BudgetLimitDialogRolloverEnabled);
-        TextInputEditText rolloverCarryoverInput =
-                dialogView.findViewById(R.id.BudgetLimitDialogRolloverCarryover);
-
-        List<BudgetCategory> cats = budgetViewModel.getCategories().getValue();
-        final List<BudgetCategory> allCategories = cats != null ? cats : new ArrayList<>();
-        final List<BudgetCategory> expenseCategories = categoriesForType(allCategories, true);
-
-        SpinnerHelper.bindList(categorySpinner, expenseCategories,
-                this::buildCategoryDisplayLabel, requireContext());
-        SpinnerHelper.setSelection(categorySpinner, expenseCategories,
-                preSelectedCategoryId, c -> c.id);
-
-        if (baseLimitCents > 0) {
-            amountInput.setText(String.format(Locale.GERMAN, "%.2f", baseLimitCents / 100.0));
-        }
-
-        new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.budget_edit_limit_title)
-                .setView(dialogView)
-                .setPositiveButton(R.string.budget_limit_save, (dialog, which) -> {
-                    String amountStr = amountInput.getText() != null
-                            ? amountInput.getText().toString().trim() : "";
-                    if (amountStr.isEmpty()) return;
-
-                    String categoryId = SpinnerHelper.idAtPosition(expenseCategories,
-                            categorySpinner.getSelectedItemPosition(), c -> c.id);
-                    if (categoryId == null) return;
-
-                    String rolloverCarryoverStr = rolloverCarryoverInput.getText() != null
-                            ? rolloverCarryoverInput.getText().toString().trim() : "";
-
-                    budgetViewModel.saveBudgetLimitFromString(
-                            categoryId,
-                            amountStr,
-                            rolloverSwitch.isChecked(),
-                            rolloverCarryoverStr);
-                })
-                .setNegativeButton(R.string.budget_dialog_cancel, null)
-                .show();
-    }
-
 }

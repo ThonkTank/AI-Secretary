@@ -97,6 +97,8 @@ public class CalendarReader implements TaskCalendarService {
                 boolean allDay = cursor.getInt(allDayCol) != 0;
 
                 if (allDay) {
+                    // All-day events don't block specific time windows within the schedule bounds.
+                    // Skip them since we only care about timed event conflicts.
                     continue;
                 }
 

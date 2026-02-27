@@ -15,7 +15,7 @@ import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.app.MainActivity;
 import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseCase;
 import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
-import com.autosecretary.features.task.ui.widget.WidgetConfiguration;
+import com.autosecretary.shared.WidgetConfiguration;
 
 public class BudgetWidgetProvider extends AppWidgetProvider {
     // Widget update period is defined in WidgetConfiguration and configured in widget_budget_info.xml.
@@ -51,11 +51,11 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
         LoadBudgetWidgetSummaryUseCase useCase = app.getAppCompositionRoot().createLoadBudgetWidgetSummaryUseCase();
         LoadBudgetWidgetSummaryUseCase.BudgetWidgetSummary summary = useCase.execute();
 
-        views.setTextViewText(R.id.budget_widget_total_value, CurrencyFormatter.eurosNet(summary.netBalanceCents()));
-        views.setTextViewText(R.id.budget_widget_free_value, CurrencyFormatter.eurosNet(summary.freeBudgetCents()));
+        views.setTextViewText(R.id.BudgetWidgetTotalValue, CurrencyFormatter.eurosNet(summary.netBalanceCents()));
+        views.setTextViewText(R.id.BudgetWidgetFreeValue, CurrencyFormatter.eurosNet(summary.freeBudgetCents()));
 
-        setupButton(views, widgetId, context, R.id.budget_widget_open_button, 0, null);
-        setupButton(views, widgetId, context, R.id.budget_widget_add_button, 1, ACTION_ADD_TRANSACTION);
+        setupButton(views, widgetId, context, R.id.BudgetWidgetOpenButton, 0, null);
+        setupButton(views, widgetId, context, R.id.BudgetWidgetAddButton, 1, ACTION_ADD_TRANSACTION);
 
         manager.updateAppWidget(widgetId, views);
     }

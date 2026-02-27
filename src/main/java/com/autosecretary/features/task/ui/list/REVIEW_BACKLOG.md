@@ -38,3 +38,6 @@ Each branch sets the same three properties (text, colour, contentDescription) on
 The duplication makes adding a new urgency tier error-prone.
 **Fix suggestion:** Push display resolution into `DeadlineUrgency` (resource IDs) or extract a lookup record.
 *(Promoted from `application/REVIEW_BACKLOG.md`)*
+
+---
+

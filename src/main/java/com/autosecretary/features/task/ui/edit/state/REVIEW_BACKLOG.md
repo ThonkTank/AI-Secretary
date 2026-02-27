@@ -3,6 +3,9 @@
 ## Status
 **Clean** — no active issues requiring immediate fix. The state package consists of straightforward POJOs and constants with appropriate documentation and design patterns.
 
+### Recent Fixes
+- **[nit] TaskEditDefaults delegation** — Added clarifying comment explaining that `GOAL_ICON` and `GOAL_COLOR_HEX` delegate to domain defaults to ensure UI/domain sync (TaskEditDefaults.java:23-24).
+
 ## Deferred Observations (for future consideration)
 
 ### [nit] TaskEditState — field grouping as nested POJOs
@@ -14,16 +17,6 @@
 Currently managed via comment sections. Could be extracted into nested POJOs for clarity and to parallel `TaskCore`'s structure.
 
 **Why no immediate fix:** Extracting would complicate form binding (FormInput readers and FormViews would need to navigate nested fields). Current flat structure with comment grouping is pragmatic for a UI form POJO. Revisit only if form binding infrastructure improves to handle nesting naturally.
-
----
-
-### [nit] TaskEditDefaults — undocumented delegation to TaskCore constants
-
-**File:** `TaskEditDefaults.java:24-25`
-
-**Observation:** `GOAL_ICON` and `GOAL_COLOR_HEX` delegate to `TaskCore.DEFAULT_GOAL_ICON` and `TaskCore.DEFAULT_GOAL_COLOR_HEX` without comment. A reader of `TaskEditDefaults` might not realize these are sourced from the domain model, not defined locally.
-
-**Why deferred:** Delegation is intentional and correct (UI defaults should defer to domain defaults). Low-risk change: add a comment or keep as-is. Not blocking anything.
 
 ---
 

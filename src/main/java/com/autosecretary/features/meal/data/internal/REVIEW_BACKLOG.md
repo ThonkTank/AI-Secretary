@@ -12,7 +12,7 @@
 ---
 
 ### [warning] Constructor parameter count + fragile lambda pattern
-**Files:** `dao/BaseCollectionDao.java:22-32`, `repository/StorageMealRepository.java:34-38`, `repository/StoragePantryRepository.java:21-22`, `repository/StorageRecipeRepository.java:20-21`
+**Files:** `BaseCollectionDao.java:22-32`, `repository/StorageMealRepository.java:34-38`, `repository/StoragePantryRepository.java:21-22`, `repository/StorageRecipeRepository.java:20-21`
 
 *(Promoted from dao/REVIEW_BACKLOG.md)*
 
@@ -26,10 +26,27 @@
 ---
 
 ### [consider] Full in-memory scan for range queries
-**Files:** `dao/BaseCollectionDao.java:68-70`, `repository/StorageMealRepository.java:43,58`
+**Files:** `BaseCollectionDao.java:68-70`, `repository/StorageMealRepository.java:43,58`
 
 *(Promoted from dao/REVIEW_BACKLOG.md)*
 
 `findAll(Predicate<T>)` always loads every row in the collection and filters in Java. `StorageMealRepository` uses this for date-range queries on `MEAL_PLANS` and `CONSUMPTION_LOGS`. The current `MealStorage` API has no range-query capability (`findByField` supports only equality), so this is the only viable path today. At larger data volumes this will become a bottleneck.
 
 **Suggested alternative:** No action needed while data volumes are small. If meal data grows substantially, extend `MealStorage` with a range-query method and push filtering into the storage layer.
+
+## Acknowledged Good Patterns
+
+### [keep] `MealCollections.java` at `internal/` root
+**File:** `MealCollections.java`
+
+Collection name constants live at the root of `internal/`, not inside `dao/` or `repository/`. This is the right call: they're shared by all three repository classes, and placing them at the common ancestor makes them discoverable without importing from a sibling package.
+
+### [keep] `MealFieldKeys.java` alongside `MealCollections.java` at `internal/` root
+**File:** `MealFieldKeys.java`
+
+Field name constants were moved from `mapper/` to `internal/` root so that both "what collections are called" (`MealCollections`) and "what fields within collections are called" (`MealFieldKeys`) live together as peer schema-constant files. This removes the unexpected `repository/ → mapper/` import dependency and makes the `mapper/` package purely about serialization logic.
+
+### [keep] `BaseCollectionDao.java` at `internal/` root
+**File:** `BaseCollectionDao.java`
+
+`BaseCollectionDao` was moved from a single-file `dao/` sub-folder to the `internal/` root. It now sits alongside `MealCollections` and `MealFieldKeys` as peer infrastructure files used across the whole data layer. Eliminating the `dao/` folder removes one navigation hop for a class with no sibling files.

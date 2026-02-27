@@ -14,6 +14,7 @@ import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.app.MainActivity;
 import com.autosecretary.features.task.ui.list.TaskViewModel;
+import com.autosecretary.shared.WidgetConfiguration;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -93,20 +94,20 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         boolean isToday = offset == 0;
         String label = isToday ? context.getString(R.string.task_list_day_nav_today) : selectedDate.format(DATE_FORMATTER);
         Log.d(TAG, "updateWidget offset=" + offset + " label=" + label);
-        views.setTextViewText(R.id.widget_date_label, label);
+        views.setTextViewText(R.id.WidgetDateLabel, label);
 
         // Arrow states
-        views.setFloat(R.id.widget_prev_day, "setAlpha", isToday ? ALPHA_DISABLED : ALPHA_ENABLED);
-        views.setFloat(R.id.widget_next_day, "setAlpha", offset >= MAX_OFFSET ? ALPHA_DISABLED : ALPHA_ENABLED);
+        views.setFloat(R.id.WidgetPrevDay, "setAlpha", isToday ? ALPHA_DISABLED : ALPHA_ENABLED);
+        views.setFloat(R.id.WidgetNextDay, "setAlpha", offset >= MAX_OFFSET ? ALPHA_DISABLED : ALPHA_ENABLED);
 
         // Day navigation intents
-        views.setOnClickPendingIntent(R.id.widget_prev_day,
+        views.setOnClickPendingIntent(R.id.WidgetPrevDay,
                 buildActionIntent(context, ACTION_PREV_DAY, widgetId));
-        views.setOnClickPendingIntent(R.id.widget_next_day,
+        views.setOnClickPendingIntent(R.id.WidgetNextDay,
                 buildActionIntent(context, ACTION_NEXT_DAY, widgetId));
 
         // Refresh intent
-        views.setOnClickPendingIntent(R.id.widget_refresh,
+        views.setOnClickPendingIntent(R.id.WidgetRefresh,
                 buildActionIntent(context, ACTION_REFRESH, widgetId));
 
         // Add task intent
@@ -116,31 +117,31 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         addTaskIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent addTaskPending = PendingIntent.getActivity(context, widgetId, addTaskIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        views.setOnClickPendingIntent(R.id.widget_add, addTaskPending);
+        views.setOnClickPendingIntent(R.id.WidgetAdd, addTaskPending);
 
         // Date label click opens the app
         Intent launchApp = new Intent(context, MainActivity.class);
         launchApp.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent launchPending = PendingIntent.getActivity(context, 0, launchApp,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        views.setOnClickPendingIntent(R.id.widget_date_label, launchPending);
+        views.setOnClickPendingIntent(R.id.WidgetDateLabel, launchPending);
 
         // List adapter
         Intent serviceIntent = new Intent(context, TaskWidgetService.class);
         serviceIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
         serviceIntent.setData(Uri.parse(serviceIntent.toUri(Intent.URI_INTENT_SCHEME)));
-        views.setRemoteAdapter(R.id.widget_task_list, serviceIntent);
-        views.setEmptyView(R.id.widget_task_list, R.id.widget_empty);
+        views.setRemoteAdapter(R.id.WidgetTaskList, serviceIntent);
+        views.setEmptyView(R.id.WidgetTaskList, R.id.WidgetEmpty);
 
         // Fill-in intent template for list item clicks (toggle checkbox)
         Intent toggleTemplate = new Intent(context, TaskWidgetProvider.class);
         toggleTemplate.setAction(ACTION_TOGGLE);
         PendingIntent templatePending = PendingIntent.getBroadcast(context, widgetId, toggleTemplate,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
-        views.setPendingIntentTemplate(R.id.widget_task_list, templatePending);
+        views.setPendingIntentTemplate(R.id.WidgetTaskList, templatePending);
 
         manager.updateAppWidget(widgetId, views);
-        manager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_task_list);
+        manager.notifyAppWidgetViewDataChanged(widgetId, R.id.WidgetTaskList);
     }
 
     private PendingIntent buildActionIntent(Context context, String action, int widgetId) {

@@ -8,22 +8,21 @@ The budget feature is organized by responsibility and then by sub-feature:
 - `application/`: use-cases coordinating workflows.
   - `application/importing/`: end-to-end import flow (parse, deduplicate, persist, recurring suggestions).
 - `domain/`: business logic and recurring detection algorithms.
-- `data/entity/`: canonical Room entities (`BudgetAccount`, `BudgetCategory`, `BudgetTransactionEntity`, `BudgetLimit`).
-- `data/dao/`: Room DAO interfaces for canonical budget queries/mutations.
+- `data/entity/`: canonical Room entities (`BudgetAccount`, `BudgetCategory`, `BudgetTransactionEntity`, `BudgetLimit`, `BudgetImportEntity`, `BudgetRecurringTemplateEntity`).
+- `data/dao/`: Room DAO interfaces for entity access and aggregate queries.
 - `data/repository/`: Room-backed repository implementations.
-- `data/projection/`: Room query models/read projections used by dashboards and charts.
-- `data/importing/`: import metadata entities/DAOs/templates.
-- `data/legacy/`: transitional pre-v8 classes kept for migration reference only.
+- `data/api/`: HTTP clients for external data sources (e.g. `ClaudeStatementApiClient` for PDF import via Claude API).
+- `data/keystore/`: non-Room secure storage (`ClaudeApiKeyStore` — API key via Android Keystore + SharedPreferences).
 
 ## Placement rule for new code
 
 - Add new workflow orchestration to `application/`.
 - Add import-related workflows and adapters to `application/importing/`.
 - Add canonical persisted entities to `data/entity/`.
-- Add DAO interfaces to `data/dao/` and read/query projections to `data/projection/`.
+- Add DAO interfaces to `data/dao/`.
 - Add Room-backed repository implementations to `data/repository/`.
-- Add import-specific entities/DAOs/templates to `data/importing/`.
-- Only place files in `data/legacy/` when they are intentionally deprecated/compatibility-only.
+- Add external API HTTP clients to `data/api/`.
+- Add secure credential storage to `data/keystore/`.
 
 ## Manual validation for balance time series/chart
 

@@ -1,5 +1,7 @@
 package com.autosecretary.features.meal.domain;
 
+import com.autosecretary.features.meal.domain.internal.MealAmountFormat;
+
 /**
  * Einkaufslisten-Eintrag fuer eine Einkaufsperiode.
  */

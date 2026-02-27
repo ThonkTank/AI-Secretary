@@ -81,43 +81,39 @@ public class PrefSlotUIBuilder {
 
             List<PrefSlotEditState> slotsInGroup = slotMap.getOrDefault(key, Collections.emptyList());
             for (PrefSlotEditState prefSlot : slotsInGroup) {
-                LinearLayout row = new LinearLayout(context);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setPadding(prefSlotRowPaddingStartPx, prefSlotRowPaddingVerticalPx, 0, prefSlotRowPaddingVerticalPx);
-
-                String formattedDays = formatDaysAsRanges(prefSlot.days);
-                MaterialButton daysView = createInteractiveButton();
-                daysView.setText(context.getString(R.string.task_editor_pref_slot_days_button, formattedDays));
-                daysView.setContentDescription(context.getString(
-                    R.string.task_editor_pref_slot_days_content_description,
-                    formattedDays
-                ));
-
-                daysView.setLayoutParams(makeWeightedButtonParams(true));
-
-                Set<DayOfWeek> takenByOthers = computeTakenDays(prefSlot, slotsInGroup);
-                daysView.setOnClickListener(v -> listener.onDaysClicked(prefSlot, takenByOthers));
-
-                String formattedTime = prefSlot.start != null
-                    ? prefSlot.start.format(TIME_FORMATTER)
-                    : "--:--";
-                MaterialButton timeView = createInteractiveButton();
-                timeView.setText(context.getString(R.string.task_editor_pref_slot_time_button, formattedTime));
-                timeView.setContentDescription(context.getString(
-                    R.string.task_editor_pref_slot_time_content_description,
-                    formattedTime
-                ));
-                timeView.setTypeface(Typeface.MONOSPACE);
-
-                timeView.setLayoutParams(makeWeightedButtonParams(false));
-                timeView.setOnClickListener(v -> listener.onTimeClicked(prefSlot));
-
-                row.addView(daysView);
-                row.addView(timeView);
-                prefSlotContainer.addView(row);
+                prefSlotContainer.addView(createSlotRow(prefSlot, slotsInGroup, listener));
             }
         }
+    }
+
+    private LinearLayout createSlotRow(PrefSlotEditState prefSlot, List<PrefSlotEditState> slotsInGroup,
+                                       Listener listener) {
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(prefSlotRowPaddingStartPx, prefSlotRowPaddingVerticalPx, 0, prefSlotRowPaddingVerticalPx);
+
+        String formattedDays = formatDaysAsRanges(prefSlot.days);
+        MaterialButton daysView = createInteractiveButton();
+        daysView.setText(context.getString(R.string.task_editor_pref_slot_days_button, formattedDays));
+        daysView.setContentDescription(context.getString(
+            R.string.task_editor_pref_slot_days_content_description, formattedDays));
+        daysView.setLayoutParams(makeWeightedButtonParams(true));
+        Set<DayOfWeek> takenByOthers = computeTakenDays(prefSlot, slotsInGroup);
+        daysView.setOnClickListener(v -> listener.onDaysClicked(prefSlot, takenByOthers));
+
+        String formattedTime = prefSlot.start != null ? prefSlot.start.format(TIME_FORMATTER) : "--:--";
+        MaterialButton timeView = createInteractiveButton();
+        timeView.setText(context.getString(R.string.task_editor_pref_slot_time_button, formattedTime));
+        timeView.setContentDescription(context.getString(
+            R.string.task_editor_pref_slot_time_content_description, formattedTime));
+        timeView.setTypeface(Typeface.MONOSPACE);
+        timeView.setLayoutParams(makeWeightedButtonParams(false));
+        timeView.setOnClickListener(v -> listener.onTimeClicked(prefSlot));
+
+        row.addView(daysView);
+        row.addView(timeView);
+        return row;
     }
 
     private String formatDaysAsRanges(Set<DayOfWeek> days) {

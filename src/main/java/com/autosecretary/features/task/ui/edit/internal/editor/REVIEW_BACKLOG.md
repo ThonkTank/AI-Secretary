@@ -33,3 +33,23 @@
 **Files:** `GoalSectionController.java:96-98`, `PrefSlotSectionController.java:181-183`
 
 **Concern:** Identical `dimenPx(@DimenRes int)` one-liner helper duplicated in both controllers. Extracting to a shared utility would add a file for negligible gain. Worth revisiting if a third controller appears in this package.
+
+---
+
+### [warning] TaskEditFormValidator.java:69-80 — clearErrors() manual field enumeration
+
+**File:** `TaskEditFormValidator.java:69-80`
+
+**Concern:** `clearErrors()` manually lists all 10 validated fields by name. Every new field added to `TaskEditFormViews` requires two code changes: one in the struct, one here. The method is disconnected from the validation logic that references those same fields, so it is easy to forget to update.
+
+**Suggested fix:** Collect validated `EditText` references in a `List<EditText>` within `TaskEditFormViews` (or return them from a helper), then loop over them in `clearErrors()`. Deferred — requires changing `TaskEditFormViews` design.
+
+---
+
+### [nit] GoalSectionController.java:22-25 — hardcoded GOAL_COLORS palette
+
+**File:** `GoalSectionController.java:22-25`
+
+**Concern:** The 10 colour hex strings are embedded in Java source as a static array. Any palette change requires editing Java code rather than a resource file. The `#AARRGGBB` format is not standard Android color-resource format, so moving them requires a `string-array` in `res/values/arrays.xml` and `Color.parseColor` loading in the controller.
+
+**Suggested fix:** Move to `res/values/arrays.xml` as a `string-array`, load via `getResources().getStringArray(R.array.goal_editor_colors)` in `buildGoalColorGrid`. Deferred — requires adding a new resource; low urgency since palette is stable.

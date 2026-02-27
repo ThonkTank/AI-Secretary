@@ -24,6 +24,11 @@ import com.autosecretary.features.task.domain.TaskLifecycleManager;
  *
  * Contract: call from a worker thread for DAO reads/writes; when present,
  * callbacks are dispatched through {@code callbackDispatcher}.
+ *
+ * Completion hook behavior: the {@code completedPhaseHook} consumer is ONLY invoked when:
+ * (1) the completion phase is COMPLETED (not STARTED), AND
+ * (2) the database transaction succeeds.
+ * Callers that pass a hook must expect it to fire conditionally, not unconditionally.
  */
 public final class TaskSlotToggleMutation {
     private static final String TAG = "TaskSlotToggle";
@@ -54,6 +59,15 @@ public final class TaskSlotToggleMutation {
         this.database = database;
     }
 
+    /**
+     * Execute the two-phase slot toggle (STARTED → COMPLETED).
+     *
+     * @param taskId the task UUID
+     * @param slotId the slot UUID
+     * @param postWriteAction runnable fired after successful writes (always dispatched if writes succeed)
+     * @param completedPhaseHook consumer fired only when phase is COMPLETED and writes succeed;
+     *        used for side effects like budget booking. May be null if no completion hook is needed.
+     */
     public void execute(String taskId,
                         String slotId,
                         Runnable postWriteAction,
@@ -166,7 +180,7 @@ public final class TaskSlotToggleMutation {
     }
 
     private static boolean canRecordTransition(TaskSlot slot) {
-        return slot != null && slot.taskId != null && slot.day != null;
+        return slot.taskId != null && slot.day != null;
     }
 
     private static LocalTime determineEventTime(TaskSlot slot) {

@@ -40,7 +40,7 @@ Top-level packages under `src/main/java/com/autosecretary/`:
 - **`features/task/`** — scheduling, slot generation, task lifecycle
 - **`features/budget/`** — transactions, CSV/PDF import, recurring pattern detection, balance chart, home screen widget
 - **`app/`** — `AppCompositionRoot` (DI root), `MainActivity`, `AutoSecretaryApplication`, `UpdateChecker`, settings
-- **`shared/`** — cross-feature enums: `Priority` (values: LOW=100, MEDIUM=200, HIGH=400, CRITICAL=10000), `Period`
+- **`shared/`** — cross-feature enums: `Priority` (values: LOW=100, MEDIUM=200, HIGH=400, CRITICAL=10000), `Period`; and `WidgetConfiguration` (shared update-period constant for task and budget widgets)
 - **`database/`** — `AppDatabase` (Room DB class) + `Converters` (type converters for `LocalDate`, `LocalTime`, `LocalDateTime`, `DayOfWeek`, all domain enums, and `Set<DayOfWeek>` as comma-separated string)
 - **`util/`** — `TreeBuilder<T>` generic depth-first tree traversal utility used by both task hierarchy and slot hierarchy views
 
@@ -60,11 +60,11 @@ Both features share a single-threaded `ExecutorService` wired in `AppComposition
 
 **Budget recurring templates:** `BudgetRecurringTemplateEntity` (table `budget_recurring_template`) stores payee/amount/schedule patterns detected by `RecurringPatternDetector`. `BudgetCategory` has `icon` and `colorHex` fields for display. `BudgetTransactionEntity` has `transactionKind` (`STANDARD` / `INTERNAL_TRANSFER`) and `linkedTransactionId` for transfer pairs.
 
-**Budget import pipeline:** `StatementFileParser` (`features/budget/application/importing/`) routes by file type. CSV is parsed locally (columns: `date,amountCents,payee,description,[categoryId],[importHash]`). PDF files are base64-encoded and sent to the Claude API via `ClaudeStatementApiClient` (model `claude-sonnet-4-20250514`, 30s connect / 120s read timeout). `ClaudeApiKeyStore` (`features/budget/data/api/`) stores the key in SharedPreferences — the user must configure it in budget settings before PDF import works.
+**Budget import pipeline:** `StatementFileParser` (`features/budget/application/importing/`) routes by file type. CSV is parsed locally (columns: `date,amountCents,payee,description,[categoryId],[importHash]`). PDF files are base64-encoded and sent to the Claude API via `ClaudeStatementApiClient` (model `claude-sonnet-4-20250514`, 30s connect / 120s read timeout). Both `ClaudeStatementApiClient` and `ClaudeApiKeyStore` live in `features/budget/data/api/`. `ClaudeApiKeyStore` stores the key in SharedPreferences — the user must configure it in budget settings before PDF import works.
 
 **Self-update:** `UpdateChecker` (`app/update/`) fetches `ops/release/version.txt` from the GitHub raw URL on each app start, compares it against the version code baked into the build, and prompts the user to install the new APK if the remote is higher. This is why `publishReleaseArtifact` increments `ops/release/version.txt`.
 
-**Android alarm/boot integration:** `BootReceiver` re-registers daily planning on `BOOT_COMPLETED`. `DailyPlanningReceiver` handles the custom daily alarm action, calls `RegenerateScheduleUseCase` via `goAsync()`, and updates widgets on completion. `DailyPlanningScheduler` uses `AlarmManager.setExactAndAllowWhileIdle()` with fallback to `setAndAllowWhileIdle()` when exact alarms are not permitted.
+**Android alarm/boot integration:** `BootReceiver` re-registers daily planning on `BOOT_COMPLETED`. `DailyPlanningReceiver` handles the custom daily alarm action, calls `RegenerateScheduleUseCase` via `goAsync()`, and updates widgets on completion. `DailyPlanningScheduler` uses `AlarmManager.setExactAndAllowWhileIdle()` with fallback to `setAndAllowWhileIdle()` when exact alarms are not permitted. All three live in `features/task/application/internal/alarms/`. `DeviceCalendarBlockedIntervalProvider` (implements `CalendarBlockedIntervalProvider` from `domain/scheduling/`) lives in `features/task/application/internal/calendar/`.
 
 ### Conventions
 
@@ -74,11 +74,22 @@ Both features share a single-threaded `ExecutorService` wired in `AppComposition
   - `calendar/` — `TaskCalendarService` contract and DTOs.
   - `config/` — `TaskScheduleConfigRepository`/`Service` abstractions.
   - `listmodel/` — `TaskListItem` and `TaskListItemMapper` (never `model/`).
-  - `internal/` — Android/infrastructure implementations: `calendar/CalendarReader`, `mutations/TaskSlotToggleMutation`, `scheduling/` receivers.
+  - `internal/` — Android/infrastructure implementations: `calendar/CalendarReader` + `DeviceCalendarBlockedIntervalProvider`, `mutations/TaskSlotToggleMutation`, `alarms/` receivers.
 - **`budget/domain/timeline/`** — `AccountBalanceTimelineService` and balance chart data structures (`BalanceTimelinePoint`, `DailyDeltaPoint`, `MonthlyDeltaPoint`).
-- **`budget/domain/importing/`** — `ImportCategory` (uses `TransactionDirection`) and `ImportTransactionRecord`.
+- **`budget/domain/importing/`** — `ImportCategory` (uses `TransactionDirection`), `ImportTransactionRecord`, `ParsedStatement`, `ParsedTransaction`.
+- **`budget/domain/recurring/`** — recurring pattern domain types: `RecurringBudgetTransaction`, `RecurringPatternDetector`, `RecurringScheduleParams`, `RecurringSuggestion`, `RecurringTemplateScheduler`, `TemplateStatusUpdate`; implementation helpers in `recurring/internal/`.
 - **Layout naming:** `<feature>_<surface>_<kind>` — e.g. `task_row_item.xml`, `budget_add_transaction_dialog.xml`. Kind is one of: `activity`, `fragment`, `item`, `widget`, `dialog`.
 - **UI language:** All user-facing text in **German** — "Generieren", "Speichern", "Neue Task", etc.
+
+## Project Status
+
+**The app is effectively feature-complete.** The backend/domain layer is stable and not expected to grow. Do not propose new features, new abstractions "for future extensibility", or speculative infrastructure. Changes should focus on:
+- **Bug fixes** in existing behavior
+- **Simplification** — removing unnecessary complexity, dead code, redundant abstractions
+- **Code quality** — readability, consistency, correctness
+- **UI polish** — the frontend may still receive refinements
+
+Do not suggest adding: new modules, new domain entities, new integration points, caching layers, dependency injection frameworks, migration infrastructure, or any other "investment" that only pays off if the codebase grows further. It won't.
 
 ## Rules
 

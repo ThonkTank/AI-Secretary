@@ -8,8 +8,8 @@ import android.util.Log;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
+import com.autosecretary.features.budget.data.api.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.data.api.ClaudeApiKeyStore;
-import com.autosecretary.features.budget.application.importing.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
 import com.autosecretary.features.budget.application.CreateTransferUseCase;
 import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseCase;
@@ -32,13 +32,14 @@ import com.autosecretary.features.task.application.config.TaskScheduleConfigRepo
 import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
 import com.autosecretary.features.task.application.internal.budget.TaskBudgetEligibilityFromBudgetLookup;
 import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
+import com.autosecretary.features.task.application.internal.calendar.DeviceCalendarBlockedIntervalProvider;
 import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
-import com.autosecretary.features.task.domain.TaskSlotGenerator;
-import com.autosecretary.features.task.domain.TransitionStat;
-import com.autosecretary.features.task.domain.TaskTransitionStatLoader;
+import com.autosecretary.features.task.domain.scheduling.TaskSlotGenerator;
+import com.autosecretary.features.task.domain.scheduling.TransitionStat;
+import com.autosecretary.features.task.domain.scheduling.TaskTransitionStatLoader;
 import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
 
