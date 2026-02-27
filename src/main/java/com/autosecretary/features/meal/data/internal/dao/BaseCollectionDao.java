@@ -10,7 +10,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-public class BaseCollectionDao<T> implements CollectionDao<T> {
+public class BaseCollectionDao<T> {
 
     protected final String collection;
     protected final MealStorage storage;
@@ -30,13 +30,11 @@ public class BaseCollectionDao<T> implements CollectionDao<T> {
         this.idSetter = idSetter;
     }
 
-    @Override
     public T findById(long id) {
         Map<String, Object> row = storage.findById(collection, id);
         return row == null ? null : mapper.fromRow(row);
     }
 
-    @Override
     public List<T> findAll() {
         List<T> result = new ArrayList<>();
         for (Map<String, Object> row : storage.findAll(collection)) {
@@ -45,7 +43,6 @@ public class BaseCollectionDao<T> implements CollectionDao<T> {
         return result;
     }
 
-    @Override
     public void save(T value) {
         Long id = idAccessor.apply(value);
         long storedId = storage.upsert(collection, id, mapper.toRow(value));
@@ -54,18 +51,25 @@ public class BaseCollectionDao<T> implements CollectionDao<T> {
         }
     }
 
-    @Override
     public void deleteById(long id) {
         storage.delete(collection, id);
     }
 
-    protected List<T> findAll(Predicate<T> filter) {
+    public List<T> findAll(Predicate<T> filter) {
         List<T> result = new ArrayList<>();
         for (Map<String, Object> row : storage.findAll(collection)) {
             T value = mapper.fromRow(row);
             if (filter.test(value)) {
                 result.add(value);
             }
+        }
+        return result;
+    }
+
+    public List<T> findAllByField(String field, Object value) {
+        List<T> result = new ArrayList<>();
+        for (Map<String, Object> row : storage.findByField(collection, field, value)) {
+            result.add(mapper.fromRow(row));
         }
         return result;
     }

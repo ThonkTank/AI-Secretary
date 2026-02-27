@@ -2,7 +2,6 @@ package com.autosecretary.features.task.data;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import com.autosecretary.shared.Priority;
@@ -84,15 +83,8 @@ public class TaskCore {
         public int periodInDays() {return periodUnit.dayCount * perPeriod;}
         public int repsPerDay() {return (int) Math.ceil( (double) reps / (double) periodInDays());}
         public double daysPerRep() {return (double) periodInDays() / (double) reps;}
-        public double requiredDays() {return daysPerRep() * remainingReps();}
-
         public LocalDate periodEnd() {
             return periodStart != null ? periodStart.plusDays(periodInDays()) : null;
-        }
-        public double remainingDays() {
-            LocalDate end = periodEnd();
-            if (end == null) return periodInDays();
-            return (double) ChronoUnit.DAYS.between(LocalDate.now(), end);
         }
     }
 

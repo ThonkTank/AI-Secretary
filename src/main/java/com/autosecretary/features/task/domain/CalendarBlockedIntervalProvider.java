@@ -9,14 +9,7 @@ public interface CalendarBlockedIntervalProvider {
 
     List<BlockedInterval> readBlockedIntervals(LocalDate day, LocalDateTime windowStart, LocalDateTime windowEnd);
 
-    class BlockedInterval {
-        public final LocalDateTime start;
-        public final LocalDateTime end;
-
-        public BlockedInterval(LocalDateTime start, LocalDateTime end) {
-            this.start = start;
-            this.end = end;
-        }
+    record BlockedInterval(LocalDateTime start, LocalDateTime end) {
     }
 
     CalendarBlockedIntervalProvider NONE = (day, windowStart, windowEnd) -> Collections.emptyList();

@@ -1,6 +1,7 @@
 package com.autosecretary.features.meal.data.internal.storage;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,22 +14,14 @@ public class InMemoryMealStorage implements MealStorage {
 
     @Override
     public Map<String, Object> findById(String collection, long id) {
-        Map<Long, Map<String, Object>> rows = collections.get(collection);
-        if (rows == null) {
-            return null;
-        }
-        Map<String, Object> row = rows.get(id);
+        Map<String, Object> row = getRowsOrEmpty(collection).get(id);
         return row == null ? null : new HashMap<>(row);
     }
 
     @Override
     public List<Map<String, Object>> findAll(String collection) {
-        Map<Long, Map<String, Object>> rows = collections.get(collection);
-        if (rows == null) {
-            return List.of();
-        }
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> row : rows.values()) {
+        for (Map<String, Object> row : getRowsOrEmpty(collection).values()) {
             result.add(new HashMap<>(row));
         }
         return result;
@@ -36,12 +29,8 @@ public class InMemoryMealStorage implements MealStorage {
 
     @Override
     public List<Map<String, Object>> findByField(String collection, String field, Object value) {
-        Map<Long, Map<String, Object>> rows = collections.get(collection);
-        if (rows == null) {
-            return List.of();
-        }
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> row : rows.values()) {
+        for (Map<String, Object> row : getRowsOrEmpty(collection).values()) {
             Object candidate = row.get(field);
             if (value == null ? candidate == null : value.equals(candidate)) {
                 result.add(new HashMap<>(row));
@@ -78,5 +67,10 @@ public class InMemoryMealStorage implements MealStorage {
         long value = counters.getOrDefault(collection, 0L) + 1L;
         counters.put(collection, value);
         return value;
+    }
+
+    private Map<Long, Map<String, Object>> getRowsOrEmpty(String collection) {
+        Map<Long, Map<String, Object>> rows = collections.get(collection);
+        return rows != null ? rows : Collections.emptyMap();
     }
 }

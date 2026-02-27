@@ -23,7 +23,7 @@ These are the entities registered in `AppDatabase` version 8 and should be used 
 - **Recurring template persistence**: recurring suggestion templates persisted for import workflows.
   - `BudgetRecurringTemplateEntity`, `BudgetRecurringTemplateDao`
 - **Repository implementations**: adapters used by application/UI layers.
-  - `BudgetRoomRepository`, `BudgetWidgetRoomRepository`
+  - `BudgetRoomRepository`
 - **Read-model/projection classes**: query results for internal use (no domain mirror exists).
   - `IncomeExpenseSummary`, `AccountBalanceTotal`
 

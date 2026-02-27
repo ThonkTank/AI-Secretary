@@ -3,9 +3,9 @@ package com.autosecretary.features.budget.domain.timeline;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public final class AccountBalanceTimelineService {
 
@@ -29,10 +29,8 @@ public final class AccountBalanceTimelineService {
                                                               LocalDate toDate,
                                                               long startBalanceCents,
                                                               List<DailyDeltaPoint> dailyDeltas) {
-        Map<LocalDate, Long> deltaByDate = new HashMap<>();
-        for (DailyDeltaPoint point : dailyDeltas) {
-            deltaByDate.put(point.bucketDate(), point.deltaCents());
-        }
+        Map<LocalDate, Long> deltaByDate = dailyDeltas.stream()
+                .collect(Collectors.toMap(DailyDeltaPoint::bucketDate, DailyDeltaPoint::deltaCents));
 
         List<BalanceTimelinePoint> points = new ArrayList<>();
         long runningBalance = startBalanceCents;
@@ -62,10 +60,8 @@ public final class AccountBalanceTimelineService {
                                                                 YearMonth toMonth,
                                                                 long startBalanceCents,
                                                                 List<MonthlyDeltaPoint> monthlyDeltas) {
-        Map<YearMonth, Long> deltaByMonth = new HashMap<>();
-        for (MonthlyDeltaPoint point : monthlyDeltas) {
-            deltaByMonth.put(point.yearMonth(), point.deltaCents());
-        }
+        Map<YearMonth, Long> deltaByMonth = monthlyDeltas.stream()
+                .collect(Collectors.toMap(MonthlyDeltaPoint::yearMonth, MonthlyDeltaPoint::deltaCents));
 
         List<BalanceTimelinePoint> points = new ArrayList<>();
         long runningBalance = startBalanceCents;

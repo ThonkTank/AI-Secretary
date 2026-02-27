@@ -2,8 +2,7 @@
 
 ## Open Issues
 
-[nit] GoalSectionController.java:18-21 — `GOAL_COLORS` array embeds 10 Material 600-series ARGB hex strings in Java source. Not in `colors.xml`, invisible to theming, and unfindable via resource search. Scale factors `1.25f / 1.0f / 0.75f` at lines 91-93 are undocumented magic numbers.
+[simplify] TaskEditSectionBinder.java:290-323 — `SchedulingViews` constructor takes 15 parameters, 11 of which are `EditText`. All same-typed positional args — swapping any two produces a silent bug. Budget fields (`budgetRequiredCents`, `budgetAccountId`, `budgetCategoryId`) are conceptually separate from scheduling/timing fields. Split into two view groups or use a builder. Deferred — too large to fix in isolation without risking regressions in `TaskEditFormInputReader` and `TaskEditFormViews`.
 
-[nit] PrefSlotUIBuilder.java:65-136 — `rebuild()` is 71 lines mixing header creation, row layout, and two near-identical button setup blocks. The two `LayoutParams` blocks (lines 101-107 vs 123-128) differ only in margin end.
+[consider] TaskEditFormViews.java — Thin re-aggregation adapter: takes four `*Views` structs from `TaskEditSectionBinder` and flattens specific fields into a new type passed to `TaskEditFormValidator`. Adds a file and class for minimal gain. Remove only if the validator is refactored to accept fields directly.
 
-[warning] TaskEditSectionBinder.java:68-146 — `bindScheduling()` is 78 lines mixing view inflation, value population, date picker wiring, and spinner listener setup. Will grow further when TERMIN scheduling type is exposed. Extract behavioral setup into separate methods.

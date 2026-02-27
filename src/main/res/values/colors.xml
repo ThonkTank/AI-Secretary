@@ -4,6 +4,8 @@
     <color name="transparent">#00000000</color>
     <color name="launcher_icon_background">#0D3B52</color>
     <color name="launcher_icon_monochrome">#FF000000</color>
+    <color name="launcher_icon_white">#FFFFFFFF</color>
+    <color name="launcher_icon_accent">#D9EDF7</color>
     <color name="budget_positive">#4CAF50</color>
     <color name="budget_negative">#F44336</color>
     <color name="budget_warning">#FF9800</color>

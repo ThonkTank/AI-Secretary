@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import com.autosecretary.shared.Priority;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
+import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 
 public class TaskEditFormInputReader {
 
@@ -68,23 +69,21 @@ public class TaskEditFormInputReader {
         input.description = basicInfoViews.descriptionView.getText().toString();
         input.priority = TaskEditPresenter.coalesce(
             (Priority) basicInfoViews.priorityView.getSelectedItem(),
-            TaskEditPresenter.InputDefaults.PRIORITY
+            TaskEditDefaults.PRIORITY
         );
 
-        String goalIconText = goalSectionController.getGoalIconView().getText() != null
-            ? goalSectionController.getGoalIconView().getText().toString().trim()
-            : "";
+        String goalIconText = goalSectionController.getGoalIconView().getText().toString().trim();
         input.goalIcon = goalIconText.isEmpty()
-            ? TaskEditPresenter.InputDefaults.GOAL_ICON
+            ? TaskEditDefaults.GOAL_ICON
             : goalIconText;
         input.goalColorHex = TaskEditPresenter.coalesce(
             goalSectionController.getSelectedGoalColorHex(),
-            TaskEditPresenter.InputDefaults.GOAL_COLOR_HEX
+            TaskEditDefaults.GOAL_COLOR_HEX
         );
 
         input.schedulingType = TaskEditPresenter.coalesce(
             (TaskCore.SchedulingType) schedulingViews.schedulingTypeView.getSelectedItem(),
-            TaskEditPresenter.InputDefaults.SCHEDULING_TYPE
+            TaskEditDefaults.SCHEDULING_TYPE
         );
         input.fixedDate = parseDateSafe(schedulingViews.fixedDateView.getText().toString());
         input.fixedStart = parseTimeSafe(schedulingViews.fixedStartView.getText().toString());
@@ -100,30 +99,30 @@ public class TaskEditFormInputReader {
         input.closeOnMiss = schedulingViews.closeOnMissView.isChecked();
         input.minDuration = TaskEditPresenter.parseIntSafe(
             schedulingViews.minDurationView.getText().toString(),
-            TaskEditPresenter.InputDefaults.MIN_DURATION
+            TaskEditDefaults.MIN_DURATION
         );
         input.maxDuration = TaskEditPresenter.parseIntSafe(
             schedulingViews.maxDurationView.getText().toString(),
-            TaskEditPresenter.InputDefaults.MAX_DURATION
+            TaskEditDefaults.MAX_DURATION
         );
         input.cooldown = TaskEditPresenter.parseIntSafe(
             schedulingViews.cooldownView.getText().toString(),
-            TaskEditPresenter.InputDefaults.COOLDOWN
+            TaskEditDefaults.COOLDOWN
         );
         input.adaptive = schedulingViews.adaptiveView.isChecked();
 
         input.repetitionEnabled = repetitionViews.toggleRepetition.isChecked();
         input.reps = TaskEditPresenter.parseIntSafe(
             repetitionViews.repsView.getText().toString(),
-            TaskEditPresenter.InputDefaults.REPETITION_REPS
+            TaskEditDefaults.REPETITION_REPS
         );
         input.perPeriod = TaskEditPresenter.parseIntSafe(
             repetitionViews.perPeriodView.getText().toString(),
-            TaskEditPresenter.InputDefaults.REPETITION_PER_PERIOD
+            TaskEditDefaults.REPETITION_PER_PERIOD
         );
         input.periodUnit = TaskEditPresenter.coalesce(
             (Period) repetitionViews.periodUnitView.getSelectedItem(),
-            TaskEditPresenter.InputDefaults.REPETITION_PERIOD_UNIT
+            TaskEditDefaults.REPETITION_PERIOD_UNIT
         );
         input.completeFirst = repetitionViews.completeFirstView.isChecked();
 
@@ -131,20 +130,20 @@ public class TaskEditFormInputReader {
         input.unit = progressViews.unitView.getText().toString();
         input.target = TaskEditPresenter.parseIntSafe(
             progressViews.targetView.getText().toString(),
-            TaskEditPresenter.InputDefaults.TARGET
+            TaskEditDefaults.TARGET
         );
         input.current = TaskEditPresenter.parseIntSafe(
             progressViews.currentView.getText().toString(),
-            TaskEditPresenter.InputDefaults.CURRENT
+            TaskEditDefaults.CURRENT
         );
         input.resetPerRep = progressViews.resetPerRepView.isChecked();
         input.minPerRep = TaskEditPresenter.parseIntSafe(
             progressViews.minPerRepView.getText().toString(),
-            TaskEditPresenter.InputDefaults.MIN_PER_REP
+            TaskEditDefaults.MIN_PER_REP
         );
         input.maxPerRep = TaskEditPresenter.parseIntSafe(
             progressViews.maxPerRepView.getText().toString(),
-            TaskEditPresenter.InputDefaults.MAX_PER_REP
+            TaskEditDefaults.MAX_PER_REP
         );
 
         return input;

@@ -48,11 +48,6 @@ public class RecurringTemplateScheduler {
                     dueDate = nextMonth.withDayOfMonth(nextMonth.lengthOfMonth());
                 }
                 break;
-            default:
-                if (template.nextDue == null) {
-                    return null;
-                }
-                break;
         }
 
         return dueDate;

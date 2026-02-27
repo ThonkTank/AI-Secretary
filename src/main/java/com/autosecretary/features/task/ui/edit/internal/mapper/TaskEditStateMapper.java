@@ -9,12 +9,28 @@ import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 import java.time.DayOfWeek;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Set;
 
 /**
  * Bidirectional mapper between {@link Task} (data layer) and {@link TaskEditState} (UI edit model).
  * Handles null safety and default values during conversion.
  */
 public class TaskEditStateMapper {
+
+    /**
+     * Returns the given value if non-null, otherwise returns the default.
+     * Simplifies null-coalescing patterns throughout the mapper.
+     */
+    private <T> T orDefault(T value, T defaultValue) {
+        return value != null ? value : defaultValue;
+    }
+
+    /**
+     * Safely copies a day set, returning an empty set if the source is null.
+     */
+    private Set<DayOfWeek> copyDaysOrEmpty(Set<DayOfWeek> days) {
+        return days != null ? EnumSet.copyOf(days) : EnumSet.noneOf(DayOfWeek.class);
+    }
 
     public TaskEditState fromTask(Task task) {
         TaskEditState state = new TaskEditState();
@@ -23,8 +39,8 @@ public class TaskEditStateMapper {
         state.description = task.core.description;
         state.priority = task.core.priority;
         state.schedulingType = task.core.schedulingType;
-        state.goalIcon = task.core.goalIcon != null ? task.core.goalIcon : TaskCore.DEFAULT_GOAL_ICON;
-        state.goalColorHex = task.core.goalColorHex != null ? task.core.goalColorHex : TaskCore.DEFAULT_GOAL_COLOR_HEX;
+        state.goalIcon = orDefault(task.core.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
+        state.goalColorHex = orDefault(task.core.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
         state.budgetRequiredCents = task.core.budgetRequiredCents;
         state.budgetAccountId = task.core.budgetAccountId;
         state.budgetCategoryId = task.core.budgetCategoryId;
@@ -61,7 +77,7 @@ public class TaskEditStateMapper {
                 PrefSlotEditState slotState = new PrefSlotEditState();
                 slotState.id = prefSlot.id;
                 slotState.start = prefSlot.start;
-                slotState.days = prefSlot.days != null ? EnumSet.copyOf(prefSlot.days) : EnumSet.noneOf(DayOfWeek.class);
+                slotState.days = copyDaysOrEmpty(prefSlot.days);
                 state.prefSlots.add(slotState);
             }
         }
@@ -77,8 +93,8 @@ public class TaskEditStateMapper {
         task.core.description = state.description;
         task.core.priority = state.priority;
         task.core.schedulingType = state.schedulingType;
-        task.core.goalIcon = state.goalIcon != null ? state.goalIcon : TaskCore.DEFAULT_GOAL_ICON;
-        task.core.goalColorHex = state.goalColorHex != null ? state.goalColorHex : TaskCore.DEFAULT_GOAL_COLOR_HEX;
+        task.core.goalIcon = orDefault(state.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
+        task.core.goalColorHex = orDefault(state.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
         task.core.budgetRequiredCents = state.budgetRequiredCents;
         task.core.budgetAccountId = state.budgetAccountId;
         task.core.budgetCategoryId = state.budgetCategoryId;
@@ -110,13 +126,15 @@ public class TaskEditStateMapper {
         task.core.progress.maxPerRep = state.maxPerRep;
 
         task.prefSlots = new ArrayList<>();
-        for (PrefSlotEditState prefSlotState : state.prefSlots) {
-            TaskPrefSlot prefSlot = new TaskPrefSlot();
-            prefSlot.id = prefSlotState.id; // New slots keep null IDs until persistence assigns one.
-            prefSlot.taskId = task.core.id;
-            prefSlot.start = prefSlotState.start;
-            prefSlot.days = prefSlotState.days != null ? EnumSet.copyOf(prefSlotState.days) : EnumSet.noneOf(DayOfWeek.class);
-            task.prefSlots.add(prefSlot);
+        if (state.prefSlots != null) {
+            for (PrefSlotEditState prefSlotState : state.prefSlots) {
+                TaskPrefSlot prefSlot = new TaskPrefSlot();
+                prefSlot.id = prefSlotState.id; // New slots keep null IDs until persistence assigns one.
+                prefSlot.taskId = task.core.id;
+                prefSlot.start = prefSlotState.start;
+                prefSlot.days = copyDaysOrEmpty(prefSlotState.days);
+                task.prefSlots.add(prefSlot);
+            }
         }
 
         task.slots = task.slots != null ? task.slots : new ArrayList<>();

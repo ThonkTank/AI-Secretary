@@ -53,11 +53,8 @@ public final class RecurringPatternDetector {
         }
 
         List<RecurringBudgetTransaction> eligible = transactions.stream()
-                .filter(tx -> !tx.isRecurring)
-                .filter(tx -> !tx.isPredicted)
-                .filter(tx -> tx.parentRecurringId == null)
-                .filter(tx -> tx.payee != null && !tx.payee.trim().isEmpty())
-                .filter(tx -> tx.transactionDate != null)
+                .filter(tx -> !tx.isRecurring && !tx.isPredicted && tx.parentRecurringId == null
+                        && tx.payee != null && !tx.payee.trim().isEmpty() && tx.transactionDate != null)
                 .collect(Collectors.toList());
 
         if (eligible.size() < minOccurrences) {
@@ -109,9 +106,7 @@ public final class RecurringPatternDetector {
                 .map(Map.Entry::getKey)
                 .orElse(null);
 
-        TransactionDirection transactionType = transactions.get(0).amountCents < 0
-                ? TransactionDirection.EXPENSE
-                : TransactionDirection.INCOME;
+        TransactionDirection transactionType = TransactionDirection.fromAmountCents(transactions.get(0).amountCents);
 
         DatePatternDetector.PatternResult pattern = DatePatternDetector.detectDatePattern(transactions);
         if (pattern == null) {
@@ -119,7 +114,7 @@ public final class RecurringPatternDetector {
         }
 
         double confidence = SuggestionScorer.calculateConfidence(
-                transactions, pattern, amountStats.avg(), amountStats.min(), amountStats.max(), normalizedPayee);
+                transactions.size(), pattern, amountStats.avg(), amountStats.min(), amountStats.max(), normalizedPayee);
 
         return new RecurringSuggestion(
                 normalizedPayee,

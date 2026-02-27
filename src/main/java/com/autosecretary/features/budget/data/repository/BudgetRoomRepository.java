@@ -93,11 +93,7 @@ public class BudgetRoomRepository implements BudgetRepository {
                 ? recurringTemplateDao.findActiveExpenseTemplatesForActiveAccountsInRange(fromDate, toDate)
                 : recurringTemplateDao.findActiveExpenseTemplatesForAccountInRange(accountId, fromDate, toDate);
 
-        long total = 0L;
-        for (BudgetRecurringTemplateEntity template : templates) {
-            total += template.avgAmountCents;
-        }
-        return total;
+        return templates.stream().mapToLong(t -> t.avgAmountCents).sum();
     }
 
     @Override public void saveTransaction(BudgetTransactionEntity transaction) {
@@ -121,18 +117,6 @@ public class BudgetRoomRepository implements BudgetRepository {
 
     @Override public String findDefaultActiveAccountId() {
         return lookupDao.findFirstActiveAccountId();
-    }
-
-    @Override public void applyExpenseToAccountBalance(String accountId, long expenseCents) {
-        if (isAllAccounts(accountId) || expenseCents <= 0) {
-            return;
-        }
-        BudgetAccount account = lookupDao.findAccountById(accountId);
-        if (account == null) {
-            return;
-        }
-        long updatedBalance = account.currentBalanceCents - expenseCents;
-        lookupDao.updateCurrentBalanceCents(accountId, updatedBalance);
     }
 
     @Override public void saveTransaction(String accountId, String categoryId, TransactionDirection type,

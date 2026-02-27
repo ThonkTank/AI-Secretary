@@ -10,7 +10,7 @@ import java.util.List;
  */
 public class RecipeScalingService {
 
-    public ScalingResult scaleRecipe(Recipe recipe, double requestedServings) {
+    public static ScalingResult scaleRecipe(Recipe recipe, double requestedServings) {
         if (recipe == null) {
             return new ScalingResult(0, 0, new ArrayList<>());
         }
@@ -32,7 +32,7 @@ public class RecipeScalingService {
         return new ScalingResult(finalServings, factor, ingredients);
     }
 
-    private double resolveServings(Recipe recipe, double requestedServings) {
+    private static double resolveServings(Recipe recipe, double requestedServings) {
         double minServings = Math.max(0.1, recipe.minServings);
         double maxServings = Math.max(minServings, recipe.maxServings);
         double clamped = Math.min(maxServings, Math.max(minServings, requestedServings));
@@ -44,11 +44,13 @@ public class RecipeScalingService {
         return switch (precision) {
             case NONE -> Math.min(maxServings, Math.max(minServings, recipe.servings));
             case EXACT -> Math.min(maxServings, Math.max(minServings, Math.rint(clamped)));
-            case ROUGH -> Math.round(clamped * 2.0) / 2.0;
+            case ROUGH -> Math.min(maxServings, Math.max(minServings, Math.round(clamped * 2.0) / 2.0));
         };
     }
 
     public record ScaledIngredient(Long ingredientId, String ingredientName, double amount, String unit) {}
 
     public record ScalingResult(double servings, double factor, List<ScaledIngredient> ingredients) {}
+
+    private RecipeScalingService() {}
 }

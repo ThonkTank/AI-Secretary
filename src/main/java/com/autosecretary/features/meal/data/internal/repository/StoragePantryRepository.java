@@ -1,7 +1,9 @@
 package com.autosecretary.features.meal.data.internal.repository;
 
-import com.autosecretary.features.meal.data.internal.dao.PantryItemDao;
-import com.autosecretary.features.meal.data.internal.dao.ShoppingListDao;
+import com.autosecretary.features.meal.data.internal.MealCollections;
+import com.autosecretary.features.meal.data.internal.dao.BaseCollectionDao;
+import com.autosecretary.features.meal.data.internal.mapper.PantryItemRowMapper;
+import com.autosecretary.features.meal.data.internal.mapper.ShoppingListItemRowMapper;
 import com.autosecretary.features.meal.data.internal.storage.MealStorage;
 import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
@@ -11,12 +13,12 @@ import java.util.List;
 
 public class StoragePantryRepository implements PantryRepository {
 
-    private final PantryItemDao pantryItemDao;
-    private final ShoppingListDao shoppingListDao;
+    private final BaseCollectionDao<PantryItem> pantryItemDao;
+    private final BaseCollectionDao<ShoppingListItem> shoppingListDao;
 
     public StoragePantryRepository(MealStorage storage) {
-        this.pantryItemDao = new PantryItemDao(storage);
-        this.shoppingListDao = new ShoppingListDao(storage);
+        this.pantryItemDao = new BaseCollectionDao<>(MealCollections.PANTRY_ITEMS, storage, new PantryItemRowMapper(), p -> p.id, (p, id) -> p.id = id);
+        this.shoppingListDao = new BaseCollectionDao<>(MealCollections.SHOPPING_LIST_ITEMS, storage, new ShoppingListItemRowMapper(), item -> item.id, (item, id) -> item.id = id);
     }
 
     @Override
@@ -41,7 +43,7 @@ public class StoragePantryRepository implements PantryRepository {
 
     @Override
     public List<ShoppingListItem> getShoppingListItems(String periodKey) {
-        return shoppingListDao.findByPeriodKey(periodKey);
+        return shoppingListDao.findAllByField("periodKey", periodKey);
     }
 
     @Override

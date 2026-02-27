@@ -2,7 +2,6 @@ package com.autosecretary.features.meal.data.internal.mapper;
 
 import com.autosecretary.features.meal.domain.PantryItem;
 
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,10 +28,8 @@ public class PantryItemRowMapper implements RowMapper<PantryItem> {
         pantryItem.ingredientName = (String) row.get("ingredientName");
         pantryItem.amount = MapperSupport.asDouble(row.get("amount"));
         pantryItem.unit = (String) row.get("unit");
-        String purchaseDate = (String) row.get("purchaseDate");
-        pantryItem.purchaseDate = purchaseDate == null ? null : LocalDate.parse(purchaseDate);
-        String expiryDate = (String) row.get("expiryDate");
-        pantryItem.expiryDate = expiryDate == null ? null : LocalDate.parse(expiryDate);
+        pantryItem.purchaseDate = MapperSupport.asLocalDate(row.get("purchaseDate"));
+        pantryItem.expiryDate = MapperSupport.asLocalDate(row.get("expiryDate"));
         pantryItem.location = MapperSupport.asEnum(PantryItem.StorageLocation.class, row.get("location"), null);
         return pantryItem;
     }

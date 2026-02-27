@@ -84,9 +84,9 @@ public class TaskEditPresenter {
             return 1;
         }
 
-        int reps = parseIntSafe(repsText, InputDefaults.REPETITION_REPS);
-        int perPeriod = parseIntSafe(perPeriodText, InputDefaults.REPETITION_PER_PERIOD);
-        Period safePeriodUnit = periodUnit != null ? periodUnit : InputDefaults.REPETITION_PERIOD_UNIT;
+        int reps = parseIntSafe(repsText, TaskEditDefaults.REPETITION_REPS);
+        int perPeriod = parseIntSafe(perPeriodText, TaskEditDefaults.REPETITION_PER_PERIOD);
+        Period safePeriodUnit = periodUnit != null ? periodUnit : TaskEditDefaults.REPETITION_PERIOD_UNIT;
         int periodInDays = safePeriodUnit.dayCount * perPeriod;
         if (periodInDays <= 0) {
             periodInDays = 1;
@@ -98,10 +98,10 @@ public class TaskEditPresenter {
         FormInput safeInput = input != null ? input : new FormInput();
         editState.title = safeInput.title;
         editState.description = safeInput.description;
-        editState.priority = coalesce(safeInput.priority, InputDefaults.PRIORITY);
-        editState.goalIcon = safeInput.goalIcon != null ? safeInput.goalIcon : InputDefaults.GOAL_ICON;
-        editState.goalColorHex = safeInput.goalColorHex != null ? safeInput.goalColorHex : InputDefaults.GOAL_COLOR_HEX;
-        editState.schedulingType = coalesce(safeInput.schedulingType, InputDefaults.SCHEDULING_TYPE);
+        editState.priority = coalesce(safeInput.priority, TaskEditDefaults.PRIORITY);
+        editState.goalIcon = safeInput.goalIcon != null ? safeInput.goalIcon : TaskEditDefaults.GOAL_ICON;
+        editState.goalColorHex = safeInput.goalColorHex != null ? safeInput.goalColorHex : TaskEditDefaults.GOAL_COLOR_HEX;
+        editState.schedulingType = coalesce(safeInput.schedulingType, TaskEditDefaults.SCHEDULING_TYPE);
         editState.fixedDate = safeInput.fixedDate;
         editState.fixedStart = safeInput.fixedStart;
         editState.fixedEnd = safeInput.fixedEnd;
@@ -203,38 +203,14 @@ public class TaskEditPresenter {
         return value != null ? value : fallback;
     }
 
-    /** Fallback values for empty or invalid form fields. Shared defaults delegate to {@link TaskEditDefaults}. */
-    public static class InputDefaults {
-        public static final Priority PRIORITY = TaskEditDefaults.PRIORITY;
-        public static final TaskCore.SchedulingType SCHEDULING_TYPE = TaskEditDefaults.SCHEDULING_TYPE;
-
-        public static final int MIN_DURATION = TaskEditDefaults.MIN_DURATION;
-        public static final int MAX_DURATION = TaskEditDefaults.MAX_DURATION;
-        public static final int COOLDOWN = TaskEditDefaults.COOLDOWN;
-        public static final int BUDGET_REQUIRED_CENTS = 0;
-
-        public static final int REPETITION_REPS = TaskEditDefaults.REPETITION_REPS;
-        public static final int REPETITION_PER_PERIOD = TaskEditDefaults.REPETITION_PER_PERIOD;
-        public static final Period REPETITION_PERIOD_UNIT = TaskEditDefaults.REPETITION_PERIOD_UNIT;
-
-        public static final String GOAL_ICON = TaskEditDefaults.GOAL_ICON;
-        public static final String GOAL_COLOR_HEX = TaskEditDefaults.GOAL_COLOR_HEX;
-
-        public static final String UNIT = "";
-        public static final int TARGET = 0;
-        public static final int CURRENT = 0;
-        public static final int MIN_PER_REP = 0;
-        public static final int MAX_PER_REP = 0;
-    }
-
     /** Raw form field values collected from the dialog UI. */
     public static class FormInput {
         public String title;
         public String description;
-        public Priority priority = InputDefaults.PRIORITY;
-        public String goalIcon = InputDefaults.GOAL_ICON;
-        public String goalColorHex = InputDefaults.GOAL_COLOR_HEX;
-        public TaskCore.SchedulingType schedulingType = InputDefaults.SCHEDULING_TYPE;
+        public Priority priority = TaskEditDefaults.PRIORITY;
+        public String goalIcon = TaskEditDefaults.GOAL_ICON;
+        public String goalColorHex = TaskEditDefaults.GOAL_COLOR_HEX;
+        public TaskCore.SchedulingType schedulingType = TaskEditDefaults.SCHEDULING_TYPE;
         public LocalDate fixedDate;
         public LocalTime fixedStart;
         public LocalTime fixedEnd;
@@ -244,23 +220,23 @@ public class TaskEditPresenter {
         public String budgetCategoryId;
 
         public boolean closeOnMiss;
-        public int minDuration = InputDefaults.MIN_DURATION;
-        public int maxDuration = InputDefaults.MAX_DURATION;
-        public int cooldown = InputDefaults.COOLDOWN;
+        public int minDuration = TaskEditDefaults.MIN_DURATION;
+        public int maxDuration = TaskEditDefaults.MAX_DURATION;
+        public int cooldown = TaskEditDefaults.COOLDOWN;
         public boolean adaptive;
 
         public boolean repetitionEnabled;
-        public int reps = InputDefaults.REPETITION_REPS;
-        public int perPeriod = InputDefaults.REPETITION_PER_PERIOD;
-        public Period periodUnit = InputDefaults.REPETITION_PERIOD_UNIT;
+        public int reps = TaskEditDefaults.REPETITION_REPS;
+        public int perPeriod = TaskEditDefaults.REPETITION_PER_PERIOD;
+        public Period periodUnit = TaskEditDefaults.REPETITION_PERIOD_UNIT;
         public boolean completeFirst;
 
         public boolean progressEnabled;
         public String unit;
-        public int target = InputDefaults.TARGET;
-        public int current = InputDefaults.CURRENT;
+        public int target = TaskEditDefaults.TARGET;
+        public int current = TaskEditDefaults.CURRENT;
         public boolean resetPerRep;
-        public int minPerRep = InputDefaults.MIN_PER_REP;
-        public int maxPerRep = InputDefaults.MAX_PER_REP;
+        public int minPerRep = TaskEditDefaults.MIN_PER_REP;
+        public int maxPerRep = TaskEditDefaults.MAX_PER_REP;
     }
 }

@@ -34,7 +34,8 @@ public final class DailyPlanningScheduler {
         PendingIntent alarmIntent = PendingIntent.getBroadcast(
                 appContext,
                 REQUEST_CODE_DAILY_PLANNING,
-                buildAlarmIntent(appContext),
+                new Intent(appContext, DailyPlanningReceiver.class)
+                        .setAction(ACTION_DAILY_PLANNING_ALARM),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
@@ -54,8 +55,4 @@ public final class DailyPlanningScheduler {
         );
     }
 
-    private static Intent buildAlarmIntent(Context context) {
-        return new Intent(context, DailyPlanningReceiver.class)
-                .setAction(ACTION_DAILY_PLANNING_ALARM);
-    }
 }

@@ -15,19 +15,11 @@ public class CreatePantryItemUseCase {
 
     private final RecipeRepository recipeRepository;
     private final PantryRepository pantryRepository;
-    private final ShelfLifeService shelfLifeService;
 
     public CreatePantryItemUseCase(RecipeRepository recipeRepository,
                                    PantryRepository pantryRepository) {
-        this(recipeRepository, pantryRepository, new ShelfLifeService());
-    }
-
-    public CreatePantryItemUseCase(RecipeRepository recipeRepository,
-                                   PantryRepository pantryRepository,
-                                   ShelfLifeService shelfLifeService) {
         this.recipeRepository = recipeRepository;
         this.pantryRepository = pantryRepository;
-        this.shelfLifeService = shelfLifeService;
     }
 
     public PantryItem execute(long ingredientId, double amount, LocalDate purchaseDate) {
@@ -47,7 +39,7 @@ public class CreatePantryItemUseCase {
                 ingredient.defaultUnit
         )
                 .purchaseDate(safePurchaseDate)
-                .expiryDate(shelfLifeService.calculateExpiryDate(safePurchaseDate, ingredient.shelfLifeDays))
+                .expiryDate(ShelfLifeService.calculateExpiryDate(safePurchaseDate, ingredient.shelfLifeDays))
                 .build();
 
         pantryRepository.savePantryItem(pantryItem);

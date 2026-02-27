@@ -7,7 +7,6 @@ import androidx.room.Ignore;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,20 +39,6 @@ public class Task {
 
     @Ignore
     public List<Task> children = new ArrayList<>();
-
-    /**
-     * Returns the number of days remaining until the task's deadline or period end.
-     * Falls back to 1 if neither a deadline nor a repeating period is configured.
-     */
-    public double remainingDays() {
-        if (core.deadline != null) {
-            return (double) ChronoUnit.DAYS.between(LocalDate.now(), core.deadline);
-        } else if (core.repetition != null && core.repetition.reps > 0
-                && core.repetition.periodUnit != null) {
-            return core.repetition.remainingDays();
-        }
-        return 1;
-    }
 
     /**
      * Estimates how many days are needed to complete this task, factoring in

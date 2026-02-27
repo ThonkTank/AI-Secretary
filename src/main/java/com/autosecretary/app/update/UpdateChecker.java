@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 
 public class UpdateChecker {
@@ -50,7 +51,7 @@ public class UpdateChecker {
                 int remoteVersion = fetchRemoteVersion();
                 int localVersion = getLocalVersion();
                 if (remoteVersion > localVersion) {
-                    postToUi(() -> showUpdateDialog(remoteVersion));
+                    mainHandler.post(() -> showUpdateDialog(remoteVersion));
                 }
             } catch (Exception ignored) {
                 // Fehler beim Prüfen sind nicht kritisch; App-Start darf nicht blockieren.
@@ -83,7 +84,7 @@ public class UpdateChecker {
     }
 
     private void showUpdateDialog(int newVersion) {
-        if (!canInteractWithUi()) {
+        if (activity.isFinishing() || activity.isDestroyed()) {
             return;
         }
 
@@ -99,9 +100,9 @@ public class UpdateChecker {
         backgroundExecutor.execute(() -> {
             try {
                 File apkFile = downloadApk();
-                postToUi(() -> installApk(apkFile));
+                mainHandler.post(() -> installApk(apkFile));
             } catch (Exception e) {
-                postToUi(() -> showDownloadErrorDialog(e));
+                mainHandler.post(() -> showDownloadErrorDialog(e));
             }
         });
     }
@@ -128,7 +129,7 @@ public class UpdateChecker {
     }
 
     private void installApk(File apkFile) {
-        if (!canInteractWithUi()) {
+        if (activity.isFinishing() || activity.isDestroyed()) {
             return;
         }
 
@@ -150,13 +151,14 @@ public class UpdateChecker {
     }
 
     private void showDownloadErrorDialog(Exception error) {
-        if (!canInteractWithUi()) {
+        if (activity.isFinishing() || activity.isDestroyed()) {
             return;
         }
 
-        String detail = error.getMessage() == null
-                ? activity.getString(R.string.update_download_failed_unknown)
-                : error.getMessage();
+        String detail = Objects.requireNonNullElse(
+                error.getMessage(),
+                activity.getString(R.string.update_download_failed_unknown)
+        );
         new AlertDialog.Builder(activity)
                 .setTitle(R.string.update_download_failed_title)
                 .setMessage(activity.getString(R.string.update_download_failed_message, detail))
@@ -164,11 +166,4 @@ public class UpdateChecker {
                 .show();
     }
 
-    private void postToUi(Runnable action) {
-        mainHandler.post(action);
-    }
-
-    private boolean canInteractWithUi() {
-        return !activity.isFinishing() && !activity.isDestroyed();
-    }
 }

@@ -1,9 +1,11 @@
 package com.autosecretary.features.task.application;
 
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
-import com.autosecretary.features.task.application.internal.mutations.TaskProgressAdjustMutation;
+import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
+import com.autosecretary.features.task.data.TaskSlot;
 
+import java.time.LocalTime;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
@@ -30,13 +32,36 @@ public class AdjustTaskProgressUseCase {
     public void execute(TaskListItem listItem, boolean increment, Runnable onChanged) {
         int step = Math.max(1, listItem.progressStepDelta);
         int delta = increment ? step : -step;
-        executor.execute(() -> TaskProgressAdjustMutation.execute(
-                taskDao,
-                listItem.taskId,
-                listItem.slotId,
-                delta,
-                callbackDispatcher,
-                onChanged
-        ));
+        executor.execute(() -> {
+            if (listItem.taskId == null) return;
+
+            Task task = taskDao.read(listItem.taskId);
+            if (task == null || task.core == null || task.core.progress == null || task.core.progress.target <= 0) {
+                return;
+            }
+
+            int target = task.core.progress.target;
+            int current = task.core.progress.current;
+            int next = Math.max(0, Math.min(target, current + delta));
+            if (next == current) return;
+
+            task.core.progress.current = next;
+            boolean completed = next >= target;
+            task.core.completed = completed;
+
+            TaskSlot slot = task.findSlot(listItem.slotId);
+            if (slot != null) {
+                slot.completed = completed;
+                if (completed && slot.realEnd == null) {
+                    slot.realEnd = LocalTime.now();
+                }
+            }
+
+            taskDao.write(task);
+
+            if (onChanged != null && callbackDispatcher != null) {
+                callbackDispatcher.execute(onChanged);
+            }
+        });
     }
 }

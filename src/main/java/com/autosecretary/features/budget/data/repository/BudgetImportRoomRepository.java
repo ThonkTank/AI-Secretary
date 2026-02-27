@@ -10,6 +10,7 @@ import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEnti
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
 import com.autosecretary.features.budget.domain.importing.ImportCategory;
 import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
+import com.autosecretary.features.budget.domain.importing.ImportTransactionType;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.domain.TemplateStatusUpdate;
@@ -27,13 +28,6 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     private final TransactionDao transactionDao;
     private final BudgetLookupDao lookupDao;
     private final Runnable onBudgetDataUpdated;
-
-    public BudgetImportRoomRepository(BudgetImportDao importDao,
-                                       BudgetRecurringTemplateDao templateDao,
-                                       TransactionDao transactionDao,
-                                       BudgetLookupDao lookupDao) {
-        this(importDao, templateDao, transactionDao, lookupDao, () -> { });
-    }
 
     public BudgetImportRoomRepository(BudgetImportDao importDao,
                                        BudgetRecurringTemplateDao templateDao,
@@ -73,11 +67,8 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     @Override
-    public String findDefaultCategoryId(boolean income) {
-        TransactionDirection type = income
-                ? TransactionDirection.INCOME
-                : TransactionDirection.EXPENSE;
-        return lookupDao.findDefaultCategoryId(type);
+    public String findDefaultCategoryId(TransactionDirection direction) {
+        return lookupDao.findDefaultCategoryId(direction);
     }
 
     @Override
@@ -140,24 +131,19 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     private BudgetTransactionEntity toEntity(ImportTransactionRecord record) {
-        TransactionDirection txType;
-        BudgetTransactionEntity.TransactionKind txKind = BudgetTransactionEntity.TransactionKind.STANDARD;
-        String rawType = record.type() != null ? record.type() : TransactionDirection.EXPENSE.name();
-        if (ImportTransactionRecord.TYPE_TRANSFER.equals(rawType)) {
-            txType = TransactionDirection.EXPENSE;
-            txKind = BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER;
-        } else {
-            txType = TransactionDirection.valueOf(rawType);
-        }
+        ImportTransactionType type = record.type() != null ? record.type() : ImportTransactionType.EXPENSE;
+        TransactionDirection direction = type.toDirection();
+        BudgetTransactionEntity.TransactionKind kind = type.toKind();
+
         BudgetTransactionEntity entity = new BudgetTransactionEntity(
                 record.accountId(),
                 record.categoryId(),
-                txType,
+                direction,
                 record.amountCents(),
                 record.bookingDate()
         );
         entity.id = record.id();
-        entity.transactionKind = txKind;
+        entity.transactionKind = kind;
         entity.note = record.note();
         entity.importHash = record.importHash();
         entity.payee = record.payee();
@@ -167,9 +153,9 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     private ImportTransactionRecord toRecord(BudgetTransactionEntity entity) {
-        String type = entity.transactionKind == BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER
-                ? ImportTransactionRecord.TYPE_TRANSFER
-                : entity.direction.name();
+        ImportTransactionType type = entity.transactionKind == BudgetTransactionEntity.TransactionKind.INTERNAL_TRANSFER
+                ? ImportTransactionType.TRANSFER
+                : ImportTransactionType.fromDirection(entity.direction);
         return new ImportTransactionRecord(
                 entity.id,
                 entity.accountId,

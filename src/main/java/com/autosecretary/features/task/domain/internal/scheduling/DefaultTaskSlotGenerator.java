@@ -69,12 +69,6 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
-    private static class FixedInterval extends OccupiedInterval {
-        FixedInterval(LocalDateTime start, LocalDateTime end) {
-            super(start, end, null);
-        }
-    }
-
     private static class DisplacementCandidate {
         final Task task;
         final TaskSlot slot;
@@ -226,7 +220,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     @Override
     public TaskSlotGenerationResult generateSlotsForDay(List<Task> tasks, LocalDate day, TaskPlanningState state) {
         SchedulingWindowProvider.SchedulingWindow window = schedulingWindowProvider.forDay(day);
-        return generateSlotsForDayInternal(tasks, window.start, window.end, state, new ArrayList<>());
+        return generateSlotsForDayInternal(tasks, window.start(), window.end(), state, new ArrayList<>());
     }
 
     @Override
@@ -255,12 +249,12 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             SchedulingWindowProvider.SchedulingWindow window = schedulingWindowProvider.forDay(day);
             List<OccupiedInterval> occupied = collectOccupiedIntervals(allTasks, day, new ArrayList<>());
             for (CalendarBlockedIntervalProvider.BlockedInterval blocked :
-                    calendarBlockedIntervalProvider.readBlockedIntervals(day, window.start, window.end)) {
-                occupied.add(new FixedInterval(blocked.start, blocked.end));
+                    calendarBlockedIntervalProvider.readBlockedIntervals(day, window.start(), window.end())) {
+                occupied.add(new OccupiedInterval(blocked.start(), blocked.end(), null));
             }
             occupied.sort(Interval::compareTo);
-            scheduleFixedTasks(taskTree, window.start, window.end, occupied, day);
-            contexts.add(new DaySchedulingContext(day, window.start, window.end, occupied));
+            scheduleFixedTasks(taskTree, window.start(), window.end(), occupied, day);
+            contexts.add(new DaySchedulingContext(day, window.start(), window.end(), occupied));
         }
 
         assignGlobalBestFitAcrossWindow(taskTree, contexts);
@@ -309,7 +303,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         List<OccupiedInterval> occupied = collectOccupiedIntervals(allTasks, schedulingDay, calendarEvents);
         for (CalendarBlockedIntervalProvider.BlockedInterval blocked :
                 calendarBlockedIntervalProvider.readBlockedIntervals(schedulingDay, windowStart, windowEnd)) {
-            occupied.add(new FixedInterval(blocked.start, blocked.end));
+            occupied.add(new OccupiedInterval(blocked.start(), blocked.end(), null));
         }
         occupied.sort(Interval::compareTo);
 
@@ -773,11 +767,11 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                 reasonCode,
                 details);
         lastConflicts.add(conflict);
-        log("[SCHED_CONFLICT] {taskId=" + conflict.taskId
-                + ", title=" + conflict.title
-                + ", day=" + conflict.day
-                + ", reasonCode=" + conflict.reasonCode
-                + ", details=" + conflict.details + "}");
+        log("[SCHED_CONFLICT] {taskId=" + conflict.taskId()
+                + ", title=" + conflict.title()
+                + ", day=" + conflict.day()
+                + ", reasonCode=" + conflict.reasonCode()
+                + ", details=" + conflict.details() + "}");
     }
 
     private void scheduleFixedTasks(List<Task> tasks,
@@ -934,7 +928,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             if (event.start() == null || event.end() == null || !event.end().isAfter(event.start())) {
                 continue;
             }
-            intervals.add(new FixedInterval(day.atTime(event.start()), day.atTime(event.end())));
+            intervals.add(new OccupiedInterval(day.atTime(event.start()), day.atTime(event.end()), null));
         }
         intervals.sort(Interval::compareTo);
         return intervals;

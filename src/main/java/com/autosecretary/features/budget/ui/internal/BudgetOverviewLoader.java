@@ -27,50 +27,21 @@ import java.util.Locale;
  */
 public class BudgetOverviewLoader {
 
+    // 30-day window spans today back to today-29, giving 30 inclusive days.
+    private static final int DAYS_30_WINDOW_OFFSET = 29;
+
     private static final DateTimeFormatter DAILY_LABEL =
             DateTimeFormatter.ofPattern("dd.MM", Locale.GERMAN);
     private static final DateTimeFormatter MONTHLY_LABEL =
             DateTimeFormatter.ofPattern("MMM yy", Locale.GERMAN);
 
-    public static class OverviewData {
-        private final List<BudgetAccount> accounts;
-        private final String accountId;
-        private final List<BudgetTransactionRow> rows;
-        private final BudgetSummaryData summary;
-        private final List<BudgetChartPoint> chartPoints;
-
-        public OverviewData(List<BudgetAccount> accounts,
-                            String accountId,
-                            List<BudgetTransactionRow> rows,
-                            BudgetSummaryData summary,
-                            List<BudgetChartPoint> chartPoints) {
-            this.accounts = accounts;
-            this.accountId = accountId;
-            this.rows = rows;
-            this.summary = summary;
-            this.chartPoints = chartPoints;
-        }
-
-        public List<BudgetAccount> getAccounts() {
-            return accounts;
-        }
-
-        public String getAccountId() {
-            return accountId;
-        }
-
-        public List<BudgetTransactionRow> getRows() {
-            return rows;
-        }
-
-        public BudgetSummaryData getSummary() {
-            return summary;
-        }
-
-        public List<BudgetChartPoint> getChartPoints() {
-            return chartPoints;
-        }
-    }
+    public record OverviewData(
+            List<BudgetAccount> accounts,
+            String accountId,
+            List<BudgetTransactionRow> rows,
+            BudgetSummaryData summary,
+            List<BudgetChartPoint> chartPoints
+    ) {}
 
     private final BudgetRepository repository;
     private final BudgetSummaryPresentationMapper summaryPresentationMapper;
@@ -155,7 +126,7 @@ public class BudgetOverviewLoader {
         LocalDate now = LocalDate.now();
 
         if (resolvedFilter == TimeRangeFilter.DAYS_30) {
-            LocalDate fromDate = now.minusDays(29);
+            LocalDate fromDate = now.minusDays(DAYS_30_WINDOW_OFFSET);
             long startBalance = repository.getNetAmountBeforeDateForAccount(accountId, fromDate);
             List<DailyDeltaPoint> deltas =
                     repository.getDailyDeltasForAccount(accountId, fromDate, now);
@@ -174,12 +145,10 @@ public class BudgetOverviewLoader {
             series = AccountBalanceTimelineService.reconstructMonthly(fromMonth, toMonth, startBalance, deltas);
         }
 
+        DateTimeFormatter labelFormat = resolvedFilter == TimeRangeFilter.DAYS_30 ? DAILY_LABEL : MONTHLY_LABEL;
         List<BudgetChartPoint> points = new ArrayList<>();
         for (BalanceTimelinePoint p : series) {
-            String label = resolvedFilter == TimeRangeFilter.DAYS_30
-                    ? p.date().format(DAILY_LABEL)
-                    : p.date().format(MONTHLY_LABEL);
-            points.add(new BudgetChartPoint(label, p.balanceCents()));
+            points.add(new BudgetChartPoint(p.date().format(labelFormat), p.balanceCents()));
         }
         return points;
     }

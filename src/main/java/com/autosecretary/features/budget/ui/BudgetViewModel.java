@@ -79,7 +79,6 @@ public class BudgetViewModel extends ViewModel {
     private final BudgetSummaryPresentationMapper summaryPresentationMapper;
     private final BudgetSeedService budgetSeedService;
     private final BudgetOverviewLoader budgetOverviewLoader;
-    private final AmountParser amountParser;
 
     public BudgetViewModel(BudgetRepository repository,
                            ExecutorService executor,
@@ -90,7 +89,6 @@ public class BudgetViewModel extends ViewModel {
                            CalculateEffectiveBudgetLimitUseCase calculateEffectiveLimitUseCase,
                            BudgetSeedService budgetSeedService,
                            BudgetOverviewLoader budgetOverviewLoader,
-                           AmountParser amountParser,
                            BudgetSummaryPresentationMapper summaryPresentationMapper) {
         this.repository = repository;
         this.executor = executor;
@@ -102,7 +100,6 @@ public class BudgetViewModel extends ViewModel {
         this.summaryPresentationMapper = summaryPresentationMapper;
         this.budgetSeedService = budgetSeedService;
         this.budgetOverviewLoader = budgetOverviewLoader;
-        this.amountParser = amountParser;
         ensureDefaultData();
     }
 
@@ -180,7 +177,7 @@ public class BudgetViewModel extends ViewModel {
                 month,
                 selectedAccountId.getValue(),
                 timeRangeFilter.getValue());
-        if (overview.getAccountId() == null) {
+        if (overview.accountId() == null) {
             postToMain.accept(() -> {
                 uiState.setValue(BudgetUiState.EMPTY);
                 statusMessage.setValue(UiText.of(R.string.budget_status_no_account));
@@ -191,16 +188,11 @@ public class BudgetViewModel extends ViewModel {
         }
 
         postToMain.accept(() -> {
-            accounts.setValue(overview.getAccounts());
-            String resolvedAccountId = BudgetOverviewLoader.resolveSelectedAccountId(
-                    selectedAccountId.getValue(),
-                    overview.getAccounts());
-            if (resolvedAccountId != null) {
-                selectedAccountId.setValue(resolvedAccountId);
-            }
+            accounts.setValue(overview.accounts());
+            selectedAccountId.setValue(overview.accountId());
         });
 
-        publishOverviewState(overview.getRows(), overview.getChartPoints(), overview.getSummary());
+        publishOverviewState(overview.rows(), overview.chartPoints(), overview.summary());
         loadLimitsOnExecutor(month);
     }
 
@@ -226,7 +218,7 @@ public class BudgetViewModel extends ViewModel {
         executor.execute(() -> {
             if (accountId == null) return;
 
-            Long amountCents = amountParser.parseAmountCents(amountStr);
+            Long amountCents = AmountParser.parseAmountCents(amountStr);
             if (amountCents == null) {
                 showInvalidAmountError();
                 return;
@@ -242,7 +234,7 @@ public class BudgetViewModel extends ViewModel {
     public void updateTransaction(String transactionId, String amountStr, boolean isExpense,
                                   String categoryId, String note, LocalDate date, String accountId) {
         executor.execute(() -> {
-            Long amountCents = amountParser.parseAmountCents(amountStr);
+            Long amountCents = AmountParser.parseAmountCents(amountStr);
             if (amountCents == null) {
                 showInvalidAmountError();
                 return;
@@ -261,7 +253,7 @@ public class BudgetViewModel extends ViewModel {
                             LocalDate date,
                             String note) {
         executor.execute(() -> {
-            Long amountCents = amountParser.parseAmountCents(amountStr);
+            Long amountCents = AmountParser.parseAmountCents(amountStr);
             if (amountCents == null) {
                 showInvalidAmountError();
                 return;
@@ -275,10 +267,7 @@ public class BudgetViewModel extends ViewModel {
                     note
             );
             if (!result.success()) {
-                postToMain.accept(() -> {
-                    uiState.setValue(BudgetUiState.ERROR);
-                    statusMessage.setValue(UiText.raw(result.errorMessage()));
-                });
+                postTransferError(result);
                 return;
             }
             loadOverviewOnExecutor();
@@ -292,7 +281,7 @@ public class BudgetViewModel extends ViewModel {
                                LocalDate date,
                                String note) {
         executor.execute(() -> {
-            Long amountCents = amountParser.parseAmountCents(amountStr);
+            Long amountCents = AmountParser.parseAmountCents(amountStr);
             if (amountCents == null) {
                 showInvalidAmountError();
                 return;
@@ -307,13 +296,17 @@ public class BudgetViewModel extends ViewModel {
                     note
             );
             if (!result.success()) {
-                postToMain.accept(() -> {
-                    uiState.setValue(BudgetUiState.ERROR);
-                    statusMessage.setValue(UiText.raw(result.errorMessage()));
-                });
+                postTransferError(result);
                 return;
             }
             loadOverviewOnExecutor();
+        });
+    }
+
+    private void postTransferError(CreateTransferUseCase.Result result) {
+        postToMain.accept(() -> {
+            uiState.setValue(BudgetUiState.ERROR);
+            statusMessage.setValue(UiText.raw(result.errorMessage()));
         });
     }
 
@@ -410,12 +403,22 @@ public class BudgetViewModel extends ViewModel {
     }
 
     public void saveBudgetLimitFromString(String categoryId, String amountStr,
-                                          boolean rolloverEnabled, long rolloverCarryoverCents) {
-        Long amountCents = amountParser.parseAmountCents(amountStr);
+                                          boolean rolloverEnabled, String rolloverCarryoverStr) {
+        Long amountCents = AmountParser.parseAmountCents(amountStr);
         if (amountCents == null) {
             showInvalidAmountError();
             return;
         }
+        long parsedRollover = 0L;
+        if (rolloverCarryoverStr != null && !rolloverCarryoverStr.isEmpty()) {
+            Long parsed = AmountParser.parseAmountCents(rolloverCarryoverStr);
+            if (parsed == null) {
+                showInvalidAmountError();
+                return;
+            }
+            parsedRollover = parsed;
+        }
+        final long rolloverCarryoverCents = parsedRollover;
         executor.execute(() -> {
             YearMonth month = currentMonth.getValue();
             if (month == null) month = YearMonth.now();

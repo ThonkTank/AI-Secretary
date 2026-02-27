@@ -18,10 +18,6 @@ public interface BudgetRecurringTemplateDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(BudgetRecurringTemplateEntity template);
 
-    @Query("SELECT * FROM budget_recurring_template WHERE accountId = :accountId AND active = 1")
-    List<BudgetRecurringTemplateEntity> findActiveTemplates(String accountId);
-
-
     @Query("""
             SELECT * FROM budget_recurring_template
             WHERE accountId = :accountId

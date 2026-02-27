@@ -15,14 +15,14 @@ public class MealPlanRowMapper implements RowMapper<MealPlan> {
         mealPlan.date = MapperSupport.asLocalDate(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.DATE, "date"));
         mealPlan.mealType = MapperSupport.asEnum(MealType.class,
                 MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.MEAL_TYPE, "mealType"), null);
-        mealPlan.recipeId = MapperSupport.asLong(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.RECIPE_ID, "recipeId"), 0L);
-        mealPlan.plannedServings = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.PLANNED_SERVINGS, "plannedServings"), 0);
-        mealPlan.isCompleted = MapperSupport.asBoolean(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.IS_COMPLETED, "isCompleted"), false);
-        mealPlan.actualServings = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.ACTUAL_SERVINGS, "actualServings"), 0);
+        mealPlan.recipeId = MapperSupport.asLong(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.RECIPE_ID, "recipeId"));
+        mealPlan.plannedServings = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.PLANNED_SERVINGS, "plannedServings"));
+        mealPlan.isCompleted = MapperSupport.asBoolean(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.IS_COMPLETED, "isCompleted"));
+        mealPlan.actualServings = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.ACTUAL_SERVINGS, "actualServings"));
         mealPlan.completedAt = MapperSupport.asLocalDateTime(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.COMPLETED_AT, "completedAt"));
         mealPlan.itemId = MapperSupport.asNullableLong(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.ITEM_ID, "itemId"));
         mealPlan.recipeTitle = (String) MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.RECIPE_TITLE, "recipeTitle");
-        mealPlan.estimatedCalories = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.ESTIMATED_CALORIES, "estimatedCalories"), 0);
+        mealPlan.estimatedCalories = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.ESTIMATED_CALORIES, "estimatedCalories"));
         return mealPlan;
     }
 

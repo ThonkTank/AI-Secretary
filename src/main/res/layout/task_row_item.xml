@@ -32,7 +32,7 @@
             android:id="@+id/TimeDivider"
             android:layout_width="match_parent"
             android:layout_height="@dimen/task_row_time_divider_height"
-            android:background="@color/task_row_time_divider"/>
+            android:background="@color/task_color_outline"/>
 
         <TextView
             android:id="@+id/EndTime"
@@ -68,8 +68,8 @@
 
         <ImageButton
             android:id="@+id/btn_progress_minus"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="@dimen/task_row_progress_button_size"
+            android:layout_height="@dimen/task_row_progress_button_size"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/task_progress_decrement"
             android:src="@android:drawable/ic_media_previous"
@@ -86,8 +86,8 @@
 
         <ImageButton
             android:id="@+id/btn_progress_plus"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="@dimen/task_row_progress_button_size"
+            android:layout_height="@dimen/task_row_progress_button_size"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/task_progress_increment"
             android:src="@android:drawable/ic_input_add"
@@ -105,7 +105,7 @@
         android:importantForAccessibility="yes"
         android:minWidth="24dp"
         android:textAppearance="@style/TextAppearance.Task.Time.Primary"
-        android:textColor="@color/task_text_on_surface_emphasis"
+        android:textColor="@color/task_color_on_surface_emphasis"
         android:visibility="gone"/>
 
     <TextView
@@ -160,7 +160,7 @@
         android:contentDescription="@string/task_timer_start"
         android:padding="@dimen/task_row_edit_button_padding"
         android:src="@android:drawable/ic_media_play"
-        android:tint="@color/task_text_on_surface_emphasis"/>
+        android:tint="@color/task_color_on_surface_emphasis"/>
 
     <ImageButton
         android:id="@+id/EditTaskButton"
@@ -171,5 +171,5 @@
         android:contentDescription="@string/task_row_edit"
         android:padding="@dimen/task_row_edit_button_padding"
         android:src="@drawable/ic_task_edit_24"
-        android:tint="@color/task_text_on_surface_emphasis"/>
+        android:tint="@color/task_color_on_surface_emphasis"/>
 </LinearLayout>

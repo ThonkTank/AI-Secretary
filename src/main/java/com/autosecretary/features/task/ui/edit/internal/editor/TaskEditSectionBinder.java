@@ -20,6 +20,7 @@ import com.autosecretary.shared.Priority;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -61,7 +62,7 @@ public class TaskEditSectionBinder {
 
     public SchedulingViews bindScheduling() {
         EditText deadlineView = rootView.findViewById(R.id.EditDeadline);
-        com.google.android.material.textfield.TextInputLayout deadlineInputLayout = rootView.findViewById(R.id.DeadlineInputLayout);
+        TextInputLayout deadlineInputLayout = rootView.findViewById(R.id.DeadlineInputLayout);
         ImageButton clearDeadline = rootView.findViewById(R.id.ClearDeadline);
         Spinner schedulingTypeView = rootView.findViewById(R.id.EditSchedulingType);
         LinearLayout fixedSchedulingContainer = rootView.findViewById(R.id.FixedSchedulingContainer);
@@ -80,7 +81,6 @@ public class TaskEditSectionBinder {
 
         SchedulingViews views = new SchedulingViews(
             deadlineView,
-            deadlineInputLayout,
             schedulingTypeView,
             fixedSchedulingContainer,
             fixedDateView,
@@ -241,19 +241,13 @@ public class TaskEditSectionBinder {
     }
 
     private void updateDeadlineDisplay(SchedulingViews views) {
-        if (presenter.getEditableDeadline() != null) {
-            String deadlineText = presenter.getEditableDeadline().format(DEADLINE_FORMATTER);
-            views.deadlineView.setText(deadlineText);
-            views.deadlineView.setContentDescription(
-                fragment.getString(R.string.task_edit_deadline_content_description, deadlineText)
-            );
-        } else {
-            String noDeadlineText = fragment.getString(R.string.task_editor_deadline_none);
-            views.deadlineView.setText(noDeadlineText);
-            views.deadlineView.setContentDescription(
-                fragment.getString(R.string.task_edit_deadline_content_description, noDeadlineText)
-            );
-        }
+        String text = presenter.getEditableDeadline() != null
+            ? presenter.getEditableDeadline().format(DEADLINE_FORMATTER)
+            : fragment.getString(R.string.task_editor_deadline_none);
+        views.deadlineView.setText(text);
+        views.deadlineView.setContentDescription(
+            fragment.getString(R.string.task_edit_deadline_content_description, text)
+        );
     }
 
     private void showDatePicker(SchedulingViews views) {
@@ -278,7 +272,6 @@ public class TaskEditSectionBinder {
 
     public static final class SchedulingViews {
         public final EditText deadlineView;
-        public final com.google.android.material.textfield.TextInputLayout deadlineInputLayout;
         public final Spinner schedulingTypeView;
         public final LinearLayout fixedSchedulingContainer;
         public final EditText fixedDateView;
@@ -296,7 +289,6 @@ public class TaskEditSectionBinder {
 
         private SchedulingViews(
             EditText deadlineView,
-            com.google.android.material.textfield.TextInputLayout deadlineInputLayout,
             Spinner schedulingTypeView,
             LinearLayout fixedSchedulingContainer,
             EditText fixedDateView,
@@ -313,7 +305,6 @@ public class TaskEditSectionBinder {
             CheckBox adaptiveView
         ) {
             this.deadlineView = deadlineView;
-            this.deadlineInputLayout = deadlineInputLayout;
             this.schedulingTypeView = schedulingTypeView;
             this.fixedSchedulingContainer = fixedSchedulingContainer;
             this.fixedDateView = fixedDateView;

@@ -10,9 +10,9 @@ Use the `application/` layer to orchestrate task feature workflows and expose ap
   - Keep calendar-facing service contracts and DTOs used by scheduling/list projections.
   - Examples: `TaskCalendarService`, `TaskCalendarEvent`.
 
-- **Schedule config services (`application/config/`)**
-  - Keep schedule configuration repository/service abstractions used by config UI and scheduling window lookup.
-  - Examples: `TaskScheduleConfigRepository`, `TaskScheduleConfigService`.
+- **Schedule config (`application/config/`)**
+  - Keep schedule configuration repository used by config UI and scheduling window lookup.
+  - Example: `TaskScheduleConfigRepository`.
 
 - **List presentation models (`application/listmodel/`)**
   - Keep immutable list rendering DTOs and list-only mapping helpers.

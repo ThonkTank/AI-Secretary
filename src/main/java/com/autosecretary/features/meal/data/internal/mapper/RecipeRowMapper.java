@@ -27,8 +27,8 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
                 ? (Set<MealType>) set
                 : parseMealTypes((String) mealTypesRaw);
 
-        recipe.prepTimeMinutes = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.PREP_TIME_MINUTES, "prepTimeMinutes"), 0);
-        recipe.cookTimeMinutes = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.COOK_TIME_MINUTES, "cookTimeMinutes"), 0);
+        recipe.prepTimeMinutes = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.PREP_TIME_MINUTES, "prepTimeMinutes"));
+        recipe.cookTimeMinutes = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.COOK_TIME_MINUTES, "cookTimeMinutes"));
         recipe.servings = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.SERVINGS, "servings"), 2);
         recipe.minServings = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.MIN_SERVINGS, "minServings"), 1);
         recipe.maxServings = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.MAX_SERVINGS, "maxServings"), 8);
@@ -46,13 +46,13 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
 
         recipe.tags = (String) MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TAGS, "tags");
         recipe.lastUsed = MapperSupport.asLocalDate(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.LAST_USED, "lastUsed"));
-        recipe.usageCount = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.USAGE_COUNT, "usageCount"), 0);
-        recipe.isFavorite = MapperSupport.asBoolean(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.IS_FAVORITE, "isFavorite"), false);
-        recipe.totalCalories = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TOTAL_CALORIES, "totalCalories"), 0);
-        recipe.totalProtein = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TOTAL_PROTEIN, "totalProtein"), 0);
-        recipe.totalCarbs = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TOTAL_CARBS, "totalCarbs"), 0);
-        recipe.totalFat = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TOTAL_FAT, "totalFat"), 0);
-        recipe.shelfLifeDays = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.SHELF_LIFE_DAYS, "shelfLifeDays"), 0);
+        recipe.usageCount = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.USAGE_COUNT, "usageCount"));
+        recipe.isFavorite = MapperSupport.asBoolean(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.IS_FAVORITE, "isFavorite"));
+        recipe.totalCalories = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TOTAL_CALORIES, "totalCalories"));
+        recipe.totalProtein = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TOTAL_PROTEIN, "totalProtein"));
+        recipe.totalCarbs = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TOTAL_CARBS, "totalCarbs"));
+        recipe.totalFat = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TOTAL_FAT, "totalFat"));
+        recipe.shelfLifeDays = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.SHELF_LIFE_DAYS, "shelfLifeDays"));
 
         Object ratingsRaw = MapperSupport.get(row, LegacyMealFieldKeys.Recipe.RATINGS_DATA, "ratings");
         recipe.ratings = ratingsRaw instanceof List<?> list
@@ -112,7 +112,7 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
             String[] parts = entry.split("\\|", 4);
             if (parts.length != 4) continue;
             Long ingredientId = MapperSupport.asNullableLong(parts[0]);
-            result.add(new Recipe.RecipeIngredient(ingredientId, parts[1], MapperSupport.asDouble(parts[2], 0), parts[3]));
+            result.add(new Recipe.RecipeIngredient(ingredientId, parts[1], MapperSupport.asDouble(parts[2]), parts[3]));
         }
         return result;
     }
@@ -131,7 +131,7 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         for (String entry : raw.split(",")) {
             String[] parts = entry.split("\\|", 2);
             if (parts.length != 2) continue;
-            long memberId = MapperSupport.asLong(parts[0], 0);
+            long memberId = MapperSupport.asLong(parts[0]);
             int rating = MapperSupport.asInt(parts[1], 3);
             if (memberId > 0) {
                 result.add(new Recipe.MemberRating(memberId, rating));

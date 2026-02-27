@@ -111,7 +111,8 @@ public class StatementFileParser {
         return lowerName.endsWith(".csv")
                 || "text/csv".equals(lowerMime)
                 || "application/vnd.ms-excel".equals(lowerMime)
-                || isPdf(fileName, mimeType);
+                || lowerName.endsWith(".pdf")
+                || "application/pdf".equals(lowerMime);
     }
 
     private boolean isPdf(String fileName, String mimeType) {

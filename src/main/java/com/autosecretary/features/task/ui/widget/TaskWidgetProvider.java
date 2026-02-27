@@ -13,12 +13,6 @@ import android.widget.RemoteViews;
 import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.app.MainActivity;
-import com.autosecretary.database.AppDatabase;
-import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
-import com.autosecretary.features.task.data.TaskDAO;
-import com.autosecretary.features.task.domain.TaskCompletionService;
-import com.autosecretary.features.task.data.TaskTransitionStatDao;
-import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -163,31 +157,12 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         String slotId = intent.getStringExtra(EXTRA_SLOT_ID);
         if (taskId == null || slotId == null) return;
 
-        // Use goAsync to get time for background DB work
         PendingResult result = goAsync();
         new Thread(() -> {
             try {
                 AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
-                var compositionRoot = app.getAppCompositionRoot();
-
-                AppDatabase db = AppDatabase.getInstance(context);
-                TaskDAO dao = compositionRoot.getTaskDAO();
-                TaskCompletionService completionService = compositionRoot.getTaskCompletionService();
-                TaskLifecycleManager lifecycleManager = compositionRoot.getTaskLifecycleManager();
-
-                TaskTransitionStatDao transitionDao = db.taskTransitionStatDao();
-                TaskSlotToggleMutation.execute(
-                        dao,
-                        completionService,
-                        lifecycleManager,
-                        transitionDao,
-                        taskId,
-                        slotId,
-                        Runnable::run,
-                        () -> notifyWidgetUpdate(context),
-                        null,
-                        db
-                );
+                app.getAppCompositionRoot().getTaskSlotToggleMutation()
+                        .execute(taskId, slotId, () -> notifyWidgetUpdate(context), null);
             } catch (Exception e) {
                 Log.e(TAG, "Toggle failed", e);
             } finally {

@@ -23,14 +23,6 @@ public class TreeBuilder<T> {
             Function<T, String> getId,
             Function<T, List<String>> getParentIds,
             BiConsumer<T, T> addChild,
-            Function<T, List<T>> getChildren) {
-        this(getId, getParentIds, addChild, getChildren, null);
-    }
-
-    public TreeBuilder(
-            Function<T, String> getId,
-            Function<T, List<String>> getParentIds,
-            BiConsumer<T, T> addChild,
             Function<T, List<T>> getChildren,
             Consumer<T> resetChildren) {
         this.getId = getId;
@@ -41,10 +33,8 @@ public class TreeBuilder<T> {
     }
 
     public List<T> buildTree(List<T> items) {
-        if (resetChildren != null) {
-            for (T item : items) {
-                resetChildren.accept(item);
-            }
+        for (T item : items) {
+            resetChildren.accept(item);
         }
 
         Map<String, T> map = new HashMap<>();

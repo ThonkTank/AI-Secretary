@@ -16,7 +16,7 @@ public final class AmountParser {
      * Parses {@code amountStr} and returns the value in cents, or {@code null} if the string
      * is null, blank, or cannot be parsed.
      */
-    public Long parseAmountCents(String amountStr) {
+    public static Long parseAmountCents(String amountStr) {
         if (amountStr == null) {
             return null;
         }

@@ -198,7 +198,8 @@ public class ClaudeStatementApiClient {
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
-                sb.append(line).append('\n');
+                if (sb.length() > 0) sb.append('\n');
+                sb.append(line);
             }
             return sb.toString();
         }
@@ -231,8 +232,9 @@ public class ClaudeStatementApiClient {
             if (firstLineEnd > 0) {
                 trimmed = trimmed.substring(firstLineEnd + 1);
             }
-            if (trimmed.endsWith("```")) {
-                trimmed = trimmed.substring(0, trimmed.length() - 3);
+            int lastFence = trimmed.lastIndexOf("```");
+            if (lastFence >= 0) {
+                trimmed = trimmed.substring(0, lastFence);
             }
         }
         return trimmed.trim();

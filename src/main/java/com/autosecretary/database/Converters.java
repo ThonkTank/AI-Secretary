@@ -164,7 +164,7 @@ public class Converters {
 
     @TypeConverter
     public static String fromDaySet(Set<DayOfWeek> days) {
-        return days != null ? days.stream().map(DayOfWeek::name).collect(Collectors.joining(",")) : null;
+        return (days == null || days.isEmpty()) ? null : days.stream().map(DayOfWeek::name).collect(Collectors.joining(","));
     }
 
     @TypeConverter

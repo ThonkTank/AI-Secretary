@@ -30,13 +30,13 @@ public class TaskEditState {
     public LocalTime fixedStart;
     public LocalTime fixedEnd;
     public Integer fixedDuration;
-    public boolean closeOnMiss = true;
+    public boolean closeOnMiss = TaskEditDefaults.CLOSE_ON_MISS;
     public int minDuration = TaskEditDefaults.MIN_DURATION;
     public int maxDuration = TaskEditDefaults.MAX_DURATION;
     public int cooldown = TaskEditDefaults.COOLDOWN;
     public boolean adaptive;
 
-    public int reps;
+    public int reps = TaskEditDefaults.REPETITION_REPS;
     public int perPeriod = TaskEditDefaults.REPETITION_PER_PERIOD;
     public Period periodUnit = TaskEditDefaults.REPETITION_PERIOD_UNIT;
     public int periodCompletions;
@@ -44,12 +44,12 @@ public class TaskEditState {
     public boolean completeFirst;
     public int carryoverDebt;
 
-    public String unit;
-    public int target;
-    public int current;
+    public String unit = TaskEditDefaults.UNIT;
+    public int target = TaskEditDefaults.TARGET;
+    public int current = TaskEditDefaults.CURRENT;
     public boolean resetPerRep;
-    public int minPerRep;
-    public int maxPerRep;
+    public int minPerRep = TaskEditDefaults.MIN_PER_REP;
+    public int maxPerRep = TaskEditDefaults.MAX_PER_REP;
 
     public List<PrefSlotEditState> prefSlots = new ArrayList<>();
 }

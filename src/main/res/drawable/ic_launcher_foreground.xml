@@ -5,13 +5,13 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#FFFFFFFF"
+        android:fillColor="@color/launcher_icon_white"
         android:pathData="M24,30h60v48h-60z" />
     <path
-        android:fillColor="#D9EDF7"
+        android:fillColor="@color/launcher_icon_accent"
         android:pathData="M24,30h60v12h-60z" />
     <path
-        android:fillColor="#D9EDF7"
+        android:fillColor="@color/launcher_icon_accent"
         android:pathData="M36,22h6v12h-6zM66,22h6v12h-6z" />
     <path
         android:fillColor="@color/launcher_icon_background"

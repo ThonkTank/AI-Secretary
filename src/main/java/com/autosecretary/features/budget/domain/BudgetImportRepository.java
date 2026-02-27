@@ -6,6 +6,7 @@ import com.autosecretary.features.budget.domain.importing.ImportTransactionRecor
 
 import java.time.LocalDate;
 import java.util.List;
+import com.autosecretary.features.budget.domain.TransactionDirection;
 
 /**
  * Persistence abstraction for two related concerns:
@@ -54,7 +55,7 @@ public interface BudgetImportRepository {
 
     boolean existsTransactionByImportHash(String importHash);
 
-    String findDefaultCategoryId(boolean income);
+    String findDefaultCategoryId(TransactionDirection direction);
 
     boolean isKnownCategory(String categoryId);
 

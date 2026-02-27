@@ -18,9 +18,7 @@ public class ViewSlotList {
     }
 
     public void appendToDisplay(List<ViewSlot> extra) {
-        List<ViewSlot> merged = new ArrayList<>(displaySlots);
-        merged.addAll(extra);
-        displaySlots = merged;
+        displaySlots.addAll(extra);
     }
 
     private static final TreeBuilder<ViewSlot> TREE_BY_TASK = new TreeBuilder<>(
@@ -57,10 +55,12 @@ public class ViewSlotList {
     }
 
     public void fromList(List<TaskListItem> items) {
-        viewSlots = new ArrayList<>();
+        List<ViewSlot> slots = new ArrayList<>();
         for (TaskListItem item : items) {
-            viewSlots.add(new ViewSlot(item));
+            slots.add(new ViewSlot(item));
         }
+        viewSlots = slots;
+        displaySlots = new ArrayList<>(slots);
     }
 
     public void filter(Predicate<ViewSlot> predicate) {

@@ -31,7 +31,7 @@ public class UiText {
 
     public String resolve(Context context) {
         if (raw != null) return raw;
-        if (formatArgs != null && formatArgs.length > 0) {
+        if (formatArgs.length > 0) {
             return context.getString(resId, formatArgs);
         }
         return context.getString(resId);

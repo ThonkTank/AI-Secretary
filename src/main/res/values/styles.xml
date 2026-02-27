@@ -48,7 +48,7 @@
 
     <style name="TextAppearance.AISecretary.Editor.Label" parent="TextAppearance.MaterialComponents.Body2">
         <item name="android:textStyle">bold</item>
-        <item name="android:textColor">@color/task_text_on_surface_emphasis</item>
+        <item name="android:textColor">@color/task_color_on_surface_emphasis</item>
     </style>
 
     <style name="TextAppearance.AISecretary.Editor.PrefSlotButton" parent="TextAppearance.MaterialComponents.Body2">
@@ -65,21 +65,21 @@
     <!-- Task text appearances -->
     <style name="TextAppearance.Task.Title">
         <item name="android:textSize">@dimen/task_text_sm</item>
-        <item name="android:textColor">@color/task_text_on_surface</item>
+        <item name="android:textColor">@color/task_color_on_surface</item>
     </style>
 
     <style name="TextAppearance.Task.Metadata">
         <item name="android:textSize">@dimen/task_text_xs</item>
-        <item name="android:textColor">@color/task_text_on_surface_variant</item>
+        <item name="android:textColor">@color/task_color_on_surface_variant</item>
         <item name="android:fontFamily">monospace</item>
     </style>
 
     <style name="TextAppearance.Task.Time.Primary" parent="TextAppearance.Task.Metadata">
-        <item name="android:textColor">@color/task_text_on_surface_emphasis</item>
+        <item name="android:textColor">@color/task_color_on_surface_emphasis</item>
     </style>
 
     <style name="TextAppearance.Task.Time.Secondary" parent="TextAppearance.Task.Metadata">
-        <item name="android:textColor">@color/task_text_on_surface_muted</item>
+        <item name="android:textColor">@color/task_color_on_surface_muted</item>
     </style>
 
     <style name="TextAppearance.Task.Widget.NavAction">

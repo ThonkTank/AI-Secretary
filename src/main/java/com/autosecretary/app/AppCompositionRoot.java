@@ -8,11 +8,11 @@ import android.util.Log;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
-import com.autosecretary.features.budget.application.importing.BudgetTransactionMapper;
 import com.autosecretary.features.budget.data.api.ClaudeApiKeyStore;
 import com.autosecretary.features.budget.application.importing.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.application.importing.StatementFileParser;
 import com.autosecretary.features.budget.application.CreateTransferUseCase;
+import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseCase;
 import com.autosecretary.features.budget.data.repository.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
@@ -28,10 +28,10 @@ import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
-import com.autosecretary.features.task.application.config.TaskScheduleConfigService;
 import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
 import com.autosecretary.features.task.application.internal.budget.TaskBudgetEligibilityFromBudgetLookup;
 import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
+import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
@@ -48,8 +48,9 @@ public class AppCompositionRoot {
     private TaskViewModelFactory taskViewModelFactory;
     private RegenerateScheduleUseCase regenerateScheduleUseCase;
     private BudgetViewModelFactory budgetViewModelFactory;
-    private TaskScheduleConfigService taskScheduleConfigService;
+    private TaskScheduleConfigRepository taskScheduleConfigRepository;
     private TaskDAO taskDAO;
+    private TaskSlotToggleMutation taskSlotToggleMutation;
     private BudgetRoomRepository budgetRoomRepository;
     private TaskCompletionService taskCompletionService;
     private TaskLifecycleManager taskLifecycleManager;
@@ -79,7 +80,7 @@ public class AppCompositionRoot {
         Handler mainHandler = new Handler(Looper.getMainLooper());
 
         TaskScheduleConfigRepository scheduleConfigRepository =
-                new TaskScheduleConfigRepository(db.taskScheduleConfigDao());
+                getTaskScheduleConfigRepository();
 
         TaskSlotGenerator generator = new DefaultTaskSlotGenerator(
                 getTaskLifecycleManager(),
@@ -107,15 +108,19 @@ public class AppCompositionRoot {
                 new StoragePantryRepository(mealStorage)
         );
 
-        CheckOffTaskUseCase checkOffTaskUseCase = new CheckOffTaskUseCase(
+        taskSlotToggleMutation = new TaskSlotToggleMutation(
                 taskDao,
                 getTaskCompletionService(),
                 getTaskLifecycleManager(),
                 db.taskTransitionStatDao(),
-                taskUseCaseExecutor,
                 mainHandler::post,
+                db
+        );
+        CheckOffTaskUseCase checkOffTaskUseCase = new CheckOffTaskUseCase(
+                taskSlotToggleMutation,
+                taskDao,
+                taskUseCaseExecutor,
                 bookTaskCompletionExpenseUseCase,
-                db,
                 app,
                 taskMealIntegrationService
         );
@@ -126,12 +131,6 @@ public class AppCompositionRoot {
         );
         AdjustTaskProgressUseCase adjustTaskProgressUseCase = new AdjustTaskProgressUseCase(
                 taskDao,
-                taskUseCaseExecutor,
-                mainHandler::post
-        );
-
-        this.taskScheduleConfigService = new TaskScheduleConfigService(
-                scheduleConfigRepository,
                 taskUseCaseExecutor,
                 mainHandler::post
         );
@@ -148,11 +147,12 @@ public class AppCompositionRoot {
         return taskViewModelFactory;
     }
 
-    public TaskScheduleConfigService getTaskScheduleConfigService() {
-        if (taskScheduleConfigService == null) {
-            createTaskViewModelFactory();
+    public synchronized TaskScheduleConfigRepository getTaskScheduleConfigRepository() {
+        if (taskScheduleConfigRepository == null) {
+            AppDatabase db = AppDatabase.getInstance(app);
+            taskScheduleConfigRepository = new TaskScheduleConfigRepository(db.taskScheduleConfigDao());
         }
-        return taskScheduleConfigService;
+        return taskScheduleConfigRepository;
     }
 
     public RegenerateScheduleUseCase getRegenerateScheduleUseCase() {
@@ -187,7 +187,7 @@ public class AppCompositionRoot {
         );
 
         BudgetImportUseCase importUseCase = new BudgetImportUseCase(
-                importRepository, parser, taskUseCaseExecutor, new BudgetTransactionMapper()
+                importRepository, parser, taskUseCaseExecutor
         );
 
         ApplyRecurringSuggestionsUseCase applyRecurringUseCase = new ApplyRecurringSuggestionsUseCase(
@@ -208,6 +208,14 @@ public class AppCompositionRoot {
         return budgetViewModelFactory;
     }
 
+    public LoadBudgetWidgetSummaryUseCase createLoadBudgetWidgetSummaryUseCase() {
+        AppDatabase db = AppDatabase.getInstance(app);
+        return new LoadBudgetWidgetSummaryUseCase(
+                db.transactionDao(),
+                db.budgetLimitDao()
+        );
+    }
+
     private synchronized BudgetRoomRepository getBudgetRoomRepository() {
         if (budgetRoomRepository == null) {
             AppDatabase db = AppDatabase.getInstance(app);
@@ -220,6 +228,13 @@ public class AppCompositionRoot {
             );
         }
         return budgetRoomRepository;
+    }
+
+    public synchronized TaskSlotToggleMutation getTaskSlotToggleMutation() {
+        if (taskSlotToggleMutation == null) {
+            createTaskViewModelFactory();
+        }
+        return taskSlotToggleMutation;
     }
 
     public synchronized TaskDAO getTaskDAO() {
@@ -247,8 +262,9 @@ public class AppCompositionRoot {
         taskViewModelFactory = null;
         regenerateScheduleUseCase = null;
         budgetViewModelFactory = null;
-        taskScheduleConfigService = null;
+        taskScheduleConfigRepository = null;
         taskDAO = null;
+        taskSlotToggleMutation = null;
         budgetRoomRepository = null;
         taskCompletionService = null;
         taskLifecycleManager = null;

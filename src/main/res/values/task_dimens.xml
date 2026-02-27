@@ -24,6 +24,7 @@
     <dimen name="task_row_time_divider_height">2dp</dimen>
     <dimen name="task_row_meta_spacing">4dp</dimen>
     <dimen name="task_row_edit_button_padding">8dp</dimen>
+    <dimen name="task_row_progress_button_size">32dp</dimen>
 
     <dimen name="widget_time_column_min_width">40dp</dimen>
     <dimen name="widget_refresh_button_size">32dp</dimen>

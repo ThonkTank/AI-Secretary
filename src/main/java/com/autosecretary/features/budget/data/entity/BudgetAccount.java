@@ -42,14 +42,4 @@ public class BudgetAccount {
         this.name = name;
     }
 
-    @Ignore
-    public BudgetAccount(@NonNull String name,
-                         @NonNull AccountType accountType,
-                         long currentBalanceCents,
-                         String accountNumber) {
-        this.name = name;
-        this.accountType = accountType;
-        this.currentBalanceCents = currentBalanceCents;
-        this.accountNumber = accountNumber;
-    }
 }

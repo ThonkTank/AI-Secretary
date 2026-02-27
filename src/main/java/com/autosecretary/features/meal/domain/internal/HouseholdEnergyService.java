@@ -11,7 +11,7 @@ public class HouseholdEnergyService {
 
     private static final double DGE_REFERENCE_KCAL = 2000.0;
 
-    public int calculateAge(HouseholdMember member, LocalDate referenceDate) {
+    public static int calculateAge(HouseholdMember member, LocalDate referenceDate) {
         if (member == null || referenceDate == null) {
             return 0;
         }
@@ -21,7 +21,7 @@ public class HouseholdEnergyService {
     /**
      * Grundumsatz nach Mifflin-St Jeor (kcal/Tag).
      */
-    public int calculateBmr(HouseholdMember member, LocalDate referenceDate) {
+    public static int calculateBmr(HouseholdMember member, LocalDate referenceDate) {
         if (member == null) {
             return 0;
         }
@@ -32,14 +32,16 @@ public class HouseholdEnergyService {
         return (int) (10 * member.weightKg + 6.25 * member.heightCm - 5 * age + 5);
     }
 
-    public int calculateTdee(HouseholdMember member, LocalDate referenceDate) {
+    public static int calculateTdee(HouseholdMember member, LocalDate referenceDate) {
         if (member == null || member.activityLevel == null) {
             return calculateBmr(member, referenceDate);
         }
         return (int) (calculateBmr(member, referenceDate) * member.activityLevel.factor);
     }
 
-    public double calculateDgeFoodFactor(HouseholdMember member, LocalDate referenceDate) {
+    public static double calculateDgeFoodFactor(HouseholdMember member, LocalDate referenceDate) {
         return calculateTdee(member, referenceDate) / DGE_REFERENCE_KCAL;
     }
+
+    private HouseholdEnergyService() {}
 }

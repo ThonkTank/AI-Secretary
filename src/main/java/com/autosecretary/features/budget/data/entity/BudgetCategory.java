@@ -37,11 +37,6 @@ public class BudgetCategory {
     public BudgetCategory() {
     }
     @Ignore
-    public BudgetCategory(@NonNull String name, @NonNull TransactionDirection direction) {
-        this(name, direction, DEFAULT_ICON, DEFAULT_COLOR_HEX);
-    }
-
-    @Ignore
     public BudgetCategory(@NonNull String name, @NonNull TransactionDirection direction,
                           @NonNull String icon, @NonNull String colorHex) {
         this.name = name;

@@ -8,7 +8,6 @@ import androidx.room.PrimaryKey;
 
 import java.time.LocalDate;
 import java.util.UUID;
-import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.domain.importing.ImportStatus;
 
 @Entity(

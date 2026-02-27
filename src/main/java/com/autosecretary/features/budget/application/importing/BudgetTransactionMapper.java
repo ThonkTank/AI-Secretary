@@ -1,6 +1,7 @@
 package com.autosecretary.features.budget.application.importing;
 
 import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
+import com.autosecretary.features.budget.domain.importing.ImportTransactionType;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
@@ -9,7 +10,9 @@ import com.autosecretary.features.budget.domain.TransactionDirection;
  */
 public class BudgetTransactionMapper {
 
-    public ImportTransactionRecord toRecord(RecurringBudgetTransaction domainTransaction) {
+    private BudgetTransactionMapper() {}
+
+    public static ImportTransactionRecord toRecord(RecurringBudgetTransaction domainTransaction) {
         if (domainTransaction == null) {
             throw new IllegalArgumentException("domainTransaction must not be null");
         }
@@ -19,11 +22,12 @@ public class BudgetTransactionMapper {
         }
 
         TransactionDirection direction = TransactionDirection.fromAmountCents(domainTransaction.amountCents);
+        ImportTransactionType type = ImportTransactionType.fromDirection(direction);
         return new ImportTransactionRecord(
                 domainTransaction.id,
                 domainTransaction.accountId,
                 domainTransaction.categoryId,
-                direction.name(),
+                type,
                 Math.abs(domainTransaction.amountCents),
                 domainTransaction.transactionDate,
                 domainTransaction.description,
@@ -34,7 +38,7 @@ public class BudgetTransactionMapper {
         );
     }
 
-    public RecurringBudgetTransaction toDomain(ImportTransactionRecord record) {
+    public static RecurringBudgetTransaction toDomain(ImportTransactionRecord record) {
         if (record == null) {
             throw new IllegalArgumentException("record must not be null");
         }
@@ -43,12 +47,12 @@ public class BudgetTransactionMapper {
             throw new IllegalArgumentException("accountId must not be null");
         }
 
-        if (ImportTransactionRecord.TYPE_TRANSFER.equals(record.type())) {
+        if (record.type() == ImportTransactionType.TRANSFER) {
             throw new IllegalArgumentException(
                     "Transfer records must not be mapped via BudgetTransactionMapper.toDomain; handle transfers separately.");
         }
 
-        TransactionDirection direction = TransactionDirection.valueOf(record.type());
+        TransactionDirection direction = record.type().toDirection();
         long signedAmountCents = direction.toSignedCents(record.amountCents());
 
         return RecurringBudgetTransaction.forImport(

@@ -27,7 +27,10 @@ public class BookTaskCompletionExpenseUseCase {
             return false;
         }
 
-        String accountId = resolveAccountId(task);
+        String accountId = task.core.budgetAccountId;
+        if (accountId == null || accountId.isBlank()) {
+            accountId = repository.findDefaultActiveAccountId();
+        }
         if (accountId == null) {
             return false;
         }
@@ -43,13 +46,5 @@ public class BookTaskCompletionExpenseUseCase {
 
         repository.saveTransactionAndDeductBalance(transaction, accountId, expenseCents);
         return true;
-    }
-
-    private String resolveAccountId(Task task) {
-        String specificAccountId = task.core.budgetAccountId;
-        if (specificAccountId != null && !specificAccountId.isBlank()) {
-            return specificAccountId;
-        }
-        return repository.findDefaultActiveAccountId();
     }
 }

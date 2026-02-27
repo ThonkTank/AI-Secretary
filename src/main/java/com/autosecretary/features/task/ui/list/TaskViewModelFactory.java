@@ -44,10 +44,6 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
             TaskEditSessionController taskEditSessionController = new TaskEditSessionController(
                     taskDataService
             );
-            TaskListProjectionService taskListProjectionService = new TaskListProjectionService(
-                    taskCalendarService,
-                    new Preferences(app)
-            );
 
             return (T) new TaskViewModel(
                     app,
@@ -56,7 +52,8 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
                     regenerateScheduleUseCase,
                     adjustTaskProgressUseCase,
                     taskEditSessionController,
-                    taskListProjectionService
+                    taskCalendarService,
+                    new Preferences(app)
             );
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());

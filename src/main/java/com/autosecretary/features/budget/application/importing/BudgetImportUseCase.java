@@ -4,6 +4,7 @@ import com.autosecretary.features.budget.domain.BudgetImportRepository;
 import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
 import com.autosecretary.features.budget.domain.RecurringPatternDetector;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
+import com.autosecretary.features.budget.domain.TransactionDirection;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -20,16 +21,13 @@ public class BudgetImportUseCase {
     private final BudgetImportRepository repository;
     private final StatementFileParser parser;
     private final ExecutorService executor;
-    private final BudgetTransactionMapper mapper;
 
     public BudgetImportUseCase(BudgetImportRepository repository,
                                StatementFileParser parser,
-                               ExecutorService executor,
-                               BudgetTransactionMapper mapper) {
+                               ExecutorService executor) {
         this.repository = repository;
         this.parser = parser;
         this.executor = executor;
-        this.mapper = mapper;
     }
 
     public void executeAsync(String accountId,
@@ -43,9 +41,9 @@ public class BudgetImportUseCase {
                 callback.onSuccess(result);
             } catch (ImportPipelineException e) {
                 if (e.importId() != null) {
-                    repository.markImportFailed(e.importId(), e.userMessage());
+                    repository.markImportFailed(e.importId(), e.getMessage());
                 }
-                callback.onError(e.userMessage());
+                callback.onError(e.getMessage());
             }
         });
     }
@@ -64,7 +62,7 @@ public class BudgetImportUseCase {
 
             ImportComputation computation = buildTransactions(accountId, importId, parsed.transactions());
             if (!computation.newTransactions.isEmpty()) {
-                repository.saveTransactionsBatch(computation.newTransactions.stream().map(mapper::toRecord).toList());
+                repository.saveTransactionsBatch(computation.newTransactions.stream().map(BudgetTransactionMapper::toRecord).toList());
             }
 
             repository.markImportCompleted(
@@ -83,7 +81,7 @@ public class BudgetImportUseCase {
             List<RecurringSuggestion> suggestions;
             try {
                 List<RecurringBudgetTransaction> accountTransactions = repository.loadTransactionsForAccount(accountId).stream()
-                        .map(mapper::toDomain)
+                        .map(BudgetTransactionMapper::toDomain)
                         .toList();
                 suggestions = RecurringPatternDetector.detectPatterns(accountTransactions);
             } catch (Exception e) {
@@ -130,7 +128,8 @@ public class BudgetImportUseCase {
             boolean hasAutoCategory = categoryId != null && repository.isKnownCategory(categoryId);
 
             if (!hasAutoCategory) {
-                categoryId = repository.findDefaultCategoryId(parsed.amountCents() > 0);
+                categoryId = repository.findDefaultCategoryId(
+                        parsed.amountCents() > 0 ? TransactionDirection.INCOME : TransactionDirection.EXPENSE);
             } else {
                 autoCategorized++;
             }
@@ -202,10 +201,6 @@ public class BudgetImportUseCase {
         String importId() {
             return importId;
         }
-
-        String userMessage() {
-            return getMessage();
-        }
     }
 
     private record ImportComputation(List<RecurringBudgetTransaction> newTransactions,
@@ -213,7 +208,7 @@ public class BudgetImportUseCase {
                                      int autoCategorized) {
     }
 
-    private String safeErrorMessage(Exception exception) {
+    private static String safeErrorMessage(Exception exception) {
         String message = exception.getMessage();
         if (message == null || message.isBlank()) {
             return "unbekannte Ursache";

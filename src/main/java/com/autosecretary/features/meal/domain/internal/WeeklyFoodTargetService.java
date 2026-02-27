@@ -12,13 +12,7 @@ import java.util.List;
  */
 public class WeeklyFoodTargetService {
 
-    private final HouseholdEnergyService householdEnergyService;
-
-    public WeeklyFoodTargetService(HouseholdEnergyService householdEnergyService) {
-        this.householdEnergyService = householdEnergyService;
-    }
-
-    public WeeklyFoodTarget calculate(String periodKey, List<HouseholdMember> members, LocalDate referenceDate) {
+    public static WeeklyFoodTarget calculate(String periodKey, List<HouseholdMember> members, LocalDate referenceDate) {
         WeeklyFoodTarget target = new WeeklyFoodTarget();
         target.periodKey = periodKey;
 
@@ -26,7 +20,7 @@ public class WeeklyFoodTargetService {
         if (members != null) {
             for (HouseholdMember member : members) {
                 if (member != null && member.isActive) {
-                    totalFactor += householdEnergyService.calculateDgeFoodFactor(member, referenceDate);
+                    totalFactor += HouseholdEnergyService.calculateDgeFoodFactor(member, referenceDate);
                 }
             }
         }
@@ -37,4 +31,6 @@ public class WeeklyFoodTargetService {
         }
         return target;
     }
+
+    private WeeklyFoodTargetService() {}
 }

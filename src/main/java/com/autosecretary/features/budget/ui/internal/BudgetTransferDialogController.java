@@ -14,7 +14,6 @@ import com.google.android.material.textfield.TextInputEditText;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class BudgetTransferDialogController {
@@ -53,12 +52,8 @@ public class BudgetTransferDialogController {
         TextInputEditText dateInput = dialogView.findViewById(R.id.BudgetTransferDate);
         TextInputEditText noteInput = dialogView.findViewById(R.id.BudgetTransferNote);
 
-        List<String> accountNames = new ArrayList<>();
-        for (BudgetAccount account : accounts) {
-            accountNames.add(account.name);
-        }
-        SpinnerHelper.bindNames(sourceAccountSpinner, accountNames, ctx);
-        SpinnerHelper.bindNames(targetAccountSpinner, accountNames, ctx);
+        SpinnerHelper.bindList(sourceAccountSpinner, accounts, a -> a.name, ctx);
+        SpinnerHelper.bindList(targetAccountSpinner, accounts, a -> a.name, ctx);
         targetAccountSpinner.setSelection(1);
 
         dateInput.setText(LocalDate.now().toString());

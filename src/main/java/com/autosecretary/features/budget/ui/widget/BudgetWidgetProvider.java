@@ -9,10 +9,9 @@ import android.content.Intent;
 import android.widget.RemoteViews;
 
 import com.autosecretary.R;
+import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.app.MainActivity;
-import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseCase;
-import com.autosecretary.features.budget.data.repository.BudgetWidgetRoomRepository;
 
 import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
 
@@ -38,12 +37,8 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
 
         // Synchronous DB read — acceptable here because widget updates run outside the main
         // Activity thread. Keep this query fast to avoid delaying widget renders.
-        AppDatabase db = AppDatabase.getInstance(context);
-        BudgetWidgetRoomRepository repository = new BudgetWidgetRoomRepository(
-                db.transactionDao(),
-                db.budgetLimitDao()
-        );
-        LoadBudgetWidgetSummaryUseCase useCase = new LoadBudgetWidgetSummaryUseCase(repository);
+        AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
+        LoadBudgetWidgetSummaryUseCase useCase = app.getAppCompositionRoot().createLoadBudgetWidgetSummaryUseCase();
         LoadBudgetWidgetSummaryUseCase.BudgetWidgetSummary summary = useCase.loadCurrentMonth();
 
         views.setTextViewText(R.id.budget_widget_total_value, CurrencyFormatter.eurosNet(summary.netBalanceCents()));

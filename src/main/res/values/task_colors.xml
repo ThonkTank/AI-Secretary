@@ -16,12 +16,6 @@
     <color name="task_color_secondary">#FF8DAA8C</color>
     <color name="task_color_accent">#FFCF8F4F</color>
 
-    <color name="task_text_on_surface">@color/task_color_on_surface</color>
-    <color name="task_text_on_surface_variant">@color/task_color_on_surface_variant</color>
-    <color name="task_text_on_surface_emphasis">@color/task_color_on_surface_emphasis</color>
-    <color name="task_text_on_surface_muted">@color/task_color_on_surface_muted</color>
-    <color name="task_row_time_divider">@color/task_color_outline</color>
-
     <!-- Day picker colors -->
     <color name="task_edit_day_selected_background">@color/task_color_primary</color>
     <color name="task_edit_day_selected_text">@color/task_color_on_primary</color>
@@ -52,8 +46,8 @@
     <color name="task_completed_checkbox_tint">@color/task_color_primary</color>
     <color name="task_in_progress_background">#1F5C7A4D</color>
     <color name="task_in_progress_checkbox_tint">@color/task_color_primary</color>
-    <color name="task_progress_text">@color/task_text_on_surface_emphasis</color>
-    <color name="task_progress_text_disabled">@color/task_text_on_surface_muted</color>
+    <color name="task_progress_text">@color/task_color_on_surface_emphasis</color>
+    <color name="task_progress_text_disabled">@color/task_color_on_surface_muted</color>
     <color name="task_progress_button_tint">@color/task_color_primary</color>
     <color name="task_progress_button_tint_disabled">@color/task_color_on_surface_muted</color>
 

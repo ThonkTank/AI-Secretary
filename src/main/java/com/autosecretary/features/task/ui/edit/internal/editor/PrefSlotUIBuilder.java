@@ -16,6 +16,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -67,12 +68,7 @@ public class PrefSlotUIBuilder {
         prefSlotContainer.removeAllViews();
 
         List<PrefSlotEditState> sorted = new ArrayList<>(editablePrefSlots);
-        Collections.sort(sorted, (a, b) -> {
-            if (a.start == null && b.start == null) return 0;
-            if (a.start == null) return 1;
-            if (b.start == null) return -1;
-            return a.start.compareTo(b.start);
-        });
+        sorted.sort(Comparator.comparing((PrefSlotEditState s) -> s.start, Comparator.nullsLast(Comparator.naturalOrder())));
 
         Map<Integer, List<PrefSlotEditState>> slotMap = groupByRepetition(sorted, repsPerDay);
 
@@ -98,13 +94,7 @@ public class PrefSlotUIBuilder {
                     formattedDays
                 ));
 
-                LinearLayout.LayoutParams daysParams = new LinearLayout.LayoutParams(
-                    0,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    1f
-                );
-                daysParams.setMarginEnd(prefSlotButtonSpacingPx);
-                daysView.setLayoutParams(daysParams);
+                daysView.setLayoutParams(makeWeightedButtonParams(true));
 
                 Set<DayOfWeek> takenByOthers = computeTakenDays(prefSlot, slotsInGroup);
                 daysView.setOnClickListener(v -> listener.onDaysClicked(prefSlot, takenByOthers));
@@ -120,12 +110,7 @@ public class PrefSlotUIBuilder {
                 ));
                 timeView.setTypeface(Typeface.MONOSPACE);
 
-                LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(
-                    0,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    1f
-                );
-                timeView.setLayoutParams(timeParams);
+                timeView.setLayoutParams(makeWeightedButtonParams(false));
                 timeView.setOnClickListener(v -> listener.onTimeClicked(prefSlot));
 
                 row.addView(daysView);
@@ -210,6 +195,18 @@ public class PrefSlotUIBuilder {
             }
         }
         return taken;
+    }
+
+    private LinearLayout.LayoutParams makeWeightedButtonParams(boolean addEndMargin) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+            0,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            1f
+        );
+        if (addEndMargin) {
+            params.setMarginEnd(prefSlotButtonSpacingPx);
+        }
+        return params;
     }
 
     private MaterialButton createInteractiveButton() {

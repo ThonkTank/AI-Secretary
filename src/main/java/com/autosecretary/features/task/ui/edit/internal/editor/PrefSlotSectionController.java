@@ -52,9 +52,11 @@ public class PrefSlotSectionController {
 
     public void rebuildPrefSlotUI() {
         prefSlotContainer = rootView.findViewById(R.id.PrefSlotContainer);
-        RepetitionSnapshot rep = readRepetitionState();
         int repsPerDay = presenter.computeCurrentRepsPerDay(
-            rep.enabled, rep.reps, rep.perPeriod, rep.period
+            repetitionViews.toggleRepetition.isChecked(),
+            repetitionViews.repsView.getText().toString(),
+            repetitionViews.perPeriodView.getText().toString(),
+            (Period) repetitionViews.periodUnitView.getSelectedItem()
         );
 
         prefSlotUIBuilder.rebuild(prefSlotContainer, presenter.getEditablePrefSlots(), repsPerDay,
@@ -72,35 +74,14 @@ public class PrefSlotSectionController {
     }
 
     public void onRepetitionChanged() {
-        RepetitionSnapshot rep = readRepetitionState();
         boolean changed = presenter.onRepetitionChanged(
-            rep.enabled, rep.reps, rep.perPeriod, rep.period
-        );
-        if (changed) {
-            rebuildPrefSlotUI();
-        }
-    }
-
-    private RepetitionSnapshot readRepetitionState() {
-        return new RepetitionSnapshot(
             repetitionViews.toggleRepetition.isChecked(),
             repetitionViews.repsView.getText().toString(),
             repetitionViews.perPeriodView.getText().toString(),
             (Period) repetitionViews.periodUnitView.getSelectedItem()
         );
-    }
-
-    private static final class RepetitionSnapshot {
-        final boolean enabled;
-        final String reps;
-        final String perPeriod;
-        final Period period;
-
-        RepetitionSnapshot(boolean enabled, String reps, String perPeriod, Period period) {
-            this.enabled = enabled;
-            this.reps = reps;
-            this.perPeriod = perPeriod;
-            this.period = period;
+        if (changed) {
+            rebuildPrefSlotUI();
         }
     }
 

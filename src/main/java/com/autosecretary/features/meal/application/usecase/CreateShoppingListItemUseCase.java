@@ -13,19 +13,11 @@ public class CreateShoppingListItemUseCase {
 
     private final RecipeRepository recipeRepository;
     private final PantryRepository pantryRepository;
-    private final ShoppingPackagingService shoppingPackagingService;
 
     public CreateShoppingListItemUseCase(RecipeRepository recipeRepository,
                                          PantryRepository pantryRepository) {
-        this(recipeRepository, pantryRepository, new ShoppingPackagingService());
-    }
-
-    public CreateShoppingListItemUseCase(RecipeRepository recipeRepository,
-                                         PantryRepository pantryRepository,
-                                         ShoppingPackagingService shoppingPackagingService) {
         this.recipeRepository = recipeRepository;
         this.pantryRepository = pantryRepository;
-        this.shoppingPackagingService = shoppingPackagingService;
     }
 
     public ShoppingListItem execute(long ingredientId, double neededAmount, String periodKey) {
@@ -33,7 +25,7 @@ public class CreateShoppingListItemUseCase {
         if (ingredient == null) {
             throw new IllegalArgumentException("Ingredient not found: id=" + ingredientId);
         }
-        ShoppingListItem shoppingListItem = shoppingPackagingService.createShoppingItem(
+        ShoppingListItem shoppingListItem = ShoppingPackagingService.createShoppingItem(
                 ingredient,
                 neededAmount,
                 periodKey

@@ -25,8 +25,15 @@ public final class TaskEditDefaults {
     public static final int MIN_DURATION = 5;
     public static final int MAX_DURATION = 10;
     public static final int COOLDOWN = 1;
+    public static final boolean CLOSE_ON_MISS = true;
 
     public static final int REPETITION_REPS = 1;
     public static final int REPETITION_PER_PERIOD = 1;
     public static final Period REPETITION_PERIOD_UNIT = Period.DAY;
+
+    public static final String UNIT = "";
+    public static final int TARGET = 0;
+    public static final int CURRENT = 0;
+    public static final int MIN_PER_REP = 0;
+    public static final int MAX_PER_REP = 0;
 }

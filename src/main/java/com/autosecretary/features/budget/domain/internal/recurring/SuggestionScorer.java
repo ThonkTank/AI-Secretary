@@ -1,9 +1,5 @@
 package com.autosecretary.features.budget.domain.internal.recurring;
 
-import com.autosecretary.features.budget.domain.RecurringBudgetTransaction;
-
-import java.util.List;
-
 /**
  * Calculates a 0–1 confidence score for a detected recurring transaction suggestion.
  *
@@ -52,14 +48,14 @@ public final class SuggestionScorer {
     private SuggestionScorer() {
     }
 
-    public static double calculateConfidence(List<RecurringBudgetTransaction> txList,
+    public static double calculateConfidence(int occurrenceCount,
                                              DatePatternDetector.PatternResult pattern,
                                              long avgAmount,
                                              long minAmount,
                                              long maxAmount,
                                              String normalizedPayee) {
         double score = 0;
-        score += Math.min((txList.size() / OCCURRENCE_CAP) * OCCURRENCE_WEIGHT, OCCURRENCE_WEIGHT);
+        score += Math.min((occurrenceCount / OCCURRENCE_CAP) * OCCURRENCE_WEIGHT, OCCURRENCE_WEIGHT);
 
         if (avgAmount != 0) {
             double variance = Math.abs(maxAmount - minAmount) / (double) Math.abs(avgAmount);

@@ -1,10 +1,12 @@
 package com.autosecretary.features.meal.data.internal.repository;
 
-import com.autosecretary.features.meal.data.internal.dao.ConsumptionLogDao;
-import com.autosecretary.features.meal.data.internal.dao.CookingPreferencesDao;
-import com.autosecretary.features.meal.data.internal.dao.HouseholdMemberDao;
-import com.autosecretary.features.meal.data.internal.dao.MealPlanDao;
-import com.autosecretary.features.meal.data.internal.dao.WeeklyFoodTargetDao;
+import com.autosecretary.features.meal.data.internal.MealCollections;
+import com.autosecretary.features.meal.data.internal.dao.BaseCollectionDao;
+import com.autosecretary.features.meal.data.internal.mapper.ConsumptionLogRowMapper;
+import com.autosecretary.features.meal.data.internal.mapper.CookingPreferencesRowMapper;
+import com.autosecretary.features.meal.data.internal.mapper.HouseholdMemberRowMapper;
+import com.autosecretary.features.meal.data.internal.mapper.MealPlanRowMapper;
+import com.autosecretary.features.meal.data.internal.mapper.WeeklyFoodTargetRowMapper;
 import com.autosecretary.features.meal.data.internal.storage.MealStorage;
 import com.autosecretary.features.meal.domain.ConsumptionLog;
 import com.autosecretary.features.meal.domain.CookingPreferences;
@@ -20,23 +22,23 @@ public class StorageMealRepository implements MealRepository {
 
     private static final long SINGLETON_PREFERENCES_ID = 1L;
 
-    private final MealPlanDao mealPlanDao;
-    private final ConsumptionLogDao consumptionLogDao;
-    private final HouseholdMemberDao householdMemberDao;
-    private final CookingPreferencesDao cookingPreferencesDao;
-    private final WeeklyFoodTargetDao weeklyFoodTargetDao;
+    private final BaseCollectionDao<MealPlan> mealPlanDao;
+    private final BaseCollectionDao<ConsumptionLog> consumptionLogDao;
+    private final BaseCollectionDao<HouseholdMember> householdMemberDao;
+    private final BaseCollectionDao<CookingPreferences> cookingPreferencesDao;
+    private final BaseCollectionDao<WeeklyFoodTarget> weeklyFoodTargetDao;
 
     public StorageMealRepository(MealStorage storage) {
-        this.mealPlanDao = new MealPlanDao(storage);
-        this.consumptionLogDao = new ConsumptionLogDao(storage);
-        this.householdMemberDao = new HouseholdMemberDao(storage);
-        this.cookingPreferencesDao = new CookingPreferencesDao(storage);
-        this.weeklyFoodTargetDao = new WeeklyFoodTargetDao(storage);
+        this.mealPlanDao = new BaseCollectionDao<>(MealCollections.MEAL_PLANS, storage, new MealPlanRowMapper(), mealPlan -> mealPlan.id, (mealPlan, id) -> mealPlan.id = id);
+        this.consumptionLogDao = new BaseCollectionDao<>(MealCollections.CONSUMPTION_LOGS, storage, new ConsumptionLogRowMapper(), log -> log.id, (log, id) -> log.id = id);
+        this.householdMemberDao = new BaseCollectionDao<>(MealCollections.HOUSEHOLD_MEMBERS, storage, new HouseholdMemberRowMapper(), m -> m.id, (m, id) -> m.id = id);
+        this.cookingPreferencesDao = new BaseCollectionDao<>(MealCollections.COOKING_PREFERENCES, storage, new CookingPreferencesRowMapper(), p -> p.id, (p, id) -> p.id = id);
+        this.weeklyFoodTargetDao = new BaseCollectionDao<>(MealCollections.WEEKLY_FOOD_TARGETS, storage, new WeeklyFoodTargetRowMapper(), target -> target.id, (target, id) -> target.id = id);
     }
 
     @Override
     public List<MealPlan> getMealPlans(LocalDate fromInclusive, LocalDate toInclusive) {
-        return mealPlanDao.findInRange(fromInclusive, toInclusive);
+        return mealPlanDao.findAll(plan -> plan.date != null && !plan.date.isBefore(fromInclusive) && !plan.date.isAfter(toInclusive));
     }
 
     @Override
@@ -51,7 +53,7 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public List<ConsumptionLog> getConsumptionLogs(LocalDate fromInclusive, LocalDate toInclusive) {
-        return consumptionLogDao.findInRange(fromInclusive, toInclusive);
+        return consumptionLogDao.findAll(log -> log.date != null && !log.date.isBefore(fromInclusive) && !log.date.isAfter(toInclusive));
     }
 
     @Override
@@ -82,32 +84,16 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public void saveCookingPreferences(CookingPreferences preferences) {
-        // Clone preferences if ID is missing to avoid mutating the caller's object
-        CookingPreferences toSave = preferences.id == null ? cloneCookingPreferences(preferences) : preferences;
-        if (toSave.id == null) {
-            toSave.id = SINGLETON_PREFERENCES_ID;
+        if (preferences.id == null) {
+            preferences.id = SINGLETON_PREFERENCES_ID;
         }
-        cookingPreferencesDao.save(toSave);
-    }
-
-    private CookingPreferences cloneCookingPreferences(CookingPreferences original) {
-        CookingPreferences clone = new CookingPreferences();
-        clone.id = original.id;
-        clone.maxBreakfastCooking = original.maxBreakfastCooking;
-        clone.maxLunchCooking = original.maxLunchCooking;
-        clone.maxDinnerCooking = original.maxDinnerCooking;
-        clone.maxSnackCooking = original.maxSnackCooking;
-        clone.breakfastCookingDays = original.breakfastCookingDays;
-        clone.lunchCookingDays = original.lunchCookingDays;
-        clone.dinnerCookingDays = original.dinnerCookingDays;
-        clone.snackCookingDays = original.snackCookingDays;
-        clone.quickPrepMaxMinutes = original.quickPrepMaxMinutes;
-        return clone;
+        cookingPreferencesDao.save(preferences);
     }
 
     @Override
     public WeeklyFoodTarget findWeeklyFoodTarget(String periodKey) {
-        return weeklyFoodTargetDao.findByPeriodKey(periodKey);
+        List<WeeklyFoodTarget> results = weeklyFoodTargetDao.findAllByField("periodKey", periodKey);
+        return results.isEmpty() ? null : results.get(0);
     }
 
     @Override

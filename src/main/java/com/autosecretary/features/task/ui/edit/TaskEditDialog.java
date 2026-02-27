@@ -37,11 +37,6 @@ public class TaskEditDialog extends DialogFragment {
     private TaskEditFormViews formViews;
     private PrefSlotSectionController prefSlotSectionController;
 
-    private TaskEditSectionBinder.BasicInfoViews basicInfoViews;
-    private TaskEditSectionBinder.SchedulingViews schedulingViews;
-    private TaskEditSectionBinder.RepetitionViews repetitionViews;
-    private TaskEditSectionBinder.ProgressViews progressViews;
-
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         TaskViewModel vm = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
@@ -51,22 +46,22 @@ public class TaskEditDialog extends DialogFragment {
         formValidator = new TaskEditFormValidator(requireContext());
 
         View rootView = LayoutInflater.from(getContext()).inflate(R.layout.task_editor_fragment, null);
-        bindEditorSections(rootView, editState);
+        BoundSections sections = bindEditorSections(rootView, editState);
         GoalSectionController goalSectionController = new GoalSectionController(this, rootView, editState);
 
         prefSlotSectionController = new PrefSlotSectionController(
             this,
             rootView,
             presenter,
-            repetitionViews
+            sections.repetition
         );
         prefSlotSectionController.rebuildPrefSlotUI();
 
         formInputReader = new TaskEditFormInputReader(
-            basicInfoViews, schedulingViews, repetitionViews, progressViews, goalSectionController
+            sections.basicInfo, sections.scheduling, sections.repetition, sections.progress, goalSectionController
         );
         formViews = new TaskEditFormViews(
-            basicInfoViews, schedulingViews, repetitionViews, progressViews
+            sections.basicInfo, sections.scheduling, sections.repetition, sections.progress
         );
 
         return new AlertDialog.Builder(requireContext())
@@ -125,11 +120,30 @@ public class TaskEditDialog extends DialogFragment {
         prefSlotSectionController.onRepetitionChanged();
     }
 
-    private void bindEditorSections(View rootView, TaskEditState editState) {
+    private BoundSections bindEditorSections(View rootView, TaskEditState editState) {
         TaskEditSectionBinder sectionBinder = new TaskEditSectionBinder(this, rootView, editState, presenter);
-        basicInfoViews = sectionBinder.bindBasicInfo();
-        schedulingViews = sectionBinder.bindScheduling();
-        repetitionViews = sectionBinder.bindRepetition(this::onRepetitionChanged);
-        progressViews = sectionBinder.bindProgress();
+        return new BoundSections(
+            sectionBinder.bindBasicInfo(),
+            sectionBinder.bindScheduling(),
+            sectionBinder.bindRepetition(this::onRepetitionChanged),
+            sectionBinder.bindProgress()
+        );
+    }
+
+    private static class BoundSections {
+        final TaskEditSectionBinder.BasicInfoViews basicInfo;
+        final TaskEditSectionBinder.SchedulingViews scheduling;
+        final TaskEditSectionBinder.RepetitionViews repetition;
+        final TaskEditSectionBinder.ProgressViews progress;
+
+        BoundSections(TaskEditSectionBinder.BasicInfoViews basicInfo,
+                      TaskEditSectionBinder.SchedulingViews scheduling,
+                      TaskEditSectionBinder.RepetitionViews repetition,
+                      TaskEditSectionBinder.ProgressViews progress) {
+            this.basicInfo = basicInfo;
+            this.scheduling = scheduling;
+            this.repetition = repetition;
+            this.progress = progress;
+        }
     }
 }

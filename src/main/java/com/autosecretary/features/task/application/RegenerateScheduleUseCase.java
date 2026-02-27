@@ -80,7 +80,7 @@ public class RegenerateScheduleUseCase {
                         generator.generateSlotsForWindow(flatTasks, today, PLANNING_DAYS, state);
 
                 taskDao.writeList(flatTasks);
-                onDone.accept(new Result(generationResult.createdSlots, generationResult.conflicts));
+                onDone.accept(new Result(generationResult.createdSlots(), generationResult.conflicts()));
             } catch (Exception e) {
                 Log.e("RegenerateSchedule", "Schedule regeneration failed", e);
                 onDone.accept(new Result(0, Collections.emptyList()));

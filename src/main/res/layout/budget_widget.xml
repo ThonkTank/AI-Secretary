@@ -34,7 +34,6 @@
             android:id="@+id/budget_widget_total_value"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text=""
             android:textColor="@android:color/black"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -52,7 +51,6 @@
             android:id="@+id/budget_widget_free_value"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text=""
             android:textColor="@android:color/black"
             android:textSize="16sp" />
     </LinearLayout>

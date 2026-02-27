@@ -32,18 +32,13 @@ public final class PayeeGrouper {
     }
 
     public static Map<String, List<RecurringBudgetTransaction>> groupBySimilarPayee(List<RecurringBudgetTransaction> transactions) {
-        return groupBySimilarPayee(transactions, PAYEE_SIMILARITY_THRESHOLD);
-    }
-
-    private static Map<String, List<RecurringBudgetTransaction>> groupBySimilarPayee(List<RecurringBudgetTransaction> transactions,
-                                                                             double similarityThreshold) {
         Map<String, List<RecurringBudgetTransaction>> groupedByPayee = new HashMap<>();
         for (RecurringBudgetTransaction tx : transactions) {
             String normalized = normalizePayee(tx.payee);
             if (normalized.isEmpty()) {
                 continue;
             }
-            String existingGroup = findMatchingGroup(normalized, groupedByPayee.keySet(), similarityThreshold);
+            String existingGroup = findMatchingGroup(normalized, groupedByPayee.keySet(), PAYEE_SIMILARITY_THRESHOLD);
             if (existingGroup != null) {
                 groupedByPayee.get(existingGroup).add(tx);
             } else {

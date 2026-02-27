@@ -37,20 +37,12 @@ public interface BudgetRepository {
     /** Returns the ID of the first active account, or {@code null} if no accounts exist. */
     String findDefaultActiveAccountId();
 
-    /**
-     * Deducts {@code expenseCents} from the stored balance of {@code accountId}.
-     * No-ops if {@code accountId} is blank or {@code expenseCents} is non-positive.
-     */
-    void applyExpenseToAccountBalance(String accountId, long expenseCents);
-
     /** Persists an already-constructed transaction entity (e.g. during CSV import). */
     void saveTransaction(BudgetTransactionEntity transaction);
 
     /**
      * Atomically inserts {@code transaction} and deducts {@code expenseCents} from the
      * stored balance of {@code accountId} in a single database transaction.
-     * Use this instead of calling {@link #saveTransaction} and
-     * {@link #applyExpenseToAccountBalance} separately to prevent partial writes.
      */
     void saveTransactionAndDeductBalance(BudgetTransactionEntity transaction,
                                          String accountId,

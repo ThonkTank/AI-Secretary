@@ -15,6 +15,10 @@ import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 public class GoalSectionController {
 
     private static final int GOAL_COLOR_COLUMN_COUNT = 5;
+    private static final float SELECTED_SCALE = 1.25f;
+    private static final float DESELECTED_SCALE = 1.0f;
+    private static final float SELECTED_ALPHA = 1.0f;
+    private static final float DESELECTED_ALPHA = 0.75f;
     private static final String[] GOAL_COLORS = {
         "#FFE53935", "#FFD81B60", "#FF8E24AA", "#FF5E35B1", "#FF1E88E5",
         "#FF00ACC1", "#FF00897B", "#FF43A047", "#FFFB8C00", "#FF6D4C41"
@@ -88,9 +92,9 @@ public class GoalSectionController {
             View swatch = goalColorGrid.getChildAt(i);
             Object tag = swatch.getTag();
             boolean selected = tag instanceof String && ((String) tag).equals(selectedGoalColorHex);
-            swatch.setScaleX(selected ? 1.25f : 1.0f);
-            swatch.setScaleY(selected ? 1.25f : 1.0f);
-            swatch.setAlpha(selected ? 1.0f : 0.75f);
+            swatch.setScaleX(selected ? SELECTED_SCALE : DESELECTED_SCALE);
+            swatch.setScaleY(selected ? SELECTED_SCALE : DESELECTED_SCALE);
+            swatch.setAlpha(selected ? SELECTED_ALPHA : DESELECTED_ALPHA);
         }
     }
 

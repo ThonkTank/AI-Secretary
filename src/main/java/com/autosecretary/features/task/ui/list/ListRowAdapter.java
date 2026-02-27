@@ -370,13 +370,13 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     private void bindTimerState(TaskRowViewHolder holder, TaskListItem item) {
         Context context = holder.itemView.getContext();
-        holder.timerButton.setImageResource(item.timerRunning
+        holder.timerButton.setImageResource(item.inProgress
                 ? android.R.drawable.ic_media_pause
                 : android.R.drawable.ic_media_play);
         holder.timerButton.setContentDescription(context.getString(
-                item.timerRunning ? R.string.task_timer_stop : R.string.task_timer_start));
+                item.inProgress ? R.string.task_timer_stop : R.string.task_timer_start));
         ViewCompat.setStateDescription(holder.timerButton, context.getString(
-                item.timerRunning ? R.string.task_timer_running : R.string.task_timer_stopped));
+                item.inProgress ? R.string.task_timer_running : R.string.task_timer_stopped));
     }
 
     private void bindInteractions(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
@@ -386,23 +386,16 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
         holder.title.setOnClickListener(v -> showDescriptionPopup(v, item));
 
-        View.OnLongClickListener longClickListener = interactionsEnabled
-                ? v -> {
-                    actions.onEdit.accept(viewSlot);
-                    return true;
-                }
-                : null;
-        View.OnClickListener timerClickListener = interactionsEnabled
+        holder.itemView.setOnLongClickListener(interactionsEnabled
+                ? v -> { actions.onEdit.accept(viewSlot); return true; }
+                : null);
+        holder.timerButton.setOnClickListener(interactionsEnabled
                 ? v -> actions.onTimerToggle.accept(viewSlot)
-                : null;
-        View.OnClickListener editClickListener = interactionsEnabled
-                ? v -> actions.onEdit.accept(viewSlot)
-                : null;
-
-        holder.itemView.setOnLongClickListener(longClickListener);
-        holder.timerButton.setOnClickListener(timerClickListener);
+                : null);
         holder.timerButton.setAlpha(interactionsEnabled && timerEligible ? 1.0f : 0.4f);
-        holder.editButton.setOnClickListener(editClickListener);
+        holder.editButton.setOnClickListener(interactionsEnabled
+                ? v -> actions.onEdit.accept(viewSlot)
+                : null);
         holder.editButton.setAlpha(interactionsEnabled ? 1.0f : 0.4f);
     }
 

@@ -42,13 +42,6 @@ public class DeviceCalendarBlockedIntervalProvider implements CalendarBlockedInt
                 CalendarContract.Instances.END
         };
 
-        String selection = CalendarContract.Instances.BEGIN + " < ? AND "
-                + CalendarContract.Instances.END + " > ?";
-        String[] args = {
-                String.valueOf(dayEndMillis),
-                String.valueOf(dayStartMillis)
-        };
-
         List<BlockedInterval> intervals = new ArrayList<>();
         try (Cursor cursor = context.getContentResolver().query(
                 CalendarContract.Instances.CONTENT_URI.buildUpon()
@@ -56,8 +49,8 @@ public class DeviceCalendarBlockedIntervalProvider implements CalendarBlockedInt
                         .appendPath(String.valueOf(dayEndMillis))
                         .build(),
                 projection,
-                selection,
-                args,
+                null,
+                null,
                 CalendarContract.Instances.BEGIN + " ASC"
         )) {
             if (cursor == null) {

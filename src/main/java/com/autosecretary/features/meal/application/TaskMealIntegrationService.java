@@ -7,6 +7,7 @@ import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.RecipeRepository;
+import com.autosecretary.features.meal.domain.MealType;
 import com.autosecretary.features.meal.domain.internal.RecipeScalingService;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskPlannedMeal;
@@ -27,7 +28,6 @@ public class TaskMealIntegrationService {
     private final MealRepository mealRepository;
     private final RecipeRepository recipeRepository;
     private final PantryRepository pantryRepository;
-    private final RecipeScalingService recipeScalingService;
 
     public TaskMealIntegrationService(MealRepository mealRepository,
                                       RecipeRepository recipeRepository,
@@ -35,10 +35,9 @@ public class TaskMealIntegrationService {
         this.mealRepository = mealRepository;
         this.recipeRepository = recipeRepository;
         this.pantryRepository = pantryRepository;
-        this.recipeScalingService = new RecipeScalingService();
     }
 
-    public TaskPlannedMeal resolvePlannedMeal(Task task, LocalDate date) {
+    private TaskPlannedMeal resolvePlannedMeal(Task task, LocalDate date) {
         if (task == null || task.core == null || task.core.mealType == null || date == null) {
             return null;
         }
@@ -56,11 +55,11 @@ public class TaskMealIntegrationService {
             return false;
         }
 
-        applyFollowUpActions(task, plannedMeal, completionDate, servings);
+        applyFollowUpActions(task.core.mealType, plannedMeal, completionDate, servings);
         return true;
     }
 
-    private void applyFollowUpActions(Task task,
+    private void applyFollowUpActions(MealType mealType,
                                       TaskPlannedMeal plannedMeal,
                                       LocalDate completionDate,
                                       int servings) {
@@ -70,8 +69,8 @@ public class TaskMealIntegrationService {
         }
 
         reducePantryStock(recipe, servings);
-        writeConsumptionLog(task, recipe, completionDate, servings);
-        completeMealPlanEntry(task, plannedMeal, completionDate, servings);
+        writeConsumptionLog(recipe, completionDate, servings);
+        completeMealPlanEntry(mealType, plannedMeal, completionDate, servings);
     }
 
     private void reducePantryStock(Recipe recipe, int servings) {
@@ -82,7 +81,7 @@ public class TaskMealIntegrationService {
         List<PantryItem> pantryItems = new ArrayList<>(pantryRepository.getPantryItems());
         pantryItems.sort(Comparator.comparing(item -> item.expiryDate, Comparator.nullsLast(Comparator.naturalOrder())));
 
-        RecipeScalingService.ScalingResult scalingResult = recipeScalingService.scaleRecipe(recipe, servings);
+        RecipeScalingService.ScalingResult scalingResult = RecipeScalingService.scaleRecipe(recipe, servings);
         double factor = Math.max(0.0, scalingResult.factor());
 
         for (Recipe.RecipeIngredient ingredient : recipe.ingredients) {
@@ -94,11 +93,11 @@ public class TaskMealIntegrationService {
                 continue;
             }
             for (PantryItem pantryItem : pantryItems) {
-                if (pantryItem.id == null || pantryItem.ingredientId != ingredient.ingredientId()) {
-                    continue;
-                }
                 if (requiredAmount <= 0) {
                     break;
+                }
+                if (pantryItem.id == null || pantryItem.ingredientId != ingredient.ingredientId()) {
+                    continue;
                 }
                 double consumed = Math.min(pantryItem.amount, requiredAmount);
                 pantryItem.amount -= consumed;
@@ -113,7 +112,7 @@ public class TaskMealIntegrationService {
         }
     }
 
-    private void writeConsumptionLog(Task task, Recipe recipe, LocalDate completionDate, int servings) {
+    private void writeConsumptionLog(Recipe recipe, LocalDate completionDate, int servings) {
         double scale = recipe.servings > 0 ? (double) servings / recipe.servings : servings;
         int calories = (int) Math.round(recipe.totalCalories * scale);
         int protein = (int) Math.round(recipe.totalProtein * scale);
@@ -131,13 +130,13 @@ public class TaskMealIntegrationService {
         mealRepository.saveConsumptionLog(log);
     }
 
-    private void completeMealPlanEntry(Task task, TaskPlannedMeal plannedMeal, LocalDate completionDate, int servings) {
+    private void completeMealPlanEntry(MealType mealType, TaskPlannedMeal plannedMeal, LocalDate completionDate, int servings) {
         List<MealPlan> plans = mealRepository.getMealPlans(completionDate, completionDate);
         for (MealPlan plan : plans) {
             if (plan.date == null) {
                 continue;
             }
-            if (plan.mealType != task.core.mealType || plan.recipeId != plannedMeal.recipeId) {
+            if (plan.mealType != mealType || plan.recipeId != plannedMeal.recipeId) {
                 continue;
             }
             plan.isCompleted = true;

@@ -110,24 +110,21 @@ public class TaskEditFormValidator {
 
     private boolean validateMinMaxPair(EditText minField, EditText maxField,
                                        int minMessageResId, int maxMessageResId) {
-        return validateFieldComparison(minField, maxField,
-            (a, b) -> a <= b, minMessageResId, maxMessageResId);
+        return validateFirstNotAboveSecond(minField, maxField, minMessageResId, maxMessageResId);
     }
 
     private boolean validateCurrentNotAboveTarget(EditText currentView, EditText targetView) {
-        return validateFieldComparison(currentView, targetView,
-            (a, b) -> a <= b,
+        return validateFirstNotAboveSecond(currentView, targetView,
             R.string.task_edit_validation_current_above_target,
             R.string.task_edit_validation_target_below_current);
     }
 
-    private boolean validateFieldComparison(EditText fieldA, EditText fieldB,
-                                             java.util.function.BiPredicate<Integer, Integer> valid,
-                                             int errorResA, int errorResB) {
+    private boolean validateFirstNotAboveSecond(EditText fieldA, EditText fieldB,
+                                                int errorResA, int errorResB) {
         try {
             int valueA = Integer.parseInt(fieldA.getText().toString().trim());
             int valueB = Integer.parseInt(fieldB.getText().toString().trim());
-            if (valid.test(valueA, valueB)) {
+            if (valueA <= valueB) {
                 return true;
             }
             fieldA.setError(context.getString(errorResA));

@@ -3,6 +3,8 @@ package com.autosecretary.features.task.ui;
 import android.app.Dialog;
 import android.app.TimePickerDialog;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -16,9 +18,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 
 import com.autosecretary.R;
-import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.features.task.application.config.TaskScheduleConfigService;
+import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
 import com.autosecretary.features.task.data.TaskScheduleConfig;
 
 import java.time.DayOfWeek;
@@ -30,21 +31,25 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 
 public class TaskScheduleConfigDialog extends DialogFragment {
     private final DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.GERMAN);
     private final Map<DayOfWeek, TaskScheduleConfig> draftByDay = new EnumMap<>(DayOfWeek.class);
 
-    private TaskScheduleConfigService scheduleConfigService;
+    private TaskScheduleConfigRepository scheduleConfigRepository;
+    private ExecutorService executor;
+    private Handler mainHandler;
     private LinearLayout container;
     private View loadingView;
 
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        AutoSecretaryApplication app = AutoSecretaryApplication.from(requireContext());
-        AppCompositionRoot compositionRoot = app.getAppCompositionRoot();
-        scheduleConfigService = compositionRoot.getTaskScheduleConfigService();
+        AutoSecretaryApplication application = AutoSecretaryApplication.from(requireContext());
+        scheduleConfigRepository = application.getAppCompositionRoot().getTaskScheduleConfigRepository();
+        executor = application.getAppCompositionRoot().getSharedExecutor();
+        mainHandler = new Handler(Looper.getMainLooper());
 
         View root = LayoutInflater.from(requireContext()).inflate(R.layout.task_schedule_fragment, null, false);
         container = root.findViewById(R.id.ScheduleConfigContainer);
@@ -75,14 +80,17 @@ public class TaskScheduleConfigDialog extends DialogFragment {
         loadingView.setVisibility(View.VISIBLE);
         container.setVisibility(View.GONE);
 
-        scheduleConfigService.loadAll(configs -> {
-            draftByDay.clear();
-            for (TaskScheduleConfig config : configs) {
-                if (config.dayOfWeek != null) {
-                    draftByDay.put(config.dayOfWeek, config);
+        executor.execute(() -> {
+            List<TaskScheduleConfig> configs = scheduleConfigRepository.loadAll();
+            mainHandler.post(() -> {
+                draftByDay.clear();
+                for (TaskScheduleConfig config : configs) {
+                    if (config.dayOfWeek != null) {
+                        draftByDay.put(config.dayOfWeek, config);
+                    }
                 }
-            }
-            renderRows();
+                renderRows();
+            });
         });
     }
 
@@ -137,9 +145,12 @@ public class TaskScheduleConfigDialog extends DialogFragment {
             result.add(new TaskScheduleConfig(day, config.startTime, config.endTime));
         }
 
-        scheduleConfigService.saveAll(result, () -> {
-            Toast.makeText(requireContext(), R.string.task_schedule_saved, Toast.LENGTH_SHORT).show();
-            dismiss();
+        executor.execute(() -> {
+            scheduleConfigRepository.saveAll(result);
+            mainHandler.post(() -> {
+                Toast.makeText(requireContext(), R.string.task_schedule_saved, Toast.LENGTH_SHORT).show();
+                dismiss();
+            });
         });
     }
 

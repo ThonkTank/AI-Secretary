@@ -23,6 +23,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
+import com.autosecretary.features.task.domain.SchedulingConflict;
 import com.autosecretary.features.task.ui.TaskScheduleConfigDialog;
 import com.autosecretary.features.task.ui.edit.TaskEditDialog;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
@@ -83,7 +84,7 @@ public class TaskListFragment extends Fragment {
                         vm::checkOff,
                         viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId),
                         viewSlot -> {
-                            if (viewSlot.item.timerRunning) {
+                            if (viewSlot.item.inProgress) {
                                 vm.stopTimer(viewSlot.item.slotId);
                             } else {
                                 vm.startTimer(viewSlot.item.slotId);
@@ -94,8 +95,6 @@ public class TaskListFragment extends Fragment {
                         vm::toggleExpanded,
                         vm::isExpanded)
         );
-        adapter.setManageMode(vm.isManageMode());
-
         recyclerView.setAdapter(adapter);
         vm.getList().observe(getViewLifecycleOwner(), items -> {
             adapter.setList(items);
@@ -111,12 +110,12 @@ public class TaskListFragment extends Fragment {
             String message = getResources().getQuantityString(
                     R.plurals.task_list_schedule_complete, conflicts.size(), conflicts.size());
             Snackbar.make(view, message, Snackbar.LENGTH_LONG).show();
-            for (com.autosecretary.features.task.domain.SchedulingConflict conflict : conflicts) {
-                Log.w("TaskScheduleConflict", "{taskId=" + conflict.taskId
-                        + ", title=" + conflict.title
-                        + ", day=" + conflict.day
-                        + ", reasonCode=" + conflict.reasonCode
-                        + ", details=" + conflict.details + "}");
+            for (SchedulingConflict conflict : conflicts) {
+                Log.w("TaskScheduleConflict", "{taskId=" + conflict.taskId()
+                        + ", title=" + conflict.title()
+                        + ", day=" + conflict.day()
+                        + ", reasonCode=" + conflict.reasonCode()
+                        + ", details=" + conflict.details() + "}");
             }
         });
 

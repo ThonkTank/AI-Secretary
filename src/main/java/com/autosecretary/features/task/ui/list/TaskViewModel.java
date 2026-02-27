@@ -6,21 +6,28 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.autosecretary.app.Preferences;
 import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskDataService;
+import com.autosecretary.features.task.application.calendar.TaskCalendarService;
+import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.domain.SchedulingConflict;
+import com.autosecretary.features.task.domain.TaskCalendarEvent;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList.ViewSlot;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.function.Predicate;
 
 public class TaskViewModel extends AndroidViewModel {
     static final int MAX_DAY_OFFSET = 6;
@@ -30,7 +37,8 @@ public class TaskViewModel extends AndroidViewModel {
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
     private final AdjustTaskProgressUseCase adjustTaskProgressUseCase;
     private final TaskEditSessionController taskEditSessionController;
-    private final TaskListProjectionService taskListProjectionService;
+    private final TaskCalendarService taskCalendarService;
+    private final Preferences preferences;
 
     private final ViewSlotList masterList;
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
@@ -48,7 +56,8 @@ public class TaskViewModel extends AndroidViewModel {
                          RegenerateScheduleUseCase regenerateScheduleUseCase,
                          AdjustTaskProgressUseCase adjustTaskProgressUseCase,
                          TaskEditSessionController taskEditSessionController,
-                         TaskListProjectionService taskListProjectionService) {
+                         TaskCalendarService taskCalendarService,
+                         Preferences preferences) {
         super(app);
         this.taskDataService = taskDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
@@ -56,7 +65,8 @@ public class TaskViewModel extends AndroidViewModel {
         this.adjustTaskProgressUseCase = adjustTaskProgressUseCase;
         this.taskEditSessionController = taskEditSessionController;
         this.taskEditSessionController.setOnTaskChanged(this::refreshList);
-        this.taskListProjectionService = taskListProjectionService;
+        this.taskCalendarService = taskCalendarService;
+        this.preferences = preferences;
 
         this.masterList = new ViewSlotList();
         applyChecklistPreset();
@@ -112,7 +122,7 @@ public class TaskViewModel extends AndroidViewModel {
 
     private void setSelectedDay(LocalDate newDay) {
         selectedDay.setValue(newDay);
-        applyPreset(newDay, activeListConfig);
+        applyPreset(activeListConfig);
     }
 
     public TaskEditSessionController getTaskEditSessionController() {
@@ -120,14 +130,14 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void applyChecklistPreset() {
-        applyPreset(selectedDay.getValue(), ListConfig.CHECKLIST);
+        applyPreset(ListConfig.CHECKLIST);
     }
 
     public void applyManagePreset() {
-        applyPreset(selectedDay.getValue(), ListConfig.MANAGE);
+        applyPreset(ListConfig.MANAGE);
     }
 
-    private void applyPreset(LocalDate day, ListConfig config) {
+    private void applyPreset(ListConfig config) {
         this.activeListConfig = config;
         filterList();
     }
@@ -144,14 +154,48 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void filterList() {
-        taskListProjectionService.project(
-                masterList,
-                activeListConfig,
-                selectedDay.getValue(),
-                searchQuery.getValue(),
-                hasCalendarPermission,
-                expandedByTaskId
-        );
+        LocalDate day = selectedDay.getValue();
+        String rawQuery = searchQuery.getValue();
+        String normalizedSearchQuery = rawQuery == null ? "" : rawQuery.trim().toLowerCase(Locale.ROOT);
+
+        Predicate<ViewSlot> predicate = slot -> {
+            if (!activeListConfig.matches(slot, day)) {
+                return false;
+            }
+            if (activeListConfig != ListConfig.MANAGE || normalizedSearchQuery.isEmpty()) {
+                return true;
+            }
+            String title = slot.item.title == null ? "" : slot.item.title;
+            return title.toLowerCase(Locale.ROOT).contains(normalizedSearchQuery);
+        };
+        masterList.filter(predicate);
+
+        if (day != null && hasCalendarPermission) {
+            List<TaskCalendarEvent> events = taskCalendarService.getEventsForDay(
+                    day,
+                    preferences.readPrefTime(day.getDayOfWeek(), true),
+                    preferences.readPrefTime(day.getDayOfWeek(), false)
+            );
+            List<ViewSlot> calendarSlots = new ArrayList<>();
+            int index = 0;
+            for (TaskCalendarEvent event : events) {
+                TaskListItem item = TaskListItem.calendarEvent(
+                        "calendar-" + day + "-" + index,
+                        event.title(), day, event.start(), event.end()
+                );
+                calendarSlots.add(new ViewSlot(item));
+                index++;
+            }
+            masterList.appendToDisplay(calendarSlots);
+        }
+
+        Comparator<ViewSlot> comparator = activeListConfig.comparator();
+        if (activeListConfig.groupByTaskParent()) {
+            masterList.sortByTask(comparator, slot -> expandedByTaskId.getOrDefault(slot.item.taskId, true));
+        } else {
+            masterList.sortBySlot(comparator);
+        }
+
         displayList.setValue(masterList.getDisplaySlots());
     }
 
@@ -217,7 +261,7 @@ public class TaskViewModel extends AndroidViewModel {
                 if (slot.item.isCalendarEvent()) {
                     return isOnDay(slot, day);
                 }
-                return isOnDay(slot, day) && slot.item.start != null;
+                return slot.item.isScheduledOn(day);
             }
 
             @Override

@@ -8,7 +8,7 @@ import com.autosecretary.features.meal.domain.ShoppingListItem;
  */
 public class ShoppingPackagingService {
 
-    public PackagingResult roundToPackage(double neededAmount, int packageAmount) {
+    public static PackagingResult roundToPackage(double neededAmount, int packageAmount) {
         if (neededAmount <= 0 || packageAmount <= 0) {
             return new PackagingResult(Math.max(0.0, neededAmount), 0.0, 0);
         }
@@ -17,12 +17,12 @@ public class ShoppingPackagingService {
         return new PackagingResult(roundedAmount, Math.max(0.0, roundedAmount - neededAmount), packageCount);
     }
 
-    public ShoppingListItem createShoppingItem(Ingredient ingredient,
-                                               double neededAmount,
-                                               String periodKey) {
+    public static ShoppingListItem createShoppingItem(Ingredient ingredient,
+                                                      double neededAmount,
+                                                      String periodKey) {
         int packageAmount = resolvePackageAmount(ingredient);
         PackagingResult result = roundToPackage(neededAmount, packageAmount);
-        ShoppingListItem item = new ShoppingListItem.Builder(
+        return new ShoppingListItem.Builder(
                 ingredient.id == null ? 0L : ingredient.id,
                 ingredient.name,
                 Math.max(0.0, neededAmount),
@@ -32,10 +32,9 @@ public class ShoppingPackagingService {
                 .periodKey(periodKey)
                 .foodGroup(ingredient.foodGroup == null ? null : ingredient.foodGroup.label)
                 .build();
-        return item;
     }
 
-    private int resolvePackageAmount(Ingredient ingredient) {
+    private static int resolvePackageAmount(Ingredient ingredient) {
         if (ingredient == null) {
             return 0;
         }
@@ -49,4 +48,6 @@ public class ShoppingPackagingService {
     }
 
     public record PackagingResult(double roundedAmount, double excessAmount, int packageCount) {}
+
+    private ShoppingPackagingService() {}
 }

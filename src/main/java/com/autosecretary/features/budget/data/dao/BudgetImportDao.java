@@ -15,9 +15,6 @@ public interface BudgetImportDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(BudgetImportEntity importEntity);
 
-    @Query("SELECT * FROM budget_import WHERE fileHash = :fileHash LIMIT 1")
-    BudgetImportEntity findByFileHash(String fileHash);
-
     @Query("""
             UPDATE budget_import
             SET status = 'COMPLETED',

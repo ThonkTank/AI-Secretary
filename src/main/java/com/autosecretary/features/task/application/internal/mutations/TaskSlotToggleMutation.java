@@ -9,6 +9,9 @@ import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskCompletionService.CompletionPhase;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+
 import android.util.Log;
 
 import androidx.room.RoomDatabase;
@@ -29,19 +32,31 @@ public final class TaskSlotToggleMutation {
     private static final int TRANSITION_WEIGHT_STARTED = 1;
     private static final int TRANSITION_WEIGHT_COMPLETED = 2;
 
-    private TaskSlotToggleMutation() {
+    private final TaskDAO taskDao;
+    private final TaskCompletionService completionService;
+    private final TaskLifecycleManager lifecycleManager;
+    private final TaskTransitionStatDao transitionDao;
+    private final Executor callbackDispatcher;
+    private final RoomDatabase database;
+
+    public TaskSlotToggleMutation(TaskDAO taskDao,
+                                  TaskCompletionService completionService,
+                                  TaskLifecycleManager lifecycleManager,
+                                  TaskTransitionStatDao transitionDao,
+                                  Executor callbackDispatcher,
+                                  RoomDatabase database) {
+        this.taskDao = taskDao;
+        this.completionService = completionService;
+        this.lifecycleManager = lifecycleManager;
+        this.transitionDao = transitionDao;
+        this.callbackDispatcher = callbackDispatcher;
+        this.database = database;
     }
 
-    public static void execute(TaskDAO taskDao,
-                               TaskCompletionService completionService,
-                               TaskLifecycleManager lifecycleManager,
-                               TaskTransitionStatDao transitionDao,
-                               String taskId,
-                               String slotId,
-                               Executor callbackDispatcher,
-                               Runnable postWriteAction,
-                               Consumer<Task> completedPhaseHook,
-                               RoomDatabase database) {
+    public void execute(String taskId,
+                        String slotId,
+                        Runnable postWriteAction,
+                        Consumer<Task> completedPhaseHook) {
         if (taskId == null || slotId == null) {
             return;
         }
@@ -64,37 +79,41 @@ public final class TaskSlotToggleMutation {
         // COMPLETED writes the full task because checkOff mutates streak/history fields
         // on the TaskCore. STARTED only touches the slot (set realStart), so writing
         // just the slot avoids an unnecessary full-task upsert.
+        boolean transacted;
         if (phase == CompletionPhase.COMPLETED) {
-            try {
-                database.runInTransaction(() -> {
-                    if (task.core != null && task.core.adaptive) {
-                        adaptPrerequisiteGaps(taskDao, lifecycleManager, task, slot);
-                    }
-                    taskDao.write(task);
-                    if (completedPhaseHook != null) {
-                        completedPhaseHook.accept(task);
-                    }
-                    TaskTransitionRecorder.record(taskDao, transitionDao, slot, TRANSITION_WEIGHT_COMPLETED);
-                    taskDao.writeSlot(slot);
-                });
-            } catch (RuntimeException e) {
-                Log.e("TaskSlotToggle", "Completion write failed", e);
-                return;
+            transacted = runTransactionOrAbort(database, "Completion write failed", () -> {
+                if (task.core != null && task.core.adaptive) {
+                    adaptPrerequisiteGaps(taskDao, lifecycleManager, task, slot);
+                }
+                taskDao.write(task);
+                recordTransition(taskDao, transitionDao, slot, TRANSITION_WEIGHT_COMPLETED);
+                taskDao.writeSlot(slot);
+            });
+            if (transacted && completedPhaseHook != null) {
+                completedPhaseHook.accept(task);
             }
-        } else if (phase == CompletionPhase.STARTED) {
-            try {
-                database.runInTransaction(() -> {
-                    TaskTransitionRecorder.record(taskDao, transitionDao, slot, TRANSITION_WEIGHT_STARTED);
-                    taskDao.writeSlot(slot);
-                });
-            } catch (RuntimeException e) {
-                Log.e("TaskSlotToggle", "Start write failed", e);
-                return;
-            }
+        } else {
+            transacted = runTransactionOrAbort(database, "Start write failed", () -> {
+                recordTransition(taskDao, transitionDao, slot, TRANSITION_WEIGHT_STARTED);
+                taskDao.writeSlot(slot);
+            });
+        }
+        if (!transacted) {
+            return;
         }
 
         if (postWriteAction != null && callbackDispatcher != null) {
             callbackDispatcher.execute(postWriteAction);
+        }
+    }
+
+    private static boolean runTransactionOrAbort(RoomDatabase db, String errorMsg, Runnable body) {
+        try {
+            db.runInTransaction(body);
+            return true;
+        } catch (RuntimeException e) {
+            Log.e("TaskSlotToggle", errorMsg, e);
+            return false;
         }
     }
 
@@ -133,6 +152,26 @@ public final class TaskSlotToggleMutation {
             }
         }
         return null;
+    }
+
+    private static void recordTransition(TaskDAO taskDao,
+                                         TaskTransitionStatDao transitionDao,
+                                         TaskSlot slot,
+                                         int delta) {
+        if (taskDao == null || transitionDao == null || slot == null || slot.taskId == null || slot.day == null) {
+            return;
+        }
+
+        LocalTime eventTime = slot.realEnd != null
+                ? slot.realEnd
+                : (slot.realStart != null ? slot.realStart : (slot.start != null ? slot.start : LocalTime.now()));
+
+        String previousTaskId = taskDao.findMostRecentTaskBefore(slot.taskId, slot.day, eventTime);
+        if (previousTaskId == null || previousTaskId.equals(slot.taskId)) {
+            return;
+        }
+
+        transitionDao.recordTransition(previousTaskId, slot.taskId, Math.max(1, delta), LocalDateTime.now());
     }
 
 }

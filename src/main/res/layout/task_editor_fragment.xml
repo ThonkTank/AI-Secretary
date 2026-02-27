@@ -129,8 +129,6 @@
                 android:id="@+id/ClearDeadline"
                 android:layout_width="@dimen/task_editor_clear_deadline_button_size"
                 android:layout_height="@dimen/task_editor_clear_deadline_button_size"
-                android:minWidth="@dimen/task_editor_clear_deadline_button_size"
-                android:minHeight="@dimen/task_editor_clear_deadline_button_size"
                 android:src="@android:drawable/ic_menu_close_clear_cancel"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/task_editor_deadline_clear_content_description"/>

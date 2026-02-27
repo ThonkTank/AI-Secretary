@@ -2,79 +2,49 @@ package com.autosecretary.features.task.application;
 
 import android.content.Context;
 
-import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
 import com.autosecretary.features.meal.application.TaskMealIntegrationService;
 import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
 import com.autosecretary.features.task.data.TaskDAO;
-import com.autosecretary.features.task.data.TaskTransitionStatDao;
-import com.autosecretary.features.task.domain.TaskCompletionService;
-import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
 import java.time.LocalDate;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 /**
- * Orchestrates task completion: reads the task from the database, delegates the
- * two-phase check-off logic to {@link TaskCompletionService}, and writes the
- * results back. The write scope depends on the phase returned.
+ * Orchestrates task completion: delegates the two-phase check-off logic to
+ * {@link TaskSlotToggleMutation} and handles post-completion side effects
+ * (budget booking, meal integration).
  *
- * Contract: DAO work runs on {@code executor}; when present, {@code onChanged}
- * runs on {@code callbackDispatcher}.
+ * Contract: mutation runs on {@code executor}; callbacks are dispatched by the mutation.
  */
 public class CheckOffTaskUseCase {
+    private final TaskSlotToggleMutation mutation;
     private final TaskDAO taskDao;
-    private final TaskCompletionService completionService;
-    private final TaskLifecycleManager lifecycleManager;
-    private final TaskTransitionStatDao transitionDao;
     private final ExecutorService executor;
-    private final Executor callbackDispatcher;
     private final BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase;
-    private final AppDatabase database;
     private final Context appContext;
     private final TaskMealIntegrationService taskMealIntegrationService;
 
-    public CheckOffTaskUseCase(TaskDAO taskDao, TaskCompletionService completionService,
-                               TaskLifecycleManager lifecycleManager,
-                               TaskTransitionStatDao transitionDao,
+    public CheckOffTaskUseCase(TaskSlotToggleMutation mutation,
+                               TaskDAO taskDao,
                                ExecutorService executor,
-                               Executor callbackDispatcher,
                                BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase,
-                               AppDatabase database,
                                Context appContext,
                                TaskMealIntegrationService taskMealIntegrationService) {
+        this.mutation = mutation;
         this.taskDao = taskDao;
-        this.completionService = completionService;
-        this.lifecycleManager = lifecycleManager;
-        this.transitionDao = transitionDao;
         this.executor = executor;
-        this.callbackDispatcher = callbackDispatcher;
         this.bookTaskCompletionExpenseUseCase = bookTaskCompletionExpenseUseCase;
-        this.database = database;
         this.appContext = appContext;
         this.taskMealIntegrationService = taskMealIntegrationService;
     }
 
-    /**
-     * Checks off a task slot on a background thread. Reads the full task from the DB,
-     * runs the completion logic, persists the changes, and invokes {@code onChanged}
-     * so the UI can refresh.
-     *
-     * @param listItem  the display model identifying the task and slot to check off
-     * @param onChanged callback invoked after a successful write, typically triggers a list refresh
-     */
     public void execute(TaskListItem listItem, Runnable onChanged) {
-        executor.execute(() -> TaskSlotToggleMutation.execute(
-                taskDao,
-                completionService,
-                lifecycleManager,
-                transitionDao,
+        executor.execute(() -> mutation.execute(
                 listItem.taskId,
                 listItem.slotId,
-                callbackDispatcher,
                 onChanged,
                 task -> {
                     boolean booked = bookTaskCompletionExpenseUseCase.execute(task, LocalDate.now());
@@ -85,8 +55,7 @@ public class CheckOffTaskUseCase {
                     if (mealUpdated) {
                         taskDao.write(task);
                     }
-                },
-                database
+                }
         ));
     }
 }

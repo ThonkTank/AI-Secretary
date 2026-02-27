@@ -2,7 +2,12 @@
 
 ## Open Issues
 
-- [nit] TaskPlannedMeal.java:26 — `recipeId` is `long`, inconsistent with the project-wide UUID String PK convention.
-- [nit] TaskSlot.java:53-58 — `displacementGroupType` stores one of three string literals ("CHAIN", "FIXED", "SINGLE") with no type safety; should be an enum. Correct fix level is `features/task/domain` or higher (DefaultTaskSlotGenerator is the primary setter).
+### Deferred (out-of-scope or cross-cutting)
 
-- [warning] TaskCore.java:92-96 — `Repetition.remainingDays()` calls `LocalDate.now()` directly. Every other scheduling method accepts a reference date as parameter; this is the sole outlier. Makes the method untestable and creates a hidden clock dependency inside a Room entity. Accept a `LocalDate today` parameter instead.
+- [nit] TaskPlannedMeal.java:26 — `recipeId` is `long`, inconsistent with the project-wide UUID String PK convention. Changing it requires updating the meal feature's persistence layer (cross-feature, higher-risk change).
+
+- [nit] TaskSlot.java:58 — `displacementGroupType` stores one of three string literals ("CHAIN", "FIXED", "SINGLE") with no type safety; should be an enum. **Promoted to `task/domain/internal/scheduling/REVIEW_BACKLOG.md`** where `DefaultTaskSlotGenerator` is the primary setter.
+
+### In-scope considerations
+
+- [consider] TaskCore.java:61-63 — `repsPerDay()` on `TaskCore` is a one-line forwarding method that delegates to `repetition.repsPerDay()`. Callers already access `core.repsPerDay()`; inlining to `core.repetition.repsPerDay()` removes one level of indirection at the cost of slightly more verbose call sites. Low gain, low risk. Not worth fixing unless more forwarding methods accumulate.

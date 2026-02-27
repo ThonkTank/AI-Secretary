@@ -54,19 +54,17 @@ public class CalendarReader implements TaskCalendarService {
         };
 
         List<TaskCalendarEvent> events = new ArrayList<>();
-        Cursor cursor = context.getContentResolver().query(
+        try (Cursor cursor = context.getContentResolver().query(
                 builder.build(),
                 projection,
                 null,
                 null,
                 CalendarContract.Instances.BEGIN + " ASC"
-        );
+        )) {
+            if (cursor == null) {
+                return events;
+            }
 
-        if (cursor == null) {
-            return events;
-        }
-
-        try {
             int titleCol  = cursor.getColumnIndexOrThrow(CalendarContract.Instances.TITLE);
             int beginCol  = cursor.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN);
             int endCol    = cursor.getColumnIndexOrThrow(CalendarContract.Instances.END);
@@ -87,7 +85,8 @@ public class CalendarReader implements TaskCalendarService {
                 LocalTime eventEnd = Instant.ofEpochMilli(endMillis)
                         .atZone(zoneId).toLocalTime();
 
-                if (!eventStart.isBefore(scheduleEnd) || !eventEnd.isAfter(scheduleStart)) {
+                boolean overlaps = eventStart.isBefore(scheduleEnd) && eventEnd.isAfter(scheduleStart);
+                if (!overlaps) {
                     continue;
                 }
 
@@ -101,8 +100,6 @@ public class CalendarReader implements TaskCalendarService {
                 String safeTitle = (title == null || title.isBlank()) ? FALLBACK_TITLE : title;
                 events.add(new TaskCalendarEvent(safeTitle, eventStart, eventEnd));
             }
-        } finally {
-            cursor.close();
         }
 
         return events;

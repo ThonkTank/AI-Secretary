@@ -57,14 +57,6 @@ final class TaskScorer {
     private final Consumer<String> logger;
     private final TaskBudgetEligibilityService budgetEligibilityService;
 
-    TaskScorer(TaskLifecycleManager lifecycleManager) {
-        this(lifecycleManager, null, null, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
-    }
-
-    TaskScorer(TaskLifecycleManager lifecycleManager, Consumer<String> logger) {
-        this(lifecycleManager, logger, null, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
-    }
-
     TaskScorer(TaskLifecycleManager lifecycleManager, Consumer<String> logger, TaskBudgetEligibilityService budgetEligibilityService) {
         this(lifecycleManager, logger, budgetEligibilityService, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
     }
@@ -101,7 +93,7 @@ final class TaskScorer {
                            int periodCompletions,
                            boolean isComplete,
                            int scheduledToday) {
-        CompletionState withIncrementedScheduledToday() {
+        CompletionState incrementScheduledToday() {
             return new CompletionState(completions, lastCompletion, periodCompletions, isComplete, scheduledToday + 1);
         }
     }
@@ -146,7 +138,7 @@ final class TaskScorer {
                                int maxChildPriority) {
         TaskScoringSnapshot withIncrementedScheduledToday() {
             return new TaskScoringSnapshot(
-                    completionState.withIncrementedScheduledToday(),
+                    completionState.incrementScheduledToday(),
                     urgencyState,
                     preferenceFitState,
                     multiDayStateSnapshot,
@@ -161,7 +153,7 @@ final class TaskScorer {
         // we also mark that preference slot as consumed to avoid reusing it.
         TaskScoringSnapshot withAssignedPrefSlot(String prefSlotId) {
             return new TaskScoringSnapshot(
-                    completionState.withIncrementedScheduledToday(),
+                    completionState.incrementScheduledToday(),
                     urgencyState,
                     preferenceFitState.withConsumedPrefSlot(prefSlotId),
                     multiDayStateSnapshot,
@@ -178,7 +170,7 @@ final class TaskScorer {
     }
 
     void maintenance(Task task, LocalDate day, TaskPlanningState state) {
-        advanceTaskPeriod(task, day);
+        lifecycleManager.advancePeriods(task, day);
         CompletionState completionState = scanSlots(task, day);
         syncPeriodCompletions(task, completionState);
         UrgencyState urgencyState = computeUrgencyState(task, day);
@@ -200,10 +192,6 @@ final class TaskScorer {
                 maxChildPriority
         );
         caches.put(task.core.id, snapshot);
-    }
-
-    private void advanceTaskPeriod(Task task, LocalDate day) {
-        lifecycleManager.advancePeriods(task, day);
     }
 
     /**
@@ -401,6 +389,8 @@ final class TaskScorer {
         }
 
         double requiredDays = task.requiredDays();
+        // isAfter is exclusive: deadline day itself is NOT expired (can still schedule),
+        // but remainingDays == 0 so applyUrgencyMultiplier will apply OVERDUE_URGENCY_FACTOR that day.
         boolean deadlineExpired = task.core.closeOnMiss && task.core.deadline != null && day.isAfter(task.core.deadline);
         return new UrgencyState(remainingDays, requiredDays, deadlineExpired);
     }
@@ -433,7 +423,7 @@ final class TaskScorer {
 
     private int applyPreferredTimeFit(int baseScore, ScoringContext context) {
         Set<String> consumed = context.snapshot.preferenceFitState().consumedPrefSlotIds();
-        PrefSlotMatch match = findClosestUnconsumedPrefSlot(
+        TaskPrefSlot match = findClosestUnconsumedPrefSlot(
                 context.snapshot.preferenceFitState().todayPrefSlots(),
                 context.start.toLocalTime(),
                 consumed
@@ -447,19 +437,9 @@ final class TaskScorer {
         return (int) (baseScore * fit);
     }
 
-    static final class PrefSlotMatch {
-        final TaskPrefSlot prefSlot;
-        final LocalTime start;
-
-        PrefSlotMatch(TaskPrefSlot prefSlot, LocalTime start) {
-            this.prefSlot = prefSlot;
-            this.start = start;
-        }
-    }
-
-    private PrefSlotMatch findClosestUnconsumedPrefSlot(List<TaskPrefSlot> preferredSlots,
-                                                         LocalTime candidateStart,
-                                                         Set<String> consumedIds) {
+    private TaskPrefSlot findClosestUnconsumedPrefSlot(List<TaskPrefSlot> preferredSlots,
+                                                        LocalTime candidateStart,
+                                                        Set<String> consumedIds) {
         TaskPrefSlot bestSlot = null;
         long minDiff = Long.MAX_VALUE;
         for (TaskPrefSlot slot : preferredSlots) {
@@ -470,7 +450,7 @@ final class TaskScorer {
                 bestSlot = slot;
             }
         }
-        return bestSlot != null ? new PrefSlotMatch(bestSlot, bestSlot.start) : null;
+        return bestSlot;
     }
 
     private int applyFollowUpBoost(int score, ScoringContext context, String previousTaskId) {
@@ -520,7 +500,7 @@ final class TaskScorer {
         int adjustedScore = (int) (score * snapshot.agingForce());
         MultiDayStateSnapshot multiDay = snapshot.multiDayStateSnapshot();
         if (multiDay.minDayDistance() > 0
-                && multiDay.minDayDistance() < Integer.MAX_VALUE
+                && multiDay.minDayDistance() != Integer.MAX_VALUE
                 && multiDay.minDayDistance() < multiDay.expectedDayGap()) {
             double ratio = multiDay.minDayDistance() / multiDay.expectedDayGap();
             double spread = Math.min(1.0, SPREAD_FLOOR + ratio * SPREAD_RANGE);
@@ -533,14 +513,14 @@ final class TaskScorer {
         TaskScoringSnapshot snapshot = caches.get(task.core.id);
         if (snapshot == null) return;
 
-        PrefSlotMatch match = findClosestUnconsumedPrefSlot(
+        TaskPrefSlot match = findClosestUnconsumedPrefSlot(
                 snapshot.preferenceFitState().todayPrefSlots(),
                 assignedStart,
                 snapshot.preferenceFitState().consumedPrefSlotIds()
         );
 
         if (match != null) {
-            caches.put(task.core.id, snapshot.withAssignedPrefSlot(match.prefSlot.id));
+            caches.put(task.core.id, snapshot.withAssignedPrefSlot(match.id));
         } else {
             caches.put(task.core.id, snapshot.withIncrementedScheduledToday());
         }

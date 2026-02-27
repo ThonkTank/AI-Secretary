@@ -49,14 +49,11 @@ public class SettingsController {
         new AlertDialog.Builder(context)
                 .setTitle(R.string.settings_title)
                 .setItems(options, (dialog, which) -> {
-                    if (which == OPTION_RESTORE_BACKUP) {
-                        showBackupRestoreDialog();
-                    } else if (which == OPTION_MANUAL_BACKUP) {
-                        createManualBackup();
-                    } else if (which == OPTION_FACTORY_RESET) {
-                        confirmFactoryReset();
-                    } else if (which == OPTION_ABOUT) {
-                        showAboutDialog();
+                    switch (which) {
+                        case OPTION_RESTORE_BACKUP: showBackupRestoreDialog(); break;
+                        case OPTION_MANUAL_BACKUP:  createManualBackup();       break;
+                        case OPTION_FACTORY_RESET:  confirmFactoryReset();      break;
+                        case OPTION_ABOUT:          showAboutDialog();          break;
                     }
                 })
                 .show();
@@ -93,7 +90,7 @@ public class SettingsController {
                 .setMessage(R.string.settings_restore_confirm_message)
                 .setPositiveButton(R.string.settings_restore_action, (dialog, which) -> executorService.execute(() -> {
                     boolean success = settingsDataService.restoreBackup(backupFile);
-                    runOnUiThread(() -> {
+                    mainHandler.post(() -> {
                         int messageId = success
                                 ? R.string.settings_restore_success
                                 : R.string.settings_restore_failure;
@@ -110,7 +107,7 @@ public class SettingsController {
     private void createManualBackup() {
         executorService.execute(() -> {
             File backup = settingsDataService.createManualBackup();
-            runOnUiThread(() -> {
+            mainHandler.post(() -> {
                 int messageId = backup != null
                         ? R.string.settings_backup_success
                         : R.string.settings_backup_failure;
@@ -125,7 +122,7 @@ public class SettingsController {
                 .setMessage(R.string.settings_reset_confirm_message)
                 .setPositiveButton(R.string.settings_reset_action, (dialog, which) -> executorService.execute(() -> {
                     boolean success = settingsDataService.factoryReset();
-                    runOnUiThread(() -> {
+                    mainHandler.post(() -> {
                         int messageId = success
                                 ? R.string.settings_reset_success
                                 : R.string.settings_reset_failure;
@@ -153,7 +150,4 @@ public class SettingsController {
                 .show();
     }
 
-    private void runOnUiThread(@NonNull Runnable runnable) {
-        mainHandler.post(runnable);
-    }
 }

@@ -34,7 +34,8 @@ public class TaskListItemMapper {
             parentTaskIds.add(rel.parent);
         }
 
-        return TaskListItem.task(
+        return new TaskListItem(
+                TaskListItem.ItemType.TASK,
                 task.core.id,
                 slot.id,
                 slot.parent,
@@ -49,9 +50,6 @@ public class TaskListItemMapper {
                 slot.score,
                 slot.completed,
                 slot.realStart != null && !slot.completed,
-                // timerRunning is reserved for future "stop without complete" feature;
-                // currently identical to inProgress since completion always sets realEnd.
-                slot.realStart != null && slot.realEnd == null && !slot.completed,
                 task.core.progress.current,
                 task.core.progress.target,
                 task.core.progress.unit,

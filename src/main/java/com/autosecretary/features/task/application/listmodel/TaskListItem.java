@@ -34,7 +34,6 @@ public class TaskListItem {
     public final int score;
     public final boolean completed;
     public final boolean inProgress;
-    public final boolean timerRunning;
     public final int progressCurrent;
     public final int progressTarget;
     public final String progressUnit;
@@ -58,7 +57,6 @@ public class TaskListItem {
                  int score,
                  boolean completed,
                  boolean inProgress,
-                 boolean timerRunning,
                  int progressCurrent,
                  int progressTarget,
                  String progressUnit,
@@ -81,7 +79,6 @@ public class TaskListItem {
         this.score = score;
         this.completed = completed;
         this.inProgress = inProgress;
-        this.timerRunning = timerRunning;
         this.progressCurrent = progressCurrent;
         this.progressTarget = progressTarget;
         this.progressUnit = progressUnit;
@@ -93,55 +90,6 @@ public class TaskListItem {
 
     public boolean hasProgressTarget() {
         return progressTarget > 0;
-    }
-
-    public static TaskListItem task(String taskId,
-                                    String slotId,
-                                    String slotParentId,
-                                    List<String> parentTaskIds,
-                                    String title,
-                                    String description,
-                                    LocalDate day,
-                                    LocalTime start,
-                                    LocalTime end,
-                                    LocalDate deadline,
-                                    int streak,
-                                    int score,
-                                    boolean completed,
-                                    boolean inProgress,
-                                    boolean timerRunning,
-                                    int progressCurrent,
-                                    int progressTarget,
-                                    String progressUnit,
-                                    int progressStepDelta,
-                                    boolean goalTask,
-                                    String goalIcon,
-                                    String goalColorHex) {
-        return new TaskListItem(
-                ItemType.TASK,
-                taskId,
-                slotId,
-                slotParentId,
-                parentTaskIds,
-                title,
-                description,
-                day,
-                start,
-                end,
-                deadline,
-                streak,
-                score,
-                completed,
-                inProgress,
-                timerRunning,
-                progressCurrent,
-                progressTarget,
-                progressUnit,
-                progressStepDelta,
-                goalTask,
-                goalIcon,
-                goalColorHex
-        );
     }
 
     public static TaskListItem calendarEvent(String eventId, String title, LocalDate day, LocalTime start, LocalTime end) {
@@ -161,7 +109,6 @@ public class TaskListItem {
                 0,
                 false,
                 false,
-                false,
                 0,
                 0,
                 "",
@@ -174,6 +121,11 @@ public class TaskListItem {
 
     public boolean isCalendarEvent() {
         return itemType == ItemType.CALENDAR_EVENT;
+    }
+
+    /** Returns true if this is a scheduled (non-calendar) task item on the given day. */
+    public boolean isScheduledOn(LocalDate day) {
+        return (day == null || day.equals(this.day)) && this.start != null;
     }
 
     public long daysUntilDeadline() {

@@ -30,6 +30,7 @@ import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.ui.internal.BudgetBalanceChartView;
+import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
 import com.autosecretary.features.budget.ui.internal.BudgetImportPickerController;
 import com.autosecretary.features.budget.ui.internal.BudgetRecurringSuggestionsDialogController;
 import com.autosecretary.features.budget.ui.internal.BudgetTransferDialogController;
@@ -461,7 +462,7 @@ public class BudgetFragment extends Fragment {
             percentText.setTextColor(color);
 
             row.setOnClickListener(v ->
-                    showEditLimitDialog(bar.getCategoryId(), bar.getBaseLimitCents() / 100.0));
+                    showEditLimitDialog(bar.getCategoryId(), bar.getBaseLimitCents()));
             container.addView(row);
         }
     }
@@ -499,10 +500,7 @@ public class BudgetFragment extends Fragment {
     }
 
     private String buildCategoryDisplayLabel(BudgetCategory category) {
-        String icon = (category.icon == null || category.icon.trim().isEmpty())
-                ? BudgetCategory.DEFAULT_ICON
-                : category.icon.trim();
-        return icon + " " + category.name;
+        return BudgetSummaryPresentationMapper.categoryLabel(category.icon, category.name);
     }
 
     private static boolean isValidColorHex(String colorHex) {
@@ -531,7 +529,7 @@ public class BudgetFragment extends Fragment {
     }
 
     private void showEditLimitDialog(String preSelectedCategoryId,
-                                     double currentAmount) {
+                                     long baseLimitCents) {
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.budget_edit_limit_dialog, null);
         Spinner categorySpinner = dialogView.findViewById(R.id.BudgetLimitDialogCategory);
@@ -549,8 +547,8 @@ public class BudgetFragment extends Fragment {
         SpinnerHelper.setSelection(categorySpinner, categoriesForType(allCategories, true),
                 preSelectedCategoryId, c -> c.id);
 
-        if (currentAmount > 0) {
-            amountInput.setText(String.format(Locale.GERMAN, "%.2f", currentAmount));
+        if (baseLimitCents > 0) {
+            amountInput.setText(String.format(Locale.GERMAN, "%.2f", baseLimitCents / 100.0));
         }
 
         new AlertDialog.Builder(requireContext())
@@ -567,19 +565,12 @@ public class BudgetFragment extends Fragment {
 
                     String rolloverCarryoverStr = rolloverCarryoverInput.getText() != null
                             ? rolloverCarryoverInput.getText().toString().trim() : "";
-                    long rolloverCarryoverCents = 0L;
-                    if (!rolloverCarryoverStr.isEmpty()) {
-                        Long parsed = new com.autosecretary.features.budget.domain.AmountParser()
-                                .parseAmountCents(rolloverCarryoverStr);
-                        if (parsed == null) return;
-                        rolloverCarryoverCents = parsed;
-                    }
 
                     budgetViewModel.saveBudgetLimitFromString(
                             categoryId,
                             amountStr,
                             rolloverSwitch.isChecked(),
-                            rolloverCarryoverCents);
+                            rolloverCarryoverStr);
                 })
                 .setNegativeButton(R.string.budget_dialog_cancel, null)
                 .show();

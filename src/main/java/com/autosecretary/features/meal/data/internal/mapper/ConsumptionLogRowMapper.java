@@ -12,14 +12,14 @@ public class ConsumptionLogRowMapper implements RowMapper<ConsumptionLog> {
         ConsumptionLog log = new ConsumptionLog();
         log.id = MapperSupport.asNullableLong(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.ID, null));
         log.date = MapperSupport.asLocalDate(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.DATE, "date"));
-        log.itemId = MapperSupport.asLong(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.ITEM_ID, "itemId"), 0L);
-        log.memberId = MapperSupport.asLong(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.MEMBER_ID, "memberId"), 0L);
-        log.recipeId = MapperSupport.asLong(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.RECIPE_ID, "recipeId"), 0L);
-        log.servingsConsumed = MapperSupport.asDouble(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.SERVINGS_CONSUMED, "servingsConsumed"), 0);
-        log.calories = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.CALORIES, "calories"), 0);
-        log.protein = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.PROTEIN, "protein"), 0);
-        log.carbs = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.CARBS, "carbs"), 0);
-        log.fat = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.FAT, "fat"), 0);
+        log.itemId = MapperSupport.asLong(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.ITEM_ID, "itemId"));
+        log.memberId = MapperSupport.asLong(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.MEMBER_ID, "memberId"));
+        log.recipeId = MapperSupport.asLong(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.RECIPE_ID, "recipeId"));
+        log.servingsConsumed = MapperSupport.asDouble(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.SERVINGS_CONSUMED, "servingsConsumed"));
+        log.calories = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.CALORIES, "calories"));
+        log.protein = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.PROTEIN, "protein"));
+        log.carbs = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.CARBS, "carbs"));
+        log.fat = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.FAT, "fat"));
         return log;
     }
 

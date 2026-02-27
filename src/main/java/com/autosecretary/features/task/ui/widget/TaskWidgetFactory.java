@@ -28,6 +28,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
     private final int colorInProgress;
     private final int colorCompleted;
     private final int colorDefault;
+    private final TaskListItemMapper mapper = new TaskListItemMapper();
     private List<TaskListItem> items = new ArrayList<>();
     private boolean isToday;
 
@@ -48,7 +49,6 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         AppDatabase db = AppDatabase.getInstance(context);
         TaskDAO dao = db.taskDao();
         List<Task> tasks = dao.readAll();
-        TaskListItemMapper mapper = new TaskListItemMapper();
         List<TaskListItem> allItems = mapper.map(tasks);
 
         LocalDate selectedDate = TaskWidgetProvider.getSelectedDate(context);
@@ -56,7 +56,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
 
         List<TaskListItem> filtered = new ArrayList<>();
         for (TaskListItem item : allItems) {
-            if (selectedDate.equals(item.day) && item.start != null) {
+            if (item.isScheduledOn(selectedDate)) {
                 filtered.add(item);
             }
         }
@@ -78,7 +78,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         TaskListItem item = items.get(position);
         RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.task_row_widget);
 
-        rv.setTextViewText(R.id.widget_row_start, item.start != null ? item.start.format(TIME_FORMAT) : "");
+        rv.setTextViewText(R.id.widget_row_start, item.start.format(TIME_FORMAT));
         rv.setTextViewText(R.id.widget_row_end, item.end != null ? item.end.format(TIME_FORMAT) : "");
         rv.setTextViewText(R.id.widget_row_title, item.title);
 
@@ -101,12 +101,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         }
 
         // Visual state for non-interactive days or completed items
-        if (!isToday || item.completed || item.slotId == null) {
-            // RemoteViews doesn't support setAlpha on CheckBox, but we can disable via enabled state
-            rv.setBoolean(R.id.widget_row_checkbox, "setEnabled", false);
-        } else {
-            rv.setBoolean(R.id.widget_row_checkbox, "setEnabled", true);
-        }
+        rv.setBoolean(R.id.widget_row_checkbox, "setEnabled", isToday && !item.completed && item.slotId != null);
 
         // In-progress visual hint
         if (item.inProgress) {

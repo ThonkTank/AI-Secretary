@@ -38,7 +38,7 @@ public class BudgetSummaryPresentationMapper {
      * Builds a display label for a category, e.g. {@code "🍕 Lebensmittel"}.
      * Falls back to {@link BudgetCategory#DEFAULT_ICON} when the icon field is blank.
      */
-    static String categoryLabel(String icon, String name) {
+    public static String categoryLabel(String icon, String name) {
         String resolvedIcon = icon != null && !icon.trim().isEmpty()
                 ? icon : BudgetCategory.DEFAULT_ICON;
         return resolvedIcon + " " + name;
