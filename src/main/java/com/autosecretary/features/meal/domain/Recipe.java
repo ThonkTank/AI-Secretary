@@ -77,14 +77,14 @@ public class Recipe {
 
     public void setRatingByMember(long memberId, int rating) {
         if (ratings == null) ratings = new ArrayList<>();
-        rating = Math.max(1, Math.min(5, rating));
+        int clamped = Math.max(1, Math.min(5, rating));
         for (int i = 0; i < ratings.size(); i++) {
             if (ratings.get(i).memberId() == memberId) {
-                ratings.set(i, new MemberRating(memberId, rating));
+                ratings.set(i, new MemberRating(memberId, clamped));
                 return;
             }
         }
-        ratings.add(new MemberRating(memberId, rating));
+        ratings.add(new MemberRating(memberId, clamped));
     }
 
     // Builder

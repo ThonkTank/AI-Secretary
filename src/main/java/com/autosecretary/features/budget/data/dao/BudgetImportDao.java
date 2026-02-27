@@ -20,12 +20,12 @@ public interface BudgetImportDao {
             SET status = 'COMPLETED',
                 totalTransactions = :total,
                 importedTransactions = :imported,
-                autoCategorized = :autoCat,
+                autoCategorized = :autoCategorized,
                 periodStart = :periodStart,
                 periodEnd = :periodEnd
             WHERE id = :id
             """)
-    void markCompleted(String id, int total, int imported, int autoCat,
+    void markCompleted(String id, int total, int imported, int autoCategorized,
                        LocalDate periodStart, LocalDate periodEnd);
 
     @Query("""

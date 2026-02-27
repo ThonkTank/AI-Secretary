@@ -109,12 +109,10 @@ public class TaskLifecycleManager {
                 && !completedSlot.day.isBefore(periodStart)
                 && completedSlot.day.isBefore(periodEnd);
 
-        if (rep.completeFirst && rep.carryoverDebt > 0 && completedSlot.day.isBefore(periodStart)) {
-            rep.carryoverDebt = Math.max(0, rep.carryoverDebt - 1);
-            return;
-        }
-
         if (rep.completeFirst && rep.carryoverDebt > 0) {
+            if (completedSlot.day.isBefore(periodStart)) {
+                rep.carryoverDebt = Math.max(0, rep.carryoverDebt - 1);
+            }
             return;
         }
 
@@ -153,7 +151,7 @@ public class TaskLifecycleManager {
 
         long prefMinutes = bestMatch.start.toSecondOfDay() / 60;
         long actualMinutes = slot.realStart.toSecondOfDay() / 60;
-        long newMinutes = Math.round(prefMinutes * (1 - DEFAULT_PREF_SLOT_EMA_ALPHA) + actualMinutes * DEFAULT_PREF_SLOT_EMA_ALPHA);
+        long newMinutes = ema(prefMinutes, actualMinutes);
         newMinutes = Math.round(newMinutes / 5.0) * 5; // Round to nearest 5-minute granularity
 
         bestMatch.start = LocalTime.of((int) (newMinutes / 60), (int) (newMinutes % 60));
@@ -176,10 +174,14 @@ public class TaskLifecycleManager {
         long actualGapMinutes = Duration.between(prereqSlot.realEnd, dependentSlot.realStart).toMinutes();
         if (actualGapMinutes < 0) actualGapMinutes += 24 * 60;
 
-        long newGap = Math.round(prereq.minGapMinutes * (1 - DEFAULT_PREF_SLOT_EMA_ALPHA) + actualGapMinutes * DEFAULT_PREF_SLOT_EMA_ALPHA);
+        long newGap = ema(prereq.minGapMinutes, actualGapMinutes);
         newGap = Math.round(newGap / 5.0) * 5;
         newGap = Math.max(0, newGap);
 
         prereq.minGapMinutes = (int) newGap;
+    }
+
+    private static long ema(long current, long sample) {
+        return Math.round(current * (1 - DEFAULT_PREF_SLOT_EMA_ALPHA) + sample * DEFAULT_PREF_SLOT_EMA_ALPHA);
     }
 }

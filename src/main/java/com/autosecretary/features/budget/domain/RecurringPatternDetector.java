@@ -9,7 +9,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Portierung des Legacy-Pattern-Detectors für wiederkehrende Budget-Buchungen.
@@ -54,8 +53,8 @@ public final class RecurringPatternDetector {
 
         List<RecurringBudgetTransaction> eligible = transactions.stream()
                 .filter(tx -> !tx.isRecurring && !tx.isPredicted && tx.parentRecurringId == null
-                        && tx.payee != null && !tx.payee.trim().isEmpty() && tx.transactionDate != null)
-                .collect(Collectors.toList());
+                        && tx.payee != null && !tx.payee.isBlank() && tx.transactionDate != null)
+                .toList();
 
         if (eligible.size() < minOccurrences) {
             return new ArrayList<>();
@@ -76,12 +75,12 @@ public final class RecurringPatternDetector {
             }
 
             RecurringSuggestion candidate = analyzePattern(group.getKey(), txList, amountStats);
-            if (candidate != null && candidate.suggestedType() != null) {
+            if (candidate != null) {
                 candidates.add(candidate);
             }
         }
 
-        candidates.sort((a, b) -> Double.compare(b.confidenceScore(), a.confidenceScore()));
+        candidates.sort(Comparator.comparingDouble(RecurringSuggestion::confidenceScore).reversed());
         return candidates;
     }
 

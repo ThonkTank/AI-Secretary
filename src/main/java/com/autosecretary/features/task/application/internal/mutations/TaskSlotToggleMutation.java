@@ -1,5 +1,15 @@
 package com.autosecretary.features.task.application.internal.mutations;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.concurrent.Executor;
+import java.util.function.Consumer;
+
+import android.util.Log;
+
+import androidx.room.RoomDatabase;
+
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskPrerequisite;
@@ -8,17 +18,6 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskCompletionService.CompletionPhase;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
-
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-
-import android.util.Log;
-
-import androidx.room.RoomDatabase;
-
-import java.time.LocalDate;
-import java.util.concurrent.Executor;
-import java.util.function.Consumer;
 
 /**
  * Shared operation for toggling a task slot completion state and persisting resulting writes.
@@ -158,20 +157,34 @@ public final class TaskSlotToggleMutation {
                                          TaskTransitionStatDao transitionDao,
                                          TaskSlot slot,
                                          int delta) {
-        if (taskDao == null || transitionDao == null || slot == null || slot.taskId == null || slot.day == null) {
+        if (!canRecordTransition(taskDao, transitionDao, slot)) {
             return;
         }
 
-        LocalTime eventTime = slot.realEnd != null
-                ? slot.realEnd
-                : (slot.realStart != null ? slot.realStart : (slot.start != null ? slot.start : LocalTime.now()));
+        LocalTime eventTime = determineEventTime(slot);
 
         String previousTaskId = taskDao.findMostRecentTaskBefore(slot.taskId, slot.day, eventTime);
-        if (previousTaskId == null || previousTaskId.equals(slot.taskId)) {
+        if (isInvalidTransition(previousTaskId, slot.taskId)) {
             return;
         }
 
         transitionDao.recordTransition(previousTaskId, slot.taskId, Math.max(1, delta), LocalDateTime.now());
+    }
+
+    private static boolean canRecordTransition(TaskDAO taskDao, TaskTransitionStatDao transitionDao, TaskSlot slot) {
+        return taskDao != null && transitionDao != null && slot != null
+            && slot.taskId != null && slot.day != null;
+    }
+
+    private static LocalTime determineEventTime(TaskSlot slot) {
+        if (slot.realEnd != null) return slot.realEnd;
+        if (slot.realStart != null) return slot.realStart;
+        if (slot.start != null) return slot.start;
+        return LocalTime.now();
+    }
+
+    private static boolean isInvalidTransition(String previousTaskId, String currentTaskId) {
+        return previousTaskId == null || previousTaskId.equals(currentTaskId);
     }
 
 }

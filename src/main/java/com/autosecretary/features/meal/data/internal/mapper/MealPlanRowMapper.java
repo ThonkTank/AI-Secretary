@@ -12,7 +12,7 @@ public class MealPlanRowMapper implements RowMapper<MealPlan> {
     public MealPlan fromRow(Map<String, Object> row) {
         MealPlan mealPlan = new MealPlan();
         mealPlan.id = MapperSupport.asNullableLong(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.ID, null));
-        mealPlan.date = MapperSupport.asLocalDate(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.DATE, "date"));
+        mealPlan.date = MapperSupport.asLocalDate(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.DATE, null));
         mealPlan.mealType = MapperSupport.asEnum(MealType.class,
                 MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.MEAL_TYPE, "mealType"), null);
         mealPlan.recipeId = MapperSupport.asLong(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.RECIPE_ID, "recipeId"));
@@ -30,13 +30,13 @@ public class MealPlanRowMapper implements RowMapper<MealPlan> {
     public Map<String, Object> toRow(MealPlan mealPlan) {
         Map<String, Object> row = new HashMap<>();
         row.put(LegacyMealFieldKeys.MealPlan.ID, mealPlan.id);
-        row.put(LegacyMealFieldKeys.MealPlan.DATE, mealPlan.date == null ? null : mealPlan.date.toString());
-        row.put(LegacyMealFieldKeys.MealPlan.MEAL_TYPE, mealPlan.mealType == null ? null : mealPlan.mealType.name());
+        row.put(LegacyMealFieldKeys.MealPlan.DATE, MapperSupport.toDateString(mealPlan.date));
+        row.put(LegacyMealFieldKeys.MealPlan.MEAL_TYPE, MapperSupport.enumNameOrNull(mealPlan.mealType));
         row.put(LegacyMealFieldKeys.MealPlan.RECIPE_ID, mealPlan.recipeId);
         row.put(LegacyMealFieldKeys.MealPlan.PLANNED_SERVINGS, mealPlan.plannedServings);
         row.put(LegacyMealFieldKeys.MealPlan.IS_COMPLETED, mealPlan.isCompleted ? 1 : 0);
         row.put(LegacyMealFieldKeys.MealPlan.ACTUAL_SERVINGS, mealPlan.actualServings);
-        row.put(LegacyMealFieldKeys.MealPlan.COMPLETED_AT, mealPlan.completedAt == null ? null : mealPlan.completedAt.toString());
+        row.put(LegacyMealFieldKeys.MealPlan.COMPLETED_AT, MapperSupport.toDateTimeString(mealPlan.completedAt));
         row.put(LegacyMealFieldKeys.MealPlan.ITEM_ID, mealPlan.itemId);
         row.put(LegacyMealFieldKeys.MealPlan.RECIPE_TITLE, mealPlan.recipeTitle);
         row.put(LegacyMealFieldKeys.MealPlan.ESTIMATED_CALORIES, mealPlan.estimatedCalories);

@@ -1,11 +1,12 @@
 package com.autosecretary.features.meal.data.internal.storage;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class InMemoryMealStorage implements MealStorage {
 
@@ -20,35 +21,23 @@ public class InMemoryMealStorage implements MealStorage {
 
     @Override
     public List<Map<String, Object>> findAll(String collection) {
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> row : getRowsOrEmpty(collection).values()) {
-            result.add(new HashMap<>(row));
-        }
-        return result;
+        return getRowsOrEmpty(collection).values().stream()
+                .map(HashMap::new)
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<Map<String, Object>> findByField(String collection, String field, Object value) {
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> row : getRowsOrEmpty(collection).values()) {
-            Object candidate = row.get(field);
-            if (value == null ? candidate == null : value.equals(candidate)) {
-                result.add(new HashMap<>(row));
-            }
-        }
-        return result;
+        return getRowsOrEmpty(collection).values().stream()
+                .filter(row -> Objects.equals(value, row.get(field)))
+                .map(HashMap::new)
+                .collect(Collectors.toList());
     }
 
     @Override
     public long upsert(String collection, Long id, Map<String, Object> row) {
         Map<Long, Map<String, Object>> rows = collections.computeIfAbsent(collection, key -> new LinkedHashMap<>());
-        long targetId;
-        if (id != null) {
-            targetId = id;
-            counters.put(collection, Math.max(counters.getOrDefault(collection, 0L), targetId));
-        } else {
-            targetId = nextId(collection);
-        }
+        long targetId = getOrGenerateId(collection, id);
         Map<String, Object> copy = new HashMap<>(row);
         copy.put("id", targetId);
         rows.put(targetId, copy);
@@ -64,13 +53,18 @@ public class InMemoryMealStorage implements MealStorage {
     }
 
     private long nextId(String collection) {
-        long value = counters.getOrDefault(collection, 0L) + 1L;
-        counters.put(collection, value);
-        return value;
+        return counters.merge(collection, 1L, Long::sum);
+    }
+
+    private long getOrGenerateId(String collection, Long explicitId) {
+        if (explicitId != null) {
+            counters.put(collection, Math.max(counters.getOrDefault(collection, 0L), explicitId));
+            return explicitId;
+        }
+        return nextId(collection);
     }
 
     private Map<Long, Map<String, Object>> getRowsOrEmpty(String collection) {
-        Map<Long, Map<String, Object>> rows = collections.get(collection);
-        return rows != null ? rows : Collections.emptyMap();
+        return collections.getOrDefault(collection, Collections.emptyMap());
     }
 }

@@ -79,9 +79,9 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private boolean shouldOpenBudgetFromIntent() {
+    private boolean shouldOpenBudgetFromIntent(Intent intent) {
         return BudgetWidgetProvider.TAB_BUDGET.equals(
-                getIntent().getStringExtra(BudgetWidgetProvider.EXTRA_OPEN_TAB)
+                intent.getStringExtra(BudgetWidgetProvider.EXTRA_OPEN_TAB)
         );
     }
 
@@ -132,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void navigateToIntentTarget(Intent intent, BottomNavigationView tabBar) {
-        if (shouldOpenBudgetFromIntent()) {
+        if (shouldOpenBudgetFromIntent(intent)) {
             boolean openAddDialog = BudgetWidgetProvider.ACTION_ADD_TRANSACTION.equals(
                     intent.getStringExtra(BudgetWidgetProvider.EXTRA_BUDGET_ACTION));
             showBudgetFragment(openAddDialog);

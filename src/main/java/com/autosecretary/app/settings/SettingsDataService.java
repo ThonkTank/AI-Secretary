@@ -87,11 +87,13 @@ public class SettingsDataService {
 
     private File getBackupDirectory() {
         File backupDir = new File(appContext.getFilesDir(), "backups");
-        if (!backupDir.exists()) {
-            //noinspection ResultOfMethodCallIgnored
-            backupDir.mkdirs();
-        }
+        ensureDirectoryExists(backupDir);
         return backupDir;
+    }
+
+    private void ensureDirectoryExists(File dir) {
+        //noinspection ResultOfMethodCallIgnored
+        dir.mkdirs();
     }
 
     private File getDatabaseFile() {
@@ -100,19 +102,19 @@ public class SettingsDataService {
 
     private void clearSidecarFiles() {
         File database = getDatabaseFile();
-        File walFile = new File(database.getAbsolutePath() + "-wal");
-        File shmFile = new File(database.getAbsolutePath() + "-shm");
+        deleteSilently(new File(database.getAbsolutePath() + "-wal"));
+        deleteSilently(new File(database.getAbsolutePath() + "-shm"));
+    }
+
+    private void deleteSilently(File file) {
         //noinspection ResultOfMethodCallIgnored
-        walFile.delete();
-        //noinspection ResultOfMethodCallIgnored
-        shmFile.delete();
+        file.delete();
     }
 
     private void copyDatabaseFile(@NonNull File source, @NonNull File destination) throws IOException {
         File parent = destination.getParentFile();
-        if (parent != null && !parent.exists()) {
-            //noinspection ResultOfMethodCallIgnored
-            parent.mkdirs();
+        if (parent != null) {
+            ensureDirectoryExists(parent);
         }
 
         try (FileInputStream inputStream = new FileInputStream(source);

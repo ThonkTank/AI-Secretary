@@ -91,7 +91,9 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
 
         rv.setCompoundButtonChecked(R.id.widget_row_checkbox, item.completed);
 
-        if (isToday && item.slotId != null && !item.completed) {
+        boolean isInteractive = isToday && item.slotId != null && !item.completed;
+
+        if (isInteractive) {
             // Interactive: set fill-in intent for checkbox toggle
             Intent fillIn = new Intent();
             fillIn.putExtra(TaskWidgetProvider.EXTRA_ACTION, TaskWidgetProvider.ACTION_TOGGLE);
@@ -101,16 +103,13 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         }
 
         // Visual state for non-interactive days or completed items
-        rv.setBoolean(R.id.widget_row_checkbox, "setEnabled", isToday && !item.completed && item.slotId != null);
+        rv.setBoolean(R.id.widget_row_checkbox, "setEnabled", isInteractive);
 
         // In-progress visual hint
-        if (item.inProgress) {
-            rv.setInt(R.id.widget_row_title, "setTextColor", colorInProgress);
-        } else if (item.completed) {
-            rv.setInt(R.id.widget_row_title, "setTextColor", colorCompleted);
-        } else {
-            rv.setInt(R.id.widget_row_title, "setTextColor", colorDefault);
-        }
+        int textColor = item.inProgress ? colorInProgress
+                      : item.completed ? colorCompleted
+                      : colorDefault;
+        rv.setInt(R.id.widget_row_title, "setTextColor", textColor);
 
         return rv;
     }

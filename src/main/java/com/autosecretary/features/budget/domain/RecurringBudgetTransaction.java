@@ -1,6 +1,7 @@
 package com.autosecretary.features.budget.domain;
 
 import java.time.LocalDate;
+import java.util.Objects;
 
 /**
  * Budget-Transaktion inkl. Felder für Import- und Recurring-Verknüpfungen.
@@ -47,8 +48,8 @@ public class RecurringBudgetTransaction {
             String importHash,
             String importId,
             String parentRecurringId) {
-        if (accountId == null) throw new IllegalArgumentException("accountId must not be null");
-        if (transactionDate == null) throw new IllegalArgumentException("transactionDate must not be null");
+        Objects.requireNonNull(accountId, "accountId must not be null");
+        Objects.requireNonNull(transactionDate, "transactionDate must not be null");
         RecurringBudgetTransaction tx = new RecurringBudgetTransaction();
         tx.id = id;
         tx.accountId = accountId;

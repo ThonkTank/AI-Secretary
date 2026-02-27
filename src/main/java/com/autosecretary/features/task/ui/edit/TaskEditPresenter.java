@@ -129,18 +129,14 @@ public class TaskEditPresenter {
     }
 
     private void updateRepetition(FormInput input) {
-        int newReps = input.reps;
-        int newPerPeriod = input.perPeriod;
-        Period newPeriodUnit = input.periodUnit;
-
         boolean periodChanged =
-            newReps != editState.reps ||
-            newPerPeriod != editState.perPeriod ||
-            newPeriodUnit != editState.periodUnit;
+            input.reps != editState.reps ||
+            input.perPeriod != editState.perPeriod ||
+            input.periodUnit != editState.periodUnit;
 
-        editState.reps = newReps;
-        editState.perPeriod = newPerPeriod;
-        editState.periodUnit = newPeriodUnit;
+        editState.reps = input.reps;
+        editState.perPeriod = input.perPeriod;
+        editState.periodUnit = input.periodUnit;
         editState.completeFirst = input.completeFirst;
 
         if (periodChanged || editState.periodStart == null) {

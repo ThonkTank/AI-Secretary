@@ -3,12 +3,12 @@ package com.autosecretary.features.meal.data.internal.dao;
 import com.autosecretary.features.meal.data.internal.mapper.RowMapper;
 import com.autosecretary.features.meal.data.internal.storage.MealStorage;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class BaseCollectionDao<T> {
 
@@ -36,11 +36,7 @@ public class BaseCollectionDao<T> {
     }
 
     public List<T> findAll() {
-        List<T> result = new ArrayList<>();
-        for (Map<String, Object> row : storage.findAll(collection)) {
-            result.add(mapper.fromRow(row));
-        }
-        return result;
+        return mapRows(storage.findAll(collection));
     }
 
     public void save(T value) {
@@ -56,21 +52,14 @@ public class BaseCollectionDao<T> {
     }
 
     public List<T> findAll(Predicate<T> filter) {
-        List<T> result = new ArrayList<>();
-        for (Map<String, Object> row : storage.findAll(collection)) {
-            T value = mapper.fromRow(row);
-            if (filter.test(value)) {
-                result.add(value);
-            }
-        }
-        return result;
+        return findAll().stream().filter(filter).collect(Collectors.toList());
     }
 
     public List<T> findAllByField(String field, Object value) {
-        List<T> result = new ArrayList<>();
-        for (Map<String, Object> row : storage.findByField(collection, field, value)) {
-            result.add(mapper.fromRow(row));
-        }
-        return result;
+        return mapRows(storage.findByField(collection, field, value));
+    }
+
+    private List<T> mapRows(List<Map<String, Object>> rows) {
+        return rows.stream().map(mapper::fromRow).collect(Collectors.toList());
     }
 }

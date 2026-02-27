@@ -19,5 +19,8 @@ public enum Priority {
      * Higher values indicate higher priority; used multiplicatively in scoring.
      */
     public final int scoringWeight;
-    Priority(int scoringWeight) { this.scoringWeight = scoringWeight; }
+
+    Priority(int scoringWeight) {
+        this.scoringWeight = scoringWeight;
+    }
 }

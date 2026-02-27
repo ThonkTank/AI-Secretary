@@ -1,5 +1,6 @@
 package com.autosecretary.features.budget.ui.internal;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -43,12 +44,12 @@ public class BudgetRecurringSuggestionsDialogController {
             return;
         }
 
-        View dialogView = LayoutInflater.from(fragment.requireContext())
-                .inflate(R.layout.budget_recurring_suggestions_dialog, null);
+        Context ctx = fragment.requireContext();
+        LayoutInflater inflater = LayoutInflater.from(ctx);
+        View dialogView = inflater.inflate(R.layout.budget_recurring_suggestions_dialog, null);
         LinearLayout listContainer = dialogView.findViewById(R.id.BudgetRecurringSuggestionList);
         TextView selectionInfo = dialogView.findViewById(R.id.BudgetRecurringSelectionInfo);
 
-        LayoutInflater inflater = LayoutInflater.from(fragment.requireContext());
         List<CheckBox> rows = new ArrayList<>();
 
         for (RecurringSuggestion suggestion : suggestions) {
@@ -70,8 +71,7 @@ public class BudgetRecurringSuggestionsDialogController {
                     suggestion.transactionIds().size()));
             confidence.setText(fragment.getString(R.string.budget_recurring_confidence,
                     suggestion.confidenceScore() * 100));
-            amount.setText(String.format(Locale.GERMAN, "%.2f €",
-                    Math.abs(suggestion.avgAmountCents()) / 100.0));
+            amount.setText(CurrencyFormatter.eurosMagnitude(suggestion.avgAmountCents()));
 
             amount.setTextColor(suggestion.avgAmountCents() >= 0
                     ? getColorFromResources(R.color.budget_positive)
@@ -90,7 +90,7 @@ public class BudgetRecurringSuggestionsDialogController {
 
         updateSelectionInfo(selectionInfo, rows);
 
-        AlertDialog dialog = new AlertDialog.Builder(fragment.requireContext())
+        AlertDialog dialog = new AlertDialog.Builder(ctx)
                 .setTitle(R.string.budget_recurring_title)
                 .setView(dialogView)
                 .setPositiveButton(fragment.getString(R.string.budget_recurring_create, countSelected(rows)),
@@ -139,13 +139,7 @@ public class BudgetRecurringSuggestionsDialogController {
     }
 
     private int countSelected(List<CheckBox> rows) {
-        int count = 0;
-        for (CheckBox checkbox : rows) {
-            if (checkbox.isChecked()) {
-                count++;
-            }
-        }
-        return count;
+        return (int) rows.stream().filter(CheckBox::isChecked).count();
     }
 
     private String getPatternDescription(RecurringSuggestion suggestion) {

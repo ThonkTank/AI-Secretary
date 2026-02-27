@@ -316,7 +316,8 @@ final class TaskScorer {
         if (isBlockedByIncompletePriorPeriod(context)) return false;
         if (isBelowMinimumSlotDuration(context)) return false;
         if (isBelowRequiredProgressDuration(context)) return false;
-        return !isPastClosableDeadline(context);
+        if (isPastClosableDeadline(context)) return false;
+        return true;
     }
 
     private boolean isAlreadyCompleteForCurrentCycle(ScoringContext context) {
@@ -432,8 +433,8 @@ final class TaskScorer {
             return context.snapshot.preferenceFitState().hasDayConstraints() ? 0 : baseScore;
         }
 
-        double dif = Duration.between(context.start.toLocalTime(), match.start).toMinutes() / 60.0;
-        double fit = Math.max(0, 1 - Math.abs(dif / preferredStartDeviationHours));
+        double deviationHours = Duration.between(context.start.toLocalTime(), match.start).toMinutes() / 60.0;
+        double fit = Math.max(0, 1 - Math.abs(deviationHours / preferredStartDeviationHours));
         return (int) (baseScore * fit);
     }
 
@@ -458,11 +459,8 @@ final class TaskScorer {
             return score;
         }
 
-        TaskTransitionStat stat = null;
         Map<String, TaskTransitionStat> fromMap = transitionStats.get(previousTaskId);
-        if (fromMap != null) {
-            stat = fromMap.get(context.task.core.id);
-        }
+        TaskTransitionStat stat = fromMap != null ? fromMap.get(context.task.core.id) : null;
         if (stat == null || stat.weight <= 0) {
             logFollowBoost(context, previousTaskId, 0, 1.0, 0.0, score, score);
             return score;
@@ -519,11 +517,9 @@ final class TaskScorer {
                 snapshot.preferenceFitState().consumedPrefSlotIds()
         );
 
-        if (match != null) {
-            caches.put(task.core.id, snapshot.withAssignedPrefSlot(match.id));
-        } else {
-            caches.put(task.core.id, snapshot.withIncrementedScheduledToday());
-        }
+        caches.put(task.core.id, match != null
+                ? snapshot.withAssignedPrefSlot(match.id)
+                : snapshot.withIncrementedScheduledToday());
     }
 
     boolean isPrefSlotConsumed(String taskId, String prefSlotId) {

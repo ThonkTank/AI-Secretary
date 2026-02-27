@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Encapsulates meal-specific task completion behavior so UI controllers stay lean.
@@ -79,40 +80,44 @@ public class TaskMealIntegrationService {
         }
 
         List<PantryItem> pantryItems = new ArrayList<>(pantryRepository.getPantryItems());
-        pantryItems.sort(Comparator.comparing(item -> item.expiryDate, Comparator.nullsLast(Comparator.naturalOrder())));
+        pantryItems.sort(Comparator.nullsLast(Comparator.comparing(item -> item.expiryDate)));
 
         RecipeScalingService.ScalingResult scalingResult = RecipeScalingService.scaleRecipe(recipe, servings);
         double factor = Math.max(0.0, scalingResult.factor());
 
         for (Recipe.RecipeIngredient ingredient : recipe.ingredients) {
-            if (ingredient.ingredientId() == null) {
-                continue;
-            }
-            double requiredAmount = ingredient.amount() * factor;
-            if (requiredAmount <= 0) {
-                continue;
-            }
-            for (PantryItem pantryItem : pantryItems) {
-                if (requiredAmount <= 0) {
-                    break;
-                }
-                if (pantryItem.id == null || pantryItem.ingredientId != ingredient.ingredientId()) {
-                    continue;
-                }
-                double consumed = Math.min(pantryItem.amount, requiredAmount);
-                pantryItem.amount -= consumed;
-                requiredAmount -= consumed;
+            consumeIngredientFromPantry(ingredient, pantryItems, factor);
+        }
+    }
 
-                if (pantryItem.amount <= 0.00001d) {
-                    pantryRepository.deletePantryItem(pantryItem.id);
-                } else {
-                    pantryRepository.savePantryItem(pantryItem);
-                }
+    private void consumeIngredientFromPantry(Recipe.RecipeIngredient ingredient, List<PantryItem> pantryItems, double scaleFactor) {
+        if (ingredient.ingredientId() == null) {
+            return;
+        }
+        double requiredAmount = ingredient.amount() * scaleFactor;
+        if (requiredAmount <= 0) {
+            return;
+        }
+        for (PantryItem pantryItem : pantryItems) {
+            if (requiredAmount <= 0) break;
+            if (pantryItem.id == null || pantryItem.ingredientId != ingredient.ingredientId()) {
+                continue;
+            }
+            double consumed = Math.min(pantryItem.amount, requiredAmount);
+            pantryItem.amount -= consumed;
+            requiredAmount -= consumed;
+
+            if (pantryItem.amount <= 0.00001d) {
+                pantryRepository.deletePantryItem(pantryItem.id);
+            } else {
+                pantryRepository.savePantryItem(pantryItem);
             }
         }
     }
 
     private void writeConsumptionLog(Recipe recipe, LocalDate completionDate, int servings) {
+        // If the recipe has no defined base servings, treat each requested serving as one unit
+        // (scale = requested count), rather than defaulting to 1.0 and ignoring the count.
         double scale = recipe.servings > 0 ? (double) servings / recipe.servings : servings;
         int calories = (int) Math.round(recipe.totalCalories * scale);
         int protein = (int) Math.round(recipe.totalProtein * scale);
@@ -120,7 +125,7 @@ public class TaskMealIntegrationService {
         int fat = (int) Math.round(recipe.totalFat * scale);
 
         ConsumptionLog log = new ConsumptionLog.Builder(completionDate, 0L, DEFAULT_MEMBER_ID)
-                .recipeId(recipe.id != null ? recipe.id : 0L)
+                .recipeId(Objects.requireNonNullElse(recipe.id, 0L))
                 .servings(servings)
                 .calories(calories)
                 .protein(protein)
@@ -132,19 +137,16 @@ public class TaskMealIntegrationService {
 
     private void completeMealPlanEntry(MealType mealType, TaskPlannedMeal plannedMeal, LocalDate completionDate, int servings) {
         List<MealPlan> plans = mealRepository.getMealPlans(completionDate, completionDate);
-        for (MealPlan plan : plans) {
-            if (plan.date == null) {
-                continue;
-            }
-            if (plan.mealType != mealType || plan.recipeId != plannedMeal.recipeId) {
-                continue;
-            }
-            plan.isCompleted = true;
-            plan.actualServings = servings;
-            plan.completedAt = LocalDateTime.now();
-            mealRepository.saveMealPlan(plan);
-            return;
-        }
+        plans.stream()
+                .filter(plan -> plan.date != null)
+                .filter(plan -> plan.mealType == mealType && plan.recipeId == plannedMeal.recipeId)
+                .findFirst()
+                .ifPresent(plan -> {
+                    plan.isCompleted = true;
+                    plan.actualServings = servings;
+                    plan.completedAt = LocalDateTime.now();
+                    mealRepository.saveMealPlan(plan);
+                });
     }
 
 }

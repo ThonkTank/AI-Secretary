@@ -356,6 +356,12 @@ public class LegacyMealImportService {
         }
     }
 
+    // --- Legacy-only parsing helpers ---
+    // These are NOT shared with MapperSupport in meal.data.internal because the contracts diverge:
+    //   asEnum     — case-insensitive matching + Log.w on unknown value (vs. Enum.valueOf strict + exception)
+    //   asDate     — multi-format + epoch-seconds support for old DB exports (vs. ISO-only in MapperSupport)
+    //   asDateTime — same multi-format rationale as asDate
+    // Sharing them would either relax the data layer's guarantees or add legacy complexity there.
     private static <E extends Enum<E>> E asEnum(Class<E> type, Object raw, E fallback) {
         if (raw == null) return fallback;
         String value = raw.toString().trim();
@@ -375,10 +381,7 @@ public class LegacyMealImportService {
         }
         String value = raw.toString().trim();
         if (value.isEmpty()) return null;
-        for (DateTimeFormatter formatter : DATE_FORMATTERS) {
-            try { return LocalDate.parse(value, formatter); } catch (DateTimeParseException ignored) { }
-        }
-        return null;
+        return tryParseLocalDate(value);
     }
 
     private static LocalDateTime asDateTime(Object raw) {
@@ -386,8 +389,27 @@ public class LegacyMealImportService {
         if (raw instanceof LocalDateTime dateTime) return dateTime;
         String value = raw.toString().trim();
         if (value.isEmpty()) return null;
+        return tryParseLocalDateTime(value);
+    }
+
+    private static LocalDate tryParseLocalDate(String value) {
+        for (DateTimeFormatter formatter : DATE_FORMATTERS) {
+            try {
+                return LocalDate.parse(value, formatter);
+            } catch (DateTimeParseException ignored) {
+                // Try next formatter
+            }
+        }
+        return null;
+    }
+
+    private static LocalDateTime tryParseLocalDateTime(String value) {
         for (DateTimeFormatter formatter : DATE_TIME_FORMATTERS) {
-            try { return LocalDateTime.parse(value, formatter); } catch (DateTimeParseException ignored) { }
+            try {
+                return LocalDateTime.parse(value, formatter);
+            } catch (DateTimeParseException ignored) {
+                // Try next formatter
+            }
         }
         return null;
     }

@@ -97,10 +97,10 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             this.start = taskRow.findViewById(R.id.StartTime);
             this.end = taskRow.findViewById(R.id.EndTime);
             this.checkBox = taskRow.findViewById(R.id.TaskCheckBox);
-            this.progressContainer = taskRow.findViewById(R.id.progress_container);
-            this.progressMinus = taskRow.findViewById(R.id.btn_progress_minus);
-            this.progressPlus = taskRow.findViewById(R.id.btn_progress_plus);
-            this.progressText = taskRow.findViewById(R.id.progress_text);
+            this.progressContainer = taskRow.findViewById(R.id.ProgressContainer);
+            this.progressMinus = taskRow.findViewById(R.id.ProgressMinusButton);
+            this.progressPlus = taskRow.findViewById(R.id.ProgressPlusButton);
+            this.progressText = taskRow.findViewById(R.id.ProgressText);
             this.deadlineCountdown = taskRow.findViewById(R.id.DeadlineCountdown);
             this.streakDisplay = taskRow.findViewById(R.id.StreakDisplay);
             this.timerButton = taskRow.findViewById(R.id.TaskTimerButton);

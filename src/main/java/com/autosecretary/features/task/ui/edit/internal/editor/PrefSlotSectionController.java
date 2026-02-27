@@ -86,10 +86,7 @@ public class PrefSlotSectionController {
     }
 
     private void showDayPicker(PrefSlotEditState prefSlot, Set<DayOfWeek> takenByOthers) {
-        DayOfWeek[] weekDays = {
-            DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
-            DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY
-        };
+        DayOfWeek[] weekDays = DayOfWeek.values();
         String[] labels = fragment.getResources().getStringArray(R.array.task_edit_weekday_short_labels);
 
         if (labels.length != WEEK_DAY_COUNT) {
@@ -177,17 +174,14 @@ public class PrefSlotSectionController {
     }
 
     private void showTimePicker(PrefSlotEditState prefSlot) {
-        int hour = prefSlot.start != null ? prefSlot.start.getHour() : 6;
-        int minute = prefSlot.start != null ? prefSlot.start.getMinute() : 0;
-
+        LocalTime start = prefSlot.start != null ? prefSlot.start : LocalTime.of(6, 0);
         new TimePickerDialog(fragment.requireContext(), (picker, h, m) -> {
             prefSlot.start = LocalTime.of(h, m);
             rebuildPrefSlotUI();
-        }, hour, minute, true).show();
+        }, start.getHour(), start.getMinute(), true).show();
     }
 
     private int dimenPx(@DimenRes int dimenResId) {
-        Context context = fragment.requireContext();
-        return context.getResources().getDimensionPixelSize(dimenResId);
+        return fragment.requireContext().getResources().getDimensionPixelSize(dimenResId);
     }
 }

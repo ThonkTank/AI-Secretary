@@ -2,7 +2,10 @@ package com.autosecretary.features.meal.data.internal.mapper;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 final class MapperSupport {
     private MapperSupport() {
@@ -89,9 +92,36 @@ final class MapperSupport {
     }
 
     static Object get(Map<String, Object> row, String key, String fallbackKey) {
-        if (row.containsKey(key)) {
-            return row.get(key);
+        Object value = row.get(key);
+        return value != null ? value : (fallbackKey != null ? row.get(fallbackKey) : null);
+    }
+
+    static String enumNameOrNull(Enum<?> value) {
+        return value == null ? null : value.name();
+    }
+
+    static String toDateString(LocalDate date) {
+        return date == null ? null : date.toString();
+    }
+
+    static String toDateTimeString(LocalDateTime dateTime) {
+        return dateTime == null ? null : dateTime.toString();
+    }
+
+    // Safe collection conversions
+    @SuppressWarnings("unchecked")
+    static <E> Set<E> asSet(Object value) {
+        if (value instanceof Set<?> set) {
+            return (Set<E>) set;
         }
-        return fallbackKey == null ? null : row.get(fallbackKey);
+        return Collections.emptySet();
+    }
+
+    @SuppressWarnings("unchecked")
+    static <E> List<E> asList(Object value) {
+        if (value instanceof List<?> list) {
+            return (List<E>) list;
+        }
+        return Collections.emptyList();
     }
 }

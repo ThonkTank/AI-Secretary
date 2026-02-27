@@ -30,7 +30,7 @@ public final class AccountBalanceTimelineService {
                                                               long startBalanceCents,
                                                               List<DailyDeltaPoint> dailyDeltas) {
         Map<LocalDate, Long> deltaByDate = dailyDeltas.stream()
-                .collect(Collectors.toMap(DailyDeltaPoint::bucketDate, DailyDeltaPoint::deltaCents));
+                .collect(Collectors.toMap(DailyDeltaPoint::date, DailyDeltaPoint::deltaCents));
 
         List<BalanceTimelinePoint> points = new ArrayList<>();
         long runningBalance = startBalanceCents;

@@ -59,7 +59,7 @@ public final class DatePatternDetector {
         List<LocalDate> dates = transactions.stream()
                 .map(tx -> tx.transactionDate)
                 .sorted()
-                .collect(Collectors.toList());
+                .toList();
 
         PatternResult monthlyDay = checkMonthlyDay(dates);
         if (monthlyDay != null) {
@@ -80,13 +80,11 @@ public final class DatePatternDetector {
     }
 
     static PatternResult checkMonthlyDay(List<LocalDate> dates) {
-        List<Integer> daysOfMonth = dates.stream().map(LocalDate::getDayOfMonth).collect(Collectors.toList());
+        List<Integer> daysOfMonth = dates.stream().map(LocalDate::getDayOfMonth).toList();
         int dominantDay = mode(daysOfMonth);
 
         boolean allMatch = daysOfMonth.stream()
-                .allMatch(d -> Math.abs(d - dominantDay) <= MONTHLY_DAY_TOLERANCE
-                        || (dominantDay >= MONTHLY_END_WRAP_THRESHOLD && d <= MONTHLY_EARLY_WRAP_THRESHOLD)
-                        || (d >= MONTHLY_END_WRAP_THRESHOLD && dominantDay <= MONTHLY_EARLY_WRAP_THRESHOLD));
+                .allMatch(d -> isMonthlyDayMatch(d, dominantDay));
 
         if (allMatch) {
             return new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_DAY, dominantDay, null);
@@ -94,11 +92,15 @@ public final class DatePatternDetector {
         return null;
     }
 
+    static boolean isMonthlyDayMatch(int day, int dominantDay) {
+        return Math.abs(day - dominantDay) <= MONTHLY_DAY_TOLERANCE
+                || (dominantDay >= MONTHLY_END_WRAP_THRESHOLD && day <= MONTHLY_EARLY_WRAP_THRESHOLD)
+                || (day >= MONTHLY_END_WRAP_THRESHOLD && dominantDay <= MONTHLY_EARLY_WRAP_THRESHOLD);
+    }
+
     static PatternResult checkMonthlyLast(List<LocalDate> dates) {
-        boolean allLastDays = dates.stream().allMatch(date -> {
-            int lastDay = date.lengthOfMonth();
-            return date.getDayOfMonth() > lastDay - MONTHLY_LAST_TAIL_DAYS;
-        });
+        boolean allLastDays = dates.stream()
+                .allMatch(date -> date.getDayOfMonth() > date.lengthOfMonth() - MONTHLY_LAST_TAIL_DAYS);
         if (allLastDays) {
             return new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_LAST, 0, null);
         }
@@ -106,7 +108,7 @@ public final class DatePatternDetector {
     }
 
     static PatternResult checkWeekly(List<LocalDate> dates) {
-        List<DayOfWeek> weekdays = dates.stream().map(LocalDate::getDayOfWeek).collect(Collectors.toList());
+        List<DayOfWeek> weekdays = dates.stream().map(LocalDate::getDayOfWeek).toList();
         Map<DayOfWeek, Long> counts = weekdays.stream()
                 .collect(Collectors.groupingBy(d -> d, Collectors.counting()));
         DayOfWeek dominantWeekday = counts.entrySet().stream()
@@ -117,7 +119,7 @@ public final class DatePatternDetector {
         long modeCount = counts.getOrDefault(dominantWeekday, 0L);
         if (modeCount >= dates.size() * WEEKLY_DAY_MATCH_RATIO) {
             List<Long> intervals = calculateIntervals(dates);
-            double avgInterval = intervals.stream().mapToLong(Long::longValue).average().orElse(0);
+            double avgInterval = calculateAverageInterval(intervals);
             if (avgInterval >= WEEKLY_INTERVAL_MIN_DAYS && avgInterval <= WEEKLY_INTERVAL_MAX_DAYS) {
                 return new PatternResult(RecurringBudgetTransaction.RecurringType.WEEKLY, 0, dominantWeekday);
             }
@@ -131,9 +133,9 @@ public final class DatePatternDetector {
             return null;
         }
 
-        double avgInterval = intervals.stream().mapToLong(Long::longValue).average().orElse(0);
+        double avgInterval = calculateAverageInterval(intervals);
         boolean consistent = intervals.stream()
-                .allMatch(i -> Math.abs(i - avgInterval) <= avgInterval * INTERVAL_RELATIVE_TOLERANCE + INTERVAL_ABSOLUTE_TOLERANCE_DAYS);
+                .allMatch(i -> isConsistentInterval(i, avgInterval));
 
         if (consistent && avgInterval >= INTERVAL_MIN_DAYS) {
             return new PatternResult(RecurringBudgetTransaction.RecurringType.INTERVAL,
@@ -150,9 +152,22 @@ public final class DatePatternDetector {
         return intervals;
     }
 
+    static double calculateAverageInterval(List<Long> intervals) {
+        return intervals.stream().mapToLong(Long::longValue).average().orElse(0);
+    }
+
+    static boolean isConsistentInterval(long interval, double avgInterval) {
+        double deviation = Math.abs(interval - avgInterval);
+        double tolerance = avgInterval * INTERVAL_RELATIVE_TOLERANCE + INTERVAL_ABSOLUTE_TOLERANCE_DAYS;
+        return deviation <= tolerance;
+    }
+
     static int mode(List<Integer> values) {
-        Map<Integer, Long> counts = values.stream().collect(Collectors.groupingBy(v -> v, Collectors.counting()));
-        return counts.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
+        Map<Integer, Long> counts = values.stream()
+                .collect(Collectors.groupingBy(v -> v, Collectors.counting()));
+        return counts.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
                 .orElseThrow(() -> new IllegalStateException("mode() called on empty list"));
     }
 

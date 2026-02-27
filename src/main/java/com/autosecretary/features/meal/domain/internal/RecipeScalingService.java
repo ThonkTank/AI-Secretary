@@ -4,6 +4,7 @@ import com.autosecretary.features.meal.domain.Recipe;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Skalierung von Rezepten inkl. Precision-Regeln und Portion-Grenzen.
@@ -35,17 +36,20 @@ public class RecipeScalingService {
     private static double resolveServings(Recipe recipe, double requestedServings) {
         double minServings = Math.max(0.1, recipe.minServings);
         double maxServings = Math.max(minServings, recipe.maxServings);
-        double clamped = Math.min(maxServings, Math.max(minServings, requestedServings));
+        double clamped = clamp(requestedServings, minServings, maxServings);
 
-        Recipe.ScalingPrecision precision = recipe.scalingPrecision == null
-                ? Recipe.ScalingPrecision.ROUGH
-                : recipe.scalingPrecision;
+        Recipe.ScalingPrecision precision = Objects.requireNonNullElse(recipe.scalingPrecision, Recipe.ScalingPrecision.ROUGH);
 
-        return switch (precision) {
-            case NONE -> Math.min(maxServings, Math.max(minServings, recipe.servings));
-            case EXACT -> Math.min(maxServings, Math.max(minServings, Math.rint(clamped)));
-            case ROUGH -> Math.min(maxServings, Math.max(minServings, Math.round(clamped * 2.0) / 2.0));
+        double toPrecision = switch (precision) {
+            case NONE -> recipe.servings;
+            case EXACT -> Math.rint(clamped);
+            case ROUGH -> Math.round(clamped * 2.0) / 2.0;
         };
+        return clamp(toPrecision, minServings, maxServings);
+    }
+
+    private static double clamp(double value, double min, double max) {
+        return Math.min(max, Math.max(min, value));
     }
 
     public record ScaledIngredient(Long ingredientId, String ingredientName, double amount, String unit) {}

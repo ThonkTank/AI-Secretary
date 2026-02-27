@@ -8,22 +8,26 @@ import java.time.DayOfWeek;
 
 public class Preferences {
     private final Context context;
-    private SharedPreferences prefs;
+    private final SharedPreferences prefs;
 
     public Preferences(Context c) {
         this.context = c;
-        this.prefs = context.getSharedPreferences("user_prefs", context.MODE_PRIVATE);
+        this.prefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE);
     }
 
-    //planning prefs
+    // planning prefs
     public void writePrefTime(DayOfWeek day, boolean start, LocalTime value) {
         String key = prefKey(day, start);
         prefs.edit().putString(key, value.toString()).apply();
     }
+
     public LocalTime readPrefTime(DayOfWeek day, boolean start) {
         String key = prefKey(day, start);
         String defaultValue = start ? "06:00" : "21:00";
         return LocalTime.parse(prefs.getString(key, defaultValue));
     }
-    private String prefKey(DayOfWeek day, boolean start) {return day.toString()+"_"+ (start ? "start" : "end");}
+
+    private String prefKey(DayOfWeek day, boolean start) {
+        return day.toString() + "_" + (start ? "start" : "end");
+    }
 }

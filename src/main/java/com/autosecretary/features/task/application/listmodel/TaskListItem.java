@@ -125,7 +125,7 @@ public class TaskListItem {
 
     /** Returns true if this is a scheduled (non-calendar) task item on the given day. */
     public boolean isScheduledOn(LocalDate day) {
-        return (day == null || day.equals(this.day)) && this.start != null;
+        return this.start != null && (day == null || day.equals(this.day));
     }
 
     public long daysUntilDeadline() {

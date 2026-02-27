@@ -39,7 +39,7 @@ public class BudgetSummaryPresentationMapper {
      * Falls back to {@link BudgetCategory#DEFAULT_ICON} when the icon field is blank.
      */
     public static String categoryLabel(String icon, String name) {
-        String resolvedIcon = icon != null && !icon.trim().isEmpty()
+        String resolvedIcon = icon != null && !icon.isBlank()
                 ? icon : BudgetCategory.DEFAULT_ICON;
         return resolvedIcon + " " + name;
     }

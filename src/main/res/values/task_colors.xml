@@ -20,7 +20,7 @@
     <color name="task_edit_day_selected_background">@color/task_color_primary</color>
     <color name="task_edit_day_selected_text">@color/task_color_on_primary</color>
     <color name="task_edit_day_selected_stroke">@color/task_color_primary</color>
-    <color name="task_edit_day_unselected_background">#00000000</color>
+    <color name="task_edit_day_unselected_background">@color/transparent</color>
     <color name="task_edit_day_unselected_text">@color/task_color_primary</color>
     <color name="task_edit_day_unselected_stroke">@color/task_color_outline</color>
     <color name="task_edit_day_disabled_background">#145C7A4D</color>

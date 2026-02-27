@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="nav_tasks">Tasks</string>
+    <string name="nav_tasks">Aufgaben</string>
     <string name="nav_budget">Budget</string>
 
     <string name="budget_title">Budgetübersicht</string>

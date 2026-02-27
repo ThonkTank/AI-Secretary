@@ -181,10 +181,14 @@ public class BudgetRoomRepository implements BudgetRepository {
             return false;
         }
 
-        BudgetTransactionEntity debit = transaction.direction == TransactionDirection.EXPENSE
-                ? transaction : linked;
-        BudgetTransactionEntity credit = transaction.direction == TransactionDirection.INCOME
-                ? transaction : linked;
+        BudgetTransactionEntity debit, credit;
+        if (transaction.direction == TransactionDirection.EXPENSE) {
+            debit = transaction;
+            credit = linked;
+        } else {
+            debit = linked;
+            credit = transaction;
+        }
 
         debit.accountId = sourceAccountId;
         debit.direction = TransactionDirection.EXPENSE;

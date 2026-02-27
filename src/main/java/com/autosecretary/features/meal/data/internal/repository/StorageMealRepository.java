@@ -17,6 +17,7 @@ import com.autosecretary.features.meal.domain.WeeklyFoodTarget;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 public class StorageMealRepository implements MealRepository {
 
@@ -79,7 +80,7 @@ public class StorageMealRepository implements MealRepository {
     @Override
     public CookingPreferences getCookingPreferences() {
         CookingPreferences preferences = cookingPreferencesDao.findById(SINGLETON_PREFERENCES_ID);
-        return preferences == null ? new CookingPreferences() : preferences;
+        return Objects.requireNonNullElse(preferences, new CookingPreferences());
     }
 
     @Override
@@ -92,8 +93,7 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public WeeklyFoodTarget findWeeklyFoodTarget(String periodKey) {
-        List<WeeklyFoodTarget> results = weeklyFoodTargetDao.findAllByField("periodKey", periodKey);
-        return results.isEmpty() ? null : results.get(0);
+        return weeklyFoodTargetDao.findAllByField("periodKey", periodKey).stream().findFirst().orElse(null);
     }
 
     @Override

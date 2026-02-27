@@ -21,13 +21,10 @@ public class LoadBudgetWidgetSummaryUseCase {
         long netBalanceCents = transactionDao.getNetBalanceCents();
 
         List<CategorySpendSummary> spendTotals = budgetLimitDao.getCategorySpendTotals(yearMonth);
-        long freeBudgetCents = 0;
-        for (CategorySpendSummary total : spendTotals) {
-            if (total.limitAmountCents() <= 0) {
-                continue;
-            }
-            freeBudgetCents += total.limitAmountCents() - total.spentCents();
-        }
+        long freeBudgetCents = spendTotals.stream()
+                .filter(t -> t.limitAmountCents() > 0)
+                .mapToLong(t -> t.limitAmountCents() - t.spentCents())
+                .sum();
 
         return new BudgetWidgetSummary(netBalanceCents, freeBudgetCents);
     }

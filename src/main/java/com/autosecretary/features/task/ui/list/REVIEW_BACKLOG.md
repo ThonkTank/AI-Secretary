@@ -9,3 +9,4 @@
 [warning] TaskListFragment.java:65-205 — `onViewCreated` is ~140 lines: ViewModel init, six observers, four button listeners, mode toggle, day nav display, adapter wiring, calendar permission. Extract named setup methods (`bindDayNavigation`, `bindModeToggle`, `bindAdapter`, `observeViewModel`).
 
 [consider] TaskListFragment.java:86-91 — The timer-toggle lambda in the `TaskRowActions` constructor could be a single `vm.toggleTimer(ViewSlot)` method. Tradeoff: adds a method to `TaskViewModel` just to shorten a 5-line lambda; acceptable either way.
+

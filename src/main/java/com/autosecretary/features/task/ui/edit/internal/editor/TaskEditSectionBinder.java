@@ -105,9 +105,9 @@ public class TaskEditSectionBinder {
             updateDeadlineDisplay(views);
         });
 
-
         bindEnumSpinner(schedulingTypeView, TaskCore.SchedulingType.values());
-        schedulingTypeView.setSelection((editState.schedulingType != null ? editState.schedulingType : TaskCore.SchedulingType.TASK).ordinal());
+        TaskCore.SchedulingType schedulingType = editState.schedulingType != null ? editState.schedulingType : TaskCore.SchedulingType.TASK;
+        schedulingTypeView.setSelection(schedulingType.ordinal());
         fixedDateView.setText(editState.fixedDate != null ? editState.fixedDate.toString() : "");
         fixedStartView.setText(editState.fixedStart != null ? editState.fixedStart.toString() : "");
         fixedEndView.setText(editState.fixedEnd != null ? editState.fixedEnd.toString() : "");
@@ -158,7 +158,8 @@ public class TaskEditSectionBinder {
         perPeriodView.setText(String.valueOf(editState.perPeriod > 0 ? editState.perPeriod : 1));
 
         bindEnumSpinner(periodUnitView, Period.values());
-        periodUnitView.setSelection((editState.periodUnit != null ? editState.periodUnit : Period.DAY).ordinal());
+        Period periodUnit = editState.periodUnit != null ? editState.periodUnit : Period.DAY;
+        periodUnitView.setSelection(periodUnit.ordinal());
         completeFirstView.setChecked(editState.completeFirst);
 
         presenter.initializeRepetitionState(
@@ -241,8 +242,9 @@ public class TaskEditSectionBinder {
     }
 
     private void updateDeadlineDisplay(SchedulingViews views) {
-        String text = presenter.getEditableDeadline() != null
-            ? presenter.getEditableDeadline().format(DEADLINE_FORMATTER)
+        LocalDate deadline = presenter.getEditableDeadline();
+        String text = deadline != null
+            ? deadline.format(DEADLINE_FORMATTER)
             : fragment.getString(R.string.task_editor_deadline_none);
         views.deadlineView.setText(text);
         views.deadlineView.setContentDescription(
@@ -251,7 +253,8 @@ public class TaskEditSectionBinder {
     }
 
     private void showDatePicker(SchedulingViews views) {
-        LocalDate current = presenter.getEditableDeadline() != null ? presenter.getEditableDeadline() : LocalDate.now();
+        LocalDate deadline = presenter.getEditableDeadline();
+        LocalDate current = deadline != null ? deadline : LocalDate.now();
         new DatePickerDialog(fragment.requireContext(), (picker, year, month, day) -> {
             presenter.setEditableDeadline(LocalDate.of(year, month + 1, day));
             updateDeadlineDisplay(views);

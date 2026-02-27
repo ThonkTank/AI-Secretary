@@ -81,7 +81,7 @@ public class TaskCore {
         public int perPeriod;
         public Period periodUnit;
         public int periodInDays() {return periodUnit.dayCount * perPeriod;}
-        public int repsPerDay() {return (int) Math.ceil( (double) reps / (double) periodInDays());}
+        public int repsPerDay() {return (int) Math.ceil((double) reps / periodInDays());}
         public double daysPerRep() {return (double) periodInDays() / (double) reps;}
         public LocalDate periodEnd() {
             return periodStart != null ? periodStart.plusDays(periodInDays()) : null;
@@ -167,11 +167,8 @@ public class TaskCore {
     }
 
     public int plannedDurationMinutes() {
-        int learned = progress.requiredTimePerRep();
-        int bounded = Math.max(Math.max(minDuration, 1), learned);
-        if (maxDuration > 0) {
-            bounded = Math.min(maxDuration, bounded);
-        }
-        return bounded;
+        int floor = Math.max(minDuration, 1);
+        int duration = Math.max(floor, progress.requiredTimePerRep());
+        return maxDuration > 0 ? Math.min(maxDuration, duration) : duration;
     }
 }

@@ -80,7 +80,7 @@ public class TaskEditFormValidator {
     }
 
     private boolean requireNonEmpty(EditText field, int messageResId) {
-        if (field.getText() == null || field.getText().toString().trim().isEmpty()) {
+        if (field.getText().toString().trim().isEmpty()) {
             field.setError(context.getString(messageResId));
             return false;
         }
@@ -88,7 +88,7 @@ public class TaskEditFormValidator {
     }
 
     private boolean validateIntegerField(EditText field, int min, int max, int rangeMessageResId) {
-        String value = field.getText() != null ? field.getText().toString().trim() : "";
+        String value = field.getText().toString().trim();
         if (value.isEmpty()) {
             field.setError(context.getString(R.string.task_edit_validation_required_format,
                 context.getString(rangeMessageResId)));

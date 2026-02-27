@@ -26,10 +26,8 @@ public class HouseholdEnergyService {
             return 0;
         }
         int age = calculateAge(member, referenceDate);
-        if (member.gender == HouseholdMember.Gender.FEMALE) {
-            return (int) (10 * member.weightKg + 6.25 * member.heightCm - 5 * age - 161);
-        }
-        return (int) (10 * member.weightKg + 6.25 * member.heightCm - 5 * age + 5);
+        double genderConstant = member.gender == HouseholdMember.Gender.FEMALE ? -161 : 5;
+        return (int) (10 * member.weightKg + 6.25 * member.heightCm - 5 * age + genderConstant);
     }
 
     public static int calculateTdee(HouseholdMember member, LocalDate referenceDate) {

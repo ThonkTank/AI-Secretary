@@ -9,7 +9,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.fragment.app.Fragment;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -61,22 +60,20 @@ public class BudgetImportPickerController {
     }
 
     private String getFileName(Uri uri) {
-        String result = null;
         if ("content".equals(uri.getScheme())) {
             try (Cursor cursor = fragment.requireContext().getContentResolver()
                     .query(uri, null, null, null, null)) {
                 if (cursor != null && cursor.moveToFirst()) {
                     int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
                     if (nameIndex >= 0) {
-                        result = cursor.getString(nameIndex);
+                        String name = cursor.getString(nameIndex);
+                        if (name != null) return name;
                     }
                 }
             }
         }
-        if (result == null) {
-            result = uri.getLastPathSegment();
-        }
-        return result != null ? result : "import.csv";
+        String segment = uri.getLastPathSegment();
+        return segment != null ? segment : "import.csv";
     }
 
     private byte[] readUriBytes(Uri uri) throws IOException {
@@ -85,13 +82,7 @@ public class BudgetImportPickerController {
             if (is == null) {
                 throw new IOException("Dateistream konnte nicht geöffnet werden: " + uri);
             }
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            byte[] buffer = new byte[4096];
-            int read;
-            while ((read = is.read(buffer)) != -1) {
-                baos.write(buffer, 0, read);
-            }
-            return baos.toByteArray();
+            return is.readAllBytes();
         }
     }
 }

@@ -29,9 +29,9 @@ public class TaskDataService {
     private final Executor callbackDispatcher;
 
     public TaskDataService(TaskDAO taskDao,
-                                TaskListItemMapper mapper,
-                                ExecutorService workerExecutor,
-                                Executor callbackDispatcher) {
+                           TaskListItemMapper mapper,
+                           ExecutorService workerExecutor,
+                           Executor callbackDispatcher) {
         this.taskDao = taskDao;
         this.mapper = mapper;
         this.workerExecutor = workerExecutor;

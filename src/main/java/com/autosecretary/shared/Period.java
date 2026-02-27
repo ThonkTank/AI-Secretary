@@ -16,5 +16,8 @@ public enum Period {
      * MONTH=30 is an approximation; not adjusted for actual calendar month length.
      */
     public final int dayCount;
-    Period(int dayCount) { this.dayCount = dayCount; }
+
+    Period(int dayCount) {
+        this.dayCount = dayCount;
+    }
 }

@@ -22,7 +22,6 @@ public class CookingPreferencesRowMapper implements RowMapper<CookingPreferences
         return row;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public CookingPreferences fromRow(Map<String, Object> row) {
         CookingPreferences preferences = new CookingPreferences();
@@ -31,10 +30,10 @@ public class CookingPreferencesRowMapper implements RowMapper<CookingPreferences
         preferences.maxLunchCooking = MapperSupport.asInt(row.get("maxLunchCooking"));
         preferences.maxDinnerCooking = MapperSupport.asInt(row.get("maxDinnerCooking"));
         preferences.maxSnackCooking = MapperSupport.asInt(row.get("maxSnackCooking"));
-        preferences.breakfastCookingDays = (java.util.Set<java.time.DayOfWeek>) row.get("breakfastCookingDays");
-        preferences.lunchCookingDays = (java.util.Set<java.time.DayOfWeek>) row.get("lunchCookingDays");
-        preferences.dinnerCookingDays = (java.util.Set<java.time.DayOfWeek>) row.get("dinnerCookingDays");
-        preferences.snackCookingDays = (java.util.Set<java.time.DayOfWeek>) row.get("snackCookingDays");
+        preferences.breakfastCookingDays = MapperSupport.asSet(row.get("breakfastCookingDays"));
+        preferences.lunchCookingDays = MapperSupport.asSet(row.get("lunchCookingDays"));
+        preferences.dinnerCookingDays = MapperSupport.asSet(row.get("dinnerCookingDays"));
+        preferences.snackCookingDays = MapperSupport.asSet(row.get("snackCookingDays"));
         preferences.quickPrepMaxMinutes = MapperSupport.asInt(row.get("quickPrepMaxMinutes"));
         return preferences;
     }

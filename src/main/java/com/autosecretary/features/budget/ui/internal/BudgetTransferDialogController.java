@@ -15,6 +15,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Objects;
 
 public class BudgetTransferDialogController {
 
@@ -93,6 +94,6 @@ public class BudgetTransferDialogController {
     }
 
     private static String textOf(TextInputEditText input) {
-        return input.getText() != null ? input.getText().toString().trim() : "";
+        return Objects.toString(input.getText(), "").trim();
     }
 }

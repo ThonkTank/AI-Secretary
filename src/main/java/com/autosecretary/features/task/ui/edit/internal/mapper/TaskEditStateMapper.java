@@ -32,6 +32,13 @@ public class TaskEditStateMapper {
         return days != null ? EnumSet.copyOf(days) : EnumSet.noneOf(DayOfWeek.class);
     }
 
+    /**
+     * Ensures a list is initialized, returning an empty list if null.
+     */
+    private <T> java.util.List<T> ensureNotNull(java.util.List<T> list) {
+        return list != null ? list : new ArrayList<>();
+    }
+
     public TaskEditState fromTask(Task task) {
         TaskEditState state = new TaskEditState();
         state.id = task.core.id;
@@ -72,14 +79,12 @@ public class TaskEditStateMapper {
         state.maxPerRep = task.core.progress.maxPerRep;
 
         state.prefSlots = new ArrayList<>();
-        if (task.prefSlots != null) {
-            for (TaskPrefSlot prefSlot : task.prefSlots) {
-                PrefSlotEditState slotState = new PrefSlotEditState();
-                slotState.id = prefSlot.id;
-                slotState.start = prefSlot.start;
-                slotState.days = copyDaysOrEmpty(prefSlot.days);
-                state.prefSlots.add(slotState);
-            }
+        for (TaskPrefSlot prefSlot : ensureNotNull(task.prefSlots)) {
+            PrefSlotEditState slotState = new PrefSlotEditState();
+            slotState.id = prefSlot.id;
+            slotState.start = prefSlot.start;
+            slotState.days = copyDaysOrEmpty(prefSlot.days);
+            state.prefSlots.add(slotState);
         }
         return state;
     }
@@ -88,7 +93,7 @@ public class TaskEditStateMapper {
         Task task = baseTask != null ? baseTask : new Task();
         task.core = task.core != null ? task.core : new TaskCore();
 
-        task.core.id = state.id != null ? state.id : task.core.id;
+        if (state.id != null) task.core.id = state.id;
         task.core.title = state.title;
         task.core.description = state.description;
         task.core.priority = state.priority;
@@ -126,21 +131,19 @@ public class TaskEditStateMapper {
         task.core.progress.maxPerRep = state.maxPerRep;
 
         task.prefSlots = new ArrayList<>();
-        if (state.prefSlots != null) {
-            for (PrefSlotEditState prefSlotState : state.prefSlots) {
-                TaskPrefSlot prefSlot = new TaskPrefSlot();
-                prefSlot.id = prefSlotState.id; // New slots keep null IDs until persistence assigns one.
-                prefSlot.taskId = task.core.id;
-                prefSlot.start = prefSlotState.start;
-                prefSlot.days = copyDaysOrEmpty(prefSlotState.days);
-                task.prefSlots.add(prefSlot);
-            }
+        for (PrefSlotEditState prefSlotState : ensureNotNull(state.prefSlots)) {
+            TaskPrefSlot prefSlot = new TaskPrefSlot();
+            prefSlot.id = prefSlotState.id; // New slots keep null IDs until persistence assigns one.
+            prefSlot.taskId = task.core.id;
+            prefSlot.start = prefSlotState.start;
+            prefSlot.days = copyDaysOrEmpty(prefSlotState.days);
+            task.prefSlots.add(prefSlot);
         }
 
-        task.slots = task.slots != null ? task.slots : new ArrayList<>();
-        task.parents = task.parents != null ? task.parents : new ArrayList<>();
-        task.prerequisites = task.prerequisites != null ? task.prerequisites : new ArrayList<>();
-        task.plannedMeals = task.plannedMeals != null ? task.plannedMeals : new ArrayList<>();
+        task.slots = ensureNotNull(task.slots);
+        task.parents = ensureNotNull(task.parents);
+        task.prerequisites = ensureNotNull(task.prerequisites);
+        task.plannedMeals = ensureNotNull(task.plannedMeals);
         return task;
     }
 }

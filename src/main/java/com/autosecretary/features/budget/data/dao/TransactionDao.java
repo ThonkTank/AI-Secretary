@@ -44,7 +44,7 @@ public interface TransactionDao {
     List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth, @Nullable String accountId);
 
     @Query("""
-            SELECT bookingDate AS bucketDate,
+            SELECT bookingDate AS date,
                    SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END) AS deltaCents
             FROM budget_transaction
             WHERE accountId = :accountId

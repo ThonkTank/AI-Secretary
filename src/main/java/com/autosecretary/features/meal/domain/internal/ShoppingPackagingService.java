@@ -3,6 +3,8 @@ package com.autosecretary.features.meal.domain.internal;
 import com.autosecretary.features.meal.domain.Ingredient;
 import com.autosecretary.features.meal.domain.ShoppingListItem;
 
+import java.util.Objects;
+
 /**
  * Rundet benoetigte Mengen auf Packungsgroessen und trackt Ueberschuss.
  */
@@ -23,7 +25,7 @@ public class ShoppingPackagingService {
         int packageAmount = resolvePackageAmount(ingredient);
         PackagingResult result = roundToPackage(neededAmount, packageAmount);
         return new ShoppingListItem.Builder(
-                ingredient.id == null ? 0L : ingredient.id,
+                Objects.requireNonNullElse(ingredient.id, 0L),
                 ingredient.name,
                 Math.max(0.0, neededAmount),
                 ingredient.defaultUnit
@@ -39,9 +41,9 @@ public class ShoppingPackagingService {
             return 0;
         }
         if (ingredient.storePackages != null && !ingredient.storePackages.isEmpty()) {
-            Ingredient.StorePackage first = ingredient.storePackages.get(0);
-            if (first != null && first.packageAmount > 0) {
-                return first.packageAmount;
+            int packageAmount = ingredient.storePackages.get(0).packageAmount;
+            if (packageAmount > 0) {
+                return packageAmount;
             }
         }
         return Math.max(0, ingredient.gramsPerUnit);

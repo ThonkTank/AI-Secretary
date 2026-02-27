@@ -1,5 +1,17 @@
 # Review Backlog — budget/data/entity
 
+## Summary
+
+Reviewed all entity classes in `budget/data/entity/`:
+- **BudgetAccount** — well-structured, no issues
+- **BudgetCategory** — clear field naming and defaults, no issues
+- **BudgetImportEntity** — straightforward constructor pattern, no issues
+- **BudgetLimit** — clear rollover field documentation, no issues
+- **BudgetRecurringTemplateEntity** — `fromSuggestion()` factory is readable and defensive; well-written
+- **BudgetTransactionEntity** — clean setter pattern for derived field
+
+Overall: The entity layer is elegantly written. Field names are self-documenting, Room constraints are respected, and the one derived-field pattern (yearMonth/bookingDate) is handled with a clear setter and helpful Javadoc.
+
 ## Open Issues
 
 ### [consider] `yearMonth` public field breaks its own stated invariant

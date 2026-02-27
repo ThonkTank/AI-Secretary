@@ -120,7 +120,7 @@ public class TaskListFragment extends Fragment {
         });
 
         vm.getSearchQuery().observe(getViewLifecycleOwner(), query -> {
-            String currentValue = taskSearchInput.getText() == null ? "" : taskSearchInput.getText().toString();
+            String currentValue = taskSearchInput.getText().toString();
             String normalizedQuery = query == null ? "" : query;
             if (!normalizedQuery.equals(currentValue)) {
                 taskSearchInput.setText(normalizedQuery);

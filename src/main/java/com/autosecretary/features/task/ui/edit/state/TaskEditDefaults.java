@@ -16,21 +16,26 @@ public final class TaskEditDefaults {
 
     private TaskEditDefaults() {}
 
+    // Scheduling & priority
     public static final Priority PRIORITY = Priority.MEDIUM;
     public static final TaskCore.SchedulingType SCHEDULING_TYPE = TaskCore.SchedulingType.TASK;
 
+    // Goal presentation
     public static final String GOAL_ICON = TaskCore.DEFAULT_GOAL_ICON;
     public static final String GOAL_COLOR_HEX = TaskCore.DEFAULT_GOAL_COLOR_HEX;
 
+    // Scheduling constraints
     public static final int MIN_DURATION = 5;
     public static final int MAX_DURATION = 10;
     public static final int COOLDOWN = 1;
     public static final boolean CLOSE_ON_MISS = true;
 
+    // Repetition
     public static final int REPETITION_REPS = 1;
     public static final int REPETITION_PER_PERIOD = 1;
     public static final Period REPETITION_PERIOD_UNIT = Period.DAY;
 
+    // Progress tracking
     public static final String UNIT = "";
     public static final int TARGET = 0;
     public static final int CURRENT = 0;

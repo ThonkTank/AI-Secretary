@@ -5,20 +5,20 @@
 ### [consider] Inconsistent synchronization in AppCompositionRoot
 **File:** `AppCompositionRoot.java`
 
-`resetForDataReload()` (line 267) is `synchronized`, but `createTaskViewModelFactory()` (line 74) and `createBudgetViewModelFactory()` (line 171) are not, even though they also do lazy init with a null check. All call sites are on the UI thread (`MainActivity.reloadUiStateAfterDataReset()`), so the `synchronized` on `resetForDataReload()` buys nothing while suggesting a thread-safety guarantee that is not consistently applied.
+`createTaskViewModelFactory()` (line 73) and `createBudgetViewModelFactory()` (line 165) are not synchronized, even though they do lazy init with null checks. All call sites are on the UI thread (`MainActivity.reloadUiStateAfterDataReset()`), so the mismatch is harmless but signals different threading contracts for similar methods.
 
-**Simpler alternative:** Remove `synchronized` from `resetForDataReload()` and add a Javadoc comment stating the method must be called on the UI thread. Alternatively, add `synchronized` to the two factory methods to be fully consistent.
+**Simpler alternative:** Remove `synchronized` from `resetForDataReload()` and add a Javadoc comment stating the method must be called on the UI thread. Alternatively, add `synchronized` to the two factory methods for full consistency.
 
-**Tradeoff:** The annotation approach is simpler (less code, no locking overhead) but relies on callers honouring the contract. Consistent synchronization is safer but adds boilerplate.
+**Tradeoff:** The annotation approach is simpler; consistent synchronization is safer but adds boilerplate.
 
 ---
 
 ### [consider] `createTaskViewModelFactory` mixes construction with side-effect field assignments
-**File:** `AppCompositionRoot.java:74–155`
+**File:** `AppCompositionRoot.java:73–148`
 
-The method constructs and returns a `TaskViewModelFactory` but also silently assigns two unrelated fields as side effects: `regenerateScheduleUseCase` and `taskSlotToggleMutation`. Callers of `getRegenerateScheduleUseCase()` and `getTaskSlotToggleMutation()` trigger factory creation as a hidden side effect. (`taskScheduleConfigRepository` was extracted to its own lazy getter.)
+The method constructs and returns a `TaskViewModelFactory` but also silently assigns `regenerateScheduleUseCase` and `taskSlotToggleMutation` as side effects. Callers of `getRegenerateScheduleUseCase()` and `getTaskSlotToggleMutation()` trigger factory creation as a hidden side effect.
 
-**Simpler alternative:** Give each lazily-initialized field its own getter with its own construction logic, eliminating the implicit coupling between `createTaskViewModelFactory()` and unrelated fields. Alternatively, rename `createTaskViewModelFactory()` to `initTaskGraph()` to signal it initializes more than one thing.
+**Simpler alternative:** Give each lazily-initialized field its own getter, or rename `createTaskViewModelFactory()` to `initTaskGraph()` to signal it initializes more than one thing.
 
-**Tradeoff:** Full extraction duplicates some DB/handler setup across methods. The rename is lower-effort and clarifies intent without restructuring.
+**Tradeoff:** Full extraction duplicates some DB/handler setup. The rename is lower-effort.
 

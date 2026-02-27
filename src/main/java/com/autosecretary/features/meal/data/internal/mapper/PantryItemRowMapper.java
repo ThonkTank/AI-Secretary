@@ -14,9 +14,9 @@ public class PantryItemRowMapper implements RowMapper<PantryItem> {
         row.put("ingredientName", pantryItem.ingredientName);
         row.put("amount", pantryItem.amount);
         row.put("unit", pantryItem.unit);
-        row.put("purchaseDate", pantryItem.purchaseDate == null ? null : pantryItem.purchaseDate.toString());
-        row.put("expiryDate", pantryItem.expiryDate == null ? null : pantryItem.expiryDate.toString());
-        row.put("location", pantryItem.location == null ? null : pantryItem.location.name());
+        row.put("purchaseDate", MapperSupport.toDateString(pantryItem.purchaseDate));
+        row.put("expiryDate", MapperSupport.toDateString(pantryItem.expiryDate));
+        row.put("location", MapperSupport.enumNameOrNull(pantryItem.location));
         return row;
     }
 

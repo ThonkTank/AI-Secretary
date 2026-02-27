@@ -29,6 +29,26 @@ public class CalendarReader implements TaskCalendarService {
         this.context = context.getApplicationContext();
     }
 
+    private LocalTime millisToLocalTime(long millis, ZoneId zoneId) {
+        return Instant.ofEpochMilli(millis).atZone(zoneId).toLocalTime();
+    }
+
+    private boolean timeRangesOverlap(LocalTime start1, LocalTime end1, LocalTime start2, LocalTime end2) {
+        return start1.isBefore(end2) && end1.isAfter(start2);
+    }
+
+    private static LocalTime clampStart(LocalTime time, LocalTime minBound) {
+        return time.isBefore(minBound) ? minBound : time;
+    }
+
+    private static LocalTime clampEnd(LocalTime time, LocalTime maxBound) {
+        return time.isAfter(maxBound) ? maxBound : time;
+    }
+
+    private static String titleOrDefault(String title, String fallback) {
+        return (title == null || title.isBlank()) ? fallback : title;
+    }
+
     @Override
     public List<TaskCalendarEvent> getEventsForDay(LocalDate day,
                                                    LocalTime scheduleStart,
@@ -80,24 +100,17 @@ public class CalendarReader implements TaskCalendarService {
                     continue;
                 }
 
-                LocalTime eventStart = Instant.ofEpochMilli(beginMillis)
-                        .atZone(zoneId).toLocalTime();
-                LocalTime eventEnd = Instant.ofEpochMilli(endMillis)
-                        .atZone(zoneId).toLocalTime();
+                LocalTime eventStart = millisToLocalTime(beginMillis, zoneId);
+                LocalTime eventEnd = millisToLocalTime(endMillis, zoneId);
 
-                boolean overlaps = eventStart.isBefore(scheduleEnd) && eventEnd.isAfter(scheduleStart);
-                if (!overlaps) {
+                if (!timeRangesOverlap(eventStart, eventEnd, scheduleStart, scheduleEnd)) {
                     continue;
                 }
 
-                if (eventStart.isBefore(scheduleStart)) {
-                    eventStart = scheduleStart;
-                }
-                if (eventEnd.isAfter(scheduleEnd)) {
-                    eventEnd = scheduleEnd;
-                }
+                eventStart = clampStart(eventStart, scheduleStart);
+                eventEnd = clampEnd(eventEnd, scheduleEnd);
 
-                String safeTitle = (title == null || title.isBlank()) ? FALLBACK_TITLE : title;
+                String safeTitle = titleOrDefault(title, FALLBACK_TITLE);
                 events.add(new TaskCalendarEvent(safeTitle, eventStart, eventEnd));
             }
         }

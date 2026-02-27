@@ -53,10 +53,11 @@ public class TaskWidgetProvider extends AppWidgetProvider {
 
         String action = intent.getAction();
         if (action == null) {
-            // Check fill-in intent action
             action = intent.getStringExtra(EXTRA_ACTION);
         }
-        if (action == null) return;
+        if (action == null) {
+            return;
+        }
 
         switch (action) {
             case ACTION_PREV_DAY:

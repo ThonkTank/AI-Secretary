@@ -13,6 +13,7 @@ import com.autosecretary.R;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -23,6 +24,16 @@ public class SettingsController {
     private static final int OPTION_MANUAL_BACKUP = 1;
     private static final int OPTION_FACTORY_RESET = 2;
     private static final int OPTION_ABOUT = 3;
+
+    @FunctionalInterface
+    private interface BackgroundTask {
+        boolean execute();
+    }
+
+    @FunctionalInterface
+    private interface FileProducingTask {
+        File execute();
+    }
 
     private final Context context;
     private final SettingsDataService settingsDataService;
@@ -36,6 +47,31 @@ public class SettingsController {
         this.settingsDataService = new SettingsDataService(context);
         this.executorService = executorService;
         this.onDataChanged = onDataChanged;
+    }
+
+    private void executeBackgroundTaskWithMainThreadCallback(
+            int successMessageId, int failureMessageId, BackgroundTask task) {
+        executorService.execute(() -> {
+            boolean success = task.execute();
+            mainHandler.post(() -> {
+                Toast.makeText(context, success ? successMessageId : failureMessageId,
+                        Toast.LENGTH_LONG).show();
+                if (success) {
+                    onDataChanged.run();
+                }
+            });
+        });
+    }
+
+    private void executeBackgroundFileTask(
+            int successMessageId, int failureMessageId, FileProducingTask task) {
+        executorService.execute(() -> {
+            File result = task.execute();
+            mainHandler.post(() ->
+                    Toast.makeText(context, result != null ? successMessageId : failureMessageId,
+                            Toast.LENGTH_SHORT).show()
+            );
+        });
     }
 
     public void showSettingsMenu() {
@@ -66,10 +102,9 @@ public class SettingsController {
             return;
         }
 
-        String[] backupNames = new String[backups.length];
-        for (int i = 0; i < backups.length; i++) {
-            backupNames[i] = formatBackupName(backups[i]);
-        }
+        String[] backupNames = Arrays.stream(backups)
+                .map(this::formatBackupName)
+                .toArray(String[]::new);
 
         new AlertDialog.Builder(context)
                 .setTitle(R.string.settings_restore_dialog_title)
@@ -88,50 +123,31 @@ public class SettingsController {
         new AlertDialog.Builder(context)
                 .setTitle(R.string.settings_restore_confirm_title)
                 .setMessage(R.string.settings_restore_confirm_message)
-                .setPositiveButton(R.string.settings_restore_action, (dialog, which) -> executorService.execute(() -> {
-                    boolean success = settingsDataService.restoreBackup(backupFile);
-                    mainHandler.post(() -> {
-                        int messageId = success
-                                ? R.string.settings_restore_success
-                                : R.string.settings_restore_failure;
-                        Toast.makeText(context, messageId, Toast.LENGTH_LONG).show();
-                        if (success) {
-                            onDataChanged.run();
-                        }
-                    });
-                }))
+                .setPositiveButton(R.string.settings_restore_action, (dialog, which) ->
+                        executeBackgroundTaskWithMainThreadCallback(
+                                R.string.settings_restore_success,
+                                R.string.settings_restore_failure,
+                                () -> settingsDataService.restoreBackup(backupFile)))
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
 
     private void createManualBackup() {
-        executorService.execute(() -> {
-            File backup = settingsDataService.createManualBackup();
-            mainHandler.post(() -> {
-                int messageId = backup != null
-                        ? R.string.settings_backup_success
-                        : R.string.settings_backup_failure;
-                Toast.makeText(context, messageId, Toast.LENGTH_SHORT).show();
-            });
-        });
+        executeBackgroundFileTask(
+                R.string.settings_backup_success,
+                R.string.settings_backup_failure,
+                settingsDataService::createManualBackup);
     }
 
     private void confirmFactoryReset() {
         new AlertDialog.Builder(context)
                 .setTitle(R.string.settings_reset_confirm_title)
                 .setMessage(R.string.settings_reset_confirm_message)
-                .setPositiveButton(R.string.settings_reset_action, (dialog, which) -> executorService.execute(() -> {
-                    boolean success = settingsDataService.factoryReset();
-                    mainHandler.post(() -> {
-                        int messageId = success
-                                ? R.string.settings_reset_success
-                                : R.string.settings_reset_failure;
-                        Toast.makeText(context, messageId, Toast.LENGTH_LONG).show();
-                        if (success) {
-                            onDataChanged.run();
-                        }
-                    });
-                }))
+                .setPositiveButton(R.string.settings_reset_action, (dialog, which) ->
+                        executeBackgroundTaskWithMainThreadCallback(
+                                R.string.settings_reset_success,
+                                R.string.settings_reset_failure,
+                                settingsDataService::factoryReset))
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }

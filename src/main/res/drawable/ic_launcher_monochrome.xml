@@ -7,7 +7,20 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Background rectangle -->
     <path
         android:fillColor="@color/launcher_icon_monochrome"
-        android:pathData="M24,30h60v48h-60zM36,22h6v12h-6zM66,22h6v12h-6zM39,63l8,8l22,-22l4,4l-26,26l-12,-12z" />
+        android:pathData="M24,30h60v48h-60z" />
+    <!-- Top bar -->
+    <path
+        android:fillColor="@color/launcher_icon_monochrome"
+        android:pathData="M24,30h60v12h-60z" />
+    <!-- Side handles -->
+    <path
+        android:fillColor="@color/launcher_icon_monochrome"
+        android:pathData="M36,22h6v12h-6zM66,22h6v12h-6z" />
+    <!-- Checkmark -->
+    <path
+        android:fillColor="@color/launcher_icon_monochrome"
+        android:pathData="M39,63l8,8l22,-22l4,4l-26,26l-12,-12z" />
 </vector>

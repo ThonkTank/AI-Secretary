@@ -9,27 +9,28 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class RecipeRowMapper implements RowMapper<Recipe> {
     @Override
-    @SuppressWarnings("unchecked")
     public Recipe fromRow(Map<String, Object> row) {
         Recipe recipe = new Recipe();
-        recipe.id = MapperSupport.asNullableLong(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.ID, null));
-        recipe.title = (String) MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TITLE, "title");
-        recipe.description = (String) MapperSupport.get(row, LegacyMealFieldKeys.Recipe.DESCRIPTION, "description");
-        recipe.instructions = (String) MapperSupport.get(row, LegacyMealFieldKeys.Recipe.INSTRUCTIONS, "instructions");
 
-        Object mealTypesRaw = MapperSupport.get(row, LegacyMealFieldKeys.Recipe.MEAL_TYPES, "mealTypes");
-        recipe.mealTypes = mealTypesRaw instanceof Set<?> set
-                ? (Set<MealType>) set
-                : parseMealTypes((String) mealTypesRaw);
+        recipe.id = MapperSupport.asNullableLong(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.ID, null));
+        recipe.title = (String) MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TITLE, null);
+        recipe.description = (String) MapperSupport.get(row, LegacyMealFieldKeys.Recipe.DESCRIPTION, null);
+        recipe.instructions = (String) MapperSupport.get(row, LegacyMealFieldKeys.Recipe.INSTRUCTIONS, null);
+
+        recipe.mealTypes = asSetOrParse(
+                MapperSupport.get(row, LegacyMealFieldKeys.Recipe.MEAL_TYPES, "mealTypes"),
+                RecipeRowMapper::parseMealTypes);
 
         recipe.prepTimeMinutes = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.PREP_TIME_MINUTES, "prepTimeMinutes"));
         recipe.cookTimeMinutes = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.COOK_TIME_MINUTES, "cookTimeMinutes"));
-        recipe.servings = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.SERVINGS, "servings"), 2);
+        recipe.servings = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.SERVINGS, null), 2);
         recipe.minServings = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.MIN_SERVINGS, "minServings"), 1);
         recipe.maxServings = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.MAX_SERVINGS, "maxServings"), 8);
         recipe.scalingPrecision = MapperSupport.asEnum(Recipe.ScalingPrecision.class,
@@ -39,12 +40,11 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
                 MapperSupport.get(row, LegacyMealFieldKeys.Recipe.PREP_EFFORT, "prepEffort"),
                 Recipe.PrepEffort.MEDIUM);
 
-        Object ingredientRaw = MapperSupport.get(row, LegacyMealFieldKeys.Recipe.INGREDIENTS_DATA, "ingredients");
-        recipe.ingredients = ingredientRaw instanceof List<?> list
-                ? (List<Recipe.RecipeIngredient>) list
-                : parseIngredients((String) ingredientRaw);
+        recipe.ingredients = asListOrParse(
+                MapperSupport.get(row, LegacyMealFieldKeys.Recipe.INGREDIENTS_DATA, "ingredients"),
+                RecipeRowMapper::parseIngredients);
 
-        recipe.tags = (String) MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TAGS, "tags");
+        recipe.tags = (String) MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TAGS, null);
         recipe.lastUsed = MapperSupport.asLocalDate(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.LAST_USED, "lastUsed"));
         recipe.usageCount = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.USAGE_COUNT, "usageCount"));
         recipe.isFavorite = MapperSupport.asBoolean(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.IS_FAVORITE, "isFavorite"));
@@ -54,10 +54,9 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         recipe.totalFat = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.TOTAL_FAT, "totalFat"));
         recipe.shelfLifeDays = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Recipe.SHELF_LIFE_DAYS, "shelfLifeDays"));
 
-        Object ratingsRaw = MapperSupport.get(row, LegacyMealFieldKeys.Recipe.RATINGS_DATA, "ratings");
-        recipe.ratings = ratingsRaw instanceof List<?> list
-                ? (List<Recipe.MemberRating>) list
-                : parseRatings((String) ratingsRaw);
+        recipe.ratings = asListOrParse(
+                MapperSupport.get(row, LegacyMealFieldKeys.Recipe.RATINGS_DATA, "ratings"),
+                RecipeRowMapper::parseRatings);
         return recipe;
     }
 
@@ -74,11 +73,11 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         row.put(LegacyMealFieldKeys.Recipe.SERVINGS, recipe.servings);
         row.put(LegacyMealFieldKeys.Recipe.MIN_SERVINGS, recipe.minServings);
         row.put(LegacyMealFieldKeys.Recipe.MAX_SERVINGS, recipe.maxServings);
-        row.put(LegacyMealFieldKeys.Recipe.SCALING_PRECISION, recipe.scalingPrecision == null ? null : recipe.scalingPrecision.name());
-        row.put(LegacyMealFieldKeys.Recipe.PREP_EFFORT, recipe.prepEffort == null ? null : recipe.prepEffort.name());
+        row.put(LegacyMealFieldKeys.Recipe.SCALING_PRECISION, MapperSupport.enumNameOrNull(recipe.scalingPrecision));
+        row.put(LegacyMealFieldKeys.Recipe.PREP_EFFORT, MapperSupport.enumNameOrNull(recipe.prepEffort));
         row.put(LegacyMealFieldKeys.Recipe.INGREDIENTS_DATA, serializeIngredients(recipe.ingredients));
         row.put(LegacyMealFieldKeys.Recipe.TAGS, recipe.tags);
-        row.put(LegacyMealFieldKeys.Recipe.LAST_USED, recipe.lastUsed == null ? null : recipe.lastUsed.toString());
+        row.put(LegacyMealFieldKeys.Recipe.LAST_USED, MapperSupport.toDateString(recipe.lastUsed));
         row.put(LegacyMealFieldKeys.Recipe.USAGE_COUNT, recipe.usageCount);
         row.put(LegacyMealFieldKeys.Recipe.IS_FAVORITE, recipe.isFavorite ? 1 : 0);
         row.put(LegacyMealFieldKeys.Recipe.TOTAL_CALORIES, recipe.totalCalories);
@@ -120,8 +119,8 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
     private static String serializeIngredients(List<Recipe.RecipeIngredient> ingredients) {
         if (ingredients == null || ingredients.isEmpty()) return "";
         return ingredients.stream()
-                .map(value -> (value.ingredientId() == null ? "" : value.ingredientId())
-                        + "|" + value.ingredientName() + "|" + value.amount() + "|" + value.unit())
+                .map(i -> Objects.toString(i.ingredientId(), "")
+                        + "|" + i.ingredientName() + "|" + i.amount() + "|" + i.unit())
                 .collect(Collectors.joining(";"));
     }
 
@@ -144,4 +143,21 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         if (ratings == null || ratings.isEmpty()) return "";
         return ratings.stream().map(value -> value.memberId() + "|" + value.rating()).collect(Collectors.joining(","));
     }
+
+    @SuppressWarnings("unchecked")
+    private static Set<MealType> asSetOrParse(Object value, Function<String, Set<MealType>> parser) {
+        if (value instanceof Set<?> set) {
+            return (Set<MealType>) set;
+        }
+        return parser.apply((String) value);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> List<T> asListOrParse(Object value, Function<String, List<T>> parser) {
+        if (value instanceof List<?> list) {
+            return (List<T>) list;
+        }
+        return parser.apply((String) value);
+    }
+
 }

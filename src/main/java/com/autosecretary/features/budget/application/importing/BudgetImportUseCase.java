@@ -9,6 +9,7 @@ import com.autosecretary.features.budget.domain.TransactionDirection;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
+import java.util.HexFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -125,13 +126,13 @@ public class BudgetImportUseCase {
             }
 
             String categoryId = parsed.categoryId();
-            boolean hasAutoCategory = categoryId != null && repository.isKnownCategory(categoryId);
+            boolean categoryKnown = categoryId != null && repository.isKnownCategory(categoryId);
 
-            if (!hasAutoCategory) {
+            if (categoryKnown) {
+                autoCategorized++;
+            } else {
                 categoryId = repository.findDefaultCategoryId(
                         parsed.amountCents() > 0 ? TransactionDirection.INCOME : TransactionDirection.EXPENSE);
-            } else {
-                autoCategorized++;
             }
 
             newTransactions.add(RecurringBudgetTransaction.forImport(
@@ -152,26 +153,16 @@ public class BudgetImportUseCase {
 
     private static String sha256(byte[] data) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(data);
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(data);
+            return HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 unavailable", e);
         }
     }
 
     private static String generateTransactionHash(LocalDate date, int amountCents, String payee) {
-        String payeePart;
-        if (payee == null) {
-            payeePart = "";
-        } else {
-            String trimmed = payee.trim().replace(" ", "");
-            payeePart = trimmed.length() > 10 ? trimmed.substring(0, 10) : trimmed;
-        }
+        String normalized = payee != null ? payee.trim().replace(" ", "") : "";
+        String payeePart = normalized.substring(0, Math.min(10, normalized.length()));
         return date + "_" + amountCents + "_" + payeePart;
     }
 

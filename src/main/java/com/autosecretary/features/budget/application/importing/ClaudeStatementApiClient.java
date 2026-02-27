@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * API-Client für Claude Messages API zum Parsing von PDF-Kontoauszügen.
@@ -189,19 +190,12 @@ public class ClaudeStatementApiClient {
     }
 
     private String readResponseBody(HttpURLConnection connection, int responseCode) throws IOException {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                responseCode >= 200 && responseCode < 300
-                        ? connection.getInputStream()
-                        : connection.getErrorStream(),
-                StandardCharsets.UTF_8
-        ))) {
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (sb.length() > 0) sb.append('\n');
-                sb.append(line);
-            }
-            return sb.toString();
+        var inputStream = (responseCode >= 200 && responseCode < 300)
+                ? connection.getInputStream()
+                : connection.getErrorStream();
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            return reader.lines().collect(Collectors.joining("\n"));
         }
     }
 
@@ -227,17 +221,23 @@ public class ClaudeStatementApiClient {
 
     private String extractJsonFromMarkdown(String text) {
         String trimmed = text == null ? "" : text.trim();
-        if (trimmed.startsWith("```")) {
-            int firstLineEnd = trimmed.indexOf('\n');
-            if (firstLineEnd > 0) {
-                trimmed = trimmed.substring(firstLineEnd + 1);
-            }
-            int lastFence = trimmed.lastIndexOf("```");
-            if (lastFence >= 0) {
-                trimmed = trimmed.substring(0, lastFence);
-            }
+        return removeFences(trimmed).trim();
+    }
+
+    private String removeFences(String text) {
+        if (!text.startsWith("```")) {
+            return text;
         }
-        return trimmed.trim();
+        int firstLineEnd = text.indexOf('\n');
+        if (firstLineEnd <= 0) {
+            return text;
+        }
+        String afterFirst = text.substring(firstLineEnd + 1);
+        int lastFence = afterFirst.lastIndexOf("```");
+        if (lastFence < 0) {
+            return afterFirst;
+        }
+        return afterFirst.substring(0, lastFence);
     }
 
     public static class ApiException extends RuntimeException {

@@ -5,7 +5,9 @@ import com.autosecretary.features.meal.domain.Ingredient;
 import com.autosecretary.features.meal.domain.WeeklyFoodTarget;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Berechnet DGE-Wochenziele anhand der aktiven Haushaltsmitglieder.
@@ -16,14 +18,10 @@ public class WeeklyFoodTargetService {
         WeeklyFoodTarget target = new WeeklyFoodTarget();
         target.periodKey = periodKey;
 
-        double totalFactor = 0.0;
-        if (members != null) {
-            for (HouseholdMember member : members) {
-                if (member != null && member.isActive) {
-                    totalFactor += HouseholdEnergyService.calculateDgeFoodFactor(member, referenceDate);
-                }
-            }
-        }
+        double totalFactor = Objects.requireNonNullElse(members, Collections.<HouseholdMember>emptyList()).stream()
+                .filter(m -> m != null && m.isActive)
+                .mapToDouble(m -> HouseholdEnergyService.calculateDgeFoodFactor(m, referenceDate))
+                .sum();
 
         for (Ingredient.FoodGroup group : Ingredient.FoodGroup.values()) {
             int grams = (int) (group.weeklyGramsPerAdult * totalFactor);

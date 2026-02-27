@@ -1,8 +1,6 @@
 package com.autosecretary.features.task.application.listmodel;
 
 import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskCore;
-import com.autosecretary.features.task.data.TaskRelation;
 import com.autosecretary.features.task.data.TaskSlot;
 
 import java.time.LocalDate;
@@ -29,10 +27,9 @@ public class TaskListItemMapper {
     }
 
     private TaskListItem toItem(Task task, TaskSlot slot) {
-        List<String> parentTaskIds = new ArrayList<>();
-        for (TaskRelation rel : task.parents) {
-            parentTaskIds.add(rel.parent);
-        }
+        List<String> parentTaskIds = task.parents.stream()
+                .map(rel -> rel.parent)
+                .toList();
 
         return new TaskListItem(
                 TaskListItem.ItemType.TASK,

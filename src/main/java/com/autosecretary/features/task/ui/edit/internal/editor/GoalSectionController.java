@@ -70,12 +70,7 @@ public class GoalSectionController {
             params.setMargins(margin, margin, margin, margin);
             swatch.setLayoutParams(params);
 
-            try {
-                swatch.setBackgroundColor(Color.parseColor(hex));
-            } catch (IllegalArgumentException ex) {
-                continue;
-            }
-
+            swatch.setBackgroundColor(Color.parseColor(hex));
             swatch.setTag(hex);
             swatch.setOnClickListener(v -> {
                 selectedGoalColorHex = hex;
@@ -90,10 +85,10 @@ public class GoalSectionController {
     private void updateGoalColorSelection() {
         for (int i = 0; i < goalColorGrid.getChildCount(); i++) {
             View swatch = goalColorGrid.getChildAt(i);
-            Object tag = swatch.getTag();
-            boolean selected = tag instanceof String && ((String) tag).equals(selectedGoalColorHex);
-            swatch.setScaleX(selected ? SELECTED_SCALE : DESELECTED_SCALE);
-            swatch.setScaleY(selected ? SELECTED_SCALE : DESELECTED_SCALE);
+            boolean selected = selectedGoalColorHex.equals(swatch.getTag());
+            float scale = selected ? SELECTED_SCALE : DESELECTED_SCALE;
+            swatch.setScaleX(scale);
+            swatch.setScaleY(scale);
             swatch.setAlpha(selected ? SELECTED_ALPHA : DESELECTED_ALPHA);
         }
     }

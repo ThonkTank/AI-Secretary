@@ -18,19 +18,13 @@ public class BookTaskCompletionExpenseUseCase {
     }
 
     public boolean execute(Task task, LocalDate bookingDate) {
-        if (task == null || task.core == null || task.core.budgetRequiredCents == null) {
+        if (task == null || !task.hasBudgetRequirement()) {
             return false;
         }
 
         long expenseCents = task.core.budgetRequiredCents;
-        if (expenseCents <= 0) {
-            return false;
-        }
 
-        String accountId = task.core.budgetAccountId;
-        if (accountId == null || accountId.isBlank()) {
-            accountId = repository.findDefaultActiveAccountId();
-        }
+        String accountId = resolveAccountId(task.core.budgetAccountId);
         if (accountId == null) {
             return false;
         }
@@ -46,5 +40,12 @@ public class BookTaskCompletionExpenseUseCase {
 
         repository.saveTransactionAndDeductBalance(transaction, accountId, expenseCents);
         return true;
+    }
+
+    private String resolveAccountId(String providedAccountId) {
+        if (providedAccountId != null && !providedAccountId.isBlank()) {
+            return providedAccountId;
+        }
+        return repository.findDefaultActiveAccountId();
     }
 }

@@ -14,17 +14,16 @@ import java.util.List;
  * Not persisted -- exists only during active editing sessions.
  */
 public class TaskEditState {
+    // Basic metadata
     public String id;
     public String title;
     public String description;
     public String goalIcon = TaskEditDefaults.GOAL_ICON;
     public String goalColorHex = TaskEditDefaults.GOAL_COLOR_HEX;
+
+    // Scheduling & priority
     public Priority priority = TaskEditDefaults.PRIORITY;
     public TaskCore.SchedulingType schedulingType = TaskEditDefaults.SCHEDULING_TYPE;
-    public Integer budgetRequiredCents;
-    public String budgetAccountId;
-    public String budgetCategoryId;
-
     public LocalDate deadline;
     public LocalDate fixedDate;
     public LocalTime fixedStart;
@@ -36,6 +35,12 @@ public class TaskEditState {
     public int cooldown = TaskEditDefaults.COOLDOWN;
     public boolean adaptive;
 
+    // Budget integration
+    public Integer budgetRequiredCents;
+    public String budgetAccountId;
+    public String budgetCategoryId;
+
+    // Repetition
     public int reps = TaskEditDefaults.REPETITION_REPS;
     public int perPeriod = TaskEditDefaults.REPETITION_PER_PERIOD;
     public Period periodUnit = TaskEditDefaults.REPETITION_PERIOD_UNIT;
@@ -44,6 +49,7 @@ public class TaskEditState {
     public boolean completeFirst;
     public int carryoverDebt;
 
+    // Progress tracking
     public String unit = TaskEditDefaults.UNIT;
     public int target = TaskEditDefaults.TARGET;
     public int current = TaskEditDefaults.CURRENT;
@@ -51,5 +57,6 @@ public class TaskEditState {
     public int minPerRep = TaskEditDefaults.MIN_PER_REP;
     public int maxPerRep = TaskEditDefaults.MAX_PER_REP;
 
+    // Related state
     public List<PrefSlotEditState> prefSlots = new ArrayList<>();
 }

@@ -2,7 +2,6 @@ package com.autosecretary.features.meal.data.internal.mapper;
 
 import com.autosecretary.features.meal.domain.Ingredient;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,7 +27,6 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
         return row;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Ingredient fromRow(Map<String, Object> row) {
         Ingredient ingredient = new Ingredient();
@@ -46,7 +44,7 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
         ingredient.requiresRefrigeration = MapperSupport.asBoolean(row.get("requiresRefrigeration"));
         ingredient.isWholeUnit = MapperSupport.asBoolean(row.get("isWholeUnit"));
         ingredient.isPerishable = MapperSupport.asBoolean(row.get("isPerishable"));
-        ingredient.storePackages = (java.util.List<Ingredient.StorePackage>) row.getOrDefault("storePackages", new ArrayList<>());
+        ingredient.storePackages = MapperSupport.asList(row.get("storePackages"));
         return ingredient;
     }
 }

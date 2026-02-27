@@ -22,6 +22,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -373,9 +374,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private void logGlobalCompetition(ChainPlacement placement, DaySchedulingContext context) {
         StringBuilder chainSummary = new StringBuilder();
         for (int i = 0; i < placement.chain.size(); i++) {
-            if (chainSummary.length() > 0) {
-                chainSummary.append(" -> ");
-            }
+            if (i > 0) chainSummary.append(" -> ");
             chainSummary.append(placement.chain.get(i).task.core.title)
                     .append("@").append(placement.starts.get(i).format(HMM));
         }
@@ -788,12 +787,8 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                     LocalDate day) {
         List<Task> fixedTasks = new ArrayList<>();
         collectFixedTasks(tasks, fixedTasks);
-        fixedTasks.sort((a, b) -> {
-            if (a.core.fixedStart == null && b.core.fixedStart == null) return 0;
-            if (a.core.fixedStart == null) return 1;
-            if (b.core.fixedStart == null) return -1;
-            return a.core.fixedStart.compareTo(b.core.fixedStart);
-        });
+        fixedTasks.sort(Comparator.comparing((Task t) -> t.core.fixedStart,
+                Comparator.nullsLast(Comparator.naturalOrder())));
 
         for (Task task : fixedTasks) {
             if (task.core.fixedDate == null || !task.core.fixedDate.equals(day) || task.core.fixedStart == null) {

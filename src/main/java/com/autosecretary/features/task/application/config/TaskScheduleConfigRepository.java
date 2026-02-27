@@ -9,11 +9,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
     private static final LocalTime DEFAULT_START = LocalTime.of(6, 0);
@@ -28,29 +30,16 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
 
     public List<TaskScheduleConfig> loadAll() {
         cachedByDay = buildAsMap(dao.readAll());
-        List<TaskScheduleConfig> completeWeek = new ArrayList<>();
-        for (DayOfWeek day : DayOfWeek.values()) {
-            completeWeek.add(cachedByDay.get(day));
-        }
-        return completeWeek;
+        return Arrays.stream(DayOfWeek.values())
+                .map(cachedByDay::get)
+                .collect(Collectors.toList());
     }
 
     public void saveAll(List<TaskScheduleConfig> configs) {
-        List<TaskScheduleConfig> toSave = new ArrayList<>();
-        Set<DayOfWeek> presentDays = EnumSet.noneOf(DayOfWeek.class);
-        if (configs != null) {
-            for (TaskScheduleConfig config : configs) {
-                if (config != null && config.dayOfWeek != null) {
-                    toSave.add(normalize(config.dayOfWeek, config.startTime, config.endTime));
-                    presentDays.add(config.dayOfWeek);
-                }
-            }
-        }
-        for (DayOfWeek day : DayOfWeek.values()) {
-            if (!presentDays.contains(day)) {
-                toSave.add(new TaskScheduleConfig(day, DEFAULT_START, DEFAULT_END));
-            }
-        }
+        Map<DayOfWeek, TaskScheduleConfig> configMap = buildAsMap(configs != null ? configs : new ArrayList<>());
+        List<TaskScheduleConfig> toSave = Arrays.stream(DayOfWeek.values())
+                .map(configMap::get)
+                .collect(Collectors.toList());
         dao.writeAll(toSave);
         cachedByDay = null;
     }
@@ -81,11 +70,15 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
     }
 
     private TaskScheduleConfig normalize(DayOfWeek dayOfWeek, LocalTime start, LocalTime end) {
-        LocalTime safeStart = start != null ? start : DEFAULT_START;
-        LocalTime safeEnd = end != null ? end : DEFAULT_END;
+        LocalTime safeStart = orDefault(start, DEFAULT_START);
+        LocalTime safeEnd = orDefault(end, DEFAULT_END);
         if (!safeEnd.isAfter(safeStart)) {
             safeEnd = safeStart.plusHours(1);
         }
         return new TaskScheduleConfig(dayOfWeek, safeStart, safeEnd);
+    }
+
+    private LocalTime orDefault(LocalTime value, LocalTime defaultValue) {
+        return value != null ? value : defaultValue;
     }
 }

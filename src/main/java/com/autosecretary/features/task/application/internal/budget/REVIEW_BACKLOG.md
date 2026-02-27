@@ -14,4 +14,5 @@ The interface is explicitly mentioned in CLAUDE.md as a "domain contract used by
 - Keeping it enables swapping implementations later (calendar-based, AI-predicted eligibility, etc.)
 - The cost of the abstraction is low (one interface, one implementation), so over-engineering is mild
 
-**Recommendation:** Mark as deferred pending product decision. If eligibility strategies remain singular, consider inlining the implementation into a static method or removing the interface when the interface-first pattern is no longer needed.
+**Status:** Deferred pending product decision. If eligibility strategies remain singular, consider removing the interface pattern when no longer needed.
+

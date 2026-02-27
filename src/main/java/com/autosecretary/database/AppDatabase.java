@@ -83,9 +83,8 @@ public abstract class AppDatabase extends RoomDatabase {
     }
 
     public static synchronized void closeAndReset() {
-        if (instance != null) {
-            instance.close();
-            instance = null;
-        }
+        if (instance == null) return;
+        instance.close();
+        instance = null;
     }
 }

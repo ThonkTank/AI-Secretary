@@ -155,7 +155,7 @@ public class AppCompositionRoot {
         return taskScheduleConfigRepository;
     }
 
-    public RegenerateScheduleUseCase getRegenerateScheduleUseCase() {
+    public synchronized RegenerateScheduleUseCase getRegenerateScheduleUseCase() {
         if (regenerateScheduleUseCase == null) {
             createTaskViewModelFactory();
         }

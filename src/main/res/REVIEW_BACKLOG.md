@@ -1,36 +1,44 @@
-# Review Backlog — src/main/res
+# Review Backlog — res
 
 ## Open Issues
 
 ---
 
-### [warning] Path data duplication between launcher icon files
-**Files:** `drawable/ic_launcher_foreground.xml` (paths in lines 7–18) and `drawable/ic_launcher_monochrome.xml` (line 9)
-**Smell:** Both files contain the same geometric path definitions, split differently. Foreground uses 4 `<path>` elements for color; monochrome combines them in one.
-**Why it will cause problems:** Icon design changes require updating both files in sync. Missing one causes the monochrome icon to drift. Mitigation comment already added to `ic_launcher_monochrome.xml`.
-**Future fix:** Generate the monochrome version from the foreground programmatically in the build pipeline.
+### [consider] Hardcoded `android:textSize` in `budget_widget.xml`
+
+**File:** `layout/budget_widget.xml:15, 31, 38, 55`
+
+**Current code:**
+```xml
+android:textSize="15sp"
+android:textSize="12sp"
+android:textSize="18sp"
+android:textSize="16sp"
+```
+
+**Proposed alternative:** Use `android:textAppearance="@style/TextAppearance.MaterialComponents.*"` to match every other text-bearing view in the app.
+
+**Why it's clearer:** The rest of the codebase delegates all text sizing to `TextAppearance` styles, making scale and theme changes trivial. These four raw `sp` values in the widget stand alone and require manual synchronisation. Note: widget views have some limitations with Material styles — verify rendering if applying.
 
 ---
 
-### [consider] Hardcoded text sizes in `budget_widget.xml`
-**File:** `layout/budget_widget.xml` (title and value TextViews)
-TextViews use raw `sp` values (`15sp`, `12sp`, `18sp`, `16sp`) rather than `TextAppearance` styles used everywhere else. Widget RemoteViews cannot reference Material theme attributes, so full parity is not possible, but app-specific `TextAppearance` styles without theme-attr references would be cleaner.
-**Tradeoff:** Widget RemoteView limitations make this harder; low urgency.
+### [consider] 6-digit hex in `budget_colors.xml` vs 8-digit ARGB in `task_colors.xml`
 
----
+**File:** `values/budget_colors.xml:4–11`
 
-### [consider] `task_deadline_*` aliases duplicate `task_urgency_*` colors with no current differentiation
-**File:** `values/task_colors.xml` lines 36–38; consumer `ListRowAdapter.java`
-**Why complex:** Three aliases (`task_deadline_overdue/soon/future`) point to the same values as `task_urgency_overdue/soon/future`. Doubles the name surface for the same colours.
-**Simpler alternative:** Remove deadline aliases; reference `task_urgency_*` directly.
-**Tradeoff:** Removes the ability to evolve deadline and urgency colors independently in the future without Java changes. Moderate justification for keeping them.
+**Current code:**
+```xml
+<color name="budget_positive">#4CAF50</color>
+<color name="budget_negative">#F44336</color>
+```
 
----
+**Proposed alternative:**
+```xml
+<color name="budget_positive">#FF4CAF50</color>
+<color name="budget_negative">#FFF44336</color>
+```
+(and all remaining budget colors)
 
-### [consider] Double alias in widget title colours
-**File:** `values/task_colors.xml` lines 68, 70
-**Why complex:** `task_widget_title_default` → `task_widget_text_primary` → `task_color_on_surface` (two hops). `task_widget_title_completed` → `task_widget_text_muted` → `task_color_on_surface_muted` (two hops). The `task_widget_text_*` tier is justified (direct layout use). The extra `title_*` hop could point to `task_color_*` directly.
-**Simpler alternative:** Change `task_widget_title_default` to reference `@color/task_color_on_surface` and `task_widget_title_completed` to reference `@color/task_color_on_surface_muted`.
-**Tradeoff:** Loses the expressive link "completed title = muted widget text".
+**Why it's clearer:** `task_colors.xml` uses 8-digit ARGB format throughout. When a reader scans both files, 6-digit hex requires a separate mental step ("oh right, 6-digit means alpha=FF") that the 8-digit format makes explicit. Consistency across the two files removes that ambiguity.
 
 ---

@@ -20,17 +20,19 @@ public class TaskBudgetEligibilityFromBudgetLookup implements TaskBudgetEligibil
 
     @Override
     public BudgetEligibility eligibilityFor(Task task) {
-        if (task == null || task.core == null || task.core.budgetRequiredCents == null || task.core.budgetRequiredCents <= 0) {
+        if (task == null || !task.hasBudgetRequirement()) {
             return BudgetEligibility.passWithoutBudgetRequirement();
         }
 
-        long availableCents;
-        if (task.core.budgetAccountId != null && !task.core.budgetAccountId.isBlank()) {
-            Long accountBalance = budgetLookupDao.findCurrentBalanceCentsByAccountId(task.core.budgetAccountId);
-            availableCents = accountBalance != null ? accountBalance : 0L;
-        } else {
-            availableCents = budgetLookupDao.sumCurrentBalanceCentsForActiveAccounts();
-        }
+        long availableCents = getAvailableBalance(task.core.budgetAccountId);
         return new BudgetEligibility(availableCents >= task.core.budgetRequiredCents, availableCents);
+    }
+
+    private long getAvailableBalance(String accountId) {
+        if (accountId != null && !accountId.isBlank()) {
+            Long balance = budgetLookupDao.findCurrentBalanceCentsByAccountId(accountId);
+            return balance != null ? balance : 0L;
+        }
+        return budgetLookupDao.sumCurrentBalanceCentsForActiveAccounts();
     }
 }

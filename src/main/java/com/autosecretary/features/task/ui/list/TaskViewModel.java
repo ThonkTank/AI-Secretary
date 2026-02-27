@@ -281,7 +281,7 @@ public class TaskViewModel extends AndroidViewModel {
             @Override
             Comparator<ViewSlot> comparator() {
                 return Comparator
-                        .comparing((ViewSlot slot) -> slot.item.isCalendarEvent() ? 1 : 0)
+                        .<ViewSlot, Boolean>comparing(slot -> slot.item.isCalendarEvent())
                         .thenComparing(slot -> slot.item.title, Comparator.naturalOrder());
             }
         };

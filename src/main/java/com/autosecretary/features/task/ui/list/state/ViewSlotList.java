@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.util.TreeBuilder;
@@ -21,6 +22,8 @@ public class ViewSlotList {
         displaySlots.addAll(extra);
     }
 
+    private static final Predicate<ViewSlot> ALWAYS_EXPANDED = slot -> true;
+
     private static final TreeBuilder<ViewSlot> TREE_BY_TASK = new TreeBuilder<>(
             vs -> vs.item.taskId,
             vs -> vs.item.parentTaskIds,
@@ -31,13 +34,17 @@ public class ViewSlotList {
 
     private static final TreeBuilder<ViewSlot> TREE_BY_SLOT = new TreeBuilder<>(
             vs -> vs.item.slotId,
-            vs -> vs.item.slotParentId != null
-                    ? Collections.singletonList(vs.item.slotParentId)
-                    : Collections.emptyList(),
+            ViewSlotList::getSlotParents,
             (parent, child) -> parent.children.add(child),
             vs -> vs.children,
             vs -> vs.children = new ArrayList<>()
     );
+
+    private static List<String> getSlotParents(ViewSlot vs) {
+        return vs.item.slotParentId != null
+                ? Collections.singletonList(vs.item.slotParentId)
+                : Collections.emptyList();
+    }
 
     public static class ViewSlot {
         public final TaskListItem item;
@@ -55,21 +62,12 @@ public class ViewSlotList {
     }
 
     public void fromList(List<TaskListItem> items) {
-        List<ViewSlot> slots = new ArrayList<>();
-        for (TaskListItem item : items) {
-            slots.add(new ViewSlot(item));
-        }
-        viewSlots = slots;
-        displaySlots = new ArrayList<>(slots);
+        viewSlots = items.stream().map(ViewSlot::new).collect(Collectors.toList());
+        displaySlots = new ArrayList<>(viewSlots);
     }
 
     public void filter(Predicate<ViewSlot> predicate) {
-        displaySlots = new ArrayList<>();
-        for (ViewSlot vs : viewSlots) {
-            if (predicate.test(vs)) {
-                displaySlots.add(vs);
-            }
-        }
+        displaySlots = viewSlots.stream().filter(predicate).collect(Collectors.toList());
     }
 
     public void sortByTask(Comparator<ViewSlot> comparator, Predicate<ViewSlot> isExpanded) {
@@ -77,7 +75,7 @@ public class ViewSlotList {
     }
 
     public void sortBySlot(Comparator<ViewSlot> comparator) {
-        applySort(TREE_BY_SLOT, comparator, slot -> true);
+        applySort(TREE_BY_SLOT, comparator, ALWAYS_EXPANDED);
     }
 
     private void applySort(TreeBuilder<ViewSlot> builder,

@@ -7,6 +7,7 @@ import com.autosecretary.features.meal.domain.RecipeRepository;
 import com.autosecretary.features.meal.domain.internal.ShelfLifeService;
 
 import java.time.LocalDate;
+import java.util.Objects;
 
 /**
  * Application-Use-Case zum Ableiten von Ablaufdaten aus shelfLifeDays.
@@ -28,18 +29,15 @@ public class CreatePantryItemUseCase {
             throw new IllegalArgumentException("Ingredient not found: id=" + ingredientId);
         }
 
-        if (ingredient.id == null) {
-            throw new IllegalStateException("Ingredient found by id=" + ingredientId + " has null id");
-        }
-        LocalDate safePurchaseDate = purchaseDate == null ? LocalDate.now() : purchaseDate;
+        LocalDate effectiveDate = Objects.requireNonNullElse(purchaseDate, LocalDate.now());
         PantryItem pantryItem = new PantryItem.Builder(
                 ingredient.id,
                 ingredient.name,
                 amount,
                 ingredient.defaultUnit
         )
-                .purchaseDate(safePurchaseDate)
-                .expiryDate(ShelfLifeService.calculateExpiryDate(safePurchaseDate, ingredient.shelfLifeDays))
+                .purchaseDate(effectiveDate)
+                .expiryDate(ShelfLifeService.calculateExpiryDate(effectiveDate, ingredient.shelfLifeDays))
                 .build();
 
         pantryRepository.savePantryItem(pantryItem);

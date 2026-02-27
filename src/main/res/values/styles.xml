@@ -31,7 +31,6 @@
 
     <!-- Base task text appearances -->
     <style name="TextAppearance.Task" parent="TextAppearance.MaterialComponents.Body2" />
-    <style name="TextAppearance.Task.Widget" parent="TextAppearance.Task" />
 
     <!-- Task editor inputs -->
     <style name="Widget.AISecretary.Editor.TextFieldLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
@@ -82,7 +81,7 @@
         <item name="android:textColor">@color/task_color_on_surface_muted</item>
     </style>
 
-    <style name="TextAppearance.Task.Widget.NavAction">
+    <style name="TextAppearance.Task.Widget.NavAction" parent="TextAppearance.Task">
         <item name="android:textSize">@dimen/task_text_md</item>
         <item name="android:textColor">@color/task_color_primary</item>
         <item name="android:textStyle">bold</item>
@@ -93,7 +92,7 @@
         <item name="android:textStyle">bold</item>
     </style>
 
-    <style name="TextAppearance.Task.Widget.NewTaskCta">
+    <style name="TextAppearance.Task.Widget.NewTaskCta" parent="TextAppearance.Task">
         <item name="android:textSize">@dimen/task_text_md</item>
     </style>
 </resources>

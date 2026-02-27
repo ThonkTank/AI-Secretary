@@ -33,28 +33,24 @@ public class TreeBuilder<T> {
     }
 
     public List<T> buildTree(List<T> items) {
-        for (T item : items) {
-            resetChildren.accept(item);
-        }
+        items.forEach(resetChildren);
 
         Map<String, T> map = new HashMap<>();
         List<T> roots = new ArrayList<>();
 
-        for (T item : items) {
-            map.put(getId.apply(item), item);
-        }
+        items.forEach(item -> map.put(getId.apply(item), item));
 
         for (T item : items) {
             List<String> parentIds = getParentIds.apply(item);
-            boolean added = false;
+            boolean hasParent = false;
             for (String parentId : parentIds) {
                 T parent = map.get(parentId);
                 if (parent != null) {
                     addChild.accept(parent, item);
-                    added = true;
+                    hasParent = true;
                 }
             }
-            if (!added) {
+            if (!hasParent) {
                 roots.add(item);
             }
         }

@@ -12,6 +12,13 @@ import java.util.List;
 
 public class BudgetSeedService {
 
+    private static final String CAT_SONSTIGES    = "Sonstiges";
+    private static final String CAT_MIETE        = "Miete";
+    private static final String CAT_LEBENSMITTEL = "Lebensmittel";
+    private static final String CAT_MOBILITAET   = "Mobilität";
+    private static final String CAT_FREIZEIT     = "Freizeit";
+    private static final String CAT_GEHALT       = "Gehalt";
+
     public record SeedResult(
             List<BudgetCategory> categories,
             List<BudgetAccount> accounts,
@@ -52,22 +59,22 @@ public class BudgetSeedService {
         if (!existing.isEmpty()) {
             return;
         }
-        repository.insertCategory(new BudgetCategory("Sonstiges", TransactionDirection.EXPENSE, "🏷️", "#9E9E9E"));
-        repository.insertCategory(new BudgetCategory("Miete", TransactionDirection.EXPENSE, "🏠", "#FF7043"));
-        repository.insertCategory(new BudgetCategory("Lebensmittel", TransactionDirection.EXPENSE, "🛒", "#8BC34A"));
-        repository.insertCategory(new BudgetCategory("Mobilität", TransactionDirection.EXPENSE, "🚗", "#03A9F4"));
-        repository.insertCategory(new BudgetCategory("Freizeit", TransactionDirection.EXPENSE, "🎉", "#AB47BC"));
-        repository.insertCategory(new BudgetCategory("Gehalt", TransactionDirection.INCOME, "💰", "#4CAF50"));
+        repository.insertCategory(new BudgetCategory(CAT_SONSTIGES,    TransactionDirection.EXPENSE, "🏷️", "#9E9E9E"));
+        repository.insertCategory(new BudgetCategory(CAT_MIETE,        TransactionDirection.EXPENSE, "🏠", "#FF7043"));
+        repository.insertCategory(new BudgetCategory(CAT_LEBENSMITTEL, TransactionDirection.EXPENSE, "🛒", "#8BC34A"));
+        repository.insertCategory(new BudgetCategory(CAT_MOBILITAET,   TransactionDirection.EXPENSE, "🚗", "#03A9F4"));
+        repository.insertCategory(new BudgetCategory(CAT_FREIZEIT,     TransactionDirection.EXPENSE, "🎉", "#AB47BC"));
+        repository.insertCategory(new BudgetCategory(CAT_GEHALT,       TransactionDirection.INCOME,  "💰", "#4CAF50"));
     }
 
     private void seedDemoTransactions(String accountId, LocalDate reference) {
         List<BudgetCategory> categories = repository.getActiveCategories();
-        String incomeCategoryId = findCategoryIdByName(categories, "Gehalt");
-        String housingCategoryId = findCategoryIdByName(categories, "Miete");
-        String groceryCategoryId = findCategoryIdByName(categories, "Lebensmittel");
-        String mobilityCategoryId = findCategoryIdByName(categories, "Mobilität");
-        String leisureCategoryId = findCategoryIdByName(categories, "Freizeit");
-        String otherCategoryId = findCategoryIdByName(categories, "Sonstiges");
+        String incomeCategoryId = findCategoryIdByName(categories, CAT_GEHALT);
+        String housingCategoryId = findCategoryIdByName(categories, CAT_MIETE);
+        String groceryCategoryId = findCategoryIdByName(categories, CAT_LEBENSMITTEL);
+        String mobilityCategoryId = findCategoryIdByName(categories, CAT_MOBILITAET);
+        String leisureCategoryId = findCategoryIdByName(categories, CAT_FREIZEIT);
+        String otherCategoryId = findCategoryIdByName(categories, CAT_SONSTIGES);
 
         int maxDay = reference.getDayOfMonth();
         TransactionDirection income = TransactionDirection.INCOME;
@@ -108,11 +115,10 @@ public class BudgetSeedService {
     }
 
     private String findCategoryIdByName(List<BudgetCategory> categories, String name) {
-        for (BudgetCategory category : categories) {
-            if (name.equals(category.name)) {
-                return category.id;
-            }
-        }
-        return null;
+        return categories.stream()
+                .filter(c -> name.equals(c.name))
+                .map(c -> c.id)
+                .findFirst()
+                .orElse(null);
     }
 }

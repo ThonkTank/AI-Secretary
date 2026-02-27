@@ -15,3 +15,6 @@
 [warning] DefaultTaskSlotGenerator.java:344-376 — `assignGlobalBestFitAcrossWindow` uses `while (true)` with no iteration guard. Relies on `best` becoming null as the schedule fills. If a bug prevents `applyPlacement` from reducing candidates, the loop runs forever. Add a max-iteration safety counter.
 
 [nit] TaskSlot.java:58 — `displacementGroupType` stores one of three string literals ("CHAIN", "FIXED", "SINGLE") with no type safety; should be an enum. `DefaultTaskSlotGenerator` is the primary setter. Promoted from `task/data/REVIEW_BACKLOG.md`.
+
+[consider] DefaultTaskSlotGenerator.java:561 — `computeAtomicLoss` guards `if (candidate == null) continue` inside a loop over `Set<DisplacementCandidate>`. The set is always built from non-null `new DisplacementCandidate(...)` calls in `expandToFullChains`, so the guard is dead. Removing it would eliminate noise, but the safety margin is low cost. Leave or remove at discretion.
+

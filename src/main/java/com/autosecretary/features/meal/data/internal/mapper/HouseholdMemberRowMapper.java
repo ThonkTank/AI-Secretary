@@ -12,11 +12,11 @@ public class HouseholdMemberRowMapper implements RowMapper<HouseholdMember> {
         row.put("id", member.id);
         row.put("name", member.name);
         row.put("birthYear", member.birthYear);
-        row.put("gender", member.gender == null ? null : member.gender.name());
+        row.put("gender", MapperSupport.enumNameOrNull(member.gender));
         row.put("weightKg", member.weightKg);
         row.put("heightCm", member.heightCm);
         row.put("targetWeightKg", member.targetWeightKg);
-        row.put("activityLevel", member.activityLevel == null ? null : member.activityLevel.name());
+        row.put("activityLevel", MapperSupport.enumNameOrNull(member.activityLevel));
         row.put("isActive", member.isActive);
         return row;
     }

@@ -49,38 +49,25 @@ public class ApplyRecurringSuggestionsUseCase {
 
     private LocalDate calculateNextDue(RecurringSuggestion suggestion) {
         LocalDate today = LocalDate.now();
-        switch (suggestion.suggestedType()) {
+        return switch (suggestion.suggestedType()) {
             case MONTHLY_DAY -> {
                 int targetDay = suggestion.suggestedValue();
                 LocalDate thisMonth = today.withDayOfMonth(Math.min(targetDay, today.lengthOfMonth()));
                 if (!thisMonth.isAfter(today)) {
                     LocalDate nextMonth = today.plusMonths(1);
-                    return nextMonth.withDayOfMonth(Math.min(targetDay, nextMonth.lengthOfMonth()));
+                    yield nextMonth.withDayOfMonth(Math.min(targetDay, nextMonth.lengthOfMonth()));
                 }
-                return thisMonth;
+                yield thisMonth;
             }
             case MONTHLY_LAST -> {
-                LocalDate endOfMonth = today.withDayOfMonth(today.lengthOfMonth());
-                if (!endOfMonth.isAfter(today)) {
-                    LocalDate nextMonth = today.plusMonths(1);
-                    return nextMonth.withDayOfMonth(nextMonth.lengthOfMonth());
-                }
-                return endOfMonth;
+                LocalDate endOfMonth = today.with(TemporalAdjusters.lastDayOfMonth());
+                yield endOfMonth.isAfter(today)
+                        ? endOfMonth
+                        : today.plusMonths(1).with(TemporalAdjusters.lastDayOfMonth());
             }
-            case WEEKLY -> {
-                LocalDate nextOccurrence = today.with(TemporalAdjusters.nextOrSame(suggestion.suggestedDayOfWeek()));
-                if (!nextOccurrence.isAfter(today)) {
-                    return nextOccurrence.plusWeeks(1);
-                }
-                return nextOccurrence;
-            }
-            case INTERVAL -> {
-                return today.plusDays(Math.max(1, suggestion.suggestedValue()));
-            }
-            default -> {
-                return today.plusMonths(1);
-            }
-        }
+            case WEEKLY -> today.with(TemporalAdjusters.next(suggestion.suggestedDayOfWeek()));
+            case INTERVAL -> today.plusDays(Math.max(1, suggestion.suggestedValue()));
+        };
     }
 
 }

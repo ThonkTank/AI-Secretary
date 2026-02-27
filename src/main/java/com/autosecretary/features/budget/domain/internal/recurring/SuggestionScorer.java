@@ -1,5 +1,7 @@
 package com.autosecretary.features.budget.domain.internal.recurring;
 
+import java.util.Arrays;
+
 /**
  * Calculates a 0–1 confidence score for a detected recurring transaction suggestion.
  *
@@ -56,11 +58,7 @@ public final class SuggestionScorer {
                                              String normalizedPayee) {
         double score = 0;
         score += Math.min((occurrenceCount / OCCURRENCE_CAP) * OCCURRENCE_WEIGHT, OCCURRENCE_WEIGHT);
-
-        if (avgAmount != 0) {
-            double variance = Math.abs(maxAmount - minAmount) / (double) Math.abs(avgAmount);
-            score += Math.max(AMOUNT_VARIANCE_WEIGHT - variance, 0);
-        }
+        score += calculateAmountVarianceScore(avgAmount, minAmount, maxAmount);
 
         if (pattern != null) {
             score += PATTERN_TYPE_BONUS;
@@ -73,12 +71,16 @@ public final class SuggestionScorer {
         return Math.min(score, 1.0);
     }
 
-    static boolean isKnownSubscription(String normalizedPayee) {
-        for (String pattern : KNOWN_SUBSCRIPTION_PATTERNS) {
-            if (normalizedPayee.contains(pattern)) {
-                return true;
-            }
+    static double calculateAmountVarianceScore(long avgAmount, long minAmount, long maxAmount) {
+        if (avgAmount == 0) {
+            return 0.0;
         }
-        return false;
+        double variance = Math.abs(maxAmount - minAmount) / (double) Math.abs(avgAmount);
+        return Math.max(AMOUNT_VARIANCE_WEIGHT - variance, 0);
+    }
+
+    static boolean isKnownSubscription(String normalizedPayee) {
+        return Arrays.stream(KNOWN_SUBSCRIPTION_PATTERNS)
+                .anyMatch(normalizedPayee::contains);
     }
 }

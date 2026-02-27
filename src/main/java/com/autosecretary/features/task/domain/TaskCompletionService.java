@@ -69,12 +69,11 @@ public class TaskCompletionService {
         lifecycleManager.updateStreakForCompletion(task, slot);
         int durationMinutes = (int) Math.ceil(durationSeconds / 60.0);
         task.recordCompletion(durationMinutes, trackDuration);
-        if (trackDuration && task.core != null && task.core.progress != null) {
+        if (trackDuration) {
             task.core.progress.recordTimingSample(durationMinutes);
-        }
-
-        if (trackDuration && task.core.adaptive) {
-            lifecycleManager.adaptPrefSlot(task, slot);
+            if (task.core.adaptive) {
+                lifecycleManager.adaptPrefSlot(task, slot);
+            }
         }
         return CompletionPhase.COMPLETED;
     }

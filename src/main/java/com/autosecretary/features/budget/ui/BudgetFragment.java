@@ -330,11 +330,8 @@ public class BudgetFragment extends Fragment {
             amountInput.setText(String.format(Locale.GERMAN, "%.2f",
                     Math.abs(existingRow.getAmountCents()) / 100.0));
             noteInput.setText(existingRow.getNote() != null ? existingRow.getNote() : "");
-            if (existingRow.isExpense()) {
-                expenseRadio.setChecked(true);
-            } else {
-                incomeRadio.setChecked(true);
-            }
+            expenseRadio.setChecked(existingRow.isExpense());
+            incomeRadio.setChecked(!existingRow.isExpense());
             SpinnerHelper.setSelection(categorySpinner, categoriesForType(allCategories, existingRow.isExpense()),
                     existingRow.getCategoryId(), c -> c.id);
             SpinnerHelper.setSelection(accountSpinner, activeAccounts(allAccounts),

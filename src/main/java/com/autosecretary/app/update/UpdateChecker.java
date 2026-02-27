@@ -34,6 +34,7 @@ public class UpdateChecker {
     private static final int VERSION_READ_TIMEOUT_MS = 5000;
     private static final int DOWNLOAD_CONNECT_TIMEOUT_MS = 10000;
     private static final int DOWNLOAD_READ_TIMEOUT_MS = 30000;
+    private static final int DOWNLOAD_BUFFER_SIZE_BYTES = 8192;
 
     private final Activity activity;
     private final Handler mainHandler;
@@ -83,8 +84,12 @@ public class UpdateChecker {
         }
     }
 
+    private boolean isActivityAlive() {
+        return !activity.isFinishing() && !activity.isDestroyed();
+    }
+
     private void showUpdateDialog(int newVersion) {
-        if (activity.isFinishing() || activity.isDestroyed()) {
+        if (!isActivityAlive()) {
             return;
         }
 
@@ -116,7 +121,7 @@ public class UpdateChecker {
 
         try (InputStream inputStream = connection.getInputStream();
              FileOutputStream outputStream = new FileOutputStream(apkFile, false)) {
-            byte[] buffer = new byte[8192];
+            byte[] buffer = new byte[DOWNLOAD_BUFFER_SIZE_BYTES];
             int read;
             while ((read = inputStream.read(buffer)) != -1) {
                 outputStream.write(buffer, 0, read);
@@ -129,7 +134,7 @@ public class UpdateChecker {
     }
 
     private void installApk(File apkFile) {
-        if (activity.isFinishing() || activity.isDestroyed()) {
+        if (!isActivityAlive()) {
             return;
         }
 
@@ -140,10 +145,9 @@ public class UpdateChecker {
                     apkFile
             );
 
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(uri, "application/vnd.android.package-archive");
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            Intent intent = new Intent(Intent.ACTION_VIEW)
+                    .setDataAndType(uri, "application/vnd.android.package-archive")
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
             activity.startActivity(intent);
         } catch (ActivityNotFoundException e) {
             showDownloadErrorDialog(e);
@@ -151,7 +155,7 @@ public class UpdateChecker {
     }
 
     private void showDownloadErrorDialog(Exception error) {
-        if (activity.isFinishing() || activity.isDestroyed()) {
+        if (!isActivityAlive()) {
             return;
         }
 
