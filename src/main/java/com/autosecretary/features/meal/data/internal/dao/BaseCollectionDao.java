@@ -5,6 +5,7 @@ import com.autosecretary.features.meal.data.internal.storage.MealStorage;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -23,22 +24,35 @@ public class BaseCollectionDao<T> {
                              RowMapper<T> mapper,
                              Function<T, Long> idAccessor,
                              BiConsumer<T, Long> idSetter) {
-        this.collection = collection;
-        this.storage = storage;
-        this.mapper = mapper;
-        this.idAccessor = idAccessor;
-        this.idSetter = idSetter;
+        this.collection = Objects.requireNonNull(collection, "collection cannot be null");
+        this.storage = Objects.requireNonNull(storage, "storage cannot be null");
+        this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null");
+        this.idAccessor = Objects.requireNonNull(idAccessor, "idAccessor cannot be null");
+        this.idSetter = Objects.requireNonNull(idSetter, "idSetter cannot be null");
     }
 
     public T findById(long id) {
         Map<String, Object> row = storage.findById(collection, id);
-        return row == null ? null : mapper.fromRow(row);
+        if (row == null) {
+            return null;
+        }
+        return mapper.fromRow(row);
     }
 
     public List<T> findAll() {
         return mapRows(storage.findAll(collection));
     }
 
+    /**
+     * Persists the given value to storage.
+     *
+     * <p>If the value's ID (accessed via idAccessor) is null, the storage layer is expected
+     * to generate a new ID. The generated ID is then set back on the value via idSetter.
+     * If the ID is already set (non-null), idSetter is not invoked and the existing ID is used.
+     *
+     * @param value The value to persist. Must not be null. Its ID (if null) will be generated
+     *              and set back via idSetter.
+     */
     public void save(T value) {
         Long id = idAccessor.apply(value);
         long storedId = storage.upsert(collection, id, mapper.toRow(value));

@@ -64,6 +64,7 @@ public interface TaskDAO {
         deletePrerequisitesByTaskId(task.core.id);
         writePrerequisites(task.prerequisites);
         writePlannedMeals(task.plannedMeals);
+        deleteRelationsByParentId(task.core.id);
         for (Task child : task.children) {
             writeRelation(new TaskRelation(task.core.id, child.core.id));
         }

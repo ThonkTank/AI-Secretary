@@ -62,12 +62,12 @@ public interface BudgetRepository {
                                      long amountCents, LocalDate bookingDate, String note);
 
     /** Convenience overload used by the "Add Transaction" dialog — builds the entity internally. */
-    void saveTransaction(String accountId, String categoryId, TransactionDirection type,
+    void saveTransaction(String accountId, String categoryId, TransactionDirection direction,
                          long amountCents, LocalDate bookingDate, String note);
 
     void updateTransaction(BudgetTransactionEntity transaction);
     void updateTransaction(String transactionId, String accountId, String categoryId,
-                           TransactionDirection type, long amountCents, LocalDate bookingDate, String note);
+                           TransactionDirection direction, long amountCents, LocalDate bookingDate, String note);
     void saveTransactions(List<BudgetTransactionEntity> transactions);
     void deleteTransaction(String transactionId);
 

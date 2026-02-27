@@ -119,23 +119,16 @@ public class TaskEditFormValidator {
             R.string.task_edit_validation_target_below_current);
     }
 
+    // Precondition: both fields have already passed validateIntegerField — parseable integers guaranteed.
     private boolean validateFirstNotAboveSecond(EditText fieldA, EditText fieldB,
                                                 int errorResA, int errorResB) {
-        try {
-            int valueA = Integer.parseInt(fieldA.getText().toString().trim());
-            int valueB = Integer.parseInt(fieldB.getText().toString().trim());
-            if (valueA <= valueB) {
-                return true;
-            }
-            fieldA.setError(context.getString(errorResA));
-            fieldB.setError(context.getString(errorResB));
-            return false;
-        } catch (NumberFormatException e) {
-            fieldA.setError(context.getString(R.string.task_edit_validation_number_format,
-                context.getString(errorResA)));
-            fieldB.setError(context.getString(R.string.task_edit_validation_number_format,
-                context.getString(errorResB)));
-            return false;
+        int valueA = Integer.parseInt(fieldA.getText().toString().trim());
+        int valueB = Integer.parseInt(fieldB.getText().toString().trim());
+        if (valueA <= valueB) {
+            return true;
         }
+        fieldA.setError(context.getString(errorResA));
+        fieldB.setError(context.getString(errorResB));
+        return false;
     }
 }

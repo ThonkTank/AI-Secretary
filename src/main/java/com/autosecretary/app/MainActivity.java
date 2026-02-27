@@ -11,6 +11,7 @@ import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
 import com.autosecretary.app.settings.SettingsController;
+import com.autosecretary.app.settings.SettingsDataService;
 import com.autosecretary.app.update.UpdateChecker;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.ui.BudgetFragment;
@@ -33,7 +34,8 @@ public class MainActivity extends AppCompatActivity {
         MaterialToolbar toolbar = findViewById(R.id.MainToolbar);
         setSupportActionBar(toolbar);
 
-        settingsController = new SettingsController(this, this::reloadUiStateAfterDataReset,
+        settingsController = new SettingsController(this, new SettingsDataService(this),
+                this::reloadUiStateAfterDataReset,
                 AutoSecretaryApplication.from(this).getAppCompositionRoot().getSharedExecutor());
 
         BottomNavigationView tabBar = findViewById(R.id.TabBar);

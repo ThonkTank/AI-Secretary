@@ -22,8 +22,8 @@ public class BudgetBalanceChartView extends View {
     private final Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint pointPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-    private float density;
-    private float leftPad, rightPad, topPad, bottomPad;
+    private final float density;
+    private final float leftPad, rightPad, topPad, bottomPad;
 
     private List<BudgetChartPoint> points = new ArrayList<>();
 

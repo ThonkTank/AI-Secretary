@@ -28,6 +28,7 @@ public class ClaudeApiKeyStore {
     private static final String KEY_ALIAS = "autosecretary_claude_api";
     private static final String ANDROID_KEYSTORE = "AndroidKeyStore";
     private static final String AES_MODE = "AES/GCM/NoPadding";
+    private static final int GCM_TAG_SIZE_BITS = 128;
 
     private final SharedPreferences preferences;
 
@@ -67,7 +68,7 @@ public class ClaudeApiKeyStore {
             byte[] encrypted = Base64.decode(encryptedB64, Base64.NO_WRAP);
             byte[] iv = Base64.decode(ivB64, Base64.NO_WRAP);
             Cipher cipher = Cipher.getInstance(AES_MODE);
-            cipher.init(Cipher.DECRYPT_MODE, getOrCreateSecretKey(), new GCMParameterSpec(128, iv));
+            cipher.init(Cipher.DECRYPT_MODE, getOrCreateSecretKey(), new GCMParameterSpec(GCM_TAG_SIZE_BITS, iv));
             byte[] decrypted = cipher.doFinal(encrypted);
             return new String(decrypted, StandardCharsets.UTF_8);
         } catch (GeneralSecurityException e) {

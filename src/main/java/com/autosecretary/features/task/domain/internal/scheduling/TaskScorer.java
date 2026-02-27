@@ -165,10 +165,6 @@ final class TaskScorer {
         }
     }
 
-    void maintenance(Task task) {
-        maintenance(task, LocalDate.now(), new TaskPlanningState());
-    }
-
     void maintenance(Task task, LocalDate day, TaskPlanningState state) {
         lifecycleManager.advancePeriods(task, day);
         CompletionState completionState = scanSlots(task, day);
@@ -358,13 +354,13 @@ final class TaskScorer {
     }
 
     private boolean isBelowMinimumSlotDuration(ScoringContext context) {
-        return context.availableTime < context.task.core.minDuration;
+        return context.availableMinutes < context.task.core.minDuration;
     }
 
     private boolean isBelowRequiredProgressDuration(ScoringContext context) {
         return context.task.core.progress != null
                 && context.task.core.progress.hasTrackingTarget()
-                && context.availableTime < context.task.core.progress.requiredTimePerRep();
+                && context.availableMinutes < context.task.core.progress.requiredTimePerRep();
     }
 
     private boolean isPastClosableDeadline(ScoringContext context) {
@@ -532,13 +528,13 @@ final class TaskScorer {
         final Task task;
         final TaskScoringSnapshot snapshot;
         final LocalDateTime start;
-        final int availableTime;
+        final int availableMinutes;
 
         ScoringContext(Task task, TaskScoringSnapshot snapshot, LocalDateTime start, LocalDateTime end) {
             this.task = task;
             this.snapshot = snapshot;
             this.start = start;
-            this.availableTime = (int) ChronoUnit.MINUTES.between(start, end);
+            this.availableMinutes = (int) ChronoUnit.MINUTES.between(start, end);
         }
     }
 }

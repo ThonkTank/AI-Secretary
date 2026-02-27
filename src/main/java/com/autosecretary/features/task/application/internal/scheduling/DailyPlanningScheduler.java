@@ -39,6 +39,8 @@ public final class DailyPlanningScheduler {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
+        // On Android S+, check if the app has SCHEDULE_EXACT_ALARM permission.
+        // If not, fall back to the less-precise setAndAllowWhileIdle method.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
             alarmManager.setAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,

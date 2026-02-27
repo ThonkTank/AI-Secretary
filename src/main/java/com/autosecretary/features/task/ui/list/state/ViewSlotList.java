@@ -24,21 +24,27 @@ public class ViewSlotList {
 
     private static final Predicate<ViewSlot> ALWAYS_EXPANDED = slot -> true;
 
-    private static final TreeBuilder<ViewSlot> TREE_BY_TASK = new TreeBuilder<>(
+    private static final TreeBuilder<ViewSlot> TREE_BY_TASK = createTreeBuilder(
             vs -> vs.item.taskId,
-            vs -> vs.item.parentTaskIds,
-            (parent, child) -> parent.children.add(child),
-            vs -> vs.children,
-            vs -> vs.children = new ArrayList<>()
+            vs -> vs.item.parentTaskIds
     );
 
-    private static final TreeBuilder<ViewSlot> TREE_BY_SLOT = new TreeBuilder<>(
+    private static final TreeBuilder<ViewSlot> TREE_BY_SLOT = createTreeBuilder(
             vs -> vs.item.slotId,
-            ViewSlotList::getSlotParents,
-            (parent, child) -> parent.children.add(child),
-            vs -> vs.children,
-            vs -> vs.children = new ArrayList<>()
+            ViewSlotList::getSlotParents
     );
+
+    private static TreeBuilder<ViewSlot> createTreeBuilder(
+            java.util.function.Function<ViewSlot, String> getId,
+            java.util.function.Function<ViewSlot, List<String>> getParentIds) {
+        return new TreeBuilder<>(
+                getId,
+                getParentIds,
+                (parent, child) -> parent.getChildren().add(child),
+                ViewSlot::getChildren,
+                vs -> vs.setChildren(new ArrayList<>())
+        );
+    }
 
     private static List<String> getSlotParents(ViewSlot vs) {
         return vs.item.slotParentId != null
@@ -54,6 +60,14 @@ public class ViewSlotList {
 
         public ViewSlot(TaskListItem item) {
             this.item = item;
+        }
+
+        public List<ViewSlot> getChildren() {
+            return children;
+        }
+
+        public void setChildren(List<ViewSlot> children) {
+            this.children = children;
         }
 
         public boolean hasChildren() {
@@ -81,9 +95,6 @@ public class ViewSlotList {
     private void applySort(TreeBuilder<ViewSlot> builder,
                            Comparator<ViewSlot> comparator,
                            Predicate<ViewSlot> isExpanded) {
-        for (ViewSlot slot : viewSlots) {
-            slot.children = new ArrayList<>();
-        }
         displaySlots = builder.buildTree(displaySlots);
         builder.sortTree(displaySlots, comparator);
 
@@ -100,7 +111,7 @@ public class ViewSlotList {
             slot.depth = depth;
             target.add(slot);
             if (slot.hasChildren() && isExpanded.test(slot)) {
-                flattenWithDepth(slot.children, depth + 1, isExpanded, target);
+                flattenWithDepth(slot.getChildren(), depth + 1, isExpanded, target);
             }
         }
     }

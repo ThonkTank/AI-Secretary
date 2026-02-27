@@ -113,7 +113,7 @@ public final class RecurringPatternDetector {
         }
 
         double confidence = SuggestionScorer.calculateConfidence(
-                transactions.size(), true, amountStats.avg(), amountStats.min(), amountStats.max(), normalizedPayee);
+                transactions.size(), amountStats.avg(), amountStats.min(), amountStats.max(), normalizedPayee);
 
         return new RecurringSuggestion(
                 normalizedPayee,

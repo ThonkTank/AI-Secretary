@@ -22,6 +22,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Converters {
+    private Converters() {}
+
     @TypeConverter
     public static String fromLocalDate(LocalDate date) {
         return date != null ? date.toString() : null;

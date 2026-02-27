@@ -23,16 +23,28 @@ public final class TaskSeedDataFactory {
     private TaskSeedDataFactory() {}
 
     public static List<Task> createDefaultTasks() {
-        List<Task> newTasks = new ArrayList<>();
-        Task t;
+        List<Task> tasks = new ArrayList<>();
+        tasks.addAll(createMorningGroup());
+        tasks.addAll(createSportGroup());
+        tasks.addAll(createDaytimeTasks());
+        tasks.addAll(createDeadlineTasks());
+        tasks.addAll(createEveningGroup());
+        return tasks;
+    }
 
-        // 1. Morgenroutine (Parent) — HIGH, adaptive, history
-        //    L0: Morgenroutine
-        //    ├── L1: Duschen
-        //    │   └── L2: Haare föhnen
-        //    ├── L1: Zähneputzen
-        //    └── L1: Frühstück
-        //        └── L2: Abspülen
+    // -------------------------------------------------------------------------
+    // Morning group: Morgenroutine (tree) + Meditation
+    // -------------------------------------------------------------------------
+
+    private static List<Task> createMorningGroup() {
+        List<Task> group = new ArrayList<>();
+
+        // Morgenroutine (Parent) — HIGH, adaptive, history
+        //   ├── Duschen
+        //   │   └── Haare föhnen
+        //   ├── Zähneputzen
+        //   └── Frühstück
+        //       └── Abspülen
         Task morgen = new Task("Morgenroutine", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 60);
         morgen.core.priority = Priority.HIGH;
         morgen.core.adaptive = true;
@@ -41,227 +53,257 @@ public final class TaskSeedDataFactory {
         morgen.core.history.completions = 30;
         morgen.core.history.trackedCompletions = 28;
         morgen.core.history.totalDuration = 700;
-        newTasks.add(morgen);
+        group.add(morgen);
 
-        // 1a. Duschen (L1 Kind von Morgenroutine)
         Task duschen = new Task("Duschen", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 15);
         duschen.core.minDuration = 5;
         morgen.children.add(duschen);
 
-        // 1b. Haare föhnen (L2 Kind von Duschen — Sub-Sub-Task)
-        t = new Task("Haare föhnen", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 5);
-        t.core.minDuration = 5;
-        duschen.children.add(t);
+        Task haare = new Task("Haare föhnen", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 5);
+        haare.core.minDuration = 5;
+        duschen.children.add(haare);
 
-        // 1c. Zähneputzen (L1 Kind von Morgenroutine)
-        t = new Task("Zähneputzen", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 5);
-        t.core.minDuration = 5;
-        morgen.children.add(t);
+        Task zaehne = new Task("Zähneputzen", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 5);
+        zaehne.core.minDuration = 5;
+        morgen.children.add(zaehne);
 
-        // 1d. Frühstück (L1 Kind von Morgenroutine)
         Task fruehstueck = new Task("Frühstück", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 25);
         fruehstueck.core.minDuration = 10;
         morgen.children.add(fruehstueck);
 
-        // 1e. Abspülen (L2 Kind von Frühstück — Sub-Sub-Task)
-        t = new Task("Abspülen", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 10);
-        t.core.minDuration = 5;
-        fruehstueck.children.add(t);
+        Task abspuelen = new Task("Abspülen", 1, 1, Period.DAY, null, 1, LocalTime.of(6, 0), 10);
+        abspuelen.core.minDuration = 5;
+        fruehstueck.children.add(abspuelen);
 
-        // 3. Meditation — MEDIUM, all days, 07:00, history
-        t = new Task("Meditation", 1, 1, Period.DAY, null, 1, LocalTime.of(7, 0), 15);
-        t.core.minDuration = 10;
-        t.core.history.currentStreak = 7;
-        t.core.history.completions = 14;
-        newTasks.add(t);
+        // Meditation — MEDIUM, all days, 07:00, history
+        Task meditation = new Task("Meditation", 1, 1, Period.DAY, null, 1, LocalTime.of(7, 0), 15);
+        meditation.core.minDuration = 10;
+        meditation.core.history.currentStreak = 7;
+        meditation.core.history.completions = 14;
+        group.add(meditation);
 
-        // 4. Sport (parent) — MEDIUM, 3/week, Mon/Wed/Fri
+        return group;
+    }
+
+    // -------------------------------------------------------------------------
+    // Sport group: Sport (tree with Aufwärmen + Training + Dehnen)
+    // -------------------------------------------------------------------------
+
+    private static List<Task> createSportGroup() {
+        List<Task> group = new ArrayList<>();
+        EnumSet<DayOfWeek> mwf = EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY);
+
+        // Sport (parent) — MEDIUM, 3/week, Mon/Wed/Fri
         Task sport = new Task("Sport", 3, 1, Period.WEEK, null, 1, LocalTime.of(7, 30), 60);
         sport.core.priority = Priority.MEDIUM;
         sport.core.minDuration = 30;
         sport.prefSlots.clear();
-        sport.prefSlots.add(TaskPrefSlotFactory.create(sport.core.id, EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY), LocalTime.of(7, 30)));
-        newTasks.add(sport);
+        sport.prefSlots.add(TaskPrefSlotFactory.create(sport.core.id, mwf, LocalTime.of(7, 30)));
+        group.add(sport);
 
-        // 5. Warm-up (child of Sport) — MEDIUM, Mon/Wed/Fri
+        // Aufwärmen (child of Sport)
         Task aufwaermen = new Task("Aufwärmen", 3, 1, Period.WEEK, null, 1, LocalTime.of(7, 30), 10);
         aufwaermen.core.minDuration = 5;
         aufwaermen.prefSlots.clear();
-        aufwaermen.prefSlots.add(TaskPrefSlotFactory.create(aufwaermen.core.id, EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY), LocalTime.of(7, 30)));
+        aufwaermen.prefSlots.add(TaskPrefSlotFactory.create(aufwaermen.core.id, mwf, LocalTime.of(7, 30)));
         sport.children.add(aufwaermen);
 
-        // 6. Training (child of Sport) — MEDIUM, prereq: Warm-up
-        //    L1: Training
-        //    └── L2: Dehnen
+        // Training (child of Sport) — prereq: Aufwärmen
         Task training = new Task("Training", 3, 1, Period.WEEK, null, 1, LocalTime.of(7, 30), 45);
         training.core.priority = Priority.MEDIUM;
         training.core.minDuration = 20;
         training.prerequisites.add(new TaskPrerequisite(training.core.id, aufwaermen.core.id));
         training.prefSlots.clear();
-        training.prefSlots.add(TaskPrefSlotFactory.create(training.core.id, EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY), LocalTime.of(7, 30)));
+        training.prefSlots.add(TaskPrefSlotFactory.create(training.core.id, mwf, LocalTime.of(7, 30)));
         sport.children.add(training);
 
-        // 6a. Dehnen (L2 Kind von Training — Sub-Sub-Task)
-        t = new Task("Dehnen", 3, 1, Period.WEEK, null, 1, LocalTime.of(7, 30), 10);
-        t.core.minDuration = 5;
-        t.prefSlots.clear();
-        t.prefSlots.add(TaskPrefSlotFactory.create(t.core.id, EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY), LocalTime.of(7, 30)));
-        training.children.add(t);
+        // Dehnen (child of Training)
+        Task dehnen = new Task("Dehnen", 3, 1, Period.WEEK, null, 1, LocalTime.of(7, 30), 10);
+        dehnen.core.minDuration = 5;
+        dehnen.prefSlots.clear();
+        dehnen.prefSlots.add(TaskPrefSlotFactory.create(dehnen.core.id, mwf, LocalTime.of(7, 30)));
+        training.children.add(dehnen);
 
-        // 7. Work — MEDIUM, Mon-Fri, 180min
-        t = new Task("Arbeit", 1, 1, Period.DAY, null, 1, LocalTime.of(9, 0), 180);
-        t.core.priority = Priority.MEDIUM;
-        t.core.minDuration = 60;
-        t.prefSlots.clear();
-        t.prefSlots.add(TaskPrefSlotFactory.create(t.core.id, EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY), LocalTime.of(9, 0)));
-        newTasks.add(t);
+        return group;
+    }
 
-        // 8. Lunch break — MEDIUM, all days, 12:00
-        t = new Task("Mittagspause", 1, 1, Period.DAY, null, 1, LocalTime.of(12, 0), 30);
-        t.core.minDuration = 15;
-        newTasks.add(t);
+    // -------------------------------------------------------------------------
+    // Daytime tasks: Arbeit, Mittagspause, Spanisch, Lesen, Einkaufen, Wohnung
+    // -------------------------------------------------------------------------
 
-        // 9. Learn Spanish — MEDIUM, all days, 13:30, progress tracking
-        t = new Task("Spanisch lernen", 1, 1, Period.DAY, null, 1, LocalTime.of(13, 30), 30);
-        t.core.minDuration = 15;
-        t.core.progress.unit = "Lektionen";
-        t.core.progress.target = 50;
-        t.core.progress.current = 12;
-        t.core.progress.minPerRep = 1;
-        t.core.progress.maxPerRep = 2;
-        t.core.progress.totalProgress = 12;
-        t.core.progress.totalTime = 360;
-        newTasks.add(t);
+    private static List<Task> createDaytimeTasks() {
+        List<Task> group = new ArrayList<>();
 
-        // 10. Reading — LOW, all days, 14:30, progress tracking
-        t = new Task("Lesen", 1, 1, Period.DAY, null, 1, LocalTime.of(14, 30), 30);
-        t.core.priority = Priority.LOW;
-        t.core.minDuration = 15;
-        t.core.progress.unit = "Seiten";
-        t.core.progress.target = 300;
-        t.core.progress.current = 85;
-        t.core.progress.minPerRep = 10;
-        t.core.progress.maxPerRep = 30;
-        t.core.progress.totalProgress = 85;
-        t.core.progress.totalTime = 510;
-        newTasks.add(t);
+        // Arbeit — MEDIUM, Mon-Fri, 180min
+        Task arbeit = new Task("Arbeit", 1, 1, Period.DAY, null, 1, LocalTime.of(9, 0), 180);
+        arbeit.core.priority = Priority.MEDIUM;
+        arbeit.core.minDuration = 60;
+        arbeit.prefSlots.clear();
+        arbeit.prefSlots.add(TaskPrefSlotFactory.create(arbeit.core.id,
+                EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY),
+                LocalTime.of(9, 0)));
+        group.add(arbeit);
 
-        // 11. Grocery shopping — MEDIUM, Saturday only
-        t = new Task("Einkaufen", 1, 1, Period.WEEK, null, 1, LocalTime.of(10, 0), 60);
-        t.core.minDuration = 30;
-        t.prefSlots.clear();
-        t.prefSlots.add(TaskPrefSlotFactory.create(t.core.id, EnumSet.of(DayOfWeek.SATURDAY), LocalTime.of(10, 0)));
-        newTasks.add(t);
+        // Mittagspause — MEDIUM, all days, 12:00
+        Task mittagspause = new Task("Mittagspause", 1, 1, Period.DAY, null, 1, LocalTime.of(12, 0), 30);
+        mittagspause.core.minDuration = 15;
+        group.add(mittagspause);
 
-        // 12. Clean apartment — LOW, all days
-        t = new Task("Wohnung aufräumen", 1, 1, Period.WEEK, null, 1, LocalTime.of(10, 0), 45);
-        t.core.priority = Priority.LOW;
-        t.core.minDuration = 20;
-        newTasks.add(t);
+        // Spanisch lernen — MEDIUM, all days, 13:30, progress tracking
+        Task spanisch = new Task("Spanisch lernen", 1, 1, Period.DAY, null, 1, LocalTime.of(13, 30), 30);
+        spanisch.core.minDuration = 15;
+        spanisch.core.progress.unit = "Lektionen";
+        spanisch.core.progress.target = 50;
+        spanisch.core.progress.current = 12;
+        spanisch.core.progress.minPerRep = 1;
+        spanisch.core.progress.maxPerRep = 2;
+        spanisch.core.progress.totalProgress = 12;
+        spanisch.core.progress.totalTime = 360;
+        group.add(spanisch);
 
-        // 13. Tax return — HIGH, deadline +7 days
-        t = new Task("Steuererklärung", 1, 1, Period.MONTH, LocalDate.now().plusDays(7), 1, LocalTime.of(10, 0), 90);
-        t.core.priority = Priority.HIGH;
-        t.core.minDuration = 30;
-        t.core.description = "Belege sortieren und Formulare ausfüllen";
-        newTasks.add(t);
+        // Lesen — LOW, all days, 14:30, progress tracking
+        Task lesen = new Task("Lesen", 1, 1, Period.DAY, null, 1, LocalTime.of(14, 30), 30);
+        lesen.core.priority = Priority.LOW;
+        lesen.core.minDuration = 15;
+        lesen.core.progress.unit = "Seiten";
+        lesen.core.progress.target = 300;
+        lesen.core.progress.current = 85;
+        lesen.core.progress.minPerRep = 10;
+        lesen.core.progress.maxPerRep = 30;
+        lesen.core.progress.totalProgress = 85;
+        lesen.core.progress.totalTime = 510;
+        group.add(lesen);
 
-        // 14. Dentist appointment — HIGH, deadline +3 days
-        t = new Task("Zahnarzttermin", 1, 1, Period.MONTH, LocalDate.now().plusDays(3), 1, LocalTime.of(9, 0), 30);
-        t.core.priority = Priority.HIGH;
-        t.core.minDuration = 15;
-        t.core.description = "Termin beim Zahnarzt";
-        newTasks.add(t);
+        // Einkaufen — MEDIUM, Saturday only
+        Task einkaufen = new Task("Einkaufen", 1, 1, Period.WEEK, null, 1, LocalTime.of(10, 0), 60);
+        einkaufen.core.minDuration = 30;
+        einkaufen.prefSlots.clear();
+        einkaufen.prefSlots.add(TaskPrefSlotFactory.create(einkaufen.core.id, EnumSet.of(DayOfWeek.SATURDAY), LocalTime.of(10, 0)));
+        group.add(einkaufen);
 
-        // --- Evening tasks & edge cases (16:00–21:00) ---
+        // Wohnung aufräumen — LOW, all days
+        Task aufraumen = new Task("Wohnung aufräumen", 1, 1, Period.WEEK, null, 1, LocalTime.of(10, 0), 45);
+        aufraumen.core.priority = Priority.LOW;
+        aufraumen.core.minDuration = 20;
+        group.add(aufraumen);
 
-        // 15. Update emergency plan — CRITICAL, overdue deadline, closeOnMiss=false
-        t = new Task("Notfallplan aktualisieren", 1, 1, Period.MONTH, LocalDate.now().minusDays(2), 1, LocalTime.of(16, 0), 30);
-        t.core.priority = Priority.CRITICAL;
-        t.core.closeOnMiss = false;
-        t.core.minDuration = 10;
-        t.core.description = "Kontaktliste und Eskalationspfade prüfen";
-        newTasks.add(t);
+        return group;
+    }
 
-        // 16. Evening walk — LOW, Sunday only, cooldown=2
-        t = new Task("Abendspaziergang", 1, 1, Period.WEEK, null, 2, LocalTime.of(17, 0), 45);
-        t.core.priority = Priority.LOW;
-        t.core.minDuration = 20;
-        t.prefSlots.clear();
-        t.prefSlots.add(TaskPrefSlotFactory.create(t.core.id, EnumSet.of(DayOfWeek.SUNDAY), LocalTime.of(17, 0)));
-        newTasks.add(t);
+    // -------------------------------------------------------------------------
+    // Deadline tasks: Steuererklärung, Zahnarzttermin, Notfallplan
+    // -------------------------------------------------------------------------
 
-        // 17. Listen to podcast — MEDIUM, 3x daily (repsPerDay=3), spread across day
-        t = new Task("Podcast hören", 3, 1, Period.DAY, null, 1, LocalTime.of(8, 0), 20);
-        t.core.minDuration = 10;
-        t.prefSlots.clear();
-        t.prefSlots.add(TaskPrefSlotFactory.create(t.core.id, EnumSet.allOf(DayOfWeek.class), LocalTime.of(8, 0)));
-        t.prefSlots.add(TaskPrefSlotFactory.create(t.core.id, EnumSet.allOf(DayOfWeek.class), LocalTime.of(13, 0)));
-        t.prefSlots.add(TaskPrefSlotFactory.create(t.core.id, EnumSet.allOf(DayOfWeek.class), LocalTime.of(18, 0)));
-        newTasks.add(t);
+    private static List<Task> createDeadlineTasks() {
+        List<Task> group = new ArrayList<>();
 
-        // 18. Learn Japanese — MEDIUM, daily, 19:00, progress resetPerRep=true
-        t = new Task("Japanisch lernen", 1, 1, Period.DAY, null, 1, LocalTime.of(19, 0), 30);
-        t.core.minDuration = 10;
-        t.core.progress.unit = "Vokabeln";
-        t.core.progress.resetPerRep = true;
-        t.core.progress.target = 20;
-        t.core.progress.current = 5;
-        t.core.progress.minPerRep = 5;
-        t.core.progress.maxPerRep = 20;
-        t.core.progress.totalProgress = 5;
-        t.core.progress.totalTime = 30;
-        newTasks.add(t);
+        // Steuererklärung — HIGH, deadline +7 days
+        Task steuer = new Task("Steuererklärung", 1, 1, Period.MONTH, LocalDate.now().plusDays(7), 1, LocalTime.of(10, 0), 90);
+        steuer.core.priority = Priority.HIGH;
+        steuer.core.minDuration = 30;
+        steuer.core.description = "Belege sortieren und Formulare ausfüllen";
+        group.add(steuer);
 
-        // 19. Write fitness plan — MEDIUM, daily, 19:30, very short (5min)
-        t = new Task("Fitnessplan schreiben", 1, 1, Period.DAY, null, 1, LocalTime.of(19, 30), 5);
-        t.core.minDuration = 5;
-        newTasks.add(t);
+        // Zahnarzttermin — HIGH, deadline +3 days
+        Task zahnarzt = new Task("Zahnarzttermin", 1, 1, Period.MONTH, LocalDate.now().plusDays(3), 1, LocalTime.of(9, 0), 30);
+        zahnarzt.core.priority = Priority.HIGH;
+        zahnarzt.core.minDuration = 15;
+        zahnarzt.core.description = "Termin beim Zahnarzt";
+        group.add(zahnarzt);
 
-        // 20. Abendroutine (Parent) — MEDIUM, daily, 20:00
-        //    L0: Abendroutine
-        //    ├── L1: Tagebuch schreiben (adaptive)
-        //    │   └── L2: Notizen ordnen
-        //    └── L1: Hautpflege
+        // Notfallplan aktualisieren — CRITICAL, overdue deadline, closeOnMiss=false
+        Task notfallplan = new Task("Notfallplan aktualisieren", 1, 1, Period.MONTH, LocalDate.now().minusDays(2), 1, LocalTime.of(16, 0), 30);
+        notfallplan.core.priority = Priority.CRITICAL;
+        notfallplan.core.closeOnMiss = false;
+        notfallplan.core.minDuration = 10;
+        notfallplan.core.description = "Kontaktliste und Eskalationspfade prüfen";
+        group.add(notfallplan);
+
+        return group;
+    }
+
+    // -------------------------------------------------------------------------
+    // Evening group: Abendspaziergang, Podcast, Japanisch, Fitnessplan,
+    //                Abendroutine (tree), Wochenbericht, Wäsche (pair)
+    // -------------------------------------------------------------------------
+
+    private static List<Task> createEveningGroup() {
+        List<Task> group = new ArrayList<>();
+
+        // Abendspaziergang — LOW, Sunday only, cooldown=2
+        Task spaziergang = new Task("Abendspaziergang", 1, 1, Period.WEEK, null, 2, LocalTime.of(17, 0), 45);
+        spaziergang.core.priority = Priority.LOW;
+        spaziergang.core.minDuration = 20;
+        spaziergang.prefSlots.clear();
+        spaziergang.prefSlots.add(TaskPrefSlotFactory.create(spaziergang.core.id, EnumSet.of(DayOfWeek.SUNDAY), LocalTime.of(17, 0)));
+        group.add(spaziergang);
+
+        // Podcast hören — MEDIUM, 3x daily (repsPerDay=3), spread across day
+        Task podcast = new Task("Podcast hören", 3, 1, Period.DAY, null, 1, LocalTime.of(8, 0), 20);
+        podcast.core.minDuration = 10;
+        podcast.prefSlots.clear();
+        podcast.prefSlots.add(TaskPrefSlotFactory.create(podcast.core.id, EnumSet.allOf(DayOfWeek.class), LocalTime.of(8, 0)));
+        podcast.prefSlots.add(TaskPrefSlotFactory.create(podcast.core.id, EnumSet.allOf(DayOfWeek.class), LocalTime.of(13, 0)));
+        podcast.prefSlots.add(TaskPrefSlotFactory.create(podcast.core.id, EnumSet.allOf(DayOfWeek.class), LocalTime.of(18, 0)));
+        group.add(podcast);
+
+        // Japanisch lernen — MEDIUM, daily, 19:00, progress resetPerRep=true
+        Task japanisch = new Task("Japanisch lernen", 1, 1, Period.DAY, null, 1, LocalTime.of(19, 0), 30);
+        japanisch.core.minDuration = 10;
+        japanisch.core.progress.unit = "Vokabeln";
+        japanisch.core.progress.resetPerRep = true;
+        japanisch.core.progress.target = 20;
+        japanisch.core.progress.current = 5;
+        japanisch.core.progress.minPerRep = 5;
+        japanisch.core.progress.maxPerRep = 20;
+        japanisch.core.progress.totalProgress = 5;
+        japanisch.core.progress.totalTime = 30;
+        group.add(japanisch);
+
+        // Fitnessplan schreiben — MEDIUM, daily, 19:30, very short (5min)
+        Task fitnessplan = new Task("Fitnessplan schreiben", 1, 1, Period.DAY, null, 1, LocalTime.of(19, 30), 5);
+        fitnessplan.core.minDuration = 5;
+        group.add(fitnessplan);
+
+        // Abendroutine (Parent) — MEDIUM, daily, 20:00
+        //   ├── Tagebuch schreiben (adaptive)
+        //   │   └── Notizen ordnen
+        //   └── Hautpflege
         Task abend = new Task("Abendroutine", 1, 1, Period.DAY, null, 1, LocalTime.of(20, 0), 40);
         abend.core.minDuration = 20;
-        newTasks.add(abend);
+        group.add(abend);
 
-        // 20a. Tagebuch schreiben (L1 Kind von Abendroutine) — adaptive
         Task tagebuch = new Task("Tagebuch schreiben", 1, 1, Period.DAY, null, 1, LocalTime.of(20, 0), 20);
         tagebuch.core.adaptive = true;
         tagebuch.core.minDuration = 10;
         abend.children.add(tagebuch);
 
-        // 20b. Notizen ordnen (L2 Kind von Tagebuch — Sub-Sub-Task)
-        t = new Task("Notizen ordnen", 1, 1, Period.DAY, null, 1, LocalTime.of(20, 0), 10);
-        t.core.minDuration = 5;
-        tagebuch.children.add(t);
+        Task notizen = new Task("Notizen ordnen", 1, 1, Period.DAY, null, 1, LocalTime.of(20, 0), 10);
+        notizen.core.minDuration = 5;
+        tagebuch.children.add(notizen);
 
-        // 20c. Hautpflege (L1 Kind von Abendroutine)
-        t = new Task("Hautpflege", 1, 1, Period.DAY, null, 1, LocalTime.of(20, 0), 10);
-        t.core.minDuration = 5;
-        abend.children.add(t);
+        Task hautpflege = new Task("Hautpflege", 1, 1, Period.DAY, null, 1, LocalTime.of(20, 0), 10);
+        hautpflege.core.minDuration = 5;
+        abend.children.add(hautpflege);
 
-        // 21. Weekly report — HIGH, bi-weekly (perPeriod=2), 20:30
-        t = new Task("Wochenbericht", 1, 2, Period.WEEK, null, 1, LocalTime.of(20, 30), 45);
-        t.core.priority = Priority.HIGH;
-        t.core.minDuration = 20;
-        t.core.description = "Erledigtes und offene Punkte zusammenfassen";
-        newTasks.add(t);
+        // Wochenbericht — HIGH, bi-weekly (perPeriod=2), 20:30
+        Task wochenbericht = new Task("Wochenbericht", 1, 2, Period.WEEK, null, 1, LocalTime.of(20, 30), 45);
+        wochenbericht.core.priority = Priority.HIGH;
+        wochenbericht.core.minDuration = 20;
+        wochenbericht.core.description = "Erledigtes und offene Punkte zusammenfassen";
+        group.add(wochenbericht);
 
-        // 22a. Do laundry — MEDIUM, 2x/week, 16:30
+        // Wäsche-Paar: Wäsche waschen → Wäsche aufhängen (prereq, 45min gap)
         Task waescheWaschen = new Task("Wäsche waschen", 2, 1, Period.WEEK, null, 1, LocalTime.of(16, 30), 15);
         waescheWaschen.core.minDuration = 10;
-        newTasks.add(waescheWaschen);
+        group.add(waescheWaschen);
 
-        // 22b. Hang laundry — MEDIUM, 2x/week, 17:30, prereq: Do laundry (45min gap for wash cycle)
-        t = new Task("Wäsche aufhängen", 2, 1, Period.WEEK, null, 1, LocalTime.of(17, 30), 10);
-        t.core.minDuration = 5;
-        t.core.adaptive = true;
-        t.prerequisites.add(new TaskPrerequisite(t.core.id, waescheWaschen.core.id, 45));
-        newTasks.add(t);
+        Task waescheAufhaengen = new Task("Wäsche aufhängen", 2, 1, Period.WEEK, null, 1, LocalTime.of(17, 30), 10);
+        waescheAufhaengen.core.minDuration = 5;
+        waescheAufhaengen.core.adaptive = true;
+        waescheAufhaengen.prerequisites.add(new TaskPrerequisite(waescheAufhaengen.core.id, waescheWaschen.core.id, 45));
+        group.add(waescheAufhaengen);
 
-        return newTasks;
+        return group;
     }
 }

@@ -137,7 +137,10 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     private BudgetTransactionEntity toEntity(ImportTransactionRecord record) {
-        ImportTransactionType type = record.type() != null ? record.type() : ImportTransactionType.EXPENSE;
+        ImportTransactionType type = record.type();
+        if (type == null) {
+            throw new IllegalArgumentException("Transaction type must not be null for record: " + record.id());
+        }
         TransactionDirection direction = type.toDirection();
         TransactionKind kind = type.toKind();
 
@@ -159,9 +162,10 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     private ImportTransactionRecord toRecord(BudgetTransactionEntity entity) {
-        ImportTransactionType type = entity.transactionKind == TransactionKind.INTERNAL_TRANSFER
-                ? ImportTransactionType.TRANSFER
-                : ImportTransactionType.fromDirection(entity.direction);
+        ImportTransactionType type = switch (entity.transactionKind) {
+            case INTERNAL_TRANSFER -> ImportTransactionType.TRANSFER;
+            case STANDARD -> ImportTransactionType.fromDirection(entity.direction);
+        };
         return new ImportTransactionRecord(
                 entity.id,
                 entity.accountId,

@@ -14,7 +14,7 @@
 
 ---
 
-### [coupling] TaskEditSessionController.java:21 — mapper instantiated outside `internal`
+### [nit] TaskEditSessionController.java:21 — mapper instantiated outside `internal`
 
 **File:** `TaskEditSessionController.java:21`
 
@@ -23,4 +23,5 @@
 **Why it matters:** If the mapper ever needs a collaborator injected, `TaskEditSessionController`'s hardcoded instantiation would need a separate update from the `TaskEditDialog` wiring. Today the mapper is stateless so the risk is minimal.
 
 **Suggested alternative:** Accept `TaskEditStateMapper` as a constructor parameter in `TaskEditSessionController`, wired from `AppCompositionRoot` or `TaskViewModel`. Deferred — stateless mapper makes the coupling harmless today.
+
 

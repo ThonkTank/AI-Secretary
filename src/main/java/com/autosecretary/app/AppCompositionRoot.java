@@ -73,8 +73,13 @@ public class AppCompositionRoot {
     }
 
     public synchronized TaskViewModelFactory getTaskViewModelFactory() {
+        initTaskGraph();
+        return taskViewModelFactory;
+    }
+
+    private void initTaskGraph() {
         if (taskViewModelFactory != null) {
-            return taskViewModelFactory;
+            return;
         }
 
         AppDatabase db = AppDatabase.getInstance(app);
@@ -139,7 +144,8 @@ public class AppCompositionRoot {
         AdjustTaskProgressUseCase adjustTaskProgressUseCase = new AdjustTaskProgressUseCase(
                 taskDao,
                 sharedExecutor,
-                mainHandler::post
+                mainHandler::post,
+                getTaskLifecycleManager()
         );
 
         taskViewModelFactory = new TaskViewModelFactory(
@@ -150,8 +156,6 @@ public class AppCompositionRoot {
                 taskCalendarService,
                 adjustTaskProgressUseCase
         );
-
-        return taskViewModelFactory;
     }
 
     public synchronized TaskScheduleConfigRepository getTaskScheduleConfigRepository() {
@@ -163,9 +167,7 @@ public class AppCompositionRoot {
     }
 
     public synchronized RegenerateScheduleUseCase getRegenerateScheduleUseCase() {
-        if (regenerateScheduleUseCase == null) {
-            getTaskViewModelFactory();
-        }
+        initTaskGraph();
         return regenerateScheduleUseCase;
     }
 
@@ -234,9 +236,7 @@ public class AppCompositionRoot {
     }
 
     public synchronized TaskSlotToggleMutation getTaskSlotToggleMutation() {
-        if (taskSlotToggleMutation == null) {
-            getTaskViewModelFactory();
-        }
+        initTaskGraph();
         return taskSlotToggleMutation;
     }
 

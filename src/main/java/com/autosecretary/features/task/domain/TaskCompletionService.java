@@ -15,12 +15,13 @@ import java.time.LocalTime;
  * track in history statistics.
  */
 public class TaskCompletionService {
+    private static final long SECONDS_PER_DAY = 24 * 3600L;
     // Completions faster than 3 seconds are "quick taps" — the user just wanted to
     // mark the task done without actually working on it, so duration is not tracked.
     private static final long QUICK_TAP_THRESHOLD_SECONDS = 3;
     // Completions longer than 24 hours mean the user forgot to finish the task in the
     // same session, so the elapsed time is not representative and duration is not tracked.
-    private static final long STALE_THRESHOLD_SECONDS = 24 * 3600;
+    private static final long STALE_THRESHOLD_SECONDS = SECONDS_PER_DAY;
 
     /**
      * Represents the outcome of a {@link #checkOff} call.
@@ -59,7 +60,7 @@ public class TaskCompletionService {
 
         long durationSeconds = Duration.between(slot.realStart, slot.realEnd).getSeconds();
         // Handle midnight wraparound (e.g. started 23:50, finished 00:05)
-        if (durationSeconds < 0) durationSeconds += 24 * 3600;
+        if (durationSeconds < 0) durationSeconds += SECONDS_PER_DAY;
 
         boolean isQuickTap = durationSeconds <= QUICK_TAP_THRESHOLD_SECONDS;
         boolean isStale = durationSeconds > STALE_THRESHOLD_SECONDS;
@@ -69,11 +70,11 @@ public class TaskCompletionService {
         lifecycleManager.updateStreakForCompletion(task, slot);
         int durationMinutes = (int) Math.ceil(durationSeconds / 60.0);
         task.recordCompletion(durationMinutes, trackDuration);
-        if (trackDuration) {
+        if (trackDuration && task.core.progress != null) {
             task.core.progress.recordTimingSample(durationMinutes);
-            if (task.core.adaptive) {
-                lifecycleManager.adaptPrefSlot(task, slot);
-            }
+        }
+        if (trackDuration && task.core.adaptive) {
+            lifecycleManager.adaptPrefSlot(task, slot);
         }
         return CompletionPhase.COMPLETED;
     }

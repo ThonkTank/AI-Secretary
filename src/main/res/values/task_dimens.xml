@@ -25,6 +25,7 @@
     <dimen name="task_row_meta_spacing">4dp</dimen>
     <dimen name="task_row_edit_button_padding">8dp</dimen>
     <dimen name="task_row_progress_button_size">32dp</dimen>
+    <dimen name="task_row_expand_toggle_min_width">24dp</dimen>
 
     <dimen name="widget_time_column_min_width">40dp</dimen>
     <dimen name="widget_refresh_button_size">32dp</dimen>
@@ -33,4 +34,10 @@
     <dimen name="task_text_xs">12sp</dimen>
     <dimen name="task_text_sm">14sp</dimen>
     <dimen name="task_text_md">16sp</dimen>
+
+    <!-- Corner radius tokens for task/calendar shape drawables -->
+    <dimen name="task_corner_radius_sm">12dp</dimen>
+    <dimen name="task_corner_radius_medium">14dp</dimen>
+    <dimen name="task_corner_radius_lg">16dp</dimen>
+    <dimen name="task_corner_radius_large">18dp</dimen>
 </resources>

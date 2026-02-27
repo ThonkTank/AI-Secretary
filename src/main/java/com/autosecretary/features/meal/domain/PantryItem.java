@@ -30,9 +30,11 @@ public class PantryItem {
         }
     }
 
+    private static final int EXPIRY_WARNING_DAYS = 3;
+
     public boolean isExpiringSoon() {
         int days = getDaysUntilExpiry();
-        return days >= 0 && days < 3;
+        return days >= 0 && days < EXPIRY_WARNING_DAYS;
     }
 
     public boolean isExpired() {
@@ -44,8 +46,7 @@ public class PantryItem {
     }
 
     public String getFormattedAmount() {
-        if (amount == (int) amount) return (int) amount + " " + unit;
-        return String.format("%.1f %s", amount, unit);
+        return MealAmountFormat.format(amount, unit);
     }
 
     public String getExpiryInfo() {

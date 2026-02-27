@@ -11,6 +11,7 @@
     <string name="budget_transfer_target_account">Zielkonto</string>
     <string name="budget_transfer_date_hint">Datum (YYYY-MM-DD)</string>
     <string name="budget_transfer_requires_two_accounts">Für Überweisungen werden mindestens zwei Konten benötigt.</string>
+    <string name="budget_transfer_invalid_date">Ungültiges Datum (erwartet: YYYY-MM-DD)</string>
     <string name="budget_empty_state">Noch keine Buchungen. Starte mit „Transaktion hinzufügen".</string>
     <string name="budget_loading">Budget wird geladen</string>
     <string name="budget_retry">Erneut versuchen</string>
@@ -31,7 +32,7 @@
     <string name="budget_transaction_content_description">Transaktion: %1$s, %2$s</string>
     <string name="budget_dialog_category_label">Kategorie</string>
     <string name="budget_dialog_account_label">Konto</string>
-    <string name="budget_dialog_date_hint">Datum (YYYY-MM-DD)</string>
+    <string name="budget_dialog_date_hint">@string/budget_transfer_date_hint</string>
     <string name="budget_month_previous">Vorheriger Monat</string>
     <string name="budget_month_next">Nächster Monat</string>
     <string name="budget_delete_title">Transaktion löschen?</string>
@@ -76,11 +77,12 @@
 
     <string name="budget_status_no_account">Kein Konto vorhanden.</string>
     <string name="budget_status_last_bookings">Letzte Buchungen</string>
-    <string name="budget_status_no_bookings">Noch keine Buchungen. Starte mit „Transaktion hinzufügen".</string>
+    <string name="budget_status_no_bookings">@string/budget_empty_state</string>
     <string name="budget_status_import_success">%1$d neu, %2$d Duplikate, %3$d auto-kategorisiert.</string>
-    <string name="budget_status_import_failed">Import fehlgeschlagen: %1$s</string>
+    <string name="budget_status_import_failed">@string/budget_import_error</string>
     <string name="budget_status_file_read_failed">Datei konnte nicht gelesen werden. Prüfe Berechtigung und Dateiformat.</string>
     <string name="budget_status_invalid_amount">Ungültiger Betrag</string>
     <string name="budget_status_error">Fehler: %1$s</string>
     <string name="budget_status_file_loading">Datei wird geladen: %1$s</string>
+    <string name="budget_limit_bar_progress_description">Budget-Limit Fortschritt</string>
 </resources>

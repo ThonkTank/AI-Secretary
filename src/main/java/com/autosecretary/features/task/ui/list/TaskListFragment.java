@@ -40,6 +40,9 @@ import java.util.Locale;
 public class TaskListFragment extends Fragment {
     public static final String ARG_OPEN_CREATE_TASK = "open_create_task";
 
+    private static final float ALPHA_NAV_ENABLED = 1.0f;
+    private static final float ALPHA_NAV_DISABLED = 0.3f;
+
     private TaskViewModel vm;
     private boolean shouldOpenCreateTask;
 
@@ -171,14 +174,14 @@ public class TaskListFragment extends Fragment {
 
         vm.getSelectedDay().observe(getViewLifecycleOwner(), day -> {
             boolean isToday = day.equals(LocalDate.now());
-            dayNavLabel.setText(isToday ? "Heute" : day.format(dayFormat));
+            dayNavLabel.setText(isToday ? getString(R.string.task_list_day_nav_today) : day.format(dayFormat));
 
             dayNavPrev.setEnabled(!isToday);
-            dayNavPrev.setAlpha(isToday ? 0.3f : 1.0f);
+            dayNavPrev.setAlpha(isToday ? ALPHA_NAV_DISABLED : ALPHA_NAV_ENABLED);
 
             boolean canGoForward = day.isBefore(LocalDate.now().plusDays(TaskViewModel.MAX_DAY_OFFSET));
             dayNavNext.setEnabled(canGoForward);
-            dayNavNext.setAlpha(canGoForward ? 1.0f : 0.3f);
+            dayNavNext.setAlpha(canGoForward ? ALPHA_NAV_ENABLED : ALPHA_NAV_DISABLED);
 
             generateButton.setVisibility(isToday ? View.VISIBLE : View.GONE);
             newTaskButton.setVisibility(isToday ? View.VISIBLE : View.GONE);

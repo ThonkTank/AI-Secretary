@@ -9,32 +9,32 @@ public class ConsumptionLogRowMapper implements RowMapper<ConsumptionLog> {
     @Override
     public ConsumptionLog fromRow(Map<String, Object> row) {
         ConsumptionLog log = new ConsumptionLog();
-        log.id = MapperSupport.asNullableLong(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.ID, null));
-        log.date = MapperSupport.asLocalDate(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.DATE, null));
-        log.itemId = MapperSupport.asLong(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.ITEM_ID, "itemId"));
-        log.memberId = MapperSupport.asLong(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.MEMBER_ID, "memberId"));
-        log.recipeId = MapperSupport.asLong(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.RECIPE_ID, "recipeId"));
-        log.servingsConsumed = MapperSupport.asDouble(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.SERVINGS_CONSUMED, "servingsConsumed"));
-        log.calories = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.CALORIES, null));
-        log.protein = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.PROTEIN, null));
-        log.carbs = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.CARBS, null));
-        log.fat = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.Consumption.FAT, null));
+        log.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.ConsumptionLog.ID));
+        log.date = MapperSupport.asLocalDate(row.get(MealFieldKeys.ConsumptionLog.DATE));
+        log.itemId = MapperSupport.asLong(row.get(MealFieldKeys.ConsumptionLog.ITEM_ID));
+        log.memberId = MapperSupport.asLong(row.get(MealFieldKeys.ConsumptionLog.MEMBER_ID));
+        log.recipeId = MapperSupport.asLong(row.get(MealFieldKeys.ConsumptionLog.RECIPE_ID));
+        log.servingsConsumed = MapperSupport.asDouble(row.get(MealFieldKeys.ConsumptionLog.SERVINGS_CONSUMED));
+        log.calories = MapperSupport.asInt(row.get(MealFieldKeys.ConsumptionLog.CALORIES));
+        log.protein = MapperSupport.asInt(row.get(MealFieldKeys.ConsumptionLog.PROTEIN));
+        log.carbs = MapperSupport.asInt(row.get(MealFieldKeys.ConsumptionLog.CARBS));
+        log.fat = MapperSupport.asInt(row.get(MealFieldKeys.ConsumptionLog.FAT));
         return log;
     }
 
     @Override
     public Map<String, Object> toRow(ConsumptionLog log) {
         Map<String, Object> row = new HashMap<>();
-        row.put(LegacyMealFieldKeys.Consumption.ID, log.id);
-        row.put(LegacyMealFieldKeys.Consumption.DATE, MapperSupport.toDateString(log.date));
-        row.put(LegacyMealFieldKeys.Consumption.ITEM_ID, log.itemId);
-        row.put(LegacyMealFieldKeys.Consumption.MEMBER_ID, log.memberId);
-        row.put(LegacyMealFieldKeys.Consumption.RECIPE_ID, log.recipeId);
-        row.put(LegacyMealFieldKeys.Consumption.SERVINGS_CONSUMED, log.servingsConsumed);
-        row.put(LegacyMealFieldKeys.Consumption.CALORIES, log.calories);
-        row.put(LegacyMealFieldKeys.Consumption.PROTEIN, log.protein);
-        row.put(LegacyMealFieldKeys.Consumption.CARBS, log.carbs);
-        row.put(LegacyMealFieldKeys.Consumption.FAT, log.fat);
+        row.put(MealFieldKeys.ConsumptionLog.ID, log.id);
+        row.put(MealFieldKeys.ConsumptionLog.DATE, MapperSupport.toDateString(log.date));
+        row.put(MealFieldKeys.ConsumptionLog.ITEM_ID, log.itemId);
+        row.put(MealFieldKeys.ConsumptionLog.MEMBER_ID, log.memberId);
+        row.put(MealFieldKeys.ConsumptionLog.RECIPE_ID, log.recipeId);
+        row.put(MealFieldKeys.ConsumptionLog.SERVINGS_CONSUMED, log.servingsConsumed);
+        row.put(MealFieldKeys.ConsumptionLog.CALORIES, log.calories);
+        row.put(MealFieldKeys.ConsumptionLog.PROTEIN, log.protein);
+        row.put(MealFieldKeys.ConsumptionLog.CARBS, log.carbs);
+        row.put(MealFieldKeys.ConsumptionLog.FAT, log.fat);
         return row;
     }
 }

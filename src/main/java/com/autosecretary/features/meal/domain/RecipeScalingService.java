@@ -41,7 +41,7 @@ public class RecipeScalingService {
         double toPrecision = switch (precision) {
             case NONE -> recipe.servings;
             case EXACT -> Math.rint(clamped);
-            case ROUGH -> Math.round(clamped * 2.0) / 2.0;
+            case ROUGH -> Math.round(clamped * 2.0) / 2.0; // rounds to nearest 0.5 serving
         };
         return clamp(toPrecision, minServings, maxServings);
     }

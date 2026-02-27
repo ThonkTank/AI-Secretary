@@ -5,6 +5,8 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public final class AccountBalanceTimelineService {
@@ -31,16 +33,11 @@ public final class AccountBalanceTimelineService {
                                                               List<DailyDeltaPoint> dailyDeltas) {
         Map<LocalDate, Long> deltaByDate = dailyDeltas.stream()
                 .collect(Collectors.toMap(DailyDeltaPoint::date, DailyDeltaPoint::deltaCents));
-
-        List<BalanceTimelinePoint> points = new ArrayList<>();
-        long runningBalance = startBalanceCents;
-        LocalDate cursor = fromDate;
-        while (!cursor.isAfter(toDate)) {
-            runningBalance += deltaByDate.getOrDefault(cursor, 0L);
-            points.add(new BalanceTimelinePoint(cursor, runningBalance));
-            cursor = cursor.plusDays(1);
-        }
-        return points;
+        return reconstructTimeline(
+                fromDate, toDate, startBalanceCents, deltaByDate,
+                Function.identity(),
+                d -> d.plusDays(1),
+                (d1, d2) -> !d1.isAfter(d2));
     }
 
     /**
@@ -62,14 +59,41 @@ public final class AccountBalanceTimelineService {
                                                                 List<MonthlyDeltaPoint> monthlyDeltas) {
         Map<YearMonth, Long> deltaByMonth = monthlyDeltas.stream()
                 .collect(Collectors.toMap(MonthlyDeltaPoint::yearMonth, MonthlyDeltaPoint::deltaCents));
+        return reconstructTimeline(
+                fromMonth, toMonth, startBalanceCents, deltaByMonth,
+                YearMonth::atEndOfMonth,
+                m -> m.plusMonths(1),
+                (m1, m2) -> !m1.isAfter(m2));
+    }
 
+    /**
+     * Generic timeline reconstruction helper.
+     * Accumulates deltas over a sequence of temporal periods.
+     *
+     * @param fromPeriod       first period of the window (inclusive)
+     * @param toPeriod         last period of the window (inclusive)
+     * @param startBalanceCents initial balance before the first period
+     * @param deltaMap         map of deltas keyed by period
+     * @param toLocalDate      function to convert a period to a LocalDate for storage
+     * @param nextPeriod       function to get the next period in the sequence
+     * @param loopCondition    predicate to determine if iteration should continue
+     * @return timeline points from fromPeriod to toPeriod
+     */
+    private static <T> List<BalanceTimelinePoint> reconstructTimeline(
+            T fromPeriod,
+            T toPeriod,
+            long startBalanceCents,
+            Map<T, Long> deltaMap,
+            Function<T, LocalDate> toLocalDate,
+            Function<T, T> nextPeriod,
+            BiPredicate<T, T> loopCondition) {
         List<BalanceTimelinePoint> points = new ArrayList<>();
         long runningBalance = startBalanceCents;
-        YearMonth cursor = fromMonth;
-        while (!cursor.isAfter(toMonth)) {
-            runningBalance += deltaByMonth.getOrDefault(cursor, 0L);
-            points.add(new BalanceTimelinePoint(cursor.atEndOfMonth(), runningBalance));
-            cursor = cursor.plusMonths(1);
+        T cursor = fromPeriod;
+        while (loopCondition.test(cursor, toPeriod)) {
+            runningBalance += deltaMap.getOrDefault(cursor, 0L);
+            points.add(new BalanceTimelinePoint(toLocalDate.apply(cursor), runningBalance));
+            cursor = nextPeriod.apply(cursor);
         }
         return points;
     }

@@ -59,38 +59,43 @@ public class BudgetTransferDialogController {
 
         dateInput.setText(LocalDate.now().toString());
 
-        new AlertDialog.Builder(ctx)
+        AlertDialog dialog = new AlertDialog.Builder(ctx)
                 .setTitle(R.string.budget_transfer_title)
                 .setView(dialogView)
-                .setPositiveButton(R.string.budget_transfer_save, (dialog, which) -> {
-                    int sourceIdx = sourceAccountSpinner.getSelectedItemPosition();
-                    int targetIdx = targetAccountSpinner.getSelectedItemPosition();
-                    if (sourceIdx < 0 || sourceIdx >= accounts.size()
-                            || targetIdx < 0 || targetIdx >= accounts.size()) {
-                        return;
-                    }
-
-                    String amountStr = textOf(amountInput);
-                    String note = textOf(noteInput);
-                    String dateStr = textOf(dateInput);
-
-                    LocalDate bookingDate;
-                    try {
-                        bookingDate = LocalDate.parse(dateStr);
-                    } catch (DateTimeParseException ex) {
-                        bookingDate = LocalDate.now();
-                    }
-
-                    listener.onTransferSubmitted(
-                            accounts.get(sourceIdx).id,
-                            accounts.get(targetIdx).id,
-                            amountStr,
-                            bookingDate,
-                            note.isEmpty() ? null : note
-                    );
-                })
+                .setPositiveButton(R.string.budget_transfer_save, null)
                 .setNegativeButton(R.string.budget_dialog_cancel, null)
-                .show();
+                .create();
+
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            int sourceIdx = sourceAccountSpinner.getSelectedItemPosition();
+            int targetIdx = targetAccountSpinner.getSelectedItemPosition();
+            if (sourceIdx < 0 || sourceIdx >= accounts.size()
+                    || targetIdx < 0 || targetIdx >= accounts.size()) {
+                return;
+            }
+
+            String dateStr = textOf(dateInput);
+            LocalDate bookingDate;
+            try {
+                bookingDate = LocalDate.parse(dateStr);
+            } catch (DateTimeParseException ex) {
+                dateInput.setError(fragment.getString(R.string.budget_transfer_invalid_date));
+                return;
+            }
+
+            String amountStr = textOf(amountInput);
+            String note = textOf(noteInput);
+            listener.onTransferSubmitted(
+                    accounts.get(sourceIdx).id,
+                    accounts.get(targetIdx).id,
+                    amountStr,
+                    bookingDate,
+                    note.isEmpty() ? null : note
+            );
+            dialog.dismiss();
+        }));
+
+        dialog.show();
     }
 
     private static String textOf(TextInputEditText input) {

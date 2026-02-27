@@ -9,6 +9,7 @@ import android.provider.CalendarContract;
 
 import com.autosecretary.features.task.domain.TaskCalendarEvent;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
+import com.autosecretary.features.task.application.calendar.ScheduleWindow;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -37,12 +38,10 @@ public class CalendarReader implements TaskCalendarService {
         return start1.isBefore(end2) && end1.isAfter(start2);
     }
 
-    private static LocalTime clampStart(LocalTime time, LocalTime minBound) {
-        return time.isBefore(minBound) ? minBound : time;
-    }
-
-    private static LocalTime clampEnd(LocalTime time, LocalTime maxBound) {
-        return time.isAfter(maxBound) ? maxBound : time;
+    private static LocalTime clamp(LocalTime time, LocalTime minBound, LocalTime maxBound) {
+        if (time.isBefore(minBound)) return minBound;
+        if (time.isAfter(maxBound)) return maxBound;
+        return time;
     }
 
     private static String titleOrDefault(String title, String fallback) {
@@ -50,9 +49,10 @@ public class CalendarReader implements TaskCalendarService {
     }
 
     @Override
-    public List<TaskCalendarEvent> getEventsForDay(LocalDate day,
-                                                   LocalTime scheduleStart,
-                                                   LocalTime scheduleEnd) {
+    public List<TaskCalendarEvent> getEventsForDay(ScheduleWindow window) {
+        LocalDate day = window.day();
+        LocalTime scheduleStart = window.startTime();
+        LocalTime scheduleEnd = window.endTime();
         if (context.checkSelfPermission(android.Manifest.permission.READ_CALENDAR)
                 != PackageManager.PERMISSION_GRANTED) {
             return new ArrayList<>();
@@ -107,8 +107,8 @@ public class CalendarReader implements TaskCalendarService {
                     continue;
                 }
 
-                eventStart = clampStart(eventStart, scheduleStart);
-                eventEnd = clampEnd(eventEnd, scheduleEnd);
+                eventStart = clamp(eventStart, scheduleStart, scheduleEnd);
+                eventEnd = clamp(eventEnd, scheduleStart, scheduleEnd);
 
                 String safeTitle = titleOrDefault(title, FALLBACK_TITLE);
                 events.add(new TaskCalendarEvent(safeTitle, eventStart, eventEnd));

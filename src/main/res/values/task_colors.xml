@@ -23,6 +23,8 @@
     <color name="task_edit_day_unselected_background">@color/transparent</color>
     <color name="task_edit_day_unselected_text">@color/task_color_primary</color>
     <color name="task_edit_day_unselected_stroke">@color/task_color_outline</color>
+    <!-- Alpha-composited variants of task_color_primary (#FF5C7A4D): 8%, 50%, 25% opacity.
+         If task_color_primary changes, update these three values to match. -->
     <color name="task_edit_day_disabled_background">#145C7A4D</color>
     <color name="task_edit_day_disabled_text">#805C7A4D</color>
     <color name="task_edit_day_disabled_stroke">#405C7A4D</color>

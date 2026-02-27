@@ -40,6 +40,7 @@ public class TaskEditStateMapper {
     }
 
     public TaskEditState fromTask(Task task) {
+        if (task == null) throw new IllegalArgumentException("task cannot be null");
         TaskEditState state = new TaskEditState();
         state.id = task.core.id;
         state.title = task.core.title;
@@ -90,6 +91,7 @@ public class TaskEditStateMapper {
     }
 
     public Task toTask(TaskEditState state, Task baseTask) {
+        if (state == null) throw new IllegalArgumentException("state cannot be null");
         Task task = baseTask != null ? baseTask : new Task();
         task.core = task.core != null ? task.core : new TaskCore();
 
@@ -98,8 +100,8 @@ public class TaskEditStateMapper {
         task.core.description = state.description;
         task.core.priority = state.priority;
         task.core.schedulingType = state.schedulingType;
-        task.core.goalIcon = state.goalIcon;
-        task.core.goalColorHex = state.goalColorHex;
+        task.core.goalIcon = orDefault(state.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
+        task.core.goalColorHex = orDefault(state.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
         task.core.budgetRequiredCents = state.budgetRequiredCents;
         task.core.budgetAccountId = state.budgetAccountId;
         task.core.budgetCategoryId = state.budgetCategoryId;

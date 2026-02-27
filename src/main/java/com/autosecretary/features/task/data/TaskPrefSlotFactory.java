@@ -11,6 +11,7 @@ import java.util.Set;
 public final class TaskPrefSlotFactory {
 
     public static final LocalTime DEFAULT_START_TIME = LocalTime.of(6, 0);
+    public static final LocalTime DEFAULT_END_TIME = LocalTime.of(21, 0);
 
     private TaskPrefSlotFactory() {
     }

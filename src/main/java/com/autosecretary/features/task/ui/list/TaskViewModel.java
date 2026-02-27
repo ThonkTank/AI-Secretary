@@ -12,6 +12,7 @@ import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
+import com.autosecretary.features.task.application.calendar.ScheduleWindow;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.domain.SchedulingConflict;
 import com.autosecretary.features.task.domain.TaskCalendarEvent;
@@ -30,7 +31,8 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 public class TaskViewModel extends AndroidViewModel {
-    static final int MAX_DAY_OFFSET = 6;
+    /** Maximum number of days ahead navigable in both list and widget views. */
+    public static final int MAX_DAY_OFFSET = 6;
 
     private final TaskDataService taskDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
@@ -171,11 +173,12 @@ public class TaskViewModel extends AndroidViewModel {
         masterList.filter(predicate);
 
         if (day != null && hasCalendarPermission) {
-            List<TaskCalendarEvent> events = taskCalendarService.getEventsForDay(
+            ScheduleWindow window = new ScheduleWindow(
                     day,
-                    preferences.readPrefTime(day.getDayOfWeek(), true),
-                    preferences.readPrefTime(day.getDayOfWeek(), false)
+                    preferences.readDayStartTime(day.getDayOfWeek()),
+                    preferences.readDayEndTime(day.getDayOfWeek())
             );
+            List<TaskCalendarEvent> events = taskCalendarService.getEventsForDay(window);
             List<ViewSlot> calendarSlots = new ArrayList<>();
             int index = 0;
             for (TaskCalendarEvent event : events) {
@@ -250,10 +253,6 @@ public class TaskViewModel extends AndroidViewModel {
         });
     }
 
-    private static boolean isOnDay(ViewSlot viewSlot, LocalDate day) {
-        return day == null || viewSlot.item.day.equals(day);
-    }
-
     enum ListConfig {
         CHECKLIST(false) {
             @Override
@@ -272,14 +271,14 @@ public class TaskViewModel extends AndroidViewModel {
         MANAGE(true) {
             @Override
             boolean matches(ViewSlot slot, LocalDate day) {
-                return isOnDay(slot, day);
+                return day == null || slot.item.day.equals(day);
             }
 
             @Override
             Comparator<ViewSlot> comparator() {
                 return Comparator
                         .<ViewSlot, Boolean>comparing(slot -> slot.item.isCalendarEvent())
-                        .thenComparing(slot -> slot.item.title, Comparator.naturalOrder());
+                        .thenComparing(slot -> slot.item.title, Comparator.nullsLast(Comparator.naturalOrder()));
             }
         };
 

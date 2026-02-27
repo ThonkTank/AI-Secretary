@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- ⚠️ MAINTENANCE REQUIRED: This file's pathData must stay in sync with ic_launcher_monochrome.xml.
+     The same four paths (background rectangle, top bar, side handles, checkmark) are used in both files,
+     but colored separately here (white/accent/background) and as monochrome there.
+     When updating this icon design, ALWAYS update BOTH files together. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"

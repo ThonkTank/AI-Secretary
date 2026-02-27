@@ -32,6 +32,35 @@ public class ClaudeStatementApiClient {
     private static final int CONNECT_TIMEOUT = 30000;
     private static final int READ_TIMEOUT = 120000;
 
+    // JSON field names for request/response
+    private static final String JSON_MODEL = "model";
+    private static final String JSON_MAX_TOKENS = "max_tokens";
+    private static final String JSON_SYSTEM = "system";
+    private static final String JSON_TYPE = "type";
+    private static final String JSON_TEXT = "text";
+    private static final String JSON_DOCUMENT = "document";
+    private static final String JSON_SOURCE = "source";
+    private static final String JSON_BASE64 = "base64";
+    private static final String JSON_MEDIA_TYPE = "media_type";
+    private static final String JSON_DATA = "data";
+    private static final String JSON_CONTENT = "content";
+    private static final String JSON_ROLE = "role";
+    private static final String JSON_USER = "user";
+    private static final String JSON_MESSAGES = "messages";
+    private static final String JSON_ERROR = "error";
+    private static final String JSON_MESSAGE = "message";
+    private static final String JSON_PERIOD_START = "period_start";
+    private static final String JSON_PERIOD_END = "period_end";
+    private static final String JSON_TRANSACTIONS = "transactions";
+    private static final String JSON_DATE = "date";
+    private static final String JSON_AMOUNT_CENTS = "amount_cents";
+    private static final String JSON_PAYEE = "payee";
+    private static final String JSON_DESCRIPTION = "description";
+    private static final String JSON_CATEGORY_ID = "category_id";
+    private static final String JSON_HASH = "hash";
+    private static final String CONTENT_TYPE_TEXT = "text";
+    private static final String CONTENT_TYPE_DOCUMENT = "document";
+
     public StatementFileParser.ParsedStatement parsePdf(
             String apiKey,
             byte[] fileBytes,
@@ -76,32 +105,32 @@ public class ClaudeStatementApiClient {
 
     private JSONObject buildRequestBody(byte[] fileBytes, List<ImportCategory> categories) throws JSONException {
         JSONObject body = new JSONObject();
-        body.put("model", MODEL);
-        body.put("max_tokens", MAX_TOKENS);
-        body.put("system", buildSystemPrompt(categories));
+        body.put(JSON_MODEL, MODEL);
+        body.put(JSON_MAX_TOKENS, MAX_TOKENS);
+        body.put(JSON_SYSTEM, buildSystemPrompt(categories));
 
         JSONArray content = new JSONArray();
         JSONObject promptPart = new JSONObject();
-        promptPart.put("type", "text");
-        promptPart.put("text", "Analysiere den PDF-Kontoauszug und liefere ausschließlich JSON im definierten Schema zurück.");
+        promptPart.put(JSON_TYPE, CONTENT_TYPE_TEXT);
+        promptPart.put(JSON_TEXT, "Analysiere den PDF-Kontoauszug und liefere ausschließlich JSON im definierten Schema zurück.");
         content.put(promptPart);
 
         JSONObject filePart = new JSONObject();
-        filePart.put("type", "document");
+        filePart.put(JSON_TYPE, CONTENT_TYPE_DOCUMENT);
         JSONObject source = new JSONObject();
-        source.put("type", "base64");
-        source.put("media_type", "application/pdf");
-        source.put("data", Base64.encodeToString(fileBytes, Base64.NO_WRAP));
-        filePart.put("source", source);
+        source.put(JSON_TYPE, JSON_BASE64);
+        source.put(JSON_MEDIA_TYPE, "application/pdf");
+        source.put(JSON_DATA, Base64.encodeToString(fileBytes, Base64.NO_WRAP));
+        filePart.put(JSON_SOURCE, source);
         content.put(filePart);
 
         JSONObject userMessage = new JSONObject();
-        userMessage.put("role", "user");
-        userMessage.put("content", content);
+        userMessage.put(JSON_ROLE, JSON_USER);
+        userMessage.put(JSON_CONTENT, content);
 
         JSONArray messages = new JSONArray();
         messages.put(userMessage);
-        body.put("messages", messages);
+        body.put(JSON_MESSAGES, messages);
         return body;
     }
 
@@ -127,7 +156,7 @@ public class ClaudeStatementApiClient {
 
     private StatementFileParser.ParsedStatement parseSuccessResponse(String responseBody) throws JSONException {
         JSONObject root = new JSONObject(responseBody);
-        JSONArray contentBlocks = root.optJSONArray("content");
+        JSONArray contentBlocks = root.optJSONArray(JSON_CONTENT);
         if (contentBlocks == null || contentBlocks.length() == 0) {
             throw new ApiException("Keine Text-Antwort von Claude");
         }
@@ -135,8 +164,8 @@ public class ClaudeStatementApiClient {
         String text = null;
         for (int i = 0; i < contentBlocks.length(); i++) {
             JSONObject block = contentBlocks.getJSONObject(i);
-            if ("text".equals(block.optString("type"))) {
-                text = block.optString("text", null);
+            if (CONTENT_TYPE_TEXT.equals(block.optString(JSON_TYPE))) {
+                text = block.optString(JSON_TEXT, null);
                 break;
             }
         }
@@ -146,28 +175,33 @@ public class ClaudeStatementApiClient {
         }
 
         JSONObject payload = new JSONObject(extractJsonFromMarkdown(text));
-        LocalDate periodStart = parseOptionalDate(payload.optString("period_start", null));
-        LocalDate periodEnd = parseOptionalDate(payload.optString("period_end", null));
+        LocalDate periodStart = parseOptionalDate(payload.optString(JSON_PERIOD_START, null));
+        LocalDate periodEnd = parseOptionalDate(payload.optString(JSON_PERIOD_END, null));
 
+        List<StatementFileParser.ParsedTransaction> transactions = parseTransactionArray(payload);
+
+        return new StatementFileParser.ParsedStatement(transactions, periodStart, periodEnd);
+    }
+
+    private List<StatementFileParser.ParsedTransaction> parseTransactionArray(JSONObject payload) throws JSONException {
         List<StatementFileParser.ParsedTransaction> transactions = new ArrayList<>();
-        JSONArray jsonTransactions = payload.optJSONArray("transactions");
+        JSONArray jsonTransactions = payload.optJSONArray(JSON_TRANSACTIONS);
         if (jsonTransactions != null) {
             for (int i = 0; i < jsonTransactions.length(); i++) {
                 JSONObject tx = jsonTransactions.getJSONObject(i);
                 transactions.add(parseTransaction(tx));
             }
         }
-
-        return new StatementFileParser.ParsedStatement(transactions, periodStart, periodEnd);
+        return transactions;
     }
 
     private StatementFileParser.ParsedTransaction parseTransaction(JSONObject tx) throws JSONException {
-        LocalDate date = LocalDate.parse(tx.getString("date"));
-        int amountCents = toInt(tx.get("amount_cents"));
-        String payee = StatementFileParser.emptyToNull(tx.optString("payee", null));
-        String description = StatementFileParser.emptyToNull(tx.optString("description", null));
-        String categoryId = StatementFileParser.emptyToNull(tx.optString("category_id", null));
-        String hash = StatementFileParser.emptyToNull(tx.optString("hash", null));
+        LocalDate date = LocalDate.parse(tx.getString(JSON_DATE));
+        int amountCents = toInt(tx.get(JSON_AMOUNT_CENTS));
+        String payee = StatementFileParser.emptyToNull(tx.optString(JSON_PAYEE, null));
+        String description = StatementFileParser.emptyToNull(tx.optString(JSON_DESCRIPTION, null));
+        String categoryId = StatementFileParser.emptyToNull(tx.optString(JSON_CATEGORY_ID, null));
+        String hash = StatementFileParser.emptyToNull(tx.optString(JSON_HASH, null));
         return new StatementFileParser.ParsedTransaction(date, amountCents, payee, description, categoryId, hash);
     }
 
@@ -203,9 +237,9 @@ public class ClaudeStatementApiClient {
         String message = responseBody;
         try {
             JSONObject root = new JSONObject(responseBody);
-            JSONObject error = root.optJSONObject("error");
+            JSONObject error = root.optJSONObject(JSON_ERROR);
             if (error != null) {
-                message = error.optString("message", responseBody);
+                message = error.optString(JSON_MESSAGE, responseBody);
             }
         } catch (JSONException ignored) {
             // fallback to raw body

@@ -72,12 +72,16 @@ public final class PayeeGrouper {
     }
 
     static String findMatchingGroup(String normalized, Set<String> keys, double similarityThreshold) {
+        String bestKey = null;
+        double bestScore = -1;
         for (String key : keys) {
-            if (payeeSimilarity(normalized, key) >= similarityThreshold) {
-                return key;
+            double score = payeeSimilarity(normalized, key);
+            if (score >= similarityThreshold && score > bestScore) {
+                bestScore = score;
+                bestKey = key;
             }
         }
-        return null;
+        return bestKey;
     }
 
     static int levenshteinDistance(String a, String b) {

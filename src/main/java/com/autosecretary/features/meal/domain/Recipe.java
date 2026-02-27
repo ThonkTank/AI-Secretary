@@ -77,7 +77,7 @@ public class Recipe {
 
     public void setRatingByMember(long memberId, int rating) {
         if (ratings == null) ratings = new ArrayList<>();
-        int clamped = Math.max(1, Math.min(5, rating));
+        int clamped = clampRating(rating);
         for (int i = 0; i < ratings.size(); i++) {
             if (ratings.get(i).memberId() == memberId) {
                 ratings.set(i, new MemberRating(memberId, clamped));
@@ -85,6 +85,10 @@ public class Recipe {
             }
         }
         ratings.add(new MemberRating(memberId, clamped));
+    }
+
+    private static int clampRating(int rating) {
+        return Math.max(1, Math.min(5, rating));
     }
 
     // Builder
@@ -122,7 +126,7 @@ public class Recipe {
         public Builder favorite() { r.isFavorite = true; return this; }
         public Builder shelfLife(int days) { r.shelfLifeDays = days; return this; }
         public Builder rating(long memberId, int rating) {
-            r.ratings.add(new MemberRating(memberId, Math.max(1, Math.min(5, rating))));
+            r.ratings.add(new MemberRating(memberId, clampRating(rating)));
             return this;
         }
 

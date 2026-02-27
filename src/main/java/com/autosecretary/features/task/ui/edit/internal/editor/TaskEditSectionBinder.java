@@ -19,6 +19,7 @@ import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
+import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -106,7 +107,7 @@ public class TaskEditSectionBinder {
         });
 
         bindEnumSpinner(schedulingTypeView, TaskCore.SchedulingType.values());
-        TaskCore.SchedulingType schedulingType = editState.schedulingType != null ? editState.schedulingType : TaskCore.SchedulingType.TASK;
+        TaskCore.SchedulingType schedulingType = editState.schedulingType != null ? editState.schedulingType : TaskEditDefaults.SCHEDULING_TYPE;
         schedulingTypeView.setSelection(schedulingType.ordinal());
         fixedDateView.setText(editState.fixedDate != null ? editState.fixedDate.toString() : "");
         fixedStartView.setText(editState.fixedStart != null ? editState.fixedStart.toString() : "");

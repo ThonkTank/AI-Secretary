@@ -10,35 +10,34 @@ public class MealPlanRowMapper implements RowMapper<MealPlan> {
     @Override
     public MealPlan fromRow(Map<String, Object> row) {
         MealPlan mealPlan = new MealPlan();
-        mealPlan.id = MapperSupport.asNullableLong(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.ID, null));
-        mealPlan.date = MapperSupport.asLocalDate(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.DATE, null));
-        mealPlan.mealType = MapperSupport.asEnum(MealType.class,
-                MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.MEAL_TYPE, "mealType"), null);
-        mealPlan.recipeId = MapperSupport.asLong(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.RECIPE_ID, "recipeId"));
-        mealPlan.plannedServings = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.PLANNED_SERVINGS, "plannedServings"));
-        mealPlan.isCompleted = MapperSupport.asBoolean(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.IS_COMPLETED, "isCompleted"));
-        mealPlan.actualServings = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.ACTUAL_SERVINGS, "actualServings"));
-        mealPlan.completedAt = MapperSupport.asLocalDateTime(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.COMPLETED_AT, "completedAt"));
-        mealPlan.itemId = MapperSupport.asNullableLong(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.ITEM_ID, "itemId"));
-        mealPlan.recipeTitle = (String) MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.RECIPE_TITLE, "recipeTitle");
-        mealPlan.estimatedCalories = MapperSupport.asInt(MapperSupport.get(row, LegacyMealFieldKeys.MealPlan.ESTIMATED_CALORIES, "estimatedCalories"));
+        mealPlan.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.MealPlan.ID));
+        mealPlan.date = MapperSupport.asLocalDate(row.get(MealFieldKeys.MealPlan.DATE));
+        mealPlan.mealType = MapperSupport.asEnum(MealType.class, row.get(MealFieldKeys.MealPlan.MEAL_TYPE), null);
+        mealPlan.recipeId = MapperSupport.asLong(row.get(MealFieldKeys.MealPlan.RECIPE_ID));
+        mealPlan.plannedServings = MapperSupport.asInt(row.get(MealFieldKeys.MealPlan.PLANNED_SERVINGS));
+        mealPlan.isCompleted = MapperSupport.asBoolean(row.get(MealFieldKeys.MealPlan.IS_COMPLETED));
+        mealPlan.actualServings = MapperSupport.asInt(row.get(MealFieldKeys.MealPlan.ACTUAL_SERVINGS));
+        mealPlan.completedAt = MapperSupport.asLocalDateTime(row.get(MealFieldKeys.MealPlan.COMPLETED_AT));
+        mealPlan.itemId = MapperSupport.asNullableLong(row.get(MealFieldKeys.MealPlan.ITEM_ID));
+        mealPlan.recipeTitle = (String) row.get(MealFieldKeys.MealPlan.RECIPE_TITLE);
+        mealPlan.estimatedCalories = MapperSupport.asInt(row.get(MealFieldKeys.MealPlan.ESTIMATED_CALORIES));
         return mealPlan;
     }
 
     @Override
     public Map<String, Object> toRow(MealPlan mealPlan) {
         Map<String, Object> row = new HashMap<>();
-        row.put(LegacyMealFieldKeys.MealPlan.ID, mealPlan.id);
-        row.put(LegacyMealFieldKeys.MealPlan.DATE, MapperSupport.toDateString(mealPlan.date));
-        row.put(LegacyMealFieldKeys.MealPlan.MEAL_TYPE, MapperSupport.enumNameOrNull(mealPlan.mealType));
-        row.put(LegacyMealFieldKeys.MealPlan.RECIPE_ID, mealPlan.recipeId);
-        row.put(LegacyMealFieldKeys.MealPlan.PLANNED_SERVINGS, mealPlan.plannedServings);
-        row.put(LegacyMealFieldKeys.MealPlan.IS_COMPLETED, mealPlan.isCompleted ? 1 : 0);
-        row.put(LegacyMealFieldKeys.MealPlan.ACTUAL_SERVINGS, mealPlan.actualServings);
-        row.put(LegacyMealFieldKeys.MealPlan.COMPLETED_AT, MapperSupport.toDateTimeString(mealPlan.completedAt));
-        row.put(LegacyMealFieldKeys.MealPlan.ITEM_ID, mealPlan.itemId);
-        row.put(LegacyMealFieldKeys.MealPlan.RECIPE_TITLE, mealPlan.recipeTitle);
-        row.put(LegacyMealFieldKeys.MealPlan.ESTIMATED_CALORIES, mealPlan.estimatedCalories);
+        row.put(MealFieldKeys.MealPlan.ID, mealPlan.id);
+        row.put(MealFieldKeys.MealPlan.DATE, MapperSupport.toDateString(mealPlan.date));
+        row.put(MealFieldKeys.MealPlan.MEAL_TYPE, MapperSupport.enumNameOrNull(mealPlan.mealType));
+        row.put(MealFieldKeys.MealPlan.RECIPE_ID, mealPlan.recipeId);
+        row.put(MealFieldKeys.MealPlan.PLANNED_SERVINGS, mealPlan.plannedServings);
+        row.put(MealFieldKeys.MealPlan.IS_COMPLETED, mealPlan.isCompleted ? 1 : 0);
+        row.put(MealFieldKeys.MealPlan.ACTUAL_SERVINGS, mealPlan.actualServings);
+        row.put(MealFieldKeys.MealPlan.COMPLETED_AT, MapperSupport.toDateTimeString(mealPlan.completedAt));
+        row.put(MealFieldKeys.MealPlan.ITEM_ID, mealPlan.itemId);
+        row.put(MealFieldKeys.MealPlan.RECIPE_TITLE, mealPlan.recipeTitle);
+        row.put(MealFieldKeys.MealPlan.ESTIMATED_CALORIES, mealPlan.estimatedCalories);
         return row;
     }
 }

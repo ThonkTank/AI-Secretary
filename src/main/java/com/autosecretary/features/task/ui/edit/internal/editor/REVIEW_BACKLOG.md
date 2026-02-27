@@ -2,7 +2,7 @@
 
 ## Open Issues
 
-### [simplify] TaskEditSectionBinder.java:293-325 — SchedulingViews 15-parameter constructor
+### [warning] TaskEditSectionBinder.java:293-325 — SchedulingViews 15-parameter constructor
 
 **File:** `TaskEditSectionBinder.java:293-325`
 
@@ -12,7 +12,7 @@
 
 ---
 
-### [consider] TaskEditFormViews.java — thin re-aggregation adapter
+### [nit] TaskEditFormViews.java — thin re-aggregation adapter
 
 **File:** `TaskEditFormViews.java`
 
@@ -20,7 +20,7 @@
 
 ---
 
-### [consider] TaskEditFormValidator.java:111-113 — `validateMinMaxPair` passthrough
+### [nit] TaskEditFormValidator.java:111-113 — `validateMinMaxPair` passthrough
 
 **File:** `TaskEditFormValidator.java:111-113`
 
@@ -28,7 +28,7 @@
 
 ---
 
-### [consider] PrefSlotSectionController.java:52-57,74-79 — duplicate repetition-field reading
+### [nit] PrefSlotSectionController.java:52-57,74-79 — duplicate repetition-field reading
 
 **File:** `PrefSlotSectionController.java:52-57,74-79`
 
@@ -36,8 +36,9 @@
 
 ---
 
-### [consider] GoalSectionController.java:96-98, PrefSlotSectionController.java:181-183 — duplicate `dimenPx` helper
+### [nit] GoalSectionController.java:96-98, PrefSlotSectionController.java:181-183 — duplicate `dimenPx` helper
 
 **Files:** `GoalSectionController.java:96-98`, `PrefSlotSectionController.java:181-183`
 
 **Concern:** Identical `dimenPx(@DimenRes int)` one-liner helper duplicated in both controllers. Extracting to a shared utility would add a file for negligible gain. Worth revisiting if a third controller appears in this package.
+

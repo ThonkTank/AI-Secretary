@@ -187,6 +187,7 @@ public class TaskEditPresenter {
         return mapper.toTask(editState, baseTask);
     }
 
+    /** Parses a trimmed string to int, returning {@code fallback} on any failure. */
     public static int parseIntSafe(String s, int fallback) {
         try {
             return Integer.parseInt(s.trim());
@@ -195,6 +196,7 @@ public class TaskEditPresenter {
         }
     }
 
+    /** Returns {@code value} if non-null, otherwise {@code fallback}. */
     public static <T> T coalesce(T value, T fallback) {
         return value != null ? value : fallback;
     }

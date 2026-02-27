@@ -4,9 +4,9 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.autosecretary.features.budget.application.BudgetSeedService;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
+import com.autosecretary.features.budget.application.BudgetSeedService;
 import com.autosecretary.features.budget.application.CalculateEffectiveBudgetLimitUseCase;
 import com.autosecretary.features.budget.application.CreateTransferUseCase;
 import com.autosecretary.features.budget.domain.BudgetRepository;
@@ -53,9 +53,9 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
                     applyRecurringUseCase,
                     createTransferUseCase,
                     new CalculateEffectiveBudgetLimitUseCase(repository),
-                    new BudgetSeedService(repository),
                     overviewLoader,
-                    summaryPresentationMapper));
+                    summaryPresentationMapper,
+                    new BudgetSeedService(repository)));
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
     }

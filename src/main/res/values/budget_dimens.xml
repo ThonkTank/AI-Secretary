@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="budget_card_corner_radius">8dp</dimen>
+    <dimen name="budget_card_elevation">2dp</dimen>
+    <dimen name="budget_divider_height">1dp</dimen>
+    <dimen name="budget_limit_bar_height">8dp</dimen>
+    <dimen name="budget_chart_height">160dp</dimen>
+    <dimen name="budget_limit_bar_percent_min_width">40dp</dimen>
+</resources>

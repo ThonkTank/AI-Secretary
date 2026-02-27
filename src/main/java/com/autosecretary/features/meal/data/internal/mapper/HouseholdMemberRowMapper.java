@@ -9,30 +9,30 @@ public class HouseholdMemberRowMapper implements RowMapper<HouseholdMember> {
     @Override
     public Map<String, Object> toRow(HouseholdMember member) {
         Map<String, Object> row = new HashMap<>();
-        row.put("id", member.id);
-        row.put("name", member.name);
-        row.put("birthYear", member.birthYear);
-        row.put("gender", MapperSupport.enumNameOrNull(member.gender));
-        row.put("weightKg", member.weightKg);
-        row.put("heightCm", member.heightCm);
-        row.put("targetWeightKg", member.targetWeightKg);
-        row.put("activityLevel", MapperSupport.enumNameOrNull(member.activityLevel));
-        row.put("isActive", member.isActive);
+        row.put(MealFieldKeys.HouseholdMember.ID, member.id);
+        row.put(MealFieldKeys.HouseholdMember.NAME, member.name);
+        row.put(MealFieldKeys.HouseholdMember.BIRTH_YEAR, member.birthYear);
+        row.put(MealFieldKeys.HouseholdMember.GENDER, MapperSupport.enumNameOrNull(member.gender));
+        row.put(MealFieldKeys.HouseholdMember.WEIGHT_KG, member.weightKg);
+        row.put(MealFieldKeys.HouseholdMember.HEIGHT_CM, member.heightCm);
+        row.put(MealFieldKeys.HouseholdMember.TARGET_WEIGHT_KG, member.targetWeightKg);
+        row.put(MealFieldKeys.HouseholdMember.ACTIVITY_LEVEL, MapperSupport.enumNameOrNull(member.activityLevel));
+        row.put(MealFieldKeys.HouseholdMember.IS_ACTIVE, member.isActive ? 1 : 0);
         return row;
     }
 
     @Override
     public HouseholdMember fromRow(Map<String, Object> row) {
         HouseholdMember member = new HouseholdMember();
-        member.id = MapperSupport.asNullableLong(row.get("id"));
-        member.name = (String) row.get("name");
-        member.birthYear = MapperSupport.asInt(row.get("birthYear"));
-        member.gender = MapperSupport.asEnum(HouseholdMember.Gender.class, row.get("gender"), null);
-        member.weightKg = MapperSupport.asInt(row.get("weightKg"));
-        member.heightCm = MapperSupport.asInt(row.get("heightCm"));
-        member.targetWeightKg = MapperSupport.asInt(row.get("targetWeightKg"));
-        member.activityLevel = MapperSupport.asEnum(HouseholdMember.ActivityLevel.class, row.get("activityLevel"), null);
-        member.isActive = MapperSupport.asBoolean(row.get("isActive"));
+        member.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.HouseholdMember.ID));
+        member.name = (String) row.get(MealFieldKeys.HouseholdMember.NAME);
+        member.birthYear = MapperSupport.asInt(row.get(MealFieldKeys.HouseholdMember.BIRTH_YEAR));
+        member.gender = MapperSupport.asEnum(HouseholdMember.Gender.class, row.get(MealFieldKeys.HouseholdMember.GENDER), null);
+        member.weightKg = MapperSupport.asInt(row.get(MealFieldKeys.HouseholdMember.WEIGHT_KG));
+        member.heightCm = MapperSupport.asInt(row.get(MealFieldKeys.HouseholdMember.HEIGHT_CM));
+        member.targetWeightKg = MapperSupport.asInt(row.get(MealFieldKeys.HouseholdMember.TARGET_WEIGHT_KG));
+        member.activityLevel = MapperSupport.asEnum(HouseholdMember.ActivityLevel.class, row.get(MealFieldKeys.HouseholdMember.ACTIVITY_LEVEL), null);
+        member.isActive = MapperSupport.asBoolean(row.get(MealFieldKeys.HouseholdMember.IS_ACTIVE));
         return member;
     }
 }

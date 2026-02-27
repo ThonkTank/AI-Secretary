@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
+import java.util.function.LongConsumer;
 
 /**
  * Owns all observable state for the budget screen.
@@ -81,9 +82,9 @@ public class BudgetViewModel extends ViewModel {
                            ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
                            CreateTransferUseCase createTransferUseCase,
                            CalculateEffectiveBudgetLimitUseCase calculateEffectiveLimitUseCase,
-                           BudgetSeedService budgetSeedService,
                            BudgetOverviewLoader budgetOverviewLoader,
-                           BudgetSummaryPresentationMapper summaryPresentationMapper) {
+                           BudgetSummaryPresentationMapper summaryPresentationMapper,
+                           BudgetSeedService budgetSeedService) {
         this.repository = repository;
         this.executor = executor;
         this.postToMain = postToMain;
@@ -209,15 +210,8 @@ public class BudgetViewModel extends ViewModel {
 
     public void addTransaction(String amountStr, boolean isExpense, String categoryId,
                                String note, LocalDate date, String accountId) {
-        executor.execute(() -> {
+        withParsedAmount(amountStr, amountCents -> {
             if (accountId == null) return;
-
-            Long amountCents = AmountParser.parseAmountCents(amountStr);
-            if (amountCents == null) {
-                showInvalidAmountError();
-                return;
-            }
-
             repository.saveTransaction(accountId, categoryId,
                     isExpense ? TransactionDirection.EXPENSE : TransactionDirection.INCOME,
                     amountCents, date, note);
@@ -227,13 +221,7 @@ public class BudgetViewModel extends ViewModel {
 
     public void updateTransaction(String transactionId, String amountStr, boolean isExpense,
                                   String categoryId, String note, LocalDate date, String accountId) {
-        executor.execute(() -> {
-            Long amountCents = AmountParser.parseAmountCents(amountStr);
-            if (amountCents == null) {
-                showInvalidAmountError();
-                return;
-            }
-
+        withParsedAmount(amountStr, amountCents -> {
             repository.updateTransaction(transactionId, accountId, categoryId,
                     isExpense ? TransactionDirection.EXPENSE : TransactionDirection.INCOME,
                     amountCents, date, note);
@@ -246,20 +234,9 @@ public class BudgetViewModel extends ViewModel {
                             String amountStr,
                             LocalDate date,
                             String note) {
-        executor.execute(() -> {
-            Long amountCents = AmountParser.parseAmountCents(amountStr);
-            if (amountCents == null) {
-                showInvalidAmountError();
-                return;
-            }
-
+        withParsedAmount(amountStr, amountCents -> {
             CreateTransferUseCase.Result result = createTransferUseCase.execute(
-                    sourceAccountId,
-                    targetAccountId,
-                    amountCents,
-                    date,
-                    note
-            );
+                    sourceAccountId, targetAccountId, amountCents, date, note);
             if (!result.success()) {
                 postTransferError(result);
                 return;
@@ -274,21 +251,9 @@ public class BudgetViewModel extends ViewModel {
                                String amountStr,
                                LocalDate date,
                                String note) {
-        executor.execute(() -> {
-            Long amountCents = AmountParser.parseAmountCents(amountStr);
-            if (amountCents == null) {
-                showInvalidAmountError();
-                return;
-            }
-
+        withParsedAmount(amountStr, amountCents -> {
             CreateTransferUseCase.Result result = createTransferUseCase.update(
-                    transactionId,
-                    sourceAccountId,
-                    targetAccountId,
-                    amountCents,
-                    date,
-                    note
-            );
+                    transactionId, sourceAccountId, targetAccountId, amountCents, date, note);
             if (!result.success()) {
                 postTransferError(result);
                 return;
@@ -377,6 +342,17 @@ public class BudgetViewModel extends ViewModel {
         loadOverview();
     }
 
+    private void withParsedAmount(String amountStr, LongConsumer action) {
+        executor.execute(() -> {
+            Long amountCents = AmountParser.parseAmountCents(amountStr);
+            if (amountCents == null) {
+                showInvalidAmountError();
+                return;
+            }
+            action.accept(amountCents);
+        });
+    }
+
     private void showInvalidAmountError() {
         postToMain.accept(() -> {
             uiState.setValue(BudgetUiState.ERROR);
@@ -398,22 +374,21 @@ public class BudgetViewModel extends ViewModel {
 
     public void saveBudgetLimitFromString(String categoryId, String amountStr,
                                           boolean rolloverEnabled, String rolloverCarryoverStr) {
-        Long amountCents = AmountParser.parseAmountCents(amountStr);
-        if (amountCents == null) {
-            showInvalidAmountError();
-            return;
-        }
-        long parsedRollover = 0L;
-        if (rolloverCarryoverStr != null && !rolloverCarryoverStr.isEmpty()) {
-            Long parsed = AmountParser.parseAmountCents(rolloverCarryoverStr);
-            if (parsed == null) {
+        executor.execute(() -> {
+            Long amountCents = AmountParser.parseAmountCents(amountStr);
+            if (amountCents == null) {
                 showInvalidAmountError();
                 return;
             }
-            parsedRollover = parsed;
-        }
-        final long rolloverCarryoverCents = parsedRollover;
-        executor.execute(() -> {
+            long rolloverCarryoverCents = 0L;
+            if (rolloverCarryoverStr != null && !rolloverCarryoverStr.isEmpty()) {
+                Long parsed = AmountParser.parseAmountCents(rolloverCarryoverStr);
+                if (parsed == null) {
+                    showInvalidAmountError();
+                    return;
+                }
+                rolloverCarryoverCents = parsed;
+            }
             YearMonth month = currentMonth.getValue();
             if (month == null) month = YearMonth.now();
             String yearMonthStr = month.toString();

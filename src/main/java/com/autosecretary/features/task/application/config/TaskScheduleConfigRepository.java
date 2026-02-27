@@ -1,5 +1,6 @@
 package com.autosecretary.features.task.application.config;
 
+import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.data.TaskScheduleConfig;
 import com.autosecretary.features.task.data.TaskScheduleConfigDAO;
 import com.autosecretary.features.task.domain.SchedulingWindowProvider;
@@ -14,12 +15,22 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Repository for task schedule configuration with lazy-loaded caching.
+ *
+ * Cache behavior:
+ * - Initial state: null (uninitialized)
+ * - On first {@code forDay()} call: loads from DAO and caches
+ * - On {@code loadAll()} call: reloads from DAO and updates cache
+ * - On {@code saveAll()} call: invalidates cache (sets to null)
+ *
+ * The cache is lazily initialized and persists across calls until explicitly invalidated.
+ */
 public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
-    private static final LocalTime DEFAULT_START = LocalTime.of(6, 0);
-    private static final LocalTime DEFAULT_END = LocalTime.of(21, 0);
+    private static final LocalTime DEFAULT_START = TaskPrefSlotFactory.DEFAULT_START_TIME;
+    private static final LocalTime DEFAULT_END = TaskPrefSlotFactory.DEFAULT_END_TIME;
 
     private final TaskScheduleConfigDAO dao;
     private Map<DayOfWeek, TaskScheduleConfig> cachedByDay;
@@ -59,14 +70,21 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
 
     @Override
     public SchedulingWindow forDay(LocalDate day) {
-        if (cachedByDay == null) {
-            cachedByDay = buildAsMap(dao.readAll());
-        }
+        ensureCached();
         TaskScheduleConfig config = cachedByDay.get(day.getDayOfWeek());
         return new SchedulingWindowProvider.SchedulingWindow(
                 LocalDateTime.of(day, config.startTime),
                 LocalDateTime.of(day, config.endTime)
         );
+    }
+
+    /**
+     * Ensures the cache is initialized. Lazily loads from DAO if cache is null.
+     */
+    private void ensureCached() {
+        if (cachedByDay == null) {
+            cachedByDay = buildAsMap(dao.readAll());
+        }
     }
 
     private TaskScheduleConfig normalize(DayOfWeek dayOfWeek, LocalTime start, LocalTime end) {

@@ -68,6 +68,7 @@ public class Ingredient {
      * Aktualisiert lastPurchased fuer alle Packungen eines Stores.
      */
     public void updateLastPurchased(String store, LocalDate date) {
+        if (store == null) return;
         for (StorePackage pkg : storePackages) {
             if (store.equals(pkg.storeName)) {
                 pkg.lastPurchased = date;

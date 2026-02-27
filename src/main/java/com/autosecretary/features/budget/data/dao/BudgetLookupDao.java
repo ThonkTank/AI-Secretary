@@ -32,9 +32,6 @@ public interface BudgetLookupDao {
     @Query("SELECT currentBalanceCents FROM budget_account WHERE id = :accountId LIMIT 1")
     Long findCurrentBalanceCentsByAccountId(String accountId);
 
-    @Query("UPDATE budget_account SET currentBalanceCents = :balanceCents WHERE id = :accountId")
-    void updateCurrentBalanceCents(String accountId, long balanceCents);
-
     /** Atomically adjusts the stored balance by {@code deltaCents} (negative to deduct). */
     @Query("UPDATE budget_account SET currentBalanceCents = currentBalanceCents + :deltaCents WHERE id = :accountId")
     void adjustCurrentBalanceCents(String accountId, long deltaCents);
@@ -42,8 +39,8 @@ public interface BudgetLookupDao {
     @Query("SELECT id FROM budget_account WHERE archived = 0 ORDER BY name COLLATE NOCASE ASC LIMIT 1")
     String findFirstActiveAccountId();
 
-    @Query("SELECT id FROM budget_category WHERE type = :type AND archived = 0 LIMIT 1")
-    String findDefaultCategoryId(TransactionDirection type);
+    @Query("SELECT id FROM budget_category WHERE type = :direction AND archived = 0 LIMIT 1")
+    String findDefaultCategoryId(TransactionDirection direction);
 
     @Query("""
             UPDATE budget_account

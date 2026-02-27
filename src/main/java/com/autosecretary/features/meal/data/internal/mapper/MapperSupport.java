@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 final class MapperSupport {
@@ -89,11 +88,6 @@ final class MapperSupport {
         } catch (IllegalArgumentException ignored) {
             return fallback;
         }
-    }
-
-    static Object get(Map<String, Object> row, String key, String fallbackKey) {
-        Object value = row.get(key);
-        return value != null ? value : (fallbackKey != null ? row.get(fallbackKey) : null);
     }
 
     static String enumNameOrNull(Enum<?> value) {

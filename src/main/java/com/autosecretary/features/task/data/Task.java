@@ -47,7 +47,7 @@ public class Task {
      */
     public double requiredDays() {
         if (core.progress.target > 0 && core.progress.resetPerRep) {
-            return core.progress.remaining() / (core.progress.repsRequired(core.minDuration) * core.cooldown);
+            return core.progress.remaining() / (core.progress.repsRequired() * core.cooldown);
         }
         if (core.repetition.reps > 0) {
             return Math.max(1, core.repetition.remainingReps()) * core.cooldown;

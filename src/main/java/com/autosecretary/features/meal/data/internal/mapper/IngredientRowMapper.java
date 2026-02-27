@@ -9,42 +9,42 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
     @Override
     public Map<String, Object> toRow(Ingredient ingredient) {
         Map<String, Object> row = new HashMap<>();
-        row.put("id", ingredient.id);
-        row.put("name", ingredient.name);
-        row.put("foodGroup", MapperSupport.enumNameOrNull(ingredient.foodGroup));
-        row.put("defaultUnit", ingredient.defaultUnit);
-        row.put("gramsPerUnit", ingredient.gramsPerUnit);
-        row.put("caloriesPer100", ingredient.caloriesPer100);
-        row.put("proteinPer100", ingredient.proteinPer100);
-        row.put("carbsPer100", ingredient.carbsPer100);
-        row.put("fatPer100", ingredient.fatPer100);
-        row.put("fiberPer100", ingredient.fiberPer100);
-        row.put("shelfLifeDays", ingredient.shelfLifeDays);
-        row.put("requiresRefrigeration", ingredient.requiresRefrigeration);
-        row.put("isWholeUnit", ingredient.isWholeUnit);
-        row.put("isPerishable", ingredient.isPerishable);
-        row.put("storePackages", ingredient.storePackages);
+        row.put(MealFieldKeys.Ingredient.ID, ingredient.id);
+        row.put(MealFieldKeys.Ingredient.NAME, ingredient.name);
+        row.put(MealFieldKeys.Ingredient.FOOD_GROUP, MapperSupport.enumNameOrNull(ingredient.foodGroup));
+        row.put(MealFieldKeys.Ingredient.DEFAULT_UNIT, ingredient.defaultUnit);
+        row.put(MealFieldKeys.Ingredient.GRAMS_PER_UNIT, ingredient.gramsPerUnit);
+        row.put(MealFieldKeys.Ingredient.CALORIES_PER_100, ingredient.caloriesPer100);
+        row.put(MealFieldKeys.Ingredient.PROTEIN_PER_100, ingredient.proteinPer100);
+        row.put(MealFieldKeys.Ingredient.CARBS_PER_100, ingredient.carbsPer100);
+        row.put(MealFieldKeys.Ingredient.FAT_PER_100, ingredient.fatPer100);
+        row.put(MealFieldKeys.Ingredient.FIBER_PER_100, ingredient.fiberPer100);
+        row.put(MealFieldKeys.Ingredient.SHELF_LIFE_DAYS, ingredient.shelfLifeDays);
+        row.put(MealFieldKeys.Ingredient.REQUIRES_REFRIGERATION, ingredient.requiresRefrigeration ? 1 : 0);
+        row.put(MealFieldKeys.Ingredient.IS_WHOLE_UNIT, ingredient.isWholeUnit ? 1 : 0);
+        row.put(MealFieldKeys.Ingredient.IS_PERISHABLE, ingredient.isPerishable ? 1 : 0);
+        row.put(MealFieldKeys.Ingredient.STORE_PACKAGES, ingredient.storePackages);
         return row;
     }
 
     @Override
     public Ingredient fromRow(Map<String, Object> row) {
         Ingredient ingredient = new Ingredient();
-        ingredient.id = MapperSupport.asNullableLong(row.get("id"));
-        ingredient.name = (String) row.get("name");
-        ingredient.foodGroup = MapperSupport.asEnum(Ingredient.FoodGroup.class, row.get("foodGroup"), null);
-        ingredient.defaultUnit = (String) row.get("defaultUnit");
-        ingredient.gramsPerUnit = MapperSupport.asInt(row.get("gramsPerUnit"));
-        ingredient.caloriesPer100 = MapperSupport.asInt(row.get("caloriesPer100"));
-        ingredient.proteinPer100 = MapperSupport.asInt(row.get("proteinPer100"));
-        ingredient.carbsPer100 = MapperSupport.asInt(row.get("carbsPer100"));
-        ingredient.fatPer100 = MapperSupport.asInt(row.get("fatPer100"));
-        ingredient.fiberPer100 = MapperSupport.asInt(row.get("fiberPer100"));
-        ingredient.shelfLifeDays = MapperSupport.asInt(row.get("shelfLifeDays"));
-        ingredient.requiresRefrigeration = MapperSupport.asBoolean(row.get("requiresRefrigeration"));
-        ingredient.isWholeUnit = MapperSupport.asBoolean(row.get("isWholeUnit"));
-        ingredient.isPerishable = MapperSupport.asBoolean(row.get("isPerishable"));
-        ingredient.storePackages = MapperSupport.asList(row.get("storePackages"));
+        ingredient.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.Ingredient.ID));
+        ingredient.name = (String) row.get(MealFieldKeys.Ingredient.NAME);
+        ingredient.foodGroup = MapperSupport.asEnum(Ingredient.FoodGroup.class, row.get(MealFieldKeys.Ingredient.FOOD_GROUP), null);
+        ingredient.defaultUnit = (String) row.get(MealFieldKeys.Ingredient.DEFAULT_UNIT);
+        ingredient.gramsPerUnit = MapperSupport.asInt(row.get(MealFieldKeys.Ingredient.GRAMS_PER_UNIT));
+        ingredient.caloriesPer100 = MapperSupport.asInt(row.get(MealFieldKeys.Ingredient.CALORIES_PER_100));
+        ingredient.proteinPer100 = MapperSupport.asInt(row.get(MealFieldKeys.Ingredient.PROTEIN_PER_100));
+        ingredient.carbsPer100 = MapperSupport.asInt(row.get(MealFieldKeys.Ingredient.CARBS_PER_100));
+        ingredient.fatPer100 = MapperSupport.asInt(row.get(MealFieldKeys.Ingredient.FAT_PER_100));
+        ingredient.fiberPer100 = MapperSupport.asInt(row.get(MealFieldKeys.Ingredient.FIBER_PER_100));
+        ingredient.shelfLifeDays = MapperSupport.asInt(row.get(MealFieldKeys.Ingredient.SHELF_LIFE_DAYS));
+        ingredient.requiresRefrigeration = MapperSupport.asBoolean(row.get(MealFieldKeys.Ingredient.REQUIRES_REFRIGERATION));
+        ingredient.isWholeUnit = MapperSupport.asBoolean(row.get(MealFieldKeys.Ingredient.IS_WHOLE_UNIT));
+        ingredient.isPerishable = MapperSupport.asBoolean(row.get(MealFieldKeys.Ingredient.IS_PERISHABLE));
+        ingredient.storePackages = MapperSupport.asList(row.get(MealFieldKeys.Ingredient.STORE_PACKAGES));
         return ingredient;
     }
 }

@@ -30,6 +30,7 @@ public class UpdateChecker {
             "https://raw.githubusercontent.com/ThonkTank/AI-Secretary/main/ops/release/version.txt";
     private static final String APK_URL =
             "https://github.com/ThonkTank/AI-Secretary/raw/main/ops/release/AutoSecretary.apk";
+    private static final String FILE_PROVIDER_SUFFIX = ".fileprovider";
 
     private static final int VERSION_CONNECT_TIMEOUT_MS = 5000;
     private static final int VERSION_READ_TIMEOUT_MS = 5000;
@@ -50,15 +51,16 @@ public class UpdateChecker {
     public void checkForUpdate() {
         backgroundExecutor.execute(() -> {
             try {
-                Activity activity = activityRef.get();
+                Activity activity = getAliveActivity();
                 if (activity == null) return;
                 int remoteVersion = fetchRemoteVersion();
                 int localVersion = getLocalVersion(activity);
                 if (remoteVersion > localVersion) {
                     mainHandler.post(() -> showUpdateDialog(remoteVersion));
                 }
-            } catch (Exception ignored) {
+            } catch (Exception e) {
                 // Fehler beim Prüfen sind nicht kritisch; App-Start darf nicht blockieren.
+                android.util.Log.d("UpdateChecker", "Version check failed", e);
             }
         });
     }
@@ -82,7 +84,8 @@ public class UpdateChecker {
         try {
             PackageInfo info = activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0);
             return (int) info.getLongVersionCode();
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            android.util.Log.w("UpdateChecker", "Failed to read local version", e);
             return 0;
         }
     }
@@ -110,11 +113,12 @@ public class UpdateChecker {
     private void downloadAndInstall() {
         backgroundExecutor.execute(() -> {
             try {
-                Activity activity = activityRef.get();
+                Activity activity = getAliveActivity();
                 if (activity == null) return;
                 File apkFile = downloadApk(activity);
                 mainHandler.post(() -> installApk(apkFile));
             } catch (Exception e) {
+                android.util.Log.e("UpdateChecker", "APK download/install failed", e);
                 mainHandler.post(() -> showDownloadErrorDialog(e));
             }
         });
@@ -124,6 +128,8 @@ public class UpdateChecker {
         File apkFile = new File(activity.getCacheDir(), "update.apk");
 
         HttpURLConnection connection = (HttpURLConnection) new URL(APK_URL).openConnection();
+        connection.setUseCaches(false);
+        connection.setRequestProperty("Cache-Control", "no-cache");
         connection.setConnectTimeout(DOWNLOAD_CONNECT_TIMEOUT_MS);
         connection.setReadTimeout(DOWNLOAD_READ_TIMEOUT_MS);
 
@@ -148,7 +154,7 @@ public class UpdateChecker {
         try {
             Uri uri = FileProvider.getUriForFile(
                     activity,
-                    activity.getPackageName() + ".fileprovider",
+                    activity.getPackageName() + FILE_PROVIDER_SUFFIX,
                     apkFile
             );
 
@@ -157,6 +163,7 @@ public class UpdateChecker {
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
             activity.startActivity(intent);
         } catch (ActivityNotFoundException e) {
+            android.util.Log.e("UpdateChecker", "Failed to find app installer", e);
             showDownloadErrorDialog(e);
         }
     }

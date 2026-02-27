@@ -197,10 +197,8 @@ public class LegacyMealImportService {
         for (int i = 0; i < rows.size(); i++) {
             Map<String, Object> row = rows.get(i);
             LocalDate date = asDate(row.get("date"));
-            Long itemIdLong = asLong(row.get("item_id"));
-            long itemId = itemIdLong != null ? itemIdLong : 0L;
-            Long memberIdLong = asLong(row.get("member_id"));
-            long memberId = memberIdLong != null ? memberIdLong : 0L;
+            long itemId = asLong(row.get("item_id"), 0L);
+            long memberId = asLong(row.get("member_id"), 0L);
             if (date == null || itemId <= 0 || memberId <= 0) {
                 report.addFailure(SOURCE_CONSUMPTION, i, "required fields invalid: date/item_id/member_id");
                 continue;
@@ -210,8 +208,7 @@ public class LegacyMealImportService {
             log.date = date;
             log.itemId = itemId;
             log.memberId = memberId;
-            Long logRecipeId = asLong(row.get("recipe_id"));
-            log.recipeId = logRecipeId != null ? logRecipeId : 0L;
+            log.recipeId = asLong(row.get("recipe_id"), 0L);
             log.servingsConsumed = asDouble(row.get("servings_consumed"), 0.0);
             log.calories = asInt(row.get("calories"), 0);
             log.protein = asInt(row.get("protein"), 0);
@@ -225,7 +222,8 @@ public class LegacyMealImportService {
     private void importPantry(List<Map<String, Object>> rows, LegacyImportReport report) {
         for (int i = 0; i < rows.size(); i++) {
             Map<String, Object> row = rows.get(i);
-            long ingredientId = asInt(row.get("ingredient_id"), 0);
+            Long ingredientIdLong = asLong(row.get("ingredient_id"));
+            long ingredientId = ingredientIdLong != null ? ingredientIdLong : 0L;
             if (ingredientId <= 0) {
                 report.addFailure(SOURCE_PANTRY, i, "missing required field: ingredient_id");
                 continue;
@@ -250,7 +248,8 @@ public class LegacyMealImportService {
         for (int i = 0; i < rows.size(); i++) {
             Map<String, Object> row = rows.get(i);
             String periodKey = asString(row.get("period_key"));
-            long ingredientId = asInt(row.get("ingredient_id"), 0);
+            Long ingredientIdLong = asLong(row.get("ingredient_id"));
+            long ingredientId = ingredientIdLong != null ? ingredientIdLong : 0L;
             if (periodKey == null || periodKey.isBlank() || ingredientId <= 0) {
                 report.addFailure(SOURCE_SHOPPING, i, "required fields invalid: period_key/ingredient_id");
                 continue;
@@ -426,6 +425,11 @@ public class LegacyMealImportService {
         if (raw == null) return null;
         if (raw instanceof Number n) return n.longValue();
         try { return Long.parseLong(raw.toString().trim()); } catch (NumberFormatException ignored) { return null; }
+    }
+
+    private static long asLong(Object raw, long fallback) {
+        Long v = asLong(raw);
+        return v != null ? v : fallback;
     }
 
     private static int asInt(Object raw, int fallback) {

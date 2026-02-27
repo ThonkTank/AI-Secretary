@@ -13,6 +13,7 @@ import android.widget.RemoteViews;
 import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.app.MainActivity;
+import com.autosecretary.features.task.ui.list.TaskViewModel;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -20,6 +21,11 @@ import java.util.Locale;
 
 public class TaskWidgetProvider extends AppWidgetProvider {
     private static final String TAG = "TaskWidget";
+
+    // Widget update period is defined in WidgetConfiguration and configured in widget_task_info.xml.
+    // Both must be kept in sync.
+    @SuppressWarnings("unused")
+    private static final long WIDGET_UPDATE_PERIOD_MILLIS = WidgetConfiguration.WIDGET_UPDATE_PERIOD_MILLIS;
 
     static final String ACTION_TOGGLE = "com.autosecretary.widget.TOGGLE";
     private static final String ACTION_REFRESH = "com.autosecretary.widget.REFRESH";
@@ -34,10 +40,13 @@ public class TaskWidgetProvider extends AppWidgetProvider {
 
     private static final String PREFS_NAME = "widget_prefs";
     private static final String KEY_OFFSET = "selected_day_offset";
-    private static final int MAX_OFFSET = 6;
+    private static final int MAX_OFFSET = TaskViewModel.MAX_DAY_OFFSET;
 
     private static final DateTimeFormatter DATE_FORMAT =
             DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN);
+
+    private static final float ALPHA_ENABLED = 1.0f;
+    private static final float ALPHA_DISABLED = 0.3f;
 
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
@@ -82,13 +91,13 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         int offset = getSelectedDayOffset(context);
         LocalDate selectedDate = LocalDate.now().plusDays(offset);
         boolean isToday = offset == 0;
-        String label = isToday ? "Heute" : selectedDate.format(DATE_FORMAT);
+        String label = isToday ? context.getString(R.string.task_list_day_nav_today) : selectedDate.format(DATE_FORMAT);
         Log.d(TAG, "updateWidget offset=" + offset + " label=" + label);
         views.setTextViewText(R.id.widget_date_label, label);
 
         // Arrow states
-        views.setFloat(R.id.widget_prev_day, "setAlpha", isToday ? 0.3f : 1.0f);
-        views.setFloat(R.id.widget_next_day, "setAlpha", offset >= MAX_OFFSET ? 0.3f : 1.0f);
+        views.setFloat(R.id.widget_prev_day, "setAlpha", isToday ? ALPHA_DISABLED : ALPHA_ENABLED);
+        views.setFloat(R.id.widget_next_day, "setAlpha", offset >= MAX_OFFSET ? ALPHA_DISABLED : ALPHA_ENABLED);
 
         // Day navigation intents
         views.setOnClickPendingIntent(R.id.widget_prev_day,

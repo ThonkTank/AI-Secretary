@@ -15,15 +15,23 @@
 
 ---
 
-### [drift] `AdjustTaskProgressUseCase` sets `task.core.completed` directly, bypassing domain services
-**File:** `AdjustTaskProgressUseCase.java:49-51`
-
-**What:** When progress reaches its target, the use case writes `task.core.completed = true` and `slot.completed = true` directly. The domain's `TaskCompletionService` and `TaskLifecycleManager` are not called — so streak, history, and adaptive adjustments are skipped for progress-based completions.
-
-**Why it matters:** Two code paths can complete a task: `CheckOffTaskUseCase` (via `TaskCompletionService` → full lifecycle) and `AdjustTaskProgressUseCase` (inline field write → no lifecycle). A task completed via progress will never update its streak or carryoverDebt. This inconsistency will widen as the domain grows.
-
-**Suggested alternative:** When `next >= target`, call `TaskCompletionService.checkOff()` (or a dedicated lifecycle hook) instead of writing `completed` directly. If the two-phase STARTED/COMPLETED logic doesn't fit the progress use case, extract a `completeDirectly(task, slot)` method in `TaskCompletionService` that handles lifecycle without phase tracking.
-
-**Note:** Requires understanding `TaskCompletionService` behavior in depth before fixing. Defer until the completion lifecycle is stable.
+### [warning] TaskListItem 20-parameter constructor with same-typed adjacents
+**File:** `listmodel/TaskListItem.java:44-64`
+20 parameters, 8 of which are `String`. Adjacent same-typed parameters make transposition bugs compile-silent.
+**Fix suggestion:** Group into value types: `ProgressState(current, target, unit, stepDelta)`, `GoalDecoration(icon, colorHex)`.
 
 ---
+
+### [warning] TaskListItem.calendarEvent conflates taskId and slotId
+**File:** `listmodel/TaskListItem.java:92-100`
+Calendar event factory assigns the same synthetic `eventId` to both `taskId` and `slotId`. Code that reads these fields without checking `isCalendarEvent()` first will get non-DB identifiers. The guard check works today but the contract is implicit.
+**Fix suggestion:** Use `null` for fields meaningless on calendar events, or a type-safe sealed hierarchy.
+
+---
+
+---
+
+### [nit] ListRowAdapter.bindDeadline — three-branch if/else with repeated setters
+**File:** `../ui/list/ListRowAdapter.java:236-263`
+Each branch sets the same three properties (text, colour, contentDescription) on the same view. The duplication makes adding a new urgency tier error-prone.
+**Fix suggestion:** Push display resolution into `DeadlineUrgency` (resource IDs) or extract a lookup record.

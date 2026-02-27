@@ -30,6 +30,10 @@ public class BudgetOverviewLoader {
     // 30-day window spans today back to today-29, giving 30 inclusive days.
     private static final int DAYS_30_WINDOW_OFFSET = 29;
 
+    private static final String LABEL_TRANSFER       = "Überweisung";
+    private static final String LABEL_TRANSFER_NOTE  = "Überweisung · ";
+    private static final String LABEL_DEFAULT_BOOKING = "Buchung";
+
     private static final DateTimeFormatter DAILY_LABEL =
             DateTimeFormatter.ofPattern("dd.MM", Locale.GERMAN);
     private static final DateTimeFormatter MONTHLY_LABEL =
@@ -84,17 +88,17 @@ public class BudgetOverviewLoader {
     private List<BudgetTransactionRow> buildTransactionRows(List<MonthlyOverviewItem> items) {
         List<BudgetTransactionRow> rows = new ArrayList<>();
         for (MonthlyOverviewItem item : items) {
-            rows.add(new BudgetTransactionRow(
-                    item.transactionId,
-                    buildTransactionLabel(item),
-                    item.direction,
-                    item.categoryColorHex,
-                    item.amountCents,
-                    item.categoryId,
-                    item.note,
-                    item.bookingDate,
-                    item.accountId
-            ));
+            rows.add(BudgetTransactionRow.builder()
+                    .transactionId(item.transactionId)
+                    .label(buildTransactionLabel(item))
+                    .direction(item.direction)
+                    .categoryColorHex(item.categoryColorHex)
+                    .amountCents(item.amountCents)
+                    .categoryId(item.categoryId)
+                    .note(item.note)
+                    .bookingDate(item.bookingDate)
+                    .accountId(item.accountId)
+                    .build());
         }
         return rows;
     }
@@ -108,7 +112,7 @@ public class BudgetOverviewLoader {
 
     private String buildTransactionLabel(MonthlyOverviewItem item) {
         if (item.transactionKind == TransactionKind.INTERNAL_TRANSFER) {
-            return item.note != null && !item.note.isBlank() ? "Überweisung · " + item.note : "Überweisung";
+            return item.note != null && !item.note.isBlank() ? LABEL_TRANSFER_NOTE + item.note : LABEL_TRANSFER;
         }
         if (item.categoryName != null) {
             return BudgetSummaryPresentationMapper.categoryLabel(item.categoryIcon, item.categoryName);
@@ -116,34 +120,16 @@ public class BudgetOverviewLoader {
         if (item.note != null) {
             return item.note;
         }
-        return "Buchung";
+        return LABEL_DEFAULT_BOOKING;
     }
 
     private List<BudgetChartPoint> loadBalanceChartData(String accountId, TimeRangeFilter filter) {
         TimeRangeFilter resolvedFilter = filter == null ? TimeRangeFilter.DAYS_30 : filter;
-
-        List<BalanceTimelinePoint> series;
         LocalDate now = LocalDate.now();
 
-        if (resolvedFilter == TimeRangeFilter.DAYS_30) {
-            LocalDate fromDate = now.minusDays(DAYS_30_WINDOW_OFFSET);
-            long startBalance = repository.getNetAmountBeforeDateForAccount(accountId, fromDate);
-            List<DailyDeltaPoint> deltas =
-                    repository.getDailyDeltasForAccount(accountId, fromDate, now);
-            series = AccountBalanceTimelineService.reconstructDaily(fromDate, now, startBalance, deltas);
-        } else {
-            int months = resolvedFilter.months;
-            YearMonth toMonth = YearMonth.from(now);
-            YearMonth fromMonth = toMonth.minusMonths(months - 1L);
-            LocalDate startDate = fromMonth.atDay(1);
-            long startBalance = repository.getNetAmountBeforeDateForAccount(accountId, startDate);
-            List<MonthlyDeltaPoint> deltas = repository.getMonthlyDeltasForAccount(
-                    accountId,
-                    fromMonth,
-                    toMonth
-            );
-            series = AccountBalanceTimelineService.reconstructMonthly(fromMonth, toMonth, startBalance, deltas);
-        }
+        List<BalanceTimelinePoint> series = resolvedFilter == TimeRangeFilter.DAYS_30
+                ? loadDailyTimeline(accountId, now)
+                : loadMonthlyTimeline(accountId, now, resolvedFilter.months);
 
         DateTimeFormatter labelFormat = resolvedFilter == TimeRangeFilter.DAYS_30 ? DAILY_LABEL : MONTHLY_LABEL;
         List<BudgetChartPoint> points = new ArrayList<>();
@@ -151,5 +137,21 @@ public class BudgetOverviewLoader {
             points.add(new BudgetChartPoint(p.date().format(labelFormat), p.balanceCents()));
         }
         return points;
+    }
+
+    private List<BalanceTimelinePoint> loadDailyTimeline(String accountId, LocalDate now) {
+        LocalDate fromDate = now.minusDays(DAYS_30_WINDOW_OFFSET);
+        long startBalance = repository.getNetAmountBeforeDateForAccount(accountId, fromDate);
+        List<DailyDeltaPoint> deltas = repository.getDailyDeltasForAccount(accountId, fromDate, now);
+        return AccountBalanceTimelineService.reconstructDaily(fromDate, now, startBalance, deltas);
+    }
+
+    private List<BalanceTimelinePoint> loadMonthlyTimeline(String accountId, LocalDate now, int months) {
+        YearMonth toMonth = YearMonth.from(now);
+        YearMonth fromMonth = toMonth.minusMonths(months - 1L);
+        LocalDate startDate = fromMonth.atDay(1);
+        long startBalance = repository.getNetAmountBeforeDateForAccount(accountId, startDate);
+        List<MonthlyDeltaPoint> deltas = repository.getMonthlyDeltasForAccount(accountId, fromMonth, toMonth);
+        return AccountBalanceTimelineService.reconstructMonthly(fromMonth, toMonth, startBalance, deltas);
     }
 }

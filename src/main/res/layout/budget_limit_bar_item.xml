@@ -37,7 +37,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/spacing_sm"
-            android:minWidth="40dp"
+            android:minWidth="@dimen/budget_limit_bar_percent_min_width"
             android:gravity="end"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
             android:textStyle="bold" />
@@ -47,8 +47,9 @@
         android:id="@+id/BudgetLimitBarProgress"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="8dp"
+        android:layout_height="@dimen/budget_limit_bar_height"
         android:layout_marginTop="@dimen/spacing_xs"
+        android:contentDescription="@string/budget_limit_bar_progress_description"
         android:max="100" />
 
 </LinearLayout>

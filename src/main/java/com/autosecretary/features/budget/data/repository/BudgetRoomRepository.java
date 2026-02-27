@@ -116,10 +116,10 @@ public class BudgetRoomRepository implements BudgetRepository {
         return lookupDao.findFirstActiveAccountId();
     }
 
-    @Override public void saveTransaction(String accountId, String categoryId, TransactionDirection type,
+    @Override public void saveTransaction(String accountId, String categoryId, TransactionDirection direction,
                                           long amountCents, LocalDate bookingDate, String note) {
         BudgetTransactionEntity entity = new BudgetTransactionEntity(
-                accountId, categoryId, type, amountCents, bookingDate);
+                accountId, categoryId, direction, amountCents, bookingDate);
         entity.note = normalizeNote(note);
         transactionDao.insert(entity);
     }
@@ -138,13 +138,13 @@ public class BudgetRoomRepository implements BudgetRepository {
     }
 
     @Override public void updateTransaction(String transactionId, String accountId, String categoryId,
-                                            TransactionDirection type, long amountCents,
+                                            TransactionDirection direction, long amountCents,
                                             LocalDate bookingDate, String note) {
         BudgetTransactionEntity entity = transactionDao.findById(transactionId);
         if (entity == null) return;
         entity.accountId = accountId;
         entity.categoryId = categoryId;
-        entity.direction = type;
+        entity.direction = direction;
         entity.amountCents = amountCents;
         entity.setBookingDate(bookingDate);
         entity.note = normalizeNote(note);
@@ -165,8 +165,10 @@ public class BudgetRoomRepository implements BudgetRepository {
                 sourceAccountId, null, TransactionDirection.EXPENSE, amountCents, bookingDate);
         BudgetTransactionEntity credit = new BudgetTransactionEntity(
                 targetAccountId, null, TransactionDirection.INCOME, amountCents, bookingDate);
-        applyTransferFields(debit, credit.id, note);
-        applyTransferFields(credit, debit.id, note);
+        populateTransferLeg(debit, sourceAccountId, TransactionDirection.EXPENSE,
+                amountCents, bookingDate, credit.id, note);
+        populateTransferLeg(credit, targetAccountId, TransactionDirection.INCOME,
+                amountCents, bookingDate, debit.id, note);
         transactionDao.createTransferPair(debit, credit);
     }
 
@@ -196,17 +198,10 @@ public class BudgetRoomRepository implements BudgetRepository {
             credit = transaction;
         }
 
-        debit.accountId = sourceAccountId;
-        debit.direction = TransactionDirection.EXPENSE;
-        debit.amountCents = amountCents;
-        debit.setBookingDate(bookingDate);
-        applyTransferFields(debit, credit.id, note);
-
-        credit.accountId = targetAccountId;
-        credit.direction = TransactionDirection.INCOME;
-        credit.amountCents = amountCents;
-        credit.setBookingDate(bookingDate);
-        applyTransferFields(credit, debit.id, note);
+        populateTransferLeg(debit, sourceAccountId, TransactionDirection.EXPENSE,
+                amountCents, bookingDate, credit.id, note);
+        populateTransferLeg(credit, targetAccountId, TransactionDirection.INCOME,
+                amountCents, bookingDate, debit.id, note);
 
         transactionDao.updateTransferPair(debit, credit);
         return true;
@@ -229,7 +224,7 @@ public class BudgetRoomRepository implements BudgetRepository {
     }
 
     @Override public List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth) {
-        return transactionDao.getMonthlyOverview(yearMonth, null);
+        return transactionDao.getMonthlyOverview(yearMonth, null); // null = all accounts
     }
 
     @Override public List<MonthlyOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId) {
@@ -275,12 +270,20 @@ public class BudgetRoomRepository implements BudgetRepository {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private static void applyTransferFields(BudgetTransactionEntity entity,
-                                            String linkedId,
-                                            String note) {
-        entity.transactionKind = TransactionKind.INTERNAL_TRANSFER;
-        entity.categoryId = null;
-        entity.note = normalizeNote(note);
-        entity.linkedTransactionId = linkedId;
+    private static void populateTransferLeg(BudgetTransactionEntity leg,
+                                              String accountId,
+                                              TransactionDirection direction,
+                                              long amountCents,
+                                              LocalDate bookingDate,
+                                              String linkedId,
+                                              String note) {
+        leg.accountId = accountId;
+        leg.direction = direction;
+        leg.amountCents = amountCents;
+        leg.setBookingDate(bookingDate);
+        leg.transactionKind = TransactionKind.INTERNAL_TRANSFER;
+        leg.categoryId = null;
+        leg.note = normalizeNote(note);
+        leg.linkedTransactionId = linkedId;
     }
 }

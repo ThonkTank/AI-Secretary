@@ -36,7 +36,11 @@ public enum ImportTransactionType {
 
     /**
      * Converts from TransactionDirection to ImportTransactionType.
-     * Note: TRANSFER is not representable from direction alone; use TRANSFER directly.
+     * <p>
+     * <strong>Important precondition:</strong> This method only handles INCOME and EXPENSE directions.
+     * TRANSFER cannot be represented from direction alone and must be used directly.
+     * Do not use this method for TRANSFER transactions; set the type to TRANSFER explicitly.
+     * </p>
      */
     public static ImportTransactionType fromDirection(TransactionDirection direction) {
         return direction == TransactionDirection.INCOME ? INCOME : EXPENSE;

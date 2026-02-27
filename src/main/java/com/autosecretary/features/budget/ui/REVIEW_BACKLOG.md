@@ -6,6 +6,4 @@
 
 [warning] BudgetFragment:469–498 — `renderLimitBars` + `renderTransactions` use inflate-and-addView loops with `removeAllViews()` — full reinflation on every reload. For 50+ transactions this is significant main-thread work. Consider RecyclerView or at least diffing to avoid reinflation when content is unchanged.
 
-[warning] BudgetViewModel.java:83-104 — Constructor accepts 10 parameters. `budgetSeedService` is only called once at init (line 142) and is not a primary ViewModel concern. Move seed step to factory or startup use case to reduce parameter count.
-
 [consider] BudgetFragment:229–239 — `RadioGroup` listener uses `if/else if` chain while the inverse observer (196–203) uses a `switch` expression; the two paths are asymmetric. A switch on `checkedId` (int) with `R.id.*` case labels is blocked by the project's non-constant R fields — the if/else is the only viable form here. The asymmetry is a genuine readability note but not fixable without moving the mapping into `TimeRangeFilter` itself (e.g. a `fromRadioId(int)` factory method).

@@ -46,7 +46,7 @@ public class CalculateEffectiveBudgetLimitUseCase {
             rawDeltaCents = previous.limitAmountCents - previousSpentCents;
         }
 
-        long appliedDelta = applyDeltaCaps(rawDeltaCents, target.rolloverCapPositiveCents, target.rolloverCapNegativeCents);
+        long appliedDelta = applyDeltaCaps(rawDeltaCents, target.rolloverCapPositiveCents, target.rolloverCapOverrunCents);
         long effective = baseLimitCents + target.rolloverCarryoverCents + appliedDelta;
 
         // Sonderfall: negativer Carryover größer als Basislimit => auf 0 deckeln.

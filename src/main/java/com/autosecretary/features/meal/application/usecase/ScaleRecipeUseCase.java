@@ -17,10 +17,8 @@ public class ScaleRecipeUseCase {
     }
 
     public RecipeScalingResult execute(long recipeId, double requestedServings) {
-        Recipe recipe = recipeRepository.findRecipeById(recipeId);
-        if (recipe == null) {
-            throw new IllegalArgumentException("Recipe not found: id=" + recipeId);
-        }
+        Recipe recipe = EntityLookupHelper.requireFound(
+                recipeRepository.findRecipeById(recipeId), "Recipe", recipeId);
         return RecipeScalingService.scaleRecipe(recipe, requestedServings);
     }
 }

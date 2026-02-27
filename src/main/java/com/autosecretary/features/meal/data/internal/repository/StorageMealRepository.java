@@ -6,8 +6,8 @@ import com.autosecretary.features.meal.data.internal.mapper.ConsumptionLogRowMap
 import com.autosecretary.features.meal.data.internal.mapper.CookingPreferencesRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.HouseholdMemberRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.MealPlanRowMapper;
+import com.autosecretary.features.meal.data.internal.mapper.MealFieldKeys;
 import com.autosecretary.features.meal.data.internal.mapper.WeeklyFoodTargetRowMapper;
-import static com.autosecretary.features.meal.data.internal.mapper.WeeklyFoodTargetRowMapper.FIELD_PERIOD_KEY;
 import com.autosecretary.features.meal.data.internal.storage.MealStorage;
 import com.autosecretary.features.meal.domain.ConsumptionLog;
 import com.autosecretary.features.meal.domain.CookingPreferences;
@@ -40,7 +40,7 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public List<MealPlan> getMealPlans(LocalDate fromInclusive, LocalDate toInclusive) {
-        return mealPlanDao.findAll(plan -> plan.date != null && !plan.date.isBefore(fromInclusive) && !plan.date.isAfter(toInclusive));
+        return mealPlanDao.findAll(plan -> isDateInRange(plan.date, fromInclusive, toInclusive));
     }
 
     @Override
@@ -55,7 +55,7 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public List<ConsumptionLog> getConsumptionLogs(LocalDate fromInclusive, LocalDate toInclusive) {
-        return consumptionLogDao.findAll(log -> log.date != null && !log.date.isBefore(fromInclusive) && !log.date.isAfter(toInclusive));
+        return consumptionLogDao.findAll(log -> isDateInRange(log.date, fromInclusive, toInclusive));
     }
 
     @Override
@@ -86,19 +86,21 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public void saveCookingPreferences(CookingPreferences preferences) {
-        if (preferences.id == null) {
-            preferences.id = SINGLETON_PREFERENCES_ID;
-        }
+        preferences.id = SINGLETON_PREFERENCES_ID;
         cookingPreferencesDao.save(preferences);
     }
 
     @Override
     public WeeklyFoodTarget findWeeklyFoodTarget(String periodKey) {
-        return weeklyFoodTargetDao.findAllByField(FIELD_PERIOD_KEY, periodKey).stream().findFirst().orElse(null);
+        return weeklyFoodTargetDao.findAllByField(MealFieldKeys.PERIOD_KEY, periodKey).stream().findFirst().orElse(null);
     }
 
     @Override
     public void saveWeeklyFoodTarget(WeeklyFoodTarget weeklyFoodTarget) {
         weeklyFoodTargetDao.save(weeklyFoodTarget);
+    }
+
+    private static boolean isDateInRange(LocalDate date, LocalDate fromInclusive, LocalDate toInclusive) {
+        return date != null && !date.isBefore(fromInclusive) && !date.isAfter(toInclusive);
     }
 }

@@ -109,7 +109,7 @@ public class TaskCore {
         public int totalProgress;
         public int totalTime = DEFAULT_FALLBACK_MINUTES;
 
-        public double repsRequired(double minDuration) {return resetPerRep ? target : Math.min(minPerRep, minDuration/timePerProgress());}
+        public double repsRequired() {return target;}
 
         public boolean hasTrackingTarget() {
             return target > 0;

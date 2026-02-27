@@ -50,43 +50,7 @@ public class BudgetRecurringSuggestionsDialogController {
         LinearLayout listContainer = dialogView.findViewById(R.id.BudgetRecurringSuggestionList);
         TextView selectionInfo = dialogView.findViewById(R.id.BudgetRecurringSelectionInfo);
 
-        List<CheckBox> rows = new ArrayList<>();
-
-        for (RecurringSuggestion suggestion : suggestions) {
-            View rowView = inflater.inflate(R.layout.budget_recurring_suggestion_item, listContainer, false);
-
-            CheckBox checkbox = rowView.findViewById(R.id.BudgetSuggestionCheckbox);
-            TextView payee = rowView.findViewById(R.id.BudgetSuggestionPayee);
-            TextView pattern = rowView.findViewById(R.id.BudgetSuggestionPattern);
-            TextView count = rowView.findViewById(R.id.BudgetSuggestionCount);
-            TextView confidence = rowView.findViewById(R.id.BudgetSuggestionConfidence);
-            TextView amount = rowView.findViewById(R.id.BudgetSuggestionAmount);
-
-            checkbox.setChecked(true);
-            rows.add(checkbox);
-
-            payee.setText(suggestion.displayPayee());
-            pattern.setText(getPatternDescription(suggestion));
-            count.setText(fragment.getString(R.string.budget_recurring_transactions_count,
-                    suggestion.transactionIds().size()));
-            confidence.setText(fragment.getString(R.string.budget_recurring_confidence,
-                    suggestion.confidenceScore() * 100));
-            amount.setText(CurrencyFormatter.eurosMagnitude(suggestion.avgAmountCents()));
-
-            amount.setTextColor(suggestion.avgAmountCents() >= 0
-                    ? ContextCompat.getColor(ctx,R.color.budget_positive)
-                    : ContextCompat.getColor(ctx,R.color.budget_negative));
-
-            if (suggestion.confidenceScore() >= HIGH_CONFIDENCE_THRESHOLD) {
-                confidence.setTextColor(ContextCompat.getColor(ctx,R.color.budget_positive));
-            } else if (suggestion.confidenceScore() >= MEDIUM_CONFIDENCE_THRESHOLD) {
-                confidence.setTextColor(ContextCompat.getColor(ctx,R.color.budget_warning));
-            } else {
-                confidence.setTextColor(ContextCompat.getColor(ctx,R.color.budget_neutral));
-            }
-
-            listContainer.addView(rowView);
-        }
+        List<CheckBox> rows = bindSuggestionRows(ctx, inflater, listContainer, suggestions);
 
         updateSelectionInfo(selectionInfo, rows);
 
@@ -127,6 +91,41 @@ public class BudgetRecurringSuggestionsDialogController {
         dialog.show();
     }
 
+    private List<CheckBox> bindSuggestionRows(Context ctx, LayoutInflater inflater,
+                                              LinearLayout listContainer,
+                                              List<RecurringSuggestion> suggestions) {
+        List<CheckBox> rows = new ArrayList<>();
+        for (RecurringSuggestion suggestion : suggestions) {
+            View rowView = inflater.inflate(R.layout.budget_recurring_suggestion_item, listContainer, false);
+
+            CheckBox checkbox = rowView.findViewById(R.id.BudgetSuggestionCheckbox);
+            TextView payee = rowView.findViewById(R.id.BudgetSuggestionPayee);
+            TextView pattern = rowView.findViewById(R.id.BudgetSuggestionPattern);
+            TextView count = rowView.findViewById(R.id.BudgetSuggestionCount);
+            TextView confidence = rowView.findViewById(R.id.BudgetSuggestionConfidence);
+            TextView amount = rowView.findViewById(R.id.BudgetSuggestionAmount);
+
+            checkbox.setChecked(true);
+            rows.add(checkbox);
+
+            payee.setText(suggestion.displayPayee());
+            pattern.setText(getPatternDescription(suggestion));
+            count.setText(fragment.getString(R.string.budget_recurring_transactions_count,
+                    suggestion.transactionIds().size()));
+            confidence.setText(fragment.getString(R.string.budget_recurring_confidence,
+                    suggestion.confidenceScore() * 100));
+            amount.setText(CurrencyFormatter.eurosMagnitude(suggestion.avgAmountCents()));
+
+            amount.setTextColor(ContextCompat.getColor(ctx,
+                    suggestion.avgAmountCents() >= 0 ? R.color.budget_positive : R.color.budget_negative));
+            confidence.setTextColor(ContextCompat.getColor(ctx,
+                    confidenceColorRes(suggestion.confidenceScore())));
+
+            listContainer.addView(rowView);
+        }
+        return rows;
+    }
+
     private void updateSelectionInfo(TextView info, List<CheckBox> rows) {
         info.setText(fragment.getString(R.string.budget_recurring_selection_info,
                 countSelected(rows), rows.size()));
@@ -140,6 +139,12 @@ public class BudgetRecurringSuggestionsDialogController {
 
     private int countSelected(List<CheckBox> rows) {
         return (int) rows.stream().filter(CheckBox::isChecked).count();
+    }
+
+    private static int confidenceColorRes(double score) {
+        if (score >= HIGH_CONFIDENCE_THRESHOLD)   return R.color.budget_positive;
+        if (score >= MEDIUM_CONFIDENCE_THRESHOLD) return R.color.budget_warning;
+        return R.color.budget_neutral;
     }
 
     private String getPatternDescription(RecurringSuggestion suggestion) {

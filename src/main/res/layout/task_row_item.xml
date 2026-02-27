@@ -104,7 +104,7 @@
         android:focusable="true"
         android:gravity="center"
         android:importantForAccessibility="yes"
-        android:minWidth="24dp"
+        android:minWidth="@dimen/task_row_expand_toggle_min_width"
         android:textAppearance="@style/TextAppearance.Task.Time.Primary"
         android:textColor="@color/task_color_on_surface_emphasis"
         android:visibility="gone"/>

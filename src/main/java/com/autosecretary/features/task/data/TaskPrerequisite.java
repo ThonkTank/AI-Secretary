@@ -32,8 +32,7 @@ public class TaskPrerequisite {
 
     @Ignore
     public TaskPrerequisite(String taskId, String prerequisiteId) {
-        this.taskId = taskId;
-        this.prerequisiteId = prerequisiteId;
+        this(taskId, prerequisiteId, 0);
     }
 
     @Ignore

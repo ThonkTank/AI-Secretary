@@ -18,3 +18,16 @@ The interface is explicitly mentioned in CLAUDE.md as a "domain contract used by
 
 ---
 
+### [nit] Nascent duplication: Budget requirement guard clause
+**Files:** BookTaskCompletionExpenseUseCase.java:19, TaskBudgetEligibilityFromBudgetLookup.java:23
+**Pattern:** `if (task == null || !task.hasBudgetRequirement()) { return ... }`
+**Why:** The same null/budget-requirement check appears in two unrelated classes. Currently stable at 2 instances, but will compound if more budget-related use cases are added (e.g., budget preview, budget impact calculator).
+
+**Current status:** Low priority since only 2 instances and unlikely to diverge immediately. Each class has a distinct return behavior (different return types), so extraction would require a callback or separate handler.
+
+**Monitoring:** If a third use case adds this check, extract to a utility method or create a `BudgetCheckRequired` helper.
+
+**Status:** Monitor, defer extraction until pattern stabilizes (3+ instances).
+
+---
+

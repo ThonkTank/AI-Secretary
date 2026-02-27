@@ -1,6 +1,7 @@
 package com.autosecretary.app.settings;
 
 import android.content.Context;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -40,7 +41,7 @@ public class SettingsDataService {
     }
 
     public File createManualBackup() {
-        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.GERMANY).format(new Date());
+        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ROOT).format(new Date());
         File target = new File(getBackupDirectory(), BACKUP_PREFIX + timestamp + ".db");
 
         try {
@@ -48,6 +49,7 @@ public class SettingsDataService {
             copyDatabaseFile(getDatabaseFile(), target);
             return target;
         } catch (IOException ex) {
+            Log.e("SettingsDataService", "Backup failed", ex);
             return null;
         }
     }
@@ -60,6 +62,7 @@ public class SettingsDataService {
             AppDatabase.getInstance(appContext);
             return true;
         } catch (Exception ex) {
+            Log.e("SettingsDataService", "Restore failed", ex);
             return false;
         }
     }
@@ -76,6 +79,7 @@ public class SettingsDataService {
             AppDatabase.getInstance(appContext);
             return true;
         } catch (Exception ex) {
+            Log.e("SettingsDataService", "Factory reset failed", ex);
             return false;
         }
     }

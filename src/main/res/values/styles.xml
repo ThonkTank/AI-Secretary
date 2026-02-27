@@ -15,16 +15,16 @@
 
     <style name="Widget.AISecretary.BottomNavigation" parent="Widget.MaterialComponents.BottomNavigationView.Colored">
         <item name="android:background">@drawable/bg_surface_card</item>
-        <item name="itemIconTint">@color/task_edit_day_button_text_color</item>
-        <item name="itemTextColor">@color/task_edit_day_button_text_color</item>
+        <item name="itemIconTint">@color/task_button_text_color</item>
+        <item name="itemTextColor">@color/task_button_text_color</item>
     </style>
 
     <!-- Day picker buttons -->
     <style name="Widget.AISecretary.TaskEdit.DayPickerButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
-        <item name="android:textColor">@color/task_edit_day_button_text_color</item>
+        <item name="android:textColor">@color/task_button_text_color</item>
         <item name="backgroundTint">@color/task_edit_day_button_background_tint</item>
         <item name="strokeColor">@color/task_edit_day_button_stroke_color</item>
-        <item name="cornerRadius">12dp</item>
+        <item name="cornerRadius">@dimen/task_corner_radius_sm</item>
         <item name="android:insetTop">0dp</item>
         <item name="android:insetBottom">0dp</item>
     </style>

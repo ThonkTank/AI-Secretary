@@ -10,10 +10,6 @@
 
 ---
 
-[consider] PantryItem.java:48 / ShoppingListItem.java:46 — identical `getFormattedAmount()` body in two unrelated domain classes. Volatile duplication: if the format string changes, one copy will lag. Simpler alternative: a one-method `MealAmountFormat` static helper class in this package. Tradeoff: new file for 2 lines of logic; methods appear unused by current callers, so divergence risk is low. Defer until both methods are actively used in UI.
-
----
-
 [drift] ShoppingPackagingService.java:22-37 — `createShoppingItem()` mixes two responsibilities: packaging arithmetic (already cleanly isolated in `roundToPackage()`) and `ShoppingListItem` domain-object construction. Additionally, `PackagingResult.roundedAmount()` and `PackagingResult.packageCount()` computed in `roundToPackage()` are unused by `createShoppingItem()` — the rounded amount is re-derived indirectly via the Builder's `excess()` setter (`neededAmount + excessAmount`). Low urgency; no callers currently need `packageCount` on `ShoppingListItem`.
 
 ---
@@ -23,3 +19,16 @@
 ---
 
 [drift] PantryItem.StorageLocation enum — `label` and `icon` (emoji) fields are UI presentation data embedded in a domain enum. Fix: move display metadata to the UI layer. Deferred — no meal UI exists yet.
+
+---
+
+[nit] ShoppingListItem.java:51-56 — `getFormattedExcess()` returns a hardcoded German UI string from a domain object. Same smell as `PantryItem.getExpiryInfo()`. Fix: when meal UI is built, move formatting to a UI-layer mapper. Deferred — no meal UI exists yet and the method appears unused.
+
+---
+
+[drift] Ingredient.FoodGroup enum — `label` (German UI strings) and `icon` (emoji) fields are UI presentation data embedded in a domain enum, same pattern as `PantryItem.StorageLocation`. `FoodGroup` is referenced across the entire meal domain. Fix: when meal UI is built, move `label` and `icon` to a UI-layer display helper. Deferred — no meal UI exists yet.
+
+---
+
+[nit] Recipe.Builder.ingredient(long, String, double, String) — 4 positional params with abbreviated names (`id`, `name`) that don't match the `RecipeIngredient` record component names (`ingredientId`, `ingredientName`). Swapping adjacent same-type args is compile-silent.
+**Fix suggestion:** Rename params to match record, or accept a `RecipeIngredient` directly.

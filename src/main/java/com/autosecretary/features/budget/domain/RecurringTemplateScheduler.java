@@ -13,40 +13,45 @@ public class RecurringTemplateScheduler {
     public static LocalDate computeNextDue(RecurringScheduleParams params, LocalDate referenceDate) {
         LocalDate dueDate = params.nextDue() != null ? params.nextDue() : referenceDate;
 
-        switch (params.recurringType()) {
-            case WEEKLY:
-                if (params.recurringDayOfWeek() == null) return null;
+        return switch (params.recurringType()) {
+            case WEEKLY -> {
+                if (params.recurringDayOfWeek() == null) yield null;
                 // Align to the target day of week, then skip full weeks instead of advancing day-by-day.
-                dueDate = dueDate.plusDays(
+                LocalDate aligned = dueDate.plusDays(
                         (params.recurringDayOfWeek().getValue() - dueDate.getDayOfWeek().getValue() + 7) % 7);
-                while (dueDate.isBefore(referenceDate)) {
-                    dueDate = dueDate.plusWeeks(1);
+                while (aligned.isBefore(referenceDate)) {
+                    aligned = aligned.plusWeeks(1);
                 }
-                break;
-            case INTERVAL:
+                yield aligned;
+            }
+            case INTERVAL -> {
                 int intervalDays = Math.max(1, params.recurringValue());
-                while (dueDate.isBefore(referenceDate)) {
-                    dueDate = dueDate.plusDays(intervalDays);
+                LocalDate d = dueDate;
+                while (d.isBefore(referenceDate)) {
+                    d = d.plusDays(intervalDays);
                 }
-                break;
-            case MONTHLY_DAY:
+                yield d;
+            }
+            case MONTHLY_DAY -> {
                 if (params.recurringValue() < 1 || params.recurringValue() > 31) {
-                    return null;
+                    yield null;
                 }
-                while (dueDate.isBefore(referenceDate)) {
-                    LocalDate nextMonth = dueDate.plusMonths(1);
-                    dueDate = nextMonth.withDayOfMonth(Math.min(params.recurringValue(), nextMonth.lengthOfMonth()));
+                LocalDate d = dueDate;
+                while (d.isBefore(referenceDate)) {
+                    LocalDate nextMonth = d.plusMonths(1);
+                    d = nextMonth.withDayOfMonth(Math.min(params.recurringValue(), nextMonth.lengthOfMonth()));
                 }
-                break;
-            case MONTHLY_LAST:
-                while (dueDate.isBefore(referenceDate)) {
-                    LocalDate nextMonth = dueDate.plusMonths(1);
-                    dueDate = nextMonth.withDayOfMonth(nextMonth.lengthOfMonth());
+                yield d;
+            }
+            case MONTHLY_LAST -> {
+                LocalDate d = dueDate;
+                while (d.isBefore(referenceDate)) {
+                    LocalDate nextMonth = d.plusMonths(1);
+                    d = nextMonth.withDayOfMonth(nextMonth.lengthOfMonth());
                 }
-                break;
-        }
-
-        return dueDate;
+                yield d;
+            }
+        };
     }
 
     public static List<TemplateStatusUpdate> computeStatusUpdates(

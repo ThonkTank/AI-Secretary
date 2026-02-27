@@ -10,7 +10,7 @@ public class ShoppingListItem {
     public String ingredientName;       // Denormalized
     public double amount;               // Gesamtmenge (aufgerundet auf Packung)
     public double neededAmount;          // Tatsaechlich benoetigte Menge
-    public double excessAmount;          // Ueberschuss durch Packungsgroessen
+    public double excessAmount;          // Überschuss durch Packungsgroessen
     public String unit;
     public String foodGroupLabel;       // Denormalized
     public String suggestedStore;
@@ -44,14 +44,13 @@ public class ShoppingListItem {
     public void togglePurchased() { isPurchased = !isPurchased; }
 
     public String getFormattedAmount() {
-        if (amount == (int) amount) return (int) amount + " " + unit;
-        return String.format("%.1f %s", amount, unit);
+        return MealAmountFormat.format(amount, unit);
     }
 
     public String getFormattedExcess() {
         if (excessAmount <= 0) return "";
         if (excessAmount == (int) excessAmount)
-            return "(+" + (int) excessAmount + " " + unit + " Ueberschuss)";
-        return String.format("(+%.1f %s Ueberschuss)", excessAmount, unit);
+            return "(+" + (int) excessAmount + " " + unit + " Überschuss)";
+        return String.format("(+%.1f %s Überschuss)", excessAmount, unit);
     }
 }

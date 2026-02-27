@@ -2,6 +2,7 @@ package com.autosecretary.features.task.domain.internal.scheduling;
 
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
+import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.CalendarBlockedIntervalProvider;
@@ -40,6 +41,10 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private static final String REASON_CALENDAR_OVERLAP = "CALENDAR_OVERLAP";
     private static final String REASON_PREREQUISITE_BLOCKED = "PREREQUISITE_BLOCKED";
     private static final String REASON_NO_MATCHING_GAP = "NO_MATCHING_GAP";
+
+    // Flat tiebreaker bonus per slot when evaluating prerequisite chains.
+    // Favours longer chains being placed as a unit over individual task placement.
+    private static final int CHAIN_COMPLETION_BONUS_PER_SLOT = 10;
 
     private static class Interval implements Comparable<Interval> {
         final LocalDateTime start;
@@ -145,9 +150,19 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
+    private static class SchedulingRunInit {
+        final List<Task> taskTree;
+        final List<Task> allTasks;
+
+        SchedulingRunInit(List<Task> taskTree, List<Task> allTasks) {
+            this.taskTree = taskTree;
+            this.allTasks = allTasks;
+        }
+    }
+
     private static final SchedulingWindowProvider DEFAULT_WINDOW = day -> {
-        LocalDateTime start = LocalDateTime.of(day, java.time.LocalTime.of(6, 0));
-        LocalDateTime end = LocalDateTime.of(day, java.time.LocalTime.of(21, 0));
+        LocalDateTime start = LocalDateTime.of(day, TaskPrefSlotFactory.DEFAULT_START_TIME);
+        LocalDateTime end = LocalDateTime.of(day, TaskPrefSlotFactory.DEFAULT_END_TIME);
         return new SchedulingWindowProvider.SchedulingWindow(start, end);
     };
 
@@ -230,19 +245,9 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             return new TaskSlotGenerationResult(0, new ArrayList<>());
         }
 
-        newSlots = 0;
-        scorer.reset();
-        scorer.setTransitionStats(transitionStatLoader != null ? transitionStatLoader.load() : new ArrayList<>());
-        lastConflicts.clear();
-        planningState = state;
-
-        List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
-        List<Task> allTasks = TaskTreeOperations.flatten(taskTree);
-
-        allTasksById = new HashMap<>();
-        for (Task t : allTasks) {
-            allTasksById.put(t.core.id, t);
-        }
+        SchedulingRunInit init = initSchedulingRun(tasks, state);
+        List<Task> taskTree = init.taskTree;
+        List<Task> allTasks = init.allTasks;
 
         List<DaySchedulingContext> contexts = new ArrayList<>();
         for (int i = 0; i < days; i++) {
@@ -278,18 +283,11 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                              TaskPlanningState state,
                                              List<TaskCalendarEvent> calendarEvents) {
         schedulingDay = windowStart.toLocalDate();
-        planningState = state;
-        newSlots = 0;
-        scorer.reset();
-        scorer.setTransitionStats(transitionStatLoader != null ? transitionStatLoader.load() : new ArrayList<>());
-        lastConflicts.clear();
+        SchedulingRunInit init = initSchedulingRun(tasks, state);
+        List<Task> taskTree = init.taskTree;
+        List<Task> allTasks = init.allTasks;
 
-        List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
-        List<Task> allTasks = TaskTreeOperations.flatten(taskTree);
-
-        allTasksById = new HashMap<>();
         for (Task t : allTasks) {
-            allTasksById.put(t.core.id, t);
             scorer.maintenance(t, schedulingDay, state);
         }
 
@@ -325,6 +323,26 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                 }
             }
         }
+    }
+
+    /**
+     * Resets per-run state (scorer, conflict list, counters, planning state) and builds the task
+     * tree and {@code allTasksById} index from the given flat task list. Called at the start of
+     * every public scheduling entry point to ensure a clean, consistent run context.
+     */
+    private SchedulingRunInit initSchedulingRun(List<Task> tasks, TaskPlanningState state) {
+        newSlots = 0;
+        scorer.reset();
+        scorer.setTransitionStats(transitionStatLoader != null ? transitionStatLoader.load() : new ArrayList<>());
+        lastConflicts.clear();
+        planningState = state;
+        List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
+        List<Task> allTasks = TaskTreeOperations.flatten(taskTree);
+        allTasksById = new HashMap<>();
+        for (Task t : allTasks) {
+            allTasksById.put(t.core.id, t);
+        }
+        return new SchedulingRunInit(taskTree, allTasks);
     }
 
     private void assignGlobalBestFit(List<Task> tasks,
@@ -520,7 +538,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             cursor = end;
         }
 
-        gain += chain.size() * 10;
+        gain += chain.size() * CHAIN_COMPLETION_BONUS_PER_SLOT;
         int loss = computeAtomicLoss(toDisplace);
         if (gain - loss <= 0) {
             return null;

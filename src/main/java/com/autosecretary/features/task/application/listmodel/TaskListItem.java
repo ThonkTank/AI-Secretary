@@ -90,29 +90,31 @@ public class TaskListItem {
     }
 
     public static TaskListItem calendarEvent(String eventId, String title, LocalDate day, LocalTime start, LocalTime end) {
-        return new TaskListItem(
-                ItemType.CALENDAR_EVENT,
-                eventId,
-                eventId,
-                null,
-                List.of(),
-                title,
-                null,
-                day,
-                start,
-                end,
-                null,
-                0,
-                0,
-                false,
-                false,
-                0,
-                0,
-                "",
-                0,
-                null,
-                null
-        );
+        return new TaskListItem(eventId, title, day, start, end);
+    }
+
+    private TaskListItem(String eventId, String title, LocalDate day, LocalTime start, LocalTime end) {
+        this.itemType = ItemType.CALENDAR_EVENT;
+        this.taskId = eventId;
+        this.slotId = eventId;
+        this.slotParentId = null;
+        this.parentTaskIds = List.of();
+        this.title = title;
+        this.description = null;
+        this.day = day;
+        this.start = start;
+        this.end = end;
+        this.deadline = null;
+        this.streak = 0;
+        this.score = 0;
+        this.completed = false;
+        this.inProgress = false;
+        this.progressCurrent = 0;
+        this.progressTarget = 0;
+        this.progressUnit = "";
+        this.progressStepDelta = 0;
+        this.goalIcon = null;
+        this.goalColorHex = null;
     }
 
     public boolean isCalendarEvent() {

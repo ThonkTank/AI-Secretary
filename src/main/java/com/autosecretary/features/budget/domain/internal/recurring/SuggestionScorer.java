@@ -12,9 +12,10 @@ import java.util.Arrays;
  *   <li><b>Amount variance (0.3)</b> — {@code max(0.3 - variance_ratio, 0)}. Low spread
  *       between min/max amount relative to the average scores higher; penalised linearly
  *       toward zero as variance grows.</li>
- *   <li><b>Pattern type bonus (0.3)</b> — flat bonus awarded whenever a structured date
- *       pattern (MONTHLY_DAY, WEEKLY, etc.) is detected. Both count and amount variance are
- *       meaningful only when a pattern exists, so this is equally weighted.</li>
+ *   <li><b>Pattern type bonus (0.3)</b> — flat bonus always included, because
+ *       {@code calculateConfidence} is only called when a structured date pattern was
+ *       already confirmed by {@code DatePatternDetector}. Both count and amount variance are
+ *       meaningful only in that context, so this is equally weighted.</li>
  *   <li><b>Known subscription (0.1)</b> — small tie-breaker for well-known recurring payees
  *       (streaming services, gyms, telecoms, etc.) where confidence is inherently higher.</li>
  * </ul>
@@ -51,7 +52,6 @@ public final class SuggestionScorer {
     }
 
     public static double calculateConfidence(int occurrenceCount,
-                                             boolean hasPattern,
                                              long avgAmount,
                                              long minAmount,
                                              long maxAmount,
@@ -59,10 +59,7 @@ public final class SuggestionScorer {
         double score = 0;
         score += Math.min((occurrenceCount / OCCURRENCE_CAP) * OCCURRENCE_WEIGHT, OCCURRENCE_WEIGHT);
         score += calculateAmountVarianceScore(avgAmount, minAmount, maxAmount);
-
-        if (hasPattern) {
-            score += PATTERN_TYPE_BONUS;
-        }
+        score += PATTERN_TYPE_BONUS;
 
         if (isKnownSubscription(normalizedPayee)) {
             score += KNOWN_SUBSCRIPTION_WEIGHT;

@@ -22,7 +22,6 @@ import com.autosecretary.features.budget.domain.TransactionDirection;
  *
  * <p>The primary consumer is
  * {@code com.autosecretary.features.budget.application.importing.BudgetImportUseCase}.
- * Note: this interface has no Room implementation yet — see CLAUDE.md "Not Yet Implemented".
  */
 public interface BudgetImportRepository {
 

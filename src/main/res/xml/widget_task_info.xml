@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Task widget configuration: 30-minute update period (1800000ms) shared with budget widget -->
+<!-- Task widget configuration
+     Update period: 30 minutes (1800000ms)
+     Must match: com.autosecretary.features.task.ui.widget.WidgetConfiguration.WIDGET_UPDATE_PERIOD_MILLIS
+     Shared with: budget widget (widget_budget_info.xml) -->
 <appwidget-provider
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"

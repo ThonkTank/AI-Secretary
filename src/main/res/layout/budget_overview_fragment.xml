@@ -59,8 +59,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
-            app:cardElevation="2dp"
-            app:cardCornerRadius="8dp">
+            app:cardElevation="@dimen/budget_card_elevation"
+            app:cardCornerRadius="@dimen/budget_card_corner_radius">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -79,7 +79,7 @@
                 <com.autosecretary.features.budget.ui.internal.BudgetBalanceChartView
                     android:id="@+id/BudgetBalanceChart"
                     android:layout_width="match_parent"
-                    android:layout_height="160dp"
+                    android:layout_height="@dimen/budget_chart_height"
                     android:layout_marginTop="@dimen/spacing_sm" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -124,8 +124,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
             android:visibility="gone"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp">
+            app:cardCornerRadius="@dimen/budget_card_corner_radius"
+            app:cardElevation="@dimen/budget_card_elevation">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -198,7 +198,7 @@
 
                 <View
                     android:layout_width="match_parent"
-                    android:layout_height="1dp"
+                    android:layout_height="@dimen/budget_divider_height"
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:layout_marginBottom="@dimen/spacing_sm"
                     android:background="@color/budget_divider" />

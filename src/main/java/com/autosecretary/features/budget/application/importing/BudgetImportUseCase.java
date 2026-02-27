@@ -6,6 +6,8 @@ import com.autosecretary.features.budget.domain.RecurringPatternDetector;
 import com.autosecretary.features.budget.domain.RecurringSuggestion;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
+import android.util.Log;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
@@ -19,6 +21,8 @@ import java.util.concurrent.ExecutorService;
  * Batch-Persistierung und abschließende UI-Aktualisierung.
  */
 public class BudgetImportUseCase {
+    private static final String TAG = "BudgetImportUseCase";
+
     private final BudgetImportRepository repository;
     private final StatementFileParser parser;
     private final ExecutorService executor;
@@ -86,6 +90,7 @@ public class BudgetImportUseCase {
                         .toList();
                 suggestions = RecurringPatternDetector.detectPatterns(accountTransactions);
             } catch (Exception e) {
+                Log.w(TAG, "Pattern detection failed after import, suggestions skipped", e);
                 suggestions = List.of();
             }
 
@@ -117,7 +122,7 @@ public class BudgetImportUseCase {
         for (StatementFileParser.ParsedTransaction parsed : parsedTransactions) {
             String txHash = parsed.importHash();
             if (txHash == null || txHash.isBlank()) {
-                txHash = generateTransactionHash(parsed.date(), parsed.amountCents(), parsed.payee());
+                txHash = buildTransactionFingerprint(parsed.date(), parsed.amountCents(), parsed.payee());
             }
 
             if (repository.existsTransactionByImportHash(txHash)) {
@@ -132,7 +137,7 @@ public class BudgetImportUseCase {
                 autoCategorized++;
             } else {
                 categoryId = repository.findDefaultCategoryId(
-                        parsed.amountCents() > 0 ? TransactionDirection.INCOME : TransactionDirection.EXPENSE);
+                        TransactionDirection.fromAmountCents(parsed.amountCents()));
             }
 
             newTransactions.add(RecurringBudgetTransaction.forImport(
@@ -160,7 +165,7 @@ public class BudgetImportUseCase {
         }
     }
 
-    private static String generateTransactionHash(LocalDate date, int amountCents, String payee) {
+    private static String buildTransactionFingerprint(LocalDate date, long amountCents, String payee) {
         String normalized = payee != null ? payee.trim().replace(" ", "") : "";
         String payeePart = normalized.substring(0, Math.min(10, normalized.length()));
         return date + "_" + amountCents + "_" + payeePart;

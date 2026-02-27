@@ -71,12 +71,15 @@ public final class DatePatternDetector {
             return monthlyLast;
         }
 
-        PatternResult weekly = checkWeekly(dates);
+        List<Long> intervals = calculateIntervals(dates);
+        double avgInterval = calculateAverageInterval(intervals);
+
+        PatternResult weekly = checkWeekly(dates, avgInterval);
         if (weekly != null) {
             return weekly;
         }
 
-        return checkInterval(dates);
+        return checkInterval(intervals, avgInterval);
     }
 
     static PatternResult checkMonthlyDay(List<LocalDate> dates) {
@@ -107,7 +110,7 @@ public final class DatePatternDetector {
         return null;
     }
 
-    static PatternResult checkWeekly(List<LocalDate> dates) {
+    static PatternResult checkWeekly(List<LocalDate> dates, double avgInterval) {
         List<DayOfWeek> weekdays = dates.stream().map(LocalDate::getDayOfWeek).toList();
         Map<DayOfWeek, Long> counts = weekdays.stream()
                 .collect(Collectors.groupingBy(d -> d, Collectors.counting()));
@@ -117,23 +120,14 @@ public final class DatePatternDetector {
                 .orElseThrow(() -> new IllegalStateException("weekday counts must be non-empty (dates.size() >= 2 is guaranteed by caller)"));
 
         long modeCount = counts.getOrDefault(dominantWeekday, 0L);
-        if (modeCount >= dates.size() * WEEKLY_DAY_MATCH_RATIO) {
-            List<Long> intervals = calculateIntervals(dates);
-            double avgInterval = calculateAverageInterval(intervals);
-            if (avgInterval >= WEEKLY_INTERVAL_MIN_DAYS && avgInterval <= WEEKLY_INTERVAL_MAX_DAYS) {
-                return new PatternResult(RecurringBudgetTransaction.RecurringType.WEEKLY, 0, dominantWeekday);
-            }
+        if (modeCount >= dates.size() * WEEKLY_DAY_MATCH_RATIO
+                && avgInterval >= WEEKLY_INTERVAL_MIN_DAYS && avgInterval <= WEEKLY_INTERVAL_MAX_DAYS) {
+            return new PatternResult(RecurringBudgetTransaction.RecurringType.WEEKLY, 0, dominantWeekday);
         }
         return null;
     }
 
-    static PatternResult checkInterval(List<LocalDate> dates) {
-        List<Long> intervals = calculateIntervals(dates);
-        if (intervals.isEmpty()) {
-            return null;
-        }
-
-        double avgInterval = calculateAverageInterval(intervals);
+    static PatternResult checkInterval(List<Long> intervals, double avgInterval) {
         boolean consistent = intervals.stream()
                 .allMatch(i -> isConsistentInterval(i, avgInterval));
 

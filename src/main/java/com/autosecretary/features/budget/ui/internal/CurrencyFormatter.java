@@ -15,7 +15,7 @@ public final class CurrencyFormatter {
      * Used for axis labels in the balance chart.
      */
     public static String euros(long cents) {
-        return String.format("%.0f €", cents / 100.0);
+        return String.format(Locale.GERMAN, "%.0f €", cents / 100.0);
     }
 
     /**

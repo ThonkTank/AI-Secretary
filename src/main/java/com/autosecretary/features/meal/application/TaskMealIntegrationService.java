@@ -26,6 +26,7 @@ import java.util.Objects;
 public class TaskMealIntegrationService {
 
     private static final long DEFAULT_MEMBER_ID = 0L;
+    private static final double DEPLETION_EPSILON = 0.00001;
 
     private final MealRepository mealRepository;
     private final RecipeRepository recipeRepository;
@@ -108,7 +109,7 @@ public class TaskMealIntegrationService {
             pantryItem.amount -= consumed;
             requiredAmount -= consumed;
 
-            if (pantryItem.amount <= 0.00001d) {
+            if (pantryItem.amount <= DEPLETION_EPSILON) {
                 pantryRepository.deletePantryItem(pantryItem.id);
             } else {
                 pantryRepository.savePantryItem(pantryItem);

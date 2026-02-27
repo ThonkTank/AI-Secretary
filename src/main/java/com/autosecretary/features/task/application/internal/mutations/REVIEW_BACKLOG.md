@@ -19,9 +19,12 @@ simpler DAO method would suffice.
 
 **Suggested fix (if scope allows):** Expose a `@Transaction`-annotated method on
 `TaskDAO` (making it an abstract class rather than an interface) that encapsulates the
-combined write. This would remove the `RoomDatabase` field from the application layer.
-Given that no repository layer exists in this project, this change requires converting
-`TaskDAO` from interface to abstract class — evaluate separately.
+combined write. This would require:
+1. Converting `TaskDAO` from interface to abstract class
+2. Adding `@Transaction` default method(s) that coordinate writes with `transitionDao`
+3. Updating `AppCompositionRoot.java` to not pass `db` parameter
+Given that no repository layer exists and multi-DAO transactions require framework
+support, evaluate whether the refactoring complexity is worth the architectural benefit.
 
 **Note:** This issue affects `AppCompositionRoot.java` (caller) as well but the
 architectural concern originates here.

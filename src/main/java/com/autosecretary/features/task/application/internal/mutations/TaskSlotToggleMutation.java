@@ -150,7 +150,7 @@ public final class TaskSlotToggleMutation {
         return null;
     }
 
-    private void recordTransition(TaskSlot slot, int delta) {
+    private void recordTransition(TaskSlot slot, int transitionWeight) {
         if (!canRecordTransition(slot)) {
             return;
         }
@@ -162,7 +162,7 @@ public final class TaskSlotToggleMutation {
             return;
         }
 
-        transitionDao.recordTransition(previousTaskId, slot.taskId, Math.max(1, delta), LocalDateTime.now());
+        transitionDao.recordTransition(previousTaskId, slot.taskId, Math.max(1, transitionWeight), LocalDateTime.now());
     }
 
     private static boolean canRecordTransition(TaskSlot slot) {

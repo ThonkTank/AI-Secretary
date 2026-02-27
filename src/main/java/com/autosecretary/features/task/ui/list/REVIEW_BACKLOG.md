@@ -29,3 +29,4 @@ The 5-line timer-toggle lambda in the `TaskRowActions` constructor could be a si
 ### [consider] ViewSlotList.java:100 — `applySort()` mutates `ViewSlot.depth` in-place on shared objects
 The flatten-with-depth traversal writes `slot.depth` directly on the original `ViewSlot` objects. If `applySort()` is called twice with different tree structures or if another thread reads the list during sort, stale depth values are visible. In practice the single-threaded executor prevents races, but the mutable-state pattern is fragile.
 **Suggested alternative:** Store depth in a wrapper or `Map<ViewSlot, Integer>` that is rebuilt each sort, keeping `ViewSlot` immutable. Defer — low risk given single-threaded access.
+

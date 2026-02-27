@@ -42,15 +42,15 @@ public class TreeBuilder<T> {
 
         for (T item : items) {
             List<String> parentIds = getParentIds.apply(item);
-            boolean hasParent = false;
+            boolean hasParentInMap = false;
             for (String parentId : parentIds) {
                 T parent = map.get(parentId);
                 if (parent != null) {
                     addChild.accept(parent, item);
-                    hasParent = true;
+                    hasParentInMap = true;
                 }
             }
-            if (!hasParent) {
+            if (!hasParentInMap) {
                 roots.add(item);
             }
         }

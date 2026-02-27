@@ -41,15 +41,15 @@ public class SettingsController {
     private final Runnable onDataChanged;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    public SettingsController(@NonNull Context context, @NonNull Runnable onDataChanged,
-                              @NonNull ExecutorService executorService) {
+    public SettingsController(@NonNull Context context, @NonNull SettingsDataService settingsDataService,
+                              @NonNull Runnable onDataChanged, @NonNull ExecutorService executorService) {
         this.context = context;
-        this.settingsDataService = new SettingsDataService(context);
+        this.settingsDataService = settingsDataService;
         this.executorService = executorService;
         this.onDataChanged = onDataChanged;
     }
 
-    private void executeBackgroundTaskWithMainThreadCallback(
+    private void runInBackground(
             int successMessageId, int failureMessageId, BackgroundTask task) {
         executorService.execute(() -> {
             boolean success = task.execute();
@@ -124,7 +124,7 @@ public class SettingsController {
                 .setTitle(R.string.settings_restore_confirm_title)
                 .setMessage(R.string.settings_restore_confirm_message)
                 .setPositiveButton(R.string.settings_restore_action, (dialog, which) ->
-                        executeBackgroundTaskWithMainThreadCallback(
+                        runInBackground(
                                 R.string.settings_restore_success,
                                 R.string.settings_restore_failure,
                                 () -> settingsDataService.restoreBackup(backupFile)))
@@ -144,7 +144,7 @@ public class SettingsController {
                 .setTitle(R.string.settings_reset_confirm_title)
                 .setMessage(R.string.settings_reset_confirm_message)
                 .setPositiveButton(R.string.settings_reset_action, (dialog, which) ->
-                        executeBackgroundTaskWithMainThreadCallback(
+                        runInBackground(
                                 R.string.settings_reset_success,
                                 R.string.settings_reset_failure,
                                 settingsDataService::factoryReset))

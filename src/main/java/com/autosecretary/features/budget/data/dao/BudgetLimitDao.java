@@ -1,11 +1,9 @@
 package com.autosecretary.features.budget.data.dao;
 
 import androidx.room.Dao;
-import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
-import androidx.room.Update;
 
 import java.util.List;
 import com.autosecretary.features.budget.data.entity.BudgetLimit;
@@ -13,9 +11,6 @@ import com.autosecretary.features.budget.domain.CategorySpendSummary;
 
 @Dao
 public interface BudgetLimitDao {
-
-    @Query("SELECT * FROM budget_limit WHERE yearMonth = :yearMonth ORDER BY categoryId ASC")
-    List<BudgetLimit> getLimitsForMonth(String yearMonth);
 
     @Query("SELECT * FROM budget_limit WHERE categoryId = :categoryId AND yearMonth = :yearMonth LIMIT 1")
     BudgetLimit getLimitForCategoryAndMonth(String categoryId, String yearMonth);
@@ -52,12 +47,4 @@ public interface BudgetLimitDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(BudgetLimit budgetLimit);
 
-    @Update
-    void update(BudgetLimit budgetLimit);
-
-    @Delete
-    void delete(BudgetLimit budgetLimit);
-
-    @Query("DELETE FROM budget_limit WHERE categoryId = :categoryId AND yearMonth = :yearMonth")
-    void deleteByCategoryAndMonth(String categoryId, String yearMonth);
 }

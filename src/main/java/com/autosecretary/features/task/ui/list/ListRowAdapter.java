@@ -28,11 +28,10 @@ import java.util.function.Function;
 
 public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowViewHolder> {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-    private static final int STREAK_COMMON_MAX = 3;
-    private static final int STREAK_RARE_MAX = 7;
-    private static final int STREAK_EPIC_MAX = 14;
     private static final long CHECKBOX_SCALE_DURATION_MS = 100L;
     private static final long COMPLETION_FLASH_DURATION_MS = 300L;
+    private static final float ALPHA_ENABLED = 1.0f;
+    private static final float ALPHA_DISABLED = 0.4f;
 
     private List<ViewSlot> viewSlots;
     private final TaskRowActions actions;
@@ -260,32 +259,42 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.deadlineCountdown.setVisibility(View.VISIBLE);
     }
 
+    enum StreakTier {
+        COMMON(3, R.color.task_streak_common, R.string.task_streak_tier_common),
+        RARE(7, R.color.task_streak_rare, R.string.task_streak_tier_rare),
+        EPIC(14, R.color.task_streak_epic, R.string.task_streak_tier_epic),
+        LEGENDARY(Integer.MAX_VALUE, R.color.task_streak_legendary, R.string.task_streak_tier_legendary);
+
+        final int maxStreak;
+        final int colorRes;
+        final int labelRes;
+
+        StreakTier(int maxStreak, int colorRes, int labelRes) {
+            this.maxStreak = maxStreak;
+            this.colorRes = colorRes;
+            this.labelRes = labelRes;
+        }
+
+        static StreakTier forStreak(int streak) {
+            for (StreakTier tier : values()) {
+                if (streak <= tier.maxStreak) return tier;
+            }
+            return LEGENDARY;
+        }
+    }
+
     private void bindStreak(TaskRowViewHolder holder, TaskListItem item) {
         if (item.streak > 0) {
             Context context = holder.itemView.getContext();
-            int streakColor;
-            int rarityLabel;
-            if (item.streak <= STREAK_COMMON_MAX) {
-                streakColor = R.color.task_streak_common;
-                rarityLabel = R.string.task_streak_tier_common;
-            } else if (item.streak <= STREAK_RARE_MAX) {
-                streakColor = R.color.task_streak_rare;
-                rarityLabel = R.string.task_streak_tier_rare;
-            } else if (item.streak <= STREAK_EPIC_MAX) {
-                streakColor = R.color.task_streak_epic;
-                rarityLabel = R.string.task_streak_tier_epic;
-            } else {
-                streakColor = R.color.task_streak_legendary;
-                rarityLabel = R.string.task_streak_tier_legendary;
-            }
+            StreakTier tier = StreakTier.forStreak(item.streak);
 
             holder.streakDisplay.setText(context.getString(R.string.task_streak_display, item.streak));
-            holder.streakDisplay.setTextColor(ContextCompat.getColor(context, streakColor));
+            holder.streakDisplay.setTextColor(ContextCompat.getColor(context, tier.colorRes));
             holder.streakDisplay.setContentDescription(
                     context.getString(
                             R.string.task_streak_content_description,
                             item.streak,
-                            context.getString(rarityLabel)));
+                            context.getString(tier.labelRes)));
             holder.streakDisplay.setVisibility(View.VISIBLE);
         } else {
             holder.streakDisplay.setVisibility(View.GONE);
@@ -335,7 +344,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.checkBox.setChecked(item.completed);
         boolean checkable = !item.completed && item.slotId != null && interactionsEnabled;
         holder.checkBox.setEnabled(checkable);
-        holder.checkBox.setAlpha(interactionsEnabled ? 1.0f : 0.4f);
+        holder.checkBox.setAlpha(interactionsEnabled ? ALPHA_ENABLED : ALPHA_DISABLED);
     }
 
     private void bindProgressControls(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
@@ -363,7 +372,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     private void applyProgressButtonState(Context context, ImageButton button, boolean enabled) {
         button.setEnabled(enabled);
-        button.setAlpha(enabled ? 1.0f : 0.4f);
+        button.setAlpha(enabled ? ALPHA_ENABLED : ALPHA_DISABLED);
         button.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(context,
                 enabled ? R.color.task_progress_button_tint : R.color.task_progress_button_tint_disabled)));
     }
@@ -392,11 +401,11 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.timerButton.setOnClickListener(interactionsEnabled
                 ? v -> actions.onTimerToggle.accept(viewSlot)
                 : null);
-        holder.timerButton.setAlpha(interactionsEnabled && timerEligible ? 1.0f : 0.4f);
+        holder.timerButton.setAlpha(interactionsEnabled && timerEligible ? ALPHA_ENABLED : ALPHA_DISABLED);
         holder.editButton.setOnClickListener(interactionsEnabled
                 ? v -> actions.onEdit.accept(viewSlot)
                 : null);
-        holder.editButton.setAlpha(interactionsEnabled ? 1.0f : 0.4f);
+        holder.editButton.setAlpha(interactionsEnabled ? ALPHA_ENABLED : ALPHA_DISABLED);
     }
 
     private void showDescriptionPopup(View view, TaskListItem item) {

@@ -1,6 +1,7 @@
 package com.autosecretary.features.budget.data.entity;
 
 import androidx.annotation.NonNull;
+import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
@@ -52,9 +53,11 @@ public class BudgetLimit {
     public Long rolloverCapPositiveCents;
 
     /**
-     * Optionales negatives Delta-Cap in Cent (als positiver Absolutwert, null = unbegrenzt).
+     * Optionales Cap auf negative Deltas (als positiver Absolutwert, null = unbegrenzt).
+     * Wird als positiver Wert gespeichert und beim Anwenden negiert.
      */
-    public Long rolloverCapNegativeCents;
+    @ColumnInfo(name = "rolloverCapNegativeCents")
+    public Long rolloverCapOverrunCents;
 
     public BudgetLimit(@NonNull String categoryId, @NonNull String yearMonth, long limitAmountCents) {
         this.categoryId = categoryId;

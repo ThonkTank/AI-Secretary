@@ -4,6 +4,7 @@ import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDAO;
 import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
 import java.time.LocalTime;
 import java.util.concurrent.Executor;
@@ -11,7 +12,8 @@ import java.util.concurrent.ExecutorService;
 
 /**
  * Increases or decreases progress for a task while keeping progress bounds and
- * completion flags in sync.
+ * completion flags in sync. Routes completions through {@link TaskLifecycleManager}
+ * so streaks and history are updated consistently with {@code CheckOffTaskUseCase}.
  *
  * Contract: DAO work runs on {@code executor}; when present, {@code onChanged}
  * runs on {@code callbackDispatcher}.
@@ -20,13 +22,16 @@ public class AdjustTaskProgressUseCase {
     private final TaskDAO taskDao;
     private final ExecutorService executor;
     private final Executor callbackDispatcher;
+    private final TaskLifecycleManager lifecycleManager;
 
     public AdjustTaskProgressUseCase(TaskDAO taskDao,
                                      ExecutorService executor,
-                                     Executor callbackDispatcher) {
+                                     Executor callbackDispatcher,
+                                     TaskLifecycleManager lifecycleManager) {
         this.taskDao = taskDao;
         this.executor = executor;
         this.callbackDispatcher = callbackDispatcher;
+        this.lifecycleManager = lifecycleManager;
     }
 
     public void execute(TaskListItem listItem, boolean increment, Runnable onChanged) {
@@ -54,6 +59,10 @@ public class AdjustTaskProgressUseCase {
                 slot.completed = completed;
                 if (completed && slot.realEnd == null) {
                     slot.realEnd = LocalTime.now();
+                }
+                if (completed) {
+                    lifecycleManager.updateStreakForCompletion(task, slot);
+                    task.recordCompletion(0, false);
                 }
             }
 
