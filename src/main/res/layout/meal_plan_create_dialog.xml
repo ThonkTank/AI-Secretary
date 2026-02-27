@@ -1,0 +1,29 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <Spinner
+        android:id="@+id/MealDialogRecipe"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <EditText
+        android:id="@+id/MealDialogDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/meal_hint_date" />
+
+    <Spinner
+        android:id="@+id/MealDialogType"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <EditText
+        android:id="@+id/MealDialogServings"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/meal_hint_servings"
+        android:inputType="number" />
+</LinearLayout>

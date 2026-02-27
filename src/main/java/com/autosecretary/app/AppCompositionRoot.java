@@ -17,6 +17,7 @@ import com.autosecretary.features.budget.data.repository.BudgetImportRoomReposit
 import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
 import com.autosecretary.features.meal.application.TaskMealIntegrationService;
+import com.autosecretary.features.meal.application.MealPlannerPresenter;
 import com.autosecretary.features.meal.data.internal.repository.StorageMealRepository;
 import com.autosecretary.features.meal.data.internal.repository.StoragePantryRepository;
 import com.autosecretary.features.meal.data.internal.repository.StorageRecipeRepository;
@@ -56,6 +57,8 @@ public class AppCompositionRoot {
     private BudgetRoomRepository budgetRoomRepository;
     private TaskCompletionService taskCompletionService;
     private TaskLifecycleManager taskLifecycleManager;
+    private final InMemoryMealStorage mealStorage;
+    private MealPlannerPresenter mealPlannerPresenter;
 
     public AppCompositionRoot(Application app) {
         this.app = app;
@@ -66,6 +69,7 @@ public class AppCompositionRoot {
             );
             return thread;
         });
+        this.mealStorage = new InMemoryMealStorage();
     }
 
     public ExecutorService getSharedExecutor() {
@@ -112,7 +116,6 @@ public class AppCompositionRoot {
         );
         BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase =
                 new BookTaskCompletionExpenseUseCase(getBudgetRoomRepository());
-        InMemoryMealStorage mealStorage = new InMemoryMealStorage();
         TaskMealIntegrationService taskMealIntegrationService = new TaskMealIntegrationService(
                 new StorageMealRepository(mealStorage),
                 new StorageRecipeRepository(mealStorage),
@@ -269,5 +272,18 @@ public class AppCompositionRoot {
         taskDao = null;
         taskSlotToggleMutation = null;
         budgetRoomRepository = null;
+        mealPlannerPresenter = null;
+    }
+
+    public MealPlannerPresenter getMealPlannerPresenter() {
+        if (mealPlannerPresenter != null) {
+            return mealPlannerPresenter;
+        }
+        mealPlannerPresenter = new MealPlannerPresenter(
+                new StorageMealRepository(mealStorage),
+                new StorageRecipeRepository(mealStorage),
+                new StoragePantryRepository(mealStorage)
+        );
+        return mealPlannerPresenter;
     }
 }
