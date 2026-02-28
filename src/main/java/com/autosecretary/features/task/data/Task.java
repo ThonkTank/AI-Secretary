@@ -55,7 +55,7 @@ public class Task {
      */
     public double requiredDays() {
         if (core.progress.target > 0 && core.progress.resetPerRep) {
-            return core.progress.remaining() / (core.progress.repsRequired() * core.cooldown);
+            return core.progress.remaining() / (core.progress.progressTarget() * core.cooldown);
         }
         if (core.repetition.reps > 0) {
             return Math.max(1, core.repetition.remainingReps()) * core.cooldown;
@@ -65,12 +65,12 @@ public class Task {
 
     /** Returns true if this task carries a positive budget requirement. */
     public boolean hasBudgetRequirement() {
-        return core != null && core.budgetRequiredCents != null && core.budgetRequiredCents > 0;
+        return core.budgetRequiredCents != null && core.budgetRequiredCents > 0;
     }
 
     /** Returns the slot with the given id, or {@code null} if not found. */
     public TaskSlot findSlot(String slotId) {
-        if (slotId == null || slots == null) return null;
+        if (slotId == null) return null;
         for (TaskSlot slot : slots) {
             if (slotId.equals(slot.id)) return slot;
         }
@@ -78,9 +78,7 @@ public class Task {
     }
 
     public TaskPlannedMeal getPlannedMealForDate(LocalDate date) {
-        if (date == null || plannedMeals == null) {
-            return null;
-        }
+        if (date == null) return null;
         for (TaskPlannedMeal meal : plannedMeals) {
             if (date.equals(meal.day)) {
                 return meal;

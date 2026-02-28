@@ -39,10 +39,11 @@ public interface BudgetLimitDao {
      * @return total spent in cents
      */
     @Query("""
-            SELECT COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amountCents ELSE 0 END), 0)
+            SELECT COALESCE(SUM(amountCents), 0)
             FROM budget_transaction
             WHERE categoryId = :categoryId
               AND yearMonth = :yearMonth
+              AND type = 'EXPENSE'
             """)
     long getExpenseCentsForCategoryAndMonth(String categoryId, String yearMonth);
 
@@ -65,13 +66,14 @@ public interface BudgetLimitDao {
                    c.name AS categoryName,
                    c.icon AS categoryIcon,
                    c.colorHex AS categoryColorHex,
-                   COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amountCents ELSE 0 END), 0) AS spentCents,
+                   COALESCE(SUM(t.amountCents), 0) AS spentCents,
                    l.limitAmountCents AS limitAmountCents
             FROM budget_category c
             LEFT JOIN budget_transaction t
                    ON t.categoryId = c.id
                   AND t.yearMonth = :yearMonth
                   AND t.transactionKind != 'INTERNAL_TRANSFER'
+                  AND t.type = 'EXPENSE'
             LEFT JOIN budget_limit l
                    ON l.categoryId = c.id
                   AND l.yearMonth = :yearMonth

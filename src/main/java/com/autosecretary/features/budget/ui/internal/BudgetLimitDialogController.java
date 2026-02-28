@@ -14,9 +14,9 @@ import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 /**
  * Manages the "set/edit budget limit" dialog.
@@ -49,7 +49,9 @@ public class BudgetLimitDialogController {
 
     public void show(@Nullable String preSelectedCategoryId, long baseLimitCents,
                      List<BudgetCategory> allCategories) {
-        List<BudgetCategory> expenseCategories = expenseCategories(allCategories);
+        List<BudgetCategory> expenseCategories = allCategories.stream()
+                .filter(c -> c.direction == TransactionDirection.EXPENSE)
+                .collect(Collectors.toList());
 
         View dialogView = LayoutInflater.from(fragment.requireContext())
                 .inflate(R.layout.budget_edit_limit_dialog, null);
@@ -76,31 +78,17 @@ public class BudgetLimitDialogController {
                 .setTitle(R.string.budget_edit_limit_title)
                 .setView(dialogView)
                 .setPositiveButton(R.string.budget_limit_save, (dialog, which) -> {
-                    String amountStr = amountInput.getText() != null
-                            ? amountInput.getText().toString().trim() : "";
+                    String amountStr = SpinnerHelper.textOf(amountInput);
                     if (amountStr.isEmpty()) return;
 
                     String categoryId = SpinnerHelper.idAtPosition(expenseCategories,
                             categorySpinner.getSelectedItemPosition(), c -> c.id);
                     if (categoryId == null) return;
 
-                    String rolloverCarryoverStr = rolloverCarryoverInput.getText() != null
-                            ? rolloverCarryoverInput.getText().toString().trim() : "";
-
                     listener.onSaveBudgetLimit(categoryId, amountStr,
-                            rolloverSwitch.isChecked(), rolloverCarryoverStr);
+                            rolloverSwitch.isChecked(), SpinnerHelper.textOf(rolloverCarryoverInput));
                 })
                 .setNegativeButton(R.string.budget_dialog_cancel, null)
                 .show();
-    }
-
-    private static List<BudgetCategory> expenseCategories(List<BudgetCategory> allCategories) {
-        List<BudgetCategory> result = new ArrayList<>();
-        for (BudgetCategory category : allCategories) {
-            if (category.direction == TransactionDirection.EXPENSE) {
-                result.add(category);
-            }
-        }
-        return result;
     }
 }

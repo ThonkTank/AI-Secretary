@@ -102,7 +102,7 @@ public class BudgetBalanceChartView extends View {
             min -= 1;
         }
 
-        float stepX = points.size() > 1 ? (width / (points.size() - 1)) : 0;
+        float stepX = points.size() > 1 ? width / (points.size() - 1) : 0;
         float lastX = -1;
         float lastY = -1;
 

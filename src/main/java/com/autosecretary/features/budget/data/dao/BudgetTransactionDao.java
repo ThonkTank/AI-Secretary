@@ -295,10 +295,9 @@ public interface BudgetTransactionDao {
             return;
         }
 
-        String linkedId = transaction.linkedTransactionId;
         deleteById(transaction.id);
-        if (linkedId != null) {
-            deleteById(linkedId);
+        if (transaction.linkedTransactionId != null) {
+            deleteById(transaction.linkedTransactionId);
         }
     }
 }

@@ -114,7 +114,7 @@ public class TaskCore {
         /** Accumulated unmet reps from past periods when {@code completeFirst=true}. Added to the next period's target. */
         public int carryoverDebt;
 
-        public double remainingReps() {return reps - periodCompletions;}
+        public int remainingReps() {return reps - periodCompletions;}
 
         public int perPeriod;
         public Period periodUnit;
@@ -149,7 +149,7 @@ public class TaskCore {
         public int totalProgress;
         public int totalTime = DEFAULT_FALLBACK_MINUTES;
 
-        public double repsRequired() {return target;}
+        public double progressTarget() {return target;}
 
         public boolean hasTrackingTarget() {
             return target > 0;
@@ -160,10 +160,7 @@ public class TaskCore {
          * to keep legacy completion-duration learning behavior.
          */
         public int completionProgressUnits() {
-            if (!hasTrackingTarget()) {
-                return 1;
-            }
-            return Math.max(1, minPerRep);
+            return hasTrackingTarget() ? Math.max(1, minPerRep) : 1;
         }
 
         public void recordTimingSample(int durationMinutes) {
@@ -180,7 +177,7 @@ public class TaskCore {
 
         public double timePerProgress() {
             int safeTime = totalTime > 0 ? totalTime : DEFAULT_FALLBACK_MINUTES;
-            return totalProgress <= 0 ? safeTime : (double) safeTime / (double) totalProgress;
+            return totalProgress <= 0 ? safeTime : (double) safeTime / totalProgress;
         }
 
         public int requiredTimePerRep() {

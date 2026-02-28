@@ -8,6 +8,7 @@ import androidx.room.Query;
 import java.time.LocalDate;
 
 import com.autosecretary.features.budget.data.entity.BudgetImportEntity;
+import com.autosecretary.features.budget.domain.importing.ImportStatus;
 
 /**
  * DAO for managing import records and their lifecycle.
@@ -32,10 +33,37 @@ public interface BudgetImportDao {
     void insert(BudgetImportEntity importEntity);
 
     /**
+     * Updates an import record with a new status and optional summary statistics.
+     *
+     * Typically called to transition from PENDING to COMPLETED (with summary stats) or FAILED (with error message).
+     *
+     * @param id the import ID
+     * @param status the new import status (COMPLETED or FAILED)
+     * @param total total transactions found in the imported file (used for COMPLETED status)
+     * @param imported transactions successfully added to the database (used for COMPLETED status)
+     * @param autoCategorized transactions auto-categorized (used for COMPLETED status)
+     * @param periodStart earliest transaction date in the import (used for COMPLETED status)
+     * @param periodEnd latest transaction date in the import (used for COMPLETED status)
+     * @param errorMessage error description for user display (used for FAILED status)
+     */
+    @Query("""
+            UPDATE budget_import
+            SET status = :status,
+                totalTransactions = :total,
+                importedTransactions = :imported,
+                autoCategorized = :autoCategorized,
+                periodStart = :periodStart,
+                periodEnd = :periodEnd,
+                errorMessage = :errorMessage
+            WHERE id = :id
+            """)
+    void updateImportStatus(String id, ImportStatus status, int total, int imported, int autoCategorized,
+                            LocalDate periodStart, LocalDate periodEnd, String errorMessage);
+
+    /**
      * Marks an import as COMPLETED and records its summary statistics.
      *
-     * Typically called after all transactions have been persisted and recurring patterns
-     * have been detected and stored.
+     * Convenience method that calls {@link #updateImportStatus(String, ImportStatus, int, int, int, LocalDate, LocalDate, String)}.
      *
      * @param id the import ID
      * @param total total transactions found in the imported file
@@ -44,32 +72,21 @@ public interface BudgetImportDao {
      * @param periodStart earliest transaction date in the import
      * @param periodEnd latest transaction date in the import
      */
-    @Query("""
-            UPDATE budget_import
-            SET status = 'COMPLETED',
-                totalTransactions = :total,
-                importedTransactions = :imported,
-                autoCategorized = :autoCategorized,
-                periodStart = :periodStart,
-                periodEnd = :periodEnd
-            WHERE id = :id
-            """)
-    void markCompleted(String id, int total, int imported, int autoCategorized,
-                       LocalDate periodStart, LocalDate periodEnd);
+    default void markCompleted(String id, int total, int imported, int autoCategorized,
+                               LocalDate periodStart, LocalDate periodEnd) {
+        updateImportStatus(id, ImportStatus.COMPLETED, total, imported, autoCategorized,
+                periodStart, periodEnd, null);
+    }
 
     /**
      * Marks an import as FAILED and stores the error message.
      *
-     * Called when parsing, categorization, or database operations fail during import.
+     * Convenience method that calls {@link #updateImportStatus(String, ImportStatus, int, int, int, LocalDate, LocalDate, String)}.
      *
      * @param id the import ID
      * @param errorMessage human-readable error description for user display
      */
-    @Query("""
-            UPDATE budget_import
-            SET status = 'FAILED',
-                errorMessage = :errorMessage
-            WHERE id = :id
-            """)
-    void markFailed(String id, String errorMessage);
+    default void markFailed(String id, String errorMessage) {
+        updateImportStatus(id, ImportStatus.FAILED, 0, 0, 0, null, null, errorMessage);
+    }
 }

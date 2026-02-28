@@ -35,6 +35,14 @@ public final class RecurringPatternDetector {
      * Maximum allowed per-element deviation from average amount, as a fraction of the average.
      * Set to 15% to allow transactions with minor rounding differences or occasional promos
      * while filtering out genuinely inconsistent amounts.
+     *
+     * <p><b>Coupling note:</b> {@code SuggestionScorer.calculateAmountVarianceScore} uses
+     * {@code AMOUNT_VARIANCE_WEIGHT - variance_ratio} where {@code variance_ratio = (max-min)/avg}.
+     * Because this filter guarantees each element is within ±AMOUNT_VARIANCE_THRESHOLD of avg,
+     * the worst-case {@code (max-min)/avg} is {@code 2 × AMOUNT_VARIANCE_THRESHOLD = 0.30}.
+     * That bound lines up with {@code AMOUNT_VARIANCE_WEIGHT (0.30)}, ensuring the scorer uses
+     * the full [0, 0.30] range. If you change this constant, verify {@code SuggestionScorer}
+     * still produces meaningful scores across the new allowed variance range.
      */
     private static final double AMOUNT_VARIANCE_THRESHOLD = 0.15;
 
@@ -65,6 +73,11 @@ public final class RecurringPatternDetector {
         }
     }
 
+    private static boolean isEligibleForDetection(RecurringBudgetTransaction tx) {
+        return !tx.isRecurring && !tx.isPredicted && tx.parentRecurringId == null
+                && tx.payee != null && !tx.payee.isBlank() && tx.bookingDate != null;
+    }
+
     private RecurringPatternDetector() {
     }
 
@@ -79,8 +92,7 @@ public final class RecurringPatternDetector {
         }
 
         List<RecurringBudgetTransaction> eligible = transactions.stream()
-                .filter(tx -> !tx.isRecurring && !tx.isPredicted && tx.parentRecurringId == null
-                        && tx.payee != null && !tx.payee.isBlank() && tx.bookingDate != null)
+                .filter(RecurringPatternDetector::isEligibleForDetection)
                 .toList();
 
         if (eligible.size() < minOccurrences) {

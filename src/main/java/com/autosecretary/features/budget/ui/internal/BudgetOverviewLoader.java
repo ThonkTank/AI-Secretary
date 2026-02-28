@@ -158,7 +158,7 @@ public class BudgetOverviewLoader {
     private List<BalanceTimelinePoint> loadMonthlyTimeline(String accountId, LocalDate now, int months) {
         YearMonth toMonth = YearMonth.from(now);
         // -1 because the range is inclusive on both ends: months=3 → this month + 2 prior = 3 total.
-        YearMonth fromMonth = toMonth.minusMonths(months - 1L);
+        YearMonth fromMonth = toMonth.minusMonths(months - 1);
         LocalDate startDate = fromMonth.atDay(1);
         long startBalance = repository.getNetAmountBeforeDateForAccount(accountId, startDate);
         List<MonthlyDeltaPoint> deltas = repository.getMonthlyDeltasForAccount(accountId, fromMonth, toMonth);

@@ -33,7 +33,7 @@ public class BudgetImportPickerController {
 
     private final Fragment fragment;
     private final Listener listener;
-    private ActivityResultLauncher<String[]> csvPickerLauncher;
+    private ActivityResultLauncher<String[]> pickerLauncher;
 
     public BudgetImportPickerController(Fragment fragment, Listener listener) {
         this.fragment = fragment;
@@ -43,20 +43,20 @@ public class BudgetImportPickerController {
     // Must be called in Fragment.onCreate(), before the fragment reaches the STARTED state
     // (Android requires ActivityResultLauncher registration before that lifecycle point).
     public void register() {
-        csvPickerLauncher = fragment.registerForActivityResult(
+        pickerLauncher = fragment.registerForActivityResult(
                 new ActivityResultContracts.OpenDocument(),
                 this::handlePickedUri
         );
     }
 
     public void launchPicker() {
-        if (csvPickerLauncher == null) {
+        if (pickerLauncher == null) {
             return;
         }
         // "*/*" is the catch-all fallback: file-manager apps on some devices report the
         // wrong MIME type for CSV files (e.g. "application/octet-stream"), so without it
         // the user's statement file might not appear in the picker at all.
-        csvPickerLauncher.launch(new String[]{"text/csv", "text/plain", "application/pdf", "*/*"});
+        pickerLauncher.launch(new String[]{"text/csv", "text/plain", "application/pdf", "*/*"});
     }
 
     private void handlePickedUri(Uri uri) {

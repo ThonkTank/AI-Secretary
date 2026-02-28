@@ -28,9 +28,8 @@ public class TaskPlannedMeal {
     public boolean completed;
     public int actualServings;
 
-    public TaskPlannedMeal markCompleted(int actualServingsOverride) {
+    public void markCompleted(int actualServingsOverride) {
         this.completed = true;
         this.actualServings = actualServingsOverride > 0 ? actualServingsOverride : plannedServings;
-        return this;
     }
 }

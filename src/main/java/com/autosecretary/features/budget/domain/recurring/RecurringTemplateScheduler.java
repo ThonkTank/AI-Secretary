@@ -55,7 +55,10 @@ public final class RecurringTemplateScheduler {
                 yield d;
             }
             case MONTHLY_LAST -> {
-                LocalDate d = dueDate;
+                // Align to the last day of dueDate's month first, so that a null nextDue fallback
+                // (dueDate == referenceDate) correctly advances to the actual last day of the month
+                // rather than returning referenceDate unchanged.
+                LocalDate d = dueDate.withDayOfMonth(dueDate.lengthOfMonth());
                 while (d.isBefore(referenceDate)) {
                     LocalDate nextMonth = d.plusMonths(1);
                     d = nextMonth.withDayOfMonth(nextMonth.lengthOfMonth());

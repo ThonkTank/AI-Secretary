@@ -28,17 +28,9 @@ import java.util.function.Function;
 public class SpinnerHelper {
     private SpinnerHelper() {}
 
-    /** Binds a pre-built list of display strings to {@code spinner}. */
-    public static void bindNames(Spinner spinner, List<String> names, Context context) {
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(context,
-                android.R.layout.simple_spinner_item, names);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
-    }
-
     /**
-     * Convenience overload: maps each item in {@code items} to a label string via
-     * {@code label}, then delegates to {@link #bindNames}.
+     * Maps each item in {@code items} to a label string via {@code label} and binds the
+     * resulting list to {@code spinner}.
      */
     public static <T> void bindList(Spinner spinner, List<T> items,
                                     Function<T, String> label, Context context) {
@@ -46,7 +38,10 @@ public class SpinnerHelper {
         for (T item : items) {
             names.add(label.apply(item));
         }
-        bindNames(spinner, names, context);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(context,
+                android.R.layout.simple_spinner_item, names);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
     }
 
     /**

@@ -19,9 +19,9 @@ import com.google.android.material.textfield.TextInputEditText;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 /**
  * Manages add, edit, and delete dialogs for budget transactions.
@@ -101,7 +101,8 @@ public class BudgetTransactionDialogController {
         if (existingRow != null) {
             amountInput.setText(String.format(Locale.GERMAN, "%.2f",
                     Math.abs(existingRow.getAmountCents()) / 100.0));
-            noteInput.setText(existingRow.getNote() != null ? existingRow.getNote() : "");
+            String existingNote = existingRow.getNote();
+            noteInput.setText(existingNote != null ? existingNote : "");
             expenseRadio.setChecked(existingRow.isExpense());
             incomeRadio.setChecked(!existingRow.isExpense());
             SpinnerHelper.setSelection(categorySpinner,
@@ -167,26 +168,12 @@ public class BudgetTransactionDialogController {
 
     private static List<BudgetCategory> categoriesForType(List<BudgetCategory> allCategories,
                                                           boolean isExpense) {
-        TransactionDirection filterType = isExpense
-                ? TransactionDirection.EXPENSE
-                : TransactionDirection.INCOME;
-        List<BudgetCategory> filtered = new ArrayList<>();
-        for (BudgetCategory category : allCategories) {
-            if (filterType == category.direction) {
-                filtered.add(category);
-            }
-        }
-        return filtered;
+        TransactionDirection dir = isExpense ? TransactionDirection.EXPENSE : TransactionDirection.INCOME;
+        return allCategories.stream().filter(c -> c.direction == dir).collect(Collectors.toList());
     }
 
     private static List<BudgetAccount> activeAccounts(List<BudgetAccount> accounts) {
-        List<BudgetAccount> active = new ArrayList<>();
-        for (BudgetAccount account : accounts) {
-            if (!account.archived) {
-                active.add(account);
-            }
-        }
-        return active;
+        return accounts.stream().filter(a -> !a.archived).collect(Collectors.toList());
     }
 
 }

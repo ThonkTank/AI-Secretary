@@ -79,9 +79,7 @@ public class BudgetSummaryPresentationMapper {
             }
             String label = categoryLabel(total.categoryIcon(), total.categoryName());
             Long effectiveLimitCents = effectiveLimitProvider.apply(total.categoryId(), yearMonth);
-            long resolvedEffectiveLimitCents = effectiveLimitCents != null
-                    ? effectiveLimitCents
-                    : total.limitAmountCents();
+            long effectiveCents = effectiveLimitCents != null ? effectiveLimitCents : total.limitAmountCents();
 
             bars.add(new BudgetLimitBar(
                     total.categoryId(),
@@ -89,7 +87,7 @@ public class BudgetSummaryPresentationMapper {
                     total.categoryColorHex(),
                     total.spentCents(),
                     total.limitAmountCents(),
-                    resolvedEffectiveLimitCents));
+                    effectiveCents));
         }
         return bars;
     }

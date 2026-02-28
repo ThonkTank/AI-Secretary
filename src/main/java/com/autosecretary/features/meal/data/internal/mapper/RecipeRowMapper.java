@@ -5,12 +5,10 @@ import com.autosecretary.features.meal.domain.MealType;
 import com.autosecretary.features.meal.domain.Recipe;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import java.util.stream.Collectors;
 
@@ -33,7 +31,7 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         row.put(MealFieldKeys.Recipe.TITLE, recipe.title);
         row.put(MealFieldKeys.Recipe.DESCRIPTION, recipe.description);
         row.put(MealFieldKeys.Recipe.INSTRUCTIONS, recipe.instructions);
-        row.put(MealFieldKeys.Recipe.MEAL_TYPES, serializeMealTypes(recipe.mealTypes));
+        row.put(MealFieldKeys.Recipe.MEAL_TYPES, MapperSupport.serializeEnumSet(recipe.mealTypes));
         row.put(MealFieldKeys.Recipe.PREP_TIME_MINUTES, recipe.prepTimeMinutes);
         row.put(MealFieldKeys.Recipe.COOK_TIME_MINUTES, recipe.cookTimeMinutes);
         row.put(MealFieldKeys.Recipe.SERVINGS, recipe.servings);
@@ -66,7 +64,7 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         recipe.description = (String) row.get(MealFieldKeys.Recipe.DESCRIPTION);
         recipe.instructions = (String) row.get(MealFieldKeys.Recipe.INSTRUCTIONS);
 
-        recipe.mealTypes = MapperSupport.asSetOrParse(row.get(MealFieldKeys.Recipe.MEAL_TYPES), RecipeRowMapper::parseMealTypes);
+        recipe.mealTypes = MapperSupport.asEnumSet(MealType.class, row.get(MealFieldKeys.Recipe.MEAL_TYPES));
         recipe.prepTimeMinutes = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.PREP_TIME_MINUTES));
         recipe.cookTimeMinutes = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.COOK_TIME_MINUTES));
         recipe.servings = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.SERVINGS), 2);
@@ -91,21 +89,6 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
 
         recipe.ratings = MapperSupport.asListOrParse(row.get(MealFieldKeys.Recipe.RATINGS), RecipeRowMapper::parseRatings);
         return recipe;
-    }
-
-    private static Set<MealType> parseMealTypes(String raw) {
-        Set<MealType> result = EnumSet.noneOf(MealType.class);
-        if (raw == null || raw.isBlank()) return result;
-        for (String part : raw.split(",")) {
-            MealType mealType = MapperSupport.asEnum(MealType.class, part.trim(), null);
-            if (mealType != null) result.add(mealType);
-        }
-        return result;
-    }
-
-    private static String serializeMealTypes(Set<MealType> mealTypes) {
-        if (mealTypes == null || mealTypes.isEmpty()) return "";
-        return mealTypes.stream().map(Enum::name).collect(Collectors.joining(","));
     }
 
     // NOTE: ingredientName and unit values must not contain '|' or ';' — these are the field/record delimiters.
@@ -151,7 +134,6 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
 
     private static String serializeRatings(List<Recipe.MemberRating> ratings) {
         if (ratings == null || ratings.isEmpty()) return "";
-        return ratings.stream().map(value -> value.memberId() + "|" + value.rating()).collect(Collectors.joining(","));
+        return ratings.stream().map(r -> r.memberId() + "|" + r.rating()).collect(Collectors.joining(","));
     }
-
 }

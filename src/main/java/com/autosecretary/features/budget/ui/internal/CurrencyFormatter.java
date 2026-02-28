@@ -36,8 +36,7 @@ public final class CurrencyFormatter {
      * e.g. {@code "12.50 €"}, {@code "-3.00 €"}. Used for net balance display in the widget.
      */
     public static String eurosNet(long amountCents) {
-        String sign = amountCents < 0 ? "-" : "";
-        return String.format(Locale.GERMAN, "%s%.2f €", sign, Math.abs(amountCents) / 100.0);
+        return String.format(Locale.GERMAN, "%.2f €", amountCents / 100.0);
     }
 
     /**
@@ -45,8 +44,7 @@ public final class CurrencyFormatter {
      * Used for income/expense/net summary fields in the budget overview.
      */
     public static String eurosAlwaysSigned(long amountCents) {
-        String sign = amountCents >= 0 ? "+" : "-";
-        return String.format(Locale.GERMAN, "%s%.2f €", sign, Math.abs(amountCents) / 100.0);
+        return String.format(Locale.GERMAN, "%+.2f €", amountCents / 100.0);
     }
 
     /**

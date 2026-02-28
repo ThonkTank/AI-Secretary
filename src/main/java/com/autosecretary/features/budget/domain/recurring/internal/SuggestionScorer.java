@@ -12,7 +12,7 @@ import java.util.Arrays;
  *   <li><b>Amount variance (0.3)</b> — {@code max(0.3 - variance_ratio, 0)}. Low spread
  *       between min/max amount relative to the average scores higher; penalised linearly
  *       toward zero as variance grows.</li>
- *   <li><b>Pattern type bonus (0.3)</b> — flat bonus always included, because
+ *   <li><b>Confirmed pattern bonus (0.3)</b> — flat bonus always included, because
  *       {@code calculateConfidence} is only called when a structured date pattern was
  *       already confirmed by {@code DatePatternDetector}. Both count and amount variance are
  *       meaningful only in that context, so this is equally weighted.</li>
@@ -30,16 +30,11 @@ public final class SuggestionScorer {
     // Occurrence count and amount variance are equally weighted — both are strong, independent signals.
     private static final double OCCURRENCE_WEIGHT = 0.3;
     private static final double AMOUNT_VARIANCE_WEIGHT = 0.3;
-    // A detected structured pattern is as important as the quantitative checks above.
-    private static final double PATTERN_TYPE_BONUS = 0.3;
+    // A confirmed date pattern is as important as the quantitative checks above.
+    // This is a flat score, not per-type — always added when DatePatternDetector already confirmed a pattern.
+    private static final double CONFIRMED_PATTERN_BONUS = 0.3;
     // Known-subscription match is a weaker tie-breaker, not a primary signal.
     private static final double KNOWN_SUBSCRIPTION_WEIGHT = 0.1;
-
-    /**
-     * Scores at or above this threshold are considered high-confidence and suitable for
-     * auto-applying a recurring template without user confirmation.
-     */
-    public static final double AUTO_APPLY_THRESHOLD = 0.7;
 
     private static final String[] KNOWN_SUBSCRIPTION_PATTERNS = {
             "NETFLIX", "SPOTIFY", "AMAZON PRIME", "DISNEY", "APPLE",
@@ -57,9 +52,9 @@ public final class SuggestionScorer {
                                              long maxAmount,
                                              String normalizedPayee) {
         double score = 0.0;
-        score += Math.min((occurrenceCount / OCCURRENCE_CAP) * OCCURRENCE_WEIGHT, OCCURRENCE_WEIGHT);
+        score += Math.min(occurrenceCount / OCCURRENCE_CAP, 1.0) * OCCURRENCE_WEIGHT;
         score += calculateAmountVarianceScore(avgAmount, minAmount, maxAmount);
-        score += PATTERN_TYPE_BONUS;
+        score += CONFIRMED_PATTERN_BONUS;
 
         if (isKnownSubscription(normalizedPayee)) {
             score += KNOWN_SUBSCRIPTION_WEIGHT;
@@ -68,6 +63,11 @@ public final class SuggestionScorer {
         return Math.min(score, 1.0);
     }
 
+    // Coupling note: this formula relies on RecurringPatternDetector pre-filtering groups so that
+    // each transaction's absolute amount is within ±AMOUNT_VARIANCE_THRESHOLD (15%) of the average.
+    // That bound guarantees (max-min)/avg ≤ 2×0.15 = 0.30, which equals AMOUNT_VARIANCE_WEIGHT,
+    // ensuring the score spans the full [0, 0.30] range. If AMOUNT_VARIANCE_THRESHOLD changes,
+    // verify this formula still covers the intended scoring range.
     static double calculateAmountVarianceScore(long avgAmount, long minAmount, long maxAmount) {
         if (avgAmount == 0) {
             return 0.0;

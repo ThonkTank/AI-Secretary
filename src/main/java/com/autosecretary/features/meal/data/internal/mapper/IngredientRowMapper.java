@@ -71,7 +71,7 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
                         + "|" + Objects.toString(p.unit, "")
                         + "|" + p.packageAmount
                         + "|" + Objects.toString(p.priceCents, "")
-                        + "|" + MapperSupport.toDateString(p.lastPurchased))
+                        + "|" + Objects.toString(p.lastPurchased, ""))
                 .collect(Collectors.joining(";"));
     }
 

@@ -106,7 +106,7 @@ public interface TaskDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writeSlots(List<TaskSlot> slots);
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void writeSlot(TaskSlot slots);
+    void writeSlot(TaskSlot slot);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writePlannedMeals(List<TaskPlannedMeal> plannedMeals);
@@ -137,8 +137,8 @@ public interface TaskDao {
 
     /**
      * Deletes all prerequisite links where {@code prerequisiteId = taskId}.
-     * This removes all tasks that have the given task as a prerequisite (i.e.,
-     * tasks that were blocked waiting for the given task to complete).
+     * Removes the dependency relationships for all tasks that listed the given task as a
+     * prerequisite, so they are no longer blocked by it.
      */
     @Query("DELETE FROM task_prerequisites WHERE prerequisiteId = :taskId")
     void deletePrerequisitesByDependencyId(String taskId);

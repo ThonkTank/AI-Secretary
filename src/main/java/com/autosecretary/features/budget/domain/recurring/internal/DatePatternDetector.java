@@ -89,10 +89,9 @@ public final class DatePatternDetector {
         boolean allMatch = daysOfMonth.stream()
                 .allMatch(d -> isMonthlyDayMatch(d, dominantDay));
 
-        if (allMatch) {
-            return new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_DAY, dominantDay, null);
-        }
-        return null;
+        return allMatch
+                ? new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_DAY, dominantDay, null)
+                : null;
     }
 
     static boolean isMonthlyDayMatch(int day, int dominantDay) {
@@ -104,10 +103,9 @@ public final class DatePatternDetector {
     static PatternResult checkMonthlyLast(List<LocalDate> dates) {
         boolean allLastDays = dates.stream()
                 .allMatch(date -> date.getDayOfMonth() > date.lengthOfMonth() - MONTHLY_LAST_TAIL_DAYS);
-        if (allLastDays) {
-            return new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_LAST, 0, null);
-        }
-        return null;
+        return allLastDays
+                ? new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_LAST, 0, null)
+                : null;
     }
 
     static PatternResult checkWeekly(List<LocalDate> dates, double avgInterval) {
@@ -117,22 +115,20 @@ public final class DatePatternDetector {
         DayOfWeek dominantWeekday = findModeFromCounts(counts);
 
         long modeCount = counts.getOrDefault(dominantWeekday, 0L);
-        if (modeCount >= dates.size() * WEEKLY_DAY_MATCH_RATIO
-                && avgInterval >= WEEKLY_INTERVAL_MIN_DAYS && avgInterval <= WEEKLY_INTERVAL_MAX_DAYS) {
-            return new PatternResult(RecurringBudgetTransaction.RecurringType.WEEKLY, 0, dominantWeekday);
-        }
-        return null;
+        return modeCount >= dates.size() * WEEKLY_DAY_MATCH_RATIO
+                && avgInterval >= WEEKLY_INTERVAL_MIN_DAYS && avgInterval <= WEEKLY_INTERVAL_MAX_DAYS
+                ? new PatternResult(RecurringBudgetTransaction.RecurringType.WEEKLY, 0, dominantWeekday)
+                : null;
     }
 
     static PatternResult checkInterval(List<Long> intervals, double avgInterval) {
         boolean consistent = intervals.stream()
                 .allMatch(i -> isConsistentInterval(i, avgInterval));
 
-        if (consistent && avgInterval >= INTERVAL_MIN_DAYS) {
-            return new PatternResult(RecurringBudgetTransaction.RecurringType.INTERVAL,
-                    (int) Math.round(avgInterval), null);
-        }
-        return null;
+        return consistent && avgInterval >= INTERVAL_MIN_DAYS
+                ? new PatternResult(RecurringBudgetTransaction.RecurringType.INTERVAL,
+                        (int) Math.round(avgInterval), null)
+                : null;
     }
 
     static List<Long> calculateIntervals(List<LocalDate> dates) {
