@@ -5,8 +5,10 @@ import android.widget.EditText;
 
 import com.autosecretary.R;
 
+import java.util.Arrays;
+
 /**
- * Validates the task-edit form by reading the live {@link TaskEditFormViews} directly
+ * Validates the task-edit form by reading the live view-group handles directly
  * and calling {@link android.widget.EditText#setError} inline on failing fields.
  *
  * <p>Validation is two-phase:
@@ -19,9 +21,23 @@ import com.autosecretary.R;
 public class TaskEditFormValidator {
 
     private final Context context;
+    private final TaskEditSectionBinder.BasicInfoViews basicInfoViews;
+    private final TaskEditSectionBinder.SchedulingViews schedulingViews;
+    private final TaskEditSectionBinder.RepetitionViews repetitionViews;
+    private final TaskEditSectionBinder.ProgressViews progressViews;
 
-    public TaskEditFormValidator(Context context) {
+    public TaskEditFormValidator(
+        Context context,
+        TaskEditSectionBinder.BasicInfoViews basicInfoViews,
+        TaskEditSectionBinder.SchedulingViews schedulingViews,
+        TaskEditSectionBinder.RepetitionViews repetitionViews,
+        TaskEditSectionBinder.ProgressViews progressViews
+    ) {
         this.context = context;
+        this.basicInfoViews = basicInfoViews;
+        this.schedulingViews = schedulingViews;
+        this.repetitionViews = repetitionViews;
+        this.progressViews = progressViews;
     }
 
     /**
@@ -30,61 +46,79 @@ public class TaskEditFormValidator {
      *
      * @return {@code true} if all fields pass; {@code false} if any error was set.
      */
-    public boolean validate(TaskEditFormViews views) {
-        clearErrors(views);
+    public boolean validate() {
+        clearErrors();
+        boolean valid = validateIndividualFields();
+        if (valid) valid = validateCrossFieldConstraints();
+        return valid;
+    }
 
-        boolean valid = true;
-        valid &= requireNonEmpty(views.titleView, R.string.task_edit_validation_title_required);
+    /** Phase 1: per-field checks (non-empty, parseable, in-range). */
+    private boolean validateIndividualFields() {
+        boolean valid = requireNonEmpty(basicInfoViews.titleView, R.string.task_edit_validation_title_required);
 
-        valid &= validateIntegerField(views.minDurationView, 1, Integer.MAX_VALUE,
+        valid &= validateIntegerField(schedulingViews.minDurationView, 1, Integer.MAX_VALUE,
             R.string.task_edit_validation_min_duration);
-        valid &= validateIntegerField(views.maxDurationView, 1, Integer.MAX_VALUE,
+        valid &= validateIntegerField(schedulingViews.maxDurationView, 1, Integer.MAX_VALUE,
             R.string.task_edit_validation_max_duration);
-        valid &= validateIntegerField(views.cooldownView, 0, Integer.MAX_VALUE,
+        valid &= validateIntegerField(schedulingViews.cooldownView, 0, Integer.MAX_VALUE,
             R.string.task_edit_validation_cooldown);
 
-        if (views.toggleRepetition.isChecked()) {
-            valid &= validateIntegerField(views.repsView, 1, Integer.MAX_VALUE,
+        if (repetitionViews.toggleRepetition.isChecked()) {
+            valid &= validateIntegerField(repetitionViews.repsView, 1, Integer.MAX_VALUE,
                 R.string.task_edit_validation_reps);
-            valid &= validateIntegerField(views.perPeriodView, 1, Integer.MAX_VALUE,
+            valid &= validateIntegerField(repetitionViews.perPeriodView, 1, Integer.MAX_VALUE,
                 R.string.task_edit_validation_per_period);
         }
 
-        if (views.toggleProgress.isChecked()) {
-            valid &= validateIntegerField(views.targetView, 1, Integer.MAX_VALUE,
+        if (progressViews.toggleProgress.isChecked()) {
+            valid &= validateIntegerField(progressViews.targetView, 1, Integer.MAX_VALUE,
                 R.string.task_edit_validation_target);
-            valid &= validateIntegerField(views.currentView, 0, Integer.MAX_VALUE,
+            valid &= validateIntegerField(progressViews.currentView, 0, Integer.MAX_VALUE,
                 R.string.task_edit_validation_current);
-            valid &= validateIntegerField(views.minPerRepView, 0, Integer.MAX_VALUE,
+            valid &= validateIntegerField(progressViews.minPerRepView, 0, Integer.MAX_VALUE,
                 R.string.task_edit_validation_min_per_rep);
-            valid &= validateIntegerField(views.maxPerRepView, 0, Integer.MAX_VALUE,
+            valid &= validateIntegerField(progressViews.maxPerRepView, 0, Integer.MAX_VALUE,
                 R.string.task_edit_validation_max_per_rep);
-        }
-
-        if (valid) {
-            valid &= validateFirstNotAboveSecond(
-                views.minDurationView,
-                views.maxDurationView,
-                R.string.task_edit_validation_duration_min_exceeds_max,
-                R.string.task_edit_validation_duration_max_below_min
-            );
-        }
-
-        if (valid && views.toggleProgress.isChecked()) {
-            valid &= validateFirstNotAboveSecond(
-                views.minPerRepView,
-                views.maxPerRepView,
-                R.string.task_edit_validation_per_rep_min_exceeds_max,
-                R.string.task_edit_validation_per_rep_max_below_min
-            );
-            valid &= validateCurrentNotAboveTarget(views.currentView, views.targetView);
         }
 
         return valid;
     }
 
-    private void clearErrors(TaskEditFormViews views) {
-        for (EditText field : views.getValidatableFields()) {
+    /**
+     * Phase 2: cross-field constraints. Only called when all individual fields are valid,
+     * guaranteeing that values are parseable integers before comparison.
+     */
+    private boolean validateCrossFieldConstraints() {
+        boolean valid = validateFirstNotAboveSecond(
+            schedulingViews.minDurationView,
+            schedulingViews.maxDurationView,
+            R.string.task_edit_validation_duration_min_exceeds_max,
+            R.string.task_edit_validation_duration_max_below_min
+        );
+
+        if (valid && progressViews.toggleProgress.isChecked()) {
+            valid &= validateFirstNotAboveSecond(
+                progressViews.minPerRepView,
+                progressViews.maxPerRepView,
+                R.string.task_edit_validation_per_rep_min_exceeds_max,
+                R.string.task_edit_validation_per_rep_max_below_min
+            );
+            valid &= validateFirstNotAboveSecond(progressViews.currentView, progressViews.targetView,
+                R.string.task_edit_validation_current_above_target,
+                R.string.task_edit_validation_target_below_current);
+        }
+
+        return valid;
+    }
+
+    private void clearErrors() {
+        for (EditText field : Arrays.asList(
+            basicInfoViews.titleView,
+            schedulingViews.minDurationView, schedulingViews.maxDurationView, schedulingViews.cooldownView,
+            repetitionViews.repsView, repetitionViews.perPeriodView,
+            progressViews.targetView, progressViews.currentView, progressViews.minPerRepView, progressViews.maxPerRepView
+        )) {
             field.setError(null);
         }
     }
@@ -116,12 +150,6 @@ public class TaskEditFormValidator {
                 context.getString(fieldMessageResId)));
             return false;
         }
-    }
-
-    private boolean validateCurrentNotAboveTarget(EditText currentView, EditText targetView) {
-        return validateFirstNotAboveSecond(currentView, targetView,
-            R.string.task_edit_validation_current_above_target,
-            R.string.task_edit_validation_target_below_current);
     }
 
     // Precondition: both fields have already passed validateIntegerField — parseable integers guaranteed.

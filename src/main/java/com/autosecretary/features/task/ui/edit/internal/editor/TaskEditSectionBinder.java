@@ -111,27 +111,29 @@ public class TaskEditSectionBinder {
 
         updateDeadlineDisplay(views);
         bindDeadlineListeners(deadlineView, deadlineInputLayout, clearDeadline, views);
-
-        bindEnumSpinner(schedulingTypeView, TaskCore.SchedulingType.values());
-        TaskCore.SchedulingType schedulingType = TaskEditPresenter.coalesce(editState.schedulingType, TaskEditDefaults.SCHEDULING_TYPE);
-        schedulingTypeView.setSelection(schedulingType.ordinal());
-        fixedDateView.setText(editState.fixedDate != null ? editState.fixedDate.toString() : "");
-        fixedStartView.setText(editState.fixedStart != null ? editState.fixedStart.toString() : "");
-        fixedEndView.setText(editState.fixedEnd != null ? editState.fixedEnd.toString() : "");
-        fixedDurationView.setText(editState.fixedDuration != null ? String.valueOf(editState.fixedDuration) : "");
-        budgetRequiredCentsView.setText(editState.budgetRequiredCents != null ? String.valueOf(editState.budgetRequiredCents) : "");
-        budgetAccountIdView.setText(editState.budgetAccountId != null ? editState.budgetAccountId : "");
-        budgetCategoryIdView.setText(editState.budgetCategoryId != null ? editState.budgetCategoryId : "");
-        fixedSchedulingContainer.setVisibility((editState.schedulingType == TaskCore.SchedulingType.TERMIN) ? View.VISIBLE : View.GONE);
-        bindSchedulingTypeListener(views);
-
-        closeOnMissView.setChecked(editState.closeOnMiss);
-        minDurationView.setText(String.valueOf(editState.minDuration));
-        maxDurationView.setText(String.valueOf(editState.maxDuration));
-        cooldownView.setText(String.valueOf(editState.cooldown));
-        adaptiveView.setChecked(editState.adaptive);
+        initializeSchedulingFields(views);
 
         return views;
+    }
+
+    private void initializeSchedulingFields(SchedulingViews views) {
+        bindEnumSpinner(views.schedulingTypeView, TaskCore.SchedulingType.values());
+        TaskCore.SchedulingType schedulingType = TaskEditPresenter.coalesce(editState.schedulingType, TaskEditDefaults.SCHEDULING_TYPE);
+        views.schedulingTypeView.setSelection(schedulingType.ordinal());
+        views.fixedDateView.setText(textOf(editState.fixedDate));
+        views.fixedStartView.setText(textOf(editState.fixedStart));
+        views.fixedEndView.setText(textOf(editState.fixedEnd));
+        views.fixedDurationView.setText(textOf(editState.fixedDuration));
+        views.budgetRequiredCentsView.setText(textOf(editState.budgetRequiredCents));
+        views.budgetAccountIdView.setText(textOf(editState.budgetAccountId));
+        views.budgetCategoryIdView.setText(textOf(editState.budgetCategoryId));
+        views.fixedSchedulingContainer.setVisibility(fixedSchedulingVisibility(schedulingType));
+        bindSchedulingTypeListener(views);
+        views.closeOnMissView.setChecked(editState.closeOnMiss);
+        views.minDurationView.setText(String.valueOf(editState.minDuration));
+        views.maxDurationView.setText(String.valueOf(editState.maxDuration));
+        views.cooldownView.setText(String.valueOf(editState.cooldown));
+        views.adaptiveView.setChecked(editState.adaptive);
     }
 
     private void bindDeadlineListeners(EditText deadlineView, TextInputLayout deadlineInputLayout,
@@ -149,7 +151,7 @@ public class TaskEditSectionBinder {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 TaskCore.SchedulingType selected = (TaskCore.SchedulingType) views.schedulingTypeView.getSelectedItem();
-                views.fixedSchedulingContainer.setVisibility(selected == TaskCore.SchedulingType.TERMIN ? View.VISIBLE : View.GONE);
+                views.fixedSchedulingContainer.setVisibility(fixedSchedulingVisibility(selected));
             }
         });
     }
@@ -181,8 +183,8 @@ public class TaskEditSectionBinder {
         toggleRepetition.setChecked(hasRepetition);
         repetitionContainer.setVisibility(hasRepetition ? View.VISIBLE : View.GONE);
 
-        repsView.setText(String.valueOf(editState.reps > 0 ? editState.reps : 1));
-        perPeriodView.setText(String.valueOf(editState.perPeriod > 0 ? editState.perPeriod : 1));
+        repsView.setText(String.valueOf(editState.reps > 0 ? editState.reps : TaskEditDefaults.REPETITION_REPS));
+        perPeriodView.setText(String.valueOf(editState.perPeriod > 0 ? editState.perPeriod : TaskEditDefaults.REPETITION_PER_PERIOD));
 
         bindEnumSpinner(periodUnitView, Period.values());
         Period periodUnit = TaskEditPresenter.coalesce(editState.periodUnit, TaskEditDefaults.REPETITION_PERIOD_UNIT);
@@ -249,7 +251,7 @@ public class TaskEditSectionBinder {
         toggleProgress.setChecked(hasProgress);
         progressContainer.setVisibility(hasProgress ? View.VISIBLE : View.GONE);
 
-        unitView.setText(editState.unit != null ? editState.unit : "");
+        unitView.setText(textOf(editState.unit));
         targetView.setText(String.valueOf(editState.target));
         currentView.setText(String.valueOf(editState.current));
         resetPerRepView.setChecked(editState.resetPerRep);
@@ -270,6 +272,10 @@ public class TaskEditSectionBinder {
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
+    }
+
+    private static int fixedSchedulingVisibility(TaskCore.SchedulingType type) {
+        return type == TaskCore.SchedulingType.TERMIN ? View.VISIBLE : View.GONE;
     }
 
     private void updateDeadlineDisplay(SchedulingViews views) {
@@ -424,6 +430,11 @@ public class TaskEditSectionBinder {
             this.minPerRepView = minPerRepView;
             this.maxPerRepView = maxPerRepView;
         }
+    }
+
+    /** Returns {@code value.toString()} if non-null, or {@code ""} — for populating nullable fields into EditText. */
+    private static String textOf(Object value) {
+        return value != null ? value.toString() : "";
     }
 
     /** No-op adapter so subclasses only need to override {@code afterTextChanged}. */

@@ -118,15 +118,19 @@ public class StatementFileParser {
 
             // Track the earliest and latest transaction dates to report the statement's period.
             // These bounds are used for UI display and overlap validation with previous imports.
-            if (periodStart == null || bookingDate.isBefore(periodStart)) {
-                periodStart = bookingDate;
-            }
-            if (periodEnd == null || bookingDate.isAfter(periodEnd)) {
-                periodEnd = bookingDate;
-            }
+            periodStart = earlier(periodStart, bookingDate);
+            periodEnd   = later(periodEnd, bookingDate);
         }
 
         return new ParsedStatement(parsedTransactions, periodStart, periodEnd);
+    }
+
+    private static LocalDate earlier(LocalDate a, LocalDate b) {
+        return (a == null || b.isBefore(a)) ? b : a;
+    }
+
+    private static LocalDate later(LocalDate a, LocalDate b) {
+        return (a == null || b.isAfter(a)) ? b : a;
     }
 
     private static boolean isPdf(String fileName, String mimeType) {
@@ -147,7 +151,7 @@ public class StatementFileParser {
         return s == null ? "" : s.toLowerCase();
     }
 
-    static String emptyToNull(String value) {
+    private static String emptyToNull(String value) {
         String trimmed = value == null ? "" : value.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }

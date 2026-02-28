@@ -180,7 +180,6 @@ Some operations are idempotent and safe to retry:
 ```
 application/
 ├── README.md                                    (this file)
-├── REVIEW_BACKLOG.md                           (open issues)
 │
 ├── LoadBudgetWidgetSummaryUseCase.java         loads widget summary
 ├── CalculateEffectiveBudgetLimitUseCase.java   calculates effective monthly limit w/ rollover

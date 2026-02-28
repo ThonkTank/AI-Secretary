@@ -132,11 +132,7 @@ public class TaskListFragment extends Fragment {
                     R.plurals.task_list_schedule_complete, conflicts.size(), conflicts.size());
             Snackbar.make(view, message, Snackbar.LENGTH_LONG).show();
             for (SchedulingConflict conflict : conflicts) {
-                Log.w("TaskScheduleConflict", "{taskId=" + conflict.taskId()
-                        + ", title=" + conflict.title()
-                        + ", day=" + conflict.day()
-                        + ", reasonCode=" + conflict.reasonCode()
-                        + ", details=" + conflict.details() + "}");
+                Log.w("TaskScheduleConflict", conflict.toString());
             }
         });
 

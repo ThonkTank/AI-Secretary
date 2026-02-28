@@ -20,8 +20,6 @@ TaskEditDialog
  ├── PrefSlotSectionController      — orchestrates preferred-slot rows (day/time pickers);
  │    └── PrefSlotUIBuilder           dynamically builds + rebuilds slot UI on demand
  │
- ├── TaskEditFormViews              — projection of validated EditText/CheckBox refs,
- │                                   passed to the validator
  └── TaskEditFormValidator          — validates the live views, sets inline errors
       (called on save-button click)
 

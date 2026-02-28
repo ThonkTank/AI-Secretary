@@ -50,7 +50,7 @@ public class MealPlannerPresenter {
         // week plus the next few days without the user having to scroll forward.
         List<MealPlan> items = mealRepository.getMealPlans(today.minusDays(3), today.plusDays(10));
         items.sort(Comparator.comparing((MealPlan plan) -> plan.date)
-                .thenComparing(plan -> plan.mealType.ordinal()));
+                .thenComparing(plan -> plan.mealType));
         return items;
     }
 
@@ -63,7 +63,6 @@ public class MealPlannerPresenter {
      */
     public List<Recipe> getRecipes() {
         List<Recipe> recipes = new ArrayList<>(recipeRepository.getRecipes());
-        recipes.sort(Comparator.comparing(recipe -> recipe.title));
         if (recipes.isEmpty()) {
             // Seed a demo recipe so the screen is not blank on first launch.
             Recipe demo = new Recipe.Builder("Pasta Primavera")
@@ -75,6 +74,7 @@ public class MealPlannerPresenter {
             recipeRepository.saveRecipe(demo);
             recipes.add(demo);
         }
+        recipes.sort(Comparator.comparing(recipe -> recipe.title));
         return recipes;
     }
 
@@ -89,7 +89,7 @@ public class MealPlannerPresenter {
      * Period key is an ISO-8601 date string ({@code LocalDate.toString()}, e.g. {@code "2024-12-30"}).
      * Items from different days within the same shopping trip share the same key.
      */
-    public List<ShoppingListItem> getShoppingListItemsForToday() {
+    public List<ShoppingListItem> getShoppingListItemsForCurrentPeriod() {
         return pantryRepository.getShoppingListItems(LocalDate.now().toString());
     }
 

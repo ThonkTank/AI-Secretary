@@ -68,12 +68,11 @@ public class BudgetSeedService {
         }
 
         List<BudgetCategory> categories = repository.findActiveCategories();
-        String resolvedSelected = selectedAccountId;
-        if ((resolvedSelected == null || resolvedSelected.isBlank()) && !accountList.isEmpty()) {
-            resolvedSelected = accountList.get(0).id;
-        }
+        String effectiveAccount = (selectedAccountId == null || selectedAccountId.isBlank()) && !accountList.isEmpty()
+                ? accountList.get(0).id
+                : selectedAccountId;
 
-        return new SeedResult(categories, accountList, resolvedSelected);
+        return new SeedResult(categories, accountList, effectiveAccount);
     }
 
     private void ensureDefaultCategories() {
@@ -89,49 +88,34 @@ public class BudgetSeedService {
         repository.insertCategory(new BudgetCategory(CAT_GEHALT,       TransactionDirection.INCOME,  "💰", "#4CAF50"));
     }
 
+    private record DemoEntry(String categoryName, int day, TransactionDirection direction,
+                             long amountCents, String note) {}
+
     private void seedDemoTransactions(String accountId, LocalDate reference) {
+        List<DemoEntry> entries = List.of(
+                new DemoEntry(CAT_GEHALT,       1,  TransactionDirection.INCOME,   240000, "Gehalt"),
+                new DemoEntry(CAT_MIETE,        2,  TransactionDirection.EXPENSE,   85000, "Miete"),
+                new DemoEntry(CAT_LEBENSMITTEL, 3,  TransactionDirection.EXPENSE,   7840,  "Lebensmittel"),
+                new DemoEntry(CAT_SONSTIGES,    5,  TransactionDirection.EXPENSE,   4290,  "Strom"),
+                new DemoEntry(CAT_SONSTIGES,    8,  TransactionDirection.EXPENSE,   2999,  "Internet"),
+                new DemoEntry(CAT_FREIZEIT,     10, TransactionDirection.EXPENSE,   1990,  "Fitnessstudio"),
+                new DemoEntry(CAT_FREIZEIT,     15, TransactionDirection.EXPENSE,   3450,  "Restaurant"),
+                new DemoEntry(CAT_MOBILITAET,   18, TransactionDirection.EXPENSE,   6520,  "Tankstelle")
+        );
         List<BudgetCategory> categories = repository.findActiveCategories();
-        String incomeCategoryId = findCategoryIdByName(categories, CAT_GEHALT);
-        String housingCategoryId = findCategoryIdByName(categories, CAT_MIETE);
-        String groceryCategoryId = findCategoryIdByName(categories, CAT_LEBENSMITTEL);
-        String mobilityCategoryId = findCategoryIdByName(categories, CAT_MOBILITAET);
-        String leisureCategoryId = findCategoryIdByName(categories, CAT_FREIZEIT);
-        String otherCategoryId = findCategoryIdByName(categories, CAT_SONSTIGES);
-
-        TransactionDirection income = TransactionDirection.INCOME;
-        TransactionDirection expense = TransactionDirection.EXPENSE;
         List<BudgetTransactionEntity> entities = new ArrayList<>();
-        addDemoTx(entities, accountId, incomeCategoryId, reference, 1, income, 240000, "Gehalt");
-        addDemoTx(entities, accountId, housingCategoryId, reference, 2, expense, 85000, "Miete");
-        addDemoTx(entities, accountId, groceryCategoryId, reference, 3, expense, 7840, "Lebensmittel");
-        addDemoTx(entities, accountId, otherCategoryId, reference, 5, expense, 4290, "Strom");
-        addDemoTx(entities, accountId, otherCategoryId, reference, 8, expense, 2999, "Internet");
-        addDemoTx(entities, accountId, leisureCategoryId, reference, 10, expense, 1990, "Fitnessstudio");
-        addDemoTx(entities, accountId, leisureCategoryId, reference, 15, expense, 3450, "Restaurant");
-        addDemoTx(entities, accountId, mobilityCategoryId, reference, 18, expense, 6520, "Tankstelle");
-        repository.saveTransactions(entities);
-    }
-
-    private void addDemoTx(List<BudgetTransactionEntity> out,
-                           String accountId,
-                           String categoryId,
-                           LocalDate ref,
-                           int day,
-                           TransactionDirection type,
-                           long amountCents,
-                           String note) {
-        if (day > ref.getDayOfMonth()) {
-            return;
+        for (DemoEntry entry : entries) {
+            if (entry.day() > reference.getDayOfMonth()) {
+                continue;
+            }
+            String categoryId = findCategoryIdByName(categories, entry.categoryName());
+            LocalDate date = reference.withDayOfMonth(entry.day());
+            BudgetTransactionEntity entity = new BudgetTransactionEntity(
+                    accountId, categoryId, entry.direction(), entry.amountCents(), date);
+            entity.note = entry.note();
+            entities.add(entity);
         }
-        LocalDate date = ref.withDayOfMonth(day);
-        BudgetTransactionEntity entity = new BudgetTransactionEntity(
-                accountId,
-                categoryId,
-                type,
-                amountCents,
-                date);
-        entity.note = note;
-        out.add(entity);
+        repository.saveTransactions(entities);
     }
 
     private String findCategoryIdByName(List<BudgetCategory> categories, String name) {

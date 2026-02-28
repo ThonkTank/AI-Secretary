@@ -57,14 +57,6 @@ public class TaskEditFormInputReader {
         }
     }
 
-    private LocalDate parseDateSafe(String value) {
-        return parseSafe(value, LocalDate::parse);
-    }
-
-    private LocalTime parseTimeSafe(String value) {
-        return parseSafe(value, LocalTime::parse);
-    }
-
     private String normalizeNullableString(String value) {
         if (value == null) return null;
         String trimmed = value.trim();
@@ -104,15 +96,13 @@ public class TaskEditFormInputReader {
             (TaskCore.SchedulingType) schedulingViews.schedulingTypeView.getSelectedItem(),
             TaskEditDefaults.SCHEDULING_TYPE
         );
-        input.fixedDate = parseDateSafe(schedulingViews.fixedDateView.getText().toString());
-        input.fixedStart = parseTimeSafe(schedulingViews.fixedStartView.getText().toString());
-        input.fixedEnd = parseTimeSafe(schedulingViews.fixedEndView.getText().toString());
+        input.fixedDate = parseSafe(schedulingViews.fixedDateView.getText().toString(), LocalDate::parse);
+        input.fixedStart = parseSafe(schedulingViews.fixedStartView.getText().toString(), LocalTime::parse);
+        input.fixedEnd = parseSafe(schedulingViews.fixedEndView.getText().toString(), LocalTime::parse);
         input.fixedDuration = parseSafe(schedulingViews.fixedDurationView.getText().toString(), Integer::parseInt);
-        Integer parsedBudgetRequiredCents = parseSafe(schedulingViews.budgetRequiredCentsView.getText().toString(), Integer::parseInt);
+        Integer budgetCents = parseSafe(schedulingViews.budgetRequiredCentsView.getText().toString(), Integer::parseInt);
         // 0 is treated as unset — only positive values are meaningful
-        input.budgetRequiredCents = parsedBudgetRequiredCents != null && parsedBudgetRequiredCents > 0
-            ? parsedBudgetRequiredCents
-            : null;
+        input.budgetRequiredCents = (budgetCents != null && budgetCents > 0) ? budgetCents : null;
         input.budgetAccountId = normalizeNullableString(schedulingViews.budgetAccountIdView.getText().toString());
         input.budgetCategoryId = normalizeNullableString(schedulingViews.budgetCategoryIdView.getText().toString());
         input.closeOnMiss = schedulingViews.closeOnMissView.isChecked();

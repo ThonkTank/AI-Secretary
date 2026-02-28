@@ -208,14 +208,13 @@ public class TaskViewModel extends AndroidViewModel {
             );
             List<TaskCalendarEvent> events = taskCalendarService.getEventsForDay(window);
             List<ViewSlot> calendarSlots = new ArrayList<>();
-            int index = 0;
-            for (TaskCalendarEvent event : events) {
+            for (int i = 0; i < events.size(); i++) {
+                TaskCalendarEvent event = events.get(i);
                 TaskListItem item = TaskListItem.calendarEvent(
-                        "calendar-" + day + "-" + index,
+                        "calendar-" + day + "-" + i,
                         event.title(), day, event.start(), event.end()
                 );
                 calendarSlots.add(new ViewSlot(item));
-                index++;
             }
             masterList.appendToDisplay(calendarSlots);
         }
@@ -246,13 +245,14 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void toggleTimer(ViewSlot viewSlot) {
-        if (viewSlot.getItem().slotId == null) {
+        TaskListItem item = viewSlot.getItem();
+        if (item.slotId == null) {
             return;
         }
-        if (viewSlot.getItem().inProgress) {
-            taskDataService.stopTimer(viewSlot.getItem().slotId, this::refreshList);
+        if (item.inProgress) {
+            taskDataService.stopTimer(item.slotId, this::refreshList);
         } else {
-            taskDataService.startTimer(viewSlot.getItem().slotId, this::refreshList);
+            taskDataService.startTimer(item.slotId, this::refreshList);
         }
     }
 

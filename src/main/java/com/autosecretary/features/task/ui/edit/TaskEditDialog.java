@@ -15,7 +15,6 @@ import com.autosecretary.features.task.ui.edit.internal.editor.GoalSectionContro
 import com.autosecretary.features.task.ui.edit.internal.editor.PrefSlotSectionController;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormInputReader;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormValidator;
-import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormViews;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditSectionBinder;
 import com.autosecretary.features.task.ui.edit.internal.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
@@ -36,7 +35,6 @@ public class TaskEditDialog extends DialogFragment {
     private TaskEditPresenter presenter;
     private TaskEditFormValidator formValidator;
     private TaskEditFormInputReader formInputReader;
-    private TaskEditFormViews formViews;
     private PrefSlotSectionController prefSlotSectionController;
 
     @Override
@@ -45,7 +43,6 @@ public class TaskEditDialog extends DialogFragment {
         editSessionController = vm.getTaskEditSessionController();
         TaskEditState editState = editSessionController.requireSelectedTask();
         presenter = new TaskEditPresenter(editState, new TaskEditStateMapper());
-        formValidator = new TaskEditFormValidator(requireContext());
 
         View rootView = LayoutInflater.from(getContext()).inflate(R.layout.task_editor_fragment, null);
         BoundSections sections = bindEditorSections(rootView, editState);
@@ -62,8 +59,8 @@ public class TaskEditDialog extends DialogFragment {
         formInputReader = new TaskEditFormInputReader(
             sections.basicInfo, sections.scheduling, sections.repetition, sections.progress, goalSectionController
         );
-        formViews = new TaskEditFormViews(
-            sections.basicInfo, sections.scheduling, sections.repetition, sections.progress
+        formValidator = new TaskEditFormValidator(
+            requireContext(), sections.basicInfo, sections.scheduling, sections.repetition, sections.progress
         );
 
         return new AlertDialog.Builder(requireContext())
@@ -90,7 +87,7 @@ public class TaskEditDialog extends DialogFragment {
         // of what it returns — validation failures would still close the dialog. Setting null in
         // the builder and attaching the listener here lets us return early on validation failure.
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            if (!formValidator.validate(formViews)) {
+            if (!formValidator.validate()) {
                 return;
             }
             presenter.applyForm(formInputReader.read());
@@ -122,16 +119,12 @@ public class TaskEditDialog extends DialogFragment {
             .show();
     }
 
-    private void onRepetitionChanged() {
-        prefSlotSectionController.onRepetitionChanged();
-    }
-
     private BoundSections bindEditorSections(View rootView, TaskEditState editState) {
         TaskEditSectionBinder sectionBinder = new TaskEditSectionBinder(this, rootView, editState, presenter);
         return new BoundSections(
             sectionBinder.bindBasicInfo(),
             sectionBinder.bindScheduling(),
-            sectionBinder.bindRepetition(this::onRepetitionChanged),
+            sectionBinder.bindRepetition(() -> prefSlotSectionController.onRepetitionChanged()),
             sectionBinder.bindProgress()
         );
     }

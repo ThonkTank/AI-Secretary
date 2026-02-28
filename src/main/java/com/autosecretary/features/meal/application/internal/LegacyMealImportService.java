@@ -171,7 +171,7 @@ public class LegacyMealImportService {
             // Optional fields with fallbacks:
             ingredient.foodGroup = asEnum(Ingredient.FoodGroup.class, row.get("food_group"), Ingredient.FoodGroup.OTHER);
             ingredient.defaultUnit = asString(row.get("default_unit"));
-            ingredient.gramsPerUnit = asInt(row.get("grams_per_unit"), 1);
+            ingredient.gramsPerUnit = asInt(row.get("grams_per_unit"), 1); // 1, not 0: zero grams/unit would break scaling
             ingredient.caloriesPer100 = asInt(row.get("calories_per_100"), 0);
             ingredient.proteinPer100 = asInt(row.get("protein_per_100"), 0);
             ingredient.carbsPer100 = asInt(row.get("carbs_per_100"), 0);
@@ -498,7 +498,6 @@ public class LegacyMealImportService {
             try {
                 return LocalDate.parse(value, formatter);
             } catch (DateTimeParseException ignored) {
-                // Try next formatter
             }
         }
         return null;
@@ -509,7 +508,6 @@ public class LegacyMealImportService {
             try {
                 return LocalDateTime.parse(value, formatter);
             } catch (DateTimeParseException ignored) {
-                // Try next formatter
             }
         }
         return null;

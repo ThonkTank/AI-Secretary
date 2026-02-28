@@ -150,10 +150,10 @@ public class BudgetImportUseCase {
             // Otherwise, generate a fingerprint from date+amount+payee for duplicate detection.
             // The fingerprint is less reliable than a parser-provided hash, but provides a fallback
             // for formats (like CSV) that don't include an explicit deduplication key.
-            String txHash = parsed.importHash();
-            if (txHash == null || txHash.isBlank()) {
-                txHash = buildTransactionFingerprint(parsed.bookingDate(), parsed.amountCents(), parsed.payee());
-            }
+            String importHash = parsed.importHash();
+            String txHash = (importHash != null && !importHash.isBlank())
+                    ? importHash
+                    : buildTransactionFingerprint(parsed.bookingDate(), parsed.amountCents(), parsed.payee());
 
             // Check if a transaction with this hash was already imported (avoid duplicates if the user re-imports the same file).
             if (repository.existsTransactionByImportHash(txHash)) {
@@ -162,14 +162,17 @@ public class BudgetImportUseCase {
             }
 
             // Resolve category and track recognition.
-            var categoryResolution = resolveCategoryForTransaction(parsed.categoryId(), parsed.amountCents());
+            boolean isKnown = parsed.categoryId() != null && repository.isKnownCategory(parsed.categoryId());
+            String categoryId = isKnown
+                    ? parsed.categoryId()
+                    : repository.findDefaultCategoryId(TransactionDirection.fromAmountCents(parsed.amountCents()));
 
             newTransactions.add(RecurringBudgetTransaction.forImport(
                     /* id= */ null,
                     accountId,
                     parsed.amountCents(),
                     parsed.bookingDate(),
-                    categoryResolution.categoryId(),
+                    categoryId,
                     parsed.note(),
                     parsed.payee(),
                     txHash,
@@ -177,28 +180,11 @@ public class BudgetImportUseCase {
                     /* parentRecurringId= */ null
             ));
 
-            if (categoryResolution.isKnown()) {
+            if (isKnown) {
                 recognizedCategories++;
             }
         }
         return new ImportComputation(newTransactions, duplicates, recognizedCategories);
-    }
-
-    /**
-     * Resolves the category for a transaction: uses the provided category if known, otherwise assigns the default.
-     *
-     * @param providedCategoryId category ID from the parser (may be null)
-     * @param amountCents transaction amount to determine direction for default category
-     * @return category resolution containing the final category ID and whether it was recognized
-     */
-    private CategoryResolution resolveCategoryForTransaction(String providedCategoryId, long amountCents) {
-        // If the parser provided a known category ID, use it; otherwise assign the default category
-        // for this transaction direction (e.g., "Uncategorized Income" or "Uncategorized Expense").
-        boolean isKnown = providedCategoryId != null && repository.isKnownCategory(providedCategoryId);
-        String categoryId = isKnown
-                ? providedCategoryId
-                : repository.findDefaultCategoryId(TransactionDirection.fromAmountCents(amountCents));
-        return new CategoryResolution(categoryId, isKnown);
     }
 
     /**
@@ -210,9 +196,6 @@ public class BudgetImportUseCase {
      * @throws IllegalStateException if SHA-256 algorithm is unavailable
      */
     private static String sha256(byte[] data) {
-        if (data == null) {
-            throw new IllegalArgumentException("data must not be null");
-        }
         try {
             byte[] hash = MessageDigest.getInstance("SHA-256").digest(data);
             return HexFormat.of().formatHex(hash);
@@ -300,14 +283,8 @@ public class BudgetImportUseCase {
                                      int recognizedCategories) {
     }
 
-    private record CategoryResolution(String categoryId, boolean isKnown) {
-    }
-
     private static String safeErrorMessage(Exception exception) {
         String message = exception.getMessage();
-        if (message == null || message.isBlank()) {
-            return "unbekannte Ursache";
-        }
-        return message;
+        return (message == null || message.isBlank()) ? "unbekannte Ursache" : message;
     }
 }

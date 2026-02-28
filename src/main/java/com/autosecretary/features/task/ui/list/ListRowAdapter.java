@@ -256,7 +256,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             return;
         }
 
-        long daysUntil = item.daysUntilDeadline();
         if (urgency == TaskListItem.DeadlineUrgency.OVERDUE) {
             countdown.setText(R.string.task_deadline_overdue_label);
             countdown.setTextColor(ContextCompat.getColor(context, R.color.task_deadline_overdue));
@@ -266,6 +265,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             countdown.setTextColor(ContextCompat.getColor(context, R.color.task_deadline_soon));
             countdown.setContentDescription(context.getString(R.string.task_deadline_today_content_description));
         } else {
+            long daysUntil = item.daysUntilDeadline();
             countdown.setText(context.getString(R.string.task_deadline_in_days_label, daysUntil));
             int colorRes = urgency == TaskListItem.DeadlineUrgency.SOON
                     ? R.color.task_deadline_soon
@@ -306,26 +306,29 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     }
 
     private void bindStreak(TaskRowViewHolder holder, TaskListItem item) {
-        if (item.streak > 0) {
-            Context context = holder.itemView.getContext();
-            StreakTier tier = StreakTier.forStreak(item.streak);
-
-            holder.streakDisplay.setText(context.getString(R.string.task_streak_display, item.streak));
-            holder.streakDisplay.setTextColor(ContextCompat.getColor(context, tier.colorRes));
-            holder.streakDisplay.setContentDescription(
-                    context.getString(
-                            R.string.task_streak_content_description,
-                            item.streak,
-                            context.getString(tier.labelRes)));
-            holder.streakDisplay.setVisibility(View.VISIBLE);
-        } else {
+        if (item.streak <= 0) {
             holder.streakDisplay.setVisibility(View.GONE);
             holder.streakDisplay.setContentDescription(null);
+            return;
         }
+
+        Context context = holder.itemView.getContext();
+        StreakTier tier = StreakTier.forStreak(item.streak);
+        holder.streakDisplay.setText(context.getString(R.string.task_streak_display, item.streak));
+        holder.streakDisplay.setTextColor(ContextCompat.getColor(context, tier.colorRes));
+        holder.streakDisplay.setContentDescription(
+                context.getString(
+                        R.string.task_streak_content_description,
+                        item.streak,
+                        context.getString(tier.labelRes)));
+        holder.streakDisplay.setVisibility(View.VISIBLE);
     }
 
     private void bindProgressState(TaskRowViewHolder holder, TaskListItem item) {
         Context context = holder.itemView.getContext();
+        holder.checkBox.animate().cancel();
+        holder.checkBox.setScaleX(1f);
+        holder.checkBox.setScaleY(1f);
         if (holder.completionAnimator != null) {
             holder.completionAnimator.cancel();
             holder.completionAnimator = null;
@@ -434,12 +437,9 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     }
 
     private void showDescriptionPopup(View view, TaskListItem item) {
-        Context context = view.getContext();
-        if (!(context instanceof FragmentActivity)) {
+        if (!(view.getContext() instanceof FragmentActivity activity)) {
             return;
         }
-
-        FragmentActivity activity = (FragmentActivity) context;
         TaskDescriptionDialog.newInstance(item.title, item.description)
                 .show(activity.getSupportFragmentManager(), TaskDescriptionDialog.TAG);
     }
@@ -465,19 +465,13 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
         Context context = holder.itemView.getContext();
         int flashColor = ContextCompat.getColor(context, R.color.task_completion_flash);
-        int finalColor = resolveCompletedStateBackground(item, context);
+        int finalColor = ContextCompat.getColor(context, item.inProgress
+                ? R.color.task_in_progress_background : R.color.task_completed_background);
         holder.completionAnimator = ValueAnimator.ofArgb(flashColor, finalColor);
         holder.completionAnimator.setDuration(COMPLETION_FLASH_DURATION_MS);
         holder.completionAnimator.addUpdateListener(animation ->
                 holder.root.setBackgroundColor((int) animation.getAnimatedValue()));
         holder.completionAnimator.start();
-    }
-
-    private int resolveCompletedStateBackground(TaskListItem item, Context context) {
-        if (item.inProgress) {
-            return ContextCompat.getColor(context, R.color.task_in_progress_background);
-        }
-        return ContextCompat.getColor(context, R.color.task_completed_background);
     }
 
     public void setList(List<ViewSlot> viewSlots) {

@@ -104,18 +104,16 @@ public class CalculateEffectiveBudgetLimitUseCase {
         long effective = baseLimitCents + target.rolloverCarryoverCents + appliedDelta;
 
         // Ensure effective limit is never negative (edge case when carryover debt is large)
-        long effectiveNonNegative = Math.max(0L, effective);
-
-        return new Result(baseLimitCents, spentCents, rawDeltaCents, appliedDelta, effectiveNonNegative, true);
+        return new Result(baseLimitCents, spentCents, rawDeltaCents, appliedDelta, Math.max(0L, effective), true);
     }
 
-    private long applyDeltaCaps(long delta, Long capPositiveCents, Long capNegativeCents) {
+    private long applyDeltaCaps(long delta, Long capPositiveCents, Long capOverrunCents) {
         long capped = delta;
         if (capPositiveCents != null) {
             capped = Math.min(capped, capPositiveCents);
         }
-        if (capNegativeCents != null) {
-            capped = Math.max(capped, -Math.abs(capNegativeCents));
+        if (capOverrunCents != null) {
+            capped = Math.max(capped, -capOverrunCents);
         }
         return capped;
     }

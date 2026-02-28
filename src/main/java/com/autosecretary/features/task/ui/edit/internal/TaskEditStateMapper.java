@@ -9,6 +9,7 @@ import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 import java.time.DayOfWeek;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -31,7 +32,7 @@ public class TaskEditStateMapper {
     /**
      * Ensures a list is initialized, returning an empty list if null.
      */
-    private static <T> java.util.List<T> ensureNotNull(java.util.List<T> list) {
+    private static <T> List<T> ensureNotNull(List<T> list) {
         return list != null ? list : new ArrayList<>();
     }
 
@@ -103,9 +104,6 @@ public class TaskEditStateMapper {
         task.core.budgetCategoryId = state.budgetCategoryId;
 
         task.core.deadline = state.deadline;
-        // fixedDate/fixedStart/fixedEnd/fixedDuration are data-model fields for SchedulingType.TERMIN,
-        // which is not yet exposed in TaskEditDialog. Mapped here for round-trip fidelity.
-        // See CLAUDE.md §Not Yet Implemented.
         task.core.fixedDate = state.fixedDate;
         task.core.fixedStart = state.fixedStart;
         task.core.fixedEnd = state.fixedEnd;

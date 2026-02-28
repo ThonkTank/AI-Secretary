@@ -76,15 +76,11 @@ public class TaskMealIntegrationService {
         this.pantryRepository = pantryRepository;
     }
 
-    private TaskPlannedMeal resolvePlannedMeal(Task task, LocalDate date) {
-        if (task == null || task.core == null || task.core.mealType == null || date == null) {
-            return null;
-        }
-        return task.getPlannedMealForDate(date);
-    }
-
     public boolean completeMealTask(Task task, LocalDate completionDate, int actualServingsOverride) {
-        TaskPlannedMeal plannedMeal = resolvePlannedMeal(task, completionDate);
+        if (task == null || task.core == null || task.core.mealType == null || completionDate == null) {
+            return false;
+        }
+        TaskPlannedMeal plannedMeal = task.getPlannedMealForDate(completionDate);
         if (plannedMeal == null || plannedMeal.completed) {
             return false;
         }
@@ -176,7 +172,6 @@ public class TaskMealIntegrationService {
     private void completeMealPlanEntry(MealType mealType, TaskPlannedMeal plannedMeal, LocalDate completionDate, int servings) {
         List<MealPlan> plans = mealRepository.getMealPlans(completionDate, completionDate);
         plans.stream()
-                .filter(plan -> plan.date != null)
                 .filter(plan -> plan.mealType == mealType && plan.recipeId == plannedMeal.recipeId)
                 .findFirst()
                 .ifPresent(plan -> {
