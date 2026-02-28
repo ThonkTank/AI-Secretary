@@ -103,11 +103,6 @@ Do not suggest adding: new modules, new domain entities, new integration points,
 - Java 17, Room 2.6.1 (annotation processor, not KSP), AGP 8.7.3, Gradle 8.10.2 (`./gradlew` wrapper only).
 - New entity `@PrimaryKey` fields must be `String` UUIDs. Existing exceptions: `TaskTransitionStat` and `TaskPlannedMeal` use composite PKs; `TaskScheduleConfig` uses `DayOfWeek` as PK.
 
-## Not Yet Implemented
-
-- `SchedulingType.TERMIN` and `fixedDate`/`fixedStart`/`fixedEnd`/`fixedDuration` exist in the data model but are not exposed in `TaskEditDialog`.
-- `BudgetLimitDao` limit-based tracking exists and `CalculateEffectiveBudgetLimitUseCase` implements rollover logic, but limit enforcement is not fully surfaced in UI.
-
 ## Commit Conventions
 
 Short imperative subject lines. Optional prefixes: `fix(scope):`, `feat(scope):`, `refactor(scope):`. Common scopes: `ui`, `build`, `domain`, `data`, `scheduling`.

@@ -26,10 +26,18 @@ public class StoragePantryRepository implements PantryRepository {
     private final BaseCollectionDao<ShoppingListItem> shoppingListDao;
 
     public StoragePantryRepository(MealStorage storage) {
-        // Each BaseCollectionDao is initialized with an EntityIdHandler that reads/writes the entity's id.
-        // See BaseCollectionDao javadoc for detailed explanation of the id handler pattern.
-        this.pantryItemDao = new BaseCollectionDao<>(MealCollections.PANTRY_ITEMS, storage, new PantryItemRowMapper(), EntityIdHandler.of(p -> p.id, (p, id) -> p.id = id));
-        this.shoppingListDao = new BaseCollectionDao<>(MealCollections.SHOPPING_LIST_ITEMS, storage, new ShoppingListItemRowMapper(), EntityIdHandler.of(item -> item.id, (item, id) -> item.id = id));
+        this.pantryItemDao = new BaseCollectionDao<>(
+            MealCollections.PANTRY_ITEMS,
+            storage,
+            new PantryItemRowMapper(),
+            EntityIdHandler.of(p -> p.id, (p, id) -> p.id = id)
+        );
+        this.shoppingListDao = new BaseCollectionDao<>(
+            MealCollections.SHOPPING_LIST_ITEMS,
+            storage,
+            new ShoppingListItemRowMapper(),
+            EntityIdHandler.of(item -> item.id, (item, id) -> item.id = id)
+        );
     }
 
     @Override

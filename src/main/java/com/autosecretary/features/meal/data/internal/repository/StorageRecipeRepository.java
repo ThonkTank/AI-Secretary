@@ -25,10 +25,18 @@ public class StorageRecipeRepository implements RecipeRepository {
     private final BaseCollectionDao<Ingredient> ingredientDao;
 
     public StorageRecipeRepository(MealStorage storage) {
-        // Each BaseCollectionDao is initialized with an EntityIdHandler that reads/writes the entity's id.
-        // See BaseCollectionDao javadoc for detailed explanation of the id handler pattern.
-        this.recipeDao = new BaseCollectionDao<>(MealCollections.RECIPES, storage, new RecipeRowMapper(), EntityIdHandler.of(r -> r.id, (r, id) -> r.id = id));
-        this.ingredientDao = new BaseCollectionDao<>(MealCollections.INGREDIENTS, storage, new IngredientRowMapper(), EntityIdHandler.of(ingredient -> ingredient.id, (ingredient, id) -> ingredient.id = id));
+        this.recipeDao = new BaseCollectionDao<>(
+            MealCollections.RECIPES,
+            storage,
+            new RecipeRowMapper(),
+            EntityIdHandler.of(r -> r.id, (r, id) -> r.id = id)
+        );
+        this.ingredientDao = new BaseCollectionDao<>(
+            MealCollections.INGREDIENTS,
+            storage,
+            new IngredientRowMapper(),
+            EntityIdHandler.of(ingredient -> ingredient.id, (ingredient, id) -> ingredient.id = id)
+        );
     }
 
     @Override

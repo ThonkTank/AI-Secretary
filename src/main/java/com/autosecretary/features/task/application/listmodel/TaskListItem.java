@@ -53,6 +53,14 @@ public class TaskListItem {
     }
 
     /**
+     * Deadline urgency threshold: deadlines within this many days are classified as SOON.
+     *
+     * <p>Used by {@link #deadlineUrgency()} to distinguish between SOON (0-3 days) and
+     * FUTURE (> 3 days) urgency classifications.
+     */
+    private static final int SOON_DEADLINE_DAYS = 3;
+
+    /**
      * Deadline urgency classification based on days until deadline.
      *
      * <p>Thresholds:
@@ -60,8 +68,8 @@ public class TaskListItem {
      *   <li><strong>NONE:</strong> No deadline set.
      *   <li><strong>OVERDUE:</strong> Deadline has passed (daysUntil &lt; 0).
      *   <li><strong>TODAY:</strong> Deadline is today (daysUntil == 0).
-     *   <li><strong>SOON:</strong> Deadline within 3 days (0 &lt; daysUntil &lt;= 3).
-     *   <li><strong>FUTURE:</strong> Deadline more than 3 days away (daysUntil &gt; 3).
+     *   <li><strong>SOON:</strong> Deadline within {@link #SOON_DEADLINE_DAYS} days (0 &lt; daysUntil &lt;= {@link #SOON_DEADLINE_DAYS}).
+     *   <li><strong>FUTURE:</strong> Deadline more than {@link #SOON_DEADLINE_DAYS} days away (daysUntil &gt; {@link #SOON_DEADLINE_DAYS}).
      * </ul>
      *
      * <p>Used by UI for deadline highlighting, icon color, and priority ordering.
@@ -254,7 +262,7 @@ public class TaskListItem {
         long daysUntil = daysUntilDeadline();
         if (daysUntil < 0) return DeadlineUrgency.OVERDUE;
         if (daysUntil == 0) return DeadlineUrgency.TODAY;
-        if (daysUntil <= 3) return DeadlineUrgency.SOON;
+        if (daysUntil <= SOON_DEADLINE_DAYS) return DeadlineUrgency.SOON;
         return DeadlineUrgency.FUTURE;
     }
 }

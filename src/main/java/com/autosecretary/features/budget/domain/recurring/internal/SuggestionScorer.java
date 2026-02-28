@@ -77,7 +77,15 @@ public final class SuggestionScorer {
     }
 
     static boolean isKnownSubscription(String normalizedPayee) {
+        String[] payeeWords = normalizedPayee.split("\\s+");
         return Arrays.stream(KNOWN_SUBSCRIPTION_PATTERNS)
-                .anyMatch(normalizedPayee::contains);
+                .anyMatch(pattern -> {
+                    String[] patternWords = pattern.split("\\s+");
+                    // All words in the pattern must be present in the payee.
+                    // E.g., "AMAZON PRIME" matches "AMAZON PRIME SUBSCRIPTION"
+                    // but not "MYNETFLIX" or "AMAZON STORE".
+                    return Arrays.stream(patternWords)
+                            .allMatch(pw -> Arrays.stream(payeeWords).anyMatch(pw::equals));
+                });
     }
 }

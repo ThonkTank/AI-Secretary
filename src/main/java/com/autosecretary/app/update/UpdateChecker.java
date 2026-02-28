@@ -61,6 +61,7 @@ public class UpdateChecker {
     private static final String APK_URL =
             "https://github.com/ThonkTank/AI-Secretary/raw/main/ops/release/AutoSecretary.apk";
     private static final String FILE_PROVIDER_SUFFIX = ".fileprovider";
+    private static final String APK_FILE_NAME = "update.apk";
 
     // Connect timeout for version check: 5s is adequate for a small text file on a stable network.
     private static final int VERSION_CONNECT_TIMEOUT_MS = 5000;
@@ -124,7 +125,15 @@ public class UpdateChecker {
                 Activity activity = getAliveActivity();
                 if (activity == null) return;
                 int remoteVersion = fetchRemoteVersion();
-                int localVersion = getLocalVersion(activity);
+                // Read local version from PackageInfo
+                int localVersion;
+                try {
+                    PackageInfo info = activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0);
+                    localVersion = (int) info.getLongVersionCode();
+                } catch (Exception e) {
+                    Log.w(LOG_TAG, "Failed to read local version", e);
+                    localVersion = 0;
+                }
                 if (remoteVersion > localVersion) {
                     mainHandler.post(() -> showUpdateDialog(remoteVersion));
                 }
@@ -136,54 +145,33 @@ public class UpdateChecker {
     }
 
     /**
-     * Configures an HttpURLConnection with cache-control headers and timeouts.
-     *
-     * @param connection The connection to configure.
-     * @param connectTimeout The connect timeout in milliseconds.
-     * @param readTimeout The read timeout in milliseconds.
-     */
-    private void configureConnection(HttpURLConnection connection, int connectTimeout, int readTimeout) {
-        connection.setUseCaches(false);
-        connection.setRequestProperty("Cache-Control", "no-cache");
-        connection.setConnectTimeout(connectTimeout);
-        connection.setReadTimeout(readTimeout);
-    }
-
-    /**
      * Fetches the remote version number from {@code ops/release/version.txt} on GitHub.
      *
      * The file is expected to contain a single integer (the version code) on a single line.
      * Network timeouts are configured to handle mobile networks: 5s for both connect and read.
      *
      * @return The remote version code as an integer.
-     * @throws IOException if the network request fails.
+     * @throws IOException if the network request fails or returns a non-success status code.
      * @throws NumberFormatException if the remote file does not contain a valid integer.
      */
     private int fetchRemoteVersion() throws IOException, NumberFormatException {
         HttpURLConnection connection = (HttpURLConnection) new URL(VERSION_URL).openConnection();
-        configureConnection(connection, VERSION_CONNECT_TIMEOUT_MS, VERSION_READ_TIMEOUT_MS);
+        connection.setUseCaches(false);
+        connection.setRequestProperty("Cache-Control", "no-cache");
+        connection.setConnectTimeout(VERSION_CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(VERSION_READ_TIMEOUT_MS);
 
-        try (InputStream inputStream = connection.getInputStream()) {
-            String text = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8).trim();
-            return Integer.parseInt(text);
+        try {
+            int responseCode = connection.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                throw new IOException("HTTP error: " + responseCode);
+            }
+            try (InputStream inputStream = connection.getInputStream()) {
+                String text = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8).trim();
+                return Integer.parseInt(text);
+            }
         } finally {
             connection.disconnect();
-        }
-    }
-
-    /**
-     * Reads the local app version code from PackageInfo.
-     *
-     * @param activity The Activity (used to access PackageManager).
-     * @return The local version code, or 0 if it cannot be read.
-     */
-    private int getLocalVersion(Activity activity) {
-        try {
-            PackageInfo info = activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0);
-            return (int) info.getLongVersionCode();
-        } catch (Exception e) {
-            Log.w(LOG_TAG, "Failed to read local version", e);
-            return 0;
         }
     }
 
@@ -257,20 +245,29 @@ public class UpdateChecker {
      *
      * @param activity The Activity (used to get the cache directory).
      * @return A File pointing to the downloaded APK.
-     * @throws IOException if the network request fails or file I/O fails.
+     * @throws IOException if the network request fails, returns a non-success status code, or file I/O fails.
      */
     private File downloadApk(Activity activity) throws IOException {
-        File apkFile = new File(activity.getCacheDir(), "update.apk");
+        File apkFile = new File(activity.getCacheDir(), APK_FILE_NAME);
 
         HttpURLConnection connection = (HttpURLConnection) new URL(APK_URL).openConnection();
-        configureConnection(connection, DOWNLOAD_CONNECT_TIMEOUT_MS, DOWNLOAD_READ_TIMEOUT_MS);
+        connection.setUseCaches(false);
+        connection.setRequestProperty("Cache-Control", "no-cache");
+        connection.setConnectTimeout(DOWNLOAD_CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(DOWNLOAD_READ_TIMEOUT_MS);
 
-        try (InputStream inputStream = connection.getInputStream();
-             FileOutputStream outputStream = new FileOutputStream(apkFile, false)) {
-            byte[] buffer = new byte[DOWNLOAD_BUFFER_SIZE_BYTES];
-            int read;
-            while ((read = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, read);
+        try {
+            int responseCode = connection.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                throw new IOException("HTTP error: " + responseCode);
+            }
+            try (InputStream inputStream = connection.getInputStream();
+                 FileOutputStream outputStream = new FileOutputStream(apkFile, false)) {
+                byte[] buffer = new byte[DOWNLOAD_BUFFER_SIZE_BYTES];
+                int read;
+                while ((read = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, read);
+                }
             }
         } finally {
             connection.disconnect();
