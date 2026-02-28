@@ -1,6 +1,7 @@
 package com.autosecretary.features.task.domain.scheduling;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -35,6 +36,6 @@ public record TaskSlotGenerationResult(int createdSlots, List<SchedulingConflict
      * Canonical constructor ensuring {@code conflicts} is never null.
      */
     public TaskSlotGenerationResult {
-        conflicts = conflicts != null ? new ArrayList<>(conflicts) : new ArrayList<>();
+        conflicts = new ArrayList<>(conflicts != null ? conflicts : Collections.emptyList());
     }
 }

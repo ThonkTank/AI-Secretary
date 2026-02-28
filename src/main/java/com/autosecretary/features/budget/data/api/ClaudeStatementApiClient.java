@@ -86,6 +86,8 @@ public class ClaudeStatementApiClient {
     private static final String JSON_DESCRIPTION = "description";
     private static final String JSON_CATEGORY_ID = "category_id";
     private static final String JSON_HASH = "hash";
+    private static final String JSON_CATEGORY_NAME = "name";
+    private static final String JSON_CATEGORY_TYPE = "type";
     private static final String CONTENT_TYPE_TEXT = "text";
     private static final String CONTENT_TYPE_DOCUMENT = "document";
     private static final String MEDIA_TYPE_PDF = "application/pdf";
@@ -136,7 +138,7 @@ public class ClaudeStatementApiClient {
         JSONObject body = new JSONObject();
         body.put(JSON_MODEL, MODEL);
         body.put(JSON_MAX_TOKENS, MAX_TOKENS);
-        body.put(JSON_SYSTEM, buildSystemPrompt(categories));
+        body.put(JSON_SYSTEM, buildSystemPrompt(buildCategoryArray(categories)));
 
         JSONArray content = new JSONArray();
         JSONObject promptPart = new JSONObject();
@@ -163,6 +165,20 @@ public class ClaudeStatementApiClient {
         return body;
     }
 
+    private JSONArray buildCategoryArray(List<ImportCategory> categories) throws JSONException {
+        JSONArray categoryArray = new JSONArray();
+        if (categories != null) {
+            for (ImportCategory category : categories) {
+                JSONObject cat = new JSONObject();
+                cat.put(JSON_CATEGORY_ID, category.id());
+                cat.put(JSON_CATEGORY_NAME, category.name());
+                cat.put(JSON_CATEGORY_TYPE, category.direction().name());
+                categoryArray.put(cat);
+            }
+        }
+        return categoryArray;
+    }
+
     /**
      * Builds the system prompt that instructs Claude how to parse bank statements.
      *
@@ -174,31 +190,10 @@ public class ClaudeStatementApiClient {
      *   <li>Return plain JSON with no markdown formatting or explanation</li>
      * </ul>
      *
-     * Categories are passed as JSON for clarity and consistency with the output schema.
-     *
-     * @param categories List of valid categories the user has configured; Claude will only assign these IDs
-     * @return A German-language system prompt (matches the expected schema and language of statements)
+     * @param categoryArray JSON array of valid categories (from buildCategoryArray)
+     * @return A German-language system prompt
      */
-    private String buildSystemPrompt(List<ImportCategory> categories) throws JSONException {
-        JSONArray categoryArray = buildCategoryArray(categories);
-        return buildSystemPromptText(categoryArray);
-    }
-
-    private JSONArray buildCategoryArray(List<ImportCategory> categories) throws JSONException {
-        JSONArray categoryArray = new JSONArray();
-        if (categories != null) {
-            for (ImportCategory category : categories) {
-                JSONObject cat = new JSONObject();
-                cat.put("id", category.id());
-                cat.put("name", category.name());
-                cat.put("type", category.direction().name());
-                categoryArray.put(cat);
-            }
-        }
-        return categoryArray;
-    }
-
-    private String buildSystemPromptText(JSONArray categoryArray) {
+    private String buildSystemPrompt(JSONArray categoryArray) {
         return "Du extrahierst Banktransaktionen aus Kontoauszügen. "
                 + "Antwortformat: JSON Objekt mit Feldern period_start, period_end, transactions. "
                 + "transactions ist ein Array von Objekten mit date (YYYY-MM-DD), amount_cents (int), "
@@ -340,27 +335,40 @@ public class ClaudeStatementApiClient {
 
     /**
      * Removes markdown code block fences (```...```) from text.
-     * Assumes at most one fence block; only handles the first one found.
+     * Handles both multi-line markdown (with language identifier on first line)
+     * and inline markdown (no newline after opening fence).
+     *
+     * Examples:
+     * - ` ```json\n{"key": "value"}\n``` ` → `{"key": "value"}`
+     * - ` ```{"key": "value"}``` ` → `{"key": "value"}`
+     * - `{"key": "value"}` → `{"key": "value"}`
      */
     private String removeFences(String text) {
-        if (!text.startsWith("```")) {
+        if (text == null || !text.startsWith("```")) {
             return text;
         }
-        int firstLineEnd = text.indexOf('\n');
-        if (firstLineEnd < 0) {
-            return text;
+
+        // Skip opening fence (including optional language identifier)
+        int openingFenceEnd = 3; // length of ```
+        int newlineAfterOpening = text.indexOf('\n');
+        if (newlineAfterOpening > 0) {
+            // Multi-line markdown: skip to after the newline
+            openingFenceEnd = newlineAfterOpening + 1;
         }
-        String afterFirst = text.substring(firstLineEnd + 1);
-        int lastFence = afterFirst.lastIndexOf("```");
-        if (lastFence < 0) {
-            return afterFirst;
+
+        // Find and remove closing fence
+        String content = text.substring(openingFenceEnd);
+        int closingFenceIndex = content.lastIndexOf("```");
+        if (closingFenceIndex < 0) {
+            // No closing fence found, return content as-is
+            return content;
         }
-        return afterFirst.substring(0, lastFence);
+
+        return content.substring(0, closingFenceIndex);
     }
 
     private static String emptyToNull(String value) {
-        String trimmed = value == null ? "" : value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        return (value == null || value.isBlank()) ? null : value.trim();
     }
 
     public static class ApiException extends RuntimeException {

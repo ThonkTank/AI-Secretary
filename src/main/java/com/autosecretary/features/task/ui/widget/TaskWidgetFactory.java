@@ -15,10 +15,12 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDao;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Implements {@link RemoteViewsService.RemoteViewsFactory} to provide remote views for the
@@ -75,19 +77,35 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         LocalDate selectedDate = TaskWidgetProvider.getSelectedDate(context);
         isToday = selectedDate.equals(LocalDate.now());
 
-        List<TaskListItem> filtered = new ArrayList<>();
-        for (TaskListItem item : allItems) {
-            if (item.isScheduledOn(selectedDate)) {
-                filtered.add(item);
-            }
-        }
-        filtered.sort(BY_START_TIME);
-        items = filtered;
+        items = allItems.stream()
+            .filter(item -> item.isScheduledOn(selectedDate))
+            .sorted(BY_START_TIME)
+            .collect(Collectors.toList());
     }
 
     @Override
     public int getCount() {
         return items.size();
+    }
+
+    /**
+     * Formats a time for display in 24-hour format, or returns empty string if time is null.
+     */
+    private String formatTime(LocalTime time) {
+        return time != null ? time.format(TIME_FORMATTER) : "";
+    }
+
+    /**
+     * Returns the text color for a task based on its state: in-progress, completed, or default.
+     */
+    private int getTaskStateTextColor(TaskListItem item) {
+        if (item.inProgress) {
+            return colorInProgress;
+        } else if (item.completed) {
+            return colorCompleted;
+        } else {
+            return colorDefault;
+        }
     }
 
     @Override
@@ -99,8 +117,8 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         TaskListItem item = items.get(position);
         RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.task_row_widget);
 
-        rv.setTextViewText(R.id.WidgetRowStart, item.start != null ? item.start.format(TIME_FORMATTER) : "");
-        rv.setTextViewText(R.id.WidgetRowEnd, item.end != null ? item.end.format(TIME_FORMATTER) : "");
+        rv.setTextViewText(R.id.WidgetRowStart, formatTime(item.start));
+        rv.setTextViewText(R.id.WidgetRowEnd, formatTime(item.end));
         rv.setTextViewText(R.id.WidgetRowTitle, item.title);
 
         // Streak: count of consecutive periods in which the task was completed.
@@ -134,9 +152,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         // Text color indicates task state: in-progress (realStart set) shows one color,
         // completed (realEnd set) shows another, and unstarted/default state shows default color.
         // Colors are defined in R.color.task_widget_title_* (see task_colors.xml).
-        int textColor = item.inProgress ? colorInProgress
-                      : item.completed ? colorCompleted
-                      : colorDefault;
+        int textColor = getTaskStateTextColor(item);
         rv.setInt(R.id.WidgetRowTitle, "setTextColor", textColor);
 
         return rv;

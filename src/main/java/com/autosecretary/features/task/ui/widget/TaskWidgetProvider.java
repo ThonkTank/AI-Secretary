@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.util.Log;
 import android.widget.RemoteViews;
@@ -129,19 +130,12 @@ public class TaskWidgetProvider extends AppWidgetProvider {
                 buildActionIntent(context, ACTION_REFRESH, widgetId));
 
         // Add task intent
-        Intent addTaskIntent = new Intent(context, MainActivity.class);
-        addTaskIntent.setAction(ACTION_ADD_TASK);
-        addTaskIntent.putExtra(EXTRA_OPEN_TASK_FLOW, true);
-        addTaskIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent addTaskPending = PendingIntent.getActivity(context, widgetId, addTaskIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent addTaskPending = buildMainActivityIntent(context, widgetId,
+                intent -> intent.putExtra(EXTRA_OPEN_TASK_FLOW, true));
         views.setOnClickPendingIntent(R.id.WidgetAdd, addTaskPending);
 
         // Date label click opens the app
-        Intent launchApp = new Intent(context, MainActivity.class);
-        launchApp.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent launchPending = PendingIntent.getActivity(context, 0, launchApp,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent launchPending = buildMainActivityIntent(context, 0, intent -> {});
         views.setOnClickPendingIntent(R.id.WidgetDateLabel, launchPending);
 
         // List adapter
@@ -169,6 +163,23 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         // Unique data URI so PendingIntents don't collapse
         intent.setData(Uri.parse("widget://" + action + "/" + widgetId));
         return PendingIntent.getBroadcast(context, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /**
+     * Builds a PendingIntent for launching MainActivity with custom intent configuration.
+     * Centralizes common intent setup: flags, PendingIntent creation.
+     *
+     * @param context The context
+     * @param requestId Request ID for PendingIntent; used for the "add task" flow (widgetId) or 0 (simple app launch)
+     * @param customizer Lambda to add action, extras, or other customization to the intent
+     */
+    private PendingIntent buildMainActivityIntent(Context context, int requestId,
+            java.util.function.Consumer<Intent> customizer) {
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        customizer.accept(intent);
+        return PendingIntent.getActivity(context, requestId, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
@@ -208,15 +219,17 @@ public class TaskWidgetProvider extends AppWidgetProvider {
 
     // --- Day offset persistence ---
 
+    private static SharedPreferences getWidgetPrefs(Context context) {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    }
+
     static int getSelectedDayOffset(Context context) {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .getInt(KEY_OFFSET, 0);
+        return getWidgetPrefs(context).getInt(KEY_OFFSET, 0);
     }
 
     private static void setSelectedDayOffset(Context context, int offset) {
         // commit() instead of apply() to prevent race with subsequent onUpdate
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putInt(KEY_OFFSET, offset).commit();
+        getWidgetPrefs(context).edit().putInt(KEY_OFFSET, offset).commit();
     }
 
     public static LocalDate getSelectedDate(Context context) {

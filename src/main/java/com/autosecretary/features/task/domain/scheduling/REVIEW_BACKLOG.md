@@ -1,7 +1,16 @@
 # Review Backlog — task/domain/scheduling
 
-## Resolved Issues (this run)
+## Resolved Issues (this run — simplicity review)
 
+No new KISS violations found. Module is well-maintained with minimal, appropriate abstractions.
+
+## Resolved Issues (prior run — checkpoint)
+
+- ✅ Simplified TaskSlotGenerationResult canonical constructor — avoid creating ArrayList twice by using Collections.emptyList()
+- ✅ Improved TaskPlanningState.minDayDistance() readability — renamed variables (d→scheduledDay, minDist→minDistance), used Math.min() idiomatically
+
+- ✅ Fixed data integrity in `removeScheduled()` — only decrement counter if day was actually removed
+- ✅ Fixed data leak in `getScheduledDays()` — wrap internal set in Collections.unmodifiableSet()
 - ✅ Fixed typo `TaskTaskTransitionStatLoader` → `TaskTransitionStatLoader` in README.md reading-order section (line 77)
 
 ## Resolved Issues (previous run)

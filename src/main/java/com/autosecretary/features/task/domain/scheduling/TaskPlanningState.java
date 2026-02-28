@@ -56,21 +56,24 @@ public final class TaskPlanningState {
      * Removes a previously recorded scheduled slot (used for backtracking or corrections).
      *
      * <p>Updates both maps atomically. If no days remain for the task, both entries are cleared.
+     * Only decrements the counter if the day was actually found and removed.
      *
      * @param taskId Task UUID to remove
      * @param day The day to remove
      */
     public void removeScheduled(String taskId, LocalDate day) {
         Set<LocalDate> days = scheduledDays.get(taskId);
-        if (days != null && days.remove(day) && days.isEmpty()) {
-            scheduledDays.remove(taskId);
-        }
-        totalScheduledReps.compute(taskId, (key, value) -> {
-            if (value == null || value <= 1) {
-                return null;
+        if (days != null && days.remove(day)) {
+            if (days.isEmpty()) {
+                scheduledDays.remove(taskId);
             }
-            return value - 1;
-        });
+            totalScheduledReps.compute(taskId, (key, value) -> {
+                if (value == null || value <= 1) {
+                    return null;
+                }
+                return value - 1;
+            });
+        }
     }
 
     /**
@@ -80,7 +83,8 @@ public final class TaskPlanningState {
      * @return Unmodifiable set of days (empty if never scheduled)
      */
     public Set<LocalDate> getScheduledDays(String taskId) {
-        return scheduledDays.getOrDefault(taskId, Collections.emptySet());
+        Set<LocalDate> days = scheduledDays.get(taskId);
+        return days != null ? Collections.unmodifiableSet(days) : Collections.emptySet();
     }
 
     /**
@@ -110,11 +114,11 @@ public final class TaskPlanningState {
     public int minDayDistance(String taskId, LocalDate day) {
         Set<LocalDate> days = scheduledDays.get(taskId);
         if (days == null || days.isEmpty()) return Integer.MAX_VALUE;
-        int minDist = Integer.MAX_VALUE;
-        for (LocalDate d : days) {
-            int dist = Math.abs((int) ChronoUnit.DAYS.between(d, day));
-            if (dist < minDist) minDist = dist;
+        int minDistance = Integer.MAX_VALUE;
+        for (LocalDate scheduledDay : days) {
+            int distance = (int) Math.abs(ChronoUnit.DAYS.between(scheduledDay, day));
+            minDistance = Math.min(minDistance, distance);
         }
-        return minDist;
+        return minDistance;
     }
 }

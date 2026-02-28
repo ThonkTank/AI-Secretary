@@ -105,7 +105,7 @@ public class SettingsDataService {
             runCheckpoint();
             copyDatabaseFile(getDatabaseFile(), target);
             return target;
-        } catch (IOException ex) {
+        } catch (IOException | RuntimeException ex) {
             Log.e(TAG, "Backup failed", ex);
             return null;
         }
@@ -264,9 +264,10 @@ public class SettingsDataService {
      * </ul>
      */
     private void clearSidecarFiles() {
-        File database = getDatabaseFile();
-        deleteSilently(new File(database.getAbsolutePath() + WAL_SUFFIX));
-        deleteSilently(new File(database.getAbsolutePath() + SHM_SUFFIX));
+        String basePath = getDatabaseFile().getAbsolutePath();
+        for (String suffix : new String[]{WAL_SUFFIX, SHM_SUFFIX}) {
+            deleteSilently(new File(basePath + suffix));
+        }
     }
 
     /**

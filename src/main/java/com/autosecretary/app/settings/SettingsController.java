@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -40,7 +41,8 @@ public class SettingsController {
     private static final int OPTION_ABOUT = 3;
 
     /** Date format for displaying backup timestamps in the restore dialog */
-    private static final String BACKUP_DATE_FORMAT = "dd.MM.yyyy HH:mm";
+    private static final SimpleDateFormat BACKUP_DATE_FORMATTER =
+            new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.GERMANY);
 
     /**
      * Functional interface for long-running tasks that return a boolean success flag.
@@ -88,21 +90,22 @@ public class SettingsController {
     /**
      * Execute a task on the background executor, showing a toast result on the main thread.
      *
-     * If the task succeeds, {@link #onDataChanged} is invoked to notify listeners that the
-     * application state has changed (e.g., database has been restored or factory reset).
+     * If the task succeeds and {@code notifyOnSuccess} is true, {@link #onDataChanged} is invoked
+     * to notify listeners that the application state has changed.
      *
      * @param successMessageId   resource ID for the toast shown on success
      * @param failureMessageId   resource ID for the toast shown on failure
      * @param task               the operation to execute; should return true if successful
+     * @param notifyOnSuccess    if true, invokes {@link #onDataChanged} on successful completion
      */
     private void runInBackground(
-            int successMessageId, int failureMessageId, BackgroundTask task) {
+            int successMessageId, int failureMessageId, BackgroundTask task, boolean notifyOnSuccess) {
         executorService.execute(() -> {
             boolean success = task.execute();
             mainHandler.post(() -> {
                 Toast.makeText(context, success ? successMessageId : failureMessageId,
                         Toast.LENGTH_LONG).show();
-                if (success) {
+                if (success && notifyOnSuccess) {
                     onDataChanged.run();
                 }
             });
@@ -112,9 +115,9 @@ public class SettingsController {
     /**
      * Execute a file-producing task on the background executor.
      *
-     * Unlike {@link #runInBackground(int, int, BackgroundTask)}, this method does NOT invoke
-     * {@link #onDataChanged} on success. Use this for operations that don't require app state refresh
-     * (e.g., creating a backup that doesn't modify the active database).
+     * This method does NOT invoke {@link #onDataChanged} on success. Use this for operations
+     * that don't require app state refresh (e.g., creating a backup that doesn't modify
+     * the active database).
      *
      * @param successMessageId   resource ID for the toast shown when task produces a non-null File
      * @param failureMessageId   resource ID for the toast shown when task produces null
@@ -153,6 +156,8 @@ public class SettingsController {
                         case OPTION_MANUAL_BACKUP:  createManualBackup();       break;
                         case OPTION_FACTORY_RESET:  confirmFactoryReset();      break;
                         case OPTION_ABOUT:          showAboutDialog();          break;
+                        default:
+                            Log.w("SettingsController", "Unknown settings menu option: " + which);
                     }
                 })
                 .show();
@@ -177,8 +182,7 @@ public class SettingsController {
     }
 
     private String formatBackupName(@NonNull File file) {
-        String lastChanged = new SimpleDateFormat(BACKUP_DATE_FORMAT, Locale.GERMANY)
-                .format(new Date(file.lastModified()));
+        String lastChanged = BACKUP_DATE_FORMATTER.format(new Date(file.lastModified()));
         return context.getString(R.string.settings_backup_item_format, file.getName(), lastChanged);
     }
 
@@ -190,7 +194,8 @@ public class SettingsController {
                         runInBackground(
                                 R.string.settings_restore_success,
                                 R.string.settings_restore_failure,
-                                () -> settingsDataService.restoreBackup(backupFile)))
+                                () -> settingsDataService.restoreBackup(backupFile),
+                                true))
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
@@ -210,7 +215,8 @@ public class SettingsController {
                         runInBackground(
                                 R.string.settings_reset_success,
                                 R.string.settings_reset_failure,
-                                settingsDataService::factoryReset))
+                                settingsDataService::factoryReset,
+                                true))
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }

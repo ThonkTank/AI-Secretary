@@ -5,26 +5,57 @@
     android:orientation="vertical"
     android:padding="@dimen/spacing_md">
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/meal_label_recipe"
+        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
+
     <Spinner
         android:id="@+id/MealDialogRecipe"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_md"
+        android:text="@string/meal_label_date"
+        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
 
     <EditText
         android:id="@+id/MealDialogDate"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs"
         android:hint="@string/meal_hint_date" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_md"
+        android:text="@string/meal_label_type"
+        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
 
     <Spinner
         android:id="@+id/MealDialogType"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_md"
+        android:text="@string/meal_label_servings"
+        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
 
     <EditText
         android:id="@+id/MealDialogServings"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs"
         android:hint="@string/meal_hint_servings"
         android:inputType="number" />
 </LinearLayout>

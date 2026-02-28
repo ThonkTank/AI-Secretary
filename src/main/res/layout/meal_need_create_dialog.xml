@@ -5,22 +5,45 @@
     android:orientation="vertical"
     android:padding="@dimen/spacing_md">
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/meal_label_name"
+        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
+
     <EditText
         android:id="@+id/MealNeedName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs"
         android:hint="@string/meal_hint_name" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_md"
+        android:text="@string/meal_label_amount"
+        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
 
     <EditText
         android:id="@+id/MealNeedAmount"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs"
         android:hint="@string/meal_hint_amount"
         android:inputType="numberDecimal" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_md"
+        android:text="@string/meal_label_unit"
+        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
 
     <EditText
         android:id="@+id/MealNeedUnit"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs"
         android:hint="@string/meal_hint_unit" />
 </LinearLayout>
