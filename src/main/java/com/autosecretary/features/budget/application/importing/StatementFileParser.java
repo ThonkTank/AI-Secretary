@@ -43,10 +43,10 @@ public class StatementFileParser {
         if (isPdf(fileName, mimeType)) {
             return parsePdf(fileBytes);
         }
-        if (!isCsv(fileName, mimeType)) {
-            throw new IllegalArgumentException("Nicht unterstütztes Dateiformat: " + fileName);
+        if (isCsv(fileName, mimeType)) {
+            return parseCsv(fileBytes);
         }
-        return parseCsv(fileBytes);
+        throw new IllegalArgumentException("Nicht unterstütztes Dateiformat: " + fileName);
     }
 
     private ParsedStatement parsePdf(byte[] fileBytes) {
@@ -130,20 +130,20 @@ public class StatementFileParser {
     }
 
     private static boolean isPdf(String fileName, String mimeType) {
-        String lowerName = normalise(fileName);
-        String lowerMime = normalise(mimeType);
-        return lowerName.endsWith(".pdf") || "application/pdf".equals(lowerMime);
+        String name = normalize(fileName);
+        String mime = normalize(mimeType);
+        return name.endsWith(".pdf") || "application/pdf".equals(mime);
     }
 
     private static boolean isCsv(String fileName, String mimeType) {
-        String lowerName = normalise(fileName);
-        String lowerMime = normalise(mimeType);
-        return lowerName.endsWith(".csv")
-                || "text/csv".equals(lowerMime)
-                || "application/vnd.ms-excel".equals(lowerMime);
+        String name = normalize(fileName);
+        String mime = normalize(mimeType);
+        return name.endsWith(".csv")
+                || "text/csv".equals(mime)
+                || "application/vnd.ms-excel".equals(mime);
     }
 
-    private static String normalise(String s) {
+    private static String normalize(String s) {
         return s == null ? "" : s.toLowerCase();
     }
 

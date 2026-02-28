@@ -164,7 +164,7 @@ public class PrefSlotSectionController {
         // Wrapping the context here is required — passing the style as a constructor argument
         // alone has no effect for programmatically-created MaterialButton instances.
         ContextThemeWrapper themedContext =
-            new ContextThemeWrapper(fragment.requireContext(), R.style.Widget_AISecretary_TaskEdit_DayPickerButton);
+            new ContextThemeWrapper(fragment.requireContext(), R.style.Widget_AutoSecretary_TaskEdit_DayPickerButton);
         MaterialButton btn = new MaterialButton(themedContext, null, 0);
         btn.setText(label);
         btn.setMaxLines(2);

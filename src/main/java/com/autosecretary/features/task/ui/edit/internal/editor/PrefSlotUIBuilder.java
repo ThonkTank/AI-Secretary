@@ -222,7 +222,7 @@ public class PrefSlotUIBuilder {
         button.setMinHeight(prefSlotButtonMinHeightPx);
         button.setMinimumHeight(prefSlotButtonMinHeightPx);
         button.setAllCaps(false); // Material3 default is uppercase; override for readability
-        button.setTextAppearance(R.style.TextAppearance_AISecretary_Editor_PrefSlotButton);
+        button.setTextAppearance(R.style.TextAppearance_AutoSecretary_Editor_PrefSlotButton);
         button.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         return button;
     }

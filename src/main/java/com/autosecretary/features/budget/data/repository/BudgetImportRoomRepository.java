@@ -1,5 +1,6 @@
 package com.autosecretary.features.budget.data.repository;
 
+import android.util.Log;
 import com.autosecretary.features.budget.data.dao.BudgetLookupDao;
 import com.autosecretary.features.budget.data.dao.BudgetTransactionDao;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
@@ -129,7 +130,9 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
         // Silent no-op if parameters are invalid. Acceptable because some imported
         // transactions may not have matching templates. The operation is idempotent
         // (either the link is made or not), so better to silently skip than throw.
+        // Log at DEBUG level for troubleshooting.
         if (transactionIds == null || transactionIds.isEmpty() || templateId == null || templateId.isBlank()) {
+            Log.d("BudgetImportRoomRepository", "linkTransactionsToTemplate: skipped (invalid parameters)");
             return;
         }
         transactionDao.updateTemplateIdForTransactions(transactionIds, templateId);

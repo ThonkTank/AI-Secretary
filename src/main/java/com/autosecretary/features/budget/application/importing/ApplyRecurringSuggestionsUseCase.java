@@ -5,7 +5,6 @@ import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -45,15 +44,13 @@ public class ApplyRecurringSuggestionsUseCase {
                              ApplyCallback callback) {
         executor.execute(() -> {
             try {
-                List<String> templateIds = new ArrayList<>();
                 for (RecurringSuggestion suggestion : suggestions) {
                     LocalDate nextDue = calculateNextDue(suggestion);
                     String templateId = repository.createRecurringTemplate(suggestion, accountId, nextDue);
-                    templateIds.add(templateId);
                     repository.linkTransactionsToTemplate(suggestion.transactionIds(), templateId);
                 }
 
-                if (!templateIds.isEmpty()) {
+                if (!suggestions.isEmpty()) {
                     repository.synchronizeRecurringTemplateState(LocalDate.now());
                     repository.notifyBudgetDataUpdated();
                 }

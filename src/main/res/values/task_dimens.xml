@@ -37,4 +37,9 @@
     <dimen name="task_corner_radius_md">14dp</dimen>
     <dimen name="task_corner_radius_lg">16dp</dimen>
     <dimen name="task_corner_radius_xl">18dp</dimen>
+
+    <!-- Editor input sizing -->
+    <dimen name="task_editor_input_min_height">48dp</dimen>
+    <dimen name="task_editor_input_stroke_width">1dp</dimen>
+    <dimen name="task_editor_input_stroke_width_focused">2dp</dimen>
 </resources>

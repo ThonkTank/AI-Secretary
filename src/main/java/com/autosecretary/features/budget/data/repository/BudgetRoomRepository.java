@@ -1,9 +1,11 @@
 package com.autosecretary.features.budget.data.repository;
 
+import android.util.Log;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.domain.TransactionKind;
+import com.autosecretary.features.budget.domain.TransferDetails;
 import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
 import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
@@ -11,6 +13,7 @@ import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Optional;
 import androidx.room.RoomDatabase;
 import com.autosecretary.features.budget.data.dao.BudgetLimitDao;
 import com.autosecretary.features.budget.data.dao.BudgetLookupDao;
@@ -204,7 +207,11 @@ public class BudgetRoomRepository implements BudgetRepository {
         BudgetTransactionEntity entity = transactionDao.findById(transactionId);
         // Silent no-op if transaction not found. Acceptable because this method may be called
         // speculatively or during UI cleanup when the transaction may no longer exist.
-        if (entity == null) return;
+        // Log at DEBUG level for troubleshooting without failing the operation.
+        if (entity == null) {
+            Log.d("BudgetRoomRepository", "updateTransaction: transaction not found for id=" + transactionId);
+            return;
+        }
         entity.accountId = accountId;
         entity.categoryId = categoryId;
         entity.direction = direction;
@@ -228,19 +235,16 @@ public class BudgetRoomRepository implements BudgetRepository {
      *
      * Both transactions have {@code transactionKind = INTERNAL_TRANSFER} and null
      * {@code categoryId} (transfers don't belong to categories).
+     *
+     * @param details encapsulates source account, target account, amount, date, and note
      */
     @Override
-    public void createTransfer(String sourceAccountId,
-                               String targetAccountId,
-                               long amountCents,
-                               LocalDate bookingDate,
-                               String note) {
+    public void createTransfer(TransferDetails details) {
         BudgetTransactionEntity debit = new BudgetTransactionEntity(
-                sourceAccountId, null, TransactionDirection.EXPENSE, amountCents, bookingDate);
+                details.sourceAccountId(), null, TransactionDirection.EXPENSE, details.amountCents(), details.bookingDate());
         BudgetTransactionEntity credit = new BudgetTransactionEntity(
-                targetAccountId, null, TransactionDirection.INCOME, amountCents, bookingDate);
-        populateTransferPair(debit, credit, sourceAccountId, targetAccountId,
-                amountCents, bookingDate, note);
+                details.targetAccountId(), null, TransactionDirection.INCOME, details.amountCents(), details.bookingDate());
+        populateTransferPair(debit, credit, details);
         transactionDao.createTransferPair(debit, credit);
     }
 
@@ -249,24 +253,41 @@ public class BudgetRoomRepository implements BudgetRepository {
      *
      * Returns false if the transaction is not found or is not a properly linked transfer pair.
      * Otherwise, updates both legs of the transfer and returns true.
+     *
+     * @param transactionId ID of one leg of the transfer pair
+     * @param details encapsulates source account, target account, amount, date, and note
      */
     @Override
-    public boolean updateTransfer(String transactionId,
-                                  String sourceAccountId,
-                                  String targetAccountId,
-                                  long amountCents,
-                                  LocalDate bookingDate,
-                                  String note) {
-        BudgetTransactionEntity transaction = transactionDao.findById(transactionId);
-        // Return false if the requested transaction doesn't exist or has no linked pair
-        if (transaction == null || transaction.linkedTransactionId == null) {
+    public boolean updateTransfer(String transactionId, TransferDetails details) {
+        Optional<TransferValidation> validation = validateTransferExists(transactionId);
+        if (validation.isEmpty()) {
+            Log.d("BudgetRoomRepository", "updateTransfer: transfer validation failed for id=" + transactionId);
             return false;
         }
 
+        TransferValidation v = validation.get();
+        populateTransferPair(v.debit, v.credit, details);
+        transactionDao.updateTransferPair(v.debit, v.credit);
+        return true;
+    }
+
+    /**
+     * Validates that a transaction exists and is a properly linked transfer pair.
+     *
+     * Returns an Optional containing the debit and credit legs if valid, or empty if:
+     * - The transaction doesn't exist
+     * - The transaction has no linked pair (not a transfer)
+     * - The linked transaction is missing (data corruption)
+     */
+    private Optional<TransferValidation> validateTransferExists(String transactionId) {
+        BudgetTransactionEntity transaction = transactionDao.findById(transactionId);
+        if (transaction == null || transaction.linkedTransactionId == null) {
+            return Optional.empty();
+        }
+
         BudgetTransactionEntity linked = transactionDao.findById(transaction.linkedTransactionId);
-        // Return false if the linked transaction is missing (data corruption scenario)
         if (linked == null) {
-            return false;
+            return Optional.empty();
         }
 
         BudgetTransactionEntity debit, credit;
@@ -278,11 +299,14 @@ public class BudgetRoomRepository implements BudgetRepository {
             credit = transaction;
         }
 
-        populateTransferPair(debit, credit, sourceAccountId, targetAccountId,
-                amountCents, bookingDate, note);
-        transactionDao.updateTransferPair(debit, credit);
-        return true;
+        return Optional.of(new TransferValidation(debit, credit));
     }
+
+    /**
+     * Represents the validated pair of debit and credit legs in a transfer.
+     * Debit is the EXPENSE side (source account), credit is the INCOME side (target account).
+     */
+    private record TransferValidation(BudgetTransactionEntity debit, BudgetTransactionEntity credit) {}
 
     @Override public void saveBudgetLimit(BudgetLimit budgetLimit) {
         limitDao.insert(budgetLimit);
@@ -355,34 +379,26 @@ public class BudgetRoomRepository implements BudgetRepository {
      *
      * @param debit the transaction leg being debited (source account, EXPENSE direction)
      * @param credit the transaction leg being credited (target account, INCOME direction)
-     * @param sourceAccountId account to debit
-     * @param targetAccountId account to credit
-     * @param amountCents transfer amount
-     * @param bookingDate transfer date
-     * @param note user note (normalized to null if blank)
+     * @param details encapsulates source account, target account, amount, date, and note
      */
     private static void populateTransferPair(BudgetTransactionEntity debit,
                                               BudgetTransactionEntity credit,
-                                              String sourceAccountId,
-                                              String targetAccountId,
-                                              long amountCents,
-                                              LocalDate bookingDate,
-                                              String note) {
-        String normalizedNote = normalizeNote(note);
+                                              TransferDetails details) {
+        String normalizedNote = normalizeNote(details.note());
 
-        debit.accountId = sourceAccountId;
+        debit.accountId = details.sourceAccountId();
         debit.direction = TransactionDirection.EXPENSE;
-        debit.amountCents = amountCents;
-        debit.setBookingDate(bookingDate);
+        debit.amountCents = details.amountCents();
+        debit.setBookingDate(details.bookingDate());
         debit.transactionKind = TransactionKind.INTERNAL_TRANSFER;
         debit.categoryId = null;
         debit.note = normalizedNote;
         debit.linkedTransactionId = credit.id;
 
-        credit.accountId = targetAccountId;
+        credit.accountId = details.targetAccountId();
         credit.direction = TransactionDirection.INCOME;
-        credit.amountCents = amountCents;
-        credit.setBookingDate(bookingDate);
+        credit.amountCents = details.amountCents();
+        credit.setBookingDate(details.bookingDate());
         credit.transactionKind = TransactionKind.INTERNAL_TRANSFER;
         credit.categoryId = null;
         credit.note = normalizedNote;

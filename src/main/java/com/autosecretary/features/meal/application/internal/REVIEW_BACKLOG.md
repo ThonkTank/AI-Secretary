@@ -1,41 +1,51 @@
 # Review Backlog — meal/application/internal
 
-## Resolved Issues (Completed in this run)
+## Resolved Issues (This Run)
 
-✅ **[blocker]** No README.md — Added `README.md` with detailed module overview, usage examples, data structure documentation, and integration guidance.
+✅ **[improve]** Condensed try-catch blocks reduce clarity — LegacyMealImportService.java:527, 538, 544
+- Expanded single-line try-catch in `asLong(Object)` to multi-line format (lines 527-530)
+- Expanded single-line try-catch in `asInt(Object, int)` to multi-line format (lines 538-543)
+- Expanded single-line try-catch in `asDouble(Object, double)` to multi-line format (lines 544-549)
+- Improves visual consistency with existing multi-line try-catch blocks (lines 498-502, 509-513)
 
-✅ **[blocker]** LegacyMealImportService.java:83 — sourceRows parameter undocumented. Added comprehensive javadoc to `importOnce()` explaining parameter structure, processing order, and error semantics.
+✅ **[nit]** Short variable names obscure intent — LegacyMealImportService.java:365, 390
+- Renamed `p` → `prefs` in `importPreferences()`
+- Renamed `t` → `target` in `importWeeklyTargets()`
 
-✅ **[friction]** LegacyImportReport class — Added class-level and method-level javadoc explaining:
-- That migratedBySource() is a success count map per entity type.
-- That failures() contains partial rows with reasons, and does not prevent other rows/types from importing.
-- How to interpret results and decide whether to accept partial import.
+✅ **[nit]** Magic defaults for height and weight — LegacyMealImportService.java:352-353
+- Extracted `DEFAULT_HEIGHT_CM = 170` and `DEFAULT_WEIGHT_KG = 70` as class-level constants with comments
 
-✅ **[friction]** LegacyMealImportService.java:83-101 — No documentation on import semantics. Added javadoc to importOnce() explaining:
-- Idempotent behavior (can only succeed once).
-- Sequential processing of entity types.
-- Partial failure semantics (no rollback).
-- Error handling expectations.
+✅ **[warning]** Fragile uninitialized field fallbacks — LegacyMealImportService.java:367-375
+- Replaced uninitialized field fallbacks with explicit `0` defaults in `importPreferences()`
+- Added clarifying comment: "Use explicit 0 defaults for numeric fields (not implicit uninitialized values)"
 
-✅ **[friction]** importIngredients and similar methods — Added javadoc to importIngredients() and importRecipes() explaining:
-- Which fields are required (upfront validation).
-- Which fields are optional (with specific defaults for each type).
-- Pattern applies to all import methods.
+---
 
-✅ **[comment]** Compatibility rules (lines 40-45) — Enhanced class-level javadoc to clarify:
-- Enum values: case-insensitive matching, unknown → default.
-- Required vs optional field behavior.
-- Updated date format list and epoch-seconds support.
+## Open Issues
 
-✅ **[link]** Legacy format source reference — Added reference section in README pointing to `history/migrating/entities/*` and `history/migrating/repository/parser/*`.
+### [consider] Long methods with repetitive field assignments — LegacyMealImportService.java:201-236, 386-423
+**What:** Two methods exceed 30 lines with many repetitive field assignments:
+- `importRecipes()` (lines 201-236, 35 lines): 20+ `recipe.x = asType(...)` assignments
+- `importWeeklyTargets()` (lines 386-423, 37 lines): 22 assignments in parallel pairs
 
-✅ **[docs]** Example usage — Added comprehensive usage example in README showing:
-- How to construct sourceRows Map.
-- How to call importOnce().
-- How to inspect and interpret the returned report.
+**Why it matters:** Long methods are harder to scan. Repetitive patterns can invite copy-paste bugs.
 
-✅ **[comment]** `EntityLookupHelper.java` — German class and method Javadocs translated to English (this run).
+**Analysis:** Extraction attempted but rejected:
+- `importRecipes()` assigns fields with different types (asInt, asString, asEnum, etc.) and different defaults—no uniform pattern
+- `importWeeklyTargets()` has parallel structure (actual + planned values), but extracting a helper would require reflection, varargs, or map-based approaches
+- All extraction attempts increase complexity (type-safety loss, readability harm) without meaningful LOC reduction
 
-✅ **[nit]** `LegacyMealImportService.java:601` — `LegacyImportReport` Javadoc said "Immutable after construction" which is misleading (the class is mutable during `importOnce` filling). Fixed to accurately describe the mutability contract.
+**Verdict:** Keep as-is. Current code is clear and maintainable for a data migration service. The repetition is intentional and safe (not error-prone).
 
-✅ **[warning]** `LegacyMealImportService.java:266` — `memberId <= 0` validation rejected task-triggered consumption logs (which use `DEFAULT_MEMBER_ID = 0L`). Fixed: relaxed check to `itemId < 0 || memberId < 0`, allowing 0 as a valid "unassigned" sentinel. Added explanatory comment.
+---
+
+## Resolved Issues (Completed in previous runs)
+
+✅ **[blocker]** No README.md — Added comprehensive module documentation.
+
+✅ **[friction]** LegacyMealImportService javadoc — Enhanced with usage examples, error semantics, and data structure documentation.
+
+✅ **[nit]** EntityLookupHelper.java Javadocs — Translated to English, improved clarity.
+
+✅ **[warning]** memberId <= 0 validation — Fixed to allow 0 as a valid "unassigned" sentinel.
+

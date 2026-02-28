@@ -102,19 +102,7 @@ public class BudgetImportUseCase {
 
             // Pattern detection runs after import is fully committed.
             // Failures here must not mark the import as failed.
-            List<RecurringSuggestion> suggestions;
-            try {
-                // Exclude TRANSFER records: BudgetTransactionMapper.toDomain() throws on them
-                // by design (transfers are internal account movements, not income/expense).
-                List<RecurringBudgetTransaction> accountTransactions = repository.loadTransactionsForAccount(accountId).stream()
-                        .filter(r -> r.type() != ImportTransactionType.TRANSFER)
-                        .map(BudgetTransactionMapper::toDomain)
-                        .toList();
-                suggestions = RecurringPatternDetector.detectPatterns(accountTransactions);
-            } catch (Exception e) {
-                Log.w(TAG, "Pattern detection failed after import, suggestions skipped", e);
-                suggestions = List.of();
-            }
+            List<RecurringSuggestion> suggestions = detectRecurringPatternsForAccount(accountId);
 
             return new ImportResult(
                     parsed.transactions().size(),
@@ -173,35 +161,58 @@ public class BudgetImportUseCase {
                 continue;
             }
 
-            // Resolve category: if the parser provided a known category ID, use it; otherwise assign the default category
-            // for this transaction direction (e.g., "Uncategorized Income" or "Uncategorized Expense").
-            String categoryId = parsed.categoryId();
-            boolean categoryKnown = categoryId != null && repository.isKnownCategory(categoryId);
-
-            if (categoryKnown) {
-                recognizedCategories++;
-            } else {
-                categoryId = repository.findDefaultCategoryId(
-                        TransactionDirection.fromAmountCents(parsed.amountCents()));
-            }
+            // Resolve category and track recognition.
+            var categoryResolution = resolveCategoryForTransaction(parsed.categoryId(), parsed.amountCents());
 
             newTransactions.add(RecurringBudgetTransaction.forImport(
                     /* id= */ null,
                     accountId,
                     parsed.amountCents(),
                     parsed.bookingDate(),
-                    categoryId,
+                    categoryResolution.categoryId(),
                     parsed.note(),
                     parsed.payee(),
                     txHash,
                     importId,
                     /* parentRecurringId= */ null
             ));
+
+            if (categoryResolution.isKnown()) {
+                recognizedCategories++;
+            }
         }
         return new ImportComputation(newTransactions, duplicates, recognizedCategories);
     }
 
+    /**
+     * Resolves the category for a transaction: uses the provided category if known, otherwise assigns the default.
+     *
+     * @param providedCategoryId category ID from the parser (may be null)
+     * @param amountCents transaction amount to determine direction for default category
+     * @return category resolution containing the final category ID and whether it was recognized
+     */
+    private CategoryResolution resolveCategoryForTransaction(String providedCategoryId, long amountCents) {
+        // If the parser provided a known category ID, use it; otherwise assign the default category
+        // for this transaction direction (e.g., "Uncategorized Income" or "Uncategorized Expense").
+        boolean isKnown = providedCategoryId != null && repository.isKnownCategory(providedCategoryId);
+        String categoryId = isKnown
+                ? providedCategoryId
+                : repository.findDefaultCategoryId(TransactionDirection.fromAmountCents(amountCents));
+        return new CategoryResolution(categoryId, isKnown);
+    }
+
+    /**
+     * Computes the SHA-256 hash of the given byte array.
+     *
+     * @param data the data to hash (must not be null)
+     * @return the hex-encoded SHA-256 hash
+     * @throws IllegalArgumentException if data is null
+     * @throws IllegalStateException if SHA-256 algorithm is unavailable
+     */
     private static String sha256(byte[] data) {
+        if (data == null) {
+            throw new IllegalArgumentException("data must not be null");
+        }
         try {
             byte[] hash = MessageDigest.getInstance("SHA-256").digest(data);
             return HexFormat.of().formatHex(hash);
@@ -230,6 +241,30 @@ public class BudgetImportUseCase {
         String normalized = payee != null ? payee.trim().replace(" ", "") : "";
         String payeePart = normalized.substring(0, Math.min(PAYEE_PREFIX_MAX_LENGTH, normalized.length()));
         return date + "_" + amountCents + "_" + payeePart;
+    }
+
+    /**
+     * Detects recurring patterns in transactions for a given account (best-effort; failures are logged and ignored).
+     *
+     * <p>Loads all transactions from the account, filters out transfers (which are internal account movements,
+     * not income/expense), and analyzes them for recurring patterns. Failures do not affect the import result.
+     *
+     * @param accountId the account to analyze
+     * @return list of recurring suggestions, or empty list if detection fails
+     */
+    private List<RecurringSuggestion> detectRecurringPatternsForAccount(String accountId) {
+        try {
+            // Exclude TRANSFER records: BudgetTransactionMapper.toDomain() throws on them
+            // by design (transfers are internal account movements, not income/expense).
+            List<RecurringBudgetTransaction> accountTransactions = repository.loadTransactionsForAccount(accountId).stream()
+                    .filter(r -> r.type() != ImportTransactionType.TRANSFER)
+                    .map(BudgetTransactionMapper::toDomain)
+                    .toList();
+            return RecurringPatternDetector.detectPatterns(accountTransactions);
+        } catch (Exception e) {
+            Log.w(TAG, "Pattern detection failed after import, suggestions skipped", e);
+            return List.of();
+        }
     }
 
     public interface ImportCallback {
@@ -263,6 +298,9 @@ public class BudgetImportUseCase {
     private record ImportComputation(List<RecurringBudgetTransaction> newTransactions,
                                      int duplicates,
                                      int recognizedCategories) {
+    }
+
+    private record CategoryResolution(String categoryId, boolean isKnown) {
     }
 
     private static String safeErrorMessage(Exception exception) {

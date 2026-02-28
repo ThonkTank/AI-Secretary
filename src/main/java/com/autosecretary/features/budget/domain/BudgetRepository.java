@@ -92,17 +92,20 @@ public interface BudgetRepository {
      * Inserts a transfer as two linked transactions: a debit on {@code sourceAccountId} and a
      * credit on {@code targetAccountId}. Both rows store each other's ID in their
      * {@code linkedTransactionId} column so the pair can be updated/deleted atomically.
+     *
+     * @param details encapsulates source account, target account, amount, date, and note
      */
-    void createTransfer(String sourceAccountId, String targetAccountId, long amountCents,
-                        LocalDate bookingDate, String note);
+    void createTransfer(TransferDetails details);
 
     /**
      * Updates both legs of an existing transfer identified by {@code transactionId} (either
      * leg's ID may be passed). Returns {@code true} if the transfer was found and updated,
      * {@code false} if the transaction or its linked counterpart could not be located.
+     *
+     * @param transactionId ID of one leg of the transfer pair
+     * @param details encapsulates source account, target account, amount, date, and note
      */
-    boolean updateTransfer(String transactionId, String sourceAccountId, String targetAccountId,
-                           long amountCents, LocalDate bookingDate, String note);
+    boolean updateTransfer(String transactionId, TransferDetails details);
 
     void saveBudgetLimit(BudgetLimit budgetLimit);
     List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth);

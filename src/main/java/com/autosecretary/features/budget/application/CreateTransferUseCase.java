@@ -1,6 +1,7 @@
 package com.autosecretary.features.budget.application;
 
 import com.autosecretary.features.budget.domain.BudgetRepository;
+import com.autosecretary.features.budget.domain.TransferDetails;
 
 import java.time.LocalDate;
 
@@ -41,7 +42,8 @@ public class CreateTransferUseCase {
             return validation;
         }
 
-        repository.createTransfer(sourceAccountId, targetAccountId, amountCents, bookingDate, note);
+        TransferDetails details = new TransferDetails(sourceAccountId, targetAccountId, amountCents, bookingDate, note);
+        repository.createTransfer(details);
         return Result.ok();
     }
 
@@ -58,8 +60,8 @@ public class CreateTransferUseCase {
         if (!validation.success) {
             return validation;
         }
-        boolean updated = repository.updateTransfer(transactionId, sourceAccountId, targetAccountId,
-                amountCents, bookingDate, note);
+        TransferDetails details = new TransferDetails(sourceAccountId, targetAccountId, amountCents, bookingDate, note);
+        boolean updated = repository.updateTransfer(transactionId, details);
         if (!updated) {
             return Result.error("Überweisung ist unvollständig und konnte nicht aktualisiert werden.");
         }

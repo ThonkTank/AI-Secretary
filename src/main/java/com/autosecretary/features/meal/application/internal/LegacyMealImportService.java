@@ -74,6 +74,9 @@ public class LegacyMealImportService {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     );
 
+    private static final int DEFAULT_HEIGHT_CM = 170;  // Adult average
+    private static final int DEFAULT_WEIGHT_KG = 70;   // Adult average
+
     private final RecipeRepository recipeRepository;
     private final MealRepository mealRepository;
     private final PantryRepository pantryRepository;
@@ -349,8 +352,8 @@ public class LegacyMealImportService {
             member.name = name;
             member.birthYear = asInt(row.get("birth_year"), LocalDate.now().getYear());
             member.gender = asEnum(HouseholdMember.Gender.class, row.get("gender"), HouseholdMember.Gender.OTHER);
-            member.heightCm = asInt(row.get("height_cm"), 170);
-            member.weightKg = asInt(row.get("weight_kg"), 70);
+            member.heightCm = asInt(row.get("height_cm"), DEFAULT_HEIGHT_CM);
+            member.weightKg = asInt(row.get("weight_kg"), DEFAULT_WEIGHT_KG);
             member.targetWeightKg = asInt(row.get("target_weight_kg"), member.weightKg);
             member.activityLevel = asEnum(HouseholdMember.ActivityLevel.class, row.get("activity_level"), HouseholdMember.ActivityLevel.MODERATE);
             member.isActive = asBoolean(row.get("is_active"), true);
@@ -362,19 +365,20 @@ public class LegacyMealImportService {
 
     private void importPreferences(List<Map<String, Object>> rows, LegacyImportReport report) {
         importRows(SOURCE_PREFERENCES, rows, report, (row, idx) -> {
-            CookingPreferences p = new CookingPreferences();
-            p.id = asLong(row.get("id"));
-            p.maxBreakfastCooking = asInt(row.get("max_breakfast_cooking"), p.maxBreakfastCooking);
-            p.maxLunchCooking = asInt(row.get("max_lunch_cooking"), p.maxLunchCooking);
-            p.maxDinnerCooking = asInt(row.get("max_dinner_cooking"), p.maxDinnerCooking);
-            p.maxSnackCooking = asInt(row.get("max_snack_cooking"), p.maxSnackCooking);
-            p.breakfastCookingDays = parseDaysOfWeek(asString(row.get("breakfast_cooking_days")));
-            p.lunchCookingDays = parseDaysOfWeek(asString(row.get("lunch_cooking_days")));
-            p.dinnerCookingDays = parseDaysOfWeek(asString(row.get("dinner_cooking_days")));
-            p.snackCookingDays = parseDaysOfWeek(asString(row.get("snack_cooking_days")));
-            p.quickPrepMaxMinutes = asInt(row.get("quick_prep_max_minutes"), p.quickPrepMaxMinutes);
+            CookingPreferences prefs = new CookingPreferences();
+            prefs.id = asLong(row.get("id"));
+            // Use explicit 0 defaults for numeric fields (not implicit uninitialized values)
+            prefs.maxBreakfastCooking = asInt(row.get("max_breakfast_cooking"), 0);
+            prefs.maxLunchCooking = asInt(row.get("max_lunch_cooking"), 0);
+            prefs.maxDinnerCooking = asInt(row.get("max_dinner_cooking"), 0);
+            prefs.maxSnackCooking = asInt(row.get("max_snack_cooking"), 0);
+            prefs.breakfastCookingDays = parseDaysOfWeek(asString(row.get("breakfast_cooking_days")));
+            prefs.lunchCookingDays = parseDaysOfWeek(asString(row.get("lunch_cooking_days")));
+            prefs.dinnerCookingDays = parseDaysOfWeek(asString(row.get("dinner_cooking_days")));
+            prefs.snackCookingDays = parseDaysOfWeek(asString(row.get("snack_cooking_days")));
+            prefs.quickPrepMaxMinutes = asInt(row.get("quick_prep_max_minutes"), 0);
 
-            mealRepository.saveCookingPreferences(p);
+            mealRepository.saveCookingPreferences(prefs);
             return true;
         });
     }
@@ -387,33 +391,33 @@ public class LegacyMealImportService {
                 return false;
             }
 
-            WeeklyFoodTarget t = new WeeklyFoodTarget();
-            t.id = asLong(row.get("id"));
-            t.periodKey = periodKey;
-            t.grainGrams = asInt(row.get("grain_grams"), 0);
-            t.potatoGrams = asInt(row.get("potato_grams"), 0);
-            t.vegetableGrams = asInt(row.get("vegetable_grams"), 0);
-            t.fruitGrams = asInt(row.get("fruit_grams"), 0);
-            t.dairyGrams = asInt(row.get("dairy_grams"), 0);
-            t.meatGrams = asInt(row.get("meat_grams"), 0);
-            t.fishGrams = asInt(row.get("fish_grams"), 0);
-            t.eggGrams = asInt(row.get("egg_grams"), 0);
-            t.fatGrams = asInt(row.get("fat_grams"), 0);
-            t.legumeGrams = asInt(row.get("legume_grams"), 0);
-            t.nutGrams = asInt(row.get("nut_grams"), 0);
-            t.grainPlanned = asInt(row.get("grain_planned"), 0);
-            t.potatoPlanned = asInt(row.get("potato_planned"), 0);
-            t.vegetablePlanned = asInt(row.get("vegetable_planned"), 0);
-            t.fruitPlanned = asInt(row.get("fruit_planned"), 0);
-            t.dairyPlanned = asInt(row.get("dairy_planned"), 0);
-            t.meatPlanned = asInt(row.get("meat_planned"), 0);
-            t.fishPlanned = asInt(row.get("fish_planned"), 0);
-            t.eggPlanned = asInt(row.get("egg_planned"), 0);
-            t.fatPlanned = asInt(row.get("fat_planned"), 0);
-            t.legumePlanned = asInt(row.get("legume_planned"), 0);
-            t.nutPlanned = asInt(row.get("nut_planned"), 0);
+            WeeklyFoodTarget target = new WeeklyFoodTarget();
+            target.id = asLong(row.get("id"));
+            target.periodKey = periodKey;
+            target.grainGrams = asInt(row.get("grain_grams"), 0);
+            target.potatoGrams = asInt(row.get("potato_grams"), 0);
+            target.vegetableGrams = asInt(row.get("vegetable_grams"), 0);
+            target.fruitGrams = asInt(row.get("fruit_grams"), 0);
+            target.dairyGrams = asInt(row.get("dairy_grams"), 0);
+            target.meatGrams = asInt(row.get("meat_grams"), 0);
+            target.fishGrams = asInt(row.get("fish_grams"), 0);
+            target.eggGrams = asInt(row.get("egg_grams"), 0);
+            target.fatGrams = asInt(row.get("fat_grams"), 0);
+            target.legumeGrams = asInt(row.get("legume_grams"), 0);
+            target.nutGrams = asInt(row.get("nut_grams"), 0);
+            target.grainPlanned = asInt(row.get("grain_planned"), 0);
+            target.potatoPlanned = asInt(row.get("potato_planned"), 0);
+            target.vegetablePlanned = asInt(row.get("vegetable_planned"), 0);
+            target.fruitPlanned = asInt(row.get("fruit_planned"), 0);
+            target.dairyPlanned = asInt(row.get("dairy_planned"), 0);
+            target.meatPlanned = asInt(row.get("meat_planned"), 0);
+            target.fishPlanned = asInt(row.get("fish_planned"), 0);
+            target.eggPlanned = asInt(row.get("egg_planned"), 0);
+            target.fatPlanned = asInt(row.get("fat_planned"), 0);
+            target.legumePlanned = asInt(row.get("legume_planned"), 0);
+            target.nutPlanned = asInt(row.get("nut_planned"), 0);
 
-            mealRepository.saveWeeklyFoodTarget(t);
+            mealRepository.saveWeeklyFoodTarget(target);
             return true;
         });
     }
@@ -520,7 +524,11 @@ public class LegacyMealImportService {
     private static Long asLong(Object raw) {
         if (raw == null) return null;
         if (raw instanceof Number n) return n.longValue();
-        try { return Long.parseLong(raw.toString().trim()); } catch (NumberFormatException ignored) { return null; }
+        try {
+            return Long.parseLong(raw.toString().trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private static long asLong(Object raw, long fallback) {
@@ -531,13 +539,21 @@ public class LegacyMealImportService {
     private static int asInt(Object raw, int fallback) {
         if (raw == null) return fallback;
         if (raw instanceof Number n) return n.intValue();
-        try { return Integer.parseInt(raw.toString().trim()); } catch (NumberFormatException ignored) { return fallback; }
+        try {
+            return Integer.parseInt(raw.toString().trim());
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
     }
 
     private static double asDouble(Object raw, double fallback) {
         if (raw == null) return fallback;
         if (raw instanceof Number n) return n.doubleValue();
-        try { return Double.parseDouble(raw.toString().trim()); } catch (NumberFormatException ignored) { return fallback; }
+        try {
+            return Double.parseDouble(raw.toString().trim());
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
     }
 
     private static boolean asBoolean(Object raw, boolean fallback) {

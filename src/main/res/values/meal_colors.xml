@@ -7,10 +7,4 @@
          Naming: meal_[domain]_[role] — see colors.xml header for full naming conventions.
          For new colors, use semantic names that describe purpose, not appearance. -->
     <color name="meal_surface_overlay">#22FFFFFF</color>
-
-    <!-- Meal feature surface colors (inherit from task color palette for consistency) -->
-    <color name="meal_color_surface">@color/task_color_surface</color>
-    <color name="meal_color_background">@color/task_color_background</color>
-    <color name="meal_color_on_surface">@color/task_color_on_surface</color>
-    <color name="meal_color_on_surface_variant">@color/task_color_on_surface_variant</color>
 </resources>

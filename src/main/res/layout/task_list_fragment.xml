@@ -132,14 +132,14 @@
             android:visibility="gone"
             android:hint="@string/task_list_search_hint"
             app:endIconMode="clear_text"
-            style="@style/Widget.AISecretary.Editor.TextFieldLayout">
+            style="@style/Widget.AutoSecretary.Editor.TextFieldLayout">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/TaskSearchInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:imeOptions="actionDone"
-                style="@style/Widget.AISecretary.Editor.TextField" />
+                style="@style/Widget.AutoSecretary.Editor.TextField" />
         </com.google.android.material.textfield.TextInputLayout>
 
     </LinearLayout>

@@ -39,3 +39,28 @@
 ✅ [stale] BudgetRecurringTemplateEntity — corrected nextDue Javadoc (was "not persisted"; it is persisted and updated by synchronizeRecurringTemplateState)
 ✅ [comment] BudgetTransactionEntity — added inline comment explaining @ColumnInfo(name = "type") historical naming for direction field
 ✅ [clarity] BudgetRecurringTemplateEntity — added inline comment explaining why transactionType column differs from other entities' "type" column names
+
+## Elegance Review (2026-02-28)
+
+Code in this directory is already quite elegant and well-written. Reviewed all 6 entities for readability, expression clarity, expressiveness, flow & rhythm, and conciseness. Findings:
+
+**No new elegance issues identified.** Strengths include:
+- Clear, self-documenting field names (e.g., `rolloverCapOverrunCents`, `normalizedPayee`, `yearMonth`)
+- Excellent documentation without verbosity (class-level Javadoc, field explanations, invariants)
+- Good invariant management (`BudgetTransactionEntity.setBookingDate()`)
+- Clean constructor and factory patterns
+- Logical organization and idiomatic Room entity style
+
+The existing backlog items (5 deferred) are all **architectural/design concerns** (data clumps, overloaded fields, column naming) that require schema changes or domain refactoring, not code elegance improvements.
+
+## KISS / Simplicity Review (2026-02-28)
+
+Reviewed all 6 entities for KISS violations: unnecessary abstractions, redundant types, excessive boilerplate, overcomplex control flow, and oversized APIs. Findings:
+
+**No new KISS issues identified.** Architecture confirms:
+- **Constructors are justified:** convenience constructors on `BudgetCategory` and `BudgetAccount` are actively used in `BudgetSeedService` and reduce initialization boilerplate. `BudgetRecurringTemplateEntity.fromSuggestion()` factory prevents partial construction and is good design.
+- **Defaults are sensible:** all field defaults match idiomatic Room patterns and domain intent.
+- **No field redundancy:** each field serves a distinct purpose. Multi-field constructs (`rolloverEnabled` + rollover amounts) form genuine feature bundles, not arbitrary clumps (unlike the `totalTransactions`/`importedTransactions`/`autoCategorized` group, already flagged as data clump).
+- **No unnecessary indirection:** setBookingDate() on `BudgetTransactionEntity` is necessary for invariant maintenance.
+
+The 5 existing backlog items (all deferred) remain the only identified structural improvements; they all require database schema versioning to implement.

@@ -16,20 +16,20 @@
 
         <!-- Basic Info -->
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+            style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/task_editor_hint_title">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/EditTitle"
-                style="@style/Widget.AISecretary.Editor.TextField"
+                style="@style/Widget.AutoSecretary.Editor.TextField"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+            style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
@@ -37,7 +37,7 @@
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/EditDescription"
-                style="@style/Widget.AISecretary.Editor.TextField"
+                style="@style/Widget.AutoSecretary.Editor.TextField"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minLines="2"/>
@@ -50,13 +50,13 @@
             android:orientation="vertical">
 
             <TextView
-                style="@style/TextAppearance.AISecretary.Editor.Label"
+                style="@style/TextAppearance.AutoSecretary.Editor.Label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/task_editor_goal_appearance_label"/>
 
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_xs"
@@ -64,7 +64,7 @@
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/EditGoalIcon"
-                    style="@style/Widget.AISecretary.Editor.TextField"
+                    style="@style/Widget.AutoSecretary.Editor.TextField"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:maxLength="2"/>
@@ -80,7 +80,7 @@
 
         <Spinner
             android:id="@+id/EditPriority"
-            style="@style/Widget.AISecretary.Editor.Spinner"
+            style="@style/Widget.AutoSecretary.Editor.Spinner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"/>
@@ -94,14 +94,14 @@
             android:layout_marginTop="@dimen/spacing_md">
 
             <TextView
-                style="@style/TextAppearance.AISecretary.Editor.Label"
+                style="@style/TextAppearance.AutoSecretary.Editor.Label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/task_editor_deadline_label"/>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/DeadlineInputLayout"
-                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -112,7 +112,7 @@
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/EditDeadline"
-                    style="@style/Widget.AISecretary.Editor.TextField"
+                    style="@style/Widget.AutoSecretary.Editor.TextField"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:focusable="false"
@@ -134,7 +134,7 @@
 
         <Spinner
             android:id="@+id/EditSchedulingType"
-            style="@style/Widget.AISecretary.Editor.Spinner"
+            style="@style/Widget.AutoSecretary.Editor.Spinner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"/>
@@ -149,56 +149,56 @@
             android:visibility="gone">
 
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/task_editor_fixed_date_label">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/EditFixedDate"
-                    style="@style/Widget.AISecretary.Editor.TextField"
+                    style="@style/Widget.AutoSecretary.Editor.TextField"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="date"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/task_editor_fixed_start_label">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/EditFixedStart"
-                    style="@style/Widget.AISecretary.Editor.TextField"
+                    style="@style/Widget.AutoSecretary.Editor.TextField"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="time"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/task_editor_fixed_end_label">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/EditFixedEnd"
-                    style="@style/Widget.AISecretary.Editor.TextField"
+                    style="@style/Widget.AutoSecretary.Editor.TextField"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="time"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/task_editor_fixed_duration_label">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/EditFixedDuration"
-                    style="@style/Widget.AISecretary.Editor.TextField"
+                    style="@style/Widget.AutoSecretary.Editor.TextField"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="number"/>
@@ -206,41 +206,41 @@
         </LinearLayout>
 
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+            style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/task_editor_budget_required_cents_label">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/EditBudgetRequiredCents"
-                style="@style/Widget.AISecretary.Editor.TextField"
+                style="@style/Widget.AutoSecretary.Editor.TextField"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="number"/>
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+            style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/task_editor_budget_account_id_label">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/EditBudgetAccountId"
-                style="@style/Widget.AISecretary.Editor.TextField"
+                style="@style/Widget.AutoSecretary.Editor.TextField"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+            style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/task_editor_budget_category_id_label">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/EditBudgetCategoryId"
-                style="@style/Widget.AISecretary.Editor.TextField"
+                style="@style/Widget.AutoSecretary.Editor.TextField"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>
         </com.google.android.material.textfield.TextInputLayout>
@@ -259,7 +259,7 @@
             android:layout_marginTop="@dimen/spacing_sm">
 
             <TextView
-                style="@style/TextAppearance.AISecretary.Editor.Label"
+                style="@style/TextAppearance.AutoSecretary.Editor.Label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/task_editor_duration_label"/>
@@ -272,7 +272,7 @@
                 android:layout_marginTop="@dimen/spacing_sm">
 
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -280,14 +280,14 @@
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/EditMinDuration"
-                        style="@style/Widget.AISecretary.Editor.TextField"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="number"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
-                    style="@style/TextAppearance.AISecretary.Editor.Label"
+                    style="@style/TextAppearance.AutoSecretary.Editor.Label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/task_editor_range_separator"
@@ -295,7 +295,7 @@
                     android:layout_marginEnd="@dimen/spacing_xs"/>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -303,7 +303,7 @@
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/EditMaxDuration"
-                        style="@style/Widget.AISecretary.Editor.TextField"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="number"/>
@@ -320,13 +320,13 @@
             android:layout_marginTop="@dimen/spacing_sm">
 
             <TextView
-                style="@style/TextAppearance.AISecretary.Editor.Label"
+                style="@style/TextAppearance.AutoSecretary.Editor.Label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/task_editor_cooldown_label"/>
 
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -334,7 +334,7 @@
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/EditCooldown"
-                    style="@style/Widget.AISecretary.Editor.TextField"
+                    style="@style/Widget.AutoSecretary.Editor.TextField"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="number"/>
@@ -364,14 +364,14 @@
                 android:gravity="center_vertical">
 
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/EditReps"
-                        style="@style/Widget.AISecretary.Editor.TextField"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="number"
@@ -379,7 +379,7 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
-                    style="@style/TextAppearance.AISecretary.Editor.Label"
+                    style="@style/TextAppearance.AutoSecretary.Editor.Label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/task_editor_repetition_format"
@@ -387,14 +387,14 @@
                     android:layout_marginEnd="@dimen/spacing_sm"/>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/EditPerPeriod"
-                        style="@style/Widget.AISecretary.Editor.TextField"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="number"
@@ -404,7 +404,7 @@
 
             <Spinner
                 android:id="@+id/EditPeriodUnit"
-                style="@style/Widget.AISecretary.Editor.Spinner"
+                style="@style/Widget.AutoSecretary.Editor.Spinner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_sm"/>
@@ -454,13 +454,13 @@
                 android:gravity="center_vertical">
 
                 <TextView
-                    style="@style/TextAppearance.AISecretary.Editor.Label"
+                    style="@style/TextAppearance.AutoSecretary.Editor.Label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/task_editor_unit_label"/>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -469,7 +469,7 @@
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/EditUnit"
-                        style="@style/Widget.AISecretary.Editor.TextField"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"/>
                 </com.google.android.material.textfield.TextInputLayout>
@@ -487,13 +487,13 @@
                     android:gravity="center_vertical">
 
                     <TextView
-                        style="@style/TextAppearance.AISecretary.Editor.Label"
+                        style="@style/TextAppearance.AutoSecretary.Editor.Label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/task_editor_target_label"/>
 
                     <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -501,7 +501,7 @@
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/EditTarget"
-                            style="@style/Widget.AISecretary.Editor.TextField"
+                            style="@style/Widget.AutoSecretary.Editor.TextField"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="number"/>
@@ -516,13 +516,13 @@
                     android:layout_marginTop="@dimen/spacing_sm">
 
                     <TextView
-                        style="@style/TextAppearance.AISecretary.Editor.Label"
+                        style="@style/TextAppearance.AutoSecretary.Editor.Label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/task_editor_current_label"/>
 
                     <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -530,7 +530,7 @@
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/EditCurrent"
-                            style="@style/Widget.AISecretary.Editor.TextField"
+                            style="@style/Widget.AutoSecretary.Editor.TextField"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="number"/>
@@ -550,7 +550,7 @@
                 android:orientation="vertical">
 
                 <TextView
-                    style="@style/TextAppearance.AISecretary.Editor.Label"
+                    style="@style/TextAppearance.AutoSecretary.Editor.Label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/task_editor_per_repetition_label"/>
@@ -563,7 +563,7 @@
                     android:layout_marginTop="@dimen/spacing_sm">
 
                     <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -571,14 +571,14 @@
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/EditMinPerRep"
-                            style="@style/Widget.AISecretary.Editor.TextField"
+                            style="@style/Widget.AutoSecretary.Editor.TextField"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="number"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <TextView
-                        style="@style/TextAppearance.AISecretary.Editor.Label"
+                        style="@style/TextAppearance.AutoSecretary.Editor.Label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/task_editor_range_separator"
@@ -586,7 +586,7 @@
                         android:layout_marginEnd="@dimen/spacing_xs"/>
 
                     <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.AISecretary.Editor.TextFieldLayout"
+                        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -594,7 +594,7 @@
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/EditMaxPerRep"
-                            style="@style/Widget.AISecretary.Editor.TextField"
+                            style="@style/Widget.AutoSecretary.Editor.TextField"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="number"/>
