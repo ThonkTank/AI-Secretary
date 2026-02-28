@@ -12,10 +12,8 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Repository for per-day task schedule configuration with lazy-loaded caching.
@@ -42,7 +40,6 @@ import java.util.stream.Collectors;
 public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
     private static final LocalTime DEFAULT_START = TaskPrefSlotFactory.DEFAULT_START_TIME;
     private static final LocalTime DEFAULT_END = TaskPrefSlotFactory.DEFAULT_END_TIME;
-    private static final int FALLBACK_WINDOW_DURATION_HOURS = 1;
 
     private final TaskScheduleConfigDao dao;
     private Map<DayOfWeek, TaskScheduleConfig> cachedByDay;
@@ -98,7 +95,7 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
         Map<DayOfWeek, TaskScheduleConfig> byDay = new EnumMap<>(DayOfWeek.class);
         for (TaskScheduleConfig config : source) {
             if (config != null && config.dayOfWeek != null) {
-                byDay.put(config.dayOfWeek, normalize(config.dayOfWeek, config.startTime, config.endTime));
+                byDay.put(config.dayOfWeek, normalize(config));
             }
         }
         for (DayOfWeek day : DayOfWeek.values()) {
@@ -117,13 +114,6 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
         );
     }
 
-    /**
-     * Ensures the cache is initialized, loading from DAO only if needed.
-     *
-     * <p>This defers database access until the first scheduling window lookup, reducing startup
-     * time if the config is never queried during a session. Once loaded, the cache persists until
-     * explicitly invalidated by {@code saveAll()}.
-     */
     private void ensureCached() {
         if (cachedByDay == null) {
             cachedByDay = createNormalizedConfigMap(dao.readAll());
@@ -141,7 +131,7 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
     private List<TaskScheduleConfig> toListByDay(Map<DayOfWeek, TaskScheduleConfig> configByDay) {
         return Arrays.stream(DayOfWeek.values())
                 .map(configByDay::get)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -154,21 +144,15 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
      *       ensuring every day has a valid (non-inverted) scheduling window</li>
      * </ul>
      *
-     * @param dayOfWeek The day being configured
-     * @param start The desired start time (or null for default)
-     * @param end The desired end time (or null for default)
+     * @param config The schedule config to normalize
      * @return A normalized, valid TaskScheduleConfig
      */
-    private TaskScheduleConfig normalize(DayOfWeek dayOfWeek, LocalTime start, LocalTime end) {
-        LocalTime safeStart = orDefault(start, DEFAULT_START);
-        LocalTime safeEnd = orDefault(end, DEFAULT_END);
+    private TaskScheduleConfig normalize(TaskScheduleConfig config) {
+        LocalTime safeStart = config.startTime != null ? config.startTime : DEFAULT_START;
+        LocalTime safeEnd = config.endTime != null ? config.endTime : DEFAULT_END;
         if (!safeEnd.isAfter(safeStart)) {
-            safeEnd = safeStart.plusHours(FALLBACK_WINDOW_DURATION_HOURS);
+            safeEnd = safeStart.plusHours(1);
         }
-        return new TaskScheduleConfig(dayOfWeek, safeStart, safeEnd);
-    }
-
-    private LocalTime orDefault(LocalTime value, LocalTime defaultValue) {
-        return value != null ? value : defaultValue;
+        return new TaskScheduleConfig(config.dayOfWeek, safeStart, safeEnd);
     }
 }

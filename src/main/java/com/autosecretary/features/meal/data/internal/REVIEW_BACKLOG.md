@@ -11,17 +11,18 @@
 
 ---
 
-### [warning] Constructor parameter count + fragile lambda pattern
-**Files:** `BaseCollectionDao.java:22-32`, `repository/StorageMealRepository.java:34-38`, `repository/StoragePantryRepository.java:21-22`, `repository/StorageRecipeRepository.java:20-21`
+### ✅ [FIXED] Constructor parameter count + fragile lambda pattern
+**Files:** `BaseCollectionDao.java:57-66`, `EntityIdHandler.java` (new), `repository/StorageMealRepository.java:50-54`, `repository/StoragePantryRepository.java:31-32`, `repository/StorageRecipeRepository.java:30-31`
 
 *(Promoted from dao/REVIEW_BACKLOG.md)*
 
-`BaseCollectionDao` constructor takes 5 parameters, at the threshold for "too many parameters" smell. More problematically, `idAccessor` and `idSetter` are function-type parameters that every repository must implement as lambdas. This pattern:
-- Requires manual lambda creation in each DAO instantiation
-- Will multiply if more entity metadata is needed (e.g., versionAccessor, timestampSetter)
-- Is fragile: a miswritten lambda (e.g., accessing wrong field) fails silently at runtime
+**Resolution:** Created `EntityIdHandler<T>` interface with `getId(T)` and `setId(T, Long)` methods. Updated `BaseCollectionDao` to accept a single `EntityIdHandler<T>` parameter instead of separate `idAccessor` and `idSetter` lambdas. Reduced constructor parameters from 5 to 4. Created `EntityIdHandler.of(getter, setter)` factory method to wrap lambdas. Updated all three repositories to use the new pattern.
 
-**Suggested fix:** Consider a callback interface (e.g., `EntityIdHandler<T>`) that encapsulates id get/set. Could reduce to 4 constructor params and make ID-handling logic reusable.
+**Impact:**
+- Constructor parameter count reduced from 5 to 4
+- Id-handling logic now centralized and more discoverable
+- Eliminated repetitive lambda boilerplate across 9 DAO instantiations
+- No behavior changes; build verified clean
 
 ---
 

@@ -1,6 +1,6 @@
 # /shared — Code Review Backlog
 
-## [warning] Manual XML synchronization of WidgetConfiguration constant
+## [consider] Manual XML synchronization of WidgetConfiguration constant
 
 **Location:** `WidgetConfiguration.java:31`
 
@@ -24,4 +24,4 @@ The `WIDGET_UPDATE_PERIOD_MILLIS` constant must be manually kept in sync with tw
 2. Move widget configuration to a shared resource or constants that can be read by both Java and XML (requires significant refactoring)
 3. Continue current approach with enhanced tool-assisted validation
 
-**Recommendation:** Defer. While this is a real smell, fixing it requires either build system changes (beyond code review scope) or substantial architecture changes. The current documentation mitigates risk adequately for now. A future cycle should consider adding build-time verification.
+**Recommendation:** Defer. This requires build system changes (outside code review scope) or substantial architecture changes. The current documentation mitigates risk adequately. A future DevOps cycle should add build-time verification.

@@ -77,10 +77,6 @@ public class InMemoryMealStorage implements MealStorage {
         }
     }
 
-    private long nextId(String collection) {
-        return counters.merge(collection, 1L, Long::sum);
-    }
-
     private long getOrGenerateId(String collection, Long explicitId) {
         if (explicitId != null) {
             // Bump the counter to ensure future auto-generated ids never collide with any
@@ -89,7 +85,7 @@ public class InMemoryMealStorage implements MealStorage {
             counters.put(collection, Math.max(counters.getOrDefault(collection, 0L), explicitId));
             return explicitId;
         }
-        return nextId(collection);
+        return counters.merge(collection, 1L, Long::sum);
     }
 
     private Map<Long, Map<String, Object>> getRowsOrEmpty(String collection) {

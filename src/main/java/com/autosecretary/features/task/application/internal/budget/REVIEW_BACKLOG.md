@@ -2,19 +2,21 @@
 
 ## Deferred Issues
 
-### [consider] Single-implementation interface may be over-engineered
+### [keep] Single-implementation interface is architecturally justified
 **File:** TaskBudgetEligibilityFromBudgetLookup.java:13 (implements TaskBudgetEligibilityService)
-**Why:** `TaskBudgetEligibilityService` is an interface with only one implementation. Introducing an interface-implementation pair for a single strategy adds abstraction overhead.
+**Interface definition:** features/task/domain/scheduling/TaskBudgetEligibilityService.java
 
-**Observation:**
-The interface is explicitly mentioned in CLAUDE.md as a "domain contract used by task scheduling," suggesting intentional design for future extensibility. However, by strict KISS principles, abstraction should be added only when needed (e.g., when a second implementation emerges).
+**Analysis:**
+`TaskBudgetEligibilityService` is an interface with exactly one implementation (`TaskBudgetEligibilityFromBudgetLookup`). By strict KISS principles, single-implementation interfaces should be removed. However, this interface serves a legitimate architectural purpose:
 
-**Trade-off:**
-- Removing the interface would eliminate the layer and make task scheduling directly depend on the concrete implementation
-- Keeping it enables swapping implementations later (calendar-based, AI-predicted eligibility, etc.)
-- The cost of the abstraction is low (one interface, one implementation), so over-engineering is mild
+1. **Clean layering:** Separates domain scheduling logic (task prioritization, slot scoring) from budget implementation details. The schedulers (`TaskScorer`, `DefaultTaskSlotGenerator`) depend on the interface, not the concrete implementation.
+2. **Low cost:** One interface + one implementation has minimal overhead.
+3. **Existing design:** Not a speculative abstraction. CLAUDE.md explicitly documents this as a "domain contract used by task scheduling."
+4. **Plausible future use:** Budget eligibility could reasonably be implemented differently (calendar-based constraints, external API, AI prediction) without changing scheduling code.
 
-**Status:** Deferred pending product decision. If eligibility strategies remain singular, consider removing the interface pattern when no longer needed.
+**KISS principle applies to NEW abstractions without clear justification. This abstraction provides real architectural value (decoupling domain from implementation) at minimal cost.**
+
+**Verdict:** KEEP. This is not over-engineering; it's appropriate layering for a scheduling domain.
 
 ---
 
@@ -28,6 +30,19 @@ The interface is explicitly mentioned in CLAUDE.md as a "domain contract used by
 **Monitoring:** If a third use case adds this check, extract to a utility method or create a `BudgetCheckRequired` helper.
 
 **Status:** Monitor, defer extraction until pattern stabilizes (3+ instances).
+
+---
+
+## Clean Findings (No Issues)
+
+### Code Quality Assessment
+This module demonstrates excellent KISS design:
+
+- **BookTaskCompletionExpenseUseCase:** Minimal, focused, single responsibility. Account resolution logic (`resolveAccountId()`) is necessary and well-justified. Defensive null checks are cheap and provide safety at negligible cost.
+- **TaskBudgetEligibilityFromBudgetLookup:** Three lines of logic, no over-engineering. The return of `BudgetEligibility.passWithoutBudgetRequirement()` is appropriately semantic.
+- **BudgetEligibility record + factory method:** The convenience factory method provides semantic clarity without unnecessary complexity.
+
+**No additional KISS violations found.**
 
 ---
 

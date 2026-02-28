@@ -19,6 +19,7 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -51,155 +52,172 @@ import java.util.stream.Collectors;
 public class Converters {
     private Converters() {}
 
+    // Generic helpers to reduce boilerplate in converter pairs.
+    private static <T> String serialize(T obj) {
+        return obj != null ? obj.toString() : null;
+    }
+
+    private static <T> T deserialize(String value, Function<String, T> parser) {
+        return value != null ? parser.apply(value) : null;
+    }
+
+    private static <E extends Enum<E>> String fromEnum(E e) {
+        return e != null ? e.name() : null;
+    }
+
+    private static <E extends Enum<E>> E toEnum(String value, Class<E> enumClass) {
+        return value != null ? Enum.valueOf(enumClass, value) : null;
+    }
+
     @TypeConverter
     public static String fromLocalDate(LocalDate date) {
-        return date != null ? date.toString() : null;
+        return serialize(date);
     }
 
     @TypeConverter
     public static LocalDate toLocalDate(String value) {
-        return value != null ? LocalDate.parse(value) : null;
+        return deserialize(value, LocalDate::parse);
     }
 
     @TypeConverter
     public static String fromLocalDateTime(LocalDateTime dateTime) {
-        return dateTime != null ? dateTime.toString() : null;
+        return serialize(dateTime);
     }
 
     @TypeConverter
     public static LocalDateTime toLocalDateTime(String value) {
-        return value != null ? LocalDateTime.parse(value) : null;
+        return deserialize(value, LocalDateTime::parse);
     }
 
     @TypeConverter
     public static String fromLocalTime(LocalTime time) {
-        return time != null ? time.toString() : null;
+        return serialize(time);
     }
 
     @TypeConverter
     public static LocalTime toLocalTime(String value) {
-        return value != null ? LocalTime.parse(value) : null;
+        return deserialize(value, LocalTime::parse);
     }
 
     @TypeConverter
     public static String fromDayOfWeek(DayOfWeek day) {
-        return day != null ? day.name() : null;
+        return fromEnum(day);
     }
 
     @TypeConverter
     public static DayOfWeek toDayOfWeek(String value) {
-        return value != null ? DayOfWeek.valueOf(value) : null;
+        return toEnum(value, DayOfWeek.class);
     }
 
     @TypeConverter
     public static String fromPriority(Priority prio) {
-        return prio != null ? prio.name() : null;
+        return fromEnum(prio);
     }
 
     @TypeConverter
     public static Priority toPriority(String value) {
-        return value != null ? Priority.valueOf(value) : null;
+        return toEnum(value, Priority.class);
     }
 
 
     @TypeConverter
     public static String fromSchedulingType(TaskCore.SchedulingType schedulingType) {
-        return schedulingType != null ? schedulingType.name() : null;
+        return fromEnum(schedulingType);
     }
 
     @TypeConverter
     public static TaskCore.SchedulingType toSchedulingType(String value) {
-        return value != null ? TaskCore.SchedulingType.valueOf(value) : null;
+        return toEnum(value, TaskCore.SchedulingType.class);
     }
 
     @TypeConverter
     public static String fromDisplacementGroupType(TaskSlot.DisplacementGroupType type) {
-        return type != null ? type.name() : null;
+        return fromEnum(type);
     }
 
     @TypeConverter
     public static TaskSlot.DisplacementGroupType toDisplacementGroupType(String value) {
-        return value != null ? TaskSlot.DisplacementGroupType.valueOf(value) : null;
+        return toEnum(value, TaskSlot.DisplacementGroupType.class);
     }
 
     @TypeConverter
     public static String fromMealType(MealType mealType) {
-        return mealType != null ? mealType.name() : null;
+        return fromEnum(mealType);
     }
 
     @TypeConverter
     public static MealType toMealType(String value) {
-        return value != null ? MealType.valueOf(value) : null;
+        return toEnum(value, MealType.class);
     }
 
     @TypeConverter
     public static String fromPeriod(Period period) {
-        return period != null ? period.name() : null;
+        return fromEnum(period);
     }
 
     @TypeConverter
     public static Period toPeriod(String value) {
-        return value != null ? Period.valueOf(value) : null;
+        return toEnum(value, Period.class);
     }
 
     @TypeConverter
     public static String fromTransactionDirection(TransactionDirection type) {
-        return type != null ? type.name() : null;
+        return fromEnum(type);
     }
 
     @TypeConverter
     public static TransactionDirection toTransactionDirection(String value) {
-        return value != null ? TransactionDirection.valueOf(value) : null;
+        return toEnum(value, TransactionDirection.class);
     }
 
     @TypeConverter
     public static String fromTransactionKind(TransactionKind kind) {
-        return kind != null ? kind.name() : null;
+        return fromEnum(kind);
     }
 
     @TypeConverter
     public static TransactionKind toTransactionKind(String value) {
-        return value != null ? TransactionKind.valueOf(value) : null;
+        return toEnum(value, TransactionKind.class);
     }
 
     @TypeConverter
     public static String fromAccountType(BudgetAccount.AccountType type) {
-        return type != null ? type.name() : null;
+        return fromEnum(type);
     }
 
     @TypeConverter
     public static BudgetAccount.AccountType toAccountType(String value) {
-        return value != null ? BudgetAccount.AccountType.valueOf(value) : null;
+        return toEnum(value, BudgetAccount.AccountType.class);
     }
 
     @TypeConverter
     public static String fromImportStatus(ImportStatus status) {
-        return status != null ? status.name() : null;
+        return fromEnum(status);
     }
 
     @TypeConverter
     public static ImportStatus toImportStatus(String value) {
-        return value != null ? ImportStatus.valueOf(value) : null;
+        return toEnum(value, ImportStatus.class);
     }
 
     @TypeConverter
     public static String fromRecurringType(RecurringBudgetTransaction.RecurringType type) {
-        return type != null ? type.name() : null;
+        return fromEnum(type);
     }
 
     @TypeConverter
     public static RecurringBudgetTransaction.RecurringType toRecurringType(String value) {
-        return value != null ? RecurringBudgetTransaction.RecurringType.valueOf(value) : null;
+        return toEnum(value, RecurringBudgetTransaction.RecurringType.class);
     }
 
     @TypeConverter
     public static String fromYearMonth(YearMonth yearMonth) {
-        return yearMonth != null ? yearMonth.toString() : null;
+        return serialize(yearMonth);
     }
 
     @TypeConverter
     public static YearMonth toYearMonth(String value) {
-        return value != null ? YearMonth.parse(value) : null;
+        return deserialize(value, YearMonth::parse);
     }
 
     @TypeConverter

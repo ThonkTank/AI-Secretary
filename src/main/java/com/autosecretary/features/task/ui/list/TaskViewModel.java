@@ -257,7 +257,7 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void toggleExpanded(ViewSlot viewSlot) {
-        if (activeListConfig != ListConfig.MANAGE || !viewSlot.hasChildren()) {
+        if (activeListConfig != ListConfig.MANAGE || viewSlot.getChildren().isEmpty()) {
             return;
         }
         String taskId = viewSlot.getItem().taskId;

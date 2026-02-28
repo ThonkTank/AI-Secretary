@@ -56,7 +56,7 @@ public class BudgetTransactionMapper {
                     + "handle transfers separately (use linked transfer pair logic).");
         }
 
-        TransactionDirection direction = record.type().toDirection();
+        TransactionDirection direction = record.type().direction;
         long signedAmountCents = direction.toSignedCents(record.amountCents());
 
         return RecurringBudgetTransaction.forImport(

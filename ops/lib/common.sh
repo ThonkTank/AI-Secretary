@@ -6,49 +6,31 @@ readonly SUMMARY_HEADER="Zusammenfassung"
 readonly SLOTS_MARKER="slots"
 readonly SUMMARY_FOOTER="Gesamt:"
 
-# Helper to increment count when task found in current summary
-_increment_summary_count() {
-    local found_in_summary=$1
-    if [ "$found_in_summary" -eq 1 ]; then
-        return 0  # Return exit code indicating we should count
-    fi
-    return 1
-}
-
 # Counts how many days (from a 7-day summary) contain a task with slots
 # Args: $1 = task_name (e.g., "Sport", "Einkaufen")
+#       $2 = summaries_text (newline-separated summary blocks; if omitted, reads from ALL_SUMMARIES env var)
 # Returns: number of days on which this task appears with slots
+# Note: Each day's summary is bounded by SUMMARY_HEADER and SUMMARY_FOOTER markers.
+#       Task counts as present if the day's summary contains "task_name:" with SLOTS_MARKER.
 count_days_with_task() {
     local task_name="$1"
-    local count=0
-    local inside_daily_summary=0
-    local task_found_in_current_summary=0
+    local summaries_text="${2:-$ALL_SUMMARIES}"
 
-    while IFS= read -r line; do
-        if echo "$line" | grep -q "$SUMMARY_HEADER"; then
-            # Entering a new summary block: finalize previous summary
-            if _increment_summary_count "$task_found_in_current_summary"; then
-                count=$((count + 1))
-            fi
-            inside_daily_summary=1
-            task_found_in_current_summary=0
-        fi
-
-        if [ "$inside_daily_summary" -eq 1 ] && \
-           echo "$line" | grep -q "${task_name}:" && \
-           echo "$line" | grep -q "$SLOTS_MARKER"; then
-            task_found_in_current_summary=1
-        fi
-
-        if echo "$line" | grep -q "$SUMMARY_FOOTER"; then
-            # Exiting summary block: finalize this summary
-            if _increment_summary_count "$task_found_in_current_summary"; then
-                count=$((count + 1))
-            fi
-            inside_daily_summary=0
-            task_found_in_current_summary=0
-        fi
-    done <<< "$ALL_SUMMARIES"
-
-    echo "$count"
+    echo "$summaries_text" | awk -v task="$task_name" -v slots="$SLOTS_MARKER" '
+        BEGIN { count = 0 }
+        /Zusammenfassung/ {
+            # At a new day boundary, count the previous day if it had the task
+            if (task_found_in_day) count++
+            task_found_in_day = 0
+        }
+        $0 ~ task ":" && $0 ~ slots {
+            # Mark that we found the task in the current day
+            task_found_in_day = 1
+        }
+        END {
+            # Handle the last day (no Zusammenfassung after it)
+            if (task_found_in_day) count++
+            print count
+        }
+    '
 }

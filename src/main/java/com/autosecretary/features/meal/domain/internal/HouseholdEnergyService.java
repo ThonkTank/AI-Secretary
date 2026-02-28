@@ -78,10 +78,12 @@ public class HouseholdEnergyService {
             case MALE -> MALE_BMR_INTERCEPT;
             case OTHER -> OTHER_BMR_INTERCEPT;
         };
-        double weightTerm = MIFFLIN_WEIGHT_COEFF * member.weightKg;
-        double heightTerm = MIFFLIN_HEIGHT_COEFF * member.heightCm;
-        double ageTerm = MIFFLIN_AGE_COEFF * age;
-        return (int) Math.round(weightTerm + heightTerm - ageTerm + genderIntercept);
+        return (int) Math.round(
+            MIFFLIN_WEIGHT_COEFF * member.weightKg +
+            MIFFLIN_HEIGHT_COEFF * member.heightCm -
+            MIFFLIN_AGE_COEFF * age +
+            genderIntercept
+        );
     }
 
     /**

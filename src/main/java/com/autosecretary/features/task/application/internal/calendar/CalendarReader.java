@@ -45,41 +45,6 @@ public class CalendarReader implements TaskCalendarService {
         this.queryHelper = new CalendarQueryHelper(context);
     }
 
-    /**
-     * Converts epoch milliseconds to a LocalTime in the given timezone.
-     * Used to convert Android CalendarContract timestamps.
-     */
-    private static LocalTime millisToLocalTime(long millis, ZoneId zoneId) {
-        return Instant.ofEpochMilli(millis).atZone(zoneId).toLocalTime();
-    }
-
-    /**
-     * Returns true if two time ranges have any overlap.
-     * Used to filter events that fall outside the schedule window.
-     */
-    private static boolean timeRangesOverlap(LocalTime start1, LocalTime end1, LocalTime start2, LocalTime end2) {
-        return start1.isBefore(end2) && end1.isAfter(start2);
-    }
-
-    /**
-     * Constrains a time to be within [minBound, maxBound].
-     * Used to normalize event times to the requested schedule window bounds.
-     * Example: if event runs 14:00-15:30 but window is 13:00-14:30, clamp to 14:00-14:30.
-     */
-    private static LocalTime clamp(LocalTime time, LocalTime minBound, LocalTime maxBound) {
-        if (time.isBefore(minBound)) return minBound;
-        if (time.isAfter(maxBound)) return maxBound;
-        return time;
-    }
-
-    /**
-     * Returns the title if non-null and non-blank, otherwise returns the fallback.
-     * Ensures all returned events have a valid display name for the UI.
-     */
-    private static String titleOrDefault(String title, String fallback) {
-        return (title == null || title.isBlank()) ? fallback : title;
-    }
-
     @Override
     public List<TaskCalendarEvent> getEventsForDay(ScheduleWindow window) {
         LocalDate day = window.day();
@@ -106,18 +71,23 @@ public class CalendarReader implements TaskCalendarService {
                 return null;
             }
 
-            LocalTime eventStart = millisToLocalTime(beginMillis, zoneId);
-            LocalTime eventEnd = millisToLocalTime(endMillis, zoneId);
+            LocalTime eventStart = Instant.ofEpochMilli(beginMillis).atZone(zoneId).toLocalTime();
+            LocalTime eventEnd = Instant.ofEpochMilli(endMillis).atZone(zoneId).toLocalTime();
 
-            if (!timeRangesOverlap(eventStart, eventEnd, scheduleStart, scheduleEnd)) {
+            if (!(eventStart.isBefore(scheduleEnd) && eventEnd.isAfter(scheduleStart))) {
                 return null;
             }
 
+            // Clamp event times to window bounds
             eventStart = clamp(eventStart, scheduleStart, scheduleEnd);
             eventEnd = clamp(eventEnd, scheduleStart, scheduleEnd);
 
-            String safeTitle = titleOrDefault(title, FALLBACK_TITLE);
+            String safeTitle = (title == null || title.isBlank()) ? FALLBACK_TITLE : title;
             return new TaskCalendarEvent(safeTitle, eventStart, eventEnd);
         });
+    }
+
+    private LocalTime clamp(LocalTime value, LocalTime min, LocalTime max) {
+        return value.isBefore(min) ? min : (value.isAfter(max) ? max : value);
     }
 }

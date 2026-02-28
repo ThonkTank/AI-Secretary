@@ -1,20 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Generic button text color states for task-related UI elements.
+<!-- Button text color states: disabled → checked → default.
 
-  Used by:
-  - Widget.AISecretary.TaskEdit.DayPickerButton (day selection buttons)
-  - Widget.AISecretary.BottomNavigation (primary navigation)
+     Used by:
+     - Widget.AISecretary.TaskEdit.DayPickerButton (day selection buttons)
+     - Widget.AISecretary.BottomNavigation (primary navigation)
 
-  This selector coordinates with task_edit_day_button_background_tint.xml and
-  task_edit_day_button_stroke_color.xml — all three use the same state
-  matching order (disabled → checked → default). If state behavior needs
-  to change, all three files must be updated together.
-
-  State matching is first-match-wins in Android selectors.
--->
+     Color scheme defined in task_colors.xml. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_enabled="false" android:color="@color/task_edit_day_disabled_text" />
-    <item android:state_checked="true" android:color="@color/task_edit_day_selected_text" />
-    <item android:color="@color/task_edit_day_unselected_text" />
+    <item android:state_enabled="false" android:color="@color/task_color_primary_disabled_50" />
+    <item android:state_checked="true" android:color="@color/task_color_on_primary" />
+    <item android:color="@color/task_color_primary" />
 </selector>

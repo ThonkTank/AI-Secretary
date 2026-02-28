@@ -202,58 +202,31 @@ public final class TaskSlotToggleMutation {
      * @param transitionWeight the relative weight of this transition observation
      */
     private void recordTransition(TaskSlot slot, int transitionWeight) {
-        if (!canRecordTransition(slot)) {
+        // Require both task ID and day to look up the previous task
+        if (slot.taskId == null || slot.day == null) {
             return;
         }
 
-        LocalTime eventTime = determineEventTime(slot);
+        // Determine the most accurate event time for transition recording,
+        // ordered by preference: actual completion → actual start → scheduled start → current time
+        LocalTime eventTime;
+        if (slot.realEnd != null) {
+            eventTime = slot.realEnd;
+        } else if (slot.realStart != null) {
+            eventTime = slot.realStart;
+        } else if (slot.start != null) {
+            eventTime = slot.start;
+        } else {
+            eventTime = LocalTime.now();
+        }
 
+        // Find the previous task and validate the transition
         String previousTaskId = taskDao.readMostRecentTaskBefore(slot.taskId, slot.day, eventTime);
-        if (isInvalidTransition(previousTaskId, slot.taskId)) {
+        if (previousTaskId == null || previousTaskId.equals(slot.taskId)) {
             return;
         }
 
         transitionDao.recordTransition(previousTaskId, slot.taskId, Math.max(1, transitionWeight), LocalDateTime.now());
-    }
-
-    /**
-     * Check whether this slot has the minimum required fields to record a transition.
-     * Transitions require both a task ID and a day to look up the previous task.
-     *
-     * @param slot the slot to check
-     * @return true if the slot is complete enough to record a transition
-     */
-    private static boolean canRecordTransition(TaskSlot slot) {
-        return slot.taskId != null && slot.day != null;
-    }
-
-    /**
-     * Determine the most accurate event time for transition recording.
-     * Ordered by preference (actual completion → actual start → scheduled start → current time)
-     * to preserve the semantics of when the task-to-task transition actually occurred.
-     *
-     * @param slot the slot being transitioned
-     * @return the best available time point for this slot
-     */
-    private static LocalTime determineEventTime(TaskSlot slot) {
-        if (slot.realEnd != null) return slot.realEnd;
-        if (slot.realStart != null) return slot.realStart;
-        if (slot.start != null) return slot.start;
-        return LocalTime.now();
-    }
-
-    /**
-     * Check whether this transition is worth recording.
-     * A transition is invalid if:
-     * - no previous task was found (nothing to transition from)
-     * - the previous and current tasks are the same (not a real transition)
-     *
-     * @param previousTaskId the task that occurred before the current one
-     * @param currentTaskId the task being completed/started now
-     * @return true if this transition should be skipped
-     */
-    private static boolean isInvalidTransition(String previousTaskId, String currentTaskId) {
-        return previousTaskId == null || previousTaskId.equals(currentTaskId);
     }
 
 }

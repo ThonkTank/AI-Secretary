@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- App-wide vertical gradient background. Used as the window background (via AppTheme style),
      and as the root background for both the task and budget home-screen widgets. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
     <gradient
         android:angle="270"
         android:startColor="@color/task_gradient_start"

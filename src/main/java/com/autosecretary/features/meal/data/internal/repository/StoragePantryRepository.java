@@ -1,6 +1,7 @@
 package com.autosecretary.features.meal.data.internal.repository;
 
 import com.autosecretary.features.meal.data.internal.BaseCollectionDao;
+import com.autosecretary.features.meal.data.internal.EntityIdHandler;
 import com.autosecretary.features.meal.data.internal.MealCollections;
 import com.autosecretary.features.meal.data.internal.mapper.PantryItemRowMapper;
 import com.autosecretary.features.meal.data.internal.MealFieldKeys;
@@ -25,11 +26,10 @@ public class StoragePantryRepository implements PantryRepository {
     private final BaseCollectionDao<ShoppingListItem> shoppingListDao;
 
     public StoragePantryRepository(MealStorage storage) {
-        // Each BaseCollectionDao is initialized with id accessor and setter lambdas.
-        // The accessor reads the entity's id during upsert; the setter injects generated ids back.
-        // See BaseCollectionDao javadoc for detailed explanation of the id accessor/setter pattern.
-        this.pantryItemDao = new BaseCollectionDao<>(MealCollections.PANTRY_ITEMS, storage, new PantryItemRowMapper(), p -> p.id, (p, id) -> p.id = id);
-        this.shoppingListDao = new BaseCollectionDao<>(MealCollections.SHOPPING_LIST_ITEMS, storage, new ShoppingListItemRowMapper(), item -> item.id, (item, id) -> item.id = id);
+        // Each BaseCollectionDao is initialized with an EntityIdHandler that reads/writes the entity's id.
+        // See BaseCollectionDao javadoc for detailed explanation of the id handler pattern.
+        this.pantryItemDao = new BaseCollectionDao<>(MealCollections.PANTRY_ITEMS, storage, new PantryItemRowMapper(), EntityIdHandler.of(p -> p.id, (p, id) -> p.id = id));
+        this.shoppingListDao = new BaseCollectionDao<>(MealCollections.SHOPPING_LIST_ITEMS, storage, new ShoppingListItemRowMapper(), EntityIdHandler.of(item -> item.id, (item, id) -> item.id = id));
     }
 
     @Override

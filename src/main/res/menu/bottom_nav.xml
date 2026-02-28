@@ -8,8 +8,7 @@
       nav_meal      → MealPlannerFragment (features/meal/)
     Selection handling lives in MainActivity.setupTabBar().
 -->
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/nav_schedule"
         android:icon="@drawable/ic_tasks_24"

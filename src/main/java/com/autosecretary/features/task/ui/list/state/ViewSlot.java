@@ -39,8 +39,4 @@ public class ViewSlot {
     public void setChildren(List<ViewSlot> children) {
         this.children = children;
     }
-
-    public boolean hasChildren() {
-        return !children.isEmpty();
-    }
 }

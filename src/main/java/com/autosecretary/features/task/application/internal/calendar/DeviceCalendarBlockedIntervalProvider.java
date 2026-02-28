@@ -82,8 +82,8 @@ public class DeviceCalendarBlockedIntervalProvider implements CalendarBlockedInt
             LocalDateTime eventEnd = LocalDateTime.ofInstant(Instant.ofEpochMilli(end), zone);
 
             // Clamp event times to the requested window bounds.
-            LocalDateTime clampedStart = eventStart.isBefore(windowStart) ? windowStart : eventStart;
-            LocalDateTime clampedEnd = eventEnd.isAfter(windowEnd) ? windowEnd : eventEnd;
+            LocalDateTime clampedStart = clamp(eventStart, windowStart, windowEnd);
+            LocalDateTime clampedEnd = clamp(eventEnd, windowStart, windowEnd);
 
             // Only add intervals that actually fall within the window.
             if (clampedEnd.isAfter(clampedStart)) {
@@ -91,5 +91,9 @@ public class DeviceCalendarBlockedIntervalProvider implements CalendarBlockedInt
             }
             return null;
         });
+    }
+
+    private LocalDateTime clamp(LocalDateTime value, LocalDateTime min, LocalDateTime max) {
+        return value.isBefore(min) ? min : (value.isAfter(max) ? max : value);
     }
 }

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -40,10 +41,6 @@ public class ViewSlotList {
         hasAppendedItems = true;
     }
 
-    // Predicate for tree flattening: all slots are "expanded" (children always included in flat list).
-    // Used for sortBySlot() because calendar hierarchy is immutable — users cannot collapse calendar event groups.
-    private static final Predicate<ViewSlot> ALWAYS_EXPANDED = slot -> true;
-
     // Two tree-building modes for different UI contexts:
     // - TREE_BY_TASK: Groups slots by task parent-child relationships (Manage mode).
     //   Respects the isExpanded predicate to show/hide task families.
@@ -57,12 +54,17 @@ public class ViewSlotList {
 
     private static final TreeBuilder<ViewSlot> TREE_BY_SLOT = createTreeBuilder(
             vs -> vs.getItem().slotId,
-            ViewSlotList::getSlotParents
+            vs -> vs.getItem().slotParentId != null
+                    ? Collections.singletonList(vs.getItem().slotParentId)
+                    : Collections.emptyList()
     );
 
+    // Calendar hierarchy is immutable in UI; all slot parents are always expanded
+    private static final Predicate<ViewSlot> ALL_EXPANDED = slot -> true;
+
     private static TreeBuilder<ViewSlot> createTreeBuilder(
-            java.util.function.Function<ViewSlot, String> getId,
-            java.util.function.Function<ViewSlot, List<String>> getParentIds) {
+            Function<ViewSlot, String> getId,
+            Function<ViewSlot, List<String>> getParentIds) {
         return new TreeBuilder<>(
                 getId,
                 getParentIds,
@@ -72,14 +74,11 @@ public class ViewSlotList {
         );
     }
 
-    private static List<String> getSlotParents(ViewSlot vs) {
-        return vs.getItem().slotParentId != null
-                ? Collections.singletonList(vs.getItem().slotParentId)
-                : Collections.emptyList();
-    }
-
     public void fromList(List<TaskListItem> items) {
-        allSlots = items.stream().map(ViewSlot::new).collect(Collectors.toList());
+        if (hasAppendedItems) {
+            throw new IllegalStateException("Cannot call fromList() after appendToDisplay() without calling sort first");
+        }
+        allSlots = items.stream().map(ViewSlot::new).collect(Collectors.toCollection(ArrayList::new));
         displaySlots = new ArrayList<>(allSlots);
         hasAppendedItems = false;
     }
@@ -94,7 +93,7 @@ public class ViewSlotList {
         if (hasAppendedItems) {
             throw new IllegalStateException("Cannot filter after appendToDisplay() without calling sort first");
         }
-        displaySlots = allSlots.stream().filter(predicate).collect(Collectors.toList());
+        displaySlots = allSlots.stream().filter(predicate).collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -116,7 +115,7 @@ public class ViewSlotList {
      * @param comparator how to order slots within the slot hierarchy
      */
     public void sortBySlot(Comparator<ViewSlot> comparator) {
-        applySort(TREE_BY_SLOT, comparator, ALWAYS_EXPANDED);
+        applySort(TREE_BY_SLOT, comparator, ALL_EXPANDED);
     }
 
     private void applySort(TreeBuilder<ViewSlot> builder,
@@ -126,27 +125,27 @@ public class ViewSlotList {
         builder.sortTree(displaySlots, comparator);
 
         List<ViewSlot> flattened = new ArrayList<>();
-        flattenWithDepth(displaySlots, 0, isExpanded, flattened);
+        flattenAndAssignDepths(displaySlots, 0, isExpanded, flattened);
         displaySlots = flattened;
 
         hasAppendedItems = false;
     }
 
     /**
-     * Recursively flattens the tree into displaySlots, assigning depth at each level.
-     * Respects isExpanded predicate: if a slot is expanded, its children are added to the flat list
-     * at depth+1; otherwise, children are skipped entirely.
-     * Side effect: calls slot.setDepth(depth) on each visited slot for use in RecyclerView indentation.
+     * Recursively flattens the tree structure into a flat list and assigns depth values.
+     * Respects isExpanded predicate: if a slot is expanded, its children are added to the flat list;
+     * otherwise, children are skipped entirely.
+     * As each slot is added to the flat list, its depth is assigned for RecyclerView indentation.
      */
-    private void flattenWithDepth(List<ViewSlot> source,
-                                  int depth,
-                                  Predicate<ViewSlot> isExpanded,
-                                  List<ViewSlot> target) {
+    private void flattenAndAssignDepths(List<ViewSlot> source,
+                                        int depth,
+                                        Predicate<ViewSlot> isExpanded,
+                                        List<ViewSlot> target) {
         for (ViewSlot slot : source) {
             slot.setDepth(depth);
             target.add(slot);
-            if (slot.hasChildren() && isExpanded.test(slot)) {
-                flattenWithDepth(slot.getChildren(), depth + 1, isExpanded, target);
+            if (!slot.getChildren().isEmpty() && isExpanded.test(slot)) {
+                flattenAndAssignDepths(slot.getChildren(), depth + 1, isExpanded, target);
             }
         }
     }

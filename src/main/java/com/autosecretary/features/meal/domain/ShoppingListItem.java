@@ -64,8 +64,6 @@ public class ShoppingListItem {
 
     public String getFormattedExcess() {
         if (excessAmount <= 0) return "";
-        if (excessAmount == (int) excessAmount)
-            return "(+" + (int) excessAmount + " " + unit + " Überschuss)";
-        return String.format("(+%.1f %s Überschuss)", excessAmount, unit);
+        return "(+" + MealAmountFormat.format(excessAmount, unit) + " Überschuss)";
     }
 }

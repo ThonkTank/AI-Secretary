@@ -201,7 +201,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     }
 
     private void bindExpandToggle(TaskRowViewHolder holder, ViewSlot viewSlot) {
-        if (!manageMode || !viewSlot.hasChildren()) {
+        if (!manageMode || viewSlot.getChildren().isEmpty()) {
             holder.expandToggle.setVisibility(View.GONE);
             holder.expandToggle.setOnClickListener(null);
             return;

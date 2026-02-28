@@ -182,8 +182,8 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
         if (type == null) {
             throw new IllegalArgumentException("Transaction type must not be null for record: " + record.id());
         }
-        TransactionDirection direction = type.toDirection();
-        TransactionKind kind = type.toKind();
+        TransactionDirection direction = type.direction;
+        TransactionKind kind = type.kind;
 
         BudgetTransactionEntity entity = new BudgetTransactionEntity(
                 record.accountId(),

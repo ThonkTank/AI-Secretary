@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
-# Usage: ./apply_skill.sh <directory> <skill1> [skill2 ...]
-#        ./apply_skill.sh --autonomous <directory>
+# Usage: ./apply_skill.sh [--autonomous]
+#        ./apply_skill.sh close | refresh
 #
-# Runs each skill in sequence over every subdirectory of <directory>,
-# processing the deepest folders first and working upward to the root.
-# All skills complete a full pass before the next skill begins.
-# The agent is always started from the git project root for full context.
-# The target directory path is passed as an argument to each skill.
+# Autonomous directory-first review automation using Claude.
+# For each directory, determines which skills to run based on deterministic
+# rules (UI content, LOC size, position), then runs all applicable skills
+# before moving to the next directory.
+# Checkpoint (init + commit + sync-main) runs every N directories.
 #
-# --autonomous: cycles endlessly through all skills in ops/skills/ in a
-# hardcoded order. UI-only skills are restricted to ui/ and res/ directories.
-# sync-main runs once per cycle at PROJECT_ROOT to commit progress.
+# Skill selection per directory:
+#   1. triage (always first — backlog triage)
+#   2-3. review-design, review-accessibility (if dir contains ui/res)
+#   4-7. review-structure, review-architecture, review-onboarding, review-conventions (≥2000 LOC)
+#   8-9. review-security, review-performance (last 20% by LOC)
+#   10-12. review-smells, review-simplicity, review-elegance (always last)
 #
-# Logs: $LOG_DIR/<skill>/<sanitized-path>.md  +  $LOG_DIR/_run.log
-#        (autonomous: $LOG_DIR/cycle_NNN/<skill>/...)
+# Logs: $LOG_DIR/cycle_NNN/<skill>/<sanitized-path>.md  +  $LOG_DIR/_run.log
 #
 # Skill role descriptions are loaded from ops/skills/<skill>.md and injected
 # into the prompt alongside general guidelines (scope, execution mode, backlog).
@@ -24,13 +26,6 @@ set -uo pipefail
 # ── Configuration ──────────────────────────────────────────────────────────────
 
 ORIGINAL_ARGS=("$@")
-AUTONOMOUS=false
-FILTERED_ARGS=()
-for arg in "$@"; do
-    [[ "$arg" == "--autonomous" ]] && AUTONOMOUS=true || FILTERED_ARGS+=("$arg")
-done
-set -- "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Subcommands: close / refresh ───────────────────────────────────────────
@@ -46,18 +41,9 @@ if [[ "${1:-}" == "close" || "${1:-}" == "refresh" ]]; then
     exit 0
 fi
 
-if $AUTONOMOUS; then
-    ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-    SKILLS=()
-else
-    ROOT="${1:?Usage: $0 <directory> <skill1> [skill2 ...]}"
-    ROOT="$(realpath "$ROOT")"
-    shift
-    SKILLS=("${@:?Usage: $0 <directory> <skill1> [skill2 ...]}")
-fi
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 # Prevent system sleep/idle while this script is running.
-# Note: Work cannot continue during actual suspend; we therefore block suspend.
 if [[ "${APPLY_SKILL_INHIBIT_ACTIVE:-0}" != "1" ]] && command -v systemd-inhibit >/dev/null 2>&1; then
     export APPLY_SKILL_INHIBIT_ACTIVE=1
     exec systemd-inhibit \
@@ -73,76 +59,70 @@ LOG_DIR="/tmp/apply_skill_${TIMESTAMP}"
 mkdir -p "$LOG_DIR"
 RUN_LOG="$LOG_DIR/_run.log"
 USAGE_LIMIT_SLEEP_SECONDS="${USAGE_LIMIT_SLEEP_SECONDS:-900}"
-AGENT_UNAVAILABLE_SLEEP_SECONDS="${AGENT_UNAVAILABLE_SLEEP_SECONDS:-120}"
+TRANSIENT_RETRY_SECONDS="${TRANSIENT_RETRY_SECONDS:-120}"
 RESET_BUFFER_SECONDS=30  # Safety margin added after a usage-limit reset time
-read -r -a REQUESTED_AGENTS <<< "${APPLY_SKILL_AGENTS:-claude codex}"
 
-ACTIVE_AGENTS=()
-for agent in "${REQUESTED_AGENTS[@]}"; do
-    if [[ "$agent" =~ ^(claude|codex)$ ]] && command -v "$agent" >/dev/null 2>&1; then
-        ACTIVE_AGENTS+=("$agent")
-    fi
-done
-mapfile -t ACTIVE_AGENTS < <(printf '%s\n' "${ACTIVE_AGENTS[@]}" | awk '!seen[$0]++')
-
-if [[ ${#ACTIVE_AGENTS[@]} -eq 0 ]]; then
-    echo "ERROR: Kein unterstützter Agent verfügbar. Erwartet: claude/codex."
+if ! command -v claude >/dev/null 2>&1; then
+    echo "ERROR: claude nicht gefunden."
     exit 1
 fi
 
-# ── Autonomous cycle ────────────────────────────────────────────────────────────
-# Hardcoded skill order for --autonomous mode.
-# review-architecture, review-conventions, review-structure are high-level: only run on dirs with subdirs.
-# commit and sync-main are git-ops: run once per occurrence at PROJECT_ROOT.
-# commit checkpoints after every review skill; sync-main integrates upstream once per cycle.
-# review-smells and review-simplicity each appear 2× to catch regressions from structural changes.
-AUTONOMOUS_SKILL_CYCLE=(
-    review-smells          # 1.  Anti-Pattern und Code-Gerüche
-    commit                 # 2.
-    review-simplicity      # 3.  Unnötige Komplexität reduzieren
-    commit                 # 4.
-    review-elegance        # 5.  Lesbarkeit und Ausdrucksstärke
-    commit                 # 6.
-    review-architecture    # 7.  Architekturelle Korrektheit
-    commit                 # 8.
-    review-conventions     # 9.  Konsistenz sicherstellen
-    commit                 # 10.
-    review-smells          # 11. Regression nach Architektur/Conventions
-    commit                 # 12.
-    review-simplicity      # 13. Regression nach Architektur/Conventions
-    commit                 # 14.
-    review-structure       # 15. Datei-/Ordnerstruktur optimieren
-    commit                 # 16.
-    review-onboarding      # 17. Dokumentation und Kommentare
-    commit                 # 18.
-)
+# ── Directory-first skill selection ──────────────────────────────────────────
 
-is_git_op_skill() { [[ "$1" == "sync-main" || "$1" == "commit" ]]; }
-
-is_ui_skill() { [[ "$1" == "review-design" || "$1" == "review-accessibility" ]]; }
-
-is_ui_dir() {
-    local dir="$1"
-    [[ "$dir" == */ui || "$dir" == */ui/* || "$dir" == */res || "$dir" == */res/* ]]
+# Check recursively whether a directory contains ui/ or res/ subdirectories.
+_has_ui_content() {
+    [[ -n "$(find "$1" -type d \( -name 'ui' -o -name 'res' \) -print -quit 2>/dev/null)" ]]
 }
 
-is_highlevel_skill() {
-    [[ "$1" == "review-architecture" || "$1" == "review-structure" || "$1" == "review-conventions" ]]
+# Check whether triage is useful: needs ≥2 REVIEW_BACKLOG.md files in scope
+# (with only 1 backlog there is nothing to promote/demote between levels).
+_needs_triage() {
+    local count
+    count=$(find "$1" -name 'REVIEW_BACKLOG.md' 2>/dev/null | head -2 | wc -l)
+    (( count >= 2 ))
 }
 
-is_highlevel_dir() {
-    [[ -n "$(find "$1" -maxdepth 1 -mindepth 1 -type d -print -quit 2>/dev/null)" ]]
-}
+# Deterministic skill selection for a directory. Outputs one skill name per line.
+# Args: dir, dir_i (1-based position by LOC), total_dirs
+_build_skill_list() {
+    local dir="$1" dir_i="${2:-0}" total_dirs="${3:-0}"
+    local loc
+    loc=$(_count_loc "$dir"); loc=${loc:-0}
+    local top20_threshold=$(( total_dirs * 4 / 5 ))
+    (( top20_threshold < 1 )) && top20_threshold=1
 
-_should_skip_dir() {
-    local skill="$1" dir="$2"
-    is_ui_skill "$skill" && ! is_ui_dir "$dir" && return 0
-    is_highlevel_skill "$skill" && ! is_highlevel_dir "$dir" && return 0
-    return 1
+    # 1. Backlog triage (only if ≥2 backlogs exist — otherwise nothing to move)
+    if _needs_triage "$dir"; then
+        echo "triage"
+    fi
+
+    # 2-3. UI directories
+    if _has_ui_content "$dir"; then
+        echo "review-design"
+        echo "review-accessibility"
+    fi
+
+    # 4-7. Large directories (≥2000 LOC recursively)
+    if (( loc >= 2000 )); then
+        echo "review-structure"
+        echo "review-architecture"
+        echo "review-onboarding"
+        echo "review-conventions"
+    fi
+
+    # 8-9. Last 20% by LOC
+    if (( total_dirs > 0 && dir_i > top20_threshold )); then
+        echo "review-security"
+        echo "review-performance"
+    fi
+
+    # 10-12. Always last (simplicity last — final pass to reduce complexity)
+    echo "review-smells"
+    echo "review-elegance"
+    echo "review-simplicity"
 }
 
 # Check whether origin/main has commits we don't have, or open PRs exist.
-# Returns 0 (true) if sync is needed, 1 (false) otherwise.
 _upstream_has_changes() {
     git -C "$PROJECT_ROOT" fetch origin main --quiet 2>/dev/null || return 1
     local ahead
@@ -161,7 +141,7 @@ _upstream_has_changes() {
     return 1
 }
 
-# Run sync-main if upstream has changes. Loads the skill file on demand.
+# Run sync-main if upstream has changes.
 _auto_sync_if_needed() {
     local cycle="${1:-}"
     _upstream_has_changes || return 0
@@ -173,11 +153,74 @@ _auto_sync_if_needed() {
     echo "══════════════════════════════════════════"
     echo "AUTO-SYNC: origin/main hat Änderungen — starte sync-main"
     echo "══════════════════════════════════════════"
-    run_with_retry "$PROJECT_ROOT" "$logfile" "$(<"$sync_skill")" "sonnet" 40 \
+    run_with_retry "$PROJECT_ROOT" "$logfile" "$(<"$sync_skill")" "sonnet" \
         || echo "WARNING: auto-sync exited non-zero"
     echo "--- Sync preview ---"
     _show_preview "$logfile"
     echo ""
+}
+
+# Build a lightweight prompt for the triage agent (no build verification, no implementation).
+_build_triage_prompt() {
+    local dir=$1 skill_text=$2
+    cat <<EOF
+# Task
+
+Triage review backlogs in: ${dir}
+
+# Guidelines
+
+## Execution Mode
+You are running inside an automated, non-interactive script.
+- Edit REVIEW_BACKLOG.md files directly for triage moves.
+- Do NOT use plan mode. Do NOT call EnterPlanMode under any circumstances.
+- Do NOT modify any source code files.
+
+## Scope
+Focus on ${dir} and its subdirectories.
+Ignore hidden directories (.*), build output (build/), and generated files.
+
+# Role
+
+${skill_text}
+EOF
+}
+
+# Run init + commit + optional sync-main as a checkpoint between directories.
+_dispatch_checkpoint() {
+    local cycle="$1"
+    local ckpt_log_dir="$LOG_DIR/cycle_$(printf '%03d' "$cycle")/checkpoint"
+    mkdir -p "$ckpt_log_dir"
+
+    echo "╔══════════════════════════════════════════╗"
+    echo "  Checkpoint (Cycle ${cycle}) — $(date -Is)"
+    echo "╚══════════════════════════════════════════╝"
+    echo ""
+
+    # 1. sync-main if upstream has changes
+    _auto_sync_if_needed "$cycle"
+
+    # 2. init: update CLAUDE.md
+    local init_skill="${SCRIPT_DIR}/skills/init.md"
+    if [[ -f "$init_skill" ]]; then
+        echo "── init: updating CLAUDE.md ──"
+        run_with_retry "$PROJECT_ROOT" "$ckpt_log_dir/_init.md" \
+            "$(<"$init_skill")" "sonnet" \
+            || echo "WARNING: init exited non-zero"
+        echo "── init done ──"
+    fi
+
+    # 3. commit
+    local commit_skill="${SCRIPT_DIR}/skills/commit.md"
+    if [[ -f "$commit_skill" ]]; then
+        echo "── commit: checkpointing changes ──"
+        run_with_retry "$PROJECT_ROOT" "$ckpt_log_dir/_commit.md" \
+            "$(<"$commit_skill")" "sonnet" \
+            || echo "WARNING: commit exited non-zero"
+        echo "--- Commit preview ---"
+        _show_preview "$ckpt_log_dir/_commit.md"
+        echo ""
+    fi
 }
 
 # Count lines of code recursively, excluding hidden/build/gradle dirs.
@@ -188,10 +231,10 @@ _count_loc() {
         | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}'
 }
 
-# Model selection — simple LOC-based tiers, no complexity matrix.
-#   <1000 LOC  → haiku  (20 turns)
-#   ≥1000 LOC  → sonnet (40 turns)
-#   Last 10%   → opus   (65 turns)   (largest dirs by LOC)
+# Model selection — simple LOC-based tiers.
+#   <1000 LOC  → haiku
+#   ≥1000 LOC  → sonnet
+#   Last 10%   → opus   (largest dirs by LOC)
 select_agent_config() {
     local skill="$1"
     local dir="$2"
@@ -205,9 +248,9 @@ select_agent_config() {
 
     # Default by LOC
     if (( line_count < 1000 )); then
-        AGENT_MODEL="haiku"; AGENT_TURNS=20
+        AGENT_MODEL="haiku"
     else
-        AGENT_MODEL="sonnet"; AGENT_TURNS=40
+        AGENT_MODEL="sonnet"
     fi
 
     # Last 10% of directories → opus
@@ -215,7 +258,7 @@ select_agent_config() {
         local opus_threshold=$(( total_dirs * 9 / 10 ))
         (( opus_threshold < 1 )) && opus_threshold=1
         if (( dir_i > opus_threshold )); then
-            AGENT_MODEL="opus"; AGENT_TURNS=65
+            AGENT_MODEL="opus"
         fi
     fi
 
@@ -226,19 +269,13 @@ select_agent_config() {
 exec > >(tee "$RUN_LOG") 2>&1
 
 echo "Directory : $ROOT"
-echo "Skills    : ${SKILLS[*]}"
 echo "Project   : $PROJECT_ROOT"
 echo "Logs      : $LOG_DIR"
 echo "Run log   : $RUN_LOG"
-echo "Retry wait fallback: ${USAGE_LIMIT_SLEEP_SECONDS}s (bei Usage-Limit ohne Reset-Zeit)"
-echo "Agent unavailable fallback: ${AGENT_UNAVAILABLE_SLEEP_SECONDS}s"
-echo "Agents    : ${ACTIVE_AGENTS[*]}"
 echo ""
 
 # ── Error Detection Patterns ───────────────────────────────────────────────────
-# These patterns are used to classify API errors and determine appropriate retry strategies.
 readonly PATTERN_RATE_LIMITED="you'?ve[[:space:]]+hit[[:space:]]+your[[:space:]]+limit|usage[[:space:]-]*limit|rate[[:space:]-]*limit|quota|too[[:space:]]+many[[:space:]]+requests|http[[:space:]]*429|status[[:space:]]*429|retry[[:space:]-]*after|credit[[:space:]]+balance|billing[[:space:]]+limit"
-readonly PATTERN_TURN_LIMIT="max.{0,20}turns|maximum.{0,20}turns|turn.{0,10}limit|turns.{0,10}reached|turn.{0,10}budget"
 readonly PATTERN_TRANSIENT="getaddrinfo|eai_again|timed[[:space:]-]*out|connection[[:space:]-]*(refused|reset)|service[[:space:]-]*unavailable|temporar(y|ily)[[:space:]-]*unavailable|overloaded|try[[:space:]]+again|internal[[:space:]-]*server[[:space:]-]*error|http[[:space:]]*50[234]"
 
 # ── Functions ──────────────────────────────────────────────────────────────────
@@ -246,11 +283,6 @@ readonly PATTERN_TRANSIENT="getaddrinfo|eai_again|timed[[:space:]-]*out|connecti
 is_rate_limited() {
     local logfile="$1"
     grep -Eiq "$PATTERN_RATE_LIMITED" "$logfile"
-}
-
-is_turn_limit() {
-    local logfile="$1"
-    grep -Eiq "$PATTERN_TURN_LIMIT" "$logfile"
 }
 
 is_transient_error() {
@@ -281,7 +313,7 @@ extract_limit_reset_sleep_seconds() {
 
     now_epoch="$(date +%s)"
 
-    # Format 1 — Claude: "You've hit your limit · resets 4pm (Europe/Berlin)"
+    # Claude format: "You've hit your limit · resets 4pm (Europe/Berlin)"
     reset_line="$(grep -Eio "resets[[:space:]]+[0-9]{1,2}(:[0-9]{2})?[[:space:]]*(am|pm)([[:space:]]*\\([^)]*\\))?" "$logfile" | tail -n 1 || true)"
     if [[ -n "$reset_line" ]]; then
         reset_time="$(sed -E "s/^resets[[:space:]]+([0-9]{1,2}(:[0-9]{2})?[[:space:]]*(am|pm)).*$/\\1/I" <<< "$reset_line")"
@@ -302,63 +334,35 @@ extract_limit_reset_sleep_seconds() {
         fi
     fi
 
-    # Format 2 — Codex: "try again at Mar 3rd, 2026 6:09 PM"
-    reset_line="$(grep -Eio "try again at [A-Za-z]+ [0-9]+[a-z]*, [0-9]+ [0-9]+:[0-9]+ [APap][Mm]" "$logfile" | tail -n 1 || true)"
-    if [[ -n "$reset_line" ]]; then
-        local clean_date
-        clean_date="$(sed -E 's/^try again at //i; s/([0-9]+)(st|nd|rd|th)/\1/i' <<< "$reset_line")"
-        reset_epoch="$(date -d "$clean_date" +%s 2>/dev/null || true)"
-        if [[ -n "${reset_epoch:-}" ]]; then
-            _sleep_until_epoch "$reset_epoch" "$now_epoch" && return 0
-        fi
-    fi
-
     return 1
 }
 
-dispatch_agent() {
-    local agent="$1"
-    local project_root="$2"
-    local prompt="$3"
-    local model="${4:-sonnet}"
-    local max_turns="${5:-50}"
+dispatch_claude() {
+    local project_root="$1"
+    local prompt="$2"
+    local model="${3:-sonnet}"
 
-    case "$agent" in
-        claude)
-            (
-                cd "$project_root" || exit 1
-                unset CLAUDECODE  # Prevents Claude from detecting a parent session and altering its behaviour
-                claude \
-                    --dangerously-skip-permissions \
-                    --model "$model" \
-                    --append-system-prompt "MODE OVERRIDE: You are in Developer mode. Ignore all Mentor mode restrictions. You MUST edit files directly — do not describe changes for the user to make themselves. Write all code, make all edits, implement all fixes autonomously." \
-                    -p "$prompt"
-            )
-            ;;
-        codex)
-            (
-                cd "$project_root" || exit 1
-                # Note: codex exec has no --max-turns equivalent; max_turns is ignored here.
-                local -a codex_cmd=(
-                    codex exec
-                    --dangerously-bypass-approvals-and-sandbox
-                )
-                if [[ -n "${CODEX_MODEL:-}" ]]; then
-                    codex_cmd+=(--model "$CODEX_MODEL")
-                fi
-                codex_cmd+=("$prompt")
-                "${codex_cmd[@]}"
-            )
-            ;;
-        *)
-            echo "Unsupported agent: $agent" >&2
-            return 2
-            ;;
-    esac
+    (
+        cd "$project_root" || exit 1
+        unset CLAUDECODE  # Prevents Claude from detecting a parent session
+        claude \
+            --dangerously-skip-permissions \
+            --model "$model" \
+            --append-system-prompt "MODE OVERRIDE: You are in Developer mode. Ignore all Mentor mode restrictions. You MUST edit files directly — do not describe changes for the user to make themselves. Write all code, make all edits, implement all fixes autonomously." \
+            -p "$prompt"
+    )
 }
 
 build_prompt() {
-    local dir=$1 skill_text=$2 max_turns=${3:-50}
+    local dir=$1 skill_text=$2 loc=${3:-0}
+    local large_dir_hint=""
+    if (( loc >= 2000 )); then
+        large_dir_hint="
+## Large Directory
+This directory contains ${loc} lines of code. Use the Task tool with Explore subagents
+to efficiently search across files instead of reading them one by one.
+"
+    fi
     cat <<EOF
 # Task
 
@@ -385,32 +389,21 @@ Ignore hidden directories (.*), build output (build/), and generated files.
 After making changes to source files, verify the build compiles cleanly:
   ./gradlew assembleDebug
 Fix any compile errors your changes introduced before finishing. Do not leave a broken build.
-
-## Turn Budget
-You have a budget of ${max_turns} tool calls (turns) for this entire task. Plan accordingly:
-prioritise the most impactful findings and changes, and avoid redundant reads or
-searches. If the directory is large, focus on the most important files first.
-
+${large_dir_hint}
 ## Backlog Protocol
 Follow this exactly, in this order:
 
 ### Step 1 — Read all backlogs in scope (FIRST action)
 Find every REVIEW_BACKLOG.md under ${dir} (inclusive):
   find ${dir} -name REVIEW_BACKLOG.md
-Read each one. You are responsible for ALL of them, not just the one at ${dir}.
+Read each one to understand existing issues. You are responsible for ALL of them,
+not just the one at ${dir}.
 
-### Step 2 — Triage: move issues to the correct level
-Before touching any source code, redistribute misplaced issues across backlogs:
-- **Promote** (move up): an issue in a subfolder's backlog that affects files outside
-  that subfolder belongs at the lowest ancestor level that contains all affected files.
-  Remove it from the subfolder backlog and add it to the correct ancestor's backlog.
-  Only promote within your scope (${dir} and below); if the correct level is above
-  ${dir}, leave the issue where it is with a note that it needs promotion.
-- **Demote** (move down): an issue in a parent backlog that only affects files inside
-  one subfolder belongs in that subfolder's backlog. Remove it from the parent and
-  add it to the subfolder backlog.
+Backlog triage (promote/demote across directories) has already been handled by a
+prior agent. Do NOT move entries between backlog files. Focus on reading what exists,
+then proceed to analysis.
 
-### Step 3 — Analyse and write backlogs (MANDATORY, before any source edits)
+### Step 2 — Analyse and write backlogs (MANDATORY, before any source edits)
 Analyse all code in scope and identify all findings (both from backlogs and newly found).
 Then write REVIEW_BACKLOG.md files for ALL open issues — both ones you plan to fix now
 and ones you will defer. Writing the backlog is not optional and not a checkpoint:
@@ -420,7 +413,7 @@ level containing all affected files.
 
 **If you skip writing a REVIEW_BACKLOG.md for any issue, that issue is permanently lost.**
 
-### Step 4 — Implement fixes
+### Step 3 — Implement fixes
 Fix aggressively. Your goal is to resolve as many issues as possible, not to document them.
 Every issue left in the backlog has to wait for a future cycle to be picked up again — there
 is no other team. If you can fix it now, fix it now. This includes:
@@ -434,11 +427,11 @@ After implementing EACH individual fix, immediately edit the REVIEW_BACKLOG.md t
 that entry — do not batch backlog edits at the end. Removing an entry IS the resolution
 record; do not re-document fixed issues.
 
-### Step 5 — Final backlog cleanup
+### Step 4 — Final backlog cleanup
 Delete any REVIEW_BACKLOG.md that is now empty. No other backlog changes needed —
-the backlog was kept current throughout Step 4.
+the backlog was kept current throughout Step 3.
 
-### Step 6 — Write run summary (LAST action, always)
+### Step 5 — Write run summary (LAST action, always)
 Output a structured summary as the very last thing you write. Use exactly this format:
 
 ### Verdict: **Clean** / **N fixed · M deferred**
@@ -454,7 +447,7 @@ Mark each deferred item with:
 - **existing** = was already in a REVIEW_BACKLOG.md before this run
 
 **IMPORTANT:** Every item listed under "Deferred to backlog" MUST already exist in a
-REVIEW_BACKLOG.md file written in Step 3. If you list a deferred item here that has no
+REVIEW_BACKLOG.md file written in Step 2. If you list a deferred item here that has no
 corresponding backlog file entry, you have made an error — the item will be permanently
 lost. Do not list anything as deferred unless you have already written it to a file.
 
@@ -498,52 +491,17 @@ run_with_retry() {
     local logfile="$2"
     local prompt="$3"
     local model="${4:-sonnet}"
-    local max_turns="${5:-50}"
     local attempt=1
-    local now_epoch earliest_epoch sleep_seconds selected_agent cooldown msg
-    local tmp_log exit_code
-    local -a ready_agents=()
-    declare -A next_ready_epoch=()
-
-    for agent in "${ACTIVE_AGENTS[@]}"; do
-        next_ready_epoch["$agent"]=0
-    done
+    local tmp_log exit_code sleep_seconds
 
     : > "$logfile"
 
     while true; do
-        now_epoch="$(date +%s)"
-        ready_agents=()
-        for agent in "${ACTIVE_AGENTS[@]}"; do
-            if (( now_epoch >= next_ready_epoch["$agent"] )); then
-                ready_agents+=("$agent")
-            fi
-        done
-
-        if [[ ${#ready_agents[@]} -eq 0 ]]; then
-            earliest_epoch=""
-            for agent in "${ACTIVE_AGENTS[@]}"; do
-                local ready_epoch="${next_ready_epoch[$agent]}"
-                if [[ -z "$earliest_epoch" ]] || (( ready_epoch < earliest_epoch )); then
-                    earliest_epoch="$ready_epoch"
-                fi
-            done
-            sleep_seconds=$(( earliest_epoch - now_epoch ))
-            if (( sleep_seconds < 1 )); then
-                sleep_seconds=1
-            fi
-            echo "[attempt ${attempt}] Kein Agent aktuell verfügbar. Warte ${sleep_seconds}s bis zum frühesten Reset/Retry." | tee -a "$logfile"
-            sleep "$sleep_seconds"
-            echo "[attempt ${attempt}] $(date -Is) — Aufgewacht. Starte nächsten Versuch..."
-            continue
-        fi
-
-        selected_agent="${ready_agents[0]}"
         _check_sentinel
         tmp_log="${logfile}.attempt_${attempt}.tmp"
-        echo "[attempt ${attempt}] $(date -Is) - starting ${selected_agent} run" >> "$logfile"
+        echo "[attempt ${attempt}] $(date -Is) - starting claude run" >> "$logfile"
 
-        dispatch_agent "$selected_agent" "$project_root" "$prompt" "$model" "$max_turns" > "$tmp_log" 2>&1
+        dispatch_claude "$project_root" "$prompt" "$model" > "$tmp_log" 2>&1
         exit_code=$?
 
         cat "$tmp_log" >> "$logfile"
@@ -553,33 +511,21 @@ run_with_retry() {
             return 0
         fi
 
-        # Classify failure and determine cooldown
         if is_rate_limited "$tmp_log"; then
-            local parsed_wait
-            parsed_wait="$(extract_limit_reset_sleep_seconds "$tmp_log" || true)"
-            if [[ -n "$parsed_wait" ]]; then
-                cooldown="$parsed_wait"
-                msg="${selected_agent}: Usage-/Rate-Limit erkannt. Reset-Zeit geparst, warte ${cooldown}s bis nach dem Reset."
-            else
-                cooldown="${USAGE_LIMIT_SLEEP_SECONDS}"
-                msg="${selected_agent}: Usage-/Rate-Limit erkannt. Keine Reset-Zeit parsebar, warte Fallback ${cooldown}s."
-            fi
+            sleep_seconds="$(extract_limit_reset_sleep_seconds "$tmp_log" || true)"
+            sleep_seconds="${sleep_seconds:-$USAGE_LIMIT_SLEEP_SECONDS}"
+            echo "[attempt ${attempt}] Usage-Limit erkannt. Warte ${sleep_seconds}s." | tee -a "$logfile"
         elif is_transient_error "$tmp_log"; then
-            cooldown=$AGENT_UNAVAILABLE_SLEEP_SECONDS
-            msg="${selected_agent}: temporär nicht erreichbar. Warte ${cooldown}s und wechsle Agent."
-        elif (( ${#ACTIVE_AGENTS[@]} > 1 )); then
-            cooldown=$AGENT_UNAVAILABLE_SLEEP_SECONDS
-            msg="${selected_agent} exited non-zero (code=${exit_code}). Wechsle auf anderen Agent (Retry in ${cooldown}s)."
+            sleep_seconds=$TRANSIENT_RETRY_SECONDS
+            echo "[attempt ${attempt}] Transient error. Warte ${sleep_seconds}s." | tee -a "$logfile"
         else
-            echo "[attempt ${attempt}] ${selected_agent} exited non-zero (code=${exit_code}) ohne Failover-Möglichkeit." >> "$logfile"
+            echo "[attempt ${attempt}] claude exited non-zero (code=${exit_code})." >> "$logfile"
             rm -f "$tmp_log"
             return "$exit_code"
         fi
 
-        # Apply cooldown and retry
-        next_ready_epoch["$selected_agent"]=$(( $(date +%s) + cooldown ))
-        echo "[attempt ${attempt}] ${msg}" | tee -a "$logfile"
         rm -f "$tmp_log"
+        sleep "$sleep_seconds"
         attempt=$((attempt + 1))
     done
 }
@@ -593,13 +539,13 @@ _dispatch_dir() {
     echo "══════════════════════════════════════════"
     [[ -n "$cycle" ]] && echo "Cycle ${cycle} · Dir ${dir_i}/${total_dirs} · ${skill} · $(date '+%H:%M:%S')"
     [[ -z "$cycle" ]]  && echo "${skill} · $(date '+%H:%M:%S')"
-    echo "${AGENT_LINE_COUNT}L · ${AGENT_MODEL} · ${AGENT_TURNS} turns"
+    echo "${AGENT_LINE_COUNT}L · ${AGENT_MODEL}"
     echo "Folder : $dir"
     echo "Log    : $logfile"
     echo "══════════════════════════════════════════"
     local prompt
-    prompt="$(build_prompt "$dir" "$skill_text" "$AGENT_TURNS")"
-    run_with_retry "$PROJECT_ROOT" "$logfile" "$prompt" "$AGENT_MODEL" "$AGENT_TURNS" \
+    prompt="$(build_prompt "$dir" "$skill_text" "$AGENT_LINE_COUNT")"
+    run_with_retry "$PROJECT_ROOT" "$logfile" "$prompt" "$AGENT_MODEL" \
         || echo "WARNING: agent exited non-zero for $dir"
     echo "--- Response preview ---"
     _show_preview "$logfile"
@@ -620,7 +566,9 @@ _rebuild_dirs() {
             subdirs=$(find "$d" -maxdepth 1 -mindepth 1 -type d | wc -l)
             (( children == 1 && subdirs == 1 )) && continue
             loc=$(_count_loc "$d")
-            echo "${loc:-0} $d"
+            loc=${loc:-0}
+            (( loc < 100 )) && continue
+            echo "$loc $d"
           done \
         | sort -n \
         | awk '{ print $2 }'
@@ -628,46 +576,45 @@ _rebuild_dirs() {
 }
 _rebuild_dirs
 
-if $AUTONOMOUS; then
-    # ── Self-watchdog ───────────────────────────────────────────────────────────
-    # The first invocation (_AS_WATCHDOG unset) becomes the supervisor.
-    # It re-launches the script as a child; child invocations (_AS_WATCHDOG=1)
-    # skip this block and run the actual autonomous logic.
-    # On unexpected exit the supervisor runs a Claude diagnostic then restarts.
-    # Clean exits (code 0) and user signals break the loop without restart.
-    if [[ "${_AS_WATCHDOG:-}" != "1" ]]; then
-        export _AS_WATCHDOG=1
-        WD_LOG="/tmp/apply_skill_watchdog.log"
-        _wd_interrupted=false
-        trap '_wd_interrupted=true; [[ -n "${_WD_CHILD:-}" ]] && kill "$_WD_CHILD" 2>/dev/null' INT TERM
+# ── Self-watchdog ───────────────────────────────────────────────────────────
+# The first invocation (_AS_WATCHDOG unset) becomes the supervisor.
+# It re-launches the script as a child; child invocations (_AS_WATCHDOG=1)
+# skip this block and run the actual autonomous logic.
+# On unexpected exit the supervisor runs a Claude diagnostic then restarts.
+# Clean exits (code 0) and user signals break the loop without restart.
+if [[ "${_AS_WATCHDOG:-}" != "1" ]]; then
+    export _AS_WATCHDOG=1
+    WD_LOG="/tmp/apply_skill_watchdog.log"
+    _wd_interrupted=false
+    trap '_wd_interrupted=true; [[ -n "${_WD_CHILD:-}" ]] && kill "$_WD_CHILD" 2>/dev/null' INT TERM
 
-        echo "[watchdog] $(date -Is) — Supervisor gestartet. Log: $WD_LOG" | tee -a "$WD_LOG"
+    echo "[watchdog] $(date -Is) — Supervisor gestartet. Log: $WD_LOG" | tee -a "$WD_LOG"
 
-        while true; do
-            bash "$0" "${ORIGINAL_ARGS[@]}" &
-            _WD_CHILD=$!
-            wait "$_WD_CHILD"
-            EXIT_CODE=$?
+    while true; do
+        bash "$0" "${ORIGINAL_ARGS[@]}" &
+        _WD_CHILD=$!
+        wait "$_WD_CHILD"
+        EXIT_CODE=$?
 
-            if $_wd_interrupted || [[ $EXIT_CODE -eq 0 ]]; then
-                echo "[watchdog] $(date -Is) — Sauber beendet (exit=${EXIT_CODE}). Supervisor stoppt." \
-                    | tee -a "$WD_LOG"
-                break
-            fi
-
-            # Unexpected crash — diagnose then restart
-            echo "[watchdog] $(date -Is) — Unerwarteter Exit (code=${EXIT_CODE}). Starte Diagnose..." \
+        if $_wd_interrupted || [[ $EXIT_CODE -eq 0 ]]; then
+            echo "[watchdog] $(date -Is) — Sauber beendet (exit=${EXIT_CODE}). Supervisor stoppt." \
                 | tee -a "$WD_LOG"
+            break
+        fi
 
-            LATEST_RUN_LOG="$(ls -t /tmp/apply_skill_*/_run.log 2>/dev/null | head -1 || true)"
-            DIAG_LOG="/tmp/apply_skill_diag_$(date +%Y%m%d_%H%M%S).log"
+        # Unexpected crash — diagnose then restart
+        echo "[watchdog] $(date -Is) — Unerwarteter Exit (code=${EXIT_CODE}). Starte Diagnose..." \
+            | tee -a "$WD_LOG"
 
-            if command -v claude >/dev/null 2>&1 && [[ -n "${LATEST_RUN_LOG:-}" ]]; then
-                (
-                    cd "$PROJECT_ROOT"
-                    unset CLAUDECODE
-                    claude --model sonnet --dangerously-skip-permissions \
-                        -p "apply_skill.sh (ops/apply_skill.sh) crashed with exit code ${EXIT_CODE}.
+        LATEST_RUN_LOG="$(ls -t /tmp/apply_skill_*/_run.log 2>/dev/null | head -1 || true)"
+        DIAG_LOG="/tmp/apply_skill_diag_$(date +%Y%m%d_%H%M%S).log"
+
+        if [[ -n "${LATEST_RUN_LOG:-}" ]]; then
+            (
+                cd "$PROJECT_ROOT"
+                unset CLAUDECODE
+                claude --model sonnet --dangerously-skip-permissions \
+                    -p "apply_skill.sh (ops/apply_skill.sh) crashed with exit code ${EXIT_CODE}.
 
 Last 150 lines of run log (${LATEST_RUN_LOG}):
 $(tail -150 "$LATEST_RUN_LOG" 2>/dev/null)
@@ -679,236 +626,215 @@ You are the crash recovery agent. Do the following in order:
 4. End your response with exactly one of these lines:
    WATCHDOG_ACTION: RESTART
    WATCHDOG_ACTION: HUMAN_NEEDED" \
-                        > "$DIAG_LOG" 2>&1 || true
-                )
-                echo "[watchdog] Diagnose geschrieben: $DIAG_LOG" | tee -a "$WD_LOG"
-                echo "=== Diagnose ===" | tee -a "$WD_LOG"
-                cat "$DIAG_LOG" | tee -a "$WD_LOG"
-                echo "================" | tee -a "$WD_LOG"
+                    > "$DIAG_LOG" 2>&1 || true
+            )
+            echo "[watchdog] Diagnose geschrieben: $DIAG_LOG" | tee -a "$WD_LOG"
+            echo "=== Diagnose ===" | tee -a "$WD_LOG"
+            cat "$DIAG_LOG" | tee -a "$WD_LOG"
+            echo "================" | tee -a "$WD_LOG"
 
-                if grep -q "WATCHDOG_ACTION: HUMAN_NEEDED" "$DIAG_LOG"; then
-                    echo "[watchdog] $(date -Is) — Menschlicher Eingriff benötigt. Supervisor stoppt." \
-                        | tee -a "$WD_LOG"
-                    break
-                fi
+            if grep -q "WATCHDOG_ACTION: HUMAN_NEEDED" "$DIAG_LOG"; then
+                echo "[watchdog] $(date -Is) — Menschlicher Eingriff benötigt. Supervisor stoppt." \
+                    | tee -a "$WD_LOG"
+                break
             fi
+        fi
 
-            echo "[watchdog] $(date -Is) — Neustart in 30s..." | tee -a "$WD_LOG"
-            sleep 30
+        echo "[watchdog] $(date -Is) — Neustart in 30s..." | tee -a "$WD_LOG"
+        sleep 30
+    done
+    exit 0
+fi
+# ── End self-watchdog ───────────────────────────────────────────────────────
+
+# Persistent state: survives interruptions. Stored inside .git — never committed.
+STATE_FILE="$PROJECT_ROOT/.git/apply_skill_state"
+
+_save_state() {
+    local cycle=$1 dir_i=$2 skill_i=$3 prev=${4:-} cur=${5:-} nxt=${6:-}
+    {
+        printf 'RESUME_STATE_VERSION=%d\n' "$STATE_VERSION"
+        printf 'RESUME_CYCLE=%d\nRESUME_DIR_IDX=%d\nRESUME_SKILL_IDX=%d\n' \
+               "$cycle" "$dir_i" "$skill_i"
+        printf 'RESUME_PREV_DIR=%q\nRESUME_CUR_DIR=%q\nRESUME_NEXT_DIR=%q\n' \
+               "$prev" "$cur" "$nxt"
+        declare -p VISITED_DIRS 2>/dev/null || echo 'declare -A VISITED_DIRS=()'
+    } > "$STATE_FILE"
+}
+
+_find_start_idx() {
+    # Directory-first resume: find the directory we were processing and start AT it.
+    # Priority 1: RESUME_CUR_DIR → resume at this directory (not after it)
+    if [[ -n "${RESUME_CUR_DIR:-}" ]]; then
+        for _i in "${!dirs[@]}"; do
+            [[ "${dirs[$_i]}" == "$RESUME_CUR_DIR" ]] && echo "$_i" && return
         done
-        exit 0
     fi
-    # ── End self-watchdog ───────────────────────────────────────────────────────
+    # Priority 2: RESUME_NEXT_DIR → CUR may have moved/disappeared; start at NEXT
+    if [[ -n "${RESUME_NEXT_DIR:-}" ]]; then
+        for _i in "${!dirs[@]}"; do
+            [[ "${dirs[$_i]}" == "$RESUME_NEXT_DIR" ]] && echo "$_i" && return
+        done
+    fi
+    # Priority 3: RESUME_PREV_DIR → start after it
+    if [[ -n "${RESUME_PREV_DIR:-}" ]]; then
+        for _i in "${!dirs[@]}"; do
+            [[ "${dirs[$_i]}" == "$RESUME_PREV_DIR" ]] && echo "$(( _i + 1 ))" && return
+        done
+    fi
+    # Fallback: numeric index
+    echo "$RESUME_DIR_IDX"
+}
 
-    # Persistent state: survives interruptions. Stored inside .git — never committed.
-    STATE_FILE="$PROJECT_ROOT/.git/apply_skill_state"
+# State format version — increment when _save_state format changes.
+# Incompatible state files are discarded to prevent misinterpreted indices.
+STATE_VERSION=3
 
-    _save_state() {
-        local cycle=$1 skill_i=$2 dir_i=$3 prev=${4:-} cur=${5:-} nxt=${6:-}
-        {
-            printf 'RESUME_CYCLE=%d\nRESUME_SKILL_IDX=%d\nRESUME_DIR_IDX=%d\n' \
-                   "$cycle" "$skill_i" "$dir_i"
-            printf 'RESUME_PREV_DIR=%q\nRESUME_CUR_DIR=%q\nRESUME_NEXT_DIR=%q\n' \
-                   "$prev" "$cur" "$nxt"
-            declare -p VISITED_DIRS 2>/dev/null || echo 'declare -A VISITED_DIRS=()'
-        } > "$STATE_FILE"
-    }
-
-    _find_start_idx() {
-        # Priority 1: RESUME_NEXT_DIR → start there directly
-        if [[ -n "${RESUME_NEXT_DIR:-}" ]]; then
-            for _i in "${!dirs[@]}"; do
-                [[ "${dirs[$_i]}" == "$RESUME_NEXT_DIR" ]] && echo "$_i" && return
-            done
-        fi
-        # Priority 2: RESUME_CUR_DIR → start after it
-        if [[ -n "${RESUME_CUR_DIR:-}" ]]; then
-            for _i in "${!dirs[@]}"; do
-                [[ "${dirs[$_i]}" == "$RESUME_CUR_DIR" ]] && echo "$(( _i + 1 ))" && return
-            done
-        fi
-        # Priority 3: RESUME_PREV_DIR → start two after it (approximate)
-        if [[ -n "${RESUME_PREV_DIR:-}" ]]; then
-            for _i in "${!dirs[@]}"; do
-                [[ "${dirs[$_i]}" == "$RESUME_PREV_DIR" ]] && echo "$(( _i + 2 ))" && return
-            done
-        fi
-        # Fallback: numeric index
-        echo "$RESUME_DIR_IDX"
-    }
-
-    # Load saved state or start fresh
-    RESUME_CYCLE=1; RESUME_SKILL_IDX=0; RESUME_DIR_IDX=0
-    RESUME_PREV_DIR=""; RESUME_CUR_DIR=""; RESUME_NEXT_DIR=""
-    declare -A VISITED_DIRS=()
-    if [[ -f "$STATE_FILE" ]]; then
-        # shellcheck source=/dev/null
-        source "$STATE_FILE"
-        echo "Resuming: cycle=${RESUME_CYCLE}, skill=${RESUME_SKILL_IDX}, idx=${RESUME_DIR_IDX}"
+# Load saved state or start fresh
+RESUME_CYCLE=1; RESUME_DIR_IDX=0; RESUME_SKILL_IDX=0
+RESUME_PREV_DIR=""; RESUME_CUR_DIR=""; RESUME_NEXT_DIR=""
+RESUME_STATE_VERSION=0
+declare -A VISITED_DIRS=()
+if [[ -f "$STATE_FILE" ]]; then
+    # shellcheck source=/dev/null
+    source "$STATE_FILE"
+    if (( RESUME_STATE_VERSION != STATE_VERSION )); then
+        echo "State-File hat veraltetes Format (v${RESUME_STATE_VERSION} != v${STATE_VERSION}). Verwerfe."
+        rm -f "$STATE_FILE"
+        RESUME_CYCLE=1; RESUME_DIR_IDX=0; RESUME_SKILL_IDX=0
+        RESUME_PREV_DIR=""; RESUME_CUR_DIR=""; RESUME_NEXT_DIR=""
+        declare -A VISITED_DIRS=()
+    else
+        echo "Resuming: cycle=${RESUME_CYCLE}, dir=${RESUME_DIR_IDX}, skill=${RESUME_SKILL_IDX}"
         echo "  anchors: prev=${RESUME_PREV_DIR:-—}  cur=${RESUME_CUR_DIR:-—}  next=${RESUME_NEXT_DIR:-—}"
         echo "  visited: ${#VISITED_DIRS[@]} dirs"
         echo ""
     fi
-
-    cycle="$RESUME_CYCLE"
-    _in_resume=true
-
-    while true; do
-        echo "╔══════════════════════════════════════════╗"
-        echo "  Autonomous Cycle ${cycle} — $(date -Is)"
-        echo "╚══════════════════════════════════════════╝"
-        echo ""
-
-        for (( skill_i = RESUME_SKILL_IDX; skill_i < ${#AUTONOMOUS_SKILL_CYCLE[@]}; skill_i++ )); do
-            SKILL="${AUTONOMOUS_SKILL_CYCLE[$skill_i]}"
-
-            SKILL_FILE="${SCRIPT_DIR}/skills/${SKILL}.md"
-            if [[ ! -f "$SKILL_FILE" ]]; then
-                echo "WARNING: Skill-Datei nicht gefunden: $SKILL_FILE — überspringe: $SKILL"
-                declare -A VISITED_DIRS=()
-                _save_state "$cycle" $(( skill_i + 1 )) 0
-                continue
-            fi
-            SKILL_TEXT="$(<"$SKILL_FILE")"
-            SKILL_LOG_DIR="$LOG_DIR/cycle_$(printf '%03d' "$cycle")/$SKILL"
-            mkdir -p "$SKILL_LOG_DIR"
-
-            echo "╔══════════════════════════════════════════╗"
-            echo "  Skill: /$SKILL  (Cycle ${cycle})"
-            echo "╚══════════════════════════════════════════╝"
-            echo ""
-
-            if is_git_op_skill "$SKILL"; then
-                logfile="$SKILL_LOG_DIR/_root.md"
-                echo "══════════════════════════════════════════"
-                echo "Folder : $PROJECT_ROOT  [git-op, root only]"
-                echo "Log    : $logfile"
-                echo "══════════════════════════════════════════"
-                if [[ "$SKILL" == "commit" ]]; then
-                    # Auto-sync before commit: integrate upstream if needed
-                    _auto_sync_if_needed "$cycle"
-                    # init before commit: update CLAUDE.md so subsequent agents have accurate context
-                    _init_skill="${SCRIPT_DIR}/skills/init.md"
-                    if [[ -f "$_init_skill" ]]; then
-                        echo "── init: updating CLAUDE.md ──"
-                        run_with_retry "$PROJECT_ROOT" "$SKILL_LOG_DIR/_init.md" \
-                            "$(<"$_init_skill")" "sonnet" 40 \
-                            || echo "WARNING: init exited non-zero"
-                        echo "── init done ──"
-                    fi
-                fi
-                # sync-main as standalone skill: only run if upstream has changes
-                if [[ "$SKILL" == "sync-main" ]] && ! _upstream_has_changes; then
-                    echo "── sync-main: keine Upstream-Änderungen, übersprungen ──"
-                    _save_state "$cycle" $(( skill_i + 1 )) 0
-                    _check_sentinel
-                    continue
-                fi
-                select_agent_config "$SKILL" ""
-                echo "Model  : $AGENT_MODEL  Turns: $AGENT_TURNS  Lines: $AGENT_LINE_COUNT"
-                PROMPT="$SKILL_TEXT"
-                run_with_retry "$PROJECT_ROOT" "$logfile" "$PROMPT" "$AGENT_MODEL" "$AGENT_TURNS" \
-                    || echo "WARNING: agent exited non-zero for $PROJECT_ROOT"
-                echo "--- Response preview ---"
-                _show_preview "$logfile"
-                echo ""
-                declare -A VISITED_DIRS=()
-                _save_state "$cycle" $(( skill_i + 1 )) 0
-                _check_sentinel
-            else
-                # Preserve VISITED_DIRS when resuming mid-skill; reset for any other skill entry.
-                if ! $_in_resume || (( skill_i > RESUME_SKILL_IDX )); then
-                    declare -A VISITED_DIRS=()
-                fi
-                _in_resume=false
-
-                # Resolve resume anchors once at skill start, then clear them.
-                _rebuild_dirs
-                start_dir_i="$(_find_start_idx)"
-                RESUME_PREV_DIR=""; RESUME_CUR_DIR=""; RESUME_NEXT_DIR=""; RESUME_DIR_IDX=0
-
-                _cur_dir=""
-
-                # Pre-count eligible dirs for accurate progress display
-                _eligible_count=0
-                _processed_count=0
-                for _d in "${dirs[@]}"; do
-                    [[ -d "$_d" ]] || continue
-                    _should_skip_dir "$SKILL" "$_d" && continue
-                    ((_eligible_count++))
-                    # Count already-visited dirs so counter resumes correctly
-                    [[ -n "${VISITED_DIRS[$_d]+x}" ]] && ((_processed_count++))
-                done
-
-                while true; do
-                    _rebuild_dirs   # fresh snapshot before each agent call
-
-                    # Find next unvisited, existing dir at or after start_dir_i
-                    _found_dir=""; _found_i=""
-                    for _i in "${!dirs[@]}"; do
-                        (( _i < start_dir_i )) && continue
-                        _d="${dirs[$_i]}"
-                        [[ -d "$_d" ]] || continue
-                        [[ -n "${VISITED_DIRS[$_d]+x}" ]] && continue
-                        if _should_skip_dir "$SKILL" "$_d"; then continue; fi
-                        _found_dir="$_d"; _found_i="$_i"; break
-                    done
-                    [[ -z "$_found_dir" ]] && break   # skill complete
-
-                    # Determine next-dir anchor and mark current as visited
-                    _next_dir="${dirs[$(( _found_i + 1 ))]:-}"
-                    VISITED_DIRS["$_found_dir"]=1
-
-                    _save_state "$cycle" "$skill_i" "$_found_i" \
-                                "$_cur_dir" "$_found_dir" "$_next_dir"
-
-                    ((_processed_count++))
-                    _dispatch_dir "$_found_dir" "$SKILL" "$SKILL_TEXT" "$SKILL_LOG_DIR" \
-                                  "$cycle" "$_processed_count" "$_eligible_count"
-
-                    _cur_dir="$_found_dir"
-                    start_dir_i=0   # always scan from beginning; visited-set handles skips
-                    _check_sentinel
-                done
-                declare -A VISITED_DIRS=()
-                _save_state "$cycle" $(( skill_i + 1 )) 0
-            fi
-        done
-
-        echo "  Cycle ${cycle} abgeschlossen. Starte neu..."
-        echo ""
-        cycle=$(( cycle + 1 ))
-        RESUME_SKILL_IDX=0
-        RESUME_DIR_IDX=0
-        declare -A VISITED_DIRS=()
-        _save_state "$cycle" 0 0
-    done
-    exit 0
 fi
 
-for SKILL in "${SKILLS[@]}"; do
-    SKILL_LOG_DIR="$LOG_DIR/$SKILL"
-    mkdir -p "$SKILL_LOG_DIR"
+cycle="$RESUME_CYCLE"
+CHECKPOINT_INTERVAL=5
 
-    SKILL_FILE="${SCRIPT_DIR}/skills/${SKILL}.md"
-    if [[ ! -f "$SKILL_FILE" ]]; then
-        echo "WARNING: Skill-Datei nicht gefunden: $SKILL_FILE — überspringe Skill: $SKILL"
-        continue
-    fi
-    SKILL_TEXT="$(<"$SKILL_FILE")"
-
+while true; do
     echo "╔══════════════════════════════════════════╗"
-    echo "  Skill: /$SKILL"
+    echo "  Autonomous Cycle ${cycle} — $(date -Is)"
     echo "╚══════════════════════════════════════════╝"
     echo ""
 
-    for dir in "${dirs[@]}"; do
-        _dispatch_dir "$dir" "$SKILL" "$SKILL_TEXT" "$SKILL_LOG_DIR"
+    _rebuild_dirs
+    _dirs_since_checkpoint=0
+
+    # Resolve resume anchors once, then clear them
+    start_dir_i="$(_find_start_idx)"
+    _resume_cur_dir="${RESUME_CUR_DIR:-}"  # preserve for skill-level resume check
+    RESUME_PREV_DIR=""; RESUME_CUR_DIR=""; RESUME_NEXT_DIR=""
+
+    # Pre-count for progress display
+    _eligible_count=${#dirs[@]}
+    _processed_count=0
+    for _d in "${dirs[@]}"; do
+        [[ -n "${VISITED_DIRS[$_d]+x}" ]] && ((_processed_count++))
     done
 
-    echo ""
-done
+    _cur_dir=""
 
-echo "╔══════════════════════════════════════════╗"
-echo "  Done. Logs: $LOG_DIR"
-echo "╚══════════════════════════════════════════╝"
+    while true; do
+        _rebuild_dirs   # fresh snapshot before each directory
+
+        # ── Find next unvisited directory ──
+        _found_dir=""; _found_i=""
+        for _i in "${!dirs[@]}"; do
+            (( _i < start_dir_i )) && continue
+            _d="${dirs[$_i]}"
+            [[ -d "$_d" ]] || continue
+            [[ -n "${VISITED_DIRS[$_d]+x}" ]] && continue
+            _found_dir="$_d"; _found_i="$_i"; break
+        done
+        [[ -z "$_found_dir" ]] && break   # all dirs done — cycle complete
+
+        # Determine anchor for next dir
+        _next_dir="${dirs[$(( _found_i + 1 ))]:-}"
+        ((_processed_count++))
+
+        echo "╔══════════════════════════════════════════╗"
+        echo "  Dir ${_processed_count}/${_eligible_count}: ${_found_dir}"
+        echo "╚══════════════════════════════════════════╝"
+        echo ""
+
+        # ── Build skill list for this directory ──
+        mapfile -t _dir_skills < <(_build_skill_list "$_found_dir" "$_found_i" "$_eligible_count")
+
+        # Determine starting skill index (0 for fresh dir, RESUME_SKILL_IDX for resume)
+        _skill_start=0
+        if [[ "$_found_dir" == "$_resume_cur_dir" ]] && (( RESUME_SKILL_IDX > 0 )); then
+            _skill_start="$RESUME_SKILL_IDX"
+            _resume_cur_dir=""  # only apply once
+        fi
+
+        for (( _sj = _skill_start; _sj < ${#_dir_skills[@]}; _sj++ )); do
+            _skill="${_dir_skills[$_sj]}"
+
+            # Validate skill file exists
+            _skill_file="${SCRIPT_DIR}/skills/${_skill}.md"
+            if [[ ! -f "$_skill_file" ]]; then
+                echo "WARNING: Skill-Datei nicht gefunden: $_skill_file — überspringe"
+                continue
+            fi
+
+            _skill_text="$(<"$_skill_file")"
+            _skill_log_dir="$LOG_DIR/cycle_$(printf '%03d' "$cycle")/$_skill"
+            mkdir -p "$_skill_log_dir"
+
+            _save_state "$cycle" "$_found_i" "$_sj" \
+                        "$_cur_dir" "$_found_dir" "$_next_dir"
+
+            if [[ "$_skill" == "triage" ]]; then
+                # Triage uses a lightweight prompt (no build verification, no implementation)
+                _triage_prompt="$(_build_triage_prompt "$_found_dir" "$_skill_text")"
+                _triage_log_file="${_skill_log_dir}/${_found_dir//\//_}.md"
+                echo "══════════════════════════════════════════"
+                echo "Cycle ${cycle} · Dir ${_processed_count}/${_eligible_count} · triage · $(date '+%H:%M:%S')"
+                echo "Folder : $_found_dir"
+                echo "Log    : $_triage_log_file"
+                echo "══════════════════════════════════════════"
+                run_with_retry "$PROJECT_ROOT" "$_triage_log_file" "$_triage_prompt" "haiku" \
+                    || echo "WARNING: triage agent exited non-zero for $_found_dir"
+                echo "--- Triage preview ---"
+                _show_preview "$_triage_log_file"
+                echo ""
+            else
+                _dispatch_dir "$_found_dir" "$_skill" "$_skill_text" "$_skill_log_dir" \
+                              "$cycle" "$_processed_count" "$_eligible_count"
+            fi
+
+            _check_sentinel
+        done
+
+        # Mark directory as fully processed only after all skills completed
+        VISITED_DIRS["$_found_dir"]=1
+        _cur_dir="$_found_dir"
+        start_dir_i=0   # always scan from beginning; VISITED_DIRS handles skips
+        RESUME_SKILL_IDX=0
+
+        ((_dirs_since_checkpoint++))
+
+        # ── Periodic checkpoint ──
+        if (( _dirs_since_checkpoint >= CHECKPOINT_INTERVAL )); then
+            _dispatch_checkpoint "$cycle"
+            _dirs_since_checkpoint=0
+        fi
+
+        _check_sentinel
+    done
+
+    # ── End of cycle: final checkpoint ──
+    _dispatch_checkpoint "$cycle"
+
+    echo "  Cycle ${cycle} abgeschlossen. Starte neu..."
+    echo ""
+    cycle=$(( cycle + 1 ))
+    RESUME_DIR_IDX=0
+    RESUME_SKILL_IDX=0
+    declare -A VISITED_DIRS=()
+    _save_state "$cycle" 0 0
+done

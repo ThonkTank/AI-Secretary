@@ -16,26 +16,12 @@ public enum ImportTransactionType {
     EXPENSE(TransactionDirection.EXPENSE, TransactionKind.STANDARD),
     TRANSFER(TransactionDirection.EXPENSE, TransactionKind.INTERNAL_TRANSFER);
 
-    private final TransactionDirection direction;
-    private final TransactionKind kind;
+    public final TransactionDirection direction;
+    public final TransactionKind kind;
 
     ImportTransactionType(TransactionDirection direction, TransactionKind kind) {
         this.direction = direction;
         this.kind = kind;
-    }
-
-    /**
-     * Converts to the appropriate TransactionDirection.
-     */
-    public TransactionDirection toDirection() {
-        return direction;
-    }
-
-    /**
-     * Converts to the appropriate TransactionKind.
-     */
-    public TransactionKind toKind() {
-        return kind;
     }
 
     /**

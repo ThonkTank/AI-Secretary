@@ -26,7 +26,7 @@ public class UiText {
     }
 
     public static UiText raw(String text) {
-        return new UiText(0, null, text);
+        return new UiText(0, new Object[0], text);
     }
 
     public String resolve(Context context) {

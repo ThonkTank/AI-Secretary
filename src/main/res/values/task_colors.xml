@@ -21,29 +21,21 @@
     <color name="task_color_primary">#FF5C7A4D</color>
     <color name="task_color_primary_variant">#FF49653D</color>
     <color name="task_color_on_primary">#FFF8F6EE</color>
+    <color name="task_color_primary_disabled_50">#805C7A4D</color>
+    <color name="task_color_primary_disabled_8">#145C7A4D</color>
+    <color name="task_color_primary_disabled_25">#405C7A4D</color>
     <color name="task_color_secondary">#FF8DAA8C</color>
     <color name="task_color_accent">#FFCF8F4F</color>
 
-    <!-- Day picker colors -->
-    <color name="task_edit_day_selected_background">@color/task_color_primary</color>
-    <color name="task_edit_day_selected_text">@color/task_color_on_primary</color>
-    <color name="task_edit_day_selected_stroke">@color/task_color_primary</color>
-    <color name="task_edit_day_unselected_background">@color/transparent</color>
-    <color name="task_edit_day_unselected_text">@color/task_color_primary</color>
-    <color name="task_edit_day_unselected_stroke">@color/task_color_outline</color>
-
-    <!-- Alpha-composited variants of task_color_primary (#FF5C7A4D): 8%, 50%, 25% opacity.
-         Hex format: #(opacityHex)(colorHexWithoutAlpha). Opacity percentages:
-         - 8% disabled background = 0x14 alpha
-         - 50% disabled text = 0x80 alpha
-         - 25% disabled stroke = 0x40 alpha
-         If task_color_primary changes, recalculate all three opacities using the new color hex (without #FF).
+    <!-- Day picker button color scheme (applied via selectors in src/main/res/color/):
+         - Disabled: alpha-composited primary (8% bg, 50% text, 25% stroke)
+         - Selected: primary base color (primary background, on_primary text, primary stroke)
+         - Unselected: transparent bg, primary text, outline stroke
+         Hex disabled variants: #145C7A4D, #805C7A4D, #405C7A4D (8%, 50%, 25% alpha on #FF5C7A4D)
+         If task_color_primary changes, recalculate disabled color opacities:
          Quick method: multiply opacity % by 255, convert to hex (e.g., 0.08*255 = 20.4 ≈ 0x14).
          Or use a design tool (Figma, Material Theme Builder) to export alpha variants.
          Reference: https://stackoverflow.com/questions/15852122/hex-transparency-in-colors -->
-    <color name="task_edit_day_disabled_background">#145C7A4D</color>
-    <color name="task_edit_day_disabled_text">#805C7A4D</color>
-    <color name="task_edit_day_disabled_stroke">#405C7A4D</color>
 
     <!-- Deadline urgency colors -->
     <color name="task_deadline_overdue">#FFB4543A</color>

@@ -42,7 +42,7 @@ Top-level packages under `src/main/java/com/autosecretary/`:
 - **`features/meal/`** — meal planning, recipe management, pantry, shopping lists, weekly food targets; backed by `InMemoryMealStorage` (not Room). `MealPlannerPresenter` is the application-layer entry point, accessed via `AppCompositionRoot.getMealPlannerPresenter()`.
 - **`app/`** — `AppCompositionRoot` (DI root), `MainActivity`, `AutoSecretaryApplication`, `UpdateChecker`, settings
 - **`shared/`** — cross-feature enums: `Priority` (values: LOW=100, MEDIUM=200, HIGH=400, CRITICAL=10000), `Period`; and `WidgetConfiguration` (shared update-period constant for task and budget widgets)
-- **`database/`** — `AppDatabase` (Room DB class) + `Converters` (type converters for `LocalDate`, `LocalTime`, `LocalDateTime`, `DayOfWeek`, all domain enums, and `Set<DayOfWeek>` as comma-separated string)
+- **`database/`** — `AppDatabase` (Room DB class) + `Converters` (type converters for `LocalDate`, `LocalTime`, `LocalDateTime`, `YearMonth`, `DayOfWeek`, all domain enums, and `Set<DayOfWeek>` as comma-separated string)
 - **`util/`** — `TreeBuilder<T>` generic depth-first tree traversal utility used by both task hierarchy and slot hierarchy views
 
 Both features share a single-threaded `ExecutorService` wired in `AppCompositionRoot` (`app/`). All DB access runs on this executor; results post to main via `Handler`. **`AppCompositionRoot` is the manual DI root** — read it to understand wiring. It also exposes `resetForDataReload()` to re-wire after a data import.
@@ -77,11 +77,11 @@ Both features share a single-threaded `ExecutorService` wired in `AppComposition
 - **`task/application/` sub-packages** (see `features/task/application/README.md`):
   - Root — top-level entry-point use-cases and `TaskDataService`.
   - `calendar/` — `TaskCalendarService` contract and DTOs.
-  - `config/` — `TaskScheduleConfigRepository`/`Service` abstractions.
+  - `config/` — `TaskScheduleConfigRepository` (implements `SchedulingWindowProvider`; lazy-cached per-day scheduling windows).
   - `listmodel/` — `TaskListItem` and `TaskListItemMapper` (never `model/`).
   - `internal/` — Android/infrastructure implementations: `calendar/CalendarReader`, `CalendarQueryHelper` (shared Android Calendar query helper for permission check, day-boundary computation, and cursor handling), `DeviceCalendarBlockedIntervalProvider`, `mutations/TaskSlotToggleMutation`, `alarms/` receivers.
 - **`budget/domain/timeline/`** — `AccountBalanceTimelineService` and balance chart data structures (`BalanceTimelinePoint`, `DailyDeltaPoint`, `MonthlyDeltaPoint`).
-- **`budget/domain/importing/`** — `ImportCategory` (uses `TransactionDirection`), `ImportTransactionRecord`, `ParsedStatement`, `ParsedTransaction`.
+- **`budget/domain/importing/`** — `ImportCategory` (uses `TransactionDirection`), `ImportTransactionRecord`, `ImportTransactionType` (INCOME/EXPENSE/TRANSFER; maps to `TransactionDirection`+`TransactionKind`), `ImportStatus`, `ParsedStatement`, `ParsedTransaction`.
 - **`budget/domain/recurring/`** — recurring pattern domain types: `RecurringBudgetTransaction`, `RecurringPatternDetector`, `RecurringScheduleParams`, `RecurringSuggestion`, `RecurringTemplateScheduler`, `TemplateStatusUpdate`; implementation helpers in `recurring/internal/`.
 - **Layout naming:** `<feature>_<surface>_<kind>` — e.g. `task_row_item.xml`, `budget_add_transaction_dialog.xml`. Kind is one of: `activity`, `fragment`, `item`, `widget`, `dialog`.
 - **UI language:** All user-facing text in **German** — "Generieren", "Speichern", "Neue Task", etc.

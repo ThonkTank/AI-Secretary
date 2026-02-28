@@ -6,8 +6,6 @@ import com.autosecretary.features.meal.data.internal.storage.MealStorage;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -21,18 +19,17 @@ import java.util.stream.Collectors;
  *   StorageFooRepository → BaseCollectionDao&lt;Foo&gt; → RowMapper&lt;Foo&gt; → MealStorage
  * </pre>
  *
- * <h3>Why lambdas instead of reflection?</h3>
- * <p>{@code idAccessor} and {@code idSetter} are function parameters rather than using Java
- * reflection to read/write the {@code id} field. This keeps the class reflection-free, which
- * is important on Android (reflection is slow and affected by R8/ProGuard rules). Repositories
- * pass simple lambdas that directly access the id field:
+ * <h3>Why EntityIdHandler instead of reflection?</h3>
+ * <p>{@code idHandler} encapsulates id read/write logic as an abstraction rather than using
+ * Java reflection. This keeps the class reflection-free, which is important on Android
+ * (reflection is slow and affected by R8/ProGuard rules). Repositories pass a handler
+ * created via {@link EntityIdHandler#of(Function, BiConsumer)} that wraps lambdas:
  * <pre>
  *   new BaseCollectionDao&lt;&gt;(
  *       MealCollections.RECIPES,
  *       storage,
  *       new RecipeRowMapper(),
- *       r -&gt; r.id,             // idAccessor: read existing id
- *       (r, id) -&gt; r.id = id   // idSetter: inject generated id back
+ *       EntityIdHandler.of(r -&gt; r.id, (r, id) -&gt; r.id = id)
  *   );
  * </pre>
  *
@@ -51,19 +48,16 @@ public class BaseCollectionDao<T> {
     private final String collection;
     private final MealStorage storage;
     private final RowMapper<T> mapper;
-    private final Function<T, Long> idAccessor;
-    private final BiConsumer<T, Long> idSetter;
+    private final EntityIdHandler<T> idHandler;
 
     public BaseCollectionDao(String collection,
                              MealStorage storage,
                              RowMapper<T> mapper,
-                             Function<T, Long> idAccessor,
-                             BiConsumer<T, Long> idSetter) {
+                             EntityIdHandler<T> idHandler) {
         this.collection = Objects.requireNonNull(collection, "collection cannot be null");
         this.storage = Objects.requireNonNull(storage, "storage cannot be null");
         this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null");
-        this.idAccessor = Objects.requireNonNull(idAccessor, "idAccessor cannot be null");
-        this.idSetter = Objects.requireNonNull(idSetter, "idSetter cannot be null");
+        this.idHandler = Objects.requireNonNull(idHandler, "idHandler cannot be null");
     }
 
     /**
@@ -92,18 +86,18 @@ public class BaseCollectionDao<T> {
     /**
      * Persists the given value to storage.
      *
-     * <p>If the value's ID (accessed via idAccessor) is null, the storage layer is expected
-     * to generate a new ID. The generated ID is then set back on the value via idSetter.
-     * If the ID is already set (non-null), idSetter is not invoked and the existing ID is used.
+     * <p>If the value's ID (accessed via idHandler) is null, the storage layer is expected
+     * to generate a new ID. The generated ID is then set back on the value via idHandler.
+     * If the ID is already set (non-null), the existing ID is used.
      *
      * @param value The value to persist. Must not be null. Its ID (if null) will be generated
-     *              and set back via idSetter.
+     *              and set back via idHandler.
      */
     public void save(T value) {
-        Long id = idAccessor.apply(value);
+        Long id = idHandler.getId(value);
         long storedId = storage.upsert(collection, id, mapper.toRow(value));
         if (id == null) {
-            idSetter.accept(value, storedId);
+            idHandler.setId(value, storedId);
         }
     }
 

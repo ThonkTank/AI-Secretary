@@ -25,3 +25,8 @@
 **File:** `InMemoryMealStorage.java:60-63`
 
 When an explicit id is provided, the counter is bumped to `max(current, explicitId)` before returning. This ensures future auto-generated ids never collide with any explicitly assigned id, regardless of insertion order.
+
+### [keep] Helper method `getRowsOrEmpty()`
+**File:** `InMemoryMealStorage.java:95-97`
+
+This helper is called 3 times (lines 41, 47, 54) and eliminates duplication of the defensive getOrDefault pattern. The method name is clear and the abstraction justifies the extra method.

@@ -17,9 +17,9 @@ public final class MealAmountFormat {
      * @return formatted string with amount and unit separated by a space
      */
     public static String format(double amount, String unit) {
-        double rounded = Math.round(amount);
+        long rounded = Math.round(amount);
         if (Math.abs(amount - rounded) < 1e-9) {
-            return (int) rounded + " " + unit;
+            return rounded + " " + unit;
         }
         return String.format("%.1f %s", amount, unit);
     }

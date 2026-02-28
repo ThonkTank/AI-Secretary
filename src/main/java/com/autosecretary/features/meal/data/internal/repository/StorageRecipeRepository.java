@@ -1,6 +1,7 @@
 package com.autosecretary.features.meal.data.internal.repository;
 
 import com.autosecretary.features.meal.data.internal.BaseCollectionDao;
+import com.autosecretary.features.meal.data.internal.EntityIdHandler;
 import com.autosecretary.features.meal.data.internal.MealCollections;
 import com.autosecretary.features.meal.data.internal.mapper.IngredientRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.RecipeRowMapper;
@@ -24,11 +25,10 @@ public class StorageRecipeRepository implements RecipeRepository {
     private final BaseCollectionDao<Ingredient> ingredientDao;
 
     public StorageRecipeRepository(MealStorage storage) {
-        // Each BaseCollectionDao is initialized with id accessor and setter lambdas.
-        // The accessor reads the entity's id during upsert; the setter injects generated ids back.
-        // See BaseCollectionDao javadoc for detailed explanation of the id accessor/setter pattern.
-        this.recipeDao = new BaseCollectionDao<>(MealCollections.RECIPES, storage, new RecipeRowMapper(), r -> r.id, (r, id) -> r.id = id);
-        this.ingredientDao = new BaseCollectionDao<>(MealCollections.INGREDIENTS, storage, new IngredientRowMapper(), ingredient -> ingredient.id, (ingredient, id) -> ingredient.id = id);
+        // Each BaseCollectionDao is initialized with an EntityIdHandler that reads/writes the entity's id.
+        // See BaseCollectionDao javadoc for detailed explanation of the id handler pattern.
+        this.recipeDao = new BaseCollectionDao<>(MealCollections.RECIPES, storage, new RecipeRowMapper(), EntityIdHandler.of(r -> r.id, (r, id) -> r.id = id));
+        this.ingredientDao = new BaseCollectionDao<>(MealCollections.INGREDIENTS, storage, new IngredientRowMapper(), EntityIdHandler.of(ingredient -> ingredient.id, (ingredient, id) -> ingredient.id = id));
     }
 
     @Override
