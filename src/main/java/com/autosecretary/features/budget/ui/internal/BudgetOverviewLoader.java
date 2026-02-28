@@ -75,6 +75,14 @@ public class BudgetOverviewLoader {
         return new OverviewData(accounts, accountId, rows, summary, points);
     }
 
+    /**
+     * Returns the account ID to use for the current view: the persisted {@code selectedAccountId}
+     * if non-blank, otherwise the first account in {@code fallbackAccounts}, or {@code null} when
+     * the account list is empty (no accounts configured yet).
+     *
+     * <p>Public and static so that {@code BudgetViewModel} can call it without a full load
+     * when only the account selection changes.
+     */
     public static String resolveSelectedAccountId(String selectedAccountId, List<BudgetAccount> fallbackAccounts) {
         if (selectedAccountId != null && !selectedAccountId.isBlank()) {
             return selectedAccountId;
@@ -110,6 +118,7 @@ public class BudgetOverviewLoader {
         return summaryPresentationMapper.toSummary(items, freeBudgetCents);
     }
 
+    // Label priority: internal-transfer label > category name (with icon) > note > generic fallback.
     private String buildTransactionLabel(MonthlyOverviewItem item) {
         if (item.transactionKind == TransactionKind.INTERNAL_TRANSFER) {
             return item.note != null && !item.note.isBlank() ? LABEL_TRANSFER_NOTE + item.note : LABEL_TRANSFER;
@@ -148,6 +157,7 @@ public class BudgetOverviewLoader {
 
     private List<BalanceTimelinePoint> loadMonthlyTimeline(String accountId, LocalDate now, int months) {
         YearMonth toMonth = YearMonth.from(now);
+        // -1 because the range is inclusive on both ends: months=3 → this month + 2 prior = 3 total.
         YearMonth fromMonth = toMonth.minusMonths(months - 1L);
         LocalDate startDate = fromMonth.atDay(1);
         long startBalance = repository.getNetAmountBeforeDateForAccount(accountId, startDate);

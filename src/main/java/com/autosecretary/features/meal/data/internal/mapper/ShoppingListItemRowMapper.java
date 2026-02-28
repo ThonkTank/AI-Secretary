@@ -6,6 +6,14 @@ import com.autosecretary.features.meal.domain.ShoppingListItem;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * {@link RowMapper} for {@link ShoppingListItem}.
+ *
+ * <p>The {@code periodKey} field uses the shared top-level {@link MealFieldKeys#PERIOD_KEY}
+ * constant (also used by {@link WeeklyFoodTargetRowMapper}). This is the storage key that
+ * {@code StoragePantryRepository.getShoppingListItems(periodKey)} queries against to retrieve
+ * all items for a given period.
+ */
 public class ShoppingListItemRowMapper implements RowMapper<ShoppingListItem> {
 
     @Override
@@ -31,6 +39,8 @@ public class ShoppingListItemRowMapper implements RowMapper<ShoppingListItem> {
         ShoppingListItem item = new ShoppingListItem();
         item.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.ShoppingListItem.ID));
         item.ingredientId = MapperSupport.asLong(row.get(MealFieldKeys.ShoppingListItem.INGREDIENT_ID));
+        // String fields use raw casts: the storage layer always serializes them as strings via toRow(),
+        // so the cast is safe (no type mismatch). If storage changes, wrap this in MapperSupport.asString().
         item.ingredientName = (String) row.get(MealFieldKeys.ShoppingListItem.INGREDIENT_NAME);
         item.amount = MapperSupport.asDouble(row.get(MealFieldKeys.ShoppingListItem.AMOUNT));
         item.neededAmount = MapperSupport.asDouble(row.get(MealFieldKeys.ShoppingListItem.NEEDED_AMOUNT));

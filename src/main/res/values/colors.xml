@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Global rule: app-wide tokens stay in generic files; feature-specific resources belong in feature-prefixed files (for example task_colors.xml). -->
+    <!-- Global rule: app-wide tokens stay in generic files; feature-specific resources belong in feature-prefixed files (for example task_colors.xml).
+
+         Color naming conventions:
+         - Material Design tokens: [feature]_color_[role] (e.g., task_color_primary, task_color_on_surface)
+           Reference: https://m3.material.io/styles/color/the-color-system/color-roles
+         - Semantic purpose: [feature]_[domain]_[status] (e.g., task_urgency_overdue, budget_positive)
+         - Component-scoped: [feature]_[component]_[role] (e.g., task_widget_text_primary, budget_widget_header_text)
+         Prefer semantic or role-based names. Use component names only for UI-specific overrides.
+    -->
     <color name="transparent">#00000000</color>
     <color name="launcher_icon_background">#0D3B52</color>
     <color name="launcher_icon_monochrome">#FF000000</color>

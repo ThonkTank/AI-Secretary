@@ -16,6 +16,15 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * Application-layer coordinator for the meal-planner screen.
+ *
+ * <p>Called directly by {@code MealPlannerFragment}. Provides pre-sorted, ready-to-render data
+ * and handles basic user actions (plan a recipe, toggle a meal done, add pantry/shopping items).
+ *
+ * <p>This class contains no persistence logic: all reads/writes delegate to repositories.
+ * It is not a domain service — it exists solely to keep the fragment thin and testable.
+ */
 public class MealPlannerPresenter {
 
     private final MealRepository mealRepository;
@@ -30,18 +39,33 @@ public class MealPlannerPresenter {
         this.pantryRepository = pantryRepository;
     }
 
+    /**
+     * Returns meal plans for a rolling window centred on today: 3 days back + today + 10 days ahead.
+     * The asymmetric window is intentional — showing recent history alongside upcoming plans.
+     * Results are sorted by date, then by MealType ordinal (BREAKFAST before LUNCH before DINNER).
+     */
     public List<MealPlan> getWeekMealPlans() {
         LocalDate today = LocalDate.now();
+        // Window: 3 past days + today + 10 future days, so the planner always shows the current
+        // week plus the next few days without the user having to scroll forward.
         List<MealPlan> items = mealRepository.getMealPlans(today.minusDays(3), today.plusDays(10));
         items.sort(Comparator.comparing((MealPlan plan) -> plan.date)
                 .thenComparing(plan -> plan.mealType.ordinal()));
         return items;
     }
 
+    /**
+     * Returns all recipes sorted by title.
+     *
+     * <p><strong>Side effect on first use:</strong> If no recipes exist yet, a demo recipe is
+     * inserted into the repository and returned. This gives a fresh install something to show and
+     * confirms the persistence layer is working. The demo is a real saved record, not a placeholder.
+     */
     public List<Recipe> getRecipes() {
         List<Recipe> recipes = new ArrayList<>(recipeRepository.getRecipes());
         recipes.sort(Comparator.comparing(recipe -> recipe.title));
         if (recipes.isEmpty()) {
+            // Seed a demo recipe so the screen is not blank on first launch.
             Recipe demo = new Recipe.Builder("Pasta Primavera")
                     .description("Schnelle Gemüse-Pasta")
                     .instructions("Pasta kochen, Gemüse anbraten, mischen.")
@@ -60,6 +84,11 @@ public class MealPlannerPresenter {
         return items;
     }
 
+    /**
+     * Returns shopping-list items for the current period.
+     * Period key is an ISO-8601 date string ({@code LocalDate.toString()}, e.g. {@code "2024-12-30"}).
+     * Items from different days within the same shopping trip share the same key.
+     */
     public List<ShoppingListItem> getShoppingListItemsForToday() {
         return pantryRepository.getShoppingListItems(LocalDate.now().toString());
     }

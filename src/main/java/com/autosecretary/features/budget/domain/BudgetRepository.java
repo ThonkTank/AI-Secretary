@@ -11,6 +11,23 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 
+/**
+ * Primary data contract for the budget feature.
+ * <p>
+ * Covers five related areas:
+ * <ol>
+ *   <li><b>Accounts</b> — {@code findAccountById}, {@code findActiveAccounts}, {@code insertAccount}</li>
+ *   <li><b>Categories</b> — {@code findActiveCategories}, {@code insertCategory}</li>
+ *   <li><b>Transactions</b> — find / save / update / delete, including transfer pairs and batch insert</li>
+ *   <li><b>Budget limits</b> — per-category monthly limits ({@code findBudgetLimit}, {@code saveBudgetLimit})
+ *       and spend summaries ({@code getCategoryExpenseCents}, {@code getMonthlyOverview})</li>
+ *   <li><b>Balance &amp; timeline</b> — current balance, net balance, daily/monthly deltas used for the
+ *       balance chart ({@code getDailyDeltasForAccount}, {@code getMonthlyDeltasForAccount})</li>
+ * </ol>
+ * <p>
+ * The concrete Room implementation lives in {@code budget/data/internal/repository/BudgetRoomRepository}.
+ * All calls are expected to run on a background thread (see {@code AppCompositionRoot} for threading setup).
+ */
 public interface BudgetRepository {
     BudgetAccount findAccountById(String accountId);
     List<BudgetAccount> findActiveAccounts();

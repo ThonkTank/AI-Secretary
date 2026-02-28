@@ -51,6 +51,7 @@ public class CheckOffTaskUseCase {
                     if (booked) {
                         BudgetWidgetProvider.notifyWidgetUpdate(appContext);
                     }
+                    // actualServingsOverride=0: use the serving size defined on the task, not a manual override.
                     boolean mealUpdated = taskMealIntegrationService.completeMealTask(task, LocalDate.now(), 0);
                     if (mealUpdated) {
                         taskDao.write(task);

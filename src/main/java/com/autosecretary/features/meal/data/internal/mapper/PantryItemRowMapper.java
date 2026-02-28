@@ -6,6 +6,13 @@ import com.autosecretary.features.meal.domain.PantryItem;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * {@link RowMapper} for {@link PantryItem}.
+ *
+ * <p>Straightforward scalar mapper: dates are serialized to ISO-8601 strings; enum field
+ * {@code location} ({@link PantryItem.StorageLocation}) is stored by name. No complex
+ * nested objects.
+ */
 public class PantryItemRowMapper implements RowMapper<PantryItem> {
     @Override
     public Map<String, Object> toRow(PantryItem pantryItem) {
@@ -26,6 +33,8 @@ public class PantryItemRowMapper implements RowMapper<PantryItem> {
         PantryItem pantryItem = new PantryItem();
         pantryItem.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.PantryItem.ID));
         pantryItem.ingredientId = MapperSupport.asLong(row.get(MealFieldKeys.PantryItem.INGREDIENT_ID));
+        // String fields use raw casts: the storage layer always serializes them as strings via toRow(),
+        // so the cast is safe (no type mismatch). If storage changes, wrap this in MapperSupport.asString().
         pantryItem.ingredientName = (String) row.get(MealFieldKeys.PantryItem.INGREDIENT_NAME);
         pantryItem.amount = MapperSupport.asDouble(row.get(MealFieldKeys.PantryItem.AMOUNT));
         pantryItem.unit = (String) row.get(MealFieldKeys.PantryItem.UNIT);

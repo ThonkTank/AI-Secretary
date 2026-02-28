@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Bottom navigation bar for MainActivity.
+    Inflated by BottomNavigationView in app_main_activity.xml.
+    Each item maps to a feature fragment:
+      nav_schedule  → TaskListFragment  (features/task/)
+      nav_budget    → BudgetFragment    (features/budget/)
+      nav_meal      → MealPlannerFragment (features/meal/)
+    Selection handling lives in MainActivity.setupTabBar().
+-->
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
@@ -11,8 +20,10 @@
         android:icon="@drawable/ic_budget_24"
         android:title="@string/nav_budget"
         android:contentDescription="@string/nav_budget"/>
+    <!-- Icon is a system placeholder; other tabs use custom project drawables. -->
     <item
-        android:id="@+id/tab_meal"
+        android:id="@+id/nav_meal"
         android:icon="@android:drawable/ic_menu_compass"
-        android:title="@string/nav_meal"/>
+        android:title="@string/nav_meal"
+        android:contentDescription="@string/nav_meal"/>
 </menu>

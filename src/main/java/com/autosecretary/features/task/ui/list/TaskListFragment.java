@@ -37,13 +37,31 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Locale;
 
+/**
+ * Main task list screen. Shows scheduled task slots for a selected day and lets the user
+ * check them off, track progress, start/stop timers, and open the task editor.
+ *
+ * <p>Two display modes are available via a toggle:
+ * <ul>
+ *   <li><b>Checklist mode</b> — slots scheduled for the selected day, sorted by time.</li>
+ *   <li><b>Manage mode</b> — all tasks grouped by parent-child hierarchy, with search.</li>
+ * </ul>
+ *
+ * <p>See {@link TaskViewModel} for the data flow, {@link ListConfig} for mode definitions,
+ * and {@code README.md} in this package for an overview.
+ */
 public class TaskListFragment extends Fragment {
+    /**
+     * Boolean argument: if {@code true}, the create-task dialog is opened immediately after
+     * the view is created. Used by the home screen widget's "new task" shortcut.
+     */
     public static final String ARG_OPEN_CREATE_TASK = "open_create_task";
 
     private static final float ALPHA_NAV_ENABLED = 1.0f;
     private static final float ALPHA_NAV_DISABLED = 0.3f;
 
     private TaskViewModel vm;
+    /** Set to true when ARG_OPEN_CREATE_TASK is present; consumed once on first view creation. */
     private boolean shouldOpenCreateTask;
 
     @Override
@@ -53,6 +71,11 @@ public class TaskListFragment extends Fragment {
                 && getArguments().getBoolean(ARG_OPEN_CREATE_TASK, false);
     }
 
+    /**
+     * Handles the result of the READ_CALENDAR permission request.
+     * When granted, the ViewModel re-runs the filter pipeline so calendar events
+     * are appended to the display list. When denied, calendar rows remain hidden.
+     */
     private final ActivityResultLauncher<String> calendarPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
                 if (vm != null) {

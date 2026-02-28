@@ -6,6 +6,13 @@ import com.autosecretary.features.meal.domain.ConsumptionLog;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * {@link RowMapper} for {@link ConsumptionLog}.
+ *
+ * <p>Straightforward scalar mapper: all fields are numeric or date types; no enums or
+ * nested objects. Dates are serialized to ISO-8601 strings via
+ * {@link MapperSupport#toDateString}.
+ */
 public class ConsumptionLogRowMapper implements RowMapper<ConsumptionLog> {
     @Override
     public Map<String, Object> toRow(ConsumptionLog log) {

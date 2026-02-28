@@ -6,6 +6,17 @@ import com.autosecretary.features.meal.domain.WeeklyFoodTarget;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * {@link RowMapper} for {@link WeeklyFoodTarget}.
+ *
+ * <p>Each food group (grain, potato, vegetable, …) is represented by two fields:
+ * {@code *Grams} (the weekly gram target for that group) and {@code *Planned} (how many
+ * units are already accounted for in the current week's meal plan). See
+ * {@link WeeklyFoodTarget} for the full semantic meaning of each field pair.
+ *
+ * <p>The {@code periodKey} field uses the shared top-level {@link MealFieldKeys#PERIOD_KEY}
+ * constant (also used by {@link ShoppingListItemRowMapper}).
+ */
 public class WeeklyFoodTargetRowMapper implements RowMapper<WeeklyFoodTarget> {
 
     @Override
@@ -42,6 +53,8 @@ public class WeeklyFoodTargetRowMapper implements RowMapper<WeeklyFoodTarget> {
     public WeeklyFoodTarget fromRow(Map<String, Object> row) {
         WeeklyFoodTarget target = new WeeklyFoodTarget();
         target.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.WeeklyFoodTarget.ID));
+        // String fields use raw casts: the storage layer always serializes them as strings via toRow(),
+        // so the cast is safe (no type mismatch). If storage changes, wrap this in MapperSupport.asString().
         target.periodKey = (String) row.get(MealFieldKeys.PERIOD_KEY);
         target.grainGrams = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.GRAIN_GRAMS));
         target.potatoGrams = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.POTATO_GRAMS));

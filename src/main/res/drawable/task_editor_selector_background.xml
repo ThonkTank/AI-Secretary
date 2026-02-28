@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Inset rounded field background for selector/spinner inputs in the task editor form.
+     Applied via Widget.AISecretary.Spinner style in styles.xml. -->
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
     android:insetTop="@dimen/spacing_xs"
     android:insetBottom="@dimen/spacing_xs">

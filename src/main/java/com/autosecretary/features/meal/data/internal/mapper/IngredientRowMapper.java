@@ -10,6 +10,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * {@link RowMapper} for {@link Ingredient}.
+ *
+ * <p>Notable serialization: {@code storePackages} is stored as a delimited string —
+ * {@code "storeName|unit|packageAmount|priceCents|lastPurchased"} records joined by {@code ";"}.
+ * Uses {@link MapperSupport#asListOrParse} for deserialization.
+ * Values stored in {@code storeName} and {@code unit} must not contain {@code '|'} or {@code ';'}.
+ */
 public class IngredientRowMapper implements RowMapper<Ingredient> {
     @Override
     public Map<String, Object> toRow(Ingredient ingredient) {
@@ -36,6 +44,8 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
     public Ingredient fromRow(Map<String, Object> row) {
         Ingredient ingredient = new Ingredient();
         ingredient.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.Ingredient.ID));
+        // String fields use raw casts: the storage layer always serializes them as strings via toRow(),
+        // so the cast is safe (no type mismatch). If storage changes, wrap this in MapperSupport.asString().
         ingredient.name = (String) row.get(MealFieldKeys.Ingredient.NAME);
         ingredient.foodGroup = MapperSupport.asEnum(Ingredient.FoodGroup.class, row.get(MealFieldKeys.Ingredient.FOOD_GROUP), null);
         ingredient.defaultUnit = (String) row.get(MealFieldKeys.Ingredient.DEFAULT_UNIT);

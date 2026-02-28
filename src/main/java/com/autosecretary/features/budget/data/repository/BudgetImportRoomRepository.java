@@ -22,13 +22,23 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Room-Implementierung der BudgetImportRepository-Schnittstelle.
+ * Room-backed implementation of the BudgetImportRepository interface.
+ *
+ * Manages the import workflow: creates import records, persists imported transactions,
+ * detects recurring payment patterns, and synchronizes recurring template state.
+ *
+ * Import phases: parse file → create ImportRecord → persist transactions → detect patterns →
+ * create recurring templates → synchronize state → notify observers.
+ *
+ * Injected via dependency injection; accessed by the import application service.
  */
 public class BudgetImportRoomRepository implements BudgetImportRepository {
     private final BudgetImportDao importDao;
     private final BudgetRecurringTemplateDao templateDao;
     private final BudgetTransactionDao transactionDao;
     private final BudgetLookupDao lookupDao;
+    /** Callback invoked after budget data changes. Typically triggers UI refresh or
+     *  re-fetch of dependent data (balance, recurring templates, etc.). */
     private final Runnable onBudgetDataUpdated;
 
     public BudgetImportRoomRepository(BudgetImportDao importDao,
@@ -55,6 +65,8 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
                                      int autoCategorized, LocalDate periodStart, LocalDate periodEnd) {
         importDao.markCompleted(importId, totalTransactions, importedTransactions,
                 autoCategorized, periodStart, periodEnd);
+        // Imports may create new transactions that match recurring patterns or complete
+        // existing patterns. Synchronize template state to reflect current conditions.
         synchronizeRecurringTemplateState(LocalDate.now());
     }
 
@@ -114,12 +126,28 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
 
     @Override
     public void linkTransactionsToTemplate(List<String> transactionIds, String templateId) {
+        // Silent no-op if parameters are invalid. Acceptable because some imported
+        // transactions may not have matching templates. The operation is idempotent
+        // (either the link is made or not), so better to silently skip than throw.
         if (transactionIds == null || transactionIds.isEmpty() || templateId == null || templateId.isBlank()) {
             return;
         }
         transactionDao.updateTemplateIdForTransactions(transactionIds, templateId);
     }
 
+    /**
+     * Recomputes {@code nextDue} and {@code active} status for all active recurring templates.
+     *
+     * For each active template, {@link RecurringTemplateScheduler#computeStatusUpdates} advances
+     * {@code nextDue} past {@code referenceDate} according to the template's schedule
+     * (recurringType + recurringValue/recurringDayOfWeek). Templates whose nextDue has fallen
+     * far in the past are deactivated.
+     *
+     * Called automatically after every import completes, because new transactions may extend
+     * or close recurring patterns. Safe to call at any time; all updates are applied atomically.
+     *
+     * @param referenceDate the "today" date used to advance nextDue past any missed due dates
+     */
     @Override
     public void synchronizeRecurringTemplateState(LocalDate referenceDate) {
         List<BudgetRecurringTemplateEntity> templates = templateDao.findAllActiveTemplates();
@@ -136,8 +164,21 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
         onBudgetDataUpdated.run();
     }
 
+    /**
+     * Converts domain ImportTransactionRecord to persistence entity for storage.
+     *
+     * Note: ImportTransactionType (domain concept representing import semantics: STANDARD,
+     * TRANSFER) maps to TransactionDirection (INCOME/EXPENSE) and TransactionKind
+     * (STANDARD/INTERNAL_TRANSFER). This separation exists because the domain layer
+     * cares about import context (what kind of transaction was imported?), while the
+     * persistence layer cares about account properties (is it income or expense? is it
+     * a transfer between accounts?).
+     */
     private BudgetTransactionEntity toEntity(ImportTransactionRecord record) {
         ImportTransactionType type = record.type();
+        // Type should never be null during normal operation; this is an invariant check.
+        // Throw to surface bugs in the import pipeline early rather than producing
+        // invalid entities that would corrupt the database.
         if (type == null) {
             throw new IllegalArgumentException("Transaction type must not be null for record: " + record.id());
         }
@@ -161,7 +202,14 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
         return entity;
     }
 
+    /**
+     * Reconstructs domain ImportTransactionRecord from persisted entity.
+     *
+     * Reverse of {@link #toEntity(ImportTransactionRecord)}. Maps transactionKind
+     * and direction back to ImportTransactionType to restore the import context.
+     */
     private ImportTransactionRecord toRecord(BudgetTransactionEntity entity) {
+        // Reconstruct ImportTransactionType from persisted kind and direction fields
         ImportTransactionType type = switch (entity.transactionKind) {
             case INTERNAL_TRANSFER -> ImportTransactionType.TRANSFER;
             case STANDARD -> ImportTransactionType.fromDirection(entity.direction);

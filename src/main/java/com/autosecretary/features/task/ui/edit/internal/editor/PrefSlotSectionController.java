@@ -24,6 +24,22 @@ import java.time.LocalTime;
 import java.util.EnumSet;
 import java.util.Set;
 
+/**
+ * Orchestrates the preferred-slot section of the task-edit form.
+ *
+ * <p>Responsibilities:
+ * <ul>
+ *   <li>Reads the current repetition-field values and asks the presenter to compute
+ *       {@code repsPerDay}, which determines how many slot groups are rendered.
+ *   <li>Delegates actual UI construction to {@link PrefSlotUIBuilder}.
+ *   <li>Shows day-picker ({@link android.app.AlertDialog}) and time-picker
+ *       ({@link android.app.TimePickerDialog}) dialogs when the user taps a slot row.
+ *   <li>Rebuilds the slot UI whenever repetition fields change via
+ *       {@link #onRepetitionChanged()}.
+ * </ul>
+ *
+ * <p>See {@code CLAUDE.md §Glossary} for definitions of PrefSlot and Repetition.
+ */
 public class PrefSlotSectionController {
 
     private static final int WEEK_DAY_COUNT = 7;
@@ -88,6 +104,9 @@ public class PrefSlotSectionController {
         if (labels.length != WEEK_DAY_COUNT) {
             throw new IllegalStateException("Expected exactly 7 localized weekday labels.");
         }
+        // selected[] is a single-element mutable array so the AlertDialog positive-button lambda
+        // can capture and read updated values — Java lambdas require effectively-final captures,
+        // but array contents are mutable even when the reference is effectively final.
         boolean[] selected = new boolean[WEEK_DAY_COUNT];
         GridLayout layout = buildDayPickerLayout(weekDays, labels, prefSlot, takenByOthers, selected);
 
@@ -141,6 +160,9 @@ public class PrefSlotSectionController {
     }
 
     private MaterialButton createDayButton(String label, boolean isSelected, int gridIndex) {
+        // MaterialButton reads its style from the context theme at construction time.
+        // Wrapping the context here is required — passing the style as a constructor argument
+        // alone has no effect for programmatically-created MaterialButton instances.
         ContextThemeWrapper themedContext =
             new ContextThemeWrapper(fragment.requireContext(), R.style.Widget_AISecretary_TaskEdit_DayPickerButton);
         MaterialButton btn = new MaterialButton(themedContext, null, 0);
@@ -171,11 +193,14 @@ public class PrefSlotSectionController {
     }
 
     private void showTimePicker(PrefSlotEditState prefSlot) {
+        // Default to 06:00 when no preferred time has been set yet — a reasonable
+        // morning start that avoids midnight and is clearly a placeholder.
         LocalTime start = prefSlot.start != null ? prefSlot.start : LocalTime.of(6, 0);
+        // true = 24-hour clock format (matches the HH:mm display in PrefSlotUIBuilder)
         new TimePickerDialog(fragment.requireContext(), (picker, h, m) -> {
             prefSlot.start = LocalTime.of(h, m);
             rebuildPrefSlotUI();
-        }, start.getHour(), start.getMinute(), true).show();
+        }, start.getHour(), start.getMinute(), /* is24HourView= */ true).show();
     }
 
     private int dimenPx(@DimenRes int dimenResId) {

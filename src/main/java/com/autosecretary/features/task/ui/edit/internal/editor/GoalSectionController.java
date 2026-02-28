@@ -12,6 +12,13 @@ import com.autosecretary.R;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
+/**
+ * Manages the goal-appearance section of the task-edit form: a free-text emoji/icon
+ * field and a fixed colour-palette grid where the user picks a highlight colour.
+ *
+ * <p>The selected colour is stored internally as a hex string and retrieved via
+ * {@link #getSelectedGoalColorHex()} when the form is saved.
+ */
 public class GoalSectionController {
 
     private static final int GOAL_COLOR_COLUMN_COUNT = 5;
@@ -19,6 +26,9 @@ public class GoalSectionController {
     private static final float DESELECTED_SCALE = 1.0f;
     private static final float SELECTED_ALPHA = 1.0f;
     private static final float DESELECTED_ALPHA = 0.75f;
+    // Colors in #AARRGGBB format (alpha first) as required by Color.parseColor().
+    // This differs from standard Android color resources (#RRGGBB or #AARRGGBB in XML).
+    // FF = fully opaque alpha prefix; the remaining 6 hex digits are the RGB values.
     private static final String[] GOAL_COLORS = {
         "#FFE53935", "#FFD81B60", "#FF8E24AA", "#FF5E35B1", "#FF1E88E5",
         "#FF00ACC1", "#FF00897B", "#FF43A047", "#FFFB8C00", "#FF6D4C41"
@@ -55,6 +65,8 @@ public class GoalSectionController {
         for (int i = 0; i < GOAL_COLORS.length; i++) {
             String hex = GOAL_COLORS[i];
             View swatch = new View(fragment.requireContext());
+            // spec(index, weight=1f): the 1f flex weight distributes equal space to all cells
+            // in their row/column, so swatches fill the grid evenly without fixed pixel widths.
             GridLayout.LayoutParams params = new GridLayout.LayoutParams(
                 GridLayout.spec(i / GOAL_COLOR_COLUMN_COUNT, 1f),
                 GridLayout.spec(i % GOAL_COLOR_COLUMN_COUNT, 1f)
@@ -79,6 +91,8 @@ public class GoalSectionController {
     }
 
     private void updateGoalColorSelection() {
+        // Each swatch's tag was set to its hex string in buildGoalColorGrid(),
+        // so matching tag == selectedGoalColorHex identifies the active swatch.
         for (int i = 0; i < goalColorGrid.getChildCount(); i++) {
             View swatch = goalColorGrid.getChildAt(i);
             boolean selected = selectedGoalColorHex.equals(swatch.getTag());

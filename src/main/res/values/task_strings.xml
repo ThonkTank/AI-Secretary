@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Task feature UI strings (German localization).
+         Covers: edit dialogs (title, description, deadline, scheduling, budget, progress, pref slots),
+         row actions, timer, deadline/streak labels, calendar, widget, list navigation, validation messages.
+         Keys are English (code references); values are German.
+         For new task strings, add here and reference via @string/task_[context]_[element] in Java/XML.
+         See ../strings.xml for app-wide (non-feature-specific) strings. -->
     <string name="task_edit_day_picker_title">Tage auswählen</string>
     <string name="task_edit_day_picker_positive">Speichern</string>
     <string name="task_edit_day_picker_negative">Abbrechen</string>

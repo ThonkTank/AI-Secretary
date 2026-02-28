@@ -5,6 +5,11 @@ import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Wraps a TaskListItem with tree context for hierarchical rendering.
+ * Maintains a depth value (set during tree sorting) for indentation in RecyclerView,
+ * and a list of child ViewSlots for representing task or calendar hierarchies.
+ */
 public class ViewSlot {
     public final TaskListItem item;
     private int depth;

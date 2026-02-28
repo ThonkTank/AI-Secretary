@@ -2,12 +2,18 @@ package com.autosecretary.shared;
 
 /**
  * Shared configuration constants for app widgets (task and budget).
- * Keep these in sync with the corresponding values in widget_task_info.xml and widget_budget_info.xml.
+ * Keep these in sync with the corresponding values in the widget configuration XML files.
  *
- * WARNING: The XML files cannot reference Java constants directly (Android limitation).
- * If WIDGET_UPDATE_PERIOD_MILLIS is changed here, you MUST manually update both:
- * - src/main/res/xml/widget_task_info.xml (android:updatePeriodMillis attribute)
- * - src/main/res/xml/widget_budget_info.xml (android:updatePeriodMillis attribute)
+ * <strong>WARNING — Manual XML Synchronization Required:</strong> The Android framework
+ * cannot reference Java constants directly in widget configuration XML files (framework limitation).
+ * If {@code WIDGET_UPDATE_PERIOD_MILLIS} is changed here, you MUST manually update the
+ * {@code android:updatePeriodMillis} attribute in both widget XML files:
+ * <ul>
+ *   <li><code>src/main/res/xml/widget_task_info.xml</code> (android:updatePeriodMillis)
+ *   <li><code>src/main/res/xml/widget_budget_info.xml</code> (android:updatePeriodMillis)
+ * </ul>
+ * Failure to update both files means one widget will update at a different interval,
+ * causing inconsistent widget refresh behavior.
  */
 public final class WidgetConfiguration {
     private WidgetConfiguration() {

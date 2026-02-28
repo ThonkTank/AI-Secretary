@@ -1,6 +1,6 @@
 # Review Backlog — meal/data/internal/storage
 
-## Open Issues
+## Architectural Issues (Deferred)
 
 ### [consider] Interface with only one implementation
 **File:** `MealStorage.java`

@@ -46,6 +46,40 @@ import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * Manual dependency injection root for the entire application.
+ *
+ * <p>This class is the single place where all feature dependencies are wired together. It
+ * replaces a DI framework (Dagger, Hilt, etc.) with plain Java factory methods. Every
+ * non-trivial object that needs to be shared across the app — DAOs, repositories, use-cases,
+ * and ViewModel factories — is created here and cached for reuse.</p>
+ *
+ * <h2>How to read this file</h2>
+ * <ul>
+ *   <li>Public {@code get…()} methods are called by UI components (Activities, Fragments,
+ *       BroadcastReceivers). Each returns the shared, lazily-created instance of the object.</li>
+ *   <li>{@link #initTaskGraph()} wires the entire task feature graph at once. It is guarded by
+ *       a null-check so it runs only the first time any task-related getter is called.</li>
+ *   <li>Budget and meal dependencies each have their own inline lazy-init guards.</li>
+ *   <li>All methods that touch lazily-initialised state are {@code synchronized} to be safe
+ *       if ever called from a background thread (e.g. from alarm receivers).</li>
+ * </ul>
+ *
+ * <h2>Shared executor</h2>
+ * A single-threaded {@link java.util.concurrent.ExecutorService} is used by all features.
+ * Running all DB and network work on one thread prevents concurrent writes to Room and
+ * simplifies reasoning about ordering. Results are posted back to the main thread via
+ * {@link android.os.Handler}.
+ *
+ * <h2>Data reload</h2>
+ * After a backup restore or factory reset (see {@link com.autosecretary.app.settings.SettingsDataService}),
+ * all cached singletons must be rebuilt against the new database. Call {@link #resetForDataReload()}
+ * to null out all cached instances; the next getter call will recreate them from scratch.
+ *
+ * <h2>Instantiation</h2>
+ * Created once in {@link AutoSecretaryApplication#onCreate()}, accessed via
+ * {@link AutoSecretaryApplication#from(android.content.Context)}.getAppCompositionRoot().
+ */
 public class AppCompositionRoot {
     private final Application app;
     private final ExecutorService sharedExecutor;
@@ -82,6 +116,15 @@ public class AppCompositionRoot {
         return taskViewModelFactory;
     }
 
+    /**
+     * Lazily wires the entire task feature dependency graph.
+     *
+     * <p>Called by any task-related getter on the first access. Subsequent calls return
+     * immediately because {@code taskViewModelFactory} serves as the "already initialised" sentinel.
+     * All task dependencies (DAO, use-cases, scheduler, ViewModel factory) are created together
+     * because they form a tight graph — separating them would require storing many more
+     * intermediate fields.</p>
+     */
     private void initTaskGraph() {
         if (taskViewModelFactory != null) {
             return;
@@ -265,6 +308,17 @@ public class AppCompositionRoot {
         return taskLifecycleManager;
     }
 
+    /**
+     * Nulls out all cached singletons so they will be recreated on the next access.
+     *
+     * <p>Call this after a backup restore or factory reset, <em>before</em> calling
+     * {@link android.app.Activity#recreate()} on the hosting activity. The next call to any
+     * {@code get…()} method will rebuild the full dependency graph against the new database
+     * instance. The shared executor and the meal storage are intentionally not reset: the
+     * executor has no per-database state, and meal data lives in memory only.</p>
+     *
+     * @see com.autosecretary.app.settings.SettingsDataService
+     */
     public synchronized void resetForDataReload() {
         taskViewModelFactory = null;
         regenerateScheduleUseCase = null;
@@ -276,6 +330,8 @@ public class AppCompositionRoot {
         mealPlannerPresenter = null;
     }
 
+    // Not synchronized: MealPlannerPresenter is only accessed from the main thread
+    // (via MealPlannerFragment). No concurrent access is possible, so no lock is needed.
     public MealPlannerPresenter getMealPlannerPresenter() {
         if (mealPlannerPresenter != null) {
             return mealPlannerPresenter;

@@ -4,8 +4,12 @@ import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.domain.TransactionKind;
 
 /**
- * Type-safe representation of import transaction classifications.
- * Eliminates string-based type checking and provides explicit conversion to entity kinds.
+ * Type-safe classification for imported transactions.
+ * <p>
+ * Note: TRANSFER transactions use direction=EXPENSE and kind=INTERNAL_TRANSFER because transfers
+ * are modeled as internal account movements (not external income/expense). The INTERNAL_TRANSFER
+ * kind distinguishes them from real expenses.
+ * </p>
  */
 public enum ImportTransactionType {
     INCOME(TransactionDirection.INCOME, TransactionKind.STANDARD),

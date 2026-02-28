@@ -13,7 +13,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Statement-Parser: CSV wird lokal geparst, PDF an Claude delegiert.
+ * Routes bank statement file parsing by type: CSV is parsed locally (fast, no external dependencies),
+ * PDF is sent to Claude API for extraction (requires API key configured in {@link ClaudeApiKeyStore}).
+ *
+ * <p>CSV format: columns are date, amountCents, payee, description, [categoryId], [importHash].
+ * See {@link #parseCsv(byte[])} for details.
+ *
+ * <p>If PDF mode is requested without a configured API key, throws {@code IllegalArgumentException}.
+ *
+ * @see ClaudeApiKeyStore for API key configuration
+ * @see ClaudeStatementApiClient for PDF extraction via Claude API
+ * @see README.md for the full import pipeline documentation
  */
 public class StatementFileParser {
 
@@ -50,6 +60,29 @@ public class StatementFileParser {
         return claudeApiClient.parsePdf(apiKey, fileBytes, categories);
     }
 
+    /**
+     * Parses CSV file format with the following columns (comma-separated, LF or CRLF line endings):
+     * <ol>
+     *   <li>date — ISO 8601 format (e.g., 2024-01-15)</li>
+     *   <li>amountCents — integer; positive for income, negative for expense</li>
+     *   <li>payee — string (e.g., "Amazon Inc."); empty acceptable</li>
+     *   <li>description — string (e.g., "Monthly subscription"); empty acceptable</li>
+     *   <li>categoryId (optional) — UUID of a known category; empty acceptable</li>
+     *   <li>importHash (optional) — deduplication hash from statement file; empty acceptable</li>
+     * </ol>
+     *
+     * <p>If a row has <4 columns, throws IllegalArgumentException.
+     * If date or amountCents cannot be parsed, throws NumberFormatException or DateTimeException.
+     *
+     * <p>Returns a ParsedStatement with:
+     * - all valid parsed transactions
+     * - periodStart and periodEnd derived from the earliest and latest booking dates (for statement period tracking)
+     *
+     * <p>Empty files (header only or all empty rows) return empty transactions with null date bounds.
+     *
+     * @param fileBytes UTF-8 encoded CSV content
+     * @return ParsedStatement ready for enrichment and deduplication
+     */
     private ParsedStatement parseCsv(byte[] fileBytes) {
         String content = new String(fileBytes, StandardCharsets.UTF_8);
         String[] lines = content.split("\\r?\\n");
@@ -67,6 +100,8 @@ public class StatementFileParser {
                 continue;
             }
 
+            // split(",", -1) keeps trailing empty fields, ensuring consistent column count.
+            // This allows us to distinguish between "missing value" and "column not provided at all".
             String[] columns = line.split(",", -1);
             if (columns.length < 4) {
                 throw new IllegalArgumentException("Ungültige CSV-Zeile: " + line);
@@ -80,6 +115,9 @@ public class StatementFileParser {
             String importHash = columns.length > 5 ? emptyToNull(columns[5]) : null;
 
             parsedTransactions.add(new ParsedTransaction(bookingDate, amountCents, payee, note, categoryId, importHash));
+
+            // Track the earliest and latest transaction dates to report the statement's period.
+            // These bounds are used for UI display and overlap validation with previous imports.
             if (periodStart == null || bookingDate.isBefore(periodStart)) {
                 periodStart = bookingDate;
             }

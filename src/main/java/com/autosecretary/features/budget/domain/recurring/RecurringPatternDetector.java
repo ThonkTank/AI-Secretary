@@ -12,11 +12,30 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Portierung des Legacy-Pattern-Detectors für wiederkehrende Budget-Buchungen.
+ * Detects recurring transaction patterns from historical budget transaction data.
+ *
+ * <p><b>Algorithm:</b>
+ * <ol>
+ *   <li>Filter eligible transactions (must have payee, date, not already recurring/predicted)</li>
+ *   <li>Group by similar payee using fuzzy matching ({@code PayeeGrouper})</li>
+ *   <li>For each group, check that transaction amounts are consistent ({@code AMOUNT_VARIANCE_THRESHOLD})</li>
+ *   <li>Detect the date pattern ({@code DatePatternDetector}) — MONTHLY_DAY, MONTHLY_LAST, WEEKLY, or INTERVAL</li>
+ *   <li>Score confidence ({@code SuggestionScorer}) based on occurrence count, amount consistency, pattern type, and known subscriptions</li>
+ *   <li>Return sorted list of {@link RecurringSuggestion} (highest confidence first)</li>
+ * </ol>
+ *
+ * <p>Returns {@code null} candidates (those without a detected date pattern) or groups smaller than
+ * {@link #MIN_OCCURRENCES_DEFAULT}.
+ *
+ * <p>See README.md in this package for entry points, data types, and troubleshooting.
  */
 public final class RecurringPatternDetector {
     private static final int MIN_OCCURRENCES_DEFAULT = 3;
-    /** Maximum allowed per-element deviation from average, as a fraction of the average. */
+    /**
+     * Maximum allowed per-element deviation from average amount, as a fraction of the average.
+     * Set to 15% to allow transactions with minor rounding differences or occasional promos
+     * while filtering out genuinely inconsistent amounts.
+     */
     private static final double AMOUNT_VARIANCE_THRESHOLD = 0.15;
 
     private record AmountStats(long avg, long min, long max) {
@@ -75,6 +94,8 @@ public final class RecurringPatternDetector {
                 continue;
             }
 
+            // group.getKey() is the normalized payee from PayeeGrouper.groupBySimilarPayee();
+            // passed unchanged to SuggestionScorer for known-subscription pattern matching.
             RecurringSuggestion candidate = analyzePattern(group.getKey(), txList, amountStats);
             if (candidate != null) {
                 candidates.add(candidate);

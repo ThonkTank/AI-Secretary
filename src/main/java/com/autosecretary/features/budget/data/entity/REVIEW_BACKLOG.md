@@ -1,6 +1,6 @@
 # Review Backlog — budget/data/entity
 
-## Open Issues
+## Open Issues (Code Design — Deferred)
 
 ### [consider] `yearMonth` public field breaks its own stated invariant
 **File:** `BudgetTransactionEntity.java:96`
@@ -26,3 +26,15 @@
 **File:** `BudgetRecurringTemplateEntity.java:56-60`
 **Problem:** `avgAmountCents`, `minAmountCents`, `maxAmountCents` always move together and form a natural "AmountStats" value object. Any new per-template stat (e.g. stddev) will grow this clump further.
 **Fix suggestion:** Group into an `@Embedded AmountStats` value object. Requires a DB schema change (column renames with prefix); defer until next schema revision alongside the import-progress clump fix.
+
+## Fixed Issues (Onboarding Documentation)
+
+✅ [friction] BudgetTransactionEntity — added class-level javadoc, expanded yearMonth and setBookingDate() comments
+✅ [friction] BudgetCategory — added class javadoc and archived field explanation
+✅ [friction] BudgetRecurringTemplateEntity — added class javadoc, javadoc comments on all fields, explanations of payee and active semantics
+✅ [friction] BudgetImportEntity — added class javadoc and progress counter explanation
+✅ [friction] BudgetAccount — added class javadoc, AccountType enum explanation, currentBalanceCents, currency, and archived comments
+✅ [stale] BudgetLimit — translated all German comments to English with detailed English explanations
+✅ [friction] BudgetLimit — added class javadoc and rollover mechanism explanation
+✅ [stale] BudgetRecurringTemplateEntity — corrected nextDue Javadoc (was "not persisted"; it is persisted and updated by synchronizeRecurringTemplateState)
+✅ [comment] BudgetTransactionEntity — added inline comment explaining @ColumnInfo(name = "type") historical naming for direction field

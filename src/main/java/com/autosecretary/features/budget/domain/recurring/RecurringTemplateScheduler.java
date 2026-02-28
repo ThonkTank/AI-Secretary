@@ -10,6 +10,17 @@ import java.util.List;
  */
 public class RecurringTemplateScheduler {
 
+    /**
+     * Computes the next-due date for a recurring template, advancing past {@code referenceDate}
+     * if the stored {@code nextDue} is in the past.
+     *
+     * @param params        schedule parameters including the current {@code nextDue} and recurrence type
+     * @param referenceDate the "today" anchor — typically {@code LocalDate.now()}
+     * @return the next date on or after {@code referenceDate} when this template is due, or
+     *         {@code null} if the schedule is invalid (e.g. {@code WEEKLY} with no day-of-week set
+     *         or {@code MONTHLY_DAY} with an out-of-range value). A {@code null} return signals
+     *         that the template should be deactivated.
+     */
     public static LocalDate computeNextDue(RecurringScheduleParams params, LocalDate referenceDate) {
         LocalDate dueDate = params.nextDue() != null ? params.nextDue() : referenceDate;
 
@@ -54,6 +65,19 @@ public class RecurringTemplateScheduler {
         };
     }
 
+    /**
+     * Batch version of {@link #computeNextDue}: computes updated scheduling state for a list of
+     * templates and returns one {@link TemplateStatusUpdate} per template.
+     * <p>
+     * Templates for which {@code computeNextDue} returns {@code null} are marked
+     * {@code active=false} (deactivated) and their stored {@code nextDue} date is preserved
+     * unchanged (so it can be displayed in the UI as the last known due date).
+     *
+     * @param params        scheduling parameters for all active recurring templates
+     * @param referenceDate the "today" anchor — typically {@code LocalDate.now()}
+     * @return one status update per template; call
+     *         {@code BudgetImportRepository.synchronizeRecurringTemplateState()} to persist them
+     */
     public static List<TemplateStatusUpdate> computeStatusUpdates(
             List<RecurringScheduleParams> params, LocalDate referenceDate) {
         List<TemplateStatusUpdate> updates = new ArrayList<>();

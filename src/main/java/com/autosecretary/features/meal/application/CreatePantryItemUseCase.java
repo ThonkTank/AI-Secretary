@@ -11,7 +11,16 @@ import java.time.LocalDate;
 import java.util.Objects;
 
 /**
- * Application-Use-Case zum Ableiten von Ablaufdaten aus shelfLifeDays.
+ * Creates a pantry item for a known ingredient, automatically deriving its expiry date.
+ *
+ * <p>Expiry date = {@code purchaseDate + ingredient.shelfLifeDays}, computed by
+ * {@link com.autosecretary.features.meal.domain.ShelfLifeService#calculateExpiryDate}.
+ * If {@code purchaseDate} is null, today is used.
+ *
+ * <p>The unit and packaging values are taken from the ingredient record, so the caller only
+ * needs to supply the ingredient ID, amount, and purchase date.
+ *
+ * <p>Throws {@link IllegalArgumentException} if no ingredient with the given ID exists.
  */
 public class CreatePantryItemUseCase {
 

@@ -2,6 +2,7 @@
 
 ---
 
+
 ### [drift] Application layer imports UI-layer widget classes
 **Files:**
 - `CheckOffTaskUseCase.java:5,52` — imports and calls `BudgetWidgetProvider.notifyWidgetUpdate()`

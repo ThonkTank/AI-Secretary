@@ -8,7 +8,12 @@ import com.autosecretary.shared.Priority;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-/** Raw form field values collected from the dialog UI. */
+/**
+ * Raw form field values collected from the dialog UI on save.
+ * Produced by {@link com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormInputReader#read()},
+ * consumed by {@link TaskEditPresenter#applyForm(FormInput)}.
+ * When adding a new form field, update both classes accordingly.
+ */
 public class FormInput {
     public String title;
     public String description;
@@ -16,6 +21,9 @@ public class FormInput {
     public String goalIcon = TaskEditDefaults.GOAL_ICON;
     public String goalColorHex = TaskEditDefaults.GOAL_COLOR_HEX;
     public TaskCore.SchedulingType schedulingType = TaskEditDefaults.SCHEDULING_TYPE;
+    // Fixed-date fields for SchedulingType.TERMIN — not yet exposed in the UI.
+    // TaskEditFormInputReader never writes these; they stay null and are carried through
+    // unchanged by TaskEditStateMapper for round-trip fidelity. See CLAUDE.md §Not Yet Implemented.
     public LocalDate fixedDate;
     public LocalTime fixedStart;
     public LocalTime fixedEnd;

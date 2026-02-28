@@ -11,16 +11,24 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Groups transactions by payee using fuzzy (Levenshtein-based) string matching.
+ * Groups transactions by payee using fuzzy string matching based on the Levenshtein distance.
  *
- * <p>Normalization rules applied before comparison: convert to uppercase, strip all digits and
- * {@code #*} characters, replace remaining non-letter/non-space characters with spaces, and
- * collapse whitespace. This handles common bank-statement noise such as reference numbers and
- * transaction IDs embedded in the payee field.
+ * <p><b>Normalization:</b> Before comparison, payees are converted to uppercase, stripped of
+ * digits and special characters ({@code #*}), and non-letter/non-space characters are replaced
+ * with spaces. This handles common bank-statement noise like reference numbers and transaction IDs
+ * embedded in the payee field (e.g., "NETFLIX INC 12345" → "NETFLIX INC").
  *
- * <p>Two normalized payees are considered the same group when their similarity score is ≥
- * {@link #PAYEE_SIMILARITY_THRESHOLD} (0.75). Similarity is {@code 1 - (levenshteinDistance /
- * maxLength)}, so identical strings score 1.0 and completely different strings score 0.0.
+ * <p><b>Similarity scoring:</b> Two normalized payees are grouped together if their similarity
+ * score is ≥ {@link #PAYEE_SIMILARITY_THRESHOLD} (0.75). Similarity is computed as
+ * {@code 1 - (levenshteinDistance / maxLength)}, where:
+ * <ul>
+ *   <li>1.0 = identical strings</li>
+ *   <li>0.75 = e.g., "NETFLIX" vs "NETFLIX INC" (threshold: accept this grouping)</li>
+ *   <li>0.0 = completely different strings</li>
+ * </ul>
+ *
+ * <p>See <a href="https://en.wikipedia.org/wiki/Levenshtein_distance">Levenshtein distance</a>
+ * for algorithm details.
  */
 public final class PayeeGrouper {
     private static final double PAYEE_SIMILARITY_THRESHOLD = 0.75;

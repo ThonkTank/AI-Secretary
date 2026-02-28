@@ -15,6 +15,16 @@ import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Custom view that draws a simple line chart of account balance over time.
+ * Data is provided as a list of {@link BudgetChartPoint} objects (each holding a date label
+ * and a balance in cents) via {@link #setPoints(List)}.
+ *
+ * <p>The chart auto-scales vertically to the min/max of the supplied points.
+ * Only the first and last X-axis date labels are rendered to avoid overlap.
+ * Chart colours are defined in {@code res/values/colors.xml} under the
+ * {@code budget_chart_*} namespace.
+ */
 public class BudgetBalanceChartView extends View {
 
     private final Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -85,6 +95,8 @@ public class BudgetBalanceChartView extends View {
             min = Math.min(min, point.getBalanceCents());
             max = Math.max(max, point.getBalanceCents());
         }
+        // Guard against a flat series (all values identical): expand the range by 1 cent
+        // on each side so the denominator is never zero and the single line draws centred.
         if (max == min) {
             max += 1;
             min -= 1;
@@ -97,6 +109,7 @@ public class BudgetBalanceChartView extends View {
         for (int i = 0; i < points.size(); i++) {
             BudgetChartPoint point = points.get(i);
             float x = leftPad + i * stepX;
+            // Normalise balance to [0,1] then invert: ratio=1 → top of chart (high balance).
             float ratio = (point.getBalanceCents() - min) / (float) (max - min);
             float y = bottomY - ratio * height;
 

@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Budget feature UI strings (German localization).
+         Covers: dialogs (add transaction, edit, transfer), import/export, recurring pattern detection,
+         chart display, account/category selectors, balance summaries, validation/error messages.
+         Keys are English (code references); values are German.
+         For new budget strings, add here and reference via @string/budget_[context] in Java/XML.
+         See ../strings.xml for app-wide (non-feature-specific) strings. -->
     <string name="budget_title">Budgetübersicht</string>
     <string name="budget_summary">Erfasse Buchungen oder importiere einen Kontoauszug.</string>
     <string name="budget_add_transaction">Transaktion hinzufügen</string>

@@ -1,7 +1,29 @@
 package com.autosecretary.features.meal.data.internal;
 
 /**
- * Shared field-key constants used by multiple mappers and their repository callers.
+ * Field-name constants for the meal feature's untyped {@code Map<String, Object>} storage rows.
+ *
+ * <p>Each key in these interfaces is a string that maps to a field slot in a storage row.
+ * When a {@link com.autosecretary.features.meal.data.internal.mapper.RowMapper} writes a row via
+ * {@code row.put(MealFieldKeys.Recipe.TITLE, recipe.title)}, and later reads it via
+ * {@code row.get(MealFieldKeys.Recipe.TITLE)}, these constants ensure the same string is
+ * used in both directions.
+ *
+ * <h3>Organisation: nested interfaces per entity</h3>
+ * <p>Keys are grouped into nested interfaces — one per entity type (e.g., {@code Recipe},
+ * {@code Ingredient}) — so that accessing a key always requires the entity name as a qualifier:
+ * {@code MealFieldKeys.Recipe.TITLE} instead of a global {@code RECIPE_TITLE}. This prevents
+ * accidental cross-entity key reuse and makes IDE autocomplete entity-scoped.
+ *
+ * <h3>Top-level {@code PERIOD_KEY}</h3>
+ * <p>{@code PERIOD_KEY} lives outside all nested interfaces because it is shared by two entity
+ * types: {@code ShoppingListItem} and {@code WeeklyFoodTarget}. Placing it here (at the outer
+ * level) avoids duplicating the constant in two nested interfaces and making it clear that it
+ * is a cross-entity key. The value is a {@link java.time.LocalDate#toString()} date string
+ * (ISO-8601, e.g. {@code "2026-02-28"}) that identifies which week the record belongs to.
+ *
+ * <p>When adding a new entity type, add a corresponding nested interface here and a collection
+ * constant in {@link MealCollections}.
  */
 public interface MealFieldKeys {
     // Shared across ShoppingListItem and WeeklyFoodTarget — kept at top level to avoid duplication.

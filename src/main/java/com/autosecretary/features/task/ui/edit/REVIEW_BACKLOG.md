@@ -2,6 +2,7 @@
 
 ## Open Issues
 
+
 ### [warning] Four parallel field walks across FormInput → TaskEditState → TaskEditStateMapper
 
 **Files:** `FormInput.java` (field declarations), `TaskEditPresenter.java:97-121` (applyForm), `TaskEditStateMapper.java:42-90` (fromTask), `TaskEditStateMapper.java:92-148` (toTask), `TaskEditState.java:23-68`
@@ -23,3 +24,9 @@
 **Why it matters:** If the mapper ever needs a collaborator injected, `TaskEditSessionController`'s hardcoded instantiation would need a separate update from the `TaskEditDialog` wiring. Today the mapper is stateless so the risk is minimal.
 
 **Suggested alternative:** Accept `TaskEditStateMapper` as a constructor parameter in `TaskEditSessionController`, wired from `AppCompositionRoot` or `TaskViewModel`. Deferred — stateless mapper makes the coupling harmless today.
+
+---
+
+## Resolved Issues (this run — onboarding)
+
+- ✅ `ui/edit/README.md` — rewrote with: flow diagram (open → load → edit → save → persist), numbered reading order, entry-point roles, state/internal boundary explanations, and public resource links (DialogFragment, TextInputLayout, TimePicker).

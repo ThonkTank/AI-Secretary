@@ -8,6 +8,25 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * In-memory implementation of {@link MealStorage}.
+ *
+ * <p><strong>Data structure:</strong>
+ * <ul>
+ *   <li>{@code collections}: maps collection names (String) to row maps
+ *   <li>Row maps: map row ids (Long) to row data (Map<String, Object>)
+ *   <li>{@code counters}: maps collection names to the next auto-generated id
+ * </ul>
+ *
+ * <p><strong>Copy-on-read:</strong> All read operations ({@code findById}, {@code findAll},
+ * {@code findByField}) return defensive copies of the stored rows. This prevents external code
+ * from accidentally mutating the internal state. Mutations happen only via {@code upsert} and
+ * {@code delete}, ensuring the storage layer is the exclusive mutator.
+ *
+ * <p><strong>Thread safety:</strong> This class is not thread-safe. The maps are not
+ * synchronized. Callers must ensure single-threaded access or use external synchronization.
+ * In the current architecture, all storage access is routed through a single-threaded executor.
+ */
 public class InMemoryMealStorage implements MealStorage {
 
     private final Map<String, Map<Long, Map<String, Object>>> collections = new HashMap<>();
@@ -39,6 +58,8 @@ public class InMemoryMealStorage implements MealStorage {
         Map<Long, Map<String, Object>> rows = collections.computeIfAbsent(collection, key -> new LinkedHashMap<>());
         long targetId = getOrGenerateId(collection, id);
         Map<String, Object> copy = new HashMap<>(row);
+        // Defensive: always inject the canonical id into the stored row, regardless of what
+        // the caller's map contained. This ensures the stored row's id is never stale or null.
         copy.put("id", targetId);
         rows.put(targetId, copy);
         return targetId;
@@ -58,6 +79,9 @@ public class InMemoryMealStorage implements MealStorage {
 
     private long getOrGenerateId(String collection, Long explicitId) {
         if (explicitId != null) {
+            // Bump the counter to ensure future auto-generated ids never collide with any
+            // explicitly assigned id. Without this, an explicit id larger than the current
+            // counter would cause future auto-generated ids to collide with existing rows.
             counters.put(collection, Math.max(counters.getOrDefault(collection, 0L), explicitId));
             return explicitId;
         }

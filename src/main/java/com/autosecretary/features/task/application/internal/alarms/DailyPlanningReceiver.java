@@ -9,6 +9,17 @@ import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
+/**
+ * Triggered when the daily planning alarm fires (usually at midnight).
+ *
+ * Responsibilities:
+ * 1. Re-schedule the next day's alarm (keeps the daily cycle going)
+ * 2. Regenerate task slots for the upcoming day
+ * 3. Update all widgets with the refreshed schedule
+ *
+ * Uses goAsync() pattern to hold the receiver alive while async work completes.
+ * See README.md for the full daily scheduling workflow and goAsync pattern explanation.
+ */
 public class DailyPlanningReceiver extends BroadcastReceiver {
     private static final String TAG = "DailyPlanningReceiver";
 
@@ -20,6 +31,9 @@ public class DailyPlanningReceiver extends BroadcastReceiver {
 
         DailyPlanningScheduler.scheduleDaily(context);
 
+        // goAsync() extends the receiver's lifetime until pendingResult.finish() is called.
+        // Without this, Android would kill the receiver before the async work completes.
+        // See README.md "Broadcast Receiver Lifecycle" for details.
         PendingResult pendingResult = goAsync();
         try {
             AutoSecretaryApplication application = AutoSecretaryApplication.from(context);
@@ -27,6 +41,9 @@ public class DailyPlanningReceiver extends BroadcastReceiver {
                     .getAppCompositionRoot()
                     .getRegenerateScheduleUseCase();
 
+            // Regenerate daily slots: generates new TaskSlots for today based on TaskPrefSlots,
+            // adapting from recent completion history (adaptive scheduling).
+            // This ensures the task list always has fresh, personalized scheduling.
             useCase.execute(result -> {
                 try {
                     TaskWidgetProvider.notifyWidgetUpdate(context);

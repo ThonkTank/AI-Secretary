@@ -20,6 +20,22 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
+/**
+ * {@link AppWidgetProvider} entry point for the task widget. Manages the widget lifecycle
+ * (onUpdate, onReceive), user interactions (day navigation, checkbox toggle, refresh),
+ * and view updates.
+ *
+ * <p><b>Key responsibilities:</b>
+ * <ul>
+ *   <li>Lifecycle: {@link #onUpdate(Context, AppWidgetManager, int[])} updates all widget instances</li>
+ *   <li>Interaction: {@link #onReceive(Context, Intent)} dispatches user actions (prev/next day, toggle)</li>
+ *   <li>Persistence: Selected day offset stored in SharedPreferences, survives app restart</li>
+ *   <li>Async toggle: {@link #handleToggle(Context, Intent)} uses {@code goAsync()} to extend
+ *       broadcast lifetime while the task mutation completes</li>
+ * </ul>
+ *
+ * <p>See {@link README.md} for architecture and data flow.
+ */
 public class TaskWidgetProvider extends AppWidgetProvider {
     private static final String TAG = "TaskWidget";
 
@@ -43,6 +59,8 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     private static final String KEY_OFFSET = "selected_day_offset";
     private static final int MAX_OFFSET = TaskViewModel.MAX_DAY_OFFSET;
 
+    // Widget displays dates in German (project-specific UI language).
+    // See CLAUDE.md: "All user-facing text in German — 'Generieren', 'Speichern', etc."
     private static final DateTimeFormatter DATE_FORMATTER =
             DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN);
 
@@ -168,6 +186,12 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         String slotId = intent.getStringExtra(EXTRA_SLOT_ID);
         if (taskId == null || slotId == null) return;
 
+        // goAsync() extends the broadcast receiver's lifetime beyond the ~6-second Android timeout.
+        // Without it, onReceive() returns and the process may be killed before the database
+        // mutation completes. A raw Thread is used here (not the shared executor) because:
+        // 1. BroadcastReceiver.onReceive() must complete quickly; queuing via executor could delay finish()
+        // 2. This is a common Android widget pattern for responsive UI updates
+        // TODO: Consider threading consistency with shared executor if widget latency becomes an issue.
         PendingResult result = goAsync();
         new Thread(() -> {
             try {

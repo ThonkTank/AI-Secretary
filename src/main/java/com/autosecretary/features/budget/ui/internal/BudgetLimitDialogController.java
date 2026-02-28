@@ -25,6 +25,16 @@ import java.util.Locale;
 public class BudgetLimitDialogController {
 
     public interface Listener {
+        /**
+         * Called when the user confirms the limit dialog.
+         *
+         * @param categoryId          UUID of the expense category.
+         * @param amountStr           Locale-formatted decimal string, e.g. {@code "150,00"} (German).
+         *                            Parsing is the caller's responsibility.
+         * @param rolloverEnabled     Whether unspent budget carries over into the next month.
+         * @param rolloverCarryoverStr Optional Euro amount string for an initial carryover balance;
+         *                            empty string means no pre-seeded carryover.
+         */
         void onSaveBudgetLimit(String categoryId, String amountStr,
                                boolean rolloverEnabled, String rolloverCarryoverStr);
     }
@@ -56,6 +66,8 @@ public class BudgetLimitDialogController {
         SpinnerHelper.setSelection(categorySpinner, expenseCategories,
                 preSelectedCategoryId, c -> c.id);
 
+        // Pre-populate the amount field when editing an existing limit (baseLimitCents > 0).
+        // If zero or negative (new limit), the field is intentionally left blank.
         if (baseLimitCents > 0) {
             amountInput.setText(String.format(Locale.GERMAN, "%.2f", baseLimitCents / 100.0));
         }

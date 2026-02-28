@@ -14,6 +14,15 @@ import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 
+/**
+ * Manual {@link ViewModelProvider.Factory} for {@link TaskViewModel}.
+ *
+ * <p>Receives all long-lived dependencies via constructor injection from {@code AppCompositionRoot}.
+ * {@link TaskEditSessionController} and {@link com.autosecretary.app.Preferences Preferences} are
+ * created inside {@link #create} rather than injected because they are ViewModel-scoped: they must
+ * be recreated each time a new {@link TaskViewModel} instance is created and must not be shared
+ * across ViewModel instances.
+ */
 public class TaskViewModelFactory implements ViewModelProvider.Factory {
     private final Application app;
     private final TaskDataService taskDataService;
@@ -41,6 +50,7 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
     @SuppressWarnings("unchecked")
     public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
         if (modelClass.isAssignableFrom(TaskViewModel.class)) {
+            // Created here (not injected) so its lifecycle is tied to the ViewModel instance.
             TaskEditSessionController taskEditSessionController = new TaskEditSessionController(
                     taskDataService
             );
@@ -53,7 +63,7 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
                     adjustTaskProgressUseCase,
                     taskEditSessionController,
                     taskCalendarService,
-                    new Preferences(app)
+                    new Preferences(app) // ViewModel-scoped; not shared with other consumers
             );
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());

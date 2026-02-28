@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Meal feature UI strings (German localization).
+         Covers: tabs (week plan, recipes, stock/shopping), dialog titles and actions,
+         plan/recipe/pantry/shopping row labels, input hints.
+         Keys are English (code references); values are German.
+         For new meal strings, add here and reference via @string/meal_[context] in Java/XML.
+         See ../strings.xml for app-wide (non-feature-specific) strings. -->
     <string name="nav_meal">Mahlzeiten</string>
 
     <string name="meal_title">Meal-Planung</string>

@@ -48,8 +48,12 @@ public class BudgetTransactionMapper {
         }
 
         if (record.type() == ImportTransactionType.TRANSFER) {
+            // Transfers are internal account movements (debit from one account, credit to another),
+            // not real income/expense. They require special handling to create linked transfer pairs.
+            // This mapper only handles INCOME and EXPENSE transactions.
             throw new IllegalArgumentException(
-                    "Transfer records must not be mapped via BudgetTransactionMapper.toDomain; handle transfers separately.");
+                    "Transfer records must not be mapped via BudgetTransactionMapper.toDomain; "
+                    + "handle transfers separately (use linked transfer pair logic).");
         }
 
         TransactionDirection direction = record.type().toDirection();

@@ -29,3 +29,4 @@ The project wires a shared `ExecutorService` in `AppCompositionRoot`. This widge
 
 **Fix:** Add a date-scoped query to `TaskDAO` (e.g. `readAllForDate(LocalDate)`) and use it here. Requires changes outside this directory — defer.
 
+---

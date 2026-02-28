@@ -25,7 +25,50 @@ without meaningfully improving discoverability.
 ### Helpers
 - `TaskPrefSlotFactory` — creates default `TaskPrefSlot` instances for new tasks
 
+## Key design choice: `Task` is a POJO, not an `@Entity`
+
+This is the most non-obvious decision in the data layer.
+
+`TaskCore` is the **only** `@Entity` for tasks. It maps to the `task_core` table.
+
+`Task` is a **Room POJO** (plain Java object) assembled by Room at query time from five tables
+using `@Embedded` + `@Relation`. It is what callers actually work with because it carries all
+associated data (slots, prefSlots, prerequisites, relations, planned meals) in one object.
+
+```java
+// Task is assembled from 5 tables — you never insert/update it directly
+public class Task {
+    @Embedded public TaskCore core;           // from task_core
+    @Relation(...) public List<TaskSlot> slots;       // from task_slots
+    @Relation(...) public List<TaskPrefSlot> prefSlots; // from task_pref_slots
+    @Relation(...) public List<TaskRelation> parents;   // from task_relation
+    @Relation(...) public List<TaskPrerequisite> prerequisites; // from task_prerequisites
+}
+```
+
+All writes go through `TaskDao.write(Task)` or `TaskDao.writeList(List<Task>)`, which break
+the object back into its parts and upsert each table individually.
+
+See [Room `@Relation` documentation](https://developer.android.com/training/data-storage/room/relationships)
+for how Room assembles multi-table queries.
+
+## Recommended reading order
+
+1. **`Task.java`** — the aggregate root; understand its structure before anything else.
+2. **`TaskCore.java`** — the actual persisted entity; all the domain fields live here.
+3. **`TaskSlot.java`** — the scheduled/completed time block; understand the two-phase lifecycle.
+4. **`TaskPrefSlot.java`** — preferred timing patterns and adaptive adjustment.
+5. **`TaskDao.java`** — the write/read interface; pay attention to the `writeDependents` javadoc
+   which explains the delete-vs-upsert strategy for each sub-table.
+6. **`TaskRelation.java`**, **`TaskPrerequisite.java`** — parent-child and prerequisite links.
+
 ## Placement convention
 
 Place new task data-layer files directly in this package. Follow the `Task*` naming prefix.
 Use `read*/write*/delete*` method naming in DAOs (project convention: `write*` = upsert via REPLACE).
+
+## Public resources
+
+- [Room overview](https://developer.android.com/training/data-storage/room) — persistence library
+- [Room `@Relation`](https://developer.android.com/training/data-storage/room/relationships) — how multi-table POJOs work
+- [Room `@Embedded`](https://developer.android.com/reference/androidx/room/Embedded) — how inner classes are flattened to columns

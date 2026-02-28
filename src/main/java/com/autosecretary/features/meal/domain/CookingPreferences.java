@@ -5,14 +5,27 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * Kochsession-Konfiguration pro MealType.
- * Bestimmt wann und wie oft pro Woche gekocht wird.
- * Einkaufstage werden separat als TrackedItems verwaltet.
+ * Per-meal-type cooking schedule configuration: how often and on which days cooking is allowed.
+ *
+ * <p>For each {@link MealType}, two constraints are stored:
+ * <ul>
+ *   <li>{@code max*Cooking} — maximum number of cooking sessions per week for that meal type.</li>
+ *   <li>{@code *CookingDays} — set of days on which cooking for that meal type is permitted.</li>
+ * </ul>
+ *
+ * <p>The no-arg constructor initialises sensible defaults: max=3 cooking sessions/week for
+ * BREAKFAST, LUNCH, and DINNER (all days allowed); SNACK defaults to 0 sessions (no days).
+ *
+ * <p>Shopping days are managed separately by the task feature's checklist system and are
+ * not part of this object.
+ *
+ * <p>This is a singleton in storage — only one row (id=1) is ever persisted.
+ * {@code MealRepository#getCookingPreferences()} returns a default instance when none exists.
  */
 public class CookingPreferences {
 
     public Long id;
-    public int maxBreakfastCooking;     // Koch-Sessions pro Woche
+    public int maxBreakfastCooking;     // max cooking sessions per week for BREAKFAST
     public int maxLunchCooking;
     public int maxDinnerCooking;
     public int maxSnackCooking;
@@ -20,7 +33,7 @@ public class CookingPreferences {
     public Set<DayOfWeek> lunchCookingDays;
     public Set<DayOfWeek> dinnerCookingDays;
     public Set<DayOfWeek> snackCookingDays;
-    public int quickPrepMaxMinutes;     // Grenze fuer "kein Kochen noetig" (Default 15)
+    public int quickPrepMaxMinutes;     // recipes with totalTime <= this value don't count as a "cooking session" (default 15)
 
     public CookingPreferences() {
         maxBreakfastCooking = 3;

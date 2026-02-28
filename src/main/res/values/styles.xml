@@ -1,5 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Material Design theme and component styles.
+
+         Naming convention: [Widget|TextAppearance].[Namespace].[Component].[Variant]
+         - Widget.* for view styles (buttons, inputs, spinners, navigation)
+         - TextAppearance.* for text properties (color, size, weight, font)
+         - Parent: always inherit from Material parent (Widget.MaterialComponents.*, TextAppearance.MaterialComponents.*)
+
+         AppTheme: Material Light theme with nature-inspired task colors + forest gradient background.
+         Colors from ../task_colors.xml; dimens from ../dimens.xml and ../task_dimens.xml.
+
+         When adding new styles:
+         1. Inherit from Material parent: Widget.MaterialComponents.Button.Outlined, etc.
+         2. Reference color/dimen tokens (never inline hex/dp values)
+         3. Follow naming: Widget.AISecretary.[Component].[Variant]
+         4. Place styles logically (theme first, then component groups)
+
+         Reference: https://m3.material.io/ (Material Design 3 guidelines)
+                   https://material.io/develop/android (Material Components for Android)
+    -->
+
     <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/task_color_primary</item>
         <item name="colorPrimaryVariant">@color/task_color_primary_variant</item>

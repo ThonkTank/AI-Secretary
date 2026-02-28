@@ -32,7 +32,40 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
- * Internal scheduler that assigns tasks to time slots within a given window.
+ * Internal implementation of {@link TaskSlotGenerator} that assigns tasks to time slots
+ * using a competitive, displacement-aware greedy algorithm.
+ *
+ * <h2>Two operating modes</h2>
+ * <ul>
+ *   <li><b>Single-day</b> ({@link #generateSlotsForDay}): schedules one calendar day end-to-end.
+ *       Calls {@code scorer.maintenance()} for all tasks upfront before entering the placement
+ *       loop, which is the safe order because maintenance mutates task state.</li>
+ *   <li><b>Multi-day window</b> ({@link #generateSlotsForWindow}): schedules several consecutive
+ *       days in one pass, distributing repetitions intelligently across the window.
+ *       Fixed-time tasks ({@code TERMIN}) are pinned first; then the global best-fit loop
+ *       competes all chains across all days simultaneously.</li>
+ * </ul>
+ *
+ * <h2>Overall algorithm (global best-fit)</h2>
+ * <ol>
+ *   <li>Build prerequisite chains via {@link #buildTaskChains} — linear sequences of tasks
+ *       that must execute in order (A → B → C).</li>
+ *   <li>Repeat until no net-positive placement remains (or the safety cap fires):
+ *       <ul>
+ *         <li>For each chain and each candidate start time, evaluate
+ *             {@link #tryPlaceChain}: compute gain score, find any displaceable slots
+ *             that would be evicted, compute loss score, net = gain − loss.</li>
+ *         <li>Pick the globally highest net-score winner across all days and chains.</li>
+ *         <li>Apply that placement: remove displaced slots, insert new slot(s).</li>
+ *       </ul>
+ *   </li>
+ * </ol>
+ *
+ * <h2>Occupied-interval invariant</h2>
+ * Every method that reads or writes {@code List<OccupiedInterval>} relies on this rule:
+ * a {@code null} {@link OccupiedInterval#candidate} means the interval is a hard external
+ * calendar block (cannot be displaced); a non-null candidate means it is a task slot that
+ * <em>may</em> be displaced if its {@link DisplacementCandidate#displaceable} flag is true.
  */
 public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
 
@@ -61,6 +94,13 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
+    /**
+     * A time interval that is currently occupied on the schedule.
+     *
+     * <p>{@code candidate == null} → hard calendar block (never displaceable).
+     * {@code candidate != null} → a previously placed task slot; may be displaced if
+     * {@link DisplacementCandidate#displaceable} is {@code true}.
+     */
     private static class OccupiedInterval extends Interval {
         final DisplacementCandidate candidate;
 
@@ -74,12 +114,27 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
+    /**
+     * Metadata attached to a placed task slot, used when evaluating whether
+     * the slot can be evicted to make room for a higher-scoring chain.
+     */
     private static class DisplacementCandidate {
         final Task task;
         final TaskSlot slot;
+        /** True if this slot may be evicted to make room for a higher-scoring chain. */
         final boolean displaceable;
+        /**
+         * True for fixed-time (TERMIN) slots. They are displaceable only by other fixed tasks,
+         * never by normally scored tasks, even if their score would be higher.
+         */
         final boolean protectedFromNormalTasks;
+        /** The score that would be lost if this candidate is evicted; used in net-score calculation. */
         final int lossScore;
+        /**
+         * Group key for atomic eviction. When two slots share an {@code atomicGroupId} (e.g. a
+         * prerequisite chain placed together), both are evicted or neither is — partial eviction
+         * of a chain is not allowed. The group loss score is counted only once per unique group ID.
+         */
         final String atomicGroupId;
 
         DisplacementCandidate(Task task,
@@ -97,6 +152,11 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
+    /**
+     * One node in a prerequisite chain — a task together with the minimum gap (in minutes)
+     * that must elapse after the preceding task finishes before this one may start.
+     * The first node in a chain always has {@code minGapFromPrevious == 0}.
+     */
     private static class ChainNode {
         final Task task;
         final int minGapFromPrevious;
@@ -107,11 +167,24 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
+    /**
+     * A fully evaluated candidate placement for a prerequisite chain.
+     *
+     * <p>{@code chain} and {@code starts} are parallel lists: {@code starts.get(i)} is the
+     * proposed start time for {@code chain.get(i)}.
+     *
+     * <p>{@code netScore = gainScore − lossScore}.  A placement is only applied when
+     * {@code netScore > 0}, meaning the incoming chain is worth more than whatever
+     * it would displace.
+     */
     private static class ChainPlacement {
         final List<ChainNode> chain;
         final List<LocalDateTime> starts;
+        /** Slots that must be evicted to make room for this chain. May be empty. */
         final Set<DisplacementCandidate> toDisplace;
+        /** Sum of scores for all slots in the incoming chain (plus chain-completion bonus). */
         final int gainScore;
+        /** Sum of loss scores for all evicted slots (atomic groups counted once). */
         final int lossScore;
         final int netScore;
         final LocalDate day;
@@ -132,6 +205,12 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
+    /**
+     * Snapshot of one day's scheduling state used during multi-day window scheduling.
+     * {@code occupied} is a mutable, sorted list of all intervals already claimed on
+     * this day (task slots and calendar blocks); it is updated in-place as placements
+     * and displacements are applied.
+     */
     private static class DaySchedulingContext {
         final LocalDate day;
         final LocalDateTime windowStart;
@@ -173,6 +252,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private LocalDate schedulingDay;
     private TaskPlanningState planningState;
 
+    /** HH:mm formatter used in log output, e.g. "09:30". */
     private static final DateTimeFormatter HMM = DateTimeFormatter.ofPattern("HH:mm");
 
     public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager) {
@@ -211,6 +291,12 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         this.calendarBlockedIntervalProvider = calendarBlockedIntervalProvider;
     }
 
+    /**
+     * Populates {@code state} with slots that are already committed (completed or started) in
+     * the given date range, so the window scheduler knows to respect them as prior art.
+     * Call this before {@link #generateSlotsForWindow} when re-generating a window that
+     * may already contain partially completed work.
+     */
     public void recordPreservedSlots(List<Task> tasks, LocalDate startInclusive, LocalDate endExclusive, TaskPlanningState state) {
         for (Task task : tasks) {
             for (TaskSlot slot : task.slots) {
@@ -224,6 +310,12 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
+    /**
+     * Package-private overload for testing and internal use: accepts explicit window bounds
+     * instead of deriving them from {@code schedulingWindowProvider}. Bypasses the
+     * {@code SchedulingWindowProvider} entirely — useful in unit tests where the window must
+     * be controlled precisely. Delegates to the five-argument variant with an empty calendar list.
+     */
     TaskSlotGenerationResult generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
         return generateSlotsForDay(tasks, windowStart, windowEnd, state, new ArrayList<>());
     }
@@ -234,6 +326,17 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return generateSlotsForDayInternal(tasks, window.start(), window.end(), state, new ArrayList<>());
     }
 
+    /**
+     * Schedules {@code days} consecutive calendar days starting at {@code startDay}.
+     *
+     * <p>Unlike {@link #generateSlotsForDay} (which calls {@code scorer.maintenance()} for all
+     * tasks upfront), the window path calls maintenance lazily inside
+     * {@link #tryPlaceChain} as each chain is evaluated. See the class-level Javadoc and the
+     * pre-existing backlog note on coupling for the implications of this difference.
+     *
+     * <p>Fixed-time tasks ({@code TERMIN}) are pinned per-day first, then the global best-fit
+     * loop runs across all days simultaneously to fill remaining gaps.
+     */
     @Override
     public TaskSlotGenerationResult generateSlotsForWindow(List<Task> tasks, LocalDate startDay, int days, TaskPlanningState state) {
         if (days <= 0) {
@@ -264,6 +367,12 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return new TaskSlotGenerationResult(newSlots, lastConflicts);
     }
 
+    /**
+     * Package-private overload for testing and internal use: accepts explicit window bounds
+     * and a pre-collected list of calendar events. Bypasses both {@code schedulingWindowProvider}
+     * and {@code calendarBlockedIntervalProvider} — useful in unit tests or when the calling
+     * code has already resolved these externally.
+     */
     TaskSlotGenerationResult generateSlotsForDay(List<Task> tasks,
                                     LocalDateTime windowStart,
                                     LocalDateTime windowEnd,
@@ -310,6 +419,16 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return new TaskSlotGenerationResult(newSlots, lastConflicts);
     }
 
+    /**
+     * Records into {@code state} every slot that is already marked as scheduled for {@code day}
+     * but has not yet been recorded there. Used when iterating multi-day windows so that
+     * later days know which tasks were already placed on earlier days and can apply the
+     * inter-day spacing guard accordingly.
+     *
+     * <p>Differs from {@link #recordPreservedSlots}: that method captures <em>committed</em>
+     * (completed/started) work from a previous generation run; this method captures
+     * <em>newly generated</em> scheduled slots within the current run.
+     */
     public void recordScheduledSlotsForDay(List<Task> tasks, LocalDate day, TaskPlanningState state) {
         for (Task task : tasks) {
             for (TaskSlot slot : task.slots) {
@@ -482,6 +601,29 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return best;
     }
 
+    /**
+     * Tries to place {@code chain} starting at {@code firstStart} and returns a
+     * {@link ChainPlacement} if the placement is feasible and net-positive, or {@code null}
+     * if it is impossible or would lose more than it gains.
+     *
+     * <p>For each node in the chain the method:
+     * <ol>
+     *   <li>Checks prerequisites are met (earlier slot must exist and have ended).</li>
+     *   <li>Computes the slot end time; returns {@code null} if it exceeds {@code windowEnd}.</li>
+     *   <li>Finds any overlapping occupied intervals; returns {@code null} if any are non-displaceable
+     *       (calendar blocks or fixed-task-protected slots).</li>
+     *   <li>Expands overlapping slots to their full atomic group (chain siblings must be evicted
+     *       together), collects their loss scores.</li>
+     *   <li>Calls {@code scorer.maintenance()} then {@code scorer.score()} to get the gain for
+     *       this node; returns {@code null} if the score is zero (task ineligible).</li>
+     * </ol>
+     * The chain-completion bonus ({@link #CHAIN_COMPLETION_BONUS_PER_SLOT}) is added after all
+     * nodes are processed, before comparing gain vs. loss.
+     *
+     * <p><b>Note:</b> {@code scorer.maintenance()} inside this method is a side-effecting call
+     * (see pre-existing backlog). For the single-day path this is never reached because
+     * maintenance is called upfront; it is only reached in the window path.
+     */
     private ChainPlacement tryPlaceChain(List<ChainNode> chain,
                                          LocalDateTime firstStart,
                                          LocalDateTime windowEnd,
@@ -640,6 +782,20 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return false;
     }
 
+    /**
+     * Converts the prerequisite graph into a list of linear chains, each suitable for
+     * evaluation by {@link #tryPlaceChain}.
+     *
+     * <p>A "chain" is a path through the prerequisite DAG: A → B → C means B requires A,
+     * C requires B, and the chain [A, B, C] must be placed in order with minimum gap constraints.
+     *
+     * <p>Tasks with no incoming prerequisites are chain roots. DFS from each root produces one
+     * chain per leaf-to-root path. Tasks with no prerequisite relationships at all each become
+     * their own single-node chain.
+     *
+     * <p><b>Scope:</b> only iterates the top-level {@code tasks} parameter. Child tasks in the
+     * tree hierarchy are not traversed here; see the pre-existing backlog note on this limit.
+     */
     private List<List<ChainNode>> buildTaskChains(List<Task> tasks) {
         Map<String, List<ChainNode>> outgoing = new HashMap<>();
         Set<String> hasIncoming = new HashSet<>();

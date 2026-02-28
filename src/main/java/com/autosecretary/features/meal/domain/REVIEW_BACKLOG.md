@@ -2,6 +2,19 @@
 
 ## Open Issues
 
+### Resolved This Run
+
+✅ **[friction]** German-only class Javadocs replaced with English on all 14 domain files.
+✅ **[comment]** Missing method Javadocs added to all four domain service classes.
+✅ **[comment]** German field comments translated in `CookingPreferences` and `ShoppingListItem`.
+✅ **[comment]** German method Javadocs in `Ingredient` translated to English.
+✅ **[comment]** German inner-class/enum Javadocs in `Ingredient` and `Recipe` translated; DGE link added to `FoodGroup`.
+✅ **[comment]** `RecipeScalingResult.factor` semantics documented in record Javadoc.
+
+---
+
+### Previously Deferred (architectural — require decisions outside this scope)
+
 [simplify] WeeklyFoodTarget.java:17-40 — 22 parallel primitive fields (11 `*Grams` + 11 `*Planned`) bridged by 4 switch-over-FoodGroup dispatch methods (getTargetFor, getPlannedFor, addPlanned, setTargetFor). Every new `FoodGroup` value requires updating 6 sites. Simpler alternative: replace the 22 fields with two `EnumMap<FoodGroup, Integer>` fields (`targets`, `planned`) and remove all switch methods entirely — all dispatch becomes a trivial map lookup. Blocker: Room persists each primitive field as its own column; migrating requires a schema change. Defer until a data-layer migration is feasible.
 
 ---
@@ -35,4 +48,3 @@
 ---
 
 [consider] HouseholdMember.Gender — only enum in the meal domain without a `label` field. All other enums with display needs have one (MealType, ActivityLevel, StorageLocation, FoodGroup). If a meal UI is built, Gender will need localised display text. Low priority until UI is built.
-

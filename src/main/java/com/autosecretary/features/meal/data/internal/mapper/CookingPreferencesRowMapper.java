@@ -6,6 +6,17 @@ import com.autosecretary.features.meal.domain.CookingPreferences;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * {@link RowMapper} for {@link CookingPreferences}.
+ *
+ * <p>{@code CookingPreferences} is a singleton entity — only one row (id=1) is ever
+ * persisted. This constraint is enforced by {@code StorageMealRepository.saveCookingPreferences()},
+ * not by this mapper.
+ *
+ * <p>The four {@code *CookingDays} fields ({@link java.time.DayOfWeek} sets) are serialized
+ * as comma-separated enum names via {@link MapperSupport#serializeDayOfWeekSet} and
+ * deserialized via {@link MapperSupport#asDayOfWeekSet}.
+ */
 public class CookingPreferencesRowMapper implements RowMapper<CookingPreferences> {
     @Override
     public Map<String, Object> toRow(CookingPreferences preferences) {

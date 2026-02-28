@@ -12,6 +12,17 @@ import androidx.fragment.app.Fragment;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * Manages the system file-picker used for importing bank statements.
+ * Accepts CSV and PDF files; reads the selected file into a byte array and
+ * delivers it to the caller via {@link Listener#onImportPicked}.
+ *
+ * <p>Usage: call {@link #register()} inside {@code Fragment.onCreate()}, then
+ * call {@link #launchPicker()} whenever the user taps the import button.
+ *
+ * <p>The actual parsing/routing of the returned bytes is handled upstream in
+ * {@code StatementFileParser} ({@code features/budget/application/importing/}).
+ */
 public class BudgetImportPickerController {
 
     public interface Listener {
@@ -42,6 +53,9 @@ public class BudgetImportPickerController {
         if (csvPickerLauncher == null) {
             return;
         }
+        // "*/*" is the catch-all fallback: file-manager apps on some devices report the
+        // wrong MIME type for CSV files (e.g. "application/octet-stream"), so without it
+        // the user's statement file might not appear in the picker at all.
         csvPickerLauncher.launch(new String[]{"text/csv", "text/plain", "application/pdf", "*/*"});
     }
 

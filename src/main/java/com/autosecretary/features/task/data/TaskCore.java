@@ -33,22 +33,50 @@ public class TaskCore {
     public Integer budgetRequiredCents;
     public String budgetAccountId;
     public String budgetCategoryId;
+    /**
+     * Optional cross-feature meal association. When set, completing this task triggers
+     * a meal consumption record via {@code TaskMealIntegrationService}. See
+     * {@code features/meal/} for the meal feature domain. Null when not meal-related.
+     */
     public MealType mealType;
 
     //scheduling
     public Priority priority = Priority.MEDIUM;
+    /**
+     * Determines how the task is scheduled.
+     * <ul>
+     *   <li>{@code TASK} — standard repeating/one-off task; scheduler places it freely.</li>
+     *   <li>{@code TERMIN} — appointment with a fixed date/time; uses {@code fixedDate},
+     *       {@code fixedStart}, {@code fixedEnd}. <em>Not yet exposed in the edit UI.</em>
+     *       See CLAUDE.md "Not Yet Implemented".</li>
+     * </ul>
+     */
     public SchedulingType schedulingType = SchedulingType.TASK;
+    /** Minimum gap between consecutive executions, in <strong>days</strong>. Default 1 (no gap). */
     public int cooldown = 1;
     public LocalDate deadline;
+    /** Fixed date for TERMIN tasks. Null for standard tasks. Not yet exposed in the edit UI. */
     public LocalDate fixedDate;
+    /** Fixed start time for TERMIN tasks. Null for standard tasks. Not yet exposed in the edit UI. */
     public LocalTime fixedStart;
+    /** Fixed end time for TERMIN tasks. Null for standard tasks. Not yet exposed in the edit UI. */
     public LocalTime fixedEnd;
+    /** Fixed duration override for TERMIN tasks, in <strong>minutes</strong>. Null for standard tasks. */
     public Integer fixedDuration;
     public LocalDate created = LocalDate.now();
-    public boolean closeOnMiss = true; // When deadline/period end is exceeded, close the task instead of keeping it open?
+    /**
+     * Controls task behavior when a deadline or repetition period end is exceeded without
+     * completion. If {@code true}, the task is marked as completed (closed) automatically
+     * when the deadline passes or period ends. If {@code false}, the task remains open
+     * and available for completion even after the deadline/period has passed.
+     */
+    public boolean closeOnMiss = true;
 
-    public boolean adaptive;  // Adapt preferred times to user behavior?
+    /** When true, {@code TaskLifecycleManager.adaptPrefSlot()} nudges preferred times toward actual completion times (EMA α=0.2). */
+    public boolean adaptive;
+    /** Minimum planned slot duration, in <strong>minutes</strong>. */
     public int minDuration = 5;
+    /** Maximum planned slot duration, in <strong>minutes</strong>. 0 means uncapped. */
     public int maxDuration = 10;
 
     @Embedded(prefix = "history_")
@@ -71,9 +99,19 @@ public class TaskCore {
      */
     public static class Repetition {
         public int reps;
+        /** Number of completions recorded in the current period window. Reset by {@code TaskLifecycleManager.advancePeriods()}. */
         public int periodCompletions = 0;
+        /** Start date of the current repetition period. Initialized to {@code created} on first advance. */
         public LocalDate periodStart;
+        /**
+         * If {@code true}, all repetitions in the current period must be completed before
+         * slots are generated for the next period. If {@code false}, slots may be generated
+         * for future periods even if reps in the current period are incomplete.
+         * When {@code true}, uncompleted reps from a missed period are tracked in
+         * {@link #carryoverDebt} and added to the next period's rep count.
+         */
         public boolean completeFirst;
+        /** Accumulated unmet reps from past periods when {@code completeFirst=true}. Added to the next period's target. */
         public int carryoverDebt;
 
         public double remainingReps() {return reps - periodCompletions;}
@@ -101,7 +139,9 @@ public class TaskCore {
         public int current;             // Current progress (e.g. 3)
         public int remaining() {return target - current;}
 
+        /** Minimum progress units to record per repetition (lower bound on step size). */
         public int minPerRep;
+        /** Maximum progress units per repetition (upper bound on step size). */
         public int maxPerRep;
 
         // Learning statistics for adaptive slot sizing:
@@ -150,10 +190,15 @@ public class TaskCore {
 
     /** Tracks completion statistics, streaks, and cumulative duration. */
     public static class History {
+        /** Total number of times this task has been completed (all-time). */
         public int completions;
+        /** Completions with a meaningful duration recorded (excludes quick-taps and stale sessions). */
         public int trackedCompletions;
+        /** Current consecutive streak (incremented when the period's rep goal is exactly met). */
         public int currentStreak;
+        /** Number of distinct streak runs started. Used to compute {@link #averageStreak()}. */
         public int nrStreaks = 1;
+        /** Cumulative task duration in <strong>minutes</strong>, summed from tracked completions. */
         public int totalDuration;
 
         public int averageStreak() { return nrStreaks > 0 ? completions / nrStreaks : 0; }
@@ -162,7 +207,12 @@ public class TaskCore {
 
 
     public enum SchedulingType {
+        /** Standard repeating or one-off task. The scheduler places it freely within the window. */
         TASK,
+        /**
+         * Fixed-time appointment (German: "Termin"). Uses {@code fixedDate}/{@code fixedStart}/{@code fixedEnd}.
+         * <em>Not yet exposed in the edit UI</em> — see CLAUDE.md "Not Yet Implemented".
+         */
         TERMIN
     }
 

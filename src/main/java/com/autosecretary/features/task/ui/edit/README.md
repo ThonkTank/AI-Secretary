@@ -1,16 +1,56 @@
 # Task edit UI package
 
-## Entry points
-- `TaskEditDialog`: dialog fragment that renders and drives the task edit form.
-- `TaskEditSessionController`: owns create/edit session state and save flow.
-- `TaskEditPresenter`: applies form input and maps edit state back to persistence model.
+## What this package does
 
-## State location
-- Canonical edit session state lives in `state/` (`ui/edit/state`), including `TaskEditState` and `PrefSlotEditState`.
+The task edit UI is a `DialogFragment` that lets users create or edit a task. The overall flow is:
+
+```
+1. User taps "new task" or a task row → TaskEditSessionController.openCreate() / openEdit()
+2. TaskEditStateMapper.fromTask(task) → loads task fields into a flat TaskEditState
+3. TaskEditDialog inflates the form, TaskEditSectionBinder binds views, controllers take over sections
+4. User edits fields; PrefSlotSectionController handles dynamic preferred-slot rows
+5. User taps Save → TaskEditFormValidator validates; TaskEditFormInputReader reads view state → FormInput
+6. TaskEditPresenter.applyForm(formInput, editState) → merges edits into TaskEditState
+7. TaskEditStateMapper.toTask(editState) → maps edit state back to a Task domain object
+8. TaskEditSessionController.save() → TaskDao.write(task) persists the result
+```
+
+The mapping round-trip (Task → TaskEditState → Task) exists because the form exposes only
+a subset of task fields; preserved fields (like scheduler-managed state) must survive the round-trip.
+
+## Entry points
+
+- `TaskEditDialog` — the `DialogFragment`; assembles all helpers and drives the lifecycle.
+- `TaskEditSessionController` — owns create/edit session state, callback wiring, and the save flow.
+  Used by `TaskViewModel` to open create/edit from the list screen.
+- `TaskEditPresenter` — applies form input to a `TaskEditState`; also owns the deadline field
+  (mutated separately outside `FormInput`).
+
+## State
+
+Canonical edit session state lives in `state/` (`ui/edit/state`):
+- `TaskEditState` — flat mutable form state holding all editable task fields plus preserved scheduler state.
+- `PrefSlotEditState` — state for one preferred-slot row (day/time pattern).
 
 ## Internal boundaries
-- `internal/` is reserved for task-edit-only helpers.
-- `internal/TaskEditStateMapper` maps edit-state ↔ task (bidirectional, data layer bridge).
-- `internal/editor/` contains form view wiring, validation, input collection, and preferred-slot UI.
 
-List-screen classes live in `features.task.ui.list` (for example: `TaskListFragment`, `ListRowAdapter`, `TaskViewModel`).
+- `internal/` holds task-edit-only helpers not intended for other packages.
+- `internal/TaskEditStateMapper` — bidirectional mapper (Task ↔ TaskEditState). Read alongside `TaskEditDialog`.
+- `internal/editor/` — form view wiring, validation, input reading, preferred-slot UI. See `internal/editor/README.md`.
+
+## Recommended reading order
+
+1. **`TaskEditState.java`** (`state/`) — understand the form state model and which fields are user-editable vs scheduler-managed.
+2. **`TaskEditDialog.java`** — see how everything is assembled; the most important file in this package.
+3. **`internal/TaskEditStateMapper.java`** — understand the Task → TaskEditState → Task round-trip.
+4. **`internal/editor/README.md`** — then read the editor sub-package overview before diving into individual helpers.
+5. **`TaskEditSessionController.java`** — understand the create/edit lifecycle and save flow.
+6. **`TaskEditPresenter.java`** — understand how form input is merged into edit state.
+
+## Public resources
+
+- [Android DialogFragment](https://developer.android.com/reference/androidx/fragment/app/DialogFragment) — base class for `TaskEditDialog`
+- [Android TextInputLayout and TextInputEditText](https://m3.material.io/components/text-fields/overview) — Material Design text fields used in the form
+- [TimePicker](https://developer.android.com/reference/android/widget/TimePicker) — used in preferred-slot time pickers
+
+List-screen classes live in `features.task.ui.list` (e.g. `TaskListFragment`, `ListRowAdapter`, `TaskViewModel`).

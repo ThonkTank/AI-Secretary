@@ -5,6 +5,17 @@ import android.widget.EditText;
 
 import com.autosecretary.R;
 
+/**
+ * Validates the task-edit form by reading the live {@link TaskEditFormViews} directly
+ * and calling {@link android.widget.EditText#setError} inline on failing fields.
+ *
+ * <p>Validation is two-phase:
+ * <ol>
+ *   <li>Individual-field checks (non-empty, in-range integer) run first.
+ *   <li>Cross-field checks (e.g. min &lt;= max) only run once all individual checks
+ *       pass — this guarantees the values are parseable integers before the comparison.
+ * </ol>
+ */
 public class TaskEditFormValidator {
 
     private final Context context;
@@ -13,6 +24,12 @@ public class TaskEditFormValidator {
         this.context = context;
     }
 
+    /**
+     * Runs all validation rules against the current view state and sets inline
+     * errors on failing fields via {@link android.widget.EditText#setError}.
+     *
+     * @return {@code true} if all fields pass; {@code false} if any error was set.
+     */
     public boolean validate(TaskEditFormViews views) {
         clearErrors(views);
 

@@ -21,8 +21,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Manages the "recurring payment suggestions" dialog shown after a CSV/PDF import.
+ * The dialog lists patterns detected by {@code RecurringPatternDetector}, each shown with
+ * payee, schedule description, transaction count, confidence score, and average amount.
+ * The user can check/uncheck individual suggestions before confirming; all are pre-selected
+ * by default. Confirmed suggestions are converted into {@code BudgetRecurringTemplateEntity}
+ * records by the caller via {@link Listener#onApplyRecurringSuggestions}.
+ */
 public class BudgetRecurringSuggestionsDialogController {
 
+    // Confidence scores range from 0.0 to 1.0, produced by RecurringPatternDetector.
+    // ≥ 0.7 → green (high confidence, safe to auto-apply)
+    // ≥ 0.5 → yellow/warning (plausible but worth reviewing)
+    // < 0.5 → grey/neutral (low confidence, shown for user awareness)
     private static final double HIGH_CONFIDENCE_THRESHOLD   = 0.7;
     private static final double MEDIUM_CONFIDENCE_THRESHOLD = 0.5;
 
@@ -62,6 +74,9 @@ public class BudgetRecurringSuggestionsDialogController {
                 .setNegativeButton(R.string.budget_recurring_skip, null)
                 .create();
 
+        // setOnShowListener + null in setPositiveButton: standard pattern to prevent the
+        // AlertDialog from auto-dismissing when the positive button is tapped before we
+        // validate the selection. We attach the real click handler here instead.
         dialog.setOnShowListener(d -> {
             Button createButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
             createButton.setOnClickListener(v -> {
@@ -105,7 +120,7 @@ public class BudgetRecurringSuggestionsDialogController {
             TextView confidence = rowView.findViewById(R.id.BudgetSuggestionConfidence);
             TextView amount = rowView.findViewById(R.id.BudgetSuggestionAmount);
 
-            checkbox.setChecked(true);
+            checkbox.setChecked(true); // Pre-select all suggestions; user can uncheck unwanted ones.
             rows.add(checkbox);
 
             payee.setText(suggestion.displayPayee());
@@ -116,6 +131,7 @@ public class BudgetRecurringSuggestionsDialogController {
                     suggestion.confidenceScore() * 100));
             amount.setText(CurrencyFormatter.eurosMagnitude(suggestion.avgAmountCents()));
 
+            // avgAmountCents is positive for income-side recurring transactions, negative for expenses.
             amount.setTextColor(ContextCompat.getColor(ctx,
                     suggestion.avgAmountCents() >= 0 ? R.color.budget_positive : R.color.budget_negative));
             confidence.setTextColor(ContextCompat.getColor(ctx,

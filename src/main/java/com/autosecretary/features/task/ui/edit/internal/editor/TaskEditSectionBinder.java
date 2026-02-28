@@ -26,8 +26,19 @@ import com.google.android.material.textfield.TextInputLayout;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Wires each section of the task-edit form: inflates view references, populates
+ * them from {@link TaskEditState}, and attaches change listeners.
+ *
+ * <p>Each {@code bind*()} method returns a typed inner-class handle (e.g.
+ * {@link BasicInfoViews}, {@link SchedulingViews}) that the caller keeps around to
+ * read field values later — rather than calling {@code findViewById} again at save
+ * time. These handles are also consumed by {@link TaskEditFormInputReader} and
+ * {@link TaskEditFormValidator}.
+ */
 public class TaskEditSectionBinder {
 
+    // German locale date format (day.month.year) used consistently throughout the app UI.
     private static final DateTimeFormatter DEADLINE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final DialogFragment fragment;
@@ -134,6 +145,12 @@ public class TaskEditSectionBinder {
         return views;
     }
 
+    /**
+     * Wires the repetition section and attaches change listeners that fire
+     * {@code onRepetitionChanged} whenever any repetition field (toggle, reps, perPeriod,
+     * periodUnit) changes. The caller ({@link com.autosecretary.features.task.ui.edit.internal.editor.PrefSlotSectionController})
+     * uses this callback to recompute {@code repsPerDay} and rebuild the pref-slot UI.
+     */
     public RepetitionViews bindRepetition(Runnable onRepetitionChanged) {
         CheckBox toggleRepetition = rootView.findViewById(R.id.ToggleRepetition);
         LinearLayout repetitionContainer = rootView.findViewById(R.id.RepetitionContainer);
@@ -256,12 +273,14 @@ public class TaskEditSectionBinder {
     private void showDatePicker(SchedulingViews views) {
         LocalDate deadline = presenter.getEditableDeadline();
         LocalDate current = deadline != null ? deadline : LocalDate.now();
+        // DatePickerDialog uses 0-based months (0 = January); java.time uses 1-based.
         new DatePickerDialog(fragment.requireContext(), (picker, year, month, day) -> {
             presenter.setEditableDeadline(LocalDate.of(year, month + 1, day));
             updateDeadlineDisplay(views);
         }, current.getYear(), current.getMonthValue() - 1, current.getDayOfMonth()).show();
     }
 
+    /** View-handle returned by {@link #bindBasicInfo()}. Holds title, description, and priority. */
     public static final class BasicInfoViews {
         public final EditText titleView;
         public final EditText descriptionView;
@@ -274,6 +293,16 @@ public class TaskEditSectionBinder {
         }
     }
 
+    /**
+     * View-handle returned by {@link #bindScheduling()}.
+     *
+     * <p>The three {@code budget*} fields ({@code budgetRequiredCentsView},
+     * {@code budgetAccountIdView}, {@code budgetCategoryIdView}) are logically budget
+     * fields but live here because they are optional scheduling-time properties of a
+     * task. When a task completes and {@code budgetRequiredCents > 0}, an expense is
+     * automatically booked against the linked account — see
+     * {@code CheckOffTaskUseCase} and {@code CLAUDE.md §Task→Budget integration}.
+     */
     public static final class SchedulingViews {
         public final EditText deadlineView;
         public final Spinner schedulingTypeView;
@@ -326,6 +355,7 @@ public class TaskEditSectionBinder {
         }
     }
 
+    /** View-handle returned by {@link #bindRepetition(Runnable)}. */
     public static final class RepetitionViews {
         public final CheckBox toggleRepetition;
         public final LinearLayout repetitionContainer;
@@ -351,6 +381,7 @@ public class TaskEditSectionBinder {
         }
     }
 
+    /** View-handle returned by {@link #bindProgress()}. */
     public static final class ProgressViews {
         public final CheckBox toggleProgress;
         public final LinearLayout progressContainer;
@@ -382,11 +413,13 @@ public class TaskEditSectionBinder {
         }
     }
 
+    /** No-op adapter so subclasses only need to override {@code afterTextChanged}. */
     private static abstract class SimpleTextWatcher implements TextWatcher {
         @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
         @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
     }
 
+    /** No-op adapter so subclasses only need to override {@code onItemSelected}. */
     private static abstract class SimpleItemSelectedListener implements AdapterView.OnItemSelectedListener {
         @Override public void onNothingSelected(AdapterView<?> parent) {}
     }

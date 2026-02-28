@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Task feature color palette (Material Design tokens + semantic colors).
+         Nature-inspired base: greens, earth tones, warm accents supporting calm focus and visual hierarchy.
+         Primary color (task_color_primary = #FF5C7A4D) is the source for all derived tokens.
+         When changing primary: update task_color_primary_variant, on_primary, alpha-composited variants (lines 27-30),
+         and AppTheme colorPrimary in ../styles.xml.
+         For new colors: use semantic names (task_[domain]_[status]) or Material role names (task_color_[role]).
+         See ../README.md for color naming conventions. -->
+
     <!-- Nature-inspired base palette -->
     <color name="task_color_background">#FFF4F1E8</color>
     <color name="task_color_surface">#FFFFFCF6</color>
@@ -23,8 +31,16 @@
     <color name="task_edit_day_unselected_background">@color/transparent</color>
     <color name="task_edit_day_unselected_text">@color/task_color_primary</color>
     <color name="task_edit_day_unselected_stroke">@color/task_color_outline</color>
+
     <!-- Alpha-composited variants of task_color_primary (#FF5C7A4D): 8%, 50%, 25% opacity.
-         If task_color_primary changes, update these three values to match. -->
+         Hex format: #(opacityHex)(colorHexWithoutAlpha). Opacity percentages:
+         - 8% disabled background = 0x14 alpha
+         - 50% disabled text = 0x80 alpha
+         - 25% disabled stroke = 0x40 alpha
+         If task_color_primary changes, recalculate all three opacities using the new color hex (without #FF).
+         Quick method: multiply opacity % by 255, convert to hex (e.g., 0.08*255 = 20.4 ≈ 0x14).
+         Or use a design tool (Figma, Material Theme Builder) to export alpha variants.
+         Reference: https://stackoverflow.com/questions/15852122/hex-transparency-in-colors -->
     <color name="task_edit_day_disabled_background">#145C7A4D</color>
     <color name="task_edit_day_disabled_text">#805C7A4D</color>
     <color name="task_edit_day_disabled_stroke">#405C7A4D</color>

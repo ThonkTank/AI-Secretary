@@ -11,12 +11,22 @@ import com.autosecretary.features.meal.domain.RecipeRepository;
 
 import java.util.List;
 
+/**
+ * Storage-backed implementation of {@link RecipeRepository}.
+ * <p>
+ * Manages two domain models: {@link Recipe} (recipes) and {@link Ingredient} (recipe ingredients).
+ * Each has its own {@link BaseCollectionDao} for CRUD operations, adapting the untyped {@link MealStorage}
+ * API to strongly typed domain operations via {@code RowMapper} serialization.
+ */
 public class StorageRecipeRepository implements RecipeRepository {
 
     private final BaseCollectionDao<Recipe> recipeDao;
     private final BaseCollectionDao<Ingredient> ingredientDao;
 
     public StorageRecipeRepository(MealStorage storage) {
+        // Each BaseCollectionDao is initialized with id accessor and setter lambdas.
+        // The accessor reads the entity's id during upsert; the setter injects generated ids back.
+        // See StorageMealRepository for detailed explanation of the BaseCollectionDao pattern.
         this.recipeDao = new BaseCollectionDao<>(MealCollections.RECIPES, storage, new RecipeRowMapper(), r -> r.id, (r, id) -> r.id = id);
         this.ingredientDao = new BaseCollectionDao<>(MealCollections.INGREDIENTS, storage, new IngredientRowMapper(), i -> i.id, (i, id) -> i.id = id);
     }

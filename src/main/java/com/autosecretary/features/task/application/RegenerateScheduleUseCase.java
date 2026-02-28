@@ -68,6 +68,10 @@ public class RegenerateScheduleUseCase {
                 LocalDate today = LocalDate.now();
                 LocalDate windowEnd = today.plusDays(PLANNING_DAYS);
 
+                // Clear stale future slots before regeneration. Any slot that was scheduled
+                // but not yet started (realStart == null, not completed) within the planning
+                // window is considered stale — it will be regenerated from scratch. Slots
+                // already in progress (realStart set) or completed are preserved unchanged.
                 for (Task task : tasks) {
                     task.slots.removeIf(slot ->
                             !slot.completed
@@ -81,6 +85,10 @@ public class RegenerateScheduleUseCase {
                 TaskPlanningState state = new TaskPlanningState();
                 generator.recordPreservedSlots(tasks, today, windowEnd, state);
 
+                // Build the task hierarchy tree to establish parent-child ordering and
+                // propagate parent priority/constraints to children. The result is then
+                // immediately flattened because generateSlotsForWindow expects a flat list
+                // in depth-first traversal order (children after their parent).
                 List<Task> flatTasks = TaskTreeOperations.flatten(
                         TaskTreeOperations.buildTree(tasks));
                 TaskSlotGenerationResult generationResult =

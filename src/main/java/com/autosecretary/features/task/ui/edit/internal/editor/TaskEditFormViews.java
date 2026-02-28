@@ -3,6 +3,14 @@ package com.autosecretary.features.task.ui.edit.internal.editor;
 import android.widget.CheckBox;
 import android.widget.EditText;
 
+/**
+ * A flat projection of the form-view handles that {@link TaskEditFormValidator} needs.
+ *
+ * <p>{@link TaskEditSectionBinder} returns four typed inner-view groups that group
+ * fields by form section. This class extracts only the subset of fields that
+ * require validation, so the validator doesn't need to take all four groups directly
+ * or know which section each field belongs to.
+ */
 public class TaskEditFormViews {
     public final EditText titleView;
     public final EditText minDurationView, maxDurationView, cooldownView;

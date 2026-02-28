@@ -19,8 +19,23 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 /**
- * Importstrecke: Dateiannahme, Parsing, Duplikat-Erkennung via importHash,
- * Batch-Persistierung und abschließende UI-Aktualisierung.
+ * Orchestrates the end-to-end import pipeline: parse → deduplicate → map → persist → detect patterns.
+ *
+ * <p>When the user uploads a bank statement (CSV or PDF):
+ * <ol>
+ *   <li>Delegates file parsing to {@link StatementFileParser} (CSV locally, PDF via Claude API)</li>
+ *   <li>Deduplicates using {@code importHash} to prevent re-importing the same file</li>
+ *   <li>Maps/enriches transactions with account context and category resolution</li>
+ *   <li>Persists to database via {@link BudgetImportRepository}</li>
+ *   <li>Runs pattern detection to suggest recurring transactions (best-effort; failures don't fail the import)</li>
+ * </ol>
+ *
+ * <p>Runs asynchronously on a background executor; results via callback.
+ * Callback receives either success (with import summary + recurring suggestions) or error.
+ *
+ * @see README.md for the full import pipeline documentation
+ * @see BudgetImportRepository for database integration
+ * @see StatementFileParser for parsing details
  */
 public class BudgetImportUseCase {
     private static final String TAG = "BudgetImportUseCase";
@@ -114,6 +129,22 @@ public class BudgetImportUseCase {
         }
     }
 
+    /**
+     * Enriches parsed transactions: deduplicates, resolves categories, builds domain objects ready for persistence.
+     *
+     * <p>For each transaction:
+     * <ol>
+     *   <li>Computes an importHash (from file metadata or generates a fallback fingerprint)</li>
+     *   <li>Checks if this hash already exists → skip if duplicate</li>
+     *   <li>Resolves the category (uses provided category if known, else assigns default)</li>
+     *   <li>Builds a {@link RecurringBudgetTransaction} for persistence</li>
+     * </ol>
+     *
+     * @param accountId target account for all transactions
+     * @param importId batch ID grouping these transactions (for history/audit)
+     * @param parsedTransactions output from {@link StatementFileParser}
+     * @return computation result with new transactions, duplicate count, auto-categorized count
+     */
     private ImportComputation buildTransactions(String accountId,
                                                 String importId,
                                                 List<ParsedTransaction> parsedTransactions) {
@@ -122,16 +153,23 @@ public class BudgetImportUseCase {
         int autoCategorized = 0;
 
         for (ParsedTransaction parsed : parsedTransactions) {
+            // If the parser extracted an importHash (e.g., from PDF header), use it for deduplication.
+            // Otherwise, generate a fingerprint from date+amount+payee for duplicate detection.
+            // The fingerprint is less reliable than a parser-provided hash, but provides a fallback
+            // for formats (like CSV) that don't include an explicit deduplication key.
             String txHash = parsed.importHash();
             if (txHash == null || txHash.isBlank()) {
                 txHash = buildTransactionFingerprint(parsed.bookingDate(), parsed.amountCents(), parsed.payee());
             }
 
+            // Check if a transaction with this hash was already imported (avoid duplicates if the user re-imports the same file).
             if (repository.existsTransactionByImportHash(txHash)) {
                 duplicates++;
                 continue;
             }
 
+            // Resolve category: if the parser provided a known category ID, use it; otherwise assign the default category
+            // for this transaction direction (e.g., "Uncategorized Income" or "Uncategorized Expense").
             String categoryId = parsed.categoryId();
             boolean categoryKnown = categoryId != null && repository.isKnownCategory(categoryId);
 
@@ -167,6 +205,22 @@ public class BudgetImportUseCase {
         }
     }
 
+    /**
+     * Generates a deduplication fingerprint from transaction metadata (date, amount, payee).
+     * Used when the statement file doesn't provide an explicit {@code importHash}.
+     *
+     * <p>Normalizes payee by removing spaces ("John Doe" → "JohnDoe") to match similar payee names,
+     * then takes the first 10 characters to avoid hash collisions on very long payees while remaining
+     * human-readable for debugging.
+     *
+     * <p><strong>WARNING:</strong> This is a heuristic and not collision-proof. For high-precision
+     * deduplication, prefer an explicit importHash from the statement file itself.
+     *
+     * @param date transaction booking date
+     * @param amountCents signed transaction amount
+     * @param payee transaction payee (may be null)
+     * @return fingerprint formatted as "date_amountCents_payeePrefix"; e.g., "2024-01-15_-5000_Amazon"
+     */
     private static String buildTransactionFingerprint(LocalDate date, long amountCents, String payee) {
         String normalized = payee != null ? payee.trim().replace(" ", "") : "";
         String payeePart = normalized.substring(0, Math.min(10, normalized.length()));

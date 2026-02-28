@@ -39,6 +39,19 @@ final class TaskScorer {
     private static final double DEFAULT_PREFERRED_START_DEVIATION_HOURS = 8.0;
     /** Days between completions at which the aging multiplier increases by 1.0. */
     private static final int AGING_SCALE_DAYS = 10;
+    /**
+     * Follow-up boost constants — applied in {@link #applyFollowUpBoost} when the task
+     * being scored frequently followed the previously placed task in historical data.
+     *
+     * <p>Final score = {@code base × (1 + multBoost) + addBoost}, where:
+     * <ul>
+     *   <li>{@code multBoost = min(FOLLOW_UP_MULTIPLIER_CAP, weight × FOLLOW_UP_MULTIPLIER_PER_WEIGHT)}</li>
+     *   <li>{@code addBoost  = min(FOLLOW_UP_ADDITIVE_CAP,  weight × FOLLOW_UP_ADDITIVE_PER_WEIGHT)}</li>
+     * </ul>
+     * The additive term ensures even low-priority tasks can follow a high-weight transition.
+     * The multiplicative term scales with the task's own score, so high-priority tasks get a
+     * proportionally larger boost.
+     */
     private static final double FOLLOW_UP_MULTIPLIER_PER_WEIGHT = 0.08;
     private static final double FOLLOW_UP_ADDITIVE_PER_WEIGHT = 120.0;
     private static final double FOLLOW_UP_MULTIPLIER_CAP = 1.6;
@@ -83,6 +96,16 @@ final class TaskScorer {
         caches.clear();
     }
 
+    /**
+     * Loads historical task-transition statistics used by the follow-up boost in
+     * {@link #score}. A "transition" is an observed pattern where task B frequently
+     * followed task A in completed schedules. Tasks that commonly follow the previously
+     * placed task receive an additive + multiplicative score boost, encouraging the
+     * scheduler to group contextually related tasks.
+     *
+     * <p>Call once per generation run, after {@link #reset()}, before {@link #score}.
+     * Passing {@code null} or an empty list disables the follow-up boost entirely.
+     */
     void setTransitionStats(List<TransitionStat> stats) {
         transitionStats.clear();
         if (stats == null) {
@@ -94,6 +117,17 @@ final class TaskScorer {
         }
     }
 
+    /**
+     * Snapshot of a task's completion history as of the scheduling day.
+     *
+     * @param completions       total all-time completions
+     * @param lastCompletion    date of the most recent completion; defaults to (created − 1 day)
+     *                          when there are no completions, so aging calculations never throw NPE
+     * @param periodCompletions completions within the current repetition period
+     * @param isComplete        true if the task has met its quota for this cycle
+     *                          (period-based: periodCompletions ≥ reps; one-off: any completion)
+     * @param scheduledToday    number of slots already scheduled for today (including pre-existing ones)
+     */
     record CompletionState(int completions,
                            LocalDate lastCompletion,
                            int periodCompletions,
@@ -104,11 +138,29 @@ final class TaskScorer {
         }
     }
 
+    /**
+     * Urgency snapshot computed once per task per run.
+     *
+     * @param remainingDays   days until the deadline or period end (may be negative when overdue)
+     * @param requiredDays    days the task is estimated to need based on its duration/repetitions
+     * @param isDeadlineExpired true only when {@code closeOnMiss == true} AND the hard deadline
+     *                         has passed (day.isAfter(deadline)); blocks scheduling entirely
+     */
     record UrgencyState(double remainingDays,
                         double requiredDays,
                         boolean isDeadlineExpired) {
     }
 
+    /**
+     * Snapshot of which preferred time slots apply to today and which have already been
+     * matched (consumed) by a previously assigned slot.
+     *
+     * <p><b>Consumed-set semantics:</b> each {@link TaskPrefSlot} is treated as a one-time
+     * "token" per scheduling day. When a task is placed at a time that matches a pref slot,
+     * that pref slot is added to {@code consumedPrefSlotIds} so the next placement of the same
+     * task on the same day picks the next-closest unconsumed pref slot instead of reusing the
+     * same one. This implements a one-to-one assignment between pref slots and scheduled slots.
+     */
     record PreferenceFitState(List<TaskPrefSlot> todayPrefSlots,
                               boolean hasDayConstraints,
                               Set<String> consumedPrefSlotIds) {
@@ -128,12 +180,38 @@ final class TaskScorer {
         }
     }
 
+    /**
+     * Cross-day scheduling snapshot computed from {@link TaskPlanningState}.
+     *
+     * @param totalScheduledReps  total reps already placed for this task across the planning window
+     * @param totalRepsInPeriod   target reps for the window (reps × number of periods that fit in 7 days);
+     *                            used as the quota ceiling to prevent over-scheduling
+     * @param minDayDistance      smallest number of days between the scheduling day and any day on
+     *                            which this task is already placed; {@code Integer.MAX_VALUE} if not
+     *                            placed anywhere else yet
+     * @param expectedDayGap      ideal number of days between consecutive placements
+     *                            ({@code periodInDays / reps}), used for the inter-day spacing guard
+     *                            and the spread modifier
+     */
     record MultiDayStateSnapshot(int totalScheduledReps,
                                  int totalRepsInPeriod,
                                  int minDayDistance,
                                  double expectedDayGap) {
     }
 
+    /**
+     * Immutable per-task cache produced by {@link #maintenance} and updated incrementally
+     * by {@link #onSlotAssigned}.  Holds everything {@link #score} needs to evaluate a
+     * candidate time slot without re-reading or re-computing domain state.
+     *
+     * @param sinceLast        days elapsed since last completion (used in aging formula)
+     * @param agingForce       pre-computed aging multiplier: {@code min(1 + sinceLast/AGING_SCALE_DAYS, maxAgingMultiplier)}
+     * @param repsPerDay       maximum slots that may be scheduled for this task today
+     *                         ({@code TaskCore.repsPerDay()})
+     * @param maxChildPriority highest {@code scoringWeight} among all descendants; 0 if no children.
+     *                         A parent inherits this when it exceeds its own priority weight,
+     *                         ensuring parents are pulled up by high-priority children.
+     */
     record TaskScoringSnapshot(CompletionState completionState,
                                UrgencyState urgencyState,
                                PreferenceFitState preferenceFitState,
@@ -171,6 +249,18 @@ final class TaskScorer {
         }
     }
 
+    /**
+     * Pre-computes and caches all per-task scoring inputs for {@code day}.
+     * Must be called exactly once per task per generation run, before {@link #score}.
+     *
+     * <p>Side effects (intentional):
+     * <ul>
+     *   <li>{@link TaskLifecycleManager#advancePeriods} — may reset {@code periodCompletions}
+     *       to 0 and advance the period window if the period has turned over.</li>
+     *   <li>{@link #syncPeriodCompletions} — writes the recomputed count back into the task
+     *       domain object so lifecycle reads it correctly on the next call.</li>
+     * </ul>
+     */
     void maintenance(Task task, LocalDate day, TaskPlanningState state) {
         lifecycleManager.advancePeriods(task, day);
         CompletionState completionState = scanSlots(task, day);
@@ -249,6 +339,17 @@ final class TaskScorer {
         return maxChildPriority;
     }
 
+    /**
+     * Computes {@link MultiDayStateSnapshot} for {@code task} on {@code day}.
+     *
+     * <p>The "window" is always assumed to be 7 days (one week). The number of periods
+     * that fit in 7 days is {@code ceil(7 / periodInDays)}; the total expected reps
+     * for the week is that count × reps-per-period.  This sets the quota ceiling used
+     * by {@link #hasReachedPeriodQuota} to prevent over-scheduling during window generation.
+     *
+     * <p>For tasks with no repetition config the expected gap defaults to 7 days
+     * (one-off tasks should not appear more than once a week).
+     */
     private MultiDayStateSnapshot computeMultiDaySnapshot(Task task, TaskPlanningState state, LocalDate day) {
         TaskCore.Repetition rep = task.core.repetition;
         int totalScheduledReps = state.getTotalScheduledReps(task.core.id);
@@ -424,6 +525,21 @@ final class TaskScorer {
         return new PreferenceFitState(todayPrefSlots, hasDayConstraints);
     }
 
+    /**
+     * Applies a linear decay factor based on how far the candidate start deviates from the
+     * nearest unconsumed preferred-time slot.
+     *
+     * <p><b>Hard-constraint behaviour:</b> when the task has day constraints
+     * ({@link PreferenceFitState#hasDayConstraints} is true) but none of the preferred slots
+     * match today, this returns {@code 0} — effectively a hard block, not just a score penalty.
+     * This is intentional: if the user constrained a task to specific days, scheduling it on an
+     * off-day is considered invalid. When there are no day constraints at all, the task is
+     * allowed on any day with no time-fit penalty if no preferred slot exists.
+     *
+     * <p>Fit formula: {@code fit = max(0, 1 − |deviationHours / preferredStartDeviationHours|)}.
+     * A candidate that exactly matches the preferred start gets {@code fit = 1.0};
+     * a candidate outside the configured deviation window gets {@code fit = 0.0} (blocked).
+     */
     private int applyPreferredTimeFit(int baseScore, ScoringContext context) {
         Set<String> consumed = context.snapshot().preferenceFitState().consumedPrefSlotIds();
         TaskPrefSlot match = findClosestUnconsumedPrefSlot(
@@ -495,6 +611,19 @@ final class TaskScorer {
                 + " result=" + result);
     }
 
+    /**
+     * Applies the aging multiplier and, optionally, a spread penalty.
+     *
+     * <p><b>Aging:</b> multiplies the score by {@link TaskScoringSnapshot#agingForce()} (pre-computed
+     * in {@link #maintenance}). A task not touched for 10 days ({@link #AGING_SCALE_DAYS}) gets 2×,
+     * capped at {@link #maxAgingMultiplier}.
+     *
+     * <p><b>Spread penalty:</b> discourages re-scheduling a task too soon after a prior placement.
+     * When {@code minDayDistance > 0} and less than {@code expectedDayGap}, the score is multiplied
+     * by {@code SPREAD_FLOOR + (minDayDistance / expectedDayGap) × SPREAD_RANGE}, producing a value
+     * in [{@link #SPREAD_FLOOR}, 1.0].  At exactly {@code expectedDayGap} the factor reaches 1.0
+     * (no penalty). The floor ensures a task is never suppressed entirely by the spread alone.
+     */
     private int applyAgingAndSpreadModifiers(int score, ScoringContext context) {
         TaskScoringSnapshot snapshot = context.snapshot();
         int adjustedScore = (int) (score * snapshot.agingForce());
@@ -509,6 +638,17 @@ final class TaskScorer {
         return adjustedScore;
     }
 
+    /**
+     * Updates the cached snapshot after a slot is placed for {@code task}.
+     *
+     * <p>Always increments {@code scheduledToday} in the {@link CompletionState}.
+     * Additionally, if the assigned start time matches an unconsumed preferred slot,
+     * that preferred slot is marked consumed so the next call to {@link #score} will
+     * pick the next-closest pref slot instead of reusing the same one.
+     *
+     * <p>Must be called after every placement, including pre-existing slots discovered
+     * at the start of a single-day run.
+     */
     void onSlotAssigned(Task task, LocalTime assignedStart) {
         TaskScoringSnapshot snapshot = caches.get(task.core.id);
         if (snapshot == null) return;
@@ -530,6 +670,11 @@ final class TaskScorer {
                 && snapshot.preferenceFitState().consumedPrefSlotIds().contains(prefSlotId);
     }
 
+    /**
+     * Immutable argument bundle passed through all private scoring helper methods.
+     * Groups the per-evaluation inputs together to avoid repeating four parameters
+     * on every private method signature.
+     */
     record ScoringContext(Task task, TaskScoringSnapshot snapshot, LocalDateTime start, int availableMinutes) {}
 }
 

@@ -1,18 +1,19 @@
 package com.autosecretary.features.meal.application.internal;
 
 /**
- * Hilfsmethode fuer Repository-Lookups mit Pflichtexistenz-Pruefung.
+ * Utility for asserting that a repository lookup returned a result.
+ * Do not instantiate — use the static method directly.
  */
 public class EntityLookupHelper {
 
     /**
-     * Stellt sicher, dass eine Entitaet gefunden wurde; wirft bei null.
+     * Asserts that a repository lookup returned a non-null result.
      *
-     * @param entity Das vom Repository zurueckgegebene Objekt
-     * @param entityType Bezeichnung fuer die Fehlermeldung (z. B. "Ingredient")
-     * @param id Die gesuchte ID
-     * @return die nicht-null-Entitaet
-     * @throws IllegalArgumentException wenn entity null ist
+     * @param entity     the object returned by the repository; may be null
+     * @param entityType human-readable name used in the error message (e.g. "Ingredient")
+     * @param id         the id that was looked up; included in the error message
+     * @return {@code entity} unchanged (never null)
+     * @throws IllegalArgumentException if {@code entity} is null
      */
     public static <T> T requireFound(T entity, String entityType, long id) {
         if (entity == null) {

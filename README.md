@@ -76,15 +76,31 @@ Use the official Android setup guides to verify your environment (JDK, SDK, emul
 
 ## Where to start reading
 
+### App entry point
+
 - `src/main/java/com/autosecretary/app/MainActivity.java` (navigation host): start here to understand app entry and top-level screen wiring.
-- `src/main/java/com/autosecretary/features/task/ui/ListFragment.java` (main UI interactions): read next to see how task list actions are triggered from the primary screen.
-- `src/main/java/com/autosecretary/features/task/ui/TaskViewModel.java` (state/filter/sort orchestration): this is where UI intents are converted into observable list state.
+
+### Task feature (primary feature — read first)
+
+- `src/main/java/com/autosecretary/features/task/ui/list/TaskListFragment.java` (main UI interactions): read next to see how task list actions are triggered from the primary screen.
+- `src/main/java/com/autosecretary/features/task/ui/list/TaskViewModel.java` (state/filter/sort orchestration): this is where UI intents are converted into observable list state.
 - `src/main/java/com/autosecretary/features/task/application/*UseCase*.java` (application boundary): follow these classes to see task operations coordinated between UI and domain services.
-- `src/main/java/com/autosecretary/features/task/domain/TaskSlotGenerator.java` (domain scheduling contract): this interface defines how task slot generation is expected to behave.
+- `src/main/java/com/autosecretary/features/task/domain/scheduling/TaskSlotGenerator.java` (domain scheduling contract): this interface defines how task slot generation is expected to behave.
 - `src/main/java/com/autosecretary/features/task/domain/internal/scheduling/DefaultTaskSlotGenerator.java` (default scheduler): this implementation contains the concrete scheduling flow.
 - `src/main/java/com/autosecretary/features/task/domain/internal/scheduling/TaskScorer.java` (slot scoring heuristics): this class ranks candidate slots and drives ordering decisions.
 - `src/main/java/com/autosecretary/features/task/data/*` (Room entities and DAO surface): inspect this package for persisted task models and database access definitions.
-- `src/main/java/com/autosecretary/database/AppDatabase.java` (Room database root): finish here to see the central Room configuration that binds entities and DAOs.
+
+### Budget feature
+
+- `src/main/java/com/autosecretary/features/budget/README.md`: start here for the budget feature reading path, covering transactions, import pipeline, recurring detection, and the balance chart.
+
+### Meal feature
+
+- `src/main/java/com/autosecretary/features/meal/README.md`: start here for the meal feature reading path, covering recipes, pantry, shopping lists, and household nutrition targets. Note: meal uses in-memory storage instead of Room.
+
+### Database (shared infrastructure)
+
+- `src/main/java/com/autosecretary/database/AppDatabase.java` (Room database root): see the central Room configuration that binds entities and DAOs.
 
 ## Build and release tasks
 

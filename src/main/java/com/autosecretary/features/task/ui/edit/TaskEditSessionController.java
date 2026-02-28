@@ -13,7 +13,19 @@ import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 import java.util.ArrayList;
 
 /**
- * Owns the task-editing session lifecycle independently from list concerns.
+ * Owns the task-editing session lifecycle independently from list-screen concerns.
+ *
+ * <p>This controller lives inside {@link com.autosecretary.features.task.ui.list.TaskViewModel TaskViewModel}
+ * so it survives {@link com.autosecretary.features.task.ui.edit.TaskEditDialog TaskEditDialog} rotation
+ * and recreation. It tracks two modes:
+ * <ul>
+ *   <li><b>Create mode</b> ({@link #createNewTask()}): initialises a blank {@link TaskEditState} for a new task.
+ *   <li><b>Edit mode</b> ({@link #beginEditTask(String)}): loads an existing task from the DB and
+ *       converts it to a {@link TaskEditState} for editing.
+ * </ul>
+ * On save, {@link #saveEditedTask(com.autosecretary.features.task.data.Task)} persists the mapped result
+ * and notifies the list screen via the {@code onTaskChanged} callback. On delete,
+ * {@link #deleteSelectedTask(Runnable)} removes the task and fires the same callback.
  */
 public class TaskEditSessionController {
     private final TaskDataService taskDataService;

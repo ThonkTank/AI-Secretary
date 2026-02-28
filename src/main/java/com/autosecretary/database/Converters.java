@@ -21,6 +21,33 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Room {@code @TypeConverter} methods for converting Java objects to/from SQLite-storable types.
+ * <p>
+ * SQLite natively stores only: NULL, INTEGER, REAL, TEXT, BLOB. Java objects like {@code LocalDate},
+ * enums, and {@code Set<DayOfWeek>} need conversion. Room calls these methods automatically when
+ * reading/writing entities.
+ * </p>
+ * <p>
+ * <strong>Pattern:</strong> Each convertible type has two methods:
+ * <ul>
+ *   <li>{@code from*()} — converts Java → SQLite-storable (e.g., {@code LocalDate} → ISO string)</li>
+ *   <li>{@code to*()} — converts SQLite-storable → Java (e.g., string → {@code LocalDate})</li>
+ * </ul>
+ * Both handle null values gracefully.
+ * </p>
+ * <p>
+ * <strong>Covered types:</strong> LocalDate, LocalDateTime, LocalTime, DayOfWeek, Priority, Period,
+ * and enum types from features (SchedulingType, TransactionDirection, ImportStatus, etc.),
+ * plus Set&lt;DayOfWeek&gt; (stored as comma-separated string).
+ * </p>
+ * <p>
+ * <strong>Further reading:</strong>
+ * <a href="https://developer.android.com/training/data-storage/room/referencing-data#type-converters">
+ * Room Type Converters documentation
+ * </a>
+ * </p>
+ */
 public class Converters {
     private Converters() {}
 

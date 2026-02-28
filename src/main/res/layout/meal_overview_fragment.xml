@@ -1,3 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Three sub-screens (Week, Recipes, Stock) live in one ScrollView.
+     Only one is visible at a time; MealPlannerFragment toggles visibility to simulate tabs.
+     Lists (MealWeekList, MealRecipeList, MealPantryList, MealShoppingList) are
+     LinearLayouts with items inflated programmatically by MealPlannerPresenter. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -43,6 +48,7 @@
                 android:text="@string/meal_tab_stock" />
         </LinearLayout>
 
+        <!-- Tab: Week view -->
         <LinearLayout
             android:id="@+id/MealWeekScreen"
             android:layout_width="match_parent"
@@ -71,6 +77,7 @@
                 android:orientation="vertical" />
         </LinearLayout>
 
+        <!-- Tab: Recipes view (initially hidden) -->
         <LinearLayout
             android:id="@+id/MealRecipeScreen"
             android:layout_width="match_parent"
@@ -102,6 +109,7 @@
                 android:text="@string/meal_recipe_detail_placeholder" />
         </LinearLayout>
 
+        <!-- Tab: Stock / Pantry view (initially hidden) -->
         <LinearLayout
             android:id="@+id/MealStockScreen"
             android:layout_width="match_parent"

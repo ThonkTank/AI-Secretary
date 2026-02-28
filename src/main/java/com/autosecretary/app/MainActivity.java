@@ -22,9 +22,36 @@ import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+/**
+ * The single Activity that hosts all three feature tabs: Tasks, Budget, and Meal Planner.
+ *
+ * <h2>Navigation</h2>
+ * A {@link com.google.android.material.bottomnavigation.BottomNavigationView} switches between
+ * {@link com.autosecretary.features.task.ui.list.TaskListFragment},
+ * {@link com.autosecretary.features.budget.ui.BudgetFragment}, and
+ * {@link com.autosecretary.features.meal.ui.MealPlannerFragment} by replacing the central
+ * container fragment. Each tab switch creates a fresh fragment instance.
+ *
+ * <h2>Deep-link handling</h2>
+ * Home-screen widgets can launch the app with special extras that open a specific tab or dialog
+ * immediately. {@link #navigateToIntentTarget(android.content.Intent, com.google.android.material.bottomnavigation.BottomNavigationView)}
+ * inspects the launch intent on first start and also handles {@link #onNewIntent(android.content.Intent)}
+ * for subsequent launches from the widget while the activity is already running.
+ *
+ * <h2>Settings</h2>
+ * The settings menu (backup / restore / factory reset) is managed by {@link SettingsController}.
+ * After a data reset, {@link #reloadUiStateAfterDataReset()} tears down and recreates the
+ * composition root and the activity itself so all fragments re-bind to a fresh database.
+ *
+ * <h2>Self-update</h2>
+ * {@link com.autosecretary.app.update.UpdateChecker} is started once per activity lifetime
+ * from {@link #startUpdateCheckIfNeeded()}. The boolean guard prevents a second check if the
+ * activity is re-delivered an intent (onNewIntent) without being recreated.
+ */
 public class MainActivity extends AppCompatActivity {
 
     private SettingsController settingsController;
+    /** Guards against starting a second update check if onNewIntent fires before the first finishes. */
     private boolean updateCheckStarted;
 
     @Override
@@ -48,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
         tabBar.setOnItemSelectedListener(item -> {
             if (item.getItemId() == R.id.nav_budget) {
                 showBudgetFragment(false);
-            } else if (item.getItemId() == R.id.tab_meal) {
+            } else if (item.getItemId() == R.id.nav_meal) {
                 showMealFragment();
             } else {
                 showTaskFragment();
@@ -59,6 +86,14 @@ public class MainActivity extends AppCompatActivity {
         startUpdateCheckIfNeeded();
     }
 
+    /**
+     * Start the background update check, at most once per activity lifetime.
+     *
+     * <p>{@link #onNewIntent(android.content.Intent)} is called when the activity is already
+     * running and a widget launches it again. Without the {@code updateCheckStarted} guard,
+     * each widget tap would spawn a new network request. The guard limits the check to one
+     * per activity instance.</p>
+     */
     private void startUpdateCheckIfNeeded() {
         if (updateCheckStarted) {
             return;

@@ -16,6 +16,20 @@ import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMa
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
+/**
+ * {@link ViewModelProvider.Factory} for {@link BudgetViewModel}.
+ *
+ * <p>Android's {@code ViewModelProvider} requires a factory when the ViewModel has a
+ * non-default constructor. This factory is created by {@code AppCompositionRoot} and
+ * receives the shared infrastructure dependencies ({@code repository}, {@code executor},
+ * {@code postToMain}) that are managed at the app level.
+ *
+ * <p>Pure computation helpers ({@link BudgetSummaryPresentationMapper},
+ * {@link BudgetOverviewLoader}, {@link CalculateEffectiveBudgetLimitUseCase},
+ * {@link BudgetSeedService}) are constructed here inside {@link #create} rather than
+ * injected from outside: they are stateless, cheap to construct, and tying them to the
+ * factory's constructor would expose implementation details of the ViewModel to the DI root.
+ */
 public class BudgetViewModelFactory implements ViewModelProvider.Factory {
 
     private final BudgetRepository repository;

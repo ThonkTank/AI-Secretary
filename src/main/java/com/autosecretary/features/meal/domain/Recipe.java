@@ -7,7 +7,18 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Rezept mit Zutaten, Naehrwerten und Meal-Type-Zuordnung.
+ * A recipe with ingredients, nutritional summary, and meal-type classification.
+ *
+ * <p>{@code servings} is the base serving count the recipe was designed for.
+ * {@code minServings} and {@code maxServings} define the valid scaling range for
+ * {@link RecipeScalingService}. {@code scalingPrecision} controls how the serving count
+ * is rounded during scaling — see {@link ScalingPrecision}.
+ *
+ * <p>{@code totalCalories}, {@code totalProtein}, {@code totalCarbs}, and {@code totalFat}
+ * are cached values computed from ingredient nutrition data and stored denormalized for display;
+ * they are <em>per serving</em> (i.e. for {@code servings} base portions).
+ *
+ * <p>{@code tags} is a comma-separated string of free-form tags (e.g. {@code "vegetarian,quick"}).
  */
 public class Recipe {
 
@@ -18,27 +29,31 @@ public class Recipe {
     public Set<MealType> mealTypes;
     public int prepTimeMinutes;
     public int cookTimeMinutes;
-    public int servings;                // Basis-Portionen
+    public int servings;                // base portion count this recipe is designed for
     public int minServings;
     public int maxServings;
     public ScalingPrecision scalingPrecision;
     public PrepEffort prepEffort;
     public List<RecipeIngredient> ingredients;
-    public String tags;                 // Comma-separated
+    public String tags;                 // comma-separated free-form tags (e.g. "vegetarian,quick")
     public LocalDate lastUsed;
     public int usageCount;
     public boolean isFavorite;
-    public int totalCalories;           // Cached: pro Portion
+    public int totalCalories;           // cached per-serving kcal (for base servings count)
     public int totalProtein;
     public int totalCarbs;
     public int totalFat;
-    public int shelfLifeDays;           // Haltbarkeit nach Zubereitung
+    public int shelfLifeDays;           // how long the cooked dish stays fresh (days)
     public List<MemberRating> ratings;
 
+    /**
+     * How requested serving counts are rounded by {@link RecipeScalingService}.
+     * The rounding is applied after clamping to [minServings, maxServings].
+     */
     public enum ScalingPrecision {
-        EXACT,      // Ganzzahlige Skalierung, exakte Verhaeltnisse
-        ROUGH,      // Ungefaehr, tolerant
-        NONE        // Nicht skalierbar
+        EXACT,      // Rounds to nearest whole integer (e.g. 2.7 → 3)
+        ROUGH,      // Rounds to nearest 0.5 serving (e.g. 2.7 → 2.5, 2.9 → 3.0)
+        NONE        // Not scalable: always uses the recipe's base servings count
     }
 
     public enum PrepEffort {
@@ -48,12 +63,14 @@ public class Recipe {
     }
 
     /**
-     * Zutat innerhalb eines Rezepts.
+     * An ingredient entry within a recipe, referencing an {@link Ingredient} by id.
+     * {@code ingredientName} is denormalized for display without an extra lookup.
      */
     public record RecipeIngredient(Long ingredientId, String ingredientName, double amount, String unit) {}
 
     /**
-     * Bewertung eines Rezepts durch ein Haushaltsmitglied (1-5 Sterne).
+     * A household member's star rating for this recipe (1–5 stars).
+     * Ratings are stored per member so per-member preferences can drive recipe suggestions.
      */
     public record MemberRating(long memberId, int rating) {}
 

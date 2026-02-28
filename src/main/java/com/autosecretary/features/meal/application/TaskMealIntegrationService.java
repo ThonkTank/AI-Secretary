@@ -22,10 +22,39 @@ import java.util.Objects;
 
 /**
  * Encapsulates meal-specific task completion behavior so UI controllers stay lean.
+ *
+ * <p><strong>Invocation context:</strong> Called by the task feature when the user checks off a
+ * meal task (a {@code Task} whose {@code core.mealType} is set). It is <em>not</em> called by
+ * the meal planner UI directly.
+ *
+ * <p><strong>Completion cascade</strong> (triggered by {@link #completeMealTask}):
+ * <ol>
+ *   <li>Mark the {@link com.autosecretary.features.task.data.TaskPlannedMeal} as completed on
+ *       the task itself.</li>
+ *   <li>Reduce pantry stock for each recipe ingredient (oldest-first by expiry date).</li>
+ *   <li>Write a {@link com.autosecretary.features.meal.domain.ConsumptionLog} entry for
+ *       nutrition tracking.</li>
+ *   <li>Mark the matching {@link com.autosecretary.features.meal.domain.MealPlan} entry done,
+ *       if one exists for the same date/meal-type/recipe combination.</li>
+ * </ol>
+ *
+ * <p>Steps 2–4 are best-effort: if the recipe no longer exists, the follow-up actions are
+ * silently skipped and the task completion still succeeds.
  */
 public class TaskMealIntegrationService {
 
+    /**
+     * Placeholder member ID used when consumption is logged through task completion rather than
+     * through the meal planner UI. Value 0 means "unassigned / no specific household member".
+     * Per-member nutrition queries will exclude these entries; that is an accepted limitation
+     * until task-triggered consumption is properly attributed to a member.
+     */
     private static final long DEFAULT_MEMBER_ID = 0L;
+
+    /**
+     * Floating-point threshold below which a pantry item is considered fully depleted.
+     * Prevents saving items with a near-zero amount (e.g. 0.000003 g) due to floating-point drift.
+     */
     private static final double DEPLETION_EPSILON = 0.00001;
 
     private final MealRepository mealRepository;

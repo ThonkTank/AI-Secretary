@@ -40,11 +40,33 @@ import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
 /**
- * Owns all observable state for the budget screen.
+ * Owns all observable state for the budget screen. Observed by {@link BudgetFragment}.
  *
- * Threading: all DB operations are dispatched on {@code executor} (single-threaded background).
- * Results are posted back to the main thread via {@code postToMain}
- * (a Handler(Looper.getMainLooper()).post wrapper injected by BudgetViewModelFactory).
+ * <p><strong>Responsibilities:</strong>
+ * <ul>
+ *   <li>Account and time-range selection (drives which data is loaded)</li>
+ *   <li>Loading summary + transaction + chart + limit data via {@link BudgetOverviewLoader}</li>
+ *   <li>Delegating import, transfer, and seed operations to their respective use cases</li>
+ *   <li>Exposing all display state as {@link androidx.lifecycle.LiveData} streams</li>
+ * </ul>
+ *
+ * <p><strong>LiveData streams (observed by BudgetFragment):</strong>
+ * <ul>
+ *   <li>{@code summaryData} — monthly income / expense / net / running balance</li>
+ *   <li>{@code transactions} — flat list of transaction rows for the selected account + month</li>
+ *   <li>{@code budgetLimits} — category spending-limit progress bars</li>
+ *   <li>{@code chartPoints} — balance timeline points for the chart view</li>
+ *   <li>{@code uiState} — LOADING / EMPTY / CONTENT / ERROR (controls view visibility)</li>
+ *   <li>{@code statusMessage} — transient status / error text shown in a banner</li>
+ *   <li>{@code accounts} / {@code categories} — reference data for spinners and dialogs</li>
+ *   <li>{@code importSuggestions} — recurring suggestions returned after an import</li>
+ * </ul>
+ *
+ * <p><strong>Threading:</strong> all DB operations are dispatched on {@code executor}
+ * (single-threaded background). Results are posted back to the main thread via {@code postToMain}
+ * (a {@code Handler(Looper.getMainLooper()).post} wrapper injected by {@link BudgetViewModelFactory}).
+ * Note: this differs from {@code TaskViewModel}, which uses the thread-safe
+ * {@code LiveData.postValue()} directly. See the cross-feature backlog in {@code features/REVIEW_BACKLOG.md}.
  */
 public class BudgetViewModel extends ViewModel {
 

@@ -6,6 +6,13 @@ import com.autosecretary.features.meal.domain.HouseholdMember;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * {@link RowMapper} for {@link HouseholdMember}.
+ *
+ * <p>Enum fields ({@code gender}, {@code activityLevel}) are stored as their enum name
+ * strings via {@link MapperSupport#enumNameOrNull} and deserialized via
+ * {@link MapperSupport#asEnum}.
+ */
 public class HouseholdMemberRowMapper implements RowMapper<HouseholdMember> {
     @Override
     public Map<String, Object> toRow(HouseholdMember member) {
@@ -26,6 +33,8 @@ public class HouseholdMemberRowMapper implements RowMapper<HouseholdMember> {
     public HouseholdMember fromRow(Map<String, Object> row) {
         HouseholdMember member = new HouseholdMember();
         member.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.HouseholdMember.ID));
+        // String fields use raw casts: the storage layer always serializes them as strings via toRow(),
+        // so the cast is safe (no type mismatch). If storage changes, wrap this in MapperSupport.asString().
         member.name = (String) row.get(MealFieldKeys.HouseholdMember.NAME);
         member.birthYear = MapperSupport.asInt(row.get(MealFieldKeys.HouseholdMember.BIRTH_YEAR));
         member.gender = MapperSupport.asEnum(HouseholdMember.Gender.class, row.get(MealFieldKeys.HouseholdMember.GENDER), null);

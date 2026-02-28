@@ -2,8 +2,11 @@
 <!--
   Task day picker button stroke color states.
 
+  Used by:
+  - Widget.AISecretary.TaskEdit.DayPickerButton (day selection buttons in task editor)
+
   This selector coordinates with task_edit_day_button_background_tint.xml and
-  task_edit_day_button_text_color.xml — all three use the same state
+  task_button_text_color.xml — all three use the same state
   matching order (disabled → checked → default). If state behavior needs
   to change, all three files must be updated together.
 

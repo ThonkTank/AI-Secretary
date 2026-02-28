@@ -4,6 +4,8 @@ Cross-cutting issues that span multiple sub-packages.
 
 ## Open Issues
 
+
+
 ### [consider] `BudgetRecurringTemplateEntity.recurringValue` is a dual-purpose field spanning data/domain boundary
 **Files:** `data/entity/BudgetRecurringTemplateEntity.java:76`, `domain/recurring/internal/DatePatternDetector.java:181`
 The entity stores `recurringValue` with different semantics depending on `recurringType`: day-of-month for `MONTHLY_DAY`, interval days for `INTERVAL`, always 0 for `MONTHLY_LAST`/`WEEKLY`. This is a silent convention that crosses the data/domain boundary. A proper fix would require a schema migration or a sealed hierarchy which is out of scope. Deferred.
@@ -35,7 +37,8 @@ Constructor accepts 10 arguments spanning three logical groups (infrastructure, 
 ### [nit] BudgetViewModelFactory hidden inline construction
 **File:** `ui/BudgetViewModelFactory.java:44-59`
 `create()` constructs `CalculateEffectiveBudgetLimitUseCase` and `BudgetSeedService` inline rather than receiving them through the constructor. Mixed injection/factory patterns within one class.
-**Fix suggestion:** Inject all collaborators through the factory constructor, or document the intentional inline construction.
+**Fix suggestion:** Inject all collaborators through the factory constructor.
+**Documentation aspect: resolved** — class Javadoc already explains the intentional inline construction ("stateless, cheap to construct, tying them to the factory's constructor would expose implementation details to the DI root"). Code-level injection refactor remains deferred.
 
 ### [warning] `BudgetImportRepository.notifyBudgetDataUpdated()` is a UI lifecycle operation on a domain interface
 **File:** `domain/BudgetImportRepository.java:87`

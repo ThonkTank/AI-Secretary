@@ -21,6 +21,9 @@ import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
 /**
  * Shared operation for toggling a task slot completion state and persisting resulting writes.
+ * Implements the two-phase completion pattern: first tap starts the task, second tap finishes it.
+ * On completion, updates task history, records task-to-task transitions for scheduler learning,
+ * and (for adaptive tasks) updates prerequisite gap timing based on observed completion patterns.
  *
  * Contract: call from a worker thread for DAO reads/writes; when present,
  * callbacks are dispatched through {@code callbackDispatcher}.
@@ -97,6 +100,7 @@ public final class TaskSlotToggleMutation {
         boolean transacted;
         if (phase == CompletionPhase.COMPLETED) {
             transacted = runTransactionOrAbort(database, "Completion write failed", () -> {
+                // Adaptive tasks learn optimal prerequisite gaps from user completion patterns
                 if (task.core != null && task.core.adaptive) {
                     adaptPrerequisiteGaps(task, slot);
                 }
@@ -130,6 +134,15 @@ public final class TaskSlotToggleMutation {
         }
     }
 
+    /**
+     * For adaptive tasks with prerequisites, learn the optimal gap between prerequisite
+     * completion and this task's completion based on today's actual completion times.
+     * This allows the scheduler to adapt the minimum delay between dependent tasks.
+     * Only runs when the task is marked adaptive.
+     *
+     * @param task the completed adaptive task with prerequisites
+     * @param completedSlot the slot that was just completed
+     */
     private void adaptPrerequisiteGaps(Task task, TaskSlot completedSlot) {
         if (task.prerequisites == null || task.prerequisites.isEmpty()) {
             return;
@@ -151,6 +164,15 @@ public final class TaskSlotToggleMutation {
         }
     }
 
+    /**
+     * Find a completed slot for this task on a specific day.
+     * Used to locate prerequisites that have already been completed today
+     * so their actual completion times can inform prerequisite gap adaptation.
+     *
+     * @param task the task to search (typically a prerequisite task)
+     * @param day the day to search on
+     * @return the completed slot on that day, or null if no completion is recorded
+     */
     private static TaskSlot findCompletedSlotForDay(Task task, LocalDate day) {
         if (task.slots == null) {
             return null;
@@ -164,6 +186,18 @@ public final class TaskSlotToggleMutation {
         return null;
     }
 
+    /**
+     * Record a task-to-task transition for the scheduler's learning algorithm.
+     * Transitions represent observed user switching patterns (previous task → current task).
+     * These are weighted by completion phase (COMPLETED = 2×, STARTED = 1×) so the scheduler
+     * learns which task orders the user actually finishes vs. merely starts.
+     *
+     * See TaskScorer for how transition statistics influence slot ranking and scheduling
+     * preference.
+     *
+     * @param slot the slot being completed/started
+     * @param transitionWeight the relative weight of this transition observation
+     */
     private void recordTransition(TaskSlot slot, int transitionWeight) {
         if (!canRecordTransition(slot)) {
             return;
@@ -179,10 +213,25 @@ public final class TaskSlotToggleMutation {
         transitionDao.recordTransition(previousTaskId, slot.taskId, Math.max(1, transitionWeight), LocalDateTime.now());
     }
 
+    /**
+     * Check whether this slot has the minimum required fields to record a transition.
+     * Transitions require both a task ID and a day to look up the previous task.
+     *
+     * @param slot the slot to check
+     * @return true if the slot is complete enough to record a transition
+     */
     private static boolean canRecordTransition(TaskSlot slot) {
         return slot.taskId != null && slot.day != null;
     }
 
+    /**
+     * Determine the most accurate event time for transition recording.
+     * Ordered by preference (actual completion → actual start → scheduled start → current time)
+     * to preserve the semantics of when the task-to-task transition actually occurred.
+     *
+     * @param slot the slot being transitioned
+     * @return the best available time point for this slot
+     */
     private static LocalTime determineEventTime(TaskSlot slot) {
         if (slot.realEnd != null) return slot.realEnd;
         if (slot.realStart != null) return slot.realStart;
@@ -190,6 +239,16 @@ public final class TaskSlotToggleMutation {
         return LocalTime.now();
     }
 
+    /**
+     * Check whether this transition is worth recording.
+     * A transition is invalid if:
+     * - no previous task was found (nothing to transition from)
+     * - the previous and current tasks are the same (not a real transition)
+     *
+     * @param previousTaskId the task that occurred before the current one
+     * @param currentTaskId the task being completed/started now
+     * @return true if this transition should be skipped
+     */
     private static boolean isInvalidTransition(String previousTaskId, String currentTaskId) {
         return previousTaskId == null || previousTaskId.equals(currentTaskId);
     }

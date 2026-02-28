@@ -50,6 +50,7 @@
         android:layout_height="wrap_content"
         android:buttonTint="@color/task_color_primary"/>
 
+    <!-- Goal icon: shown when task has a goal emoji set -->
     <TextView
         android:id="@+id/GoalIcon"
         android:layout_width="wrap_content"
@@ -58,6 +59,7 @@
         android:textAppearance="@style/TextAppearance.Task.Title"
         android:visibility="gone"/>
 
+    <!-- Progress controls: shown when task has progress tracking enabled -->
     <LinearLayout
         android:id="@+id/ProgressContainer"
         android:layout_width="wrap_content"
@@ -95,6 +97,7 @@
             android:tint="@color/task_progress_button_tint"/>
     </LinearLayout>
 
+    <!-- Expand/collapse toggle: shown for parent tasks with children (Manage mode) -->
     <TextView
         android:id="@+id/ExpandToggle"
         android:layout_width="wrap_content"
@@ -139,6 +142,7 @@
             android:gravity="center"
             android:textAppearance="@style/TextAppearance.Task.Metadata"/>
 
+        <!-- Calendar chip: shown when slot overlaps a device calendar event -->
         <TextView
             android:id="@+id/CalendarChip"
             android:layout_width="wrap_content"

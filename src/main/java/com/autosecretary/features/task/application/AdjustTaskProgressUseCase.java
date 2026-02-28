@@ -62,6 +62,8 @@ public class AdjustTaskProgressUseCase {
                 }
                 if (completed) {
                     lifecycleManager.updateStreakForCompletion(task, slot);
+                    // durationMinutes=0: progress-tracked completions don't record session time.
+                    // trackDuration=false: skip persisting a duration measurement for this completion.
                     task.recordCompletion(0, false);
                 }
             }

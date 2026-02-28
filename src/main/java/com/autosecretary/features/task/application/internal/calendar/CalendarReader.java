@@ -20,8 +20,24 @@ import java.util.List;
 
 /**
  * Android-backed implementation of {@link TaskCalendarService}.
+ *
+ * <p>Reads calendar events from the device calendar that overlap with a given scheduling window,
+ * allowing task scheduling to avoid time conflicts. This service is used during task list display
+ * and slot generation to understand which times are already busy.
+ *
+ * <p><strong>Permission:</strong> Requires {@code android.permission.READ_CALENDAR}.
+ * If not granted, returns an empty list (no events). The UI layer is responsible for requesting
+ * this permission before task scheduling features can show calendar conflicts.
+ *
+ * <p><strong>All-day events:</strong> Calendar all-day events are excluded from results because
+ * they do not represent specific time blocks — task scheduling cares only about timed conflicts.
+ *
+ * <p><strong>Time normalization:</strong> Returned events are clamped to the requested schedule
+ * window bounds, so no event in the result will extend before or after the window start/end times.
  */
 public class CalendarReader implements TaskCalendarService {
+    // User-facing fallback title for events with no title (consistent with app's German UI language).
+    // Used in task conflict display when a calendar event lacks a name.
     private static final String FALLBACK_TITLE = "Termin";
 
     private final Context context;
@@ -30,20 +46,37 @@ public class CalendarReader implements TaskCalendarService {
         this.context = context.getApplicationContext();
     }
 
+    /**
+     * Converts epoch milliseconds to a LocalTime in the given timezone.
+     * Used to convert Android CalendarContract timestamps.
+     */
     private static LocalTime millisToLocalTime(long millis, ZoneId zoneId) {
         return Instant.ofEpochMilli(millis).atZone(zoneId).toLocalTime();
     }
 
+    /**
+     * Returns true if two time ranges have any overlap.
+     * Used to filter events that fall outside the schedule window.
+     */
     private static boolean timeRangesOverlap(LocalTime start1, LocalTime end1, LocalTime start2, LocalTime end2) {
         return start1.isBefore(end2) && end1.isAfter(start2);
     }
 
+    /**
+     * Constrains a time to be within [minBound, maxBound].
+     * Used to normalize event times to the requested schedule window bounds.
+     * Example: if event runs 14:00-15:30 but window is 13:00-14:30, clamp to 14:00-14:30.
+     */
     private static LocalTime clamp(LocalTime time, LocalTime minBound, LocalTime maxBound) {
         if (time.isBefore(minBound)) return minBound;
         if (time.isAfter(maxBound)) return maxBound;
         return time;
     }
 
+    /**
+     * Returns the title if non-null and non-blank, otherwise returns the fallback.
+     * Ensures all returned events have a valid display name for the UI.
+     */
     private static String titleOrDefault(String title, String fallback) {
         return (title == null || title.isBlank()) ? fallback : title;
     }
@@ -53,6 +86,10 @@ public class CalendarReader implements TaskCalendarService {
         LocalDate day = window.day();
         LocalTime scheduleStart = window.startTime();
         LocalTime scheduleEnd = window.endTime();
+
+        // Check for READ_CALENDAR permission. Without it, we cannot access the system calendar.
+        // If permission is missing, return empty list (no calendar conflicts known).
+        // The UI layer is responsible for requesting this permission when needed.
         if (context.checkSelfPermission(android.Manifest.permission.READ_CALENDAR)
                 != PackageManager.PERMISSION_GRANTED) {
             return new ArrayList<>();
@@ -97,8 +134,10 @@ public class CalendarReader implements TaskCalendarService {
                 boolean allDay = cursor.getInt(allDayCol) != 0;
 
                 if (allDay) {
-                    // All-day events don't block specific time windows within the schedule bounds.
-                    // Skip them since we only care about timed event conflicts.
+                    // All-day events (e.g., birthdays, holidays) do not occupy a specific time slot.
+                    // Task scheduling only cares about timed conflicts, so skip them.
+                    // Note: If all-day events should be treated as "full-day blocking" in the future,
+                    // this logic would need to change and return expanded blocked time.
                     continue;
                 }
 

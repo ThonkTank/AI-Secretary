@@ -44,8 +44,31 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
+/**
+ * Main screen for the budget feature: displays the account balance chart, monthly income/expense
+ * summary, transaction list, and category spending-limit progress bars for the selected account.
+ *
+ * <p>Reading guide:
+ * <ol>
+ *   <li>{@code onViewCreated} is the entry point — it wires the ViewModel, binds views, and starts
+ *       observing LiveData.
+ *   <li>{@code observeViewModel} maps each LiveData stream to its view update.
+ *   <li>{@code setupUserActions} attaches button and spinner listeners.
+ *   <li>Dialog lifecycle is delegated to dedicated {@code *DialogController} objects
+ *       (see {@code internal/} package). Controllers are created in {@code onCreate} so that
+ *       Android's {@code ActivityResultLauncher} registrations happen before {@code onStart}.
+ * </ol>
+ *
+ * <p>To open the add-transaction dialog on launch (e.g. from the home-screen widget tap),
+ * pass {@code ARG_OPEN_ADD_TRANSACTION = true} in the Fragment arguments.
+ */
 public class BudgetFragment extends Fragment {
 
+    /**
+     * Boolean Fragment argument. When {@code true}, the add-transaction dialog is shown
+     * automatically after the view is created. Set by the home-screen widget's pending intent
+     * via {@code BudgetWidgetProvider} when the user taps the "add" shortcut.
+     */
     public static final String ARG_OPEN_ADD_TRANSACTION = "open_add_transaction";
 
     private static final Pattern COLOR_HEX_PATTERN =

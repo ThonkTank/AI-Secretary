@@ -1,6 +1,6 @@
 # Budget Integration Review Backlog
 
-## Issues
+## Deferred Issues
 
 ### [consider] Single-implementation interface may be over-engineered
 **File:** TaskBudgetEligibilityFromBudgetLookup.java:13 (implements TaskBudgetEligibilityService)

@@ -19,6 +19,12 @@ public class HouseholdMember {
         MALE, FEMALE, OTHER
     }
 
+    /**
+     * Physical Activity Level (PAL) categories used to convert BMR to TDEE.
+     * The {@code factor} values are standard PAL multipliers from nutritional science —
+     * they are fixed reference values, not calibrated per user.
+     * Reference: <a href="https://en.wikipedia.org/wiki/Physical_activity_level">Wikipedia — Physical activity level</a>.
+     */
     public enum ActivityLevel {
         SEDENTARY(1.2, "Sitzend"),
         LIGHT(1.375, "Leicht aktiv"),
@@ -26,6 +32,7 @@ public class HouseholdMember {
         ACTIVE(1.725, "Aktiv"),
         VERY_ACTIVE(1.9, "Sehr aktiv");
 
+        /** Standard PAL multiplier for this activity level (BMR × factor = TDEE). */
         public final double factor;
         public final String label;
 

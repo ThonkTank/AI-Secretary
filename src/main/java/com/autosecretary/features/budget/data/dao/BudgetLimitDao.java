@@ -9,12 +9,35 @@ import java.util.List;
 import com.autosecretary.features.budget.data.entity.BudgetLimit;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
 
+/**
+ * DAO for budget limits and category spending summaries.
+ *
+ * Tracks user-defined spending limits per category per month and calculates
+ * current spending against those limits. Used by the UI to display budget bars
+ * and alert users to overspending.
+ */
 @Dao
 public interface BudgetLimitDao {
 
+    /**
+     * Retrieves the spending limit for a category in a given month.
+     *
+     * @param categoryId the category UUID
+     * @param yearMonth "YYYY-MM" format
+     * @return the limit record, or null if no limit is set for this category/month
+     */
     @Query("SELECT * FROM budget_limit WHERE categoryId = :categoryId AND yearMonth = :yearMonth LIMIT 1")
     BudgetLimit findLimitForCategoryAndMonth(String categoryId, String yearMonth);
 
+    /**
+     * Retrieves the total amount spent (EXPENSE only) in a category for a given month.
+     *
+     * Returns 0 if no transactions exist.
+     *
+     * @param categoryId the category UUID
+     * @param yearMonth "YYYY-MM" format
+     * @return total spent in cents
+     */
     @Query("""
             SELECT COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amountCents ELSE 0 END), 0)
             FROM budget_transaction
@@ -23,6 +46,20 @@ public interface BudgetLimitDao {
             """)
     long getExpenseCentsForCategoryAndMonth(String categoryId, String yearMonth);
 
+    /**
+     * Retrieves spending summary for all active categories in a given month.
+     *
+     * Joins categories with transactions and limits to show:
+     * - Current spending (sum of EXPENSE transactions, excluding internal transfers)
+     * - User-defined limit (if set)
+     * - Category metadata (name, icon, color)
+     *
+     * Categories with no transactions or limits are included. Results are sorted
+     * by spending descending, then by category name case-insensitive.
+     *
+     * @param yearMonth "YYYY-MM" format
+     * @return list of CategorySpendSummary records for all active categories
+     */
     @Query("""
             SELECT c.id AS categoryId,
                    c.name AS categoryName,
@@ -44,6 +81,11 @@ public interface BudgetLimitDao {
             """)
     List<CategorySpendSummary> getCategorySpendTotals(String yearMonth);
 
+    /**
+     * Inserts or replaces a budget limit.
+     *
+     * If a limit for the same category/month already exists, it is updated.
+     */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(BudgetLimit budgetLimit);
 

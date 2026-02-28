@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Default row background for task list items and task widget rows.
+     Semi-transparent surface with rounded corners and a subtle outline. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
     <solid android:color="@color/task_color_surface_semi_transparent" />
     <corners android:radius="@dimen/task_corner_radius_md" />

@@ -10,6 +10,73 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Safe type conversion utilities for RowMapper implementations.
+ *
+ * <p>RowMappers deserialize storage-level {@code Map<String, Object>} rows into strongly-typed
+ * domain entities. Storage may contain values in various forms (actual types, strings, numbers),
+ * so MapperSupport provides robust, null-safe conversion methods.
+ *
+ * <h3>Conversion Patterns</h3>
+ *
+ * <p><b>Nullable conversions</b> (return the target type or null):
+ * <ul>
+ *   <li>{@link #asNullableLong(Object)}, {@link #asLocalDate(Object)}, etc.
+ * </ul>
+ *
+ * <p><b>Primitive conversions with fallback</b> (return primitive or fallback value):
+ * <ul>
+ *   <li>{@link #asInt(Object, int)} — parse to int, fallback if null or invalid
+ *   <li>{@link #asInt(Object)} — fallback to 0
+ *   <li>Similar overloads for {@code long}, {@code double}, {@code boolean}
+ * </ul>
+ *
+ * <p><b>Enum conversions</b> (case-insensitive by enum name):
+ * <ul>
+ *   <li>{@link #asEnum(Class, Object, Object)} — parse by enum name, fallback if invalid
+ * </ul>
+ *
+ * <p><b>"Both-paths" collection deserialization</b> (handle both native and string representations):
+ * <ul>
+ *   <li>{@link #asListOrParse(Object, Function)} — if value is already a {@code List<T>}, use it;
+ *       otherwise parse from string via supplied parser function
+ *   <li>{@link #asSetOrParse(Object, Function)} — same pattern for {@code Set<T>}
+ *   <li>{@link #asDayOfWeekSet(Object)} — specialized for {@code Set<DayOfWeek>}
+ * </ul>
+ *
+ * <h3>Example Usage</h3>
+ *
+ * <p>A typical RowMapper's {@code fromRow()} method:
+ * <pre>
+ * &#64;Override
+ * public Recipe fromRow(Map&lt;String, Object&gt; row) {
+ *     Recipe recipe = new Recipe();
+ *     recipe.id = MapperSupport.asNullableLong(row.get("id"));
+ *     recipe.title = (String) row.get("title"); // String fields use raw cast
+ *     recipe.servings = MapperSupport.asInt(row.get("servings"), 2); // with fallback
+ *     recipe.prepEffort = MapperSupport.asEnum(Recipe.PrepEffort.class,
+ *         row.get("prepEffort"), Recipe.PrepEffort.MEDIUM);
+ *     recipe.tags = (String) row.get("tags"); // nullable string
+ *     recipe.ingredients = MapperSupport.asListOrParse(row.get("ingredients"),
+ *         MyMapper::parseIngredientsList); // both-paths pattern
+ *     return recipe;
+ * }
+ * </pre>
+ *
+ * <h3>Custom Serialization and Delimiters</h3>
+ *
+ * <p>For complex nested objects (e.g., {@code List<StorePackage>}), mappers often serialize to
+ * a delimited string (e.g., "field1|field2;record2|field2"). Use these delimiters consistently:
+ * <ul>
+ *   <li>{@code |} (pipe) — field separator within a record
+ *   <li>{@code ;} (semicolon) — record separator
+ *   <li>{@code ,} (comma) — alternate record separator (for simpler single-field records)
+ * </ul>
+ * <b>Critical:</b> Nested values (field names, enum names, user-entered text) must not contain
+ * these characters, or parsing will fail. Document this constraint in your mapper implementation.
+ *
+ * @see RowMapper
+ */
 final class MapperSupport {
     private MapperSupport() {
     }

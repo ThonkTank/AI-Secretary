@@ -39,6 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Top-level packages under `src/main/java/com/autosecretary/`:
 - **`features/task/`** — scheduling, slot generation, task lifecycle
 - **`features/budget/`** — transactions, CSV/PDF import, recurring pattern detection, balance chart, home screen widget
+- **`features/meal/`** — meal planning, recipe management, pantry, shopping lists, weekly food targets; backed by `InMemoryMealStorage` (not Room). `MealPlannerPresenter` is the application-layer entry point, accessed via `AppCompositionRoot.getMealPlannerPresenter()`.
 - **`app/`** — `AppCompositionRoot` (DI root), `MainActivity`, `AutoSecretaryApplication`, `UpdateChecker`, settings
 - **`shared/`** — cross-feature enums: `Priority` (values: LOW=100, MEDIUM=200, HIGH=400, CRITICAL=10000), `Period`; and `WidgetConfiguration` (shared update-period constant for task and budget widgets)
 - **`database/`** — `AppDatabase` (Room DB class) + `Converters` (type converters for `LocalDate`, `LocalTime`, `LocalDateTime`, `DayOfWeek`, all domain enums, and `Set<DayOfWeek>` as comma-separated string)
@@ -48,13 +49,17 @@ Both features share a single-threaded `ExecutorService` wired in `AppComposition
 
 ### Key non-obvious design choices
 
-**`Task` is a Room POJO, not a `@Entity`.** Room assembles it via `@Embedded` + `@Relation` from five tables: `task_core`, `task_slots`, `task_relation`, `task_pref_slots`, `task_prerequisites`. `TaskCore` uses `@Embedded` for three inner classes (`Repetition`, `Progress`, `History`) with column prefixes (`repetition_`, `progress_`, `history_`).
+**`Task` is a Room POJO, not a `@Entity`.** Room assembles it via `@Embedded` + `@Relation` from six tables: `task_core`, `task_slots`, `task_relation`, `task_pref_slots`, `task_prerequisites`, `task_planned_meals`. `TaskCore` uses `@Embedded` for three inner classes (`Repetition`, `Progress`, `History`) with column prefixes (`repetition_`, `progress_`, `history_`). `TaskPlannedMeal` (table `task_planned_meals`, composite PK `taskId`+`day`) links a task to a planned meal for a given date; `TaskCore.mealType` identifies the associated meal type. On completion, `CheckOffTaskUseCase` calls `TaskMealIntegrationService` to record meal consumption.
 
 **`TaskListItem`** (application layer) is a flat read model produced by `TaskListItemMapper`. **`ViewSlot`** (presentation layer, in `ui/list/state/`) wraps it for RecyclerView and adds `depth` for tree indentation.
 
-**Two-phase checkoff:** First checkbox tap sets `slot.realStart` (STARTED → green row background). Second tap sets `slot.realEnd` + `slot.completed = true` (COMPLETED). Adaptive tasks update `TaskPrefSlot.start` via EMA on completion.
+**Two-phase checkoff:** Logic lives in `TaskCompletionService` (`features/task/domain/`). First checkbox tap sets `slot.realStart` (STARTED → green row background). Second tap sets `slot.realEnd` + `slot.completed = true` (COMPLETED). Duration under 3 s ("quick tap") or over 24 h ("stale") is excluded from history statistics. Adaptive tasks update `TaskPrefSlot.start` via EMA (α=0.2) on completion via `TaskLifecycleManager.adaptPrefSlot()`.
 
-**Slot scoring** lives in `TaskScorer` (`features/task/domain/internal/scheduling/`). Composite score: priority base → child priority inheritance → day constraint → preferred-time fit → urgency → aging. Call `scorer.maintenance(task)` once before the scoring loop to pre-compute and cache constants; `scorer.reset()` at the start of each daily run.
+**`TaskLifecycleManager`** (`features/task/domain/`) is a stateless domain service for period advancement (`advancePeriods`), streak tracking (`updateStreakForCompletion`), and adaptive pref-slot adjustment (`adaptPrefSlot`, `adaptPrerequisiteGap`). Called by `TaskScorer` during maintenance and by `CheckOffTaskUseCase` on completion.
+
+**`TaskTreeOperations`** (`features/task/domain/`) — static utility wrapping `TreeBuilder` to build and flatten task trees. Used by `RegenerateScheduleUseCase` before bulk DB writes.
+
+**Slot scoring** lives in `TaskScorer` (`features/task/domain/internal/scheduling/`). Composite score: priority base → child priority inheritance → day constraint → preferred-time fit → urgency → aging. Call `scorer.maintenance(task)` once before the scoring loop to pre-compute and cache constants; `scorer.reset()` at the start of each daily run. **Transition stats** (`TaskTransitionStat`, table `task_transition_stats`, composite PK `fromTaskId`+`toTaskId`) record learned A→B task sequences; `TaskTransitionStatLoader` feeds them into the scheduler for follow-up scoring boosts.
 
 **Task → Budget integration:** `TaskCore` has three optional fields — `budgetRequiredCents`, `budgetAccountId`, `budgetCategoryId`. When a task completes with `budgetRequiredCents > 0`, `CheckOffTaskUseCase` calls `BookTaskCompletionExpenseUseCase` to auto-book an expense against the linked account.
 
@@ -96,13 +101,12 @@ Do not suggest adding: new modules, new domain entities, new integration points,
 - **DB version 21**, `exportSchema = false`. Schema changes: bump version only. Room uses `fallbackToDestructiveMigration()`. **Manual migrations (`Migration` subclasses, `.addMigrations(...)`) are strictly forbidden.**
 - **`android.nonTransitiveRClass=true`** — use the app's own R class for all resource references.
 - Java 17, Room 2.6.1 (annotation processor, not KSP), AGP 8.7.3, Gradle 8.10.2 (`./gradlew` wrapper only).
-- All `@PrimaryKey` fields are `String` UUIDs.
+- New entity `@PrimaryKey` fields must be `String` UUIDs. Existing exceptions: `TaskTransitionStat` and `TaskPlannedMeal` use composite PKs; `TaskScheduleConfig` uses `DayOfWeek` as PK.
 
 ## Not Yet Implemented
 
 - `SchedulingType.TERMIN` and `fixedDate`/`fixedStart`/`fixedEnd`/`fixedDuration` exist in the data model but are not exposed in `TaskEditDialog`.
-- `BudgetLimitDao` limit-based tracking exists but is not fully surfaced in UI.
-- `TaskDAO.deleteCore()` and `Task.setParentId()` exist but are never called.
+- `BudgetLimitDao` limit-based tracking exists and `CalculateEffectiveBudgetLimitUseCase` implements rollover logic, but limit enforcement is not fully surfaced in UI.
 
 ## Commit Conventions
 

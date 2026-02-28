@@ -100,6 +100,9 @@ public class TaskEditStateMapper {
         task.core.budgetCategoryId = state.budgetCategoryId;
 
         task.core.deadline = state.deadline;
+        // fixedDate/fixedStart/fixedEnd/fixedDuration are data-model fields for SchedulingType.TERMIN,
+        // which is not yet exposed in TaskEditDialog. Mapped here for round-trip fidelity.
+        // See CLAUDE.md §Not Yet Implemented.
         task.core.fixedDate = state.fixedDate;
         task.core.fixedStart = state.fixedStart;
         task.core.fixedEnd = state.fixedEnd;
@@ -110,6 +113,8 @@ public class TaskEditStateMapper {
         task.core.cooldown = state.cooldown;
         task.core.adaptive = state.adaptive;
 
+        // TaskCore initializes Repetition and Progress as non-null field initializers,
+        // so direct field access below is safe even for a freshly constructed TaskCore.
         task.core.repetition.reps = state.reps;
         task.core.repetition.perPeriod = state.perPeriod;
         task.core.repetition.periodUnit = state.periodUnit;
@@ -135,6 +140,9 @@ public class TaskEditStateMapper {
             task.prefSlots.add(prefSlot);
         }
 
+        // Task carries several Room @Relation lists (slots, parents, prerequisites, plannedMeals).
+        // If the base task was constructed without loading all relations these lists may be null,
+        // so ensure they are non-null lists to avoid NPEs in downstream callers.
         task.slots = ensureNotNull(task.slots);
         task.parents = ensureNotNull(task.parents);
         task.prerequisites = ensureNotNull(task.prerequisites);

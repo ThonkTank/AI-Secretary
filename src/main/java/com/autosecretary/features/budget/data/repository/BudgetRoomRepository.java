@@ -22,11 +22,27 @@ import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.dao.BudgetRecurringTemplateDao;
 import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEntity;
 
+/**
+ * Room-backed implementation of the BudgetRepository interface.
+ *
+ * Coordinates multiple DAOs (lookup, transaction, limit, recurring) to implement
+ * business-level budget operations. While DAOs handle single-table queries,
+ * repositories implement operations that span multiple tables or maintain
+ * cross-table invariants (e.g., creating transfers that link two transactions).
+ *
+ * Injected via dependency injection; accessed by domain/application layer through
+ * the BudgetRepository interface, never directly.
+ */
 public class BudgetRoomRepository implements BudgetRepository {
+    /** DAO for account and category reads/writes. */
     private final BudgetLookupDao lookupDao;
+    /** DAO for transaction CRUD and timeline queries. */
     private final BudgetTransactionDao transactionDao;
+    /** DAO for budget limit and category spend queries. */
     private final BudgetLimitDao limitDao;
+    /** DAO for recurring template queries and status updates. */
     private final BudgetRecurringTemplateDao recurringTemplateDao;
+    /** Database for transactional operations across multiple DAOs. */
     private final RoomDatabase database;
 
     public BudgetRoomRepository(BudgetLookupDao lookupDao,
@@ -40,6 +56,12 @@ public class BudgetRoomRepository implements BudgetRepository {
         this.recurringTemplateDao = recurringTemplateDao;
         this.database = database;
     }
+
+    /**
+     * Convention: When {@code accountId} is null or blank, operations aggregate
+     * over all active accounts. This is used for "total balance" and "upcoming expenses"
+     * queries. See {@link #isAllAccounts(String)}.
+     */
 
     @Override public BudgetAccount findAccountById(String accountId) {
         return lookupDao.findAccountById(accountId);
@@ -101,6 +123,18 @@ public class BudgetRoomRepository implements BudgetRepository {
         transactionDao.insert(transaction);
     }
 
+    /**
+     * Inserts a transaction and optionally deducts its amount from the account balance,
+     * in a single atomic database operation.
+     *
+     * Balance is deducted only when {@code accountId} is non-null/non-blank AND
+     * {@code expenseCents > 0}. If either condition is false (e.g., "all accounts" context
+     * or a zero-amount booking), the transaction is still persisted but no balance change is made.
+     *
+     * @param transaction the transaction to insert
+     * @param accountId account UUID to deduct from; null or blank means no balance adjustment
+     * @param expenseCents absolute amount to deduct (positive value); 0 means no adjustment
+     */
     @Override public void saveTransactionAndDeductBalance(BudgetTransactionEntity transaction,
                                                           String accountId,
                                                           long expenseCents) {
@@ -124,6 +158,19 @@ public class BudgetRoomRepository implements BudgetRepository {
         transactionDao.insert(entity);
     }
 
+    /**
+     * Creates an EXPENSE transaction for the given account and deducts its amount from
+     * the account balance in a single atomic database operation.
+     *
+     * Convenience wrapper over {@link #saveTransactionAndDeductBalance} that always uses
+     * {@link TransactionDirection#EXPENSE} and passes {@code amountCents} as the deduction.
+     *
+     * @param accountId account UUID (must not be null or blank; null yields no balance change)
+     * @param categoryId category UUID (may be null)
+     * @param amountCents expense amount in cents (positive)
+     * @param bookingDate booking date for the transaction
+     * @param note optional user note (null or blank is normalized to null)
+     */
     @Override public void bookExpenseAndDeductBalance(String accountId, String categoryId,
                                                       long amountCents, LocalDate bookingDate,
                                                       String note) {
@@ -137,10 +184,26 @@ public class BudgetRoomRepository implements BudgetRepository {
         transactionDao.update(transaction);
     }
 
+    /**
+     * Updates an existing transaction by replacing all its editable fields atomically.
+     *
+     * Silent no-op if the transaction is not found — acceptable because this overload may
+     * be called speculatively or during UI cleanup when the transaction may no longer exist.
+     *
+     * @param transactionId UUID of the transaction to update
+     * @param accountId new account UUID
+     * @param categoryId new category UUID (may be null)
+     * @param direction new direction (INCOME or EXPENSE)
+     * @param amountCents new amount in cents
+     * @param bookingDate new booking date (also updates yearMonth)
+     * @param note new user note (null or blank is normalized to null)
+     */
     @Override public void updateTransaction(String transactionId, String accountId, String categoryId,
                                             TransactionDirection direction, long amountCents,
                                             LocalDate bookingDate, String note) {
         BudgetTransactionEntity entity = transactionDao.findById(transactionId);
+        // Silent no-op if transaction not found. Acceptable because this method may be called
+        // speculatively or during UI cleanup when the transaction may no longer exist.
         if (entity == null) return;
         entity.accountId = accountId;
         entity.categoryId = categoryId;
@@ -155,6 +218,17 @@ public class BudgetRoomRepository implements BudgetRepository {
         transactionDao.deleteWithLinked(transactionId);
     }
 
+    /**
+     * Creates a transfer between two accounts by recording two linked transactions.
+     *
+     * Design: Transfers are represented as a debit on the source account (EXPENSE)
+     * and a credit on the target account (INCOME), linked via {@code linkedTransactionId}.
+     * This design maintains the invariant that every transaction is attributed to an
+     * account, preventing double-counting in balance queries.
+     *
+     * Both transactions have {@code transactionKind = INTERNAL_TRANSFER} and null
+     * {@code categoryId} (transfers don't belong to categories).
+     */
     @Override
     public void createTransfer(String sourceAccountId,
                                String targetAccountId,
@@ -172,6 +246,12 @@ public class BudgetRoomRepository implements BudgetRepository {
         transactionDao.createTransferPair(debit, credit);
     }
 
+    /**
+     * Updates an existing transfer between two accounts.
+     *
+     * Returns false if the transaction is not found or is not a properly linked transfer pair.
+     * Otherwise, updates both legs of the transfer and returns true.
+     */
     @Override
     public boolean updateTransfer(String transactionId,
                                   String sourceAccountId,
@@ -180,11 +260,13 @@ public class BudgetRoomRepository implements BudgetRepository {
                                   LocalDate bookingDate,
                                   String note) {
         BudgetTransactionEntity transaction = transactionDao.findById(transactionId);
+        // Return false if the requested transaction doesn't exist or has no linked pair
         if (transaction == null || transaction.linkedTransactionId == null) {
             return false;
         }
 
         BudgetTransactionEntity linked = transactionDao.findById(transaction.linkedTransactionId);
+        // Return false if the linked transaction is missing (data corruption scenario)
         if (linked == null) {
             return false;
         }

@@ -10,6 +10,18 @@ import com.autosecretary.features.budget.domain.TransactionDirection;
 
 import java.util.UUID;
 
+/**
+ * Represents a transaction category for budget classification and reporting.
+ *
+ * Each category is associated with a direction (INCOME or EXPENSE) and is used to:
+ * - Classify individual transactions (e.g., "Groceries", "Salary")
+ * - Group and report spending/income by category
+ * - Display limits and budgets per category
+ * - Provide visual identification via icon and color
+ *
+ * Archived categories are soft-deleted: they are hidden from UI dropdowns but
+ * retained in the database to preserve historical categorization of past transactions.
+ */
 @Entity(tableName = "budget_category")
 public class BudgetCategory {
     public static final String DEFAULT_ICON = "🏷️";

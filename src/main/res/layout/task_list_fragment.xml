@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Task list screen. Managed by TaskListFragment + TaskViewModel.
+     Sections from top to bottom:
+       1. Day navigation bar (prev/today/next)
+       2. Controls card: generate schedule, schedule config, checklist/manage toggle, search bar
+          (search bar visible only in Manage mode, toggled by TaskListFragment)
+       3. Task list (RecyclerView via ListRowAdapter) OR empty-state container — only one visible
+       4. "Neue Task" button (always visible at bottom)
+-->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -115,6 +123,7 @@
 
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
+        <!-- Search bar: visible only in Manage mode, toggled by TaskListFragment -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/TaskSearchLayout"
             android:layout_width="match_parent"
@@ -135,6 +144,7 @@
 
     </LinearLayout>
 
+    <!-- Task list and empty state: only one visible at a time, toggled by TaskListFragment -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/TaskList"
         android:layout_width="match_parent"

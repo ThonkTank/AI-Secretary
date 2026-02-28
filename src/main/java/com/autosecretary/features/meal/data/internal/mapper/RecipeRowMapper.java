@@ -14,6 +14,17 @@ import java.util.Set;
 
 import java.util.stream.Collectors;
 
+/**
+ * {@link RowMapper} for {@link Recipe}.
+ *
+ * <p>Notable serialization: two fields use custom delimited-string formats:
+ * <ul>
+ *   <li>{@code ingredients} — {@code "id|name|amount|unit"} records joined by {@code ";"}.
+ *   <li>{@code ratings} — {@code "memberId|rating"} records joined by {@code ","}.
+ * </ul>
+ * Both use {@link MapperSupport#asListOrParse} for "both-paths" deserialization.
+ * Values stored in these fields must not contain {@code '|'} or {@code ';'}.
+ */
 public class RecipeRowMapper implements RowMapper<Recipe> {
     @Override
     public Map<String, Object> toRow(Recipe recipe) {
@@ -49,6 +60,8 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         Recipe recipe = new Recipe();
 
         recipe.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.Recipe.ID));
+        // String fields use raw casts: the storage layer always serializes them as strings via toRow(),
+        // so the cast is safe (no type mismatch). If storage changes, wrap this in MapperSupport.asString().
         recipe.title = (String) row.get(MealFieldKeys.Recipe.TITLE);
         recipe.description = (String) row.get(MealFieldKeys.Recipe.DESCRIPTION);
         recipe.instructions = (String) row.get(MealFieldKeys.Recipe.INSTRUCTIONS);

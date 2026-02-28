@@ -7,7 +7,13 @@ import com.autosecretary.features.meal.domain.RecipeScalingResult;
 import com.autosecretary.features.meal.domain.RecipeScalingService;
 
 /**
- * Application-Use-Case fuer Rezept-Skalierung mit Precision-Regeln.
+ * Scales a recipe to a requested number of servings and returns the adjusted ingredient amounts.
+ *
+ * <p>Delegates the actual scaling math to {@link com.autosecretary.features.meal.domain.RecipeScalingService},
+ * which applies precision rules: for example, a recipe with {@code ScalingPrecision.EXACT} may
+ * allow fractional amounts, while {@code ROUGH} snaps to convenient whole numbers.
+ *
+ * <p>Throws {@link IllegalArgumentException} if no recipe with the given ID exists.
  */
 public class ScaleRecipeUseCase {
 

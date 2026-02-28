@@ -24,17 +24,43 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * API-Client für Claude Messages API zum Parsing von PDF-Kontoauszügen.
+ * Uses Claude's Messages API to extract structured transaction data from PDF bank statements.
+ *
+ * <h2>High-Level Flow</h2>
+ * <ol>
+ *   <li>Accept a PDF byte array and a list of valid import categories</li>
+ *   <li>Build a system prompt instructing Claude to extract transactions in a specific JSON schema</li>
+ *   <li>Send the PDF and prompt to Claude's Messages API (via HTTPS)</li>
+ *   <li>Parse Claude's JSON response into a {@link ParsedStatement}</li>
+ * </ol>
+ *
+ * <h2>API Requirements</h2>
+ * Requires a valid Anthropic API key passed to {@link #parsePdf(String, byte[], List)}.
+ * The key should be configured by the user in app settings and retrieved via {@link ClaudeApiKeyStore}.
+ *
+ * <h2>Response Parsing</h2>
+ * Claude's response is expected to be a JSON object with fields: period_start, period_end, transactions.
+ * If Claude wraps the JSON in markdown code fences, they are stripped automatically.
+ *
+ * @see <a href="https://docs.anthropic.com/en/api/messages">Anthropic Messages API Documentation</a>
  */
 public class ClaudeStatementApiClient {
     private static final String API_URL = "https://api.anthropic.com/v1/messages";
+    // Claude Sonnet 4 provides good accuracy-to-cost ratio for financial document parsing.
+    // See: https://docs.anthropic.com/en/docs/about-claude/models/latest
     private static final String MODEL = "claude-sonnet-4-20250514";
     private static final String API_VERSION = "2023-06-01";
     private static final int MAX_TOKENS = 4096;
     private static final int CONNECT_TIMEOUT = 30000;
+    // Timeouts account for network latency and Claude API processing time.
+    // - Connect (30s): network handshake
+    // - Read (120s): Claude processing PDFs can be slow (PDF parsing, extraction, JSON generation)
+    // Adjust if you see frequent timeouts in logs.
     private static final int READ_TIMEOUT = 120000;
 
-    // JSON field names for request/response
+    // JSON field names for Anthropic Messages API requests and responses.
+    // These constants prevent typos and ensure consistency across request/response handling.
+    // See: https://docs.anthropic.com/en/api/messages
     private static final String JSON_MODEL = "model";
     private static final String JSON_MAX_TOKENS = "max_tokens";
     private static final String JSON_SYSTEM = "system";
@@ -136,6 +162,22 @@ public class ClaudeStatementApiClient {
         return body;
     }
 
+    /**
+     * Builds the system prompt that instructs Claude how to parse bank statements.
+     *
+     * The prompt tells Claude to:
+     * <ul>
+     *   <li>Extract transactions from the PDF statement</li>
+     *   <li>Return a JSON object with period_start, period_end, and a transactions array</li>
+     *   <li>Use only valid category_id values from the provided list</li>
+     *   <li>Return plain JSON with no markdown formatting or explanation</li>
+     * </ul>
+     *
+     * Categories are passed as JSON for clarity and consistency with the output schema.
+     *
+     * @param categories List of valid categories the user has configured; Claude will only assign these IDs
+     * @return A German-language system prompt (matches the expected schema and language of statements)
+     */
     private String buildSystemPrompt(List<ImportCategory> categories) throws JSONException {
         JSONArray categoryArray = new JSONArray();
         if (categories != null) {
@@ -255,11 +297,25 @@ public class ClaudeStatementApiClient {
         };
     }
 
+    /**
+     * Claude may wrap JSON responses in markdown code fences (```json ... ```).
+     * This method strips those fences to get the raw JSON.
+     *
+     * Examples:
+     * <ul>
+     *   <li>Input: `{"key": "value"}` → Returns: `{"key": "value"}`</li>
+     *   <li>Input: ` ```json\n{"key": "value"}\n``` ` → Returns: `{"key": "value"}`</li>
+     * </ul>
+     */
     private String extractJsonFromMarkdown(String text) {
         String trimmed = text == null ? "" : text.trim();
         return removeFences(trimmed).trim();
     }
 
+    /**
+     * Removes markdown code block fences (```...```) from text.
+     * Assumes at most one fence block; only handles the first one found.
+     */
     private String removeFences(String text) {
         if (!text.startsWith("```")) {
             return text;

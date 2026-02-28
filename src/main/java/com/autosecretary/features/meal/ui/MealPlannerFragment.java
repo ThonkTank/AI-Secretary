@@ -29,8 +29,31 @@ import com.autosecretary.features.meal.domain.ShoppingListItem;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Meal planner UI fragment — primary entry point for the meal feature.
+ *
+ * <p>Manages a three-tab interface:
+ * <ul>
+ *   <li><strong>Week Plan:</strong> view and manage meal plans for the coming week (add, toggle completion)
+ *   <li><strong>Recipes:</strong> browse available recipes and view details
+ *   <li><strong>Stock & Shopping:</strong> manage pantry inventory and shopping list
+ * </ul>
+ *
+ * <p><strong>Architecture:</strong> Uses a presenter pattern ({@link MealPlannerPresenter}) to delegate
+ * all business logic to the application layer. The fragment is purely presentational: it inflates layouts,
+ * builds dialogs, and calls presenter methods on user actions (dialog commits, button clicks).
+ *
+ * <p><strong>Data flow:</strong> Presenter is injected via constructor (or fetched from AppCompositionRoot
+ * if the no-arg constructor is used by Android during recreation). User actions trigger presenter calls,
+ * which return updated data. The fragment then re-renders affected views (meals, recipes, or stock).
+ *
+ * <p><strong>Dialog pattern:</strong> All three creation dialogs (plan, shopping need, pantry item) follow
+ * the same pattern: inflate layout → build AlertDialog → on positive button, extract input fields → call
+ * presenter → re-render. See {@link #showPlanDialog()}, {@link #showNeedDialog()}, {@link #showPantryDialog()}.
+ */
 public class MealPlannerFragment extends Fragment {
 
+    // See features/meal/application/MealPlannerPresenter for business logic (fetch data, plan/delete meals, etc.)
     private MealPlannerPresenter presenter;
 
     private View weekScreen;
@@ -42,10 +65,18 @@ public class MealPlannerFragment extends Fragment {
     private LinearLayout pantryList;
     private LinearLayout shoppingList;
 
+    /**
+     * Constructor for manual dependency injection (used by AppCompositionRoot).
+     * The no-arg constructor below is required by Android for fragment recreation during config changes.
+     */
     public MealPlannerFragment(MealPlannerPresenter presenter) {
         this.presenter = presenter;
     }
 
+    /**
+     * No-arg constructor required by Android framework.
+     * When used, presenter will be fetched from AppCompositionRoot in onViewCreated().
+     */
     public MealPlannerFragment() {
     }
 
@@ -92,18 +123,31 @@ public class MealPlannerFragment extends Fragment {
         renderAll();
     }
 
+    /**
+     * Switch active tab by toggling View visibility. Uses visibility toggling (not fragment replacement)
+     * to preserve all state (scroll position, expanded items, etc.) when switching tabs.
+     */
     private void switchScreen(View visible) {
         weekScreen.setVisibility(visible == weekScreen ? View.VISIBLE : View.GONE);
         recipesScreen.setVisibility(visible == recipesScreen ? View.VISIBLE : View.GONE);
         stockScreen.setVisibility(visible == stockScreen ? View.VISIBLE : View.GONE);
     }
 
+    /**
+     * Render all tabs from presenter data. Called on initial view creation and after user actions
+     * (dialog completion, button clicks) to keep the UI in sync with presenter state.
+     * For simplicity, this re-renders the entire view; consider caching if performance becomes an issue.
+     */
     private void renderAll() {
         renderMealPlans();
         renderRecipes();
         renderStock();
     }
 
+    /**
+     * Rebuild the meal plan list from presenter data.
+     * Called on init and after user actions (add plan, toggle completion).
+     */
     private void renderMealPlans() {
         weekList.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(requireContext());
@@ -128,6 +172,10 @@ public class MealPlannerFragment extends Fragment {
         }
     }
 
+    /**
+     * Rebuild the recipe list and show details for the first recipe.
+     * Each recipe appears as a button; clicking it updates the detail pane on the right.
+     */
     private void renderRecipes() {
         recipeList.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(requireContext());
@@ -143,12 +191,19 @@ public class MealPlannerFragment extends Fragment {
         }
     }
 
+    /**
+     * Format recipe title, description, and instructions for display in the detail pane.
+     */
     private String buildRecipeDetails(Recipe recipe) {
         return recipe.title + "\n\n" +
                 (TextUtils.isEmpty(recipe.description) ? "" : recipe.description + "\n\n") +
                 (TextUtils.isEmpty(recipe.instructions) ? "" : recipe.instructions);
     }
 
+    /**
+     * Rebuild the pantry (inventory) and shopping list views from presenter data.
+     * Called on init and after user actions (add pantry item, add shopping need).
+     */
     private void renderStock() {
         pantryList.removeAllViews();
         shoppingList.removeAllViews();
@@ -167,6 +222,21 @@ public class MealPlannerFragment extends Fragment {
         }
     }
 
+    /**
+     * Show dialog to create a new meal plan.
+     *
+     * <p>All three creation dialogs ({@link #showPlanDialog()}, {@link #showNeedDialog()},
+     * {@link #showPantryDialog()}) follow the same pattern:
+     * <ol>
+     *   <li>Inflate dialog layout and bind fields to UI elements
+     *   <li>Populate spinners and set default values
+     *   <li>Build AlertDialog with positive (commit) and negative (cancel) buttons
+     *   <li>On positive button, extract input values and call presenter
+     *   <li>After presenter call, re-render affected view
+     * </ol>
+     *
+     * <p>When adding new dialogs, follow this pattern for consistency.
+     */
     private void showPlanDialog() {
         View content = LayoutInflater.from(requireContext()).inflate(R.layout.meal_plan_create_dialog, null);
         Spinner recipeSpinner = content.findViewById(R.id.MealDialogRecipe);
@@ -208,6 +278,9 @@ public class MealPlannerFragment extends Fragment {
                 .show();
     }
 
+    /**
+     * Show dialog to create a shopping list item. Follows the shared dialog pattern documented in {@link #showPlanDialog()}.
+     */
     private void showNeedDialog() {
         View content = LayoutInflater.from(requireContext()).inflate(R.layout.meal_need_create_dialog, null);
         EditText name = content.findViewById(R.id.MealNeedName);
@@ -229,6 +302,9 @@ public class MealPlannerFragment extends Fragment {
                 .show();
     }
 
+    /**
+     * Show dialog to create a pantry (inventory) item. Follows the shared dialog pattern documented in {@link #showPlanDialog()}.
+     */
     private void showPantryDialog() {
         View content = LayoutInflater.from(requireContext()).inflate(R.layout.meal_pantry_create_dialog, null);
         EditText name = content.findViewById(R.id.MealPantryName);

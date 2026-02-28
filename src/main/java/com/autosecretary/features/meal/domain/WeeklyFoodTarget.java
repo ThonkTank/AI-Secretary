@@ -4,14 +4,27 @@ import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * DGE-Wochenbedarf pro Lebensmittelgruppe.
- * "Weekly" bezieht sich auf die DGE-Basis, nicht auf die Periodenlaenge.
- * Wird sowohl fuer 7-Tage-Wochenziele als auch periodenlaengen-skaliert genutzt.
+ * DGE-based weekly food group targets and planned amounts for a household.
+ *
+ * <p>Each {@link Ingredient.FoodGroup} has two parallel integer fields:
+ * <ul>
+ *   <li>{@code *Grams} — the target amount in grams (computed by {@link WeeklyFoodTargetService})</li>
+ *   <li>{@code *Planned} — the amount already planned/consumed in grams (incremented as meals are added)</li>
+ * </ul>
+ *
+ * <p>"Weekly" refers to the DGE reference window, not a fixed calendar week. The same class is
+ * used for any period length; callers produce the appropriate {@code periodKey} themselves.
+ *
+ * <p>Use the dispatch methods ({@link #getTargetFor}, {@link #getPlannedFor}, {@link #addPlanned},
+ * {@link #setTargetFor}) to access fields by {@link Ingredient.FoodGroup} enum value rather than
+ * referencing individual fields directly — this keeps callers decoupled from the flat field structure.
+ *
+ * <p>Note: {@code OTHER} food group always has a target of 0 and accumulates no planned amount.
  */
 public class WeeklyFoodTarget {
 
     public Long id;
-    public String periodKey;
+    public String periodKey;            // ISO date string used as storage key (e.g. "2026-02-14"); opaque to this class
 
     // Ziel-Gramm pro FoodGroup
     public int grainGrams;

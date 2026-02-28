@@ -29,6 +29,9 @@ enum ListConfig {
     MANAGE(true) {
         @Override
         boolean matches(ViewSlot slot, LocalDate day) {
+            // day == null is the "show all" path (no day filter applied, e.g. during initial load
+            // before selectedDay is set). In practice selectedDay is always non-null at runtime,
+            // so this guards against an edge case rather than a real operating mode.
             return day == null || slot.item.day.equals(day);
         }
 
@@ -40,6 +43,11 @@ enum ListConfig {
         }
     };
 
+    /**
+     * When true, {@link TaskViewModel#filterList()} calls {@link state.ViewSlotList#sortByTask}
+     * to group display slots into a parent-child task tree. When false, it calls
+     * {@link state.ViewSlotList#sortBySlot} to group by slot hierarchy (e.g. calendar sub-events).
+     */
     private final boolean groupByTaskParent;
 
     ListConfig(boolean groupByTaskParent) {

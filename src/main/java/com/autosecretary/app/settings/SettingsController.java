@@ -18,27 +18,60 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 
+/**
+ * Controller for application settings, including backup/restore and factory reset operations.
+ *
+ * This class manages the settings UI menu and delegates data operations to {@link SettingsDataService}.
+ * All long-running operations (I/O, database access) are executed on a background thread, with
+ * results posted back to the main thread via {@link Handler}.
+ *
+ * Typical usage:
+ * <pre>
+ *   SettingsController controller = new SettingsController(context, dataService, onDataChanged, executor);
+ *   controller.showSettingsMenu();  // Shows menu dialog on UI thread
+ * </pre>
+ */
 public class SettingsController {
 
+    /** Option indices must match the order of strings in {@link #showSettingsMenu()} */
     private static final int OPTION_RESTORE_BACKUP = 0;
     private static final int OPTION_MANUAL_BACKUP = 1;
     private static final int OPTION_FACTORY_RESET = 2;
     private static final int OPTION_ABOUT = 3;
 
+    /**
+     * Functional interface for long-running tasks that return a boolean success flag.
+     * Used by {@link #runInBackground(int, int, BackgroundTask)} to execute work off the main thread.
+     */
     @FunctionalInterface
     private interface BackgroundTask {
+        /**
+         * Execute the task. The caller is responsible for exception handling and logging.
+         * @return true if the operation succeeded, false otherwise
+         */
         boolean execute();
     }
 
+    /**
+     * Functional interface for tasks that produce a file result (e.g., backup creation).
+     * Used by {@link #executeBackgroundFileTask(int, int, FileProducingTask)} to execute work
+     * off the main thread without triggering {@link #onDataChanged}.
+     */
     @FunctionalInterface
     private interface FileProducingTask {
+        /**
+         * Execute the task and produce a File result.
+         * @return the resulting file, or null if the operation failed
+         */
         File execute();
     }
 
     private final Context context;
     private final SettingsDataService settingsDataService;
     private final ExecutorService executorService;
+    /** Callback invoked on the main thread when data has changed (e.g., after restore or factory reset) */
     private final Runnable onDataChanged;
+    /** Handler for posting callbacks from background threads back to the main (UI) thread */
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public SettingsController(@NonNull Context context, @NonNull SettingsDataService settingsDataService,
@@ -49,6 +82,16 @@ public class SettingsController {
         this.onDataChanged = onDataChanged;
     }
 
+    /**
+     * Execute a task on the background executor, showing a toast result on the main thread.
+     *
+     * If the task succeeds, {@link #onDataChanged} is invoked to notify listeners that the
+     * application state has changed (e.g., database has been restored or factory reset).
+     *
+     * @param successMessageId   resource ID for the toast shown on success
+     * @param failureMessageId   resource ID for the toast shown on failure
+     * @param task               the operation to execute; should return true if successful
+     */
     private void runInBackground(
             int successMessageId, int failureMessageId, BackgroundTask task) {
         executorService.execute(() -> {
@@ -63,6 +106,17 @@ public class SettingsController {
         });
     }
 
+    /**
+     * Execute a file-producing task on the background executor.
+     *
+     * Unlike {@link #runInBackground(int, int, BackgroundTask)}, this method does NOT invoke
+     * {@link #onDataChanged} on success. Use this for operations that don't require app state refresh
+     * (e.g., creating a backup that doesn't modify the active database).
+     *
+     * @param successMessageId   resource ID for the toast shown when task produces a non-null File
+     * @param failureMessageId   resource ID for the toast shown when task produces null
+     * @param task               the operation to execute; should return a File on success, null on failure
+     */
     private void executeBackgroundFileTask(
             int successMessageId, int failureMessageId, FileProducingTask task) {
         executorService.execute(() -> {
@@ -74,6 +128,12 @@ public class SettingsController {
         });
     }
 
+    /**
+     * Display the main settings menu dialog with options for backup, restore, factory reset, and about.
+     *
+     * Call this from a UI context (e.g., when user taps Settings). The menu is modal and blocks
+     * interaction with the underlying activity until dismissed.
+     */
     public void showSettingsMenu() {
         String[] options = {
                 context.getString(R.string.settings_option_restore_backup),

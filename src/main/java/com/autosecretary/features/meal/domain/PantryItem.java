@@ -5,7 +5,19 @@ import com.autosecretary.features.meal.domain.internal.MealAmountFormat;
 import java.time.LocalDate;
 
 /**
- * Vorratsartikel im Haushalt.
+ * A pantry inventory entry tracking a stored ingredient with its quantity, expiry date,
+ * and storage location.
+ *
+ * <p>{@code ingredientName} is denormalized from the {@link Ingredient} record for display
+ * without an extra lookup.
+ *
+ * <p>Expiry warnings are based on {@link ShelfLifeService} semantics: the expiry date is the
+ * <em>last valid day</em> (MHD). {@link #isExpiringSoon()} triggers when fewer than
+ * {@code EXPIRY_WARNING_DAYS} (3) days remain.
+ *
+ * <p>Note: {@link #isExpired()} and {@link #getDaysUntilExpiry()} call {@code LocalDate.now()}
+ * internally — they are non-deterministic. For deterministic logic, use {@link ShelfLifeService}
+ * directly with an explicit reference date.
  */
 public class PantryItem {
 

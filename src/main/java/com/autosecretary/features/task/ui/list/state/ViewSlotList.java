@@ -10,6 +10,11 @@ import java.util.stream.Collectors;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.util.TreeBuilder;
 
+/**
+ * Manages hierarchical task and calendar slot lists for display.
+ * Uses util.TreeBuilder to construct and sort task or calendar hierarchies from flat lists.
+ * See TreeBuilder.java for tree-building and sorting semantics.
+ */
 public class ViewSlotList {
     // Source of truth: all task slots (never modified after fromList, used as reference for re-filtering)
     private List<ViewSlot> allSlots = new ArrayList<>();
@@ -20,12 +25,25 @@ public class ViewSlotList {
         return displaySlots;
     }
 
+    /**
+     * Appends extra items (typically calendar events) to the current displaySlots.
+     * Appended items are NOT re-sorted unless sortByTask() or sortBySlot() is called afterward.
+     * Used to add calendar data after task filtering.
+     */
     public void appendToDisplay(List<ViewSlot> extra) {
         displaySlots.addAll(extra);
     }
 
+    // Predicate for tree flattening: all slots are "expanded" (children always included in flat list).
+    // Used for sortBySlot() because calendar hierarchy is immutable — users cannot collapse calendar event groups.
     private static final Predicate<ViewSlot> ALWAYS_EXPANDED = slot -> true;
 
+    // Two tree-building modes for different UI contexts:
+    // - TREE_BY_TASK: Groups slots by task parent-child relationships (Manage mode).
+    //   Respects the isExpanded predicate to show/hide task families.
+    // - TREE_BY_SLOT: Groups slots by calendar event hierarchy (Checklist mode).
+    //   All slot parents are always expanded (calendar hierarchy is immutable in display).
+    // A single applySort() call uses one tree builder to rebuild the hierarchy for the current mode.
     private static final TreeBuilder<ViewSlot> TREE_BY_TASK = createTreeBuilder(
             vs -> vs.item.taskId,
             vs -> vs.item.parentTaskIds
@@ -59,6 +77,10 @@ public class ViewSlotList {
         displaySlots = new ArrayList<>(allSlots);
     }
 
+    /**
+     * Rebuilds displaySlots by filtering allSlots (source of truth).
+     * allSlots is never modified; re-filtering always starts from the original full list.
+     */
     public void filter(Predicate<ViewSlot> predicate) {
         displaySlots = allSlots.stream().filter(predicate).collect(Collectors.toList());
     }
@@ -76,7 +98,7 @@ public class ViewSlotList {
 
     /**
      * Sorts displaySlots by slot parent-child relationships (calendar hierarchy).
-     * All slot parents are always expanded.
+     * All slot parents are always expanded (calendar hierarchy is immutable in UI).
      * Call sequence: fromList() → filter() → [appendToDisplay()] → sortBySlot()
      *
      * @param comparator how to order slots within the slot hierarchy
@@ -96,6 +118,12 @@ public class ViewSlotList {
         displaySlots = flattened;
     }
 
+    /**
+     * Recursively flattens the tree into displaySlots, assigning depth at each level.
+     * Respects isExpanded predicate: if a slot is expanded, its children are added to the flat list
+     * at depth+1; otherwise, children are skipped entirely.
+     * Side effect: calls slot.setDepth(depth) on each visited slot for use in RecyclerView indentation.
+     */
     private void flattenWithDepth(List<ViewSlot> source,
                                   int depth,
                                   Predicate<ViewSlot> isExpanded,

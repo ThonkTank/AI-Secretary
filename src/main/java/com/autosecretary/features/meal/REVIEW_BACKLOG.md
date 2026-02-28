@@ -2,7 +2,7 @@
 
 ## Open Issues
 
-[consider] `ui/package-info.java` — The `ui/` folder contains only an empty package declaration stub; no meal UI has been built yet (confirmed by CLAUDE.md: "no meal UI exists yet"). A reader scanning the tree will click into this folder expecting code and find nothing. Keeping it signals intent about where future UI code should live, which has value. Removing it simplifies the tree but erases the placeholder. Defer until a meal UI is actively planned — at that point the stub would immediately be joined by real files.
+✅ RESOLVED: `ui/package-info.java` now has proper module-level javadoc. `ui/` contains MealPlannerFragment, and all classes are well-documented. No further action needed.
 
 ## Acknowledged Good Patterns
 

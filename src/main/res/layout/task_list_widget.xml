@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- App widget layout: rendered via RemoteViews. Only platform views are supported —
+     no RecyclerView, no custom views. ListView is required here (RecyclerView is not
+     supported in RemoteViews).
+     See: https://developer.android.com/develop/ui/views/appwidgets#remoteviews -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"

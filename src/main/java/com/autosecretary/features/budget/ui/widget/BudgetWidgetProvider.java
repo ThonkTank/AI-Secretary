@@ -19,10 +19,16 @@ import com.autosecretary.shared.WidgetConfiguration;
 
 public class BudgetWidgetProvider extends AppWidgetProvider {
     // Widget update period is defined in WidgetConfiguration and configured in widget_budget_info.xml.
-    // Both must be kept in sync.
+    // Both must be kept in sync. If they diverge, the widget may update more or less frequently than
+    // intended. See widget_budget_info.xml (src/main/res/xml/) for the configured period in milliseconds.
     @SuppressWarnings("unused")
     private static final long WIDGET_UPDATE_PERIOD_MILLIS = WidgetConfiguration.WIDGET_UPDATE_PERIOD_MILLIS;
 
+    // Intent routing constants for MainActivity. When a widget button is clicked,
+    // the PendingIntent launches MainActivity with these extras:
+    // - EXTRA_OPEN_TAB="budget" tells MainActivity to show the budget tab
+    // - EXTRA_BUDGET_ACTION="add_transaction" (optional) tells the budget screen to open the add-transaction dialog
+    // See MainActivity for consumption of these extras.
     public static final String EXTRA_OPEN_TAB = "open_tab";
     public static final String EXTRA_BUDGET_ACTION = "budget_action";
     public static final String TAB_BUDGET = "budget";
@@ -45,8 +51,9 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
     private void updateWidget(Context context, AppWidgetManager manager, int widgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.budget_widget);
 
-        // Synchronous DB read — acceptable here because widget updates run outside the main
-        // Activity thread. Keep this query fast to avoid delaying widget renders.
+        // Load summary from database. Widget updates run off the main Activity thread,
+        // so synchronous reads are acceptable. Keep the query fast to avoid delaying render.
+        // The summary includes netBalance (sum of all account balances) and freeBudget (remaining budget).
         AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
         LoadBudgetWidgetSummaryUseCase useCase = app.getAppCompositionRoot().createLoadBudgetWidgetSummaryUseCase();
         LoadBudgetWidgetSummaryUseCase.BudgetWidgetSummary summary = useCase.execute();
@@ -65,8 +72,24 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
         views.setOnClickPendingIntent(viewId, buildPendingIntent(context, widgetId, actionIndex, budgetAction));
     }
 
-    // Unique per widget instance + action: Android requires distinct request codes
-    // for PendingIntents that carry different extras. actionIndex identifies the action slot.
+    /**
+     * Build a PendingIntent for a widget button, with a unique request code.
+     *
+     * Android requires distinct request codes for PendingIntents carrying different extras.
+     * Request code calculation: (widgetId * ACTIONS_PER_WIDGET + actionIndex)
+     * ensures uniqueness across:
+     * - Multiple widget instances (widgetId varies)
+     * - Multiple actions per widget (actionIndex varies, 0-based, max 9)
+     *
+     * Example: widget 42, action 1 → request code 421
+     *          widget 43, action 0 → request code 430
+     *
+     * @param context Android context for building the intent
+     * @param widgetId unique identifier for this widget instance
+     * @param actionIndex action slot (0-based, 0-9 within ACTIONS_PER_WIDGET)
+     * @param budgetAction optional extra action (e.g., "add_transaction"); null for default
+     * @return PendingIntent routing to MainActivity with budget tab and action extras
+     */
     private PendingIntent buildPendingIntent(Context context, int widgetId, int actionIndex,
                                              @Nullable String budgetAction) {
         Intent launchIntent = new Intent(context, MainActivity.class);

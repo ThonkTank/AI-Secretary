@@ -33,9 +33,24 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
+/**
+ * Dialog for configuring per-day scheduling windows (start and end times for each day of the week).
+ *
+ * <p>These windows define when the scheduler is allowed to place task slots on a given day.
+ * For example, setting Monday 08:00–18:00 means the scheduler will only generate Monday slots
+ * within that time range. The windows are persisted via {@link TaskScheduleConfigRepository}
+ * and consumed by {@code DefaultTaskSlotGenerator} in the domain layer when it builds
+ * candidate slots during daily planning.
+ *
+ * <p>The dialog loads the current per-day configs on open, shows one row per day with
+ * time-picker buttons, and saves all rows atomically on confirmation. The positive button
+ * listener is attached in {@link #onStart()} (not in the builder) so that validation
+ * failures can prevent dismissal — the same pattern used in {@code TaskEditDialog}.
+ */
 public class TaskScheduleConfigDialog extends DialogFragment {
     public static final String TAG = "schedule_config";
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm", Locale.GERMAN);
+    /** Draft edits keyed by day. Mutated in place by time-picker callbacks; written to DB on save. */
     private final Map<DayOfWeek, TaskScheduleConfig> draftByDay = new EnumMap<>(DayOfWeek.class);
 
     private TaskScheduleConfigRepository scheduleConfigRepository;

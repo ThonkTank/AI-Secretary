@@ -17,6 +17,14 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Manages the account-to-account transfer dialog.
+ * Creates a pair of linked {@code INTERNAL_TRANSFER} transactions (debit + credit) via
+ * {@link Listener#onTransferSubmitted}; the actual booking is done by the caller.
+ *
+ * <p>Requires at least two active accounts — shows an informational dialog and returns early
+ * if fewer accounts are available.
+ */
 public class BudgetTransferDialogController {
 
     public interface Listener {
@@ -55,7 +63,7 @@ public class BudgetTransferDialogController {
 
         SpinnerHelper.bindList(sourceAccountSpinner, accounts, a -> a.name, ctx);
         SpinnerHelper.bindList(targetAccountSpinner, accounts, a -> a.name, ctx);
-        targetAccountSpinner.setSelection(1);
+        targetAccountSpinner.setSelection(1); // Default target to second account so source ≠ target.
 
         dateInput.setText(LocalDate.now().toString());
 
@@ -66,6 +74,8 @@ public class BudgetTransferDialogController {
                 .setNegativeButton(R.string.budget_dialog_cancel, null)
                 .create();
 
+        // setOnShowListener + null in setPositiveButton: standard pattern to prevent the
+        // AlertDialog from auto-dismissing before date validation has a chance to show an error.
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             int sourceIdx = sourceAccountSpinner.getSelectedItemPosition();
             int targetIdx = targetAccountSpinner.getSelectedItemPosition();

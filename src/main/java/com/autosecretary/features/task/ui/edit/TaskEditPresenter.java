@@ -25,6 +25,8 @@ public class TaskEditPresenter {
 
     private final TaskEditState editState;
     private final TaskEditStateMapper mapper;
+    // -1 sentinel: uninitialized. Set by initializeRepetitionState() during form setup;
+    // onRepetitionChanged() must not be called before initializeRepetitionState() runs.
     private int lastRepsPerDay = -1;
 
     public TaskEditPresenter(TaskEditState editState, TaskEditStateMapper mapper) {
@@ -49,7 +51,13 @@ public class TaskEditPresenter {
         lastRepsPerDay = computeCurrentRepsPerDay(repetitionEnabled, repsText, perPeriodText, periodUnit);
     }
 
-    /** Triggers prefSlot count recalculation when repetition fields change. */
+    /**
+     * Recalculates repsPerDay from the current repetition field values and adjusts the
+     * {@code prefSlots} list in the edit state to match (adding defaults or trimming excess).
+     *
+     * @return {@code true} if the effective repsPerDay changed (caller should rebuild the
+     *         pref-slot UI); {@code false} if it is unchanged and no rebuild is needed.
+     */
     public boolean onRepetitionChanged(boolean repetitionEnabled, String repsText,
                                        String perPeriodText, Period periodUnit) {
         int newRepsPerDay = computeCurrentRepsPerDay(repetitionEnabled, repsText, perPeriodText, periodUnit);
@@ -140,6 +148,8 @@ public class TaskEditPresenter {
         editState.completeFirst = input.completeFirst;
 
         if (periodChanged || editState.periodStart == null) {
+            // Repetition schedule changed — old period counters are meaningless under the
+            // new schedule, so reset them to start a fresh period from today.
             editState.periodStart = LocalDate.now();
             editState.periodCompletions = 0;
             editState.carryoverDebt = 0;

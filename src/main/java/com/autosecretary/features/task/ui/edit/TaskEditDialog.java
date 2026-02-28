@@ -85,6 +85,10 @@ public class TaskEditDialog extends DialogFragment {
             return;
         }
 
+        // The positive-button listener must be set here in onStart(), not via the AlertDialog.Builder
+        // callback. If set in the builder, AlertDialog auto-dismisses after the callback regardless
+        // of what it returns — validation failures would still close the dialog. Setting null in
+        // the builder and attaching the listener here lets us return early on validation failure.
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             if (!formValidator.validate(formViews)) {
                 return;

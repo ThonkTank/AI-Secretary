@@ -20,8 +20,17 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Storage-backed implementation of {@link MealRepository}.
+ * <p>
+ * Adapts the untyped {@link MealStorage} API (which works with {@code Map<String, Object>}) to typed domain entities.
+ * Each entity type (MealPlan, ConsumptionLog, HouseholdMember, etc.) gets its own {@link BaseCollectionDao}
+ * instance, which handles serialization/deserialization via {@code RowMapper} instances and manages CRUD operations.
+ */
 public class StorageMealRepository implements MealRepository {
 
+    // CookingPreferences is a singleton: only one row (id=1) is ever persisted.
+    // This constraint is enforced in saveCookingPreferences() by always using this id.
     private static final long SINGLETON_PREFERENCES_ID = 1L;
 
     private final BaseCollectionDao<MealPlan> mealPlanDao;
@@ -31,6 +40,13 @@ public class StorageMealRepository implements MealRepository {
     private final BaseCollectionDao<WeeklyFoodTarget> weeklyFoodTargetDao;
 
     public StorageMealRepository(MealStorage storage) {
+        // Each BaseCollectionDao is initialized with:
+        // 1. A collection name (from MealCollections)
+        // 2. The MealStorage instance
+        // 3. A RowMapper to convert between domain entities and Map<String, Object>
+        // 4. An idAccessor lambda to read the entity's id (used during upsert)
+        // 5. An idSetter lambda to inject generated ids back into the entity
+        // The lambdas allow BaseCollectionDao to work with any entity type without reflection.
         this.mealPlanDao = new BaseCollectionDao<>(MealCollections.MEAL_PLANS, storage, new MealPlanRowMapper(), mealPlan -> mealPlan.id, (mealPlan, id) -> mealPlan.id = id);
         this.consumptionLogDao = new BaseCollectionDao<>(MealCollections.CONSUMPTION_LOGS, storage, new ConsumptionLogRowMapper(), log -> log.id, (log, id) -> log.id = id);
         this.householdMemberDao = new BaseCollectionDao<>(MealCollections.HOUSEHOLD_MEMBERS, storage, new HouseholdMemberRowMapper(), m -> m.id, (m, id) -> m.id = id);
@@ -40,6 +56,9 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public List<MealPlan> getMealPlans(LocalDate fromInclusive, LocalDate toInclusive) {
+        // MealStorage has no range-query API, so we load all meal plans and filter in Java.
+        // This is acceptable while meal data volumes are small. If data grows significantly,
+        // extend MealStorage with a range-query method to push filtering into the storage layer.
         return mealPlanDao.findAll(plan -> isDateInRange(plan.date, fromInclusive, toInclusive));
     }
 
@@ -55,6 +74,8 @@ public class StorageMealRepository implements MealRepository {
 
     @Override
     public List<ConsumptionLog> getConsumptionLogs(LocalDate fromInclusive, LocalDate toInclusive) {
+        // Like getMealPlans(), this loads all consumption logs and filters in Java
+        // due to lack of range-query support in MealStorage. See getMealPlans() for details.
         return consumptionLogDao.findAll(log -> isDateInRange(log.date, fromInclusive, toInclusive));
     }
 
@@ -81,6 +102,8 @@ public class StorageMealRepository implements MealRepository {
     @Override
     public CookingPreferences getCookingPreferences() {
         CookingPreferences preferences = cookingPreferencesDao.findById(SINGLETON_PREFERENCES_ID);
+        // Return a default instance if not yet initialized (first run).
+        // This avoids null checks at call sites and ensures a safe default is always available.
         return Objects.requireNonNullElse(preferences, new CookingPreferences());
     }
 
@@ -90,6 +113,14 @@ public class StorageMealRepository implements MealRepository {
         cookingPreferencesDao.save(preferences);
     }
 
+    /**
+     * Finds the weekly food target for the given period.
+     *
+     * @param periodKey ISO-8601 date string identifying the period, produced by
+     *                  {@link java.time.LocalDate#toString()} (e.g. {@code "2026-02-28"}).
+     *                  Must match the value stored in {@link com.autosecretary.features.meal.domain.WeeklyFoodTarget#periodKey}.
+     * @return the target for this period, or null if none has been saved yet
+     */
     @Override
     public WeeklyFoodTarget findWeeklyFoodTarget(String periodKey) {
         return weeklyFoodTargetDao.findAllByField(MealFieldKeys.PERIOD_KEY, periodKey).stream().findFirst().orElse(null);

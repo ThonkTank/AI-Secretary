@@ -8,7 +8,17 @@ import com.autosecretary.features.meal.domain.ShoppingListItem;
 import com.autosecretary.features.meal.domain.ShoppingPackagingService;
 
 /**
- * Application-Use-Case fuer Einkaufslisteneintraege mit Packungsrundung/Ueberschuss.
+ * Creates a shopping-list entry for a known ingredient, applying package-size rounding.
+ *
+ * <p>Delegates to {@link com.autosecretary.features.meal.domain.ShoppingPackagingService}, which
+ * rounds {@code neededAmount} up to the nearest standard package size (e.g., 450 g → 1× 500 g
+ * bag) and stores the leftover as {@code ShoppingListItem.excessAmount}. This avoids
+ * "buy 1.8 packages" entries on the shopping list.
+ *
+ * <p>{@code periodKey} groups items by shopping trip; use {@code LocalDate.now().toString()}
+ * for the current week.
+ *
+ * <p>Throws {@link IllegalArgumentException} if no ingredient with the given ID exists.
  */
 public class CreateShoppingListItemUseCase {
 

@@ -5,10 +5,31 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Skalierung von Rezepten inkl. Precision-Regeln und Portion-Grenzen.
+ * Stateless service that scales a {@link Recipe} to a requested serving count.
+ *
+ * <p>Scaling applies three steps in order:
+ * <ol>
+ *   <li><strong>Clamp</strong> the requested servings to {@code [recipe.minServings, recipe.maxServings]}.</li>
+ *   <li><strong>Round</strong> to the recipe's {@link Recipe.ScalingPrecision}:
+ *       {@code EXACT} → nearest integer; {@code ROUGH} → nearest 0.5; {@code NONE} → always use base servings.</li>
+ *   <li><strong>Scale</strong> each ingredient amount by {@code finalServings / baseServings}.</li>
+ * </ol>
+ *
+ * <p>Usage: call {@link #scaleRecipe} directly — do not instantiate this class.
  */
 public class RecipeScalingService {
 
+    /**
+     * Scales a recipe to the requested number of servings.
+     *
+     * <p>Applies clamping and precision rounding (see class Javadoc). If {@code recipe} is null,
+     * returns an empty result ({@code servings=0, factor=0, ingredients=[]}).
+     *
+     * @param recipe            the recipe to scale; may be null (safe, returns empty result)
+     * @param requestedServings desired serving count; will be clamped and rounded per recipe settings
+     * @return a {@link RecipeScalingResult} with the final serving count, scale factor, and
+     *         scaled ingredient amounts
+     */
     public static RecipeScalingResult scaleRecipe(Recipe recipe, double requestedServings) {
         if (recipe == null) {
             return new RecipeScalingResult(0, 0, new ArrayList<>());

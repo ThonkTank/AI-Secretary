@@ -1,0 +1,231 @@
+# Meal Data Mappers
+
+This package contains **RowMapper implementations** that serialize/deserialize domain entities to and from untyped `Map<String, Object>` storage rows.
+
+## Quick Overview
+
+A **RowMapper** bridges the gap between:
+- **Domain layer** — strongly-typed entities like `Recipe`, `Ingredient`, `MealPlan` (clean, type-safe)
+- **Storage layer** — untyped `Map<String, Object>` rows (flexible, but no compile-time safety)
+
+Each domain model that needs persistence gets a corresponding mapper. The mapper is responsible for:
+1. **Serialization** (`toRow()`) — convert domain entity → storage row
+2. **Deserialization** (`fromRow()`) — convert storage row → domain entity
+
+## When You Need a Mapper
+
+You need to create a new RowMapper when:
+- Adding a new meal domain model (e.g., a new entity in `features/meal/domain/`)
+- The model needs to be persisted (stored and retrieved)
+
+## How to Implement a Mapper
+
+### 1. Create the mapper class
+
+```java
+package com.autosecretary.features.meal.data.internal.mapper;
+
+import com.autosecretary.features.meal.domain.MyEntity;
+import java.util.HashMap;
+import java.util.Map;
+
+public class MyEntityRowMapper implements RowMapper<MyEntity> {
+    @Override
+    public Map<String, Object> toRow(MyEntity entity) {
+        // TODO: serialize to storage row
+    }
+
+    @Override
+    public MyEntity fromRow(Map<String, Object> row) {
+        // TODO: deserialize from storage row
+    }
+}
+```
+
+### 2. Add field constants to `MealFieldKeys`
+
+```java
+// In MealFieldKeys.java
+interface MyEntity {
+    String ID = "id";
+    String NAME = "name";
+    String CREATED_AT = "createdAt";
+    // ... one constant per field
+}
+```
+
+### 3. Implement `toRow()` — Serialization
+
+Convert each field from the domain entity to a storage-compatible value:
+
+```java
+@Override
+public Map<String, Object> toRow(MyEntity entity) {
+    Map<String, Object> row = new HashMap<>();
+    row.put(MealFieldKeys.MyEntity.ID, entity.id);
+    row.put(MealFieldKeys.MyEntity.NAME, entity.name);
+    row.put(MealFieldKeys.MyEntity.CREATED_AT, MapperSupport.toDateString(entity.createdAt));
+    // ... map each field
+    return row;
+}
+```
+
+### 4. Implement `fromRow()` — Deserialization
+
+Reconstruct the domain entity from the storage row, using `MapperSupport` for safe type conversion:
+
+```java
+@Override
+public MyEntity fromRow(Map<String, Object> row) {
+    MyEntity entity = new MyEntity();
+    entity.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.MyEntity.ID));
+    entity.name = (String) row.get(MealFieldKeys.MyEntity.NAME);  // raw cast is safe
+    entity.createdAt = MapperSupport.asLocalDate(row.get(MealFieldKeys.MyEntity.CREATED_AT));
+    // ... deserialize each field
+    return entity;
+}
+```
+
+## MapperSupport Utilities
+
+`MapperSupport` provides safe type conversion methods. Use them in `fromRow()`:
+
+### Nullable conversions (return type or null)
+- `asNullableLong(Object)` — parse as `Long` or return null
+- `asLocalDate(Object)` — parse as `LocalDate` or return null
+- `asLocalDateTime(Object)` — parse as `LocalDateTime` or return null
+
+### Primitive conversions with fallback (return primitive or fallback)
+- `asInt(Object)` — parse as int, fallback to 0
+- `asInt(Object, int fallback)` — parse as int, fallback to provided value
+- `asLong(Object)`, `asLong(Object, long fallback)` — similar
+- `asDouble(Object)`, `asDouble(Object, double fallback)` — similar
+- `asBoolean(Object)`, `asBoolean(Object, boolean fallback)` — similar
+
+### Enum conversions
+- `asEnum(Class<E>, Object, E fallback)` — parse enum by name, fallback if invalid
+
+### Date/time serialization
+- `toDateString(LocalDate)` — serialize date to ISO string
+- `toDateTimeString(LocalDateTime)` — serialize datetime to ISO string
+- `enumNameOrNull(Enum)` — serialize enum to its name string
+
+### Collection patterns — "both-paths" deserialization
+
+When storage may contain either native types (e.g., a `List<T>`) or strings (for simple formats):
+
+```java
+// If value is already a List<T>, use it directly; otherwise parse from string
+recipe.ingredients = MapperSupport.asListOrParse(
+    row.get(MealFieldKeys.Recipe.INGREDIENTS),
+    RecipeRowMapper::parseIngredients  // custom parser for string format
+);
+```
+
+Similar for `asSetOrParse()` and the specialized `asDayOfWeekSet()`.
+
+### Special: DayOfWeek sets
+
+```java
+preferences.cookingDays = MapperSupport.asDayOfWeekSet(row.get("days"));
+// ... and to serialize back:
+row.put("days", MapperSupport.serializeDayOfWeekSet(preferences.cookingDays));
+```
+
+## Custom Serialization Formats
+
+For complex nested objects (e.g., `List<StorePackage>`, `List<RecipeIngredient>`), you'll serialize to a delimited string format.
+
+### Delimiter conventions
+
+Use these characters consistently:
+- **`|` (pipe)** — field separator within a record
+- **`;` (semicolon)** — record separator
+- **`,` (comma)** — alternate record separator (for simpler single-field records)
+
+**Critical:** Nested values (field names, user-entered text, enum names) must **not contain these characters**, or parsing will fail silently.
+
+### Example: Serializing a list of complex objects
+
+```java
+// Serialize List<StorePackage> to "storeName|unit|amount|price;storeName|unit|amount|price;..."
+private static String serializeStorePackages(List<Ingredient.StorePackage> packages) {
+    if (packages == null || packages.isEmpty()) return "";
+    return packages.stream()
+        .map(p -> p.storeName + "|" + p.unit + "|" + p.amount + "|" + p.price)
+        .collect(Collectors.joining(";"));
+}
+
+// Parse the string back into List<StorePackage>
+private static List<Ingredient.StorePackage> parseStorePackages(String raw) {
+    List<Ingredient.StorePackage> result = new ArrayList<>();
+    if (raw == null || raw.isBlank()) return result;
+    for (String entry : raw.split(";")) {
+        String[] parts = entry.split("\\|", 4);
+        if (parts.length != 4) continue;  // skip malformed entries
+        Ingredient.StorePackage pkg = new Ingredient.StorePackage();
+        pkg.storeName = parts[0];
+        pkg.unit = parts[1];
+        pkg.amount = MapperSupport.asInt(parts[2]);
+        pkg.price = MapperSupport.asInt(parts[3]);
+        result.add(pkg);
+    }
+    return result;
+}
+```
+
+Use `MapperSupport.asListOrParse()` to handle both native and string formats:
+
+```java
+ingredient.storePackages = MapperSupport.asListOrParse(
+    row.get(MealFieldKeys.Ingredient.STORE_PACKAGES),
+    IngredientRowMapper::parseStorePackages
+);
+```
+
+## String fields
+
+String fields use raw casts (no `MapperSupport.asString()` method):
+```java
+entity.name = (String) row.get(MealFieldKeys.MyEntity.NAME);
+```
+
+This is safe because the storage layer always serializes strings via `toRow()`. If storage changes (e.g., to a database), wrap strings in a future `MapperSupport.asString()` method.
+
+## Complete Example
+
+See `RecipeRowMapper.java` for a comprehensive example with:
+- Simple scalar fields (strings, numbers, dates)
+- Enums (with fallback defaults)
+- Enum sets (comma-separated)
+- Nested complex objects (custom serialization with delimiters)
+
+## Integration with Repositories
+
+Mappers are used by `BaseCollectionDao` and wired in repository constructors (see `StorageMealRepository`):
+
+```java
+mealPlanDao = new BaseCollectionDao<>(
+    MealCollections.MEAL_PLANS,      // collection name
+    storage,                          // MealStorage instance
+    new MealPlanRowMapper(),          // serializer
+    mealPlan -> mealPlan.id,          // idAccessor
+    (mealPlan, id) -> mealPlan.id = id  // idSetter
+);
+```
+
+## Naming Convention
+
+- Class name: `<EntityName>RowMapper` (e.g., `RecipeRowMapper`, `IngredientRowMapper`)
+- Package: `com.autosecretary.features.meal.data.internal.mapper`
+- File name: `<EntityName>RowMapper.java`
+
+## Further Reading
+
+- **`RowMapper.java`** — interface definition and javadoc
+- **`MapperSupport.java`** — detailed docs on safe conversion patterns
+- **Existing mappers** — examples of common patterns:
+  - `RecipeRowMapper.java` — complex nested objects
+  - `IngredientRowMapper.java` — store packages serialization
+  - `MealPlanRowMapper.java` — simple scalar fields
+- **`features/meal/data/internal/repository/README.md`** — how mappers integrate into the data layer

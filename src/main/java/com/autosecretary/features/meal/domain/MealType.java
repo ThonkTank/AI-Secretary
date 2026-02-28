@@ -1,7 +1,10 @@
 package com.autosecretary.features.meal.domain;
 
 /**
- * Mahlzeit-Typen fuer Rezepte und Meal-Planning.
+ * The four meal types used for recipe classification and meal planning.
+ *
+ * <p>{@code label} and {@code icon} are German display strings used by the UI.
+ * They are stored here as a convenience while no separate UI display-mapping exists.
  */
 public enum MealType {
     BREAKFAST("Frühstück", "🍳"),

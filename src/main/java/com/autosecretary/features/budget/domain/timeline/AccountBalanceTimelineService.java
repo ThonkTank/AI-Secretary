@@ -9,6 +9,25 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Reconstructs cumulative balance timelines from per-period delta (net transaction) data.
+ * <p>
+ * This service bridges the gap between raw transaction deltas (daily or monthly sums of
+ * income minus expenses) and the cumulative balance points needed for balance charts.
+ * It takes a starting balance and accumulates deltas over a time window to produce
+ * {@link BalanceTimelinePoint} output.
+ * <p>
+ * Balance values are stored as <strong>cents</strong> (integers) to avoid floating-point
+ * precision issues. For example, 9999 cents = 99.99 EUR.
+ * <p>
+ * Typical usage flow:
+ * <ol>
+ *   <li>Fetch daily/monthly deltas from {@code BudgetRepository}</li>
+ *   <li>Get the opening balance (e.g. via {@code getNetAmountBeforeDateForAccount()})</li>
+ *   <li>Call {@link #reconstructDaily} or {@link #reconstructMonthly}</li>
+ *   <li>Use the result to render a balance chart</li>
+ * </ol>
+ */
 public final class AccountBalanceTimelineService {
 
     private AccountBalanceTimelineService() {
@@ -69,15 +88,24 @@ public final class AccountBalanceTimelineService {
     /**
      * Generic timeline reconstruction helper.
      * Accumulates deltas over a sequence of temporal periods.
+     * <p>
+     * This method abstracts the common logic needed for both daily and monthly reconstruction.
+     * Rather than duplicating the accumulation loop, we pass in functions that describe
+     * how to navigate the period sequence (next period, loop condition) and how to convert
+     * a period to a date for storage in the output.
      *
      * @param fromPeriod       first period of the window (inclusive)
      * @param toPeriod         last period of the window (inclusive)
      * @param startBalanceCents initial balance before the first period
-     * @param deltaMap         map of deltas keyed by period
-     * @param toLocalDate      function to convert a period to a LocalDate for storage
-     * @param nextPeriod       function to get the next period in the sequence
-     * @param loopCondition    predicate to determine if iteration should continue
-     * @return timeline points from fromPeriod to toPeriod
+     * @param deltaMap         map of deltas keyed by period; missing periods are treated as 0
+     * @param toLocalDate      function to convert a period (e.g. LocalDate or YearMonth) to a
+     *                         LocalDate for storage in {@link BalanceTimelinePoint}
+     * @param nextPeriod       function to compute the next period in the sequence
+     *                         (e.g. date.plusDays(1) or yearMonth.plusMonths(1))
+     * @param loopCondition    predicate that returns true if iteration should continue;
+     *                         used to stop at toPeriod (typically !period1.isAfter(period2))
+     * @return list of timeline points, one per period from fromPeriod to toPeriod,
+     *         in chronological order
      */
     private static <T> List<BalanceTimelinePoint> reconstructTimeline(
             T fromPeriod,

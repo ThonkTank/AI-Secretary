@@ -12,6 +12,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
 
+/**
+ * Maps domain/data objects to presentation-layer state objects for the budget overview.
+ *
+ * <p>Concerns handled here:
+ * <ul>
+ *   <li>{@link #toSummary} — aggregates monthly income/expense totals (skipping internal
+ *       transfers) and wraps them with the account's running balance into {@link BudgetSummaryData}.
+ *   <li>{@link #toLimitBars} — converts per-category spend totals into {@link BudgetLimitBar}
+ *       display objects, applying rollover-adjusted effective limits where available.
+ *   <li>{@link #categoryLabel} — utility for rendering a category's emoji icon + name as one
+ *       display string; used across multiple dialog controllers and the overview loader.
+ * </ul>
+ */
 public class BudgetSummaryPresentationMapper {
 
     public BudgetSummaryData toSummary(List<MonthlyOverviewItem> items, long freeBudgetCents) {
@@ -44,6 +57,18 @@ public class BudgetSummaryPresentationMapper {
         return resolvedIcon + " " + name;
     }
 
+    /**
+     * Converts per-category spend totals into {@link BudgetLimitBar} display objects.
+     * Categories with no limit ({@code limitAmountCents <= 0}) are excluded.
+     *
+     * @param totals                 Spend totals per category for the selected month.
+     * @param effectiveLimitProvider Function {@code (categoryId, yearMonth) → Long} that returns
+     *                               the rollover-adjusted effective limit for a given month, or
+     *                               {@code null} if no rollover data exists (base limit is used).
+     *                               The {@code yearMonth} string is ISO format, e.g. {@code "2024-03"}.
+     * @param yearMonth              The displayed month in ISO format, passed through to
+     *                               {@code effectiveLimitProvider} for rollover lookup.
+     */
     public List<BudgetLimitBar> toLimitBars(List<CategorySpendSummary> totals,
                                              BiFunction<String, String, Long> effectiveLimitProvider,
                                              String yearMonth) {

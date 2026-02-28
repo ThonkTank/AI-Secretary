@@ -15,6 +15,19 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.UUID;
 
+/**
+ * Represents a single budget transaction (income or expense).
+ *
+ * Transactions are always associated with an account and may be linked to:
+ * - A category (for classification/reporting)
+ * - A recurring template (if auto-generated from a recurring pattern)
+ * - Another transaction (if part of an internal transfer pair)
+ *
+ * The {@code bookingDate} and {@code yearMonth} fields must stay in sync.
+ * Always use {@link #setBookingDate(LocalDate)} to update dates; never set
+ * them independently. The yearMonth field is denormalized for fast month-based
+ * queries (e.g., "sum all transactions in a month").
+ */
 @Entity(
         tableName = "budget_transaction",
         foreignKeys = {
@@ -70,6 +83,9 @@ public class BudgetTransactionEntity {
 
     public String templateId;
 
+    // Column is named "type" in the database for historical reasons; kept as-is to avoid
+    // a destructive schema migration. Java field name uses the clearer "direction".
+    // In SQL queries, always reference this column as "type" (not "direction").
     @NonNull
     @ColumnInfo(name = "type")
     public TransactionDirection direction = TransactionDirection.EXPENSE;
@@ -90,8 +106,11 @@ public class BudgetTransactionEntity {
     public LocalDate bookingDate;
 
     /**
-     * Normalized value in format yyyy-MM for fast monthly queries.
-     * Derived from bookingDate. Do not set directly — use setBookingDate() instead.
+     * Normalized year-month in format yyyy-MM, derived from bookingDate.
+     * This is a denormalized field for query performance: filtering and grouping by month
+     * is much faster with a pre-computed string index than deriving it from bookingDate each time.
+     * <strong>Invariant:</strong> Must always match {@code YearMonth.from(bookingDate).toString()}.
+     * <strong>Never set directly</strong> — use {@link #setBookingDate(LocalDate)} to maintain sync.
      */
     @NonNull
     public String yearMonth;
@@ -114,7 +133,11 @@ public class BudgetTransactionEntity {
         setBookingDate(bookingDate);
     }
 
-    /** Sets bookingDate and derives yearMonth automatically. Use this instead of setting both fields directly. */
+    /**
+     * Sets bookingDate and derives yearMonth automatically, maintaining the invariant
+     * that the two fields always stay in sync. Always use this method instead of setting
+     * either field directly; breaking the sync will cause incorrect monthly aggregations.
+     */
     public void setBookingDate(@NonNull LocalDate date) {
         this.bookingDate = date;
         this.yearMonth = YearMonth.from(date).toString();

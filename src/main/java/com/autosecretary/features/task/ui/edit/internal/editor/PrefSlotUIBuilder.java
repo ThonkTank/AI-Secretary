@@ -36,6 +36,13 @@ public class PrefSlotUIBuilder {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     public interface Listener {
+        /**
+         * Called when the user taps the days button for {@code prefSlot}.
+         *
+         * @param takenByOthers days already assigned to sibling prefSlots in the same rep group.
+         *                      The day-picker should disable these so no two slots in one group
+         *                      share the same day.
+         */
         void onDaysClicked(PrefSlotEditState prefSlot, Set<DayOfWeek> takenByOthers);
 
         void onTimeClicked(PrefSlotEditState prefSlot);
@@ -116,6 +123,7 @@ public class PrefSlotUIBuilder {
         return row;
     }
 
+    // Formats a day set as space-separated ranges. Example: {MO,TU,WE,FR} → "Mo-Mi Fr"
     private String formatDaysAsRanges(Set<DayOfWeek> days) {
         if (days == null || days.isEmpty()) return context.getString(R.string.task_editor_pref_slot_no_days);
 
@@ -147,6 +155,7 @@ public class PrefSlotUIBuilder {
     }
 
     private static String dayLabel(DayOfWeek day) {
+        // App UI is fixed German regardless of device locale; Locale.GERMAN is intentional.
         return day.getDisplayName(TextStyle.SHORT, Locale.GERMAN).replace(".", "");
     }
 
@@ -208,11 +217,13 @@ public class PrefSlotUIBuilder {
     private MaterialButton createInteractiveButton() {
         MaterialButton button = new MaterialButton(context, null,
             com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        // Both setMinHeight and setMinimumHeight are required: MaterialButton overrides
+        // setMinimumHeight but the View base class uses the value set by setMinHeight.
         button.setMinHeight(prefSlotButtonMinHeightPx);
         button.setMinimumHeight(prefSlotButtonMinHeightPx);
         button.setClickable(true);
         button.setFocusable(true);
-        button.setAllCaps(false);
+        button.setAllCaps(false); // Material3 default is uppercase; override for readability
         button.setTextAppearance(R.style.TextAppearance_AISecretary_Editor_PrefSlotButton);
         button.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         return button;

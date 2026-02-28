@@ -139,6 +139,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"/>
 
+        <!-- Not yet implemented: TERMIN scheduling fields. These exist in the data
+             model but are not exposed in TaskEditDialog. See CLAUDE.md "Not Yet Implemented". -->
         <LinearLayout
             android:id="@+id/FixedSchedulingContainer"
             android:layout_width="match_parent"
@@ -415,7 +417,7 @@
                 android:text="@string/task_editor_complete_first"/>
         </LinearLayout>
 
-        <!-- PrefSlots -->
+        <!-- PrefSlots: rows inflated programmatically by PrefSlotSectionController -->
         <LinearLayout
             android:id="@+id/PrefSlotContainer"
             android:layout_width="match_parent"

@@ -15,8 +15,18 @@ import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 
 /**
- * Creates default demo tasks for first-run DB seeding.
- * Called by {@code RegenerateScheduleUseCase} when the database is empty.
+ * Creates demo tasks for first-run database seeding (fresh install with no data).
+ *
+ * <p>Called by {@link com.autosecretary.features.task.application.RegenerateScheduleUseCase}
+ * when the task database is found to be empty. After the initial seed, this factory is never
+ * invoked again — user-created tasks replace the demo data over time.
+ *
+ * <p><strong>German task names:</strong> All task titles are in German because the app's
+ * user-facing language is German throughout (see CLAUDE.md conventions). This is intentional.
+ *
+ * <p>Tasks are grouped by time-of-day category (morning, sport, daytime, deadline, evening)
+ * and demonstrate all key scheduling features: tree hierarchies, prerequisites, adaptive timing,
+ * progress tracking, and priority levels.
  */
 public final class TaskSeedDataFactory {
 

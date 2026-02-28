@@ -1,12 +1,26 @@
 package com.autosecretary.features.budget.ui.state;
 
+/**
+ * UI data model for a budget category spending progress bar.
+ *
+ * Represents one category's spending against its configured monthly limit,
+ * with support for rollover carryover (unused budget from prior months may
+ * increase the effective limit for the current month).
+ *
+ * percentage is computed as (spentCents / effectiveLimitCents * 100),
+ * allowing the UI to render a visually accurate progress bar that may exceed 100%.
+ */
 public class BudgetLimitBar {
     private final String categoryId;
     private final String categoryName;
+    /** Hex color code for this category (e.g., "#FF5733") for visual display. */
     private final String categoryColorHex;
+    /** Total spent in this category during the current month (in cents). */
     private final long spentCents;
-    private final long baseLimitCents;      // The configured monthly spending limit
-    private final long effectiveLimitCents; // Limit after applying rollover carryover (may exceed base)
+    /** The configured monthly spending limit for this category (in cents). */
+    private final long baseLimitCents;
+    /** Effective limit after applying rollover carryover from prior months; may exceed baseLimitCents if carryover is available. */
+    private final long effectiveLimitCents;
     private final int percentage;
 
     public BudgetLimitBar(String categoryId, String categoryName, String categoryColorHex,

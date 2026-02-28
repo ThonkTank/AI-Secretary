@@ -176,6 +176,10 @@ public class BudgetTransactionDialogController {
         return active;
     }
 
+    // Expected format: ISO 8601 date string (yyyy-MM-dd), as produced by LocalDate.toString().
+    // Invalid or blank input silently falls back to today's date.
+    // Note: BudgetTransferDialogController validates the date explicitly and shows a field error
+    // instead of silently falling back — see internal/REVIEW_BACKLOG.md for the open item.
     private static LocalDate parseDateInput(String dateStr) {
         if (dateStr != null && !dateStr.isEmpty()) {
             try {

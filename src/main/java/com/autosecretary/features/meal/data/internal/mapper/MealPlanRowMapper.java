@@ -7,6 +7,13 @@ import com.autosecretary.features.meal.domain.MealType;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * {@link RowMapper} for {@link MealPlan}.
+ *
+ * <p>Straightforward scalar mapper: dates/datetimes are serialized to ISO-8601 strings via
+ * {@link MapperSupport#toDateString} / {@link MapperSupport#toDateTimeString}; enum field
+ * {@code mealType} is stored by name. No complex nested objects.
+ */
 public class MealPlanRowMapper implements RowMapper<MealPlan> {
     @Override
     public Map<String, Object> toRow(MealPlan mealPlan) {
@@ -37,6 +44,8 @@ public class MealPlanRowMapper implements RowMapper<MealPlan> {
         mealPlan.actualServings = MapperSupport.asInt(row.get(MealFieldKeys.MealPlan.ACTUAL_SERVINGS));
         mealPlan.completedAt = MapperSupport.asLocalDateTime(row.get(MealFieldKeys.MealPlan.COMPLETED_AT));
         mealPlan.itemId = MapperSupport.asNullableLong(row.get(MealFieldKeys.MealPlan.ITEM_ID));
+        // String fields use raw casts: the storage layer always serializes them as strings via toRow(),
+        // so the cast is safe (no type mismatch). If storage changes, wrap this in MapperSupport.asString().
         mealPlan.recipeTitle = (String) row.get(MealFieldKeys.MealPlan.RECIPE_TITLE);
         mealPlan.estimatedCalories = MapperSupport.asInt(row.get(MealFieldKeys.MealPlan.ESTIMATED_CALORIES));
         return mealPlan;

@@ -11,6 +11,15 @@ import com.autosecretary.features.task.ui.edit.FormInput;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 
+/**
+ * Reads the current state of all task-edit form views and assembles it into a
+ * {@link FormInput} POJO for the presenter to persist.
+ *
+ * <p>This reader is intentionally lenient: it returns {@code null} for any field whose
+ * text cannot be parsed (e.g. an invalid integer or date), rather than throwing. The
+ * {@link TaskEditFormValidator} — run before the presenter is called — is responsible
+ * for catching and surfacing those problems to the user.
+ */
 public class TaskEditFormInputReader {
 
     private final TaskEditSectionBinder.BasicInfoViews basicInfoViews;
@@ -33,6 +42,11 @@ public class TaskEditFormInputReader {
         this.goalSectionController = goalSectionController;
     }
 
+    /**
+     * Applies {@code parser} to the trimmed input; returns {@code null} if the value
+     * is empty or unparseable. Exceptions are intentionally swallowed here — the
+     * validator already ensures fields are valid before this reader is called.
+     */
     private <T> T parseSafe(String value, Function<String, T> parser) {
         if (value == null) return null;
         String trimmed = value.trim();

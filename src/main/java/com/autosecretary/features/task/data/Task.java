@@ -37,6 +37,14 @@ public class Task {
     @Relation(parentColumn = "id", entityColumn = "taskId")
     public List<TaskPlannedMeal> plannedMeals;
 
+    /**
+     * In-memory tree representation of immediate children (not persisted).
+     * Populated during tree building operations (see {@code TaskTreeOperations} and
+     * slot generation in {@code features/task/domain/internal/scheduling/}).
+     * This field allows tree traversal without repeated lookups via {@link #parents}.
+     * Child tasks are related via {@link TaskRelation} in the database; this list
+     * reconstructs that hierarchy for UI rendering and scheduling algorithms.
+     */
     @Ignore
     public List<Task> children = new ArrayList<>();
 

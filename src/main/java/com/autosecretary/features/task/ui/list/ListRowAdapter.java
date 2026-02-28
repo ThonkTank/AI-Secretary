@@ -26,6 +26,20 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+/**
+ * RecyclerView adapter for the task list. Renders two visually distinct row types:
+ * <ul>
+ *   <li><b>Task rows</b> — show checkbox/progress, timer, deadline, streak, and edit controls.</li>
+ *   <li><b>Calendar event rows</b> — read-only; show a "Kalender" chip, no interaction controls.</li>
+ * </ul>
+ *
+ * <p>The adapter delegates all user interactions (checkoff, timer, edit, progress) to
+ * {@link TaskRowActions} callbacks provided by {@link TaskListFragment}. It does not talk
+ * to the ViewModel directly.
+ *
+ * <p>{@link #setInteractionsEnabled(boolean)} is called with {@code false} when the user
+ * navigates to a day other than today, making the entire list read-only.
+ */
 public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowViewHolder> {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final long CHECKBOX_SCALE_DURATION_MS = 100L;
@@ -35,7 +49,9 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     private List<ViewSlot> viewSlots;
     private final TaskRowActions actions;
+    /** False when viewing a past or future day; disables checkboxes, timers, and edit buttons. */
     private boolean interactionsEnabled = true;
+    /** True in Manage mode; enables the expand/collapse toggle on parent task rows. */
     private boolean manageMode = false;
 
     public ListRowAdapter(List<ViewSlot> viewSlots, TaskRowActions actions) {
@@ -259,6 +275,11 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.deadlineCountdown.setVisibility(View.VISIBLE);
     }
 
+    /**
+     * Visual tiers for the streak display. Each tier has an inclusive upper bound on streak count:
+     * COMMON = 1–3, RARE = 4–7, EPIC = 8–14, LEGENDARY = 15+.
+     * The tier determines the text colour and the screen-reader label (e.g. "legendary streak").
+     */
     enum StreakTier {
         COMMON(3, R.color.task_streak_common, R.string.task_streak_tier_common),
         RARE(7, R.color.task_streak_rare, R.string.task_streak_tier_rare),
@@ -342,6 +363,9 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             actions.onCheck.accept(viewSlot);
         });
         holder.checkBox.setChecked(item.completed);
+        // Two-phase checkoff: the checkbox is disabled once completed (second tap already recorded
+        // slot.realEnd in CheckOffTaskUseCase). Unscheduled slots (slotId == null) cannot be
+        // checked off at all — they have no execution window to mark complete.
         boolean checkable = !item.completed && item.slotId != null && interactionsEnabled;
         holder.checkBox.setEnabled(checkable);
         holder.checkBox.setAlpha(interactionsEnabled ? ALPHA_ENABLED : ALPHA_DISABLED);

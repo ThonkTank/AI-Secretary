@@ -10,6 +10,28 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Ensures the app has default budget data on first launch.
+ *
+ * <p><strong>"Seed data"</strong> means the initial, out-of-the-box data that a new app instance
+ * needs to be functional. For the budget feature, this includes:
+ * <ul>
+ *   <li><strong>Accounts:</strong> "Girokonto" (checking), "Tagesgeld" (savings)</li>
+ *   <li><strong>Categories:</strong> Expense categories (housing, groceries, mobility, leisure, other)
+ *       and income category (salary), each with emoji icons and colors</li>
+ *   <li><strong>Demo transactions:</strong> 7-8 sample transactions across different categories
+ *       to give new users a feel for the app's functionality (seeded only if no transactions exist)</li>
+ * </ul>
+ *
+ * <p><strong>When called:</strong>
+ * Typically during app initialization (see AppCompositionRoot). Safe to call multiple times;
+ * only creates data if not already present.
+ *
+ * <p><strong>Effect:</strong> Idempotent — if categories exist, no categories are created;
+ * if transactions exist, no demo transactions are seeded.
+ *
+ * @see SeedResult for the return value (categories, accounts, and selected account ID)
+ */
 public class BudgetSeedService {
 
     private static final String CAT_SONSTIGES    = "Sonstiges";

@@ -31,17 +31,24 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * One-shot import path for legacy meal snapshots.
  *
+ * <p>This service is used for migrating meal data from a previous version of AutoSecretary.
+ * It processes entities sequentially: ingredients → recipes → meal plans → consumption logs → etc.
+ * Failures in one entity type do not stop or roll back other imports.
+ *
+ * <p><strong>For detailed usage, examples, and data structure documentation, see README.md in this package.</strong>
+ *
  * <p>Reference source structures:
  * <ul>
- *     <li>history/migrating/entities/*</li>
- *     <li>history/migrating/repository/parser/*</li>
+ *     <li>history/migrating/entities/* (legacy data models)</li>
+ *     <li>history/migrating/repository/parser/* (legacy parsing examples)</li>
  * </ul>
  *
  * <p>Compatibility rules:
  * <ul>
- *     <li>Enum values are matched case-insensitively; unknown values fall back to caller defaults.</li>
- *     <li>Date values accept ISO-8601 plus legacy parser formats (yyyy-MM-dd HH:mm:ss, dd.MM.yyyy).</li>
- *     <li>Optional fields keep null when empty/unparseable; required fields reject the row.</li>
+ *     <li>Enum values are matched case-insensitively; unknown values fall back to entity-specific defaults.</li>
+ *     <li>Date values accept ISO-8601, legacy formats (yyyy-MM-dd HH:mm:ss, dd.MM.yyyy, yyyy/MM/dd), and epoch seconds.</li>
+ *     <li>Required fields (e.g., "name", "title") cause row rejection if missing or unparseable.</li>
+ *     <li>Optional fields are assigned sensible defaults (e.g., FoodGroup.OTHER) if unparseable; null is OK.</li>
  * </ul>
  */
 public class LegacyMealImportService {
@@ -80,6 +87,38 @@ public class LegacyMealImportService {
         this.pantryRepository = pantryRepository;
     }
 
+    /**
+     * Imports legacy meal data in a single pass.
+     *
+     * <p><strong>This method is idempotent and can only succeed on the first call.</strong>
+     * Subsequent calls return immediately with a failure report.
+     *
+     * @param sourceRows Map of entity type → list of row data. Keys are SOURCE_* constants (e.g., SOURCE_INGREDIENTS).
+     *                   Each inner Map contains column keys and values for a single entity.
+     *                   See README.md for detailed structure and example.
+     * @return LegacyImportReport with per-entity-type success counts and a list of validation failures.
+     *         Failures indicate rows that could not be processed, but do not prevent other rows/types from importing.
+     *
+     * <p>Processing order:
+     * <ol>
+     *     <li>Ingredients (required for recipes)</li>
+     *     <li>Recipes</li>
+     *     <li>Meal Plans</li>
+     *     <li>Consumption Logs</li>
+     *     <li>Pantry Items</li>
+     *     <li>Shopping List Items</li>
+     *     <li>Household Members</li>
+     *     <li>Cooking Preferences</li>
+     *     <li>Weekly Food Targets</li>
+     * </ol>
+     *
+     * <p><strong>Error semantics:</strong>
+     * <ul>
+     *     <li>Validation failures (e.g., missing required field) are logged and recorded in the report; the row is skipped.</li>
+     *     <li>No transactional rollback occurs; rows processed before a failure remain in the database.</li>
+     *     <li>Repository exceptions (e.g., IO errors) propagate to the caller.</li>
+     * </ul>
+     */
     public LegacyImportReport importOnce(Map<String, List<Map<String, Object>>> sourceRows) {
         if (!hasRun.compareAndSet(false, true)) {
             LegacyImportReport report = new LegacyImportReport();
@@ -100,16 +139,33 @@ public class LegacyMealImportService {
         return report;
     }
 
+    /**
+     * Imports ingredients from legacy snapshot.
+     *
+     * <p><strong>Required fields:</strong> "name" must be present and non-blank, else the row is rejected.
+     * <p><strong>Optional fields:</strong> All other fields are populated with sensible defaults if missing or unparseable:
+     * <ul>
+     *     <li>"food_group" → Ingredient.FoodGroup.OTHER (case-insensitive enum match)</li>
+     *     <li>"default_unit" → null (string, can be empty)</li>
+     *     <li>"grams_per_unit", "*_per_100" (calories, protein, carbs, fat, fiber), "shelf_life_days" → 0</li>
+     *     <li>Boolean fields (requires_refrigeration, is_whole_unit, is_perishable) → false</li>
+     * </ul>
+     *
+     * <p>This pattern is replicated for all other entity types (recipes, meal plans, etc.). Differences are noted in each method.
+     */
     private void importIngredients(List<Map<String, Object>> rows, LegacyImportReport report) {
         importRows(SOURCE_INGREDIENTS, rows, report, (row, idx) -> {
+            // Required field: name
             String name = asString(row.get("name"));
             if (name == null || name.isBlank()) {
                 report.addFailure(SOURCE_INGREDIENTS, idx, "missing required field: name");
                 return false;
             }
+
             Ingredient ingredient = new Ingredient();
             ingredient.id = asLong(row.get("id"));
             ingredient.name = name;
+            // Optional fields with fallbacks:
             ingredient.foodGroup = asEnum(Ingredient.FoodGroup.class, row.get("food_group"), Ingredient.FoodGroup.OTHER);
             ingredient.defaultUnit = asString(row.get("default_unit"));
             ingredient.gramsPerUnit = asInt(row.get("grams_per_unit"), 1);
@@ -127,8 +183,21 @@ public class LegacyMealImportService {
         });
     }
 
+    /**
+     * Imports recipes from legacy snapshot.
+     *
+     * <p><strong>Required fields:</strong> "title" must be present and non-blank, else the row is rejected.
+     * <p><strong>Optional fields:</strong> See importIngredients for general pattern. Notable defaults:
+     * <ul>
+     *     <li>"servings", "min_servings", "max_servings" → numeric defaults (2, 1, 8)</li>
+     *     <li>"scaling_precision" → Recipe.ScalingPrecision.ROUGH</li>
+     *     <li>"prep_effort" → Recipe.PrepEffort.MEDIUM</li>
+     *     <li>"ingredients_data", "ratings_data" → parsed from semicolon/comma-separated strings</li>
+     * </ul>
+     */
     private void importRecipes(List<Map<String, Object>> rows, LegacyImportReport report) {
         importRows(SOURCE_RECIPES, rows, report, (row, idx) -> {
+            // Required field: title
             String title = asString(row.get("title"));
             if (title == null || title.isBlank()) {
                 report.addFailure(SOURCE_RECIPES, idx, "missing required field: title");
@@ -524,6 +593,11 @@ public class LegacyMealImportService {
         return result;
     }
 
+    /**
+     * Report of a single import run. Immutable after construction.
+     *
+     * <p>Callers should inspect both success counts and failures to decide whether the import is acceptable.
+     */
     public static final class LegacyImportReport {
         private final Map<String, Integer> migratedBySource = new HashMap<>();
         private final List<ImportFailure> failures = new ArrayList<>();
@@ -538,15 +612,44 @@ public class LegacyMealImportService {
             Log.w(TAG, "Unmigratable row source=" + source + " row=" + rowIndex + " reason=" + reason);
         }
 
+        /**
+         * Returns per-entity-type success counts.
+         *
+         * <p>Example: {SOURCE_INGREDIENTS: 150, SOURCE_RECIPES: 42, SOURCE_MEAL_PLANS: 200, ...}
+         *
+         * @return Unmodifiable map of entity type → count of successfully migrated rows.
+         */
         public Map<String, Integer> migratedBySource() {
             return Map.copyOf(migratedBySource);
         }
 
+        /**
+         * Returns all validation failures encountered during import.
+         *
+         * <p>Each failure indicates a row that could not be processed (e.g., missing required field, parsing error).
+         * Rows that succeeded are NOT included. Failures do NOT prevent subsequent rows or entity types from importing.
+         *
+         * <p><strong>How to interpret failures:</strong>
+         * <ul>
+         *     <li>If failures list is empty, the import was successful (all rows processed).</li>
+         *     <li>If failures list is non-empty, some rows were skipped due to validation errors (see {@link ImportFailure#reason()}).</li>
+         *     <li>The caller should decide whether the partial import is acceptable, or retry with corrected source data.</li>
+         * </ul>
+         *
+         * @return Unmodifiable list of failures.
+         */
         public List<ImportFailure> failures() {
             return List.copyOf(failures);
         }
     }
 
+    /**
+     * A single validation failure during import.
+     *
+     * @param source Entity type identifier (one of SOURCE_* constants).
+     * @param rowIndex 0-based index in the source list (for debugging/correction).
+     * @param reason Human-readable validation error message (e.g., "missing required field: name", "required fields invalid: date/meal_type/recipe_id").
+     */
     public record ImportFailure(String source, int rowIndex, String reason) {
     }
 }

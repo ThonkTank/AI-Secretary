@@ -11,6 +11,41 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+/**
+ * Generic CRUD DAO that connects a typed domain entity {@code T} to an untyped
+ * {@link MealStorage} collection.
+ *
+ * <p>This class sits between a repository ({@link com.autosecretary.features.meal.data.internal.repository})
+ * and the raw storage layer:
+ * <pre>
+ *   StorageFooRepository → BaseCollectionDao&lt;Foo&gt; → RowMapper&lt;Foo&gt; → MealStorage
+ * </pre>
+ *
+ * <h3>Why lambdas instead of reflection?</h3>
+ * <p>{@code idAccessor} and {@code idSetter} are function parameters rather than using Java
+ * reflection to read/write the {@code id} field. This keeps the class reflection-free, which
+ * is important on Android (reflection is slow and affected by R8/ProGuard rules). Repositories
+ * pass simple lambdas that directly access the id field:
+ * <pre>
+ *   new BaseCollectionDao&lt;&gt;(
+ *       MealCollections.RECIPES,
+ *       storage,
+ *       new RecipeRowMapper(),
+ *       r -&gt; r.id,             // idAccessor: read existing id
+ *       (r, id) -&gt; r.id = id   // idSetter: inject generated id back
+ *   );
+ * </pre>
+ *
+ * <h3>ID generation</h3>
+ * <p>When {@code save()} is called with an entity whose id is null, the storage layer
+ * auto-generates an id and sets it back on the entity via {@code idSetter}. If the id
+ * is already non-null, the existing id is used (upsert semantics).
+ *
+ * @param <T> the domain entity type managed by this DAO
+ * @see RowMapper
+ * @see MealStorage
+ * @see MealCollections
+ */
 public class BaseCollectionDao<T> {
 
     private final String collection;
@@ -31,6 +66,12 @@ public class BaseCollectionDao<T> {
         this.idSetter = Objects.requireNonNull(idSetter, "idSetter cannot be null");
     }
 
+    /**
+     * Finds a single entity by id.
+     *
+     * @param id the entity id to find
+     * @return the entity, or null if not found
+     */
     public T findById(long id) {
         Map<String, Object> row = storage.findById(collection, id);
         if (row == null) {
@@ -39,6 +80,11 @@ public class BaseCollectionDao<T> {
         return mapper.fromRow(row);
     }
 
+    /**
+     * Returns all entities in this collection, in insertion order.
+     *
+     * @return all entities; empty list if the collection is empty
+     */
     public List<T> findAll() {
         return mapRows(storage.findAll(collection));
     }
@@ -61,14 +107,42 @@ public class BaseCollectionDao<T> {
         }
     }
 
+    /**
+     * Deletes the entity with the given id from the collection.
+     *
+     * <p>Safe to call if the entity does not exist; does nothing in that case.
+     *
+     * @param id the entity id to delete
+     */
     public void deleteById(long id) {
         storage.delete(collection, id);
     }
 
+    /**
+     * Returns all entities in this collection that satisfy the given predicate.
+     *
+     * <p><strong>Note:</strong> This is a full-collection scan — all rows are loaded from
+     * storage and deserialized before the predicate is applied. Avoid in hot paths or on
+     * large collections. For indexed lookups, prefer {@link #findAllByField}.
+     *
+     * @param filter predicate applied to each deserialized entity
+     * @return matching entities; empty list if none match
+     */
     public List<T> findAll(Predicate<T> filter) {
         return findAll().stream().filter(filter).collect(Collectors.toList());
     }
 
+    /**
+     * Returns all entities where the given field equals the given value (equality check).
+     *
+     * <p>Field names must match the constants in {@link MealFieldKeys}. Matching is
+     * done at the storage level (before deserialization), so this is more efficient than
+     * {@link #findAll(Predicate)} for single-field equality queries.
+     *
+     * @param field the field name to match (a constant from {@link MealFieldKeys})
+     * @param value the value to match; null matches fields where the stored value is also null
+     * @return matching entities; empty list if none match
+     */
     public List<T> findAllByField(String field, Object value) {
         return mapRows(storage.findByField(collection, field, value));
     }

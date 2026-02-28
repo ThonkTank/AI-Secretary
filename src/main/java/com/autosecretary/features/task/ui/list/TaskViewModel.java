@@ -30,6 +30,23 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Predicate;
 
+/**
+ * ViewModel for the task list screen ({@link TaskListFragment}).
+ *
+ * <p>Owns the entire display state for the list: the master slot list, the current display mode
+ * (CHECKLIST or MANAGE), day navigation, search query, and expand/collapse state for task parents.
+ *
+ * <p>Data flow on every update:
+ * <ol>
+ *   <li>{@link #refreshList()} loads all mapped items from {@link TaskDataService} into
+ *       {@link #masterList} (the source of truth).</li>
+ *   <li>{@link #filterList()} filters, optionally appends calendar events, then sorts and
+ *       flattens the list via {@link ViewSlotList}.</li>
+ *   <li>The result is posted to {@link #displayList}, observed by the Fragment.</li>
+ * </ol>
+ *
+ * <p>See {@code README.md} in this package for the full data-flow diagram.
+ */
 public class TaskViewModel extends AndroidViewModel {
     /** Maximum number of days ahead navigable in both list and widget views. */
     public static final int MAX_DAY_OFFSET = 6;
@@ -42,14 +59,19 @@ public class TaskViewModel extends AndroidViewModel {
     private final TaskCalendarService taskCalendarService;
     private final Preferences preferences;
 
+    /** Source of truth: holds all loaded task slots. Never filtered in place. */
     private final ViewSlotList masterList;
+    /** Derived display list posted to the Fragment after each filter/sort pass. */
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
     private final MutableLiveData<LocalDate> selectedDay = new MutableLiveData<>(LocalDate.now());
     private final MutableLiveData<String> searchQuery = new MutableLiveData<>("");
     private final MutableLiveData<List<SchedulingConflict>> scheduleConflicts = new MutableLiveData<>();
 
+    /** Currently active display mode (CHECKLIST or MANAGE); drives filter and sort behaviour. */
     private ListConfig activeListConfig = ListConfig.CHECKLIST;
+    /** True once READ_CALENDAR permission is granted; gates calendar event injection in filterList(). */
     private boolean hasCalendarPermission = false;
+    /** Expand/collapse state per task ID, used in Manage mode to show/hide child slot groups. */
     private final Map<String, Boolean> expandedByTaskId = new HashMap<>();
 
     public TaskViewModel(Application app,
@@ -155,6 +177,12 @@ public class TaskViewModel extends AndroidViewModel {
         });
     }
 
+    /**
+     * Rebuilds the display list from the master list in three steps:
+     * 1. Filter allSlots by the active ListConfig predicate (and optionally a search query).
+     * 2. Append calendar events from the device calendar (if READ_CALENDAR is granted).
+     * 3. Sort and flatten using task-parent or slot-parent tree structure.
+     */
     private void filterList() {
         LocalDate day = selectedDay.getValue();
         String rawQuery = searchQuery.getValue();

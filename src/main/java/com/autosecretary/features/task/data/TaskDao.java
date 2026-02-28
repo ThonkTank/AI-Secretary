@@ -53,9 +53,20 @@ public interface TaskDao {
 
     /**
      * Writes dependent rows that reference a task core row.
-     * PrefSlots and prerequisites are replaced wholesale (delete + insert) so that
-     * rows removed during editing do not silently accumulate as orphans.
-     * Slots are upserted without prior deletion to preserve historical completed slots.
+     * <p>
+     * <strong>Delete+Insert strategy:</strong> PrefSlots and prerequisites are replaced
+     * wholesale (delete + insert) so that rows removed during editing do not silently
+     * accumulate as orphans.
+     * <p>
+     * <strong>Upsert-only (no deletion):</strong>
+     * <ul>
+     *   <li>Slots: upserted without prior deletion to preserve historical completed slots
+     *       (allows replay of past executions).</li>
+     *   <li>PlannedMeals: upserted without prior deletion. <strong>Warning:</strong> if a
+     *       planned meal is removed from the in-memory {@code task.plannedMeals} list and
+     *       the task is saved, the removed meal will persist as an orphan in the DB.
+     *       This is intentional (meals may be pre-staged) but callers should be aware.</li>
+     * </ul>
      */
     default void writeDependents(Task task) {
         writeSlots(task.slots);
@@ -124,6 +135,11 @@ public interface TaskDao {
     @Query("DELETE FROM task_relation WHERE parent = :taskId")
     void deleteRelationsByParentId(String taskId);
 
+    /**
+     * Deletes all prerequisite links where {@code prerequisiteId = taskId}.
+     * This removes all tasks that have the given task as a prerequisite (i.e.,
+     * tasks that were blocked waiting for the given task to complete).
+     */
     @Query("DELETE FROM task_prerequisites WHERE prerequisiteId = :taskId")
     void deletePrerequisitesByDependencyId(String taskId);
 

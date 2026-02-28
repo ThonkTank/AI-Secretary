@@ -4,6 +4,16 @@ import com.autosecretary.features.budget.domain.TransactionDirection;
 
 import java.time.LocalDate;
 
+/**
+ * Immutable UI read model for a single transaction in a transaction list.
+ *
+ * Flattened representation of a domain BudgetTransactionEntity with all display-ready fields.
+ * Built via the builder pattern to support flexible mapping from domain models.
+ * Use this class exclusively in UI and ViewModel layers; domain layer uses BudgetTransactionEntity.
+ *
+ * All monetary amounts are in cents (divide by 100 for display in currency units).
+ * categoryColorHex is computed by the mapping layer based on the category's configured color.
+ */
 public class BudgetTransactionRow {
     private final String transactionId;
     private final String label;

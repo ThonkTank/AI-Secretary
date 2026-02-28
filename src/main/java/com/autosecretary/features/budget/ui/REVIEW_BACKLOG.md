@@ -12,7 +12,5 @@ Full inflate-and-addView loops with `removeAllViews()` on every LiveData emissio
 
 `RadioGroup` listener uses `if/else if` chain while the inverse observer uses a `switch` expression. The `if/else` is the only viable form due to non-constant R fields. Asymmetry is a genuine readability note but not fixable without moving the mapping into `TimeRangeFilter` itself (e.g. a `fromRadioId(int)` factory method).
 
-### [inconsistent] Date parse error handling inconsistent across dialogs
-`BudgetTransactionDialogController.parseDateInput` silently falls back to `LocalDate.now()` on invalid input; `BudgetTransferDialogController` shows an inline field error and blocks submission. Fix: use the `setOnShowListener` pattern in `BudgetTransactionDialogController` to intercept positive-button clicks and validate before dismissing.
 
 ### [inconsistent] BudgetViewModel vs TaskViewModel thread-posting — **promoted to `features/REVIEW_BACKLOG.md`** (cross-feature scope)

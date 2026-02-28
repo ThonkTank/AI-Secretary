@@ -4,7 +4,14 @@ import java.time.LocalDate;
 import java.util.Objects;
 
 /**
- * Budget-Transaktion inkl. Felder für Import- und Recurring-Verknüpfungen.
+ * A budget transaction enriched with import- and recurring-template linkage fields.
+ * <p>
+ * Used as input to {@code RecurringPatternDetector.detectPatterns()} — only transactions with
+ * {@code isRecurring=false} and {@code isPredicted=false} are eligible for pattern detection.
+ * <p>
+ * Note: {@link RecurringType} is a nested enum because it is tightly coupled to this class.
+ * External callers (e.g. {@code Converters}, {@code RecurringScheduleParams}) reference it as
+ * {@code RecurringBudgetTransaction.RecurringType}.
  */
 public class RecurringBudgetTransaction {
     public enum RecurringType {
@@ -26,11 +33,20 @@ public class RecurringBudgetTransaction {
     /** ID of the {@code BudgetImportEntity} record this transaction was created from. Null for manual entries. */
     public String importId;
 
-    /** True when this transaction was generated from an active recurring template (already classified; skip pattern detection). */
+    /**
+     * True when this transaction was generated from an active recurring template.
+     * Such transactions are already classified as recurring and should be skipped during pattern detection.
+     */
     public boolean isRecurring;
-    /** True when this is a forecasted future occurrence inserted by {@code synchronizeRecurringTemplateState}; not yet booked by the bank. */
+    /**
+     * True when this is a forecasted future occurrence that has not yet been booked by the bank.
+     * Predicted transactions are excluded from pattern detection (we only analyze confirmed historical data).
+     */
     public boolean isPredicted;
-    /** ID of the {@code BudgetRecurringTemplateEntity} that produced this transaction. Null for manual or unlinked transactions. */
+    /**
+     * ID of the recurring template that produced this transaction. Null for manual or unlinked transactions.
+     * When non-null and non-blank, this transaction is considered "recurring" (see {@code isRecurring}).
+     */
     public String parentRecurringId;
 
     public RecurringBudgetTransaction() {

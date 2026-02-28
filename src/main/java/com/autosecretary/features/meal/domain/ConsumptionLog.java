@@ -3,13 +3,21 @@ package com.autosecretary.features.meal.domain;
 import java.time.LocalDate;
 
 /**
- * Naehrwert-Tracking: protokolliert konsumierte Mahlzeiten pro Mitglied.
+ * A nutrition log entry recording what a household member actually ate on a given day.
+ *
+ * <p>Each {@code ConsumptionLog} is linked to a {@link MealPlan} via {@code itemId} (the
+ * task feature's checklist item id). When a meal-plan task is completed,
+ * {@code TaskMealIntegrationService} creates a {@code ConsumptionLog} for each active
+ * household member, recording the calories and macros for that serving.
+ *
+ * <p>{@code calories}, {@code protein}, {@code carbs}, and {@code fat} are plain integer
+ * values (kcal and grams respectively) — no ×10 fixed-point scaling.
  */
 public class ConsumptionLog {
 
     public Long id;
     public LocalDate date;
-    public long itemId;
+    public long itemId;             // FK into the task feature's checklist item table (links this log entry to a MealPlan's itemId)
     public long memberId;
     public long recipeId;
     public double servingsConsumed;

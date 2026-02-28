@@ -26,3 +26,11 @@ wouldn't need to jump to `app/` for one small class.
 The move is low-risk (3 files touched, no logic change). However, `app/` is a conventional home for
 SharedPreferences wrappers in Android projects, so the current placement isn't wrong — just less
 discoverable for task-feature work. Tradeoffs are close; defer until a related task touches these files.
+
+---
+
+### ✅ [friction] `getMealPlannerPresenter()` is not `synchronized`, unlike all other lazy-init getters
+**Path:** `app/AppCompositionRoot.java` line ~279
+**Status:** Already resolved — the method already carries the inline comment:
+`// Not synchronized: MealPlannerPresenter is only accessed from the main thread`
+No further action needed.

@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Recurring transaction suggestions dialog. Shown after a budget import when
+     RecurringPatternDetector identifies repeating payee/amount patterns.
+     Managed by BudgetRecurringSuggestionsDialogController.
+     Contains a selection counter and a scrollable list of suggestion rows
+     (inflated programmatically from budget_recurring_suggestion_item.xml). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -16,6 +21,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_sm">
 
+        <!-- Suggestion rows inflated programmatically by BudgetRecurringSuggestionsDialogController -->
         <LinearLayout
             android:id="@+id/BudgetRecurringSuggestionList"
             android:layout_width="match_parent"

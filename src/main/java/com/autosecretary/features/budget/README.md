@@ -7,22 +7,32 @@ The budget feature is organized by responsibility and then by sub-feature:
 - `ui/`: fragment/view-model and budget screen presentation.
 - `application/`: use-cases coordinating workflows.
   - `application/importing/`: end-to-end import flow (parse, deduplicate, persist, recurring suggestions).
-- `domain/`: business logic and recurring detection algorithms.
+- `domain/`: pure business logic, repository interfaces, and domain value types (no Android dependencies).
 - `data/entity/`: canonical Room entities (`BudgetAccount`, `BudgetCategory`, `BudgetTransactionEntity`, `BudgetLimit`, `BudgetImportEntity`, `BudgetRecurringTemplateEntity`).
 - `data/dao/`: Room DAO interfaces for entity access and aggregate queries.
 - `data/repository/`: Room-backed repository implementations.
-- `data/api/`: HTTP clients for external data sources (e.g. `ClaudeStatementApiClient` for PDF import via Claude API).
-- `data/keystore/`: non-Room secure storage (`ClaudeApiKeyStore` — API key via Android Keystore + SharedPreferences).
+- `data/api/`: HTTP clients and secure credential storage (`ClaudeStatementApiClient` for PDF import via Claude API; `ClaudeApiKeyStore` for AES-256-GCM encrypted API key storage).
+
+## If you're new here, read in this order
+
+1. **This file** — understand the package structure and layer responsibilities.
+2. **`domain/README.md`** — learn the domain vocabulary (transactions, accounts, categories, recurring) and core data contracts.
+3. **`application/README.md`** — understand the use-case layer and how it orchestrates domain + data.
+4. **`ui/README.md`** — understand how the ViewModel and Fragment connect to the application layer.
+5. **`data/README.md`** — dive into Room entities, DAOs, and repository implementations once you know what they serve.
+
+For the import pipeline specifically, `application/importing/README.md` is the most complete reference (includes a pipeline diagram, CSV format, error handling, and troubleshooting).
 
 ## Placement rule for new code
 
+- Add pure business logic and domain types to `domain/`.
 - Add new workflow orchestration to `application/`.
 - Add import-related workflows and adapters to `application/importing/`.
+- Add new screens, fragments, or ViewModels to `ui/`.
 - Add canonical persisted entities to `data/entity/`.
 - Add DAO interfaces to `data/dao/`.
 - Add Room-backed repository implementations to `data/repository/`.
-- Add external API HTTP clients to `data/api/`.
-- Add secure credential storage to `data/keystore/`.
+- Add external API HTTP clients or encrypted credential storage to `data/api/`.
 
 ## Manual validation for balance time series/chart
 
