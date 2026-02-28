@@ -177,16 +177,12 @@ public final class TaskSlotToggleMutation {
      * @return the completed slot on that day, or null if no completion is recorded
      */
     private static TaskSlot findCompletedSlotForDay(Task task, LocalDate day) {
-        if (task.slots == null) {
-            return null;
-        }
-
-        for (TaskSlot slot : task.slots) {
-            if (slot.day.equals(day) && slot.completed) {
-                return slot;
-            }
-        }
-        return null;
+        return task.slots != null
+            ? task.slots.stream()
+                .filter(s -> s.day.equals(day) && s.completed)
+                .findFirst()
+                .orElse(null)
+            : null;
     }
 
     /**

@@ -82,4 +82,4 @@ LoadBudgetWidgetSummaryUseCase.BudgetWidgetSummary summary = useCase.execute();
 
 ## Fixed This Run
 
-Nothing to fix.
+1. **Removed unused import:** `WidgetConfiguration` (line 18) — was only mentioned in comments, never used in code.

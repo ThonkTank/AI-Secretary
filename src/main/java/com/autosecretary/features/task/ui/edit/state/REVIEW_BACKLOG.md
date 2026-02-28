@@ -1,60 +1,55 @@
 # Review Backlog — task/ui/edit/state
 
-## Status: All onboarding issues fixed ✓
+## Current Issues
 
-All friction points have been addressed with targeted documentation improvements:
-
-### ✓ FIXED: TaskEditState — preserved fields now explained
-
-**File:** `TaskEditState.java:17-21`
-**Fix:** Expanded docstring to explain that `periodCompletions`, `periodStart`, and `carryoverDebt` hold scheduler state and must be preserved to avoid resetting progress counters. Added link to `TaskCore.History`.
-
-### ✓ FIXED: TaskEditState — field groups now documented
-
-**File:** `TaskEditState.java:31-80`
-**Fixes:**
-- Scheduling & priority group: clarified fixed-date field status (not UI-exposed) with link to CLAUDE.md
-- Added inline comments to min/max duration and cooldown explaining units (minutes/days)
-- Added comment for adaptive field explaining auto-adjustment behavior
-- Repetition group: clarified user-editable fields vs scheduler-managed state with inline explanations
-- Progress tracking group: clarified optional nature and semantic of each field with units/context
-
-### ✓ FIXED: TaskEditState — budget integration explained
-
-**File:** `TaskEditState.java:45-48`
-**Fix:** Added comment explaining optional budget integration feature and link to CLAUDE.md for details.
-
-### ✓ FIXED: PrefSlotEditState — domain concept now explained
-
-**File:** `PrefSlotEditState.java:8-13`
-**Fix:** Expanded docstring to explain "preferred slot" concept (day-of-week + start-time pattern) with link to CLAUDE.md glossary.
-
-### ✓ FIXED: PrefSlotEditState — days field semantics clarified
-
-**File:** `PrefSlotEditState.java:11-12`
-**Fix:** Added inline comment explaining that days are preferred days of week.
-
-### ✓ FIXED: TaskEditDefaults — constants now documented
-
-**File:** `TaskEditDefaults.java:29-44`
-**Fixes:**
-- Scheduling constraints: Added units (minutes for duration, days for cooldown) and context
-- Repetition constants: Clarified that REPS=1 means "1 repetition" and PERIOD_UNIT defaults to DAY
-- Progress tracking: Explained optional nature (unit="" means no tracking) and clarified semantics of each field
+None.
 
 ---
 
 ## Resolved Issues (this run)
 
-### ✓ FIXED: TaskEditState — confusing field grouping in repetition section
+### ✓ FIXED: Unnecessary null-checks in GoalSectionController
 
-**File:** `TaskEditState.java:53-61`
+**File:** `../../internal/editor/GoalSectionController.java:47-48`
 
-**Fix:** Reordered `completeFirst` (user-editable) to appear before the scheduler-managed comment, so field grouping is now clear: lines 54-57 are user-editable (reps, perPeriod, periodUnit, completeFirst), and lines 58-61 are scheduler-managed state (periodCompletions, periodStart, carryoverDebt). Comment scope is now unambiguous.
+**Fix:** Removed defensive null-checks on `goalIcon` and `goalColorHex` fields. TaskEditState initializes these fields to non-null defaults, and TaskEditStateMapper.fromTask() guarantees non-null values via Objects.requireNonNullElse(). The null-checks were redundant defensive programming. Added clarifying comment explaining why the fields are always non-null.
 
 ---
 
-## Deferred Observations (architectural, not onboarding)
+### ✓ FIXED: TaskEditPresenter.resetProgress() sets unit to null instead of empty string
+
+**File:** `TaskEditPresenter.java:187`
+
+**Fix:** Changed `editState.unit = null;` to `editState.unit = "";` with clarifying comment. This aligns with the established convention that empty string means "no progress tracking" (as documented in TaskEditDefaults.UNIT and TaskEditState:64), eliminating the need for defensive null-checks in callers.
+
+---
+
+## Previous Issues (all resolved ✓)
+
+### ✓ FIXED: TaskEditState — preserved fields now explained (prior run)
+**File:** `TaskEditState.java:17-21`
+
+### ✓ FIXED: TaskEditState — field groups now documented (prior run)
+**File:** `TaskEditState.java:31-80`
+
+### ✓ FIXED: TaskEditState — budget integration explained (prior run)
+**File:** `TaskEditState.java:45-48`
+
+### ✓ FIXED: PrefSlotEditState — domain concept now explained (prior run)
+**File:** `PrefSlotEditState.java:8-13`
+
+### ✓ FIXED: PrefSlotEditState — days field semantics clarified (prior run)
+**File:** `PrefSlotEditState.java:11-12`
+
+### ✓ FIXED: TaskEditDefaults — constants now documented (prior run)
+**File:** `TaskEditDefaults.java:29-44`
+
+### ✓ FIXED: TaskEditState — confusing field grouping in repetition section (prior run)
+**File:** `TaskEditState.java:53-61`
+
+---
+
+## Deferred Observations (architectural, not state-package scope)
 
 ### [nit] TaskEditState — field grouping as nested POJOs
 

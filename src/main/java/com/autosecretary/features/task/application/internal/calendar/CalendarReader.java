@@ -74,20 +74,17 @@ public class CalendarReader implements TaskCalendarService {
             LocalTime eventStart = Instant.ofEpochMilli(beginMillis).atZone(zoneId).toLocalTime();
             LocalTime eventEnd = Instant.ofEpochMilli(endMillis).atZone(zoneId).toLocalTime();
 
-            if (!(eventStart.isBefore(scheduleEnd) && eventEnd.isAfter(scheduleStart))) {
+            // Skip if event doesn't overlap the schedule window
+            if (eventStart.isAfter(scheduleEnd) || eventEnd.isBefore(scheduleStart)) {
                 return null;
             }
 
             // Clamp event times to window bounds
-            eventStart = clamp(eventStart, scheduleStart, scheduleEnd);
-            eventEnd = clamp(eventEnd, scheduleStart, scheduleEnd);
+            eventStart = CalendarQueryHelper.clamp(eventStart, scheduleStart, scheduleEnd);
+            eventEnd = CalendarQueryHelper.clamp(eventEnd, scheduleStart, scheduleEnd);
 
             String safeTitle = (title == null || title.isBlank()) ? FALLBACK_TITLE : title;
             return new TaskCalendarEvent(safeTitle, eventStart, eventEnd);
         });
-    }
-
-    private LocalTime clamp(LocalTime value, LocalTime min, LocalTime max) {
-        return value.isBefore(min) ? min : (value.isAfter(max) ? max : value);
     }
 }

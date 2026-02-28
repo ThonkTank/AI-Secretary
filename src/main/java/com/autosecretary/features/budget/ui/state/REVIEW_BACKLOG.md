@@ -13,3 +13,4 @@
 **File:** `UiText.java:7-11`
 
 Class javadoc explains the pattern clearly: "Deferred string wrapper used in ViewModel LiveData. Resolves a string resource (or literal) only when a Context is available, keeping the ViewModel free of Android Context dependencies." This is excellent onboarding documentation that explains both the what (deferred string) and the why (Context decoupling for MVVM). Methods are self-explanatory with this context. No changes needed.
+

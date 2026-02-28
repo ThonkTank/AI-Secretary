@@ -6,7 +6,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * In-memory implementation of {@link MealStorage}.
@@ -39,29 +38,30 @@ public class InMemoryMealStorage implements MealStorage {
     @Override
     public Map<String, Object> findById(String collection, long id) {
         Map<String, Object> row = getRowsOrEmpty(collection).get(id);
-        return row == null ? null : new HashMap<>(row);
+        return row == null ? null : defensiveCopy(row);
     }
 
     @Override
     public List<Map<String, Object>> findAll(String collection) {
         return getRowsOrEmpty(collection).values().stream()
-                .map(HashMap::new)
-                .collect(Collectors.toList());
+                .map(this::defensiveCopy)
+                .toList();
     }
 
     @Override
     public List<Map<String, Object>> findByField(String collection, String field, Object value) {
         return getRowsOrEmpty(collection).values().stream()
                 .filter(row -> Objects.equals(value, row.get(field)))
-                .map(HashMap::new)
-                .collect(Collectors.toList());
+                .map(this::defensiveCopy)
+                .toList();
     }
 
     @Override
     public long upsert(String collection, Long id, Map<String, Object> row) {
+        Objects.requireNonNull(row, "row must not be null");
         Map<Long, Map<String, Object>> rows = collections.computeIfAbsent(collection, key -> new LinkedHashMap<>());
         long targetId = getOrGenerateId(collection, id);
-        Map<String, Object> copy = new HashMap<>(row);
+        Map<String, Object> copy = defensiveCopy(row);
         // Defensive: always inject the canonical id into the stored row, regardless of what
         // the caller's map contained. This ensures the stored row's id is never stale or null.
         copy.put(ROW_ID_KEY, targetId);
@@ -77,12 +77,17 @@ public class InMemoryMealStorage implements MealStorage {
         }
     }
 
+    private Map<String, Object> defensiveCopy(Map<String, Object> row) {
+        return new HashMap<>(row);
+    }
+
     private long getOrGenerateId(String collection, Long explicitId) {
         if (explicitId != null) {
             // Bump the counter to ensure future auto-generated ids never collide with any
             // explicitly assigned id. Without this, an explicit id larger than the current
             // counter would cause future auto-generated ids to collide with existing rows.
-            counters.put(collection, Math.max(counters.getOrDefault(collection, 0L), explicitId));
+            long currentCounter = counters.getOrDefault(collection, 0L);
+            counters.put(collection, Math.max(currentCounter, explicitId));
             return explicitId;
         }
         return counters.merge(collection, 1L, Long::sum);

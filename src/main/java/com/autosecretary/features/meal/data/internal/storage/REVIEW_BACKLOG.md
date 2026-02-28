@@ -1,11 +1,13 @@
 # Review Backlog — meal/data/internal/storage
 
+**KISS Analysis Status:** Complete. No new KISS violations found. The code is well-designed with appropriate abstractions and helper methods. All helper methods (defensiveCopy, getRowsOrEmpty, getOrGenerateId) are justified by their call sites and semantic value.
+
 ## Architectural Issues (Deferred)
 
 ### [consider] Interface with only one implementation
 **File:** `MealStorage.java`
 
-`MealStorage` has only one implementation (`InMemoryMealStorage`). The indirection may be justified if a Room-backed implementation is planned as a future migration target; leave as-is unless the in-memory approach is confirmed permanent.
+`MealStorage` has only one implementation (`InMemoryMealStorage`). However, the interface is actively used as an abstraction boundary by three repository clients (StorageMealRepository, StoragePantryRepository, StorageRecipeRepository), providing clear separation of concerns. The indirection is justified—keep as-is unless a concrete need to inline it arises.
 
 ### [consider] Non-thread-safe map fields in InMemoryMealStorage
 **File:** `InMemoryMealStorage.java:13-14`
@@ -30,3 +32,4 @@ When an explicit id is provided, the counter is bumped to `max(current, explicit
 **File:** `InMemoryMealStorage.java:95-97`
 
 This helper is called 3 times (lines 41, 47, 54) and eliminates duplication of the defensive getOrDefault pattern. The method name is clear and the abstraction justifies the extra method.
+

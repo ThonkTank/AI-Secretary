@@ -27,17 +27,19 @@ public enum ImportTransactionType {
     /**
      * Converts from TransactionDirection to ImportTransactionType.
      * <p>
-     * <strong>Important precondition:</strong> This method only handles INCOME and EXPENSE directions.
+     * <strong>Important:</strong> This method only handles INCOME and EXPENSE directions.
      * TRANSFER cannot be represented from direction alone and must be used directly.
-     * Do not use this method for TRANSFER transactions; set the type to TRANSFER explicitly.
      * </p>
      *
-     * @throws IllegalArgumentException if direction is null
+     * @throws IllegalArgumentException if direction is null or not INCOME/EXPENSE
      */
     public static ImportTransactionType fromDirection(TransactionDirection direction) {
         if (direction == null) {
             throw new IllegalArgumentException("direction must not be null");
         }
-        return direction == TransactionDirection.INCOME ? INCOME : EXPENSE;
+        return switch (direction) {
+            case INCOME -> INCOME;
+            case EXPENSE -> EXPENSE;
+        };
     }
 }

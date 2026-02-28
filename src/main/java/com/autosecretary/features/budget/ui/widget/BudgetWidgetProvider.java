@@ -15,7 +15,6 @@ import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.app.MainActivity;
 import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseCase;
 import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
-import com.autosecretary.shared.WidgetConfiguration;
 
 public class BudgetWidgetProvider extends AppWidgetProvider {
     // Widget update period is defined in WidgetConfiguration and configured in widget_budget_info.xml.

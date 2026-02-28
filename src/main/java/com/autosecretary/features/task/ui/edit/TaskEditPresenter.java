@@ -184,7 +184,7 @@ public class TaskEditPresenter {
     }
 
     private void resetProgress() {
-        editState.unit = null;
+        editState.unit = "";  // Empty string means no progress tracking (matches TaskEditDefaults.UNIT)
         editState.target = 0;
         editState.current = 0;
         editState.resetPerRep = false;

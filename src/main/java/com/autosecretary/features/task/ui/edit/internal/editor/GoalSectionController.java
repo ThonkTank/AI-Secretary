@@ -44,8 +44,10 @@ public class GoalSectionController {
         this.goalIconView = rootView.findViewById(R.id.EditGoalIcon);
         this.goalColorGrid = rootView.findViewById(R.id.GoalColorGrid);
 
-        this.goalIconView.setText(editState.goalIcon != null ? editState.goalIcon : TaskEditDefaults.GOAL_ICON);
-        this.selectedGoalColorHex = editState.goalColorHex != null ? editState.goalColorHex : TaskEditDefaults.GOAL_COLOR_HEX;
+        // goalIcon and goalColorHex are never null; TaskEditState initializes them to defaults,
+        // and TaskEditStateMapper.fromTask() uses Objects.requireNonNullElse() to ensure non-null values.
+        this.goalIconView.setText(editState.goalIcon);
+        this.selectedGoalColorHex = editState.goalColorHex;
 
         buildGoalColorGrid();
     }

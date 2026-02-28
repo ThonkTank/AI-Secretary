@@ -11,6 +11,8 @@ import android.provider.CalendarContract;
 import androidx.core.content.ContextCompat;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -98,6 +100,34 @@ class CalendarQueryHelper {
         }
 
         return results;
+    }
+
+    /**
+     * Clamps a LocalTime value to a [min, max] range.
+     *
+     * @param value The value to clamp
+     * @param min   The minimum bound (inclusive)
+     * @param max   The maximum bound (inclusive)
+     * @return The clamped value: min if value < min, max if value > max, otherwise value
+     */
+    static LocalTime clamp(LocalTime value, LocalTime min, LocalTime max) {
+        if (value.isBefore(min)) return min;
+        if (value.isAfter(max)) return max;
+        return value;
+    }
+
+    /**
+     * Clamps a LocalDateTime value to a [min, max] range.
+     *
+     * @param value The value to clamp
+     * @param min   The minimum bound (inclusive)
+     * @param max   The maximum bound (inclusive)
+     * @return The clamped value: min if value < min, max if value > max, otherwise value
+     */
+    static LocalDateTime clamp(LocalDateTime value, LocalDateTime min, LocalDateTime max) {
+        if (value.isBefore(min)) return min;
+        if (value.isAfter(max)) return max;
+        return value;
     }
 
     /**

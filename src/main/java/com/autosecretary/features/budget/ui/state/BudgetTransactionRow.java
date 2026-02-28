@@ -43,7 +43,8 @@ public class BudgetTransactionRow {
 
     /**
      * Builder for constructing immutable BudgetTransactionRow instances.
-     * All fields must be set before calling {@link #build()}.
+     * Required fields: transactionId, label, direction, bookingDate, accountId.
+     * Optional fields: categoryColorHex, categoryId, note (may be null).
      */
     public static class Builder {
         private String transactionId;

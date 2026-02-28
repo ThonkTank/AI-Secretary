@@ -58,8 +58,9 @@ public interface MealStorage {
      *
      * @param collection the collection name
      * @param id the row id (or null to auto-generate)
-     * @param row the row fields as a map
+     * @param row the row fields as a map; must not be null
      * @return the id of the stored row (auto-generated if id was null)
+     * @throws NullPointerException if row is null
      */
     long upsert(String collection, Long id, Map<String, Object> row);
 

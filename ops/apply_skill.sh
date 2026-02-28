@@ -10,10 +10,10 @@
 #
 # Skill selection per directory:
 #   1. triage (always first — backlog triage)
-#   2-3. review-design, review-accessibility (if dir contains ui/res)
+#   2-3. review-ui (<500 LOC) OR review-design + review-accessibility (≥500 LOC) — if dir contains ui/res
 #   4-7. review-structure, review-architecture, review-onboarding, review-conventions (≥2000 LOC)
 #   8-9. review-security, review-performance (last 20% by LOC)
-#   10-12. review-smells, review-simplicity, review-elegance (always last)
+#   10. review-quality (<500 LOC) OR review-smells + review-elegance + review-simplicity (≥500 LOC)
 #
 # Logs: $LOG_DIR/cycle_NNN/<skill>/<sanitized-path>.md  +  $LOG_DIR/_run.log
 #
@@ -96,10 +96,14 @@ _build_skill_list() {
         echo "triage"
     fi
 
-    # 2-3. UI directories
+    # 2-3. UI directories (small: single combined pass; large: two separate passes)
     if _has_ui_content "$dir"; then
-        echo "review-design"
-        echo "review-accessibility"
+        if (( loc < 500 )); then
+            echo "review-ui"
+        else
+            echo "review-design"
+            echo "review-accessibility"
+        fi
     fi
 
     # 4-7. Large directories (≥2000 LOC recursively)
@@ -116,10 +120,14 @@ _build_skill_list() {
         echo "review-performance"
     fi
 
-    # 10-12. Always last (simplicity last — final pass to reduce complexity)
-    echo "review-smells"
-    echo "review-elegance"
-    echo "review-simplicity"
+    # 10-12. Code quality (small dirs: single combined pass; large dirs: three separate passes)
+    if (( loc < 500 )); then
+        echo "review-quality"
+    else
+        echo "review-smells"
+        echo "review-elegance"
+        echo "review-simplicity"
+    fi
 }
 
 # Check whether origin/main has commits we don't have, or open PRs exist.
