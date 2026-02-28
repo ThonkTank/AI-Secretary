@@ -107,17 +107,16 @@ public class MealPlannerPresenter {
     }
 
     public void toggleMealCompleted(long mealPlanId) {
-        for (MealPlan plan : getWeekMealPlans()) {
-            if (plan.id != null && plan.id == mealPlanId) {
-                plan.isCompleted = !plan.isCompleted;
-                plan.completedAt = plan.isCompleted ? LocalDateTime.now() : null;
-                if (plan.isCompleted) {
-                    plan.actualServings = Math.max(1, plan.plannedServings);
-                }
-                mealRepository.saveMealPlan(plan);
-                return;
-            }
+        MealPlan plan = mealRepository.findMealPlanById(mealPlanId);
+        if (plan == null) {
+            return;
         }
+        plan.isCompleted = !plan.isCompleted;
+        plan.completedAt = plan.isCompleted ? LocalDateTime.now() : null;
+        if (plan.isCompleted) {
+            plan.actualServings = Math.max(1, plan.plannedServings);
+        }
+        mealRepository.saveMealPlan(plan);
     }
 
     public void createShoppingItemFromNeed(String ingredientName, double neededAmount, String unit) {

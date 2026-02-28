@@ -4,12 +4,10 @@
 
 ### Resolved This Run
 
-✅ **[friction]** German-only class Javadocs replaced with English on all 14 domain files.
-✅ **[comment]** Missing method Javadocs added to all four domain service classes.
-✅ **[comment]** German field comments translated in `CookingPreferences` and `ShoppingListItem`.
-✅ **[comment]** German method Javadocs in `Ingredient` translated to English.
-✅ **[comment]** German inner-class/enum Javadocs in `Ingredient` and `Recipe` translated; DGE link added to `FoodGroup`.
-✅ **[comment]** `RecipeScalingResult.factor` semantics documented in record Javadoc.
+✅ **[nit]** HouseholdMember.java:4-5 — German-only class Javadoc translated to English.
+✅ **[nit]** WeeklyFoodTarget.java — German inline comments and method Javadoc translated to English.
+✅ **[warning]** Recipe.java:130 — `EnumSet.copyOf(v)` crash on empty non-EnumSet guarded with null/empty check.
+✅ **[nit]** HouseholdEnergyService.java:51 — `calculateAge()` Javadoc clarified to note ±1-year approximation.
 
 ---
 

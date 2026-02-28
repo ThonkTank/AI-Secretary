@@ -26,9 +26,9 @@ public class StorageRecipeRepository implements RecipeRepository {
     public StorageRecipeRepository(MealStorage storage) {
         // Each BaseCollectionDao is initialized with id accessor and setter lambdas.
         // The accessor reads the entity's id during upsert; the setter injects generated ids back.
-        // See StorageMealRepository for detailed explanation of the BaseCollectionDao pattern.
+        // See BaseCollectionDao javadoc for detailed explanation of the id accessor/setter pattern.
         this.recipeDao = new BaseCollectionDao<>(MealCollections.RECIPES, storage, new RecipeRowMapper(), r -> r.id, (r, id) -> r.id = id);
-        this.ingredientDao = new BaseCollectionDao<>(MealCollections.INGREDIENTS, storage, new IngredientRowMapper(), i -> i.id, (i, id) -> i.id = id);
+        this.ingredientDao = new BaseCollectionDao<>(MealCollections.INGREDIENTS, storage, new IngredientRowMapper(), ingredient -> ingredient.id, (ingredient, id) -> ingredient.id = id);
     }
 
     @Override

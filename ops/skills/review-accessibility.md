@@ -90,7 +90,7 @@ Ask:
 - Does the same icon/label mean the same thing everywhere?
 - Can a user start simple and discover advanced features gradually?
 
-## Accessibility baseline (required focus where visible)
+### 10) Accessibility baseline (required focus where visible)
 
 Check for these accessibility fundamentals:
 - Keyboard/focus navigation for key flows
@@ -134,7 +134,7 @@ Use these severity tags in backlog entries and in the run summary's `[SEVERITY]`
 - `[feedback]` — Missing/unclear system status
 - `[error]` — Prevention/recovery issue
 - `[friction]` — Avoidable confusion/effort
-- `[keep]` — Strong pattern worth preserving
+- `[keep]` — Strong pattern worth preserving *(run summary only — do not write to REVIEW_BACKLOG.md)*
 
 Per entry:
 - **Path + screen/component/line(s)** (if available)

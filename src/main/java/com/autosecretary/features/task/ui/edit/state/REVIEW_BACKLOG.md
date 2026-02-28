@@ -44,6 +44,16 @@ All friction points have been addressed with targeted documentation improvements
 
 ---
 
+## Resolved Issues (this run)
+
+### ✓ FIXED: TaskEditState — confusing field grouping in repetition section
+
+**File:** `TaskEditState.java:53-61`
+
+**Fix:** Reordered `completeFirst` (user-editable) to appear before the scheduler-managed comment, so field grouping is now clear: lines 54-57 are user-editable (reps, perPeriod, periodUnit, completeFirst), and lines 58-61 are scheduler-managed state (periodCompletions, periodStart, carryoverDebt). Comment scope is now unambiguous.
+
+---
+
 ## Deferred Observations (architectural, not onboarding)
 
 ### [nit] TaskEditState — field grouping as nested POJOs

@@ -355,7 +355,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:visibility="gone"
-            android:paddingStart="@dimen/editor_section_indent">
+            android:paddingStart="@dimen/task_editor_section_indent">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -445,7 +445,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:visibility="gone"
-            android:paddingStart="@dimen/editor_section_indent">
+            android:paddingStart="@dimen/task_editor_section_indent">
 
             <LinearLayout
                 android:layout_width="match_parent"

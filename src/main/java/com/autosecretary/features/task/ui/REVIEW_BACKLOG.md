@@ -2,7 +2,22 @@
 
 ## Open Issues
 
-*(none)*
+### [nit] Duplicated `TIME_FORMATTER` constant across three files in different packages
+
+**Files:**
+- `list/ListRowAdapter.java:44`
+- `widget/TaskWidgetFactory.java:41`
+- `edit/internal/editor/PrefSlotUIBuilder.java:36`
+
+**What:** All three define `DateTimeFormatter.ofPattern("HH:mm")` independently.
+
+**Why it matters:** If the time format ever changes (different pattern, locale, seconds),
+all three copies need updating and a missed one silently produces inconsistent display.
+
+**Fix:** Extract to a single constant in a shared location (e.g. `shared/UiFormatters.java`
+or a utility accessible to all three). Deferred — creating a new file for one constant goes
+against project conventions; format is stable today and all three packages are independent
+enough that the coupling of a shared constant introduces its own risks.
 
 ---
 

@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Budget tab icon for bottom navigation (bottom_nav.xml).
-     Currently renders as a Material "info" circle — this is a placeholder.
-     To replace: swap the pathData with a budget-appropriate icon (e.g., "account_balance_wallet"
-     from https://fonts.google.com/icons). -->
+     Material "account_balance_wallet" icon (https://fonts.google.com/icons). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:fillColor="@color/launcher_icon_monochrome"
-        android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM13,17h-2v-5h2V17zM13,9h-2V7h2V9z" />
+        android:fillColor="@color/icon_monochrome"
+        android:pathData="M21,18v1c0,1.1 -0.9,2 -2,2H5c-1.11,0 -2,-0.9 -2,-2V5c0,-1.1 0.89,-2 2,-2h14c1.1,0 2,0.9 2,2v1h-9c-1.11,0 -2,0.9 -2,2v8c0,1.1 0.89,2 2,2h9zM12,16h10V8H12v8zM16,13.5c-0.83,0 -1.5,-0.67 -1.5,-1.5s0.67,-1.5 1.5,-1.5 1.5,0.67 1.5,1.5 -0.67,1.5 -1.5,1.5z" />
 </vector>

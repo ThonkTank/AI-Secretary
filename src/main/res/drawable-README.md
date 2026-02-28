@@ -20,8 +20,9 @@ Size suffix `_24` on icons indicates 24dp intrinsic size (Material standard).
 - **`bg_surface_card`** — Rounded card with outline; used for elevated card surfaces (toolbar, editor panels)
 
 ### Icons
-- **`ic_budget_24`** — Bottom-nav icon for the Budget tab
+- **`ic_budget_24`** — Bottom-nav wallet icon for the Budget tab
 - **`ic_launcher_foreground`** — Adaptive launcher icon foreground (calendar + checkmark)
+- **`ic_meal_24`** — Bottom-nav fork-and-knife icon for the Meal tab
 - **`ic_launcher_monochrome`** — Monochrome variant of launcher icon (must stay in sync with foreground; see file comments)
 - **`ic_settings_24`** — Settings gear icon (toolbar menu)
 - **`ic_task_edit_24`** — Pencil/edit icon (task row edit button)

@@ -26,7 +26,7 @@ public class WeeklyFoodTarget {
     public Long id;
     public String periodKey;            // ISO date string used as storage key (e.g. "2026-02-14"); opaque to this class
 
-    // Ziel-Gramm pro FoodGroup
+    // Target grams per food group
     public int grainGrams;
     public int potatoGrams;
     public int vegetableGrams;
@@ -39,7 +39,7 @@ public class WeeklyFoodTarget {
     public int legumeGrams;
     public int nutGrams;
 
-    // Geplant/Erfuellt pro FoodGroup
+    // Planned/fulfilled grams per food group
     public int grainPlanned;
     public int potatoPlanned;
     public int vegetablePlanned;
@@ -99,12 +99,12 @@ public class WeeklyFoodTarget {
             case FAT -> fatPlanned += grams;
             case LEGUME -> legumePlanned += grams;
             case NUT -> nutPlanned += grams;
-            case OTHER -> {} // ignorieren
+            case OTHER -> {} // no target for OTHER
         }
     }
 
     /**
-     * Verbleibender Bedarf pro FoodGroup (Ziel minus Geplant, min 0).
+     * Remaining need per food group (target minus planned, minimum 0).
      */
     public Map<Ingredient.FoodGroup, Integer> toRemainingMap() {
         Map<Ingredient.FoodGroup, Integer> result = new EnumMap<>(Ingredient.FoodGroup.class);
@@ -128,7 +128,7 @@ public class WeeklyFoodTarget {
             case FAT -> fatGrams = grams;
             case LEGUME -> legumeGrams = grams;
             case NUT -> nutGrams = grams;
-            case OTHER -> {} // ignorieren
+            case OTHER -> {} // no target for OTHER
         }
     }
 }

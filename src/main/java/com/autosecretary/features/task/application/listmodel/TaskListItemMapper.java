@@ -60,10 +60,10 @@ public class TaskListItemMapper {
         List<TaskListItem> items = new ArrayList<>();
         for (Task task : tasks) {
             if (task.slots.isEmpty()) {
-                items.add(toUnscheduledItem(task));
+                items.add(toScheduledItem(task, null));
             } else {
                 for (TaskSlot slot : task.slots) {
-                    items.add(toItem(task, slot));
+                    items.add(toScheduledItem(task, slot));
                 }
             }
         }
@@ -83,9 +83,9 @@ public class TaskListItemMapper {
     }
 
     /**
-     * Converts a single task+slot pair into a TaskListItem.
+     * Converts a single task (with optional slot) into a TaskListItem.
      *
-     * <p>This method handles both scheduled tasks (slot != null) and unscheduled tasks (slot == null).
+     * <p>Handles both scheduled tasks (slot != null) and unscheduled tasks (slot == null).
      * When slot is null, scheduling fields are nulled and the item defaults to today's date.
      *
      * <p>Progress fields are populated only if the task has a non-null progress tracker. The
@@ -96,7 +96,7 @@ public class TaskListItemMapper {
      * @param slot the slot for this occurrence, or null for unscheduled tasks
      * @return a TaskListItem with all fields populated appropriately
      */
-    private TaskListItem toItem(Task task, TaskSlot slot) {
+    private TaskListItem toScheduledItem(Task task, TaskSlot slot) {
         List<String> parentTaskIds = extractParentIds(task);
         boolean hasProgress = task.core.progress != null;
 
@@ -125,7 +125,4 @@ public class TaskListItemMapper {
         );
     }
 
-    private TaskListItem toUnscheduledItem(Task task) {
-        return toItem(task, null);
-    }
 }

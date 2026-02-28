@@ -14,3 +14,9 @@ Full inflate-and-addView loops with `removeAllViews()` on every LiveData emissio
 
 
 ### [inconsistent] BudgetViewModel vs TaskViewModel thread-posting — **promoted to `features/REVIEW_BACKLOG.md`** (cross-feature scope)
+
+## Fixed This Run
+
+✅ [nit] **`categoriesValue()` used fully-qualified class name instead of import** —
+Added `import com.autosecretary.features.budget.data.entity.BudgetCategory;` and replaced
+the two FQN usages with the simple name. (`BudgetFragment.java:363-367`)

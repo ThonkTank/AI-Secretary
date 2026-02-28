@@ -191,7 +191,7 @@ Use these severity tags in backlog entries and in the run summary's `[SEVERITY]`
 - `[docs]` — Other docs issue/opportunity
 - `[link]` — Missing/weak public resource references
 - `[stale]` — Outdated/misleading docs/comments
-- `[keep]` — Strong onboarding support; keep as-is
+- `[keep]` — Strong onboarding support; keep as-is *(run summary only — do not write to REVIEW_BACKLOG.md)*
 
 For each entry:
 - **Path + line(s)** (if available)
@@ -199,10 +199,3 @@ For each entry:
 - **Recommended doc/comment change**
 - **Why it reduces onboarding time/frustration**
 - **Public resource suggestion** (if relevant)
-
-## What "good" looks like (for this review)
-- A newcomer can run the project and understand the first reading path without asking a teammate
-- Comments explain intent, assumptions, and pitfalls (not obvious syntax)
-- READMEs/docs are discoverable, current, and actionable
-- Public links cover prerequisite knowledge gaps
-- The codebase feels teachable, not gatekept by tribal knowledge

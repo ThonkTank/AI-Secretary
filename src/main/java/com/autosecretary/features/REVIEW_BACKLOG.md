@@ -20,20 +20,12 @@ Task DAOs use `read*/write*/delete*` (custom project convention where `write*` =
 
 ---
 
-### [inconsistent] BudgetViewModel vs TaskViewModel — different thread-posting mechanisms
+### ✅ [inconsistent] BudgetViewModel vs TaskViewModel — different thread-posting mechanisms
 **Files:** `budget/ui/BudgetViewModel.java`, `task/ui/list/TaskViewModel.java`
 
-**What makes it hard to navigate today:**
-- `BudgetViewModel`: injects `Consumer<Runnable> postToMain`; calls `postToMain.accept(() -> liveData.setValue(x))`
-- `TaskViewModel`: calls `liveData.postValue(x)` directly — standard thread-safe LiveData API
-
-A reader comparing the two features sees two different threading patterns and doesn't know which is canonical. `postToMain` injection adds a constructor dependency with no benefit over `postValue()`.
-
-**Proposed change:** Replace `postToMain.accept(...)` calls with `liveData.postValue(x)` throughout `BudgetViewModel`; remove `postToMain` parameter; update `BudgetViewModelFactory` and `AppCompositionRoot`.
-
-**Why it reduces mental load:** One threading convention across ViewModels.
-
-**Tradeoffs / risks:** Requires editing `AppCompositionRoot` (app/ package), `BudgetViewModelFactory`, and `BudgetViewModel`. Medium-touch change.
+**Resolved:** `BudgetViewModel` no longer injects `Consumer<Runnable> postToMain`. All LiveData updates
+use `liveData.postValue(x)` directly, consistent with `TaskViewModel`. The constructor was trimmed to
+remove the now-unnecessary parameter. Both ViewModels follow the same threading convention.
 
 *(Promoted from `budget/ui/REVIEW_BACKLOG.md`)*
 

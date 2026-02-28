@@ -54,10 +54,10 @@ public class TaskEditState {
     public int reps = TaskEditDefaults.REPETITION_REPS;  // total repetitions
     public int perPeriod = TaskEditDefaults.REPETITION_PER_PERIOD;  // how many per period
     public Period periodUnit = TaskEditDefaults.REPETITION_PERIOD_UNIT;  // day/week/month
+    public boolean completeFirst;  // if true, complete all reps in a period before moving to next
     // Scheduler-managed state (not editable in UI): current period's completion counters
     public int periodCompletions;  // completions in the current period
     public LocalDate periodStart;  // when the current period started
-    public boolean completeFirst;  // if true, complete all reps in a period before moving to next
     public int carryoverDebt;  // unpaid reps from missed periods (carried forward)
 
     // Progress tracking (optional) — for tasks with numeric progress (e.g., reading chapters)

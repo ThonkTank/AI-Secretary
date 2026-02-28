@@ -12,9 +12,9 @@ import java.util.List;
  * on the Android main thread.</p>
  *
  * <p><strong>Return value conventions:</strong> List-returning methods return an empty list
- * (never null) when no data is found. {@link #findWeeklyFoodTarget} returns null when no
- * matching record exists. {@link #getCookingPreferences()} returns a default instance with
- * sensible defaults if none has been saved yet.</p>
+ * (never null) when no data is found. {@link #findMealPlanById} and {@link #findWeeklyFoodTarget}
+ * return null when no matching record exists. {@link #getCookingPreferences()} returns a default
+ * instance with sensible defaults if none has been saved yet.</p>
  *
  * <p><strong>periodKey</strong> is a date string (ISO format, e.g. {@code "2026-02-14"})
  * used as a storage key for period-specific records such as weekly food targets.</p>
@@ -23,6 +23,8 @@ import java.util.List;
  */
 public interface MealRepository {
     List<MealPlan> getMealPlans(LocalDate fromInclusive, LocalDate toInclusive);
+    /** Returns the meal plan with the given id, or null if not found. */
+    MealPlan findMealPlanById(long mealPlanId);
     void saveMealPlan(MealPlan mealPlan);
     void deleteMealPlan(long mealPlanId);
 

@@ -18,6 +18,7 @@ import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -119,37 +120,49 @@ public class BudgetTransactionDialogController {
                 ? R.string.budget_dialog_save
                 : R.string.budget_dialog_update;
 
-        new AlertDialog.Builder(fragment.requireContext())
+        AlertDialog dialog = new AlertDialog.Builder(fragment.requireContext())
                 .setTitle(titleRes)
                 .setView(dialogView)
-                .setPositiveButton(positiveRes, (dialog, which) -> {
-                    String amountStr = amountInput.getText() != null
-                            ? amountInput.getText().toString().trim() : "";
-                    boolean selectedExpense = expenseRadio.isChecked();
-                    String note = noteInput.getText() != null
-                            ? noteInput.getText().toString().trim() : "";
-                    String categoryId = SpinnerHelper.idAtPosition(
-                            categoriesForType(allCategories, selectedExpense),
-                            categorySpinner.getSelectedItemPosition(), c -> c.id);
-                    String accountId = SpinnerHelper.idAtPosition(
-                            activeAccounts(allAccounts),
-                            accountSpinner.getSelectedItemPosition(), a -> a.id);
-                    LocalDate bookingDate = parseDateInput(dateInput.getText() != null
-                            ? dateInput.getText().toString().trim() : "");
-
-                    if (accountId == null) return;
-
-                    if (existingRow == null) {
-                        listener.onAddTransaction(amountStr, selectedExpense, categoryId,
-                                note.isEmpty() ? null : note, bookingDate, accountId);
-                    } else {
-                        listener.onUpdateTransaction(existingRow.getTransactionId(), amountStr,
-                                selectedExpense, categoryId, note.isEmpty() ? null : note,
-                                bookingDate, accountId);
-                    }
-                })
+                .setPositiveButton(positiveRes, null)
                 .setNegativeButton(R.string.budget_dialog_cancel, null)
-                .show();
+                .create();
+
+        // setOnShowListener + null in setPositiveButton: standard pattern to prevent the
+        // AlertDialog from auto-dismissing before date validation has a chance to show an error.
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String dateStr = SpinnerHelper.textOf(dateInput);
+            LocalDate bookingDate;
+            try {
+                bookingDate = LocalDate.parse(dateStr);
+            } catch (DateTimeParseException ex) {
+                dateInput.setError(fragment.getString(R.string.budget_transfer_invalid_date));
+                return;
+            }
+
+            String amountStr = SpinnerHelper.textOf(amountInput);
+            boolean selectedExpense = expenseRadio.isChecked();
+            String note = SpinnerHelper.textOf(noteInput);
+            String categoryId = SpinnerHelper.idAtPosition(
+                    categoriesForType(allCategories, selectedExpense),
+                    categorySpinner.getSelectedItemPosition(), c -> c.id);
+            String accountId = SpinnerHelper.idAtPosition(
+                    activeAccounts(allAccounts),
+                    accountSpinner.getSelectedItemPosition(), a -> a.id);
+
+            if (accountId == null) return;
+
+            if (existingRow == null) {
+                listener.onAddTransaction(amountStr, selectedExpense, categoryId,
+                        note.isEmpty() ? null : note, bookingDate, accountId);
+            } else {
+                listener.onUpdateTransaction(existingRow.getTransactionId(), amountStr,
+                        selectedExpense, categoryId, note.isEmpty() ? null : note,
+                        bookingDate, accountId);
+            }
+            dialog.dismiss();
+        }));
+
+        dialog.show();
     }
 
     private static List<BudgetCategory> categoriesForType(List<BudgetCategory> allCategories,
@@ -176,17 +189,4 @@ public class BudgetTransactionDialogController {
         return active;
     }
 
-    // Expected format: ISO 8601 date string (yyyy-MM-dd), as produced by LocalDate.toString().
-    // Invalid or blank input silently falls back to today's date.
-    // Note: BudgetTransferDialogController validates the date explicitly and shows a field error
-    // instead of silently falling back — see internal/REVIEW_BACKLOG.md for the open item.
-    private static LocalDate parseDateInput(String dateStr) {
-        if (dateStr != null && !dateStr.isEmpty()) {
-            try {
-                return LocalDate.parse(dateStr);
-            } catch (Exception ignored) {
-            }
-        }
-        return LocalDate.now();
-    }
 }

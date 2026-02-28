@@ -12,6 +12,14 @@
 
 ---
 
+### [nit] TaskEditSectionBinder.java:214-250 — bindProgress() is 36 lines
+
+**File:** `TaskEditSectionBinder.java:214-250`
+
+**Concern:** Just over the 30-line threshold. The method is cohesive and has only one listener, so extraction would produce a trivial helper. Low priority.
+
+---
+
 ### [nit] TaskEditFormViews.java — thin re-aggregation adapter
 
 **File:** `TaskEditFormViews.java`
@@ -33,16 +41,6 @@
 **Files:** `GoalSectionController.java:96-98`, `PrefSlotSectionController.java:181-183`
 
 **Concern:** Identical `dimenPx(@DimenRes int)` one-liner helper duplicated in both controllers. Extracting to a shared utility would add a file for negligible gain. Worth revisiting if a third controller appears in this package.
-
----
-
-### [warning] TaskEditFormValidator.java:69-80 — clearErrors() manual field enumeration
-
-**File:** `TaskEditFormValidator.java:69-80`
-
-**Concern:** `clearErrors()` manually lists all 10 validated fields by name. Every new field added to `TaskEditFormViews` requires two code changes: one in the struct, one here. The method is disconnected from the validation logic that references those same fields, so it is easy to forget to update.
-
-**Suggested fix:** Collect validated `EditText` references in a `List<EditText>` within `TaskEditFormViews` (or return them from a helper), then loop over them in `clearErrors()`. Deferred — requires changing `TaskEditFormViews` design.
 
 ---
 

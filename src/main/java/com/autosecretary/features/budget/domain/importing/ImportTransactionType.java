@@ -45,8 +45,13 @@ public enum ImportTransactionType {
      * TRANSFER cannot be represented from direction alone and must be used directly.
      * Do not use this method for TRANSFER transactions; set the type to TRANSFER explicitly.
      * </p>
+     *
+     * @throws IllegalArgumentException if direction is null
      */
     public static ImportTransactionType fromDirection(TransactionDirection direction) {
+        if (direction == null) {
+            throw new IllegalArgumentException("direction must not be null");
+        }
         return direction == TransactionDirection.INCOME ? INCOME : EXPENSE;
     }
 }

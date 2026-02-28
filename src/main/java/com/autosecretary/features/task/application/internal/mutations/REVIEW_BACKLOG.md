@@ -4,7 +4,7 @@
 
 ---
 
-### [drift] `RoomDatabase` direct reference in application-layer class — `TaskSlotToggleMutation.java:39,83,95,109`
+### [drift] `RoomDatabase` direct reference in application-layer class — `TaskSlotToggleMutation.java:49,56,102,115,129`
 
 `TaskSlotToggleMutation` holds a `RoomDatabase` instance to call `runInTransaction()`.
 Room infrastructure types normally stay in the `data/` layer; the application layer

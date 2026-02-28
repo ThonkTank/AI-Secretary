@@ -127,6 +127,11 @@ public final class TaskSeedDataFactory {
             return this;
         }
 
+        TaskBuilder resetPerRep(boolean resetPerRep) {
+            task.core.progress.resetPerRep = resetPerRep;
+            return this;
+        }
+
         TaskBuilder prefSlots(EnumSet<DayOfWeek> days, LocalTime time) {
             task.prefSlots.clear();
             task.prefSlots.add(TaskPrefSlotFactory.create(task.core.id, days, time));
@@ -262,8 +267,8 @@ public final class TaskSeedDataFactory {
             .priority(Priority.MEDIUM)
             .minDuration(20)
             .prefSlots(MON_WED_FRI, TIME_7_30_AM)
+            .addPrerequisite(aufwaermen)
             .build();
-        training.prerequisites.add(new TaskPrerequisite(training.core.id, aufwaermen.core.id));
         sport.children.add(training);
 
         // Dehnen (child of Training)
@@ -383,21 +388,16 @@ public final class TaskSeedDataFactory {
         // Podcast hören — MEDIUM, 3x daily (repsPerDay=3), spread across day
         Task podcast = new TaskBuilder("Podcast hören", 3, 1, Period.DAY, null, 1, TIME_8_AM, 20)
             .minDuration(10)
+            .prefSlots(TIME_8_AM, TIME_1_30_PM, TIME_6_PM)
             .build();
-        podcast.prefSlots.clear();
-        podcast.prefSlots.add(TaskPrefSlotFactory.create(podcast.core.id, ALL_DAYS, TIME_8_AM));
-        podcast.prefSlots.add(TaskPrefSlotFactory.create(podcast.core.id, ALL_DAYS, TIME_1_30_PM));
-        podcast.prefSlots.add(TaskPrefSlotFactory.create(podcast.core.id, ALL_DAYS, TIME_6_PM));
         group.add(podcast);
 
         // Japanisch lernen — MEDIUM, daily, 19:00, progress resetPerRep=true
         Task japanisch = new TaskBuilder("Japanisch lernen", 1, 1, Period.DAY, null, 1, TIME_7_PM, 30)
             .minDuration(10)
-            .progressResetPerRep("Vokabeln", 20, 5, 20)
+            .progress("Vokabeln", 20, 5, 5, 20, 5, 30)
+            .resetPerRep(true)
             .build();
-        japanisch.core.progress.current = 5;
-        japanisch.core.progress.totalProgress = 5;
-        japanisch.core.progress.totalTime = 30;
         group.add(japanisch);
 
         // Fitnessplan schreiben — MEDIUM, daily, 19:30, very short (5min)
@@ -448,8 +448,8 @@ public final class TaskSeedDataFactory {
         Task waescheAufhaengen = new TaskBuilder("Wäsche aufhängen", 2, 1, Period.WEEK, null, 1, TIME_5_30_PM, 10)
             .minDuration(5)
             .adaptive(true)
+            .addPrerequisiteWithGap(waescheWaschen, 45)
             .build();
-        waescheAufhaengen.prerequisites.add(new TaskPrerequisite(waescheAufhaengen.core.id, waescheWaschen.core.id, 45));
         group.add(waescheAufhaengen);
 
         return group;

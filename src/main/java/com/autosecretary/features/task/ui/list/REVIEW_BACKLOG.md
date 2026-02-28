@@ -2,6 +2,23 @@
 
 ## Open Issues
 
+### [nit] TaskViewModel.java:277 — third call site of direct `TaskWidgetProvider` dependency
+
+`TaskViewModel.refreshList()` calls `TaskWidgetProvider.notifyWidgetUpdate(getApplication())` directly.
+Two other call sites in the *application* layer are tracked in `application/REVIEW_BACKLOG.md` under the
+same pattern. When the widget notification abstraction is eventually introduced to invert the
+application→UI dependency, this call must also be migrated — or it will continue to hold a concrete
+reference to the widget class.
+
+**Why it matters here:** The ViewModel ideally should not know about a specific concrete widget
+implementation. Any new widget type added later requires touching the ViewModel in addition to the
+use-case and alarm receiver.
+
+**Fix:** Same abstraction proposed in `application/REVIEW_BACKLOG.md` (`WidgetRefreshNotifier`);
+this call site is a client of the same abstraction.
+
+---
+
 ### [drift] ListRowAdapter.java:161,204 — `bindTaskRow` and `bindCalendarEventRow` are mirror-image visibility switches
 Adding a new view element to the row requires updating both methods in sync. A single `setRowMode(holder, RowMode)` that sets all visibilities in one place would prevent drift.
 **Tradeoff:** Consolidation adds indirection; the two methods are small and close together. Acceptable to defer.
@@ -25,19 +42,3 @@ The flatten-with-depth traversal writes `slot.depth` directly on the original `V
 **Suggested alternative:** Store depth in a wrapper or `Map<ViewSlot, Integer>` that is rebuilt each sort, keeping `ViewSlot` immutable. Defer — low risk given single-threaded access.
 
 ---
-
-### [inconsistent] TaskViewModelFactory.java — `Preferences` is constructed inside `create()` instead of injected
-`TaskViewModelFactory.create()` (line 56) calls `new Preferences(app)` directly, bypassing the factory's own DI-via-constructor pattern. Every other dependency is injected through the factory constructor. `Preferences` should be injected alongside the others.
-**Canonical:** Add `Preferences preferences` parameter to `TaskViewModelFactory`; pass it from `AppCompositionRoot`.
-**Impact:** `TaskViewModelFactory` constructor + `AppCompositionRoot` (outside scope — needs a separate run targeting the `app/` package).
-
----
-
-### [nit] ListRowAdapter.java:233-260 — `bindDeadline` three-branch if/else with repeated setters
-Each branch sets the same three properties (text, colour, contentDescription) on the same view.
-The duplication makes adding a new urgency tier error-prone.
-**Fix suggestion:** Push display resolution into `DeadlineUrgency` (resource IDs) or extract a lookup record.
-*(Promoted from `application/REVIEW_BACKLOG.md`)*
-
----
-

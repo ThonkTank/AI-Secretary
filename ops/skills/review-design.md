@@ -155,7 +155,7 @@ Use these severity tags in backlog entries and in the run summary's `[SEVERITY]`
 - `[platform]` — Deviates from Material Design / platform conventions
 - `[responsive]` — Layout breaks or degrades on different screen sizes
 - `[token]` — Hardcoded value that should be a design token / style / dimen
-- `[keep]` — Strong design decision worth preserving
+- `[keep]` — Strong design decision worth preserving *(run summary only — do not write to REVIEW_BACKLOG.md)*
 
 Per entry:
 - **File + line(s)** (if available)

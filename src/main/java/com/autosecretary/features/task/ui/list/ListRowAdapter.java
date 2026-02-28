@@ -139,7 +139,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     @Override
     public void onBindViewHolder(TaskRowViewHolder holder, int position) {
         ViewSlot viewSlot = viewSlots.get(position);
-        TaskListItem item = viewSlot.item;
+        TaskListItem item = viewSlot.getItem();
 
         holder.title.setText(item.title);
         holder.itemView.setContentDescription(item.title);
@@ -164,7 +164,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     }
 
     private void bindIndentation(TaskRowViewHolder holder, int depth) {
-        int step = holder.itemView.getContext().getResources().getDimensionPixelSize(R.dimen.indent_step);
+        int step = holder.itemView.getContext().getResources().getDimensionPixelSize(R.dimen.task_indent_step);
         holder.itemView.setPaddingRelative(
                 step * depth,
                 holder.itemView.getPaddingTop(),
@@ -248,31 +248,32 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     private void bindDeadline(TaskRowViewHolder holder, TaskListItem item) {
         Context context = holder.itemView.getContext();
-        TaskListItem.DeadlineUrgency deadlineUrgency = item.deadlineUrgency();
-        if (deadlineUrgency == TaskListItem.DeadlineUrgency.NONE) {
-            holder.deadlineCountdown.setVisibility(View.GONE);
-            holder.deadlineCountdown.setContentDescription(null);
+        TaskListItem.DeadlineUrgency urgency = item.deadlineUrgency();
+        TextView countdown = holder.deadlineCountdown;
+        if (urgency == TaskListItem.DeadlineUrgency.NONE) {
+            countdown.setVisibility(View.GONE);
+            countdown.setContentDescription(null);
             return;
         }
 
         long daysUntil = item.daysUntilDeadline();
-        if (deadlineUrgency == TaskListItem.DeadlineUrgency.OVERDUE) {
-            holder.deadlineCountdown.setText(R.string.task_deadline_overdue_label);
-            holder.deadlineCountdown.setTextColor(ContextCompat.getColor(context, R.color.task_deadline_overdue));
-            holder.deadlineCountdown.setContentDescription(context.getString(R.string.task_deadline_overdue_content_description));
-        } else if (deadlineUrgency == TaskListItem.DeadlineUrgency.TODAY) {
-            holder.deadlineCountdown.setText(R.string.task_deadline_today_label);
-            holder.deadlineCountdown.setTextColor(ContextCompat.getColor(context, R.color.task_deadline_soon));
-            holder.deadlineCountdown.setContentDescription(context.getString(R.string.task_deadline_today_content_description));
+        if (urgency == TaskListItem.DeadlineUrgency.OVERDUE) {
+            countdown.setText(R.string.task_deadline_overdue_label);
+            countdown.setTextColor(ContextCompat.getColor(context, R.color.task_deadline_overdue));
+            countdown.setContentDescription(context.getString(R.string.task_deadline_overdue_content_description));
+        } else if (urgency == TaskListItem.DeadlineUrgency.TODAY) {
+            countdown.setText(R.string.task_deadline_today_label);
+            countdown.setTextColor(ContextCompat.getColor(context, R.color.task_deadline_soon));
+            countdown.setContentDescription(context.getString(R.string.task_deadline_today_content_description));
         } else {
-            holder.deadlineCountdown.setText(context.getString(R.string.task_deadline_in_days_label, daysUntil));
-            int countdownColor = deadlineUrgency == TaskListItem.DeadlineUrgency.SOON
+            countdown.setText(context.getString(R.string.task_deadline_in_days_label, daysUntil));
+            int colorRes = urgency == TaskListItem.DeadlineUrgency.SOON
                     ? R.color.task_deadline_soon
                     : R.color.task_deadline_future;
-            holder.deadlineCountdown.setTextColor(ContextCompat.getColor(context, countdownColor));
-            holder.deadlineCountdown.setContentDescription(context.getString(R.string.task_deadline_in_days_content_description, daysUntil));
+            countdown.setTextColor(ContextCompat.getColor(context, colorRes));
+            countdown.setContentDescription(context.getString(R.string.task_deadline_in_days_content_description, daysUntil));
         }
-        holder.deadlineCountdown.setVisibility(View.VISIBLE);
+        countdown.setVisibility(View.VISIBLE);
     }
 
     /**

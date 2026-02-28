@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
     private static final LocalTime DEFAULT_START = TaskPrefSlotFactory.DEFAULT_START_TIME;
     private static final LocalTime DEFAULT_END = TaskPrefSlotFactory.DEFAULT_END_TIME;
+    private static final int FALLBACK_WINDOW_DURATION_HOURS = 1;
 
     private final TaskScheduleConfigDao dao;
     private Map<DayOfWeek, TaskScheduleConfig> cachedByDay;
@@ -64,10 +65,8 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
      * @return an ordered list of schedule configs for all 7 days; never null, never empty
      */
     public List<TaskScheduleConfig> loadAll() {
-        cachedByDay = buildAsMap(dao.readAll());
-        return Arrays.stream(DayOfWeek.values())
-                .map(cachedByDay::get)
-                .collect(Collectors.toList());
+        cachedByDay = createNormalizedConfigMap(dao.readAll());
+        return toListByDay(cachedByDay);
     }
 
     /**
@@ -80,16 +79,13 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
      * @param configs The list of schedule configurations to save (may be null or contain nulls)
      */
     public void saveAll(List<TaskScheduleConfig> configs) {
-        Map<DayOfWeek, TaskScheduleConfig> configMap = buildAsMap(configs != null ? configs : new ArrayList<>());
-        List<TaskScheduleConfig> toSave = Arrays.stream(DayOfWeek.values())
-                .map(configMap::get)
-                .collect(Collectors.toList());
-        dao.writeAll(toSave);
+        Map<DayOfWeek, TaskScheduleConfig> configMap = createNormalizedConfigMap(configs != null ? configs : new ArrayList<>());
+        dao.writeAll(toListByDay(configMap));
         cachedByDay = null;  // Invalidate cache; will be reloaded on next ensureCached()
     }
 
     /**
-     * Builds a map of DayOfWeek → TaskScheduleConfig from a source list.
+     * Creates a map of DayOfWeek → TaskScheduleConfig from a source list with normalization.
      *
      * <p>Filters null configs, normalizes each valid config to ensure it respects invariants
      * (times within bounds, end after start), and fills in any missing days with sensible defaults.
@@ -98,7 +94,7 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
      * @param source The list of configs (may contain nulls)
      * @return A map with an entry for each DayOfWeek, normalized and with defaults applied
      */
-    private Map<DayOfWeek, TaskScheduleConfig> buildAsMap(Iterable<TaskScheduleConfig> source) {
+    private Map<DayOfWeek, TaskScheduleConfig> createNormalizedConfigMap(Iterable<TaskScheduleConfig> source) {
         Map<DayOfWeek, TaskScheduleConfig> byDay = new EnumMap<>(DayOfWeek.class);
         for (TaskScheduleConfig config : source) {
             if (config != null && config.dayOfWeek != null) {
@@ -130,8 +126,22 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
      */
     private void ensureCached() {
         if (cachedByDay == null) {
-            cachedByDay = buildAsMap(dao.readAll());
+            cachedByDay = createNormalizedConfigMap(dao.readAll());
         }
+    }
+
+    /**
+     * Converts a map of DayOfWeek → TaskScheduleConfig into an ordered list.
+     *
+     * <p>Returns configs in natural {@link DayOfWeek} order (MONDAY … SUNDAY).
+     *
+     * @param configByDay Map of DayOfWeek to TaskScheduleConfig
+     * @return Ordered list with one config per DayOfWeek; never null, never empty
+     */
+    private List<TaskScheduleConfig> toListByDay(Map<DayOfWeek, TaskScheduleConfig> configByDay) {
+        return Arrays.stream(DayOfWeek.values())
+                .map(configByDay::get)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -153,7 +163,7 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
         LocalTime safeStart = orDefault(start, DEFAULT_START);
         LocalTime safeEnd = orDefault(end, DEFAULT_END);
         if (!safeEnd.isAfter(safeStart)) {
-            safeEnd = safeStart.plusHours(1);
+            safeEnd = safeStart.plusHours(FALLBACK_WINDOW_DURATION_HOURS);
         }
         return new TaskScheduleConfig(dayOfWeek, safeStart, safeEnd);
     }

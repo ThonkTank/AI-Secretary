@@ -239,10 +239,8 @@ public class BudgetRoomRepository implements BudgetRepository {
                 sourceAccountId, null, TransactionDirection.EXPENSE, amountCents, bookingDate);
         BudgetTransactionEntity credit = new BudgetTransactionEntity(
                 targetAccountId, null, TransactionDirection.INCOME, amountCents, bookingDate);
-        populateTransferLeg(debit, sourceAccountId, TransactionDirection.EXPENSE,
-                amountCents, bookingDate, credit.id, note);
-        populateTransferLeg(credit, targetAccountId, TransactionDirection.INCOME,
-                amountCents, bookingDate, debit.id, note);
+        populateTransferPair(debit, credit, sourceAccountId, targetAccountId,
+                amountCents, bookingDate, note);
         transactionDao.createTransferPair(debit, credit);
     }
 
@@ -280,11 +278,8 @@ public class BudgetRoomRepository implements BudgetRepository {
             credit = transaction;
         }
 
-        populateTransferLeg(debit, sourceAccountId, TransactionDirection.EXPENSE,
-                amountCents, bookingDate, credit.id, note);
-        populateTransferLeg(credit, targetAccountId, TransactionDirection.INCOME,
-                amountCents, bookingDate, debit.id, note);
-
+        populateTransferPair(debit, credit, sourceAccountId, targetAccountId,
+                amountCents, bookingDate, note);
         transactionDao.updateTransferPair(debit, credit);
         return true;
     }
@@ -352,20 +347,45 @@ public class BudgetRoomRepository implements BudgetRepository {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private static void populateTransferLeg(BudgetTransactionEntity leg,
-                                              String accountId,
-                                              TransactionDirection direction,
+    /**
+     * Populates both legs of a transfer pair atomically.
+     *
+     * Sets all transfer-related fields on both the debit (EXPENSE from source) and
+     * credit (INCOME to target) legs, linking them via their IDs.
+     *
+     * @param debit the transaction leg being debited (source account, EXPENSE direction)
+     * @param credit the transaction leg being credited (target account, INCOME direction)
+     * @param sourceAccountId account to debit
+     * @param targetAccountId account to credit
+     * @param amountCents transfer amount
+     * @param bookingDate transfer date
+     * @param note user note (normalized to null if blank)
+     */
+    private static void populateTransferPair(BudgetTransactionEntity debit,
+                                              BudgetTransactionEntity credit,
+                                              String sourceAccountId,
+                                              String targetAccountId,
                                               long amountCents,
                                               LocalDate bookingDate,
-                                              String linkedId,
                                               String note) {
-        leg.accountId = accountId;
-        leg.direction = direction;
-        leg.amountCents = amountCents;
-        leg.setBookingDate(bookingDate);
-        leg.transactionKind = TransactionKind.INTERNAL_TRANSFER;
-        leg.categoryId = null;
-        leg.note = normalizeNote(note);
-        leg.linkedTransactionId = linkedId;
+        String normalizedNote = normalizeNote(note);
+
+        debit.accountId = sourceAccountId;
+        debit.direction = TransactionDirection.EXPENSE;
+        debit.amountCents = amountCents;
+        debit.setBookingDate(bookingDate);
+        debit.transactionKind = TransactionKind.INTERNAL_TRANSFER;
+        debit.categoryId = null;
+        debit.note = normalizedNote;
+        debit.linkedTransactionId = credit.id;
+
+        credit.accountId = targetAccountId;
+        credit.direction = TransactionDirection.INCOME;
+        credit.amountCents = amountCents;
+        credit.setBookingDate(bookingDate);
+        credit.transactionKind = TransactionKind.INTERNAL_TRANSFER;
+        credit.categoryId = null;
+        credit.note = normalizedNote;
+        credit.linkedTransactionId = debit.id;
     }
 }

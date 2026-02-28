@@ -1,12 +1,7 @@
 package com.autosecretary.features.task.application.internal.calendar;
 
-import android.Manifest;
-import android.content.Context;
-import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.provider.CalendarContract;
-
-import androidx.core.content.ContextCompat;
 
 import com.autosecretary.features.task.domain.scheduling.CalendarBlockedIntervalProvider;
 
@@ -14,7 +9,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -35,13 +29,20 @@ import java.util.List;
  * <p><strong>Time window semantics:</strong> Returned intervals are clamped to the requested window
  * bounds ([windowStart, windowEnd]). No interval in the result will extend outside this window.
  *
+ * <p><strong>All-day events:</strong> Calendar all-day events are excluded from results because
+ * they do not represent specific time blocks — task scheduling cares only about timed conflicts.
+ *
+ * <p><strong>Note:</strong> Calendar query boilerplate is shared with {@link CalendarReader}
+ * via {@link CalendarQueryHelper}. Changes to permission checking, URI building, or query
+ * execution must be coordinated in that helper.
+ *
  * <p><strong>See also:</strong> {@link CalendarBlockedIntervalProvider} interface defines the contract.
  */
 public class DeviceCalendarBlockedIntervalProvider implements CalendarBlockedIntervalProvider {
-    private final Context context;
+    private final CalendarQueryHelper queryHelper;
 
-    public DeviceCalendarBlockedIntervalProvider(Context context) {
-        this.context = context.getApplicationContext();
+    public DeviceCalendarBlockedIntervalProvider(android.content.Context context) {
+        this.queryHelper = new CalendarQueryHelper(context);
     }
 
     /**
@@ -59,59 +60,36 @@ public class DeviceCalendarBlockedIntervalProvider implements CalendarBlockedInt
     public List<BlockedInterval> readBlockedIntervals(LocalDate day,
                                                       LocalDateTime windowStart,
                                                       LocalDateTime windowEnd) {
-        // Check for READ_CALENDAR permission using ContextCompat (recommended for API compatibility).
-        // If permission is missing, return empty list (no calendar data available).
-        // The UI layer is responsible for requesting this permission when needed.
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR)
-                != PackageManager.PERMISSION_GRANTED) {
-            return new ArrayList<>();
-        }
-
         ZoneId zone = ZoneId.systemDefault();
-        // Query the entire day to get all calendar events, then filter to the scheduling window.
-        long dayStartMillis = day.atStartOfDay(zone).toInstant().toEpochMilli();
-        long dayEndMillis = day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli();
 
         String[] projection = {
                 CalendarContract.Instances.BEGIN,
-                CalendarContract.Instances.END
+                CalendarContract.Instances.END,
+                CalendarContract.Instances.ALL_DAY
         };
 
-        List<BlockedInterval> intervals = new ArrayList<>();
-        try (Cursor cursor = context.getContentResolver().query(
-                CalendarContract.Instances.CONTENT_URI.buildUpon()
-                        .appendPath(String.valueOf(dayStartMillis))
-                        .appendPath(String.valueOf(dayEndMillis))
-                        .build(),
-                projection,
-                null,
-                null,
-                CalendarContract.Instances.BEGIN + " ASC"
-        )) {
-            if (cursor == null) {
-                return intervals;
+        return queryHelper.queryDay(day, projection, cursor -> {
+            boolean allDay = cursor.getInt(cursor.getColumnIndexOrThrow(CalendarContract.Instances.ALL_DAY)) != 0;
+            if (allDay) {
+                // All-day events do not represent specific time blocks.
+                // Task scheduling only cares about timed conflicts, so skip them.
+                return null;
             }
-            int beginIndex = cursor.getColumnIndex(CalendarContract.Instances.BEGIN);
-            int endIndex = cursor.getColumnIndex(CalendarContract.Instances.END);
-            while (cursor.moveToNext()) {
-                long begin = cursor.getLong(beginIndex);
-                long end = cursor.getLong(endIndex);
-                LocalDateTime eventStart = LocalDateTime.ofInstant(Instant.ofEpochMilli(begin), zone);
-                LocalDateTime eventEnd = LocalDateTime.ofInstant(Instant.ofEpochMilli(end), zone);
 
-                // Clamp event times to the requested window bounds.
-                // If event starts before window, use window start; if it ends after, use window end.
-                // This ensures returned intervals never exceed the window.
-                LocalDateTime clampedStart = eventStart.isBefore(windowStart) ? windowStart : eventStart;
-                LocalDateTime clampedEnd = eventEnd.isAfter(windowEnd) ? windowEnd : eventEnd;
+            long begin = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN));
+            long end = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.END));
+            LocalDateTime eventStart = LocalDateTime.ofInstant(Instant.ofEpochMilli(begin), zone);
+            LocalDateTime eventEnd = LocalDateTime.ofInstant(Instant.ofEpochMilli(end), zone);
 
-                // Only add intervals that actually fall within the window (clampedEnd > clampedStart).
-                // This filters out events that don't overlap the requested time window.
-                if (clampedEnd.isAfter(clampedStart)) {
-                    intervals.add(new BlockedInterval(clampedStart, clampedEnd));
-                }
+            // Clamp event times to the requested window bounds.
+            LocalDateTime clampedStart = eventStart.isBefore(windowStart) ? windowStart : eventStart;
+            LocalDateTime clampedEnd = eventEnd.isAfter(windowEnd) ? windowEnd : eventEnd;
+
+            // Only add intervals that actually fall within the window.
+            if (clampedEnd.isAfter(clampedStart)) {
+                return new BlockedInterval(clampedStart, clampedEnd);
             }
-        }
-        return intervals;
+            return null;
+        });
     }
 }

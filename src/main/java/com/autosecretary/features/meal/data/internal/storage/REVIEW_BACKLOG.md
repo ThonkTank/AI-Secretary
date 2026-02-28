@@ -17,9 +17,9 @@
 ## Acknowledged Good Patterns
 
 ### [keep] Defensive id injection in upsert
-**File:** `InMemoryMealStorage.java:41-43`
+**File:** `InMemoryMealStorage.java:upsert()`
 
-`copy.put("id", targetId)` always injects the canonical id into the stored copy regardless of what the caller's `row` map contained. This defensive write prevents stored rows from holding a stale or null id.
+`copy.put(ROW_ID_KEY, targetId)` always injects the canonical id into the stored copy regardless of what the caller's `row` map contained. This defensive write prevents stored rows from holding a stale or null id.
 
 ### [keep] Counter bumping in getOrGenerateId
 **File:** `InMemoryMealStorage.java:60-63`

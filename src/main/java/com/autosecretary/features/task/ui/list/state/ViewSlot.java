@@ -11,13 +11,17 @@ import java.util.List;
  * and a list of child ViewSlots for representing task or calendar hierarchies.
  */
 public class ViewSlot {
-    public final TaskListItem item;
+    private final TaskListItem item;
     private int depth;
 
     private List<ViewSlot> children = new ArrayList<>();
 
     public ViewSlot(TaskListItem item) {
         this.item = item;
+    }
+
+    public TaskListItem getItem() {
+        return item;
     }
 
     public int getDepth() {

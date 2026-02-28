@@ -86,8 +86,8 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
             pkg.storeName = parts[0].isEmpty() ? null : parts[0];
             pkg.unit = parts[1].isEmpty() ? null : parts[1];
             pkg.packageAmount = MapperSupport.asInt(parts[2]);
-            pkg.priceCents = parts[3].isEmpty() ? null : MapperSupport.asInt(parts[3]);
-            pkg.lastPurchased = MapperSupport.asLocalDate(parts[4].isEmpty() ? null : parts[4]);
+            pkg.priceCents = MapperSupport.asNullableInt(parts[3]);
+            pkg.lastPurchased = MapperSupport.asLocalDate(parts[4]);
             result.add(pkg);
         }
         return result;

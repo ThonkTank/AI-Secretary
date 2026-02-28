@@ -83,12 +83,12 @@
 
     <!-- Task text appearances -->
     <style name="TextAppearance.Task.Title">
-        <item name="android:textSize">@dimen/task_text_sm</item>
+        <item name="android:textSize">@dimen/text_sm</item>
         <item name="android:textColor">@color/task_color_on_surface</item>
     </style>
 
     <style name="TextAppearance.Task.Metadata">
-        <item name="android:textSize">@dimen/task_text_xs</item>
+        <item name="android:textSize">@dimen/text_xs</item>
         <item name="android:textColor">@color/task_color_on_surface_variant</item>
         <item name="android:fontFamily">monospace</item>
     </style>
@@ -102,18 +102,18 @@
     </style>
 
     <style name="TextAppearance.Task.Widget.NavAction" parent="TextAppearance.Task">
-        <item name="android:textSize">@dimen/task_text_md</item>
+        <item name="android:textSize">@dimen/text_md</item>
         <item name="android:textColor">@color/task_color_primary</item>
         <item name="android:textStyle">bold</item>
     </style>
 
     <style name="TextAppearance.Task.Widget.NavLabel" parent="TextAppearance.Task.Title">
-        <item name="android:textSize">@dimen/task_text_md</item>
+        <item name="android:textSize">@dimen/text_md</item>
         <item name="android:textStyle">bold</item>
     </style>
 
     <style name="TextAppearance.Task.Widget.NewTaskCta" parent="TextAppearance.Task">
-        <item name="android:textSize">@dimen/task_text_md</item>
+        <item name="android:textSize">@dimen/text_md</item>
     </style>
 
     <!-- Budget widget text appearances -->

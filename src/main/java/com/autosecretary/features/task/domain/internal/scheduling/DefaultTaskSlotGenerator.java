@@ -72,11 +72,22 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private static final SchedulingConflict.ReasonCode REASON_OUTSIDE_WINDOW = SchedulingConflict.ReasonCode.OUTSIDE_WINDOW;
     private static final SchedulingConflict.ReasonCode REASON_CALENDAR_OVERLAP = SchedulingConflict.ReasonCode.CALENDAR_OVERLAP;
     private static final SchedulingConflict.ReasonCode REASON_PREREQUISITE_BLOCKED = SchedulingConflict.ReasonCode.PREREQUISITE_BLOCKED;
+
+    private static final String GROUP_PREFIX_CHAIN = "chain:";
+    private static final String GROUP_PREFIX_SLOT = "slot:";
+    private static final String GROUP_PREFIX_FIXED = "fixed:";
     private static final SchedulingConflict.ReasonCode REASON_NO_MATCHING_GAP = SchedulingConflict.ReasonCode.NO_MATCHING_GAP;
 
     // Flat tiebreaker bonus per slot when evaluating prerequisite chains.
     // Favours longer chains being placed as a unit over individual task placement.
     private static final int CHAIN_COMPLETION_BONUS_PER_SLOT = 10;
+
+    /**
+     * Score assigned to fixed-time (TERMIN) task slots. Using {@code MAX_VALUE / 2}
+     * rather than {@code MAX_VALUE} itself prevents overflow when adding the chain
+     * completion bonus or comparing against other scores.
+     */
+    private static final int FIXED_TASK_SCORE = Integer.MAX_VALUE / 2;
 
     private static class Interval implements Comparable<Interval> {
         final LocalDateTime start;
@@ -157,15 +168,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
      * that must elapse after the preceding task finishes before this one may start.
      * The first node in a chain always has {@code minGapFromPrevious == 0}.
      */
-    private static class ChainNode {
-        final Task task;
-        final int minGapFromPrevious;
-
-        ChainNode(Task task, int minGapFromPrevious) {
-            this.task = task;
-            this.minGapFromPrevious = minGapFromPrevious;
-        }
-    }
+    private record ChainNode(Task task, int minGapFromPrevious) {}
 
     /**
      * A fully evaluated candidate placement for a prerequisite chain.
@@ -177,31 +180,29 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
      * {@code netScore > 0}, meaning the incoming chain is worth more than whatever
      * it would displace.
      */
-    private static class ChainPlacement {
-        final List<ChainNode> chain;
-        final List<LocalDateTime> starts;
-        /** Slots that must be evicted to make room for this chain. May be empty. */
-        final Set<DisplacementCandidate> toDisplace;
-        /** Sum of scores for all slots in the incoming chain (plus chain-completion bonus). */
-        final int gainScore;
-        /** Sum of loss scores for all evicted slots (atomic groups counted once). */
-        final int lossScore;
-        final int netScore;
-        final LocalDate day;
-
+    /**
+     * @param chain       nodes in prerequisite order
+     * @param starts      parallel list of proposed start times for each node
+     * @param toDisplace  slots that must be evicted to make room; may be empty
+     * @param gainScore   sum of scores for all incoming slots (plus chain-completion bonus)
+     * @param lossScore   sum of loss scores for all evicted slots (atomic groups counted once)
+     * @param netScore    {@code gainScore − lossScore}; placement is applied only when positive
+     * @param day         calendar day of the first node's start time
+     */
+    private record ChainPlacement(List<ChainNode> chain,
+                                  List<LocalDateTime> starts,
+                                  Set<DisplacementCandidate> toDisplace,
+                                  int gainScore,
+                                  int lossScore,
+                                  int netScore,
+                                  LocalDate day) {
         ChainPlacement(List<ChainNode> chain,
                        List<LocalDateTime> starts,
                        Set<DisplacementCandidate> toDisplace,
                        int gainScore,
                        int lossScore,
                        LocalDate day) {
-            this.chain = chain;
-            this.starts = starts;
-            this.toDisplace = toDisplace;
-            this.gainScore = gainScore;
-            this.lossScore = lossScore;
-            this.netScore = gainScore - lossScore;
-            this.day = day;
+            this(chain, starts, toDisplace, gainScore, lossScore, gainScore - lossScore, day);
         }
     }
 
@@ -228,15 +229,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
-    private static class SchedulingRunInit {
-        final List<Task> taskTree;
-        final List<Task> allTasks;
-
-        SchedulingRunInit(List<Task> taskTree, List<Task> allTasks) {
-            this.taskTree = taskTree;
-            this.allTasks = allTasks;
-        }
-    }
+    private record SchedulingRunInit(List<Task> taskTree, List<Task> allTasks) {}
 
     private static final SchedulingWindowProvider DEFAULT_WINDOW = SchedulingWindowProvider.DEFAULT;
 
@@ -344,8 +337,8 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
 
         SchedulingRunInit init = initSchedulingRun(tasks, state);
-        List<Task> taskTree = init.taskTree;
-        List<Task> allTasks = init.allTasks;
+        List<Task> taskTree = init.taskTree();
+        List<Task> allTasks = init.allTasks();
 
         List<DaySchedulingContext> contexts = new ArrayList<>();
         for (int i = 0; i < days; i++) {
@@ -388,8 +381,8 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                              List<TaskCalendarEvent> calendarEvents) {
         schedulingDay = windowStart.toLocalDate();
         SchedulingRunInit init = initSchedulingRun(tasks, state);
-        List<Task> taskTree = init.taskTree;
-        List<Task> allTasks = init.allTasks;
+        List<Task> taskTree = init.taskTree();
+        List<Task> allTasks = init.allTasks();
 
         for (Task t : allTasks) {
             scorer.maintenance(t, schedulingDay, state);
@@ -472,10 +465,11 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private static final int MAX_PLACEMENT_ITERATIONS = 10_000;
 
     private void assignGlobalBestFitAcrossWindow(List<Task> tasks, List<DaySchedulingContext> contexts) {
+        // Chains are built from static prerequisite relationships which never change during the loop.
+        List<List<ChainNode>> chains = buildTaskChains(tasks);
         int iterations = 0;
         while (iterations < MAX_PLACEMENT_ITERATIONS) {
             iterations++;
-            List<List<ChainNode>> chains = buildTaskChains(tasks);
             ChainPlacement best = null;
             DaySchedulingContext bestContext = null;
 
@@ -767,15 +761,11 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             }
 
             if (prereqEnd == null) {
-                addConflict(task, candidateStart.toLocalDate(), REASON_PREREQUISITE_BLOCKED,
-                        "Vorgängeraufgabe noch nicht geplant: " + prereq.prerequisiteId);
                 return true;
             }
 
             LocalDateTime earliestStart = prereqEnd.plusMinutes(Math.max(0, prereq.minGapMinutes));
             if (candidateStart.isBefore(earliestStart)) {
-                addConflict(task, candidateStart.toLocalDate(), REASON_PREREQUISITE_BLOCKED,
-                        "Frühester Start nach Prerequisite: " + earliestStart.toLocalTime());
                 return true;
             }
         }
@@ -882,6 +872,10 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             slot.end = start.plusMinutes(plannedDuration).toLocalTime();
             slot.chainId = chainId;
             finalizeAssignment(task, slot, slot.score);
+            // For chains: the first slot carries the full gainScore as displacementScore so that
+            // computeAtomicLoss (which deduplicates by atomicGroupId) counts the full chain value
+            // exactly once. Subsequent slots get 0 — they are covered by the first slot's count.
+            slot.displacementScore = (i == 0) ? placement.gainScore : 0;
             if (planningState != null) {
                 planningState.recordScheduled(task.core.id, slot.day);
             }
@@ -972,16 +966,16 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             Set<OccupiedInterval> overlaps = findOverlappingIntervals(occupied, start, end);
             if (!overlaps.isEmpty()) {
                 boolean overlapsCalendar = overlaps.stream().anyMatch(interval -> interval.candidate == null);
-                addConflict(task, day, overlapsCalendar ? REASON_CALENDAR_OVERLAP : REASON_OUTSIDE_WINDOW,
+                addConflict(task, day, overlapsCalendar ? REASON_CALENDAR_OVERLAP : REASON_NO_MATCHING_GAP,
                         "Termin überschneidet belegte Zeit");
                 continue;
             }
-            TaskSlot slot = createScheduledSlot(task, start, Integer.MAX_VALUE / 2, null);
+            TaskSlot slot = createScheduledSlot(task, start, FIXED_TASK_SCORE, null);
             slot.end = end.toLocalTime();
-            slot.displacementScore = Integer.MAX_VALUE / 2;
+            slot.displacementScore = FIXED_TASK_SCORE;
             slot.displacementGroupType = TaskSlot.DisplacementGroupType.FIXED;
-            slot.displacementGroupId = "fixed:" + task.core.id;
-            finalizeAssignment(task, slot, Integer.MAX_VALUE / 2);
+            slot.displacementGroupId = GROUP_PREFIX_FIXED + task.core.id;
+            finalizeAssignment(task, slot, FIXED_TASK_SCORE);
             if (planningState != null) {
                 planningState.recordScheduled(task.core.id, slot.day);
             }
@@ -1115,7 +1109,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         int score = slot.displacementScore != 0 ? slot.displacementScore : slot.score;
         String atomicGroupId = slot.displacementGroupId;
         if (atomicGroupId == null || atomicGroupId.isBlank()) {
-            atomicGroupId = slot.chainId != null ? "chain:" + slot.chainId : "slot:" + slot.id;
+            atomicGroupId = slot.chainId != null ? GROUP_PREFIX_CHAIN + slot.chainId : GROUP_PREFIX_SLOT + slot.id;
         }
         boolean fixedProtected = slot.displacementGroupType == TaskSlot.DisplacementGroupType.FIXED
                 || task.core.schedulingType == TaskCore.SchedulingType.TERMIN;
@@ -1129,7 +1123,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             slot.displacementGroupType = slot.chainId != null ? TaskSlot.DisplacementGroupType.CHAIN : TaskSlot.DisplacementGroupType.SINGLE;
         }
         if (slot.displacementGroupId == null || slot.displacementGroupId.isBlank()) {
-            slot.displacementGroupId = slot.chainId != null ? "chain:" + slot.chainId : "slot:" + slot.id;
+            slot.displacementGroupId = slot.chainId != null ? GROUP_PREFIX_CHAIN + slot.chainId : GROUP_PREFIX_SLOT + slot.id;
         }
         task.slots.add(slot);
         scorer.onSlotAssigned(task, slot.start);

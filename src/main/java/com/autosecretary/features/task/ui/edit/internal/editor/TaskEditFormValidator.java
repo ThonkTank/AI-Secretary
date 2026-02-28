@@ -84,16 +84,9 @@ public class TaskEditFormValidator {
     }
 
     private void clearErrors(TaskEditFormViews views) {
-        views.titleView.setError(null);
-        views.minDurationView.setError(null);
-        views.maxDurationView.setError(null);
-        views.cooldownView.setError(null);
-        views.repsView.setError(null);
-        views.perPeriodView.setError(null);
-        views.targetView.setError(null);
-        views.currentView.setError(null);
-        views.minPerRepView.setError(null);
-        views.maxPerRepView.setError(null);
+        for (EditText field : views.getValidatableFields()) {
+            field.setError(null);
+        }
     }
 
     private boolean requireNonEmpty(EditText field, int messageResId) {
@@ -104,23 +97,23 @@ public class TaskEditFormValidator {
         return true;
     }
 
-    private boolean validateIntegerField(EditText field, int min, int max, int rangeMessageResId) {
+    private boolean validateIntegerField(EditText field, int min, int max, int fieldMessageResId) {
         String value = field.getText().toString().trim();
         if (value.isEmpty()) {
             field.setError(context.getString(R.string.task_edit_validation_required_format,
-                context.getString(rangeMessageResId)));
+                context.getString(fieldMessageResId)));
             return false;
         }
         try {
             int parsed = Integer.parseInt(value);
             if (parsed < min || parsed > max) {
-                field.setError(context.getString(rangeMessageResId));
+                field.setError(context.getString(fieldMessageResId));
                 return false;
             }
             return true;
         } catch (NumberFormatException e) {
             field.setError(context.getString(R.string.task_edit_validation_number_format,
-                context.getString(rangeMessageResId)));
+                context.getString(fieldMessageResId)));
             return false;
         }
     }

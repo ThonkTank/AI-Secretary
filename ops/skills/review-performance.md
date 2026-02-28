@@ -112,7 +112,7 @@ Use these severity tags in backlog entries and in the run summary's `[SEVERITY]`
 - `[rendering]` — Causes extra layout passes, overdraw, or slow list scrolling
 - `[cache]` — Repeated expensive work that could be cached
 - `[consider]` — Possible improvement, but tradeoffs exist
-- `[keep]` — Good performance decision worth preserving
+- `[keep]` — Good performance decision worth preserving *(run summary only — do not write to REVIEW_BACKLOG.md)*
 
 Per entry:
 - **File + line(s)**

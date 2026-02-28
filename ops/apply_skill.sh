@@ -47,8 +47,7 @@ if [[ "${1:-}" == "close" || "${1:-}" == "refresh" ]]; then
 fi
 
 if $AUTONOMOUS; then
-    ROOT="${1:?Usage: $0 --autonomous <directory>}"
-    ROOT="$(realpath "$ROOT")"
+    ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
     SKILLS=()
 else
     ROOT="${1:?Usage: $0 <directory> <skill1> [skill2 ...]}"
@@ -181,10 +180,18 @@ _auto_sync_if_needed() {
     echo ""
 }
 
+# Count lines of code recursively, excluding hidden/build/gradle dirs.
+_count_loc() {
+    local dir="${1:-.}"
+    find "$dir" \( -name '.*' -o -name 'build' -o -name 'gradle' \) -prune \
+        -o -type f -regex '.*\.\(java\|kt\|xml\|sh\|md\|kts\|properties\)$' -print \
+        | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}'
+}
+
 # Model selection — simple LOC-based tiers, no complexity matrix.
 #   <1000 LOC  → haiku  (20 turns)
 #   ≥1000 LOC  → sonnet (40 turns)
-#   Last 10%   → opus   (65 turns)   (largest dirs; deepest-first sort ⇒ last = shallowest)
+#   Last 10%   → opus   (65 turns)   (largest dirs by LOC)
 select_agent_config() {
     local skill="$1"
     local dir="$2"
@@ -192,12 +199,9 @@ select_agent_config() {
     local total_dirs="${4:-0}"    # total eligible dirs
 
     local count_dir="${dir:-$PROJECT_ROOT}"
-    local line_count=0
-    if [[ -d "$count_dir" ]]; then
-        line_count=$(find "$count_dir" -type f \( -name "*.java" -o -name "*.kt" -o -name "*.xml" \) \
-            | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')
-        line_count=${line_count:-0}
-    fi
+    local line_count
+    line_count=$(_count_loc "$count_dir")
+    line_count=${line_count:-0}
 
     # Default by LOC
     if (( line_count < 1000 )); then
@@ -231,27 +235,27 @@ echo "Agent unavailable fallback: ${AGENT_UNAVAILABLE_SLEEP_SECONDS}s"
 echo "Agents    : ${ACTIVE_AGENTS[*]}"
 echo ""
 
+# ── Error Detection Patterns ───────────────────────────────────────────────────
+# These patterns are used to classify API errors and determine appropriate retry strategies.
+readonly PATTERN_RATE_LIMITED="you'?ve[[:space:]]+hit[[:space:]]+your[[:space:]]+limit|usage[[:space:]-]*limit|rate[[:space:]-]*limit|quota|too[[:space:]]+many[[:space:]]+requests|http[[:space:]]*429|status[[:space:]]*429|retry[[:space:]-]*after|credit[[:space:]]+balance|billing[[:space:]]+limit"
+readonly PATTERN_TURN_LIMIT="max.{0,20}turns|maximum.{0,20}turns|turn.{0,10}limit|turns.{0,10}reached|turn.{0,10}budget"
+readonly PATTERN_TRANSIENT="getaddrinfo|eai_again|timed[[:space:]-]*out|connection[[:space:]-]*(refused|reset)|service[[:space:]-]*unavailable|temporar(y|ily)[[:space:]-]*unavailable|overloaded|try[[:space:]]+again|internal[[:space:]-]*server[[:space:]-]*error|http[[:space:]]*50[234]"
+
 # ── Functions ──────────────────────────────────────────────────────────────────
 
 is_rate_limited() {
     local logfile="$1"
-    grep -Eiq \
-        "you'?ve[[:space:]]+hit[[:space:]]+your[[:space:]]+limit|usage[[:space:]-]*limit|rate[[:space:]-]*limit|quota|too[[:space:]]+many[[:space:]]+requests|http[[:space:]]*429|status[[:space:]]*429|retry[[:space:]-]*after|credit[[:space:]]+balance|billing[[:space:]]+limit" \
-        "$logfile"
+    grep -Eiq "$PATTERN_RATE_LIMITED" "$logfile"
 }
 
 is_turn_limit() {
     local logfile="$1"
-    grep -Eiq \
-        "max.{0,20}turns|maximum.{0,20}turns|turn.{0,10}limit|turns.{0,10}reached|turn.{0,10}budget" \
-        "$logfile"
+    grep -Eiq "$PATTERN_TURN_LIMIT" "$logfile"
 }
 
 is_transient_error() {
     local logfile="$1"
-    grep -Eiq \
-        "getaddrinfo|eai_again|timed[[:space:]-]*out|connection[[:space:]-]*(refused|reset)|service[[:space:]-]*unavailable|temporar(y|ily)[[:space:]-]*unavailable|overloaded|try[[:space:]]+again|internal[[:space:]-]*server[[:space:]-]*error|http[[:space:]]*50[234]" \
-        "$logfile"
+    grep -Eiq "$PATTERN_TRANSIENT" "$logfile"
 }
 
 parse_reset_epoch() {
@@ -375,6 +379,7 @@ You are running inside an automated, non-interactive script.
 Focus your analysis on the specified directory. You may edit files outside this
 directory when a fix requires it (e.g. updating callers, adjusting imports, fixing
 method signatures in consumers). Read dependencies and surrounding context as needed.
+Ignore hidden directories (.*), build output (build/), and generated files.
 
 ## Build Verification
 After making changes to source files, verify the build compiles cleanly:
@@ -603,21 +608,22 @@ _dispatch_dir() {
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
-# Collect all directories, sort by depth descending (deepest first).
+# Collect all directories, sort by LOC ascending (smallest first).
+# Last 10% (largest by LOC) get Opus via select_agent_config.
 # Skip pass-through directories: a directory whose only direct child is a single
 # subdirectory (e.g. java/ → com/ → …) adds no value as a review scope.
 _rebuild_dirs() {
     mapfile -t dirs < <(
-        find "$ROOT" \( -name '.*' -prune \) -o \( -type d -print \) \
-        | awk '{ print gsub("/", "/", $0), $0 }' \
-        | sort -rn \
-        | awk '{ print $2 }' \
+        find "$ROOT" \( -name '.*' -o -name 'build' -o -name 'gradle' \) -prune -o -type d -print \
         | while IFS= read -r d; do
             children=$(find "$d" -maxdepth 1 -mindepth 1 | wc -l)
             subdirs=$(find "$d" -maxdepth 1 -mindepth 1 -type d | wc -l)
             (( children == 1 && subdirs == 1 )) && continue
-            echo "$d"
-          done
+            loc=$(_count_loc "$d")
+            echo "${loc:-0} $d"
+          done \
+        | sort -n \
+        | awk '{ print $2 }'
     )
 }
 _rebuild_dirs

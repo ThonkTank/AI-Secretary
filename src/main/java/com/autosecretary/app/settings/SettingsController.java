@@ -39,6 +39,9 @@ public class SettingsController {
     private static final int OPTION_FACTORY_RESET = 2;
     private static final int OPTION_ABOUT = 3;
 
+    /** Date format for displaying backup timestamps in the restore dialog */
+    private static final String BACKUP_DATE_FORMAT = "dd.MM.yyyy HH:mm";
+
     /**
      * Functional interface for long-running tasks that return a boolean success flag.
      * Used by {@link #runInBackground(int, int, BackgroundTask)} to execute work off the main thread.
@@ -139,7 +142,7 @@ public class SettingsController {
                 context.getString(R.string.settings_option_restore_backup),
                 context.getString(R.string.settings_option_manual_backup),
                 context.getString(R.string.settings_option_factory_reset),
-                context.getString(R.string.settings_option_about)
+                context.getString(R.string.settings_option_about),
         };
 
         new AlertDialog.Builder(context)
@@ -174,7 +177,7 @@ public class SettingsController {
     }
 
     private String formatBackupName(@NonNull File file) {
-        String lastChanged = new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.GERMANY)
+        String lastChanged = new SimpleDateFormat(BACKUP_DATE_FORMAT, Locale.GERMANY)
                 .format(new Date(file.lastModified()));
         return context.getString(R.string.settings_backup_item_format, file.getName(), lastChanged);
     }

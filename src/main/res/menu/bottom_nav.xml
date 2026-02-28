@@ -20,10 +20,9 @@
         android:icon="@drawable/ic_budget_24"
         android:title="@string/nav_budget"
         android:contentDescription="@string/nav_budget"/>
-    <!-- Icon is a system placeholder; other tabs use custom project drawables. -->
     <item
         android:id="@+id/nav_meal"
-        android:icon="@android:drawable/ic_menu_compass"
+        android:icon="@drawable/ic_meal_24"
         android:title="@string/nav_meal"
         android:contentDescription="@string/nav_meal"/>
 </menu>

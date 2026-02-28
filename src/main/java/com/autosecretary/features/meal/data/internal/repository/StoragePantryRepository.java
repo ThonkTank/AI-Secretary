@@ -27,7 +27,7 @@ public class StoragePantryRepository implements PantryRepository {
     public StoragePantryRepository(MealStorage storage) {
         // Each BaseCollectionDao is initialized with id accessor and setter lambdas.
         // The accessor reads the entity's id during upsert; the setter injects generated ids back.
-        // See StorageMealRepository for detailed explanation of the BaseCollectionDao pattern.
+        // See BaseCollectionDao javadoc for detailed explanation of the id accessor/setter pattern.
         this.pantryItemDao = new BaseCollectionDao<>(MealCollections.PANTRY_ITEMS, storage, new PantryItemRowMapper(), p -> p.id, (p, id) -> p.id = id);
         this.shoppingListDao = new BaseCollectionDao<>(MealCollections.SHOPPING_LIST_ITEMS, storage, new ShoppingListItemRowMapper(), item -> item.id, (item, id) -> item.id = id);
     }

@@ -197,11 +197,12 @@ public class TaskEditPresenter {
         return mapper.toTask(editState, baseTask);
     }
 
-    /** Parses a trimmed string to int, returning {@code fallback} on any failure. */
+    /** Parses a trimmed string to int, returning {@code fallback} if null, empty, or non-numeric. */
     public static int parseIntSafe(String s, int fallback) {
+        if (s == null) return fallback;
         try {
             return Integer.parseInt(s.trim());
-        } catch (Exception e) {
+        } catch (NumberFormatException e) {
             return fallback;
         }
     }

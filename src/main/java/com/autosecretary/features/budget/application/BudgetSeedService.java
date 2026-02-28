@@ -98,18 +98,17 @@ public class BudgetSeedService {
         String leisureCategoryId = findCategoryIdByName(categories, CAT_FREIZEIT);
         String otherCategoryId = findCategoryIdByName(categories, CAT_SONSTIGES);
 
-        int maxDay = reference.getDayOfMonth();
         TransactionDirection income = TransactionDirection.INCOME;
         TransactionDirection expense = TransactionDirection.EXPENSE;
         List<BudgetTransactionEntity> entities = new ArrayList<>();
-        addDemoTx(entities, accountId, incomeCategoryId, reference, 1, income, 240000, "Gehalt", maxDay);
-        addDemoTx(entities, accountId, housingCategoryId, reference, 2, expense, 85000, "Miete", maxDay);
-        addDemoTx(entities, accountId, groceryCategoryId, reference, 3, expense, 7840, "Lebensmittel", maxDay);
-        addDemoTx(entities, accountId, otherCategoryId, reference, 5, expense, 4290, "Strom", maxDay);
-        addDemoTx(entities, accountId, otherCategoryId, reference, 8, expense, 2999, "Internet", maxDay);
-        addDemoTx(entities, accountId, leisureCategoryId, reference, 10, expense, 1990, "Fitnessstudio", maxDay);
-        addDemoTx(entities, accountId, leisureCategoryId, reference, 15, expense, 3450, "Restaurant", maxDay);
-        addDemoTx(entities, accountId, mobilityCategoryId, reference, 18, expense, 6520, "Tankstelle", maxDay);
+        addDemoTx(entities, accountId, incomeCategoryId, reference, 1, income, 240000, "Gehalt");
+        addDemoTx(entities, accountId, housingCategoryId, reference, 2, expense, 85000, "Miete");
+        addDemoTx(entities, accountId, groceryCategoryId, reference, 3, expense, 7840, "Lebensmittel");
+        addDemoTx(entities, accountId, otherCategoryId, reference, 5, expense, 4290, "Strom");
+        addDemoTx(entities, accountId, otherCategoryId, reference, 8, expense, 2999, "Internet");
+        addDemoTx(entities, accountId, leisureCategoryId, reference, 10, expense, 1990, "Fitnessstudio");
+        addDemoTx(entities, accountId, leisureCategoryId, reference, 15, expense, 3450, "Restaurant");
+        addDemoTx(entities, accountId, mobilityCategoryId, reference, 18, expense, 6520, "Tankstelle");
         repository.saveTransactions(entities);
     }
 
@@ -120,9 +119,8 @@ public class BudgetSeedService {
                            int day,
                            TransactionDirection type,
                            long amountCents,
-                           String note,
-                           int maxDay) {
-        if (day > maxDay) {
+                           String note) {
+        if (day > ref.getDayOfMonth()) {
             return;
         }
         LocalDate date = ref.withDayOfMonth(day);

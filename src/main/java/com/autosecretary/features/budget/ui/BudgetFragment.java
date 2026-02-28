@@ -25,6 +25,7 @@ import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
+import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.ui.internal.BudgetBalanceChartView;
 import com.autosecretary.features.budget.ui.internal.BudgetImportPickerController;
 import com.autosecretary.features.budget.ui.internal.BudgetLimitDialogController;
@@ -352,7 +353,7 @@ public class BudgetFragment extends Fragment {
     }
 
     private void showTransferDialog() {
-        if (transferDialogController == null || budgetViewModel == null) return;
+        if (budgetViewModel == null) return;
         transferDialogController.show(budgetViewModel.getAccounts().getValue());
     }
 
@@ -360,9 +361,8 @@ public class BudgetFragment extends Fragment {
         limitDialogController.show(preSelectedCategoryId, baseLimitCents, categoriesValue());
     }
 
-    private List<com.autosecretary.features.budget.data.entity.BudgetCategory> categoriesValue() {
-        List<com.autosecretary.features.budget.data.entity.BudgetCategory> cats =
-                budgetViewModel.getCategories().getValue();
+    private List<BudgetCategory> categoriesValue() {
+        List<BudgetCategory> cats = budgetViewModel.getCategories().getValue();
         return cats != null ? cats : new ArrayList<>();
     }
 

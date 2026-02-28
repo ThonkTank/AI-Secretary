@@ -48,7 +48,10 @@ import java.util.Locale;
  */
 public class SettingsDataService {
 
+    private static final String TAG = "SettingsDataService";
     private static final String BACKUP_PREFIX = "backup_";
+    private static final String WAL_SUFFIX = "-wal";
+    private static final String SHM_SUFFIX = "-shm";
 
     private final Context appContext;
 
@@ -103,7 +106,7 @@ public class SettingsDataService {
             copyDatabaseFile(getDatabaseFile(), target);
             return target;
         } catch (IOException ex) {
-            Log.e("SettingsDataService", "Backup failed", ex);
+            Log.e(TAG, "Backup failed", ex);
             return null;
         }
     }
@@ -135,8 +138,8 @@ public class SettingsDataService {
             copyDatabaseFile(backupFile, getDatabaseFile());
             AppDatabase.getInstance(appContext);
             return true;
-        } catch (Exception ex) {
-            Log.e("SettingsDataService", "Restore failed", ex);
+        } catch (IOException ex) {
+            Log.e(TAG, "Restore failed", ex);
             return false;
         }
     }
@@ -168,8 +171,8 @@ public class SettingsDataService {
             clearSidecarFiles();
             AppDatabase.getInstance(appContext);
             return true;
-        } catch (Exception ex) {
-            Log.e("SettingsDataService", "Factory reset failed", ex);
+        } catch (RuntimeException ex) {
+            Log.e(TAG, "Factory reset failed", ex);
             return false;
         }
     }
@@ -262,8 +265,8 @@ public class SettingsDataService {
      */
     private void clearSidecarFiles() {
         File database = getDatabaseFile();
-        deleteSilently(new File(database.getAbsolutePath() + "-wal"));
-        deleteSilently(new File(database.getAbsolutePath() + "-shm"));
+        deleteSilently(new File(database.getAbsolutePath() + WAL_SUFFIX));
+        deleteSilently(new File(database.getAbsolutePath() + SHM_SUFFIX));
     }
 
     /**

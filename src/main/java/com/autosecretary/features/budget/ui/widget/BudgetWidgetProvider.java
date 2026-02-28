@@ -21,8 +21,6 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
     // Widget update period is defined in WidgetConfiguration and configured in widget_budget_info.xml.
     // Both must be kept in sync. If they diverge, the widget may update more or less frequently than
     // intended. See widget_budget_info.xml (src/main/res/xml/) for the configured period in milliseconds.
-    @SuppressWarnings("unused")
-    private static final long WIDGET_UPDATE_PERIOD_MILLIS = WidgetConfiguration.WIDGET_UPDATE_PERIOD_MILLIS;
 
     // Intent routing constants for MainActivity. When a widget button is clicked,
     // the PendingIntent launches MainActivity with these extras:
@@ -61,15 +59,10 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.BudgetWidgetTotalValue, CurrencyFormatter.eurosNet(summary.netBalanceCents()));
         views.setTextViewText(R.id.BudgetWidgetFreeValue, CurrencyFormatter.eurosNet(summary.freeBudgetCents()));
 
-        setupButton(views, widgetId, context, R.id.BudgetWidgetOpenButton, 0, null);
-        setupButton(views, widgetId, context, R.id.BudgetWidgetAddButton, 1, ACTION_ADD_TRANSACTION);
+        views.setOnClickPendingIntent(R.id.BudgetWidgetOpenButton, buildPendingIntent(context, widgetId, 0, null));
+        views.setOnClickPendingIntent(R.id.BudgetWidgetAddButton, buildPendingIntent(context, widgetId, 1, ACTION_ADD_TRANSACTION));
 
         manager.updateAppWidget(widgetId, views);
-    }
-
-    private void setupButton(RemoteViews views, int widgetId, Context context, int viewId,
-                             int actionIndex, @Nullable String budgetAction) {
-        views.setOnClickPendingIntent(viewId, buildPendingIntent(context, widgetId, actionIndex, budgetAction));
     }
 
     /**

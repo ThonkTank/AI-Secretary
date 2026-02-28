@@ -131,7 +131,7 @@ public class AppCompositionRoot {
         }
 
         AppDatabase db = AppDatabase.getInstance(app);
-        TaskDao taskDao = getTaskDao();
+        TaskDao dao = getTaskDao();
         Handler mainHandler = new Handler(Looper.getMainLooper());
 
         TaskScheduleConfigRepository scheduleConfigRepository =
@@ -153,7 +153,7 @@ public class AppCompositionRoot {
         TaskCalendarService taskCalendarService = new CalendarReader(app);
 
         TaskDataService taskDataService = new TaskDataService(
-                taskDao,
+                dao,
                 mapper,
                 sharedExecutor,
                 mainHandler::post
@@ -167,7 +167,7 @@ public class AppCompositionRoot {
         );
 
         taskSlotToggleMutation = new TaskSlotToggleMutation(
-                taskDao,
+                dao,
                 getTaskCompletionService(),
                 getTaskLifecycleManager(),
                 db.taskTransitionStatDao(),
@@ -176,20 +176,20 @@ public class AppCompositionRoot {
         );
         CheckOffTaskUseCase checkOffTaskUseCase = new CheckOffTaskUseCase(
                 taskSlotToggleMutation,
-                taskDao,
+                dao,
                 sharedExecutor,
                 bookTaskCompletionExpenseUseCase,
                 app,
                 taskMealIntegrationService
         );
         regenerateScheduleUseCase = new RegenerateScheduleUseCase(
-                taskDao,
+                dao,
                 generator,
                 sharedExecutor,
                 mainHandler::post
         );
         AdjustTaskProgressUseCase adjustTaskProgressUseCase = new AdjustTaskProgressUseCase(
-                taskDao,
+                dao,
                 sharedExecutor,
                 mainHandler::post,
                 getTaskLifecycleManager()
@@ -255,7 +255,6 @@ public class AppCompositionRoot {
         budgetViewModelFactory = new BudgetViewModelFactory(
                 repository,
                 sharedExecutor,
-                mainHandler::post,
                 importUseCase,
                 applyRecurringUseCase,
                 createTransferUseCase

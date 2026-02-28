@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/common.sh"
+
 # === Konfiguration ===
 ADB="/home/aaron/Android/Sdk/platform-tools/adb"
+
+# === Log parsing constants ===
+readonly LOG_KEY_SUMMARY="Zusammenfassung"
+readonly LOG_KEY_TOTAL="Gesamt:"
+readonly LOG_KEY_SLOTS="slots"
 PACKAGE="com.autosecretary"
 ACTIVITY=".app.MainActivity"
 APK="build/outputs/apk/debug/AutoSecretary.apk"
@@ -85,33 +93,6 @@ tap_button() {
     $ADB shell input tap "$cx" "$cy"
 }
 
-# Zaehlt auf wie vielen Tages-Zusammenfassungen eine Task mit slots auftaucht
-count_days_with_task() {
-    local task_name="$1"
-    local count=0
-    local in_block=0
-    local found_in_block=0
-    while IFS= read -r line; do
-        if echo "$line" | grep -q "Zusammenfassung"; then
-            if [ "$found_in_block" -eq 1 ]; then
-                count=$((count + 1))
-            fi
-            in_block=1
-            found_in_block=0
-        fi
-        if [ "$in_block" -eq 1 ] && echo "$line" | grep -q "${task_name}:" && echo "$line" | grep -q "slots"; then
-            found_in_block=1
-        fi
-        if echo "$line" | grep -q "Gesamt:"; then
-            if [ "$found_in_block" -eq 1 ]; then
-                count=$((count + 1))
-            fi
-            in_block=0
-            found_in_block=0
-        fi
-    done <<< "$ALL_SUMMARIES"
-    echo "$count"
-}
 
 # === Hauptablauf ===
 echo ""
@@ -194,14 +175,14 @@ echo ""
 if [ -n "$ALL_SUMMARIES" ]; then
     # Tagesweise ausgeben mit Farbe
     echo "$ALL_SUMMARIES" | while IFS= read -r line; do
-        if echo "$line" | grep -q "Zusammenfassung"; then
+        if echo "$line" | grep -q "$LOG_KEY_SUMMARY"; then
             echo ""
             echo -e "${BLUE}${line}${NC}"
-        elif echo "$line" | grep -q "Gesamt:"; then
+        elif echo "$line" | grep -q "$LOG_KEY_TOTAL"; then
             echo -e "${YELLOW}${line}${NC}"
         elif echo "$line" | grep -q "unscheduled"; then
             : # unscheduled Tasks nicht anzeigen
-        elif echo "$line" | grep -q "slots"; then
+        elif echo "$line" | grep -q "$LOG_KEY_SLOTS"; then
             echo -e "  ${GREEN}${line}${NC}"
         else
             echo "$line"
@@ -260,9 +241,9 @@ else
 fi
 
 # Check 2: Sport nur Mo/Mi/Fr (Weekday-Bug gefixt!)
-SPORT_FOUND=$(echo "$SUMMARY" | grep "Sport:" | grep -c "slots" || true)
-AUFWAERMEN_FOUND=$(echo "$SUMMARY" | grep "Aufwärmen:" | grep -c "slots" || true)
-TRAINING_FOUND=$(echo "$SUMMARY" | grep "Training:" | grep -c "slots" || true)
+SPORT_FOUND=$(echo "$SUMMARY" | grep "Sport:" | grep -c "$LOG_KEY_SLOTS" || true)
+AUFWAERMEN_FOUND=$(echo "$SUMMARY" | grep "Aufwärmen:" | grep -c "$LOG_KEY_SLOTS" || true)
+TRAINING_FOUND=$(echo "$SUMMARY" | grep "Training:" | grep -c "$LOG_KEY_SLOTS" || true)
 if [ "$TODAY_DOW" = "1" ] || [ "$TODAY_DOW" = "3" ] || [ "$TODAY_DOW" = "5" ]; then
     # Mo/Mi/Fr — Sport sollte mit Kindern geplant sein
     if [ "$SPORT_FOUND" -gt 0 ] && [ "$AUFWAERMEN_FOUND" -gt 0 ] && [ "$TRAINING_FOUND" -gt 0 ]; then
@@ -305,7 +286,7 @@ if [ "$TODAY_DOW" -le 5 ]; then
     fi
 else
     # Wochenende — Arbeit darf NICHT geplant sein
-    ARBEIT_FOUND=$(echo "$SUMMARY" | grep "Arbeit:" | grep -c "slots" || true)
+    ARBEIT_FOUND=$(echo "$SUMMARY" | grep "Arbeit:" | grep -c "$LOG_KEY_SLOTS" || true)
     if [ "$ARBEIT_FOUND" -eq 0 ]; then
         run_check "Arbeit nicht geplant (Wochenende — korrekt)" "pass"
     else
@@ -327,7 +308,7 @@ else
 fi
 
 # Check 5: Spanisch lernen geplant
-SPANISCH_FOUND=$(echo "$SUMMARY" | grep "Spanisch" | grep -c "slots" || true)
+SPANISCH_FOUND=$(echo "$SUMMARY" | grep "Spanisch" | grep -c "$LOG_KEY_SLOTS" || true)
 if [ "$SPANISCH_FOUND" -gt 0 ]; then
     run_check "Spanisch lernen geplant" "pass"
 else
@@ -335,7 +316,7 @@ else
 fi
 
 # Check 6: Einkaufen nur am Samstag
-EINKAUFEN_FOUND=$(echo "$SUMMARY" | grep "Einkaufen" | grep -c "slots" || true)
+EINKAUFEN_FOUND=$(echo "$SUMMARY" | grep "Einkaufen" | grep -c "$LOG_KEY_SLOTS" || true)
 if [ "$TODAY_DOW" = "6" ]; then
     if [ "$EINKAUFEN_FOUND" -gt 0 ]; then
         run_check "Einkaufen am Samstag geplant (korrekt)" "pass"
@@ -366,7 +347,7 @@ else
 fi
 
 # Check 8: Notfallplan aktualisieren — CRITICAL + überfällig + closeOnMiss=false → immer geplant
-NOTFALL_FOUND=$(echo "$SUMMARY" | grep "Notfallplan" | grep -c "slots" || true)
+NOTFALL_FOUND=$(echo "$SUMMARY" | grep "Notfallplan" | grep -c "$LOG_KEY_SLOTS" || true)
 if [ "$NOTFALL_FOUND" -gt 0 ]; then
     run_check "Notfallplan aktualisieren geplant (CRITICAL + closeOnMiss=false + abgelaufene Deadline)" "pass"
 else
@@ -374,7 +355,7 @@ else
 fi
 
 # Check 9: Abendspaziergang — nur Sonntag (TODAY_DOW=7)
-SPAZIERGANG_FOUND=$(echo "$SUMMARY" | grep "Abendspaziergang" | grep -c "slots" || true)
+SPAZIERGANG_FOUND=$(echo "$SUMMARY" | grep "Abendspaziergang" | grep -c "$LOG_KEY_SLOTS" || true)
 if [ "$TODAY_DOW" = "7" ]; then
     if [ "$SPAZIERGANG_FOUND" -gt 0 ]; then
         run_check "Abendspaziergang am Sonntag geplant (korrekt)" "pass"
@@ -390,7 +371,7 @@ else
 fi
 
 # Check 10: Podcast hören — 3 Slots (repsPerDay=3)
-PODCAST_SLOTS=$(echo "$SUMMARY" | grep "Podcast hören" | grep -oP '\d+ slots' | grep -oP '^\d+' || true)
+PODCAST_SLOTS=$(echo "$SUMMARY" | grep "Podcast hören" | grep -oP '\d+ '$LOG_KEY_SLOTS | grep -oP '^\d+' || true)
 if [ "${PODCAST_SLOTS:-0}" -ge 3 ]; then
     run_check "Podcast hören: $PODCAST_SLOTS Slots geplant (repsPerDay=3 korrekt)" "pass"
 elif [ "${PODCAST_SLOTS:-0}" -gt 0 ]; then
@@ -427,7 +408,7 @@ else
 fi
 
 # Check 13: Wochenbericht geplant (bi-weekly, perPeriod=2)
-WOCHENBERICHT_FOUND=$(echo "$SUMMARY" | grep "Wochenbericht" | grep -c "slots" || true)
+WOCHENBERICHT_FOUND=$(echo "$SUMMARY" | grep "Wochenbericht" | grep -c "$LOG_KEY_SLOTS" || true)
 if [ "$WOCHENBERICHT_FOUND" -gt 0 ]; then
     run_check "Wochenbericht geplant (bi-weekly perPeriod=2 korrekt)" "pass"
 else
@@ -435,12 +416,12 @@ else
 fi
 
 # Check 14: Morgenroutine Parent-Child — Kinder innerhalb des Eltern-Blocks
-MORGEN_FOUND=$(echo "$SUMMARY" | grep "Morgenroutine:" | grep -c "slots" || true)
-DUSCHEN_FOUND=$(echo "$SUMMARY" | grep "Duschen:" | grep -c "slots" || true)
-ZAEHNE_FOUND=$(echo "$SUMMARY" | grep "Zähneputzen:" | grep -c "slots" || true)
-FRUEHSTUECK_FOUND=$(echo "$SUMMARY" | grep "Frühstück:" | grep -c "slots" || true)
-HAARE_FOUND=$(echo "$SUMMARY" | grep "Haare föhnen:" | grep -c "slots" || true)
-ABSPUELEN_FOUND=$(echo "$SUMMARY" | grep "Abspülen:" | grep -c "slots" || true)
+MORGEN_FOUND=$(echo "$SUMMARY" | grep "Morgenroutine:" | grep -c "$LOG_KEY_SLOTS" || true)
+DUSCHEN_FOUND=$(echo "$SUMMARY" | grep "Duschen:" | grep -c "$LOG_KEY_SLOTS" || true)
+ZAEHNE_FOUND=$(echo "$SUMMARY" | grep "Zähneputzen:" | grep -c "$LOG_KEY_SLOTS" || true)
+FRUEHSTUECK_FOUND=$(echo "$SUMMARY" | grep "Frühstück:" | grep -c "$LOG_KEY_SLOTS" || true)
+HAARE_FOUND=$(echo "$SUMMARY" | grep "Haare föhnen:" | grep -c "$LOG_KEY_SLOTS" || true)
+ABSPUELEN_FOUND=$(echo "$SUMMARY" | grep "Abspülen:" | grep -c "$LOG_KEY_SLOTS" || true)
 MORGEN_CHILDREN=$((DUSCHEN_FOUND + ZAEHNE_FOUND + FRUEHSTUECK_FOUND))
 MORGEN_GRANDCHILDREN=$((HAARE_FOUND + ABSPUELEN_FOUND))
 if [ "$MORGEN_FOUND" -gt 0 ] && [ "$MORGEN_CHILDREN" -ge 2 ] && [ "$MORGEN_GRANDCHILDREN" -ge 1 ]; then
@@ -452,10 +433,10 @@ else
 fi
 
 # Check 15: Abendroutine Parent-Child — Tagebuch + Hautpflege als Kinder
-ABEND_FOUND=$(echo "$SUMMARY" | grep "Abendroutine:" | grep -c "slots" || true)
-TAGEBUCH_FOUND=$(echo "$SUMMARY" | grep "Tagebuch schreiben:" | grep -c "slots" || true)
-HAUTPFLEGE_FOUND=$(echo "$SUMMARY" | grep "Hautpflege:" | grep -c "slots" || true)
-NOTIZEN_FOUND=$(echo "$SUMMARY" | grep "Notizen ordnen:" | grep -c "slots" || true)
+ABEND_FOUND=$(echo "$SUMMARY" | grep "Abendroutine:" | grep -c "$LOG_KEY_SLOTS" || true)
+TAGEBUCH_FOUND=$(echo "$SUMMARY" | grep "Tagebuch schreiben:" | grep -c "$LOG_KEY_SLOTS" || true)
+HAUTPFLEGE_FOUND=$(echo "$SUMMARY" | grep "Hautpflege:" | grep -c "$LOG_KEY_SLOTS" || true)
+NOTIZEN_FOUND=$(echo "$SUMMARY" | grep "Notizen ordnen:" | grep -c "$LOG_KEY_SLOTS" || true)
 if [ "$ABEND_FOUND" -gt 0 ] && [ "$TAGEBUCH_FOUND" -gt 0 ] && [ "$HAUTPFLEGE_FOUND" -gt 0 ]; then
     NOTIZ_INFO=""
     [ "$NOTIZEN_FOUND" -gt 0 ] && NOTIZ_INFO=" + Notizen ordnen (L2)"
@@ -467,7 +448,7 @@ else
 fi
 
 # Check 16: Sport Dehnen (L2) — nur Mo/Mi/Fr
-DEHNEN_FOUND=$(echo "$SUMMARY" | grep "Dehnen:" | grep -c "slots" || true)
+DEHNEN_FOUND=$(echo "$SUMMARY" | grep "Dehnen:" | grep -c "$LOG_KEY_SLOTS" || true)
 if [ "$TODAY_DOW" = "1" ] || [ "$TODAY_DOW" = "3" ] || [ "$TODAY_DOW" = "5" ]; then
     if [ "$DEHNEN_FOUND" -gt 0 ]; then
         run_check "Sport: Dehnen (L2 Sub-Sub-Task) auf Mo/Mi/Fr geplant" "pass"

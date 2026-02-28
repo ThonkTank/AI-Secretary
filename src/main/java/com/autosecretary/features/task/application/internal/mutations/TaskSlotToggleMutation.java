@@ -97,36 +97,39 @@ public final class TaskSlotToggleMutation {
         // COMPLETED writes the full task because checkOff mutates streak/history fields
         // on the TaskCore. STARTED only touches the slot (set realStart), so writing
         // just the slot avoids an unnecessary full-task upsert.
-        boolean transacted;
+        boolean writeSucceeded;
         if (phase == CompletionPhase.COMPLETED) {
-            transacted = runTransactionOrAbort(database, "Completion write failed", () -> {
-                // Adaptive tasks learn optimal prerequisite gaps from user completion patterns
-                if (task.core != null && task.core.adaptive) {
-                    adaptPrerequisiteGaps(task, slot);
-                }
+            // Adaptive tasks learn optimal prerequisite gaps from user completion patterns.
+            // Reads happen before the transaction to avoid N+1 queries inside the write
+            // transaction. Results are applied in-memory to task.prerequisites; taskDao.write(task)
+            // below then persists those mutated values atomically.
+            if (task.core != null && task.core.adaptive) {
+                adaptPrerequisiteGaps(task, slot);
+            }
+            writeSucceeded = runTransactionOrAbort(database, "Completion write failed", () -> {
                 taskDao.write(task);
                 recordTransition(slot, TRANSITION_WEIGHT_COMPLETED);
                 taskDao.writeSlot(slot);
             });
-            if (transacted && completedPhaseHook != null) {
+            if (writeSucceeded && completedPhaseHook != null) {
                 completedPhaseHook.accept(task);
             }
         } else {
-            transacted = runTransactionOrAbort(database, "Start write failed", () -> {
+            writeSucceeded = runTransactionOrAbort(database, "Start write failed", () -> {
                 recordTransition(slot, TRANSITION_WEIGHT_STARTED);
                 taskDao.writeSlot(slot);
             });
         }
-        if (!transacted) {
+        if (!writeSucceeded) {
             return;
         }
 
         callbackDispatcher.execute(postWriteAction);
     }
 
-    private static boolean runTransactionOrAbort(RoomDatabase db, String errorMsg, Runnable body) {
+    private static boolean runTransactionOrAbort(RoomDatabase db, String errorMsg, Runnable operation) {
         try {
-            db.runInTransaction(body);
+            db.runInTransaction(operation);
             return true;
         } catch (RuntimeException e) {
             Log.e(TAG, errorMsg, e);

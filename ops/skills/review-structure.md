@@ -144,7 +144,7 @@ Use these severity tags in backlog entries and in the run summary's `[SEVERITY]`
 - `[split]` — File/folder should be split because it mixes concerns/topics
 - `[rename]` — Name increases confusion; clearer name recommended
 - `[consider]` — Possible improvement with tradeoffs
-- `[keep]` — Current structure is good and should stay as-is
+- `[keep]` — Current structure is good and should stay as-is *(run summary only — do not write to REVIEW_BACKLOG.md)*
 
 For each entry:
 - **Path(s) involved**

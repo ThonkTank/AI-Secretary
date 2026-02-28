@@ -147,6 +147,25 @@ public class BaseCollectionDao<T> {
         return mapRows(storage.findByField(collection, field, value));
     }
 
+    /**
+     * Returns a single entity where the given field equals the given value, or null if not found.
+     *
+     * <p>This method is more efficient than {@link #findAllByField(String, Object)} when you expect
+     * at most one result, as it allows the storage layer to optimize for early termination.
+     * If multiple matches exist, only the first is returned.
+     *
+     * @param field the field name to match (a constant from {@link MealFieldKeys})
+     * @param value the value to match; null matches fields where the stored value is also null
+     * @return the first matching entity, or null if none match
+     */
+    public T findSingleByField(String field, Object value) {
+        List<Map<String, Object>> rows = storage.findByField(collection, field, value);
+        if (rows.isEmpty()) {
+            return null;
+        }
+        return mapper.fromRow(rows.get(0));
+    }
+
     private List<T> mapRows(List<Map<String, Object>> rows) {
         return rows.stream().map(mapper::fromRow).collect(Collectors.toList());
     }

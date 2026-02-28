@@ -36,7 +36,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
-import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
 /**
@@ -63,10 +62,8 @@ import java.util.function.LongConsumer;
  * </ul>
  *
  * <p><strong>Threading:</strong> all DB operations are dispatched on {@code executor}
- * (single-threaded background). Results are posted back to the main thread via {@code postToMain}
- * (a {@code Handler(Looper.getMainLooper()).post} wrapper injected by {@link BudgetViewModelFactory}).
- * Note: this differs from {@code TaskViewModel}, which uses the thread-safe
- * {@code LiveData.postValue()} directly. See the cross-feature backlog in {@code features/REVIEW_BACKLOG.md}.
+ * (single-threaded background). Results are posted back to the main thread via
+ * {@code LiveData.postValue()}, consistent with {@code TaskViewModel}.
  */
 public class BudgetViewModel extends ViewModel {
 
@@ -88,7 +85,6 @@ public class BudgetViewModel extends ViewModel {
 
     private final BudgetRepository repository;
     private final ExecutorService executor;
-    private final Consumer<Runnable> postToMain;
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
     private final CreateTransferUseCase createTransferUseCase;
@@ -99,7 +95,6 @@ public class BudgetViewModel extends ViewModel {
 
     public BudgetViewModel(BudgetRepository repository,
                            ExecutorService executor,
-                           Consumer<Runnable> postToMain,
                            BudgetImportUseCase importUseCase,
                            ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
                            CreateTransferUseCase createTransferUseCase,
@@ -109,7 +104,6 @@ public class BudgetViewModel extends ViewModel {
                            BudgetSeedService budgetSeedService) {
         this.repository = repository;
         this.executor = executor;
-        this.postToMain = postToMain;
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
         this.createTransferUseCase = createTransferUseCase;
@@ -157,13 +151,11 @@ public class BudgetViewModel extends ViewModel {
     private void ensureDefaultData() {
         executor.execute(() -> {
             BudgetSeedService.SeedResult seedResult = budgetSeedService.ensureDefaultData(selectedAccountId.getValue());
-            postToMain.accept(() -> {
-                categories.setValue(seedResult.categories());
-                accounts.setValue(seedResult.accounts());
-                if (selectedAccountId.getValue() == null && seedResult.selectedAccountId() != null) {
-                    selectedAccountId.setValue(seedResult.selectedAccountId());
-                }
-            });
+            categories.postValue(seedResult.categories());
+            accounts.postValue(seedResult.accounts());
+            if (selectedAccountId.getValue() == null && seedResult.selectedAccountId() != null) {
+                selectedAccountId.postValue(seedResult.selectedAccountId());
+            }
             loadOverviewOnExecutor();
         });
     }
@@ -181,7 +173,7 @@ public class BudgetViewModel extends ViewModel {
     }
 
     public void loadOverview() {
-        postToMain.accept(() -> uiState.setValue(BudgetUiState.LOADING));
+        uiState.postValue(BudgetUiState.LOADING);
         executor.execute(this::loadOverviewOnExecutor);
     }
 
@@ -195,19 +187,15 @@ public class BudgetViewModel extends ViewModel {
                 selectedAccountId.getValue(),
                 timeRangeFilter.getValue());
         if (overview.accountId() == null) {
-            postToMain.accept(() -> {
-                uiState.setValue(BudgetUiState.EMPTY);
-                statusMessage.setValue(UiText.of(R.string.budget_status_no_account));
-                accounts.setValue(new ArrayList<>());
-                chartPoints.setValue(new ArrayList<>());
-            });
+            uiState.postValue(BudgetUiState.EMPTY);
+            statusMessage.postValue(UiText.of(R.string.budget_status_no_account));
+            accounts.postValue(new ArrayList<>());
+            chartPoints.postValue(new ArrayList<>());
             return;
         }
 
-        postToMain.accept(() -> {
-            accounts.setValue(overview.accounts());
-            selectedAccountId.setValue(overview.accountId());
-        });
+        accounts.postValue(overview.accounts());
+        selectedAccountId.postValue(overview.accountId());
 
         publishOverviewState(overview.rows(), overview.chartPoints(), overview.summary());
         loadLimitsOnExecutor(month);
@@ -216,18 +204,16 @@ public class BudgetViewModel extends ViewModel {
     private void publishOverviewState(List<BudgetTransactionRow> rows,
                                       List<BudgetChartPoint> balancePoints,
                                       BudgetSummaryData summary) {
-        postToMain.accept(() -> {
-            transactions.setValue(rows);
-            chartPoints.setValue(balancePoints);
-            summaryData.setValue(summary);
-            if (!rows.isEmpty()) {
-                uiState.setValue(BudgetUiState.CONTENT);
-                statusMessage.setValue(UiText.of(R.string.budget_status_last_bookings));
-            } else {
-                uiState.setValue(BudgetUiState.EMPTY);
-                statusMessage.setValue(UiText.of(R.string.budget_status_no_bookings));
-            }
-        });
+        transactions.postValue(rows);
+        chartPoints.postValue(balancePoints);
+        summaryData.postValue(summary);
+        if (!rows.isEmpty()) {
+            uiState.postValue(BudgetUiState.CONTENT);
+            statusMessage.postValue(UiText.of(R.string.budget_status_last_bookings));
+        } else {
+            uiState.postValue(BudgetUiState.EMPTY);
+            statusMessage.postValue(UiText.of(R.string.budget_status_no_bookings));
+        }
     }
 
     public void addTransaction(String amountStr, boolean isExpense, String categoryId,
@@ -285,10 +271,8 @@ public class BudgetViewModel extends ViewModel {
     }
 
     private void postTransferError(CreateTransferUseCase.Result result) {
-        postToMain.accept(() -> {
-            uiState.setValue(BudgetUiState.ERROR);
-            statusMessage.setValue(UiText.raw(result.errorMessage()));
-        });
+        uiState.postValue(BudgetUiState.ERROR);
+        statusMessage.postValue(UiText.raw(result.errorMessage()));
     }
 
     public void deleteTransaction(String transactionId) {
@@ -299,16 +283,14 @@ public class BudgetViewModel extends ViewModel {
     }
 
     public void importFromCsv(String fileName, byte[] bytes, String mimeType) {
-        postToMain.accept(() -> uiState.setValue(BudgetUiState.LOADING));
+        uiState.postValue(BudgetUiState.LOADING);
 
         executor.execute(() -> {
             List<BudgetAccount> accountList = repository.findActiveAccounts();
             String accountId = BudgetOverviewLoader.resolveSelectedAccountId(selectedAccountId.getValue(), accountList);
             if (accountId == null) {
-                postToMain.accept(() -> {
-                    uiState.setValue(BudgetUiState.ERROR);
-                    statusMessage.setValue(UiText.of(R.string.budget_status_no_account));
-                });
+                uiState.postValue(BudgetUiState.ERROR);
+                statusMessage.postValue(UiText.of(R.string.budget_status_no_account));
                 return;
             }
 
@@ -316,33 +298,27 @@ public class BudgetViewModel extends ViewModel {
                 @Override
                 public void onSuccess(BudgetImportUseCase.ImportResult result) {
                     loadOverview();
-                    postToMain.accept(() -> {
-                        statusMessage.setValue(UiText.of(R.string.budget_status_import_success,
-                                result.newTransactions(), result.duplicates(), result.autoCategorized()));
-                        importSuggestions.setValue(result.recurringSuggestions());
-                    });
+                    statusMessage.postValue(UiText.of(R.string.budget_status_import_success,
+                            result.newTransactions(), result.duplicates(), result.recognizedCategories()));
+                    importSuggestions.postValue(result.recurringSuggestions());
                 }
 
                 @Override
                 public void onError(String errorMessage) {
-                    postToMain.accept(() -> {
-                        uiState.setValue(BudgetUiState.ERROR);
-                        statusMessage.setValue(UiText.of(R.string.budget_status_import_failed, errorMessage));
-                    });
+                    uiState.postValue(BudgetUiState.ERROR);
+                    statusMessage.postValue(UiText.of(R.string.budget_status_import_failed, errorMessage));
                 }
             });
         });
     }
 
     public void onImportReadFailed() {
-        postToMain.accept(() -> {
-            uiState.setValue(BudgetUiState.ERROR);
-            statusMessage.setValue(UiText.of(R.string.budget_status_file_read_failed));
-        });
+        uiState.postValue(BudgetUiState.ERROR);
+        statusMessage.postValue(UiText.of(R.string.budget_status_file_read_failed));
     }
 
     public void setImportStatus(String message) {
-        postToMain.accept(() -> statusMessage.setValue(UiText.raw(message)));
+        statusMessage.postValue(UiText.raw(message));
     }
 
     public void applyRecurringSuggestions(List<RecurringSuggestion> suggestions) {
@@ -357,12 +333,12 @@ public class BudgetViewModel extends ViewModel {
                     new ApplyRecurringSuggestionsUseCase.ApplyCallback() {
                         @Override
                         public void onSuccess() {
-                            postToMain.accept(BudgetViewModel.this::loadOverview);
+                            loadOverview();
                         }
 
                         @Override
                         public void onError(String errorMessage) {
-                            postToMain.accept(() -> statusMessage.setValue(UiText.of(R.string.budget_status_error, errorMessage)));
+                            statusMessage.postValue(UiText.of(R.string.budget_status_error, errorMessage));
                         }
                     }
             );
@@ -385,10 +361,8 @@ public class BudgetViewModel extends ViewModel {
     }
 
     private void showInvalidAmountError() {
-        postToMain.accept(() -> {
-            uiState.setValue(BudgetUiState.ERROR);
-            statusMessage.setValue(UiText.of(R.string.budget_status_invalid_amount));
-        });
+        uiState.postValue(BudgetUiState.ERROR);
+        statusMessage.postValue(UiText.of(R.string.budget_status_invalid_amount));
     }
 
     private void loadLimitsOnExecutor(YearMonth month) {
@@ -400,7 +374,7 @@ public class BudgetViewModel extends ViewModel {
                 (catId, ym) -> calculateEffectiveLimitUseCase.execute(catId, ym).effectiveLimitCents(),
                 yearMonthStr
         );
-        postToMain.accept(() -> budgetLimits.setValue(bars));
+        budgetLimits.postValue(bars);
     }
 
     public void saveBudgetLimitFromString(String categoryId, String amountStr,

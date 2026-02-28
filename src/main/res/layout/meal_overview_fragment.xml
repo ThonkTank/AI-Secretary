@@ -6,7 +6,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp">
+    android:padding="@dimen/spacing_lg">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -17,13 +17,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/meal_title"
-            android:textSize="24sp"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
             android:textStyle="bold" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/spacing_md"
             android:orientation="horizontal">
 
             <Button
@@ -53,7 +53,7 @@
             android:id="@+id/MealWeekScreen"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="@dimen/spacing_lg"
             android:orientation="vertical">
 
             <TextView
@@ -66,14 +66,14 @@
                 android:id="@+id/MealAddPlan"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="@dimen/spacing_sm"
                 android:text="@string/meal_add_plan" />
 
             <LinearLayout
                 android:id="@+id/MealWeekList"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="@dimen/spacing_sm"
                 android:orientation="vertical" />
         </LinearLayout>
 
@@ -82,7 +82,7 @@
             android:id="@+id/MealRecipeScreen"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="@dimen/spacing_lg"
             android:orientation="vertical"
             android:visibility="gone">
 
@@ -96,16 +96,16 @@
                 android:id="@+id/MealRecipeList"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="@dimen/spacing_sm"
                 android:orientation="vertical" />
 
             <TextView
                 android:id="@+id/MealRecipeDetail"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:background="#22FFFFFF"
-                android:padding="8dp"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:background="@color/meal_surface_overlay"
+                android:padding="@dimen/spacing_sm"
                 android:text="@string/meal_recipe_detail_placeholder" />
         </LinearLayout>
 
@@ -114,7 +114,7 @@
             android:id="@+id/MealStockScreen"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="@dimen/spacing_lg"
             android:orientation="vertical"
             android:visibility="gone">
 
@@ -127,7 +127,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="@dimen/spacing_sm"
                 android:orientation="horizontal">
 
                 <Button
@@ -148,7 +148,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="@dimen/spacing_md"
                 android:text="@string/meal_pantry_title"
                 android:textStyle="bold" />
 
@@ -156,13 +156,13 @@
                 android:id="@+id/MealPantryList"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="@dimen/spacing_xs"
                 android:orientation="vertical" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="@dimen/spacing_md"
                 android:text="@string/meal_shopping_title"
                 android:textStyle="bold" />
 
@@ -170,7 +170,7 @@
                 android:id="@+id/MealShoppingList"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="@dimen/spacing_xs"
                 android:orientation="vertical" />
         </LinearLayout>
 

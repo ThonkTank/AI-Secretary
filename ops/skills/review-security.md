@@ -108,7 +108,7 @@ Use these severity tags in backlog entries and in the run summary's `[SEVERITY]`
 - `[high]` — Serious exposure with a realistic attack path requiring some effort
 - `[medium]` — Risk exists but requires specific conditions or is partially mitigated
 - `[low]` — Minor hardening opportunity; low real-world impact
-- `[keep]` — Good security practice worth noting
+- `[keep]` — Good security practice worth noting *(run summary only — do not write to REVIEW_BACKLOG.md)*
 
 Per entry:
 - **File + line(s)**

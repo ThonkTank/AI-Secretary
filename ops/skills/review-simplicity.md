@@ -90,7 +90,7 @@ When unsure whether complexity is justified, call it out explicitly and mark as 
 Use these severity tags in backlog entries and in the run summary's `[SEVERITY]` field:
 - `[simplify]` — Clear KISS improvement with effectively same result
 - `[consider]` — Possible simplification, but tradeoffs exist
-- `[keep]` — Complexity appears justified (call this out to avoid over-simplifying)
+- `[keep]` — Complexity appears justified (call this out to avoid over-simplifying) *(run summary only — do not write to REVIEW_BACKLOG.md)*
 
 For each entry:
 - **File + line(s)** (if available)

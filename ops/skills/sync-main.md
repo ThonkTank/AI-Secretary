@@ -84,9 +84,9 @@ Rules:
 - If conflicts, resolve via **Conflict Strategy**.
 
 8. Restore stashed work
-- Pop stashes created during this run (LIFO):
-  - temp PR-processing stash
-  - pre-merge auto-stash
+- Pop stashes created during this run (LIFO — most-recently-created first):
+  - pre-merge auto-stash (created in Step 6, pop first)
+  - temp PR-processing stash (created in Step 3, pop second)
 - Resolve stash-reapply conflicts via **Conflict Strategy** and continue.
 - Keep stash entry until conflicts are fully resolved and build passes.
 

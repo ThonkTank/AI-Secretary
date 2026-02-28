@@ -110,12 +110,7 @@ public class TaskEditSectionBinder {
         );
 
         updateDeadlineDisplay(views);
-        deadlineView.setOnClickListener(v -> showDatePicker(views));
-        deadlineInputLayout.setEndIconOnClickListener(v -> showDatePicker(views));
-        clearDeadline.setOnClickListener(v -> {
-            presenter.setEditableDeadline(null);
-            updateDeadlineDisplay(views);
-        });
+        bindDeadlineListeners(deadlineView, deadlineInputLayout, clearDeadline, views);
 
         bindEnumSpinner(schedulingTypeView, TaskCore.SchedulingType.values());
         TaskCore.SchedulingType schedulingType = TaskEditPresenter.coalesce(editState.schedulingType, TaskEditDefaults.SCHEDULING_TYPE);
@@ -128,13 +123,7 @@ public class TaskEditSectionBinder {
         budgetAccountIdView.setText(editState.budgetAccountId != null ? editState.budgetAccountId : "");
         budgetCategoryIdView.setText(editState.budgetCategoryId != null ? editState.budgetCategoryId : "");
         fixedSchedulingContainer.setVisibility((editState.schedulingType == TaskCore.SchedulingType.TERMIN) ? View.VISIBLE : View.GONE);
-        schedulingTypeView.setOnItemSelectedListener(new SimpleItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                TaskCore.SchedulingType selected = (TaskCore.SchedulingType) schedulingTypeView.getSelectedItem();
-                fixedSchedulingContainer.setVisibility(selected == TaskCore.SchedulingType.TERMIN ? View.VISIBLE : View.GONE);
-            }
-        });
+        bindSchedulingTypeListener(views);
 
         closeOnMissView.setChecked(editState.closeOnMiss);
         minDurationView.setText(String.valueOf(editState.minDuration));
@@ -143,6 +132,26 @@ public class TaskEditSectionBinder {
         adaptiveView.setChecked(editState.adaptive);
 
         return views;
+    }
+
+    private void bindDeadlineListeners(EditText deadlineView, TextInputLayout deadlineInputLayout,
+                                       ImageButton clearDeadline, SchedulingViews views) {
+        deadlineView.setOnClickListener(v -> showDatePicker(views));
+        deadlineInputLayout.setEndIconOnClickListener(v -> showDatePicker(views));
+        clearDeadline.setOnClickListener(v -> {
+            presenter.setEditableDeadline(null);
+            updateDeadlineDisplay(views);
+        });
+    }
+
+    private void bindSchedulingTypeListener(SchedulingViews views) {
+        views.schedulingTypeView.setOnItemSelectedListener(new SimpleItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                TaskCore.SchedulingType selected = (TaskCore.SchedulingType) views.schedulingTypeView.getSelectedItem();
+                views.fixedSchedulingContainer.setVisibility(selected == TaskCore.SchedulingType.TERMIN ? View.VISIBLE : View.GONE);
+            }
+        });
     }
 
     /**
@@ -187,8 +196,14 @@ public class TaskEditSectionBinder {
             (Period) periodUnitView.getSelectedItem()
         );
 
-        toggleRepetition.setOnCheckedChangeListener((btn, checked) -> {
-            repetitionContainer.setVisibility(checked ? View.VISIBLE : View.GONE);
+        attachRepetitionListeners(views, onRepetitionChanged);
+
+        return views;
+    }
+
+    private void attachRepetitionListeners(RepetitionViews views, Runnable onRepetitionChanged) {
+        views.toggleRepetition.setOnCheckedChangeListener((btn, checked) -> {
+            views.repetitionContainer.setVisibility(checked ? View.VISIBLE : View.GONE);
             onRepetitionChanged.run();
         });
 
@@ -198,17 +213,15 @@ public class TaskEditSectionBinder {
                 onRepetitionChanged.run();
             }
         };
-        repsView.addTextChangedListener(repWatcher);
-        perPeriodView.addTextChangedListener(repWatcher);
+        views.repsView.addTextChangedListener(repWatcher);
+        views.perPeriodView.addTextChangedListener(repWatcher);
 
-        periodUnitView.setOnItemSelectedListener(new SimpleItemSelectedListener() {
+        views.periodUnitView.setOnItemSelectedListener(new SimpleItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 onRepetitionChanged.run();
             }
         });
-
-        return views;
     }
 
     public ProgressViews bindProgress() {

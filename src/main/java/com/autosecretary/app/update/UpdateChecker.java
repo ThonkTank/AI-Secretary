@@ -55,6 +55,7 @@ import java.util.concurrent.ExecutorService;
  */
 public class UpdateChecker {
 
+    private static final String LOG_TAG = "UpdateChecker";
     private static final String VERSION_URL =
             "https://raw.githubusercontent.com/ThonkTank/AI-Secretary/main/ops/release/version.txt";
     private static final String APK_URL =
@@ -129,9 +130,23 @@ public class UpdateChecker {
                 }
             } catch (Exception e) {
                 // Version check failures are not critical; app startup must not be blocked or delayed.
-                Log.d("UpdateChecker", "Version check failed", e);
+                Log.d(LOG_TAG, "Version check failed", e);
             }
         });
+    }
+
+    /**
+     * Configures an HttpURLConnection with cache-control headers and timeouts.
+     *
+     * @param connection The connection to configure.
+     * @param connectTimeout The connect timeout in milliseconds.
+     * @param readTimeout The read timeout in milliseconds.
+     */
+    private void configureConnection(HttpURLConnection connection, int connectTimeout, int readTimeout) {
+        connection.setUseCaches(false);
+        connection.setRequestProperty("Cache-Control", "no-cache");
+        connection.setConnectTimeout(connectTimeout);
+        connection.setReadTimeout(readTimeout);
     }
 
     /**
@@ -146,10 +161,7 @@ public class UpdateChecker {
      */
     private int fetchRemoteVersion() throws IOException, NumberFormatException {
         HttpURLConnection connection = (HttpURLConnection) new URL(VERSION_URL).openConnection();
-        connection.setUseCaches(false);
-        connection.setRequestProperty("Cache-Control", "no-cache");
-        connection.setConnectTimeout(VERSION_CONNECT_TIMEOUT_MS);
-        connection.setReadTimeout(VERSION_READ_TIMEOUT_MS);
+        configureConnection(connection, VERSION_CONNECT_TIMEOUT_MS, VERSION_READ_TIMEOUT_MS);
 
         try (InputStream inputStream = connection.getInputStream()) {
             String text = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8).trim();
@@ -170,7 +182,7 @@ public class UpdateChecker {
             PackageInfo info = activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0);
             return (int) info.getLongVersionCode();
         } catch (Exception e) {
-            Log.w("UpdateChecker", "Failed to read local version", e);
+            Log.w(LOG_TAG, "Failed to read local version", e);
             return 0;
         }
     }
@@ -231,7 +243,7 @@ public class UpdateChecker {
                 File apkFile = downloadApk(activity);
                 mainHandler.post(() -> installApk(apkFile));
             } catch (Exception e) {
-                Log.e("UpdateChecker", "APK download/install failed", e);
+                Log.e(LOG_TAG, "APK download/install failed", e);
                 mainHandler.post(() -> showDownloadErrorDialog(e));
             }
         });
@@ -251,10 +263,7 @@ public class UpdateChecker {
         File apkFile = new File(activity.getCacheDir(), "update.apk");
 
         HttpURLConnection connection = (HttpURLConnection) new URL(APK_URL).openConnection();
-        connection.setUseCaches(false);
-        connection.setRequestProperty("Cache-Control", "no-cache");
-        connection.setConnectTimeout(DOWNLOAD_CONNECT_TIMEOUT_MS);
-        connection.setReadTimeout(DOWNLOAD_READ_TIMEOUT_MS);
+        configureConnection(connection, DOWNLOAD_CONNECT_TIMEOUT_MS, DOWNLOAD_READ_TIMEOUT_MS);
 
         try (InputStream inputStream = connection.getInputStream();
              FileOutputStream outputStream = new FileOutputStream(apkFile, false)) {
@@ -303,7 +312,7 @@ public class UpdateChecker {
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
             activity.startActivity(intent);
         } catch (ActivityNotFoundException e) {
-            Log.e("UpdateChecker", "Failed to find app installer", e);
+            Log.e(LOG_TAG, "Failed to find app installer", e);
             showDownloadErrorDialog(e);
         }
     }

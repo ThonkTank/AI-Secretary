@@ -45,13 +45,10 @@
     <color name="task_edit_day_disabled_text">#805C7A4D</color>
     <color name="task_edit_day_disabled_stroke">#405C7A4D</color>
 
-    <!-- Urgency and status colors -->
-    <color name="task_urgency_overdue">#FFB4543A</color>
-    <color name="task_urgency_soon">#FFC47E42</color>
-    <color name="task_urgency_future">@color/task_color_on_surface_variant</color>
-    <color name="task_deadline_overdue">@color/task_urgency_overdue</color>
-    <color name="task_deadline_soon">@color/task_urgency_soon</color>
-    <color name="task_deadline_future">@color/task_urgency_future</color>
+    <!-- Deadline urgency colors -->
+    <color name="task_deadline_overdue">#FFB4543A</color>
+    <color name="task_deadline_soon">#FFC47E42</color>
+    <color name="task_deadline_future">@color/task_color_on_surface_variant</color>
 
     <!-- Streak rarity tiers -->
     <color name="task_streak_common">@color/task_color_on_surface_muted</color>

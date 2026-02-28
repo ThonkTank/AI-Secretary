@@ -3,6 +3,9 @@ package com.autosecretary.features.task.ui.edit.internal.editor;
 import android.widget.CheckBox;
 import android.widget.EditText;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * A flat projection of the form-view handles that {@link TaskEditFormValidator} needs.
  *
@@ -37,5 +40,19 @@ public class TaskEditFormViews {
         this.currentView = progressViews.currentView;
         this.minPerRepView = progressViews.minPerRepView;
         this.maxPerRepView = progressViews.maxPerRepView;
+    }
+
+    /**
+     * Returns all {@link EditText} fields that the validator may call {@code setError} on.
+     * Add new validated fields here — {@link TaskEditFormValidator#clearErrors} will pick
+     * them up automatically without a separate change.
+     */
+    public List<EditText> getValidatableFields() {
+        return Arrays.asList(
+            titleView,
+            minDurationView, maxDurationView, cooldownView,
+            repsView, perPeriodView,
+            targetView, currentView, minPerRepView, maxPerRepView
+        );
     }
 }

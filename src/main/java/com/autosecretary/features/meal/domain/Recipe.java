@@ -127,7 +127,7 @@ public class Recipe {
         public Builder description(String v) { r.description = v; return this; }
         public Builder instructions(String v) { r.instructions = v; return this; }
         public Builder mealType(MealType v) { r.mealTypes.add(v); return this; }
-        public Builder mealTypes(Set<MealType> v) { r.mealTypes = EnumSet.copyOf(v); return this; }
+        public Builder mealTypes(Set<MealType> v) { r.mealTypes = (v == null || v.isEmpty()) ? EnumSet.noneOf(MealType.class) : EnumSet.copyOf(v); return this; }
         public Builder prepTime(int min) { r.prepTimeMinutes = min; return this; }
         public Builder cookTime(int min) { r.cookTimeMinutes = min; return this; }
         public Builder servings(int v) { r.servings = v; return this; }

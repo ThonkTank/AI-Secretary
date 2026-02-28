@@ -63,6 +63,11 @@ public class StorageMealRepository implements MealRepository {
     }
 
     @Override
+    public MealPlan findMealPlanById(long mealPlanId) {
+        return mealPlanDao.findById(mealPlanId);
+    }
+
+    @Override
     public void saveMealPlan(MealPlan mealPlan) {
         mealPlanDao.save(mealPlan);
     }
@@ -123,7 +128,7 @@ public class StorageMealRepository implements MealRepository {
      */
     @Override
     public WeeklyFoodTarget findWeeklyFoodTarget(String periodKey) {
-        return weeklyFoodTargetDao.findAllByField(MealFieldKeys.PERIOD_KEY, periodKey).stream().findFirst().orElse(null);
+        return weeklyFoodTargetDao.findSingleByField(MealFieldKeys.PERIOD_KEY, periodKey);
     }
 
     @Override

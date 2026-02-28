@@ -116,7 +116,9 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
             String[] parts = entry.split("\\|", 4);
             if (parts.length != 4) continue;
             Long ingredientId = MapperSupport.asNullableLong(parts[0]);
-            result.add(new Recipe.RecipeIngredient(ingredientId, parts[1], MapperSupport.asDouble(parts[2]), parts[3]));
+            String ingredientName = parts[1].isEmpty() ? null : parts[1];
+            String unit = parts[3].isEmpty() ? null : parts[3];
+            result.add(new Recipe.RecipeIngredient(ingredientId, ingredientName, MapperSupport.asDouble(parts[2]), unit));
         }
         return result;
     }
@@ -126,7 +128,9 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         if (ingredients == null || ingredients.isEmpty()) return "";
         return ingredients.stream()
                 .map(i -> Objects.toString(i.ingredientId(), "")
-                        + "|" + i.ingredientName() + "|" + i.amount() + "|" + i.unit())
+                        + "|" + Objects.toString(i.ingredientName(), "")
+                        + "|" + i.amount()
+                        + "|" + Objects.toString(i.unit(), ""))
                 .collect(Collectors.joining(";"));
     }
 

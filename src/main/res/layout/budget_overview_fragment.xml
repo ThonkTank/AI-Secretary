@@ -269,7 +269,6 @@
             android:layout_marginTop="@dimen/spacing_lg"
             android:text="@string/budget_add_transaction" />
 
-
         <Button
             android:id="@+id/BudgetAddTransferButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"

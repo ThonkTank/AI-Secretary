@@ -11,7 +11,7 @@
     -->
     <color name="transparent">#00000000</color>
     <color name="launcher_icon_background">#0D3B52</color>
-    <color name="launcher_icon_monochrome">#FF000000</color>
+    <color name="icon_monochrome">#FF000000</color>
     <color name="launcher_icon_white">#FFFFFFFF</color>
     <color name="launcher_icon_accent">#D9EDF7</color>
 </resources>

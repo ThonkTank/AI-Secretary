@@ -114,10 +114,7 @@ public final class DatePatternDetector {
         List<DayOfWeek> weekdays = dates.stream().map(LocalDate::getDayOfWeek).toList();
         Map<DayOfWeek, Long> counts = weekdays.stream()
                 .collect(Collectors.groupingBy(d -> d, Collectors.counting()));
-        DayOfWeek dominantWeekday = counts.entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElseThrow(() -> new IllegalStateException("weekday counts must be non-empty (dates.size() >= 2 is guaranteed by caller)"));
+        DayOfWeek dominantWeekday = findModeFromCounts(counts);
 
         long modeCount = counts.getOrDefault(dominantWeekday, 0L);
         if (modeCount >= dates.size() * WEEKLY_DAY_MATCH_RATIO
@@ -159,10 +156,21 @@ public final class DatePatternDetector {
     static int mode(List<Integer> values) {
         Map<Integer, Long> counts = values.stream()
                 .collect(Collectors.groupingBy(v -> v, Collectors.counting()));
+        return findModeFromCounts(counts);
+    }
+
+    /**
+     * Finds the most frequently occurring key in the counts map.
+     *
+     * @param counts a non-empty map of values to their occurrence counts
+     * @return the key with the highest count
+     * @throws IllegalStateException if counts is empty
+     */
+    static <T> T findModeFromCounts(Map<T, Long> counts) {
         return counts.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
-                .orElseThrow(() -> new IllegalStateException("mode() called on empty list"));
+                .orElseThrow(() -> new IllegalStateException("counts must be non-empty"));
     }
 
     /**

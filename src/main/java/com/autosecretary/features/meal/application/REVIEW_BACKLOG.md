@@ -28,10 +28,14 @@
 
 ✅ **[friction]** `CreateShoppingListItemUseCase` — "Packungsrundung/Ueberschuss" opaque jargon. Added English Javadoc with a concrete package-rounding example and periodKey explanation.
 
+✅ **[nit]** `TaskMealIntegrationService.java:158` — magic `0L` for `itemId` in `ConsumptionLog.Builder` call is unexplained. Added `DEFAULT_ITEM_ID = 0L` constant analogous to `DEFAULT_MEMBER_ID`.
+
 ## Open Issues
 
 ### Deferred (architectural — require decisions outside this scope)
 
-**[consider]** `TaskMealIntegrationService.java:28,128` — `DEFAULT_MEMBER_ID = 0L` and `itemId = 0L` are passed to `ConsumptionLog.Builder` for task-triggered meal completions. Any member-filtered query over `ConsumptionLog` will silently exclude these entries (memberId=0 matches no real member). Acceptable short-term placeholder, but a design decision is needed on whether task-driven consumption should contribute to per-member nutrition tracking or remain in an "unassigned" bucket. Deferred — requires a broader product decision.
+**[consider]** `TaskMealIntegrationService.java:28,128` — `DEFAULT_MEMBER_ID = 0L` and `DEFAULT_ITEM_ID = 0L` are passed to `ConsumptionLog.Builder` for task-triggered meal completions. Any member-filtered query over `ConsumptionLog` will silently exclude these entries (memberId=0 matches no real member). Acceptable short-term placeholder, but a design decision is needed on whether task-driven consumption should contribute to per-member nutrition tracking or remain in an "unassigned" bucket. Deferred — requires a broader product decision.
 
 **[coupling]** `TaskMealIntegrationService.java:3-4` — imports `task.data.Task` and `task.data.TaskPlannedMeal` directly from a different feature's data layer. The dependency arrow is `meal.application → task.data`, which crosses both a feature boundary and a layer boundary. Fix: define a `TaskMealDelegate` interface in `meal.domain` (or `task.application`) with the relevant fields, and have the task feature provide the implementation. Deferred — requires coordinated change across two features.
+
+✅ **[warning]** `MealPlannerPresenter.java:110` — `toggleMealCompleted` fetched the entire 14-day meal plan window and did a linear scan to find one entry by ID. Fixed: added `MealRepository.findMealPlanById(long id)`, implemented in `StorageMealRepository`, and updated `toggleMealCompleted` to use a direct lookup.

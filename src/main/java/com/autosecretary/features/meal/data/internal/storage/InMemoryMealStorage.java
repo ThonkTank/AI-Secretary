@@ -29,6 +29,10 @@ import java.util.stream.Collectors;
  */
 public class InMemoryMealStorage implements MealStorage {
 
+    // The key under which every stored row's canonical id is recorded.
+    // Must match the "id" constant defined in every MealFieldKeys nested interface.
+    private static final String ROW_ID_KEY = "id";
+
     private final Map<String, Map<Long, Map<String, Object>>> collections = new HashMap<>();
     private final Map<String, Long> counters = new HashMap<>();
 
@@ -60,7 +64,7 @@ public class InMemoryMealStorage implements MealStorage {
         Map<String, Object> copy = new HashMap<>(row);
         // Defensive: always inject the canonical id into the stored row, regardless of what
         // the caller's map contained. This ensures the stored row's id is never stale or null.
-        copy.put("id", targetId);
+        copy.put(ROW_ID_KEY, targetId);
         rows.put(targetId, copy);
         return targetId;
     }

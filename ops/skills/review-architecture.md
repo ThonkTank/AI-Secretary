@@ -71,7 +71,7 @@ Use these severity tags in backlog entries and in the run summary's `[SEVERITY]`
 - `[drift]` — Introduces an inconsistent pattern that could spread
 - `[coupling]` — Creates a hidden or unnecessary dependency
 - `[consider]` — Possible improvement with tradeoffs
-- `[keep]` — Good architectural decision worth preserving
+- `[keep]` — Good architectural decision worth preserving *(run summary only — do not write to REVIEW_BACKLOG.md)*
 
 Per entry:
 - **File + line(s)**

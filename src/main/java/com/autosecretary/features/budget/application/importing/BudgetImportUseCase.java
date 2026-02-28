@@ -1,6 +1,7 @@
 package com.autosecretary.features.budget.application.importing;
 
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
+import com.autosecretary.features.budget.domain.importing.ImportTransactionType;
 import com.autosecretary.features.budget.domain.importing.ParsedStatement;
 import com.autosecretary.features.budget.domain.importing.ParsedTransaction;
 import com.autosecretary.features.budget.domain.recurring.RecurringBudgetTransaction;
@@ -39,6 +40,7 @@ import java.util.concurrent.ExecutorService;
  */
 public class BudgetImportUseCase {
     private static final String TAG = "BudgetImportUseCase";
+    private static final int PAYEE_PREFIX_MAX_LENGTH = 10;
 
     private final BudgetImportRepository repository;
     private final StatementFileParser parser;
@@ -91,7 +93,7 @@ public class BudgetImportUseCase {
                     importId,
                     parsed.transactions().size(),
                     computation.newTransactions.size(),
-                    computation.autoCategorized,
+                    computation.recognizedCategories,
                     parsed.periodStart(),
                     parsed.periodEnd()
             );
@@ -102,7 +104,10 @@ public class BudgetImportUseCase {
             // Failures here must not mark the import as failed.
             List<RecurringSuggestion> suggestions;
             try {
+                // Exclude TRANSFER records: BudgetTransactionMapper.toDomain() throws on them
+                // by design (transfers are internal account movements, not income/expense).
                 List<RecurringBudgetTransaction> accountTransactions = repository.loadTransactionsForAccount(accountId).stream()
+                        .filter(r -> r.type() != ImportTransactionType.TRANSFER)
                         .map(BudgetTransactionMapper::toDomain)
                         .toList();
                 suggestions = RecurringPatternDetector.detectPatterns(accountTransactions);
@@ -115,7 +120,7 @@ public class BudgetImportUseCase {
                     parsed.transactions().size(),
                     computation.newTransactions.size(),
                     computation.duplicates,
-                    computation.autoCategorized,
+                    computation.recognizedCategories,
                     suggestions
             );
         } catch (IllegalArgumentException e) {
@@ -150,7 +155,7 @@ public class BudgetImportUseCase {
                                                 List<ParsedTransaction> parsedTransactions) {
         List<RecurringBudgetTransaction> newTransactions = new ArrayList<>();
         int duplicates = 0;
-        int autoCategorized = 0;
+        int recognizedCategories = 0;
 
         for (ParsedTransaction parsed : parsedTransactions) {
             // If the parser extracted an importHash (e.g., from PDF header), use it for deduplication.
@@ -174,14 +179,14 @@ public class BudgetImportUseCase {
             boolean categoryKnown = categoryId != null && repository.isKnownCategory(categoryId);
 
             if (categoryKnown) {
-                autoCategorized++;
+                recognizedCategories++;
             } else {
                 categoryId = repository.findDefaultCategoryId(
                         TransactionDirection.fromAmountCents(parsed.amountCents()));
             }
 
             newTransactions.add(RecurringBudgetTransaction.forImport(
-                    null,
+                    /* id= */ null,
                     accountId,
                     parsed.amountCents(),
                     parsed.bookingDate(),
@@ -190,10 +195,10 @@ public class BudgetImportUseCase {
                     parsed.payee(),
                     txHash,
                     importId,
-                    null
+                    /* parentRecurringId= */ null
             ));
         }
-        return new ImportComputation(newTransactions, duplicates, autoCategorized);
+        return new ImportComputation(newTransactions, duplicates, recognizedCategories);
     }
 
     private static String sha256(byte[] data) {
@@ -223,7 +228,7 @@ public class BudgetImportUseCase {
      */
     private static String buildTransactionFingerprint(LocalDate date, long amountCents, String payee) {
         String normalized = payee != null ? payee.trim().replace(" ", "") : "";
-        String payeePart = normalized.substring(0, Math.min(10, normalized.length()));
+        String payeePart = normalized.substring(0, Math.min(PAYEE_PREFIX_MAX_LENGTH, normalized.length()));
         return date + "_" + amountCents + "_" + payeePart;
     }
 
@@ -237,7 +242,7 @@ public class BudgetImportUseCase {
             int totalTransactions,
             int newTransactions,
             int duplicates,
-            int autoCategorized,
+            int recognizedCategories,
             List<RecurringSuggestion> recurringSuggestions
     ) {
     }
@@ -257,7 +262,7 @@ public class BudgetImportUseCase {
 
     private record ImportComputation(List<RecurringBudgetTransaction> newTransactions,
                                      int duplicates,
-                                     int autoCategorized) {
+                                     int recognizedCategories) {
     }
 
     private static String safeErrorMessage(Exception exception) {

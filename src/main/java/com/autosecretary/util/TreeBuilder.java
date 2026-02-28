@@ -56,9 +56,19 @@ public class TreeBuilder<T> {
     /**
      * Constructs a TreeBuilder with callbacks that define the tree structure.
      *
+     * <p><strong>Contracts:</strong>
+     * <ul>
+     *   <li>{@code getId}: must return a non-null, stable value. Returns null or throws → NullPointerException
+     *   <li>{@code getParentIds}: must return a non-null List (may be empty). If null → NullPointerException
+     *   <li>{@code addChild}: called during tree building; if it throws → exception propagates
+     *   <li>{@code getChildren}: must return the actual child collection (not a copy); if null → NullPointerException
+     *   <li>{@code resetChildren}: must clear all children; if it doesn't → stale tree on reuse
+     * </ul>
+     *
      * @param getId extracts the unique identifier from an item; must return a non-null, stable value
      * @param getParentIds returns the list of parent IDs for an item; may be empty (for roots) or
-     *        contain multiple IDs (for items with multiple parents)
+     *        contain multiple IDs (for items with multiple parents). Duplicate IDs are deduplicated to avoid
+     *        adding the same child multiple times to the same parent.
      * @param addChild called when building the tree: {@code addChild.accept(parent, child)} adds
      *        {@code child} to {@code parent}'s child collection
      * @param getChildren retrieves the current children of an item; must reflect changes made via
@@ -118,12 +128,15 @@ public class TreeBuilder<T> {
         for (T item : items) {
             List<String> parentIds = getParentIds.apply(item);
             boolean hasParentInMap = false;
-            // If an item has multiple parent IDs, add it as a child to all parents that exist
+            Set<String> seenParentIds = new HashSet<>();
+            // If an item has multiple parent IDs, add it as a child to all unique parents that exist
             for (String parentId : parentIds) {
-                T parent = map.get(parentId);
-                if (parent != null) {
-                    addChild.accept(parent, item);
-                    hasParentInMap = true;
+                if (seenParentIds.add(parentId)) {  // Skip duplicate parent IDs in the same item's parent list
+                    T parent = map.get(parentId);
+                    if (parent != null) {
+                        addChild.accept(parent, item);
+                        hasParentInMap = true;
+                    }
                 }
             }
             // If no parent exists, this item is a root
@@ -148,6 +161,9 @@ public class TreeBuilder<T> {
      * <p><strong>Cycle safety:</strong> A visited set ensures each item is processed only once,
      * even if the tree contains cycles.
      *
+     * <p><strong>Stack depth:</strong> Uses recursion proportional to tree depth via {@link #flattenNode(Object, List, Set)}.
+     * Very deep trees (depth &gt; 1000) may cause StackOverflowError.
+     *
      * @param roots the root items (as returned by {@link #buildTree(List)})
      * @return all items in depth-first order, each item exactly once
      */
@@ -164,6 +180,9 @@ public class TreeBuilder<T> {
      * Recursively flattens a single node and its descendants into a flat list.
      * Each node is added to the result exactly once (visited set prevents duplicates).
      * Depth-first: the node itself is added first, then its children recursively.
+     *
+     * <p><strong>Stack depth:</strong> Uses recursion proportional to tree depth. Very deep trees
+     * (depth &gt; 1000) may cause StackOverflowError.
      */
     private void flattenNode(T node, List<T> result, Set<T> visited) {
         if (!visited.add(node)) return;  // Skip if already visited (cycle safety)
@@ -181,6 +200,10 @@ public class TreeBuilder<T> {
      *
      * <p><strong>Performance:</strong> O(n log n) per tree level; total complexity depends on tree
      * depth and the comparator cost.
+     *
+     * <p><strong>Stack depth:</strong> Uses recursion proportional to tree depth. Very deep trees
+     * (depth &gt; 1000) may cause StackOverflowError. In this codebase, task trees are shallow
+     * (typically depth &lt; 10), so this is not a practical concern.
      *
      * @param roots the root items to sort (and recursively sort their children)
      * @param comparator defines the sort order at each tree level

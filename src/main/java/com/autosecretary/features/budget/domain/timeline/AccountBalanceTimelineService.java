@@ -56,7 +56,7 @@ public final class AccountBalanceTimelineService {
                 fromDate, toDate, startBalanceCents, deltaByDate,
                 Function.identity(),
                 d -> d.plusDays(1),
-                (d1, d2) -> !d1.isAfter(d2));
+                (current, end) -> !current.isAfter(end));
     }
 
     /**
@@ -82,7 +82,7 @@ public final class AccountBalanceTimelineService {
                 fromMonth, toMonth, startBalanceCents, deltaByMonth,
                 YearMonth::atEndOfMonth,
                 m -> m.plusMonths(1),
-                (m1, m2) -> !m1.isAfter(m2));
+                (current, end) -> !current.isAfter(end));
     }
 
     /**

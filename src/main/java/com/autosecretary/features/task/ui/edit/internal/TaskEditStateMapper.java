@@ -3,13 +3,13 @@ package com.autosecretary.features.task.ui.edit.internal;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
-import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 import java.time.DayOfWeek;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -19,16 +19,19 @@ import java.util.Set;
 public class TaskEditStateMapper {
 
     /**
-     * Safely copies a day set, returning an empty set if the source is null.
+     * Safely copies a day set, returning an empty set if the source is null or empty.
+     * Guards against the empty non-EnumSet case: EnumSet.copyOf(Collection) throws
+     * IllegalArgumentException when the collection is empty and not already an EnumSet.
      */
-    private Set<DayOfWeek> copyDaysOrEmpty(Set<DayOfWeek> days) {
-        return days != null ? EnumSet.copyOf(days) : EnumSet.noneOf(DayOfWeek.class);
+    private static Set<DayOfWeek> copyDaysOrEmpty(Set<DayOfWeek> days) {
+        if (days == null || days.isEmpty()) return EnumSet.noneOf(DayOfWeek.class);
+        return EnumSet.copyOf(days);
     }
 
     /**
      * Ensures a list is initialized, returning an empty list if null.
      */
-    private <T> java.util.List<T> ensureNotNull(java.util.List<T> list) {
+    private static <T> java.util.List<T> ensureNotNull(java.util.List<T> list) {
         return list != null ? list : new ArrayList<>();
     }
 
@@ -40,8 +43,8 @@ public class TaskEditStateMapper {
         state.description = task.core.description;
         state.priority = task.core.priority;
         state.schedulingType = task.core.schedulingType;
-        state.goalIcon = TaskEditPresenter.coalesce(task.core.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
-        state.goalColorHex = TaskEditPresenter.coalesce(task.core.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
+        state.goalIcon = Objects.requireNonNullElse(task.core.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
+        state.goalColorHex = Objects.requireNonNullElse(task.core.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
         state.budgetRequiredCents = task.core.budgetRequiredCents;
         state.budgetAccountId = task.core.budgetAccountId;
         state.budgetCategoryId = task.core.budgetCategoryId;
@@ -93,8 +96,8 @@ public class TaskEditStateMapper {
         task.core.description = state.description;
         task.core.priority = state.priority;
         task.core.schedulingType = state.schedulingType;
-        task.core.goalIcon = TaskEditPresenter.coalesce(state.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
-        task.core.goalColorHex = TaskEditPresenter.coalesce(state.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
+        task.core.goalIcon = Objects.requireNonNullElse(state.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
+        task.core.goalColorHex = Objects.requireNonNullElse(state.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
         task.core.budgetRequiredCents = state.budgetRequiredCents;
         task.core.budgetAccountId = state.budgetAccountId;
         task.core.budgetCategoryId = state.budgetCategoryId;

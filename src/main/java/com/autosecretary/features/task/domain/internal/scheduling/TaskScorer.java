@@ -219,7 +219,8 @@ final class TaskScorer {
                                int sinceLast,
                                double agingForce,
                                int repsPerDay,
-                               int maxChildPriority) {
+                               int maxChildPriority,
+                               boolean budgetEligible) {
         TaskScoringSnapshot withIncrementedScheduledToday() {
             return new TaskScoringSnapshot(
                     completionState.incrementScheduledToday(),
@@ -229,7 +230,8 @@ final class TaskScorer {
                     sinceLast,
                     agingForce,
                     repsPerDay,
-                    maxChildPriority
+                    maxChildPriority,
+                    budgetEligible
             );
         }
 
@@ -244,7 +246,8 @@ final class TaskScorer {
                     sinceLast,
                     agingForce,
                     repsPerDay,
-                    maxChildPriority
+                    maxChildPriority,
+                    budgetEligible
             );
         }
     }
@@ -272,6 +275,8 @@ final class TaskScorer {
         int sinceLast = (int) ChronoUnit.DAYS.between(completionState.lastCompletion(), day);
         double agingForce = Math.min(1 + ((double) sinceLast / AGING_SCALE_DAYS), maxAgingMultiplier);
         int maxChildPriority = computeMaxChildPriority(task);
+        boolean budgetEligible = budgetEligibilityService == null
+                || budgetEligibilityService.eligibilityFor(task).enoughBudget();
 
         TaskScoringSnapshot snapshot = new TaskScoringSnapshot(
                 completionState,
@@ -281,7 +286,8 @@ final class TaskScorer {
                 sinceLast,
                 agingForce,
                 task.core.repsPerDay(),
-                maxChildPriority
+                maxChildPriority,
+                budgetEligible
         );
         caches.put(task.core.id, snapshot);
     }
@@ -429,11 +435,7 @@ final class TaskScorer {
 
 
     private boolean isBudgetInsufficient(ScoringContext context) {
-        if (budgetEligibilityService == null) {
-            return false;
-        }
-        TaskBudgetEligibilityService.BudgetEligibility eligibility = budgetEligibilityService.eligibilityFor(context.task());
-        return !eligibility.enoughBudget();
+        return !context.snapshot().budgetEligible();
     }
 
     private boolean hasReachedDailyRepetitionLimit(ScoringContext context) {
@@ -662,12 +664,6 @@ final class TaskScorer {
         caches.put(task.core.id, match != null
                 ? snapshot.withAssignedPrefSlot(match.id)
                 : snapshot.withIncrementedScheduledToday());
-    }
-
-    boolean isPrefSlotConsumed(String taskId, String prefSlotId) {
-        TaskScoringSnapshot snapshot = caches.get(taskId);
-        return snapshot != null
-                && snapshot.preferenceFitState().consumedPrefSlotIds().contains(prefSlotId);
     }
 
     /**

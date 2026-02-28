@@ -126,9 +126,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean shouldOpenTaskCreateFromIntent(Intent intent) {
-        if (intent == null) {
-            return false;
-        }
         return TaskWidgetProvider.ACTION_ADD_TASK.equals(intent.getAction())
                 || intent.getBooleanExtra(TaskWidgetProvider.EXTRA_OPEN_TASK_FLOW, false);
     }

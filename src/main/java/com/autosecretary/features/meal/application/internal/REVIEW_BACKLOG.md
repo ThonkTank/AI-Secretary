@@ -36,5 +36,6 @@
 
 ✅ **[comment]** `EntityLookupHelper.java` — German class and method Javadocs translated to English (this run).
 
-## Backlog Status
-**All issues resolved.** No open items.
+✅ **[nit]** `LegacyMealImportService.java:601` — `LegacyImportReport` Javadoc said "Immutable after construction" which is misleading (the class is mutable during `importOnce` filling). Fixed to accurately describe the mutability contract.
+
+✅ **[warning]** `LegacyMealImportService.java:266` — `memberId <= 0` validation rejected task-triggered consumption logs (which use `DEFAULT_MEMBER_ID = 0L`). Fixed: relaxed check to `itemId < 0 || memberId < 0`, allowing 0 as a valid "unassigned" sentinel. Added explanatory comment.

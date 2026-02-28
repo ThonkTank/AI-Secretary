@@ -15,13 +15,13 @@ enum ListConfig {
     CHECKLIST(false) {
         @Override
         boolean matches(ViewSlot slot, LocalDate day) {
-            return slot.item.isScheduledOn(day);
+            return slot.getItem().isScheduledOn(day);
         }
 
         @Override
         Comparator<ViewSlot> comparator() {
             return Comparator.comparing(
-                    (ViewSlot slot) -> slot.item.start,
+                    (ViewSlot slot) -> slot.getItem().start,
                     Comparator.nullsLast(Comparator.naturalOrder())
             );
         }
@@ -32,14 +32,14 @@ enum ListConfig {
             // day == null is the "show all" path (no day filter applied, e.g. during initial load
             // before selectedDay is set). In practice selectedDay is always non-null at runtime,
             // so this guards against an edge case rather than a real operating mode.
-            return day == null || slot.item.day.equals(day);
+            return day == null || slot.getItem().day.equals(day);
         }
 
         @Override
         Comparator<ViewSlot> comparator() {
             return Comparator
-                    .<ViewSlot, Boolean>comparing(slot -> slot.item.isCalendarEvent())
-                    .thenComparing(slot -> slot.item.title, Comparator.nullsLast(Comparator.naturalOrder()));
+                    .<ViewSlot, Boolean>comparing(slot -> slot.getItem().isCalendarEvent())
+                    .thenComparing(slot -> slot.getItem().title, Comparator.nullsLast(Comparator.naturalOrder()));
         }
     };
 

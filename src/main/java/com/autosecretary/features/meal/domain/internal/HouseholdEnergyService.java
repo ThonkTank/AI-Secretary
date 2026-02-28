@@ -46,7 +46,9 @@ public class HouseholdEnergyService {
      *
      * @param member the household member (must not be null)
      * @param referenceDate the date as of which to calculate age (must not be null)
-     * @return age in complete years, clamped to 0 (negative ages are not valid)
+     * @return approximate age in years ({@code referenceDate.year - member.birthYear}), clamped to 0.
+     *         Because only the birth year is stored (not a full birth date), the result may be 1 year
+     *         too high before the member's birthday occurs in the reference year.
      */
     public static int calculateAge(HouseholdMember member, LocalDate referenceDate) {
         Objects.requireNonNull(member, "member must not be null");
@@ -96,6 +98,7 @@ public class HouseholdEnergyService {
     public static int calculateTdee(HouseholdMember member, LocalDate referenceDate) {
         Objects.requireNonNull(member, "member must not be null");
         Objects.requireNonNull(member.activityLevel, "member.activityLevel must not be null");
+        Objects.requireNonNull(referenceDate, "referenceDate must not be null");
         return (int) (calculateBmr(member, referenceDate) * member.activityLevel.factor);
     }
 

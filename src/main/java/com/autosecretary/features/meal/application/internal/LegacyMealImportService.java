@@ -263,7 +263,9 @@ public class LegacyMealImportService {
             LocalDate date = asDate(row.get("date"));
             long itemId = asLong(row.get("item_id"), 0L);
             long memberId = asLong(row.get("member_id"), 0L);
-            if (date == null || itemId <= 0 || memberId <= 0) {
+            // itemId == 0 and memberId == 0 are valid "unassigned" sentinels used by
+            // TaskMealIntegrationService. Only date == null is a hard rejection.
+            if (date == null || itemId < 0 || memberId < 0) {
                 report.addFailure(SOURCE_CONSUMPTION, idx, "required fields invalid: date/item_id/member_id");
                 return false;
             }
@@ -594,7 +596,11 @@ public class LegacyMealImportService {
     }
 
     /**
-     * Report of a single import run. Immutable after construction.
+     * Report of a single import run.
+     *
+     * <p>The report is filled incrementally during {@link #importOnce} and becomes effectively
+     * read-only once that call returns — external callers receive defensive copies via
+     * {@link #migratedBySource()} and {@link #failures()}.
      *
      * <p>Callers should inspect both success counts and failures to decide whether the import is acceptable.
      */

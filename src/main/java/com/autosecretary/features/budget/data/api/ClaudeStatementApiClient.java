@@ -88,6 +88,7 @@ public class ClaudeStatementApiClient {
     private static final String JSON_HASH = "hash";
     private static final String CONTENT_TYPE_TEXT = "text";
     private static final String CONTENT_TYPE_DOCUMENT = "document";
+    private static final String MEDIA_TYPE_PDF = "application/pdf";
 
     public ParsedStatement parsePdf(
             String apiKey,
@@ -147,7 +148,7 @@ public class ClaudeStatementApiClient {
         filePart.put(JSON_TYPE, CONTENT_TYPE_DOCUMENT);
         JSONObject source = new JSONObject();
         source.put(JSON_TYPE, JSON_BASE64);
-        source.put(JSON_MEDIA_TYPE, "application/pdf");
+        source.put(JSON_MEDIA_TYPE, MEDIA_TYPE_PDF);
         source.put(JSON_DATA, Base64.encodeToString(fileBytes, Base64.NO_WRAP));
         filePart.put(JSON_SOURCE, source);
         content.put(filePart);
@@ -179,6 +180,11 @@ public class ClaudeStatementApiClient {
      * @return A German-language system prompt (matches the expected schema and language of statements)
      */
     private String buildSystemPrompt(List<ImportCategory> categories) throws JSONException {
+        JSONArray categoryArray = buildCategoryArray(categories);
+        return buildSystemPromptText(categoryArray);
+    }
+
+    private JSONArray buildCategoryArray(List<ImportCategory> categories) throws JSONException {
         JSONArray categoryArray = new JSONArray();
         if (categories != null) {
             for (ImportCategory category : categories) {
@@ -189,6 +195,10 @@ public class ClaudeStatementApiClient {
                 categoryArray.put(cat);
             }
         }
+        return categoryArray;
+    }
+
+    private String buildSystemPromptText(JSONArray categoryArray) {
         return "Du extrahierst Banktransaktionen aus Kontoauszügen. "
                 + "Antwortformat: JSON Objekt mit Feldern period_start, period_end, transactions. "
                 + "transactions ist ein Array von Objekten mit date (YYYY-MM-DD), amount_cents (int), "
@@ -198,6 +208,19 @@ public class ClaudeStatementApiClient {
                 + " Kein Markdown, keine Kommentare.";
     }
 
+    private String extractTextFromContentBlocks(JSONArray contentBlocks) throws JSONException {
+        for (int i = 0; i < contentBlocks.length(); i++) {
+            JSONObject block = contentBlocks.getJSONObject(i);
+            if (CONTENT_TYPE_TEXT.equals(block.optString(JSON_TYPE))) {
+                String text = block.optString(JSON_TEXT, null);
+                if (text != null && !text.isBlank()) {
+                    return text;
+                }
+            }
+        }
+        return null;
+    }
+
     private ParsedStatement parseSuccessResponse(String responseBody) throws JSONException {
         JSONObject root = new JSONObject(responseBody);
         JSONArray contentBlocks = root.optJSONArray(JSON_CONTENT);
@@ -205,15 +228,7 @@ public class ClaudeStatementApiClient {
             throw new ApiException("Keine Text-Antwort von Claude");
         }
 
-        String text = null;
-        for (int i = 0; i < contentBlocks.length(); i++) {
-            JSONObject block = contentBlocks.getJSONObject(i);
-            if (CONTENT_TYPE_TEXT.equals(block.optString(JSON_TYPE))) {
-                text = block.optString(JSON_TEXT, null);
-                break;
-            }
-        }
-
+        String text = extractTextFromContentBlocks(contentBlocks);
         if (text == null || text.isBlank()) {
             throw new ApiException("Keine Text-Antwort von Claude");
         }
@@ -240,7 +255,13 @@ public class ClaudeStatementApiClient {
     }
 
     private ParsedTransaction parseTransaction(JSONObject tx) throws JSONException {
-        LocalDate bookingDate = LocalDate.parse(tx.getString(JSON_DATE));
+        String dateStr = tx.getString(JSON_DATE);
+        LocalDate bookingDate;
+        try {
+            bookingDate = LocalDate.parse(dateStr);
+        } catch (DateTimeParseException e) {
+            throw new ApiException("Ungültiges Datum in Claude-Antwort: \"" + dateStr + "\"", e);
+        }
         long amountCents = toLong(tx.get(JSON_AMOUNT_CENTS));
         String payee = emptyToNull(tx.optString(JSON_PAYEE, null));
         String note = emptyToNull(tx.optString(JSON_DESCRIPTION, null));
@@ -249,6 +270,11 @@ public class ClaudeStatementApiClient {
         return new ParsedTransaction(bookingDate, amountCents, payee, note, categoryId, hash);
     }
 
+    /**
+     * Converts a JSON-parsed value to long.
+     * Handles both numeric types (expected) and strings (fallback for defensive parsing).
+     * The fallback covers cases where Claude or the JSON library returns a stringified number.
+     */
     private long toLong(Object value) {
         if (value instanceof Number number) {
             return number.longValue();
@@ -321,7 +347,7 @@ public class ClaudeStatementApiClient {
             return text;
         }
         int firstLineEnd = text.indexOf('\n');
-        if (firstLineEnd <= 0) {
+        if (firstLineEnd < 0) {
             return text;
         }
         String afterFirst = text.substring(firstLineEnd + 1);

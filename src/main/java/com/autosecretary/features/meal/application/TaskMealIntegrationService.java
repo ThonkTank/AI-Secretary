@@ -52,6 +52,13 @@ public class TaskMealIntegrationService {
     private static final long DEFAULT_MEMBER_ID = 0L;
 
     /**
+     * Placeholder item ID used when consumption is logged through task completion.
+     * Value 0 means "no specific pantry item" — the log entry tracks nutrition at the
+     * recipe level only, not at the individual pantry-item level.
+     */
+    private static final long DEFAULT_ITEM_ID = 0L;
+
+    /**
      * Floating-point threshold below which a pantry item is considered fully depleted.
      * Prevents saving items with a near-zero amount (e.g. 0.000003 g) due to floating-point drift.
      */
@@ -155,7 +162,7 @@ public class TaskMealIntegrationService {
         int carbs = (int) Math.round(recipe.totalCarbs * scale);
         int fat = (int) Math.round(recipe.totalFat * scale);
 
-        ConsumptionLog log = new ConsumptionLog.Builder(completionDate, 0L, DEFAULT_MEMBER_ID)
+        ConsumptionLog log = new ConsumptionLog.Builder(completionDate, DEFAULT_ITEM_ID, DEFAULT_MEMBER_ID)
                 .recipeId(Objects.requireNonNullElse(recipe.id, 0L))
                 .servings(servings)
                 .calories(calories)

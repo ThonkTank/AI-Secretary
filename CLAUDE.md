@@ -79,7 +79,7 @@ Both features share a single-threaded `ExecutorService` wired in `AppComposition
   - `calendar/` — `TaskCalendarService` contract and DTOs.
   - `config/` — `TaskScheduleConfigRepository`/`Service` abstractions.
   - `listmodel/` — `TaskListItem` and `TaskListItemMapper` (never `model/`).
-  - `internal/` — Android/infrastructure implementations: `calendar/CalendarReader` + `DeviceCalendarBlockedIntervalProvider`, `mutations/TaskSlotToggleMutation`, `alarms/` receivers.
+  - `internal/` — Android/infrastructure implementations: `calendar/CalendarReader`, `CalendarQueryHelper` (shared Android Calendar query helper for permission check, day-boundary computation, and cursor handling), `DeviceCalendarBlockedIntervalProvider`, `mutations/TaskSlotToggleMutation`, `alarms/` receivers.
 - **`budget/domain/timeline/`** — `AccountBalanceTimelineService` and balance chart data structures (`BalanceTimelinePoint`, `DailyDeltaPoint`, `MonthlyDeltaPoint`).
 - **`budget/domain/importing/`** — `ImportCategory` (uses `TransactionDirection`), `ImportTransactionRecord`, `ParsedStatement`, `ParsedTransaction`.
 - **`budget/domain/recurring/`** — recurring pattern domain types: `RecurringBudgetTransaction`, `RecurringPatternDetector`, `RecurringScheduleParams`, `RecurringSuggestion`, `RecurringTemplateScheduler`, `TemplateStatusUpdate`; implementation helpers in `recurring/internal/`.

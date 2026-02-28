@@ -15,7 +15,6 @@ import com.google.android.material.textfield.TextInputEditText;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Manages the account-to-account transfer dialog.
@@ -84,7 +83,7 @@ public class BudgetTransferDialogController {
                 return;
             }
 
-            String dateStr = textOf(dateInput);
+            String dateStr = SpinnerHelper.textOf(dateInput);
             LocalDate bookingDate;
             try {
                 bookingDate = LocalDate.parse(dateStr);
@@ -93,8 +92,8 @@ public class BudgetTransferDialogController {
                 return;
             }
 
-            String amountStr = textOf(amountInput);
-            String note = textOf(noteInput);
+            String amountStr = SpinnerHelper.textOf(amountInput);
+            String note = SpinnerHelper.textOf(noteInput);
             listener.onTransferSubmitted(
                     accounts.get(sourceIdx).id,
                     accounts.get(targetIdx).id,
@@ -108,7 +107,4 @@ public class BudgetTransferDialogController {
         dialog.show();
     }
 
-    private static String textOf(TextInputEditText input) {
-        return Objects.toString(input.getText(), "").trim();
-    }
 }

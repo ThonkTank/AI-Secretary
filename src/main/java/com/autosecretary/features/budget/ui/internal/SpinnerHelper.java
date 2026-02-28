@@ -6,8 +6,11 @@ import android.widget.Spinner;
 
 import androidx.annotation.Nullable;
 
+import com.google.android.material.textfield.TextInputEditText;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -72,5 +75,10 @@ public class SpinnerHelper {
                 return;
             }
         }
+    }
+
+    /** Returns the trimmed text of a {@link TextInputEditText}, never null. */
+    public static String textOf(TextInputEditText input) {
+        return Objects.toString(input.getText(), "").trim();
     }
 }

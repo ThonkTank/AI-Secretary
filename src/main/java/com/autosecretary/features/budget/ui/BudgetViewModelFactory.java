@@ -14,15 +14,14 @@ import com.autosecretary.features.budget.ui.internal.BudgetOverviewLoader;
 import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
 
 import java.util.concurrent.ExecutorService;
-import java.util.function.Consumer;
 
 /**
  * {@link ViewModelProvider.Factory} for {@link BudgetViewModel}.
  *
  * <p>Android's {@code ViewModelProvider} requires a factory when the ViewModel has a
  * non-default constructor. This factory is created by {@code AppCompositionRoot} and
- * receives the shared infrastructure dependencies ({@code repository}, {@code executor},
- * {@code postToMain}) that are managed at the app level.
+ * receives the shared infrastructure dependencies ({@code repository}, {@code executor})
+ * that are managed at the app level.
  *
  * <p>Pure computation helpers ({@link BudgetSummaryPresentationMapper},
  * {@link BudgetOverviewLoader}, {@link CalculateEffectiveBudgetLimitUseCase},
@@ -34,20 +33,17 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
 
     private final BudgetRepository repository;
     private final ExecutorService executor;
-    private final Consumer<Runnable> postToMain;
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
     private final CreateTransferUseCase createTransferUseCase;
 
     public BudgetViewModelFactory(BudgetRepository repository,
                                   ExecutorService executor,
-                                  Consumer<Runnable> postToMain,
                                   BudgetImportUseCase importUseCase,
                                   ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
                                   CreateTransferUseCase createTransferUseCase) {
         this.repository = repository;
         this.executor = executor;
-        this.postToMain = postToMain;
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
         this.createTransferUseCase = createTransferUseCase;
@@ -62,7 +58,7 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
                     repository,
                     summaryPresentationMapper);
             return modelClass.cast(new BudgetViewModel(
-                    repository, executor, postToMain,
+                    repository, executor,
                     importUseCase,
                     applyRecurringUseCase,
                     createTransferUseCase,

@@ -41,6 +41,10 @@ public class BudgetTransactionRow {
         return new Builder();
     }
 
+    /**
+     * Builder for constructing immutable BudgetTransactionRow instances.
+     * All fields must be set before calling {@link #build()}.
+     */
     public static class Builder {
         private String transactionId;
         private String label;
@@ -63,7 +67,18 @@ public class BudgetTransactionRow {
         public Builder accountId(String v)           { accountId = v; return this; }
 
         public BudgetTransactionRow build() {
+            validateState();
             return new BudgetTransactionRow(this);
+        }
+
+        private void validateState() {
+            if (transactionId == null) throw new IllegalStateException("transactionId must be set");
+            if (label == null) throw new IllegalStateException("label must be set");
+            if (direction == null) throw new IllegalStateException("direction must be set");
+            if (bookingDate == null) throw new IllegalStateException("bookingDate must be set");
+            if (accountId == null) throw new IllegalStateException("accountId must be set");
+            // categoryId, categoryColorHex, note are optional — uncategorized transactions and
+            // notes-free transactions pass null; callers must handle null defensively.
         }
     }
 

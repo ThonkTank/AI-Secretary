@@ -90,6 +90,14 @@ final class MapperSupport {
         return Long.parseLong(raw);
     }
 
+    static Integer asNullableInt(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number number) return number.intValue();
+        String raw = value.toString().trim();
+        if (raw.isEmpty()) return null;
+        return Integer.parseInt(raw);
+    }
+
     static LocalDate asLocalDate(Object value) {
         if (value == null) return null;
         if (value instanceof LocalDate date) return date;

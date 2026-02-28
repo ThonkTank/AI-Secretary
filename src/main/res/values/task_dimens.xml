@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="indent_step">24dp</dimen>
-    <dimen name="editor_section_indent">32dp</dimen>
-    <dimen name="compact_input_width">48dp</dimen>
+    <dimen name="task_indent_step">24dp</dimen>
+    <dimen name="task_editor_section_indent">32dp</dimen>
     <dimen name="task_editor_clear_deadline_button_size">48dp</dimen>
     <dimen name="task_editor_day_picker_horizontal_padding">8dp</dimen>
     <dimen name="task_editor_day_picker_vertical_padding">16dp</dimen>
@@ -32,10 +31,6 @@
     <dimen name="widget_time_column_min_width">40dp</dimen>
     <dimen name="widget_refresh_button_size">32dp</dimen>
     <dimen name="widget_list_divider_height">2dp</dimen>
-
-    <dimen name="task_text_xs">12sp</dimen>
-    <dimen name="task_text_sm">14sp</dimen>
-    <dimen name="task_text_md">16sp</dimen>
 
     <!-- Corner radius tokens for task/calendar shape drawables -->
     <dimen name="task_corner_radius_sm">12dp</dimen>

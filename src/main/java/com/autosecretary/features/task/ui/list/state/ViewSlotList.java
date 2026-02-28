@@ -20,6 +20,8 @@ public class ViewSlotList {
     private List<ViewSlot> allSlots = new ArrayList<>();
     // Working set: filtered/sorted task slots + appended calendar events, used for display
     private List<ViewSlot> displaySlots = new ArrayList<>();
+    // Tracks whether appendToDisplay() has been called, preventing unsafe filter() calls
+    private boolean hasAppendedItems = false;
 
     public List<ViewSlot> getDisplaySlots() {
         return displaySlots;
@@ -29,9 +31,13 @@ public class ViewSlotList {
      * Appends extra items (typically calendar events) to the current displaySlots.
      * Appended items are NOT re-sorted unless sortByTask() or sortBySlot() is called afterward.
      * Used to add calendar data after task filtering.
+     *
+     * WARNING: Must call sortByTask() or sortBySlot() immediately after to maintain correct state.
+     * Calling filter() while appended items are pending will lose them.
      */
     public void appendToDisplay(List<ViewSlot> extra) {
         displaySlots.addAll(extra);
+        hasAppendedItems = true;
     }
 
     // Predicate for tree flattening: all slots are "expanded" (children always included in flat list).
@@ -45,12 +51,12 @@ public class ViewSlotList {
     //   All slot parents are always expanded (calendar hierarchy is immutable in display).
     // A single applySort() call uses one tree builder to rebuild the hierarchy for the current mode.
     private static final TreeBuilder<ViewSlot> TREE_BY_TASK = createTreeBuilder(
-            vs -> vs.item.taskId,
-            vs -> vs.item.parentTaskIds
+            vs -> vs.getItem().taskId,
+            vs -> vs.getItem().parentTaskIds
     );
 
     private static final TreeBuilder<ViewSlot> TREE_BY_SLOT = createTreeBuilder(
-            vs -> vs.item.slotId,
+            vs -> vs.getItem().slotId,
             ViewSlotList::getSlotParents
     );
 
@@ -67,21 +73,27 @@ public class ViewSlotList {
     }
 
     private static List<String> getSlotParents(ViewSlot vs) {
-        return vs.item.slotParentId != null
-                ? Collections.singletonList(vs.item.slotParentId)
+        return vs.getItem().slotParentId != null
+                ? Collections.singletonList(vs.getItem().slotParentId)
                 : Collections.emptyList();
     }
 
     public void fromList(List<TaskListItem> items) {
         allSlots = items.stream().map(ViewSlot::new).collect(Collectors.toList());
         displaySlots = new ArrayList<>(allSlots);
+        hasAppendedItems = false;
     }
 
     /**
      * Rebuilds displaySlots by filtering allSlots (source of truth).
      * allSlots is never modified; re-filtering always starts from the original full list.
+     *
+     * @throws IllegalStateException if appendToDisplay() was called without a subsequent sort
      */
     public void filter(Predicate<ViewSlot> predicate) {
+        if (hasAppendedItems) {
+            throw new IllegalStateException("Cannot filter after appendToDisplay() without calling sort first");
+        }
         displaySlots = allSlots.stream().filter(predicate).collect(Collectors.toList());
     }
 
@@ -116,6 +128,8 @@ public class ViewSlotList {
         List<ViewSlot> flattened = new ArrayList<>();
         flattenWithDepth(displaySlots, 0, isExpanded, flattened);
         displaySlots = flattened;
+
+        hasAppendedItems = false;
     }
 
     /**

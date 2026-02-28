@@ -221,8 +221,6 @@ public class PrefSlotUIBuilder {
         // setMinimumHeight but the View base class uses the value set by setMinHeight.
         button.setMinHeight(prefSlotButtonMinHeightPx);
         button.setMinimumHeight(prefSlotButtonMinHeightPx);
-        button.setClickable(true);
-        button.setFocusable(true);
         button.setAllCaps(false); // Material3 default is uppercase; override for readability
         button.setTextAppearance(R.style.TextAppearance_AISecretary_Editor_PrefSlotButton);
         button.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);

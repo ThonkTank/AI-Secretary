@@ -108,13 +108,14 @@ public class TaskListFragment extends Fragment {
                 new ArrayList<>(),
                 new ListRowAdapter.TaskRowActions(
                         vm::checkOff,
-                        viewSlot -> openEditDialog(editSessionController, viewSlot.item.taskId),
+                        viewSlot -> openEditDialog(editSessionController, viewSlot.getItem().taskId),
                         vm::toggleTimer,
                         vm::incrementProgress,
                         vm::decrementProgress,
                         vm::toggleExpanded,
                         vm::isExpanded)
         );
+        adapter.setManageMode(vm.isManageMode());
         recyclerView.setAdapter(adapter);
         vm.getList().observe(getViewLifecycleOwner(), items -> {
             adapter.setList(items);

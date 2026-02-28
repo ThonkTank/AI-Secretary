@@ -1,25 +1,13 @@
-#\!/usr/bin/env bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/common.sh"
+
 ADB=/home/aaron/Android/Sdk/platform-tools/adb
 LOGCAT_RAW=$($ADB logcat -d -s SlotGen:D | grep SlotGen)
 ALL_SUMMARIES=$(echo "$LOGCAT_RAW" | sed -n /Zusammenfassung/,/Gesamt:/p)
 if [ -z "$ALL_SUMMARIES" ]; then echo "ERROR: No summary blocks found."; exit 1; fi
-count_days_with_task() {
-  local task_name="$1"
-  local count=0
-  local in_block=0
-  local found_in_block=0
-  while IFS= read -r line; do
-    if echo "$line" | grep -q Zusammenfassung; then in_block=1; found_in_block=0; fi
-    if [ "$in_block" -eq 1 ]; then
-      if echo "$line" | grep -q "$task_name" && echo "$line" | grep -q "slots" && \! echo "$line" | grep -q unscheduled; then found_in_block=1; fi
-    fi
-    if echo "$line" | grep -q "Gesamt:"; then
-      if [ "$in_block" -eq 1 ] && [ "$found_in_block" -eq 1 ]; then count=$((count + 1)); fi
-      in_block=0; found_in_block=0
-    fi
-  done <<< "$ALL_SUMMARIES"
-  echo "$count"
-}
 echo "========================================="
 echo "  Multi-Day Scheduling Validation"
 echo "========================================="

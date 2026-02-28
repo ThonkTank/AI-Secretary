@@ -94,7 +94,7 @@ public interface BudgetRepository {
      * {@code linkedTransactionId} column so the pair can be updated/deleted atomically.
      */
     void createTransfer(String sourceAccountId, String targetAccountId, long amountCents,
-                        java.time.LocalDate bookingDate, String note);
+                        LocalDate bookingDate, String note);
 
     /**
      * Updates both legs of an existing transfer identified by {@code transactionId} (either
@@ -102,7 +102,7 @@ public interface BudgetRepository {
      * {@code false} if the transaction or its linked counterpart could not be located.
      */
     boolean updateTransfer(String transactionId, String sourceAccountId, String targetAccountId,
-                           long amountCents, java.time.LocalDate bookingDate, String note);
+                           long amountCents, LocalDate bookingDate, String note);
 
     void saveBudgetLimit(BudgetLimit budgetLimit);
     List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth);

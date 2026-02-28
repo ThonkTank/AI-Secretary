@@ -1,7 +1,7 @@
 package com.autosecretary.features.meal.domain;
 
 /**
- * Haushaltsmitglied fuer DGE-Bedarfsberechnung und Meal-Planning.
+ * A household member used for DGE energy-requirement calculations and meal planning.
  */
 public class HouseholdMember {
 

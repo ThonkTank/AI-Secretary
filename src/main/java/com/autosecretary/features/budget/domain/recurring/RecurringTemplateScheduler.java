@@ -8,7 +8,7 @@ import java.util.List;
  * Computes the next-due date for a recurring budget template given a reference date.
  * Returns null if the template should be deactivated.
  */
-public class RecurringTemplateScheduler {
+public final class RecurringTemplateScheduler {
 
     /**
      * Computes the next-due date for a recurring template, advancing past {@code referenceDate}

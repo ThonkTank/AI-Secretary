@@ -23,10 +23,11 @@ The project wires a shared `ExecutorService` in `AppCompositionRoot`. This widge
 ---
 
 ### [warning] `taskDao.readAll()` loads all tasks for in-memory filtering
-**File:** `TaskWidgetFactory.java` line 50
+**File:** `TaskWidgetFactory.java` line 69
 
 `onDataSetChanged` fetches every task from the DB, builds all `TaskListItem`s, then discards all except those matching the selected date. For large task datasets this wastes memory and CPU on every widget refresh.
 
 **Fix:** Add a date-scoped query to `TaskDAO` (e.g. `readAllForDate(LocalDate)`) and use it here. Requires changes outside this directory — defer.
 
 ---
+

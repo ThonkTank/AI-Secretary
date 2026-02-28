@@ -29,8 +29,20 @@ discoverable for task-feature work. Tradeoffs are close; defer until a related t
 
 ---
 
-### ✅ [friction] `getMealPlannerPresenter()` is not `synchronized`, unlike all other lazy-init getters
-**Path:** `app/AppCompositionRoot.java` line ~279
-**Status:** Already resolved — the method already carries the inline comment:
-`// Not synchronized: MealPlannerPresenter is only accessed from the main thread`
-No further action needed.
+### ✅ [nit] `SettingsController.showSettingsMenu` — hardcoded array size coupled to constant count
+**Path:** `app/settings/SettingsController.java:141`
+
+**Fixed:** Replaced `new String[4]` + four explicit `options[OPTION_*] = ...` assignments with a
+single inline array initializer in declaration order. The array now self-sizes to its elements;
+adding a future option requires only one line and cannot silently undersize the array.
+
+---
+
+### ✅ [nit] Inconsistent null guard between the two intent-inspection helpers in `MainActivity`
+**Path:** `app/MainActivity.java`
+
+Removed unreachable `if (intent == null) return false` guard from `shouldOpenTaskCreateFromIntent`.
+Both sibling methods are only called with a non-null intent from `navigateToIntentTarget()`; the
+guard was dead code that falsely implied null could occur. Methods are now symmetric.
+
+---

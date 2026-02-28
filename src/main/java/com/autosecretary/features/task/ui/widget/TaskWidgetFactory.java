@@ -39,6 +39,9 @@ import java.util.List;
 public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory {
     // Widget displays times in 24-hour format (e.g. "14:30")
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    // Reusable comparator for sorting tasks by start time; avoids allocating new instances on every refresh
+    private static final Comparator<TaskListItem> BY_START_TIME =
+            Comparator.comparing(i -> i.start, Comparator.nullsLast(Comparator.naturalOrder()));
 
     private final Context context;
     private final TaskDao taskDao;
@@ -78,7 +81,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
                 filtered.add(item);
             }
         }
-        filtered.sort(Comparator.comparing(i -> i.start, Comparator.nullsLast(Comparator.naturalOrder())));
+        filtered.sort(BY_START_TIME);
         items = filtered;
     }
 

@@ -46,6 +46,13 @@ public final class RecurringPatternDetector {
                     .allMatch(tx -> Math.abs(Math.abs(tx.amountCents) - avg) <= avg * AMOUNT_VARIANCE_THRESHOLD);
         }
 
+        /**
+         * Computes average, minimum, and maximum amounts from a list of transactions.
+         *
+         * @param txList a non-empty list of transactions
+         * @return amount statistics
+         * @throws ArithmeticException if txList is empty (division by zero)
+         */
         static AmountStats from(List<RecurringBudgetTransaction> txList) {
             long sum = 0, min = Long.MAX_VALUE, max = Long.MIN_VALUE;
             for (RecurringBudgetTransaction tx : txList) {
@@ -106,6 +113,14 @@ public final class RecurringPatternDetector {
         return candidates;
     }
 
+    /**
+     * Analyzes a list of transactions with consistent amounts to produce a recurring suggestion.
+     *
+     * @param normalizedPayee the normalized/grouped payee name from {@code PayeeGrouper}
+     * @param transactions a non-empty list of transactions with consistent amounts and detected date pattern
+     * @param amountStats pre-computed amount statistics for these transactions
+     * @return a {@link RecurringSuggestion} if a date pattern is detected, null otherwise
+     */
     private static RecurringSuggestion analyzePattern(String normalizedPayee,
                                                       List<RecurringBudgetTransaction> transactions,
                                                       AmountStats amountStats) {

@@ -11,6 +11,28 @@ All non-String types use safe conversion methods in MapperSupport. String fields
 
 ## Completed in This Review
 
+✅ **[nit] Fixed null round-trip bug in RecipeRowMapper ingredient serialization** (RecipeRowMapper.java:112-134)
+- `serializeIngredients` now wraps `ingredientName` and `unit` in `Objects.toString(..., "")` instead of raw concatenation (null → `""` not `"null"`).
+- `parseIngredients` now applies `parts[N].isEmpty() ? null : parts[N]` for `ingredientName` and `unit`, matching the pattern in `IngredientRowMapper.parseStorePackagesFromString`.
+- Null round-trip is now consistent: null serializes as `""` and deserializes back as null, matching how `ingredientId` and `IngredientRowMapper`'s `storeName`/`unit` are handled.
+
+✅ **[warning] Eliminated duplicated field-serialization patterns in WeeklyFoodTargetRowMapper** (WeeklyFoodTargetRowMapper.java:toRow:24-27, fromRow:36-39)
+- Extracted all 11 food group field pairs (*Grams and *Planned) into a FoodGroupFields helper class with 4 static methods (serializeGrams, serializePlanned, deserializeGrams, deserializePlanned).
+- Reduced toRow() and fromRow() from 28 and 28 lines of repetitive code down to 2-line method calls each.
+- New additions of food groups now require only 2 method additions, not 4 field line updates in both methods.
+- Fixed: WeeklyFoodTargetRowMapper.java (lines 10-120)
+
+✅ **[warning] Eliminated duplicated field-serialization patterns in CookingPreferencesRowMapper** (CookingPreferencesRowMapper.java:toRow:25-32, fromRow:41-48)
+- Extracted all 4 meal type field pairs (max*Cooking and *CookingDays) into a MealTypeFields helper class with 4 static methods.
+- Reduced both toRow() and fromRow() from 10 and 10 lines of repetitive code down to 2-line method calls each.
+- Improved maintainability: new meal types now require only 2 method additions.
+- Fixed: CookingPreferencesRowMapper.java (lines 20-64)
+
+✅ **[nit] Added MapperSupport.asNullableInt() method for consistent null-safe integer parsing** (MapperSupport.java:93-98)
+- Implements same pattern as asNullableLong: null input → null result, empty string → null, valid number → parse, invalid → NumberFormatException.
+- Fixes IngredientRowMapper.parseStorePackagesFromString to use explicit nullable conversion instead of conditional ternary for priceCents field.
+- Improved: IngredientRowMapper.java line 89 now uses asNullableInt instead of conditional logic.
+
 ✅ **[friction] MapperSupport lacks class-level javadoc** (MapperSupport.java:13)
 - Added 60+ lines of comprehensive class-level javadoc explaining purpose, design philosophy, all conversion patterns, example usage, and delimiter conventions for custom serialization.
 

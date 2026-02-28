@@ -25,9 +25,15 @@ Duplicate mapper methods `toEntity()` (in BudgetImportRoomRepository) and `toRec
 Record has 11 fields consistently grouped. Requires value object decomposition affecting all consuming files.
 **Fix suggestion:** Group into sub-records (e.g. `TransactionCore`, `ImportMetadata`).
 
-### [nit] Duplicate file type detection logic in StatementFileParser
-**File:** `application/importing/StatementFileParser.java:108-120`
-`accepts()` and `isPdf()` both check file extension/MIME type. Opportunity to centralize into a `FileType` enum. Stable and self-contained; only matters if file types expand.
+### ✅ [nit] `StatementFileParser.accepts()` was dead code — FIXED
+Removed unused package-private method `accepts()` that was never called after `parse()` was refactored to use `isPdf()`/`isCsv()` directly.
+
+## Fixed This Run
+
+✅ [critical] **`AppCompositionRoot` passed stale `mainHandler::post` argument to `BudgetViewModelFactory`** —
+`BudgetViewModelFactory` constructor no longer accepts a `Handler` argument (removed in a prior refactor),
+but `AppCompositionRoot:258` still passed `mainHandler::post` as the 3rd argument, causing a compile error.
+Removed the stale argument. (`app/AppCompositionRoot.java:258`)
 
 ### [warning] BudgetViewModel constructor takes 10 parameters
 **File:** `ui/BudgetViewModel.java:78-98`

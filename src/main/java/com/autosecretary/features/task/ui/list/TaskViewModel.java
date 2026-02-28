@@ -195,7 +195,7 @@ public class TaskViewModel extends AndroidViewModel {
             if (activeListConfig != ListConfig.MANAGE || normalizedSearchQuery.isEmpty()) {
                 return true;
             }
-            String title = slot.item.title == null ? "" : slot.item.title;
+            String title = slot.getItem().title == null ? "" : slot.getItem().title;
             return title.toLowerCase(Locale.ROOT).contains(normalizedSearchQuery);
         };
         masterList.filter(predicate);
@@ -222,7 +222,7 @@ public class TaskViewModel extends AndroidViewModel {
 
         Comparator<ViewSlot> comparator = activeListConfig.comparator();
         if (activeListConfig.groupByTaskParent()) {
-            masterList.sortByTask(comparator, slot -> expandedByTaskId.getOrDefault(slot.item.taskId, true));
+            masterList.sortByTask(comparator, slot -> expandedByTaskId.getOrDefault(slot.getItem().taskId, true));
         } else {
             masterList.sortBySlot(comparator);
         }
@@ -231,28 +231,28 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public void checkOff(ViewSlot viewSlot) {
-        if (viewSlot.item.isCalendarEvent()) {
+        if (viewSlot.getItem().isCalendarEvent()) {
             return;
         }
-        checkOffTaskUseCase.execute(viewSlot.item, this::refreshList);
+        checkOffTaskUseCase.execute(viewSlot.getItem(), this::refreshList);
     }
 
     public void incrementProgress(ViewSlot viewSlot) {
-        adjustTaskProgressUseCase.execute(viewSlot.item, true, this::refreshList);
+        adjustTaskProgressUseCase.execute(viewSlot.getItem(), true, this::refreshList);
     }
 
     public void decrementProgress(ViewSlot viewSlot) {
-        adjustTaskProgressUseCase.execute(viewSlot.item, false, this::refreshList);
+        adjustTaskProgressUseCase.execute(viewSlot.getItem(), false, this::refreshList);
     }
 
     public void toggleTimer(ViewSlot viewSlot) {
-        if (viewSlot.item.slotId == null) {
+        if (viewSlot.getItem().slotId == null) {
             return;
         }
-        if (viewSlot.item.inProgress) {
-            taskDataService.stopTimer(viewSlot.item.slotId, this::refreshList);
+        if (viewSlot.getItem().inProgress) {
+            taskDataService.stopTimer(viewSlot.getItem().slotId, this::refreshList);
         } else {
-            taskDataService.startTimer(viewSlot.item.slotId, this::refreshList);
+            taskDataService.startTimer(viewSlot.getItem().slotId, this::refreshList);
         }
     }
 
@@ -260,14 +260,14 @@ public class TaskViewModel extends AndroidViewModel {
         if (activeListConfig != ListConfig.MANAGE || !viewSlot.hasChildren()) {
             return;
         }
-        String taskId = viewSlot.item.taskId;
+        String taskId = viewSlot.getItem().taskId;
         boolean currentlyExpanded = expandedByTaskId.getOrDefault(taskId, true);
         expandedByTaskId.put(taskId, !currentlyExpanded);
         filterList();
     }
 
     public boolean isExpanded(ViewSlot viewSlot) {
-        return expandedByTaskId.getOrDefault(viewSlot.item.taskId, true);
+        return expandedByTaskId.getOrDefault(viewSlot.getItem().taskId, true);
     }
 
     private void refreshList() {
