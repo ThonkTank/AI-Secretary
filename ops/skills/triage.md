@@ -81,6 +81,7 @@ Available skills and when to assign them:
 | `review-smells` | Code smells, anti-patterns, duplication, complexity |
 | `review-elegance` | Readability, idiomatic style, naming |
 | `review-simplicity` | Over-engineering, unnecessary abstractions, KISS violations |
+| `review-quality` | Combined smells + elegance + simplicity for small directories |
 | `review-structure` | File/folder organization, package layout, co-location |
 | `review-architecture` | Layer violations, dependency direction, separation of concerns |
 | `review-conventions` | Inconsistent patterns across the codebase, naming conventions |
@@ -88,6 +89,8 @@ Available skills and when to assign them:
 | `review-performance` | Performance issues, main-thread blocking, inefficient queries |
 | `review-design` | UI visual design, layout, styling |
 | `review-accessibility` | Accessibility, usability, a11y compliance |
+| `review-ui` | Combined visual design + accessibility for small UI scopes |
+| `review-onboarding` | Missing/poor docs, comments, onboarding friction, stale docs |
 
 If unsure, use `review-smells` as the default.
 

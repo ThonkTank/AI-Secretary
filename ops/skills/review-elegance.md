@@ -81,6 +81,7 @@ Elegance is earned clarity, not cleverness. The goal is code that a reader thank
 Use these severity tags in backlog entries and in the run summary's `[SEVERITY]` field:
 - `[improve]` — Clear opportunity to make the code more elegant
 - `[consider]` — Subjective improvement worth thinking about
+- `[keep]` — Strong pattern worth preserving *(run summary only — do not write to REVIEW_BACKLOG.md)*
 
 For each entry, show the **current code** and a **proposed elegant alternative**. Focus on changes that genuinely improve clarity — not just personal style preferences.
 

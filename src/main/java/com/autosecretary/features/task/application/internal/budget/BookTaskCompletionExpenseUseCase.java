@@ -42,8 +42,6 @@ public class BookTaskCompletionExpenseUseCase {
             return false;
         }
 
-        long expenseCents = task.core.budgetRequiredCents;
-
         String accountId = resolveAccountId(task.core.budgetAccountId);
         if (accountId == null) {
             return false;
@@ -52,7 +50,7 @@ public class BookTaskCompletionExpenseUseCase {
         repository.bookExpenseAndDeductBalance(
                 accountId,
                 task.core.budgetCategoryId,
-                expenseCents,
+                task.core.budgetRequiredCents,
                 bookingDate,
                 "Task: " + task.core.title
         );

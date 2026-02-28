@@ -28,6 +28,10 @@ Schedules one calendar day from end to end.
 
 ### Multi-Day Window (`generateSlotsForWindow`)
 Schedules several consecutive days in one pass, distributing repetitions intelligently.
+The scheduler assumes the window is **7 days** when computing how many total repetitions
+a task should have across the window (e.g. a task with 3 reps/week in a 7-day window has
+a quota of 3; a daily task has a quota of 7).
+
 1. Builds a `DaySchedulingContext` per day (window bounds + occupied intervals).
 2. Pins fixed-time (`TERMIN`) tasks per day first.
 3. Runs `assignGlobalBestFitAcrossWindow` — a single competitive loop that picks the
@@ -53,6 +57,12 @@ On each iteration of the placement loop:
    - Computes `gainScore` (sum of scores for the incoming chain) and
      `lossScore` (sum of scores for evicted slots).
    - Returns `null` if infeasible; returns a `ChainPlacement` with `netScore = gain − loss`.
+
+   > **Why start times include occupied-interval starts:** `collectStartPoints` adds the start
+   > of every *displaceable* already-placed slot as a candidate start point — not just free-gap
+   > starts. This is what enables displacement: the algorithm proposes placing a new chain at
+   > exactly the same time as a lower-scoring existing slot and, if the net score is positive,
+   > evicts it. Without this, displacement would never trigger.
 
 3. **Pick the global winner** — the `ChainPlacement` with the highest positive `netScore`
    across all days and chains.
@@ -102,7 +112,7 @@ scorer.onSlotAssigned(task, assignedStart)  // mark pref slot consumed, incremen
 | Type | Purpose |
 |---|---|
 | `OccupiedInterval` | A time interval that is already claimed (task slot or calendar block). `candidate == null` → hard block (never displaceable). |
-| `DisplacementCandidate` | Metadata for a placed slot that *may* be evicted. Holds `lossScore` and `atomicGroupId` (chain siblings must be evicted together). |
+| `DisplacementCandidate` | Metadata for a placed slot that *may* be evicted. Holds `lossScore` and `atomicGroupId` (chain siblings must be evicted together). Also has `protectedFromNormalTasks`: when `true` (TERMIN slots), the slot can only be displaced by another TERMIN slot — normal scored tasks cannot evict it even if their score is higher. |
 | `ChainNode` | One task in a prerequisite chain, plus the minimum gap after the preceding task. |
 | `ChainPlacement` | A fully evaluated placement proposal: chain + start times + slots to displace + net score. |
 | `DaySchedulingContext` | One day's scheduling state (window bounds + mutable occupied-interval list). |
@@ -117,6 +127,23 @@ scorer.onSlotAssigned(task, assignedStart)  // mark pref slot consumed, incremen
 - **Child prerequisite chains** — `buildTaskChains` only iterates tree roots; prerequisites on child tasks are silently ignored.
 
 ---
+
+## Log Output
+
+Log messages are produced via the `Consumer<String> logger` passed to the constructor
+(null in production, wired to `Log.d` or similar in debug builds). The messages mix
+**German** user-facing strings with **English** field names, for example:
+
+```
+=== Zusammenfassung 2025-06-01 ===      # day summary header
+  Einkaufen: 1 slots [09:00-09:30(400)] # task "Einkaufen" scheduled at 09:00
+  Sport: unscheduled                    # no slot placed for this task
+[GLOBAL-COMPETE] day=… winner=… verdrängt=keine  # "displaced: none"
+[SCHED_CONFLICT] {taskId=…, reasonCode=NO_MATCHING_GAP, …}
+```
+
+If you see unfamiliar German words in log output: "Gesamt" = total, "Zusammenfassung" = summary,
+"verdrängt" = displaced, "Lücke" = gap, "Termin" = appointment/fixed task.
 
 ## Public Resources
 

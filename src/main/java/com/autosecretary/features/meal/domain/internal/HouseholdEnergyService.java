@@ -101,7 +101,7 @@ public class HouseholdEnergyService {
         Objects.requireNonNull(member, "member must not be null");
         Objects.requireNonNull(member.activityLevel, "member.activityLevel must not be null");
         Objects.requireNonNull(referenceDate, "referenceDate must not be null");
-        return (int) (calculateBmr(member, referenceDate) * member.activityLevel.factor);
+        return (int) Math.round(calculateBmr(member, referenceDate) * member.activityLevel.factor);
     }
 
     /**

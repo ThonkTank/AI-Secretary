@@ -116,17 +116,6 @@ public final class TaskSeedDataFactory {
             return this;
         }
 
-        TaskBuilder progressResetPerRep(String unit, int target, int minPerRep, int maxPerRep) {
-            task.core.progress.unit = unit;
-            task.core.progress.resetPerRep = true;
-            task.core.progress.target = target;
-            task.core.progress.current = 0;
-            task.core.progress.minPerRep = minPerRep;
-            task.core.progress.maxPerRep = maxPerRep;
-            task.core.progress.totalProgress = 0;
-            return this;
-        }
-
         TaskBuilder resetPerRep(boolean resetPerRep) {
             task.core.progress.resetPerRep = resetPerRep;
             return this;

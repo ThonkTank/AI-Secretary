@@ -237,7 +237,7 @@ public class MealPlannerFragment extends Fragment {
         shoppingList.removeAllViews();
 
         for (PantryItem item : presenter.getPantryItems()) {
-            TextView pantryRow = inflateTextRow(item.ingredientName + " · " + item.getFormattedAmount() + " · " + item.getExpiryInfo(), pantryList);
+            TextView pantryRow = inflateTextRow(item.ingredientName + " · " + item.getFormattedAmount() + " · " + item.getExpiryInfo(LocalDate.now()), pantryList);
             pantryList.addView(pantryRow);
         }
 

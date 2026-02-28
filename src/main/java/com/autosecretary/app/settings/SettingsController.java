@@ -90,22 +90,21 @@ public class SettingsController {
     /**
      * Execute a task on the background executor, showing a toast result on the main thread.
      *
-     * If the task succeeds and {@code notifyOnSuccess} is true, {@link #onDataChanged} is invoked
-     * to notify listeners that the application state has changed.
+     * On success, {@link #onDataChanged} is invoked to notify listeners that the application
+     * state has changed.
      *
      * @param successMessageId   resource ID for the toast shown on success
      * @param failureMessageId   resource ID for the toast shown on failure
      * @param task               the operation to execute; should return true if successful
-     * @param notifyOnSuccess    if true, invokes {@link #onDataChanged} on successful completion
      */
     private void runInBackground(
-            int successMessageId, int failureMessageId, BackgroundTask task, boolean notifyOnSuccess) {
+            int successMessageId, int failureMessageId, BackgroundTask task) {
         executorService.execute(() -> {
             boolean success = task.execute();
             mainHandler.post(() -> {
                 Toast.makeText(context, success ? successMessageId : failureMessageId,
                         Toast.LENGTH_LONG).show();
-                if (success && notifyOnSuccess) {
+                if (success) {
                     onDataChanged.run();
                 }
             });
@@ -194,8 +193,7 @@ public class SettingsController {
                         runInBackground(
                                 R.string.settings_restore_success,
                                 R.string.settings_restore_failure,
-                                () -> settingsDataService.restoreBackup(backupFile),
-                                true))
+                                () -> settingsDataService.restoreBackup(backupFile)))
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
@@ -215,8 +213,7 @@ public class SettingsController {
                         runInBackground(
                                 R.string.settings_reset_success,
                                 R.string.settings_reset_failure,
-                                settingsDataService::factoryReset,
-                                true))
+                                settingsDataService::factoryReset))
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }

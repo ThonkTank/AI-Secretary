@@ -146,7 +146,7 @@ Use these severity tags in backlog entries and in the run summary's `[SEVERITY]`
 - `[consider]` — Possible improvement with tradeoffs
 - `[keep]` — Current structure is good and should stay as-is *(run summary only — do not write to REVIEW_BACKLOG.md)*
 
-For each entry:
+Per entry:
 - **Path(s) involved**
 - **What makes it hard to read/navigate today**
 - **Proposed structural change**

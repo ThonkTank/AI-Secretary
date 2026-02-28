@@ -4,30 +4,37 @@
 
 ---
 
-### [drift] `RoomDatabase` direct reference in application-layer class — `TaskSlotToggleMutation.java:49,56,62,109,118,130,132`
+### [warning] 1/3 Convert TaskDAO to abstract class with @Transaction methods @skill:review-architecture
 
-`TaskSlotToggleMutation` holds a `RoomDatabase` instance to call `runInTransaction()`.
-Room infrastructure types normally stay in the `data/` layer; the application layer
-accesses data only through DAOs. No other application-layer class holds a `RoomDatabase`
-reference. The cross-DAO transaction requirement (writing `task`, `slot`, and
-`transitionStat` atomically) is the justification, and Room's intended API for this is
-`RoomDatabase.runInTransaction()` — so the usage is correct. However, the dependency
-direction is inconsistent with the rest of the codebase.
+**Files:** features/task/data/TaskDAO.java
 
-**Why it matters:** Introduces a precedent that future contributors might copy when a
-simpler DAO method would suffice. Also makes testing harder (requires mocking `RoomDatabase`).
+**Change:** Convert from interface to abstract class. Add `@Transaction`-annotated default methods to coordinate multi-DAO writes for task+slot+transitionStat atomicity.
 
-**Suggested fix (if scope allows):** Expose a `@Transaction`-annotated method on
-`TaskDAO` (making it an abstract class rather than an interface) that encapsulates the
-combined write. This would require:
-1. Converting `TaskDAO` from interface to abstract class
-2. Adding `@Transaction` default method(s) that coordinate writes with `transitionDao`
-3. Updating `AppCompositionRoot.java` to not pass `db` parameter
-Given that no repository layer exists and multi-DAO transactions require framework
-support, evaluate whether the refactoring complexity is worth the architectural benefit.
+**Note:** *(Needs promotion above <TARGET_DIR>)* — This file is in `features/task/data/`, outside the target scope. The full fix requires coordination across data/, application/, and app/ layers.
 
-**Note:** This issue affects `AppCompositionRoot.java` (caller) as well but the
-architectural concern originates here.
+**Context:** Currently `TaskSlotToggleMutation` directly calls `RoomDatabase.runInTransaction()` to coordinate writes across DAO boundaries. Moving this responsibility to `TaskDAO` maintains layer boundaries (application layer uses DAOs only, not framework types).
+
+---
+
+### [warning] 2/3 Update TaskSlotToggleMutation to use coordinated DAO methods @skill:review-architecture
+
+**Files:** TaskSlotToggleMutation.java:49,56,62,109,118,130,132
+
+**Change:** Remove `RoomDatabase` dependency from this class. Replace direct `db.runInTransaction()` calls with the new `TaskDAO` transaction methods added in sub-task 1/3.
+
+**Dependency:** Requires sub-task 1/3 (TaskDAO refactor) to be completed first.
+
+---
+
+### [warning] 3/3 Update AppCompositionRoot to remove db parameter @skill:review-architecture
+
+**Files:** app/AppCompositionRoot.java
+
+**Change:** Remove `RoomDatabase` from the composition root. Stop passing `db` parameter to `TaskSlotToggleMutation` constructor (after sub-task 2/3 removes the dependency).
+
+**Note:** *(Needs promotion above <TARGET_DIR>)* — This file is in `app/`, outside the target scope. Coordinate with sub-tasks 1/3 and 2/3.
+
+**Dependency:** Requires sub-task 2/3 (TaskSlotToggleMutation refactor) to be completed first.
 
 ---
 

@@ -72,11 +72,11 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private static final SchedulingConflict.ReasonCode REASON_OUTSIDE_WINDOW = SchedulingConflict.ReasonCode.OUTSIDE_WINDOW;
     private static final SchedulingConflict.ReasonCode REASON_CALENDAR_OVERLAP = SchedulingConflict.ReasonCode.CALENDAR_OVERLAP;
     private static final SchedulingConflict.ReasonCode REASON_PREREQUISITE_BLOCKED = SchedulingConflict.ReasonCode.PREREQUISITE_BLOCKED;
+    private static final SchedulingConflict.ReasonCode REASON_NO_MATCHING_GAP = SchedulingConflict.ReasonCode.NO_MATCHING_GAP;
 
     private static final String GROUP_PREFIX_CHAIN = "chain:";
     private static final String GROUP_PREFIX_SLOT = "slot:";
     private static final String GROUP_PREFIX_FIXED = "fixed:";
-    private static final SchedulingConflict.ReasonCode REASON_NO_MATCHING_GAP = SchedulingConflict.ReasonCode.NO_MATCHING_GAP;
 
     // Flat tiebreaker bonus per slot when evaluating prerequisite chains.
     // Favours longer chains being placed as a unit over individual task placement.
@@ -89,6 +89,14 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
      */
     private static final int FIXED_TASK_SCORE = Integer.MAX_VALUE / 2;
 
+    /**
+     * A half-open time interval {@code [start, end)}.
+     *
+     * <p>Implements {@link Comparable} so that lists of intervals (especially
+     * {@code occupied}) can be sorted by start time (then end time as a tiebreaker).
+     * Many methods in this class rely on {@code occupied} being sorted; the sort is
+     * maintained by calling {@code occupied.sort(Interval::compareTo)} after every mutation.
+     */
     private static class Interval implements Comparable<Interval> {
         final LocalDateTime start;
         final LocalDateTime end;
@@ -173,16 +181,17 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     /**
      * A fully evaluated candidate placement for a prerequisite chain.
      *
-     * <p>{@code chain} and {@code starts} are parallel lists: {@code starts.get(i)} is the
-     * proposed start time for {@code chain.get(i)}.
+     * <p>{@code chain}, {@code starts}, and {@code nodeScores} are parallel lists:
+     * {@code starts.get(i)} is the proposed start time and {@code nodeScores.get(i)} is the
+     * individual task score for {@code chain.get(i)}.
      *
      * <p>{@code netScore = gainScore − lossScore}.  A placement is only applied when
      * {@code netScore > 0}, meaning the incoming chain is worth more than whatever
      * it would displace.
-     */
-    /**
+     *
      * @param chain       nodes in prerequisite order
      * @param starts      parallel list of proposed start times for each node
+     * @param nodeScores  parallel list of individual task scores for each node (for slot display)
      * @param toDisplace  slots that must be evicted to make room; may be empty
      * @param gainScore   sum of scores for all incoming slots (plus chain-completion bonus)
      * @param lossScore   sum of loss scores for all evicted slots (atomic groups counted once)
@@ -191,6 +200,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
      */
     private record ChainPlacement(List<ChainNode> chain,
                                   List<LocalDateTime> starts,
+                                  List<Integer> nodeScores,
                                   Set<DisplacementCandidate> toDisplace,
                                   int gainScore,
                                   int lossScore,
@@ -198,11 +208,12 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                   LocalDate day) {
         ChainPlacement(List<ChainNode> chain,
                        List<LocalDateTime> starts,
+                       List<Integer> nodeScores,
                        Set<DisplacementCandidate> toDisplace,
                        int gainScore,
                        int lossScore,
                        LocalDate day) {
-            this(chain, starts, toDisplace, gainScore, lossScore, gainScore - lossScore, day);
+            this(chain, starts, nodeScores, toDisplace, gainScore, lossScore, gainScore - lossScore, day);
         }
     }
 
@@ -212,23 +223,15 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
      * this day (task slots and calendar blocks); it is updated in-place as placements
      * and displacements are applied.
      */
-    private static class DaySchedulingContext {
-        final LocalDate day;
-        final LocalDateTime windowStart;
-        final LocalDateTime windowEnd;
-        final List<OccupiedInterval> occupied;
+    private record DaySchedulingContext(LocalDate day,
+                                        LocalDateTime windowStart,
+                                        LocalDateTime windowEnd,
+                                        List<OccupiedInterval> occupied) {}
 
-        DaySchedulingContext(LocalDate day,
-                             LocalDateTime windowStart,
-                             LocalDateTime windowEnd,
-                             List<OccupiedInterval> occupied) {
-            this.day = day;
-            this.windowStart = windowStart;
-            this.windowEnd = windowEnd;
-            this.occupied = occupied;
-        }
-    }
-
+    /**
+     * Return value of {@link #initSchedulingRun}: the task forest (roots only) and
+     * the fully flattened list of all tasks (roots + all descendants).
+     */
     private record SchedulingRunInit(List<Task> taskTree, List<Task> allTasks) {}
 
     private static final SchedulingWindowProvider DEFAULT_WINDOW = SchedulingWindowProvider.DEFAULT;
@@ -242,7 +245,6 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
 
     private int newSlots;
     private Map<String, Task> allTasksById;
-    private LocalDate schedulingDay;
     private TaskPlanningState planningState;
 
     /** HH:mm formatter used in log output, e.g. "09:30". */
@@ -310,7 +312,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
      * be controlled precisely. Delegates to the five-argument variant with an empty calendar list.
      */
     TaskSlotGenerationResult generateSlotsForDay(List<Task> tasks, LocalDateTime windowStart, LocalDateTime windowEnd, TaskPlanningState state) {
-        return generateSlotsForDay(tasks, windowStart, windowEnd, state, new ArrayList<>());
+        return generateSlotsForDay(tasks, windowStart, windowEnd, state, List.of());
     }
 
     @Override
@@ -379,7 +381,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                              LocalDateTime windowEnd,
                                              TaskPlanningState state,
                                              List<TaskCalendarEvent> calendarEvents) {
-        schedulingDay = windowStart.toLocalDate();
+        LocalDate schedulingDay = windowStart.toLocalDate();
         SchedulingRunInit init = initSchedulingRun(tasks, state);
         List<Task> taskTree = init.taskTree();
         List<Task> allTasks = init.allTasks();
@@ -440,7 +442,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private SchedulingRunInit initSchedulingRun(List<Task> tasks, TaskPlanningState state) {
         newSlots = 0;
         scorer.reset();
-        scorer.setTransitionStats(transitionStatLoader != null ? transitionStatLoader.load() : new ArrayList<>());
+        scorer.setTransitionStats(transitionStatLoader != null ? transitionStatLoader.load() : null);
         lastConflicts.clear();
         planningState = state;
         List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
@@ -452,13 +454,17 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return new SchedulingRunInit(taskTree, allTasks);
     }
 
+    /**
+     * Adapts the single-day path to reuse {@link #assignGlobalBestFitAcrossWindow} without
+     * duplicating the competitive placement loop. Wraps the single day's parameters into a
+     * one-element {@link DaySchedulingContext} list and delegates entirely.
+     */
     private void assignGlobalBestFit(List<Task> tasks,
                                      LocalDateTime windowStart,
                                      LocalDateTime windowEnd,
                                      List<OccupiedInterval> occupied) {
-        List<DaySchedulingContext> singleDay = new ArrayList<>();
-        singleDay.add(new DaySchedulingContext(windowStart.toLocalDate(), windowStart, windowEnd, occupied));
-        assignGlobalBestFitAcrossWindow(tasks, singleDay);
+        assignGlobalBestFitAcrossWindow(tasks,
+                List.of(new DaySchedulingContext(windowStart.toLocalDate(), windowStart, windowEnd, occupied)));
     }
 
     /** Safety cap for the placement loop — prevents infinite scheduling if a bug prevents convergence. */
@@ -475,14 +481,14 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
 
             for (DaySchedulingContext context : contexts) {
                 List<LocalDateTime> startPoints = collectStartPoints(
-                        findGaps(context.occupied, context.windowStart, context.windowEnd),
-                        context.occupied);
+                        findGaps(context.occupied(), context.windowStart(), context.windowEnd()),
+                        context.occupied());
                 if (startPoints.isEmpty()) {
                     continue;
                 }
                 ChainPlacement dayBest = null;
                 for (List<ChainNode> chain : chains) {
-                    ChainPlacement chainBest = evaluateChainCandidates(chain, startPoints, context.windowEnd, context.occupied);
+                    ChainPlacement chainBest = evaluateChainCandidates(chain, startPoints, context.windowEnd(), context.occupied());
                     if (chainBest != null && chainBest.netScore > 0 && (dayBest == null || chainBest.netScore > dayBest.netScore)) {
                         dayBest = chainBest;
                     }
@@ -498,7 +504,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             }
 
             logGlobalCompetition(best, bestContext);
-            applyPlacement(best, bestContext.occupied);
+            applyPlacement(best, bestContext.occupied());
         }
         if (iterations >= MAX_PLACEMENT_ITERATIONS) {
             log("[WARN] assignGlobalBestFitAcrossWindow hit safety cap of " + MAX_PLACEMENT_ITERATIONS + " iterations");
@@ -513,34 +519,28 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                     .append("@").append(placement.starts.get(i).format(HMM));
         }
 
-        StringBuilder displaced = new StringBuilder();
+        List<String> displacedParts = new ArrayList<>();
         for (DisplacementCandidate candidate : placement.toDisplace) {
             TaskSlot slot = candidate.slot;
             Task owner = candidate.task != null ? candidate.task : allTasksById.get(slot.taskId);
-            if (displaced.length() > 0) {
-                displaced.append(", ");
-            }
-            displaced.append(owner != null ? owner.core.title : slot.taskId)
-                    .append("[")
-                    .append(slot.day)
-                    .append(" ")
-                    .append(slot.start != null ? slot.start.format(HMM) : "?")
-                    .append("-")
-                    .append(slot.end != null ? slot.end.format(HMM) : "?")
-                    .append("]");
+            String title = owner != null ? owner.core.title : slot.taskId;
+            String s = slot.start != null ? slot.start.format(HMM) : "?";
+            String e = slot.end != null ? slot.end.format(HMM) : "?";
+            displacedParts.add(title + "[" + slot.day + " " + s + "-" + e + "]");
         }
+        String displaced = String.join(", ", displacedParts);
 
-        log("[GLOBAL-COMPETE] day=" + context.day
+        log("[GLOBAL-COMPETE] day=" + context.day()
                 + " winner=" + chainSummary
                 + " gain=" + placement.gainScore
                 + " loss=" + placement.lossScore
                 + " net=" + placement.netScore
-                + (displaced.length() > 0 ? " verdrängt=" + displaced : " verdrängt=keine"));
+                + (!displaced.isEmpty() ? " verdrängt=" + displaced : " verdrängt=keine"));
     }
 
     private void logWindowSummary(List<Task> allTasks, List<DaySchedulingContext> contexts) {
         for (DaySchedulingContext context : contexts) {
-            int totalDaySlots = logDaySummary(allTasks, context.day, false);
+            int totalDaySlots = logDaySummary(allTasks, context.day(), false);
             log("Gesamt: " + totalDaySlots + " slots");
         }
         log("Global neu eingeplant: " + newSlots + " slots");
@@ -563,9 +563,9 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             if (!daySlots.isEmpty()) {
                 totalDaySlots += daySlots.size();
                 StringBuilder summary = new StringBuilder();
-                for (TaskSlot slot : daySlots) {
-                    if (summary.length() > 0) summary.append(", ");
-                    summary.append(formatSlot(slot));
+                for (int j = 0; j < daySlots.size(); j++) {
+                    if (j > 0) summary.append(", ");
+                    summary.append(formatSlot(daySlots.get(j)));
                 }
                 log("  " + t.core.title + ": " + daySlots.size() + " slots [" + summary + "]");
             } else if (includeUnscheduled) {
@@ -623,6 +623,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                          LocalDateTime windowEnd,
                                          List<OccupiedInterval> occupied) {
         List<LocalDateTime> starts = new ArrayList<>();
+        List<Integer> nodeScores = new ArrayList<>();
         Set<DisplacementCandidate> toDisplace = new HashSet<>();
         int gain = 0;
         boolean incomingContainsFixed = false;
@@ -666,6 +667,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             }
             gain += score;
             starts.add(cursor);
+            nodeScores.add(score);
             cursor = end;
         }
 
@@ -675,9 +677,24 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             return null;
         }
 
-        return new ChainPlacement(new ArrayList<>(chain), starts, toDisplace, gain, loss, firstStart.toLocalDate());
+        return new ChainPlacement(new ArrayList<>(chain), starts, nodeScores, toDisplace, gain, loss, firstStart.toLocalDate());
     }
 
+    /**
+     * Identifies the task that most recently ended just before {@code candidateStart},
+     * used by {@link TaskScorer#score} to compute the follow-up boost.
+     *
+     * <p>Two sources are merged to find the "previous" task:
+     * <ol>
+     *   <li><b>Earlier nodes in the current chain</b> — nodes already committed to
+     *       {@code chainStarts} (indices 0..{@code currentIndex-1}) represent tasks that
+     *       would run before the current node in this candidate placement.</li>
+     *   <li><b>Already-placed occupied intervals</b> — slots in {@code occupied} that ended
+     *       at or before {@code candidateStart} represent previously scheduled tasks on the
+     *       same day.</li>
+     * </ol>
+     * The source whose end time is latest (closest to {@code candidateStart}) wins.
+     */
     private String findPreviousTaskIdForContext(LocalDateTime candidateStart,
                                                 List<LocalDateTime> chainStarts,
                                                 List<ChainNode> chain,
@@ -710,18 +727,22 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return taskId;
     }
 
+    /**
+     * Sums the loss scores of the candidates to displace, counting each atomic group at most once.
+     *
+     * <p>When a chain (A → B → C) was placed as a unit, all three slots share an
+     * {@code atomicGroupId}. The first slot stores the full chain's {@code gainScore} as its
+     * own {@code lossScore}; subsequent slots store 0 (see {@link #applyPlacement}). Deduplication
+     * by group ID therefore produces the correct total without double-counting.
+     *
+     * <p>Candidates without a group ID (single-slot placements) are counted individually.
+     */
     private int computeAtomicLoss(Set<DisplacementCandidate> candidates) {
         int loss = 0;
         Set<String> seenGroups = new HashSet<>();
         for (DisplacementCandidate candidate : candidates) {
-            if (candidate == null) {
-                continue;
-            }
-            if (candidate.atomicGroupId != null) {
-                if (seenGroups.add(candidate.atomicGroupId)) {
-                    loss += Math.max(0, candidate.lossScore);
-                }
-            } else {
+            boolean counted = candidate.atomicGroupId == null || seenGroups.add(candidate.atomicGroupId);
+            if (counted) {
                 loss += Math.max(0, candidate.lossScore);
             }
         }
@@ -751,12 +772,10 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             if (prereqEnd == null) {
                 for (int i = 0; i < currentIndex; i++) {
                     ChainNode n = chain.get(i);
-                    if (!n.task.core.id.equals(prereq.prerequisiteId)) {
-                        continue;
+                    if (n.task.core.id.equals(prereq.prerequisiteId)) {
+                        prereqEnd = chainStarts.get(i).plusMinutes(n.task.core.plannedDurationMinutes());
+                        break;
                     }
-                    LocalDateTime start = chainStarts.get(i);
-                    prereqEnd = start.plusMinutes(n.task.core.plannedDurationMinutes());
-                    break;
                 }
             }
 
@@ -826,6 +845,16 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return chains;
     }
 
+    /**
+     * Depth-first traversal that extends {@code path} one node at a time along the outgoing
+     * prerequisite edges and emits a complete chain whenever a leaf (or a cycle) is reached.
+     *
+     * <p><b>Cycle detection:</b> {@code seen} tracks the nodes currently on the active path.
+     * If a node is already in {@code seen} when revisited, a cycle exists; the current path
+     * is emitted as-is and the traversal stops that branch. {@code seen.remove(current.core.id)}
+     * at the end of each call is the backtracking step — it un-marks the node when the DFS
+     * returns up the call stack, so sibling branches can legitimately visit the same node.
+     */
     private void dfsBuildChains(Task current,
                                 Map<String, List<ChainNode>> outgoing,
                                 List<ChainNode> path,
@@ -867,11 +896,11 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         for (int i = 0; i < placement.chain.size(); i++) {
             Task task = placement.chain.get(i).task;
             LocalDateTime start = placement.starts.get(i);
-            TaskSlot slot = createScheduledSlot(task, start, placement.gainScore / placement.chain.size(), null);
+            TaskSlot slot = createScheduledSlot(task, start, placement.nodeScores.get(i));
             int plannedDuration = task.core.plannedDurationMinutes();
             slot.end = start.plusMinutes(plannedDuration).toLocalTime();
             slot.chainId = chainId;
-            finalizeAssignment(task, slot, slot.score);
+            finalizeAssignment(task, slot);
             // For chains: the first slot carries the full gainScore as displacementScore so that
             // computeAtomicLoss (which deduplicates by atomicGroupId) counts the full chain value
             // exactly once. Subsequent slots get 0 — they are covered by the first slot's count.
@@ -884,6 +913,19 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         occupied.sort(Interval::compareTo);
     }
 
+    /**
+     * Permanently removes evicted slots from both the in-memory task model and the occupied-interval list.
+     *
+     * <p>Two structures are mutated:
+     * <ol>
+     *   <li>{@code task.slots} — the slot is removed from the owning task's slot list so it will
+     *       not be persisted to the database on the next save.</li>
+     *   <li>{@code occupied} — the interval entry is removed so subsequent start-point and
+     *       gap calculations on the same day see the freed time.</li>
+     * </ol>
+     * If a slot's task cannot be found in {@link #allTasksById} (e.g. stale ID), the slot is
+     * still removed from {@code occupied} to keep the interval list consistent.
+     */
     private void removeDisplacedSlots(Set<DisplacementCandidate> displaced, List<OccupiedInterval> occupied) {
         if (displaced.isEmpty()) {
             return;
@@ -909,17 +951,30 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return new ArrayList<>(lastConflicts);
     }
 
+    /**
+     * Post-placement pass: adds a {@link SchedulingConflict} with reason
+     * {@link SchedulingConflict.ReasonCode#NO_MATCHING_GAP} for every task that was not
+     * placed on any day in the scheduling window.
+     *
+     * <p>This runs <em>after</em> the competitive placement loop has finished, so it captures
+     * tasks that were eligible but could not find a positive-net-score slot anywhere in the
+     * window — usually because the day is fully booked with higher-priority work.
+     * Conflicts are consumed by the caller (typically a use case or a widget) to surface
+     * diagnostic information to the user.
+     */
     private void appendNoGapConflictsForWindow(List<Task> tasks, LocalDate startDay, int days) {
         LocalDate endExclusive = startDay.plusDays(days);
         for (Task task : tasks) {
             if (task.core == null || task.core.id == null || task.core.completed) {
                 continue;
             }
-            boolean hasWindowSlot = task.slots.stream().anyMatch(slot ->
-                    slot.day != null
-                            && !slot.day.isBefore(startDay)
-                            && slot.day.isBefore(endExclusive)
-                            && slot.scheduled);
+            boolean hasWindowSlot = false;
+            for (TaskSlot slot : task.slots) {
+                if (slot.day != null && !slot.day.isBefore(startDay) && slot.day.isBefore(endExclusive) && slot.scheduled) {
+                    hasWindowSlot = true;
+                    break;
+                }
+            }
             if (hasWindowSlot) {
                 continue;
             }
@@ -931,8 +986,8 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
 
     private void addConflict(Task task, LocalDate day, SchedulingConflict.ReasonCode reasonCode, String details) {
         SchedulingConflict conflict = new SchedulingConflict(
-                task.core != null ? task.core.id : null,
-                task.core != null ? task.core.title : "",
+                task.core.id,
+                task.core.title,
                 day,
                 reasonCode,
                 details);
@@ -965,17 +1020,20 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             }
             Set<OccupiedInterval> overlaps = findOverlappingIntervals(occupied, start, end);
             if (!overlaps.isEmpty()) {
-                boolean overlapsCalendar = overlaps.stream().anyMatch(interval -> interval.candidate == null);
+                boolean overlapsCalendar = false;
+                for (OccupiedInterval overlap : overlaps) {
+                    if (overlap.candidate == null) { overlapsCalendar = true; break; }
+                }
                 addConflict(task, day, overlapsCalendar ? REASON_CALENDAR_OVERLAP : REASON_NO_MATCHING_GAP,
                         "Termin überschneidet belegte Zeit");
                 continue;
             }
-            TaskSlot slot = createScheduledSlot(task, start, FIXED_TASK_SCORE, null);
+            TaskSlot slot = createScheduledSlot(task, start, FIXED_TASK_SCORE);
             slot.end = end.toLocalTime();
             slot.displacementScore = FIXED_TASK_SCORE;
             slot.displacementGroupType = TaskSlot.DisplacementGroupType.FIXED;
             slot.displacementGroupId = GROUP_PREFIX_FIXED + task.core.id;
-            finalizeAssignment(task, slot, FIXED_TASK_SCORE);
+            finalizeAssignment(task, slot);
             if (planningState != null) {
                 planningState.recordScheduled(task.core.id, slot.day);
             }
@@ -1005,6 +1063,14 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return duration > 0 ? start.plusMinutes(duration) : null;
     }
 
+    /**
+     * Returns the free time intervals within {@code [windowStart, windowEnd)} that are not
+     * covered by any entry in {@code occupied}.
+     *
+     * <p><b>Precondition:</b> {@code occupied} must be sorted by {@link Interval#compareTo}
+     * (start time ascending). All callers maintain this invariant via
+     * {@code occupied.sort(Interval::compareTo)} after every mutation.
+     */
     private List<Interval> findGaps(List<OccupiedInterval> occupied, LocalDateTime windowStart, LocalDateTime windowEnd) {
         List<Interval> gaps = new ArrayList<>();
         LocalDateTime cursor = windowStart;
@@ -1022,6 +1088,19 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return gaps;
     }
 
+    /**
+     * Collects all {@link LocalDateTime} values that the scheduler should try as a chain start.
+     *
+     * <p>Two kinds of start points are included:
+     * <ol>
+     *   <li><b>Gap starts</b> — the beginning of each free interval returned by {@link #findGaps}.
+     *       Placing a chain here fills unused time without displacing anything.</li>
+     *   <li><b>Displaceable interval starts</b> — the start time of every already-placed task slot
+     *       that is eligible for eviction. Including these is the key to displacement: the algorithm
+     *       can propose placing a higher-scoring chain at exactly the same time as a lower-scoring
+     *       existing slot, and if the net score is positive, the existing slot is evicted.</li>
+     * </ol>
+     */
     private List<LocalDateTime> collectStartPoints(List<Interval> gaps, List<OccupiedInterval> occupied) {
         Set<LocalDateTime> starts = new HashSet<>();
         for (Interval gap : gaps) {
@@ -1047,6 +1126,18 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return result;
     }
 
+    /**
+     * Expands a set of directly overlapping intervals to include all siblings that share the
+     * same atomic group ID, then adds all resulting {@link DisplacementCandidate}s to
+     * {@code expandedCandidates}.
+     *
+     * <p><b>Why atomicity matters:</b> when a prerequisite chain (A → B → C) was placed as a
+     * unit, all three slots share the same {@code atomicGroupId}. If a new chain overlaps only
+     * B, evicting just B would leave A and C dangling in an inconsistent state. This method
+     * performs a BFS over {@code occupied} to find the full group and ensures that all members
+     * are included in the eviction set — or none are (the caller returns {@code null} if any
+     * member is non-displaceable).
+     */
     private void expandToFullChains(Set<OccupiedInterval> overlapping,
                                     List<OccupiedInterval> occupied,
                                     Set<DisplacementCandidate> expandedCandidates) {
@@ -1070,6 +1161,21 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
     }
 
+    /**
+     * Builds the initial list of occupied intervals for {@code day} from existing task slots and
+     * calendar events. This is called once per scheduling run before the placement loop begins.
+     *
+     * <p><b>Displacement eligibility:</b> a task slot is marked displaceable ({@code true}) only
+     * if it is neither locked nor a fixed-time task:
+     * <ul>
+     *   <li><b>Locked</b> — {@code slot.completed || slot.realStart != null}. A slot is locked
+     *       once the user has started or completed it; evicting it would destroy real work.</li>
+     *   <li><b>Fixed-time (TERMIN)</b> — these slots are never moved by the normal competitive
+     *       loop; they can only be displaced by other TERMIN slots (see
+     *       {@link DisplacementCandidate#protectedFromNormalTasks}).</li>
+     * </ul>
+     * Calendar events are added as hard blocks ({@code candidate == null}) and are never displaceable.
+     */
     private List<OccupiedInterval> collectOccupiedIntervals(List<Task> tasks, LocalDate day, List<TaskCalendarEvent> calendarEvents) {
         List<OccupiedInterval> intervals = new ArrayList<>();
         for (Task task : tasks) {
@@ -1094,17 +1200,37 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return intervals;
     }
 
-    private TaskSlot createScheduledSlot(Task task, LocalDateTime cursor, int score, TaskSlot parentSlot) {
+    private TaskSlot createScheduledSlot(Task task, LocalDateTime cursor, int score) {
         TaskSlot slot = new TaskSlot();
         slot.taskId = task.core.id;
         slot.score = score;
         slot.day = cursor.toLocalDate();
         slot.start = cursor.toLocalTime();
         slot.scheduled = true;
-        slot.parent = parentSlot != null ? parentSlot.id : null;
         return slot;
     }
 
+    /**
+     * Builds a {@link DisplacementCandidate} for {@code slot}, encoding the score and group ID
+     * that the competitive loop needs to evaluate eviction.
+     *
+     * <p><b>Score priority:</b> if {@code slot.displacementScore != 0} (set by a prior placement),
+     * it takes precedence over {@code slot.score}. This matters for chains: the first slot in a
+     * chain stores the full chain's {@code gainScore} as its {@code displacementScore} so that
+     * {@link #computeAtomicLoss} counts the full chain value exactly once.
+     *
+     * <p><b>Atomic group ID derivation</b> (evaluated in priority order):
+     * <ol>
+     *   <li>Use {@code slot.displacementGroupId} if already set (e.g. TERMIN slots use
+     *       {@code "fixed:<taskId>"} assigned during {@link #scheduleFixedTasks}).</li>
+     *   <li>Use {@code "chain:<chainId>"} if the slot belongs to a chain placement.</li>
+     *   <li>Use {@code "slot:<slotId>"} for standalone single-slot placements.</li>
+     * </ol>
+     *
+     * <p><b>{@code protectedFromNormalTasks}:</b> true for TERMIN slots. They can only be
+     * displaced by another TERMIN slot (incoming chain contains a fixed-time task), never by
+     * the normal competitive score comparison.
+     */
     private DisplacementCandidate toCandidate(Task task, TaskSlot slot, boolean displaceable) {
         int score = slot.displacementScore != 0 ? slot.displacementScore : slot.score;
         String atomicGroupId = slot.displacementGroupId;
@@ -1116,9 +1242,18 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return new DisplacementCandidate(task, slot, displaceable, fixedProtected, score, atomicGroupId);
     }
 
-    private void finalizeAssignment(Task task, TaskSlot slot, int score) {
-        slot.score = score;
-        slot.displacementScore = score;
+    /**
+     * Commits a newly created slot to the task model and updates the scorer's daily state.
+     *
+     * <p>Assigns {@code displacementGroupType} and {@code displacementGroupId} if not already
+     * set (chain vs. single), appends the slot to {@code task.slots}, and calls
+     * {@link TaskScorer#onSlotAssigned} to increment the daily repetition counter in the
+     * scorer's cache. Failing to call this method after creating a slot would cause the scorer
+     * to under-count today's placements, potentially scheduling more repetitions than
+     * {@code repsPerDay} allows. The slot's {@code score} is expected to have been set
+     * by the caller via {@link #createScheduledSlot} before this method is invoked.
+     */
+    private void finalizeAssignment(Task task, TaskSlot slot) {
         if (slot.displacementGroupType == null) {
             slot.displacementGroupType = slot.chainId != null ? TaskSlot.DisplacementGroupType.CHAIN : TaskSlot.DisplacementGroupType.SINGLE;
         }
@@ -1136,6 +1271,15 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return start + "-" + end + "(" + slot.score + ")";
     }
 
+    /**
+     * Finds the most recently ended scheduled or completed slot for {@code task} that finished
+     * before {@code candidateStart}.
+     *
+     * <p>Used by {@link #hasUnmetPrerequisites} to check whether the prerequisite task has
+     * already been placed at an acceptable position. A prerequisite is considered satisfied
+     * when its slot's end time is at or before {@code candidateStart} plus the required gap.
+     * Returns {@code null} if no such slot exists (prerequisite not yet placed).
+     */
     private TaskSlot findLatestScheduledSlotBefore(Task task, LocalDateTime candidateStart) {
         TaskSlot best = null;
         LocalDateTime bestEnd = null;

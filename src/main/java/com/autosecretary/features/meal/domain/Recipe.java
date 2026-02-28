@@ -16,7 +16,8 @@ import java.util.Set;
  *
  * <p>{@code totalCalories}, {@code totalProtein}, {@code totalCarbs}, and {@code totalFat}
  * are cached values computed from ingredient nutrition data and stored denormalized for display;
- * they are <em>per serving</em> (i.e. for {@code servings} base portions).
+ * they represent the <em>total for the base recipe as written</em> — for all {@code servings}
+ * portions combined, not per individual serving. Divide by {@code servings} for per-serving values.
  *
  * <p>{@code tags} is a comma-separated string of free-form tags (e.g. {@code "vegetarian,quick"}).
  */
@@ -39,7 +40,7 @@ public class Recipe {
     public LocalDate lastUsed;
     public int usageCount;
     public boolean isFavorite;
-    public int totalCalories;           // cached per-serving kcal (for base servings count)
+    public int totalCalories;           // total kcal for the full base recipe (all base servings combined; divide by servings for per-serving value)
     public int totalProtein;
     public int totalCarbs;
     public int totalFat;
@@ -95,12 +96,7 @@ public class Recipe {
     public void setRatingByMember(long memberId, int rating) {
         if (ratings == null) ratings = new ArrayList<>();
         int clamped = clampRating(rating);
-        for (int i = 0; i < ratings.size(); i++) {
-            if (ratings.get(i).memberId() == memberId) {
-                ratings.set(i, new MemberRating(memberId, clamped));
-                return;
-            }
-        }
+        ratings.removeIf(r -> r.memberId() == memberId);
         ratings.add(new MemberRating(memberId, clamped));
     }
 

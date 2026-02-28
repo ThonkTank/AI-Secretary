@@ -60,9 +60,7 @@ public final class DailyPlanningScheduler {
         // - Android 11 and earlier: always use exact scheduling (permission doesn't exist)
         //
         // See: https://developer.android.com/reference/android/app/AlarmManager#canScheduleExactAlarms()
-        boolean shouldUseExactAlarm = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms();
-
-        if (shouldUseExactAlarm) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()) {
             alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
                     nextMidnightMillis,

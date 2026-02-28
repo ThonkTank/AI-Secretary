@@ -1,48 +1,15 @@
-# Review Backlog — `app/`
+# Review Backlog — app/
 
-## Open Issues
+## Open (deferred — tradeoffs favour current approach)
 
----
+### [consider] `BackgroundTask` / `FileProducingTask` private functional interfaces in SettingsController
+**File:** `settings/SettingsController.java:51–72`
+**Why complex:** Two private `@FunctionalInterface` declarations add ~25 lines of ceremony for what are effectively `BooleanSupplier` and `Supplier<File>` from `java.util.function`.
+**Simpler alternative:** Replace both with standard library types; remove the interface declarations entirely.
+**Tradeoff:** The named types (`BackgroundTask`, `FileProducingTask`) are more semantically descriptive than `BooleanSupplier`/`Supplier<File>`, and the Javadoc on each explains the contract clearly. Marginal improvement; semantic clarity favours keeping them.
 
-### [consider] `Preferences.java` lives in `app/` but only serves task scheduling
-**Path:** `app/Preferences.java`
-
-**Why it's hard to navigate today:**
-A developer reading `features/task/ui/list/TaskViewModel` sees it import `com.autosecretary.app.Preferences`
-and must know to look in the app-level package for a scheduling-window config class that has nothing
-to do with the app's lifecycle or wiring. `Preferences` reads day start/end times per `DayOfWeek` from
-SharedPrefs — a pure task-scheduling configuration concern.
-
-**Proposed change:**
-Move to `features/task/application/internal/` (the home for Android/infrastructure implementations of
-task-domain contracts). Rename to `SchedulingWindowPreferences` or `DayWindowPreferences` to make the
-purpose concrete. Update imports in `TaskViewModel`, `TaskViewModelFactory`, and `AppCompositionRoot`.
-
-**Why it reduces mental load:**
-The class would live next to the rest of the task scheduling infrastructure. Readers of the task feature
-wouldn't need to jump to `app/` for one small class.
-
-**Tradeoffs / risks:**
-The move is low-risk (3 files touched, no logic change). However, `app/` is a conventional home for
-SharedPreferences wrappers in Android projects, so the current placement isn't wrong — just less
-discoverable for task-feature work. Tradeoffs are close; defer until a related task touches these files.
-
----
-
-### ✅ [nit] `SettingsController.showSettingsMenu` — hardcoded array size coupled to constant count
-**Path:** `app/settings/SettingsController.java:141`
-
-**Fixed:** Replaced `new String[4]` + four explicit `options[OPTION_*] = ...` assignments with a
-single inline array initializer in declaration order. The array now self-sizes to its elements;
-adding a future option requires only one line and cannot silently undersize the array.
-
----
-
-### ✅ [nit] Inconsistent null guard between the two intent-inspection helpers in `MainActivity`
-**Path:** `app/MainActivity.java`
-
-Removed unreachable `if (intent == null) return false` guard from `shouldOpenTaskCreateFromIntent`.
-Both sibling methods are only called with a non-null intent from `navigateToIntentTarget()`; the
-guard was dead code that falsely implied null could occur. Methods are now symmetric.
-
----
+### [consider] `OPTION_*` integer constants must mirror array order in SettingsController
+**File:** `settings/SettingsController.java:38–41, 153–157`
+**Why complex:** Four `private static final int` constants (0–3) must stay in sync with the string array in `showSettingsMenu()`. A silent mismatch would dispatch to the wrong handler.
+**Simpler alternative:** Drop the constants; use inline indices or an `enum`. Or restructure as a list of (label, action) pairs.
+**Tradeoff:** Named constants do clarify intent in the `switch`. Low risk of divergence given the file is small and self-contained.

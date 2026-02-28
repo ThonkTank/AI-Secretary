@@ -79,6 +79,7 @@ Use these severity tags in backlog entries and in the run summary's `[SEVERITY]`
 - `[warning]` — Smells that will grow worse over time
 - `[nit]` — Minor smells, low priority
 - `[growing]` — Pre-existing smell that is spreading
+- `[keep]` — Strong pattern worth preserving *(run summary only — do not write to REVIEW_BACKLOG.md)*
 
 Per entry:
 - **File + line(s)**

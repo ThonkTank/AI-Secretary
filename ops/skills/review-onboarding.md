@@ -130,7 +130,7 @@ Ask:
 - Are version assumptions explicit and still true?
 - Should outdated comments be deleted instead of "fixed"?
 
-## What not to do (guardrails)
+## Guardrails
 Do **not** recommend:
 - Commenting every line / obvious code
 - Replacing clear names with verbose comments
@@ -193,7 +193,7 @@ Use these severity tags in backlog entries and in the run summary's `[SEVERITY]`
 - `[stale]` — Outdated/misleading docs/comments
 - `[keep]` — Strong onboarding support; keep as-is *(run summary only — do not write to REVIEW_BACKLOG.md)*
 
-For each entry:
+Per entry:
 - **Path + line(s)** (if available)
 - **What a novice is likely to misunderstand / fail at**
 - **Recommended doc/comment change**

@@ -205,16 +205,10 @@ public final class TaskSlotToggleMutation {
 
         // Determine the most accurate event time for transition recording,
         // ordered by preference: actual completion → actual start → scheduled start → current time
-        LocalTime eventTime;
-        if (slot.realEnd != null) {
-            eventTime = slot.realEnd;
-        } else if (slot.realStart != null) {
-            eventTime = slot.realStart;
-        } else if (slot.start != null) {
-            eventTime = slot.start;
-        } else {
-            eventTime = LocalTime.now();
-        }
+        LocalTime eventTime = slot.realEnd != null ? slot.realEnd
+                : slot.realStart != null ? slot.realStart
+                : slot.start != null ? slot.start
+                : LocalTime.now();
 
         // Find the previous task and validate the transition
         String previousTaskId = taskDao.readMostRecentTaskBefore(slot.taskId, slot.day, eventTime);

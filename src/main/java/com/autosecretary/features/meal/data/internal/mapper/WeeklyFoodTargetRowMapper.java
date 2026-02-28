@@ -1,6 +1,7 @@
 package com.autosecretary.features.meal.data.internal.mapper;
 
 import com.autosecretary.features.meal.data.internal.MealFieldKeys;
+import com.autosecretary.features.meal.domain.Ingredient.FoodGroup;
 import com.autosecretary.features.meal.domain.WeeklyFoodTarget;
 
 import java.util.HashMap;
@@ -53,59 +54,59 @@ public class WeeklyFoodTargetRowMapper implements RowMapper<WeeklyFoodTarget> {
      */
     private static class FoodGroupFields {
         static void serializeGrams(Map<String, Object> row, WeeklyFoodTarget target) {
-            row.put(MealFieldKeys.WeeklyFoodTarget.GRAIN_GRAMS, target.grainGrams);
-            row.put(MealFieldKeys.WeeklyFoodTarget.POTATO_GRAMS, target.potatoGrams);
-            row.put(MealFieldKeys.WeeklyFoodTarget.VEGETABLE_GRAMS, target.vegetableGrams);
-            row.put(MealFieldKeys.WeeklyFoodTarget.FRUIT_GRAMS, target.fruitGrams);
-            row.put(MealFieldKeys.WeeklyFoodTarget.DAIRY_GRAMS, target.dairyGrams);
-            row.put(MealFieldKeys.WeeklyFoodTarget.MEAT_GRAMS, target.meatGrams);
-            row.put(MealFieldKeys.WeeklyFoodTarget.FISH_GRAMS, target.fishGrams);
-            row.put(MealFieldKeys.WeeklyFoodTarget.EGG_GRAMS, target.eggGrams);
-            row.put(MealFieldKeys.WeeklyFoodTarget.FAT_GRAMS, target.fatGrams);
-            row.put(MealFieldKeys.WeeklyFoodTarget.LEGUME_GRAMS, target.legumeGrams);
-            row.put(MealFieldKeys.WeeklyFoodTarget.NUT_GRAMS, target.nutGrams);
+            row.put(MealFieldKeys.WeeklyFoodTarget.GRAIN_GRAMS,     target.getTargetFor(FoodGroup.GRAIN));
+            row.put(MealFieldKeys.WeeklyFoodTarget.POTATO_GRAMS,    target.getTargetFor(FoodGroup.POTATO));
+            row.put(MealFieldKeys.WeeklyFoodTarget.VEGETABLE_GRAMS, target.getTargetFor(FoodGroup.VEGETABLE));
+            row.put(MealFieldKeys.WeeklyFoodTarget.FRUIT_GRAMS,     target.getTargetFor(FoodGroup.FRUIT));
+            row.put(MealFieldKeys.WeeklyFoodTarget.DAIRY_GRAMS,     target.getTargetFor(FoodGroup.DAIRY));
+            row.put(MealFieldKeys.WeeklyFoodTarget.MEAT_GRAMS,      target.getTargetFor(FoodGroup.MEAT));
+            row.put(MealFieldKeys.WeeklyFoodTarget.FISH_GRAMS,      target.getTargetFor(FoodGroup.FISH));
+            row.put(MealFieldKeys.WeeklyFoodTarget.EGG_GRAMS,       target.getTargetFor(FoodGroup.EGG));
+            row.put(MealFieldKeys.WeeklyFoodTarget.FAT_GRAMS,       target.getTargetFor(FoodGroup.FAT));
+            row.put(MealFieldKeys.WeeklyFoodTarget.LEGUME_GRAMS,    target.getTargetFor(FoodGroup.LEGUME));
+            row.put(MealFieldKeys.WeeklyFoodTarget.NUT_GRAMS,       target.getTargetFor(FoodGroup.NUT));
         }
 
         static void serializePlanned(Map<String, Object> row, WeeklyFoodTarget target) {
-            row.put(MealFieldKeys.WeeklyFoodTarget.GRAIN_PLANNED, target.grainPlanned);
-            row.put(MealFieldKeys.WeeklyFoodTarget.POTATO_PLANNED, target.potatoPlanned);
-            row.put(MealFieldKeys.WeeklyFoodTarget.VEGETABLE_PLANNED, target.vegetablePlanned);
-            row.put(MealFieldKeys.WeeklyFoodTarget.FRUIT_PLANNED, target.fruitPlanned);
-            row.put(MealFieldKeys.WeeklyFoodTarget.DAIRY_PLANNED, target.dairyPlanned);
-            row.put(MealFieldKeys.WeeklyFoodTarget.MEAT_PLANNED, target.meatPlanned);
-            row.put(MealFieldKeys.WeeklyFoodTarget.FISH_PLANNED, target.fishPlanned);
-            row.put(MealFieldKeys.WeeklyFoodTarget.EGG_PLANNED, target.eggPlanned);
-            row.put(MealFieldKeys.WeeklyFoodTarget.FAT_PLANNED, target.fatPlanned);
-            row.put(MealFieldKeys.WeeklyFoodTarget.LEGUME_PLANNED, target.legumePlanned);
-            row.put(MealFieldKeys.WeeklyFoodTarget.NUT_PLANNED, target.nutPlanned);
+            row.put(MealFieldKeys.WeeklyFoodTarget.GRAIN_PLANNED,     target.getPlannedFor(FoodGroup.GRAIN));
+            row.put(MealFieldKeys.WeeklyFoodTarget.POTATO_PLANNED,    target.getPlannedFor(FoodGroup.POTATO));
+            row.put(MealFieldKeys.WeeklyFoodTarget.VEGETABLE_PLANNED, target.getPlannedFor(FoodGroup.VEGETABLE));
+            row.put(MealFieldKeys.WeeklyFoodTarget.FRUIT_PLANNED,     target.getPlannedFor(FoodGroup.FRUIT));
+            row.put(MealFieldKeys.WeeklyFoodTarget.DAIRY_PLANNED,     target.getPlannedFor(FoodGroup.DAIRY));
+            row.put(MealFieldKeys.WeeklyFoodTarget.MEAT_PLANNED,      target.getPlannedFor(FoodGroup.MEAT));
+            row.put(MealFieldKeys.WeeklyFoodTarget.FISH_PLANNED,      target.getPlannedFor(FoodGroup.FISH));
+            row.put(MealFieldKeys.WeeklyFoodTarget.EGG_PLANNED,       target.getPlannedFor(FoodGroup.EGG));
+            row.put(MealFieldKeys.WeeklyFoodTarget.FAT_PLANNED,       target.getPlannedFor(FoodGroup.FAT));
+            row.put(MealFieldKeys.WeeklyFoodTarget.LEGUME_PLANNED,    target.getPlannedFor(FoodGroup.LEGUME));
+            row.put(MealFieldKeys.WeeklyFoodTarget.NUT_PLANNED,       target.getPlannedFor(FoodGroup.NUT));
         }
 
         static void deserializeGrams(Map<String, Object> row, WeeklyFoodTarget target) {
-            target.grainGrams = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.GRAIN_GRAMS));
-            target.potatoGrams = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.POTATO_GRAMS));
-            target.vegetableGrams = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.VEGETABLE_GRAMS));
-            target.fruitGrams = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.FRUIT_GRAMS));
-            target.dairyGrams = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.DAIRY_GRAMS));
-            target.meatGrams = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.MEAT_GRAMS));
-            target.fishGrams = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.FISH_GRAMS));
-            target.eggGrams = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.EGG_GRAMS));
-            target.fatGrams = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.FAT_GRAMS));
-            target.legumeGrams = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.LEGUME_GRAMS));
-            target.nutGrams = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.NUT_GRAMS));
+            target.setTargetFor(FoodGroup.GRAIN,     MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.GRAIN_GRAMS)));
+            target.setTargetFor(FoodGroup.POTATO,    MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.POTATO_GRAMS)));
+            target.setTargetFor(FoodGroup.VEGETABLE, MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.VEGETABLE_GRAMS)));
+            target.setTargetFor(FoodGroup.FRUIT,     MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.FRUIT_GRAMS)));
+            target.setTargetFor(FoodGroup.DAIRY,     MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.DAIRY_GRAMS)));
+            target.setTargetFor(FoodGroup.MEAT,      MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.MEAT_GRAMS)));
+            target.setTargetFor(FoodGroup.FISH,      MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.FISH_GRAMS)));
+            target.setTargetFor(FoodGroup.EGG,       MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.EGG_GRAMS)));
+            target.setTargetFor(FoodGroup.FAT,       MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.FAT_GRAMS)));
+            target.setTargetFor(FoodGroup.LEGUME,    MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.LEGUME_GRAMS)));
+            target.setTargetFor(FoodGroup.NUT,       MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.NUT_GRAMS)));
         }
 
         static void deserializePlanned(Map<String, Object> row, WeeklyFoodTarget target) {
-            target.grainPlanned = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.GRAIN_PLANNED));
-            target.potatoPlanned = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.POTATO_PLANNED));
-            target.vegetablePlanned = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.VEGETABLE_PLANNED));
-            target.fruitPlanned = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.FRUIT_PLANNED));
-            target.dairyPlanned = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.DAIRY_PLANNED));
-            target.meatPlanned = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.MEAT_PLANNED));
-            target.fishPlanned = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.FISH_PLANNED));
-            target.eggPlanned = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.EGG_PLANNED));
-            target.fatPlanned = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.FAT_PLANNED));
-            target.legumePlanned = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.LEGUME_PLANNED));
-            target.nutPlanned = MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.NUT_PLANNED));
+            target.setPlannedFor(FoodGroup.GRAIN,     MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.GRAIN_PLANNED)));
+            target.setPlannedFor(FoodGroup.POTATO,    MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.POTATO_PLANNED)));
+            target.setPlannedFor(FoodGroup.VEGETABLE, MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.VEGETABLE_PLANNED)));
+            target.setPlannedFor(FoodGroup.FRUIT,     MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.FRUIT_PLANNED)));
+            target.setPlannedFor(FoodGroup.DAIRY,     MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.DAIRY_PLANNED)));
+            target.setPlannedFor(FoodGroup.MEAT,      MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.MEAT_PLANNED)));
+            target.setPlannedFor(FoodGroup.FISH,      MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.FISH_PLANNED)));
+            target.setPlannedFor(FoodGroup.EGG,       MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.EGG_PLANNED)));
+            target.setPlannedFor(FoodGroup.FAT,       MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.FAT_PLANNED)));
+            target.setPlannedFor(FoodGroup.LEGUME,    MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.LEGUME_PLANNED)));
+            target.setPlannedFor(FoodGroup.NUT,       MapperSupport.asInt(row.get(MealFieldKeys.WeeklyFoodTarget.NUT_PLANNED)));
         }
     }
 }

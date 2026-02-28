@@ -12,12 +12,8 @@ import java.time.LocalDate;
  * without an extra lookup.
  *
  * <p>Expiry warnings are based on {@link ShelfLifeService} semantics: the expiry date is the
- * <em>last valid day</em> (MHD). {@link #isExpiringSoon()} triggers when fewer than
- * {@code EXPIRY_WARNING_DAYS} (3) days remain.
- *
- * <p>Note: {@link #isExpired()} and {@link #getDaysUntilExpiry()} call {@code LocalDate.now()}
- * internally — they are non-deterministic. For deterministic logic, use {@link ShelfLifeService}
- * directly with an explicit reference date.
+ * <em>last valid day</em> (MHD). Use {@link #getExpiryInfo(LocalDate)} for display, or
+ * {@link ShelfLifeService} directly for full expiry logic.
  */
 public class PantryItem {
 
@@ -44,28 +40,13 @@ public class PantryItem {
         }
     }
 
-    private static final int EXPIRY_WARNING_DAYS = 3;
-
-    public boolean isExpiringSoon() {
-        int days = getDaysUntilExpiry();
-        return days >= 0 && days < EXPIRY_WARNING_DAYS;
-    }
-
-    public boolean isExpired() {
-        return ShelfLifeService.isExpired(expiryDate, LocalDate.now());
-    }
-
-    public int getDaysUntilExpiry() {
-        return ShelfLifeService.daysUntilExpiry(expiryDate, LocalDate.now());
-    }
-
     public String getFormattedAmount() {
         return MealAmountFormat.format(amount, unit);
     }
 
-    public String getExpiryInfo() {
+    public String getExpiryInfo(LocalDate today) {
         if (expiryDate == null) return "Kein Ablaufdatum";
-        int days = getDaysUntilExpiry();
+        int days = ShelfLifeService.daysUntilExpiry(expiryDate, today);
         if (days < 0) return "Abgelaufen";
         if (days == 0) return "Heute";
         if (days == 1) return "Morgen";

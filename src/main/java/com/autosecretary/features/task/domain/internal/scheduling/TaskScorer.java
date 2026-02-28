@@ -305,6 +305,24 @@ final class TaskScorer {
         }
     }
 
+    /**
+     * Derives {@link CompletionState} by iterating the task's slot list once.
+     *
+     * <p>Computes:
+     * <ul>
+     *   <li>{@code completions} — total all-time completed slots.</li>
+     *   <li>{@code lastCompletion} — most recent completion date; defaults to
+     *       {@code task.core.created − 1 day} when there are no completions, so
+     *       aging calculations always have a valid reference point.</li>
+     *   <li>{@code periodCompletions} — completions within the current repetition period
+     *       window ({@code [periodStart, periodEnd)}). Only counted for tasks with an
+     *       active repetition config ({@code rep.reps > 0 && rep.periodUnit != null}).</li>
+     *   <li>{@code scheduledToday} — slots already present in the task list for {@code today}
+     *       (including completed and in-progress ones), used to enforce {@code repsPerDay}.</li>
+     *   <li>{@code isComplete} — true if the quota is met: for periodic tasks,
+     *       {@code periodCompletions ≥ rep.reps}; for one-off tasks, any completion.</li>
+     * </ul>
+     */
     private CompletionState scanSlots(Task task, LocalDate today) {
         int completions = 0;
         int scheduledToday = 0;
@@ -336,11 +354,20 @@ final class TaskScorer {
         return new CompletionState(completions, lastCompletion, periodCompletions, isComplete, scheduledToday);
     }
 
+    /**
+     * Recursively walks {@code task.children} to find the highest {@code scoringWeight}
+     * among all descendants. Returns 0 if the task has no children.
+     *
+     * <p>Used in {@link #applyBasePriorityAndChildInfluence}: when a child's priority exceeds
+     * the parent's own weight, the parent is scheduled as if it had the child's priority.
+     * This ensures that a low-priority parent blocking a high-priority child does not
+     * indefinitely suppress the child.
+     */
     private int computeMaxChildPriority(Task task) {
         int maxChildPriority = 0;
         for (Task child : task.children) {
-            maxChildPriority = Math.max(maxChildPriority, child.core.priority.scoringWeight);
-            maxChildPriority = Math.max(maxChildPriority, computeMaxChildPriority(child));
+            int childMax = Math.max(child.core.priority.scoringWeight, computeMaxChildPriority(child));
+            maxChildPriority = Math.max(maxChildPriority, childMax);
         }
         return maxChildPriority;
     }
@@ -513,6 +540,23 @@ final class TaskScorer {
         return (int) (score * urgency);
     }
 
+    /**
+     * Filters {@code task.prefSlots} down to those that apply today and detects whether
+     * any pref slot imposes a day constraint.
+     *
+     * <p><b>Day-constraint semantics:</b>
+     * <ul>
+     *   <li>A {@link com.autosecretary.features.task.data.TaskPrefSlot} imposes a day constraint
+     *       when its {@code days} set is non-null and non-empty. Such a slot only applies on
+     *       the listed days of the week.</li>
+     *   <li>If <em>any</em> pref slot has day constraints ({@code hasDayConstraints == true})
+     *       but <em>none</em> of those slots match today, {@link #applyPreferredTimeFit} returns
+     *       0 — a hard block, not just a penalty. The task is considered invalid for today.</li>
+     *   <li>If no pref slot has day constraints ({@code hasDayConstraints == false}), the task
+     *       is allowed on any day of the week with no time-fit penalty when no preferred slot
+     *       exists.</li>
+     * </ul>
+     */
     private PreferenceFitState computePreferenceFitState(Task task, DayOfWeek dayOfWeek) {
         List<TaskPrefSlot> todayPrefSlots = new ArrayList<>();
         boolean hasDayConstraints = false;

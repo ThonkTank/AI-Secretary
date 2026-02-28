@@ -59,8 +59,10 @@ Severity tags:
 - `[critical]` — Actively causes bugs or blocks maintainability
 - `[warning]` — Will grow worse over time
 - `[nit]` — Minor, low priority
+- `[growing]` — Pre-existing smell that is spreading
 - `[simplify]` — Clear KISS improvement with effectively same result
 - `[improve]` — Clear opportunity to make code more elegant/readable
+- `[consider]` — Possible improvement with tradeoffs
 
 Per entry:
 - **File + line(s)**

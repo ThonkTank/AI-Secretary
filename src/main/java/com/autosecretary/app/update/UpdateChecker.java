@@ -71,8 +71,6 @@ public class UpdateChecker {
     private static final int DOWNLOAD_CONNECT_TIMEOUT_MS = 10000;
     // Read timeout for APK download: 30s is conservative for a ~100MB file on a typical mobile network.
     private static final int DOWNLOAD_READ_TIMEOUT_MS = 30000;
-    // Standard buffer size for streaming I/O; matches common Java I/O defaults.
-    private static final int DOWNLOAD_BUFFER_SIZE_BYTES = 8192;
 
     /**
      * Weak reference to the Activity. Weak to prevent memory leaks if a background download outlives
@@ -263,11 +261,7 @@ public class UpdateChecker {
             }
             try (InputStream inputStream = connection.getInputStream();
                  FileOutputStream outputStream = new FileOutputStream(apkFile, false)) {
-                byte[] buffer = new byte[DOWNLOAD_BUFFER_SIZE_BYTES];
-                int read;
-                while ((read = inputStream.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, read);
-                }
+                inputStream.transferTo(outputStream);
             }
         } finally {
             connection.disconnect();

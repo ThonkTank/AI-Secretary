@@ -78,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (item.getItemId() == R.id.nav_meal) {
                 showMealFragment();
             } else {
-                showTaskFragment();
+                showTaskFragment(false);
             }
             return true;
         });
@@ -128,10 +128,6 @@ public class MainActivity extends AppCompatActivity {
     private boolean shouldOpenTaskCreateFromIntent(Intent intent) {
         return TaskWidgetProvider.ACTION_ADD_TASK.equals(intent.getAction())
                 || intent.getBooleanExtra(TaskWidgetProvider.EXTRA_OPEN_TASK_FLOW, false);
-    }
-
-    private void showTaskFragment() {
-        showTaskFragment(false);
     }
 
     private void showTaskFragment(boolean openCreateDialog) {

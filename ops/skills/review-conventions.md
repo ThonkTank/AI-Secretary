@@ -106,7 +106,7 @@ Use these severity tags in backlog entries and in the run summary's `[SEVERITY]`
 - `[undocumented]` — Convention is well-followed but never stated; worth writing down
 - `[stated-but-broken]` — Convention is documented but not consistently followed in practice
 - `[consider]` — Possible convention improvement, not a strict inconsistency
-- `[established]` — Convention is well-followed and worth acknowledging
+- `[established]` — Convention is well-followed and worth acknowledging *(run summary only — do not write to REVIEW_BACKLOG.md)*
 
 Per entry:
 - **Concept / area** (e.g., "DAO naming", "async result delivery", "null handling in repositories")

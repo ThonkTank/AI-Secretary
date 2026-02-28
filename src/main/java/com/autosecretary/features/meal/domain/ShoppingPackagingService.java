@@ -67,10 +67,16 @@ public class ShoppingPackagingService {
     }
 
     private static int resolvePackageAmount(Ingredient ingredient) {
-        if (ingredient == null) {
-            return 0;
-        }
         if (ingredient.storePackages != null && !ingredient.storePackages.isEmpty()) {
+            // Prefer a package whose unit matches the ingredient's default unit so that the
+            // rounding is meaningful (e.g. don't round 450 g against a "1 piece" package).
+            for (Ingredient.StorePackage pkg : ingredient.storePackages) {
+                if (ingredient.defaultUnit != null && ingredient.defaultUnit.equals(pkg.unit)
+                        && pkg.packageAmount > 0) {
+                    return pkg.packageAmount;
+                }
+            }
+            // Fall back to first package with a valid size, regardless of unit.
             int packageAmount = ingredient.storePackages.get(0).packageAmount;
             if (packageAmount > 0) {
                 return packageAmount;

@@ -27,7 +27,7 @@ import java.time.DayOfWeek;
  * <h2>Placement note</h2>
  * This class lives in {@code app/} because it is a SharedPreferences wrapper, a conventional
  * location for such helpers in Android projects. The scheduling concern is in
- * {@code features/task/}; see {@code app/REVIEW_BACKLOG.md} for a deferred move suggestion.
+ * {@code features/task/}.
  */
 public class Preferences {
     private static final String DEFAULT_DAY_START = "06:00";
@@ -38,22 +38,15 @@ public class Preferences {
 
     private final SharedPreferences prefs;
 
-    public Preferences(Context c) {
-        this.prefs = c.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
+    public Preferences(Context context) {
+        this.prefs = context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
     }
 
     public LocalTime readDayStartTime(DayOfWeek day) {
-        String key = prefKey(day, true);
-        return LocalTime.parse(prefs.getString(key, DEFAULT_DAY_START));
+        return LocalTime.parse(prefs.getString(day + "_start", DEFAULT_DAY_START));
     }
 
     public LocalTime readDayEndTime(DayOfWeek day) {
-        String key = prefKey(day, false);
-        return LocalTime.parse(prefs.getString(key, DEFAULT_DAY_END));
-    }
-
-    /** Returns a key of the form {@code MONDAY_start} or {@code FRIDAY_end}. */
-    private String prefKey(DayOfWeek day, boolean start) {
-        return day.toString() + "_" + (start ? "start" : "end");
+        return LocalTime.parse(prefs.getString(day + "_end", DEFAULT_DAY_END));
     }
 }

@@ -90,21 +90,23 @@ public class AppCompositionRoot {
     private TaskDao taskDao;
     private TaskSlotToggleMutation taskSlotToggleMutation;
     private BudgetRoomRepository budgetRoomRepository;
-    private TaskCompletionService taskCompletionService;
-    private TaskLifecycleManager taskLifecycleManager;
     private final InMemoryMealStorage mealStorage;
     private MealPlannerPresenter mealPlannerPresenter;
+    private final TaskCompletionService taskCompletionService;
+    private final TaskLifecycleManager taskLifecycleManager;
 
     public AppCompositionRoot(Application app) {
         this.app = app;
         this.sharedExecutor = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable);
             thread.setUncaughtExceptionHandler((t, e) ->
-                    Log.e("TaskUseCase", "Background crash", e)
+                    Log.e("SharedExecutor", "Background crash", e)
             );
             return thread;
         });
         this.mealStorage = new InMemoryMealStorage();
+        this.taskCompletionService = new TaskCompletionService();
+        this.taskLifecycleManager = new TaskLifecycleManager();
     }
 
     public ExecutorService getSharedExecutor() {
@@ -142,7 +144,7 @@ public class AppCompositionRoot {
                         .map(s -> new TransitionStat(s.fromTaskId, s.toTaskId, s.weight))
                         .toList();
         TaskSlotGenerator generator = new DefaultTaskSlotGenerator(
-                getTaskLifecycleManager(),
+                taskLifecycleManager,
                 message -> Log.d("SlotGen", message),
                 scheduleConfigRepository,
                 new DeviceCalendarBlockedIntervalProvider(app),
@@ -168,8 +170,8 @@ public class AppCompositionRoot {
 
         taskSlotToggleMutation = new TaskSlotToggleMutation(
                 dao,
-                getTaskCompletionService(),
-                getTaskLifecycleManager(),
+                taskCompletionService,
+                taskLifecycleManager,
                 db.taskTransitionStatDao(),
                 mainHandler::post,
                 db
@@ -192,7 +194,7 @@ public class AppCompositionRoot {
                 dao,
                 sharedExecutor,
                 mainHandler::post,
-                getTaskLifecycleManager()
+                taskLifecycleManager
         );
 
         taskViewModelFactory = new TaskViewModelFactory(
@@ -219,47 +221,42 @@ public class AppCompositionRoot {
     }
 
     public synchronized BudgetViewModelFactory getBudgetViewModelFactory() {
-        if (budgetViewModelFactory != null) {
-            return budgetViewModelFactory;
+        if (budgetViewModelFactory == null) {
+            AppDatabase db = AppDatabase.getInstance(app);
+            BudgetRoomRepository repository = getBudgetRoomRepository();
+
+            BudgetImportRoomRepository importRepository = new BudgetImportRoomRepository(
+                    db.budgetImportDao(),
+                    db.budgetRecurringTemplateDao(),
+                    db.budgetTransactionDao(),
+                    db.budgetLookupDao(),
+                    () -> {}
+            );
+
+            StatementFileParser parser = new StatementFileParser(
+                    new ClaudeStatementApiClient(),
+                    new ClaudeApiKeyStore(app),
+                    importRepository
+            );
+
+            BudgetImportUseCase importUseCase = new BudgetImportUseCase(
+                    importRepository, parser, sharedExecutor
+            );
+
+            ApplyRecurringSuggestionsUseCase applyRecurringUseCase = new ApplyRecurringSuggestionsUseCase(
+                    importRepository, sharedExecutor
+            );
+
+            CreateTransferUseCase createTransferUseCase = new CreateTransferUseCase(repository);
+
+            budgetViewModelFactory = new BudgetViewModelFactory(
+                    repository,
+                    sharedExecutor,
+                    importUseCase,
+                    applyRecurringUseCase,
+                    createTransferUseCase
+            );
         }
-
-        AppDatabase db = AppDatabase.getInstance(app);
-        Handler mainHandler = new Handler(Looper.getMainLooper());
-
-        BudgetRoomRepository repository = getBudgetRoomRepository();
-
-        BudgetImportRoomRepository importRepository = new BudgetImportRoomRepository(
-                db.budgetImportDao(),
-                db.budgetRecurringTemplateDao(),
-                db.budgetTransactionDao(),
-                db.budgetLookupDao(),
-                () -> {}
-        );
-
-        StatementFileParser parser = new StatementFileParser(
-                new ClaudeStatementApiClient(),
-                new ClaudeApiKeyStore(app),
-                importRepository
-        );
-
-        BudgetImportUseCase importUseCase = new BudgetImportUseCase(
-                importRepository, parser, sharedExecutor
-        );
-
-        ApplyRecurringSuggestionsUseCase applyRecurringUseCase = new ApplyRecurringSuggestionsUseCase(
-                importRepository, sharedExecutor
-        );
-
-        CreateTransferUseCase createTransferUseCase = new CreateTransferUseCase(repository);
-
-        budgetViewModelFactory = new BudgetViewModelFactory(
-                repository,
-                sharedExecutor,
-                importUseCase,
-                applyRecurringUseCase,
-                createTransferUseCase
-        );
-
         return budgetViewModelFactory;
     }
 
@@ -293,20 +290,6 @@ public class AppCompositionRoot {
         return taskDao;
     }
 
-    public synchronized TaskCompletionService getTaskCompletionService() {
-        if (taskCompletionService == null) {
-            taskCompletionService = new TaskCompletionService();
-        }
-        return taskCompletionService;
-    }
-
-    public synchronized TaskLifecycleManager getTaskLifecycleManager() {
-        if (taskLifecycleManager == null) {
-            taskLifecycleManager = new TaskLifecycleManager();
-        }
-        return taskLifecycleManager;
-    }
-
     /**
      * Nulls out all cached singletons so they will be recreated on the next access.
      *
@@ -332,14 +315,13 @@ public class AppCompositionRoot {
     // Not synchronized: MealPlannerPresenter is only accessed from the main thread
     // (via MealPlannerFragment). No concurrent access is possible, so no lock is needed.
     public MealPlannerPresenter getMealPlannerPresenter() {
-        if (mealPlannerPresenter != null) {
-            return mealPlannerPresenter;
+        if (mealPlannerPresenter == null) {
+            mealPlannerPresenter = new MealPlannerPresenter(
+                    new StorageMealRepository(mealStorage),
+                    new StorageRecipeRepository(mealStorage),
+                    new StoragePantryRepository(mealStorage)
+            );
         }
-        mealPlannerPresenter = new MealPlannerPresenter(
-                new StorageMealRepository(mealStorage),
-                new StorageRecipeRepository(mealStorage),
-                new StoragePantryRepository(mealStorage)
-        );
         return mealPlannerPresenter;
     }
 }

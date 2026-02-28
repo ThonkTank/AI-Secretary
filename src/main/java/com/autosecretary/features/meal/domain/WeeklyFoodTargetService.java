@@ -3,7 +3,6 @@ package com.autosecretary.features.meal.domain;
 import com.autosecretary.features.meal.domain.internal.HouseholdEnergyService;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -38,7 +37,7 @@ public class WeeklyFoodTargetService {
         WeeklyFoodTarget target = new WeeklyFoodTarget();
         target.periodKey = periodKey;
 
-        double totalFactor = Objects.requireNonNullElse(members, Collections.<HouseholdMember>emptyList()).stream()
+        double totalFactor = Objects.requireNonNullElse(members, List.<HouseholdMember>of()).stream()
                 .filter(m -> m != null && m.isActive)
                 .mapToDouble(m -> HouseholdEnergyService.calculateDgeFoodFactor(m, referenceDate))
                 .sum();
