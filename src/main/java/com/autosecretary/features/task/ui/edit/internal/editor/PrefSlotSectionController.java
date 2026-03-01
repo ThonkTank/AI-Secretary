@@ -87,13 +87,12 @@ public class PrefSlotSectionController {
     }
 
     public void onRepetitionChanged() {
-        boolean changed = presenter.onRepetitionChanged(
+        if (presenter.onRepetitionChanged(
             repetitionViews.toggleRepetition.isChecked(),
             repetitionViews.repsView.getText().toString(),
             repetitionViews.perPeriodView.getText().toString(),
             (Period) repetitionViews.periodUnitView.getSelectedItem()
-        );
-        if (changed) {
+        )) {
             rebuildPrefSlotUI();
         }
     }

@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  *
  * <p>Notable serialization: {@code storePackages} is stored as a delimited string —
  * {@code "storeName|unit|packageAmount|priceCents|lastPurchased"} records joined by {@code ";"}.
- * Uses {@link MapperSupport#asListOrParse} for deserialization.
+ * Uses {@link MapperSupport#parseListFromString} for deserialization.
  * Values stored in {@code storeName} and {@code unit} must not contain {@code '|'} or {@code ';'}.
  */
 public class IngredientRowMapper implements RowMapper<Ingredient> {
@@ -44,8 +44,6 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
     public Ingredient fromRow(Map<String, Object> row) {
         Ingredient ingredient = new Ingredient();
         ingredient.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.Ingredient.ID));
-        // String fields use raw casts: the storage layer always serializes them as strings via toRow(),
-        // so the cast is safe (no type mismatch). If storage changes, wrap this in MapperSupport.asString().
         ingredient.name = (String) row.get(MealFieldKeys.Ingredient.NAME);
         ingredient.foodGroup = MapperSupport.asEnum(Ingredient.FoodGroup.class, row.get(MealFieldKeys.Ingredient.FOOD_GROUP), null);
         ingredient.defaultUnit = (String) row.get(MealFieldKeys.Ingredient.DEFAULT_UNIT);
@@ -59,7 +57,7 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
         ingredient.requiresRefrigeration = MapperSupport.asBoolean(row.get(MealFieldKeys.Ingredient.REQUIRES_REFRIGERATION));
         ingredient.isWholeUnit = MapperSupport.asBoolean(row.get(MealFieldKeys.Ingredient.IS_WHOLE_UNIT));
         ingredient.isPerishable = MapperSupport.asBoolean(row.get(MealFieldKeys.Ingredient.IS_PERISHABLE));
-        ingredient.storePackages = MapperSupport.asListOrParse(row.get(MealFieldKeys.Ingredient.STORE_PACKAGES), IngredientRowMapper::parseStorePackagesFromString);
+        ingredient.storePackages = MapperSupport.parseListFromString(row.get(MealFieldKeys.Ingredient.STORE_PACKAGES), IngredientRowMapper::parseStorePackages);
         return ingredient;
     }
 
@@ -76,7 +74,7 @@ public class IngredientRowMapper implements RowMapper<Ingredient> {
     }
 
     // NOTE: storeName and unit values must not contain '|' or ';' — these are the field/record delimiters.
-    private static List<Ingredient.StorePackage> parseStorePackagesFromString(String raw) {
+    private static List<Ingredient.StorePackage> parseStorePackages(String raw) {
         List<Ingredient.StorePackage> result = new ArrayList<>();
         if (raw == null || raw.isBlank()) return result;
         for (String entry : raw.split(";")) {

@@ -92,6 +92,7 @@ public MyEntity fromRow(Map<String, Object> row) {
 
 ### Nullable conversions (return type or null)
 - `asNullableLong(Object)` — parse as `Long` or return null
+- `asNullableInt(Object)` — parse as `Integer` or return null
 - `asLocalDate(Object)` — parse as `LocalDate` or return null
 - `asLocalDateTime(Object)` — parse as `LocalDateTime` or return null
 
@@ -103,34 +104,52 @@ public MyEntity fromRow(Map<String, Object> row) {
 - `asBoolean(Object)`, `asBoolean(Object, boolean fallback)` — similar
 
 ### Enum conversions
-- `asEnum(Class<E>, Object, E fallback)` — parse enum by name, fallback if invalid
+- `asEnum(Class<E>, Object, E fallback)` — parse a single enum constant by name, fallback if invalid
+- `asEnumSet(Class<E>, Object)` — parse a comma-separated list of enum names into a `Set<E>`
+  (handles both a native `Set<E>` value and a string representation)
 
 ### Date/time serialization
 - `toDateString(LocalDate)` — serialize date to ISO string
 - `toDateTimeString(LocalDateTime)` — serialize datetime to ISO string
-- `enumNameOrNull(Enum)` — serialize enum to its name string
+- `enumNameOrNull(Enum)` — serialize a single enum value to its name string, or null
+- `serializeEnumSet(Set<? extends Enum<?>>)` — serialize any enum set to a comma-separated name string
 
-### Collection patterns — "both-paths" deserialization
+### Collection patterns — parsing from string
 
-When storage may contain either native types (e.g., a `List<T>`) or strings (for simple formats):
+For list fields that are serialized as delimited strings by `toRow()`:
 
 ```java
-// If value is already a List<T>, use it directly; otherwise parse from string
-recipe.ingredients = MapperSupport.asListOrParse(
+// Parse from string via a custom parser; passes null to the parser if value is not a String
+recipe.ingredients = MapperSupport.parseListFromString(
     row.get(MealFieldKeys.Recipe.INGREDIENTS),
     RecipeRowMapper::parseIngredients  // custom parser for string format
 );
 ```
 
-Similar for `asSetOrParse()` and the specialized `asDayOfWeekSet()`.
+For enum sets, use `asEnumSet()` directly — it handles both native `Set<E>` values and
+comma-separated name strings without needing a custom parser:
+
+```java
+// Example: a field storing a Set<SomeMealEnum>
+entity.mealTypes = MapperSupport.asEnumSet(SomeMealEnum.class, row.get(MealFieldKeys.MyEntity.MEAL_TYPES));
+// Serialize back:
+row.put(MealFieldKeys.MyEntity.MEAL_TYPES, MapperSupport.serializeEnumSet(entity.mealTypes));
+```
 
 ### Special: DayOfWeek sets
 
+`DayOfWeek` is a common enough case that `MapperSupport` provides convenience wrappers:
+
 ```java
-preferences.cookingDays = MapperSupport.asDayOfWeekSet(row.get("days"));
-// ... and to serialize back:
-row.put("days", MapperSupport.serializeDayOfWeekSet(preferences.cookingDays));
+// Replace "MY_DAYS_FIELD_KEY" with your MealFieldKeys constant — never use a raw string literal.
+preferences.cookingDays = MapperSupport.asDayOfWeekSet(row.get(MealFieldKeys.MyCookingPrefs.MY_DAYS_FIELD_KEY));
+// Serialize back (use serializeEnumSet directly — no DayOfWeek-specific wrapper needed):
+row.put(MealFieldKeys.MyCookingPrefs.MY_DAYS_FIELD_KEY, MapperSupport.serializeEnumSet(preferences.cookingDays));
 ```
+
+`asDayOfWeekSet` is a convenience wrapper over `asEnumSet(DayOfWeek.class, ...)` that saves the
+`Class` argument. For serialization, use `serializeEnumSet` directly for any `Set<? extends Enum>`.
+If you need a `Set<SomeOtherEnum>`, use `asEnumSet` / `serializeEnumSet` directly.
 
 ## Custom Serialization Formats
 
@@ -174,10 +193,10 @@ private static List<Ingredient.StorePackage> parseStorePackages(String raw) {
 }
 ```
 
-Use `MapperSupport.asListOrParse()` to handle both native and string formats:
+Use `MapperSupport.parseListFromString()` to handle the string format:
 
 ```java
-ingredient.storePackages = MapperSupport.asListOrParse(
+ingredient.storePackages = MapperSupport.parseListFromString(
     row.get(MealFieldKeys.Ingredient.STORE_PACKAGES),
     IngredientRowMapper::parseStorePackages
 );

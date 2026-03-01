@@ -52,8 +52,10 @@ public class GoalSectionController {
         buildGoalColorGrid();
     }
 
-    public EditText getGoalIconView() {
-        return goalIconView;
+    /** Returns the trimmed goal icon text, falling back to the default if empty. */
+    public String getGoalIconText() {
+        String text = goalIconView.getText().toString().trim();
+        return text.isEmpty() ? TaskEditDefaults.GOAL_ICON : text;
     }
 
     public String getSelectedGoalColorHex() {

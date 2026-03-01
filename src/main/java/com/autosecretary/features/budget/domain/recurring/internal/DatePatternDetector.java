@@ -1,11 +1,13 @@
 package com.autosecretary.features.budget.domain.recurring.internal;
 
 import com.autosecretary.features.budget.domain.recurring.RecurringBudgetTransaction;
+import com.autosecretary.features.budget.domain.recurring.RecurringType;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -90,7 +92,7 @@ public final class DatePatternDetector {
                 .allMatch(d -> isMonthlyDayMatch(d, dominantDay));
 
         return allMatch
-                ? new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_DAY, dominantDay, null)
+                ? new PatternResult(RecurringType.MONTHLY_DAY, dominantDay, null)
                 : null;
     }
 
@@ -104,20 +106,17 @@ public final class DatePatternDetector {
         boolean allLastDays = dates.stream()
                 .allMatch(date -> date.getDayOfMonth() > date.lengthOfMonth() - MONTHLY_LAST_TAIL_DAYS);
         return allLastDays
-                ? new PatternResult(RecurringBudgetTransaction.RecurringType.MONTHLY_LAST, 0, null)
+                ? new PatternResult(RecurringType.MONTHLY_LAST, 0, null)
                 : null;
     }
 
     static PatternResult checkWeekly(List<LocalDate> dates, double avgInterval) {
         List<DayOfWeek> weekdays = dates.stream().map(LocalDate::getDayOfWeek).toList();
-        Map<DayOfWeek, Long> counts = weekdays.stream()
-                .collect(Collectors.groupingBy(d -> d, Collectors.counting()));
-        DayOfWeek dominantWeekday = findModeFromCounts(counts);
-
-        long modeCount = counts.getOrDefault(dominantWeekday, 0L);
+        DayOfWeek dominantWeekday = mode(weekdays);
+        long modeCount = Collections.frequency(weekdays, dominantWeekday);
         return modeCount >= dates.size() * WEEKLY_DAY_MATCH_RATIO
                 && avgInterval >= WEEKLY_INTERVAL_MIN_DAYS && avgInterval <= WEEKLY_INTERVAL_MAX_DAYS
-                ? new PatternResult(RecurringBudgetTransaction.RecurringType.WEEKLY, 0, dominantWeekday)
+                ? new PatternResult(RecurringType.WEEKLY, 0, dominantWeekday)
                 : null;
     }
 
@@ -126,7 +125,7 @@ public final class DatePatternDetector {
                 .allMatch(i -> isConsistentInterval(i, avgInterval));
 
         return consistent && avgInterval >= INTERVAL_MIN_DAYS
-                ? new PatternResult(RecurringBudgetTransaction.RecurringType.INTERVAL,
+                ? new PatternResult(RecurringType.INTERVAL,
                         (int) Math.round(avgInterval), null)
                 : null;
     }
@@ -149,8 +148,8 @@ public final class DatePatternDetector {
         return deviation <= tolerance;
     }
 
-    static int mode(List<Integer> values) {
-        Map<Integer, Long> counts = values.stream()
+    static <T> T mode(List<T> values) {
+        Map<T, Long> counts = values.stream()
                 .collect(Collectors.groupingBy(v -> v, Collectors.counting()));
         return findModeFromCounts(counts);
     }
@@ -182,7 +181,7 @@ public final class DatePatternDetector {
      *
      * <p>{@code dayOfWeek} is non-null only for {@code WEEKLY} patterns; null otherwise.
      */
-    public record PatternResult(RecurringBudgetTransaction.RecurringType type,
+    public record PatternResult(RecurringType type,
                                 int value,
                                 DayOfWeek dayOfWeek) {
     }

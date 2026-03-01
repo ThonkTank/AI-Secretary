@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  *   <li>{@code ingredients} — {@code "id|name|amount|unit"} records joined by {@code ";"}.
  *   <li>{@code ratings} — {@code "memberId|rating"} records joined by {@code ","}.
  * </ul>
- * Both use {@link MapperSupport#asListOrParse} for "both-paths" deserialization.
+ * Both are deserialized via {@link MapperSupport#parseListFromString} with a custom parser function.
  * Values stored in these fields must not contain {@code '|'} or {@code ';'}.
  */
 public class RecipeRowMapper implements RowMapper<Recipe> {
@@ -58,8 +58,6 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         Recipe recipe = new Recipe();
 
         recipe.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.Recipe.ID));
-        // String fields use raw casts: the storage layer always serializes them as strings via toRow(),
-        // so the cast is safe (no type mismatch). If storage changes, wrap this in MapperSupport.asString().
         recipe.title = (String) row.get(MealFieldKeys.Recipe.TITLE);
         recipe.description = (String) row.get(MealFieldKeys.Recipe.DESCRIPTION);
         recipe.instructions = (String) row.get(MealFieldKeys.Recipe.INSTRUCTIONS);
@@ -75,7 +73,7 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         recipe.prepEffort = MapperSupport.asEnum(Recipe.PrepEffort.class,
                 row.get(MealFieldKeys.Recipe.PREP_EFFORT), Recipe.PrepEffort.MEDIUM);
 
-        recipe.ingredients = MapperSupport.asListOrParse(row.get(MealFieldKeys.Recipe.INGREDIENTS), RecipeRowMapper::parseIngredients);
+        recipe.ingredients = MapperSupport.parseListFromString(row.get(MealFieldKeys.Recipe.INGREDIENTS), RecipeRowMapper::parseIngredients);
 
         recipe.tags = (String) row.get(MealFieldKeys.Recipe.TAGS);
         recipe.lastUsed = MapperSupport.asLocalDate(row.get(MealFieldKeys.Recipe.LAST_USED));
@@ -87,7 +85,7 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
         recipe.totalFat = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.TOTAL_FAT));
         recipe.shelfLifeDays = MapperSupport.asInt(row.get(MealFieldKeys.Recipe.SHELF_LIFE_DAYS));
 
-        recipe.ratings = MapperSupport.asListOrParse(row.get(MealFieldKeys.Recipe.RATINGS), RecipeRowMapper::parseRatings);
+        recipe.ratings = MapperSupport.parseListFromString(row.get(MealFieldKeys.Recipe.RATINGS), RecipeRowMapper::parseRatings);
         return recipe;
     }
 
@@ -124,7 +122,7 @@ public class RecipeRowMapper implements RowMapper<Recipe> {
             String[] parts = entry.split("\\|", 2);
             if (parts.length != 2) continue;
             long memberId = MapperSupport.asLong(parts[0]);
-            int rating = MapperSupport.asInt(parts[1], 3);
+            int rating = MapperSupport.asInt(parts[1], 3); // 3 = neutral default on a 1–5 scale
             if (memberId > 0) {
                 result.add(new Recipe.MemberRating(memberId, rating));
             }

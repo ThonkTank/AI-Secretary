@@ -49,8 +49,7 @@ public class TaskEditSessionController {
     }
 
     public boolean isNewTask() {
-        Boolean value = isNewTask.getValue();
-        return value != null && value;
+        return Boolean.TRUE.equals(isNewTask.getValue());
     }
 
     public TaskEditState requireSelectedTask() {
@@ -84,6 +83,7 @@ public class TaskEditSessionController {
         task.prefSlots = new ArrayList<>();
         task.parents = new ArrayList<>();
         task.prerequisites = new ArrayList<>();
+        task.plannedMeals = new ArrayList<>();
 
         task.prefSlots.add(TaskPrefSlotFactory.createDefault(task.core.id));
 

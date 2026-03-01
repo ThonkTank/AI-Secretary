@@ -29,9 +29,8 @@ import java.util.Map;
  * <h3>Integration</h3>
  *
  * <p>RowMappers are used by {@link BaseCollectionDao} to persist domain models to
- * {@link MealStorage} (currently in-memory, but abstracted for future database migration).
- * The storage layer is untyped; the RowMapper is responsible for enforcing type safety
- * and validation at the serialization boundary.
+ * {@link MealStorage}. The storage layer is untyped; the RowMapper is responsible for
+ * enforcing type safety and validation at the serialization boundary.
  *
  * <h3>How to Implement</h3>
  *
@@ -56,6 +55,12 @@ public interface RowMapper<T> {
 
     /**
      * Deserialize a storage row to a domain entity.
+     *
+     * <p><b>String fields:</b> use raw casts — {@code (String) row.get(key)} — rather than a
+     * {@code MapperSupport.asString()} wrapper. This is safe because {@link #toRow} always
+     * writes strings directly, so the stored value is always a {@code String} or null. If the
+     * storage layer ever changes (e.g., to a database cursor), replace raw casts with a typed
+     * accessor.
      *
      * @param row an untyped map with field names from {@link MealFieldKeys}
      * @return a fully-constructed domain entity

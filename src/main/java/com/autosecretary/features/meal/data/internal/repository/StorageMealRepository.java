@@ -1,13 +1,12 @@
 package com.autosecretary.features.meal.data.internal.repository;
 
 import com.autosecretary.features.meal.data.internal.BaseCollectionDao;
-import com.autosecretary.features.meal.data.internal.EntityIdHandler;
 import com.autosecretary.features.meal.data.internal.MealCollections;
+import com.autosecretary.features.meal.data.internal.MealFieldKeys;
 import com.autosecretary.features.meal.data.internal.mapper.ConsumptionLogRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.CookingPreferencesRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.HouseholdMemberRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.MealPlanRowMapper;
-import com.autosecretary.features.meal.data.internal.MealFieldKeys;
 import com.autosecretary.features.meal.data.internal.mapper.WeeklyFoodTargetRowMapper;
 import com.autosecretary.features.meal.data.internal.storage.MealStorage;
 import com.autosecretary.features.meal.domain.ConsumptionLog;
@@ -45,31 +44,31 @@ public class StorageMealRepository implements MealRepository {
             MealCollections.MEAL_PLANS,
             storage,
             new MealPlanRowMapper(),
-            EntityIdHandler.of(p -> p.id, (p, id) -> p.id = id)
+            p -> p.id, (p, id) -> p.id = id
         );
         this.consumptionLogDao = new BaseCollectionDao<>(
             MealCollections.CONSUMPTION_LOGS,
             storage,
             new ConsumptionLogRowMapper(),
-            EntityIdHandler.of(log -> log.id, (log, id) -> log.id = id)
+            log -> log.id, (log, id) -> log.id = id
         );
         this.householdMemberDao = new BaseCollectionDao<>(
             MealCollections.HOUSEHOLD_MEMBERS,
             storage,
             new HouseholdMemberRowMapper(),
-            EntityIdHandler.of(m -> m.id, (m, id) -> m.id = id)
+            m -> m.id, (m, id) -> m.id = id
         );
         this.cookingPreferencesDao = new BaseCollectionDao<>(
             MealCollections.COOKING_PREFERENCES,
             storage,
             new CookingPreferencesRowMapper(),
-            EntityIdHandler.of(prefs -> prefs.id, (prefs, id) -> prefs.id = id)
+            prefs -> prefs.id, (prefs, id) -> prefs.id = id
         );
         this.weeklyFoodTargetDao = new BaseCollectionDao<>(
             MealCollections.WEEKLY_FOOD_TARGETS,
             storage,
             new WeeklyFoodTargetRowMapper(),
-            EntityIdHandler.of(t -> t.id, (t, id) -> t.id = id)
+            t -> t.id, (t, id) -> t.id = id
         );
     }
 

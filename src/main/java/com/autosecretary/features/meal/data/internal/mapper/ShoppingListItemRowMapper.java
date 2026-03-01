@@ -39,8 +39,6 @@ public class ShoppingListItemRowMapper implements RowMapper<ShoppingListItem> {
         ShoppingListItem item = new ShoppingListItem();
         item.id = MapperSupport.asNullableLong(row.get(MealFieldKeys.ShoppingListItem.ID));
         item.ingredientId = MapperSupport.asLong(row.get(MealFieldKeys.ShoppingListItem.INGREDIENT_ID));
-        // String fields use raw casts: the storage layer always serializes them as strings via toRow(),
-        // so the cast is safe (no type mismatch). If storage changes, wrap this in MapperSupport.asString().
         item.ingredientName = (String) row.get(MealFieldKeys.ShoppingListItem.INGREDIENT_NAME);
         item.amount = MapperSupport.asDouble(row.get(MealFieldKeys.ShoppingListItem.AMOUNT));
         item.neededAmount = MapperSupport.asDouble(row.get(MealFieldKeys.ShoppingListItem.NEEDED_AMOUNT));

@@ -110,7 +110,7 @@ public class TaskEditSectionBinder {
         );
 
         updateDeadlineDisplay(views);
-        bindDeadlineListeners(deadlineView, deadlineInputLayout, clearDeadline, views);
+        bindDeadlineListeners(deadlineInputLayout, clearDeadline, views);
         initializeSchedulingFields(views);
 
         return views;
@@ -136,9 +136,9 @@ public class TaskEditSectionBinder {
         views.adaptiveView.setChecked(editState.adaptive);
     }
 
-    private void bindDeadlineListeners(EditText deadlineView, TextInputLayout deadlineInputLayout,
+    private void bindDeadlineListeners(TextInputLayout deadlineInputLayout,
                                        ImageButton clearDeadline, SchedulingViews views) {
-        deadlineView.setOnClickListener(v -> showDatePicker(views));
+        views.deadlineView.setOnClickListener(v -> showDatePicker(views));
         deadlineInputLayout.setEndIconOnClickListener(v -> showDatePicker(views));
         clearDeadline.setOnClickListener(v -> {
             presenter.setEditableDeadline(null);
@@ -247,11 +247,11 @@ public class TaskEditSectionBinder {
             maxPerRepView
         );
 
-        boolean hasProgress = editState.target > 0;
+        boolean hasProgress = !editState.unit.isEmpty();
         toggleProgress.setChecked(hasProgress);
         progressContainer.setVisibility(hasProgress ? View.VISIBLE : View.GONE);
 
-        unitView.setText(textOf(editState.unit));
+        unitView.setText(editState.unit);
         targetView.setText(String.valueOf(editState.target));
         currentView.setText(String.valueOf(editState.current));
         resetPerRepView.setChecked(editState.resetPerRep);

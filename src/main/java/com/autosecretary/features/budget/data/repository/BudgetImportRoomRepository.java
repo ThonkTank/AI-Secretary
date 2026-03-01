@@ -62,10 +62,9 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     @Override
-    public void markImportCompleted(String importId, int totalTransactions, int importedTransactions,
-                                     int autoCategorized, LocalDate periodStart, LocalDate periodEnd) {
-        importDao.markCompleted(importId, totalTransactions, importedTransactions,
-                autoCategorized, periodStart, periodEnd);
+    public void markImportCompleted(String importId, BudgetImportRepository.CompletionData data) {
+        importDao.markCompleted(importId, data.totalTransactions(), data.importedTransactions(),
+                data.autoCategorized(), data.periodStart(), data.periodEnd());
         // Imports may create new transactions that match recurring patterns or complete
         // existing patterns. Synchronize template state to reflect current conditions.
         synchronizeRecurringTemplateState(LocalDate.now());

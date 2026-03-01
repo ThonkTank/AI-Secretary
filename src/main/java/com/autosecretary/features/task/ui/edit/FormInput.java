@@ -21,22 +21,22 @@ public class FormInput {
     public String goalIcon = TaskEditDefaults.GOAL_ICON;
     public String goalColorHex = TaskEditDefaults.GOAL_COLOR_HEX;
     public TaskCore.SchedulingType schedulingType = TaskEditDefaults.SCHEDULING_TYPE;
-    // Fixed-date fields for SchedulingType.TERMIN — not yet exposed in the UI.
-    // TaskEditFormInputReader never writes these; they stay null and are carried through
-    // unchanged by TaskEditStateMapper for round-trip fidelity. See CLAUDE.md §Not Yet Implemented.
+    // Fixed-date fields for SchedulingType.TERMIN — shown in the UI only when that type is selected.
+    // Written by TaskEditFormInputReader when the views contain parseable values.
     public LocalDate fixedDate;
     public LocalTime fixedStart;
     public LocalTime fixedEnd;
     public Integer fixedDuration;
-    public Integer budgetRequiredCents;
-    public String budgetAccountId;
-    public String budgetCategoryId;
+    // Budget integration (optional) — if set, task completion auto-books an expense
+    public Integer budgetRequiredCents;  // required amount in cents; null/0 means no budget link
+    public String budgetAccountId;  // which budget account to charge against
+    public String budgetCategoryId;  // which budget category to use; see CLAUDE.md "Task → Budget integration"
 
     public boolean closeOnMiss;
-    public int minDuration = TaskEditDefaults.MIN_DURATION;
-    public int maxDuration = TaskEditDefaults.MAX_DURATION;
-    public int cooldown = TaskEditDefaults.COOLDOWN;
-    public boolean adaptive;
+    public int minDuration = TaskEditDefaults.MIN_DURATION;  // minutes
+    public int maxDuration = TaskEditDefaults.MAX_DURATION;  // minutes
+    public int cooldown = TaskEditDefaults.COOLDOWN;  // days (minimum gap between slots)
+    public boolean adaptive;  // if true, preferred times auto-adjust from real completion times
 
     public boolean repetitionEnabled;
     public int reps = TaskEditDefaults.REPETITION_REPS;

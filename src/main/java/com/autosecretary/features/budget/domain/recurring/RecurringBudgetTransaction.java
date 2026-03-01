@@ -8,19 +8,8 @@ import java.util.Objects;
  * <p>
  * Used as input to {@code RecurringPatternDetector.detectPatterns()} — only transactions with
  * {@code isRecurring=false} and {@code isPredicted=false} are eligible for pattern detection.
- * <p>
- * Note: {@link RecurringType} is a nested enum because it is tightly coupled to this class.
- * External callers (e.g. {@code Converters}, {@code RecurringScheduleParams}) reference it as
- * {@code RecurringBudgetTransaction.RecurringType}.
  */
 public class RecurringBudgetTransaction {
-    public enum RecurringType {
-        MONTHLY_DAY,
-        MONTHLY_LAST,
-        WEEKLY,
-        INTERVAL
-    }
-
     public String id;
     public String accountId;
     public long amountCents;
@@ -49,9 +38,6 @@ public class RecurringBudgetTransaction {
      */
     public String parentRecurringId;
 
-    public RecurringBudgetTransaction() {
-    }
-
     /** Factory for transactions created during the import pipeline (CSV or PDF). */
     public static RecurringBudgetTransaction forImport(
             String id,
@@ -78,6 +64,7 @@ public class RecurringBudgetTransaction {
         tx.importId = importId;
         tx.parentRecurringId = parentRecurringId;
         tx.isRecurring = parentRecurringId != null && !parentRecurringId.isBlank();
+        tx.isPredicted = false;
         return tx;
     }
 }

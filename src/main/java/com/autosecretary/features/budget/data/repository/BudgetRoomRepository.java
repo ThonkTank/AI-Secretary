@@ -153,11 +153,11 @@ public class BudgetRoomRepository implements BudgetRepository {
         return lookupDao.findFirstActiveAccountId();
     }
 
-    @Override public void saveTransaction(String accountId, String categoryId, TransactionDirection direction,
-                                          long amountCents, LocalDate bookingDate, String note) {
+    @Override public void saveTransaction(BudgetRepository.TransactionCreateDetails details) {
         BudgetTransactionEntity entity = new BudgetTransactionEntity(
-                accountId, categoryId, direction, amountCents, bookingDate);
-        entity.note = normalizeNote(note);
+                details.accountId(), details.categoryId(), details.direction(),
+                details.amountCents(), details.bookingDate());
+        entity.note = normalizeNote(details.note());
         transactionDao.insert(entity);
     }
 
@@ -201,9 +201,7 @@ public class BudgetRoomRepository implements BudgetRepository {
      * @param bookingDate new booking date (also updates yearMonth)
      * @param note new user note (null or blank is normalized to null)
      */
-    @Override public void updateTransaction(String transactionId, String accountId, String categoryId,
-                                            TransactionDirection direction, long amountCents,
-                                            LocalDate bookingDate, String note) {
+    @Override public void updateTransaction(String transactionId, BudgetRepository.TransactionCreateDetails details) {
         BudgetTransactionEntity entity = transactionDao.findById(transactionId);
         // Silent no-op if transaction not found. Acceptable because this method may be called
         // speculatively or during UI cleanup when the transaction may no longer exist.
@@ -212,12 +210,12 @@ public class BudgetRoomRepository implements BudgetRepository {
             Log.d("BudgetRoomRepository", "updateTransaction: transaction not found for id=" + transactionId);
             return;
         }
-        entity.accountId = accountId;
-        entity.categoryId = categoryId;
-        entity.direction = direction;
-        entity.amountCents = amountCents;
-        entity.setBookingDate(bookingDate);
-        entity.note = normalizeNote(note);
+        entity.accountId = details.accountId();
+        entity.categoryId = details.categoryId();
+        entity.direction = details.direction();
+        entity.amountCents = details.amountCents();
+        entity.setBookingDate(details.bookingDate());
+        entity.note = normalizeNote(details.note());
         transactionDao.update(entity);
     }
 

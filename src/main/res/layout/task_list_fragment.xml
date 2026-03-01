@@ -14,24 +14,20 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:fitsSystemWindows="true"
-    android:paddingStart="@dimen/spacing_sm"
-    android:paddingEnd="@dimen/spacing_sm"
+    android:paddingHorizontal="@dimen/spacing_sm"
     android:paddingTop="@dimen/spacing_sm">
 
     <LinearLayout
         android:id="@+id/DayNavigationBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/spacing_sm"
-        android:layout_marginEnd="@dimen/spacing_sm"
+        android:layout_marginHorizontal="@dimen/spacing_sm"
         android:layout_marginBottom="@dimen/spacing_xs"
         android:background="@drawable/task_bg_day_nav_chip"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="@dimen/spacing_md"
-        android:paddingEnd="@dimen/spacing_md"
-        android:paddingTop="@dimen/spacing_sm"
-        android:paddingBottom="@dimen/spacing_sm">
+        android:paddingHorizontal="@dimen/spacing_md"
+        android:paddingVertical="@dimen/spacing_sm">
 
         <TextView
             android:id="@+id/DayNavPrev"
@@ -67,14 +63,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_xs"
-        android:layout_marginStart="@dimen/spacing_sm"
-        android:layout_marginEnd="@dimen/spacing_sm"
+        android:layout_marginHorizontal="@dimen/spacing_sm"
         android:orientation="vertical"
         android:background="@drawable/bg_surface_card"
-        android:paddingStart="@dimen/spacing_md"
-        android:paddingEnd="@dimen/spacing_md"
-        android:paddingTop="@dimen/spacing_sm"
-        android:paddingBottom="@dimen/spacing_sm">
+        android:paddingHorizontal="@dimen/spacing_md"
+        android:paddingVertical="@dimen/spacing_sm">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/GenerateScheduleButton"

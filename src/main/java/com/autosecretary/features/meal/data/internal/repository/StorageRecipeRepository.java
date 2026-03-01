@@ -1,7 +1,6 @@
 package com.autosecretary.features.meal.data.internal.repository;
 
 import com.autosecretary.features.meal.data.internal.BaseCollectionDao;
-import com.autosecretary.features.meal.data.internal.EntityIdHandler;
 import com.autosecretary.features.meal.data.internal.MealCollections;
 import com.autosecretary.features.meal.data.internal.mapper.IngredientRowMapper;
 import com.autosecretary.features.meal.data.internal.mapper.RecipeRowMapper;
@@ -29,13 +28,13 @@ public class StorageRecipeRepository implements RecipeRepository {
             MealCollections.RECIPES,
             storage,
             new RecipeRowMapper(),
-            EntityIdHandler.of(r -> r.id, (r, id) -> r.id = id)
+            r -> r.id, (r, id) -> r.id = id
         );
         this.ingredientDao = new BaseCollectionDao<>(
             MealCollections.INGREDIENTS,
             storage,
             new IngredientRowMapper(),
-            EntityIdHandler.of(ingredient -> ingredient.id, (ingredient, id) -> ingredient.id = id)
+            ingredient -> ingredient.id, (ingredient, id) -> ingredient.id = id
         );
     }
 

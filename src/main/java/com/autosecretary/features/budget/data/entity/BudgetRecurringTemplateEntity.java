@@ -10,7 +10,7 @@ import androidx.room.PrimaryKey;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.UUID;
-import com.autosecretary.features.budget.domain.recurring.RecurringBudgetTransaction;
+import com.autosecretary.features.budget.domain.recurring.RecurringType;
 import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
@@ -91,7 +91,7 @@ public class BudgetRecurringTemplateEntity {
     public long maxAmountCents;
 
     @NonNull
-    public RecurringBudgetTransaction.RecurringType recurringType;
+    public RecurringType recurringType;
 
     // Column is named "transactionType" in the database. Unlike BudgetTransactionEntity and BudgetCategory
     // which use "type" for the direction column, this template entity uses "transactionType" for historical
@@ -138,7 +138,7 @@ public class BudgetRecurringTemplateEntity {
 
     public BudgetRecurringTemplateEntity(@NonNull String accountId,
                                          @NonNull String normalizedPayee,
-                                         @NonNull RecurringBudgetTransaction.RecurringType recurringType) {
+                                         @NonNull RecurringType recurringType) {
         this.accountId = accountId;
         this.normalizedPayee = normalizedPayee;
         this.recurringType = recurringType;

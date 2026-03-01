@@ -1,13 +1,12 @@
 package com.autosecretary.features.budget.domain;
 
-import com.autosecretary.features.budget.domain.importing.ImportStatus;
 import com.autosecretary.features.budget.domain.importing.ImportCategory;
+import com.autosecretary.features.budget.domain.importing.ImportStatus;
 import com.autosecretary.features.budget.domain.importing.ImportTransactionRecord;
 import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 
 import java.time.LocalDate;
 import java.util.List;
-import com.autosecretary.features.budget.domain.TransactionDirection;
 
 /**
  * Persistence abstraction for two related concerns:
@@ -39,6 +38,13 @@ public interface BudgetImportRepository {
             ImportStatus status,
             String errorMessage
     ) {
+        /**
+         * Creates an import record in the initial {@code PENDING} state.
+         * {@code periodStart}, {@code periodEnd}, {@code totalTransactions},
+         * {@code importedTransactions}, and {@code autoCategorized} are intentionally
+         * left null/zero — they are populated later by {@code markImportCompleted()}.
+         * {@code errorMessage} is populated by {@code markImportFailed()} if the import fails.
+         */
         public static ImportRecord pending(String id, String accountId,
                                     String fileName, String fileHash) {
             return new ImportRecord(id, accountId, fileName, fileHash,
@@ -46,10 +52,17 @@ public interface BudgetImportRepository {
         }
     }
 
+    record CompletionData(
+            int totalTransactions,
+            int importedTransactions,
+            int autoCategorized,
+            LocalDate periodStart,
+            LocalDate periodEnd
+    ) {}
+
     ImportRecord createImport(String accountId, String fileName, String fileHash);
 
-    void markImportCompleted(String importId, int totalTransactions, int importedTransactions, int autoCategorized,
-                             LocalDate periodStart, LocalDate periodEnd);
+    void markImportCompleted(String importId, CompletionData data);
 
     void markImportFailed(String importId, String errorMessage);
 

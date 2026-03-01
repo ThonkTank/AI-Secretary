@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Inter-account transfer dialog. Managed by BudgetTransferDialogController. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -6,7 +7,6 @@
     android:padding="@dimen/spacing_lg">
 
     <TextView
-        android:id="@+id/BudgetTransferSourceAccountLabel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/budget_transfer_source_account"
@@ -15,26 +15,27 @@
     <Spinner
         android:id="@+id/BudgetTransferSourceAccount"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs" />
 
     <TextView
-        android:id="@+id/BudgetTransferTargetAccountLabel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_sm"
+        android:layout_marginTop="@dimen/spacing_md"
         android:text="@string/budget_transfer_target_account"
         android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
 
     <Spinner
         android:id="@+id/BudgetTransferTargetAccount"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs" />
 
     <com.google.android.material.textfield.TextInputLayout
         style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_sm"
+        android:layout_marginTop="@dimen/spacing_md"
         android:hint="@string/budget_dialog_amount_hint">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -48,7 +49,7 @@
         style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_sm"
+        android:layout_marginTop="@dimen/spacing_md"
         android:hint="@string/budget_transfer_date_hint">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -62,7 +63,7 @@
         style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_sm"
+        android:layout_marginTop="@dimen/spacing_md"
         android:hint="@string/budget_dialog_note_hint">
 
         <com.google.android.material.textfield.TextInputEditText

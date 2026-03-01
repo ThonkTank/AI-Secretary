@@ -83,8 +83,7 @@ public class TaskEditFormInputReader {
     }
 
     private void readGoalSection(FormInput input) {
-        String goalIconText = goalSectionController.getGoalIconView().getText().toString().trim();
-        input.goalIcon = goalIconText.isEmpty() ? TaskEditDefaults.GOAL_ICON : goalIconText;
+        input.goalIcon = goalSectionController.getGoalIconText();
         input.goalColorHex = TaskEditPresenter.coalesce(
             goalSectionController.getSelectedGoalColorHex(),
             TaskEditDefaults.GOAL_COLOR_HEX

@@ -34,7 +34,7 @@ public class TaskEditState {
     public Priority priority = TaskEditDefaults.PRIORITY;
     public TaskCore.SchedulingType schedulingType = TaskEditDefaults.SCHEDULING_TYPE;
     public LocalDate deadline;
-    // Fixed-date fields (SchedulingType.TERMIN not yet UI-exposed; see CLAUDE.md "Not Yet Implemented")
+    // Fixed-date fields — shown in the UI only when SchedulingType.TERMIN is selected.
     public LocalDate fixedDate;
     public LocalTime fixedStart;
     public LocalTime fixedEnd;

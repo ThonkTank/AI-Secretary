@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Add/edit budget transaction dialog. Managed by BudgetTransactionDialogController. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -22,7 +23,7 @@
         android:id="@+id/BudgetDialogTypeGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_sm"
+        android:layout_marginTop="@dimen/spacing_md"
         android:orientation="horizontal">
         <RadioButton
             android:id="@+id/BudgetDialogTypeExpense"
@@ -40,36 +41,37 @@
     </RadioGroup>
 
     <TextView
-        android:id="@+id/BudgetDialogAccountLabel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_sm"
+        android:layout_marginTop="@dimen/spacing_md"
         android:text="@string/budget_dialog_account_label"
         android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
 
     <Spinner
         android:id="@+id/BudgetDialogAccount"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs" />
+
     <TextView
-        android:id="@+id/BudgetDialogCategoryLabel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_sm"
+        android:layout_marginTop="@dimen/spacing_md"
         android:text="@string/budget_dialog_category_label"
         android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
 
     <Spinner
         android:id="@+id/BudgetDialogCategory"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs" />
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/BudgetDialogDateLayout"
         style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_sm"
+        android:layout_marginTop="@dimen/spacing_md"
         android:hint="@string/budget_dialog_date_hint">
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/BudgetDialogDate"
@@ -83,7 +85,7 @@
         style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_sm"
+        android:layout_marginTop="@dimen/spacing_md"
         android:hint="@string/budget_dialog_note_hint">
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/BudgetDialogNote"

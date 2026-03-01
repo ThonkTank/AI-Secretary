@@ -31,6 +31,7 @@ a subset of task fields; preserved fields (like scheduler-managed state) must su
 Canonical edit session state lives in `state/` (`ui/edit/state`):
 - `TaskEditState` — flat mutable form state holding all editable task fields plus preserved scheduler state.
 - `PrefSlotEditState` — state for one preferred-slot row (day/time pattern).
+- `TaskEditDefaults` — canonical default values for all new-task fields; referenced by both `TaskEditState` field initializers and `FormInput` fallbacks.
 
 ## Internal boundaries
 

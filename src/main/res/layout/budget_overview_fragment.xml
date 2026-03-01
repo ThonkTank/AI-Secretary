@@ -23,7 +23,6 @@
 
         <!-- Account selector and chart range -->
         <TextView
-            android:id="@+id/BudgetTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/budget_title"
@@ -82,7 +81,6 @@
                 android:padding="@dimen/spacing_md">
 
                 <TextView
-                    android:id="@+id/BudgetChartTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/budget_chart_title"
@@ -197,6 +195,7 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
+
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -214,8 +213,7 @@
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/budget_divider_height"
-                    android:layout_marginTop="@dimen/spacing_sm"
-                    android:layout_marginBottom="@dimen/spacing_sm"
+                    android:layout_marginVertical="@dimen/spacing_sm"
                     android:background="@color/budget_divider" />
 
                 <LinearLayout
@@ -252,9 +250,9 @@
             android:orientation="vertical"
             android:visibility="gone" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/BudgetSetLimitButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="?attr/materialButtonOutlinedStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
@@ -262,22 +260,22 @@
             android:visibility="gone" />
 
         <!-- Action buttons -->
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/BudgetAddTransactionButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_lg"
             android:text="@string/budget_add_transaction" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/BudgetAddTransferButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="?attr/materialButtonOutlinedStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
             android:text="@string/budget_add_transfer" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/BudgetImportStatementButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -302,7 +300,7 @@
             android:contentDescription="@string/budget_loading"
             android:visibility="gone" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/BudgetRetryButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

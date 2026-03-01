@@ -67,7 +67,7 @@ public class TaskScheduleConfigDialog extends DialogFragment {
         executor = application.getAppCompositionRoot().getSharedExecutor();
         mainHandler = new Handler(Looper.getMainLooper());
 
-        View root = LayoutInflater.from(requireContext()).inflate(R.layout.task_schedule_fragment, null, false);
+        View root = LayoutInflater.from(requireContext()).inflate(R.layout.task_schedule_config_dialog, null, false);
         container = root.findViewById(R.id.ScheduleConfigContainer);
         loadingView = root.findViewById(R.id.ScheduleConfigLoading);
 

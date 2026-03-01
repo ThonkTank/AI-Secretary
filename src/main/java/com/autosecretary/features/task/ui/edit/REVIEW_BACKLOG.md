@@ -2,7 +2,7 @@
 
 ## Open Issues
 
-### [warning] Four parallel field walks across FormInput → TaskEditState → TaskEditStateMapper
+### [warning] Four parallel field walks across FormInput → TaskEditState → TaskEditStateMapper @skill:review-smells
 
 **Files:** `FormInput.java` (field declarations), `TaskEditPresenter.java:97-121` (applyForm), `TaskEditStateMapper.java:42-90` (fromTask), `TaskEditStateMapper.java:92-148` (toTask), `TaskEditState.java:23-68`
 
@@ -14,7 +14,7 @@
 
 ---
 
-### [nit] TaskEditSessionController.java:21 — mapper instantiated outside `internal`
+### [nit] TaskEditSessionController.java:21 — mapper instantiated outside `internal` @skill:review-conventions
 
 **File:** `TaskEditSessionController.java:21`
 
@@ -26,7 +26,3 @@
 
 ---
 
-## Resolved Issues
-
-- ✅ `ui/edit/README.md` (prior run) — rewrote with: flow diagram (open → load → edit → save → persist), numbered reading order, entry-point roles, state/internal boundary explanations, and public resource links (DialogFragment, TextInputLayout, TimePicker).
-- ✅ `edit/internal/TaskEditStateMapper.java` (this run) — replaced four `TaskEditPresenter.coalesce()` calls with `Objects.requireNonNullElse()`, removing the upward internal→surface dependency and the `TaskEditPresenter` import.

@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Plan a meal dialog. Managed by MealPlannerFragment.
+     MealDialogRecipe spinner: populated programmatically from existing recipes.
+     MealDialogType spinner: meal-type enum (e.g. Frühstück, Mittag, Abendessen) —
+     items set programmatically. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -17,19 +21,18 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_xs" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_md"
-        android:text="@string/meal_label_date"
-        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
-
-    <EditText
-        android:id="@+id/MealDialogDate"
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_xs"
-        android:hint="@string/meal_hint_date" />
+        android:layout_marginTop="@dimen/spacing_md"
+        android:hint="@string/meal_label_date">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/MealDialogDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </com.google.android.material.textfield.TextInputLayout>
 
     <TextView
         android:layout_width="wrap_content"
@@ -44,18 +47,18 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_xs" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_md"
-        android:text="@string/meal_label_servings"
-        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
-
-    <EditText
-        android:id="@+id/MealDialogServings"
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_xs"
-        android:hint="@string/meal_hint_servings"
-        android:inputType="number" />
+        android:layout_marginTop="@dimen/spacing_md"
+        android:hint="@string/meal_label_servings">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/MealDialogServings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number" />
+    </com.google.android.material.textfield.TextInputLayout>
+
 </LinearLayout>

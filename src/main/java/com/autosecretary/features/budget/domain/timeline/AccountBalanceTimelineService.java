@@ -31,7 +31,6 @@ public final class AccountBalanceTimelineService {
     private AccountBalanceTimelineService() {
     }
 
-
     /**
      * Reconstructs a daily balance timeline for a date window.
      *
@@ -50,7 +49,7 @@ public final class AccountBalanceTimelineService {
                                                               long startBalanceCents,
                                                               List<DailyDeltaPoint> dailyDeltas) {
         Map<LocalDate, Long> deltaByDate = dailyDeltas.stream()
-            .collect(Collectors.toMap(DailyDeltaPoint::date, DailyDeltaPoint::deltaCents));
+                .collect(Collectors.toMap(DailyDeltaPoint::date, DailyDeltaPoint::deltaCents));
 
         List<BalanceTimelinePoint> points = new ArrayList<>();
         long runningBalance = startBalanceCents;
@@ -81,7 +80,7 @@ public final class AccountBalanceTimelineService {
                                                                 long startBalanceCents,
                                                                 List<MonthlyDeltaPoint> monthlyDeltas) {
         Map<YearMonth, Long> deltaByMonth = monthlyDeltas.stream()
-            .collect(Collectors.toMap(MonthlyDeltaPoint::yearMonth, MonthlyDeltaPoint::deltaCents));
+                .collect(Collectors.toMap(MonthlyDeltaPoint::yearMonth, MonthlyDeltaPoint::deltaCents));
 
         List<BalanceTimelinePoint> points = new ArrayList<>();
         long runningBalance = startBalanceCents;

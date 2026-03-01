@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Recurring transaction suggestion row. Inflated programmatically by
+     BudgetRecurringSuggestionsDialogController into budget_recurring_suggestions_dialog.xml.
+     Fields: Payee (bold name), Pattern (schedule description, e.g. "monthly on 1st"),
+     Count (how many past occurrences detected), Confidence (0–100 % match quality), Amount. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:paddingTop="@dimen/spacing_sm"
-    android:paddingBottom="@dimen/spacing_sm"
+    android:paddingVertical="@dimen/spacing_sm"
     android:background="?attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true">
 
+    <!-- click/focus disabled — the row root is the interactive element, not the checkbox -->
     <CheckBox
         android:id="@+id/BudgetSuggestionCheckbox"
         android:layout_width="wrap_content"

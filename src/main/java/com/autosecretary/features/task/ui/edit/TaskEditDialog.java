@@ -44,7 +44,7 @@ public class TaskEditDialog extends DialogFragment {
         TaskEditState editState = editSessionController.requireSelectedTask();
         presenter = new TaskEditPresenter(editState, new TaskEditStateMapper());
 
-        View rootView = LayoutInflater.from(getContext()).inflate(R.layout.task_editor_fragment, null);
+        View rootView = LayoutInflater.from(getContext()).inflate(R.layout.task_editor_dialog, null);
         BoundSections sections = bindEditorSections(rootView, editState);
         GoalSectionController goalSectionController = new GoalSectionController(this, rootView, editState);
 

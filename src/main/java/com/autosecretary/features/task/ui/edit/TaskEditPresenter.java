@@ -46,6 +46,11 @@ public class TaskEditPresenter {
         editState.deadline = editableDeadline;
     }
 
+    /**
+     * Seeds the baseline repsPerDay after the form has been populated.
+     * Must be called exactly once before any {@link #onRepetitionChanged} call, so the
+     * first repetition-field event can correctly detect whether anything actually changed.
+     */
     public void initializeRepetitionState(boolean repetitionEnabled, String repsText,
                                           String perPeriodText, Period periodUnit) {
         lastRepsPerDay = computeCurrentRepsPerDay(repetitionEnabled, repsText, perPeriodText, periodUnit);
@@ -66,14 +71,13 @@ public class TaskEditPresenter {
         }
         lastRepsPerDay = newRepsPerDay;
 
-        int targetSlotCount = newRepsPerDay;
         int currentSlotCount = editState.prefSlots.size();
-        if (targetSlotCount > currentSlotCount) {
-            for (int i = currentSlotCount; i < targetSlotCount; i++) {
+        if (newRepsPerDay > currentSlotCount) {
+            for (int i = currentSlotCount; i < newRepsPerDay; i++) {
                 editState.prefSlots.add(createDefaultPrefSlotState(editState.id));
             }
-        } else if (targetSlotCount < currentSlotCount && targetSlotCount > 0) {
-            editState.prefSlots.subList(targetSlotCount, currentSlotCount).clear();
+        } else if (newRepsPerDay < currentSlotCount && newRepsPerDay > 0) {
+            editState.prefSlots.subList(newRepsPerDay, currentSlotCount).clear();
         }
         return true;
     }
@@ -95,10 +99,10 @@ public class TaskEditPresenter {
         int reps = parseIntSafe(repsText, TaskEditDefaults.REPETITION_REPS);
         int perPeriod = parseIntSafe(perPeriodText, TaskEditDefaults.REPETITION_PER_PERIOD);
         Period safePeriodUnit = periodUnit != null ? periodUnit : TaskEditDefaults.REPETITION_PERIOD_UNIT;
-        int periodInDays = safePeriodUnit.dayCount * perPeriod;
-        if (periodInDays <= 0) {
-            periodInDays = 1;
-        }
+        int periodInDays = Math.max(1, safePeriodUnit.dayCount * perPeriod);
+        // Ceiling ensures we create enough pref-slot groups to cover the heaviest day.
+        // E.g. 3 reps / 2 days → 1.5 → ceil → 2 slot groups (one day needs 2 reps).
+        // Floor would produce 1 group — not enough to schedule all reps.
         return (int) Math.ceil((double) reps / (double) periodInDays);
     }
 
@@ -124,16 +128,8 @@ public class TaskEditPresenter {
         editState.cooldown = safeInput.cooldown;
         editState.adaptive = safeInput.adaptive;
 
-        updateOrResetRepetition(safeInput);
-        updateOrResetProgress(safeInput);
-    }
-
-    private void updateOrResetRepetition(FormInput input) {
-        if (input.repetitionEnabled) {
-            updateRepetition(input);
-            return;
-        }
-        resetRepetition();
+        if (safeInput.repetitionEnabled) updateRepetition(safeInput); else resetRepetition();
+        if (safeInput.progressEnabled)   updateProgress(safeInput);   else resetProgress();
     }
 
     private void updateRepetition(FormInput input) {
@@ -164,14 +160,6 @@ public class TaskEditPresenter {
         editState.periodStart = null;
         editState.completeFirst = false;
         editState.carryoverDebt = 0;
-    }
-
-    private void updateOrResetProgress(FormInput input) {
-        if (input.progressEnabled) {
-            updateProgress(input);
-            return;
-        }
-        resetProgress();
     }
 
     private void updateProgress(FormInput input) {

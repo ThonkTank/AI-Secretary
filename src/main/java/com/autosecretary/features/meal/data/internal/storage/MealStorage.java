@@ -17,6 +17,11 @@ import java.util.Map;
  * <p><strong>Row mutation:</strong> All read operations return defensive copies. External mutation
  * of the returned map will not affect the stored data. Mutations happen only via {@code upsert}
  * and {@code delete}.</p>
+ *
+ * <p><strong>Thread safety:</strong> Implementations are not required to be thread-safe. In the
+ * current architecture, all storage access is routed through a single-threaded executor, so callers
+ * must not access an implementation concurrently unless the implementation explicitly documents
+ * thread safety. See {@link InMemoryMealStorage} for the current implementation's constraints.</p>
  */
 public interface MealStorage {
     /**

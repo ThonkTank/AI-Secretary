@@ -25,6 +25,10 @@ import java.util.List;
  *       balance chart ({@code getDailyDeltasForAccount}, {@code getMonthlyDeltasForAccount})</li>
  * </ol>
  * <p>
+ * <b>yearMonth parameters:</b> All methods that accept a {@code yearMonth} string expect the format
+ * {@code "YYYY-MM"} (e.g., {@code "2024-01"} for January 2024). Use
+ * {@code YearMonth.now().toString()} or {@code yearMonth.toString()} to produce a compatible value.
+ * <p>
  * The concrete Room implementation lives in {@code budget/data/internal/repository/BudgetRoomRepository}.
  * All calls are expected to run on a background thread (see {@code AppCompositionRoot} for threading setup).
  */
@@ -78,13 +82,25 @@ public interface BudgetRepository {
     void bookExpenseAndDeductBalance(String accountId, String categoryId,
                                      long amountCents, LocalDate bookingDate, String note);
 
+    /**
+     * Groups the editable fields of a transaction for use with the convenience overloads of
+     * {@link #saveTransaction(TransactionCreateDetails)} and
+     * {@link #updateTransaction(String, TransactionCreateDetails)}.
+     */
+    record TransactionCreateDetails(
+            String accountId,
+            String categoryId,
+            TransactionDirection direction,
+            long amountCents,
+            LocalDate bookingDate,
+            String note
+    ) {}
+
     /** Convenience overload used by the "Add Transaction" dialog — builds the entity internally. */
-    void saveTransaction(String accountId, String categoryId, TransactionDirection direction,
-                         long amountCents, LocalDate bookingDate, String note);
+    void saveTransaction(TransactionCreateDetails details);
 
     void updateTransaction(BudgetTransactionEntity transaction);
-    void updateTransaction(String transactionId, String accountId, String categoryId,
-                           TransactionDirection direction, long amountCents, LocalDate bookingDate, String note);
+    void updateTransaction(String transactionId, TransactionCreateDetails details);
     void saveTransactions(List<BudgetTransactionEntity> transactions);
     void deleteTransaction(String transactionId);
 

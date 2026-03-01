@@ -6,6 +6,8 @@ import com.autosecretary.features.meal.data.internal.storage.MealStorage;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -19,17 +21,17 @@ import java.util.stream.Collectors;
  *   StorageFooRepository → BaseCollectionDao&lt;Foo&gt; → RowMapper&lt;Foo&gt; → MealStorage
  * </pre>
  *
- * <h3>Why EntityIdHandler instead of reflection?</h3>
- * <p>{@code idHandler} encapsulates id read/write logic as an abstraction rather than using
- * Java reflection. This keeps the class reflection-free, which is important on Android
- * (reflection is slow and affected by R8/ProGuard rules). Repositories pass a handler
- * created via {@link EntityIdHandler#of(Function, BiConsumer)} that wraps lambdas:
+ * <h3>Why lambdas instead of reflection?</h3>
+ * <p>Id read/write is expressed as plain lambda parameters rather than Java reflection.
+ * This keeps the class reflection-free, which is important on Android
+ * (reflection is slow and affected by R8/ProGuard rules). Repositories pass lambdas directly:
  * <pre>
  *   new BaseCollectionDao&lt;&gt;(
  *       MealCollections.RECIPES,
  *       storage,
  *       new RecipeRowMapper(),
- *       EntityIdHandler.of(r -&gt; r.id, (r, id) -&gt; r.id = id)
+ *       r -&gt; r.id,
+ *       (r, id) -&gt; r.id = id
  *   );
  * </pre>
  *
@@ -48,16 +50,19 @@ public class BaseCollectionDao<T> {
     private final String collection;
     private final MealStorage storage;
     private final RowMapper<T> mapper;
-    private final EntityIdHandler<T> idHandler;
+    private final Function<T, Long> idGetter;
+    private final BiConsumer<T, Long> idSetter;
 
     public BaseCollectionDao(String collection,
                              MealStorage storage,
                              RowMapper<T> mapper,
-                             EntityIdHandler<T> idHandler) {
+                             Function<T, Long> idGetter,
+                             BiConsumer<T, Long> idSetter) {
         this.collection = Objects.requireNonNull(collection, "collection cannot be null");
         this.storage = Objects.requireNonNull(storage, "storage cannot be null");
         this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null");
-        this.idHandler = Objects.requireNonNull(idHandler, "idHandler cannot be null");
+        this.idGetter = Objects.requireNonNull(idGetter, "idGetter cannot be null");
+        this.idSetter = Objects.requireNonNull(idSetter, "idSetter cannot be null");
     }
 
     /**
@@ -68,10 +73,7 @@ public class BaseCollectionDao<T> {
      */
     public T findById(long id) {
         Map<String, Object> row = storage.findById(collection, id);
-        if (row == null) {
-            return null;
-        }
-        return mapper.fromRow(row);
+        return row == null ? null : mapper.fromRow(row);
     }
 
     /**
@@ -94,10 +96,10 @@ public class BaseCollectionDao<T> {
      *              and set back via idHandler.
      */
     public void save(T value) {
-        Long id = idHandler.getId(value);
+        Long id = idGetter.apply(value);
         long storedId = storage.upsert(collection, id, mapper.toRow(value));
         if (id == null) {
-            idHandler.setId(value, storedId);
+            idSetter.accept(value, storedId);
         }
     }
 
@@ -144,9 +146,7 @@ public class BaseCollectionDao<T> {
     /**
      * Returns a single entity where the given field equals the given value, or null if not found.
      *
-     * <p>This method is more efficient than {@link #findAllByField(String, Object)} when you expect
-     * at most one result, as it allows the storage layer to optimize for early termination.
-     * If multiple matches exist, only the first is returned.
+     * <p>If multiple matches exist, only the first is returned.
      *
      * @param field the field name to match (a constant from {@link MealFieldKeys})
      * @param value the value to match; null matches fields where the stored value is also null
@@ -154,10 +154,7 @@ public class BaseCollectionDao<T> {
      */
     public T findSingleByField(String field, Object value) {
         List<Map<String, Object>> rows = storage.findByField(collection, field, value);
-        if (rows.isEmpty()) {
-            return null;
-        }
-        return mapper.fromRow(rows.get(0));
+        return rows.isEmpty() ? null : mapper.fromRow(rows.get(0));
     }
 
     private List<T> mapRows(List<Map<String, Object>> rows) {

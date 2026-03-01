@@ -24,5 +24,4 @@ public record ParsedStatement(
         List<ParsedTransaction> transactions,
         LocalDate periodStart,
         LocalDate periodEnd
-) {
-}
+) {}

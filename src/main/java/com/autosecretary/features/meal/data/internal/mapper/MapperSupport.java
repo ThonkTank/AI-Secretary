@@ -31,15 +31,15 @@ import java.util.stream.Collectors;
  *   <li>Similar overloads for {@code long}, {@code double}, {@code boolean}
  * </ul>
  *
- * <p><b>Enum conversions</b> (case-insensitive by enum name):
+ * <p><b>Enum conversions</b> (case-sensitive by enum name):
  * <ul>
  *   <li>{@link #asEnum(Class, Object, Object)} — parse by enum name, fallback if invalid
  * </ul>
  *
- * <p><b>"Both-paths" collection deserialization</b> (handle both native and string representations):
+ * <p><b>Collection deserialization from string</b>:
  * <ul>
- *   <li>{@link #asListOrParse(Object, Function)} — if value is already a {@code List<T>}, use it;
- *       otherwise parse from string via supplied parser function
+ *   <li>{@link #parseListFromString(Object, Function)} — parse a list from a stored string value
+ *       via a supplied parser function; passes null to the parser if the value is not a {@code String}
  *   <li>{@link #asDayOfWeekSet(Object)} — specialized for {@code Set<DayOfWeek>}
  * </ul>
  *
@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
  *         row.get("prepEffort"), Recipe.PrepEffort.MEDIUM);
  *     recipe.tags = (String) row.get("tags"); // nullable string
  *     recipe.ingredients = MapperSupport.asListOrParse(row.get("ingredients"),
- *         MyMapper::parseIngredientsList); // both-paths pattern
+ *         MyMapper::parseIngredientsList); // parses from string
  *     return recipe;
  * }
  * </pre>
@@ -178,26 +178,14 @@ final class MapperSupport {
         return dateTime == null ? null : dateTime.toString();
     }
 
-    // "Both-paths" collection deserialization: if the stored value is already the target type,
-    // use it directly; otherwise parse it from a String via the supplied parser function.
-    @SuppressWarnings("unchecked")
-    static <T> List<T> asListOrParse(Object value, Function<String, List<T>> parser) {
-        if (value instanceof List<?> list) {
-            return (List<T>) list;
-        }
+    // Parses a list from a stored string value via the supplied parser function.
+    // Passes null to the parser if the stored value is null or not a String.
+    static <T> List<T> parseListFromString(Object value, Function<String, List<T>> parser) {
         return parser.apply(value instanceof String s ? s : null);
     }
 
-    // Generic enum-set serialization — comma-separated names, e.g. "MONDAY,WEDNESDAY"
+    // Generic enum-set deserialization — expects a comma-separated name string, e.g. "MONDAY,WEDNESDAY"
     static <E extends Enum<E>> Set<E> asEnumSet(Class<E> enumType, Object value) {
-        if (value instanceof Set<?> set) {
-            Set<E> result = EnumSet.noneOf(enumType);
-            for (Object item : set) {
-                E e = asEnum(enumType, item, null);
-                if (e != null) result.add(e);
-            }
-            return result;
-        }
         if (value == null) return EnumSet.noneOf(enumType);
         String raw = value.toString().trim();
         if (raw.isEmpty()) return EnumSet.noneOf(enumType);
@@ -214,12 +202,8 @@ final class MapperSupport {
         return values.stream().map(Enum::name).collect(Collectors.joining(","));
     }
 
-    // DayOfWeek convenience wrappers
+    // DayOfWeek convenience wrapper (eliminates the Class<DayOfWeek> argument at call sites)
     static Set<DayOfWeek> asDayOfWeekSet(Object value) {
         return asEnumSet(DayOfWeek.class, value);
-    }
-
-    static String serializeDayOfWeekSet(Set<DayOfWeek> days) {
-        return serializeEnumSet(days);
     }
 }

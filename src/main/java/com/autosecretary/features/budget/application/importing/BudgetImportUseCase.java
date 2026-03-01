@@ -89,14 +89,13 @@ public class BudgetImportUseCase {
                 repository.saveTransactionsBatch(computation.newTransactions.stream().map(BudgetTransactionMapper::toRecord).toList());
             }
 
-            repository.markImportCompleted(
-                    importId,
+            repository.markImportCompleted(importId, new BudgetImportRepository.CompletionData(
                     parsed.transactions().size(),
                     computation.newTransactions.size(),
                     computation.recognizedCategories,
                     parsed.periodStart(),
                     parsed.periodEnd()
-            );
+            ));
 
             repository.notifyBudgetDataUpdated();
 

@@ -34,7 +34,7 @@ public record RecurringSuggestion(
         /** Transaction direction (INCOME or EXPENSE). */
         TransactionDirection direction,
         /** The detected recurring type (MONTHLY_DAY, WEEKLY, INTERVAL, MONTHLY_LAST). */
-        RecurringBudgetTransaction.RecurringType suggestedType,
+        RecurringType suggestedType,
         /**
          * Type-dependent value: day of month (1–31) for MONTHLY_DAY, interval days for INTERVAL,
          * always 0 for MONTHLY_LAST and WEEKLY (use suggestedDayOfWeek instead).

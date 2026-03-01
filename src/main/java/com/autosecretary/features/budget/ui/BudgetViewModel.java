@@ -220,9 +220,10 @@ public class BudgetViewModel extends ViewModel {
                                String note, LocalDate date, String accountId) {
         withParsedAmount(amountStr, amountCents -> {
             if (accountId == null) return;
-            repository.saveTransaction(accountId, categoryId,
+            repository.saveTransaction(new BudgetRepository.TransactionCreateDetails(
+                    accountId, categoryId,
                     isExpense ? TransactionDirection.EXPENSE : TransactionDirection.INCOME,
-                    amountCents, date, note);
+                    amountCents, date, note));
             loadOverviewOnExecutor();
         });
     }
@@ -230,9 +231,10 @@ public class BudgetViewModel extends ViewModel {
     public void updateTransaction(String transactionId, String amountStr, boolean isExpense,
                                   String categoryId, String note, LocalDate date, String accountId) {
         withParsedAmount(amountStr, amountCents -> {
-            repository.updateTransaction(transactionId, accountId, categoryId,
+            repository.updateTransaction(transactionId, new BudgetRepository.TransactionCreateDetails(
+                    accountId, categoryId,
                     isExpense ? TransactionDirection.EXPENSE : TransactionDirection.INCOME,
-                    amountCents, date, note);
+                    amountCents, date, note));
             loadOverviewOnExecutor();
         });
     }

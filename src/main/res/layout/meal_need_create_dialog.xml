@@ -1,49 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Create weekly ingredient target dialog. Managed by MealPlannerFragment.
+     A "need" is a weekly consumption target for one ingredient (e.g. 500 g oats per week).
+     Needs are shown in the Stock tab alongside pantry stock and the derived shopping list. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="@dimen/spacing_md">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/meal_label_name"
-        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
-
-    <EditText
-        android:id="@+id/MealNeedName"
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_xs"
-        android:hint="@string/meal_hint_name" />
+        android:hint="@string/meal_label_name">
 
-    <TextView
-        android:layout_width="wrap_content"
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/MealNeedName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_md"
-        android:text="@string/meal_label_amount"
-        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
+        android:hint="@string/meal_label_amount">
 
-    <EditText
-        android:id="@+id/MealNeedAmount"
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/MealNeedAmount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_xs"
-        android:hint="@string/meal_hint_amount"
-        android:inputType="numberDecimal" />
-
-    <TextView
-        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_md"
-        android:text="@string/meal_label_unit"
-        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
+        android:hint="@string/meal_label_unit">
 
-    <EditText
-        android:id="@+id/MealNeedUnit"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_xs"
-        android:hint="@string/meal_hint_unit" />
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/MealNeedUnit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </com.google.android.material.textfield.TextInputLayout>
 </LinearLayout>

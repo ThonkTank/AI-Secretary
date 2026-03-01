@@ -31,7 +31,7 @@ import java.time.LocalDate;
 public record RecurringScheduleParams(
         String id,
         LocalDate nextDue,
-        RecurringBudgetTransaction.RecurringType recurringType,
+        RecurringType recurringType,
         DayOfWeek recurringDayOfWeek,
         int recurringValue
 ) {}

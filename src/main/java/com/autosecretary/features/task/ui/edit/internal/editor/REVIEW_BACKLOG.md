@@ -2,7 +2,7 @@
 
 ## Open Issues
 
-### [warning] TaskEditSectionBinder.java:336-368 — SchedulingViews 15-parameter constructor
+### [warning] TaskEditSectionBinder.java:336-368 — SchedulingViews 15-parameter constructor @skill:review-smells
 
 **File:** `TaskEditSectionBinder.java:336-368`
 
@@ -12,7 +12,7 @@
 
 ---
 
-### [nit] TaskEditSectionBinder.java:227-263 — bindProgress() is 37 lines
+### [nit] TaskEditSectionBinder.java:227-263 — bindProgress() is 37 lines @skill:review-smells
 
 **File:** `TaskEditSectionBinder.java:227-263`
 
@@ -20,7 +20,7 @@
 
 ---
 
-### [nit] PrefSlotSectionController.java:68-73,90-95 — duplicate repetition-field reading
+### [nit] PrefSlotSectionController.java:68-73,90-95 — duplicate repetition-field reading @skill:review-smells
 
 **File:** `PrefSlotSectionController.java:68-73,90-95`
 
@@ -28,7 +28,7 @@
 
 ---
 
-### [nit] GoalSectionController.java:108-110, PrefSlotSectionController.java:206-208 — duplicate `dimenPx` helper
+### [nit] GoalSectionController.java:108-110, PrefSlotSectionController.java:206-208 — duplicate `dimenPx` helper @skill:review-smells
 
 **Files:** `GoalSectionController.java:108-110`, `PrefSlotSectionController.java:206-208`
 
@@ -36,10 +36,11 @@
 
 ---
 
-### [nit] GoalSectionController.java:32-35 — hardcoded GOAL_COLORS palette
+### [nit] GoalSectionController.java:32-35 — hardcoded GOAL_COLORS palette @skill:review-simplicity
 
 **File:** `GoalSectionController.java:32-35`
 
 **Concern:** The 10 colour hex strings are embedded in Java source as a static array. Any palette change requires editing Java code rather than a resource file. The `#AARRGGBB` format is not standard Android color-resource format, so moving them requires a `string-array` in `res/values/arrays.xml` and `Color.parseColor` loading in the controller.
 
 **Suggested fix:** Move to `res/values/arrays.xml` as a `string-array`, load via `getResources().getStringArray(R.array.goal_editor_colors)` in `buildGoalColorGrid`. Deferred — requires adding a new resource; low urgency since palette is stable.
+

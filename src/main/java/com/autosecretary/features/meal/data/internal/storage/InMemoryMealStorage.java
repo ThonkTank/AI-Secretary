@@ -1,5 +1,7 @@
 package com.autosecretary.features.meal.data.internal.storage;
 
+import com.autosecretary.features.meal.data.internal.MealFieldKeys;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -27,10 +29,6 @@ import java.util.Objects;
  * In the current architecture, all storage access is routed through a single-threaded executor.
  */
 public class InMemoryMealStorage implements MealStorage {
-
-    // The key under which every stored row's canonical id is recorded.
-    // Must match the "id" constant defined in every MealFieldKeys nested interface.
-    private static final String ROW_ID_KEY = "id";
 
     private final Map<String, Map<Long, Map<String, Object>>> collections = new HashMap<>();
     private final Map<String, Long> counters = new HashMap<>();
@@ -64,7 +62,7 @@ public class InMemoryMealStorage implements MealStorage {
         Map<String, Object> copy = defensiveCopy(row);
         // Defensive: always inject the canonical id into the stored row, regardless of what
         // the caller's map contained. This ensures the stored row's id is never stale or null.
-        copy.put(ROW_ID_KEY, targetId);
+        copy.put(MealFieldKeys.ROW_ID, targetId);
         rows.put(targetId, copy);
         return targetId;
     }
@@ -86,8 +84,7 @@ public class InMemoryMealStorage implements MealStorage {
             // Bump the counter to ensure future auto-generated ids never collide with any
             // explicitly assigned id. Without this, an explicit id larger than the current
             // counter would cause future auto-generated ids to collide with existing rows.
-            long currentCounter = counters.getOrDefault(collection, 0L);
-            counters.put(collection, Math.max(currentCounter, explicitId));
+            counters.merge(collection, explicitId, Math::max);
             return explicitId;
         }
         return counters.merge(collection, 1L, Long::sum);

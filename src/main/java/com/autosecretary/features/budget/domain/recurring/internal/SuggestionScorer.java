@@ -36,6 +36,10 @@ public final class SuggestionScorer {
     // Known-subscription match is a weaker tie-breaker, not a primary signal.
     private static final double KNOWN_SUBSCRIPTION_WEIGHT = 0.1;
 
+    // Intentionally mixed German/English — the app targets German users.
+    // German entries: TELEKOM/VODAFONE/O2 (German telecoms), VERSICHERUNG (insurance),
+    // RUNDFUNK/GEZ (Rundfunkbeitrag — mandatory German public broadcasting fee).
+    // To add new services, append the normalized payee token (uppercase, spaces between words).
     private static final String[] KNOWN_SUBSCRIPTION_PATTERNS = {
             "NETFLIX", "SPOTIFY", "AMAZON PRIME", "DISNEY", "APPLE",
             "GOOGLE", "MICROSOFT", "ADOBE", "DROPBOX", "ZOOM",

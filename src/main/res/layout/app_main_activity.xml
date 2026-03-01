@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Root shell activity layout. Inflated by MainActivity.
+     Structure: MaterialToolbar (top) → FragmentContainerView (content) → BottomNavigationView (bottom).
+     BottomNavigationView drives tab selection; MainActivity swaps fragments into Container
+     based on the selected tab. No fragment is hardcoded here — navigation is wired in code. -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -28,10 +32,8 @@
         android:id="@+id/TabBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/spacing_md"
-        android:layout_marginEnd="@dimen/spacing_md"
+        android:layout_marginHorizontal="@dimen/spacing_md"
         android:layout_marginBottom="@dimen/spacing_md"
-        android:paddingTop="@dimen/spacing_xxs"
-        android:paddingBottom="@dimen/spacing_xxs"
+        android:paddingVertical="@dimen/spacing_xxs"
         app:menu="@menu/bottom_nav" />
 </LinearLayout>

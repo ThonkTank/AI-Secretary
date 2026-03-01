@@ -14,7 +14,7 @@ import java.util.Map;
  * not by this mapper.
  *
  * <p>The four {@code *CookingDays} fields ({@link java.time.DayOfWeek} sets) are serialized
- * as comma-separated enum names via {@link MapperSupport#serializeDayOfWeekSet} and
+ * as comma-separated enum names via {@link MapperSupport#serializeEnumSet} and
  * deserialized via {@link MapperSupport#asDayOfWeekSet}.
  */
 public class CookingPreferencesRowMapper implements RowMapper<CookingPreferences> {
@@ -26,10 +26,10 @@ public class CookingPreferencesRowMapper implements RowMapper<CookingPreferences
         row.put(MealFieldKeys.CookingPreferences.MAX_LUNCH_COOKING, preferences.maxLunchCooking);
         row.put(MealFieldKeys.CookingPreferences.MAX_DINNER_COOKING, preferences.maxDinnerCooking);
         row.put(MealFieldKeys.CookingPreferences.MAX_SNACK_COOKING, preferences.maxSnackCooking);
-        row.put(MealFieldKeys.CookingPreferences.BREAKFAST_COOKING_DAYS, MapperSupport.serializeDayOfWeekSet(preferences.breakfastCookingDays));
-        row.put(MealFieldKeys.CookingPreferences.LUNCH_COOKING_DAYS, MapperSupport.serializeDayOfWeekSet(preferences.lunchCookingDays));
-        row.put(MealFieldKeys.CookingPreferences.DINNER_COOKING_DAYS, MapperSupport.serializeDayOfWeekSet(preferences.dinnerCookingDays));
-        row.put(MealFieldKeys.CookingPreferences.SNACK_COOKING_DAYS, MapperSupport.serializeDayOfWeekSet(preferences.snackCookingDays));
+        row.put(MealFieldKeys.CookingPreferences.BREAKFAST_COOKING_DAYS, MapperSupport.serializeEnumSet(preferences.breakfastCookingDays));
+        row.put(MealFieldKeys.CookingPreferences.LUNCH_COOKING_DAYS, MapperSupport.serializeEnumSet(preferences.lunchCookingDays));
+        row.put(MealFieldKeys.CookingPreferences.DINNER_COOKING_DAYS, MapperSupport.serializeEnumSet(preferences.dinnerCookingDays));
+        row.put(MealFieldKeys.CookingPreferences.SNACK_COOKING_DAYS, MapperSupport.serializeEnumSet(preferences.snackCookingDays));
         row.put(MealFieldKeys.CookingPreferences.QUICK_PREP_MAX_MINUTES, preferences.quickPrepMaxMinutes);
         return row;
     }

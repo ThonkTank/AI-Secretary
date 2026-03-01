@@ -25,11 +25,18 @@ package com.autosecretary.features.meal.data.internal;
  * <p>When adding a new entity type, add a corresponding nested interface here and a collection
  * constant in {@link MealCollections}.
  */
-public interface MealFieldKeys {
-    // Shared across ShoppingListItem and WeeklyFoodTarget — kept at top level to avoid duplication.
-    String PERIOD_KEY = "periodKey";
+public final class MealFieldKeys {
+    // Shared row-id key: all entities use "id" as their storage-level id field.
+    // Referenced by InMemoryMealStorage to inject the canonical id into every stored row.
+    public static final String ROW_ID = "id";
 
-    interface HouseholdMember {
+    // Shared across ShoppingListItem and WeeklyFoodTarget — kept at top level to avoid duplication.
+    public static final String PERIOD_KEY = "periodKey";
+
+    private MealFieldKeys() {
+    }
+
+    public interface HouseholdMember {
         String ID = "id";
         String NAME = "name";
         String BIRTH_YEAR = "birthYear";
@@ -41,7 +48,7 @@ public interface MealFieldKeys {
         String IS_ACTIVE = "isActive";
     }
 
-    interface Ingredient {
+    public interface Ingredient {
         String ID = "id";
         String NAME = "name";
         String FOOD_GROUP = "foodGroup";
@@ -59,7 +66,7 @@ public interface MealFieldKeys {
         String STORE_PACKAGES = "storePackages";
     }
 
-    interface PantryItem {
+    public interface PantryItem {
         String ID = "id";
         String INGREDIENT_ID = "ingredientId";
         String INGREDIENT_NAME = "ingredientName";
@@ -70,7 +77,7 @@ public interface MealFieldKeys {
         String LOCATION = "location";
     }
 
-    interface ShoppingListItem {
+    public interface ShoppingListItem {
         // periodKey is shared with WeeklyFoodTarget — use MealFieldKeys.PERIOD_KEY.
         String ID = "id";
         String INGREDIENT_ID = "ingredientId";
@@ -85,7 +92,7 @@ public interface MealFieldKeys {
         String ESTIMATED_PRICE_CENTS = "estimatedPriceCents";
     }
 
-    interface CookingPreferences {
+    public interface CookingPreferences {
         String ID = "id";
         String MAX_BREAKFAST_COOKING = "maxBreakfastCooking";
         String MAX_LUNCH_COOKING = "maxLunchCooking";
@@ -98,7 +105,7 @@ public interface MealFieldKeys {
         String QUICK_PREP_MAX_MINUTES = "quickPrepMaxMinutes";
     }
 
-    interface WeeklyFoodTarget {
+    public interface WeeklyFoodTarget {
         // periodKey is shared with ShoppingListItem — use MealFieldKeys.PERIOD_KEY.
         String ID = "id";
         String GRAIN_GRAMS = "grainGrams";
@@ -125,7 +132,7 @@ public interface MealFieldKeys {
         String NUT_PLANNED = "nutPlanned";
     }
 
-    interface Recipe {
+    public interface Recipe {
         String ID = "id";
         String TITLE = "title";
         String DESCRIPTION = "description";
@@ -151,7 +158,7 @@ public interface MealFieldKeys {
         String RATINGS = "ratings";
     }
 
-    interface MealPlan {
+    public interface MealPlan {
         String ID = "id";
         String DATE = "date";
         String MEAL_TYPE = "mealType";
@@ -165,7 +172,7 @@ public interface MealFieldKeys {
         String ESTIMATED_CALORIES = "estimatedCalories";
     }
 
-    interface ConsumptionLog {
+    public interface ConsumptionLog {
         String ID = "id";
         String DATE = "date";
         String ITEM_ID = "itemId";

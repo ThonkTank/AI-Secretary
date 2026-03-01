@@ -48,9 +48,9 @@ All balance/delta values are in **cents** (integers), not decimal currency:
 
 ## Where to Start
 
-1. Read the javadocs in `AccountBalanceTimelineService` — the public methods (`reconstructDaily`, `reconstructMonthly`) show both typical usage patterns and detailed semantics.
+1. Read the javadocs in `AccountBalanceTimelineService` — the public static methods (`reconstructDaily`, `reconstructMonthly`) show both typical usage patterns and detailed semantics.
 2. Look at the usage in `BudgetOverviewLoader` to see how deltas are fetched and passed to reconstruction.
-3. The private `reconstructTimeline()` method implements the generic accumulation loop; the javadoc explains why it exists.
+3. Each method contains an inline accumulation loop; the `@param startBalanceCents` javadoc explains the opening-balance convention.
 
 ## When You Need This Module
 

@@ -74,6 +74,8 @@ public class PrefSlotUIBuilder {
                         int repsPerDay, Listener listener) {
         prefSlotContainer.removeAllViews();
 
+        // Sort by start time first — groupByRepetition is a greedy, order-sensitive algorithm,
+        // so a stable input ordering produces consistent, deterministic grouping across rebuilds.
         List<PrefSlotEditState> sorted = new ArrayList<>(editablePrefSlots);
         sorted.sort(Comparator.comparing((PrefSlotEditState s) -> s.start, Comparator.nullsLast(Comparator.naturalOrder())));
 

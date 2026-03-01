@@ -176,7 +176,6 @@ public class BudgetFragment extends Fragment {
 
     private BudgetOverviewViews bindViews(@NonNull View rootView) {
         BudgetOverviewViews v = new BudgetOverviewViews();
-        v.title = rootView.findViewById(R.id.BudgetTitle);
         v.summaryCard = rootView.findViewById(R.id.BudgetSummaryCard);
         v.summaryIncome = rootView.findViewById(R.id.BudgetSummaryIncome);
         v.summaryExpense = rootView.findViewById(R.id.BudgetSummaryExpense);
@@ -201,7 +200,6 @@ public class BudgetFragment extends Fragment {
     }
 
     private void observeViewModel(@NonNull BudgetOverviewViews views) {
-        views.title.setText(R.string.budget_title);
         budgetViewModel.getStatusMessage().observe(getViewLifecycleOwner(),
                 uiText -> views.status.setText(uiText.resolve(requireContext())));
 
@@ -313,7 +311,6 @@ public class BudgetFragment extends Fragment {
     }
 
     private static class BudgetOverviewViews {
-        TextView title;
         View summaryCard;
         TextView summaryIncome;
         TextView summaryExpense;

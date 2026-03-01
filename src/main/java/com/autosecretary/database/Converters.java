@@ -10,7 +10,7 @@ import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.domain.TransactionKind;
 import com.autosecretary.features.budget.domain.importing.ImportStatus;
-import com.autosecretary.features.budget.domain.recurring.RecurringBudgetTransaction;
+import com.autosecretary.features.budget.domain.recurring.RecurringType;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -201,13 +201,13 @@ public class Converters {
     }
 
     @TypeConverter
-    public static String fromRecurringType(RecurringBudgetTransaction.RecurringType type) {
+    public static String fromRecurringType(RecurringType type) {
         return fromEnum(type);
     }
 
     @TypeConverter
-    public static RecurringBudgetTransaction.RecurringType toRecurringType(String value) {
-        return toEnum(value, RecurringBudgetTransaction.RecurringType.class);
+    public static RecurringType toRecurringType(String value) {
+        return toEnum(value, RecurringType.class);
     }
 
     @TypeConverter

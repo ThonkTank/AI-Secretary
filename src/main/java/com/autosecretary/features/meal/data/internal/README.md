@@ -32,7 +32,7 @@ A domain call like `mealRepository.getMealPlans(from, to)` travels through four 
 4. InMemoryMealStorage           — stores rows as Map<Long, Map<String,Object>> per collection
 ```
 
-## The five root files
+## The three root files
 
 ### `BaseCollectionDao<T>`
 The central workhorse. Every repository owns one `BaseCollectionDao` per entity type. It:

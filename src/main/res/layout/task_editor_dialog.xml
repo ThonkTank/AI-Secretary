@@ -139,8 +139,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"/>
 
-        <!-- Not yet implemented: TERMIN scheduling fields. These exist in the data
-             model but are not exposed in TaskEditDialog. See CLAUDE.md "Not Yet Implemented". -->
+        <!-- TERMIN scheduling fields exist in the data model but are not yet exposed in
+             TaskEditDialog — hidden until TERMIN scheduling is fully implemented. -->
         <LinearLayout
             android:id="@+id/FixedSchedulingContainer"
             android:layout_width="match_parent"
@@ -219,6 +219,9 @@
                 android:inputType="number"/>
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- Budget integration: account and category are identified by UUID.
+             These are plain text fields where the user types the UUID directly —
+             no picker is shown. Find the UUID in the budget account/category list. -->
         <com.google.android.material.textfield.TextInputLayout
             style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
             android:layout_width="match_parent"
@@ -478,64 +481,58 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:text="@string/task_editor_target_label"/>
 
-                    <TextView
-                        style="@style/TextAppearance.AutoSecretary.Editor.Label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/task_editor_target_label"/>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="@dimen/spacing_sm">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/EditTarget"
-                            style="@style/Widget.AutoSecretary.Editor.TextField"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="number"/>
-                    </com.google.android.material.textfield.TextInputLayout>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginTop="@dimen/spacing_sm">
+                    android:layout_weight="1"
+                    android:layout_marginStart="@dimen/spacing_sm">
 
-                    <TextView
-                        style="@style/TextAppearance.AutoSecretary.Editor.Label"
-                        android:layout_width="wrap_content"
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/EditTarget"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/task_editor_current_label"/>
+                        android:inputType="number"/>
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
-                        android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="@dimen/spacing_sm">
+
+                <TextView
+                    style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_editor_current_label"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="@dimen/spacing_sm">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/EditCurrent"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="@dimen/spacing_sm">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/EditCurrent"
-                            style="@style/Widget.AutoSecretary.Editor.TextField"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="number"/>
-                    </com.google.android.material.textfield.TextInputLayout>
-                </LinearLayout>
+                        android:inputType="number"/>
+                </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
             <CheckBox
@@ -544,62 +541,56 @@
                 android:layout_height="wrap_content"
                 android:text="@string/task_editor_reset_per_repetition"/>
 
+            <TextView
+                style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/task_editor_per_repetition_label"/>
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="@dimen/spacing_sm">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/task_editor_hint_min">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/EditMinPerRep"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"/>
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
                     style="@style/TextAppearance.AutoSecretary.Editor.Label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/task_editor_per_repetition_label"/>
+                    android:text="@string/task_editor_range_separator"
+                    android:layout_marginStart="@dimen/spacing_xs"
+                    android:layout_marginEnd="@dimen/spacing_xs"/>
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginTop="@dimen/spacing_sm">
+                    android:layout_weight="1"
+                    android:hint="@string/task_editor_hint_max">
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
-                        android:layout_width="0dp"
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/EditMaxPerRep"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:hint="@string/task_editor_hint_min">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/EditMinPerRep"
-                            style="@style/Widget.AutoSecretary.Editor.TextField"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="number"/>
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <TextView
-                        style="@style/TextAppearance.AutoSecretary.Editor.Label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/task_editor_range_separator"
-                        android:layout_marginStart="@dimen/spacing_xs"
-                        android:layout_marginEnd="@dimen/spacing_xs"/>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:hint="@string/task_editor_hint_max">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/EditMaxPerRep"
-                            style="@style/Widget.AutoSecretary.Editor.TextField"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="number"/>
-                    </com.google.android.material.textfield.TextInputLayout>
-                </LinearLayout>
+                        android:inputType="number"/>
+                </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
         </LinearLayout>
 

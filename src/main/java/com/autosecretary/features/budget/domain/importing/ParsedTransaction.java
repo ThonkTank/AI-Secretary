@@ -29,5 +29,4 @@ public record ParsedTransaction(
         String note,
         String categoryId,
         String importHash
-) {
-}
+) {}
