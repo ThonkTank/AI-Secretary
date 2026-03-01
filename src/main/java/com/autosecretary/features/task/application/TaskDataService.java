@@ -38,20 +38,39 @@ public class TaskDataService {
         this.callbackDispatcher = callbackDispatcher;
     }
 
-    public void loadAllMapped(Consumer<List<TaskListItem>> callback) {
+    /**
+     * Loads all tasks and maps them to {@link TaskListItem} presentation models.
+     *
+     * @param onLoaded receives the flat mapped list on the callback dispatcher thread;
+     *                 never null, but may be empty if no tasks exist
+     */
+    public void loadAllMapped(Consumer<List<TaskListItem>> onLoaded) {
         workerExecutor.execute(() -> {
             List<TaskListItem> items = mapper.map(taskDao.readAll());
-            callbackDispatcher.execute(() -> callback.accept(items));
+            callbackDispatcher.execute(() -> onLoaded.accept(items));
         });
     }
 
-    public void loadTask(String id, Consumer<Task> callback) {
+    /**
+     * Loads a single task by its UUID.
+     *
+     * @param id       the task UUID
+     * @param onLoaded receives the loaded {@link com.autosecretary.features.task.data.Task}
+     *                 on the callback dispatcher thread, or {@code null} if not found
+     */
+    public void loadTask(String id, Consumer<Task> onLoaded) {
         workerExecutor.execute(() -> {
             Task task = taskDao.read(id);
-            callbackDispatcher.execute(() -> callback.accept(task));
+            callbackDispatcher.execute(() -> onLoaded.accept(task));
         });
     }
 
+    /**
+     * Persists a task (insert or replace).
+     *
+     * @param task    the task to write
+     * @param onSaved callback dispatched on the callback dispatcher thread after the write
+     */
     public void saveTask(Task task, Runnable onSaved) {
         workerExecutor.execute(() -> {
             taskDao.write(task);
@@ -93,6 +112,12 @@ public class TaskDataService {
         });
     }
 
+    /**
+     * Deletes a task and its entire graph (slots, relations, prerequisites, planned meals).
+     *
+     * @param taskId    the UUID of the task to delete
+     * @param onDeleted callback dispatched on the callback dispatcher thread after deletion
+     */
     public void deleteTask(String taskId, Runnable onDeleted) {
         workerExecutor.execute(() -> {
             taskDao.deleteTaskGraph(taskId);

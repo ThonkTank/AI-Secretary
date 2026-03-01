@@ -79,11 +79,8 @@ public class BudgetOverviewLoader {
      * Returns the account ID to use for the current view: the persisted {@code selectedAccountId}
      * if non-blank, otherwise the first account in {@code fallbackAccounts}, or {@code null} when
      * the account list is empty (no accounts configured yet).
-     *
-     * <p>Public and static so that {@code BudgetViewModel} can call it without a full load
-     * when only the account selection changes.
      */
-    public static String resolveSelectedAccountId(String selectedAccountId, List<BudgetAccount> fallbackAccounts) {
+    private static String resolveSelectedAccountId(String selectedAccountId, List<BudgetAccount> fallbackAccounts) {
         if (selectedAccountId != null && !selectedAccountId.isBlank()) {
             return selectedAccountId;
         }

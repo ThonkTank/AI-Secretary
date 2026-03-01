@@ -5,6 +5,11 @@ and the domain/data layers: use cases call domain services and DAOs, then notify
 UI via callbacks. All DB work runs on the shared `ExecutorService`; callbacks are
 dispatched to the main thread via `callbackDispatcher` (a `Handler`-backed `Executor`).
 
+> **Key terminology:** Domain terms used throughout this layer (Task, Slot, PrefSlot, Period,
+> Streak, Adaptive, etc.) are defined in the project-root
+> [`CLAUDE.md` Glossary](../../../../../../CLAUDE.md#glossary). Read that first if any term
+> is unfamiliar.
+
 ## Entry points at a glance
 
 | Class | Role |

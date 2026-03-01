@@ -48,6 +48,11 @@ public class BudgetImportEntity {
     @NonNull
     public String fileName;
 
+    /**
+     * SHA-256 hash of the raw file bytes, used to detect and reject duplicate imports.
+     * Computed by the import application service before creating this record.
+     * If an import with the same hash already exists, re-import is blocked without user prompting.
+     */
     @NonNull
     public String fileHash;
 

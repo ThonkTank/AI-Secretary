@@ -67,7 +67,13 @@ import java.util.UUID;
                 @Index("yearMonth"),
                 @Index("bookingDate"),
                 @Index("importHash"),
-                @Index("linkedTransactionId")
+                @Index("linkedTransactionId"),
+                // Composite index for timeline queries: getDailyDeltasForAccount,
+                // getNetAmountBeforeDateForAccount, and findByAccountId all filter on
+                // (accountId, bookingDate). Without this index SQLite scans every row for
+                // the account before applying the date predicate; with it the range scan
+                // touches only the matching rows directly.
+                @Index(value = {"accountId", "bookingDate"})
         }
 )
 public class BudgetTransactionEntity {
@@ -100,6 +106,11 @@ public class BudgetTransactionEntity {
      */
     public String linkedTransactionId;
 
+    /**
+     * Transaction amount in cents, always stored as a positive value.
+     * The sign (income vs. expense) is conveyed by the {@link #direction} field, not by negating this value.
+     * Sign is only applied when computing balances or deltas (e.g., INCOME adds +amountCents, EXPENSE subtracts -amountCents).
+     */
     public long amountCents;
 
     @NonNull

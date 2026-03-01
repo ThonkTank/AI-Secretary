@@ -9,7 +9,6 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
@@ -76,7 +75,7 @@ public class TaskScheduleConfigRepository implements SchedulingWindowProvider {
      * @param configs The list of schedule configurations to save (may be null or contain nulls)
      */
     public void saveAll(List<TaskScheduleConfig> configs) {
-        Map<DayOfWeek, TaskScheduleConfig> configMap = createNormalizedConfigMap(configs != null ? configs : new ArrayList<>());
+        Map<DayOfWeek, TaskScheduleConfig> configMap = createNormalizedConfigMap(configs != null ? configs : List.of());
         dao.writeAll(toListByDay(configMap));
         cachedByDay = null;  // Invalidate cache; will be reloaded on next ensureCached()
     }

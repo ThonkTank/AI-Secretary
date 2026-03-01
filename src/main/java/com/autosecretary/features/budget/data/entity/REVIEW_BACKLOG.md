@@ -1,66 +1,37 @@
 # Review Backlog — budget/data/entity
 
-## Open Issues (Code Design — Deferred)
+## Open Issues
 
-### [consider] `yearMonth` public field breaks its own stated invariant
-**File:** `BudgetTransactionEntity.java:96`
-**Problem:** The Javadoc says "Do not set directly — use setBookingDate() instead", but the field is `public`, so it can be freely set, silently breaking the `yearMonth`/`bookingDate` sync. Room requires public field access on `@Entity` classes, so this cannot be straightforwardly fixed without migrating to property-style getters/setters with `@Ignore` on the backing field and a `@ColumnInfo` getter — a significant Room refactor.
-**Tradeoff:** Low risk in practice (only one write path exists today), but misleading to a future developer. Leaving deferred.
-
-### [nit] `direction` column name inconsistent across entities
+### [nit] `direction` column name inconsistent across entities @skill:review-architecture
 **File:** `BudgetRecurringTemplateEntity.java:97`
 **Problem:** All three budget entities expose a `TransactionDirection direction` field. In `BudgetTransactionEntity` and `BudgetCategory` the column is aliased to `"type"` via `@ColumnInfo`; in `BudgetRecurringTemplateEntity` it is aliased to `"transactionType"`. These are separate tables so there is no runtime failure, but the inconsistency is confusing for anyone writing raw queries against multiple tables.
 **Fix suggestion:** Align `BudgetRecurringTemplateEntity` to `@ColumnInfo(name = "type")` with a DB version bump. Because the project uses `fallbackToDestructiveMigration()` this is a data-loss bump — only acceptable at the right moment in development.
 
-### [nit] `recurringValue` carries overloaded meaning depending on `recurringType`
+### [nit] `recurringValue` carries overloaded meaning depending on `recurringType` @skill:review-architecture
 **File:** `BudgetRecurringTemplateEntity.java:111`
 **Problem:** The field serves four distinct roles (day-of-month, interval-in-days, unused-zero for WEEKLY, unused-zero for MONTHLY_LAST) with the selection implicit in `recurringType`. The comment documents it correctly, but any code that reads or writes `recurringValue` must be aware of all four interpretations. This is primitive obsession — the correct carrier is a typed sum type or separate named fields.
 **Fix suggestion:** Add two nullable typed fields (`Integer monthlyDay` / `Integer intervalDays`) and deprecate `recurringValue`, or use a sealed-class value object in the domain layer and map it in a Room `@TypeConverter`. Either requires a DB schema change; defer until domain layer refactoring.
 
-### [nit] Import-progress counter data clump in `BudgetImportEntity`
+### [nit] Import-progress counter data clump in `BudgetImportEntity` @skill:review-architecture
 **File:** `BudgetImportEntity.java:73-77`
 **Problem:** `totalTransactions`, `importedTransactions`, and `autoCategorized` are three related int fields that always move together (they describe a single "import result" concept). New statistics fields will naturally land next to these three and grow the clump.
 **Fix suggestion:** Group into an `@Embedded ImportProgress` value object with a column prefix. Requires a DB schema change (column names would be prefixed); defer until next schema revision.
 
-### [nit] Amount stats data clump in `BudgetRecurringTemplateEntity`
+### [nit] Amount stats data clump in `BudgetRecurringTemplateEntity` @skill:review-architecture
 **File:** `BudgetRecurringTemplateEntity.java:79-91`
 **Problem:** `avgAmountCents`, `minAmountCents`, `maxAmountCents` always move together and form a natural "AmountStats" value object. Any new per-template stat (e.g. stddev) will grow this clump further.
 **Fix suggestion:** Group into an `@Embedded AmountStats` value object. Requires a DB schema change (column renames with prefix); defer until next schema revision alongside the import-progress clump fix.
 
-## Fixed Issues (Onboarding Documentation)
+---
 
-✅ [friction] BudgetTransactionEntity — added class-level javadoc, expanded yearMonth and setBookingDate() comments
-✅ [friction] BudgetCategory — added class javadoc and archived field explanation
-✅ [friction] BudgetRecurringTemplateEntity — added class javadoc, javadoc comments on all fields, explanations of payee and active semantics
-✅ [friction] BudgetImportEntity — added class javadoc and progress counter explanation
-✅ [friction] BudgetAccount — added class javadoc, AccountType enum explanation, currentBalanceCents, currency, and archived comments
-✅ [stale] BudgetLimit — translated all German comments to English with detailed English explanations
-✅ [friction] BudgetLimit — added class javadoc and rollover mechanism explanation
-✅ [stale] BudgetRecurringTemplateEntity — corrected nextDue Javadoc (was "not persisted"; it is persisted and updated by synchronizeRecurringTemplateState)
-✅ [comment] BudgetTransactionEntity — added inline comment explaining @ColumnInfo(name = "type") historical naming for direction field
-✅ [clarity] BudgetRecurringTemplateEntity — added inline comment explaining why transactionType column differs from other entities' "type" column names
+### [rename] `BudgetAccount`, `BudgetCategory`, `BudgetLimit` — missing `Entity` suffix @skill:review-structure
 
-## Elegance Review (2026-02-28)
+**Paths involved:** `entity/BudgetAccount.java`, `entity/BudgetCategory.java`, `entity/BudgetLimit.java`
 
-Code in this directory is already quite elegant and well-written. Reviewed all 6 entities for readability, expression clarity, expressiveness, flow & rhythm, and conciseness. Findings:
+**What makes it hard to navigate today:** Three of the six entity classes lack the `Entity` suffix (`BudgetAccount`, `BudgetCategory`, `BudgetLimit`) while the other three have it (`BudgetTransactionEntity`, `BudgetImportEntity`, `BudgetRecurringTemplateEntity`). When scanning import statements in other files — repositories, application services, UI classes — a reader cannot tell from the type name alone whether `BudgetAccount` is a domain value object or a Room entity. The three with no suffix look like domain models, creating false symmetry with domain types in `budget/domain/`.
 
-**No new elegance issues identified.** Strengths include:
-- Clear, self-documenting field names (e.g., `rolloverCapOverrunCents`, `normalizedPayee`, `yearMonth`)
-- Excellent documentation without verbosity (class-level Javadoc, field explanations, invariants)
-- Good invariant management (`BudgetTransactionEntity.setBookingDate()`)
-- Clean constructor and factory patterns
-- Logical organization and idiomatic Room entity style
+**Proposed structural change:** Add `Entity` suffix to all three: `BudgetAccountEntity`, `BudgetCategoryEntity`, `BudgetLimitEntity`. Rename files to match.
 
-The existing backlog items (5 deferred) are all **architectural/design concerns** (data clumps, overloaded fields, column naming) that require schema changes or domain refactoring, not code elegance improvements.
+**Why it reduces mental load:** Every import of a `*Entity` type unambiguously signals "this is a data-layer Room object". New contributors won't mistake these for domain models. The naming rule becomes one consistent pattern across all six entities.
 
-## KISS / Simplicity Review (2026-02-28)
-
-Reviewed all 6 entities for KISS violations: unnecessary abstractions, redundant types, excessive boilerplate, overcomplex control flow, and oversized APIs. Findings:
-
-**No new KISS issues identified.** Architecture confirms:
-- **Constructors are justified:** convenience constructors on `BudgetCategory` and `BudgetAccount` are actively used in `BudgetSeedService` and reduce initialization boilerplate. `BudgetRecurringTemplateEntity.fromSuggestion()` factory prevents partial construction and is good design.
-- **Defaults are sensible:** all field defaults match idiomatic Room patterns and domain intent.
-- **No field redundancy:** each field serves a distinct purpose. Multi-field constructs (`rolloverEnabled` + rollover amounts) form genuine feature bundles, not arbitrary clumps (unlike the `totalTransactions`/`importedTransactions`/`autoCategorized` group, already flagged as data clump).
-- **No unnecessary indirection:** setBookingDate() on `BudgetTransactionEntity` is necessary for invariant maintenance.
-
-The 5 existing backlog items (all deferred) remain the only identified structural improvements; they all require database schema versioning to implement.
+**Tradeoffs / risks:** High import churn — these three types are referenced in ~25 non-history Java files spanning UI, application, domain, and data layers (Room also registers them via `AppDatabase`). Defer until a convenient maintenance window; fix all three together in a single rename commit.

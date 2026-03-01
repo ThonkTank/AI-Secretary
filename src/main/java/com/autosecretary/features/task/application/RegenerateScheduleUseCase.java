@@ -30,15 +30,15 @@ import java.util.function.Consumer;
 public class RegenerateScheduleUseCase {
     private static final int PLANNING_DAYS = 7;
 
-    public static class Result {
-        public final int createdSlots;
-        public final List<SchedulingConflict> conflicts;
-
-        public Result(int createdSlots, List<SchedulingConflict> conflicts) {
-            this.createdSlots = createdSlots;
-            this.conflicts = conflicts;
-        }
-    }
+    /**
+     * Summary of a completed scheduling run.
+     *
+     * <p>{@code createdSlots} is the total number of new slots written across the entire
+     * 7-day planning window. {@code conflicts} lists every task/day combination where the
+     * scheduler could not place a slot (e.g. outside the scheduling window, calendar blocked,
+     * or prerequisite not met). An empty conflict list means all tasks were placed successfully.
+     */
+    public record Result(int createdSlots, List<SchedulingConflict> conflicts) {}
 
     private final TaskDao taskDao;
     private final TaskSlotGenerator generator;

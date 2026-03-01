@@ -13,10 +13,9 @@ import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
-import java.util.Optional;
 import androidx.room.RoomDatabase;
 import com.autosecretary.features.budget.data.dao.BudgetLimitDao;
-import com.autosecretary.features.budget.data.dao.BudgetLookupDao;
+import com.autosecretary.features.budget.data.dao.BudgetAccountCategoryDao;
 import com.autosecretary.features.budget.data.dao.BudgetTransactionDao;
 import com.autosecretary.features.budget.data.entity.BudgetAccount;
 import com.autosecretary.features.budget.data.entity.BudgetCategory;
@@ -38,7 +37,7 @@ import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEnti
  */
 public class BudgetRoomRepository implements BudgetRepository {
     /** DAO for account and category reads/writes. */
-    private final BudgetLookupDao lookupDao;
+    private final BudgetAccountCategoryDao accountCategoryDao;
     /** DAO for transaction CRUD and timeline queries. */
     private final BudgetTransactionDao transactionDao;
     /** DAO for budget limit and category spend queries. */
@@ -48,12 +47,12 @@ public class BudgetRoomRepository implements BudgetRepository {
     /** Database for transactional operations across multiple DAOs. */
     private final RoomDatabase database;
 
-    public BudgetRoomRepository(BudgetLookupDao lookupDao,
+    public BudgetRoomRepository(BudgetAccountCategoryDao accountCategoryDao,
                                  BudgetTransactionDao transactionDao,
                                  BudgetLimitDao limitDao,
                                  BudgetRecurringTemplateDao recurringTemplateDao,
                                  RoomDatabase database) {
-        this.lookupDao = lookupDao;
+        this.accountCategoryDao = accountCategoryDao;
         this.transactionDao = transactionDao;
         this.limitDao = limitDao;
         this.recurringTemplateDao = recurringTemplateDao;
@@ -67,15 +66,15 @@ public class BudgetRoomRepository implements BudgetRepository {
      */
 
     @Override public BudgetAccount findAccountById(String accountId) {
-        return lookupDao.findAccountById(accountId);
+        return accountCategoryDao.findAccountById(accountId);
     }
 
     @Override public List<BudgetAccount> findActiveAccounts() {
-        return lookupDao.findActiveAccounts();
+        return accountCategoryDao.findActiveAccounts();
     }
 
     @Override public List<BudgetCategory> findActiveCategories() {
-        return lookupDao.findActiveCategories();
+        return accountCategoryDao.findActiveCategories();
     }
 
     @Override public List<BudgetTransactionEntity> findAllTransactions() {
@@ -108,9 +107,9 @@ public class BudgetRoomRepository implements BudgetRepository {
 
     @Override public long getCurrentBalanceCents(String accountId) {
         if (isAllAccounts(accountId)) {
-            return lookupDao.sumCurrentBalanceCentsForActiveAccounts();
+            return accountCategoryDao.sumCurrentBalanceCentsForActiveAccounts();
         }
-        Long value = lookupDao.findCurrentBalanceCentsByAccountId(accountId);
+        Long value = accountCategoryDao.findCurrentBalanceCentsByAccountId(accountId);
         return value != null ? value : 0L;
     }
 
@@ -122,6 +121,14 @@ public class BudgetRoomRepository implements BudgetRepository {
         return templates.stream().mapToLong(t -> t.avgAmountCents).sum();
     }
 
+    /**
+     * Inserts a pre-built transaction entity without adjusting the account balance.
+     *
+     * Use this only when balance adjustments are handled separately (e.g., during batch imports
+     * where {@link BudgetAccountCategoryDao#rebuildAllAccountBalances()} is called at the end).
+     * For UI-originated transactions that should update the balance immediately,
+     * use {@link #saveTransaction(BudgetRepository.TransactionCreateDetails)} instead.
+     */
     @Override public void saveTransaction(BudgetTransactionEntity transaction) {
         transactionDao.insert(transaction);
     }
@@ -144,21 +151,32 @@ public class BudgetRoomRepository implements BudgetRepository {
         database.runInTransaction(() -> {
             transactionDao.insert(transaction);
             if (!isAllAccounts(accountId) && expenseCents > 0) {
-                lookupDao.adjustCurrentBalanceCents(accountId, -expenseCents);
+                accountCategoryDao.adjustCurrentBalanceCents(accountId, -expenseCents);
             }
         });
     }
 
     @Override public String findDefaultActiveAccountId() {
-        return lookupDao.findFirstActiveAccountId();
+        return accountCategoryDao.findFirstActiveAccountId();
     }
 
+    /**
+     * Inserts a transaction and atomically adjusts the account balance.
+     *
+     * Preferred API for UI-originated transactions. Handles note normalization and
+     * computes the signed balance delta automatically from the transaction direction.
+     * For batch imports (where balance is rebuilt at the end), use the raw-entity overload.
+     */
     @Override public void saveTransaction(BudgetRepository.TransactionCreateDetails details) {
         BudgetTransactionEntity entity = new BudgetTransactionEntity(
                 details.accountId(), details.categoryId(), details.direction(),
                 details.amountCents(), details.bookingDate());
         entity.note = normalizeNote(details.note());
-        transactionDao.insert(entity);
+        long delta = signedDelta(details.direction(), details.amountCents());
+        database.runInTransaction(() -> {
+            transactionDao.insert(entity);
+            accountCategoryDao.adjustCurrentBalanceCents(details.accountId(), delta);
+        });
     }
 
     /**
@@ -202,25 +220,61 @@ public class BudgetRoomRepository implements BudgetRepository {
      * @param note new user note (null or blank is normalized to null)
      */
     @Override public void updateTransaction(String transactionId, BudgetRepository.TransactionCreateDetails details) {
-        BudgetTransactionEntity entity = transactionDao.findById(transactionId);
-        // Silent no-op if transaction not found. Acceptable because this method may be called
-        // speculatively or during UI cleanup when the transaction may no longer exist.
-        // Log at DEBUG level for troubleshooting without failing the operation.
-        if (entity == null) {
-            Log.d("BudgetRoomRepository", "updateTransaction: transaction not found for id=" + transactionId);
-            return;
-        }
-        entity.accountId = details.accountId();
-        entity.categoryId = details.categoryId();
-        entity.direction = details.direction();
-        entity.amountCents = details.amountCents();
-        entity.setBookingDate(details.bookingDate());
-        entity.note = normalizeNote(details.note());
-        transactionDao.update(entity);
+        database.runInTransaction(() -> {
+            BudgetTransactionEntity entity = transactionDao.findById(transactionId);
+            // Silent no-op if transaction not found. Acceptable because this method may be called
+            // speculatively or during UI cleanup when the transaction may no longer exist.
+            // Log at DEBUG level for troubleshooting without failing the operation.
+            if (entity == null) {
+                Log.d("BudgetRoomRepository", "updateTransaction: transaction not found for id=" + transactionId);
+                return;
+            }
+
+            // Snapshot old balance contribution before mutating the entity.
+            String oldAccountId = entity.accountId;
+            long oldReversalDelta = -signedDelta(entity.direction, entity.amountCents);
+            long newDelta = signedDelta(details.direction(), details.amountCents());
+
+            entity.accountId = details.accountId();
+            entity.categoryId = details.categoryId();
+            entity.direction = details.direction();
+            entity.amountCents = details.amountCents();
+            entity.setBookingDate(details.bookingDate());
+            entity.note = normalizeNote(details.note());
+            transactionDao.update(entity);
+
+            // Adjust balances atomically with the row update.
+            if (oldAccountId.equals(details.accountId())) {
+                // Same account: combine reversal and new delta into one call.
+                accountCategoryDao.adjustCurrentBalanceCents(oldAccountId, oldReversalDelta + newDelta);
+            } else {
+                // Account changed: reverse old account, credit new account separately.
+                accountCategoryDao.adjustCurrentBalanceCents(oldAccountId, oldReversalDelta);
+                accountCategoryDao.adjustCurrentBalanceCents(details.accountId(), newDelta);
+            }
+        });
     }
 
     @Override public void deleteTransaction(String transactionId) {
-        transactionDao.deleteWithLinked(transactionId);
+        database.runInTransaction(() -> {
+            BudgetTransactionEntity tx = transactionDao.findById(transactionId);
+            if (tx == null) return;
+
+            deleteAndReverseBalance(tx);
+
+            if (tx.linkedTransactionId != null) {
+                BudgetTransactionEntity linked = transactionDao.findById(tx.linkedTransactionId);
+                if (linked != null) {
+                    deleteAndReverseBalance(linked);
+                }
+            }
+        });
+    }
+
+    /** Deletes a transaction row and reverses its balance contribution on the owning account. */
+    private void deleteAndReverseBalance(BudgetTransactionEntity tx) {
+        transactionDao.deleteById(tx.id);
+        accountCategoryDao.adjustCurrentBalanceCents(tx.accountId, -signedDelta(tx.direction, tx.amountCents));
     }
 
     /**
@@ -243,7 +297,11 @@ public class BudgetRoomRepository implements BudgetRepository {
         BudgetTransactionEntity credit = new BudgetTransactionEntity(
                 details.targetAccountId(), null, TransactionDirection.INCOME, details.amountCents(), details.bookingDate());
         populateTransferPair(debit, credit, details);
-        transactionDao.createTransferPair(debit, credit);
+        database.runInTransaction(() -> {
+            transactionDao.createTransferPair(debit, credit);
+            accountCategoryDao.adjustCurrentBalanceCents(details.sourceAccountId(), -details.amountCents());
+            accountCategoryDao.adjustCurrentBalanceCents(details.targetAccountId(), details.amountCents());
+        });
     }
 
     /**
@@ -257,35 +315,45 @@ public class BudgetRoomRepository implements BudgetRepository {
      */
     @Override
     public boolean updateTransfer(String transactionId, TransferDetails details) {
-        Optional<TransferValidation> validation = validateTransferExists(transactionId);
-        if (validation.isEmpty()) {
+        TransferValidation v = validateTransferExists(transactionId);
+        if (v == null) {
             Log.d("BudgetRoomRepository", "updateTransfer: transfer validation failed for id=" + transactionId);
             return false;
         }
-
-        TransferValidation v = validation.get();
+        // Snapshot old balance state before populateTransferPair mutates the entities.
+        String oldSourceId = v.debit.accountId;
+        String oldTargetId = v.credit.accountId;
+        long oldAmount = v.debit.amountCents;
         populateTransferPair(v.debit, v.credit, details);
-        transactionDao.updateTransferPair(v.debit, v.credit);
+        database.runInTransaction(() -> {
+            transactionDao.updateTransferPair(v.debit, v.credit);
+            // Reverse old balance: undo debit from old source, undo credit to old target.
+            accountCategoryDao.adjustCurrentBalanceCents(oldSourceId, oldAmount);
+            accountCategoryDao.adjustCurrentBalanceCents(oldTargetId, -oldAmount);
+            // Apply new balance: debit from new source, credit to new target.
+            accountCategoryDao.adjustCurrentBalanceCents(details.sourceAccountId(), -details.amountCents());
+            accountCategoryDao.adjustCurrentBalanceCents(details.targetAccountId(), details.amountCents());
+        });
         return true;
     }
 
     /**
      * Validates that a transaction exists and is a properly linked transfer pair.
      *
-     * Returns an Optional containing the debit and credit legs if valid, or empty if:
+     * Returns the debit/credit pair if valid, or null if:
      * - The transaction doesn't exist
      * - The transaction has no linked pair (not a transfer)
      * - The linked transaction is missing (data corruption)
      */
-    private Optional<TransferValidation> validateTransferExists(String transactionId) {
+    private TransferValidation validateTransferExists(String transactionId) {
         BudgetTransactionEntity transaction = transactionDao.findById(transactionId);
         if (transaction == null || transaction.linkedTransactionId == null) {
-            return Optional.empty();
+            return null;
         }
 
         BudgetTransactionEntity linked = transactionDao.findById(transaction.linkedTransactionId);
         if (linked == null) {
-            return Optional.empty();
+            return null;
         }
 
         BudgetTransactionEntity debit, credit;
@@ -297,7 +365,7 @@ public class BudgetRoomRepository implements BudgetRepository {
             credit = transaction;
         }
 
-        return Optional.of(new TransferValidation(debit, credit));
+        return new TransferValidation(debit, credit);
     }
 
     /**
@@ -315,11 +383,11 @@ public class BudgetRoomRepository implements BudgetRepository {
     }
 
     @Override public void insertAccount(BudgetAccount account) {
-        lookupDao.insertAccount(account);
+        accountCategoryDao.insertAccount(account);
     }
 
     @Override public void insertCategory(BudgetCategory category) {
-        lookupDao.insertCategory(category);
+        accountCategoryDao.insertCategory(category);
     }
 
     @Override public List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth) {
@@ -357,6 +425,14 @@ public class BudgetRoomRepository implements BudgetRepository {
         return accountId == null || accountId.isBlank();
     }
 
+    /**
+     * Returns the signed balance delta for a transaction:
+     * INCOME adds to the balance (positive); EXPENSE subtracts (negative).
+     */
+    private static long signedDelta(TransactionDirection direction, long amountCents) {
+        return direction == TransactionDirection.INCOME ? amountCents : -amountCents;
+    }
+
     /** Returns the ISO-8601 year-month string for the month preceding {@code targetYearMonth}. */
     private static String previousYearMonth(String targetYearMonth) {
         return YearMonth.parse(targetYearMonth).minusMonths(1).toString();
@@ -364,9 +440,8 @@ public class BudgetRoomRepository implements BudgetRepository {
 
     /** Trims whitespace from {@code note} and returns {@code null} if the result is blank. */
     private static String normalizeNote(String note) {
-        if (note == null) return null;
-        String trimmed = note.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        if (note == null || note.isBlank()) return null;
+        return note.trim();
     }
 
     /**

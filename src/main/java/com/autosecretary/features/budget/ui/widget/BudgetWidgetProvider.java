@@ -55,8 +55,8 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
         LoadBudgetWidgetSummaryUseCase useCase = app.getAppCompositionRoot().createLoadBudgetWidgetSummaryUseCase();
         LoadBudgetWidgetSummaryUseCase.BudgetWidgetSummary summary = useCase.execute();
 
-        views.setTextViewText(R.id.BudgetWidgetTotalValue, CurrencyFormatter.eurosNet(summary.netBalanceCents()));
-        views.setTextViewText(R.id.BudgetWidgetFreeValue, CurrencyFormatter.eurosNet(summary.freeBudgetCents()));
+        views.setTextViewText(R.id.BudgetWidgetTotalValue, CurrencyFormatter.eurosPlain(summary.netBalanceCents()));
+        views.setTextViewText(R.id.BudgetWidgetFreeValue, CurrencyFormatter.eurosPlain(summary.freeBudgetCents()));
 
         views.setOnClickPendingIntent(R.id.BudgetWidgetOpenButton, buildPendingIntent(context, widgetId, 0, null));
         views.setOnClickPendingIntent(R.id.BudgetWidgetAddButton, buildPendingIntent(context, widgetId, 1, ACTION_ADD_TRANSACTION));

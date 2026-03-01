@@ -82,6 +82,13 @@ public class BudgetTransferDialogController {
                     || targetIdx < 0 || targetIdx >= accounts.size()) {
                 return;
             }
+            if (sourceIdx == targetIdx) {
+                new AlertDialog.Builder(ctx)
+                        .setMessage(R.string.budget_transfer_same_account)
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show();
+                return;
+            }
 
             String dateStr = SpinnerHelper.textOf(dateInput);
             LocalDate bookingDate;

@@ -7,6 +7,7 @@ import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.scheduling.CalendarBlockedIntervalProvider;
 import com.autosecretary.features.task.domain.scheduling.SchedulingWindowProvider;
 import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
+import static com.autosecretary.features.task.domain.scheduling.SchedulingConflict.ReasonCode.*;
 import com.autosecretary.features.task.domain.TaskCalendarEvent;
 import com.autosecretary.features.task.domain.scheduling.TaskBudgetEligibilityService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
@@ -68,11 +69,6 @@ import java.util.function.Consumer;
  * <em>may</em> be displaced if its {@link DisplacementCandidate#displaceable} flag is true.
  */
 public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
-
-    private static final SchedulingConflict.ReasonCode REASON_OUTSIDE_WINDOW = SchedulingConflict.ReasonCode.OUTSIDE_WINDOW;
-    private static final SchedulingConflict.ReasonCode REASON_CALENDAR_OVERLAP = SchedulingConflict.ReasonCode.CALENDAR_OVERLAP;
-    private static final SchedulingConflict.ReasonCode REASON_PREREQUISITE_BLOCKED = SchedulingConflict.ReasonCode.PREREQUISITE_BLOCKED;
-    private static final SchedulingConflict.ReasonCode REASON_NO_MATCHING_GAP = SchedulingConflict.ReasonCode.NO_MATCHING_GAP;
 
     private static final String GROUP_PREFIX_CHAIN = "chain:";
     private static final String GROUP_PREFIX_SLOT = "slot:";
@@ -335,7 +331,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     @Override
     public TaskSlotGenerationResult generateSlotsForWindow(List<Task> tasks, LocalDate startDay, int days, TaskPlanningState state) {
         if (days <= 0) {
-            return new TaskSlotGenerationResult(0, new ArrayList<>());
+            return new TaskSlotGenerationResult(0, List.of());
         }
 
         SchedulingRunInit init = initSchedulingRun(tasks, state);
@@ -442,7 +438,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private SchedulingRunInit initSchedulingRun(List<Task> tasks, TaskPlanningState state) {
         newSlots = 0;
         scorer.reset();
-        scorer.setTransitionStats(transitionStatLoader != null ? transitionStatLoader.load() : null);
+        scorer.setTransitionStats(transitionStatLoader != null ? transitionStatLoader.load() : List.of());
         lastConflicts.clear();
         planningState = state;
         List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
@@ -660,7 +656,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             }
 
             expandToFullChains(overlaps, occupied, toDisplace);
-            scorer.maintenance(task, cursor.toLocalDate(), planningState != null ? planningState : new TaskPlanningState());
+            scorer.maintenance(task, cursor.toLocalDate(), planningState);
             int score = scorer.score(task, cursor, end, findPreviousTaskIdForContext(cursor, starts, chain, i, occupied));
             if (score <= 0) {
                 return null;
@@ -688,7 +684,9 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
      * <ol>
      *   <li><b>Earlier nodes in the current chain</b> — nodes already committed to
      *       {@code chainStarts} (indices 0..{@code currentIndex-1}) represent tasks that
-     *       would run before the current node in this candidate placement.</li>
+     *       would run before the current node. Their end time is computed as
+     *       {@code chainStarts[i] + plannedDurationMinutes} so that the comparison is
+     *       symmetric with the occupied-interval end-time comparison below.</li>
      *   <li><b>Already-placed occupied intervals</b> — slots in {@code occupied} that ended
      *       at or before {@code candidateStart} represent previously scheduled tasks on the
      *       same day.</li>
@@ -704,9 +702,9 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         String taskId = null;
 
         for (int i = 0; i < currentIndex; i++) {
-            LocalDateTime chainStart = chainStarts.get(i);
-            if (!chainStart.isAfter(candidateStart) && (latest == null || chainStart.isAfter(latest))) {
-                latest = chainStart;
+            LocalDateTime chainEnd = chainStarts.get(i).plusMinutes(chain.get(i).task.core.plannedDurationMinutes());
+            if (!chainEnd.isAfter(candidateStart) && (latest == null || chainEnd.isAfter(latest))) {
+                latest = chainEnd;
                 taskId = chain.get(i).task.core.id;
             }
         }
@@ -803,7 +801,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
      * their own single-node chain.
      *
      * <p><b>Scope:</b> only iterates the top-level {@code tasks} parameter. Child tasks in the
-     * tree hierarchy are not traversed here; see the pre-existing backlog note on this limit.
+     * tree hierarchy are not traversed here; see README.md for the known design implication.
      */
     private List<List<ChainNode>> buildTaskChains(List<Task> tasks) {
         Map<String, List<ChainNode>> outgoing = new HashMap<>();
@@ -947,10 +945,6 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                 && ids.contains(interval.candidate.slot.id));
     }
 
-    public List<SchedulingConflict> getLastConflicts() {
-        return new ArrayList<>(lastConflicts);
-    }
-
     /**
      * Post-placement pass: adds a {@link SchedulingConflict} with reason
      * {@link SchedulingConflict.ReasonCode#NO_MATCHING_GAP} for every task that was not
@@ -979,7 +973,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                 continue;
             }
             LocalDate conflictDay = task.core.fixedDate != null ? task.core.fixedDate : startDay;
-            addConflict(task, conflictDay, REASON_NO_MATCHING_GAP,
+            addConflict(task, conflictDay, NO_MATCHING_GAP,
                     "Keine passende Lücke im Planungsfenster gefunden");
         }
     }
@@ -1015,16 +1009,19 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             LocalDateTime start = LocalDateTime.of(task.core.fixedDate, task.core.fixedStart);
             LocalDateTime end = computeFixedEnd(task, start);
             if (end == null || !end.isAfter(start) || start.isBefore(windowStart) || end.isAfter(windowEnd)) {
-                addConflict(task, day, REASON_OUTSIDE_WINDOW, "Termin liegt außerhalb der Tagesgrenzen");
+                addConflict(task, day, OUTSIDE_WINDOW, "Termin liegt außerhalb der Tagesgrenzen");
                 continue;
             }
             Set<OccupiedInterval> overlaps = findOverlappingIntervals(occupied, start, end);
             if (!overlaps.isEmpty()) {
                 boolean overlapsCalendar = false;
                 for (OccupiedInterval overlap : overlaps) {
-                    if (overlap.candidate == null) { overlapsCalendar = true; break; }
+                    if (overlap.candidate == null) {
+                        overlapsCalendar = true;
+                        break;
+                    }
                 }
-                addConflict(task, day, overlapsCalendar ? REASON_CALENDAR_OVERLAP : REASON_NO_MATCHING_GAP,
+                addConflict(task, day, overlapsCalendar ? CALENDAR_OVERLAP : NO_MATCHING_GAP,
                         "Termin überschneidet belegte Zeit");
                 continue;
             }
@@ -1048,9 +1045,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             if (task.core.schedulingType == TaskCore.SchedulingType.TERMIN) {
                 fixedTasks.add(task);
             }
-            if (task.children != null && !task.children.isEmpty()) {
-                fixedTasks.addAll(collectFixedTasks(task.children));
-            }
+            fixedTasks.addAll(collectFixedTasks(task.children));
         }
         return fixedTasks;
     }

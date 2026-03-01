@@ -173,8 +173,7 @@ public class AppCompositionRoot {
                 taskCompletionService,
                 taskLifecycleManager,
                 db.taskTransitionStatDao(),
-                mainHandler::post,
-                db
+                mainHandler::post
         );
         CheckOffTaskUseCase checkOffTaskUseCase = new CheckOffTaskUseCase(
                 taskSlotToggleMutation,
@@ -229,7 +228,7 @@ public class AppCompositionRoot {
                     db.budgetImportDao(),
                     db.budgetRecurringTemplateDao(),
                     db.budgetTransactionDao(),
-                    db.budgetLookupDao(),
+                    db.budgetAccountCategoryDao(),
                     () -> {}
             );
 
@@ -268,7 +267,7 @@ public class AppCompositionRoot {
         if (budgetRoomRepository == null) {
             AppDatabase db = AppDatabase.getInstance(app);
             budgetRoomRepository = new BudgetRoomRepository(
-                    db.budgetLookupDao(),
+                    db.budgetAccountCategoryDao(),
                     db.budgetTransactionDao(),
                     db.budgetLimitDao(),
                     db.budgetRecurringTemplateDao(),

@@ -50,6 +50,9 @@ public class ClaudeStatementApiClient {
     // See: https://docs.anthropic.com/en/docs/about-claude/models/latest
     private static final String MODEL = "claude-sonnet-4-20250514";
     private static final String API_VERSION = "2023-06-01";
+    // 4096 tokens comfortably covers typical bank statements (up to ~150 transactions at ~25 tokens each
+    // for the compact JSON schema). Raise this value if statements with >150 transactions produce truncated responses
+    // (symptom: JSONException on missing closing brace or incomplete transactions array in logs).
     private static final int MAX_TOKENS = 4096;
     private static final int CONNECT_TIMEOUT = 30000;
     // Timeouts account for network latency and Claude API processing time.
@@ -58,39 +61,11 @@ public class ClaudeStatementApiClient {
     // Adjust if you see frequent timeouts in logs.
     private static final int READ_TIMEOUT = 120000;
 
-    // JSON field names for Anthropic Messages API requests and responses.
-    // These constants prevent typos and ensure consistency across request/response handling.
-    // See: https://docs.anthropic.com/en/api/messages
-    private static final String JSON_MODEL = "model";
-    private static final String JSON_MAX_TOKENS = "max_tokens";
-    private static final String JSON_SYSTEM = "system";
+    // JSON field names reused across multiple methods (request build + response parse).
     private static final String JSON_TYPE = "type";
     private static final String JSON_TEXT = "text";
-    private static final String JSON_DOCUMENT = "document";
-    private static final String JSON_SOURCE = "source";
-    private static final String JSON_BASE64 = "base64";
-    private static final String JSON_MEDIA_TYPE = "media_type";
-    private static final String JSON_DATA = "data";
     private static final String JSON_CONTENT = "content";
-    private static final String JSON_ROLE = "role";
-    private static final String JSON_USER = "user";
-    private static final String JSON_MESSAGES = "messages";
-    private static final String JSON_ERROR = "error";
-    private static final String JSON_MESSAGE = "message";
-    private static final String JSON_PERIOD_START = "period_start";
-    private static final String JSON_PERIOD_END = "period_end";
-    private static final String JSON_TRANSACTIONS = "transactions";
-    private static final String JSON_DATE = "date";
-    private static final String JSON_AMOUNT_CENTS = "amount_cents";
-    private static final String JSON_PAYEE = "payee";
-    private static final String JSON_DESCRIPTION = "description";
     private static final String JSON_CATEGORY_ID = "category_id";
-    private static final String JSON_HASH = "hash";
-    private static final String JSON_CATEGORY_NAME = "name";
-    private static final String JSON_CATEGORY_TYPE = "type";
-    private static final String CONTENT_TYPE_TEXT = "text";
-    private static final String CONTENT_TYPE_DOCUMENT = "document";
-    private static final String MEDIA_TYPE_PDF = "application/pdf";
 
     public ParsedStatement parsePdf(
             String apiKey,
@@ -136,32 +111,32 @@ public class ClaudeStatementApiClient {
 
     private JSONObject buildRequestBody(byte[] fileBytes, List<ImportCategory> categories) throws JSONException {
         JSONObject body = new JSONObject();
-        body.put(JSON_MODEL, MODEL);
-        body.put(JSON_MAX_TOKENS, MAX_TOKENS);
-        body.put(JSON_SYSTEM, buildSystemPrompt(buildCategoryArray(categories)));
+        body.put("model", MODEL);
+        body.put("max_tokens", MAX_TOKENS);
+        body.put("system", buildSystemPrompt(buildCategoryArray(categories)));
 
         JSONArray content = new JSONArray();
         JSONObject promptPart = new JSONObject();
-        promptPart.put(JSON_TYPE, CONTENT_TYPE_TEXT);
+        promptPart.put(JSON_TYPE, "text");
         promptPart.put(JSON_TEXT, "Analysiere den PDF-Kontoauszug und liefere ausschließlich JSON im definierten Schema zurück.");
         content.put(promptPart);
 
         JSONObject filePart = new JSONObject();
-        filePart.put(JSON_TYPE, CONTENT_TYPE_DOCUMENT);
+        filePart.put(JSON_TYPE, "document");
         JSONObject source = new JSONObject();
-        source.put(JSON_TYPE, JSON_BASE64);
-        source.put(JSON_MEDIA_TYPE, MEDIA_TYPE_PDF);
-        source.put(JSON_DATA, Base64.encodeToString(fileBytes, Base64.NO_WRAP));
-        filePart.put(JSON_SOURCE, source);
+        source.put(JSON_TYPE, "base64");
+        source.put("media_type", "application/pdf");
+        source.put("data", Base64.encodeToString(fileBytes, Base64.NO_WRAP));
+        filePart.put("source", source);
         content.put(filePart);
 
         JSONObject userMessage = new JSONObject();
-        userMessage.put(JSON_ROLE, JSON_USER);
+        userMessage.put("role", "user");
         userMessage.put(JSON_CONTENT, content);
 
         JSONArray messages = new JSONArray();
         messages.put(userMessage);
-        body.put(JSON_MESSAGES, messages);
+        body.put("messages", messages);
         return body;
     }
 
@@ -171,8 +146,8 @@ public class ClaudeStatementApiClient {
             for (ImportCategory category : categories) {
                 JSONObject cat = new JSONObject();
                 cat.put(JSON_CATEGORY_ID, category.id());
-                cat.put(JSON_CATEGORY_NAME, category.name());
-                cat.put(JSON_CATEGORY_TYPE, category.direction().name());
+                cat.put("name", category.name());
+                cat.put(JSON_TYPE, category.direction().name());
                 categoryArray.put(cat);
             }
         }
@@ -190,6 +165,11 @@ public class ClaudeStatementApiClient {
      *   <li>Return plain JSON with no markdown formatting or explanation</li>
      * </ul>
      *
+     * <p><b>amount_cents sign convention:</b> Claude is instructed to return {@code amount_cents}
+     * as a positive integer. The sign (income vs. expense) is inferred downstream by the import
+     * pipeline from the statement context and transaction type. Do not negate {@code amount_cents}
+     * here; the downstream mapper handles direction.</p>
+     *
      * @param categoryArray JSON array of valid categories (from buildCategoryArray)
      * @return A German-language system prompt
      */
@@ -206,7 +186,7 @@ public class ClaudeStatementApiClient {
     private String extractTextFromContentBlocks(JSONArray contentBlocks) throws JSONException {
         for (int i = 0; i < contentBlocks.length(); i++) {
             JSONObject block = contentBlocks.getJSONObject(i);
-            if (CONTENT_TYPE_TEXT.equals(block.optString(JSON_TYPE))) {
+            if ("text".equals(block.optString(JSON_TYPE))) {
                 String text = block.optString(JSON_TEXT, null);
                 if (text != null && !text.isBlank()) {
                     return text;
@@ -228,9 +208,9 @@ public class ClaudeStatementApiClient {
             throw new ApiException("Keine Text-Antwort von Claude");
         }
 
-        JSONObject payload = new JSONObject(extractJsonFromMarkdown(text));
-        LocalDate periodStart = parseOptionalDate(payload.optString(JSON_PERIOD_START, null));
-        LocalDate periodEnd = parseOptionalDate(payload.optString(JSON_PERIOD_END, null));
+        JSONObject payload = new JSONObject(extractJsonFromMarkdown(text.trim()));
+        LocalDate periodStart = parseOptionalDate(payload.optString("period_start", null));
+        LocalDate periodEnd = parseOptionalDate(payload.optString("period_end", null));
 
         List<ParsedTransaction> transactions = parseTransactionArray(payload);
 
@@ -239,7 +219,7 @@ public class ClaudeStatementApiClient {
 
     private List<ParsedTransaction> parseTransactionArray(JSONObject payload) throws JSONException {
         List<ParsedTransaction> transactions = new ArrayList<>();
-        JSONArray jsonTransactions = payload.optJSONArray(JSON_TRANSACTIONS);
+        JSONArray jsonTransactions = payload.optJSONArray("transactions");
         if (jsonTransactions != null) {
             for (int i = 0; i < jsonTransactions.length(); i++) {
                 JSONObject tx = jsonTransactions.getJSONObject(i);
@@ -250,18 +230,18 @@ public class ClaudeStatementApiClient {
     }
 
     private ParsedTransaction parseTransaction(JSONObject tx) throws JSONException {
-        String dateStr = tx.getString(JSON_DATE);
+        String dateStr = tx.getString("date");
         LocalDate bookingDate;
         try {
             bookingDate = LocalDate.parse(dateStr);
         } catch (DateTimeParseException e) {
             throw new ApiException("Ungültiges Datum in Claude-Antwort: \"" + dateStr + "\"", e);
         }
-        long amountCents = toLong(tx.get(JSON_AMOUNT_CENTS));
-        String payee = emptyToNull(tx.optString(JSON_PAYEE, null));
-        String note = emptyToNull(tx.optString(JSON_DESCRIPTION, null));
+        long amountCents = toLong(tx.get("amount_cents"));
+        String payee = emptyToNull(tx.optString("payee", null));
+        String note = emptyToNull(tx.optString("description", null));
         String categoryId = emptyToNull(tx.optString(JSON_CATEGORY_ID, null));
-        String hash = emptyToNull(tx.optString(JSON_HASH, null));
+        String hash = emptyToNull(tx.optString("hash", null));
         return new ParsedTransaction(bookingDate, amountCents, payee, note, categoryId, hash);
     }
 
@@ -302,9 +282,9 @@ public class ClaudeStatementApiClient {
         String message = responseBody;
         try {
             JSONObject root = new JSONObject(responseBody);
-            JSONObject error = root.optJSONObject(JSON_ERROR);
+            JSONObject error = root.optJSONObject("error");
             if (error != null) {
-                message = error.optString(JSON_MESSAGE, responseBody);
+                message = error.optString("message", responseBody);
             }
         } catch (JSONException ignored) {
             // fallback to raw body
@@ -319,32 +299,21 @@ public class ClaudeStatementApiClient {
     }
 
     /**
-     * Claude may wrap JSON responses in markdown code fences (```json ... ```).
-     * This method strips those fences to get the raw JSON.
+     * Strips optional markdown code fences (```json ... ```) from a Claude response and returns
+     * the raw JSON content. Handles both multi-line markdown (language identifier on first line)
+     * and inline markdown (no newline after opening fence).
      *
      * Examples:
      * <ul>
      *   <li>Input: `{"key": "value"}` → Returns: `{"key": "value"}`</li>
      *   <li>Input: ` ```json\n{"key": "value"}\n``` ` → Returns: `{"key": "value"}`</li>
+     *   <li>Input: ` ```{"key": "value"}``` ` → Returns: `{"key": "value"}`</li>
      * </ul>
+     *
+     * @param text already-trimmed, non-null response text from Claude
      */
     private String extractJsonFromMarkdown(String text) {
-        String trimmed = text == null ? "" : text.trim();
-        return removeFences(trimmed).trim();
-    }
-
-    /**
-     * Removes markdown code block fences (```...```) from text.
-     * Handles both multi-line markdown (with language identifier on first line)
-     * and inline markdown (no newline after opening fence).
-     *
-     * Examples:
-     * - ` ```json\n{"key": "value"}\n``` ` → `{"key": "value"}`
-     * - ` ```{"key": "value"}``` ` → `{"key": "value"}`
-     * - `{"key": "value"}` → `{"key": "value"}`
-     */
-    private String removeFences(String text) {
-        if (text == null || !text.startsWith("```")) {
+        if (!text.startsWith("```")) {
             return text;
         }
 
@@ -361,10 +330,10 @@ public class ClaudeStatementApiClient {
         int closingFenceIndex = content.lastIndexOf("```");
         if (closingFenceIndex < 0) {
             // No closing fence found, return content as-is
-            return content;
+            return content.trim();
         }
 
-        return content.substring(0, closingFenceIndex);
+        return content.substring(0, closingFenceIndex).trim();
     }
 
     private static String emptyToNull(String value) {

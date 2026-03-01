@@ -12,11 +12,10 @@ import com.autosecretary.features.budget.domain.TransactionDirection;
 import java.util.List;
 
 /**
- * DAO for account and category lookups, and account balance maintenance.
+ * DAO for account and category management, and account balance maintenance.
  *
  * Provides read/write access to accounts and categories, as well as balance adjustment
- * operations. Despite the name "Lookup", this DAO performs both reads and writes because
- * account/category management spans both concerns.
+ * operations.
  *
  * Balance operations follow a sign convention:
  * - INCOME transactions add to balance (positive delta)
@@ -26,7 +25,7 @@ import java.util.List;
  * only for recovery after bulk imports or data corruption.
  */
 @Dao
-public interface BudgetLookupDao {
+public interface BudgetAccountCategoryDao {
 
     /**
      * Retrieves all active (non-archived) categories, sorted by type then name.
@@ -118,6 +117,10 @@ public interface BudgetLookupDao {
      * - As a recovery operation if balances become corrupted
      *
      * For normal transaction changes, use adjustCurrentBalanceCents() instead.
+     *
+     * Note: Archived accounts are intentionally excluded from the rebuild. They are
+     * hidden from the UI and no longer receive new transactions, so their cached balance
+     * does not need to stay current.
      */
     @Query("""
             UPDATE budget_account

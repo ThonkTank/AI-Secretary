@@ -13,7 +13,7 @@ import com.autosecretary.features.budget.data.dao.BudgetImportDao;
 import com.autosecretary.features.budget.data.entity.BudgetImportEntity;
 import com.autosecretary.features.budget.data.entity.BudgetLimit;
 import com.autosecretary.features.budget.data.dao.BudgetLimitDao;
-import com.autosecretary.features.budget.data.dao.BudgetLookupDao;
+import com.autosecretary.features.budget.data.dao.BudgetAccountCategoryDao;
 import com.autosecretary.features.budget.data.dao.BudgetRecurringTemplateDao;
 import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEntity;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
@@ -34,10 +34,10 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
  * SQLite database abstraction for AutoSecretary using Android Room ORM.
  * <p>
  * This is a single-instance database accessible via {@link #getInstance(Context)}.
- * Room automatically handles table creation, schema versioning (v21), and type conversion.
+ * Room automatically handles table creation, schema versioning (v22), and type conversion.
  * </p>
  * <p>
- * <strong>Database version:</strong> 21. Schema changes require only a version bump;
+ * <strong>Database version:</strong> 22. Schema changes require only a version bump;
  * {@link #getInstance(Context)} uses {@code fallbackToDestructiveMigration()}, which drops
  * and recreates all tables on schema changes — intentional in this project (manual
  * {@code Migration} subclasses are forbidden; see CLAUDE.md). Always back up user data
@@ -73,7 +73,7 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
                 BudgetImportEntity.class,
                 BudgetRecurringTemplateEntity.class
         },
-        version = 21,
+        version = 22,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -87,7 +87,7 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public abstract TaskTransitionStatDao taskTransitionStatDao();
 
-    public abstract BudgetLookupDao budgetLookupDao();
+    public abstract BudgetAccountCategoryDao budgetAccountCategoryDao();
 
     public abstract BudgetTransactionDao budgetTransactionDao();
 

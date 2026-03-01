@@ -15,6 +15,11 @@ import java.time.LocalTime;
  * <p>Distinct from {@link com.autosecretary.features.task.domain.scheduling.CalendarBlockedIntervalProvider.BlockedInterval},
  * which is the runtime interface used during actual generation; this record is a simpler DTO
  * used when calendar data is passed explicitly (e.g., in tests or from the single-day path).
+ *
+ * @param title Human-readable title of the calendar event
+ * @param start Interval start (inclusive)
+ * @param end   Interval end (exclusive); follows the {@code [start, end)} half-open convention
+ *              used by {@code BlockedInterval} and {@code SchedulingWindow}
  */
 public record TaskCalendarEvent(String title, LocalTime start, LocalTime end) {
 }

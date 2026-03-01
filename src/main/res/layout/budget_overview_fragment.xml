@@ -26,8 +26,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/budget_title"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6" />
 
         <Spinner
             android:id="@+id/BudgetAccountSpinner"
@@ -277,6 +276,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/BudgetImportStatementButton"
+            style="?attr/materialButtonOutlinedStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"

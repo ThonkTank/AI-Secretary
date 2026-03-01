@@ -16,7 +16,7 @@ import java.util.List;
  * <ul>
  *   <li><strong>Scheduled tasks:</strong> All fields are populated except calendar-event fields.
  *   <li><strong>Unscheduled tasks:</strong> {@code start}, {@code end}, {@code slotId},
- *       {@code slotParentId}, {@code score} are null.
+ *       {@code slotParentId} are null; {@code score} is 0.
  *   <li><strong>Calendar events:</strong> Only {@code itemType}, {@code taskId}, {@code slotId},
  *       {@code title}, {@code day}, {@code start}, {@code end} are populated; all other fields are null.
  *       Both {@code taskId} and {@code slotId} hold the same synthetic event ID (always check

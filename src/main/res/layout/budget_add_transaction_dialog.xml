@@ -45,10 +45,12 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_md"
         android:text="@string/budget_dialog_account_label"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+        android:labelFor="@id/BudgetDialogAccount" />
 
     <Spinner
         android:id="@+id/BudgetDialogAccount"
+        style="@style/Widget.AutoSecretary.Editor.Spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_xs" />
@@ -58,10 +60,12 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_md"
         android:text="@string/budget_dialog_category_label"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+        android:labelFor="@id/BudgetDialogCategory" />
 
     <Spinner
         android:id="@+id/BudgetDialogCategory"
+        style="@style/Widget.AutoSecretary.Editor.Spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_xs" />

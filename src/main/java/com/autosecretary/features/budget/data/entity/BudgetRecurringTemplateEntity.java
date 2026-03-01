@@ -95,8 +95,7 @@ public class BudgetRecurringTemplateEntity {
 
     // Column is named "transactionType" in the database. Unlike BudgetTransactionEntity and BudgetCategory
     // which use "type" for the direction column, this template entity uses "transactionType" for historical
-    // or table-specific reasons. In SQL queries against budget_recurring_template, reference this as "transactionType".
-    // TODO: Consider aligning to "type" in a future schema migration for consistency across all direction columns.
+    // reasons. In SQL queries against budget_recurring_template, always reference this column as "transactionType".
     @NonNull
     @ColumnInfo(name = "transactionType")
     public TransactionDirection direction = TransactionDirection.EXPENSE;

@@ -255,23 +255,6 @@ public class BudgetViewModel extends ViewModel {
         });
     }
 
-    public void updateTransfer(String transactionId,
-                               String sourceAccountId,
-                               String targetAccountId,
-                               String amountStr,
-                               LocalDate date,
-                               String note) {
-        withParsedAmount(amountStr, amountCents -> {
-            CreateTransferUseCase.Result result = createTransferUseCase.update(
-                    transactionId, sourceAccountId, targetAccountId, amountCents, date, note);
-            if (!result.success()) {
-                postTransferError(result);
-                return;
-            }
-            loadOverviewOnExecutor();
-        });
-    }
-
     private void postTransferError(CreateTransferUseCase.Result result) {
         uiState.postValue(BudgetUiState.ERROR);
         statusMessage.postValue(UiText.raw(result.errorMessage()));
@@ -288,8 +271,7 @@ public class BudgetViewModel extends ViewModel {
         uiState.postValue(BudgetUiState.LOADING);
 
         executor.execute(() -> {
-            List<BudgetAccount> accountList = repository.findActiveAccounts();
-            String accountId = BudgetOverviewLoader.resolveSelectedAccountId(selectedAccountId.getValue(), accountList);
+            String accountId = resolveAccountId();
             if (accountId == null) {
                 uiState.postValue(BudgetUiState.ERROR);
                 statusMessage.postValue(UiText.of(R.string.budget_status_no_account));
@@ -325,8 +307,7 @@ public class BudgetViewModel extends ViewModel {
 
     public void applyRecurringSuggestions(List<RecurringSuggestion> suggestions) {
         executor.execute(() -> {
-            List<BudgetAccount> accountList = repository.findActiveAccounts();
-            String accountId = BudgetOverviewLoader.resolveSelectedAccountId(selectedAccountId.getValue(), accountList);
+            String accountId = resolveAccountId();
             if (accountId == null) return;
 
             applyRecurringUseCase.executeAsync(
@@ -351,6 +332,9 @@ public class BudgetViewModel extends ViewModel {
         loadOverview();
     }
 
+    // Parses the amount string and invokes action on the executor thread (background).
+    // Callers must not perform any UI or main-thread operations inside the action lambda —
+    // use postValue() / uiState.postValue() to post results back to the main thread.
     private void withParsedAmount(String amountStr, LongConsumer action) {
         executor.execute(() -> {
             Long amountCents = AmountParser.parseAmountCents(amountStr);
@@ -365,6 +349,16 @@ public class BudgetViewModel extends ViewModel {
     private void showInvalidAmountError() {
         uiState.postValue(BudgetUiState.ERROR);
         statusMessage.postValue(UiText.of(R.string.budget_status_invalid_amount));
+    }
+
+    // Returns the selected account ID, falling back to the first active account.
+    // Null only when no accounts exist yet.
+    // Must be called on the executor thread — performs a synchronous DB read.
+    private String resolveAccountId() {
+        List<BudgetAccount> accounts = repository.findActiveAccounts();
+        String current = selectedAccountId.getValue();
+        if (current != null && !current.isBlank()) return current;
+        return accounts.isEmpty() ? null : accounts.get(0).id;
     }
 
     private void loadLimitsOnExecutor(YearMonth month) {

@@ -24,7 +24,9 @@ import java.util.UUID;
  */
 @Entity(tableName = "budget_category")
 public class BudgetCategory {
+    /** Fallback icon (tag emoji) used when a category is created without an explicit icon. */
     public static final String DEFAULT_ICON = "🏷️";
+    /** Fallback color (medium grey) used when a category is created without an explicit color. */
     public static final String DEFAULT_COLOR_HEX = "#9E9E9E";
 
     @PrimaryKey

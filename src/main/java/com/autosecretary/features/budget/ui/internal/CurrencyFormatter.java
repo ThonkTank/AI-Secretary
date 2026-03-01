@@ -35,7 +35,7 @@ public final class CurrencyFormatter {
      * Formats a signed cent value, suppressing the sign when zero or positive (no '+' prefix).
      * e.g. {@code "12.50 €"}, {@code "-3.00 €"}. Used for net balance display in the widget.
      */
-    public static String eurosNet(long amountCents) {
+    public static String eurosPlain(long amountCents) {
         return String.format(Locale.GERMAN, "%.2f €", amountCents / 100.0);
     }
 

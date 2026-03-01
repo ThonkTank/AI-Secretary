@@ -17,10 +17,10 @@ import java.time.LocalTime;
  *   <li>The window defines a wall-clock time range; midnight edge cases are up to the caller</li>
  * </ul>
  *
- * <p><strong>Example:</strong> To check calendar events between 09:00 and 17:00 on 2025-01-15:
+ * <p><strong>Example:</strong> To check calendar events between 09:00 and 17:00 on 2026-03-15:
  * <pre>
  *   ScheduleWindow window = new ScheduleWindow(
- *       LocalDate.of(2025, 1, 15),
+ *       LocalDate.of(2026, 3, 15),
  *       LocalTime.of(9, 0),    // startTime = 09:00
  *       LocalTime.of(17, 0)    // endTime = 17:00
  *   );
@@ -31,4 +31,15 @@ import java.time.LocalTime;
  * for the device calendar implementation.
  */
 public record ScheduleWindow(LocalDate day, LocalTime startTime, LocalTime endTime) {
+    /**
+     * Validates that the window times form a valid range: startTime ≤ endTime.
+     * Fails fast if the constraint is violated to prevent silent bugs in scheduling logic.
+     */
+    public ScheduleWindow {
+        if (startTime.isAfter(endTime)) {
+            throw new IllegalArgumentException(
+                    "startTime (" + startTime + ") must be <= endTime (" + endTime + ")"
+            );
+        }
+    }
 }

@@ -22,27 +22,37 @@ import java.util.concurrent.ExecutorService;
 public class CheckOffTaskUseCase {
     private final TaskSlotToggleMutation mutation;
     private final TaskDao taskDao;
-    private final ExecutorService executor;
+    private final ExecutorService workerExecutor;
     private final BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase;
     private final Context appContext;
     private final TaskMealIntegrationService taskMealIntegrationService;
 
     public CheckOffTaskUseCase(TaskSlotToggleMutation mutation,
                                TaskDao taskDao,
-                               ExecutorService executor,
+                               ExecutorService workerExecutor,
                                BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase,
                                Context appContext,
                                TaskMealIntegrationService taskMealIntegrationService) {
         this.mutation = mutation;
         this.taskDao = taskDao;
-        this.executor = executor;
+        this.workerExecutor = workerExecutor;
         this.bookTaskCompletionExpenseUseCase = bookTaskCompletionExpenseUseCase;
         this.appContext = appContext;
         this.taskMealIntegrationService = taskMealIntegrationService;
     }
 
+    /**
+     * Drives the two-phase slot check-off for the given list item.
+     *
+     * <p>First call: transitions the slot to STARTED (records {@code realStart}).
+     * Second call: transitions to COMPLETED (records {@code realEnd}), then runs
+     * post-completion side effects — budget expense booking and meal integration.
+     *
+     * @param listItem  the task list item containing the task and slot IDs to toggle
+     * @param onChanged callback dispatched on the main thread after all writes succeed
+     */
     public void execute(TaskListItem listItem, Runnable onChanged) {
-        executor.execute(() -> mutation.execute(
+        workerExecutor.execute(() -> mutation.execute(
                 listItem.taskId,
                 listItem.slotId,
                 onChanged,

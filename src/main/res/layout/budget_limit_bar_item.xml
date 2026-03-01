@@ -8,13 +8,15 @@
     android:paddingVertical="@dimen/spacing_sm"
     android:background="?attr/selectableItemBackground"
     android:clickable="true"
-    android:focusable="true">
+    android:focusable="true"
+    android:importantForAccessibility="yes">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:importantForAccessibility="no">
 
         <TextView
             android:id="@+id/BudgetLimitBarName"
@@ -24,14 +26,16 @@
             android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
             android:textStyle="bold"
             android:ellipsize="end"
-            android:maxLines="1" />
+            android:maxLines="1"
+            android:importantForAccessibility="no" />
 
         <TextView
             android:id="@+id/BudgetLimitBarSpentText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/spacing_sm"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+            android:importantForAccessibility="no" />
 
         <TextView
             android:id="@+id/BudgetLimitBarPercent"
@@ -41,7 +45,8 @@
             android:minWidth="@dimen/budget_limit_bar_percent_min_width"
             android:gravity="end"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:importantForAccessibility="no" />
     </LinearLayout>
 
     <ProgressBar
@@ -50,7 +55,7 @@
         android:layout_width="match_parent"
         android:layout_height="@dimen/budget_limit_bar_height"
         android:layout_marginTop="@dimen/spacing_xs"
-        android:contentDescription="@string/budget_limit_bar_progress_description"
+        android:importantForAccessibility="no"
         android:max="100" />
 
 </LinearLayout>

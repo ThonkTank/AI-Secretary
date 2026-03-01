@@ -165,8 +165,8 @@ public class BudgetFragment extends Fragment {
                 AutoSecretaryApplication.from(requireContext()).getAppCompositionRoot();
         BudgetViewModelFactory factory = compositionRoot.getBudgetViewModelFactory();
         budgetViewModel = new ViewModelProvider(this, factory).get(BudgetViewModel.class);
-        shouldOpenAddTransactionDialog = getArguments() != null
-                && getArguments().getBoolean(ARG_OPEN_ADD_TRANSACTION, false);
+        Bundle args = getArguments();
+        shouldOpenAddTransactionDialog = args != null && args.getBoolean(ARG_OPEN_ADD_TRANSACTION, false);
 
         BudgetOverviewViews views = bindViews(view);
         observeViewModel(views);
@@ -206,9 +206,9 @@ public class BudgetFragment extends Fragment {
         budgetViewModel.getSummaryData().observe(getViewLifecycleOwner(), data -> {
             if (data == null) return;
             views.summaryIncome.setText(CurrencyFormatter.eurosAlwaysSigned(data.getIncomeCents()));
-            views.summaryIncome.setTextColor(ContextCompat.getColor(requireContext(),R.color.budget_positive));
+            views.summaryIncome.setTextColor(ContextCompat.getColor(requireContext(), R.color.budget_positive));
             views.summaryExpense.setText(CurrencyFormatter.eurosAlwaysSigned(-data.getExpenseCents()));
-            views.summaryExpense.setTextColor(ContextCompat.getColor(requireContext(),R.color.budget_negative));
+            views.summaryExpense.setTextColor(ContextCompat.getColor(requireContext(), R.color.budget_negative));
             bindSignedAmount(views.summaryNet, data.getNetCents());
             bindSignedAmount(views.summaryFreeBudget, data.getFreeBudgetCents());
         });
@@ -240,8 +240,10 @@ public class BudgetFragment extends Fragment {
         budgetViewModel.getSelectedAccountId().observe(getViewLifecycleOwner(), selectedId -> {
             if (selectedId == null || accountItems.isEmpty()) return;
             for (int i = 0; i < accountItems.size(); i++) {
-                if (selectedId.equals(accountItems.get(i).id) && views.accountSpinner.getSelectedItemPosition() != i) {
-                    views.accountSpinner.setSelection(i, false);
+                if (selectedId.equals(accountItems.get(i).id)) {
+                    if (views.accountSpinner.getSelectedItemPosition() != i) {
+                        views.accountSpinner.setSelection(i, false);
+                    }
                     break;
                 }
             }
@@ -310,6 +312,12 @@ public class BudgetFragment extends Fragment {
         }
     }
 
+    /**
+     * Groups all view references for the budget overview into a single holder.
+     * Avoids scattering individual {@code View} fields across the Fragment class and
+     * makes it easy to see at a glance which views are bound in {@code bindViews}.
+     * Lifetime matches the view (created in {@code onViewCreated}, not retained).
+     */
     private static class BudgetOverviewViews {
         View summaryCard;
         TextView summaryIncome;
@@ -350,8 +358,7 @@ public class BudgetFragment extends Fragment {
     }
 
     private void showTransferDialog() {
-        if (budgetViewModel == null) return;
-        transferDialogController.show(budgetViewModel.getAccounts().getValue());
+        transferDialogController.show(accountsValue());
     }
 
     private void showEditLimitDialog(@Nullable String preSelectedCategoryId, long baseLimitCents) {
@@ -389,21 +396,26 @@ public class BudgetFragment extends Fragment {
             android.widget.ProgressBar progress = row.findViewById(R.id.BudgetLimitBarProgress);
 
             name.setText(bar.getCategoryName());
-            spentText.setText(String.format(Locale.GERMAN, "%.2f / %.2f €",
-                    bar.getSpentCents() / 100.0, bar.getEffectiveLimitCents() / 100.0));
+            String spentLabel = String.format(Locale.GERMAN, "%.2f / %.2f €",
+                    bar.getSpentCents() / 100.0, bar.getEffectiveLimitCents() / 100.0);
+            spentText.setText(spentLabel);
             int pct = bar.getPercentage();
             percentText.setText(String.format(Locale.GERMAN, "%d%%", pct));
             progress.setProgress(Math.min(pct, 100));
+            row.setContentDescription(bar.getCategoryName() + ": " + spentLabel + ", " + pct + "%");
 
+            // Color priority: a category's configured hex color always wins, because the user
+            // deliberately chose it. Status-based colors (negative/warning/positive) are only
+            // used as a fallback when no category color is configured.
             int color;
             if (isValidColorHex(bar.getCategoryColorHex())) {
                 color = Color.parseColor(bar.getCategoryColorHex());
             } else if (pct > 100) {
-                color = ContextCompat.getColor(requireContext(),R.color.budget_negative);
+                color = ContextCompat.getColor(requireContext(), R.color.budget_negative);
             } else if (pct >= 80) {
-                color = ContextCompat.getColor(requireContext(),R.color.budget_warning);
+                color = ContextCompat.getColor(requireContext(), R.color.budget_warning);
             } else {
-                color = ContextCompat.getColor(requireContext(),R.color.budget_positive);
+                color = ContextCompat.getColor(requireContext(), R.color.budget_positive);
             }
             progress.setProgressTintList(ColorStateList.valueOf(color));
             percentText.setTextColor(color);
@@ -430,8 +442,8 @@ public class BudgetFragment extends Fragment {
                 label.setTextColor(Color.parseColor(row.getCategoryColorHex()));
             }
             amount.setTextColor(row.isExpense()
-                    ? ContextCompat.getColor(requireContext(),R.color.budget_negative)
-                    : ContextCompat.getColor(requireContext(),R.color.budget_positive));
+                    ? ContextCompat.getColor(requireContext(), R.color.budget_negative)
+                    : ContextCompat.getColor(requireContext(), R.color.budget_positive));
             rowView.setContentDescription(
                     getString(R.string.budget_transaction_content_description,
                             row.getLabel(), formattedAmount));

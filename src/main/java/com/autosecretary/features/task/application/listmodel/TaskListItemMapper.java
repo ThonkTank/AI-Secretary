@@ -4,6 +4,7 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskSlot;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,10 +61,10 @@ public class TaskListItemMapper {
         List<TaskListItem> items = new ArrayList<>();
         for (Task task : tasks) {
             if (task.slots.isEmpty()) {
-                items.add(toScheduledItem(task, null));
+                items.add(toItem(task, null));
             } else {
                 for (TaskSlot slot : task.slots) {
-                    items.add(toScheduledItem(task, slot));
+                    items.add(toItem(task, slot));
                 }
             }
         }
@@ -86,7 +87,7 @@ public class TaskListItemMapper {
      * Converts a single task (with optional slot) into a TaskListItem.
      *
      * <p>Handles both scheduled tasks (slot != null) and unscheduled tasks (slot == null).
-     * When slot is null, scheduling fields are nulled and the item defaults to today's date.
+     * When slot is null, scheduling fields are null and score defaults to 0.
      *
      * <p>Progress fields are populated only if the task has a non-null progress tracker. The
      * minPerRep value is clamped to MIN_PROGRESS_STEP to ensure the UI can always render a
@@ -96,26 +97,34 @@ public class TaskListItemMapper {
      * @param slot the slot for this occurrence, or null for unscheduled tasks
      * @return a TaskListItem with all fields populated appropriately
      */
-    private TaskListItem toScheduledItem(Task task, TaskSlot slot) {
+    private TaskListItem toItem(Task task, TaskSlot slot) {
         List<String> parentTaskIds = extractParentIds(task);
         boolean hasProgress = task.core.progress != null;
+        boolean completed   = slot != null && slot.completed;
+        boolean inProgress  = slot != null && slot.realStart != null && !completed;
+        String  slotId       = slot != null ? slot.id     : null;
+        String  slotParentId = slot != null ? slot.parent : null;
+        LocalDate day        = slot != null ? slot.day    : LocalDate.now();
+        LocalTime start      = slot != null ? slot.start  : null;
+        LocalTime end        = slot != null ? slot.end    : null;
+        int       score      = slot != null ? slot.score  : 0;
 
         return new TaskListItem(
                 TaskListItem.ItemType.TASK,
                 task.core.id,
-                slot != null ? slot.id : null,
-                slot != null ? slot.parent : null,
+                slotId,
+                slotParentId,
                 parentTaskIds,
                 task.core.title,
                 task.core.description,
-                slot != null ? slot.day : LocalDate.now(),
-                slot != null ? slot.start : null,
-                slot != null ? slot.end : null,
+                day,
+                start,
+                end,
                 task.core.deadline,
                 task.core.history.currentStreak,
-                slot != null ? slot.score : 0,
-                slot != null && slot.completed,
-                slot != null && slot.realStart != null && !slot.completed,
+                score,
+                completed,
+                inProgress,
                 hasProgress ? task.core.progress.current : 0,
                 hasProgress ? task.core.progress.target : 0,
                 hasProgress ? task.core.progress.unit : null,

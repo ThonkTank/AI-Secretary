@@ -1,10 +1,13 @@
 package com.autosecretary.features.budget.ui.state;
 
 /**
- * Budget summary metrics for the current time range (30 days, 3 months, or 12 months).
+ * Budget summary metrics for the currently selected month ({@code BudgetViewModel.currentMonth}).
+ *
+ * <p>Note: the time-range filter (30d / 3m / 12m) controls only the balance <em>chart</em>;
+ * this summary is always scoped to the selected calendar month, not the chart window.
  *
  * All amounts are in cents (divide by 100 for display in currency units).
- * Values are calculated from transactions in the selected time period.
+ * Values are calculated from transactions in the selected month.
  * Invariant: netCents == incomeCents − expenseCents.
  *
  * freeBudgetCents is the account's current running balance, not a derived
@@ -15,14 +18,12 @@ package com.autosecretary.features.budget.ui.state;
 public class BudgetSummaryData {
     private final long incomeCents;
     private final long expenseCents;
-    private final long netCents;
     /** Account running balance in cents; positive = surplus, negative = overdraft. */
     private final long freeBudgetCents;
 
     public BudgetSummaryData(long incomeCents, long expenseCents, long freeBudgetCents) {
         this.incomeCents = incomeCents;
         this.expenseCents = expenseCents;
-        this.netCents = incomeCents - expenseCents;
         this.freeBudgetCents = freeBudgetCents;
     }
 
@@ -35,7 +36,7 @@ public class BudgetSummaryData {
     }
 
     public long getNetCents() {
-        return netCents;
+        return incomeCents - expenseCents;
     }
 
     public long getFreeBudgetCents() {

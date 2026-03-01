@@ -53,7 +53,9 @@ public final class TaskPlanningState {
     }
 
     /**
-     * Removes a previously recorded scheduled slot (used for backtracking or corrections).
+     * Removes a previously recorded scheduled slot. Called by the scheduler when a slot is
+     * evicted during competitive displacement, so the evicted task is no longer counted as
+     * scheduled on that day.
      *
      * <p>Updates both maps atomically. If no days remain for the task, both entries are cleared.
      * Only decrements the counter if the day was actually found and removed.

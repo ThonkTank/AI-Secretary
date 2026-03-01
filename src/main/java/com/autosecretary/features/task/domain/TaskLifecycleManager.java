@@ -29,7 +29,8 @@ import java.time.temporal.ChronoUnit;
 public class TaskLifecycleManager {
 
     // EMA smoothing factor: lower values adapt more slowly, higher values respond faster to recent completions
-    private static final double DEFAULT_PREF_SLOT_EMA_ALPHA = 0.2;
+    private static final double PREF_SLOT_EMA_ALPHA = 0.2;
+    private static final int MINUTES_PER_DAY = 24 * 60;
 
     /**
      * Advances {@code periodStart} to the current period boundary if the repetition period
@@ -135,13 +136,13 @@ public class TaskLifecycleManager {
 
         DayOfWeek today = slot.day.getDayOfWeek();
         TaskPrefSlot bestMatch = null;
-        long bestDiff = Long.MAX_VALUE;
+        long minDiff = Long.MAX_VALUE;
 
         for (TaskPrefSlot ps : task.prefSlots) {
             if (ps.days != null && ps.days.contains(today) && ps.start != null) {
                 long diff = Math.abs(Duration.between(ps.start, slot.realStart).toMinutes());
-                if (diff < bestDiff) {
-                    bestDiff = diff;
+                if (diff < minDiff) {
+                    minDiff = diff;
                     bestMatch = ps;
                 }
             }
@@ -172,7 +173,7 @@ public class TaskLifecycleManager {
         if (prereq.minGapMinutes <= 0) return;
 
         long actualGapMinutes = Duration.between(prereqSlot.realEnd, dependentSlot.realStart).toMinutes();
-        if (actualGapMinutes < 0) actualGapMinutes += 24 * 60;
+        if (actualGapMinutes < 0) actualGapMinutes += MINUTES_PER_DAY;
 
         long newGap = ema(prereq.minGapMinutes, actualGapMinutes);
         newGap = Math.round(newGap / 5.0) * 5;
@@ -182,6 +183,6 @@ public class TaskLifecycleManager {
     }
 
     private static long ema(long current, long sample) {
-        return Math.round(current * (1 - DEFAULT_PREF_SLOT_EMA_ALPHA) + sample * DEFAULT_PREF_SLOT_EMA_ALPHA);
+        return Math.round(current * (1 - PREF_SLOT_EMA_ALPHA) + sample * PREF_SLOT_EMA_ALPHA);
     }
 }

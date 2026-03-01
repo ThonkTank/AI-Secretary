@@ -13,10 +13,12 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/budget_dialog_category_label"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+        android:labelFor="@id/BudgetLimitDialogCategory" />
 
     <Spinner
         android:id="@+id/BudgetLimitDialogCategory"
+        style="@style/Widget.AutoSecretary.Editor.Spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_xs" />
@@ -52,11 +54,13 @@
         android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
 
     <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/BudgetLimitDialogRolloverCarryoverLayout"
         style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_sm"
-        android:hint="@string/budget_rollover_manual_hint">
+        android:hint="@string/budget_rollover_manual_hint"
+        android:visibility="gone">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/BudgetLimitDialogRolloverCarryover"

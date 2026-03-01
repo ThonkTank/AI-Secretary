@@ -15,8 +15,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -27,9 +27,9 @@ import java.util.function.Consumer;
  * Scores tasks for scheduling priority using a multi-layer multiplicative formula.
  * <p>
  * Holds a per-task {@link TaskScoringSnapshot} keyed by task ID. Intended lifecycle per generation run:
- * {@link #reset()} once, then {@link #maintenance(Task)} for each task to pre-compute caches,
- * then {@link #score(Task, LocalDateTime, LocalDateTime)} for each candidate placement.
- * After a slot is assigned, call {@link #onSlotAssigned(Task)} to update the daily counter.
+ * {@link #reset()} once, then {@link #maintenance(Task, LocalDate, TaskPlanningState)} for each task to pre-compute caches,
+ * then {@link #score(Task, LocalDateTime, LocalDateTime, String)} for each candidate placement.
+ * After a slot is assigned, call {@link #onSlotAssigned(Task, LocalTime)} to update the daily counter.
  */
 final class TaskScorer {
 
@@ -67,12 +67,19 @@ final class TaskScorer {
      * scheduled on another day and must be skipped (inter-day spacing guard).
      */
     private static final double INTER_DAY_SPACING_THRESHOLD = 0.5;
+    /**
+     * Assumed scheduling window width in days. Used in {@link #computeMultiDaySnapshot} to
+     * calculate how many repetition periods fit in a week and derive the total rep quota.
+     * This is a fixed design assumption — the window is always treated as one week.
+     */
+    private static final int SCHEDULING_WINDOW_DAYS = 7;
 
     private final TaskLifecycleManager lifecycleManager;
     private final double maxAgingMultiplier;
     private final double preferredStartDeviationHours;
     private final Map<String, TaskScoringSnapshot> caches = new HashMap<>();
     private final Map<String, Map<String, TransitionStat>> transitionStats = new HashMap<>();
+    private final Map<String, LocalDate> lastMaintenanceDays = new HashMap<>();
     private final Consumer<String> logger;
     private final TaskBudgetEligibilityService budgetEligibilityService;
 
@@ -94,6 +101,7 @@ final class TaskScorer {
 
     void reset() {
         caches.clear();
+        lastMaintenanceDays.clear();
     }
 
     /**
@@ -104,13 +112,10 @@ final class TaskScorer {
      * scheduler to group contextually related tasks.
      *
      * <p>Call once per generation run, after {@link #reset()}, before {@link #score}.
-     * Passing {@code null} or an empty list disables the follow-up boost entirely.
+     * Passing an empty list disables the follow-up boost entirely.
      */
     void setTransitionStats(List<TransitionStat> stats) {
         transitionStats.clear();
-        if (stats == null) {
-            return;
-        }
         for (TransitionStat stat : stats) {
             transitionStats.computeIfAbsent(stat.fromTaskId(), key -> new HashMap<>())
                     .put(stat.toTaskId(), stat);
@@ -250,6 +255,20 @@ final class TaskScorer {
                     budgetEligible
             );
         }
+
+        TaskScoringSnapshot withMultiDaySnapshot(MultiDayStateSnapshot freshMultiDay) {
+            return new TaskScoringSnapshot(
+                    completionState,
+                    urgencyState,
+                    preferenceFitState,
+                    freshMultiDay,
+                    sinceLast,
+                    agingForce,
+                    repsPerDay,
+                    maxChildPriority,
+                    budgetEligible
+            );
+        }
     }
 
     /**
@@ -265,6 +284,18 @@ final class TaskScorer {
      * </ul>
      */
     void maintenance(Task task, LocalDate day, TaskPlanningState state) {
+        // If already computed for this task+day, only refresh the planning-state-dependent
+        // multi-day snapshot (which changes after each placement). Skip the expensive
+        // scanSlots, advancePeriods, computeMaxChildPriority, and budget eligibility checks,
+        // which produce identical results for repeated calls on the same task+day pair.
+        LocalDate lastDay = lastMaintenanceDays.get(task.core.id);
+        TaskScoringSnapshot existing = caches.get(task.core.id);
+        if (day.equals(lastDay) && existing != null) {
+            caches.put(task.core.id, existing.withMultiDaySnapshot(computeMultiDaySnapshot(task, state, day)));
+            return;
+        }
+
+        lastMaintenanceDays.put(task.core.id, day);
         lifecycleManager.advancePeriods(task, day);
         CompletionState completionState = scanSlots(task, day);
         syncPeriodCompletions(task, completionState);
@@ -391,12 +422,12 @@ final class TaskScorer {
         double expectedDayGap;
 
         if (rep != null && rep.reps > 0) {
-            int periodsInWindow = Math.max(1, (int) Math.ceil(7.0 / rep.periodInDays()));
+            int periodsInWindow = Math.max(1, (int) Math.ceil((double) SCHEDULING_WINDOW_DAYS / rep.periodInDays()));
             totalRepsInPeriod = rep.reps * periodsInWindow;
             expectedDayGap = (double) rep.periodInDays() / rep.reps;
         } else {
             totalRepsInPeriod = 1;
-            expectedDayGap = 7;
+            expectedDayGap = SCHEDULING_WINDOW_DAYS;
         }
 
         return new MultiDayStateSnapshot(totalScheduledReps, totalRepsInPeriod, minDayDistance, expectedDayGap);
@@ -453,13 +484,13 @@ final class TaskScorer {
         if (isBlockedByIncompletePriorPeriod(context)) return false;
         if (isBelowMinimumSlotDuration(context)) return false;
         if (isBelowRequiredProgressDuration(context)) return false;
-        return !isPastClosableDeadline(context);
+        if (isPastClosableDeadline(context)) return false;
+        return true;
     }
 
     private boolean isAlreadyCompleteForCurrentCycle(ScoringContext context) {
         return context.snapshot().completionState().isComplete();
     }
-
 
     private boolean isBudgetInsufficient(ScoringContext context) {
         return !context.snapshot().budgetEligible();
@@ -587,14 +618,14 @@ final class TaskScorer {
      * a candidate outside the configured deviation window gets {@code fit = 0.0} (blocked).
      */
     private int applyPreferredTimeFit(int baseScore, ScoringContext context) {
-        Set<String> consumed = context.snapshot().preferenceFitState().consumedPrefSlotIds();
+        PreferenceFitState pref = context.snapshot().preferenceFitState();
         TaskPrefSlot match = findClosestUnconsumedPrefSlot(
-                context.snapshot().preferenceFitState().todayPrefSlots(),
+                pref.todayPrefSlots(),
                 context.start().toLocalTime(),
-                consumed
+                pref.consumedPrefSlotIds()
         );
         if (match == null) {
-            return context.snapshot().preferenceFitState().hasDayConstraints() ? 0 : baseScore;
+            return pref.hasDayConstraints() ? 0 : baseScore;
         }
 
         double deviationHours = Duration.between(context.start().toLocalTime(), match.start).toMinutes() / 60.0;
@@ -626,7 +657,6 @@ final class TaskScorer {
         Map<String, TransitionStat> fromMap = transitionStats.get(previousTaskId);
         TransitionStat stat = fromMap != null ? fromMap.get(context.task().core.id) : null;
         if (stat == null || stat.weight() <= 0) {
-            logFollowBoost(context, previousTaskId, 0, 1.0, 0.0, score, score);
             return score;
         }
 
@@ -674,10 +704,9 @@ final class TaskScorer {
         TaskScoringSnapshot snapshot = context.snapshot();
         int adjustedScore = (int) (score * snapshot.agingForce());
         MultiDayStateSnapshot multiDay = snapshot.multiDayStateSnapshot();
-        if (multiDay.minDayDistance() > 0
-                && multiDay.minDayDistance() != Integer.MAX_VALUE
-                && multiDay.minDayDistance() < multiDay.expectedDayGap()) {
-            double ratio = multiDay.minDayDistance() / multiDay.expectedDayGap();
+        int minDist = multiDay.minDayDistance();
+        if (minDist > 0 && minDist != Integer.MAX_VALUE && minDist < multiDay.expectedDayGap()) {
+            double ratio = minDist / multiDay.expectedDayGap();
             double spread = Math.min(1.0, SPREAD_FLOOR + ratio * SPREAD_RANGE);
             adjustedScore = (int) (adjustedScore * spread);
         }

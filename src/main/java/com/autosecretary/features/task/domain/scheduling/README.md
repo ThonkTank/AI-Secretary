@@ -20,6 +20,13 @@ A **scheduling window** is the time interval within which tasks can be scheduled
 - Source: Device calendar, user-created holds, or a no-op provider (no calendar integration)
 - Used during slot generation to reject overlapping placements with reason `CALENDAR_OVERLAP`
 
+> **Related type — [`TaskCalendarEvent`](../TaskCalendarEvent.java):** A simpler DTO (title + `LocalTime`
+> start/end) used when calendar data is passed *explicitly* to the scheduler (e.g., the single-day overload
+> in `DefaultTaskSlotGenerator`, called from `TaskCalendarService` via the UI path).
+> Contrast with `CalendarBlockedIntervalProvider.BlockedInterval`, which uses `LocalDateTime` and is
+> consumed via the *runtime provider* path. Both block the same scheduling slots; the difference is how
+> the interval data enters the scheduler.
+
 ### Scheduling Conflict
 A **conflict** represents a constraint violation that prevented a task from being scheduled.
 

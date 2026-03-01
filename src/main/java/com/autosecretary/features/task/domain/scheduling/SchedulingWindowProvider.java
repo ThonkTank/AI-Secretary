@@ -47,7 +47,7 @@ public interface SchedulingWindowProvider {
      * Default scheduling window provider: returns fixed start/end times for all days.
      *
      * <p>Times are sourced from {@link TaskPrefSlotFactory}, which defines app-wide defaults
-     * (typically 8am to 11pm, configurable via app settings).
+     * (06:00–21:00, i.e. 6am to 9pm, configurable via app settings).
      */
     SchedulingWindowProvider DEFAULT = day -> {
         LocalDateTime start = LocalDateTime.of(day, TaskPrefSlotFactory.DEFAULT_START_TIME);

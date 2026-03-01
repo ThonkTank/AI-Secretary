@@ -172,7 +172,7 @@ public class TaskViewModel extends AndroidViewModel {
 
     public void updateList() {
         regenerateScheduleUseCase.execute(result -> {
-            scheduleConflicts.postValue(result.conflicts);
+            scheduleConflicts.postValue(result.conflicts());
             refreshList();
         });
     }

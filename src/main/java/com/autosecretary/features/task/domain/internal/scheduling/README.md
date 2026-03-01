@@ -11,8 +11,8 @@ This package contains the **internal scheduling algorithm** — the implementati
 
 | File | Role |
 |---|---|
-| [`DefaultTaskSlotGenerator`](DefaultTaskSlotGenerator.java) | Main orchestrator. Builds prerequisite chains, evaluates candidate placements, applies displacement logic. ~1150 lines. |
-| [`TaskScorer`](TaskScorer.java) | Composite scoring function. Computes a numeric priority for each (task, time slot) pair. Package-private; only used by `DefaultTaskSlotGenerator`. ~665 lines. |
+| [`DefaultTaskSlotGenerator`](DefaultTaskSlotGenerator.java) | Main orchestrator. Builds prerequisite chains, evaluates candidate placements, applies displacement logic. ~1300 lines. |
+| [`TaskScorer`](TaskScorer.java) | Composite scoring function. Computes a numeric priority for each (task, time slot) pair. Package-private; only used by `DefaultTaskSlotGenerator`. ~720 lines. |
 
 Both files are large. Read the orientation below before opening them.
 
@@ -33,7 +33,7 @@ a task should have across the window (e.g. a task with 3 reps/week in a 7-day wi
 a quota of 3; a daily task has a quota of 7).
 
 1. Builds a `DaySchedulingContext` per day (window bounds + occupied intervals).
-2. Pins fixed-time (`TERMIN`) tasks per day first.
+2. Pins fixed-time (`TERMIN`, i.e. `TaskCore.SchedulingType.TERMIN`) tasks per day first.
 3. Runs `assignGlobalBestFitAcrossWindow` — a single competitive loop that picks the
    globally best (day, chain, start-time) triple on each iteration.
 
@@ -112,7 +112,7 @@ scorer.onSlotAssigned(task, assignedStart)  // mark pref slot consumed, incremen
 | Type | Purpose |
 |---|---|
 | `OccupiedInterval` | A time interval that is already claimed (task slot or calendar block). `candidate == null` → hard block (never displaceable). |
-| `DisplacementCandidate` | Metadata for a placed slot that *may* be evicted. Holds `lossScore` and `atomicGroupId` (chain siblings must be evicted together). Also has `protectedFromNormalTasks`: when `true` (TERMIN slots), the slot can only be displaced by another TERMIN slot — normal scored tasks cannot evict it even if their score is higher. |
+| `DisplacementCandidate` | Metadata for a placed slot that *may* be evicted. Holds `lossScore` and `atomicGroupId` (chain siblings must be evicted together). Also has `protectedFromNormalTasks`: when `true` (TERMIN slots, i.e. `TaskCore.SchedulingType.TERMIN`), the slot can only be displaced by another TERMIN slot — normal scored tasks cannot evict it even if their score is higher. |
 | `ChainNode` | One task in a prerequisite chain, plus the minimum gap after the preceding task. |
 | `ChainPlacement` | A fully evaluated placement proposal: chain + start times + slots to displace + net score. |
 | `DaySchedulingContext` | One day's scheduling state (window bounds + mutable occupied-interval list). |

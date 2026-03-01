@@ -2,6 +2,7 @@ package com.autosecretary.features.budget.ui.internal;
 
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
@@ -121,47 +122,63 @@ public class BudgetTransactionDialogController {
                 ? R.string.budget_dialog_save
                 : R.string.budget_dialog_update;
 
-        AlertDialog dialog = new AlertDialog.Builder(fragment.requireContext())
+        AlertDialog.Builder builder = new AlertDialog.Builder(fragment.requireContext())
                 .setTitle(titleRes)
                 .setView(dialogView)
                 .setPositiveButton(positiveRes, null)
-                .setNegativeButton(R.string.budget_dialog_cancel, null)
-                .create();
+                .setNegativeButton(R.string.budget_dialog_cancel, null);
+        if (existingRow != null) {
+            // Expose delete as a neutral button so users don't need to know about long-press.
+            builder.setNeutralButton(R.string.budget_delete_confirm, null);
+        }
+        AlertDialog dialog = builder.create();
 
         // setOnShowListener + null in setPositiveButton: standard pattern to prevent the
         // AlertDialog from auto-dismissing before date validation has a chance to show an error.
-        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String dateStr = SpinnerHelper.textOf(dateInput);
-            LocalDate bookingDate;
-            try {
-                bookingDate = LocalDate.parse(dateStr);
-            } catch (DateTimeParseException ex) {
-                dateInput.setError(fragment.getString(R.string.budget_transfer_invalid_date));
-                return;
+        dialog.setOnShowListener(d -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                String dateStr = SpinnerHelper.textOf(dateInput);
+                LocalDate bookingDate;
+                try {
+                    bookingDate = LocalDate.parse(dateStr);
+                } catch (DateTimeParseException ex) {
+                    dateInput.setError(fragment.getString(R.string.budget_invalid_date));
+                    return;
+                }
+
+                String amountStr = SpinnerHelper.textOf(amountInput);
+                boolean selectedExpense = expenseRadio.isChecked();
+                String note = SpinnerHelper.textOf(noteInput);
+                String categoryId = SpinnerHelper.idAtPosition(
+                        categoriesForType(allCategories, selectedExpense),
+                        categorySpinner.getSelectedItemPosition(), c -> c.id);
+                String accountId = SpinnerHelper.idAtPosition(
+                        activeAccounts(allAccounts),
+                        accountSpinner.getSelectedItemPosition(), a -> a.id);
+
+                if (accountId == null) return;
+
+                if (existingRow == null) {
+                    listener.onAddTransaction(amountStr, selectedExpense, categoryId,
+                            note.isEmpty() ? null : note, bookingDate, accountId);
+                } else {
+                    listener.onUpdateTransaction(existingRow.getTransactionId(), amountStr,
+                            selectedExpense, categoryId, note.isEmpty() ? null : note,
+                            bookingDate, accountId);
+                }
+                dialog.dismiss();
+            });
+
+            if (existingRow != null) {
+                Button deleteButton = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
+                if (deleteButton != null) {
+                    deleteButton.setOnClickListener(v -> {
+                        dialog.dismiss();
+                        showDeleteConfirmation(existingRow);
+                    });
+                }
             }
-
-            String amountStr = SpinnerHelper.textOf(amountInput);
-            boolean selectedExpense = expenseRadio.isChecked();
-            String note = SpinnerHelper.textOf(noteInput);
-            String categoryId = SpinnerHelper.idAtPosition(
-                    categoriesForType(allCategories, selectedExpense),
-                    categorySpinner.getSelectedItemPosition(), c -> c.id);
-            String accountId = SpinnerHelper.idAtPosition(
-                    activeAccounts(allAccounts),
-                    accountSpinner.getSelectedItemPosition(), a -> a.id);
-
-            if (accountId == null) return;
-
-            if (existingRow == null) {
-                listener.onAddTransaction(amountStr, selectedExpense, categoryId,
-                        note.isEmpty() ? null : note, bookingDate, accountId);
-            } else {
-                listener.onUpdateTransaction(existingRow.getTransactionId(), amountStr,
-                        selectedExpense, categoryId, note.isEmpty() ? null : note,
-                        bookingDate, accountId);
-            }
-            dialog.dismiss();
-        }));
+        });
 
         dialog.show();
     }

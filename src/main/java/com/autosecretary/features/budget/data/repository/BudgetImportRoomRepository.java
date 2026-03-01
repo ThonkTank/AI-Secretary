@@ -1,7 +1,7 @@
 package com.autosecretary.features.budget.data.repository;
 
 import android.util.Log;
-import com.autosecretary.features.budget.data.dao.BudgetLookupDao;
+import com.autosecretary.features.budget.data.dao.BudgetAccountCategoryDao;
 import com.autosecretary.features.budget.data.dao.BudgetTransactionDao;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.dao.BudgetImportDao;
@@ -37,7 +37,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     private final BudgetImportDao importDao;
     private final BudgetRecurringTemplateDao templateDao;
     private final BudgetTransactionDao transactionDao;
-    private final BudgetLookupDao lookupDao;
+    private final BudgetAccountCategoryDao accountCategoryDao;
     /** Callback invoked after budget data changes. Typically triggers UI refresh or
      *  re-fetch of dependent data (balance, recurring templates, etc.). */
     private final Runnable onBudgetDataUpdated;
@@ -45,12 +45,12 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     public BudgetImportRoomRepository(BudgetImportDao importDao,
                                        BudgetRecurringTemplateDao templateDao,
                                        BudgetTransactionDao transactionDao,
-                                       BudgetLookupDao lookupDao,
+                                       BudgetAccountCategoryDao accountCategoryDao,
                                        Runnable onBudgetDataUpdated) {
         this.importDao = importDao;
         this.templateDao = templateDao;
         this.transactionDao = transactionDao;
-        this.lookupDao = lookupDao;
+        this.accountCategoryDao = accountCategoryDao;
         this.onBudgetDataUpdated = onBudgetDataUpdated;
     }
 
@@ -82,7 +82,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
 
     @Override
     public String findDefaultCategoryId(TransactionDirection direction) {
-        return lookupDao.findDefaultCategoryId(direction);
+        return accountCategoryDao.findDefaultCategoryId(direction);
     }
 
     @Override
@@ -90,12 +90,12 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
         if (categoryId == null || categoryId.isBlank()) {
             return false;
         }
-        return lookupDao.findCategoryById(categoryId) != null;
+        return accountCategoryDao.findCategoryById(categoryId) != null;
     }
 
     @Override
     public List<ImportCategory> loadActiveCategoriesForImport() {
-        return lookupDao.findActiveCategories().stream()
+        return accountCategoryDao.findActiveCategories().stream()
                 .map(category -> new ImportCategory(category.id, category.name, category.direction))
                 .toList();
     }
@@ -103,7 +103,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     @Override
     public void saveTransactionsBatch(List<ImportTransactionRecord> transactions) {
         transactionDao.insertAll(transactions.stream().map(this::toEntity).toList());
-        lookupDao.rebuildAllAccountBalances();
+        accountCategoryDao.rebuildAllAccountBalances();
     }
 
     @Override
@@ -114,12 +114,9 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     @Override
     public String createRecurringTemplate(RecurringSuggestion suggestion, String accountId,
                                            LocalDate nextDueDate) {
-        LocalDate due = nextDueDate != null ? nextDueDate : LocalDate.now();
         BudgetRecurringTemplateEntity entity = BudgetRecurringTemplateEntity.fromSuggestion(
-                suggestion,
-                accountId,
-                due
-        );
+                suggestion, accountId,
+                nextDueDate != null ? nextDueDate : LocalDate.now());
         templateDao.insert(entity);
         return entity.id;
     }
@@ -152,13 +149,12 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
      */
     @Override
     public void synchronizeRecurringTemplateState(LocalDate referenceDate) {
-        List<BudgetRecurringTemplateEntity> templates = templateDao.findAllActiveTemplates();
-        List<RecurringScheduleParams> params = templates.stream()
+        List<RecurringScheduleParams> params = templateDao.findAllActiveTemplates().stream()
                 .map(t -> new RecurringScheduleParams(
                         t.id, t.nextDue, t.recurringType, t.recurringDayOfWeek, t.recurringValue))
                 .toList();
-        List<TemplateStatusUpdate> updates = RecurringTemplateScheduler.computeStatusUpdates(params, referenceDate);
-        templateDao.updateAllTemplateStatuses(updates);
+        templateDao.updateAllTemplateStatuses(
+                RecurringTemplateScheduler.computeStatusUpdates(params, referenceDate));
     }
 
     @Override

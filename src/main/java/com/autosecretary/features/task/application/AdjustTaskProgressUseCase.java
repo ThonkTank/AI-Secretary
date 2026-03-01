@@ -15,8 +15,13 @@ import java.util.concurrent.ExecutorService;
  * completion flags in sync. Routes completions through {@link TaskLifecycleManager}
  * so streaks and history are updated consistently with {@code CheckOffTaskUseCase}.
  *
- * Contract: DAO work runs on {@code executor}; when present, {@code onChanged}
- * runs on {@code callbackDispatcher}.
+ * <p><strong>Scope compared to {@code CheckOffTaskUseCase}:</strong> This path handles
+ * streak/history updates only. It does NOT call {@code BookTaskCompletionExpenseUseCase}
+ * (no budget expense is booked) and does NOT record transition stats for scheduler learning.
+ * See {@code REVIEW_BACKLOG.md} for the known gap.
+ *
+ * <p>Contract: DAO work runs on {@code workerExecutor}; when present, {@code onChanged}
+ * is dispatched via {@code callbackDispatcher}.
  */
 public class AdjustTaskProgressUseCase {
     private final TaskDao taskDao;
@@ -57,14 +62,14 @@ public class AdjustTaskProgressUseCase {
             TaskSlot slot = task.findSlot(listItem.slotId);
             if (slot != null) {
                 slot.completed = completed;
-                if (completed && slot.realEnd == null) {
-                    slot.realEnd = LocalTime.now();
-                }
                 if (completed) {
+                    if (slot.realEnd == null) slot.realEnd = LocalTime.now();
                     lifecycleManager.updateStreakForCompletion(task, slot);
                     // durationMinutes=0: progress-tracked completions don't record session time.
                     // trackDuration=false: skip persisting a duration measurement for this completion.
                     task.recordCompletion(0, false);
+                    // Note: budget expense booking (BookTaskCompletionExpenseUseCase) and
+                    // transition stat recording are intentionally absent here — see class Javadoc.
                 }
             }
 

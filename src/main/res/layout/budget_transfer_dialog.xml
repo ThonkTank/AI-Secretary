@@ -10,10 +10,12 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/budget_transfer_source_account"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+        android:labelFor="@id/BudgetTransferSourceAccount" />
 
     <Spinner
         android:id="@+id/BudgetTransferSourceAccount"
+        style="@style/Widget.AutoSecretary.Editor.Spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_xs" />
@@ -23,10 +25,12 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_md"
         android:text="@string/budget_transfer_target_account"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+        android:labelFor="@id/BudgetTransferTargetAccount" />
 
     <Spinner
         android:id="@+id/BudgetTransferTargetAccount"
+        style="@style/Widget.AutoSecretary.Editor.Spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_xs" />

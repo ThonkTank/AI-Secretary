@@ -92,8 +92,8 @@ public class BudgetBalanceChartView extends View {
         long min = Long.MAX_VALUE;
         long max = Long.MIN_VALUE;
         for (BudgetChartPoint point : points) {
-            min = Math.min(min, point.getBalanceCents());
-            max = Math.max(max, point.getBalanceCents());
+            min = Math.min(min, point.balanceCents());
+            max = Math.max(max, point.balanceCents());
         }
         // Guard against a flat series (all values identical): expand the range by 1 cent
         // on each side so the denominator is never zero and the single line draws centred.
@@ -110,7 +110,7 @@ public class BudgetBalanceChartView extends View {
             BudgetChartPoint point = points.get(i);
             float x = leftPad + i * stepX;
             // Normalise balance to [0,1] then invert: ratio=1 → top of chart (high balance).
-            float ratio = (point.getBalanceCents() - min) / (float) (max - min);
+            float ratio = (point.balanceCents() - min) / (float) (max - min);
             float y = bottomY - ratio * height;
 
             if (i > 0) {
@@ -126,9 +126,9 @@ public class BudgetBalanceChartView extends View {
 
         BudgetChartPoint first = points.get(0);
         BudgetChartPoint last = points.get(points.size() - 1);
-        canvas.drawText(first.getLabel(), leftPad, getHeight() - dp(8f), labelPaint);
-        float endLabelWidth = labelPaint.measureText(last.getLabel());
-        canvas.drawText(last.getLabel(), leftPad + width - endLabelWidth, getHeight() - dp(8f), labelPaint);
+        canvas.drawText(first.label(), leftPad, getHeight() - dp(8f), labelPaint);
+        float endLabelWidth = labelPaint.measureText(last.label());
+        canvas.drawText(last.label(), leftPad + width - endLabelWidth, getHeight() - dp(8f), labelPaint);
     }
 
     private float dp(float value) {

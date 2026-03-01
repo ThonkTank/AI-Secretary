@@ -101,6 +101,14 @@ public interface BudgetRepository {
 
     void updateTransaction(BudgetTransactionEntity transaction);
     void updateTransaction(String transactionId, TransactionCreateDetails details);
+
+    /**
+     * Batch-inserts pre-built transaction entities without updating account balances.
+     * Callers are responsible for ensuring balance consistency after this call (e.g., by
+     * invoking a balance rebuild). Intended for bulk seed operations where a single rebuild
+     * is more efficient than per-row adjustments.
+     * For user-initiated transaction creation, use {@link #saveTransaction(TransactionCreateDetails)}.
+     */
     void saveTransactions(List<BudgetTransactionEntity> transactions);
     void deleteTransaction(String transactionId);
 

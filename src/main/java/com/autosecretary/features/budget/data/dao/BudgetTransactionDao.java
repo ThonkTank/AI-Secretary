@@ -295,7 +295,7 @@ public interface BudgetTransactionDao {
             return;
         }
 
-        deleteById(transaction.id);
+        deleteById(transactionId);
         if (transaction.linkedTransactionId != null) {
             deleteById(transaction.linkedTransactionId);
         }
