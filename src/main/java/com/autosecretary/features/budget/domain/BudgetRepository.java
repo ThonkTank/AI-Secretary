@@ -1,8 +1,8 @@
 package com.autosecretary.features.budget.domain;
 
-import com.autosecretary.features.budget.data.entity.BudgetAccount;
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
-import com.autosecretary.features.budget.data.entity.BudgetLimit;
+import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
+import com.autosecretary.features.budget.data.entity.BudgetLimitEntity;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
 import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
@@ -29,20 +29,20 @@ import java.util.List;
  * {@code "YYYY-MM"} (e.g., {@code "2024-01"} for January 2024). Use
  * {@code YearMonth.now().toString()} or {@code yearMonth.toString()} to produce a compatible value.
  * <p>
- * The concrete Room implementation lives in {@code budget/data/internal/repository/BudgetRoomRepository}.
+ * The concrete Room implementation lives in {@code budget/data/repository/BudgetRoomRepository}.
  * All calls are expected to run on a background thread (see {@code AppCompositionRoot} for threading setup).
  */
 public interface BudgetRepository {
-    BudgetAccount findAccountById(String accountId);
-    List<BudgetAccount> findActiveAccounts();
-    void insertAccount(BudgetAccount account);
-    List<BudgetCategory> findActiveCategories();
-    void insertCategory(BudgetCategory category);
+    BudgetAccountEntity findAccountById(String accountId);
+    List<BudgetAccountEntity> findActiveAccounts();
+    void insertAccount(BudgetAccountEntity account);
+    List<BudgetCategoryEntity> findActiveCategories();
+    void insertCategory(BudgetCategoryEntity category);
     List<BudgetTransactionEntity> findAllTransactions();
     List<BudgetTransactionEntity> findTransactionsForAccount(String accountId);
     BudgetTransactionEntity findTransactionById(String transactionId);
-    BudgetLimit findBudgetLimit(String categoryId, String yearMonth);
-    BudgetLimit findPreviousMonthLimit(String categoryId, String targetYearMonth);
+    BudgetLimitEntity findBudgetLimit(String categoryId, String yearMonth);
+    BudgetLimitEntity findPreviousMonthLimit(String categoryId, String targetYearMonth);
     long getPreviousMonthExpenseCents(String categoryId, String targetYearMonth);
     long getCategoryExpenseCents(String categoryId, String yearMonth);
 
@@ -131,7 +131,7 @@ public interface BudgetRepository {
      */
     boolean updateTransfer(String transactionId, TransferDetails details);
 
-    void saveBudgetLimit(BudgetLimit budgetLimit);
+    void saveBudgetLimit(BudgetLimitEntity budgetLimit);
     List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth);
     List<MonthlyOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId);
     List<CategorySpendSummary> getCategorySpendTotals(String yearMonth);

@@ -23,6 +23,7 @@ import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -73,6 +74,10 @@ public class TaskViewModel extends AndroidViewModel {
     private boolean hasCalendarPermission = false;
     /** Expand/collapse state per task ID, used in Manage mode to show/hide child slot groups. */
     private final Map<String, Boolean> expandedByTaskId = new HashMap<>();
+    /** Cached calendar events for the current day; avoids re-querying ContentResolver on every filterList(). */
+    private List<ViewSlot> cachedCalendarSlots = Collections.emptyList();
+    /** The day for which cachedCalendarSlots was fetched; null means cache is invalid. */
+    private LocalDate cachedCalendarDay = null;
 
     public TaskViewModel(Application app,
                          TaskDataService taskDataService,
@@ -113,6 +118,7 @@ public class TaskViewModel extends AndroidViewModel {
         return scheduleConflicts;
     }
 
+    /** Updates the search query and re-filters the list. Only effective in Manage mode. */
     public void setSearchQuery(String query) {
         String normalizedQuery = query == null ? "" : query;
         String currentQuery = searchQuery.getValue();
@@ -125,11 +131,15 @@ public class TaskViewModel extends AndroidViewModel {
         filterList();
     }
 
+    /** Called when READ_CALENDAR permission result is received; re-filters to show/hide calendar rows. */
     public void onCalendarPermissionChanged(boolean granted) {
         hasCalendarPermission = granted;
+        cachedCalendarDay = null; // Invalidate so refreshCalendarCache re-queries
+        refreshCalendarCache(selectedDay.getValue());
         filterList();
     }
 
+    /** Moves the selected day forward by one, capped at {@link #MAX_DAY_OFFSET} days from today. */
     public void navigateNextDay() {
         LocalDate current = selectedDay.getValue();
         if (current != null && current.isBefore(LocalDate.now().plusDays(MAX_DAY_OFFSET))) {
@@ -137,6 +147,7 @@ public class TaskViewModel extends AndroidViewModel {
         }
     }
 
+    /** Moves the selected day backward by one; today is the minimum (no past navigation). */
     public void navigatePreviousDay() {
         LocalDate current = selectedDay.getValue();
         if (current != null && current.isAfter(LocalDate.now())) {
@@ -146,6 +157,7 @@ public class TaskViewModel extends AndroidViewModel {
 
     private void setSelectedDay(LocalDate newDay) {
         selectedDay.setValue(newDay);
+        refreshCalendarCache(newDay);
         applyPreset(activeListConfig);
     }
 
@@ -153,10 +165,12 @@ public class TaskViewModel extends AndroidViewModel {
         return taskEditSessionController;
     }
 
+    /** Switches to Checklist mode: scheduled slots for the selected day, sorted by time. */
     public void applyChecklistPreset() {
         applyPreset(ListConfig.CHECKLIST);
     }
 
+    /** Switches to Manage mode: all tasks grouped by hierarchy, with search and expand/collapse. */
     public void applyManagePreset() {
         applyPreset(ListConfig.MANAGE);
     }
@@ -170,6 +184,7 @@ public class TaskViewModel extends AndroidViewModel {
         return activeListConfig == ListConfig.MANAGE;
     }
 
+    /** Regenerates the entire daily schedule via {@link RegenerateScheduleUseCase}, then refreshes. */
     public void updateList() {
         regenerateScheduleUseCase.execute(result -> {
             scheduleConflicts.postValue(result.conflicts());
@@ -180,8 +195,12 @@ public class TaskViewModel extends AndroidViewModel {
     /**
      * Rebuilds the display list from the master list in three steps:
      * 1. Filter allSlots by the active ListConfig predicate (and optionally a search query).
-     * 2. Append calendar events from the device calendar (if READ_CALENDAR is granted).
+     * 2. Append cached calendar events (if READ_CALENDAR is granted).
      * 3. Sort and flatten using task-parent or slot-parent tree structure.
+     *
+     * <p>Calendar events are read from {@link #cachedCalendarSlots} rather than re-querying
+     * the ContentResolver every time. The cache is refreshed when the selected day changes
+     * or on {@link #refreshList()}.
      */
     private void filterList() {
         LocalDate day = selectedDay.getValue();
@@ -189,34 +208,17 @@ public class TaskViewModel extends AndroidViewModel {
         String normalizedSearchQuery = rawQuery == null ? "" : rawQuery.trim().toLowerCase(Locale.ROOT);
 
         Predicate<ViewSlot> predicate = slot -> {
-            if (!activeListConfig.matches(slot, day)) {
-                return false;
+            if (!activeListConfig.matches(slot, day)) return false;
+            if (activeListConfig == ListConfig.MANAGE && !normalizedSearchQuery.isEmpty()) {
+                String title = slot.getItem().title == null ? "" : slot.getItem().title;
+                return title.toLowerCase(Locale.ROOT).contains(normalizedSearchQuery);
             }
-            if (activeListConfig != ListConfig.MANAGE || normalizedSearchQuery.isEmpty()) {
-                return true;
-            }
-            String title = slot.getItem().title == null ? "" : slot.getItem().title;
-            return title.toLowerCase(Locale.ROOT).contains(normalizedSearchQuery);
+            return true;
         };
         masterList.filter(predicate);
 
-        if (day != null && hasCalendarPermission) {
-            ScheduleWindow window = new ScheduleWindow(
-                    day,
-                    preferences.readDayStartTime(day.getDayOfWeek()),
-                    preferences.readDayEndTime(day.getDayOfWeek())
-            );
-            List<TaskCalendarEvent> events = taskCalendarService.getEventsForDay(window);
-            List<ViewSlot> calendarSlots = new ArrayList<>();
-            for (int i = 0; i < events.size(); i++) {
-                TaskCalendarEvent event = events.get(i);
-                TaskListItem item = TaskListItem.calendarEvent(
-                        "calendar-" + day + "-" + i,
-                        event.title(), day, event.start(), event.end()
-                );
-                calendarSlots.add(new ViewSlot(item));
-            }
-            masterList.appendToDisplay(calendarSlots);
+        if (day != null && hasCalendarPermission && !cachedCalendarSlots.isEmpty()) {
+            masterList.appendToDisplay(cachedCalendarSlots);
         }
 
         Comparator<ViewSlot> comparator = activeListConfig.comparator();
@@ -229,6 +231,39 @@ public class TaskViewModel extends AndroidViewModel {
         displayList.setValue(masterList.getDisplaySlots());
     }
 
+    /**
+     * Queries calendar events for the given day and caches them as ViewSlots.
+     * Called when the selected day changes or during a full data refresh.
+     */
+    private void refreshCalendarCache(LocalDate day) {
+        if (day == null || !hasCalendarPermission) {
+            cachedCalendarSlots = Collections.emptyList();
+            cachedCalendarDay = day;
+            return;
+        }
+        if (day.equals(cachedCalendarDay)) {
+            return;
+        }
+        cachedCalendarDay = day;
+        ScheduleWindow window = new ScheduleWindow(
+                day,
+                preferences.readDayStartTime(day.getDayOfWeek()),
+                preferences.readDayEndTime(day.getDayOfWeek())
+        );
+        List<TaskCalendarEvent> events = taskCalendarService.getEventsForDay(window);
+        List<ViewSlot> calendarSlots = new ArrayList<>(events.size());
+        for (int i = 0; i < events.size(); i++) {
+            TaskCalendarEvent event = events.get(i);
+            TaskListItem item = TaskListItem.calendarEvent(
+                    "calendar-" + day + "-" + i,
+                    event.title(), day, event.start(), event.end()
+            );
+            calendarSlots.add(new ViewSlot(item));
+        }
+        cachedCalendarSlots = calendarSlots;
+    }
+
+    /** Two-phase checkoff: first tap starts the slot, second tap completes it. No-op for calendar events. */
     public void checkOff(ViewSlot viewSlot) {
         if (viewSlot.getItem().isCalendarEvent()) {
             return;
@@ -236,14 +271,17 @@ public class TaskViewModel extends AndroidViewModel {
         checkOffTaskUseCase.execute(viewSlot.getItem(), this::refreshList);
     }
 
+    /** Increments the progress counter for a goal-based task (e.g. 3/10 → 4/10). */
     public void incrementProgress(ViewSlot viewSlot) {
         adjustTaskProgressUseCase.execute(viewSlot.getItem(), true, this::refreshList);
     }
 
+    /** Decrements the progress counter for a goal-based task (e.g. 4/10 → 3/10). */
     public void decrementProgress(ViewSlot viewSlot) {
         adjustTaskProgressUseCase.execute(viewSlot.getItem(), false, this::refreshList);
     }
 
+    /** Starts or stops the active timer on a slot. No-op if the slot has no ID. */
     public void toggleTimer(ViewSlot viewSlot) {
         TaskListItem item = viewSlot.getItem();
         if (item.slotId == null) {
@@ -256,6 +294,7 @@ public class TaskViewModel extends AndroidViewModel {
         }
     }
 
+    /** Toggles expand/collapse for a parent task in Manage mode. No-op in Checklist mode or for leaf tasks. */
     public void toggleExpanded(ViewSlot viewSlot) {
         if (activeListConfig != ListConfig.MANAGE || viewSlot.getChildren().isEmpty()) {
             return;
@@ -270,9 +309,12 @@ public class TaskViewModel extends AndroidViewModel {
         return expandedByTaskId.getOrDefault(viewSlot.getItem().taskId, true);
     }
 
+    /** Reloads all tasks from the DB into the master list, re-filters, and notifies the widget. */
     private void refreshList() {
         taskDataService.loadAllMapped(items -> {
             masterList.fromList(items);
+            cachedCalendarDay = null; // Invalidate so filterList uses fresh calendar data
+            refreshCalendarCache(selectedDay.getValue());
             filterList();
             TaskWidgetProvider.notifyWidgetUpdate(getApplication());
         });

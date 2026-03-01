@@ -37,14 +37,14 @@ import com.autosecretary.features.budget.domain.TransactionDirection;
         tableName = "budget_recurring_template",
         foreignKeys = {
                 @ForeignKey(
-                        entity = BudgetAccount.class,
+                        entity = BudgetAccountEntity.class,
                         parentColumns = "id",
                         childColumns = "accountId",
                         onDelete = ForeignKey.RESTRICT,
                         onUpdate = ForeignKey.CASCADE
                 ),
                 @ForeignKey(
-                        entity = BudgetCategory.class,
+                        entity = BudgetCategoryEntity.class,
                         parentColumns = "id",
                         childColumns = "categoryId",
                         onDelete = ForeignKey.SET_NULL,
@@ -93,7 +93,7 @@ public class BudgetRecurringTemplateEntity {
     @NonNull
     public RecurringType recurringType;
 
-    // Column is named "transactionType" in the database. Unlike BudgetTransactionEntity and BudgetCategory
+    // Column is named "transactionType" in the database. Unlike BudgetTransactionEntity and BudgetCategoryEntity
     // which use "type" for the direction column, this template entity uses "transactionType" for historical
     // reasons. In SQL queries against budget_recurring_template, always reference this column as "transactionType".
     @NonNull

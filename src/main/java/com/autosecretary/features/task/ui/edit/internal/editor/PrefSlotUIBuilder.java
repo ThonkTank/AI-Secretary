@@ -62,8 +62,8 @@ public class PrefSlotUIBuilder {
         prefSlotHeaderPaddingBottomPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_header_padding_bottom);
         prefSlotRowPaddingStartPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_row_padding_start);
         prefSlotRowPaddingVerticalPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_row_padding_vertical);
-        prefSlotButtonSpacingPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_button_spacing);
-        prefSlotButtonMinHeightPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_button_min_height);
+        prefSlotButtonSpacingPx = context.getResources().getDimensionPixelSize(R.dimen.spacing_sm);
+        prefSlotButtonMinHeightPx = context.getResources().getDimensionPixelSize(R.dimen.touch_target_min);
     }
 
     /**
@@ -84,7 +84,7 @@ public class PrefSlotUIBuilder {
         for (int key = 1; key <= repsPerDay; key++) {
             TextView header = new TextView(context);
             header.setText(context.getString(R.string.task_editor_pref_slot_header, key));
-            header.setTypeface(null, Typeface.BOLD);
+            header.setTextAppearance(R.style.TextAppearance_AutoSecretary_Editor_Label);
             header.setPadding(0, prefSlotHeaderPaddingTopPx, 0, prefSlotHeaderPaddingBottomPx);
             prefSlotContainer.addView(header);
 

@@ -96,6 +96,8 @@ Both features share a single-threaded `ExecutorService` wired in `AppComposition
 
 Do not suggest adding: new modules, new domain entities, new integration points, caching layers, dependency injection frameworks, migration infrastructure, or any other "investment" that only pays off if the codebase grows further. It won't.
 
+Extracting shared constants, small utility methods, or deduplicating repeated code into a common location is always welcome — that is simplification, not new infrastructure.
+
 ## Rules
 
 - **DB version 22**, `exportSchema = false`. Schema changes: bump version only. Room uses `fallbackToDestructiveMigration()`. **Manual migrations (`Migration` subclasses, `.addMigrations(...)`) are strictly forbidden.**

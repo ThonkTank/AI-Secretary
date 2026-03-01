@@ -12,8 +12,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
-import com.autosecretary.features.budget.data.entity.BudgetAccount;
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
 import com.google.android.material.textfield.TextInputEditText;
@@ -49,13 +49,13 @@ public class BudgetTransactionDialogController {
         this.listener = listener;
     }
 
-    public void showAdd(List<BudgetCategory> allCategories, List<BudgetAccount> allAccounts) {
+    public void showAdd(List<BudgetCategoryEntity> allCategories, List<BudgetAccountEntity> allAccounts) {
         show(null, allCategories, allAccounts);
     }
 
     public void showEdit(BudgetTransactionRow existingRow,
-                         List<BudgetCategory> allCategories,
-                         List<BudgetAccount> allAccounts) {
+                         List<BudgetCategoryEntity> allCategories,
+                         List<BudgetAccountEntity> allAccounts) {
         show(existingRow, allCategories, allAccounts);
     }
 
@@ -70,8 +70,8 @@ public class BudgetTransactionDialogController {
     }
 
     private void show(@Nullable BudgetTransactionRow existingRow,
-                      List<BudgetCategory> allCategories,
-                      List<BudgetAccount> allAccounts) {
+                      List<BudgetCategoryEntity> allCategories,
+                      List<BudgetAccountEntity> allAccounts) {
         View dialogView = LayoutInflater.from(fragment.requireContext())
                 .inflate(R.layout.budget_add_transaction_dialog, null);
         TextInputEditText amountInput = dialogView.findViewById(R.id.BudgetDialogAmount);
@@ -183,13 +183,13 @@ public class BudgetTransactionDialogController {
         dialog.show();
     }
 
-    private static List<BudgetCategory> categoriesForType(List<BudgetCategory> allCategories,
+    private static List<BudgetCategoryEntity> categoriesForType(List<BudgetCategoryEntity> allCategories,
                                                           boolean isExpense) {
         TransactionDirection dir = isExpense ? TransactionDirection.EXPENSE : TransactionDirection.INCOME;
         return allCategories.stream().filter(c -> c.direction == dir).collect(Collectors.toList());
     }
 
-    private static List<BudgetAccount> activeAccounts(List<BudgetAccount> accounts) {
+    private static List<BudgetAccountEntity> activeAccounts(List<BudgetAccountEntity> accounts) {
         return accounts.stream().filter(a -> !a.archived).collect(Collectors.toList());
     }
 

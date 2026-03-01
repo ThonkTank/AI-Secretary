@@ -11,7 +11,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
@@ -50,8 +50,8 @@ public class BudgetLimitDialogController {
     }
 
     public void show(@Nullable String preSelectedCategoryId, long baseLimitCents,
-                     List<BudgetCategory> allCategories) {
-        List<BudgetCategory> expenseCategories = allCategories.stream()
+                     List<BudgetCategoryEntity> allCategories) {
+        List<BudgetCategoryEntity> expenseCategories = allCategories.stream()
                 .filter(c -> c.direction == TransactionDirection.EXPENSE)
                 .collect(Collectors.toList());
 

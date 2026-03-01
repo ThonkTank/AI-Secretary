@@ -68,6 +68,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     private static final float ALPHA_ENABLED = 1.0f;
     private static final float ALPHA_DISABLED = 0.3f;
 
+    /** Called by the system on widget refresh; builds RemoteViews and wires intents for each instance. */
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
         for (int widgetId : appWidgetIds) {
@@ -75,6 +76,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         }
     }
 
+    /** Dispatches user actions: day navigation (prev/next), refresh, and checkbox toggle. */
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.d(TAG, "onReceive action=" + intent.getAction());
@@ -104,6 +106,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         }
     }
 
+    /** Builds the widget's RemoteViews: date label, nav arrows, action buttons, and list adapter. */
     private void updateWidget(Context context, AppWidgetManager manager, int widgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.task_list_widget);
 
@@ -183,6 +186,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
+    /** Adjusts the day offset by delta (±1), clamps to [0, MAX_OFFSET], persists, and refreshes. */
     private void navigateDay(Context context, int delta) {
         int offset = getSelectedDayOffset(context);
         int newOffset = offset + delta;
@@ -234,10 +238,6 @@ public class TaskWidgetProvider extends AppWidgetProvider {
 
     public static LocalDate getSelectedDate(Context context) {
         return LocalDate.now().plusDays(getSelectedDayOffset(context));
-    }
-
-    public static boolean isShowingToday(Context context) {
-        return getSelectedDayOffset(context) == 0;
     }
 
     // --- Public refresh trigger ---

@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Three sub-screens (Week, Recipes, Stock) live in one ScrollView.
+     Only one is visible at a time; MealPlannerFragment toggles visibility to simulate tabs.
+     Lists (MealWeekList, MealRecipeList, MealPantryList, MealShoppingList) are
+     LinearLayouts with items inflated programmatically by MealPlannerPresenter. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="@dimen/spacing_lg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/meal_title"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_md"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/MealTabWeek"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:minHeight="48dp"
+                android:text="@string/meal_tab_week" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/MealTabRecipes"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:minHeight="48dp"
+                android:text="@string/meal_tab_recipes" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/MealTabStock"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:minHeight="48dp"
+                android:text="@string/meal_tab_stock" />
+        </LinearLayout>
+
+        <!-- Tab: Week view -->
+        <LinearLayout
+            android:id="@+id/MealWeekScreen"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_lg"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/meal_week_title"
+                android:textAppearance="@style/TextAppearance.Meal.SectionTitle" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/MealAddPlan"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:text="@string/meal_add_plan" />
+
+            <LinearLayout
+                android:id="@+id/MealWeekList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+        <!-- Tab: Recipes view (initially hidden) -->
+        <LinearLayout
+            android:id="@+id/MealRecipeScreen"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_lg"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/meal_recipe_title"
+                android:textAppearance="@style/TextAppearance.Meal.SectionTitle" />
+
+            <LinearLayout
+                android:id="@+id/MealRecipeList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/MealRecipeDetail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:background="@drawable/meal_bg_row"
+                android:padding="@dimen/spacing_md"
+                android:text="@string/meal_recipe_detail_placeholder"
+                android:textAppearance="@style/TextAppearance.Meal.RowBody" />
+        </LinearLayout>
+
+        <!-- Tab: Stock / Pantry view (initially hidden) -->
+        <LinearLayout
+            android:id="@+id/MealStockScreen"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_lg"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/meal_stock_title"
+                android:textAppearance="@style/TextAppearance.Meal.SectionTitle" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/MealAddNeed"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/meal_add_need" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/MealAddPantry"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/meal_add_pantry" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_md"
+                android:text="@string/meal_pantry_title"
+                android:textAppearance="@style/TextAppearance.Meal.SectionTitle" />
+
+            <LinearLayout
+                android:id="@+id/MealPantryList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xs"
+                android:orientation="vertical" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_md"
+                android:text="@string/meal_shopping_title"
+                android:textAppearance="@style/TextAppearance.Meal.SectionTitle" />
+
+            <LinearLayout
+                android:id="@+id/MealShoppingList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xs"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

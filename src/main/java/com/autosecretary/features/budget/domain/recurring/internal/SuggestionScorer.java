@@ -47,17 +47,26 @@ public final class SuggestionScorer {
             "O2", "VERSICHERUNG", "INSURANCE", "RUNDFUNK", "GEZ"
     };
 
+    // Pre-split at class load to avoid re-splitting the same constant strings on every call.
+    private static final String[][] KNOWN_SUBSCRIPTION_WORDS;
+    static {
+        KNOWN_SUBSCRIPTION_WORDS = new String[KNOWN_SUBSCRIPTION_PATTERNS.length][];
+        for (int i = 0; i < KNOWN_SUBSCRIPTION_PATTERNS.length; i++) {
+            KNOWN_SUBSCRIPTION_WORDS[i] = KNOWN_SUBSCRIPTION_PATTERNS[i].split("\\s+");
+        }
+    }
+
     private SuggestionScorer() {
     }
 
     public static double calculateConfidence(int occurrenceCount,
-                                             long avgAmount,
-                                             long minAmount,
-                                             long maxAmount,
+                                             long avgAmountCents,
+                                             long minAmountCents,
+                                             long maxAmountCents,
                                              String normalizedPayee) {
         double score = 0.0;
         score += Math.min(occurrenceCount / OCCURRENCE_CAP, 1.0) * OCCURRENCE_WEIGHT;
-        score += calculateAmountVarianceScore(avgAmount, minAmount, maxAmount);
+        score += calculateAmountVarianceScore(avgAmountCents, minAmountCents, maxAmountCents);
         score += CONFIRMED_PATTERN_BONUS;
 
         if (isKnownSubscription(normalizedPayee)) {
@@ -72,24 +81,25 @@ public final class SuggestionScorer {
     // That bound guarantees (max-min)/avg ≤ 2×0.15 = 0.30, which equals AMOUNT_VARIANCE_WEIGHT,
     // ensuring the score spans the full [0, 0.30] range. If AMOUNT_VARIANCE_THRESHOLD changes,
     // verify this formula still covers the intended scoring range.
-    static double calculateAmountVarianceScore(long avgAmount, long minAmount, long maxAmount) {
-        if (avgAmount == 0) {
+    static double calculateAmountVarianceScore(long avgAmountCents, long minAmountCents, long maxAmountCents) {
+        if (avgAmountCents == 0) {
             return 0.0;
         }
-        double variance = Math.abs(maxAmount - minAmount) / (double) Math.abs(avgAmount);
+        double variance = Math.abs(maxAmountCents - minAmountCents) / (double) Math.abs(avgAmountCents);
         return Math.max(AMOUNT_VARIANCE_WEIGHT - variance, 0);
     }
 
     static boolean isKnownSubscription(String normalizedPayee) {
         String[] payeeWords = normalizedPayee.split("\\s+");
-        return Arrays.stream(KNOWN_SUBSCRIPTION_PATTERNS)
-                .anyMatch(pattern -> {
-                    String[] patternWords = pattern.split("\\s+");
-                    // All words in the pattern must be present in the payee.
-                    // E.g., "AMAZON PRIME" matches "AMAZON PRIME SUBSCRIPTION"
-                    // but not "MYNETFLIX" or "AMAZON STORE".
-                    return Arrays.stream(patternWords)
-                            .allMatch(pw -> Arrays.stream(payeeWords).anyMatch(pw::equals));
-                });
+        // All words in a pattern must be present in the payee.
+        // E.g., "AMAZON PRIME" matches "AMAZON PRIME SUBSCRIPTION"
+        // but not "MYNETFLIX" or "AMAZON STORE".
+        for (String[] patternWords : KNOWN_SUBSCRIPTION_WORDS) {
+            if (Arrays.stream(patternWords)
+                    .allMatch(pw -> Arrays.stream(payeeWords).anyMatch(pw::equals))) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -1,10 +1,8 @@
 package com.autosecretary.features.task.ui.edit;
 
 import com.autosecretary.shared.Period;
-import com.autosecretary.shared.Priority;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskPrefSlot;
-import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.edit.internal.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
@@ -12,8 +10,8 @@ import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Form logic coordinator for {@link com.autosecretary.features.task.ui.edit.TaskEditDialog TaskEditDialog}.
@@ -24,24 +22,25 @@ import java.util.List;
 public class TaskEditPresenter {
 
     private final TaskEditState editState;
-    private final TaskEditStateMapper mapper;
     // -1 sentinel: uninitialized. Set by initializeRepetitionState() during form setup;
     // onRepetitionChanged() must not be called before initializeRepetitionState() runs.
     private int lastRepsPerDay = -1;
 
-    public TaskEditPresenter(TaskEditState editState, TaskEditStateMapper mapper) {
+    public TaskEditPresenter(TaskEditState editState) {
         this.editState = editState;
-        this.mapper = mapper;
     }
 
+    /** Returns the mutable list of preferred-slot edit states; used by the pref-slot UI controllers. */
     public List<PrefSlotEditState> getEditablePrefSlots() {
         return editState.prefSlots;
     }
 
+    /** Returns the current deadline from the edit state, or null if unset. */
     public LocalDate getEditableDeadline() {
         return editState.deadline;
     }
 
+    /** Updates the deadline in the edit state. Mutated separately from the main FormInput flow. */
     public void setEditableDeadline(LocalDate editableDeadline) {
         editState.deadline = editableDeadline;
     }
@@ -90,6 +89,10 @@ public class TaskEditPresenter {
         return newSlot;
     }
 
+    /**
+     * Computes how many preferred-slot groups are needed per day based on repetition settings.
+     * Returns {@code ceil(reps / periodInDays)}, or 1 if repetition is disabled.
+     */
     public int computeCurrentRepsPerDay(boolean repetitionEnabled, String repsText,
                                         String perPeriodText, Period periodUnit) {
         if (!repetitionEnabled) {
@@ -106,14 +109,15 @@ public class TaskEditPresenter {
         return (int) Math.ceil((double) reps / (double) periodInDays);
     }
 
+    /** Merges all form field values from a {@link FormInput} into the edit state. Called on save. */
     public void applyForm(FormInput input) {
         FormInput safeInput = input != null ? input : new FormInput();
         editState.title = safeInput.title;
         editState.description = safeInput.description;
-        editState.priority = coalesce(safeInput.priority, TaskEditDefaults.PRIORITY);
-        editState.goalIcon = coalesce(safeInput.goalIcon, TaskEditDefaults.GOAL_ICON);
-        editState.goalColorHex = coalesce(safeInput.goalColorHex, TaskEditDefaults.GOAL_COLOR_HEX);
-        editState.schedulingType = coalesce(safeInput.schedulingType, TaskEditDefaults.SCHEDULING_TYPE);
+        editState.priority = Objects.requireNonNullElse(safeInput.priority, TaskEditDefaults.PRIORITY);
+        editState.goalIcon = Objects.requireNonNullElse(safeInput.goalIcon, TaskEditDefaults.GOAL_ICON);
+        editState.goalColorHex = Objects.requireNonNullElse(safeInput.goalColorHex, TaskEditDefaults.GOAL_COLOR_HEX);
+        editState.schedulingType = Objects.requireNonNullElse(safeInput.schedulingType, TaskEditDefaults.SCHEDULING_TYPE);
         editState.fixedDate = safeInput.fixedDate;
         editState.fixedStart = safeInput.fixedStart;
         editState.fixedEnd = safeInput.fixedEnd;
@@ -182,7 +186,7 @@ public class TaskEditPresenter {
 
     /** Maps the current edit state back onto a base Task for DB persistence. */
     public Task toTaskForSave(Task baseTask) {
-        return mapper.toTask(editState, baseTask);
+        return TaskEditStateMapper.toTask(editState, baseTask);
     }
 
     /** Parses a trimmed string to int, returning {@code fallback} if null, empty, or non-numeric. */
@@ -193,11 +197,6 @@ public class TaskEditPresenter {
         } catch (NumberFormatException e) {
             return fallback;
         }
-    }
-
-    /** Returns {@code value} if non-null, otherwise {@code fallback}. */
-    public static <T> T coalesce(T value, T fallback) {
-        return value != null ? value : fallback;
     }
 
 }

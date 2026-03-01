@@ -232,6 +232,18 @@ public interface BudgetTransactionDao {
     boolean existsByImportHash(String importHash);
 
     /**
+     * Returns all non-null import hashes for a given account.
+     *
+     * Used to batch-load known hashes before an import loop, avoiding per-transaction
+     * DB round-trips in {@code BudgetImportUseCase.buildTransactions()}.
+     *
+     * @param accountId account UUID
+     * @return set of import hash strings
+     */
+    @Query("SELECT importHash FROM budget_transaction WHERE accountId = :accountId AND importHash IS NOT NULL")
+    List<String> findImportHashesByAccountId(String accountId);
+
+    /**
      * Associates one or more transactions with a recurring template.
      *
      * Used when the user confirms a recurring pattern: all matching transactions are linked

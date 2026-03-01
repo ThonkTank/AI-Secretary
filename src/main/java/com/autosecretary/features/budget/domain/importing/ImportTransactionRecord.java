@@ -18,8 +18,8 @@ import java.time.LocalDate;
  * </p>
  *
  * @param id              Unique transaction ID within this import (generated UUID; used as @PrimaryKey in BudgetTransactionEntity)
- * @param accountId       The account this transaction was imported into (references the BudgetAccount)
- * @param categoryId      The category for this transaction (references BudgetCategory; may be empty if uncategorized)
+ * @param accountId       The account this transaction was imported into (references the BudgetAccountEntity)
+ * @param categoryId      The category for this transaction (references BudgetCategoryEntity; may be empty if uncategorized)
  * @param type            Type classification: INCOME, EXPENSE, or TRANSFER (determines direction and kind)
  * @param amountCents     Transaction amount in cents (absolute value; direction comes from type)
  * @param bookingDate     The transaction date from the statement

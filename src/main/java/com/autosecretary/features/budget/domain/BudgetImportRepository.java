@@ -7,6 +7,7 @@ import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Persistence abstraction for two related concerns:
@@ -68,17 +69,30 @@ public interface BudgetImportRepository {
 
     boolean existsTransactionByImportHash(String importHash);
 
+    /**
+     * Returns all known import hashes for the given account in one batch query.
+     * Used to pre-load the deduplication set before processing an import batch,
+     * avoiding per-transaction DB round-trips.
+     */
+    Set<String> findImportHashesForAccount(String accountId);
+
+    /**
+     * Returns the IDs of all active (non-archived) categories in one batch query.
+     * Used to pre-load the known-category set before processing an import batch.
+     */
+    Set<String> findActiveCategoryIds();
+
     String findDefaultCategoryId(TransactionDirection direction);
 
     boolean isKnownCategory(String categoryId);
 
-    List<ImportCategory> loadActiveCategoriesForImport();
+    List<ImportCategory> findActiveCategoriesForImport();
 
     void saveTransactionsBatch(List<ImportTransactionRecord> transactions);
 
-    List<ImportTransactionRecord> loadTransactionsForAccount(String accountId);
+    List<ImportTransactionRecord> findTransactionsForAccount(String accountId);
 
-    String createRecurringTemplate(RecurringSuggestion suggestion, String accountId, LocalDate nextDueDate);
+    String createRecurringTemplate(RecurringSuggestion suggestion, String accountId, LocalDate nextDue);
 
     void linkTransactionsToTemplate(List<String> transactionIds, String templateId);
 
@@ -91,11 +105,4 @@ public interface BudgetImportRepository {
      */
     void synchronizeRecurringTemplateState(LocalDate referenceDate);
 
-    /**
-     * Signals the Room implementation to post a LiveData update so the UI refreshes after a
-     * bulk import or template sync. This method exists on the repository interface because the
-     * Room implementation owns the LiveData; it is <em>not</em> a pure persistence operation
-     * and must not be called from domain logic that does not own the UI lifecycle.
-     */
-    void notifyBudgetDataUpdated();
 }

@@ -120,6 +120,8 @@ public class MealPlannerPresenter {
     }
 
     public void createShoppingItemFromNeed(String ingredientName, double neededAmount, String unit) {
+        // ingredientId = -1: this item is created from a free-text "need" entry, not linked to a
+        // specific Ingredient entity. No ingredient lookup or package-size rounding is applied.
         ShoppingListItem item = new ShoppingListItem.Builder(-1, ingredientName, Math.max(0.1, neededAmount), unit)
                 .periodKey(LocalDate.now().toString())
                 .build();

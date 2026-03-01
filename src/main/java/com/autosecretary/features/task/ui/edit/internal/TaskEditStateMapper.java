@@ -15,9 +15,11 @@ import java.util.Set;
 
 /**
  * Bidirectional mapper between {@link Task} (data layer) and {@link TaskEditState} (UI edit model).
- * Handles null safety and default values during conversion.
+ * Handles null safety and default values during conversion. All methods are static — no instance state.
  */
-public class TaskEditStateMapper {
+public final class TaskEditStateMapper {
+
+    private TaskEditStateMapper() {}
 
     /**
      * Safely copies a day set, returning an empty set if the source is null or empty.
@@ -36,7 +38,12 @@ public class TaskEditStateMapper {
         return list != null ? list : new ArrayList<>();
     }
 
-    public TaskEditState fromTask(Task task) {
+    /**
+     * Maps a persisted {@link Task} to a flat {@link TaskEditState} for form editing.
+     * Copies all user-editable fields plus scheduler-managed state (periodCompletions,
+     * periodStart, carryoverDebt) that must survive the edit round-trip unchanged.
+     */
+    public static TaskEditState fromTask(Task task) {
         if (task == null) throw new IllegalArgumentException("task cannot be null");
         TaskEditState state = new TaskEditState();
         state.id = task.core.id;
@@ -87,7 +94,12 @@ public class TaskEditStateMapper {
         return state;
     }
 
-    public Task toTask(TaskEditState state, Task baseTask) {
+    /**
+     * Applies the edited state back onto a {@link Task} for DB persistence.
+     * Uses {@code baseTask} (the original loaded task) to preserve fields not in the edit
+     * state (e.g. slots, parents, prerequisites). If {@code baseTask} is null, creates a new Task.
+     */
+    public static Task toTask(TaskEditState state, Task baseTask) {
         if (state == null) throw new IllegalArgumentException("state cannot be null");
         Task task = baseTask != null ? baseTask : new Task();
         task.core = task.core != null ? task.core : new TaskCore();

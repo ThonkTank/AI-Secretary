@@ -10,9 +10,9 @@ import com.autosecretary.features.budget.domain.AmountParser;
 import com.autosecretary.features.budget.application.BudgetSeedService;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
-import com.autosecretary.features.budget.data.entity.BudgetAccount;
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
-import com.autosecretary.features.budget.data.entity.BudgetLimit;
+import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
+import com.autosecretary.features.budget.data.entity.BudgetLimitEntity;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
@@ -76,8 +76,8 @@ public class BudgetViewModel extends ViewModel {
     private final MutableLiveData<List<BudgetTransactionRow>> transactions = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<List<RecurringSuggestion>> importSuggestions = new MutableLiveData<>();
     private final MutableLiveData<YearMonth> currentMonth = new MutableLiveData<>(YearMonth.now());
-    private final MutableLiveData<List<BudgetCategory>> categories = new MutableLiveData<>(new ArrayList<>());
-    private final MutableLiveData<List<BudgetAccount>> accounts = new MutableLiveData<>(new ArrayList<>());
+    private final MutableLiveData<List<BudgetCategoryEntity>> categories = new MutableLiveData<>(new ArrayList<>());
+    private final MutableLiveData<List<BudgetAccountEntity>> accounts = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<String> selectedAccountId = new MutableLiveData<>();
     private final MutableLiveData<TimeRangeFilter> timeRangeFilter = new MutableLiveData<>(TimeRangeFilter.DAYS_30);
     private final MutableLiveData<List<BudgetChartPoint>> chartPoints = new MutableLiveData<>(new ArrayList<>());
@@ -120,8 +120,8 @@ public class BudgetViewModel extends ViewModel {
     public LiveData<List<BudgetTransactionRow>> getTransactions() { return transactions; }
     public LiveData<List<RecurringSuggestion>> getImportSuggestions() { return importSuggestions; }
     public LiveData<YearMonth> getCurrentMonth() { return currentMonth; }
-    public LiveData<List<BudgetCategory>> getCategories() { return categories; }
-    public LiveData<List<BudgetAccount>> getAccounts() { return accounts; }
+    public LiveData<List<BudgetCategoryEntity>> getCategories() { return categories; }
+    public LiveData<List<BudgetAccountEntity>> getAccounts() { return accounts; }
     public LiveData<String> getSelectedAccountId() { return selectedAccountId; }
     public LiveData<TimeRangeFilter> getTimeRangeFilter() { return timeRangeFilter; }
     public LiveData<List<BudgetChartPoint>> getChartPoints() { return chartPoints; }
@@ -355,7 +355,7 @@ public class BudgetViewModel extends ViewModel {
     // Null only when no accounts exist yet.
     // Must be called on the executor thread — performs a synchronous DB read.
     private String resolveAccountId() {
-        List<BudgetAccount> accounts = repository.findActiveAccounts();
+        List<BudgetAccountEntity> accounts = repository.findActiveAccounts();
         String current = selectedAccountId.getValue();
         if (current != null && !current.isBlank()) return current;
         return accounts.isEmpty() ? null : accounts.get(0).id;
@@ -393,7 +393,7 @@ public class BudgetViewModel extends ViewModel {
             YearMonth month = currentMonth.getValue();
             if (month == null) month = YearMonth.now();
             String yearMonthStr = month.toString();
-            BudgetLimit limit = new BudgetLimit(categoryId, yearMonthStr, amountCents);
+            BudgetLimitEntity limit = new BudgetLimitEntity(categoryId, yearMonthStr, amountCents);
             limit.rolloverEnabled = rolloverEnabled;
             limit.rolloverCarryoverCents = rolloverCarryoverCents;
             repository.saveBudgetLimit(limit);

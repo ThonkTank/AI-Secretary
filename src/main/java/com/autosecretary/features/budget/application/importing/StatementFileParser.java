@@ -56,7 +56,7 @@ public class StatementFileParser {
                     "Kein Claude API-Key hinterlegt. Bitte in den Budget-Einstellungen setzen."
             );
         }
-        List<ImportCategory> categories = importRepository.loadActiveCategoriesForImport();
+        List<ImportCategory> categories = importRepository.findActiveCategoriesForImport();
         return claudeApiClient.parsePdf(apiKey, fileBytes, categories);
     }
 

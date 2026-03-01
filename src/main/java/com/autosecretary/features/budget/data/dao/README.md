@@ -7,8 +7,8 @@
 | Query all transactions for a month | BudgetTransactionDao | getMonthlyOverview() |
 | Get balance timeline (daily/monthly) | BudgetTransactionDao | getDailyDeltasForAccount(), getMonthlyDeltasForAccount() |
 | Create a transfer between accounts | BudgetTransactionDao | createTransferPair() |
-| Adjust account balance after a transaction | BudgetLookupDao | adjustCurrentBalanceCents() |
-| Query active accounts/categories | BudgetLookupDao | findActiveAccounts(), findActiveCategories() |
+| Adjust account balance after a transaction | BudgetAccountCategoryDao | adjustCurrentBalanceCents() |
+| Query active accounts/categories | BudgetAccountCategoryDao | findActiveAccounts(), findActiveCategories() |
 | Check category spending vs. limits | BudgetLimitDao | getCategorySpendTotals() |
 | Manage import records | BudgetImportDao | insert(), markCompleted(), markFailed() |
 | Manage recurring templates | BudgetRecurringTemplateDao | findActiveExpenseTemplates...(), updateAllTemplateStatuses() |
@@ -40,7 +40,7 @@ Repositories wrap DAOs and are injected into application-layer code. DAOs are ra
 ## DAO overview
 
 - **`BudgetTransactionDao`** — transaction CRUD, timeline queries, transfer pair operations
-- **`BudgetLookupDao`** — account/category queries and balance adjustments
+- **`BudgetAccountCategoryDao`** — account/category queries and balance adjustments
 - **`BudgetLimitDao`** — category budget limits and spending summaries
 - **`BudgetImportDao`** — import record lifecycle
 - **`BudgetRecurringTemplateDao`** — recurring transaction template queries and status updates

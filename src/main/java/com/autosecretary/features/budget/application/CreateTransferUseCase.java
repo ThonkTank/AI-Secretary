@@ -6,7 +6,7 @@ import com.autosecretary.features.budget.domain.TransferDetails;
 import java.time.LocalDate;
 
 /**
- * Creates and updates internal transfers between budget accounts.
+ * Creates internal transfers between budget accounts.
  *
  * <p><strong>Key difference from transactions:</strong>
  * A transfer moves money between two of the user's own accounts (e.g., checking → savings).
@@ -21,7 +21,6 @@ import java.time.LocalDate;
  * </ul>
  *
  * <p>Returns a Result with either success or a user-facing error message (in German).
- * Both create() and update() methods are available.
  *
  * @see Result for success/error response structure
  */
@@ -44,27 +43,6 @@ public class CreateTransferUseCase {
 
         TransferDetails details = new TransferDetails(sourceAccountId, targetAccountId, amountCents, bookingDate, note);
         repository.createTransfer(details);
-        return Result.ok();
-    }
-
-    public Result update(String transactionId,
-                         String sourceAccountId,
-                         String targetAccountId,
-                         long amountCents,
-                         LocalDate bookingDate,
-                         String note) {
-        if (transactionId == null) {
-            return Result.error("Ungültige Überweisung.");
-        }
-        Result validation = validateTransferInput(sourceAccountId, targetAccountId, amountCents, bookingDate);
-        if (!validation.success) {
-            return validation;
-        }
-        TransferDetails details = new TransferDetails(sourceAccountId, targetAccountId, amountCents, bookingDate, note);
-        boolean updated = repository.updateTransfer(transactionId, details);
-        if (!updated) {
-            return Result.error("Überweisung ist unvollständig und konnte nicht aktualisiert werden.");
-        }
         return Result.ok();
     }
 

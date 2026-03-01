@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Single-view item: text and click handler set programmatically by MealPlannerFragment -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/spacing_xs"
+    android:background="@drawable/meal_bg_row"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    android:gravity="start|center_vertical"
+    android:padding="@dimen/spacing_sm"
+    android:textAppearance="@style/TextAppearance.Meal.RowBody" />

@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.data.entity.BudgetLimit;
+import com.autosecretary.features.budget.data.entity.BudgetLimitEntity;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 
 /**
@@ -70,11 +70,11 @@ public class CalculateEffectiveBudgetLimitUseCase {
      * Calculates the effective limit for a category in a target month, accounting for previous month's rollover.
      *
      * @param categoryId the category UUID
-     * @param targetYearMonth ISO format, e.g., "2024-01" (same format as BudgetLimit.yearMonth)
+     * @param targetYearMonth ISO format, e.g., "2024-01" (same format as BudgetLimitEntity.yearMonth)
      * @return Result with effective limit and diagnostic fields; see {@link Result} for field meanings
      */
     public Result execute(String categoryId, String targetYearMonth) {
-        BudgetLimit target = repository.findBudgetLimit(categoryId, targetYearMonth);
+        BudgetLimitEntity target = repository.findBudgetLimit(categoryId, targetYearMonth);
         long spentCents = repository.getCategoryExpenseCents(categoryId, targetYearMonth);
         if (target == null) {
             return new Result(0L, spentCents, 0L, 0L, 0L, false);
@@ -87,7 +87,7 @@ public class CalculateEffectiveBudgetLimitUseCase {
         }
 
         // Rollover is enabled: fetch previous month's limit and calculate the delta.
-        BudgetLimit previous = repository.findPreviousMonthLimit(categoryId, targetYearMonth);
+        BudgetLimitEntity previous = repository.findPreviousMonthLimit(categoryId, targetYearMonth);
         long rawDeltaCents = 0L;
         if (previous != null) {
             // Delta = (previous month's limit) - (previous month's spending)

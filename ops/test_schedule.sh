@@ -2,20 +2,16 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 source "${SCRIPT_DIR}/lib/common.sh"
 
 # === Konfiguration ===
-ADB="/home/aaron/Android/Sdk/platform-tools/adb"
-
-# === Log parsing constants ===
-readonly LOG_KEY_SUMMARY="Zusammenfassung"
-readonly LOG_KEY_TOTAL="Gesamt:"
-readonly LOG_KEY_SLOTS="slots"
+# ADB path is set in lib/common.sh — edit it there to customize.
+# Log parsing constants are defined in lib/common.sh (SUMMARY_HEADER, SUMMARY_FOOTER, SLOTS_MARKER)
 PACKAGE="com.autosecretary"
 ACTIVITY=".app.MainActivity"
 APK="build/outputs/apk/debug/AutoSecretary.apk"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APK_PATH="$SCRIPT_DIR/$APK"
+APK_PATH="$PROJECT_ROOT/$APK"
 LOG_TAG="SlotGen"
 UI_DUMP="/sdcard/ui_dump.xml"
 LOCAL_DUMP="/tmp/autosecretary_ui.xml"
@@ -34,6 +30,11 @@ warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 fail()  { echo -e "${RED}[FAIL]${NC} $1"; }
 
 # === Hilfsfunktionen ===
+
+# Parse a "HH:MM-HH:MM" slot string and return start/end time as minutes since midnight.
+slot_start_minutes() { echo "${1%%-*}" | awk -F: '{print $1*60+$2}'; }
+slot_end_minutes()   { echo "${1##*-}" | awk -F: '{print $1*60+$2}'; }
+
 check_device() {
     local devices
     devices=$($ADB devices 2>/dev/null | grep -v "List" | grep "device$" | head -1)
@@ -81,15 +82,13 @@ tap_button() {
     fi
 
     # Bounds parsen: [x1,y1][x2,y2] → Mitte berechnen
-    local x1 y1 x2 y2 cx cy
-    x1=$(echo "$bounds" | grep -oP '\d+' | sed -n '1p')
-    y1=$(echo "$bounds" | grep -oP '\d+' | sed -n '2p')
-    x2=$(echo "$bounds" | grep -oP '\d+' | sed -n '3p')
-    y2=$(echo "$bounds" | grep -oP '\d+' | sed -n '4p')
-    cx=$(( (x1 + x2) / 2 ))
-    cy=$(( (y1 + y2) / 2 ))
+    local -a _coords
+    local cx cy
+    mapfile -t _coords < <(echo "$bounds" | grep -oP '\d+')
+    cx=$(( (${_coords[0]} + ${_coords[2]}) / 2 ))
+    cy=$(( (${_coords[1]} + ${_coords[3]}) / 2 ))
 
-    ok "Button '$button_text' gefunden bei [$x1,$y1][$x2,$y2] → Tap ($cx, $cy)"
+    ok "Button '$button_text' gefunden bei [${_coords[0]},${_coords[1]}][${_coords[2]},${_coords[3]}] → Tap ($cx, $cy)"
     $ADB shell input tap "$cx" "$cy"
 }
 
@@ -104,7 +103,7 @@ echo ""
 
 # 1. Build
 info "Baue APK (assembleDebug)..."
-cd "$SCRIPT_DIR"
+cd "$PROJECT_ROOT"
 ./gradlew assembleDebug
 ok "Build abgeschlossen"
 echo ""
@@ -163,8 +162,8 @@ fi
 
 # Zusammenfassungen extrahieren
 # TODAY_SUMMARY = erster Block (heute), ALL_SUMMARIES = alle 7 Bloecke
-ALL_SUMMARIES=$(echo "$LOG_OUTPUT" | sed -n '/Zusammenfassung/,/^.*Gesamt:/p')
-TODAY_SUMMARY=$(echo "$LOG_OUTPUT" | sed -n '/Zusammenfassung/{:a;/Gesamt:/!{N;ba};p;q}')
+ALL_SUMMARIES=$(echo "$LOG_OUTPUT" | sed -n "/${SUMMARY_HEADER}/,/^.*${SUMMARY_FOOTER}/p")
+TODAY_SUMMARY=$(echo "$LOG_OUTPUT" | sed -n "/${SUMMARY_HEADER}/{:a;/${SUMMARY_FOOTER}/!{N;ba};p;q}")
 
 # === 7-Tage Wochenplan Uebersicht ===
 echo -e "${CYAN}========================================${NC}"
@@ -175,14 +174,14 @@ echo ""
 if [ -n "$ALL_SUMMARIES" ]; then
     # Tagesweise ausgeben mit Farbe
     echo "$ALL_SUMMARIES" | while IFS= read -r line; do
-        if echo "$line" | grep -q "$LOG_KEY_SUMMARY"; then
+        if echo "$line" | grep -q "$SUMMARY_HEADER"; then
             echo ""
             echo -e "${BLUE}${line}${NC}"
-        elif echo "$line" | grep -q "$LOG_KEY_TOTAL"; then
+        elif echo "$line" | grep -q "$SUMMARY_FOOTER"; then
             echo -e "${YELLOW}${line}${NC}"
         elif echo "$line" | grep -q "unscheduled"; then
             : # unscheduled Tasks nicht anzeigen
-        elif echo "$line" | grep -q "$LOG_KEY_SLOTS"; then
+        elif echo "$line" | grep -q "$SLOTS_MARKER"; then
             echo -e "  ${GREEN}${line}${NC}"
         else
             echo "$line"
@@ -229,9 +228,8 @@ TODAY_DOW=$(date +%u) # 1=Mo, 2=Di, ..., 6=Sa, 7=So
 # Check 1: Morgenroutine vor 07:00 geplant? (HIGH + perfekter Fit = immer erste Task)
 MORGEN_SLOT=$(echo "$SUMMARY" | grep "Morgenroutine" | grep -oP '\d{2}:\d{2}-\d{2}:\d{2}' | head -1 || true)
 if [ -n "$MORGEN_SLOT" ]; then
-    MORGEN_START=$(echo "$MORGEN_SLOT" | cut -d'-' -f1)
-    MORGEN_HOUR=$(echo "$MORGEN_START" | cut -d':' -f1 | sed 's/^0//')
-    if [ "$MORGEN_HOUR" -lt 7 ]; then
+    M_START_MIN=$(slot_start_minutes "$MORGEN_SLOT")
+    if (( M_START_MIN < 7 * 60 )); then
         run_check "Morgenroutine vor 07:00 geplant ($MORGEN_SLOT)" "pass"
     else
         run_check "Morgenroutine vor 07:00 geplant (tatsaechlich: $MORGEN_SLOT)" "fail"
@@ -241,9 +239,9 @@ else
 fi
 
 # Check 2: Sport nur Mo/Mi/Fr (Weekday-Bug gefixt!)
-SPORT_FOUND=$(echo "$SUMMARY" | grep "Sport:" | grep -c "$LOG_KEY_SLOTS" || true)
-AUFWAERMEN_FOUND=$(echo "$SUMMARY" | grep "Aufwärmen:" | grep -c "$LOG_KEY_SLOTS" || true)
-TRAINING_FOUND=$(echo "$SUMMARY" | grep "Training:" | grep -c "$LOG_KEY_SLOTS" || true)
+SPORT_FOUND=$(echo "$SUMMARY" | grep "Sport:" | grep -c "$SLOTS_MARKER" || true)
+AUFWAERMEN_FOUND=$(echo "$SUMMARY" | grep "Aufwärmen:" | grep -c "$SLOTS_MARKER" || true)
+TRAINING_FOUND=$(echo "$SUMMARY" | grep "Training:" | grep -c "$SLOTS_MARKER" || true)
 if [ "$TODAY_DOW" = "1" ] || [ "$TODAY_DOW" = "3" ] || [ "$TODAY_DOW" = "5" ]; then
     # Mo/Mi/Fr — Sport sollte mit Kindern geplant sein
     if [ "$SPORT_FOUND" -gt 0 ] && [ "$AUFWAERMEN_FOUND" -gt 0 ] && [ "$TRAINING_FOUND" -gt 0 ]; then
@@ -273,8 +271,8 @@ ARBEIT_SLOT=$(echo "$SUMMARY" | grep "Arbeit:" | grep -oP '\d{2}:\d{2}-\d{2}:\d{
 if [ "$TODAY_DOW" -le 5 ]; then
     # Werktag — Arbeit als langer Block
     if [ -n "$ARBEIT_SLOT" ]; then
-        A_START_MIN=$(echo "$ARBEIT_SLOT" | cut -d'-' -f1 | awk -F: '{print $1*60+$2}')
-        A_END_MIN=$(echo "$ARBEIT_SLOT" | cut -d'-' -f2 | awk -F: '{print $1*60+$2}')
+        A_START_MIN=$(slot_start_minutes "$ARBEIT_SLOT")
+        A_END_MIN=$(slot_end_minutes "$ARBEIT_SLOT")
         A_DURATION=$((A_END_MIN - A_START_MIN))
         if [ "$A_DURATION" -ge 60 ]; then
             run_check "Arbeit an Werktag als langer Block (${A_DURATION}min: $ARBEIT_SLOT)" "pass"
@@ -286,7 +284,7 @@ if [ "$TODAY_DOW" -le 5 ]; then
     fi
 else
     # Wochenende — Arbeit darf NICHT geplant sein
-    ARBEIT_FOUND=$(echo "$SUMMARY" | grep "Arbeit:" | grep -c "$LOG_KEY_SLOTS" || true)
+    ARBEIT_FOUND=$(echo "$SUMMARY" | grep "Arbeit:" | grep -c "$SLOTS_MARKER" || true)
     if [ "$ARBEIT_FOUND" -eq 0 ]; then
         run_check "Arbeit nicht geplant (Wochenende — korrekt)" "pass"
     else
@@ -308,7 +306,7 @@ else
 fi
 
 # Check 5: Spanisch lernen geplant
-SPANISCH_FOUND=$(echo "$SUMMARY" | grep "Spanisch" | grep -c "$LOG_KEY_SLOTS" || true)
+SPANISCH_FOUND=$(echo "$SUMMARY" | grep "Spanisch" | grep -c "$SLOTS_MARKER" || true)
 if [ "$SPANISCH_FOUND" -gt 0 ]; then
     run_check "Spanisch lernen geplant" "pass"
 else
@@ -316,7 +314,7 @@ else
 fi
 
 # Check 6: Einkaufen nur am Samstag
-EINKAUFEN_FOUND=$(echo "$SUMMARY" | grep "Einkaufen" | grep -c "$LOG_KEY_SLOTS" || true)
+EINKAUFEN_FOUND=$(echo "$SUMMARY" | grep "Einkaufen" | grep -c "$SLOTS_MARKER" || true)
 if [ "$TODAY_DOW" = "6" ]; then
     if [ "$EINKAUFEN_FOUND" -gt 0 ]; then
         run_check "Einkaufen am Samstag geplant (korrekt)" "pass"
@@ -333,21 +331,19 @@ fi
 
 # Check 7: Zeitliche Reihenfolge — Morgenroutine vor Arbeit (wenn beide geplant)
 if [ -n "$MORGEN_SLOT" ] && [ -n "$ARBEIT_SLOT" ]; then
-    M_START_MIN=$(echo "$MORGEN_SLOT" | cut -d'-' -f1 | awk -F: '{print $1*60+$2}')
-    A_START_MIN2=$(echo "$ARBEIT_SLOT" | cut -d'-' -f1 | awk -F: '{print $1*60+$2}')
-    if [ "$M_START_MIN" -lt "$A_START_MIN2" ]; then
+    M_START_MIN=$(slot_start_minutes "$MORGEN_SLOT")
+    A_START_MIN=$(slot_start_minutes "$ARBEIT_SLOT")
+    if (( M_START_MIN < A_START_MIN )); then
         run_check "Zeitliche Reihenfolge: Morgenroutine vor Arbeit" "pass"
     else
         run_check "Zeitliche Reihenfolge: Morgenroutine ($MORGEN_SLOT) NICHT vor Arbeit ($ARBEIT_SLOT)" "fail"
     fi
 else
-    TOTAL=$((TOTAL + 1))
-    PASS=$((PASS + 1))
-    ok "Zeitliche Reihenfolge: Skip (nicht beide Tasks geplant)"
+    run_check "Zeitliche Reihenfolge: Skip (nicht beide Tasks geplant)" "pass"
 fi
 
 # Check 8: Notfallplan aktualisieren — CRITICAL + überfällig + closeOnMiss=false → immer geplant
-NOTFALL_FOUND=$(echo "$SUMMARY" | grep "Notfallplan" | grep -c "$LOG_KEY_SLOTS" || true)
+NOTFALL_FOUND=$(echo "$SUMMARY" | grep "Notfallplan" | grep -c "$SLOTS_MARKER" || true)
 if [ "$NOTFALL_FOUND" -gt 0 ]; then
     run_check "Notfallplan aktualisieren geplant (CRITICAL + closeOnMiss=false + abgelaufene Deadline)" "pass"
 else
@@ -355,7 +351,7 @@ else
 fi
 
 # Check 9: Abendspaziergang — nur Sonntag (TODAY_DOW=7)
-SPAZIERGANG_FOUND=$(echo "$SUMMARY" | grep "Abendspaziergang" | grep -c "$LOG_KEY_SLOTS" || true)
+SPAZIERGANG_FOUND=$(echo "$SUMMARY" | grep "Abendspaziergang" | grep -c "$SLOTS_MARKER" || true)
 if [ "$TODAY_DOW" = "7" ]; then
     if [ "$SPAZIERGANG_FOUND" -gt 0 ]; then
         run_check "Abendspaziergang am Sonntag geplant (korrekt)" "pass"
@@ -371,7 +367,7 @@ else
 fi
 
 # Check 10: Podcast hören — 3 Slots (repsPerDay=3)
-PODCAST_SLOTS=$(echo "$SUMMARY" | grep "Podcast hören" | grep -oP '\d+ '$LOG_KEY_SLOTS | grep -oP '^\d+' || true)
+PODCAST_SLOTS=$(echo "$SUMMARY" | grep "Podcast hören" | grep -oP '\d+ '$SLOTS_MARKER | grep -oP '^\d+' || true)
 if [ "${PODCAST_SLOTS:-0}" -ge 3 ]; then
     run_check "Podcast hören: $PODCAST_SLOTS Slots geplant (repsPerDay=3 korrekt)" "pass"
 elif [ "${PODCAST_SLOTS:-0}" -gt 0 ]; then
@@ -384,8 +380,8 @@ fi
 WASCHEN_SLOT=$(echo "$SUMMARY" | grep "Wäsche waschen" | grep -oP '\d{2}:\d{2}-\d{2}:\d{2}' | head -1 || true)
 AUFHAENGEN_SLOT=$(echo "$SUMMARY" | grep "Wäsche aufhängen" | grep -oP '\d{2}:\d{2}-\d{2}:\d{2}' | head -1 || true)
 if [ -n "$WASCHEN_SLOT" ] && [ -n "$AUFHAENGEN_SLOT" ]; then
-    WASCHEN_END_MIN=$(echo "$WASCHEN_SLOT" | cut -d'-' -f2 | awk -F: '{print $1*60+$2}')
-    AUFHAENGEN_START_MIN=$(echo "$AUFHAENGEN_SLOT" | cut -d'-' -f1 | awk -F: '{print $1*60+$2}')
+    WASCHEN_END_MIN=$(slot_end_minutes "$WASCHEN_SLOT")
+    AUFHAENGEN_START_MIN=$(slot_start_minutes "$AUFHAENGEN_SLOT")
     if [ "$AUFHAENGEN_START_MIN" -ge "$WASCHEN_END_MIN" ]; then
         run_check "Wäsche aufhängen nach Wäsche waschen (Prereq korrekt: $WASCHEN_SLOT → $AUFHAENGEN_SLOT)" "pass"
     else
@@ -408,7 +404,7 @@ else
 fi
 
 # Check 13: Wochenbericht geplant (bi-weekly, perPeriod=2)
-WOCHENBERICHT_FOUND=$(echo "$SUMMARY" | grep "Wochenbericht" | grep -c "$LOG_KEY_SLOTS" || true)
+WOCHENBERICHT_FOUND=$(echo "$SUMMARY" | grep "Wochenbericht" | grep -c "$SLOTS_MARKER" || true)
 if [ "$WOCHENBERICHT_FOUND" -gt 0 ]; then
     run_check "Wochenbericht geplant (bi-weekly perPeriod=2 korrekt)" "pass"
 else
@@ -416,12 +412,12 @@ else
 fi
 
 # Check 14: Morgenroutine Parent-Child — Kinder innerhalb des Eltern-Blocks
-MORGEN_FOUND=$(echo "$SUMMARY" | grep "Morgenroutine:" | grep -c "$LOG_KEY_SLOTS" || true)
-DUSCHEN_FOUND=$(echo "$SUMMARY" | grep "Duschen:" | grep -c "$LOG_KEY_SLOTS" || true)
-ZAEHNE_FOUND=$(echo "$SUMMARY" | grep "Zähneputzen:" | grep -c "$LOG_KEY_SLOTS" || true)
-FRUEHSTUECK_FOUND=$(echo "$SUMMARY" | grep "Frühstück:" | grep -c "$LOG_KEY_SLOTS" || true)
-HAARE_FOUND=$(echo "$SUMMARY" | grep "Haare föhnen:" | grep -c "$LOG_KEY_SLOTS" || true)
-ABSPUELEN_FOUND=$(echo "$SUMMARY" | grep "Abspülen:" | grep -c "$LOG_KEY_SLOTS" || true)
+MORGEN_FOUND=$(echo "$SUMMARY" | grep "Morgenroutine:" | grep -c "$SLOTS_MARKER" || true)
+DUSCHEN_FOUND=$(echo "$SUMMARY" | grep "Duschen:" | grep -c "$SLOTS_MARKER" || true)
+ZAEHNE_FOUND=$(echo "$SUMMARY" | grep "Zähneputzen:" | grep -c "$SLOTS_MARKER" || true)
+FRUEHSTUECK_FOUND=$(echo "$SUMMARY" | grep "Frühstück:" | grep -c "$SLOTS_MARKER" || true)
+HAARE_FOUND=$(echo "$SUMMARY" | grep "Haare föhnen:" | grep -c "$SLOTS_MARKER" || true)
+ABSPUELEN_FOUND=$(echo "$SUMMARY" | grep "Abspülen:" | grep -c "$SLOTS_MARKER" || true)
 MORGEN_CHILDREN=$((DUSCHEN_FOUND + ZAEHNE_FOUND + FRUEHSTUECK_FOUND))
 MORGEN_GRANDCHILDREN=$((HAARE_FOUND + ABSPUELEN_FOUND))
 if [ "$MORGEN_FOUND" -gt 0 ] && [ "$MORGEN_CHILDREN" -ge 2 ] && [ "$MORGEN_GRANDCHILDREN" -ge 1 ]; then
@@ -433,10 +429,10 @@ else
 fi
 
 # Check 15: Abendroutine Parent-Child — Tagebuch + Hautpflege als Kinder
-ABEND_FOUND=$(echo "$SUMMARY" | grep "Abendroutine:" | grep -c "$LOG_KEY_SLOTS" || true)
-TAGEBUCH_FOUND=$(echo "$SUMMARY" | grep "Tagebuch schreiben:" | grep -c "$LOG_KEY_SLOTS" || true)
-HAUTPFLEGE_FOUND=$(echo "$SUMMARY" | grep "Hautpflege:" | grep -c "$LOG_KEY_SLOTS" || true)
-NOTIZEN_FOUND=$(echo "$SUMMARY" | grep "Notizen ordnen:" | grep -c "$LOG_KEY_SLOTS" || true)
+ABEND_FOUND=$(echo "$SUMMARY" | grep "Abendroutine:" | grep -c "$SLOTS_MARKER" || true)
+TAGEBUCH_FOUND=$(echo "$SUMMARY" | grep "Tagebuch schreiben:" | grep -c "$SLOTS_MARKER" || true)
+HAUTPFLEGE_FOUND=$(echo "$SUMMARY" | grep "Hautpflege:" | grep -c "$SLOTS_MARKER" || true)
+NOTIZEN_FOUND=$(echo "$SUMMARY" | grep "Notizen ordnen:" | grep -c "$SLOTS_MARKER" || true)
 if [ "$ABEND_FOUND" -gt 0 ] && [ "$TAGEBUCH_FOUND" -gt 0 ] && [ "$HAUTPFLEGE_FOUND" -gt 0 ]; then
     NOTIZ_INFO=""
     [ "$NOTIZEN_FOUND" -gt 0 ] && NOTIZ_INFO=" + Notizen ordnen (L2)"
@@ -448,7 +444,7 @@ else
 fi
 
 # Check 16: Sport Dehnen (L2) — nur Mo/Mi/Fr
-DEHNEN_FOUND=$(echo "$SUMMARY" | grep "Dehnen:" | grep -c "$LOG_KEY_SLOTS" || true)
+DEHNEN_FOUND=$(echo "$SUMMARY" | grep "Dehnen:" | grep -c "$SLOTS_MARKER" || true)
 if [ "$TODAY_DOW" = "1" ] || [ "$TODAY_DOW" = "3" ] || [ "$TODAY_DOW" = "5" ]; then
     if [ "$DEHNEN_FOUND" -gt 0 ]; then
         run_check "Sport: Dehnen (L2 Sub-Sub-Task) auf Mo/Mi/Fr geplant" "pass"

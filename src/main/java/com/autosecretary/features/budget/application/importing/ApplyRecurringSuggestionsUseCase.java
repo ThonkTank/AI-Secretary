@@ -52,7 +52,6 @@ public class ApplyRecurringSuggestionsUseCase {
 
                 if (!suggestions.isEmpty()) {
                     repository.synchronizeRecurringTemplateState(LocalDate.now());
-                    repository.notifyBudgetDataUpdated();
                 }
                 callback.onSuccess();
             } catch (Exception e) {

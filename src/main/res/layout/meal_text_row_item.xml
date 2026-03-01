@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Single-view item: text set programmatically by MealPlannerPresenter -->
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginBottom="@dimen/spacing_xs"
-    android:background="@color/meal_surface_overlay"
-    android:padding="@dimen/spacing_sm" />

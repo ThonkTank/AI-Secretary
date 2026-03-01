@@ -4,74 +4,72 @@ Cross-cutting issues that span multiple sub-packages.
 
 ## Open Issues
 
+### [consider] Decompose `ImportTransactionRecord` into sub-records @skill:review-simplicity
+**File:** `domain/importing/ImportTransactionRecord.java`
+The 11-field record mixes essential transaction data with import metadata. Could be split into sub-records for better cohesion, but the record is stable and not causing bugs. Defer until the domain is revisited.
 
+### [consider] Group `BudgetViewModel` constructor dependencies into holder objects @skill:review-simplicity
+**Files:** `ui/BudgetViewModel.java:96-104`, `ui/BudgetViewModelFactory.java`, `app/AppCompositionRoot.java`
+Constructor accepts 9 arguments spanning three logical groups (infrastructure, use cases, presentation helpers). Not urgent since the app is feature-complete; defer unless the constructor grows further.
 
-### [consider] `BudgetRecurringTemplateEntity.recurringValue` is a dual-purpose field spanning data/domain boundary
-**Files:** `data/entity/BudgetRecurringTemplateEntity.java:76`, `domain/recurring/internal/DatePatternDetector.java:181`
-The entity stores `recurringValue` with different semantics depending on `recurringType`: day-of-month for `MONTHLY_DAY`, interval days for `INTERVAL`, always 0 for `MONTHLY_LAST`/`WEEKLY`. This is a silent convention that crosses the data/domain boundary. A proper fix would require a schema migration or a sealed hierarchy which is out of scope. Deferred.
+### [consider] `StatementFileParser` has data-layer dependency in `application/importing/` @skill:review-structure
+**Paths:** `application/importing/StatementFileParser.java`
+`StatementFileParser` directly imports `data.api.ClaudeStatementApiClient` and `data.api.ClaudeApiKeyStore`, making it the only file in `application/` that depends on data-layer infrastructure. Could be moved to `application/importing/internal/`. Net benefit is marginal with only 4 files in the package; defer unless the package grows.
 
-### [warning] `updateTransaction` and `saveTransaction` have too many parameters
-**Files:** `domain/BudgetRepository.java:65,69`, `data/repository/BudgetRoomRepository.java:119,140`
-`updateTransaction` takes 7 positional parameters; `saveTransaction` takes 6. Callers rely on argument order and mistakes (swapping two `String` arguments, or passing the wrong `LocalDate`) are silently type-safe. The parameters form a natural data clump that also appears in `createTransfer` / `updateTransfer`.
-**Fix suggestion:** Introduce a `TransactionFormInput` value record and replace the parameter lists. Requires changing `BudgetRepository` interface + callers in `BudgetViewModel`, `BudgetFragment`, `CreateTransferUseCase`, etc.
+### [consider] 1/3 Create Room projection for `MonthlyOverviewItem` in data/dao @skill:review-architecture
+**Files:** `data/dao/BudgetTransactionDao.java` (queries returning `MonthlyOverviewItem`), `domain/MonthlyOverviewItem.java`
+Room fills the mutable POJO in `domain/` directly from DAO queries. Creating a `data/dao/` projection and mapping to an immutable domain record would restore clean layer boundaries, but is a significant refactor.
 
-### [warning] Volatile duplication in repository mappers
-**Files:** `data/repository/BudgetImportRoomRepository.java:139-178`, `application/importing/BudgetTransactionMapper.java`
-Duplicate mapper methods `toEntity()` (in BudgetImportRoomRepository) and `toRecord()`/`toDomain()` (in BudgetTransactionMapper) mirror each other's field mapping. A bug fix in one must be replicated in the other.
-**Fix suggestion:** Consolidate all mapping logic into `BudgetTransactionMapper`, have `BudgetImportRoomRepository` delegate to it.
+### [consider] 2/3 Create immutable domain `MonthlyOverviewItem` record @skill:review-architecture
+**Files:** `domain/MonthlyOverviewItem.java`, `data/repository/BudgetRoomRepository.java`
+Part of the projection refactor — replace mutable POJO with immutable record.
 
-### [warning] ImportTransactionRecord has 11 fields (data clump)
-**File:** `domain/importing/ImportTransactionRecord.java:5-17`
-Record has 11 fields consistently grouped. Requires value object decomposition affecting all consuming files.
-**Fix suggestion:** Group into sub-records (e.g. `TransactionCore`, `ImportMetadata`).
+### [consider] 3/3 Update presentation mappers for immutable `MonthlyOverviewItem` @skill:review-architecture
+**Files:** `ui/internal/BudgetSummaryPresentationMapper.java`, `ui/internal/BudgetOverviewLoader.java`
+Final step of projection refactor — update mappers to use immutable domain records.
 
-### ✅ [nit] `StatementFileParser.accepts()` was dead code — FIXED
-Removed unused package-private method `accepts()` that was never called after `parse()` was refactored to use `isPdf()`/`isCsv()` directly.
+### [consider] 1/6 Create immutable domain value objects for Account, Category, Transaction, and Limit @skill:review-architecture
+**Files:** `domain/` (new files)
+The domain interface (`BudgetRepository`) exposes `@Entity` data types throughout. Creating immutable domain records would decouple the domain contract from Room annotations. This is the correct architectural direction but a massive refactor touching every layer.
 
-## Fixed This Run
+### [consider] 2/6 Update `BudgetRepository` interface to use domain value objects @skill:review-architecture
+**File:** `domain/BudgetRepository.java`
+Replace `@Entity` types in method signatures with domain records.
 
-✅ [critical] **`AppCompositionRoot` passed stale `mainHandler::post` argument to `BudgetViewModelFactory`** —
-`BudgetViewModelFactory` constructor no longer accepts a `Handler` argument (removed in a prior refactor),
-but `AppCompositionRoot:258` still passed `mainHandler::post` as the 3rd argument, causing a compile error.
-Removed the stale argument. (`app/AppCompositionRoot.java:258`)
+### [consider] 3/6 Implement read-side mappings in `BudgetRoomRepository` @skill:review-architecture
+**File:** `data/repository/BudgetRoomRepository.java`
+Map `@Entity` types to domain records on read.
 
-### [warning] BudgetViewModel constructor takes 10 parameters
-**File:** `ui/BudgetViewModel.java:78-98`
-Constructor accepts 10 arguments spanning three logical groups (infrastructure, use cases, presentation helpers). Adding a dependency requires changing `BudgetViewModelFactory`, `AppCompositionRoot`, and the constructor simultaneously.
-**Fix suggestion:** Group use-case dependencies into a `BudgetUseCases` holder; group presentation helpers similarly. Reduces to 3-4 arguments.
+### [consider] 4/6 Implement write-side mappings in `BudgetRoomRepository` @skill:review-architecture
+**File:** `data/repository/BudgetRoomRepository.java`
+Accept domain records and map to `@Entity` types on write.
 
-### [nit] BudgetViewModelFactory hidden inline construction
-**File:** `ui/BudgetViewModelFactory.java:44-59`
-`create()` constructs `CalculateEffectiveBudgetLimitUseCase` and `BudgetSeedService` inline rather than receiving them through the constructor. Mixed injection/factory patterns within one class.
-**Fix suggestion:** Inject all collaborators through the factory constructor.
-**Documentation aspect: resolved** — class Javadoc already explains the intentional inline construction ("stateless, cheap to construct, tying them to the factory's constructor would expose implementation details to the DI root"). Code-level injection refactor remains deferred.
+### [consider] 5/6 Update application-layer callers to use domain types @skill:review-architecture
+**Files:** `application/**/*UseCase.java`, application services
+Refactor use cases to work with domain value objects.
 
-### [warning] `BudgetImportRepository.notifyBudgetDataUpdated()` is a UI lifecycle operation on a domain interface
-**File:** `domain/BudgetImportRepository.java:87`
-The method's own Javadoc flags it as a cross-layer concern. Fix: move to a separate `BudgetDataNotifier` interface owned by the application layer, or trigger from the use case.
-**Deferred reason:** Requires coordinated changes to `data/repository/BudgetImportRoomRepository`, `application/importing/BudgetImportUseCase`, and `domain/BudgetImportRepository` — large cross-layer refactor.
-*(Promoted from `domain/REVIEW_BACKLOG.md`)*
+### [consider] 6/6 Update UI-layer callers to use domain types @skill:review-architecture
+**Files:** `ui/BudgetViewModel.java`, `ui/BudgetFragment.java`, presentation mappers
+Update UI to work with domain value objects.
 
-### [warning] `MonthlyOverviewItem` is a mutable public-field POJO inconsistent with the rest of the domain layer
-**File:** `domain/MonthlyOverviewItem.java`
-All other domain DTOs are immutable records. Room's field-injection requires the mutable shape for query results, but the correct fix is to split into a Room-only projection (in `data/dao/`) and a proper immutable domain record in `domain/`. Callers: `data/dao/BudgetTransactionDao`, `data/repository/BudgetRoomRepository`, `ui/internal/BudgetSummaryPresentationMapper`, `ui/internal/BudgetOverviewLoader`.
-**Deferred reason:** Cross-layer refactor touching DAO, repository, and presentation mapper.
-*(Promoted from `domain/REVIEW_BACKLOG.md`)*
+### [inconsistent] Use case threading pattern: some use cases own executor, others are synchronous @skill:review-conventions
+**Observed patterns:**
+- Synchronous use cases (caller manages threading): `CreateTransferUseCase.execute()`, `CalculateEffectiveBudgetLimitUseCase.execute()`, `LoadBudgetWidgetSummaryUseCase.execute()`
+- Async use cases (own their executor, use callback): `BudgetImportUseCase.executeAsync()`, `ApplyRecurringSuggestionsUseCase.executeAsync()`
+**Files:** `application/importing/BudgetImportUseCase.java`, `application/importing/ApplyRecurringSuggestionsUseCase.java`, `ui/BudgetViewModel.java:270-297,308-329`
+**Problem:** The ViewModel already wraps import/recurring calls in `executor.execute()`, then the use case internally calls `executor.execute()` again (double-dispatch on same single-threaded executor). Both work correctly but the pattern is redundant and inconsistent with the other three use cases.
+**Canonical:** Synchronous `execute()` — let the ViewModel manage threading uniformly.
+**Impact:** 2 use cases restructured, ViewModel and AppCompositionRoot updated.
 
-### [warning] `BudgetRepository` domain interface imports data-layer `@Entity` types
-**File:** `domain/BudgetRepository.java:4-8`
-Imports `BudgetAccount`, `BudgetCategory`, `BudgetLimit`, `BudgetTransactionEntity` from `features.budget.data.entity`. This inverts the dependency hierarchy: any Room annotation or schema change in the entity forces a domain-layer change. Fix: define lightweight domain value objects (no Room annotations) for Account, Category, Transaction, and Limit; have the data layer map to/from those.
-**Deferred reason:** Large-scale cross-layer refactor touching `BudgetRoomRepository`, `BudgetViewModel`, and all application-layer callers.
-*(Promoted from `domain/REVIEW_BACKLOG.md`)*
+### [consider] `insertAccount`/`insertCategory` vs `create*` verb for write operations @skill:review-conventions
+**Observed patterns:**
+- `BudgetRepository`: `insertAccount()`, `insertCategory()` — raw DAO pass-through
+- `BudgetImportRepository`: `createImport()`, `createRecurringTemplate()` — higher-level construction + persist
+**Files:** `domain/BudgetRepository.java:38,40`, `domain/BudgetImportRepository.java:63,81`
+**Canonical:** The difference is arguably intentional: `insert*` for pass-through operations, `create*` for operations that construct + persist. No change recommended unless the distinction is deemed unnecessary.
 
-### [consider] `RecurringBudgetTransaction` is a mutable public-field POJO inconsistent with all other domain DTOs
+### [consider] `RecurringBudgetTransaction` is a mutable class where a record would suffice @skill:review-conventions
 **File:** `domain/recurring/RecurringBudgetTransaction.java`
-All sibling domain types (`RecurringSuggestion`, `RecurringScheduleParams`, `TemplateStatusUpdate`, `CategorySpendSummary`) are immutable records. The data-layer mapper (`BudgetImportRoomRepository`) depends on this shape, but the fix is to let the data layer own its own mutable projection and map to an immutable domain record.
-**Deferred reason:** Closely coupled to `data/entity/BudgetRecurringTemplateEntity` and `data/repository/BudgetImportRoomRepository` — same scope as the `BudgetRepository` coupling issue above.
-*(Promoted from `domain/REVIEW_BACKLOG.md`)*
-
-### [inconsistent] `Entity` suffix applied inconsistently across data entities
-**Files:** `data/entity/BudgetAccount.java`, `data/entity/BudgetCategory.java`, `data/entity/BudgetLimit.java` (missing suffix); `data/entity/BudgetTransactionEntity.java`, `data/entity/BudgetRecurringTemplateEntity.java`, `data/entity/BudgetImportEntity.java` (have suffix)
-Makes Room entities indistinguishable from domain objects at a glance. Canonical fix: add `Entity` suffix to the three missing it. Requires updating `domain/BudgetRepository.java` interface (which imports these types directly), `database/AppDatabase.java`, `app/AppCompositionRoot.java`, and all repository/DAO callers — wide blast radius.
-**Deferred reason:** Dependent on the `BudgetRepository` coupling fix above; should be done together.
-*(Promoted from `data/entity/REVIEW_BACKLOG.md`)*
+**Problem:** All other comparable domain value objects are records (e.g., `RecurringSuggestion`, `RecurringScheduleParams`, `TemplateStatusUpdate`, `ImportTransactionRecord`). `RecurringBudgetTransaction` is a mutable class with public fields and a static factory. No Room mapping requirement justifies the mutability.
+**Canonical:** Convert to a Java record with the same fields. The static factory `forImport()` logic (deriving `isRecurring` from `parentRecurringId`) can live in a compact constructor.
+**Impact:** 1 class rewritten, callers that set fields directly (in `BudgetImportRoomRepository.toRecord()` mapping) would need adjustment.

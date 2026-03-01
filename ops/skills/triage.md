@@ -14,29 +14,37 @@ Read each one. You are responsible for ALL of them, not just the one at the targ
 
 If no REVIEW_BACKLOG.md files exist, exit immediately — there is nothing to triage.
 
-### Step 2 — Purge non-actionable content
+### Step 2 — Purge resolved and non-issue content
 
-Remove everything that is not an open, unresolved issue:
+Remove only content that is clearly not an open issue:
 
 - **"Fixed This Run" / "Resolved Issues" sections** — delete entirely. Fixes are tracked
   in git history, not in the backlog.
 - **Entries marked ✅ or [✓]** — these are resolved. Delete them.
-- **"Acknowledged Good Patterns" sections** — these are observations, not issues. Delete them.
-- **Entries that are pure observations** with no concrete fix suggestion — delete them.
-  A backlog entry must say what to change and where; "this is interesting to note" is not
-  an issue.
+- **"Acknowledged Good Patterns" / `[keep]` sections** — these are observations, not issues.
+  Delete them.
 
-After purging, every remaining entry must be something a review agent can pick up and fix.
+**Do NOT delete deferred items.** "Deferred" means "not yet done" — it is still an open issue.
+An item that was deferred because it was too large, too risky, or cross-cutting must be
+kept and made actionable (see Steps 3 and 4).
 
-### Step 3 — Resolve `[consider]` entries
+### Step 3 — Make every entry actionable
 
-`[consider]` means a previous agent deferred a decision. Triage must resolve it:
+Every open entry must have:
+1. A concrete description of what to change (file, method, what the fix is)
+2. A severity tag (`[nit]`, `[warning]`, `[critical]`)
+3. An `@skill:` assignment (see Step 5)
 
-- **If actionable** (there is a concrete change to make): rewrite as a normal issue with
-  a severity tag (`[nit]`, `[warning]`, `[critical]`). Add an `@skill:` assignment
-  (see Step 5).
-- **If not actionable** (observation, trade-off note, or "revisit if X happens"): delete it.
-  The backlog is not a place for conditional future work.
+Rewrite entries that lack these. Specifically:
+
+- **`[consider]` entries**: These are deferred decisions. Resolve the decision: rewrite as
+  a normal issue with a severity tag and `@skill:` assignment. If the entry describes a
+  concrete code change, it is actionable — keep it and sharpen the wording.
+- **Vague entries** ("this could be improved", "revisit later"): Rewrite with a specific
+  file, a specific change, and a severity tag. If you genuinely cannot determine what
+  concrete change is needed, only then delete the entry.
+- **Entries with "deferred reason"**: Remove the deferral note and keep the issue. The
+  reason it was deferred is irrelevant — the next agent will decide whether to fix it.
 
 ### Step 4 — Break down large items
 
@@ -114,7 +122,7 @@ Delete any REVIEW_BACKLOG.md that is now empty after triage.
 ### Step 8 — Report
 Output a brief summary:
 
-    ### Triage: **P purged · B broken down · A assigned · N promoted · M demoted · K unchanged**
+    ### Triage: **R resolved-purged · W rewritten · B broken down · A assigned · N promoted · M demoted · K unchanged**
 
 If nothing was changed, output:
 

@@ -107,7 +107,7 @@ Threshold: ≥0.7 is considered high-confidence (suitable for auto-apply).
 
 ## When This Module Runs
 
-1. **Import flow** — After CSV/PDF import, `BudgetImportService` calls `detectPatterns()` to surface recurring suggestions to the user
+1. **Import flow** — After CSV/PDF import, `BudgetImportUseCase` calls `detectPatterns()` to surface recurring suggestions to the user
 2. **Daily scheduling** — At application start or daily alarm, `computeStatusUpdates()` re-evaluates template next-due dates and active status
 
 ## Troubleshooting for Developers
@@ -124,4 +124,4 @@ Threshold: ≥0.7 is considered high-confidence (suitable for auto-apply).
 
 - [Levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance) (string similarity algorithm used by `PayeeGrouper`)
 - `features/budget/domain/importing/` — import pipeline that feeds transactions to pattern detection
-- `features/budget/data/internal/` — persistence layer for recurring templates
+- `features/budget/data/repository/` — persistence layer for recurring templates

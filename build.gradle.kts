@@ -35,7 +35,15 @@ android {
     }
 
     sourceSets {
-        getByName("main").java.setSrcDirs(listOf("src/main/java"))
+        getByName("main") {
+            java.setSrcDirs(listOf("src/main/java"))
+            res.setSrcDirs(listOf(
+                "src/main/res",
+                "src/main/res-task",
+                "src/main/res-budget",
+                "src/main/res-meal"
+            ))
+        }
     }
 }
 

@@ -25,6 +25,7 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 
 /**
  * Wires each section of the task-edit form: inflates view references, populates
@@ -118,7 +119,7 @@ public class TaskEditSectionBinder {
 
     private void initializeSchedulingFields(SchedulingViews views) {
         bindEnumSpinner(views.schedulingTypeView, TaskCore.SchedulingType.values());
-        TaskCore.SchedulingType schedulingType = TaskEditPresenter.coalesce(editState.schedulingType, TaskEditDefaults.SCHEDULING_TYPE);
+        TaskCore.SchedulingType schedulingType = Objects.requireNonNullElse(editState.schedulingType, TaskEditDefaults.SCHEDULING_TYPE);
         views.schedulingTypeView.setSelection(schedulingType.ordinal());
         views.fixedDateView.setText(textOf(editState.fixedDate));
         views.fixedStartView.setText(textOf(editState.fixedStart));
@@ -187,7 +188,7 @@ public class TaskEditSectionBinder {
         perPeriodView.setText(String.valueOf(editState.perPeriod > 0 ? editState.perPeriod : TaskEditDefaults.REPETITION_PER_PERIOD));
 
         bindEnumSpinner(periodUnitView, Period.values());
-        Period periodUnit = TaskEditPresenter.coalesce(editState.periodUnit, TaskEditDefaults.REPETITION_PERIOD_UNIT);
+        Period periodUnit = Objects.requireNonNullElse(editState.periodUnit, TaskEditDefaults.REPETITION_PERIOD_UNIT);
         periodUnitView.setSelection(periodUnit.ordinal());
         completeFirstView.setChecked(editState.completeFirst);
 

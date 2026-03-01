@@ -5,6 +5,7 @@ import com.autosecretary.features.task.data.TaskCore;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Objects;
 import java.util.function.Function;
 import com.autosecretary.shared.Priority;
 import com.autosecretary.features.task.ui.edit.FormInput;
@@ -76,7 +77,7 @@ public class TaskEditFormInputReader {
     private void readBasicInfo(FormInput input) {
         input.title = basicInfoViews.titleView.getText().toString();
         input.description = basicInfoViews.descriptionView.getText().toString();
-        input.priority = TaskEditPresenter.coalesce(
+        input.priority = Objects.requireNonNullElse(
             (Priority) basicInfoViews.priorityView.getSelectedItem(),
             TaskEditDefaults.PRIORITY
         );
@@ -84,14 +85,14 @@ public class TaskEditFormInputReader {
 
     private void readGoalSection(FormInput input) {
         input.goalIcon = goalSectionController.getGoalIconText();
-        input.goalColorHex = TaskEditPresenter.coalesce(
+        input.goalColorHex = Objects.requireNonNullElse(
             goalSectionController.getSelectedGoalColorHex(),
             TaskEditDefaults.GOAL_COLOR_HEX
         );
     }
 
     private void readSchedulingSection(FormInput input) {
-        input.schedulingType = TaskEditPresenter.coalesce(
+        input.schedulingType = Objects.requireNonNullElse(
             (TaskCore.SchedulingType) schedulingViews.schedulingTypeView.getSelectedItem(),
             TaskEditDefaults.SCHEDULING_TYPE
         );
@@ -120,7 +121,7 @@ public class TaskEditFormInputReader {
             repetitionViews.repsView.getText().toString(), TaskEditDefaults.REPETITION_REPS);
         input.perPeriod = TaskEditPresenter.parseIntSafe(
             repetitionViews.perPeriodView.getText().toString(), TaskEditDefaults.REPETITION_PER_PERIOD);
-        input.periodUnit = TaskEditPresenter.coalesce(
+        input.periodUnit = Objects.requireNonNullElse(
             (Period) repetitionViews.periodUnitView.getSelectedItem(),
             TaskEditDefaults.REPETITION_PERIOD_UNIT
         );

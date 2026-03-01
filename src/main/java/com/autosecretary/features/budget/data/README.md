@@ -5,15 +5,15 @@
 `features/budget/data/` is split into sub-packages by concern:
 
 - **`entity/`** — Room entity classes persisted to the database.
-  - `BudgetAccount` (`budget_account`)
-  - `BudgetCategory` (`budget_category`)
+  - `BudgetAccountEntity` (`budget_account`)
+  - `BudgetCategoryEntity` (`budget_category`)
   - `BudgetTransactionEntity` (`budget_transaction`)
-  - `BudgetLimit` (`budget_limit`)
+  - `BudgetLimitEntity` (`budget_limit`)
   - `BudgetImportEntity` (`budget_import`)
   - `BudgetRecurringTemplateEntity` (`budget_recurring_template`)
 
 - **`dao/`** — DAO interfaces for entity access and aggregate queries.
-  - `BudgetLookupDao` — accounts, categories, balance adjustments
+  - `BudgetAccountCategoryDao` — accounts, categories, balance adjustments
   - `BudgetTransactionDao` — transaction CRUD, timeline deltas, balance queries
   - `BudgetLimitDao` — budget limits and category spend summaries
   - `BudgetImportDao` — import record lifecycle (pending/completed/failed)

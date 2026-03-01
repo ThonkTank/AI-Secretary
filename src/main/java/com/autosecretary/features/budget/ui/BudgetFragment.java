@@ -24,9 +24,13 @@ import androidx.lifecycle.ViewModelProvider;
 import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.features.budget.data.entity.BudgetAccount;
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import com.autosecretary.features.budget.ui.internal.BudgetBalanceChartView;
+import com.autosecretary.features.budget.ui.internal.BudgetTransactionAdapter;
 import com.autosecretary.features.budget.ui.internal.BudgetImportPickerController;
 import com.autosecretary.features.budget.ui.internal.BudgetLimitDialogController;
 import com.autosecretary.features.budget.ui.internal.BudgetRecurringSuggestionsDialogController;
@@ -43,7 +47,6 @@ import com.autosecretary.features.budget.ui.state.UiText;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Pattern;
 
 /**
  * Main screen for the budget feature: displays the account balance chart, monthly income/expense
@@ -72,9 +75,6 @@ public class BudgetFragment extends Fragment {
      */
     public static final String ARG_OPEN_ADD_TRANSACTION = "open_add_transaction";
 
-    private static final Pattern COLOR_HEX_PATTERN =
-            Pattern.compile("^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$");
-
     private BudgetViewModel budgetViewModel;
     private boolean shouldOpenAddTransactionDialog;
     private BudgetImportPickerController importPickerController;
@@ -82,7 +82,8 @@ public class BudgetFragment extends Fragment {
     private BudgetRecurringSuggestionsDialogController recurringSuggestionsDialogController;
     private BudgetTransactionDialogController transactionDialogController;
     private BudgetLimitDialogController limitDialogController;
-    private List<BudgetAccount> accountItems = new ArrayList<>();
+    private List<BudgetAccountEntity> accountItems = new ArrayList<>();
+    private BudgetTransactionAdapter transactionAdapter;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -169,6 +170,19 @@ public class BudgetFragment extends Fragment {
         shouldOpenAddTransactionDialog = args != null && args.getBoolean(ARG_OPEN_ADD_TRANSACTION, false);
 
         BudgetOverviewViews views = bindViews(view);
+        transactionAdapter = new BudgetTransactionAdapter(new BudgetTransactionAdapter.Listener() {
+            @Override
+            public void onTransactionClick(BudgetTransactionRow row) {
+                showEditTransactionDialog(row);
+            }
+
+            @Override
+            public void onTransactionLongClick(BudgetTransactionRow row) {
+                transactionDialogController.showDeleteConfirmation(row);
+            }
+        });
+        views.transactionList.setLayoutManager(new LinearLayoutManager(requireContext()));
+        views.transactionList.setAdapter(transactionAdapter);
         observeViewModel(views);
         setupUserActions(views);
         restoreDeferredActions(view);
@@ -214,7 +228,7 @@ public class BudgetFragment extends Fragment {
         });
 
         budgetViewModel.getTransactions().observe(getViewLifecycleOwner(),
-                rows -> renderTransactions(rows, views.transactionList));
+                rows -> transactionAdapter.setItems(rows));
 
         budgetViewModel.getChartPoints().observe(getViewLifecycleOwner(), views.chartView::setPoints);
 
@@ -329,7 +343,7 @@ public class BudgetFragment extends Fragment {
         Button addTransfer;
         Button importStatement;
         Button retry;
-        LinearLayout transactionList;
+        RecyclerView transactionList;
         ProgressBar loading;
         TextView monthLabel;
         ImageButton monthPrev;
@@ -341,7 +355,7 @@ public class BudgetFragment extends Fragment {
         BudgetBalanceChartView chartView;
     }
 
-    private void renderAccountSpinner(List<BudgetAccount> accounts, Spinner spinner) {
+    private void renderAccountSpinner(List<BudgetAccountEntity> accounts, Spinner spinner) {
         accountItems = accounts != null ? accounts : new ArrayList<>();
         SpinnerHelper.bindList(spinner, accountItems, a -> a.name, requireContext());
     }
@@ -365,13 +379,13 @@ public class BudgetFragment extends Fragment {
         limitDialogController.show(preSelectedCategoryId, baseLimitCents, categoriesValue());
     }
 
-    private List<BudgetCategory> categoriesValue() {
-        List<BudgetCategory> cats = budgetViewModel.getCategories().getValue();
+    private List<BudgetCategoryEntity> categoriesValue() {
+        List<BudgetCategoryEntity> cats = budgetViewModel.getCategories().getValue();
         return cats != null ? cats : new ArrayList<>();
     }
 
-    private List<BudgetAccount> accountsValue() {
-        List<BudgetAccount> accts = budgetViewModel.getAccounts().getValue();
+    private List<BudgetAccountEntity> accountsValue() {
+        List<BudgetAccountEntity> accts = budgetViewModel.getAccounts().getValue();
         return accts != null ? accts : new ArrayList<>();
     }
 
@@ -408,7 +422,7 @@ public class BudgetFragment extends Fragment {
             // deliberately chose it. Status-based colors (negative/warning/positive) are only
             // used as a fallback when no category color is configured.
             int color;
-            if (isValidColorHex(bar.getCategoryColorHex())) {
+            if (CurrencyFormatter.isValidColorHex(bar.getCategoryColorHex())) {
                 color = Color.parseColor(bar.getCategoryColorHex());
             } else if (pct > 100) {
                 color = ContextCompat.getColor(requireContext(), R.color.budget_negative);
@@ -424,44 +438,6 @@ public class BudgetFragment extends Fragment {
                     showEditLimitDialog(bar.getCategoryId(), bar.getBaseLimitCents()));
             container.addView(row);
         }
-    }
-
-    private void renderTransactions(List<BudgetTransactionRow> rows,
-                                    LinearLayout container) {
-        container.removeAllViews();
-        LayoutInflater inflater = LayoutInflater.from(container.getContext());
-
-        for (BudgetTransactionRow row : rows) {
-            View rowView = inflater.inflate(R.layout.budget_transaction_item, container, false);
-            TextView label = rowView.findViewById(R.id.BudgetTransactionLabel);
-            TextView amount = rowView.findViewById(R.id.BudgetTransactionAmount);
-            String formattedAmount = CurrencyFormatter.eurosWithSign(row.getAmountCents(), row.getDirection());
-            label.setText(row.getLabel());
-            amount.setText(formattedAmount);
-            if (isValidColorHex(row.getCategoryColorHex())) {
-                label.setTextColor(Color.parseColor(row.getCategoryColorHex()));
-            }
-            amount.setTextColor(row.isExpense()
-                    ? ContextCompat.getColor(requireContext(), R.color.budget_negative)
-                    : ContextCompat.getColor(requireContext(), R.color.budget_positive));
-            rowView.setContentDescription(
-                    getString(R.string.budget_transaction_content_description,
-                            row.getLabel(), formattedAmount));
-
-            rowView.setOnClickListener(v -> showEditTransactionDialog(row));
-
-            rowView.setOnLongClickListener(v -> {
-                transactionDialogController.showDeleteConfirmation(row);
-                return true;
-            });
-
-            container.addView(rowView);
-        }
-    }
-
-    private static boolean isValidColorHex(String colorHex) {
-        if (colorHex == null) return false;
-        return COLOR_HEX_PATTERN.matcher(colorHex).matches();
     }
 
     private void bindSignedAmount(TextView view, long cents) {

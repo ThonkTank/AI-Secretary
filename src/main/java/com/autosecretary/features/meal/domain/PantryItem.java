@@ -38,6 +38,11 @@ public class PantryItem {
             this.label = label;
             this.icon = icon;
         }
+
+        @Override
+        public String toString() {
+            return label;
+        }
     }
 
     public String getFormattedAmount() {

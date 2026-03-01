@@ -59,6 +59,8 @@ public class TaskListFragment extends Fragment {
 
     private static final float ALPHA_NAV_ENABLED = 1.0f;
     private static final float ALPHA_NAV_DISABLED = 0.3f;
+    private static final DateTimeFormatter DAY_NAV_FORMATTER =
+            DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN);
 
     private TaskViewModel vm;
     /** Set to true when ARG_OPEN_CREATE_TASK is present; consumed once on first view creation. */
@@ -88,6 +90,16 @@ public class TaskListFragment extends Fragment {
         return inflater.inflate(R.layout.task_list_fragment, container, false);
     }
 
+    /**
+     * Wires the full task list UI in this order:
+     * 1. ViewModel + calendar permission
+     * 2. RecyclerView + adapter with action callbacks
+     * 3. LiveData observers (display list, schedule conflicts, search query sync)
+     * 4. Search bar text watcher
+     * 5. Action buttons (generate schedule, schedule config, new task)
+     * 6. Day navigation (prev/next arrows, date label, interaction gate)
+     * 7. Checklist/Manage mode toggle
+     */
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         AutoSecretaryApplication app = AutoSecretaryApplication.from(requireContext());
@@ -181,14 +193,12 @@ public class TaskListFragment extends Fragment {
         TextView dayNavPrev = view.findViewById(R.id.DayNavPrev);
         TextView dayNavLabel = view.findViewById(R.id.DayNavLabel);
         TextView dayNavNext = view.findViewById(R.id.DayNavNext);
-        DateTimeFormatter dayFormat = DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN);
-
         dayNavPrev.setOnClickListener(v -> vm.navigatePreviousDay());
         dayNavNext.setOnClickListener(v -> vm.navigateNextDay());
 
         vm.getSelectedDay().observe(getViewLifecycleOwner(), day -> {
             boolean isToday = day.equals(LocalDate.now());
-            dayNavLabel.setText(isToday ? getString(R.string.task_list_day_nav_today) : day.format(dayFormat));
+            dayNavLabel.setText(isToday ? getString(R.string.task_list_day_nav_today) : day.format(DAY_NAV_FORMATTER));
 
             dayNavPrev.setEnabled(!isToday);
             dayNavPrev.setAlpha(isToday ? ALPHA_NAV_DISABLED : ALPHA_NAV_ENABLED);

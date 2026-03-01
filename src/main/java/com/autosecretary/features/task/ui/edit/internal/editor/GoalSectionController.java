@@ -1,6 +1,7 @@
 package com.autosecretary.features.task.ui.edit.internal.editor;
 
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.GridLayout;
@@ -68,6 +69,7 @@ public class GoalSectionController {
 
         for (int i = 0; i < GOAL_COLORS.length; i++) {
             String hex = GOAL_COLORS[i];
+            int colorNumber = i + 1;
             View swatch = new View(fragment.requireContext());
             // spec(index, weight=1f): the 1f flex weight distributes equal space to all cells
             // in their row/column, so swatches fill the grid evenly without fixed pixel widths.
@@ -82,8 +84,13 @@ public class GoalSectionController {
             params.setMargins(margin, margin, margin, margin);
             swatch.setLayoutParams(params);
 
-            swatch.setBackgroundColor(Color.parseColor(hex));
+            GradientDrawable swatchBg = new GradientDrawable();
+            swatchBg.setColor(Color.parseColor(hex));
+            swatchBg.setCornerRadius(dimenPx(R.dimen.task_editor_goal_color_margin) * 2f);
+            swatch.setBackground(swatchBg);
             swatch.setTag(hex);
+            swatch.setContentDescription(fragment.getString(
+                R.string.task_editor_goal_color_content_description, colorNumber));
             swatch.setOnClickListener(v -> {
                 selectedGoalColorHex = hex;
                 updateGoalColorSelection();
@@ -104,6 +111,11 @@ public class GoalSectionController {
             swatch.setScaleX(scale);
             swatch.setScaleY(scale);
             swatch.setAlpha(selected ? SELECTED_ALPHA : DESELECTED_ALPHA);
+            int colorNumber = i + 1;
+            swatch.setContentDescription(fragment.getString(
+                selected ? R.string.task_editor_goal_color_selected_content_description
+                         : R.string.task_editor_goal_color_content_description,
+                colorNumber));
         }
     }
 

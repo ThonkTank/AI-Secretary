@@ -19,7 +19,7 @@ import java.time.LocalDate;
  * @param amountCents  Transaction amount in cents (positive for both income and expense; direction is inferred separately)
  * @param payee        Merchant or counterparty name
  * @param note         Optional transaction memo or description
- * @param categoryId   Optional category ID (from CSV column or left null if uncategorized). Later mapped to ImportCategory or BudgetCategory.
+ * @param categoryId   Optional category ID (from CSV column or left null if uncategorized). Later mapped to ImportCategory or BudgetCategoryEntity.
  * @param importHash   Hash used for deduplication (prevents duplicate imports if the same statement is imported multiple times)
  */
 public record ParsedTransaction(

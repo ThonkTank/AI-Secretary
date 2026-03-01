@@ -8,7 +8,7 @@ The budget feature is organized by responsibility and then by sub-feature:
 - `application/`: use-cases coordinating workflows.
   - `application/importing/`: end-to-end import flow (parse, deduplicate, persist, recurring suggestions).
 - `domain/`: pure business logic, repository interfaces, and domain value types (no Android dependencies).
-- `data/entity/`: canonical Room entities (`BudgetAccount`, `BudgetCategory`, `BudgetTransactionEntity`, `BudgetLimit`, `BudgetImportEntity`, `BudgetRecurringTemplateEntity`).
+- `data/entity/`: canonical Room entities (`BudgetAccountEntity`, `BudgetCategoryEntity`, `BudgetTransactionEntity`, `BudgetLimitEntity`, `BudgetImportEntity`, `BudgetRecurringTemplateEntity`).
 - `data/dao/`: Room DAO interfaces for entity access and aggregate queries.
 - `data/repository/`: Room-backed repository implementations.
 - `data/api/`: HTTP clients and secure credential storage (`ClaudeStatementApiClient` for PDF import via Claude API; `ClaudeApiKeyStore` for AES-256-GCM encrypted API key storage).

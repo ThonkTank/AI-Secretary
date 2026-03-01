@@ -2,6 +2,14 @@ package com.autosecretary.features.meal.domain;
 
 /**
  * A household member used for DGE energy-requirement calculations and meal planning.
+ *
+ * <p>{@code isActive} controls whether this member is included in
+ * {@link WeeklyFoodTargetService} calculations. Inactive members are skipped entirely —
+ * they do not contribute to the household's food targets or portion scaling.
+ *
+ * <p>{@code birthYear} is the only age input (no birth month/day). The age derived by
+ * {@code HouseholdEnergyService.calculateAge()} may be off by up to 1 year before the
+ * member's actual birthday in a given year. This is an accepted precision trade-off.
  */
 public class HouseholdMember {
 

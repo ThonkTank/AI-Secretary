@@ -228,8 +228,7 @@ public class AppCompositionRoot {
                     db.budgetImportDao(),
                     db.budgetRecurringTemplateDao(),
                     db.budgetTransactionDao(),
-                    db.budgetAccountCategoryDao(),
-                    () -> {}
+                    db.budgetAccountCategoryDao()
             );
 
             StatementFileParser parser = new StatementFileParser(

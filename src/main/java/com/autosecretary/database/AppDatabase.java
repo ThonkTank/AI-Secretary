@@ -7,11 +7,11 @@ import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
 
-import com.autosecretary.features.budget.data.entity.BudgetAccount;
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
 import com.autosecretary.features.budget.data.dao.BudgetImportDao;
 import com.autosecretary.features.budget.data.entity.BudgetImportEntity;
-import com.autosecretary.features.budget.data.entity.BudgetLimit;
+import com.autosecretary.features.budget.data.entity.BudgetLimitEntity;
 import com.autosecretary.features.budget.data.dao.BudgetLimitDao;
 import com.autosecretary.features.budget.data.dao.BudgetAccountCategoryDao;
 import com.autosecretary.features.budget.data.dao.BudgetRecurringTemplateDao;
@@ -66,10 +66,10 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
                 TaskPlannedMeal.class,
                 TaskScheduleConfig.class,
                 TaskTransitionStat.class,
-                BudgetAccount.class,
-                BudgetCategory.class,
+                BudgetAccountEntity.class,
+                BudgetCategoryEntity.class,
                 BudgetTransactionEntity.class,
-                BudgetLimit.class,
+                BudgetLimitEntity.class,
                 BudgetImportEntity.class,
                 BudgetRecurringTemplateEntity.class
         },

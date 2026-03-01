@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 
 /**
  * Dialog for configuring per-day scheduling windows (start and end times for each day of the week).
@@ -165,17 +166,13 @@ public class TaskScheduleConfigDialog extends DialogFragment {
         });
     }
 
-    private void showTimePicker(LocalTime initial, TimePickedCallback callback) {
+    private void showTimePicker(LocalTime initial, Consumer<LocalTime> callback) {
         new TimePickerDialog(
                 requireContext(),
-                (picker, hour, minute) -> callback.onPicked(LocalTime.of(hour, minute)),
+                (picker, hour, minute) -> callback.accept(LocalTime.of(hour, minute)),
                 initial.getHour(),
                 initial.getMinute(),
                 true
         ).show();
-    }
-
-    private interface TimePickedCallback {
-        void onPicked(LocalTime picked);
     }
 }

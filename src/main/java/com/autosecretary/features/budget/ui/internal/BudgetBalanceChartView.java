@@ -34,8 +34,18 @@ public class BudgetBalanceChartView extends View {
 
     private final float density;
     private final float leftPad, rightPad, topPad, bottomPad;
+    private final float lineWidth;
+    private final float pointRadius;
 
     private List<BudgetChartPoint> points = new ArrayList<>();
+
+    // Cached in setPoints to avoid allocations and recomputation in onDraw.
+    private long cachedMin;
+    private long cachedMax;
+    private String cachedMinLabel;
+    private String cachedMaxLabel;
+    private String cachedEmptyLabel;
+    private float cachedEndLabelWidth;
 
     public BudgetBalanceChartView(Context context) {
         this(context, null);
@@ -48,9 +58,13 @@ public class BudgetBalanceChartView extends View {
     public BudgetBalanceChartView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         density = context.getResources().getDisplayMetrics().density;
+        android.content.res.Resources res = context.getResources();
+        lineWidth = res.getDimension(R.dimen.budget_chart_line_width);
+        pointRadius = res.getDimension(R.dimen.budget_chart_point_radius);
+
         int chartLine = ContextCompat.getColor(context, R.color.budget_chart_line);
         linePaint.setColor(chartLine);
-        linePaint.setStrokeWidth(dp(2f));
+        linePaint.setStrokeWidth(lineWidth);
         linePaint.setStyle(Paint.Style.STROKE);
 
         pointPaint.setColor(chartLine);
@@ -60,7 +74,8 @@ public class BudgetBalanceChartView extends View {
         axisPaint.setStrokeWidth(dp(1f));
 
         labelPaint.setColor(ContextCompat.getColor(context, R.color.budget_chart_label));
-        labelPaint.setTextSize(dp(10f));
+        // Use getDimension for sp-based text size so chart labels respect font scaling.
+        labelPaint.setTextSize(res.getDimension(R.dimen.budget_chart_label_text_size));
 
         leftPad   = dp(16f);
         rightPad  = dp(12f);
@@ -70,7 +85,55 @@ public class BudgetBalanceChartView extends View {
 
     public void setPoints(List<BudgetChartPoint> points) {
         this.points = points != null ? points : new ArrayList<>();
+        cacheDrawData();
+        updateAccessibilityDescription();
         invalidate();
+    }
+
+    /**
+     * Pre-computes min/max, label strings, and text widths so onDraw allocates nothing.
+     */
+    private void cacheDrawData() {
+        cachedEmptyLabel = getContext().getString(R.string.budget_chart_no_data);
+        if (points.isEmpty()) {
+            return;
+        }
+        long min = Long.MAX_VALUE;
+        long max = Long.MIN_VALUE;
+        for (BudgetChartPoint p : points) {
+            min = Math.min(min, p.balanceCents());
+            max = Math.max(max, p.balanceCents());
+        }
+        // Guard against flat series: expand by 1 cent so the denominator is never zero.
+        if (max == min) {
+            max += 1;
+            min -= 1;
+        }
+        cachedMin = min;
+        cachedMax = max;
+        cachedMinLabel = CurrencyFormatter.euros(min);
+        cachedMaxLabel = CurrencyFormatter.euros(max);
+        BudgetChartPoint last = points.get(points.size() - 1);
+        cachedEndLabelWidth = labelPaint.measureText(last.label());
+    }
+
+    /**
+     * Updates contentDescription so screen readers announce a meaningful summary
+     * (date range + min/max balance) instead of just the static chart title.
+     */
+    private void updateAccessibilityDescription() {
+        if (points.isEmpty()) {
+            setContentDescription(cachedEmptyLabel);
+            return;
+        }
+        String first = points.get(0).label();
+        String last = points.get(points.size() - 1).label();
+        // "Saldo-Verlauf: 01.01 bis 31.01, Min 1.200,00 €, Max 3.400,00 €"
+        setContentDescription(
+                getContext().getString(R.string.budget_chart_title)
+                        + ": " + first + " – " + last
+                        + ", Min " + cachedMinLabel
+                        + ", Max " + cachedMaxLabel);
     }
 
     @Override
@@ -85,22 +148,12 @@ public class BudgetBalanceChartView extends View {
         canvas.drawLine(leftPad, bottomY, leftPad + width, bottomY, axisPaint);
 
         if (points.isEmpty()) {
-            canvas.drawText(getContext().getString(R.string.budget_chart_no_data), leftPad, topPad + height / 2f, labelPaint);
+            canvas.drawText(cachedEmptyLabel, leftPad, topPad + height / 2f, labelPaint);
             return;
         }
 
-        long min = Long.MAX_VALUE;
-        long max = Long.MIN_VALUE;
-        for (BudgetChartPoint point : points) {
-            min = Math.min(min, point.balanceCents());
-            max = Math.max(max, point.balanceCents());
-        }
-        // Guard against a flat series (all values identical): expand the range by 1 cent
-        // on each side so the denominator is never zero and the single line draws centred.
-        if (max == min) {
-            max += 1;
-            min -= 1;
-        }
+        long min = cachedMin;
+        long max = cachedMax;
 
         float stepX = points.size() > 1 ? width / (points.size() - 1) : 0;
         float lastX = -1;
@@ -116,19 +169,18 @@ public class BudgetBalanceChartView extends View {
             if (i > 0) {
                 canvas.drawLine(lastX, lastY, x, y, linePaint);
             }
-            canvas.drawCircle(x, y, dp(2.5f), pointPaint);
+            canvas.drawCircle(x, y, pointRadius, pointPaint);
             lastX = x;
             lastY = y;
         }
 
-        canvas.drawText(CurrencyFormatter.euros(max), leftPad, topPad + dp(2f), labelPaint);
-        canvas.drawText(CurrencyFormatter.euros(min), leftPad, bottomY - dp(4f), labelPaint);
+        canvas.drawText(cachedMaxLabel, leftPad, topPad + dp(2f), labelPaint);
+        canvas.drawText(cachedMinLabel, leftPad, bottomY - dp(4f), labelPaint);
 
         BudgetChartPoint first = points.get(0);
         BudgetChartPoint last = points.get(points.size() - 1);
         canvas.drawText(first.label(), leftPad, getHeight() - dp(8f), labelPaint);
-        float endLabelWidth = labelPaint.measureText(last.label());
-        canvas.drawText(last.label(), leftPad + width - endLabelWidth, getHeight() - dp(8f), labelPaint);
+        canvas.drawText(last.label(), leftPad + width - cachedEndLabelWidth, getHeight() - dp(8f), labelPaint);
     }
 
     private float dp(float value) {

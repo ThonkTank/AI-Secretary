@@ -1,6 +1,5 @@
 package com.autosecretary.features.task.ui.edit;
 
-import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.autosecretary.features.task.application.TaskDataService;
@@ -30,7 +29,6 @@ import java.util.ArrayList;
 public class TaskEditSessionController {
     private final TaskDataService taskDataService;
     private Runnable onTaskChanged = () -> { };
-    private final TaskEditStateMapper taskEditStateMapper = new TaskEditStateMapper();
 
     private final MutableLiveData<TaskEditState> selectedTask = new MutableLiveData<>();
     private final MutableLiveData<Task> selectedBaseTask = new MutableLiveData<>();
@@ -44,14 +42,11 @@ public class TaskEditSessionController {
         this.onTaskChanged = onTaskChanged == null ? () -> { } : onTaskChanged;
     }
 
-    public LiveData<TaskEditState> getSelectedTask() {
-        return selectedTask;
-    }
-
     public boolean isNewTask() {
         return Boolean.TRUE.equals(isNewTask.getValue());
     }
 
+    /** Returns the current edit state or throws if no task is selected. Used by dialog on save. */
     public TaskEditState requireSelectedTask() {
         TaskEditState task = selectedTask.getValue();
         if (task == null) {
@@ -60,6 +55,7 @@ public class TaskEditSessionController {
         return task;
     }
 
+    /** Returns the original Task loaded from DB, or throws if none. Used for round-trip mapping on save. */
     public Task requireSelectedBaseTask() {
         Task task = selectedBaseTask.getValue();
         if (task == null) {
@@ -68,14 +64,16 @@ public class TaskEditSessionController {
         return task;
     }
 
+    /** Loads an existing task from the DB and converts it to a {@link TaskEditState} for editing. */
     public void beginEditTask(String taskId) {
         taskDataService.loadTask(taskId, task -> {
             selectedBaseTask.postValue(task);
-            selectedTask.postValue(taskEditStateMapper.fromTask(task));
+            selectedTask.postValue(TaskEditStateMapper.fromTask(task));
             isNewTask.postValue(false);
         });
     }
 
+    /** Initialises a blank Task with one default pref-slot and converts it to edit state for a new task. */
     public void createNewTask() {
         Task task = new Task();
         task.core = new TaskCore();
@@ -88,10 +86,11 @@ public class TaskEditSessionController {
         task.prefSlots.add(TaskPrefSlotFactory.createDefault(task.core.id));
 
         selectedBaseTask.setValue(task);
-        selectedTask.setValue(taskEditStateMapper.fromTask(task));
+        selectedTask.setValue(TaskEditStateMapper.fromTask(task));
         isNewTask.setValue(true);
     }
 
+    /** Persists the mapped Task to the DB and notifies the list screen via onTaskChanged callback. */
     public void saveEditedTask(Task mappedTask) {
         taskDataService.saveTask(mappedTask, () -> {
             isNewTask.postValue(false);
@@ -99,6 +98,7 @@ public class TaskEditSessionController {
         });
     }
 
+    /** Deletes the currently selected task from the DB, notifies onTaskChanged, then runs the callback. */
     public void deleteSelectedTask(Runnable onDeleted) {
         String taskId = requireSelectedBaseTask().core.id;
         taskDataService.deleteTask(taskId, () -> {

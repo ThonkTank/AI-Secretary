@@ -4,7 +4,7 @@
 
 ### [nit] `direction` column name inconsistent across entities @skill:review-architecture
 **File:** `BudgetRecurringTemplateEntity.java:97`
-**Problem:** All three budget entities expose a `TransactionDirection direction` field. In `BudgetTransactionEntity` and `BudgetCategory` the column is aliased to `"type"` via `@ColumnInfo`; in `BudgetRecurringTemplateEntity` it is aliased to `"transactionType"`. These are separate tables so there is no runtime failure, but the inconsistency is confusing for anyone writing raw queries against multiple tables.
+**Problem:** All three budget entities expose a `TransactionDirection direction` field. In `BudgetTransactionEntity` and `BudgetCategoryEntity` the column is aliased to `"type"` via `@ColumnInfo`; in `BudgetRecurringTemplateEntity` it is aliased to `"transactionType"`. These are separate tables so there is no runtime failure, but the inconsistency is confusing for anyone writing raw queries against multiple tables.
 **Fix suggestion:** Align `BudgetRecurringTemplateEntity` to `@ColumnInfo(name = "type")` with a DB version bump. Because the project uses `fallbackToDestructiveMigration()` this is a data-loss bump — only acceptable at the right moment in development.
 
 ### [nit] `recurringValue` carries overloaded meaning depending on `recurringType` @skill:review-architecture
@@ -23,15 +23,3 @@
 **Fix suggestion:** Group into an `@Embedded AmountStats` value object. Requires a DB schema change (column renames with prefix); defer until next schema revision alongside the import-progress clump fix.
 
 ---
-
-### [rename] `BudgetAccount`, `BudgetCategory`, `BudgetLimit` — missing `Entity` suffix @skill:review-structure
-
-**Paths involved:** `entity/BudgetAccount.java`, `entity/BudgetCategory.java`, `entity/BudgetLimit.java`
-
-**What makes it hard to navigate today:** Three of the six entity classes lack the `Entity` suffix (`BudgetAccount`, `BudgetCategory`, `BudgetLimit`) while the other three have it (`BudgetTransactionEntity`, `BudgetImportEntity`, `BudgetRecurringTemplateEntity`). When scanning import statements in other files — repositories, application services, UI classes — a reader cannot tell from the type name alone whether `BudgetAccount` is a domain value object or a Room entity. The three with no suffix look like domain models, creating false symmetry with domain types in `budget/domain/`.
-
-**Proposed structural change:** Add `Entity` suffix to all three: `BudgetAccountEntity`, `BudgetCategoryEntity`, `BudgetLimitEntity`. Rename files to match.
-
-**Why it reduces mental load:** Every import of a `*Entity` type unambiguously signals "this is a data-layer Room object". New contributors won't mistake these for domain models. The naming rule becomes one consistent pattern across all six entities.
-
-**Tradeoffs / risks:** High import churn — these three types are referenced in ~25 non-history Java files spanning UI, application, domain, and data layers (Room also registers them via `AppDatabase`). Defer until a convenient maintenance window; fix all three together in a single rename commit.

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Meal feature UI strings (German localization).
+         Covers: tabs (week plan, recipes, stock/shopping), dialog titles and actions,
+         plan/recipe/pantry/shopping row labels, input hints.
+         Keys are English (code references); values are German.
+         For new meal strings, add here and reference via @string/meal_[context] in Java/XML.
+         See ../strings.xml for app-wide (non-feature-specific) strings. -->
+    <string name="meal_title">Meal-Planung</string>
+    <string name="meal_tab_week">Wochenplan</string>
+    <string name="meal_tab_week_desc">Wochenplan anzeigen</string>
+    <string name="meal_tab_recipes">Rezepte</string>
+    <string name="meal_tab_recipes_desc">Rezepte anzeigen</string>
+    <string name="meal_tab_stock">Vorrat &amp; Einkauf</string>
+    <string name="meal_tab_stock_desc">Vorrat und Einkauf anzeigen</string>
+
+    <string name="meal_week_title">Wochenplan</string>
+    <string name="meal_add_plan">+ Rezept planen</string>
+    <string name="meal_add_plan_desc">Rezept-Planungs-Dialog öffnen</string>
+    <string name="meal_mark_done">Erledigt</string>
+    <string name="meal_mark_done_desc">%s als erledigt markieren</string>
+    <string name="meal_mark_open">Offen</string>
+    <string name="meal_mark_open_desc">%s als offen markieren</string>
+
+    <string name="meal_recipe_title">Rezepte</string>
+    <string name="meal_recipe_detail_placeholder">Rezept wählen, um Details anzuzeigen.</string>
+    <string name="meal_recipe_select_desc">Rezept %s wählen und Details anzeigen</string>
+
+    <string name="meal_stock_title">Vorrat &amp; Einkauf</string>
+    <string name="meal_pantry_title">Vorrat</string>
+    <string name="meal_shopping_title">Einkauf heute</string>
+    <string name="meal_add_need">+ Bedarf in Einkauf</string>
+    <string name="meal_add_need_desc">Neuen Einkaufsbedarf hinzufügen</string>
+    <string name="meal_add_pantry">+ Vorratseintrag</string>
+    <string name="meal_add_pantry_desc">Neuen Vorratseintrag hinzufügen</string>
+
+    <string name="meal_plan_dialog_title">Rezept planen</string>
+    <string name="meal_plan_dialog_save">Planen</string>
+    <string name="meal_label_recipe">Rezept *</string>
+    <string name="meal_label_date">Datum *</string>
+    <string name="meal_label_type">Mahlzeitentyp *</string>
+    <string name="meal_label_servings">Portionen *</string>
+    <string name="meal_need_dialog_title">Bedarf in Einkauf übernehmen</string>
+    <string name="meal_need_dialog_save">Übernehmen</string>
+    <string name="meal_label_name">Name *</string>
+    <string name="meal_label_amount">Menge *</string>
+    <string name="meal_label_unit">Einheit *</string>
+    <string name="meal_pantry_dialog_title">Vorrat anlegen</string>
+    <string name="meal_pantry_dialog_save">Anlegen</string>
+    <string name="meal_label_shelf_life_days">Haltbarkeit (Tage) *</string>
+    <string name="meal_label_location">Lagerort *</string>
+
+    <string name="meal_hint_date">@string/hint_date_yyyy_mm_dd</string>
+    <string name="meal_hint_servings">Portionen</string>
+    <string name="meal_hint_name">Name</string>
+    <string name="meal_hint_amount">Menge</string>
+    <string name="meal_hint_unit">Einheit</string>
+    <string name="meal_hint_shelf_life_days">Haltbarkeit (Tage)</string>
+
+    <!-- Empty state messages -->
+    <string name="meal_empty_week">Noch keine Mahlzeiten geplant.\nTippe auf „+ Rezept planen" um loszulegen.</string>
+    <string name="meal_empty_pantry">Noch keine Vorräte eingetragen.</string>
+    <string name="meal_empty_shopping">Keine Einkäufe für heute.</string>
+
+    <!-- Success confirmation messages -->
+    <string name="meal_success_plan_created">Mahlzeit geplant</string>
+    <string name="meal_success_need_created">Einkaufsbedarf hinzugefügt</string>
+    <string name="meal_success_pantry_created">Vorratseintrag angelegt</string>
+
+    <!-- Validation error messages -->
+    <string name="meal_error_field_required">%s ist erforderlich</string>
+    <string name="meal_error_invalid_date">Ungültiges Datum. Format: YYYY-MM-DD</string>
+    <string name="meal_error_invalid_number">%s muss eine Zahl sein</string>
+    <string name="meal_error_negative_number">%s darf nicht negativ sein</string>
+    <string name="meal_error_no_recipes">Keine Rezepte verfügbar. Bitte erstellen Sie zuerst ein Rezept.</string>
+</resources>

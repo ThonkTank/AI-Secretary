@@ -32,14 +32,14 @@ import java.util.UUID;
         tableName = "budget_transaction",
         foreignKeys = {
                 @ForeignKey(
-                        entity = BudgetAccount.class,
+                        entity = BudgetAccountEntity.class,
                         parentColumns = "id",
                         childColumns = "accountId",
                         onDelete = ForeignKey.RESTRICT,
                         onUpdate = ForeignKey.CASCADE
                 ),
                 @ForeignKey(
-                        entity = BudgetCategory.class,
+                        entity = BudgetCategoryEntity.class,
                         parentColumns = "id",
                         childColumns = "categoryId",
                         onDelete = ForeignKey.SET_NULL,

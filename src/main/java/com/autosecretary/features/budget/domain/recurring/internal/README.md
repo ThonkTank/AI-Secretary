@@ -72,10 +72,8 @@ If you need to adjust recurring detection behavior:
 
 All constants are clearly named and documented with inline comments.
 
-## Limitations & Future Work
+## Known Limitations
 
 - **No seasonal patterns** — only detects recurring intervals within a sliding window.
 - **No trend detection** — recurring patterns with amounts that slowly increase/decrease are treated as inconsistent.
 - **No handling of rounding errors** — bank statements with slight variations in cents may be rejected as inconsistent.
-
-See [`../REVIEW_BACKLOG.md`](../REVIEW_BACKLOG.md) for deferred improvements.

@@ -69,6 +69,10 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         // Data loaded in onDataSetChanged
     }
 
+    /**
+     * Loads all tasks from the database, filters to the widget's selected date, and sorts
+     * by start time. Filtering is done in-memory (no date-scoped DAO query exists yet).
+     */
     @Override
     public void onDataSetChanged() {
         List<Task> tasks = taskDao.readAll();
@@ -99,13 +103,9 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
      * Returns the text color for a task based on its state: in-progress, completed, or default.
      */
     private int getTaskStateTextColor(TaskListItem item) {
-        if (item.inProgress) {
-            return colorInProgress;
-        } else if (item.completed) {
-            return colorCompleted;
-        } else {
-            return colorDefault;
-        }
+        if (item.inProgress) return colorInProgress;
+        if (item.completed) return colorCompleted;
+        return colorDefault;
     }
 
     @Override
@@ -131,6 +131,8 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         }
 
         rv.setCompoundButtonChecked(R.id.WidgetRowCheckbox, item.completed);
+        rv.setContentDescription(R.id.WidgetRowCheckbox,
+                context.getString(R.string.task_widget_checkbox_content_description, item.title));
 
         // Only today's uncompleted scheduled tasks can be toggled via widget.
         // Past/future dates are for viewing only. Checkbox is disabled to prevent

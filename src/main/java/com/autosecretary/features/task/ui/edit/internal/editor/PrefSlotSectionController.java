@@ -130,9 +130,9 @@ public class PrefSlotSectionController {
         GridLayout layout = new GridLayout(fragment.requireContext());
         layout.setColumnCount(DAY_PICKER_COLUMN_COUNT);
         layout.setPadding(
-            dimenPx(R.dimen.task_editor_day_picker_horizontal_padding),
+            dimenPx(R.dimen.spacing_sm),
             dimenPx(R.dimen.task_editor_day_picker_vertical_padding),
-            dimenPx(R.dimen.task_editor_day_picker_horizontal_padding),
+            dimenPx(R.dimen.spacing_sm),
             dimenPx(R.dimen.task_editor_day_picker_vertical_padding)
         );
         layout.setUseDefaultMargins(false);
@@ -173,7 +173,7 @@ public class PrefSlotSectionController {
         btn.setChecked(isSelected);
         btn.setInsetTop(0);
         btn.setInsetBottom(0);
-        int horizontalPadding = dimenPx(R.dimen.task_editor_day_button_horizontal_padding);
+        int horizontalPadding = dimenPx(R.dimen.spacing_xs);
         btn.setPadding(horizontalPadding, 0, horizontalPadding, 0);
 
         GridLayout.LayoutParams params = new GridLayout.LayoutParams(

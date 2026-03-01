@@ -40,7 +40,7 @@ Domain Layer (features/budget/domain/)
   └─ ParsedStatement, ParsedTransaction (immutable DTOs)
 
 Data Layer (features/budget/data/)
-  ├─ data/internal (CSV parsing)
+  ├─ data/dao/ (DAO interfaces), data/entity/ (Room entities)
   ├─ data/api/ (this — HTTP integration)
   │  ├─ ClaudeStatementApiClient (HTTP → JSON)
   │  └─ ClaudeApiKeyStore (encryption/decryption)
@@ -96,14 +96,6 @@ Users enter their API key in the app settings:
 - **Parsing time:** Typically 10-30 seconds depending on PDF size and Anthropic API load
 - **Network:** Requires internet connection; works on cellular but slower
 - **Encryption overhead:** Minimal; Android Keystore operations are ~<1ms
-
-## Future Improvements
-
-- [ ] Support for other document formats (images, scans)
-- [ ] Fallback parser for XML/structured export formats
-- [ ] Batch PDF import (multiple files at once)
-- [ ] Caching of API responses to reduce costs
-- [ ] Support for other LLM providers (OpenAI, Gemini, etc.)
 
 ## Key Design Decisions
 

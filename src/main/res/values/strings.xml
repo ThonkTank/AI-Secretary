@@ -5,6 +5,13 @@
 
     <string name="nav_tasks">Aufgaben</string>
     <string name="nav_budget">Budget</string>
+    <string name="nav_meal">Mahlzeiten</string>
+
+    <!-- Shared action labels used across features (task, budget, meal dialogs). -->
+    <string name="action_save">Speichern</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_delete">Löschen</string>
+    <string name="hint_date_yyyy_mm_dd">Datum (YYYY-MM-DD)</string>
 
     <string name="settings_title">Einstellungen</string>
     <string name="settings_option_restore_backup">Backup wiederherstellen</string>

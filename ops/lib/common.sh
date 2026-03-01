@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # ops/lib/common.sh — Common utility functions for ops scripts
 
+# CUSTOMIZE: adjust ADB to your local Android SDK path. Find it with: which adb
+ADB="/home/aaron/Android/Sdk/platform-tools/adb"
+
 # Constants for parsing daily summaries
 readonly SUMMARY_HEADER="Zusammenfassung"
 readonly SLOTS_MARKER="slots"
@@ -16,9 +19,9 @@ count_days_with_task() {
     local task_name="$1"
     local summaries_text="${2:-$ALL_SUMMARIES}"
 
-    echo "$summaries_text" | awk -v task="$task_name" -v slots="$SLOTS_MARKER" '
+    echo "$summaries_text" | awk -v task="$task_name" -v slots="$SLOTS_MARKER" -v header="$SUMMARY_HEADER" '
         BEGIN { count = 0 }
-        /Zusammenfassung/ {
+        $0 ~ header {
             # At a new day boundary, count the previous day if it had the task
             if (task_found_in_day) count++
             task_found_in_day = 0

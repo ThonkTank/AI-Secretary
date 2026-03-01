@@ -8,7 +8,20 @@
     <dimen name="spacing_lg">16dp</dimen>
     <dimen name="spacing_xl">24dp</dimen>
 
-    <!-- App-wide text scale tokens (sp). Feature-specific sizes live in feature_dimens.xml. -->
+    <!-- App-wide corner radius scale shared across features. -->
+    <dimen name="corner_radius_sm">12dp</dimen>
+    <dimen name="corner_radius_md">14dp</dimen>
+    <dimen name="corner_radius_lg">16dp</dimen>
+    <dimen name="corner_radius_xl">18dp</dimen>
+
+    <!-- Material minimum touch target (48dp). -->
+    <dimen name="touch_target_min">48dp</dimen>
+
+    <!-- App-wide text scale tokens (sp). Feature-specific sizes live in feature_dimens.xml.
+         Scale: xs (12) → sm (14) → md (16) → xl (18).
+         Note: there is no text_lg — the naming deliberately skips it because text_xl (18sp)
+         is only 2sp above text_md. See REVIEW_BACKLOG.md (typography entry) for the tracked
+         rename task. Do not add text_lg without first resolving that rename. -->
     <dimen name="text_xs">12sp</dimen>
     <dimen name="text_sm">14sp</dimen>
     <dimen name="text_md">16sp</dimen>

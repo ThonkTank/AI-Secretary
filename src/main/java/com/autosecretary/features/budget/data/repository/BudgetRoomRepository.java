@@ -17,9 +17,9 @@ import androidx.room.RoomDatabase;
 import com.autosecretary.features.budget.data.dao.BudgetLimitDao;
 import com.autosecretary.features.budget.data.dao.BudgetAccountCategoryDao;
 import com.autosecretary.features.budget.data.dao.BudgetTransactionDao;
-import com.autosecretary.features.budget.data.entity.BudgetAccount;
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
-import com.autosecretary.features.budget.data.entity.BudgetLimit;
+import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
+import com.autosecretary.features.budget.data.entity.BudgetLimitEntity;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.dao.BudgetRecurringTemplateDao;
 import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEntity;
@@ -65,15 +65,15 @@ public class BudgetRoomRepository implements BudgetRepository {
      * queries. See {@link #isAllAccounts(String)}.
      */
 
-    @Override public BudgetAccount findAccountById(String accountId) {
+    @Override public BudgetAccountEntity findAccountById(String accountId) {
         return accountCategoryDao.findAccountById(accountId);
     }
 
-    @Override public List<BudgetAccount> findActiveAccounts() {
+    @Override public List<BudgetAccountEntity> findActiveAccounts() {
         return accountCategoryDao.findActiveAccounts();
     }
 
-    @Override public List<BudgetCategory> findActiveCategories() {
+    @Override public List<BudgetCategoryEntity> findActiveCategories() {
         return accountCategoryDao.findActiveCategories();
     }
 
@@ -89,11 +89,11 @@ public class BudgetRoomRepository implements BudgetRepository {
         return transactionDao.findById(transactionId);
     }
 
-    @Override public BudgetLimit findBudgetLimit(String categoryId, String yearMonth) {
+    @Override public BudgetLimitEntity findBudgetLimit(String categoryId, String yearMonth) {
         return limitDao.findLimitForCategoryAndMonth(categoryId, yearMonth);
     }
 
-    @Override public BudgetLimit findPreviousMonthLimit(String categoryId, String targetYearMonth) {
+    @Override public BudgetLimitEntity findPreviousMonthLimit(String categoryId, String targetYearMonth) {
         return limitDao.findLimitForCategoryAndMonth(categoryId, previousYearMonth(targetYearMonth));
     }
 
@@ -107,7 +107,7 @@ public class BudgetRoomRepository implements BudgetRepository {
 
     @Override public long getCurrentBalanceCents(String accountId) {
         if (isAllAccounts(accountId)) {
-            return accountCategoryDao.sumCurrentBalanceCentsForActiveAccounts();
+            return accountCategoryDao.getTotalCurrentBalanceCents();
         }
         Long value = accountCategoryDao.findCurrentBalanceCentsByAccountId(accountId);
         return value != null ? value : 0L;
@@ -374,7 +374,7 @@ public class BudgetRoomRepository implements BudgetRepository {
      */
     private record TransferValidation(BudgetTransactionEntity debit, BudgetTransactionEntity credit) {}
 
-    @Override public void saveBudgetLimit(BudgetLimit budgetLimit) {
+    @Override public void saveBudgetLimit(BudgetLimitEntity budgetLimit) {
         limitDao.insert(budgetLimit);
     }
 
@@ -382,11 +382,11 @@ public class BudgetRoomRepository implements BudgetRepository {
         transactionDao.insertAll(transactions);
     }
 
-    @Override public void insertAccount(BudgetAccount account) {
+    @Override public void insertAccount(BudgetAccountEntity account) {
         accountCategoryDao.insertAccount(account);
     }
 
-    @Override public void insertCategory(BudgetCategory category) {
+    @Override public void insertCategory(BudgetCategoryEntity category) {
         accountCategoryDao.insertCategory(category);
     }
 

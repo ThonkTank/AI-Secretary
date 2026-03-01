@@ -12,7 +12,7 @@ package com.autosecretary.features.budget.ui.state;
  *
  * freeBudgetCents is the account's current running balance, not a derived
  * "remaining-within-limits" figure. It is read directly from
- * {@code BudgetAccount.currentBalanceCents} and may be positive (surplus)
+ * {@code BudgetAccountEntity.currentBalanceCents} and may be positive (surplus)
  * or negative (overdraft). See {@code BudgetOverviewLoader.computeSummary()}.
  */
 public class BudgetSummaryData {

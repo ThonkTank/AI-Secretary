@@ -45,7 +45,7 @@ See [Why not use float for currency?](https://stackoverflow.com/a/3730040).
 
 ### Repository interfaces, not concrete classes
 `BudgetRepository` and `BudgetImportRepository` are interfaces. Concrete Room implementations live in
-`budget/data/internal/`. This lets domain logic stay testable and independent of Android.
+`budget/data/repository/`. This lets domain logic stay testable and independent of Android.
 
 ### Read projections (`CategorySpendSummary`, `MonthlyOverviewItem`)
 These flat classes/records are produced by database queries (via `@Query`) and mapped directly from

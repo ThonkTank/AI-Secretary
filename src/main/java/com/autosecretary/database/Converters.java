@@ -7,7 +7,7 @@ import com.autosecretary.shared.Priority;
 import com.autosecretary.features.meal.domain.MealType;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskSlot;
-import com.autosecretary.features.budget.data.entity.BudgetAccount;
+import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
 import com.autosecretary.features.budget.domain.TransactionKind;
 import com.autosecretary.features.budget.domain.importing.ImportStatus;
 import com.autosecretary.features.budget.domain.recurring.RecurringType;
@@ -181,13 +181,13 @@ public class Converters {
     }
 
     @TypeConverter
-    public static String fromAccountType(BudgetAccount.AccountType type) {
+    public static String fromAccountType(BudgetAccountEntity.AccountType type) {
         return fromEnum(type);
     }
 
     @TypeConverter
-    public static BudgetAccount.AccountType toAccountType(String value) {
-        return toEnum(value, BudgetAccount.AccountType.class);
+    public static BudgetAccountEntity.AccountType toAccountType(String value) {
+        return toEnum(value, BudgetAccountEntity.AccountType.class);
     }
 
     @TypeConverter

@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.util.HexFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -72,7 +73,7 @@ public class BudgetImportUseCase {
         });
     }
 
-    ImportResult runImportPipeline(String accountId,
+    private ImportResult runImportPipeline(String accountId,
                                    String fileName,
                                    byte[] fileBytes,
                                    String mimeType) {
@@ -96,8 +97,6 @@ public class BudgetImportUseCase {
                     parsed.periodStart(),
                     parsed.periodEnd()
             ));
-
-            repository.notifyBudgetDataUpdated();
 
             // Pattern detection runs after import is fully committed.
             // Failures here must not mark the import as failed.
@@ -124,6 +123,9 @@ public class BudgetImportUseCase {
     /**
      * Enriches parsed transactions: deduplicates, resolves categories, builds domain objects ready for persistence.
      *
+     * <p>Pre-loads known import hashes, active category IDs, and default category IDs in batch
+     * queries before the loop to avoid per-transaction DB round-trips.
+     *
      * <p>For each transaction:
      * <ol>
      *   <li>Computes an importHash (from file metadata or generates a fallback fingerprint)</li>
@@ -140,6 +142,12 @@ public class BudgetImportUseCase {
     private ImportComputation buildTransactions(String accountId,
                                                 String importId,
                                                 List<ParsedTransaction> parsedTransactions) {
+        // Batch-load lookup data before the loop: 3 queries total instead of up to 3×N.
+        Set<String> knownHashes = repository.findImportHashesForAccount(accountId);
+        Set<String> activeCategoryIds = repository.findActiveCategoryIds();
+        String defaultIncomeCategoryId = repository.findDefaultCategoryId(TransactionDirection.INCOME);
+        String defaultExpenseCategoryId = repository.findDefaultCategoryId(TransactionDirection.EXPENSE);
+
         List<RecurringBudgetTransaction> newTransactions = new ArrayList<>();
         int duplicates = 0;
         int recognizedCategories = 0;
@@ -155,16 +163,17 @@ public class BudgetImportUseCase {
                     : buildTransactionFingerprint(parsed.bookingDate(), parsed.amountCents(), parsed.payee());
 
             // Check if a transaction with this hash was already imported (avoid duplicates if the user re-imports the same file).
-            if (repository.existsTransactionByImportHash(txHash)) {
+            if (knownHashes.contains(txHash)) {
                 duplicates++;
                 continue;
             }
 
             // Resolve category and track recognition.
-            boolean isKnown = parsed.categoryId() != null && repository.isKnownCategory(parsed.categoryId());
+            boolean isKnown = parsed.categoryId() != null && activeCategoryIds.contains(parsed.categoryId());
+            TransactionDirection direction = TransactionDirection.fromAmountCents(parsed.amountCents());
             String categoryId = isKnown
                     ? parsed.categoryId()
-                    : repository.findDefaultCategoryId(TransactionDirection.fromAmountCents(parsed.amountCents()));
+                    : (direction == TransactionDirection.INCOME ? defaultIncomeCategoryId : defaultExpenseCategoryId);
 
             newTransactions.add(RecurringBudgetTransaction.forImport(
                     /* id= */ null,
@@ -238,7 +247,7 @@ public class BudgetImportUseCase {
         try {
             // Exclude TRANSFER records: BudgetTransactionMapper.toDomain() throws on them
             // by design (transfers are internal account movements, not income/expense).
-            List<RecurringBudgetTransaction> accountTransactions = repository.loadTransactionsForAccount(accountId).stream()
+            List<RecurringBudgetTransaction> accountTransactions = repository.findTransactionsForAccount(accountId).stream()
                     .filter(r -> r.type() != ImportTransactionType.TRANSFER)
                     .map(BudgetTransactionMapper::toDomain)
                     .toList();

@@ -1,6 +1,8 @@
 package com.autosecretary.features.budget.ui.internal;
 
-import com.autosecretary.features.budget.data.entity.BudgetAccount;
+import android.graphics.Color;
+
+import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.TransactionKind;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
@@ -40,7 +42,7 @@ public class BudgetOverviewLoader {
             DateTimeFormatter.ofPattern("MMM yy", Locale.GERMAN);
 
     public record OverviewData(
-            List<BudgetAccount> accounts,
+            List<BudgetAccountEntity> accounts,
             String accountId,
             List<BudgetTransactionRow> rows,
             BudgetSummaryData summary,
@@ -59,7 +61,7 @@ public class BudgetOverviewLoader {
     public OverviewData load(YearMonth month,
                              String selectedAccountId,
                              TimeRangeFilter filter) {
-        List<BudgetAccount> accounts = repository.findActiveAccounts();
+        List<BudgetAccountEntity> accounts = repository.findActiveAccounts();
         String accountId = resolveSelectedAccountId(selectedAccountId, accounts);
         if (accountId == null) {
             return new OverviewData(accounts, null, new ArrayList<>(), null, new ArrayList<>());
@@ -80,7 +82,7 @@ public class BudgetOverviewLoader {
      * if non-blank, otherwise the first account in {@code fallbackAccounts}, or {@code null} when
      * the account list is empty (no accounts configured yet).
      */
-    private static String resolveSelectedAccountId(String selectedAccountId, List<BudgetAccount> fallbackAccounts) {
+    private static String resolveSelectedAccountId(String selectedAccountId, List<BudgetAccountEntity> fallbackAccounts) {
         if (selectedAccountId != null && !selectedAccountId.isBlank()) {
             return selectedAccountId;
         }
@@ -98,6 +100,7 @@ public class BudgetOverviewLoader {
                     .label(buildTransactionLabel(item))
                     .direction(item.direction)
                     .categoryColorHex(item.categoryColorHex)
+                    .categoryColor(resolveColor(item.categoryColorHex))
                     .amountCents(item.amountCents)
                     .categoryId(item.categoryId)
                     .note(item.note)
@@ -108,8 +111,16 @@ public class BudgetOverviewLoader {
         return rows;
     }
 
+    /** Pre-resolves a hex color string to an int on the background thread, avoiding work in onBindViewHolder. */
+    private static int resolveColor(String colorHex) {
+        if (CurrencyFormatter.isValidColorHex(colorHex)) {
+            return Color.parseColor(colorHex);
+        }
+        return BudgetTransactionRow.NO_CATEGORY_COLOR;
+    }
+
     private BudgetSummaryData computeSummary(List<MonthlyOverviewItem> items, String accountId) {
-        BudgetAccount account = repository.findAccountById(accountId);
+        BudgetAccountEntity account = repository.findAccountById(accountId);
         // "Free budget" is the account's current running balance, not income-minus-expenses.
         long freeBudgetCents = account != null ? account.currentBalanceCents : 0L;
         return summaryPresentationMapper.toSummary(items, freeBudgetCents);

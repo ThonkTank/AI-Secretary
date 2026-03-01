@@ -5,8 +5,8 @@ import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 
-import com.autosecretary.features.budget.data.entity.BudgetAccount;
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
 import java.util.List;
@@ -31,13 +31,13 @@ public interface BudgetAccountCategoryDao {
      * Retrieves all active (non-archived) categories, sorted by type then name.
      */
     @Query("SELECT * FROM budget_category WHERE archived = 0 ORDER BY type ASC, name COLLATE NOCASE ASC")
-    List<BudgetCategory> findActiveCategories();
+    List<BudgetCategoryEntity> findActiveCategories();
 
     /**
      * Retrieves all active (non-archived) accounts, sorted by name case-insensitive.
      */
     @Query("SELECT * FROM budget_account WHERE archived = 0 ORDER BY name COLLATE NOCASE ASC")
-    List<BudgetAccount> findActiveAccounts();
+    List<BudgetAccountEntity> findActiveAccounts();
 
     /**
      * Retrieves a category by ID.
@@ -45,7 +45,7 @@ public interface BudgetAccountCategoryDao {
      * @return the category, or null if not found
      */
     @Query("SELECT * FROM budget_category WHERE id = :categoryId LIMIT 1")
-    BudgetCategory findCategoryById(String categoryId);
+    BudgetCategoryEntity findCategoryById(String categoryId);
 
     /**
      * Retrieves an account by ID.
@@ -53,7 +53,7 @@ public interface BudgetAccountCategoryDao {
      * @return the account, or null if not found
      */
     @Query("SELECT * FROM budget_account WHERE id = :accountId LIMIT 1")
-    BudgetAccount findAccountById(String accountId);
+    BudgetAccountEntity findAccountById(String accountId);
 
     /**
      * Returns the sum of balances across all active accounts.
@@ -61,7 +61,7 @@ public interface BudgetAccountCategoryDao {
      * Returns 0 if no accounts exist.
      */
     @Query("SELECT COALESCE(SUM(currentBalanceCents), 0) FROM budget_account WHERE archived = 0")
-    long sumCurrentBalanceCentsForActiveAccounts();
+    long getTotalCurrentBalanceCents();
 
     /**
      * Returns the current balance for a single account.
@@ -139,7 +139,7 @@ public interface BudgetAccountCategoryDao {
      * If an account with the same ID already exists, this is a no-op.
      */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    void insertAccount(BudgetAccount account);
+    void insertAccount(BudgetAccountEntity account);
 
     /**
      * Inserts a new category (idempotent).
@@ -147,5 +147,5 @@ public interface BudgetAccountCategoryDao {
      * If a category with the same ID already exists, this is a no-op.
      */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    void insertCategory(BudgetCategory category);
+    void insertCategory(BudgetCategoryEntity category);
 }

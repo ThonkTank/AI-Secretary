@@ -25,7 +25,7 @@ import com.autosecretary.features.budget.domain.importing.ImportStatus;
 @Entity(
         tableName = "budget_import",
         foreignKeys = @ForeignKey(
-                entity = BudgetAccount.class,
+                entity = BudgetAccountEntity.class,
                 parentColumns = "id",
                 childColumns = "accountId",
                 onDelete = ForeignKey.RESTRICT,

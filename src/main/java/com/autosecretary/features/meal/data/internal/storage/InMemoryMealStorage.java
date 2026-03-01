@@ -24,6 +24,12 @@ import java.util.Objects;
  * from accidentally mutating the internal state. Mutations happen only via {@code upsert} and
  * {@code delete}, ensuring the storage layer is the exclusive mutator.
  *
+ * <p><strong>Data volatility:</strong> All data stored here is lost when the Android process
+ * dies (app killed, device restarted, etc.). Unlike the task and budget features (backed by Room),
+ * the meal feature deliberately uses in-memory storage. Data must be re-populated on each app
+ * launch — typically via {@code LegacyMealImportService} or the demo seed in
+ * {@code MealPlannerPresenter}.
+ *
  * <p><strong>Thread safety:</strong> This class is not thread-safe. The maps are not
  * synchronized. Callers must ensure single-threaded access or use external synchronization.
  * In the current architecture, all storage access is routed through a single-threaded executor.

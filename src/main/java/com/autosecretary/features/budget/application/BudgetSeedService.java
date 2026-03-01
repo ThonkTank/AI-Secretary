@@ -1,7 +1,7 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.data.entity.BudgetAccount;
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
+import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.TransactionDirection;
@@ -42,8 +42,8 @@ public class BudgetSeedService {
     private static final String CAT_GEHALT       = "Gehalt";
 
     public record SeedResult(
-            List<BudgetCategory> categories,
-            List<BudgetAccount> accounts,
+            List<BudgetCategoryEntity> categories,
+            List<BudgetAccountEntity> accounts,
             String selectedAccountId
     ) {
     }
@@ -55,10 +55,10 @@ public class BudgetSeedService {
     }
 
     public SeedResult ensureDefaultData(String selectedAccountId) {
-        List<BudgetAccount> accountList = repository.findActiveAccounts();
+        List<BudgetAccountEntity> accountList = repository.findActiveAccounts();
         if (accountList.isEmpty()) {
-            repository.insertAccount(new BudgetAccount("Girokonto"));
-            repository.insertAccount(new BudgetAccount("Tagesgeld"));
+            repository.insertAccount(new BudgetAccountEntity("Girokonto"));
+            repository.insertAccount(new BudgetAccountEntity("Tagesgeld"));
             accountList = repository.findActiveAccounts();
         }
         ensureDefaultCategories();
@@ -67,7 +67,7 @@ public class BudgetSeedService {
             seedDemoTransactions(accountId, LocalDate.now());
         }
 
-        List<BudgetCategory> categories = repository.findActiveCategories();
+        List<BudgetCategoryEntity> categories = repository.findActiveCategories();
         String effectiveAccount = (selectedAccountId == null || selectedAccountId.isBlank()) && !accountList.isEmpty()
                 ? accountList.get(0).id
                 : selectedAccountId;
@@ -76,16 +76,16 @@ public class BudgetSeedService {
     }
 
     private void ensureDefaultCategories() {
-        List<BudgetCategory> existing = repository.findActiveCategories();
+        List<BudgetCategoryEntity> existing = repository.findActiveCategories();
         if (!existing.isEmpty()) {
             return;
         }
-        repository.insertCategory(new BudgetCategory(CAT_SONSTIGES,    TransactionDirection.EXPENSE, "🏷️", "#9E9E9E"));
-        repository.insertCategory(new BudgetCategory(CAT_MIETE,        TransactionDirection.EXPENSE, "🏠", "#FF7043"));
-        repository.insertCategory(new BudgetCategory(CAT_LEBENSMITTEL, TransactionDirection.EXPENSE, "🛒", "#8BC34A"));
-        repository.insertCategory(new BudgetCategory(CAT_MOBILITAET,   TransactionDirection.EXPENSE, "🚗", "#03A9F4"));
-        repository.insertCategory(new BudgetCategory(CAT_FREIZEIT,     TransactionDirection.EXPENSE, "🎉", "#AB47BC"));
-        repository.insertCategory(new BudgetCategory(CAT_GEHALT,       TransactionDirection.INCOME,  "💰", "#4CAF50"));
+        repository.insertCategory(new BudgetCategoryEntity(CAT_SONSTIGES,    TransactionDirection.EXPENSE, "🏷️", "#9E9E9E"));
+        repository.insertCategory(new BudgetCategoryEntity(CAT_MIETE,        TransactionDirection.EXPENSE, "🏠", "#FF7043"));
+        repository.insertCategory(new BudgetCategoryEntity(CAT_LEBENSMITTEL, TransactionDirection.EXPENSE, "🛒", "#8BC34A"));
+        repository.insertCategory(new BudgetCategoryEntity(CAT_MOBILITAET,   TransactionDirection.EXPENSE, "🚗", "#03A9F4"));
+        repository.insertCategory(new BudgetCategoryEntity(CAT_FREIZEIT,     TransactionDirection.EXPENSE, "🎉", "#AB47BC"));
+        repository.insertCategory(new BudgetCategoryEntity(CAT_GEHALT,       TransactionDirection.INCOME,  "💰", "#4CAF50"));
     }
 
     private record DemoEntry(String categoryName, int day, TransactionDirection direction,
@@ -102,7 +102,7 @@ public class BudgetSeedService {
                 new DemoEntry(CAT_FREIZEIT,     15, TransactionDirection.EXPENSE,   3450,  "Restaurant"),
                 new DemoEntry(CAT_MOBILITAET,   18, TransactionDirection.EXPENSE,   6520,  "Tankstelle")
         );
-        List<BudgetCategory> categories = repository.findActiveCategories();
+        List<BudgetCategoryEntity> categories = repository.findActiveCategories();
         List<BudgetTransactionEntity> entities = new ArrayList<>();
         for (DemoEntry entry : entries) {
             if (entry.day() > reference.getDayOfMonth()) {
@@ -118,7 +118,7 @@ public class BudgetSeedService {
         repository.saveTransactions(entities);
     }
 
-    private String findCategoryIdByName(List<BudgetCategory> categories, String name) {
+    private String findCategoryIdByName(List<BudgetCategoryEntity> categories, String name) {
         return categories.stream()
                 .filter(c -> name.equals(c.name))
                 .map(c -> c.id)

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Global rule: app-wide tokens stay in generic files; feature-specific resources belong in feature-prefixed files.
+         Budget color groups:
+         - Semantic status: budget_positive (green), budget_negative (red), budget_warning (orange), budget_neutral (grey)
+           Used for transaction amounts, balance indicators, and status text.
+         - Chart: budget_chart_line, budget_chart_axis, budget_chart_label
+           Used by BudgetBalanceChartView for the balance timeline chart.
+         - UI: budget_divider (list dividers in budget overview)
+         - Widget: budget_widget_header_text, budget_widget_card_text (home-screen widget text)
+         Naming: budget_[domain]_[role] — see colors.xml header for full naming conventions.
+         For new colors, use semantic names that describe purpose, not appearance. -->
+
+    <!-- Semantic status colors -->
+    <color name="budget_positive">#FF4CAF50</color>
+    <color name="budget_negative">#FFF44336</color>
+    <color name="budget_warning">#FFFF9800</color>
+    <color name="budget_neutral">#FF9E9E9E</color>
+    <!-- The following tokens alias task_color_* intentionally — this is not a mistake.
+         task_color_* tokens double as the app-wide Material palette: task_color_primary is
+         bound to colorPrimary in AppTheme (styles.xml), task_color_outline → colorOutline,
+         task_color_on_primary → colorOnPrimary, task_color_on_surface → colorOnSurface.
+         To change the app's primary color, update task_color_primary in task_colors.xml;
+         the chart and widget colors will update automatically through these aliases.
+         See REVIEW_BACKLOG.md (coupling entry) for the tracked refactor that would rename
+         these shared tokens to app-wide names. -->
+    <color name="budget_chart_line">@color/task_color_primary</color>
+    <color name="budget_chart_axis">#FFBDBDBD</color>
+    <color name="budget_chart_label">#FF616161</color>
+    <color name="budget_divider">@color/task_color_outline</color>
+
+    <!-- Widget semantic tokens (parallel to task_widget_text_primary etc.) -->
+    <color name="budget_widget_header_text">@color/task_color_on_primary</color>
+    <color name="budget_widget_card_text">@color/task_color_on_surface</color>
+</resources>

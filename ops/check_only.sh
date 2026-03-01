@@ -3,10 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
-
-ADB=/home/aaron/Android/Sdk/platform-tools/adb
-LOGCAT_RAW=$($ADB logcat -d -s SlotGen:D | grep SlotGen)
-ALL_SUMMARIES=$(echo "$LOGCAT_RAW" | sed -n /Zusammenfassung/,/Gesamt:/p)
+LOGCAT_RAW=$($ADB logcat -d -s SlotGen:D | grep SlotGen || true)
+ALL_SUMMARIES=$(echo "$LOGCAT_RAW" | sed -n "/${SUMMARY_HEADER}/,/${SUMMARY_FOOTER}/p")
 if [ -z "$ALL_SUMMARIES" ]; then echo "ERROR: No summary blocks found."; exit 1; fi
 echo "========================================="
 echo "  Multi-Day Scheduling Validation"
@@ -36,4 +34,4 @@ echo ""
 echo "========================================="
 echo "  Results: $PASS passed, $FAIL failed"
 echo "========================================="
-if [ "$FAIL" -gt 0 ]; then exit 1; else exit 0; fi
+exit $(( FAIL > 0 ))

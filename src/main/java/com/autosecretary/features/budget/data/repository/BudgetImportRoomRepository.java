@@ -20,7 +20,9 @@ import com.autosecretary.features.budget.domain.recurring.RecurringTemplateSched
 import com.autosecretary.features.budget.domain.recurring.RecurringScheduleParams;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Room-backed implementation of the BudgetImportRepository interface.
@@ -38,20 +40,14 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     private final BudgetRecurringTemplateDao templateDao;
     private final BudgetTransactionDao transactionDao;
     private final BudgetAccountCategoryDao accountCategoryDao;
-    /** Callback invoked after budget data changes. Typically triggers UI refresh or
-     *  re-fetch of dependent data (balance, recurring templates, etc.). */
-    private final Runnable onBudgetDataUpdated;
-
     public BudgetImportRoomRepository(BudgetImportDao importDao,
                                        BudgetRecurringTemplateDao templateDao,
                                        BudgetTransactionDao transactionDao,
-                                       BudgetAccountCategoryDao accountCategoryDao,
-                                       Runnable onBudgetDataUpdated) {
+                                       BudgetAccountCategoryDao accountCategoryDao) {
         this.importDao = importDao;
         this.templateDao = templateDao;
         this.transactionDao = transactionDao;
         this.accountCategoryDao = accountCategoryDao;
-        this.onBudgetDataUpdated = onBudgetDataUpdated;
     }
 
     @Override
@@ -81,6 +77,18 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     @Override
+    public Set<String> findImportHashesForAccount(String accountId) {
+        return new HashSet<>(transactionDao.findImportHashesByAccountId(accountId));
+    }
+
+    @Override
+    public Set<String> findActiveCategoryIds() {
+        return accountCategoryDao.findActiveCategories().stream()
+                .map(c -> c.id)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    @Override
     public String findDefaultCategoryId(TransactionDirection direction) {
         return accountCategoryDao.findDefaultCategoryId(direction);
     }
@@ -94,7 +102,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     @Override
-    public List<ImportCategory> loadActiveCategoriesForImport() {
+    public List<ImportCategory> findActiveCategoriesForImport() {
         return accountCategoryDao.findActiveCategories().stream()
                 .map(category -> new ImportCategory(category.id, category.name, category.direction))
                 .toList();
@@ -107,16 +115,16 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     @Override
-    public List<ImportTransactionRecord> loadTransactionsForAccount(String accountId) {
+    public List<ImportTransactionRecord> findTransactionsForAccount(String accountId) {
         return transactionDao.findByAccountId(accountId).stream().map(this::toRecord).toList();
     }
 
     @Override
     public String createRecurringTemplate(RecurringSuggestion suggestion, String accountId,
-                                           LocalDate nextDueDate) {
+                                           LocalDate nextDue) {
         BudgetRecurringTemplateEntity entity = BudgetRecurringTemplateEntity.fromSuggestion(
                 suggestion, accountId,
-                nextDueDate != null ? nextDueDate : LocalDate.now());
+                nextDue != null ? nextDue : LocalDate.now());
         templateDao.insert(entity);
         return entity.id;
     }
@@ -155,11 +163,6 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
                 .toList();
         templateDao.updateAllTemplateStatuses(
                 RecurringTemplateScheduler.computeStatusUpdates(params, referenceDate));
-    }
-
-    @Override
-    public void notifyBudgetDataUpdated() {
-        onBudgetDataUpdated.run();
     }
 
     /**

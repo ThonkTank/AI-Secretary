@@ -7,7 +7,7 @@ This directory contains Android app resources: layouts, drawables, icons, and re
 - **values/** — String, color, dimension, and style definitions (see [values-README.md](values-README.md) for details)
 - **layout/** — XML layout files for Activities, Fragments, Dialogs
 - **drawable/** — Vector drawables, shape definitions, state lists (see [drawable-README.md](drawable-README.md) for naming conventions and inventory)
-- **color/** — Color state list definitions
+- **color/** — ColorStateList definitions: state-dependent colors that change based on view state (pressed, selected, enabled). Use `color/*.xml` when a color must respond to state changes; use `values/*_colors.xml` for simple solid colors. See [color-README.md](color-README.md) for details and inventory.
 - **menu/** — Menu and navigation action definitions
 - **mipmap-\*/** — App launcher icons
 - **xml/** — XML resource files (file paths configuration, widget info)
@@ -31,7 +31,7 @@ Edit the appropriate color file in `values/`:
 - **Task colors** → `values/task_colors.xml`
 - **Budget colors** → `values/budget_colors.xml`
 
-Use semantic names (task_urgency_overdue, not hex values). See `values/README.md` for naming conventions.
+Use semantic names (task_urgency_overdue, not hex values). See [values-README.md](values-README.md) for naming conventions.
 
 ### Adding Dimensions / Layout Metrics
 

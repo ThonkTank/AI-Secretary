@@ -53,8 +53,8 @@ public class TaskMealIntegrationService {
 
     /**
      * Placeholder item ID used when consumption is logged through task completion.
-     * Value 0 means "no specific pantry item" — the log entry tracks nutrition at the
-     * recipe level only, not at the individual pantry-item level.
+     * Value 0 means "no specific checklist item" — the log entry tracks nutrition at the
+     * recipe level only, not linked to a specific task checklist entry.
      */
     private static final long DEFAULT_ITEM_ID = 0L;
 

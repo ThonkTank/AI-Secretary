@@ -19,4 +19,9 @@ public enum MealType {
         this.label = label;
         this.icon = icon;
     }
+
+    @Override
+    public String toString() {
+        return label;
+    }
 }

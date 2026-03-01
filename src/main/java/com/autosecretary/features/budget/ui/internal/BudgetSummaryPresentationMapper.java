@@ -1,6 +1,5 @@
 package com.autosecretary.features.budget.ui.internal;
 
-import com.autosecretary.features.budget.data.entity.BudgetCategory;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import com.autosecretary.features.budget.domain.TransactionDirection;
@@ -27,6 +26,9 @@ import java.util.function.BiFunction;
  */
 public class BudgetSummaryPresentationMapper {
 
+    /** Display fallback icon when a category has no configured icon. */
+    public static final String DEFAULT_CATEGORY_ICON = "🏷️";
+
     public BudgetSummaryData toSummary(List<MonthlyOverviewItem> items, long freeBudgetCents) {
         long totalIncomeCents = 0;
         long totalExpenseCents = 0;
@@ -49,11 +51,11 @@ public class BudgetSummaryPresentationMapper {
 
     /**
      * Builds a display label for a category, e.g. {@code "🍕 Lebensmittel"}.
-     * Falls back to {@link BudgetCategory#DEFAULT_ICON} when the icon field is blank.
+     * Falls back to {@link BudgetCategoryEntity#DEFAULT_ICON} when the icon field is blank.
      */
     public static String categoryLabel(String icon, String name) {
         String resolvedIcon = icon != null && !icon.isBlank()
-                ? icon : BudgetCategory.DEFAULT_ICON;
+                ? icon : DEFAULT_CATEGORY_ICON;
         return resolvedIcon + " " + name;
     }
 

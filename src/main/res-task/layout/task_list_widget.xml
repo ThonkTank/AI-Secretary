@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App widget layout: rendered via RemoteViews. Only platform views are supported —
+     no RecyclerView, no custom views. ListView is required here (RecyclerView is not
+     supported in RemoteViews).
+     See: https://developer.android.com/develop/ui/views/appwidgets#remoteviews -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bg_forest_gradient"
+    android:padding="@dimen/spacing_sm">
+
+    <!-- Day navigation header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="@dimen/spacing_xs">
+
+        <TextView
+            android:id="@+id/WidgetPrevDay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="@dimen/spacing_sm"
+            android:text="@string/task_list_day_nav_prev"
+            android:contentDescription="@string/task_list_day_nav_prev_desc"
+            android:textAppearance="@style/TextAppearance.Task.Widget.NavAction" />
+
+        <TextView
+            android:id="@+id/WidgetDateLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/task_list_day_nav_today"
+            android:textAppearance="@style/TextAppearance.Task.Widget.NavLabel" />
+
+        <TextView
+            android:id="@+id/WidgetNextDay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="@dimen/spacing_sm"
+            android:text="@string/task_list_day_nav_next"
+            android:contentDescription="@string/task_list_day_nav_next_desc"
+            android:textAppearance="@style/TextAppearance.Task.Widget.NavAction" />
+    </LinearLayout>
+
+    <!-- Action bar: add + refresh -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:paddingBottom="@dimen/spacing_xs">
+
+        <ImageButton
+            android:id="@+id/WidgetAdd"
+            android:layout_width="@dimen/touch_target_min"
+            android:layout_height="@dimen/touch_target_min"
+            android:layout_marginEnd="@dimen/spacing_xs"
+            android:src="@drawable/ic_add_24"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/task_widget_add_content_description"
+            android:scaleType="fitCenter" />
+
+        <ImageButton
+            android:id="@+id/WidgetRefresh"
+            android:layout_width="@dimen/touch_target_min"
+            android:layout_height="@dimen/touch_target_min"
+            android:src="@drawable/ic_refresh_24"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/task_widget_refresh_content_description"
+            android:scaleType="fitCenter" />
+    </LinearLayout>
+
+    <!-- Task list -->
+    <ListView
+        android:id="@+id/WidgetTaskList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="@dimen/task_widget_list_divider_height" />
+
+    <!-- Empty state -->
+    <TextView
+        android:id="@+id/WidgetEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="@string/task_widget_empty"
+        android:textAppearance="@style/TextAppearance.Task.Metadata"
+        android:visibility="gone" />
+
+</LinearLayout>

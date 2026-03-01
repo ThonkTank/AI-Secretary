@@ -15,10 +15,14 @@ import java.time.LocalDate;
  * categoryColorHex is computed by the mapping layer based on the category's configured color.
  */
 public class BudgetTransactionRow {
+    /** Sentinel value indicating no category color was set (use default label color). */
+    public static final int NO_CATEGORY_COLOR = 0;
+
     private final String transactionId;
     private final String label;
     private final TransactionDirection direction;
     private final String categoryColorHex;
+    private final int categoryColor;
     private final long amountCents;
     private final String categoryId;
     private final String note;
@@ -30,6 +34,7 @@ public class BudgetTransactionRow {
         this.label = b.label;
         this.direction = b.direction;
         this.categoryColorHex = b.categoryColorHex;
+        this.categoryColor = b.categoryColor;
         this.amountCents = b.amountCents;
         this.categoryId = b.categoryId;
         this.note = b.note;
@@ -51,6 +56,7 @@ public class BudgetTransactionRow {
         private String label;
         private TransactionDirection direction;
         private String categoryColorHex;
+        private int categoryColor = NO_CATEGORY_COLOR;
         private long amountCents;
         private String categoryId;
         private String note;
@@ -61,6 +67,8 @@ public class BudgetTransactionRow {
         public Builder label(String v)               { label = v; return this; }
         public Builder direction(TransactionDirection v) { direction = v; return this; }
         public Builder categoryColorHex(String v)    { categoryColorHex = v; return this; }
+        /** Pre-resolved int color for the category label. Set to {@link #NO_CATEGORY_COLOR} to use default. */
+        public Builder categoryColor(int v)          { categoryColor = v; return this; }
         public Builder amountCents(long v)           { amountCents = v; return this; }
         public Builder categoryId(String v)          { categoryId = v; return this; }
         public Builder note(String v)                { note = v; return this; }
@@ -102,6 +110,11 @@ public class BudgetTransactionRow {
 
     public String getCategoryColorHex() {
         return categoryColorHex;
+    }
+
+    /** Pre-resolved int color, or {@link #NO_CATEGORY_COLOR} if no valid color was set. */
+    public int getCategoryColor() {
+        return categoryColor;
     }
 
     public long getAmountCents() {

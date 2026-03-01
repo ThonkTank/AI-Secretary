@@ -2,38 +2,36 @@
 
 ## Open Issues
 
-### [nit] Duplicated `TIME_FORMATTER` constant across three files in different packages
+### [inconsistent] Duplicate `TIME_FORMATTER` constants across 4 classes @skill:review-conventions
 
-**Files:**
-- `list/ListRowAdapter.java:44`
-- `widget/TaskWidgetFactory.java:41`
-- `edit/internal/editor/PrefSlotUIBuilder.java:36`
+Four classes define identical `DateTimeFormatter.ofPattern("HH:mm")` as private static constants:
 
-**What:** All three define `DateTimeFormatter.ofPattern("HH:mm")` independently.
+- `ListRowAdapter.TIME_FORMATTER` — `task/ui/list/ListRowAdapter.java:45`
+- `TaskWidgetFactory.TIME_FORMATTER` — `task/ui/widget/TaskWidgetFactory.java:29`
+- `TaskScheduleConfigDialog.TIME_FORMATTER` — `task/ui/TaskScheduleConfigDialog.java:52` (adds `Locale.GERMAN`, no behavioral difference for `HH:mm`)
+- `PrefSlotUIBuilder.TIME_FORMATTER` — `task/ui/edit/internal/editor/PrefSlotUIBuilder.java:36`
 
-**Why it matters:** If the time format ever changes (different pattern, locale, seconds),
-all three copies need updating and a missed one silently produces inconsistent display.
+**Canonical recommendation:** Extract a single shared `TIME_FORMATTER` constant. However, the project convention (CLAUDE.md) discourages adding new shared utility classes. Consider placing it on an existing shared class if one becomes available, or accept the duplication as the cost of avoiding a new file.
 
-**Fix:** Extract to a single constant in a shared location (e.g. `shared/UiFormatters.java`
-or a utility accessible to all three). Deferred — creating a new file for one constant goes
-against project conventions; format is stable today and all three packages are independent
-enough that the coupling of a shared constant introduces its own risks.
+**Impact:** 4 files, cosmetic only — no behavioral difference.
 
 ---
 
-## Structural Notes
+### [consider] `notifyDataSetChanged()` used in `ListRowAdapter.setList()` @skill:review-performance
 
-### [keep] `TaskScheduleConfigDialog` at `ui/` root — single file, intentional placement
+`ListRowAdapter.setList()` (line 556) calls `notifyDataSetChanged()` which forces a full rebind
+of all visible items. With DiffUtil, only changed items would be rebound, providing smoother
+animations and less work per update.
 
-**Path:** `TaskScheduleConfigDialog.java`
+**Expected impact:** At typical list sizes (10–30 items), the impact is moderate — all visible items
+rebind on every data change. Becomes more noticeable with 50+ items.
 
-**Observation:** `TaskScheduleConfigDialog` is the only `.java` file at the `ui/` root level. It is
-currently called only from `TaskListFragment`. This could suggest it belongs in `list/` instead.
+**Recommended fix:** Implement `DiffUtil.Callback` comparing `ViewSlot` items by `slotId` for identity
+and content equality. Replace `notifyDataSetChanged()` with `DiffUtil.calculateDiff().dispatchUpdatesTo()`.
 
-**Why keep here:** Schedule configuration affects the entire task scheduling system, not just the
-list view. The `ui/` root README explicitly documents this level as the home for "cross-surface UI
-elements shared across multiple task surfaces." Keeping it here makes the correct target location
-obvious if the widget, settings screen, or a future surface also needs to launch this dialog.
-Moving it into `list/` would encode a false dependency and require a second move later.
+**Tradeoffs:** Requires implementing `equals()`/content comparison on ViewSlot/TaskListItem. Risk of
+subtle bugs if equality check misses a field. Significant code change for moderate benefit at current
+data volumes. Deferred.
 
-**No action needed.** The thin package is a temporary state, not a structural problem.
+---
+

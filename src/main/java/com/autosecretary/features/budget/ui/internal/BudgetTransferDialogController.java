@@ -9,7 +9,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
-import com.autosecretary.features.budget.data.entity.BudgetAccount;
+import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.time.LocalDate;
@@ -42,7 +42,7 @@ public class BudgetTransferDialogController {
         this.listener = listener;
     }
 
-    public void show(List<BudgetAccount> accounts) {
+    public void show(List<BudgetAccountEntity> accounts) {
         Context ctx = fragment.requireContext();
         if (accounts == null || accounts.size() < 2) {
             new AlertDialog.Builder(ctx)

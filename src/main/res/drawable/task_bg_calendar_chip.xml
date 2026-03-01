@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Small rounded chip behind calendar date/time labels within a task row item. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="@color/task_calendar_chip_background"/>
-    <corners android:radius="@dimen/task_corner_radius_sm"/>
-</shape>

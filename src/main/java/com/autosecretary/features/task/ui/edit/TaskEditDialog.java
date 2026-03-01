@@ -16,7 +16,6 @@ import com.autosecretary.features.task.ui.edit.internal.editor.PrefSlotSectionCo
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormInputReader;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormValidator;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditSectionBinder;
-import com.autosecretary.features.task.ui.edit.internal.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 /**
@@ -42,25 +41,27 @@ public class TaskEditDialog extends DialogFragment {
         TaskViewModel vm = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
         editSessionController = vm.getTaskEditSessionController();
         TaskEditState editState = editSessionController.requireSelectedTask();
-        presenter = new TaskEditPresenter(editState, new TaskEditStateMapper());
+        presenter = new TaskEditPresenter(editState);
 
         View rootView = LayoutInflater.from(getContext()).inflate(R.layout.task_editor_dialog, null);
-        BoundSections sections = bindEditorSections(rootView, editState);
+
+        TaskEditSectionBinder sectionBinder = new TaskEditSectionBinder(this, rootView, editState, presenter);
+        TaskEditSectionBinder.BasicInfoViews basicInfo = sectionBinder.bindBasicInfo();
+        TaskEditSectionBinder.SchedulingViews scheduling = sectionBinder.bindScheduling();
+        TaskEditSectionBinder.RepetitionViews repetition = sectionBinder.bindRepetition(
+            () -> prefSlotSectionController.onRepetitionChanged());
+        TaskEditSectionBinder.ProgressViews progress = sectionBinder.bindProgress();
+
         GoalSectionController goalSectionController = new GoalSectionController(this, rootView, editState);
 
-        prefSlotSectionController = new PrefSlotSectionController(
-            this,
-            rootView,
-            presenter,
-            sections.repetition
-        );
+        prefSlotSectionController = new PrefSlotSectionController(this, rootView, presenter, repetition);
         prefSlotSectionController.rebuildPrefSlotUI();
 
         formInputReader = new TaskEditFormInputReader(
-            sections.basicInfo, sections.scheduling, sections.repetition, sections.progress, goalSectionController
+            basicInfo, scheduling, repetition, progress, goalSectionController
         );
         formValidator = new TaskEditFormValidator(
-            requireContext(), sections.basicInfo, sections.scheduling, sections.repetition, sections.progress
+            requireContext(), basicInfo, scheduling, repetition, progress
         );
 
         return new AlertDialog.Builder(requireContext())
@@ -119,30 +120,4 @@ public class TaskEditDialog extends DialogFragment {
             .show();
     }
 
-    private BoundSections bindEditorSections(View rootView, TaskEditState editState) {
-        TaskEditSectionBinder sectionBinder = new TaskEditSectionBinder(this, rootView, editState, presenter);
-        return new BoundSections(
-            sectionBinder.bindBasicInfo(),
-            sectionBinder.bindScheduling(),
-            sectionBinder.bindRepetition(() -> prefSlotSectionController.onRepetitionChanged()),
-            sectionBinder.bindProgress()
-        );
-    }
-
-    private static class BoundSections {
-        final TaskEditSectionBinder.BasicInfoViews basicInfo;
-        final TaskEditSectionBinder.SchedulingViews scheduling;
-        final TaskEditSectionBinder.RepetitionViews repetition;
-        final TaskEditSectionBinder.ProgressViews progress;
-
-        BoundSections(TaskEditSectionBinder.BasicInfoViews basicInfo,
-                      TaskEditSectionBinder.SchedulingViews scheduling,
-                      TaskEditSectionBinder.RepetitionViews repetition,
-                      TaskEditSectionBinder.ProgressViews progress) {
-            this.basicInfo = basicInfo;
-            this.scheduling = scheduling;
-            this.repetition = repetition;
-            this.progress = progress;
-        }
-    }
 }

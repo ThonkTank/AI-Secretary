@@ -41,6 +41,13 @@ Widget layouts are rendered via Android's `RemoteViews` API, which only supports
 set of platform views (no `RecyclerView`, no custom views). `ListView` is used instead of
 `RecyclerView` in `task_list_widget.xml` — this is correct and intentional.
 
+Each widget layout has a mandatory companion **AppWidgetProviderInfo** XML file in `../xml/`:
+- `task_list_widget.xml` → `../xml/widget_task_info.xml` (min size, update period, resize mode)
+- `budget_widget.xml` → `../xml/widget_budget_info.xml`
+
+When adding or editing a widget layout, check the companion info file too — update period,
+minimum dimensions, and initial layout are all declared there, not in the layout XML.
+
 See: https://developer.android.com/develop/ui/views/appwidgets#remoteviews
 
 ### Visibility toggling

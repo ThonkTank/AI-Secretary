@@ -64,7 +64,7 @@ Ask:
 - Can we reduce parameters / options / modes?
 - Can unused fields or methods be removed?
 
-## KISS Guardrails (important)
+## Guardrails
 Do **not** simplify in ways that:
 - Change behavior or correctness
 - Make code cryptic or overly clever

@@ -10,7 +10,7 @@ import com.autosecretary.features.budget.domain.TransactionDirection;
  * category is typically used for income or expense transactions.
  * </p>
  * <p>
- * After import, this category ID is mapped to a persistent BudgetCategory in the data layer.
+ * After import, this category ID is mapped to a persistent BudgetCategoryEntity in the data layer.
  * </p>
  *
  * @param id        Unique category identifier

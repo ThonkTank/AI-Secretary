@@ -4,22 +4,6 @@ Internal helpers for the meal planning application layer. Not part of the public
 
 ## Modules
 
-### EntityLookupHelper
-A utility class for repository queries that must find an entity (mandatory lookups).
-
-**When to use:** In use-case methods when querying for an entity by ID and the presence is required.
-
-**How to use:**
-```java
-Ingredient ingredient = EntityLookupHelper.requireFound(
-    recipeRepository.getIngredient(ingredientId),
-    "Ingredient",
-    ingredientId
-);
-```
-
-Throws `IllegalArgumentException` if the entity is not found, with a message that includes the entity type and ID.
-
 ### LegacyMealImportService
 One-shot migration tool for importing meal data from legacy application snapshots.
 

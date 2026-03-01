@@ -4,6 +4,7 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -54,9 +55,54 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     /** True in Manage mode; enables the expand/collapse toggle on parent task rows. */
     private boolean manageMode = false;
 
+    // Cached resource values — resolved once in onAttachedToRecyclerView to avoid per-bind lookups.
+    private int indentStepPx;
+    private float rowCornerRadius;
+    private int rowStrokeWidth;
+    private int colorOutlineSemi;
+    private int colorCompletedBg;
+    private int colorInProgressBg;
+    private int colorCompletedCheckboxTint;
+    private int colorInProgressCheckboxTint;
+    private int colorDeadlineOverdue;
+    private int colorDeadlineSoon;
+    private int colorDeadlineFuture;
+    private int colorCompletionFlash;
+    private int colorProgressText;
+    private int colorProgressTextDisabled;
+    private int colorProgressButtonTint;
+    private int colorProgressButtonTintDisabled;
+    private int[] streakTierColors;
+
     public ListRowAdapter(List<ViewSlot> viewSlots, TaskRowActions actions) {
         this.viewSlots = viewSlots;
         this.actions = actions;
+    }
+
+    @Override
+    public void onAttachedToRecyclerView(RecyclerView recyclerView) {
+        super.onAttachedToRecyclerView(recyclerView);
+        Context ctx = recyclerView.getContext();
+        indentStepPx = ctx.getResources().getDimensionPixelSize(R.dimen.task_indent_step);
+        rowCornerRadius = ctx.getResources().getDimension(R.dimen.corner_radius_md);
+        rowStrokeWidth = (int) ctx.getResources().getDimension(R.dimen.task_editor_input_stroke_width);
+        colorOutlineSemi = ContextCompat.getColor(ctx, R.color.task_color_outline_semi);
+        colorCompletedBg = ContextCompat.getColor(ctx, R.color.task_completed_background);
+        colorInProgressBg = ContextCompat.getColor(ctx, R.color.task_in_progress_background);
+        colorCompletedCheckboxTint = ContextCompat.getColor(ctx, R.color.task_completed_checkbox_tint);
+        colorInProgressCheckboxTint = ContextCompat.getColor(ctx, R.color.task_in_progress_checkbox_tint);
+        colorDeadlineOverdue = ContextCompat.getColor(ctx, R.color.task_deadline_overdue);
+        colorDeadlineSoon = ContextCompat.getColor(ctx, R.color.task_deadline_soon);
+        colorDeadlineFuture = ContextCompat.getColor(ctx, R.color.task_deadline_future);
+        colorCompletionFlash = ContextCompat.getColor(ctx, R.color.task_completion_flash);
+        colorProgressText = ContextCompat.getColor(ctx, R.color.task_progress_text);
+        colorProgressTextDisabled = ContextCompat.getColor(ctx, R.color.task_progress_text_disabled);
+        colorProgressButtonTint = ContextCompat.getColor(ctx, R.color.task_progress_button_tint);
+        colorProgressButtonTintDisabled = ContextCompat.getColor(ctx, R.color.task_progress_button_tint_disabled);
+        streakTierColors = new int[StreakTier.values().length];
+        for (StreakTier tier : StreakTier.values()) {
+            streakTierColors[tier.ordinal()] = ContextCompat.getColor(ctx, tier.colorRes);
+        }
     }
 
     public static class TaskRowActions {
@@ -163,15 +209,16 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         bindInteractions(holder, item, viewSlot);
     }
 
+    /** Sets left padding based on tree depth for parent-child indentation in Manage mode. */
     private void bindIndentation(TaskRowViewHolder holder, int depth) {
-        int step = holder.itemView.getContext().getResources().getDimensionPixelSize(R.dimen.task_indent_step);
         holder.itemView.setPaddingRelative(
-                step * depth,
+                indentStepPx * depth,
                 holder.itemView.getPaddingTop(),
                 holder.itemView.getPaddingEnd(),
                 holder.itemView.getPaddingBottom());
     }
 
+    /** Resets all view visibilities/listeners to the task-row defaults (as opposed to calendar-row). */
     private void bindTaskRow(TaskRowViewHolder holder) {
         holder.root.setBackgroundResource(R.drawable.task_bg_row);
         holder.checkBox.setVisibility(View.VISIBLE);
@@ -185,6 +232,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.itemView.setOnLongClickListener(null);
     }
 
+    /** Shows the goal emoji/icon with its color if the task has a progress target and a goal icon set. */
     private void bindGoalAppearance(TaskRowViewHolder holder, TaskListItem item) {
         if (!item.hasProgressTarget() || item.goalIcon == null || item.goalIcon.trim().isEmpty()) {
             holder.goalIcon.setVisibility(View.GONE);
@@ -200,6 +248,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.goalIcon.setVisibility(View.VISIBLE);
     }
 
+    /** Shows/hides the expand/collapse arrow for parent tasks in Manage mode. */
     private void bindExpandToggle(TaskRowViewHolder holder, ViewSlot viewSlot) {
         if (!manageMode || viewSlot.getChildren().isEmpty()) {
             holder.expandToggle.setVisibility(View.GONE);
@@ -215,6 +264,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.expandToggle.setOnClickListener(v -> actions.onToggleExpand.accept(viewSlot));
     }
 
+    /** Configures the row as a read-only calendar event: hides all task controls, shows "Kalender" chip. */
     private void bindCalendarEventRow(TaskRowViewHolder holder) {
         Context context = holder.itemView.getContext();
         holder.root.setBackgroundResource(R.drawable.task_bg_calendar_row);
@@ -234,6 +284,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         ViewCompat.setStateDescription(holder.itemView, context.getString(R.string.task_calendar_state_description));
     }
 
+    /** Formats and displays the start/end time for the slot, with fallback text if unset. */
     private void bindTimeRange(TaskRowViewHolder holder, TaskListItem item) {
         Context context = holder.itemView.getContext();
         String startString = item.start != null
@@ -246,6 +297,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.end.setText(endString);
     }
 
+    /** Shows a deadline urgency label (overdue/today/N days) with urgency-based text color. */
     private void bindDeadline(TaskRowViewHolder holder, TaskListItem item) {
         Context context = holder.itemView.getContext();
         TaskListItem.DeadlineUrgency urgency = item.deadlineUrgency();
@@ -258,19 +310,17 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
         if (urgency == TaskListItem.DeadlineUrgency.OVERDUE) {
             countdown.setText(R.string.task_deadline_overdue_label);
-            countdown.setTextColor(ContextCompat.getColor(context, R.color.task_deadline_overdue));
+            countdown.setTextColor(colorDeadlineOverdue);
             countdown.setContentDescription(context.getString(R.string.task_deadline_overdue_content_description));
         } else if (urgency == TaskListItem.DeadlineUrgency.TODAY) {
             countdown.setText(R.string.task_deadline_today_label);
-            countdown.setTextColor(ContextCompat.getColor(context, R.color.task_deadline_soon));
+            countdown.setTextColor(colorDeadlineSoon);
             countdown.setContentDescription(context.getString(R.string.task_deadline_today_content_description));
         } else {
             long daysUntil = item.daysUntilDeadline();
             countdown.setText(context.getString(R.string.task_deadline_in_days_label, daysUntil));
-            int colorRes = urgency == TaskListItem.DeadlineUrgency.SOON
-                    ? R.color.task_deadline_soon
-                    : R.color.task_deadline_future;
-            countdown.setTextColor(ContextCompat.getColor(context, colorRes));
+            countdown.setTextColor(urgency == TaskListItem.DeadlineUrgency.SOON
+                    ? colorDeadlineSoon : colorDeadlineFuture);
             countdown.setContentDescription(context.getString(R.string.task_deadline_in_days_content_description, daysUntil));
         }
         countdown.setVisibility(View.VISIBLE);
@@ -305,6 +355,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         }
     }
 
+    /** Shows the streak badge (e.g. "5x") with tier-based coloring, or hides it if streak is 0. */
     private void bindStreak(TaskRowViewHolder holder, TaskListItem item) {
         if (item.streak <= 0) {
             holder.streakDisplay.setVisibility(View.GONE);
@@ -315,7 +366,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         Context context = holder.itemView.getContext();
         StreakTier tier = StreakTier.forStreak(item.streak);
         holder.streakDisplay.setText(context.getString(R.string.task_streak_display, item.streak));
-        holder.streakDisplay.setTextColor(ContextCompat.getColor(context, tier.colorRes));
+        holder.streakDisplay.setTextColor(streakTierColors[tier.ordinal()]);
         holder.streakDisplay.setContentDescription(
                 context.getString(
                         R.string.task_streak_content_description,
@@ -324,8 +375,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.streakDisplay.setVisibility(View.VISIBLE);
     }
 
+    /** Sets the row background and checkbox tint based on task state (not started / in-progress / completed). */
     private void bindProgressState(TaskRowViewHolder holder, TaskListItem item) {
-        Context context = holder.itemView.getContext();
         holder.checkBox.animate().cancel();
         holder.checkBox.setScaleX(1f);
         holder.checkBox.setScaleY(1f);
@@ -335,12 +386,13 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         }
 
         if (item.completed) {
-            holder.root.setBackgroundColor(ContextCompat.getColor(context, R.color.task_completed_background));
-            holder.checkBox.setButtonTintList(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.task_completed_checkbox_tint)));
+            applyStateBackground(holder.root, colorCompletedBg);
+            holder.checkBox.setButtonTintList(ColorStateList.valueOf(colorCompletedCheckboxTint));
             ViewCompat.setStateDescription(holder.itemView, null);
         } else if (item.inProgress) {
-            holder.root.setBackgroundColor(ContextCompat.getColor(context, R.color.task_in_progress_background));
-            holder.checkBox.setButtonTintList(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.task_in_progress_checkbox_tint)));
+            applyStateBackground(holder.root, colorInProgressBg);
+            holder.checkBox.setButtonTintList(ColorStateList.valueOf(colorInProgressCheckboxTint));
+            Context context = holder.itemView.getContext();
             ViewCompat.setStateDescription(holder.itemView, context.getString(R.string.task_in_progress_state_description));
         } else {
             holder.checkBox.setButtonTintList(null);
@@ -348,6 +400,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         }
     }
 
+    /** Routes to either checkbox controls (standard tasks) or progress +/- controls (goal-based tasks). */
     private void bindCompletionMode(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
         if (item.hasProgressTarget()) {
             bindProgressControls(holder, item, viewSlot);
@@ -389,33 +442,34 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         boolean canDecrease = interactionsEnabled && current > 0;
         boolean canIncrease = interactionsEnabled && current < target;
 
-        applyProgressButtonState(context, holder.progressMinus, canDecrease);
-        applyProgressButtonState(context, holder.progressPlus, canIncrease);
-        holder.progressText.setTextColor(ContextCompat.getColor(context,
-                interactionsEnabled ? R.color.task_progress_text : R.color.task_progress_text_disabled));
+        applyProgressButtonState(holder.progressMinus, canDecrease);
+        applyProgressButtonState(holder.progressPlus, canIncrease);
+        holder.progressText.setTextColor(interactionsEnabled ? colorProgressText : colorProgressTextDisabled);
 
         holder.progressMinus.setOnClickListener(v -> actions.onProgressMinus.accept(viewSlot));
         holder.progressPlus.setOnClickListener(v -> actions.onProgressPlus.accept(viewSlot));
     }
 
-    private void applyProgressButtonState(Context context, ImageButton button, boolean enabled) {
+    private void applyProgressButtonState(ImageButton button, boolean enabled) {
         button.setEnabled(enabled);
         button.setAlpha(enabled ? ALPHA_ENABLED : ALPHA_DISABLED);
-        button.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(context,
-                enabled ? R.color.task_progress_button_tint : R.color.task_progress_button_tint_disabled)));
+        button.setImageTintList(ColorStateList.valueOf(
+                enabled ? colorProgressButtonTint : colorProgressButtonTintDisabled));
     }
 
+    /** Updates the timer button icon (play/pause) and its accessibility description. */
     private void bindTimerState(TaskRowViewHolder holder, TaskListItem item) {
         Context context = holder.itemView.getContext();
         holder.timerButton.setImageResource(item.inProgress
-                ? android.R.drawable.ic_media_pause
-                : android.R.drawable.ic_media_play);
+                ? R.drawable.ic_pause_24
+                : R.drawable.ic_play_24);
         holder.timerButton.setContentDescription(context.getString(
                 item.inProgress ? R.string.task_timer_stop : R.string.task_timer_start));
         ViewCompat.setStateDescription(holder.timerButton, context.getString(
                 item.inProgress ? R.string.task_timer_running : R.string.task_timer_stopped));
     }
 
+    /** Wires click/long-click handlers for timer, edit, and title; disabled when viewing non-today dates. */
     private void bindInteractions(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
         boolean timerEligible = item.slotId != null && !item.completed;
         boolean timerEnabled = interactionsEnabled && timerEligible;
@@ -444,6 +498,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
                 .show(activity.getSupportFragmentManager(), TaskDescriptionDialog.TAG);
     }
 
+    /** Plays a checkbox scale-bounce and background flash animation on checkoff. */
     private void animateCompletion(TaskRowViewHolder holder, TaskListItem item) {
         holder.checkBox.animate().cancel();
         holder.checkBox.setScaleX(1f);
@@ -463,15 +518,38 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             holder.completionAnimator.cancel();
         }
 
-        Context context = holder.itemView.getContext();
-        int flashColor = ContextCompat.getColor(context, R.color.task_completion_flash);
-        int finalColor = ContextCompat.getColor(context, item.inProgress
-                ? R.color.task_in_progress_background : R.color.task_completed_background);
-        holder.completionAnimator = ValueAnimator.ofArgb(flashColor, finalColor);
+        // item.inProgress reflects the PRE-toggle state. The animation previews the POST-toggle
+        // state: if currently in-progress, the next tap completes it; if not yet started, the
+        // next tap starts it.
+        int finalColor = item.inProgress ? colorCompletedBg : colorInProgressBg;
+        GradientDrawable animDrawable = createRowBackground();
+        holder.root.setBackground(animDrawable);
+        holder.completionAnimator = ValueAnimator.ofArgb(colorCompletionFlash, finalColor);
         holder.completionAnimator.setDuration(COMPLETION_FLASH_DURATION_MS);
         holder.completionAnimator.addUpdateListener(animation ->
-                holder.root.setBackgroundColor((int) animation.getAnimatedValue()));
+                animDrawable.setColor((int) animation.getAnimatedValue()));
         holder.completionAnimator.start();
+    }
+
+    /**
+     * Creates a GradientDrawable with the standard row shape (corner radius + outline stroke).
+     * Uses cached dimension/color values to avoid per-call resource lookups.
+     */
+    private GradientDrawable createRowBackground() {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setCornerRadius(rowCornerRadius);
+        drawable.setStroke(rowStrokeWidth, colorOutlineSemi);
+        return drawable;
+    }
+
+    /**
+     * Sets a rounded-corner background with the given fill color, preserving the row's
+     * visual shape (corner radius + outline stroke) that would be lost by setBackgroundColor().
+     */
+    private void applyStateBackground(View view, int color) {
+        GradientDrawable drawable = createRowBackground();
+        drawable.setColor(color);
+        view.setBackground(drawable);
     }
 
     public void setList(List<ViewSlot> viewSlots) {

@@ -14,6 +14,9 @@ Callers outside `meal/data/` should only depend on the domain repository interfa
 `features/meal/domain/` (e.g. `MealRepository`). The `internal/` sub-package is an implementation
 detail and must not be imported from outside `meal/data/`.
 
+**Important:** The meal data layer uses `InMemoryMealStorage` — all data is lost when the
+process dies. This is by design; the meal feature does not use Room.
+
 ## Where to start
 
 → **[`internal/README.md`](internal/README.md)** — full description of the data flow, all files,

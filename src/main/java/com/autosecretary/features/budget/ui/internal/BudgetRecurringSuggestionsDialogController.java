@@ -123,13 +123,18 @@ public class BudgetRecurringSuggestionsDialogController {
             checkbox.setChecked(true); // Pre-select all suggestions; user can uncheck unwanted ones.
             rows.add(checkbox);
 
+            String patternDesc = getPatternDescription(suggestion);
+            String countText = fragment.getString(R.string.budget_recurring_transactions_count,
+                    suggestion.transactionIds().size());
+            String confidenceText = fragment.getString(R.string.budget_recurring_confidence,
+                    suggestion.confidenceScore() * 100);
+            String amountText = CurrencyFormatter.eurosMagnitude(suggestion.avgAmountCents());
+
             payee.setText(suggestion.displayPayee());
-            pattern.setText(getPatternDescription(suggestion));
-            count.setText(fragment.getString(R.string.budget_recurring_transactions_count,
-                    suggestion.transactionIds().size()));
-            confidence.setText(fragment.getString(R.string.budget_recurring_confidence,
-                    suggestion.confidenceScore() * 100));
-            amount.setText(CurrencyFormatter.eurosMagnitude(suggestion.avgAmountCents()));
+            pattern.setText(patternDesc);
+            count.setText(countText);
+            confidence.setText(confidenceText);
+            amount.setText(amountText);
 
             // avgAmountCents is positive for income-side recurring transactions, negative for expenses.
             amount.setTextColor(ContextCompat.getColor(ctx,
@@ -137,6 +142,13 @@ public class BudgetRecurringSuggestionsDialogController {
             confidence.setTextColor(ContextCompat.getColor(ctx,
                     confidenceColorRes(suggestion.confidenceScore())));
 
+            // Grouped contentDescription so screen readers announce the full suggestion in one pass.
+            rowView.setContentDescription(
+                    suggestion.displayPayee() + ", "
+                    + patternDesc + ", "
+                    + countText + ", "
+                    + confidenceText + ", "
+                    + amountText);
             listContainer.addView(rowView);
         }
         return rows;

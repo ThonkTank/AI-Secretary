@@ -3,12 +3,22 @@ package com.autosecretary.features.budget.ui.internal;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
- * Formats cent amounts as Euro strings for display in the budget UI.
+ * Formats cent amounts as Euro strings and validates display-related values for the budget UI.
  */
 public final class CurrencyFormatter {
     private CurrencyFormatter() {}
+
+    private static final Pattern COLOR_HEX_PATTERN =
+            Pattern.compile("^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$");
+
+    /** Returns {@code true} if {@code colorHex} is a valid 6- or 8-digit hex color string (e.g. {@code "#FF7043"}). */
+    public static boolean isValidColorHex(String colorHex) {
+        if (colorHex == null) return false;
+        return COLOR_HEX_PATTERN.matcher(colorHex).matches();
+    }
 
     /**
      * Formats a cent value as a plain Euro amount without sign, e.g. {@code "12 €"}.

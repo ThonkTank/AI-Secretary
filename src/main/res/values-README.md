@@ -9,10 +9,11 @@ String, color, dimension, and style definitions used throughout the app.
 | `strings.xml` | App-wide | App name, navigation labels, settings, update strings |
 | `task_strings.xml` | Task feature | Edit dialogs, row actions, timer, deadline/streak labels, validation |
 | `budget_strings.xml` | Budget feature | Transaction dialogs, import/export, recurring patterns, chart, widget |
-| `meal_strings.xml` | Meal feature | Tabs, plan/recipe/stock labels, dialog titles, input hints |
+| `meal_strings.xml` | Meal feature | Tabs, plan/recipe/stock labels, dialog titles, input hints, validation |
 | `colors.xml` | App-wide | Launcher icon colors, transparency constant |
 | `task_colors.xml` | Task feature | Nature-inspired palette, Material tokens, urgency/streak/widget colors |
 | `budget_colors.xml` | Budget feature | Semantic status colors, chart colors, widget colors |
+| `meal_colors.xml` | Meal feature | Surface overlay tint for meal row backgrounds |
 | `dimens.xml` | App-wide | Spacing scale (xxs–xl) and text scale (xs–xl) |
 | `task_dimens.xml` | Task feature | Editor, row, widget, corner radius dimensions |
 | `budget_dimens.xml` | Budget feature | Card, divider, limit bar, chart dimensions |
@@ -34,7 +35,9 @@ Reference: [Material Color Roles](https://m3.material.io/styles/color/the-color-
 ### Dimensions
 - **App-wide spacing:** `spacing_[size]` — xxs (2dp), xs (4dp), sm (8dp), md (12dp), lg (16dp), xl (24dp)
 - **App-wide text:** `text_[size]` — xs (12sp), sm (14sp), md (16sp), xl (18sp)
-- **Feature-specific:** `[feature]_[component]_[property]` — e.g. `task_row_min_height`, `budget_card_corner_radius`
+  _(Note: `text_lg` does not exist — `text_xl` (18sp) is adjacent to `text_md` (16sp).
+  See REVIEW_BACKLOG.md for the tracked rename. Do not add `text_lg` without resolving that first.)_
+- **Feature-specific:** `[feature]_[component]_[property]` — e.g. `task_row_min_height`, `budget_chart_height`
 
 ### Styles
 Pattern: `[Widget|TextAppearance].[Namespace].[Component].[Variant]`
@@ -43,7 +46,7 @@ Always inherit from Material parents: `Widget.MaterialComponents.*`, `TextAppear
 ## Adding New Resources
 
 1. **App-wide** resources go in the generic file (`strings.xml`, `colors.xml`, `dimens.xml`, `styles.xml`).
-2. **Feature-specific** resources go in feature-prefixed files (`task_strings.xml`, `budget_colors.xml`, etc.).
+2. **Feature-specific** resources go in feature-prefixed files (`task_strings.xml`, `budget_colors.xml`, `meal_strings.xml`, etc.).
 3. Follow the naming conventions above.
 4. Reference in Java: `getString(R.string.key)`, `ContextCompat.getColor(ctx, R.color.key)`
 5. Reference in XML: `@string/key`, `@color/key`, `@dimen/key`, `@style/StyleName`

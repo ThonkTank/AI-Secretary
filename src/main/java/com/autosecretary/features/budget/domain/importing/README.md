@@ -35,9 +35,9 @@ BudgetTransactionMapper (application/importing/)
 ImportTransactionRecord (this package)
     - Enriched, validated, ready to persist
          ↓
-Data Layer (data/internal/repository/)
+Data Layer (data/repository/)
     - Persist as BudgetTransactionEntity
-    - Update BudgetAccountBalance
+    - Update account balance
 ```
 
 ## Key Types
@@ -115,7 +115,7 @@ Transfers are modeled as internal account movements (not real income/expense). T
 
 ### Add to data layer instead if:
 - The type maps directly to a database table (@Entity)
-- It's a persistent domain entity (e.g., BudgetTransactionEntity, BudgetAccount)
+- It's a persistent domain entity (e.g., BudgetTransactionEntity, BudgetAccountEntity)
 
 ### Add to application layer instead if:
 - The type is a use-case input/output (e.g., ImportRequest, ImportResult)
@@ -125,4 +125,4 @@ Transfers are modeled as internal account movements (not real income/expense). T
 
 - **`budget/application/importing/`** — Import use-cases and the parsing pipeline
 - **`budget/data/api/`** — Claude API client for PDF extraction (ClaudeStatementApiClient)
-- **`budget/data/internal/`** — Data access objects and persistence (BudgetTransactionEntity, BudgetTransactionDao)
+- **`budget/data/`** — Data access objects (dao/), entities (entity/), and repositories (repository/)
