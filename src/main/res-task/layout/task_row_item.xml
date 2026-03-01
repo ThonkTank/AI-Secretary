@@ -2,7 +2,7 @@
 <!-- Task row item. Inflated by ListRowAdapter into the TaskList RecyclerView.
      Sections left-to-right: time column (start/end) → checkbox → optional goal icon →
      optional progress controls → optional expand toggle → title (weight=1) →
-     metadata column (deadline/streak/calendar chip) → timer button → edit button.
+     metadata column (deadline/streak/calendar chip) → edit button.
      Optional sections are shown/hidden by TaskListItemBinder based on ViewSlot state. -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -159,17 +159,6 @@
             android:textAppearance="@style/TextAppearance.Task.Metadata"
             android:visibility="gone"/>
     </LinearLayout>
-
-    <ImageButton
-        android:id="@+id/TaskTimerButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/spacing_xs"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/task_timer_start"
-        android:padding="@dimen/task_row_edit_button_padding"
-        android:src="@drawable/ic_play_24"
-        android:tint="@color/task_color_on_surface_emphasis"/>
 
     <ImageButton
         android:id="@+id/EditTaskButton"

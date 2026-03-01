@@ -2,7 +2,7 @@
 <!-- Task list screen. Managed by TaskListFragment + TaskViewModel.
      Sections from top to bottom:
        1. Day navigation bar (prev/today/next)
-       2. Controls card: generate schedule, checklist/manage toggle, search bar
+       2. Controls card: checklist/manage toggle, search bar
           (search bar visible only in Manage mode, toggled by TaskListFragment)
        3. Task list (RecyclerView via ListRowAdapter) OR empty-state container — only one visible
        4. "Neue Task" button (always visible at bottom)
@@ -34,18 +34,10 @@
         android:paddingHorizontal="@dimen/spacing_md"
         android:paddingVertical="@dimen/spacing_sm">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/GenerateScheduleButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/task_list_generate"
-            style="?attr/materialButtonOutlinedStyle"/>
-
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:id="@+id/TaskListToggle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_sm"
             app:singleSelection="true"
             app:checkedButton="@+id/ChecklistButton">
 

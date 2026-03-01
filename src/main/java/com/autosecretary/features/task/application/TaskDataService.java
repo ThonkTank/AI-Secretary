@@ -5,7 +5,6 @@ import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDao;
 
-import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -82,36 +81,6 @@ public class TaskDataService {
      * Starts a manual timer for a slot by recording the current time as its start.
      *
      * <p><strong>Not the same as the two-phase check-off:</strong> The two-phase check-off
-     * (first tap → STARTED, second tap → COMPLETED) is handled by {@link CheckOffTaskUseCase}.
-     * This method is a separate feature for explicit manual time tracking — the user explicitly
-     * starts and stops a timer independent of the completion flow.
-     *
-     * @param slotId  the slot UUID to start timing
-     * @param onSaved callback dispatched on the callback dispatcher thread after the write
-     */
-    public void startTimer(String slotId, Runnable onSaved) {
-        workerExecutor.execute(() -> {
-            taskDao.startTimer(slotId, LocalTime.now());
-            callbackDispatcher.execute(onSaved);
-        });
-    }
-
-    /**
-     * Stops the manual timer for a slot by recording the current time as its end.
-     *
-     * <p>Counterpart to {@link #startTimer}. See that method for the distinction between
-     * manual timers and the two-phase check-off completion flow.
-     *
-     * @param slotId  the slot UUID to stop timing
-     * @param onSaved callback dispatched on the callback dispatcher thread after the write
-     */
-    public void stopTimer(String slotId, Runnable onSaved) {
-        workerExecutor.execute(() -> {
-            taskDao.stopTimer(slotId, LocalTime.now());
-            callbackDispatcher.execute(onSaved);
-        });
-    }
-
     /**
      * Deletes a task and its entire graph (slots, relations, prerequisites, planned meals).
      *

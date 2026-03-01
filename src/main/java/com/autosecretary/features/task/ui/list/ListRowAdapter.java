@@ -30,11 +30,11 @@ import java.util.function.Function;
 /**
  * RecyclerView adapter for the task list. Renders two visually distinct row types:
  * <ul>
- *   <li><b>Task rows</b> — show checkbox/progress, timer, deadline, streak, and edit controls.</li>
+ *   <li><b>Task rows</b> — show checkbox/progress, deadline, streak, and edit controls.</li>
  *   <li><b>Calendar event rows</b> — read-only; show a "Kalender" chip, no interaction controls.</li>
  * </ul>
  *
- * <p>The adapter delegates all user interactions (checkoff, timer, edit, progress) to
+ * <p>The adapter delegates all user interactions (checkoff, edit, progress) to
  * {@link TaskRowActions} callbacks provided by {@link TaskListFragment}. It does not talk
  * to the ViewModel directly.
  *
@@ -110,7 +110,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     public static class TaskRowActions {
         private final Consumer<ViewSlot> onCheck;
         private final Consumer<ViewSlot> onEdit;
-        private final Consumer<ViewSlot> onTimerToggle;
         private final Consumer<ViewSlot> onProgressPlus;
         private final Consumer<ViewSlot> onProgressMinus;
         private final Consumer<ViewSlot> onToggleExpand;
@@ -118,14 +117,12 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
         public TaskRowActions(Consumer<ViewSlot> onCheck,
                               Consumer<ViewSlot> onEdit,
-                              Consumer<ViewSlot> onTimerToggle,
                               Consumer<ViewSlot> onProgressPlus,
                               Consumer<ViewSlot> onProgressMinus,
                               Consumer<ViewSlot> onToggleExpand,
                               Function<ViewSlot, Boolean> isExpanded) {
             this.onCheck = onCheck;
             this.onEdit = onEdit;
-            this.onTimerToggle = onTimerToggle;
             this.onProgressPlus = onProgressPlus;
             this.onProgressMinus = onProgressMinus;
             this.onToggleExpand = onToggleExpand;
@@ -146,7 +143,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         TextView progressText;
         TextView deadlineCountdown;
         TextView streakDisplay;
-        ImageButton timerButton;
         ImageButton editButton;
         TextView expandToggle;
         ValueAnimator completionAnimator;
@@ -166,7 +162,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             this.progressText = taskRow.findViewById(R.id.ProgressText);
             this.deadlineCountdown = taskRow.findViewById(R.id.DeadlineCountdown);
             this.streakDisplay = taskRow.findViewById(R.id.StreakDisplay);
-            this.timerButton = taskRow.findViewById(R.id.TaskTimerButton);
             this.editButton = taskRow.findViewById(R.id.EditTaskButton);
             this.expandToggle = taskRow.findViewById(R.id.ExpandToggle);
             this.calendarChip = taskRow.findViewById(R.id.CalendarChip);
@@ -206,7 +201,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         bindStreak(holder, item);
         bindProgressState(holder, item);
         bindCompletionMode(holder, item, viewSlot);
-        bindTimerState(holder, item);
         bindExpandToggle(holder, viewSlot);
         bindInteractions(holder, item, viewSlot);
     }
@@ -226,7 +220,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.checkBox.setVisibility(View.VISIBLE);
         holder.deadlineCountdown.setVisibility(View.VISIBLE);
         holder.streakDisplay.setVisibility(View.VISIBLE);
-        holder.timerButton.setVisibility(View.VISIBLE);
         holder.editButton.setVisibility(View.VISIBLE);
         holder.expandToggle.setVisibility(View.GONE);
         holder.calendarChip.setVisibility(View.GONE);
@@ -275,7 +268,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.progressContainer.setVisibility(View.GONE);
         holder.deadlineCountdown.setVisibility(View.GONE);
         holder.streakDisplay.setVisibility(View.GONE);
-        holder.timerButton.setVisibility(View.GONE);
         holder.editButton.setVisibility(View.GONE);
         holder.expandToggle.setVisibility(View.GONE);
         holder.calendarChip.setVisibility(View.VISIBLE);
@@ -459,33 +451,13 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
                 enabled ? colorProgressButtonTint : colorProgressButtonTintDisabled));
     }
 
-    /** Updates the timer button icon (play/pause) and its accessibility description. */
-    private void bindTimerState(TaskRowViewHolder holder, TaskListItem item) {
-        Context context = holder.itemView.getContext();
-        holder.timerButton.setImageResource(item.inProgress
-                ? R.drawable.ic_pause_24
-                : R.drawable.ic_play_24);
-        holder.timerButton.setContentDescription(context.getString(
-                item.inProgress ? R.string.task_timer_stop : R.string.task_timer_start));
-        ViewCompat.setStateDescription(holder.timerButton, context.getString(
-                item.inProgress ? R.string.task_timer_running : R.string.task_timer_stopped));
-    }
-
-    /** Wires click/long-click handlers for timer, edit, and title; disabled when viewing non-today dates. */
+    /** Wires click/long-click handlers for edit and title; disabled when viewing non-today dates. */
     private void bindInteractions(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
-        boolean timerEligible = item.slotId != null && !item.completed;
-        boolean timerEnabled = interactionsEnabled && timerEligible;
-        holder.timerButton.setEnabled(timerEnabled);
-
         holder.title.setOnClickListener(v -> showDescriptionPopup(v, item));
 
         holder.itemView.setOnLongClickListener(interactionsEnabled
                 ? v -> { actions.onEdit.accept(viewSlot); return true; }
                 : null);
-        holder.timerButton.setOnClickListener(interactionsEnabled
-                ? v -> actions.onTimerToggle.accept(viewSlot)
-                : null);
-        holder.timerButton.setAlpha(interactionsEnabled && timerEligible ? ALPHA_ENABLED : ALPHA_DISABLED);
         holder.editButton.setOnClickListener(interactionsEnabled
                 ? v -> actions.onEdit.accept(viewSlot)
                 : null);

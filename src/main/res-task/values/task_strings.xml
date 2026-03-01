@@ -21,11 +21,6 @@
     <string name="task_row_edit">Aufgabe bearbeiten</string>
     <string name="task_row_expand_children">Unteraufgaben anzeigen</string>
     <string name="task_row_collapse_children">Unteraufgaben ausblenden</string>
-    <string name="task_timer_start">Timer starten</string>
-    <string name="task_timer_stop">Timer stoppen</string>
-    <string name="task_timer_running">Timer läuft</string>
-    <string name="task_timer_stopped">Timer nicht aktiv</string>
-
     <string name="task_time_fallback_start">Nicht</string>
     <string name="task_time_fallback_end">Heute</string>
     <string name="task_description_fallback">Keine Beschreibung</string>
@@ -55,7 +50,6 @@
     <string name="task_list_day_nav_today">Heute</string>
     <string name="task_list_day_nav_next">▶</string>
     <string name="task_list_day_nav_next_desc">Nächster Tag</string>
-    <string name="task_list_generate">Generieren</string>
     <string name="task_list_toggle_checklist">Checkliste</string>
     <string name="task_list_toggle_manage">Verwalten</string>
     <string name="task_list_search_hint">Aufgaben suchen</string>
@@ -149,11 +143,6 @@
     <string name="task_edit_validation_target_below_current">Ziel muss mindestens so groß wie Aktuell sein.</string>
     <string name="task_edit_validation_required_format">Pflichtfeld. %1$s</string>
     <string name="task_edit_validation_number_format">Bitte eine ganze Zahl eingeben. %1$s</string>
-
-    <plurals name="task_list_schedule_complete">
-        <item quantity="one">Planung mit 1 Konflikt abgeschlossen</item>
-        <item quantity="other">Planung mit %1$d Konflikten abgeschlossen</item>
-    </plurals>
 
     <string name="task_row_toggle_expanded">▾</string>
     <string name="task_row_toggle_collapsed">▸</string>

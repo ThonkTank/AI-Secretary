@@ -111,12 +111,6 @@ public interface TaskDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writePlannedMeals(List<TaskPlannedMeal> plannedMeals);
 
-    @Query("UPDATE task_slots SET realStart = :startTime, realEnd = NULL WHERE id = :slotId")
-    void startTimer(String slotId, LocalTime startTime);
-
-    @Query("UPDATE task_slots SET realEnd = :endTime WHERE id = :slotId")
-    void stopTimer(String slotId, LocalTime endTime);
-
     @Query("""
             SELECT taskId
             FROM task_slots

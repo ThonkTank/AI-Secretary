@@ -3,13 +3,11 @@ package com.autosecretary.features.task.ui.list;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.util.Log;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
@@ -24,13 +22,12 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
 import com.autosecretary.features.task.ui.edit.TaskEditDialog;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
-import com.google.android.material.snackbar.Snackbar;
+
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -96,7 +93,7 @@ public class TaskListFragment extends Fragment {
      * 2. RecyclerView + adapter with action callbacks
      * 3. LiveData observers (display list, schedule conflicts, search query sync)
      * 4. Search bar text watcher
-     * 5. Action buttons (generate schedule, new task)
+     * 5. Action buttons (new task)
      * 6. Day navigation (prev/next arrows, date label, interaction gate)
      * 7. Checklist/Manage mode toggle
      */
@@ -121,7 +118,6 @@ public class TaskListFragment extends Fragment {
                 new ListRowAdapter.TaskRowActions(
                         vm::checkOff,
                         viewSlot -> openEditDialog(editSessionController, viewSlot.getItem().taskId),
-                        vm::toggleTimer,
                         vm::incrementProgress,
                         vm::decrementProgress,
                         vm::toggleExpanded,
@@ -134,18 +130,6 @@ public class TaskListFragment extends Fragment {
             boolean hasItems = items != null && !items.isEmpty();
             recyclerView.setVisibility(hasItems ? View.VISIBLE : View.GONE);
             emptyStateContainer.setVisibility(hasItems ? View.GONE : View.VISIBLE);
-        });
-
-        vm.getScheduleConflicts().observe(getViewLifecycleOwner(), conflicts -> {
-            if (conflicts == null || conflicts.isEmpty()) {
-                return;
-            }
-            String message = getResources().getQuantityString(
-                    R.plurals.task_list_schedule_complete, conflicts.size(), conflicts.size());
-            Snackbar.make(view, message, Snackbar.LENGTH_LONG).show();
-            for (SchedulingConflict conflict : conflicts) {
-                Log.w("TaskScheduleConflict", conflict.toString());
-            }
         });
 
         vm.getSearchQuery().observe(getViewLifecycleOwner(), query -> {
@@ -172,10 +156,7 @@ public class TaskListFragment extends Fragment {
             }
         });
 
-        Button generateButton = view.findViewById(R.id.GenerateScheduleButton);
         View newTaskButton = view.findViewById(R.id.NewTaskButton);
-        generateButton.setOnClickListener(v -> vm.updateList());
-
         View.OnClickListener createTaskClickListener = v -> openCreateTaskDialog(editSessionController);
 
         newTaskButton.setOnClickListener(createTaskClickListener);
@@ -205,7 +186,6 @@ public class TaskListFragment extends Fragment {
             dayNavNext.setEnabled(canGoForward);
             dayNavNext.setAlpha(canGoForward ? ALPHA_NAV_ENABLED : ALPHA_NAV_DISABLED);
 
-            generateButton.setVisibility(isToday ? View.VISIBLE : View.GONE);
             newTaskButton.setVisibility(isToday ? View.VISIBLE : View.GONE);
 
             adapter.setInteractionsEnabled(isToday);

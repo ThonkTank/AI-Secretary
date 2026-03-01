@@ -11,6 +11,8 @@ import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskDataService;
+
+import android.util.Log;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 import com.autosecretary.features.task.application.calendar.ScheduleWindow;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
@@ -54,6 +56,7 @@ public class TaskViewModel extends AndroidViewModel {
 
     private final TaskDataService taskDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
+    /** Fires once during construction to auto-generate today's schedule. */
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
     private final AdjustTaskProgressUseCase adjustTaskProgressUseCase;
     private final TaskEditSessionController taskEditSessionController;
@@ -66,8 +69,6 @@ public class TaskViewModel extends AndroidViewModel {
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
     private final MutableLiveData<LocalDate> selectedDay = new MutableLiveData<>(LocalDate.now());
     private final MutableLiveData<String> searchQuery = new MutableLiveData<>("");
-    private final MutableLiveData<List<SchedulingConflict>> scheduleConflicts = new MutableLiveData<>();
-
     /** Currently active display mode (CHECKLIST or MANAGE); drives filter and sort behaviour. */
     private ListConfig activeListConfig = ListConfig.CHECKLIST;
     /** True once READ_CALENDAR permission is granted; gates calendar event injection in filterList(). */
@@ -98,8 +99,24 @@ public class TaskViewModel extends AndroidViewModel {
         this.preferences = preferences;
 
         this.masterList = new ViewSlotList();
-        applyChecklistPreset();
+        // Show existing data immediately while regeneration runs in background.
         refreshList();
+        // Auto-regenerate on ViewModel creation (once per Activity lifecycle).
+        // Previously triggered by the manual "Generieren" button.
+        regenerateAndLoad();
+    }
+
+    /** Regenerates the daily schedule and refreshes the display list on completion. */
+    private void regenerateAndLoad() {
+        regenerateScheduleUseCase.execute(result -> {
+            List<SchedulingConflict> conflicts = result.conflicts();
+            if (!conflicts.isEmpty()) {
+                for (SchedulingConflict c : conflicts) {
+                    Log.w("TaskScheduleConflict", c.toString());
+                }
+            }
+            refreshList();
+        });
     }
 
     public LiveData<List<ViewSlot>> getList() {
@@ -112,10 +129,6 @@ public class TaskViewModel extends AndroidViewModel {
 
     public LiveData<String> getSearchQuery() {
         return searchQuery;
-    }
-
-    public LiveData<List<SchedulingConflict>> getScheduleConflicts() {
-        return scheduleConflicts;
     }
 
     /** Updates the search query and re-filters the list. Only effective in Manage mode. */
@@ -182,14 +195,6 @@ public class TaskViewModel extends AndroidViewModel {
 
     public boolean isManageMode() {
         return activeListConfig == ListConfig.MANAGE;
-    }
-
-    /** Regenerates the entire daily schedule via {@link RegenerateScheduleUseCase}, then refreshes. */
-    public void updateList() {
-        regenerateScheduleUseCase.execute(result -> {
-            scheduleConflicts.postValue(result.conflicts());
-            refreshList();
-        });
     }
 
     /**
@@ -279,19 +284,6 @@ public class TaskViewModel extends AndroidViewModel {
     /** Decrements the progress counter for a goal-based task (e.g. 4/10 → 3/10). */
     public void decrementProgress(ViewSlot viewSlot) {
         adjustTaskProgressUseCase.execute(viewSlot.getItem(), false, this::refreshList);
-    }
-
-    /** Starts or stops the active timer on a slot. No-op if the slot has no ID. */
-    public void toggleTimer(ViewSlot viewSlot) {
-        TaskListItem item = viewSlot.getItem();
-        if (item.slotId == null) {
-            return;
-        }
-        if (item.inProgress) {
-            taskDataService.stopTimer(item.slotId, this::refreshList);
-        } else {
-            taskDataService.startTimer(item.slotId, this::refreshList);
-        }
     }
 
     /** Toggles expand/collapse for a parent task in Manage mode. No-op in Checklist mode or for leaf tasks. */
