@@ -29,8 +29,10 @@ import androidx.annotation.NonNull;
  * <p><strong>Two kinds of hierarchy:</strong>
  * <ul>
  *   <li><em>Task hierarchy</em> — parent-child <em>tasks</em> linked via {@code TaskRelation} (separate table).</li>
- *   <li><em>Slot hierarchy</em> — within a prerequisite chain, one slot's {@code parent} points to
- *       the preceding slot in the same chain. See {@link #parent} and {@link #chainId}.</li>
+ *   <li><em>Slot hierarchy</em> — when a parent task's slot is scheduled, child-task slots are
+ *       nested inside the parent's time block. Each child slot's {@link #parent} points to the
+ *       containing parent-task slot. Used for cascade eviction and UI tree rendering.
+ *       See also {@link #chainId} for prerequisite-chain grouping (separate concept).</li>
  * </ul>
  */
 @Entity(tableName = "task_slots",
@@ -61,11 +63,13 @@ public class TaskSlot {
     public String id = UUID.randomUUID().toString();
     public String taskId;
     /**
-     * Slot-level parent ID for prerequisite-chain slot hierarchies. This is distinct from
-     * the task-level parent-child relationship (which lives in {@code TaskRelation}).
-     * When slots in a prerequisite chain are placed sequentially, each slot's {@code parent}
-     * points to the preceding slot in the same chain. The in-memory {@link #children} list
-     * mirrors this linkage for tree traversal and displacement.
+     * Slot-level parent ID for child-task containment. When a parent task is scheduled,
+     * its child tasks' slots are placed within the parent's time block; each child slot's
+     * {@code parent} points to the containing parent-task slot ID. Distinct from the
+     * task-level parent-child relationship (which lives in {@code TaskRelation}).
+     * Used by {@code removeOrphanedChildSlots} for cascade eviction when the parent
+     * slot is displaced. The in-memory {@link #children} list mirrors this linkage
+     * for tree traversal.
      */
     public String parent;
     /**

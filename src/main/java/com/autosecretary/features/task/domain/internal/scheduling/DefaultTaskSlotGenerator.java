@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -896,17 +897,18 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             LocalDateTime start = placement.starts.get(i);
             TaskSlot slot = createScheduledSlot(task, start, placement.nodeScores.get(i));
             int plannedDuration = task.core.plannedDurationMinutes();
-            slot.end = start.plusMinutes(plannedDuration).toLocalTime();
+            LocalDateTime end = start.plusMinutes(plannedDuration);
+            slot.end = end.toLocalTime();
             slot.chainId = chainId;
-            finalizeAssignment(task, slot);
             // For chains: the first slot carries the full gainScore as displacementScore so that
             // computeAtomicLoss (which deduplicates by atomicGroupId) counts the full chain value
             // exactly once. Subsequent slots get 0 — they are covered by the first slot's count.
             slot.displacementScore = (i == 0) ? placement.gainScore : 0;
-            if (planningState != null) {
-                planningState.recordScheduled(task.core.id, slot.day);
+            finalizeAssignment(task, slot);
+            if (!task.children.isEmpty()) {
+                scheduleChildrenWithinSlot(task.children, slot, start, end);
             }
-            occupied.add(new OccupiedInterval(start, start.plusMinutes(plannedDuration), toCandidate(task, slot, true)));
+            occupied.add(new OccupiedInterval(start, end, toCandidate(task, slot, true)));
         }
         occupied.sort(Interval::compareTo);
     }
@@ -943,6 +945,37 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         occupied.removeIf(interval -> interval.candidate != null
                 && interval.candidate.slot != null
                 && ids.contains(interval.candidate.slot.id));
+        removeOrphanedChildSlots(ids);
+    }
+
+    /**
+     * Removes child slots whose {@code parent} references a displaced slot.
+     * When a parent slot is evicted, its children (scheduled via
+     * {@link #scheduleChildrenWithinSlot}) become orphans and must be cleaned up.
+     * Recurses to handle grandchildren and deeper nesting.
+     *
+     * <p>Scans all tasks because child slots belong to different tasks than the
+     * parent slot — there is no single task whose slot list contains both.
+     */
+    private void removeOrphanedChildSlots(Set<String> displacedSlotIds) {
+        Set<String> orphanedIds = new HashSet<>();
+        for (Task task : allTasksById.values()) {
+            Iterator<TaskSlot> it = task.slots.iterator();
+            while (it.hasNext()) {
+                TaskSlot slot = it.next();
+                if (slot.parent != null && displacedSlotIds.contains(slot.parent)) {
+                    orphanedIds.add(slot.id);
+                    if (planningState != null && slot.day != null) {
+                        planningState.removeScheduled(slot.taskId, slot.day);
+                    }
+                    newSlots--;
+                    it.remove();
+                }
+            }
+        }
+        if (!orphanedIds.isEmpty()) {
+            removeOrphanedChildSlots(orphanedIds);
+        }
     }
 
     /**
@@ -1031,8 +1064,8 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             slot.displacementGroupType = TaskSlot.DisplacementGroupType.FIXED;
             slot.displacementGroupId = GROUP_PREFIX_FIXED + task.core.id;
             finalizeAssignment(task, slot);
-            if (planningState != null) {
-                planningState.recordScheduled(task.core.id, slot.day);
+            if (!task.children.isEmpty()) {
+                scheduleChildrenWithinSlot(task.children, slot, start, end);
             }
             occupied.add(new OccupiedInterval(start, end, toCandidate(task, slot, false)));
             occupied.sort(Interval::compareTo);
@@ -1257,7 +1290,61 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
         task.slots.add(slot);
         scorer.onSlotAssigned(task, slot.start);
+        if (planningState != null && slot.day != null) {
+            planningState.recordScheduled(task.core.id, slot.day);
+        }
         newSlots++;
+    }
+
+    /**
+     * Recursively places child-task slots within a parent's time block.
+     *
+     * <p>Children are sorted by priority (highest first) and placed sequentially within
+     * {@code [blockStart, blockEnd)}. Children that don't fit are skipped (not break),
+     * so shorter children later in the list can still be placed. Grandchildren are
+     * placed recursively within each child's sub-block.
+     *
+     * <p>Child slots are <em>not</em> added to the occupied-interval list because the
+     * parent's {@link OccupiedInterval} already covers the entire block, protecting it
+     * from displacement by unrelated tasks.
+     *
+     * <p>Each child slot inherits the parent's {@code displacementGroupId} and
+     * {@code displacementGroupType} so that displacement of the parent atomically
+     * removes all children (see {@link #removeOrphanedChildSlots}).
+     */
+    private void scheduleChildrenWithinSlot(List<Task> children, TaskSlot parentSlot,
+                                            LocalDateTime blockStart, LocalDateTime blockEnd) {
+        List<Task> sorted = new ArrayList<>(children);
+        sorted.sort(Comparator.comparingInt((Task t) -> t.core.priority.scoringWeight).reversed());
+
+        LocalDateTime cursor = blockStart;
+        for (Task child : sorted) {
+            if (child.core.completed) continue;
+            if (child.core.schedulingType == TaskCore.SchedulingType.TERMIN) continue;
+
+            int childDuration = child.core.plannedDurationMinutes();
+            if (childDuration <= 0) continue;
+
+            LocalDateTime childEnd = cursor.plusMinutes(childDuration);
+            if (childEnd.isAfter(blockEnd)) continue;
+
+            // maintenance() pre-computes scorer state (daily rep counters etc.) for this child.
+            // Child inherits parent's score: children are never displaced individually,
+            // only via parent eviction (displacementScore = 0).
+            scorer.maintenance(child, parentSlot.day, planningState);
+            TaskSlot childSlot = createScheduledSlot(child, cursor, parentSlot.score);
+            childSlot.end = childEnd.toLocalTime();
+            childSlot.parent = parentSlot.id;
+            childSlot.displacementGroupId = parentSlot.displacementGroupId;
+            childSlot.displacementGroupType = parentSlot.displacementGroupType;
+            childSlot.displacementScore = 0;
+            finalizeAssignment(child, childSlot);
+            if (!child.children.isEmpty()) {
+                scheduleChildrenWithinSlot(child.children, childSlot, cursor, childEnd);
+            }
+
+            cursor = childEnd;
+        }
     }
 
     private String formatSlot(TaskSlot slot) {
