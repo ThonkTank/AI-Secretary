@@ -17,12 +17,12 @@ import java.util.List;
  */
 public interface RecipeRepository {
     List<Recipe> getRecipes();
-    Recipe findRecipeById(long recipeId);
+    Recipe findRecipeById(String recipeId);
     void saveRecipe(Recipe recipe);
-    void deleteRecipe(long recipeId);
+    void deleteRecipe(String recipeId);
 
     List<Ingredient> getIngredients();
-    Ingredient findIngredientById(long ingredientId);
+    Ingredient findIngredientById(String ingredientId);
     void saveIngredient(Ingredient ingredient);
-    void deleteIngredient(long ingredientId);
+    void deleteIngredient(String ingredientId);
 }

@@ -23,7 +23,7 @@ public class TaskPlannedMeal {
     public String taskId;
     @NonNull
     public LocalDate day;
-    public long recipeId;
+    public String recipeId;
     public int plannedServings;
     public boolean completed;
     public int actualServings;

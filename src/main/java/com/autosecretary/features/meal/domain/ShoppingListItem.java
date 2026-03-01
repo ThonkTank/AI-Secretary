@@ -20,8 +20,8 @@ import com.autosecretary.features.meal.domain.internal.MealAmountFormat;
  */
 public class ShoppingListItem {
 
-    public Long id;
-    public long ingredientId;
+    public String id;
+    public String ingredientId;
     public String ingredientName;       // denormalized from Ingredient for display
     public double amount;               // total to buy = neededAmount + excessAmount (rounded up to full package)
     public double neededAmount;         // raw amount actually required
@@ -37,7 +37,7 @@ public class ShoppingListItem {
     public static class Builder {
         private final ShoppingListItem i = new ShoppingListItem();
 
-        public Builder(long ingredientId, String ingredientName, double needed, String unit) {
+        public Builder(String ingredientId, String ingredientName, double needed, String unit) {
             i.ingredientId = ingredientId;
             i.ingredientName = ingredientName;
             i.neededAmount = needed;

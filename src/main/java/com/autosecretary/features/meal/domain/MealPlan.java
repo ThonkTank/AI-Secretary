@@ -19,15 +19,15 @@ import java.time.LocalDateTime;
  */
 public class MealPlan {
 
-    public Long id;
+    public String id;
     public LocalDate date;
     public MealType mealType;
-    public long recipeId;
+    public String recipeId;
     public int plannedServings;
     public boolean isCompleted;
     public int actualServings;
     public LocalDateTime completedAt;
-    public Long itemId;                 // FK into the task feature's checklist item table (opaque id; null when not integrated with task tracking)
+    public String itemId;               // FK into the task feature's checklist item table (opaque id; null when not integrated with task tracking)
     public String recipeTitle;          // Denormalized
     public int estimatedCalories;       // Denormalized
 
@@ -35,14 +35,14 @@ public class MealPlan {
     public static class Builder {
         private final MealPlan p = new MealPlan();
 
-        public Builder(LocalDate date, MealType mealType, long recipeId) {
+        public Builder(LocalDate date, MealType mealType, String recipeId) {
             p.date = date;
             p.mealType = mealType;
             p.recipeId = recipeId;
         }
 
         public Builder servings(int v) { p.plannedServings = v; return this; }
-        public Builder itemId(Long v) { p.itemId = v; return this; }
+        public Builder itemId(String v) { p.itemId = v; return this; }
         public Builder recipeTitle(String v) { p.recipeTitle = v; return this; }
         public Builder calories(int v) { p.estimatedCalories = v; return this; }
 

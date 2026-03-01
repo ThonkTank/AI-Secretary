@@ -16,5 +16,5 @@ import java.util.List;
 public record RecipeScalingResult(double servings, double factor, List<ScaledIngredient> ingredients) {
 
     /** A single ingredient with its amount scaled to the requested serving count. */
-    public record ScaledIngredient(Long ingredientId, String ingredientName, double amount, String unit) {}
+    public record ScaledIngredient(String ingredientId, String ingredientName, double amount, String unit) {}
 }

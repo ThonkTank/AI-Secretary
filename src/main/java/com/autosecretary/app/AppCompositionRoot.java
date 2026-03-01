@@ -18,10 +18,12 @@ import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
 import com.autosecretary.features.meal.application.TaskMealIntegrationService;
 import com.autosecretary.features.meal.application.MealPlannerPresenter;
-import com.autosecretary.features.meal.data.internal.repository.StorageMealRepository;
-import com.autosecretary.features.meal.data.internal.repository.StoragePantryRepository;
-import com.autosecretary.features.meal.data.internal.repository.StorageRecipeRepository;
-import com.autosecretary.features.meal.data.internal.storage.InMemoryMealStorage;
+import com.autosecretary.features.meal.data.repository.MealRoomRepository;
+import com.autosecretary.features.meal.data.repository.MealRecipeRoomRepository;
+import com.autosecretary.features.meal.data.repository.MealPantryRoomRepository;
+import com.autosecretary.features.meal.domain.MealRepository;
+import com.autosecretary.features.meal.domain.RecipeRepository;
+import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
@@ -90,7 +92,9 @@ public class AppCompositionRoot {
     private TaskDao taskDao;
     private TaskSlotToggleMutation taskSlotToggleMutation;
     private BudgetRoomRepository budgetRoomRepository;
-    private final InMemoryMealStorage mealStorage;
+    private MealRepository mealRepository;
+    private RecipeRepository recipeRepository;
+    private PantryRepository pantryRepository;
     private MealPlannerPresenter mealPlannerPresenter;
     private final TaskCompletionService taskCompletionService;
     private final TaskLifecycleManager taskLifecycleManager;
@@ -104,7 +108,6 @@ public class AppCompositionRoot {
             );
             return thread;
         });
-        this.mealStorage = new InMemoryMealStorage();
         this.taskCompletionService = new TaskCompletionService();
         this.taskLifecycleManager = new TaskLifecycleManager();
     }
@@ -162,10 +165,9 @@ public class AppCompositionRoot {
         );
         BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase =
                 new BookTaskCompletionExpenseUseCase(getBudgetRoomRepository());
+        ensureMealRepositories();
         TaskMealIntegrationService taskMealIntegrationService = new TaskMealIntegrationService(
-                new StorageMealRepository(mealStorage),
-                new StorageRecipeRepository(mealStorage),
-                new StoragePantryRepository(mealStorage)
+                mealRepository, recipeRepository, pantryRepository
         );
 
         taskSlotToggleMutation = new TaskSlotToggleMutation(
@@ -202,7 +204,8 @@ public class AppCompositionRoot {
                 checkOffTaskUseCase,
                 regenerateScheduleUseCase,
                 adjustTaskProgressUseCase,
-                taskCalendarService
+                taskCalendarService,
+                scheduleConfigRepository
         );
     }
 
@@ -294,8 +297,7 @@ public class AppCompositionRoot {
      * <p>Call this after a backup restore or factory reset, <em>before</em> calling
      * {@link android.app.Activity#recreate()} on the hosting activity. The next call to any
      * {@code get…()} method will rebuild the full dependency graph against the new database
-     * instance. The shared executor and the meal storage are intentionally not reset: the
-     * executor has no per-database state, and meal data lives in memory only.</p>
+     * instance. The shared executor is intentionally not reset: it has no per-database state.</p>
      *
      * @see com.autosecretary.app.settings.SettingsDataService
      */
@@ -308,18 +310,32 @@ public class AppCompositionRoot {
         taskSlotToggleMutation = null;
         budgetRoomRepository = null;
         mealPlannerPresenter = null;
+        mealRepository = null;
+        recipeRepository = null;
+        pantryRepository = null;
     }
 
-    // Not synchronized: MealPlannerPresenter is only accessed from the main thread
-    // (via MealPlannerFragment). No concurrent access is possible, so no lock is needed.
-    public MealPlannerPresenter getMealPlannerPresenter() {
+    public synchronized MealPlannerPresenter getMealPlannerPresenter() {
         if (mealPlannerPresenter == null) {
+            ensureMealRepositories();
+            Handler mainHandler = new Handler(Looper.getMainLooper());
             mealPlannerPresenter = new MealPlannerPresenter(
-                    new StorageMealRepository(mealStorage),
-                    new StorageRecipeRepository(mealStorage),
-                    new StoragePantryRepository(mealStorage)
-            );
+                    mealRepository, recipeRepository, pantryRepository,
+                    sharedExecutor, mainHandler::post);
         }
         return mealPlannerPresenter;
+    }
+
+    private void ensureMealRepositories() {
+        if (mealRepository != null) return;
+        AppDatabase db = AppDatabase.getInstance(app);
+        mealRepository = new MealRoomRepository(
+                db.mealPlanDao(),
+                db.mealConsumptionLogDao(),
+                db.mealHouseholdMemberDao(),
+                db.mealCookingPreferencesDao(),
+                db.mealWeeklyFoodTargetDao());
+        recipeRepository = new MealRecipeRoomRepository(db.mealRecipeDao(), db.mealIngredientDao());
+        pantryRepository = new MealPantryRoomRepository(db.mealPantryDao());
     }
 }

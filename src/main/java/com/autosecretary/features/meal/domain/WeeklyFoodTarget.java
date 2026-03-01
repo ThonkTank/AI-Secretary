@@ -17,7 +17,7 @@ import java.util.Map;
  */
 public class WeeklyFoodTarget {
 
-    public Long id;
+    public String id;
     public String periodKey;            // ISO date string used as storage key (e.g. "2026-02-14"); opaque to this class
 
     private final EnumMap<Ingredient.FoodGroup, Integer> targets = new EnumMap<>(Ingredient.FoodGroup.class);

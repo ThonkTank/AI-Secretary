@@ -160,13 +160,13 @@ public class LegacyMealImportService {
         importRows(SOURCE_INGREDIENTS, rows, report, (row, idx) -> {
             // Required field: name
             String name = asString(row.get("name"));
-            if (name == null || name.isBlank()) {
+            if (name == null) {
                 report.addFailure(SOURCE_INGREDIENTS, idx, "missing required field: name");
                 return false;
             }
 
             Ingredient ingredient = new Ingredient();
-            ingredient.id = asLong(row.get("id"));
+            ingredient.id = asIdString(row.get("id"));
             ingredient.name = name;
             // Optional fields with fallbacks:
             ingredient.foodGroup = asEnum(Ingredient.FoodGroup.class, row.get("food_group"), Ingredient.FoodGroup.OTHER);
@@ -202,12 +202,12 @@ public class LegacyMealImportService {
         importRows(SOURCE_RECIPES, rows, report, (row, idx) -> {
             // Required field: title
             String title = asString(row.get("title"));
-            if (title == null || title.isBlank()) {
+            if (title == null) {
                 report.addFailure(SOURCE_RECIPES, idx, "missing required field: title");
                 return false;
             }
             Recipe recipe = new Recipe();
-            recipe.id = asLong(row.get("id"));
+            recipe.id = asIdString(row.get("id"));
             recipe.title = title;
             recipe.description = asString(row.get("description"));
             recipe.instructions = asString(row.get("instructions"));
@@ -239,13 +239,13 @@ public class LegacyMealImportService {
         importRows(SOURCE_MEAL_PLANS, rows, report, (row, idx) -> {
             LocalDate date = asDate(row.get("date"));
             MealType mealType = asEnum(MealType.class, row.get("meal_type"), null);
-            long recipeId = asLong(row.get("recipe_id"), 0L);
-            if (date == null || mealType == null || recipeId <= 0) {
+            String recipeId = asIdString(row.get("recipe_id"));
+            if (date == null || mealType == null || recipeId == null) {
                 report.addFailure(SOURCE_MEAL_PLANS, idx, "required fields invalid: date/meal_type/recipe_id");
                 return false;
             }
             MealPlan mealPlan = new MealPlan();
-            mealPlan.id = asLong(row.get("id"));
+            mealPlan.id = asIdString(row.get("id"));
             mealPlan.date = date;
             mealPlan.mealType = mealType;
             mealPlan.recipeId = recipeId;
@@ -253,7 +253,7 @@ public class LegacyMealImportService {
             mealPlan.isCompleted = asBoolean(row.get("is_completed"), false);
             mealPlan.actualServings = asInt(row.get("actual_servings"), 0);
             mealPlan.completedAt = asDateTime(row.get("completed_at"));
-            mealPlan.itemId = asLong(row.get("item_id"));
+            mealPlan.itemId = asIdString(row.get("item_id"));
             mealPlan.recipeTitle = asString(row.get("recipe_title"));
             mealPlan.estimatedCalories = asInt(row.get("estimated_calories"), 0);
             mealRepository.saveMealPlan(mealPlan);
@@ -264,20 +264,18 @@ public class LegacyMealImportService {
     private void importConsumption(List<Map<String, Object>> rows, LegacyImportReport report) {
         importRows(SOURCE_CONSUMPTION, rows, report, (row, idx) -> {
             LocalDate date = asDate(row.get("date"));
-            long itemId = asLong(row.get("item_id"), 0L);
-            long memberId = asLong(row.get("member_id"), 0L);
-            // itemId == 0 and memberId == 0 are valid "unassigned" sentinels used by
-            // TaskMealIntegrationService. Only date == null is a hard rejection.
-            if (date == null || itemId < 0 || memberId < 0) {
-                report.addFailure(SOURCE_CONSUMPTION, idx, "required fields invalid: date/item_id/member_id");
+            // itemId and memberId may be null ("unassigned" sentinels used by
+            // TaskMealIntegrationService). Only date == null is a hard rejection.
+            if (date == null) {
+                report.addFailure(SOURCE_CONSUMPTION, idx, "required fields invalid: date");
                 return false;
             }
             ConsumptionLog log = new ConsumptionLog();
-            log.id = asLong(row.get("id"));
+            log.id = asIdString(row.get("id"));
             log.date = date;
-            log.itemId = itemId;
-            log.memberId = memberId;
-            log.recipeId = asLong(row.get("recipe_id"), 0L);
+            log.itemId = asIdString(row.get("item_id"));
+            log.memberId = asIdString(row.get("member_id"));
+            log.recipeId = asIdString(row.get("recipe_id"));
             log.servingsConsumed = asDouble(row.get("servings_consumed"), 0.0);
             log.calories = asInt(row.get("calories"), 0);
             log.protein = asInt(row.get("protein"), 0);
@@ -290,14 +288,14 @@ public class LegacyMealImportService {
 
     private void importPantry(List<Map<String, Object>> rows, LegacyImportReport report) {
         importRows(SOURCE_PANTRY, rows, report, (row, idx) -> {
-            long ingredientId = asLong(row.get("ingredient_id"), 0L);
-            if (ingredientId <= 0) {
+            String ingredientId = asIdString(row.get("ingredient_id"));
+            if (ingredientId == null) {
                 report.addFailure(SOURCE_PANTRY, idx, "missing required field: ingredient_id");
                 return false;
             }
 
             PantryItem item = new PantryItem();
-            item.id = asLong(row.get("id"));
+            item.id = asIdString(row.get("id"));
             item.ingredientId = ingredientId;
             item.ingredientName = asString(row.get("ingredient_name"));
             item.amount = asDouble(row.get("amount"), 0.0);
@@ -314,14 +312,14 @@ public class LegacyMealImportService {
     private void importShopping(List<Map<String, Object>> rows, LegacyImportReport report) {
         importRows(SOURCE_SHOPPING, rows, report, (row, idx) -> {
             String periodKey = asString(row.get("period_key"));
-            long ingredientId = asLong(row.get("ingredient_id"), 0L);
-            if (periodKey == null || periodKey.isBlank() || ingredientId <= 0) {
+            String ingredientId = asIdString(row.get("ingredient_id"));
+            if (periodKey == null || ingredientId == null) {
                 report.addFailure(SOURCE_SHOPPING, idx, "required fields invalid: period_key/ingredient_id");
                 return false;
             }
 
             ShoppingListItem item = new ShoppingListItem();
-            item.id = asLong(row.get("id"));
+            item.id = asIdString(row.get("id"));
             item.periodKey = periodKey;
             item.ingredientId = ingredientId;
             item.ingredientName = asString(row.get("ingredient_name"));
@@ -342,13 +340,13 @@ public class LegacyMealImportService {
     private void importMembers(List<Map<String, Object>> rows, LegacyImportReport report) {
         importRows(SOURCE_MEMBERS, rows, report, (row, idx) -> {
             String name = asString(row.get("name"));
-            if (name == null || name.isBlank()) {
+            if (name == null) {
                 report.addFailure(SOURCE_MEMBERS, idx, "missing required field: name");
                 return false;
             }
 
             HouseholdMember member = new HouseholdMember();
-            member.id = asLong(row.get("id"));
+            member.id = asIdString(row.get("id"));
             member.name = name;
             member.birthYear = asInt(row.get("birth_year"), LocalDate.now().getYear());
             member.gender = asEnum(HouseholdMember.Gender.class, row.get("gender"), HouseholdMember.Gender.OTHER);
@@ -366,7 +364,7 @@ public class LegacyMealImportService {
     private void importPreferences(List<Map<String, Object>> rows, LegacyImportReport report) {
         importRows(SOURCE_PREFERENCES, rows, report, (row, idx) -> {
             CookingPreferences prefs = new CookingPreferences();
-            prefs.id = asLong(row.get("id"));
+            prefs.id = asIdString(row.get("id"));
             // Use explicit 0 defaults for numeric fields (not implicit uninitialized values)
             prefs.maxBreakfastCooking = asInt(row.get("max_breakfast_cooking"), 0);
             prefs.maxLunchCooking = asInt(row.get("max_lunch_cooking"), 0);
@@ -386,13 +384,13 @@ public class LegacyMealImportService {
     private void importWeeklyTargets(List<Map<String, Object>> rows, LegacyImportReport report) {
         importRows(SOURCE_WEEKLY_TARGETS, rows, report, (row, idx) -> {
             String periodKey = asString(row.get("period_key"));
-            if (periodKey == null || periodKey.isBlank()) {
+            if (periodKey == null) {
                 report.addFailure(SOURCE_WEEKLY_TARGETS, idx, "missing required field: period_key");
                 return false;
             }
 
             WeeklyFoodTarget target = new WeeklyFoodTarget();
-            target.id = asLong(row.get("id"));
+            target.id = asIdString(row.get("id"));
             target.periodKey = periodKey;
             target.setTargetFor(Ingredient.FoodGroup.GRAIN,     asInt(row.get("grain_grams"), 0));
             target.setTargetFor(Ingredient.FoodGroup.POTATO,    asInt(row.get("potato_grams"), 0));
@@ -534,6 +532,21 @@ public class LegacyMealImportService {
         return v != null ? v : fallback;
     }
 
+    /**
+     * Converts a raw legacy ID value (Number or String) to a String ID.
+     * Numeric values greater than 0 are converted via {@link String#valueOf}.
+     * Non-positive numbers and blank strings return null (sentinel for "no ID").
+     */
+    private static String asIdString(Object raw) {
+        if (raw == null) return null;
+        if (raw instanceof Number n) {
+            long v = n.longValue();
+            return v > 0 ? String.valueOf(v) : null;
+        }
+        String s = raw.toString().trim();
+        return s.isEmpty() ? null : s;
+    }
+
     private static int asInt(Object raw, int fallback) {
         if (raw == null) return fallback;
         if (raw instanceof Number n) return n.intValue();
@@ -580,7 +593,7 @@ public class LegacyMealImportService {
         for (String entry : raw.split(";")) {
             String[] parts = entry.split("\\|", 4);
             if (parts.length < 4) continue;
-            Long ingredientId = asLong(parts[0]);
+            String ingredientId = asIdString(parts[0]);
             result.add(new Recipe.RecipeIngredient(ingredientId, parts[1], asDouble(parts[2], 0.0), parts[3]));
         }
         return result;
@@ -592,8 +605,8 @@ public class LegacyMealImportService {
         for (String entry : raw.split(",")) {
             String[] parts = entry.split("\\|", 2);
             if (parts.length < 2) continue;
-            Long memberId = asLong(parts[0]);
-            if (memberId == null || memberId <= 0) continue;
+            String memberId = asIdString(parts[0]);
+            if (memberId == null) continue;
             result.add(new Recipe.MemberRating(memberId, asInt(parts[1], 3)));
         }
         return result;

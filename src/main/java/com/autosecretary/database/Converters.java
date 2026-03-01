@@ -4,7 +4,11 @@ import androidx.room.TypeConverter;
 
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
+import com.autosecretary.features.meal.domain.HouseholdMember;
+import com.autosecretary.features.meal.domain.Ingredient;
 import com.autosecretary.features.meal.domain.MealType;
+import com.autosecretary.features.meal.domain.PantryItem;
+import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
@@ -18,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -67,6 +72,18 @@ public class Converters {
 
     private static <E extends Enum<E>> E toEnum(String value, Class<E> enumClass) {
         return value != null ? Enum.valueOf(enumClass, value) : null;
+    }
+
+    private static <E extends Enum<E>> String fromEnumSet(Set<E> values) {
+        if (values == null || values.isEmpty()) return null;
+        return values.stream().map(Enum::name).collect(Collectors.joining(","));
+    }
+
+    private static <E extends Enum<E>> Set<E> toEnumSet(String value, Class<E> enumClass) {
+        if (value == null || value.isEmpty()) return EnumSet.noneOf(enumClass);
+        return Arrays.stream(value.split(","))
+                .map(s -> Enum.valueOf(enumClass, s))
+                .collect(Collectors.toCollection(() -> EnumSet.noneOf(enumClass)));
     }
 
     @TypeConverter
@@ -221,14 +238,76 @@ public class Converters {
     }
 
     @TypeConverter
-    public static String fromDaySet(Set<DayOfWeek> days) {
-        if (days == null || days.isEmpty()) return null;
-        return days.stream().map(DayOfWeek::name).collect(Collectors.joining(","));
+    public static String fromDaySet(Set<DayOfWeek> days) { return fromEnumSet(days); }
+
+    @TypeConverter
+    public static Set<DayOfWeek> toDaySet(String value) { return toEnumSet(value, DayOfWeek.class); }
+
+    // --- Meal feature converters ---
+
+    @TypeConverter
+    public static String fromFoodGroup(Ingredient.FoodGroup value) {
+        return fromEnum(value);
     }
 
     @TypeConverter
-    public static Set<DayOfWeek> toDaySet(String value) {
-        if (value == null || value.isEmpty()) return null;
-        return Arrays.stream(value.split(",")).map(DayOfWeek::valueOf).collect(Collectors.toSet());
+    public static Ingredient.FoodGroup toFoodGroup(String value) {
+        return toEnum(value, Ingredient.FoodGroup.class);
     }
+
+    @TypeConverter
+    public static String fromStorageLocation(PantryItem.StorageLocation value) {
+        return fromEnum(value);
+    }
+
+    @TypeConverter
+    public static PantryItem.StorageLocation toStorageLocation(String value) {
+        return toEnum(value, PantryItem.StorageLocation.class);
+    }
+
+    @TypeConverter
+    public static String fromGender(HouseholdMember.Gender value) {
+        return fromEnum(value);
+    }
+
+    @TypeConverter
+    public static HouseholdMember.Gender toGender(String value) {
+        return toEnum(value, HouseholdMember.Gender.class);
+    }
+
+    @TypeConverter
+    public static String fromActivityLevel(HouseholdMember.ActivityLevel value) {
+        return fromEnum(value);
+    }
+
+    @TypeConverter
+    public static HouseholdMember.ActivityLevel toActivityLevel(String value) {
+        return toEnum(value, HouseholdMember.ActivityLevel.class);
+    }
+
+    @TypeConverter
+    public static String fromScalingPrecision(Recipe.ScalingPrecision value) {
+        return fromEnum(value);
+    }
+
+    @TypeConverter
+    public static Recipe.ScalingPrecision toScalingPrecision(String value) {
+        return toEnum(value, Recipe.ScalingPrecision.class);
+    }
+
+    @TypeConverter
+    public static String fromPrepEffort(Recipe.PrepEffort value) {
+        return fromEnum(value);
+    }
+
+    @TypeConverter
+    public static Recipe.PrepEffort toPrepEffort(String value) {
+        return toEnum(value, Recipe.PrepEffort.class);
+    }
+
+    @TypeConverter
+    public static String fromMealTypeSet(Set<MealType> types) { return fromEnumSet(types); }
+
+    @TypeConverter
+    public static Set<MealType> toMealTypeSet(String value) { return toEnumSet(value, MealType.class); }
 }

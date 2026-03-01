@@ -50,13 +50,13 @@ import java.util.stream.Collectors;
  * all business logic to the application layer. The fragment is purely presentational: it inflates layouts,
  * builds dialogs, and calls presenter methods on user actions (dialog commits, button clicks).
  *
- * <p><strong>Data flow:</strong> Presenter is injected via constructor (or fetched from AppCompositionRoot
- * if the no-arg constructor is used by Android during recreation). User actions trigger presenter calls,
- * which return updated data. The fragment then re-renders affected views (meals, recipes, or stock).
+ * <p><strong>Data flow:</strong> Presenter methods are async — they accept callbacks that fire on the
+ * main thread once the background work completes. The fragment re-renders affected views in those callbacks.
  *
  * <p><strong>Dialog pattern:</strong> All three creation dialogs (plan, shopping need, pantry item) follow
  * the same pattern: inflate layout → build AlertDialog → on positive button, extract input fields → call
- * presenter → re-render. See {@link #showPlanDialog()}, {@link #showNeedDialog()}, {@link #showPantryDialog()}.
+ * presenter async → re-render in callback. See {@link #showPlanDialog()}, {@link #showNeedDialog()},
+ * {@link #showPantryDialog()}.
  */
 public class MealPlannerFragment extends Fragment {
 
@@ -145,9 +145,8 @@ public class MealPlannerFragment extends Fragment {
     }
 
     /**
-     * Render all tabs from presenter data. Called on initial view creation and after user actions
-     * (dialog completion, button clicks) to keep the UI in sync with presenter state.
-     * For simplicity, this re-renders the entire view; consider caching if performance becomes an issue.
+     * Render all tabs from presenter data. Called on initial view creation and after user actions.
+     * Each render method fires an independent async load — they share no state.
      */
     private void renderAll() {
         renderMealPlans();
@@ -156,49 +155,50 @@ public class MealPlannerFragment extends Fragment {
     }
 
     /**
-     * Rebuild the meal plan list from presenter data.
+     * Rebuild the meal plan list from presenter data (async).
      * Called on init and after user actions (add plan, toggle completion).
      */
     private void renderMealPlans() {
-        weekList.removeAllViews();
-        List<MealPlan> plans = presenter.getWeekMealPlans();
-        if (plans.isEmpty()) {
-            weekList.addView(inflateTextRow(getString(R.string.meal_empty_week), weekList));
-            return;
-        }
-        for (MealPlan plan : plans) {
-            View planRow = layoutInflater.inflate(R.layout.meal_plan_row_item, weekList, false);
-            TextView title = planRow.findViewById(R.id.MealPlanRowTitle);
-            TextView subtitle = planRow.findViewById(R.id.MealPlanRowSubtitle);
-            Button done = planRow.findViewById(R.id.MealPlanRowDone);
-
-            title.setText(plan.recipeTitle + " · " + plan.mealType.label);
-            subtitle.setText(plan.date + " · " + plan.plannedServings + " Portionen");
-            setMealPlanButtonState(done, plan);
-            if (plan.id != null) {
-                done.setOnClickListener(v -> {
-                    presenter.toggleMealCompleted(plan.id);
-                    renderMealPlans();
-                });
+        presenter.getWeekMealPlans(plans -> {
+            weekList.removeAllViews();
+            if (plans.isEmpty()) {
+                weekList.addView(inflateTextRow(getString(R.string.meal_empty_week), weekList));
+                return;
             }
-            weekList.addView(planRow);
-        }
+            for (MealPlan plan : plans) {
+                View planRow = layoutInflater.inflate(R.layout.meal_plan_row_item, weekList, false);
+                TextView title = planRow.findViewById(R.id.MealPlanRowTitle);
+                TextView subtitle = planRow.findViewById(R.id.MealPlanRowSubtitle);
+                Button done = planRow.findViewById(R.id.MealPlanRowDone);
+
+                title.setText(plan.recipeTitle + " · " + plan.mealType.label);
+                subtitle.setText(plan.date + " · " + plan.plannedServings + " Portionen");
+                setMealPlanButtonState(done, plan);
+                if (plan.id != null) {
+                    done.setOnClickListener(v -> {
+                        presenter.toggleMealCompleted(plan.id, this::renderMealPlans);
+                    });
+                }
+                weekList.addView(planRow);
+            }
+        });
     }
 
     /**
-     * Rebuild the recipe list and show details for the first recipe.
+     * Rebuild the recipe list and show details for the first recipe (async).
      * Each recipe appears as a button; clicking it updates the detail pane on the right.
      */
     private void renderRecipes() {
-        recipeList.removeAllViews();
-        List<Recipe> recipes = presenter.getRecipes();
-        for (Recipe recipe : recipes) {
-            TextView recipeButton = inflateRecipeButton(recipe, recipeList);
-            recipeList.addView(recipeButton);
-        }
-        if (!recipes.isEmpty()) {
-            recipeDetail.setText(buildRecipeDetails(recipes.get(0)));
-        }
+        presenter.getRecipes(recipes -> {
+            recipeList.removeAllViews();
+            for (Recipe recipe : recipes) {
+                TextView recipeButton = inflateRecipeButton(recipe, recipeList);
+                recipeList.addView(recipeButton);
+            }
+            if (!recipes.isEmpty()) {
+                recipeDetail.setText(buildRecipeDetails(recipes.get(0)));
+            }
+        });
     }
 
     /**
@@ -212,32 +212,33 @@ public class MealPlannerFragment extends Fragment {
     }
 
     /**
-     * Rebuild the pantry (inventory) and shopping list views from presenter data.
+     * Rebuild the pantry (inventory) and shopping list views from presenter data (async).
      * Called on init and after user actions (add pantry item, add shopping need).
      */
     private void renderStock() {
-        pantryList.removeAllViews();
-        shoppingList.removeAllViews();
-
-        List<PantryItem> pantryItems = presenter.getPantryItems();
-        if (pantryItems.isEmpty()) {
-            pantryList.addView(inflateTextRow(getString(R.string.meal_empty_pantry), pantryList));
-        } else {
-            for (PantryItem item : pantryItems) {
-                TextView pantryRow = inflateTextRow(item.ingredientName + " · " + item.getFormattedAmount() + " · " + item.getExpiryInfo(LocalDate.now()), pantryList);
-                pantryList.addView(pantryRow);
+        presenter.getPantryItems(pantryItems -> {
+            pantryList.removeAllViews();
+            if (pantryItems.isEmpty()) {
+                pantryList.addView(inflateTextRow(getString(R.string.meal_empty_pantry), pantryList));
+            } else {
+                for (PantryItem item : pantryItems) {
+                    TextView pantryRow = inflateTextRow(item.ingredientName + " · " + item.getFormattedAmount() + " · " + item.getExpiryInfo(LocalDate.now()), pantryList);
+                    pantryList.addView(pantryRow);
+                }
             }
-        }
+        });
 
-        List<ShoppingListItem> shoppingItems = presenter.getShoppingListItemsForCurrentPeriod();
-        if (shoppingItems.isEmpty()) {
-            shoppingList.addView(inflateTextRow(getString(R.string.meal_empty_shopping), shoppingList));
-        } else {
-            for (ShoppingListItem item : shoppingItems) {
-                TextView shoppingRow = inflateTextRow(item.ingredientName + " · " + item.getFormattedAmount(), shoppingList);
-                shoppingList.addView(shoppingRow);
+        presenter.getShoppingListItems(shoppingItems -> {
+            shoppingList.removeAllViews();
+            if (shoppingItems.isEmpty()) {
+                shoppingList.addView(inflateTextRow(getString(R.string.meal_empty_shopping), shoppingList));
+            } else {
+                for (ShoppingListItem item : shoppingItems) {
+                    TextView shoppingRow = inflateTextRow(item.ingredientName + " · " + item.getFormattedAmount(), shoppingList);
+                    shoppingList.addView(shoppingRow);
+                }
             }
-        }
+        });
     }
 
     /**
@@ -303,72 +304,65 @@ public class MealPlannerFragment extends Fragment {
     /**
      * Show dialog to create a new meal plan.
      *
-     * <p>All three creation dialogs ({@link #showPlanDialog()}, {@link #showNeedDialog()},
-     * {@link #showPantryDialog()}) follow the same pattern:
-     * <ol>
-     *   <li>Inflate dialog layout and bind fields to UI elements
-     *   <li>Populate spinners and set default values
-     *   <li>Build AlertDialog with positive (commit) and negative (cancel) buttons
-     *   <li>On positive button, extract input values and call presenter
-     *   <li>After presenter call, re-render affected view
-     * </ol>
-     *
-     * <p>When adding new dialogs, follow this pattern for consistency.
+     * <p>Loads recipes async first, then builds the dialog once data is available.
+     * On positive button, calls presenter async → re-renders in callback.
      */
     private void showPlanDialog() {
-        View planDialogContent = layoutInflater.inflate(R.layout.meal_plan_create_dialog, null);
-        Spinner recipeSpinner = planDialogContent.findViewById(R.id.MealDialogRecipe);
-        EditText dateField = planDialogContent.findViewById(R.id.MealDialogDate);
-        Spinner typeSpinner = planDialogContent.findViewById(R.id.MealDialogType);
-        EditText servingsField = planDialogContent.findViewById(R.id.MealDialogServings);
+        presenter.getRecipes(recipes -> {
+            if (recipes == null || recipes.isEmpty()) {
+                Toast.makeText(requireContext(), R.string.meal_error_no_recipes, Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-        List<Recipe> recipes = presenter.getRecipes();
-        if (recipes == null || recipes.isEmpty()) {
-            Toast.makeText(requireContext(), R.string.meal_error_no_recipes, Toast.LENGTH_SHORT).show();
-            return;
-        }
+            View planDialogContent = layoutInflater.inflate(R.layout.meal_plan_create_dialog, null);
+            Spinner recipeSpinner = planDialogContent.findViewById(R.id.MealDialogRecipe);
+            EditText dateField = planDialogContent.findViewById(R.id.MealDialogDate);
+            Spinner typeSpinner = planDialogContent.findViewById(R.id.MealDialogType);
+            EditText servingsField = planDialogContent.findViewById(R.id.MealDialogServings);
 
-        List<String> recipeTitles = recipes.stream()
-                .map(recipe -> recipe.title)
-                .collect(Collectors.toList());
-        ArrayAdapter<String> recipeAdapter = new ArrayAdapter<>(
-                requireContext(), android.R.layout.simple_spinner_dropdown_item, recipeTitles);
-        recipeSpinner.setAdapter(recipeAdapter);
-        recipeSpinner.setSelection(DEFAULT_SPINNER_SELECTION);
+            List<String> recipeTitles = recipes.stream()
+                    .map(recipe -> recipe.title)
+                    .collect(Collectors.toList());
+            ArrayAdapter<String> recipeAdapter = new ArrayAdapter<>(
+                    requireContext(), android.R.layout.simple_spinner_dropdown_item, recipeTitles);
+            recipeSpinner.setAdapter(recipeAdapter);
+            recipeSpinner.setSelection(DEFAULT_SPINNER_SELECTION);
 
-        dateField.setText(LocalDate.now().toString());
-        ArrayAdapter<MealType> typeAdapter = new ArrayAdapter<>(
-                requireContext(), android.R.layout.simple_spinner_dropdown_item, MealType.values());
-        typeSpinner.setAdapter(typeAdapter);
-        typeSpinner.setSelection(DEFAULT_SPINNER_SELECTION);
-        servingsField.setText(DEFAULT_SERVINGS);
+            dateField.setText(LocalDate.now().toString());
+            ArrayAdapter<MealType> typeAdapter = new ArrayAdapter<>(
+                    requireContext(), android.R.layout.simple_spinner_dropdown_item, MealType.values());
+            typeSpinner.setAdapter(typeAdapter);
+            typeSpinner.setSelection(DEFAULT_SPINNER_SELECTION);
+            servingsField.setText(DEFAULT_SERVINGS);
 
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.meal_plan_dialog_title)
-                .setView(planDialogContent)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.meal_plan_dialog_save, null)
-                .create();
-        dialog.show();
-        dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
-            int recipeIndex = recipeSpinner.getSelectedItemPosition();
-            if (recipeIndex < 0 || recipeIndex >= recipes.size()) return;
-            String dateStr = requireNonEmpty(dateField, "ein Datum");
-            if (dateStr == null) return;
-            LocalDate parsedDate = safeParse(dateStr);
-            if (parsedDate == null) return;
-            String servingsStr = requireNonEmpty(servingsField, "die Anzahl der Portionen");
-            if (servingsStr == null) return;
-            Integer servings = safeParseInt(servingsStr, "Portionen");
-            if (servings == null || servings <= 0) return;
-            MealType mealType = getSpinnerSelection(typeSpinner, MealType.class);
-            if (mealType == null) return;
-            Long recipeId = recipes.get(recipeIndex).id;
-            if (recipeId == null) return;
-            presenter.planRecipe(recipeId, parsedDate, mealType, servings);
-            Toast.makeText(requireContext(), R.string.meal_success_plan_created, Toast.LENGTH_SHORT).show();
-            dialog.dismiss();
-            renderMealPlans();
+            AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.meal_plan_dialog_title)
+                    .setView(planDialogContent)
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .setPositiveButton(R.string.meal_plan_dialog_save, null)
+                    .create();
+            dialog.show();
+            dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
+                int recipeIndex = recipeSpinner.getSelectedItemPosition();
+                if (recipeIndex < 0 || recipeIndex >= recipes.size()) return;
+                String dateStr = requireNonEmpty(dateField, "ein Datum");
+                if (dateStr == null) return;
+                LocalDate parsedDate = safeParse(dateStr);
+                if (parsedDate == null) return;
+                String servingsStr = requireNonEmpty(servingsField, "die Anzahl der Portionen");
+                if (servingsStr == null) return;
+                Integer servings = safeParseInt(servingsStr, "Portionen");
+                if (servings == null || servings <= 0) return;
+                MealType mealType = getSpinnerSelection(typeSpinner, MealType.class);
+                if (mealType == null) return;
+                String recipeId = recipes.get(recipeIndex).id;
+                if (recipeId == null) return;
+                presenter.planRecipe(recipeId, parsedDate, mealType, servings, () -> {
+                    Toast.makeText(requireContext(), R.string.meal_success_plan_created, Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                    renderMealPlans();
+                });
+            });
         });
     }
 
@@ -397,10 +391,11 @@ public class MealPlannerFragment extends Fragment {
             if (amount == null || amount < 0) return;
             String unitStr = requireNonEmpty(unitField, "eine Einheit");
             if (unitStr == null) return;
-            presenter.createShoppingItemFromNeed(ingredientName, amount, unitStr);
-            Toast.makeText(requireContext(), R.string.meal_success_need_created, Toast.LENGTH_SHORT).show();
-            dialog.dismiss();
-            renderStock();
+            presenter.createShoppingItemFromNeed(ingredientName, amount, unitStr, () -> {
+                Toast.makeText(requireContext(), R.string.meal_success_need_created, Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+                renderStock();
+            });
         });
     }
 
@@ -443,15 +438,13 @@ public class MealPlannerFragment extends Fragment {
             PantryItem.StorageLocation location = getSpinnerSelection(locationSpinner, PantryItem.StorageLocation.class);
             if (location == null) return;
             presenter.createPantryItem(
-                    ingredientName,
-                    amount,
-                    unitStr,
-                    location,
-                    shelfLifeDays
+                    ingredientName, amount, unitStr, location, shelfLifeDays,
+                    () -> {
+                        Toast.makeText(requireContext(), R.string.meal_success_pantry_created, Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                        renderStock();
+                    }
             );
-            Toast.makeText(requireContext(), R.string.meal_success_pantry_created, Toast.LENGTH_SHORT).show();
-            dialog.dismiss();
-            renderStock();
         });
     }
 

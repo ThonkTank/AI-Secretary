@@ -18,6 +18,26 @@ import com.autosecretary.features.budget.data.dao.BudgetRecurringTemplateDao;
 import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEntity;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.dao.BudgetTransactionDao;
+import com.autosecretary.features.meal.data.dao.MealConsumptionLogDao;
+import com.autosecretary.features.meal.data.dao.MealCookingPreferencesDao;
+import com.autosecretary.features.meal.data.dao.MealHouseholdMemberDao;
+import com.autosecretary.features.meal.data.dao.MealIngredientDao;
+import com.autosecretary.features.meal.data.dao.MealPantryDao;
+import com.autosecretary.features.meal.data.dao.MealPlanDao;
+import com.autosecretary.features.meal.data.dao.MealRecipeDao;
+import com.autosecretary.features.meal.data.dao.MealWeeklyFoodTargetDao;
+import com.autosecretary.features.meal.data.entity.MealConsumptionLogEntity;
+import com.autosecretary.features.meal.data.entity.MealCookingPreferencesEntity;
+import com.autosecretary.features.meal.data.entity.MealHouseholdMemberEntity;
+import com.autosecretary.features.meal.data.entity.MealIngredientEntity;
+import com.autosecretary.features.meal.data.entity.MealMemberRatingEntity;
+import com.autosecretary.features.meal.data.entity.MealPantryItemEntity;
+import com.autosecretary.features.meal.data.entity.MealPlanEntity;
+import com.autosecretary.features.meal.data.entity.MealRecipeEntity;
+import com.autosecretary.features.meal.data.entity.MealRecipeIngredientEntity;
+import com.autosecretary.features.meal.data.entity.MealShoppingListItemEntity;
+import com.autosecretary.features.meal.data.entity.MealStorePackageEntity;
+import com.autosecretary.features.meal.data.entity.MealWeeklyFoodTargetEntity;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.data.TaskPlannedMeal;
@@ -34,10 +54,10 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
  * SQLite database abstraction for AutoSecretary using Android Room ORM.
  * <p>
  * This is a single-instance database accessible via {@link #getInstance(Context)}.
- * Room automatically handles table creation, schema versioning (v22), and type conversion.
+ * Room automatically handles table creation, schema versioning (v23), and type conversion.
  * </p>
  * <p>
- * <strong>Database version:</strong> 22. Schema changes require only a version bump;
+ * <strong>Database version:</strong> 23. Schema changes require only a version bump;
  * {@link #getInstance(Context)} uses {@code fallbackToDestructiveMigration()}, which drops
  * and recreates all tables on schema changes — intentional in this project (manual
  * {@code Migration} subclasses are forbidden; see CLAUDE.md). Always back up user data
@@ -71,9 +91,21 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
                 BudgetTransactionEntity.class,
                 BudgetLimitEntity.class,
                 BudgetImportEntity.class,
-                BudgetRecurringTemplateEntity.class
+                BudgetRecurringTemplateEntity.class,
+                MealPlanEntity.class,
+                MealRecipeEntity.class,
+                MealRecipeIngredientEntity.class,
+                MealMemberRatingEntity.class,
+                MealIngredientEntity.class,
+                MealStorePackageEntity.class,
+                MealPantryItemEntity.class,
+                MealShoppingListItemEntity.class,
+                MealConsumptionLogEntity.class,
+                MealHouseholdMemberEntity.class,
+                MealCookingPreferencesEntity.class,
+                MealWeeklyFoodTargetEntity.class
         },
-        version = 22,
+        version = 23,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -96,6 +128,22 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract BudgetImportDao budgetImportDao();
 
     public abstract BudgetRecurringTemplateDao budgetRecurringTemplateDao();
+
+    public abstract MealPlanDao mealPlanDao();
+
+    public abstract MealRecipeDao mealRecipeDao();
+
+    public abstract MealIngredientDao mealIngredientDao();
+
+    public abstract MealPantryDao mealPantryDao();
+
+    public abstract MealConsumptionLogDao mealConsumptionLogDao();
+
+    public abstract MealHouseholdMemberDao mealHouseholdMemberDao();
+
+    public abstract MealCookingPreferencesDao mealCookingPreferencesDao();
+
+    public abstract MealWeeklyFoodTargetDao mealWeeklyFoodTargetDao();
 
     private static AppDatabase instance;
 

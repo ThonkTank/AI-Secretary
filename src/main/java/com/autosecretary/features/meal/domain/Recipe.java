@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -23,7 +24,7 @@ import java.util.Set;
  */
 public class Recipe {
 
-    public Long id;
+    public String id;
     public String title;
     public String description;
     public String instructions;
@@ -67,13 +68,13 @@ public class Recipe {
      * An ingredient entry within a recipe, referencing an {@link Ingredient} by id.
      * {@code ingredientName} is denormalized for display without an extra lookup.
      */
-    public record RecipeIngredient(Long ingredientId, String ingredientName, double amount, String unit) {}
+    public record RecipeIngredient(String ingredientId, String ingredientName, double amount, String unit) {}
 
     /**
      * A household member's star rating for this recipe (1–5 stars).
      * Ratings are stored per member so per-member preferences can drive recipe suggestions.
      */
-    public record MemberRating(long memberId, int rating) {}
+    public record MemberRating(String memberId, int rating) {}
 
     public int getTotalTime() {
         return prepTimeMinutes + cookTimeMinutes;
@@ -84,19 +85,19 @@ public class Recipe {
         return ratings.stream().mapToInt(MemberRating::rating).average().orElse(0.0);
     }
 
-    public int getRatingByMember(long memberId) {
+    public int getRatingByMember(String memberId) {
         if (ratings == null) return 0;
         return ratings.stream()
-            .filter(r -> r.memberId() == memberId)
+            .filter(r -> Objects.equals(r.memberId(), memberId))
             .mapToInt(MemberRating::rating)
             .findFirst()
             .orElse(0);
     }
 
-    public void setRatingByMember(long memberId, int rating) {
+    public void setRatingByMember(String memberId, int rating) {
         if (ratings == null) ratings = new ArrayList<>();
         int clamped = clampRating(rating);
-        ratings.removeIf(r -> r.memberId() == memberId);
+        ratings.removeIf(r -> Objects.equals(r.memberId(), memberId));
         ratings.add(new MemberRating(memberId, clamped));
     }
 
@@ -131,14 +132,14 @@ public class Recipe {
         public Builder maxServings(int v) { r.maxServings = v; return this; }
         public Builder precision(ScalingPrecision v) { r.scalingPrecision = v; return this; }
         public Builder effort(PrepEffort v) { r.prepEffort = v; return this; }
-        public Builder ingredient(long ingredientId, String ingredientName, double amount, String unit) {
+        public Builder ingredient(String ingredientId, String ingredientName, double amount, String unit) {
             r.ingredients.add(new RecipeIngredient(ingredientId, ingredientName, amount, unit));
             return this;
         }
         public Builder tags(String v) { r.tags = v; return this; }
         public Builder favorite() { r.isFavorite = true; return this; }
         public Builder shelfLife(int days) { r.shelfLifeDays = days; return this; }
-        public Builder rating(long memberId, int rating) {
+        public Builder rating(String memberId, int rating) {
             r.ratings.add(new MemberRating(memberId, clampRating(rating)));
             return this;
         }

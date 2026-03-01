@@ -24,7 +24,7 @@ import java.util.Set;
  */
 public class CookingPreferences {
 
-    public Long id;
+    public String id;
     public int maxBreakfastCooking;     // max cooking sessions per week for BREAKFAST
     public int maxLunchCooking;
     public int maxDinnerCooking;

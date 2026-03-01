@@ -39,7 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Top-level packages under `src/main/java/com/autosecretary/`:
 - **`features/task/`** — scheduling, slot generation, task lifecycle
 - **`features/budget/`** — transactions, CSV/PDF import, recurring pattern detection, balance chart, home screen widget
-- **`features/meal/`** — meal planning, recipe management, pantry, shopping lists, weekly food targets; backed by `InMemoryMealStorage` (not Room). `MealPlannerPresenter` is the application-layer entry point, accessed via `AppCompositionRoot.getMealPlannerPresenter()`.
+- **`features/meal/`** — meal planning, recipe management, pantry, shopping lists, weekly food targets; backed by Room (same as task/budget). `MealPlannerPresenter` is the application-layer entry point, accessed via `AppCompositionRoot.getMealPlannerPresenter()`. Data layer uses `Meal*Entity` classes in `data/entity/`, `Meal*Dao` in `data/dao/`, and `Meal*RoomRepository` in `data/repository/`.
 - **`app/`** — `AppCompositionRoot` (DI root), `MainActivity`, `AutoSecretaryApplication`, `UpdateChecker`, settings
 - **`shared/`** — cross-feature enums: `Priority` (values: LOW=100, MEDIUM=200, HIGH=400, CRITICAL=10000), `Period`; and `WidgetConfiguration` (shared update-period constant for task and budget widgets)
 - **`database/`** — `AppDatabase` (Room DB class) + `Converters` (type converters for `LocalDate`, `LocalTime`, `LocalDateTime`, `YearMonth`, `DayOfWeek`, all domain enums, and `Set<DayOfWeek>` as comma-separated string)
@@ -100,7 +100,7 @@ Extracting shared constants, small utility methods, or deduplicating repeated co
 
 ## Rules
 
-- **DB version 22**, `exportSchema = false`. Schema changes: bump version only. Room uses `fallbackToDestructiveMigration()`. **Manual migrations (`Migration` subclasses, `.addMigrations(...)`) are strictly forbidden.**
+- **DB version 23**, `exportSchema = false`. Schema changes: bump version only. Room uses `fallbackToDestructiveMigration()`. **Manual migrations (`Migration` subclasses, `.addMigrations(...)`) are strictly forbidden.**
 - **`android.nonTransitiveRClass=true`** — use the app's own R class for all resource references.
 - Java 17, Room 2.6.1 (annotation processor, not KSP), AGP 8.7.3, Gradle 8.10.2 (`./gradlew` wrapper only).
 - New entity `@PrimaryKey` fields must be `String` UUIDs. Existing exceptions: `TaskTransitionStat` and `TaskPlannedMeal` use composite PKs; `TaskScheduleConfig` uses `DayOfWeek` as PK.

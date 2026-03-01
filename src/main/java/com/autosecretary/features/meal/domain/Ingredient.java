@@ -34,7 +34,7 @@ public class Ingredient {
         public LocalDate lastPurchased;
     }
 
-    public Long id;
+    public String id;
     public String name;
     public FoodGroup foodGroup;
     public String defaultUnit;          // "g", "ml", "Stück"

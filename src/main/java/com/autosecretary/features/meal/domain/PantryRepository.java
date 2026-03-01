@@ -21,11 +21,11 @@ import java.util.List;
  */
 public interface PantryRepository {
     List<PantryItem> getPantryItems();
-    PantryItem findPantryItemById(long pantryItemId);
+    PantryItem findPantryItemById(String pantryItemId);
     void savePantryItem(PantryItem pantryItem);
-    void deletePantryItem(long pantryItemId);
+    void deletePantryItem(String pantryItemId);
 
     List<ShoppingListItem> getShoppingListItems(String periodKey);
     void saveShoppingListItem(ShoppingListItem shoppingListItem);
-    void deleteShoppingListItem(long shoppingListItemId);
+    void deleteShoppingListItem(String shoppingListItemId);
 }

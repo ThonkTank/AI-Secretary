@@ -13,7 +13,7 @@ package com.autosecretary.features.meal.domain;
  */
 public class HouseholdMember {
 
-    public Long id;
+    public String id;
     public String name;
     public int birthYear;
     public Gender gender;

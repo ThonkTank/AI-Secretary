@@ -44,21 +44,6 @@ import java.util.Objects;
 public class TaskMealIntegrationService {
 
     /**
-     * Placeholder member ID used when consumption is logged through task completion rather than
-     * through the meal planner UI. Value 0 means "unassigned / no specific household member".
-     * Per-member nutrition queries will exclude these entries; that is an accepted limitation
-     * until task-triggered consumption is properly attributed to a member.
-     */
-    private static final long DEFAULT_MEMBER_ID = 0L;
-
-    /**
-     * Placeholder item ID used when consumption is logged through task completion.
-     * Value 0 means "no specific checklist item" — the log entry tracks nutrition at the
-     * recipe level only, not linked to a specific task checklist entry.
-     */
-    private static final long DEFAULT_ITEM_ID = 0L;
-
-    /**
      * Floating-point threshold below which a pantry item is considered fully depleted.
      * Prevents saving items with a near-zero amount (e.g. 0.000003 g) due to floating-point drift.
      */
@@ -134,7 +119,7 @@ public class TaskMealIntegrationService {
         }
         for (PantryItem pantryItem : pantryItems) {
             if (requiredAmount <= 0) break;
-            if (pantryItem.id == null || pantryItem.ingredientId != ingredient.ingredientId()) {
+            if (pantryItem.id == null || !Objects.equals(pantryItem.ingredientId, ingredient.ingredientId())) {
                 continue;
             }
             double consumed = Math.min(pantryItem.amount, requiredAmount);
@@ -158,8 +143,9 @@ public class TaskMealIntegrationService {
         int carbs = (int) Math.round(recipe.totalCarbs * scale);
         int fat = (int) Math.round(recipe.totalFat * scale);
 
-        ConsumptionLog log = new ConsumptionLog.Builder(completionDate, DEFAULT_ITEM_ID, DEFAULT_MEMBER_ID)
-                .recipeId(Objects.requireNonNullElse(recipe.id, 0L))
+        // null itemId/memberId: task-triggered consumption, not attributed to a specific member or checklist item
+        ConsumptionLog log = new ConsumptionLog.Builder(completionDate, null, null)
+                .recipeId(recipe.id)
                 .servings(servings)
                 .calories(calories)
                 .protein(protein)
@@ -172,7 +158,7 @@ public class TaskMealIntegrationService {
     private void completeMealPlanEntry(MealType mealType, TaskPlannedMeal plannedMeal, LocalDate completionDate, int servings) {
         List<MealPlan> plans = mealRepository.getMealPlans(completionDate, completionDate);
         plans.stream()
-                .filter(plan -> plan.mealType == mealType && plan.recipeId == plannedMeal.recipeId)
+                .filter(plan -> plan.mealType == mealType && Objects.equals(plan.recipeId, plannedMeal.recipeId))
                 .findFirst()
                 .ifPresent(plan -> {
                     plan.isCompleted = true;

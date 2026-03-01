@@ -1,6 +1,5 @@
 package com.autosecretary.features.meal.domain;
 
-import java.util.Objects;
 
 /**
  * Stateless service that rounds shopping amounts up to the nearest full package size,
@@ -55,7 +54,7 @@ public class ShoppingPackagingService {
         int packageAmount = resolvePackageAmount(ingredient);
         PackagingResult result = roundToPackage(neededAmount, packageAmount);
         return new ShoppingListItem.Builder(
-                Objects.requireNonNullElse(ingredient.id, 0L),
+                ingredient.id,
                 ingredient.name,
                 Math.max(0.0, neededAmount),
                 ingredient.defaultUnit

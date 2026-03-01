@@ -6,7 +6,8 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.autosecretary.app.Preferences;
+import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
+import com.autosecretary.features.task.domain.scheduling.SchedulingWindowProvider;
 import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
@@ -61,7 +62,7 @@ public class TaskViewModel extends AndroidViewModel {
     private final AdjustTaskProgressUseCase adjustTaskProgressUseCase;
     private final TaskEditSessionController taskEditSessionController;
     private final TaskCalendarService taskCalendarService;
-    private final Preferences preferences;
+    private final TaskScheduleConfigRepository scheduleConfigRepository;
 
     /** Source of truth: holds all loaded task slots. Never filtered in place. */
     private final ViewSlotList masterList;
@@ -87,7 +88,7 @@ public class TaskViewModel extends AndroidViewModel {
                          AdjustTaskProgressUseCase adjustTaskProgressUseCase,
                          TaskEditSessionController taskEditSessionController,
                          TaskCalendarService taskCalendarService,
-                         Preferences preferences) {
+                         TaskScheduleConfigRepository scheduleConfigRepository) {
         super(app);
         this.taskDataService = taskDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
@@ -96,7 +97,7 @@ public class TaskViewModel extends AndroidViewModel {
         this.taskEditSessionController = taskEditSessionController;
         this.taskEditSessionController.setOnTaskChanged(this::refreshList);
         this.taskCalendarService = taskCalendarService;
-        this.preferences = preferences;
+        this.scheduleConfigRepository = scheduleConfigRepository;
 
         this.masterList = new ViewSlotList();
         // Show existing data immediately while regeneration runs in background.
@@ -250,10 +251,11 @@ public class TaskViewModel extends AndroidViewModel {
             return;
         }
         cachedCalendarDay = day;
+        SchedulingWindowProvider.SchedulingWindow sw = scheduleConfigRepository.forDay(day);
         ScheduleWindow window = new ScheduleWindow(
                 day,
-                preferences.readDayStartTime(day.getDayOfWeek()),
-                preferences.readDayEndTime(day.getDayOfWeek())
+                sw.start().toLocalTime(),
+                sw.end().toLocalTime()
         );
         List<TaskCalendarEvent> events = taskCalendarService.getEventsForDay(window);
         List<ViewSlot> calendarSlots = new ArrayList<>(events.size());

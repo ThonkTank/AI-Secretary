@@ -15,11 +15,11 @@ import java.time.LocalDate;
  */
 public class ConsumptionLog {
 
-    public Long id;
+    public String id;
     public LocalDate date;
-    public long itemId;             // FK into the task feature's checklist item table (links this log entry to a MealPlan's itemId)
-    public long memberId;
-    public long recipeId;
+    public String itemId;           // FK into the task feature's checklist item table (links this log entry to a MealPlan's itemId)
+    public String memberId;
+    public String recipeId;
     public double servingsConsumed;
     public int calories;
     public int protein;
@@ -30,13 +30,13 @@ public class ConsumptionLog {
     public static class Builder {
         private final ConsumptionLog l = new ConsumptionLog();
 
-        public Builder(LocalDate date, long itemId, long memberId) {
+        public Builder(LocalDate date, String itemId, String memberId) {
             l.date = date;
             l.itemId = itemId;
             l.memberId = memberId;
         }
 
-        public Builder recipeId(long v) { l.recipeId = v; return this; }
+        public Builder recipeId(String v) { l.recipeId = v; return this; }
         public Builder servings(double v) { l.servingsConsumed = v; return this; }
         public Builder calories(int v) { l.calories = v; return this; }
         public Builder protein(int v) { l.protein = v; return this; }

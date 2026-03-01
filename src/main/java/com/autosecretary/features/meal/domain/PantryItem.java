@@ -17,8 +17,8 @@ import java.time.LocalDate;
  */
 public class PantryItem {
 
-    public Long id;
-    public long ingredientId;
+    public String id;
+    public String ingredientId;
     public String ingredientName;       // Denormalized
     public double amount;
     public String unit;
@@ -62,7 +62,7 @@ public class PantryItem {
     public static class Builder {
         private final PantryItem p = new PantryItem();
 
-        public Builder(long ingredientId, String ingredientName, double amount, String unit) {
+        public Builder(String ingredientId, String ingredientName, double amount, String unit) {
             p.ingredientId = ingredientId;
             p.ingredientName = ingredientName;
             p.amount = amount;

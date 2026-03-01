@@ -24,16 +24,16 @@ import java.util.List;
 public interface MealRepository {
     List<MealPlan> getMealPlans(LocalDate fromInclusive, LocalDate toInclusive);
     /** Returns the meal plan with the given id, or null if not found. */
-    MealPlan findMealPlanById(long mealPlanId);
+    MealPlan findMealPlanById(String mealPlanId);
     void saveMealPlan(MealPlan mealPlan);
-    void deleteMealPlan(long mealPlanId);
+    void deleteMealPlan(String mealPlanId);
 
     List<ConsumptionLog> getConsumptionLogs(LocalDate fromInclusive, LocalDate toInclusive);
     void saveConsumptionLog(ConsumptionLog consumptionLog);
 
     List<HouseholdMember> getHouseholdMembers();
     void saveHouseholdMember(HouseholdMember member);
-    void deleteHouseholdMember(long memberId);
+    void deleteHouseholdMember(String memberId);
 
     CookingPreferences getCookingPreferences();
     void saveCookingPreferences(CookingPreferences preferences);
