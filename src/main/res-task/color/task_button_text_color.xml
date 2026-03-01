@@ -2,8 +2,7 @@
 <!-- Button text color states: disabled → checked → default.
 
      Used by:
-     - Widget.AISecretary.TaskEdit.DayPickerButton (day selection buttons)
-     - Widget.AISecretary.BottomNavigation (primary navigation)
+     - Widget.AutoSecretary.TaskEdit.DayPickerButton (day selection buttons)
 
      Color scheme defined in task_colors.xml. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">

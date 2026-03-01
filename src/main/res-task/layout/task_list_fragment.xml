@@ -2,7 +2,7 @@
 <!-- Task list screen. Managed by TaskListFragment + TaskViewModel.
      Sections from top to bottom:
        1. Day navigation bar (prev/today/next)
-       2. Controls card: generate schedule, schedule config, checklist/manage toggle, search bar
+       2. Controls card: generate schedule, checklist/manage toggle, search bar
           (search bar visible only in Manage mode, toggled by TaskListFragment)
        3. Task list (RecyclerView via ListRowAdapter) OR empty-state container — only one visible
        4. "Neue Task" button (always visible at bottom)
@@ -17,49 +17,12 @@
     android:paddingHorizontal="@dimen/spacing_sm"
     android:paddingTop="@dimen/spacing_sm">
 
-    <LinearLayout
-        android:id="@+id/DayNavigationBar"
+    <include
+        layout="@layout/include_temporal_nav_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="@dimen/spacing_sm"
-        android:layout_marginBottom="@dimen/spacing_xs"
-        android:background="@drawable/task_bg_day_nav_chip"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingHorizontal="@dimen/spacing_md"
-        android:paddingVertical="@dimen/spacing_sm">
-
-        <TextView
-            android:id="@+id/DayNavPrev"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/task_list_day_nav_prev"
-            android:contentDescription="@string/task_list_day_nav_prev_desc"
-            android:textAppearance="@style/TextAppearance.Task.Widget.NavAction"
-            android:padding="@dimen/spacing_md"
-            android:clickable="true"
-            android:focusable="true" />
-
-        <TextView
-            android:id="@+id/DayNavLabel"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:textAppearance="@style/TextAppearance.Task.Widget.NavLabel"
-            android:text="@string/task_list_day_nav_today" />
-
-        <TextView
-            android:id="@+id/DayNavNext"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/task_list_day_nav_next"
-            android:contentDescription="@string/task_list_day_nav_next_desc"
-            android:textAppearance="@style/TextAppearance.Task.Widget.NavAction"
-            android:padding="@dimen/spacing_md"
-            android:clickable="true"
-            android:focusable="true" />
-    </LinearLayout>
+        android:layout_marginBottom="@dimen/spacing_xs" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -78,14 +41,6 @@
             android:text="@string/task_list_generate"
             style="?attr/materialButtonOutlinedStyle"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/ScheduleConfigButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_xs"
-            android:text="@string/task_schedule_button"
-            style="?attr/materialButtonOutlinedStyle"/>
-
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:id="@+id/TaskListToggle"
             android:layout_width="match_parent"
@@ -96,7 +51,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/ChecklistButton"
-                style="@style/Widget.AutoSecretary.TaskList.ToggleButton"
+                style="@style/Widget.AutoSecretary.ToggleButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -104,7 +59,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/ManagementButton"
-                style="@style/Widget.AutoSecretary.TaskList.ToggleButton"
+                style="@style/Widget.AutoSecretary.ToggleButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"

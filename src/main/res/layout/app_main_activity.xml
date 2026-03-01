@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Root shell activity layout. Inflated by MainActivity.
-     Structure: MaterialToolbar (top) → FragmentContainerView (content) → BottomNavigationView (bottom).
+     Structure: FragmentContainerView (content) → BottomNavigationView (bottom).
      BottomNavigationView drives tab selection; MainActivity swaps fragments into Container
      based on the selected tab. No fragment is hardcoded here — navigation is wired in code. -->
 <LinearLayout
@@ -11,16 +11,6 @@
     android:orientation="vertical"
     android:fitsSystemWindows="true"
     android:background="@drawable/bg_forest_gradient">
-
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/MainToolbar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="@dimen/spacing_md"
-        android:layout_marginTop="@dimen/spacing_md"
-        android:background="@drawable/bg_surface_card"
-        android:elevation="0dp"
-        app:title="@string/app_name" />
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/Container"

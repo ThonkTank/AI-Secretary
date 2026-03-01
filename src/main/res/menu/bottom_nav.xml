@@ -2,11 +2,8 @@
 <!--
     Bottom navigation bar for MainActivity.
     Inflated by BottomNavigationView in app_main_activity.xml.
-    Each item maps to a feature fragment:
-      nav_schedule  → TaskListFragment  (features/task/)
-      nav_budget    → BudgetFragment    (features/budget/)
-      nav_meal      → MealPlannerFragment (features/meal/)
-    Selection handling lives in MainActivity.setupTabBar().
+    nav_schedule/nav_budget/nav_meal map to feature fragments; nav_settings opens a dialog
+    without changing the selected tab (MainActivity returns false for that item).
 -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
@@ -24,4 +21,9 @@
         android:icon="@drawable/ic_meal_24"
         android:title="@string/nav_meal"
         android:contentDescription="@string/nav_meal"/>
+    <item
+        android:id="@+id/nav_settings"
+        android:icon="@drawable/ic_settings_24"
+        android:title="@string/nav_settings"
+        android:contentDescription="@string/nav_settings"/>
 </menu>

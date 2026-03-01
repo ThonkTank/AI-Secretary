@@ -202,9 +202,9 @@ public class BudgetFragment extends Fragment {
         v.retry = rootView.findViewById(R.id.BudgetRetryButton);
         v.transactionList = rootView.findViewById(R.id.BudgetTransactionList);
         v.loading = rootView.findViewById(R.id.BudgetLoading);
-        v.monthLabel = rootView.findViewById(R.id.BudgetMonthLabel);
-        v.monthPrev = rootView.findViewById(R.id.BudgetMonthPrevButton);
-        v.monthNext = rootView.findViewById(R.id.BudgetMonthNextButton);
+        v.monthLabel = rootView.findViewById(R.id.NavLabel);
+        v.monthPrev = rootView.findViewById(R.id.NavPrev);
+        v.monthNext = rootView.findViewById(R.id.NavNext);
         v.limitBarsContainer = rootView.findViewById(R.id.BudgetLimitBarsContainer);
         v.setLimitButton = rootView.findViewById(R.id.BudgetSetLimitButton);
         v.accountSpinner = rootView.findViewById(R.id.BudgetAccountSpinner);
@@ -308,6 +308,8 @@ public class BudgetFragment extends Fragment {
             if (filter != null) budgetViewModel.setTimeRangeFilter(filter);
         });
 
+        views.monthPrev.setContentDescription(getString(R.string.budget_month_prev_desc));
+        views.monthNext.setContentDescription(getString(R.string.budget_month_next_desc));
         views.monthPrev.setOnClickListener(v -> budgetViewModel.navigateMonth(-1));
         views.monthNext.setOnClickListener(v -> budgetViewModel.navigateMonth(1));
         views.addTransaction.setOnClickListener(v -> showAddTransactionDialog());

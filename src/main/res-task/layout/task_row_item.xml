@@ -16,7 +16,8 @@
     android:layout_marginEnd="@dimen/spacing_sm"
     android:layout_marginBottom="@dimen/spacing_xs"
     android:background="@drawable/task_bg_row"
-    android:paddingHorizontal="@dimen/spacing_sm"
+    android:paddingStart="@dimen/spacing_lg"
+    android:paddingEnd="@dimen/spacing_sm"
     android:paddingVertical="@dimen/spacing_sm">
 
     <LinearLayout
@@ -74,8 +75,9 @@
 
         <ImageButton
             android:id="@+id/ProgressMinusButton"
-            android:layout_width="@dimen/touch_target_min"
-            android:layout_height="@dimen/touch_target_min"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="@dimen/spacing_sm"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/task_progress_decrement"
             android:src="@drawable/ic_remove_24"
@@ -85,15 +87,16 @@
             android:id="@+id/ProgressText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/spacing_xs"
-            android:layout_marginEnd="@dimen/spacing_xs"
+            android:layout_marginStart="@dimen/spacing_xxs"
+            android:layout_marginEnd="@dimen/spacing_xxs"
             android:textAppearance="@style/TextAppearance.Task.Metadata"
             android:textColor="@color/task_progress_text"/>
 
         <ImageButton
             android:id="@+id/ProgressPlusButton"
-            android:layout_width="@dimen/touch_target_min"
-            android:layout_height="@dimen/touch_target_min"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="@dimen/spacing_sm"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/task_progress_increment"
             android:src="@drawable/ic_add_24"

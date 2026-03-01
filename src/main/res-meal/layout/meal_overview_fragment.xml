@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Three sub-screens (Week, Recipes, Stock) live in one ScrollView.
-     Only one is visible at a time; MealPlannerFragment toggles visibility to simulate tabs.
+     Only one is visible at a time; MaterialButtonToggleGroup drives tab selection,
+     MealPlannerFragment toggles visibility in the checked-listener.
      Lists (MealWeekList, MealRecipeList, MealPantryList, MealShoppingList) are
      LinearLayouts with items inflated programmatically by MealPlannerPresenter. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="@dimen/spacing_lg">
@@ -13,43 +15,41 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/meal_title"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
-            android:textStyle="bold" />
-
-        <LinearLayout
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/MealTabToggle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_md"
-            android:orientation="horizontal">
+            app:singleSelection="true"
+            app:checkedButton="@+id/MealTabWeek">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/MealTabWeek"
+                style="@style/Widget.AutoSecretary.ToggleButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:minHeight="48dp"
-                android:text="@string/meal_tab_week" />
+                android:text="@string/meal_tab_week"
+                android:contentDescription="@string/meal_tab_week_desc" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/MealTabRecipes"
+                style="@style/Widget.AutoSecretary.ToggleButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:minHeight="48dp"
-                android:text="@string/meal_tab_recipes" />
+                android:text="@string/meal_tab_recipes"
+                android:contentDescription="@string/meal_tab_recipes_desc" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/MealTabStock"
+                style="@style/Widget.AutoSecretary.ToggleButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:minHeight="48dp"
-                android:text="@string/meal_tab_stock" />
-        </LinearLayout>
+                android:text="@string/meal_tab_stock"
+                android:contentDescription="@string/meal_tab_stock_desc" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
 
         <!-- Tab: Week view -->
         <LinearLayout

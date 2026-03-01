@@ -6,7 +6,6 @@
          Keys are English (code references); values are German.
          For new budget strings, add here and reference via @string/budget_[context] in Java/XML.
          See ../strings.xml for app-wide (non-feature-specific) strings. -->
-    <string name="budget_title">Budgetübersicht</string>
     <string name="budget_summary">Erfasse Buchungen oder importiere einen Kontoauszug.</string>
     <string name="budget_add_transaction">Transaktion hinzufügen</string>
     <string name="budget_import_statement">Kontoauszug importieren</string>
@@ -39,8 +38,8 @@
     <string name="budget_dialog_category_label">Kategorie</string>
     <string name="budget_dialog_account_label">Konto</string>
     <string name="budget_dialog_date_hint">@string/hint_date_yyyy_mm_dd</string>
-    <string name="budget_month_previous">Vorheriger Monat</string>
-    <string name="budget_month_next">Nächster Monat</string>
+    <string name="budget_month_prev_desc">Vorheriger Monat</string>
+    <string name="budget_month_next_desc">Nächster Monat</string>
     <string name="budget_delete_title">Transaktion löschen?</string>
     <string name="budget_delete_message">Diese Buchung wirklich löschen?</string>
     <string name="budget_delete_confirm">@string/action_delete</string>

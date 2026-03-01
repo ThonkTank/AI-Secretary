@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Pill-shaped chip for the day-of-week navigation selector in the task list header. -->
+<!-- Pill-shaped background for the shared temporal navigation bar (day nav, month nav).
+     Used by include_temporal_nav_bar.xml. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
     <solid android:color="@color/task_color_on_primary_light" />
     <corners android:radius="@dimen/corner_radius_lg" />

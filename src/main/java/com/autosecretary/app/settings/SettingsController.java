@@ -20,7 +20,7 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 
 /**
- * Controller for application settings, including backup/restore and factory reset operations.
+ * Controller for application settings, including schedule configuration, backup/restore and factory reset operations.
  *
  * This class manages the settings UI menu and delegates data operations to {@link SettingsDataService}.
  * All long-running operations (I/O, database access) are executed on a background thread, with
@@ -28,17 +28,18 @@ import java.util.concurrent.ExecutorService;
  *
  * Typical usage:
  * <pre>
- *   SettingsController controller = new SettingsController(context, dataService, onDataChanged, executor);
+ *   SettingsController controller = new SettingsController(context, dataService, onDataChanged, onShowScheduleConfig, executor);
  *   controller.showSettingsMenu();  // Shows menu dialog on UI thread
  * </pre>
  */
 public class SettingsController {
 
     /** Option indices must match the order of strings in {@link #showSettingsMenu()} */
-    private static final int OPTION_RESTORE_BACKUP = 0;
-    private static final int OPTION_MANUAL_BACKUP = 1;
-    private static final int OPTION_FACTORY_RESET = 2;
-    private static final int OPTION_ABOUT = 3;
+    private static final int OPTION_SCHEDULE_CONFIG  = 0;
+    private static final int OPTION_RESTORE_BACKUP   = 1;
+    private static final int OPTION_MANUAL_BACKUP    = 2;
+    private static final int OPTION_FACTORY_RESET    = 3;
+    private static final int OPTION_ABOUT            = 4;
 
     /** Date format for displaying backup timestamps in the restore dialog */
     private static final SimpleDateFormat BACKUP_DATE_FORMATTER =
@@ -76,15 +77,19 @@ public class SettingsController {
     private final ExecutorService executorService;
     /** Callback invoked on the main thread when data has changed (e.g., after restore or factory reset) */
     private final Runnable onDataChanged;
+    /** Callback invoked to open the schedule configuration dialog */
+    private final Runnable onShowScheduleConfig;
     /** Handler for posting callbacks from background threads back to the main (UI) thread */
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public SettingsController(@NonNull Context context, @NonNull SettingsDataService settingsDataService,
-                              @NonNull Runnable onDataChanged, @NonNull ExecutorService executorService) {
+                              @NonNull Runnable onDataChanged, @NonNull Runnable onShowScheduleConfig,
+                              @NonNull ExecutorService executorService) {
         this.context = context;
         this.settingsDataService = settingsDataService;
         this.executorService = executorService;
         this.onDataChanged = onDataChanged;
+        this.onShowScheduleConfig = onShowScheduleConfig;
     }
 
     /**
@@ -134,13 +139,14 @@ public class SettingsController {
     }
 
     /**
-     * Display the main settings menu dialog with options for backup, restore, factory reset, and about.
+     * Display the main settings menu dialog listing all options defined by the {@code OPTION_*} constants.
      *
      * Call this from a UI context (e.g., when user taps Settings). The menu is modal and blocks
      * interaction with the underlying activity until dismissed.
      */
     public void showSettingsMenu() {
         String[] options = {
+                context.getString(R.string.settings_option_schedule_config),
                 context.getString(R.string.settings_option_restore_backup),
                 context.getString(R.string.settings_option_manual_backup),
                 context.getString(R.string.settings_option_factory_reset),
@@ -151,10 +157,11 @@ public class SettingsController {
                 .setTitle(R.string.settings_title)
                 .setItems(options, (dialog, which) -> {
                     switch (which) {
-                        case OPTION_RESTORE_BACKUP: showBackupRestoreDialog(); break;
-                        case OPTION_MANUAL_BACKUP:  createManualBackup();       break;
-                        case OPTION_FACTORY_RESET:  confirmFactoryReset();      break;
-                        case OPTION_ABOUT:          showAboutDialog();          break;
+                        case OPTION_SCHEDULE_CONFIG: onShowScheduleConfig.run();  break;
+                        case OPTION_RESTORE_BACKUP:  showBackupRestoreDialog();   break;
+                        case OPTION_MANUAL_BACKUP:   createManualBackup();        break;
+                        case OPTION_FACTORY_RESET:   confirmFactoryReset();       break;
+                        case OPTION_ABOUT:           showAboutDialog();           break;
                         default:
                             Log.w("SettingsController", "Unknown settings menu option: " + which);
                     }

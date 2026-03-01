@@ -6,7 +6,6 @@
          Keys are English (code references); values are German.
          For new meal strings, add here and reference via @string/meal_[context] in Java/XML.
          See ../strings.xml for app-wide (non-feature-specific) strings. -->
-    <string name="meal_title">Meal-Planung</string>
     <string name="meal_tab_week">Wochenplan</string>
     <string name="meal_tab_week_desc">Wochenplan anzeigen</string>
     <string name="meal_tab_recipes">Rezepte</string>

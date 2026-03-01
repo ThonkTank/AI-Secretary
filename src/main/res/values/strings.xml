@@ -6,6 +6,7 @@
     <string name="nav_tasks">Aufgaben</string>
     <string name="nav_budget">Budget</string>
     <string name="nav_meal">Mahlzeiten</string>
+    <string name="nav_settings">Einstellungen</string>
 
     <!-- Shared action labels used across features (task, budget, meal dialogs). -->
     <string name="action_save">Speichern</string>
@@ -18,6 +19,7 @@
     <string name="settings_option_manual_backup">Manuelles Backup erstellen</string>
     <string name="settings_option_factory_reset">Factory Reset</string>
     <string name="settings_option_about">Über AutoSecretary</string>
+    <string name="settings_option_schedule_config">Zeitfenster konfigurieren</string>
 
     <string name="settings_no_backups">Keine Backups vorhanden.</string>
     <string name="settings_backup_item_format">%1$s (%2$s)</string>

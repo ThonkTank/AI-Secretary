@@ -16,8 +16,9 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+
+import com.google.android.material.button.MaterialButtonToggleGroup;
 
 import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
@@ -117,20 +118,21 @@ public class MealPlannerFragment extends Fragment {
         pantryList = view.findViewById(R.id.MealPantryList);
         shoppingList = view.findViewById(R.id.MealShoppingList);
 
-        Button showWeek = view.findViewById(R.id.MealTabWeek);
-        Button showRecipes = view.findViewById(R.id.MealTabRecipes);
-        Button showStock = view.findViewById(R.id.MealTabStock);
+        MaterialButtonToggleGroup tabToggle = view.findViewById(R.id.MealTabToggle);
+        tabToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) return;
+            weekScreen.setVisibility(checkedId == R.id.MealTabWeek ? View.VISIBLE : View.GONE);
+            recipesScreen.setVisibility(checkedId == R.id.MealTabRecipes ? View.VISIBLE : View.GONE);
+            stockScreen.setVisibility(checkedId == R.id.MealTabStock ? View.VISIBLE : View.GONE);
+        });
+        // Required: checked listener does not fire for the pre-checked button at registration time
+        weekScreen.setVisibility(View.VISIBLE);
+        recipesScreen.setVisibility(View.GONE);
+        stockScreen.setVisibility(View.GONE);
+
         Button addMealPlan = view.findViewById(R.id.MealAddPlan);
         Button addNeed = view.findViewById(R.id.MealAddNeed);
         Button addPantry = view.findViewById(R.id.MealAddPantry);
-
-        showWeek.setContentDescription(getString(R.string.meal_tab_week_desc));
-        showRecipes.setContentDescription(getString(R.string.meal_tab_recipes_desc));
-        showStock.setContentDescription(getString(R.string.meal_tab_stock_desc));
-
-        showWeek.setOnClickListener(v -> switchScreen(weekScreen, showWeek, showRecipes, showStock));
-        showRecipes.setOnClickListener(v -> switchScreen(recipesScreen, showWeek, showRecipes, showStock));
-        showStock.setOnClickListener(v -> switchScreen(stockScreen, showWeek, showRecipes, showStock));
         addMealPlan.setContentDescription(getString(R.string.meal_add_plan_desc));
         addNeed.setContentDescription(getString(R.string.meal_add_need_desc));
         addPantry.setContentDescription(getString(R.string.meal_add_pantry_desc));
@@ -139,26 +141,7 @@ public class MealPlannerFragment extends Fragment {
         addNeed.setOnClickListener(v -> showNeedDialog());
         addPantry.setOnClickListener(v -> showPantryDialog());
 
-        switchScreen(weekScreen, showWeek, showRecipes, showStock);
         renderAll();
-    }
-
-    /**
-     * Switch active tab by toggling View visibility and updating button styling to indicate active tab.
-     * Uses visibility toggling (not fragment replacement) to preserve all state (scroll position, expanded items, etc.)
-     * when switching tabs.
-     */
-    private void switchScreen(View visible, Button weekBtn, Button recipesBtn, Button stockBtn) {
-        weekScreen.setVisibility(visible == weekScreen ? View.VISIBLE : View.GONE);
-        recipesScreen.setVisibility(visible == recipesScreen ? View.VISIBLE : View.GONE);
-        stockScreen.setVisibility(visible == stockScreen ? View.VISIBLE : View.GONE);
-
-        int activeColor = ContextCompat.getColor(requireContext(), R.color.task_color_primary);
-        int inactiveColor = ContextCompat.getColor(requireContext(), R.color.task_color_on_surface_variant);
-
-        weekBtn.setTextColor(visible == weekScreen ? activeColor : inactiveColor);
-        recipesBtn.setTextColor(visible == recipesScreen ? activeColor : inactiveColor);
-        stockBtn.setTextColor(visible == stockScreen ? activeColor : inactiveColor);
     }
 
     /**

@@ -10,6 +10,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -24,7 +25,6 @@ import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
-import com.autosecretary.features.task.ui.TaskScheduleConfigDialog;
 import com.autosecretary.features.task.ui.edit.TaskEditDialog;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.google.android.material.button.MaterialButtonToggleGroup;
@@ -96,7 +96,7 @@ public class TaskListFragment extends Fragment {
      * 2. RecyclerView + adapter with action callbacks
      * 3. LiveData observers (display list, schedule conflicts, search query sync)
      * 4. Search bar text watcher
-     * 5. Action buttons (generate schedule, schedule config, new task)
+     * 5. Action buttons (generate schedule, new task)
      * 6. Day navigation (prev/next arrows, date label, interaction gate)
      * 7. Checklist/Manage mode toggle
      */
@@ -173,12 +173,8 @@ public class TaskListFragment extends Fragment {
         });
 
         Button generateButton = view.findViewById(R.id.GenerateScheduleButton);
-        Button scheduleConfigButton = view.findViewById(R.id.ScheduleConfigButton);
         View newTaskButton = view.findViewById(R.id.NewTaskButton);
         generateButton.setOnClickListener(v -> vm.updateList());
-        scheduleConfigButton.setOnClickListener(v ->
-                new TaskScheduleConfigDialog().show(getParentFragmentManager(), TaskScheduleConfigDialog.TAG)
-        );
 
         View.OnClickListener createTaskClickListener = v -> openCreateTaskDialog(editSessionController);
 
@@ -190,9 +186,11 @@ public class TaskListFragment extends Fragment {
             view.post(() -> openCreateTaskDialog(editSessionController));
         }
 
-        TextView dayNavPrev = view.findViewById(R.id.DayNavPrev);
-        TextView dayNavLabel = view.findViewById(R.id.DayNavLabel);
-        TextView dayNavNext = view.findViewById(R.id.DayNavNext);
+        ImageButton dayNavPrev = view.findViewById(R.id.NavPrev);
+        TextView dayNavLabel = view.findViewById(R.id.NavLabel);
+        ImageButton dayNavNext = view.findViewById(R.id.NavNext);
+        dayNavPrev.setContentDescription(getString(R.string.task_list_day_nav_prev_desc));
+        dayNavNext.setContentDescription(getString(R.string.task_list_day_nav_next_desc));
         dayNavPrev.setOnClickListener(v -> vm.navigatePreviousDay());
         dayNavNext.setOnClickListener(v -> vm.navigateNextDay());
 

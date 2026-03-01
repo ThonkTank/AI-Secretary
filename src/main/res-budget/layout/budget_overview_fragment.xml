@@ -3,12 +3,12 @@
      Sections from top to bottom:
        1. Account selector (Spinner) + chart range (RadioGroup)
        2. Balance chart card (custom BudgetBalanceChartView)
-       3. Month navigation (prev/next buttons + month label)
+       3. Month navigation (shared include_temporal_nav_bar)
        4. Monthly summary card (income/expense/free budget/net — shown/hidden by BudgetOverviewLoader)
        5. Limit bars (items inflated programmatically by BudgetOverviewLoader)
        6. Action buttons: add transaction, transfer, import statement
        7. Status/loading/empty state + retry
-       8. Transaction rows (items inflated programmatically by BudgetOverviewLoader, not a RecyclerView)
+       8. Transaction rows (RecyclerView via BudgetTransactionAdapter)
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -22,12 +22,6 @@
         android:padding="@dimen/spacing_lg">
 
         <!-- Account selector and chart range -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/budget_title"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6" />
-
         <Spinner
             android:id="@+id/BudgetAccountSpinner"
             android:layout_width="match_parent"
@@ -96,41 +90,11 @@
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Month navigation -->
-        <LinearLayout
+        <include
+            layout="@layout/include_temporal_nav_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_sm"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <ImageButton
-                android:id="@+id/BudgetMonthPrevButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/budget_month_previous"
-                android:padding="@dimen/spacing_md"
-                android:src="@drawable/ic_chevron_left_24"
-                android:scaleType="centerInside" />
-
-            <TextView
-                android:id="@+id/BudgetMonthLabel"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1" />
-
-            <ImageButton
-                android:id="@+id/BudgetMonthNextButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/budget_month_next"
-                android:padding="@dimen/spacing_md"
-                android:src="@drawable/ic_chevron_right_24"
-                android:scaleType="centerInside" />
-        </LinearLayout>
+            android:layout_marginTop="@dimen/spacing_sm" />
 
         <!-- Monthly summary card (shown/hidden by BudgetOverviewLoader) -->
         <com.google.android.material.card.MaterialCardView

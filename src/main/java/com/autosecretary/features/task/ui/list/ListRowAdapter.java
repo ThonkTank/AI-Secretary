@@ -57,6 +57,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     // Cached resource values — resolved once in onAttachedToRecyclerView to avoid per-bind lookups.
     private int indentStepPx;
+    private int basePaddingStartPx;
     private float rowCornerRadius;
     private int rowStrokeWidth;
     private int colorOutlineSemi;
@@ -84,6 +85,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         super.onAttachedToRecyclerView(recyclerView);
         Context ctx = recyclerView.getContext();
         indentStepPx = ctx.getResources().getDimensionPixelSize(R.dimen.task_indent_step);
+        basePaddingStartPx = ctx.getResources().getDimensionPixelSize(R.dimen.spacing_lg);
         rowCornerRadius = ctx.getResources().getDimension(R.dimen.corner_radius_md);
         rowStrokeWidth = (int) ctx.getResources().getDimension(R.dimen.task_editor_input_stroke_width);
         colorOutlineSemi = ContextCompat.getColor(ctx, R.color.task_color_outline_semi);
@@ -212,7 +214,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     /** Sets left padding based on tree depth for parent-child indentation in Manage mode. */
     private void bindIndentation(TaskRowViewHolder holder, int depth) {
         holder.itemView.setPaddingRelative(
-                indentStepPx * depth,
+                basePaddingStartPx + indentStepPx * depth,
                 holder.itemView.getPaddingTop(),
                 holder.itemView.getPaddingEnd(),
                 holder.itemView.getPaddingBottom());

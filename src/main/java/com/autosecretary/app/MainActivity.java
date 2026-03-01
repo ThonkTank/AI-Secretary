@@ -2,10 +2,7 @@ package com.autosecretary.app;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
@@ -17,9 +14,9 @@ import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.ui.BudgetFragment;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
 import com.autosecretary.features.meal.ui.MealPlannerFragment;
+import com.autosecretary.features.task.ui.TaskScheduleConfigDialog;
 import com.autosecretary.features.task.ui.list.TaskListFragment;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
-import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 /**
@@ -39,7 +36,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
  * for subsequent launches from the widget while the activity is already running.
  *
  * <h2>Settings</h2>
- * The settings menu (backup / restore / factory reset) is managed by {@link SettingsController}.
+ * The settings gear in the bottom nav opens a dialog managed by {@link SettingsController}.
  * After a data reset, {@link #reloadUiStateAfterDataReset()} tears down and recreates the
  * composition root and the activity itself so all fragments re-bind to a fresh database.
  *
@@ -59,11 +56,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.app_main_activity);
 
-        MaterialToolbar toolbar = findViewById(R.id.MainToolbar);
-        setSupportActionBar(toolbar);
-
         settingsController = new SettingsController(this, new SettingsDataService(this),
                 this::reloadUiStateAfterDataReset,
+                this::showScheduleConfigDialog,
                 AutoSecretaryApplication.from(this).getAppCompositionRoot().getSharedExecutor());
 
         BottomNavigationView tabBar = findViewById(R.id.TabBar);
@@ -73,7 +68,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         tabBar.setOnItemSelectedListener(item -> {
-            if (item.getItemId() == R.id.nav_budget) {
+            if (item.getItemId() == R.id.nav_settings) {
+                settingsController.showSettingsMenu();
+                return false;
+            } else if (item.getItemId() == R.id.nav_budget) {
                 showBudgetFragment(false);
             } else if (item.getItemId() == R.id.nav_meal) {
                 showMealFragment();
@@ -102,21 +100,6 @@ public class MainActivity extends AppCompatActivity {
         new UpdateChecker(this,
                 AutoSecretaryApplication.from(this).getAppCompositionRoot().getSharedExecutor())
                 .checkForUpdate();
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.main_toolbar_menu, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == R.id.action_settings) {
-            settingsController.showSettingsMenu();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
     }
 
     private boolean shouldOpenBudgetFromIntent(Intent intent) {
@@ -178,6 +161,10 @@ public class MainActivity extends AppCompatActivity {
             showTaskFragment(shouldOpenTaskCreateFromIntent(intent));
             tabBar.setSelectedItemId(R.id.nav_schedule);
         }
+    }
+
+    private void showScheduleConfigDialog() {
+        new TaskScheduleConfigDialog().show(getSupportFragmentManager(), TaskScheduleConfigDialog.TAG);
     }
 
     private void reloadUiStateAfterDataReset() {

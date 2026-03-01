@@ -42,7 +42,7 @@
     <string name="task_streak_tier_epic">Episch</string>
     <string name="task_streak_tier_legendary">Legendär</string>
     <string name="task_in_progress_state_description">In Bearbeitung</string>
-    <string name="task_progress_display">%1$d/%2$d %3$s</string>
+    <string name="task_progress_display">%1$d/%2$d</string>
     <string name="task_progress_increment">Fortschritt erhöhen</string>
     <string name="task_progress_decrement">Fortschritt verringern</string>
     <string name="task_widget_add_content_description">Aufgabe hinzufügen</string>
@@ -125,7 +125,6 @@
         <item>So</item>
     </string-array>
 
-    <string name="task_schedule_button">Zeitfenster</string>
     <string name="task_schedule_dialog_title">Tagesfenster konfigurieren</string>
     <string name="task_schedule_dialog_save">@string/action_save</string>
     <string name="task_schedule_dialog_cancel">@string/action_cancel</string>
