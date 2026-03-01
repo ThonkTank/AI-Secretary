@@ -9,10 +9,10 @@ import android.widget.TextView;
 
 import com.autosecretary.R;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
+import com.autosecretary.shared.ui.DateFormatters;
 import com.google.android.material.button.MaterialButton;
 
 import java.time.DayOfWeek;
-import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,8 +32,6 @@ import java.util.Set;
  * each group with day pickers and time pickers. Rebuilt when repetition fields change.
  */
 public class PrefSlotUIBuilder {
-
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     public interface Listener {
         /**
@@ -111,7 +109,7 @@ public class PrefSlotUIBuilder {
         Set<DayOfWeek> takenByOthers = computeTakenDays(prefSlot, slotsInGroup);
         daysView.setOnClickListener(v -> listener.onDaysClicked(prefSlot, takenByOthers));
 
-        String formattedTime = prefSlot.start != null ? prefSlot.start.format(TIME_FORMATTER) : "--:--";
+        String formattedTime = prefSlot.start != null ? prefSlot.start.format(DateFormatters.TIME_HH_MM) : "--:--";
         MaterialButton timeView = createInteractiveButton();
         timeView.setText(context.getString(R.string.task_editor_pref_slot_time_button, formattedTime));
         timeView.setContentDescription(context.getString(

@@ -6,10 +6,13 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:minHeight="@dimen/row_min_height"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:paddingVertical="@dimen/spacing_sm"
-    android:background="?attr/selectableItemBackground"
+    android:layout_marginBottom="@dimen/spacing_xs"
+    android:padding="@dimen/spacing_sm"
+    android:background="@drawable/bg_row"
+    android:foreground="?attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true"
     android:importantForAccessibility="yes">
@@ -20,7 +23,7 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:text="@string/budget_demo_transaction_label"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel"
         android:importantForAccessibility="no" />
 
     <TextView
@@ -28,8 +31,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/budget_demo_transaction_amount"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-        android:textStyle="bold"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue"
         android:importantForAccessibility="no" />
 
 </LinearLayout>

@@ -6,10 +6,13 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:minHeight="@dimen/row_min_height"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:paddingVertical="@dimen/spacing_sm"
-    android:background="?attr/selectableItemBackground"
+    android:padding="@dimen/spacing_sm"
+    android:layout_marginBottom="@dimen/spacing_xs"
+    android:background="@drawable/bg_row"
+    android:foreground="?attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true">
 
@@ -32,14 +35,13 @@
             android:id="@+id/BudgetSuggestionPayee"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue" />
 
         <TextView
             android:id="@+id/BudgetSuggestionPattern"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowSecondary" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -51,14 +53,14 @@
                 android:id="@+id/BudgetSuggestionCount"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
+                android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.Caption" />
 
             <TextView
                 android:id="@+id/BudgetSuggestionConfidence"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/spacing_md"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
+                android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.Caption" />
         </LinearLayout>
     </LinearLayout>
 
@@ -66,6 +68,5 @@
         android:id="@+id/BudgetSuggestionAmount"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-        android:textStyle="bold" />
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowSecondaryBold" />
 </LinearLayout>

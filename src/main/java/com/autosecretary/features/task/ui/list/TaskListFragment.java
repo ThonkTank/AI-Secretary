@@ -13,6 +13,8 @@ import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
@@ -29,10 +31,10 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 
+import com.autosecretary.shared.ui.DateFormatters;
+
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Locale;
 
 /**
  * Main task list screen. Shows scheduled task slots for a selected day and lets the user
@@ -56,8 +58,6 @@ public class TaskListFragment extends Fragment {
 
     private static final float ALPHA_NAV_ENABLED = 1.0f;
     private static final float ALPHA_NAV_DISABLED = 0.3f;
-    private static final DateTimeFormatter DAY_NAV_FORMATTER =
-            DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN);
 
     private TaskViewModel vm;
     /** Set to true when ARG_OPEN_CREATE_TASK is present; consumed once on first view creation. */
@@ -98,7 +98,8 @@ public class TaskListFragment extends Fragment {
      * 7. Checklist/Manage mode toggle
      */
     @Override
-    public void onViewCreated(View view, Bundle savedInstanceState) {
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
         AutoSecretaryApplication app = AutoSecretaryApplication.from(requireContext());
         AppCompositionRoot compositionRoot = app.getAppCompositionRoot();
         TaskViewModelFactory viewModelFactory = compositionRoot.getTaskViewModelFactory();
@@ -177,7 +178,7 @@ public class TaskListFragment extends Fragment {
 
         vm.getSelectedDay().observe(getViewLifecycleOwner(), day -> {
             boolean isToday = day.equals(LocalDate.now());
-            dayNavLabel.setText(isToday ? getString(R.string.task_list_day_nav_today) : day.format(DAY_NAV_FORMATTER));
+            dayNavLabel.setText(isToday ? getString(R.string.task_list_day_nav_today) : day.format(DateFormatters.DAY_NAV_LABEL));
 
             dayNavPrev.setEnabled(!isToday);
             dayNavPrev.setAlpha(isToday ? ALPHA_NAV_DISABLED : ALPHA_NAV_ENABLED);

@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
 import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
+import com.autosecretary.shared.ui.SpinnerHelper;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;

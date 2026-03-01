@@ -14,21 +14,19 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:fitsSystemWindows="true"
-    android:paddingHorizontal="@dimen/spacing_sm"
-    android:paddingTop="@dimen/spacing_sm">
+    android:paddingHorizontal="@dimen/spacing_lg"
+    android:paddingTop="@dimen/spacing_lg">
 
     <include
         layout="@layout/include_temporal_nav_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="@dimen/spacing_sm"
         android:layout_marginBottom="@dimen/spacing_xs" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_xs"
-        android:layout_marginHorizontal="@dimen/spacing_sm"
         android:orientation="vertical"
         android:background="@drawable/bg_surface_card"
         android:paddingHorizontal="@dimen/spacing_md"
@@ -39,7 +37,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:singleSelection="true"
-            app:checkedButton="@+id/ChecklistButton">
+            app:checkedButton="@id/ChecklistButton">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/ChecklistButton"
@@ -120,7 +118,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_md"
             android:text="@string/task_list_empty_action"
-            android:textAppearance="@style/TextAppearance.Task.Widget.NewTaskCta" />
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Widget.NewTaskCta" />
     </LinearLayout>
 
     <com.google.android.material.button.MaterialButton
@@ -130,6 +128,6 @@
         android:layout_margin="@dimen/spacing_md"
         style="?attr/materialButtonStyle"
         android:text="@string/task_list_new_task"
-        android:textAppearance="@style/TextAppearance.Task.Widget.NewTaskCta"/>
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Widget.NewTaskCta"/>
 
 </LinearLayout>

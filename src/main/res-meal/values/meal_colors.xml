@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Global rule: app-wide tokens stay in generic files; feature-specific resources belong in feature-prefixed files.
-         Meal row backgrounds now use app-wide task_color_* tokens (same approach as budget feature).
-         Naming: meal_[domain]_[role] — see colors.xml header for full naming conventions.
-         For new colors, use semantic names that describe purpose, not appearance. -->
-</resources>

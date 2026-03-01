@@ -43,7 +43,7 @@ public class TaskDescriptionDialog extends DialogFragment {
         return new AlertDialog.Builder(requireContext())
                 .setTitle(title)
                 .setMessage(resolvedDescription)
-                .setPositiveButton(android.R.string.ok, null)
+                .setPositiveButton(R.string.action_ok, null)
                 .create();
     }
 }

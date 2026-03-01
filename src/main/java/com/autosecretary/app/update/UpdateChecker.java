@@ -1,7 +1,7 @@
 package com.autosecretary.app.update;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
@@ -324,7 +324,7 @@ public class UpdateChecker {
         new AlertDialog.Builder(activity)
                 .setTitle(R.string.update_download_failed_title)
                 .setMessage(activity.getString(R.string.update_download_failed_message, detail))
-                .setPositiveButton(android.R.string.ok, null)
+                .setPositiveButton(R.string.action_ok, null)
                 .show();
     }
 

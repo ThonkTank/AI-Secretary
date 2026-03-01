@@ -66,6 +66,23 @@
     <string name="meal_success_need_created">Einkaufsbedarf hinzugefügt</string>
     <string name="meal_success_pantry_created">Vorratseintrag angelegt</string>
 
+    <!-- Row format strings for meal plan list items -->
+    <string name="meal_plan_row_title_format">%1$s \u00B7 %2$s</string>
+    <string name="meal_plan_row_subtitle_format">%1$s \u00B7 %2$d Portionen</string>
+    <string name="meal_pantry_row_format">%1$s \u00B7 %2$s \u00B7 %3$s</string>
+    <string name="meal_shopping_row_format">%1$s \u00B7 %2$s</string>
+
+    <!-- Field labels for validation error messages (used in requireNonEmpty/safeParse calls) -->
+    <string name="meal_field_date">ein Datum</string>
+    <string name="meal_field_servings_count">die Anzahl der Portionen</string>
+    <string name="meal_field_servings">Portionen</string>
+    <string name="meal_field_ingredient_name">einen Zutatennamen</string>
+    <string name="meal_field_amount">eine Menge</string>
+    <string name="meal_field_amount_label">Menge</string>
+    <string name="meal_field_unit">eine Einheit</string>
+    <string name="meal_field_shelf_life">die Haltbarkeitsdauer</string>
+    <string name="meal_field_shelf_life_label">Haltbarkeitsdauer</string>
+
     <!-- Validation error messages -->
     <string name="meal_error_field_required">%s ist erforderlich</string>
     <string name="meal_error_invalid_date">Ungültiges Datum. Format: YYYY-MM-DD</string>

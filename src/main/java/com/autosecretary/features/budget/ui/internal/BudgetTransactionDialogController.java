@@ -3,9 +3,9 @@ package com.autosecretary.features.budget.ui.internal;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.Spinner;
+
+import com.google.android.material.button.MaterialButtonToggleGroup;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
 import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.shared.ui.SpinnerHelper;
 import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
@@ -75,9 +76,7 @@ public class BudgetTransactionDialogController {
         View dialogView = LayoutInflater.from(fragment.requireContext())
                 .inflate(R.layout.budget_add_transaction_dialog, null);
         TextInputEditText amountInput = dialogView.findViewById(R.id.BudgetDialogAmount);
-        RadioButton expenseRadio = dialogView.findViewById(R.id.BudgetDialogTypeExpense);
-        RadioButton incomeRadio = dialogView.findViewById(R.id.BudgetDialogTypeIncome);
-        RadioGroup typeGroup = dialogView.findViewById(R.id.BudgetDialogTypeGroup);
+        MaterialButtonToggleGroup typeGroup = dialogView.findViewById(R.id.BudgetDialogTypeGroup);
         Spinner categorySpinner = dialogView.findViewById(R.id.BudgetDialogCategory);
         TextInputEditText noteInput = dialogView.findViewById(R.id.BudgetDialogNote);
         TextInputEditText dateInput = dialogView.findViewById(R.id.BudgetDialogDate);
@@ -90,11 +89,13 @@ public class BudgetTransactionDialogController {
         SpinnerHelper.bindList(accountSpinner, activeAccounts(allAccounts),
                 a -> a.name, fragment.requireContext());
 
-        typeGroup.setOnCheckedChangeListener((group, checkedId) ->
-                SpinnerHelper.bindList(categorySpinner,
-                        categoriesForType(allCategories, checkedId == R.id.BudgetDialogTypeExpense),
-                        c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name),
-                        fragment.requireContext()));
+        typeGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) return;
+            SpinnerHelper.bindList(categorySpinner,
+                    categoriesForType(allCategories, checkedId == R.id.BudgetDialogTypeExpense),
+                    c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name),
+                    fragment.requireContext());
+        });
 
         LocalDate selectedDate = existingRow != null && existingRow.getBookingDate() != null
                 ? existingRow.getBookingDate() : LocalDate.now();
@@ -104,8 +105,8 @@ public class BudgetTransactionDialogController {
                     Math.abs(existingRow.getAmountCents()) / 100.0));
             String existingNote = existingRow.getNote();
             noteInput.setText(existingNote != null ? existingNote : "");
-            expenseRadio.setChecked(existingRow.isExpense());
-            incomeRadio.setChecked(!existingRow.isExpense());
+            typeGroup.check(existingRow.isExpense()
+                    ? R.id.BudgetDialogTypeExpense : R.id.BudgetDialogTypeIncome);
             SpinnerHelper.setSelection(categorySpinner,
                     categoriesForType(allCategories, existingRow.isExpense()),
                     existingRow.getCategoryId(), c -> c.id);
@@ -147,7 +148,7 @@ public class BudgetTransactionDialogController {
                 }
 
                 String amountStr = SpinnerHelper.textOf(amountInput);
-                boolean selectedExpense = expenseRadio.isChecked();
+                boolean selectedExpense = typeGroup.getCheckedButtonId() == R.id.BudgetDialogTypeExpense;
                 String note = SpinnerHelper.textOf(noteInput);
                 String categoryId = SpinnerHelper.idAtPosition(
                         categoriesForType(allCategories, selectedExpense),

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Budget overview screen. Managed by BudgetFragment + BudgetOverviewLoader.
      Sections from top to bottom:
-       1. Account selector (Spinner) + chart range (RadioGroup)
+       1. Account selector (Spinner) + chart range (MaterialButtonToggleGroup)
        2. Balance chart card (custom BudgetBalanceChartView)
        3. Month navigation (shared include_temporal_nav_bar)
        4. Monthly summary card (income/expense/free budget/net — shown/hidden by BudgetOverviewLoader)
@@ -24,39 +24,47 @@
         <!-- Account selector and chart range -->
         <Spinner
             android:id="@+id/BudgetAccountSpinner"
+            style="@style/Widget.AutoSecretary.Editor.Spinner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
             android:contentDescription="@string/budget_account_selector" />
 
-        <RadioGroup
+        <com.google.android.material.button.MaterialButtonToggleGroup
             android:id="@+id/BudgetRangeGroup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
-            android:orientation="horizontal">
+            app:singleSelection="true"
+            app:checkedButton="@id/BudgetRange30d">
 
-            <RadioButton
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/BudgetRange30d"
-                android:layout_width="wrap_content"
+                style="@style/Widget.AutoSecretary.ToggleButton"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:checked="true"
+                android:layout_weight="1"
+                android:contentDescription="@string/budget_range_30d_desc"
                 android:text="@string/budget_range_30d" />
 
-            <RadioButton
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/BudgetRange3m"
-                android:layout_width="wrap_content"
+                style="@style/Widget.AutoSecretary.ToggleButton"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/spacing_md"
+                android:layout_weight="1"
+                android:contentDescription="@string/budget_range_3m_desc"
                 android:text="@string/budget_range_3m" />
 
-            <RadioButton
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/BudgetRange12m"
-                android:layout_width="wrap_content"
+                style="@style/Widget.AutoSecretary.ToggleButton"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/spacing_md"
+                android:layout_weight="1"
+                android:contentDescription="@string/budget_range_12m_desc"
                 android:text="@string/budget_range_12m" />
-        </RadioGroup>
+        </com.google.android.material.button.MaterialButtonToggleGroup>
 
         <!-- Balance chart card -->
         <com.google.android.material.card.MaterialCardView
@@ -77,8 +85,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/budget_chart_title"
-                    android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                    android:textStyle="bold" />
+                    android:textAppearance="@style/TextAppearance.AutoSecretary.SectionTitle" />
 
                 <com.autosecretary.features.budget.ui.internal.BudgetBalanceChartView
                     android:id="@+id/BudgetBalanceChart"
@@ -123,14 +130,13 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/budget_summary_income"
-                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
+                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
 
                     <TextView
                         android:id="@+id/BudgetSummaryIncome"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                        android:textStyle="bold" />
+                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -145,14 +151,13 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/budget_summary_expense"
-                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
+                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
 
                     <TextView
                         android:id="@+id/BudgetSummaryExpense"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                        android:textStyle="bold" />
+                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -167,13 +172,12 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/budget_summary_free_budget"
-                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
+                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
                     <TextView
                         android:id="@+id/BudgetSummaryFreeBudget"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                        android:textStyle="bold" />
+                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue" />
                 </LinearLayout>
 
                 <View
@@ -193,15 +197,13 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/budget_summary_net"
-                        android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
-                        android:textStyle="bold" />
+                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.SummaryTotal" />
 
                     <TextView
                         android:id="@+id/BudgetSummaryNet"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
-                        android:textStyle="bold" />
+                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.SummaryTotal" />
                 </LinearLayout>
 
             </LinearLayout>
@@ -256,7 +258,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_lg"
             android:text="@string/budget_empty_state"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
 
         <ProgressBar
             android:id="@+id/BudgetLoading"

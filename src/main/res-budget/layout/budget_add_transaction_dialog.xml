@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Add/edit budget transaction dialog. Managed by BudgetTransactionDialogController. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -19,33 +20,35 @@
             android:inputType="numberDecimal" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <RadioGroup
+    <com.google.android.material.button.MaterialButtonToggleGroup
         android:id="@+id/BudgetDialogTypeGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_md"
-        android:orientation="horizontal">
-        <RadioButton
+        app:singleSelection="true"
+        app:checkedButton="@id/BudgetDialogTypeExpense">
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/BudgetDialogTypeExpense"
+            style="@style/Widget.AutoSecretary.ToggleButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:checked="true"
             android:text="@string/budget_dialog_type_expense" />
-        <RadioButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/BudgetDialogTypeIncome"
+            style="@style/Widget.AutoSecretary.ToggleButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="@string/budget_dialog_type_income" />
-    </RadioGroup>
+    </com.google.android.material.button.MaterialButtonToggleGroup>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_md"
         android:text="@string/budget_dialog_account_label"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Editor.Label"
         android:labelFor="@id/BudgetDialogAccount" />
 
     <Spinner
@@ -60,7 +63,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_md"
         android:text="@string/budget_dialog_category_label"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Editor.Label"
         android:labelFor="@id/BudgetDialogCategory" />
 
     <Spinner

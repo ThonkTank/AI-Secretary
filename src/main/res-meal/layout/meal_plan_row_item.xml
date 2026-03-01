@@ -4,8 +4,9 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="@dimen/spacing_sm"
-    android:background="@drawable/meal_bg_row"
+    android:minHeight="@dimen/row_min_height"
+    android:layout_marginBottom="@dimen/spacing_xs"
+    android:background="@drawable/bg_row"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:padding="@dimen/spacing_sm">
@@ -20,16 +21,17 @@
             android:id="@+id/MealPlanRowTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Meal.RowTitle" />
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Meal.RowTitle" />
 
         <TextView
             android:id="@+id/MealPlanRowSubtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Meal.RowSubtitle" />
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Meal.RowSubtitle" />
     </LinearLayout>
 
     <com.google.android.material.button.MaterialButton
+        style="?attr/materialButtonOutlinedStyle"
         android:id="@+id/MealPlanRowDone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

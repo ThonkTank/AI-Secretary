@@ -10,6 +10,7 @@ import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
 import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.shared.ui.SpinnerHelper;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.time.LocalDate;
@@ -47,7 +48,7 @@ public class BudgetTransferDialogController {
         if (accounts == null || accounts.size() < 2) {
             new AlertDialog.Builder(ctx)
                     .setMessage(R.string.budget_transfer_requires_two_accounts)
-                    .setPositiveButton(android.R.string.ok, null)
+                    .setPositiveButton(R.string.action_ok, null)
                     .show();
             return;
         }
@@ -85,7 +86,7 @@ public class BudgetTransferDialogController {
             if (sourceIdx == targetIdx) {
                 new AlertDialog.Builder(ctx)
                         .setMessage(R.string.budget_transfer_same_account)
-                        .setPositiveButton(android.R.string.ok, null)
+                        .setPositiveButton(R.string.action_ok, null)
                         .show();
                 return;
             }

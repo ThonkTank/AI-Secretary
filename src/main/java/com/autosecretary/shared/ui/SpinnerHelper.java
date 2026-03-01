@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.ui.internal;
+package com.autosecretary.shared.ui;
 
 import android.content.Context;
 import android.widget.ArrayAdapter;

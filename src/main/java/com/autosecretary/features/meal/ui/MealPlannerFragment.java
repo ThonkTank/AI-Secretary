@@ -1,18 +1,14 @@
 package com.autosecretary.features.meal.ui;
 
-import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -24,17 +20,14 @@ import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.meal.application.MealPlannerPresenter;
 import com.autosecretary.features.meal.domain.MealPlan;
-import com.autosecretary.features.meal.domain.MealType;
 import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.ShoppingListItem;
-
-import android.widget.Toast;
+import com.autosecretary.features.meal.ui.internal.MealNeedDialogController;
+import com.autosecretary.features.meal.ui.internal.MealPantryDialogController;
+import com.autosecretary.features.meal.ui.internal.MealPlanDialogController;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Meal planner UI fragment — primary entry point for the meal feature.
@@ -48,23 +41,18 @@ import java.util.stream.Collectors;
  *
  * <p><strong>Architecture:</strong> Uses a presenter pattern ({@link MealPlannerPresenter}) to delegate
  * all business logic to the application layer. The fragment is purely presentational: it inflates layouts,
- * builds dialogs, and calls presenter methods on user actions (dialog commits, button clicks).
+ * wires dialog controllers, and calls presenter methods on user actions.
  *
  * <p><strong>Data flow:</strong> Presenter methods are async — they accept callbacks that fire on the
  * main thread once the background work completes. The fragment re-renders affected views in those callbacks.
  *
- * <p><strong>Dialog pattern:</strong> All three creation dialogs (plan, shopping need, pantry item) follow
- * the same pattern: inflate layout → build AlertDialog → on positive button, extract input fields → call
- * presenter async → re-render in callback. See {@link #showPlanDialog()}, {@link #showNeedDialog()},
- * {@link #showPantryDialog()}.
+ * <p><strong>Dialog pattern:</strong> Creation dialogs are managed by controllers in
+ * {@code meal/ui/internal/}: {@link MealPlanDialogController}, {@link MealNeedDialogController},
+ * {@link MealPantryDialogController}. Each controller validates input, then calls a listener
+ * callback with the validated data. The fragment implements the listeners and delegates to the presenter.
  */
 public class MealPlannerFragment extends Fragment {
 
-    // Default values for form fields
-    private static final int DEFAULT_SPINNER_SELECTION = 0;
-    private static final String DEFAULT_SERVINGS = "2";
-
-    // See features/meal/application/MealPlannerPresenter for business logic (fetch data, plan/delete meals, etc.)
     private MealPlannerPresenter presenter;
 
     private View weekScreen;
@@ -75,20 +63,15 @@ public class MealPlannerFragment extends Fragment {
     private TextView recipeDetail;
     private LinearLayout pantryList;
     private LinearLayout shoppingList;
-    private LayoutInflater layoutInflater;
 
-    /**
-     * Constructor for manual dependency injection (used by AppCompositionRoot).
-     * The no-arg constructor below is required by Android for fragment recreation during config changes.
-     */
+    private MealPlanDialogController planDialogController;
+    private MealNeedDialogController needDialogController;
+    private MealPantryDialogController pantryDialogController;
+
     public MealPlannerFragment(MealPlannerPresenter presenter) {
         this.presenter = presenter;
     }
 
-    /**
-     * No-arg constructor required by Android framework.
-     * When used, presenter will be fetched from AppCompositionRoot in onViewCreated().
-     */
     public MealPlannerFragment() {
     }
 
@@ -108,7 +91,27 @@ public class MealPlannerFragment extends Fragment {
                     .getMealPlannerPresenter();
         }
 
-        layoutInflater = LayoutInflater.from(requireContext());
+        planDialogController = new MealPlanDialogController(this, (recipeId, date, mealType, servings) ->
+                presenter.planRecipe(recipeId, date, mealType, servings, () -> {
+                    if (!isAdded()) return;
+                    Toast.makeText(requireContext(), R.string.meal_success_plan_created, Toast.LENGTH_SHORT).show();
+                    renderMealPlans();
+                }));
+
+        needDialogController = new MealNeedDialogController(this, (name, amount, unit) ->
+                presenter.createShoppingItemFromNeed(name, amount, unit, () -> {
+                    if (!isAdded()) return;
+                    Toast.makeText(requireContext(), R.string.meal_success_need_created, Toast.LENGTH_SHORT).show();
+                    renderStock();
+                }));
+
+        pantryDialogController = new MealPantryDialogController(this, (name, amount, unit, location, shelfLifeDays) ->
+                presenter.createPantryItem(name, amount, unit, location, shelfLifeDays, () -> {
+                    if (!isAdded()) return;
+                    Toast.makeText(requireContext(), R.string.meal_success_pantry_created, Toast.LENGTH_SHORT).show();
+                    renderStock();
+                }));
+
         weekScreen = view.findViewById(R.id.MealWeekScreen);
         recipesScreen = view.findViewById(R.id.MealRecipeScreen);
         stockScreen = view.findViewById(R.id.MealStockScreen);
@@ -125,7 +128,6 @@ public class MealPlannerFragment extends Fragment {
             recipesScreen.setVisibility(checkedId == R.id.MealTabRecipes ? View.VISIBLE : View.GONE);
             stockScreen.setVisibility(checkedId == R.id.MealTabStock ? View.VISIBLE : View.GONE);
         });
-        // Required: checked listener does not fire for the pre-checked button at registration time
         weekScreen.setVisibility(View.VISIBLE);
         recipesScreen.setVisibility(View.GONE);
         stockScreen.setVisibility(View.GONE);
@@ -137,59 +139,51 @@ public class MealPlannerFragment extends Fragment {
         addNeed.setContentDescription(getString(R.string.meal_add_need_desc));
         addPantry.setContentDescription(getString(R.string.meal_add_pantry_desc));
 
-        addMealPlan.setOnClickListener(v -> showPlanDialog());
-        addNeed.setOnClickListener(v -> showNeedDialog());
-        addPantry.setOnClickListener(v -> showPantryDialog());
+        addMealPlan.setOnClickListener(v -> presenter.getRecipes(recipes -> {
+            if (!isAdded()) return;
+            planDialogController.show(recipes);
+        }));
+        addNeed.setOnClickListener(v -> needDialogController.show());
+        addPantry.setOnClickListener(v -> pantryDialogController.show());
 
         renderAll();
     }
 
-    /**
-     * Render all tabs from presenter data. Called on initial view creation and after user actions.
-     * Each render method fires an independent async load — they share no state.
-     */
     private void renderAll() {
         renderMealPlans();
         renderRecipes();
         renderStock();
     }
 
-    /**
-     * Rebuild the meal plan list from presenter data (async).
-     * Called on init and after user actions (add plan, toggle completion).
-     */
     private void renderMealPlans() {
         presenter.getWeekMealPlans(plans -> {
+            if (!isAdded()) return;
             weekList.removeAllViews();
             if (plans.isEmpty()) {
                 weekList.addView(inflateTextRow(getString(R.string.meal_empty_week), weekList));
                 return;
             }
             for (MealPlan plan : plans) {
-                View planRow = layoutInflater.inflate(R.layout.meal_plan_row_item, weekList, false);
+                View planRow = inflater().inflate(R.layout.meal_plan_row_item, weekList, false);
                 TextView title = planRow.findViewById(R.id.MealPlanRowTitle);
                 TextView subtitle = planRow.findViewById(R.id.MealPlanRowSubtitle);
                 Button done = planRow.findViewById(R.id.MealPlanRowDone);
 
-                title.setText(plan.recipeTitle + " · " + plan.mealType.label);
-                subtitle.setText(plan.date + " · " + plan.plannedServings + " Portionen");
+                title.setText(getString(R.string.meal_plan_row_title_format, plan.recipeTitle, plan.mealType.label));
+                subtitle.setText(getString(R.string.meal_plan_row_subtitle_format, plan.date.toString(), plan.plannedServings));
                 setMealPlanButtonState(done, plan);
                 if (plan.id != null) {
-                    done.setOnClickListener(v -> {
-                        presenter.toggleMealCompleted(plan.id, this::renderMealPlans);
-                    });
+                    done.setOnClickListener(v ->
+                            presenter.toggleMealCompleted(plan.id, this::renderMealPlans));
                 }
                 weekList.addView(planRow);
             }
         });
     }
 
-    /**
-     * Rebuild the recipe list and show details for the first recipe (async).
-     * Each recipe appears as a button; clicking it updates the detail pane on the right.
-     */
     private void renderRecipes() {
         presenter.getRecipes(recipes -> {
+            if (!isAdded()) return;
             recipeList.removeAllViews();
             for (Recipe recipe : recipes) {
                 TextView recipeButton = inflateRecipeButton(recipe, recipeList);
@@ -201,9 +195,6 @@ public class MealPlannerFragment extends Fragment {
         });
     }
 
-    /**
-     * Format recipe title, description, and instructions for display in the detail pane.
-     */
     private String buildRecipeDetails(Recipe recipe) {
         StringBuilder sb = new StringBuilder(recipe.title);
         if (!TextUtils.isEmpty(recipe.description)) sb.append("\n\n").append(recipe.description);
@@ -211,287 +202,56 @@ public class MealPlannerFragment extends Fragment {
         return sb.toString();
     }
 
-    /**
-     * Rebuild the pantry (inventory) and shopping list views from presenter data (async).
-     * Called on init and after user actions (add pantry item, add shopping need).
-     */
     private void renderStock() {
         presenter.getPantryItems(pantryItems -> {
+            if (!isAdded()) return;
             pantryList.removeAllViews();
             if (pantryItems.isEmpty()) {
                 pantryList.addView(inflateTextRow(getString(R.string.meal_empty_pantry), pantryList));
             } else {
                 for (PantryItem item : pantryItems) {
-                    TextView pantryRow = inflateTextRow(item.ingredientName + " · " + item.getFormattedAmount() + " · " + item.getExpiryInfo(LocalDate.now()), pantryList);
-                    pantryList.addView(pantryRow);
+                    pantryList.addView(inflateTextRow(getString(R.string.meal_pantry_row_format,
+                            item.ingredientName, item.getFormattedAmount(), item.getExpiryInfo(LocalDate.now())), pantryList));
                 }
             }
         });
 
         presenter.getShoppingListItems(shoppingItems -> {
+            if (!isAdded()) return;
             shoppingList.removeAllViews();
             if (shoppingItems.isEmpty()) {
                 shoppingList.addView(inflateTextRow(getString(R.string.meal_empty_shopping), shoppingList));
             } else {
                 for (ShoppingListItem item : shoppingItems) {
-                    TextView shoppingRow = inflateTextRow(item.ingredientName + " · " + item.getFormattedAmount(), shoppingList);
-                    shoppingList.addView(shoppingRow);
+                    shoppingList.addView(inflateTextRow(getString(R.string.meal_shopping_row_format,
+                            item.ingredientName, item.getFormattedAmount()), shoppingList));
                 }
             }
         });
     }
 
-    /**
-     * Returns trimmed text from an EditText, or shows an error toast and returns null if empty.
-     * Consolidates the repeated "check empty → toast → abort" pattern across all dialogs.
-     */
-    @Nullable
-    private String requireNonEmpty(EditText field, String fieldLabel) {
-        String value = field.getText().toString().trim();
-        if (value.isEmpty()) {
-            String errorMsg = getString(R.string.meal_error_field_required, fieldLabel);
-            Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show();
-            return null;
-        }
-        return value;
-    }
-
-    /**
-     * Safely parse a date string, showing error toast on failure.
-     * Returns null if parsing fails; caller should check before using.
-     */
-    @Nullable
-    private LocalDate safeParse(String dateString) {
-        try {
-            return LocalDate.parse(dateString);
-        } catch (DateTimeParseException e) {
-            String errorMsg = getString(R.string.meal_error_invalid_date);
-            Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show();
-            return null;
-        }
-    }
-
-    /**
-     * Safely parse an integer from a string, showing error toast on failure.
-     * Returns null if parsing fails; caller should check before using.
-     */
-    @Nullable
-    private Integer safeParseInt(String value, String fieldName) {
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-            String errorMsg = getString(R.string.meal_error_invalid_number, fieldName);
-            Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show();
-            return null;
-        }
-    }
-
-    /**
-     * Safely parse a double from a string, showing error toast on failure.
-     * Returns null if parsing fails; caller should check before using.
-     */
-    @Nullable
-    private Double safeParseDouble(String value, String fieldName) {
-        try {
-            return Double.parseDouble(value);
-        } catch (NumberFormatException e) {
-            String errorMsg = getString(R.string.meal_error_invalid_number, fieldName);
-            Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show();
-            return null;
-        }
-    }
-
-    /**
-     * Show dialog to create a new meal plan.
-     *
-     * <p>Loads recipes async first, then builds the dialog once data is available.
-     * On positive button, calls presenter async → re-renders in callback.
-     */
-    private void showPlanDialog() {
-        presenter.getRecipes(recipes -> {
-            if (recipes == null || recipes.isEmpty()) {
-                Toast.makeText(requireContext(), R.string.meal_error_no_recipes, Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            View planDialogContent = layoutInflater.inflate(R.layout.meal_plan_create_dialog, null);
-            Spinner recipeSpinner = planDialogContent.findViewById(R.id.MealDialogRecipe);
-            EditText dateField = planDialogContent.findViewById(R.id.MealDialogDate);
-            Spinner typeSpinner = planDialogContent.findViewById(R.id.MealDialogType);
-            EditText servingsField = planDialogContent.findViewById(R.id.MealDialogServings);
-
-            List<String> recipeTitles = recipes.stream()
-                    .map(recipe -> recipe.title)
-                    .collect(Collectors.toList());
-            ArrayAdapter<String> recipeAdapter = new ArrayAdapter<>(
-                    requireContext(), android.R.layout.simple_spinner_dropdown_item, recipeTitles);
-            recipeSpinner.setAdapter(recipeAdapter);
-            recipeSpinner.setSelection(DEFAULT_SPINNER_SELECTION);
-
-            dateField.setText(LocalDate.now().toString());
-            ArrayAdapter<MealType> typeAdapter = new ArrayAdapter<>(
-                    requireContext(), android.R.layout.simple_spinner_dropdown_item, MealType.values());
-            typeSpinner.setAdapter(typeAdapter);
-            typeSpinner.setSelection(DEFAULT_SPINNER_SELECTION);
-            servingsField.setText(DEFAULT_SERVINGS);
-
-            AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                    .setTitle(R.string.meal_plan_dialog_title)
-                    .setView(planDialogContent)
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .setPositiveButton(R.string.meal_plan_dialog_save, null)
-                    .create();
-            dialog.show();
-            dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
-                int recipeIndex = recipeSpinner.getSelectedItemPosition();
-                if (recipeIndex < 0 || recipeIndex >= recipes.size()) return;
-                String dateStr = requireNonEmpty(dateField, "ein Datum");
-                if (dateStr == null) return;
-                LocalDate parsedDate = safeParse(dateStr);
-                if (parsedDate == null) return;
-                String servingsStr = requireNonEmpty(servingsField, "die Anzahl der Portionen");
-                if (servingsStr == null) return;
-                Integer servings = safeParseInt(servingsStr, "Portionen");
-                if (servings == null || servings <= 0) return;
-                MealType mealType = getSpinnerSelection(typeSpinner, MealType.class);
-                if (mealType == null) return;
-                String recipeId = recipes.get(recipeIndex).id;
-                if (recipeId == null) return;
-                presenter.planRecipe(recipeId, parsedDate, mealType, servings, () -> {
-                    Toast.makeText(requireContext(), R.string.meal_success_plan_created, Toast.LENGTH_SHORT).show();
-                    dialog.dismiss();
-                    renderMealPlans();
-                });
-            });
-        });
-    }
-
-    /**
-     * Show dialog to create a shopping list item. Follows the shared dialog pattern documented in {@link #showPlanDialog()}.
-     */
-    private void showNeedDialog() {
-        View needDialogContent = layoutInflater.inflate(R.layout.meal_need_create_dialog, null);
-        EditText nameField = needDialogContent.findViewById(R.id.MealNeedName);
-        EditText amountField = needDialogContent.findViewById(R.id.MealNeedAmount);
-        EditText unitField = needDialogContent.findViewById(R.id.MealNeedUnit);
-
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.meal_need_dialog_title)
-                .setView(needDialogContent)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.meal_need_dialog_save, null)
-                .create();
-        dialog.show();
-        dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String ingredientName = requireNonEmpty(nameField, "einen Zutatennamen");
-            if (ingredientName == null) return;
-            String amountStr = requireNonEmpty(amountField, "eine Menge");
-            if (amountStr == null) return;
-            Double amount = safeParseDouble(amountStr, "Menge");
-            if (amount == null || amount < 0) return;
-            String unitStr = requireNonEmpty(unitField, "eine Einheit");
-            if (unitStr == null) return;
-            presenter.createShoppingItemFromNeed(ingredientName, amount, unitStr, () -> {
-                Toast.makeText(requireContext(), R.string.meal_success_need_created, Toast.LENGTH_SHORT).show();
-                dialog.dismiss();
-                renderStock();
-            });
-        });
-    }
-
-    /**
-     * Show dialog to create a pantry (inventory) item. Follows the shared dialog pattern documented in {@link #showPlanDialog()}.
-     */
-    private void showPantryDialog() {
-        View pantryDialogContent = layoutInflater.inflate(R.layout.meal_pantry_create_dialog, null);
-        EditText nameField = pantryDialogContent.findViewById(R.id.MealPantryName);
-        EditText amountField = pantryDialogContent.findViewById(R.id.MealPantryAmount);
-        EditText unitField = pantryDialogContent.findViewById(R.id.MealPantryUnit);
-        EditText shelfLifeDaysField = pantryDialogContent.findViewById(R.id.MealPantryShelfLifeDays);
-        Spinner locationSpinner = pantryDialogContent.findViewById(R.id.MealPantryLocation);
-        ArrayAdapter<PantryItem.StorageLocation> locationAdapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_dropdown_item,
-                PantryItem.StorageLocation.values());
-        locationSpinner.setAdapter(locationAdapter);
-        locationSpinner.setSelection(DEFAULT_SPINNER_SELECTION);
-
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.meal_pantry_dialog_title)
-                .setView(pantryDialogContent)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.meal_pantry_dialog_save, null)
-                .create();
-        dialog.show();
-        dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String ingredientName = requireNonEmpty(nameField, "einen Zutatennamen");
-            if (ingredientName == null) return;
-            String amountStr = requireNonEmpty(amountField, "eine Menge");
-            if (amountStr == null) return;
-            Double amount = safeParseDouble(amountStr, "Menge");
-            if (amount == null || amount < 0) return;
-            String unitStr = requireNonEmpty(unitField, "eine Einheit");
-            if (unitStr == null) return;
-            String shelfLifeStr = requireNonEmpty(shelfLifeDaysField, "die Haltbarkeitsdauer");
-            if (shelfLifeStr == null) return;
-            Integer shelfLifeDays = safeParseInt(shelfLifeStr, "Haltbarkeitsdauer");
-            if (shelfLifeDays == null || shelfLifeDays < 0) return;
-            PantryItem.StorageLocation location = getSpinnerSelection(locationSpinner, PantryItem.StorageLocation.class);
-            if (location == null) return;
-            presenter.createPantryItem(
-                    ingredientName, amount, unitStr, location, shelfLifeDays,
-                    () -> {
-                        Toast.makeText(requireContext(), R.string.meal_success_pantry_created, Toast.LENGTH_SHORT).show();
-                        dialog.dismiss();
-                        renderStock();
-                    }
-            );
-        });
-    }
-
-    /**
-     * Set button state (text and content description) based on meal completion status.
-     */
     private void setMealPlanButtonState(Button button, MealPlan plan) {
-        String buttonText = plan.isCompleted
-                ? getString(R.string.meal_mark_open)
-                : getString(R.string.meal_mark_done);
-        String description = plan.isCompleted
+        button.setText(plan.isCompleted ? getString(R.string.meal_mark_open) : getString(R.string.meal_mark_done));
+        button.setContentDescription(plan.isCompleted
                 ? getString(R.string.meal_mark_open_desc, plan.recipeTitle)
-                : getString(R.string.meal_mark_done_desc, plan.recipeTitle);
-        button.setText(buttonText);
-        button.setContentDescription(description);
+                : getString(R.string.meal_mark_done_desc, plan.recipeTitle));
     }
 
-    /**
-     * Inflate and configure a recipe button for the recipe list.
-     */
+    private LayoutInflater inflater() {
+        return LayoutInflater.from(requireContext());
+    }
+
     private TextView inflateRecipeButton(Recipe recipe, ViewGroup parent) {
-        TextView button = (TextView) layoutInflater.inflate(R.layout.meal_recipe_row_item, parent, false);
+        TextView button = (TextView) inflater().inflate(R.layout.meal_recipe_row_item, parent, false);
         button.setText(recipe.title);
         button.setContentDescription(getString(R.string.meal_recipe_select_desc, recipe.title));
         button.setOnClickListener(v -> recipeDetail.setText(buildRecipeDetails(recipe)));
         return button;
     }
 
-    /**
-     * Inflate a text row item for pantry or shopping list display.
-     */
     private TextView inflateTextRow(String text, ViewGroup parent) {
-        TextView row = (TextView) layoutInflater.inflate(R.layout.meal_text_row_item, parent, false);
+        TextView row = (TextView) inflater().inflate(R.layout.meal_text_row_item, parent, false);
         row.setText(text);
         return row;
-    }
-
-    /**
-     * Safely get and cast a spinner selection to the expected type.
-     * Returns null if spinner selection is null or invalid.
-     */
-    @Nullable
-    private <T> T getSpinnerSelection(Spinner spinner, Class<T> expectedType) {
-        Object selected = spinner.getSelectedItem();
-        if (selected == null) {
-            return null;
-        }
-        return expectedType.cast(selected);
     }
 }

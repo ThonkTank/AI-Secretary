@@ -7,16 +7,18 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="@dimen/spacing_md">
+    android:padding="@dimen/spacing_lg">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/meal_label_recipe"
-        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Editor.Label"
+        android:labelFor="@id/MealDialogRecipe" />
 
     <Spinner
         android:id="@+id/MealDialogRecipe"
+        style="@style/Widget.AutoSecretary.Editor.Spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_xs" />
@@ -31,7 +33,8 @@
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/MealDialogDate"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:inputType="date" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <TextView
@@ -39,10 +42,12 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_md"
         android:text="@string/meal_label_type"
-        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Editor.Label"
+        android:labelFor="@id/MealDialogType" />
 
     <Spinner
         android:id="@+id/MealDialogType"
+        style="@style/Widget.AutoSecretary.Editor.Spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_xs" />

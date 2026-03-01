@@ -3,7 +3,9 @@
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:minHeight="@dimen/row_min_height"
     android:layout_marginBottom="@dimen/spacing_xs"
-    android:background="@drawable/meal_bg_row"
+    android:background="@drawable/bg_row"
+    android:gravity="start|center_vertical"
     android:padding="@dimen/spacing_sm"
-    android:textAppearance="@style/TextAppearance.Meal.RowBody" />
+    android:textAppearance="@style/TextAppearance.AutoSecretary.Meal.RowBody" />

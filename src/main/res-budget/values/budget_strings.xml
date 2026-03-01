@@ -90,4 +90,10 @@
     <string name="budget_status_error">Fehler: %1$s</string>
     <string name="budget_status_file_loading">Datei wird geladen: %1$s</string>
     <string name="budget_limit_bar_progress_description">Budget-Limit Fortschritt</string>
+    <string name="budget_limit_bar_content_description">%1$s: %2$s, %3$d%%</string>
+
+    <!-- contentDescriptions for range toggle buttons (full form of abbreviated labels) -->
+    <string name="budget_range_30d_desc">30 Tage</string>
+    <string name="budget_range_3m_desc">3 Monate</string>
+    <string name="budget_range_12m_desc">12 Monate</string>
 </resources>

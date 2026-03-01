@@ -3,7 +3,6 @@ package com.autosecretary.features.budget.ui.widget;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.widget.RemoteViews;
@@ -15,6 +14,7 @@ import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.app.MainActivity;
 import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseCase;
 import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
+import com.autosecretary.shared.WidgetConfiguration;
 
 public class BudgetWidgetProvider extends AppWidgetProvider {
     // Widget update period is defined in WidgetConfiguration and configured in widget_budget_info.xml.
@@ -99,15 +99,6 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
     }
 
     public static void notifyWidgetUpdate(Context context) {
-        AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        ComponentName widget = new ComponentName(context, BudgetWidgetProvider.class);
-        int[] widgetIds = manager.getAppWidgetIds(widget);
-        if (widgetIds.length == 0) {
-            return;
-        }
-        Intent updateIntent = new Intent(context, BudgetWidgetProvider.class);
-        updateIntent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-        updateIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, widgetIds);
-        context.sendBroadcast(updateIntent);
+        WidgetConfiguration.notifyUpdate(context, BudgetWidgetProvider.class);
     }
 }

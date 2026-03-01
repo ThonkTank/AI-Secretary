@@ -3,7 +3,6 @@ package com.autosecretary.features.task.ui.widget;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -17,9 +16,9 @@ import com.autosecretary.app.MainActivity;
 import com.autosecretary.features.task.ui.list.TaskViewModel;
 import com.autosecretary.shared.WidgetConfiguration;
 
+import com.autosecretary.shared.ui.DateFormatters;
+
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 
 /**
  * {@link AppWidgetProvider} entry point for the task widget. Manages the widget lifecycle
@@ -59,11 +58,6 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     private static final String PREFS_NAME = "widget_prefs";
     private static final String KEY_OFFSET = "selected_day_offset";
     private static final int MAX_OFFSET = TaskViewModel.MAX_DAY_OFFSET;
-
-    // Widget displays dates in German (project-specific UI language).
-    // See CLAUDE.md: "All user-facing text in German — 'Generieren', 'Speichern', etc."
-    private static final DateTimeFormatter DATE_FORMATTER =
-            DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN);
 
     private static final float ALPHA_ENABLED = 1.0f;
     private static final float ALPHA_DISABLED = 0.3f;
@@ -114,7 +108,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         int offset = getSelectedDayOffset(context);
         LocalDate selectedDate = LocalDate.now().plusDays(offset);
         boolean isToday = offset == 0;
-        String label = isToday ? context.getString(R.string.task_list_day_nav_today) : selectedDate.format(DATE_FORMATTER);
+        String label = isToday ? context.getString(R.string.task_list_day_nav_today) : selectedDate.format(DateFormatters.DAY_NAV_LABEL);
         Log.d(TAG, "updateWidget offset=" + offset + " label=" + label);
         views.setTextViewText(R.id.WidgetDateLabel, label);
 
@@ -244,14 +238,6 @@ public class TaskWidgetProvider extends AppWidgetProvider {
 
     public static void notifyWidgetUpdate(Context context) {
         Log.d(TAG, "notifyWidgetUpdate called");
-        AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        ComponentName widget = new ComponentName(context, TaskWidgetProvider.class);
-        int[] widgetIds = manager.getAppWidgetIds(widget);
-        if (widgetIds.length > 0) {
-            Intent updateIntent = new Intent(context, TaskWidgetProvider.class);
-            updateIntent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-            updateIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, widgetIds);
-            context.sendBroadcast(updateIntent);
-        }
+        WidgetConfiguration.notifyUpdate(context, TaskWidgetProvider.class);
     }
 }

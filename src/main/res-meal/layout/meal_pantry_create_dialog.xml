@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="@dimen/spacing_md">
+    android:padding="@dimen/spacing_lg">
 
     <com.google.android.material.textfield.TextInputLayout
         style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
@@ -66,10 +66,12 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_md"
         android:text="@string/meal_label_location"
-        android:textAppearance="@style/TextAppearance.Meal.DialogLabel" />
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Editor.Label"
+        android:labelFor="@id/MealPantryLocation" />
 
     <Spinner
         android:id="@+id/MealPantryLocation"
+        style="@style/Widget.AutoSecretary.Editor.Spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_xs" />

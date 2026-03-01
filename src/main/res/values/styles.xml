@@ -7,13 +7,14 @@
          - TextAppearance.* for text properties (color, size, weight, font)
          - Parent: always inherit from Material parent (Widget.MaterialComponents.*, TextAppearance.MaterialComponents.*)
 
-         AppTheme: Material Light theme with nature-inspired task colors + forest gradient background.
-         Colors from ../task_colors.xml; dimens from ../dimens.xml and ../task_dimens.xml.
+         AppTheme: Material Light theme with nature-inspired colors + forest gradient background.
+         Colors from colors.xml; dimens from ../dimens.xml and ../task_dimens.xml.
 
          When adding new styles:
          1. Inherit from Material parent: Widget.MaterialComponents.Button.Outlined, etc.
          2. Reference color/dimen tokens (never inline hex/dp values)
          3. Follow naming: Widget.AutoSecretary.[Component].[Variant]
+            For text: TextAppearance.AutoSecretary.[Feature].[Role] (e.g. TextAppearance.AutoSecretary.Task.Title)
          4. Place styles logically (theme first, then component groups)
 
          Reference: https://material.io/develop/android (Material Components for Android — MDC2;
@@ -23,14 +24,14 @@
     -->
 
     <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
-        <item name="colorPrimary">@color/task_color_primary</item>
-        <item name="colorPrimaryVariant">@color/task_color_primary_variant</item>
-        <item name="colorOnPrimary">@color/task_color_on_primary</item>
-        <item name="colorSecondary">@color/task_color_secondary</item>
-        <item name="colorSurface">@color/task_color_surface</item>
-        <item name="android:colorBackground">@color/task_color_background</item>
-        <item name="colorOnSurface">@color/task_color_on_surface</item>
-        <item name="colorOutline">@color/task_color_outline</item>
+        <item name="colorPrimary">@color/color_primary</item>
+        <item name="colorPrimaryVariant">@color/color_primary_variant</item>
+        <item name="colorOnPrimary">@color/color_on_primary</item>
+        <item name="colorSecondary">@color/color_secondary</item>
+        <item name="colorSurface">@color/color_surface</item>
+        <item name="android:colorBackground">@color/color_background</item>
+        <item name="colorOnSurface">@color/color_on_surface</item>
+        <item name="colorOutline">@color/color_outline</item>
         <item name="android:windowBackground">@drawable/bg_forest_gradient</item>
         <item name="bottomNavigationStyle">@style/Widget.AutoSecretary.BottomNavigation</item>
     </style>
@@ -57,16 +58,16 @@
     </style>
 
     <!-- Base task text appearances.
-         TextAppearance.Task is a named inheritance root: all task text styles extend it
-         (e.g. TextAppearance.Task.Title, TextAppearance.Task.Metadata). Inheriting from this
+         TextAppearance.AutoSecretary.Task is a named inheritance root: all task text styles extend it
+         (e.g. TextAppearance.AutoSecretary.Task.Title, TextAppearance.AutoSecretary.Task.Metadata). Inheriting from this
          name rather than repeating the Material parent directly keeps the hierarchy explicit. -->
-    <style name="TextAppearance.Task" parent="TextAppearance.MaterialComponents.Body2" />
+    <style name="TextAppearance.AutoSecretary.Task" parent="TextAppearance.MaterialComponents.Body2" />
 
     <!-- Task editor inputs -->
     <style name="Widget.AutoSecretary.Editor.TextFieldLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
         <item name="boxBackgroundMode">outline</item>
-        <item name="boxStrokeColor">@color/task_color_outline</item>
-        <item name="boxBackgroundColor">@color/task_color_surface</item>
+        <item name="boxStrokeColor">@color/color_outline</item>
+        <item name="boxBackgroundColor">@color/color_surface</item>
         <item name="boxStrokeWidth">@dimen/task_editor_input_stroke_width</item>
         <item name="boxStrokeWidthFocused">@dimen/task_editor_input_stroke_width_focused</item>
     </style>
@@ -78,7 +79,7 @@
     <style name="TextAppearance.AutoSecretary.Editor.Label" parent="TextAppearance.MaterialComponents.Body2">
         <item name="android:textSize">@dimen/text_sm</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:textColor">@color/task_color_on_surface_emphasis</item>
+        <item name="android:textColor">@color/color_on_surface_emphasis</item>
     </style>
 
     <style name="TextAppearance.AutoSecretary.Editor.PrefSlotButton" parent="TextAppearance.MaterialComponents.Body2">
@@ -93,90 +94,101 @@
     </style>
 
     <!-- Task text appearances -->
-    <style name="TextAppearance.Task.Title" parent="TextAppearance.Task">
+    <style name="TextAppearance.AutoSecretary.Task.Title" parent="TextAppearance.AutoSecretary.Task">
         <item name="android:textSize">@dimen/text_sm</item>
         <item name="android:textColor">@color/task_color_on_surface</item>
     </style>
 
-    <style name="TextAppearance.Task.Metadata" parent="TextAppearance.Task">
+    <style name="TextAppearance.AutoSecretary.Task.Metadata" parent="TextAppearance.AutoSecretary.Task">
         <item name="android:textSize">@dimen/text_xs</item>
         <item name="android:textColor">@color/task_color_on_surface_variant</item>
         <item name="android:fontFamily">monospace</item>
     </style>
 
-    <style name="TextAppearance.Task.Time.Primary" parent="TextAppearance.Task.Metadata">
+    <style name="TextAppearance.AutoSecretary.Task.Time.Primary" parent="TextAppearance.AutoSecretary.Task.Metadata">
         <item name="android:textColor">@color/task_color_on_surface_emphasis</item>
     </style>
 
-    <style name="TextAppearance.Task.Time.Secondary" parent="TextAppearance.Task.Metadata">
+    <style name="TextAppearance.AutoSecretary.Task.Time.Secondary" parent="TextAppearance.AutoSecretary.Task.Metadata">
         <item name="android:textColor">@color/task_color_on_surface_muted</item>
     </style>
 
-    <style name="TextAppearance.Task.Widget.NavAction" parent="TextAppearance.Task">
+    <style name="TextAppearance.AutoSecretary.Task.Widget.NavAction" parent="TextAppearance.AutoSecretary.Task">
         <item name="android:textSize">@dimen/text_md</item>
         <item name="android:textColor">@color/task_color_primary</item>
         <item name="android:textStyle">bold</item>
     </style>
 
-    <style name="TextAppearance.AutoSecretary.Widget.NavLabel" parent="TextAppearance.Task.Title">
+    <style name="TextAppearance.AutoSecretary.Widget.NavLabel" parent="TextAppearance.AutoSecretary.Task.Title">
         <item name="android:textSize">@dimen/text_md</item>
         <item name="android:textStyle">bold</item>
     </style>
 
-    <style name="TextAppearance.Task.Widget.NewTaskCta" parent="TextAppearance.Task">
+    <style name="TextAppearance.AutoSecretary.Task.Widget.NewTaskCta" parent="TextAppearance.AutoSecretary.Task">
         <item name="android:textSize">@dimen/text_md</item>
     </style>
 
     <!-- Budget widget text appearances -->
-    <style name="TextAppearance.Budget.Widget.Header" parent="TextAppearance.MaterialComponents.Body2">
+    <style name="TextAppearance.AutoSecretary.Budget.Widget.Header" parent="TextAppearance.MaterialComponents.Body2">
         <item name="android:textSize">@dimen/text_md</item>
         <item name="android:textColor">@color/budget_widget_header_text</item>
         <item name="android:textStyle">bold</item>
     </style>
 
-    <style name="TextAppearance.Budget.Widget.CardLabel" parent="TextAppearance.MaterialComponents.Body2">
+    <style name="TextAppearance.AutoSecretary.Budget.Widget.CardLabel" parent="TextAppearance.MaterialComponents.Body2">
         <item name="android:textSize">@dimen/text_xs</item>
         <item name="android:textColor">@color/budget_widget_card_text</item>
         <item name="android:textStyle">bold</item>
     </style>
 
-    <style name="TextAppearance.Budget.Widget.CardValue" parent="TextAppearance.MaterialComponents.Body2">
+    <style name="TextAppearance.AutoSecretary.Budget.Widget.CardValue" parent="TextAppearance.MaterialComponents.Body2">
         <item name="android:textSize">@dimen/text_xl</item>
         <item name="android:textColor">@color/budget_widget_card_text</item>
         <item name="android:textStyle">bold</item>
     </style>
 
-    <style name="TextAppearance.Budget.Widget.CardValueSecondary" parent="TextAppearance.MaterialComponents.Body2">
+    <style name="TextAppearance.AutoSecretary.Budget.Widget.CardValueSecondary" parent="TextAppearance.MaterialComponents.Body2">
         <item name="android:textSize">@dimen/text_md</item>
         <item name="android:textColor">@color/budget_widget_card_text</item>
     </style>
 
-    <!-- Meal feature text appearances.
-         task_color_* references are intentional: task_colors.xml defines the app-wide Material
-         palette (colorPrimary, colorSurface, colorOnSurface, etc.). Meal styles use those tokens
-         for the same reason budget_colors.xml aliases budget_widget_* to task_color_* — there is
-         only one shared theme, so all features reference the same palette tokens. -->
-    <style name="TextAppearance.Meal.SectionTitle" parent="TextAppearance.MaterialComponents.Body2">
+    <!-- Shared section title style used in meal and budget overview screens. -->
+    <style name="TextAppearance.AutoSecretary.SectionTitle" parent="TextAppearance.MaterialComponents.Body2">
         <item name="android:textSize">@dimen/text_md</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:textColor">@color/task_color_on_surface</item>
-    </style>
-
-    <style name="TextAppearance.Meal.DialogLabel" parent="TextAppearance.MaterialComponents.Body2">
-        <item name="android:textStyle">bold</item>
-        <item name="android:textSize">@dimen/text_sm</item>
+        <item name="android:textColor">@color/color_on_surface</item>
     </style>
 
     <!-- Meal row item text appearances (used in meal_plan_row_item.xml, meal_recipe_row_item.xml, meal_text_row_item.xml) -->
-    <style name="TextAppearance.Meal.RowTitle" parent="TextAppearance.MaterialComponents.Body1">
+    <style name="TextAppearance.AutoSecretary.Meal.RowTitle" parent="TextAppearance.MaterialComponents.Body1">
         <item name="android:textStyle">bold</item>
     </style>
 
-    <style name="TextAppearance.Meal.RowSubtitle" parent="TextAppearance.MaterialComponents.Body2">
-        <item name="android:textColor">@color/task_color_on_surface_variant</item>
+    <style name="TextAppearance.AutoSecretary.Meal.RowSubtitle" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textColor">@color/color_on_surface_variant</item>
     </style>
 
-    <style name="TextAppearance.Meal.RowBody" parent="TextAppearance.MaterialComponents.Body2">
-        <item name="android:textColor">@color/task_color_on_surface</item>
+    <style name="TextAppearance.AutoSecretary.Meal.RowBody" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textColor">@color/color_on_surface</item>
     </style>
+
+    <!-- Budget non-widget text appearances (overview, transaction rows, limit bars, suggestions) -->
+    <style name="TextAppearance.AutoSecretary.Budget.RowLabel" parent="TextAppearance.MaterialComponents.Body1" />
+
+    <style name="TextAppearance.AutoSecretary.Budget.RowValue" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.AutoSecretary.Budget.RowSecondary" parent="TextAppearance.MaterialComponents.Body2" />
+
+    <style name="TextAppearance.AutoSecretary.Budget.RowSecondaryBold" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.AutoSecretary.Budget.Caption" parent="TextAppearance.MaterialComponents.Caption" />
+
+    <style name="TextAppearance.AutoSecretary.Budget.SummaryTotal" parent="TextAppearance.MaterialComponents.Subtitle1">
+        <item name="android:textStyle">bold</item>
+    </style>
+
 </resources>

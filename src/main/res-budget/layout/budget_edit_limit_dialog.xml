@@ -13,7 +13,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/budget_dialog_category_label"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Editor.Label"
         android:labelFor="@id/BudgetLimitDialogCategory" />
 
     <Spinner
@@ -51,7 +51,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_xs"
         android:text="@string/budget_rollover_hint"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.Caption" />
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/BudgetLimitDialogRolloverCarryoverLayout"

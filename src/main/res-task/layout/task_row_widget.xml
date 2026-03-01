@@ -10,7 +10,7 @@
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:padding="@dimen/spacing_xs"
-    android:background="@drawable/task_bg_row">
+    android:background="@drawable/bg_row">
 
     <!-- Time column -->
     <LinearLayout
@@ -24,14 +24,14 @@
             android:id="@+id/WidgetRowStart"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Task.Time.Primary"
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Time.Primary"
             android:textColor="@color/task_widget_text_secondary" />
 
         <TextView
             android:id="@+id/WidgetRowEnd"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Task.Time.Secondary"
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Time.Secondary"
             android:textColor="@color/task_widget_text_muted" />
     </LinearLayout>
 
@@ -51,7 +51,7 @@
         android:layout_weight="1"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textAppearance="@style/TextAppearance.Task.Title"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Title"
         android:textColor="@color/task_widget_text_primary" />
 
     <!-- Streak -->
@@ -60,7 +60,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/spacing_xs"
-        android:textAppearance="@style/TextAppearance.Task.Metadata"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Metadata"
         android:textColor="@color/task_widget_text_muted" />
 
 </LinearLayout>

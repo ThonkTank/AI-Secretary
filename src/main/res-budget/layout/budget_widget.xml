@@ -13,7 +13,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/budget_widget_title"
-        android:textAppearance="@style/TextAppearance.Budget.Widget.Header" />
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.Widget.Header" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -27,26 +27,26 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/budget_widget_total_label"
-            android:textAppearance="@style/TextAppearance.Budget.Widget.CardLabel" />
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.Widget.CardLabel" />
 
         <TextView
             android:id="@+id/BudgetWidgetTotalValue"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Budget.Widget.CardValue" />
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.Widget.CardValue" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
             android:text="@string/budget_widget_free_label"
-            android:textAppearance="@style/TextAppearance.Budget.Widget.CardLabel" />
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.Widget.CardLabel" />
 
         <TextView
             android:id="@+id/BudgetWidgetFreeValue"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Budget.Widget.CardValueSecondary" />
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.Widget.CardValueSecondary" />
     </LinearLayout>
 
     <LinearLayout

@@ -1,6 +1,6 @@
 package com.autosecretary.app.settings;
 
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
@@ -183,7 +183,7 @@ public class SettingsController {
         new AlertDialog.Builder(context)
                 .setTitle(R.string.settings_restore_dialog_title)
                 .setItems(backupNames, (dialog, which) -> confirmRestore(backups[which]))
-                .setNegativeButton(android.R.string.cancel, null)
+                .setNegativeButton(R.string.action_cancel, null)
                 .show();
     }
 
@@ -201,7 +201,7 @@ public class SettingsController {
                                 R.string.settings_restore_success,
                                 R.string.settings_restore_failure,
                                 () -> settingsDataService.restoreBackup(backupFile)))
-                .setNegativeButton(android.R.string.cancel, null)
+                .setNegativeButton(R.string.action_cancel, null)
                 .show();
     }
 
@@ -221,7 +221,7 @@ public class SettingsController {
                                 R.string.settings_reset_success,
                                 R.string.settings_reset_failure,
                                 settingsDataService::factoryReset))
-                .setNegativeButton(android.R.string.cancel, null)
+                .setNegativeButton(R.string.action_cancel, null)
                 .show();
     }
 
@@ -235,7 +235,7 @@ public class SettingsController {
         new AlertDialog.Builder(context)
                 .setTitle(R.string.settings_about_title)
                 .setMessage(aboutText)
-                .setPositiveButton(android.R.string.ok, null)
+                .setPositiveButton(R.string.action_ok, null)
                 .show();
     }
 

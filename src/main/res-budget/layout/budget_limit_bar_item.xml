@@ -4,9 +4,12 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:minHeight="@dimen/row_min_height"
     android:orientation="vertical"
-    android:paddingVertical="@dimen/spacing_sm"
-    android:background="?attr/selectableItemBackground"
+    android:padding="@dimen/spacing_sm"
+    android:layout_marginBottom="@dimen/spacing_xs"
+    android:background="@drawable/bg_row"
+    android:foreground="?attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true"
     android:importantForAccessibility="yes">
@@ -23,8 +26,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-            android:textStyle="bold"
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowSecondaryBold"
             android:ellipsize="end"
             android:maxLines="1"
             android:importantForAccessibility="no" />
@@ -34,7 +36,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/spacing_sm"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowSecondary"
             android:importantForAccessibility="no" />
 
         <TextView
@@ -44,7 +46,7 @@
             android:layout_marginStart="@dimen/spacing_sm"
             android:minWidth="@dimen/budget_limit_bar_percent_min_width"
             android:gravity="end"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.Caption"
             android:textStyle="bold"
             android:importantForAccessibility="no" />
     </LinearLayout>

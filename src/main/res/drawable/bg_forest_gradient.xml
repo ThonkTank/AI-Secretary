@@ -4,7 +4,7 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
     <gradient
         android:angle="270"
-        android:startColor="@color/task_gradient_start"
-        android:centerColor="@color/task_gradient_center"
-        android:endColor="@color/task_gradient_end" />
+        android:startColor="@color/gradient_start"
+        android:centerColor="@color/gradient_center"
+        android:endColor="@color/gradient_end" />
 </shape>

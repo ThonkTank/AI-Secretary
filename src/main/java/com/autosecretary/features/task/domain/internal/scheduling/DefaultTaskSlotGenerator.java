@@ -17,9 +17,10 @@ import com.autosecretary.features.task.domain.scheduling.TaskSlotGenerationResul
 import com.autosecretary.features.task.domain.scheduling.TaskTransitionStatLoader;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
 
+import com.autosecretary.shared.ui.DateFormatters;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -243,8 +244,7 @@ public class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private Map<String, Task> allTasksById;
     private TaskPlanningState planningState;
 
-    /** HH:mm formatter used in log output, e.g. "09:30". */
-    private static final DateTimeFormatter HMM = DateTimeFormatter.ofPattern("HH:mm");
+    private static final java.time.format.DateTimeFormatter HMM = DateFormatters.TIME_HH_MM;
 
     public DefaultTaskSlotGenerator(TaskLifecycleManager lifecycleManager) {
         this(lifecycleManager, null, DEFAULT_WINDOW, CalendarBlockedIntervalProvider.NONE);

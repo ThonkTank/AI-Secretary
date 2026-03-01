@@ -21,10 +21,10 @@ import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
 import com.autosecretary.features.task.data.TaskScheduleConfig;
+import com.autosecretary.shared.ui.DateFormatters;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -50,7 +50,6 @@ import java.util.function.Consumer;
  */
 public class TaskScheduleConfigDialog extends DialogFragment {
     public static final String TAG = "schedule_config";
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm", Locale.GERMAN);
     /** Draft edits keyed by day. Mutated in place by time-picker callbacks; written to DB on save. */
     private final Map<DayOfWeek, TaskScheduleConfig> draftByDay = new EnumMap<>(DayOfWeek.class);
 
@@ -124,16 +123,16 @@ public class TaskScheduleConfigDialog extends DialogFragment {
             Button endButton = row.findViewById(R.id.ScheduleEndButton);
 
             dayLabel.setText(day.getDisplayName(TextStyle.FULL, Locale.GERMAN));
-            startButton.setText(rowConfig.startTime.format(TIME_FORMATTER));
-            endButton.setText(rowConfig.endTime.format(TIME_FORMATTER));
+            startButton.setText(rowConfig.startTime.format(DateFormatters.TIME_HH_MM));
+            endButton.setText(rowConfig.endTime.format(DateFormatters.TIME_HH_MM));
 
             startButton.setOnClickListener(v -> showTimePicker(rowConfig.startTime, picked -> {
                 rowConfig.startTime = picked;
-                startButton.setText(picked.format(TIME_FORMATTER));
+                startButton.setText(picked.format(DateFormatters.TIME_HH_MM));
             }));
             endButton.setOnClickListener(v -> showTimePicker(rowConfig.endTime, picked -> {
                 rowConfig.endTime = picked;
-                endButton.setText(picked.format(TIME_FORMATTER));
+                endButton.setText(picked.format(DateFormatters.TIME_HH_MM));
             }));
 
             container.addView(row);

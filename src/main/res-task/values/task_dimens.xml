@@ -13,10 +13,9 @@
     <dimen name="task_editor_pref_slot_row_padding_start">16dp</dimen>
     <dimen name="task_editor_pref_slot_row_padding_vertical">4dp</dimen>
 
-    <dimen name="task_row_min_height">56dp</dimen>
     <dimen name="task_row_time_divider_height">2dp</dimen>
     <dimen name="task_row_edit_button_padding">8dp</dimen>
-    <dimen name="task_row_expand_toggle_min_width">24dp</dimen>
+    <dimen name="task_row_expand_toggle_min_width">48dp</dimen>
 
     <dimen name="task_schedule_day_time_button_width">72dp</dimen>
 

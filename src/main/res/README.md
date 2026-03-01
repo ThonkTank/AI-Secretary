@@ -12,36 +12,47 @@ This directory contains Android app resources: layouts, drawables, icons, and re
 - **mipmap-\*/** — App launcher icons
 - **xml/** — XML resource files (file paths configuration, widget info)
 
+## Resource Source Directories
+
+Android resources are split across feature-specific source sets (configured in `build.gradle`):
+
+- **`res/`** — Shared/app-wide resources: theme, styles, shared drawables, navigation, launcher icons
+- **`res-task/`** — Task feature: layouts, colors, dimensions, strings, drawables
+- **`res-budget/`** — Budget feature: layouts, colors, dimensions, strings, drawables
+- **`res-meal/`** — Meal feature: layouts, colors, dimensions, strings, drawables
+
+At build time Android merges all source sets into a single `R` class, so resources can cross-reference each other (e.g. a shared style can reference a task color). Place new resources in the most specific directory that owns them.
+
 ## For Developers
 
 ### Adding UI Text
 
-Edit the appropriate string file in `values/`:
-- **App-wide strings** → `values/strings.xml`
-- **Task feature** → `values/task_strings.xml`
-- **Budget feature** → `values/budget_strings.xml`
-- **Meal feature** → `values/meal_strings.xml`
+Edit the appropriate string file:
+- **App-wide strings** → `res/values/strings.xml`
+- **Task feature** → `res-task/values/task_strings.xml`
+- **Budget feature** → `res-budget/values/budget_strings.xml`
+- **Meal feature** → `res-meal/values/meal_strings.xml`
 
 Reference in code: `getString(R.string.task_edit_dialog_title)`
 
 ### Adding Colors
 
-Edit the appropriate color file in `values/`:
-- **App-wide colors** → `values/colors.xml`
-- **Task colors** → `values/task_colors.xml`
-- **Budget colors** → `values/budget_colors.xml`
+Edit the appropriate color file:
+- **App-wide colors** → `res/values/colors.xml`
+- **Task colors** → `res-task/values/task_colors.xml`
+- **Budget colors** → `res-budget/values/budget_colors.xml`
 
 Use semantic names (task_urgency_overdue, not hex values). See [values-README.md](values-README.md) for naming conventions.
 
 ### Adding Dimensions / Layout Metrics
 
-Edit `values/dimens.xml` for app-wide tokens (spacing scale, text sizes) or feature-specific files:
-- `values/task_dimens.xml`
-- `values/budget_dimens.xml`
+Edit `res/values/dimens.xml` for app-wide tokens (spacing scale, text sizes) or feature-specific files:
+- `res-task/values/task_dimens.xml`
+- `res-budget/values/budget_dimens.xml`
 
 ### Adding Styles
 
-Edit `values/styles.xml`. Follow Material Design naming: `Widget.AISecretary.[Component].[Variant]` or `TextAppearance.[Namespace].[Component]`.
+Edit `values/styles.xml`. Follow Material Design naming: `Widget.AutoSecretary.[Component].[Variant]` or `TextAppearance.AutoSecretary.[Feature].[Role]`.
 
 Always inherit from Material parents: `Widget.MaterialComponents.*`, `TextAppearance.MaterialComponents.*`.
 
@@ -63,7 +74,7 @@ All string keys are **English** (e.g., `app_name`, `task_edit_dialog_title`); al
 This is Android convention: keys are stable identifiers; values are translated per language.
 
 To add a German string:
-1. Add to `values/strings.xml` (app-wide) or `values/[feature]_strings.xml`
+1. Add to `res/values/strings.xml` (app-wide) or `res-[feature]/values/[feature]_strings.xml`
 2. Use key naming: `[feature]_[context]_[element]` (e.g., `task_edit_delete_confirm`)
 3. Reference in Java: `getString(R.string.task_edit_delete_confirm)`
 4. Reference in XML: `android:text="@string/task_edit_delete_confirm"`

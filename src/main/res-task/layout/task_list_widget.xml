@@ -26,7 +26,7 @@
             android:padding="@dimen/spacing_sm"
             android:text="@string/task_list_day_nav_prev"
             android:contentDescription="@string/task_list_day_nav_prev_desc"
-            android:textAppearance="@style/TextAppearance.Task.Widget.NavAction" />
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Widget.NavAction" />
 
         <TextView
             android:id="@+id/WidgetDateLabel"
@@ -44,7 +44,7 @@
             android:padding="@dimen/spacing_sm"
             android:text="@string/task_list_day_nav_next"
             android:contentDescription="@string/task_list_day_nav_next_desc"
-            android:textAppearance="@style/TextAppearance.Task.Widget.NavAction" />
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Widget.NavAction" />
     </LinearLayout>
 
     <!-- Action bar: add + refresh -->
@@ -92,7 +92,7 @@
         android:layout_weight="1"
         android:gravity="center"
         android:text="@string/task_widget_empty"
-        android:textAppearance="@style/TextAppearance.Task.Metadata"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Metadata"
         android:visibility="gone" />
 
 </LinearLayout>

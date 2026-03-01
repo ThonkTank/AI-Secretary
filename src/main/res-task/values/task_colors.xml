@@ -1,41 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Task feature color palette (Material Design tokens + semantic colors).
-         Nature-inspired base: greens, earth tones, warm accents supporting calm focus and visual hierarchy.
-         Primary color (task_color_primary = #FF5C7A4D) is the source for all derived tokens.
-         When changing primary: update task_color_primary_variant, on_primary, alpha-composited variants (lines 27-30),
-         and AppTheme colorPrimary in ../styles.xml.
-         For new colors: use semantic names (task_[domain]_[status]) or Material role names (task_color_[role]).
-         See ../README.md for color naming conventions. -->
+    <!-- Task feature color palette (Material Design aliases + semantic colors).
+         Material palette tokens are defined in colors.xml and aliased here so that
+         existing task-internal references (e.g. task_completed_background referencing
+         task_color_primary) continue to resolve.
+         For new colors: use semantic names (task_[domain]_[status]).
+         See colors.xml header for full color naming conventions. -->
 
-    <!-- Nature-inspired base palette -->
-    <color name="task_color_background">#FFF4F1E8</color>
-    <color name="task_color_surface">#FFFFFCF6</color>
-    <color name="task_color_surface_variant">#FFF0E8D6</color>
-    <color name="task_color_on_surface">#FF2F3A2C</color>
-    <color name="task_color_on_surface_variant">#FF5F6C58</color>
-    <color name="task_color_on_surface_emphasis">#FF3F4D3A</color>
-    <color name="task_color_on_surface_muted">#FF7E8878</color>
-    <color name="task_color_outline">#FFC5BFAF</color>
+    <!-- Aliases to app-wide Material palette (source of truth: colors.xml) -->
+    <color name="task_color_background">@color/color_background</color>
+    <color name="task_color_surface">@color/color_surface</color>
+    <color name="task_color_surface_variant">@color/color_surface_variant</color>
+    <color name="task_color_on_surface">@color/color_on_surface</color>
+    <color name="task_color_on_surface_variant">@color/color_on_surface_variant</color>
+    <color name="task_color_on_surface_emphasis">@color/color_on_surface_emphasis</color>
+    <color name="task_color_on_surface_muted">@color/color_on_surface_muted</color>
+    <color name="task_color_outline">@color/color_outline</color>
 
-    <color name="task_color_primary">#FF5C7A4D</color>
-    <color name="task_color_primary_variant">#FF49653D</color>
-    <color name="task_color_on_primary">#FFF8F6EE</color>
-    <color name="task_color_primary_disabled_50">#805C7A4D</color>
-    <color name="task_color_primary_disabled_8">#145C7A4D</color>
-    <color name="task_color_primary_disabled_25">#405C7A4D</color>
-    <color name="task_color_secondary">#FF8DAA8C</color>
-    <color name="task_color_accent">#FFCF8F4F</color>
+    <color name="task_color_primary">@color/color_primary</color>
+    <color name="task_color_primary_variant">@color/color_primary_variant</color>
+    <color name="task_color_on_primary">@color/color_on_primary</color>
+    <color name="task_color_primary_disabled_50">@color/color_primary_disabled_50</color>
+    <color name="task_color_primary_disabled_8">@color/color_primary_disabled_8</color>
+    <color name="task_color_primary_disabled_25">@color/color_primary_disabled_25</color>
+    <color name="task_color_secondary">@color/color_secondary</color>
+    <color name="task_color_accent">@color/color_accent</color>
 
-    <!-- Day picker button color scheme (applied via selectors in src/main/res/color/):
-         - Disabled: alpha-composited primary (8% bg, 50% text, 25% stroke)
-         - Selected: primary base color (primary background, on_primary text, primary stroke)
-         - Unselected: transparent bg, primary text, outline stroke
-         Hex disabled variants: #145C7A4D, #805C7A4D, #405C7A4D (8%, 50%, 25% alpha on #FF5C7A4D)
-         If task_color_primary changes, recalculate disabled color opacities:
-         Quick method: multiply opacity % by 255, convert to hex (e.g., 0.08*255 = 20.4 ≈ 0x14).
-         Or use a design tool (Figma, Material Theme Builder) to export alpha variants.
-         Reference: https://stackoverflow.com/questions/15852122/hex-transparency-in-colors -->
+    <color name="task_color_on_primary_light">@color/color_on_primary_light</color>
+    <color name="task_color_surface_semi_transparent">@color/color_surface_semi_transparent</color>
+    <color name="task_color_outline_semi">@color/color_outline_semi</color>
+
+    <color name="task_gradient_start">@color/gradient_start</color>
+    <color name="task_gradient_center">@color/gradient_center</color>
+    <color name="task_gradient_end">@color/gradient_end</color>
 
     <!-- Deadline urgency colors -->
     <color name="task_deadline_overdue">#FFB4543A</color>
@@ -73,14 +70,4 @@
     <color name="task_widget_title_default">@color/task_widget_text_primary</color>
     <color name="task_widget_title_in_progress">@color/task_color_primary</color>
     <color name="task_widget_title_completed">@color/task_widget_text_muted</color>
-
-    <!-- Opacity/transparency variants for UI elements -->
-    <color name="task_color_on_primary_light">#4DF8F6EE</color>
-    <color name="task_color_surface_semi_transparent">#CCFFFCF6</color>
-    <color name="task_color_outline_semi">#80C5BFAF</color>
-
-    <!-- Gradient colors -->
-    <color name="task_gradient_start">#FFEAF2E4</color>
-    <color name="task_gradient_center">#FFF4F1E8</color>
-    <color name="task_gradient_end">#FFE5ECDD</color>
 </resources>

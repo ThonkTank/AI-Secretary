@@ -14,9 +14,10 @@ import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDao;
 
+import com.autosecretary.shared.ui.DateFormatters;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -39,8 +40,6 @@ import java.util.stream.Collectors;
  * </ol>
  */
 public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory {
-    // Widget displays times in 24-hour format (e.g. "14:30")
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     // Reusable comparator for sorting tasks by start time; avoids allocating new instances on every refresh
     private static final Comparator<TaskListItem> BY_START_TIME =
             Comparator.comparing(i -> i.start, Comparator.nullsLast(Comparator.naturalOrder()));
@@ -96,7 +95,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
      * Formats a time for display in 24-hour format, or returns empty string if time is null.
      */
     private String formatTime(LocalTime time) {
-        return time != null ? time.format(TIME_FORMATTER) : "";
+        return time != null ? time.format(DateFormatters.TIME_HH_MM) : "";
     }
 
     /**

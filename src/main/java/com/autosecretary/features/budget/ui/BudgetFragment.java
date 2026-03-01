@@ -11,7 +11,7 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.RadioGroup;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -37,7 +37,7 @@ import com.autosecretary.features.budget.ui.internal.BudgetRecurringSuggestionsD
 import com.autosecretary.features.budget.ui.internal.BudgetTransactionDialogController;
 import com.autosecretary.features.budget.ui.internal.BudgetTransferDialogController;
 import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
-import com.autosecretary.features.budget.ui.internal.SpinnerHelper;
+import com.autosecretary.shared.ui.SpinnerHelper;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
 import com.autosecretary.features.budget.ui.state.BudgetUiState;
 import com.autosecretary.features.budget.ui.state.TimeRangeFilter;
@@ -253,14 +253,7 @@ public class BudgetFragment extends Fragment {
 
         budgetViewModel.getSelectedAccountId().observe(getViewLifecycleOwner(), selectedId -> {
             if (selectedId == null || accountItems.isEmpty()) return;
-            for (int i = 0; i < accountItems.size(); i++) {
-                if (selectedId.equals(accountItems.get(i).id)) {
-                    if (views.accountSpinner.getSelectedItemPosition() != i) {
-                        views.accountSpinner.setSelection(i, false);
-                    }
-                    break;
-                }
-            }
+            SpinnerHelper.setSelection(views.accountSpinner, accountItems, selectedId, a -> a.id);
         });
 
         budgetViewModel.getTimeRangeFilter().observe(getViewLifecycleOwner(), filter -> {
@@ -269,7 +262,7 @@ public class BudgetFragment extends Fragment {
                 case MONTHS_3 -> R.id.BudgetRange3m;
                 case MONTHS_12 -> R.id.BudgetRange12m;
             };
-            if (views.rangeGroup.getCheckedRadioButtonId() != checkedId) {
+            if (views.rangeGroup.getCheckedButtonId() != checkedId) {
                 views.rangeGroup.check(checkedId);
             }
         });
@@ -296,15 +289,12 @@ public class BudgetFragment extends Fragment {
             }
         });
 
-        views.rangeGroup.setOnCheckedChangeListener((group, checkedId) -> {
-            TimeRangeFilter filter = null;
-            if (checkedId == R.id.BudgetRange30d) {
-                filter = TimeRangeFilter.DAYS_30;
-            } else if (checkedId == R.id.BudgetRange3m) {
-                filter = TimeRangeFilter.MONTHS_3;
-            } else if (checkedId == R.id.BudgetRange12m) {
-                filter = TimeRangeFilter.MONTHS_12;
-            }
+        views.rangeGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) return;
+            TimeRangeFilter filter = checkedId == R.id.BudgetRange30d ? TimeRangeFilter.DAYS_30
+                    : checkedId == R.id.BudgetRange3m ? TimeRangeFilter.MONTHS_3
+                    : checkedId == R.id.BudgetRange12m ? TimeRangeFilter.MONTHS_12
+                    : null;
             if (filter != null) budgetViewModel.setTimeRangeFilter(filter);
         });
 
@@ -353,7 +343,7 @@ public class BudgetFragment extends Fragment {
         LinearLayout limitBarsContainer;
         Button setLimitButton;
         Spinner accountSpinner;
-        RadioGroup rangeGroup;
+        MaterialButtonToggleGroup rangeGroup;
         BudgetBalanceChartView chartView;
     }
 
@@ -412,13 +402,14 @@ public class BudgetFragment extends Fragment {
             android.widget.ProgressBar progress = row.findViewById(R.id.BudgetLimitBarProgress);
 
             name.setText(bar.getCategoryName());
-            String spentLabel = String.format(Locale.GERMAN, "%.2f / %.2f €",
-                    bar.getSpentCents() / 100.0, bar.getEffectiveLimitCents() / 100.0);
+            String spentLabel = CurrencyFormatter.eurosMagnitude(bar.getSpentCents())
+                    + " / " + CurrencyFormatter.eurosMagnitude(bar.getEffectiveLimitCents());
             spentText.setText(spentLabel);
             int pct = bar.getPercentage();
             percentText.setText(String.format(Locale.GERMAN, "%d%%", pct));
             progress.setProgress(Math.min(pct, 100));
-            row.setContentDescription(bar.getCategoryName() + ": " + spentLabel + ", " + pct + "%");
+            row.setContentDescription(getString(R.string.budget_limit_bar_content_description,
+                    bar.getCategoryName(), spentLabel, pct));
 
             // Color priority: a category's configured hex color always wins, because the user
             // deliberately chose it. Status-based colors (negative/warning/positive) are only

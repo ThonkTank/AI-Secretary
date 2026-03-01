@@ -10,7 +10,7 @@ Vector icons and shape backgrounds used throughout the app.
 | `ic_*` | App-wide | Vector icons (toolbar, navigation, launcher) | `ic_settings_24` |
 | `task_bg_*` | Task feature | Background shapes for task UI surfaces | `task_bg_row` |
 | `task_editor_*` | Task feature | Task editor-specific drawables | `task_editor_selector_background` |
-| `meal_bg_*` | Meal feature | Background shapes for meal UI surfaces | `meal_bg_row` |
+| `meal_bg_*` | Meal feature | Background shapes for meal UI surfaces | — |
 
 Size suffix `_24` on icons indicates 24dp intrinsic size (Material standard).
 
@@ -32,12 +32,8 @@ Size suffix `_24` on icons indicates 24dp intrinsic size (Material standard).
 ### Task feature backgrounds
 - **`task_bg_calendar_chip`** — Small rounded chip behind calendar labels in task rows
 - **`task_bg_calendar_row`** — Row background for calendar-view task items (set programmatically in `ListRowAdapter`)
-- **`task_bg_day_nav_chip`** — Pill-shaped chip for the day navigation selector in the task list header
 - **`task_bg_row`** — Default row background for task list items
 - **`task_editor_selector_background`** — Inset rounded field background for selector inputs in the task editor
-
-### Meal feature backgrounds
-- **`meal_bg_row`** — Rounded row background for meal list items (planned meals, recipes, pantry, shopping); matches `task_bg_row` visual treatment for cross-feature consistency
 
 ## Further Reading
 

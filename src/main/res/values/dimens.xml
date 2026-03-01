@@ -8,14 +8,17 @@
     <dimen name="spacing_lg">16dp</dimen>
     <dimen name="spacing_xl">24dp</dimen>
 
-    <!-- App-wide corner radius scale shared across features. -->
+    <!-- App-wide corner radius scale shared across features.
+         sm = small elements (chips, buttons, calendar items, row backgrounds)
+         lg = containers (surface cards, nav bar, dialogs) -->
     <dimen name="corner_radius_sm">12dp</dimen>
-    <dimen name="corner_radius_md">14dp</dimen>
-    <dimen name="corner_radius_lg">16dp</dimen>
-    <dimen name="corner_radius_xl">18dp</dimen>
+    <dimen name="corner_radius_lg">20dp</dimen>
 
     <!-- Material minimum touch target (48dp). -->
     <dimen name="touch_target_min">48dp</dimen>
+
+    <!-- Shared minimum row height for list items across all features. -->
+    <dimen name="row_min_height">56dp</dimen>
 
     <!-- App-wide text scale tokens (sp). Feature-specific sizes live in feature_dimens.xml.
          Scale: xs (12) → sm (14) → md (16) → xl (18).

@@ -7,7 +7,7 @@ All layout files follow `<feature>_<surface>_<kind>.xml`:
 | Feature  | Surfaces                                                  |
 |----------|-----------------------------------------------------------|
 | `app_`   | `main_activity`                                           |
-| `task_`  | `list_fragment`, `editor_fragment`, `row_item`, `row_widget`, `list_widget`, `schedule_fragment`, `schedule_day_item` |
+| `task_`  | `list_fragment`, `editor_dialog`, `row_item`, `row_widget`, `list_widget`, `schedule_config_dialog`, `schedule_day_item` |
 | `budget_`| `overview_fragment`, `widget`, `add_transaction_dialog`, `edit_limit_dialog`, `transfer_dialog`, `recurring_suggestions_dialog`, `recurring_suggestion_item`, `transaction_item`, `limit_bar_item` |
 | `meal_`  | `overview_fragment`, `plan_create_dialog`, `need_create_dialog`, `pantry_create_dialog`, `plan_row_item`, `recipe_row_item`, `text_row_item` |
 
@@ -58,7 +58,5 @@ Comments in the XML explain when each hidden view becomes visible.
 
 ## Quality Tiers
 
-The **budget** and **task** layouts are polished: they use `@dimen`, `@color`, `@style`, and
-`@string` resource references throughout. The **meal** layouts are an earlier rough draft with
-hardcoded `dp`/`sp` values and inline hex colors. When adding new layouts, follow the
-budget/task convention.
+All three features (task, budget, meal) use `@dimen`, `@color`, `@style`, and
+`@string` resource references throughout. When adding new layouts, follow the same convention.

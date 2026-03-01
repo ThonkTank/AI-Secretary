@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Shared temporal navigation bar: prev-chevron / centered label / next-chevron.
      Used by task_list_fragment.xml (day navigation) and budget_overview_fragment.xml (month navigation).
-     The including fragment sets click listeners, label text, and content descriptions via view IDs. -->
+     The including fragment sets click listeners, label text, and content descriptions via view IDs.
+     Note: consuming fragments MUST set contentDescription on NavPrev/NavNext (e.g. "Vorheriger Tag"). -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/TemporalNavBar"

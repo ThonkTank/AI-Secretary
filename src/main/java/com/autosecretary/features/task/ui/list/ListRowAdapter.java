@@ -22,7 +22,8 @@ import com.autosecretary.R;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.ui.list.state.ViewSlot;
 
-import java.time.format.DateTimeFormatter;
+import com.autosecretary.shared.ui.DateFormatters;
+
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -42,7 +43,6 @@ import java.util.function.Function;
  * navigates to a day other than today, making the entire list read-only.
  */
 public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowViewHolder> {
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final long CHECKBOX_SCALE_DURATION_MS = 100L;
     private static final long COMPLETION_FLASH_DURATION_MS = 300L;
     private static final float ALPHA_ENABLED = 1.0f;
@@ -86,7 +86,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         Context ctx = recyclerView.getContext();
         indentStepPx = ctx.getResources().getDimensionPixelSize(R.dimen.task_indent_step);
         basePaddingStartPx = ctx.getResources().getDimensionPixelSize(R.dimen.spacing_lg);
-        rowCornerRadius = ctx.getResources().getDimension(R.dimen.corner_radius_md);
+        rowCornerRadius = ctx.getResources().getDimension(R.dimen.corner_radius_sm);
         rowStrokeWidth = (int) ctx.getResources().getDimension(R.dimen.task_editor_input_stroke_width);
         colorOutlineSemi = ContextCompat.getColor(ctx, R.color.task_color_outline_semi);
         colorCompletedBg = ContextCompat.getColor(ctx, R.color.task_completed_background);
@@ -216,7 +216,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     /** Resets all view visibilities/listeners to the task-row defaults (as opposed to calendar-row). */
     private void bindTaskRow(TaskRowViewHolder holder) {
-        holder.root.setBackgroundResource(R.drawable.task_bg_row);
+        holder.root.setBackgroundResource(R.drawable.bg_row);
         holder.checkBox.setVisibility(View.VISIBLE);
         holder.deadlineCountdown.setVisibility(View.VISIBLE);
         holder.streakDisplay.setVisibility(View.VISIBLE);
@@ -282,10 +282,10 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     private void bindTimeRange(TaskRowViewHolder holder, TaskListItem item) {
         Context context = holder.itemView.getContext();
         String startString = item.start != null
-                ? item.start.format(TIME_FORMATTER)
+                ? item.start.format(DateFormatters.TIME_HH_MM)
                 : context.getString(R.string.task_time_fallback_start);
         String endString = item.end != null
-                ? item.end.format(TIME_FORMATTER)
+                ? item.end.format(DateFormatters.TIME_HH_MM)
                 : context.getString(R.string.task_time_fallback_end);
         holder.start.setText(startString);
         holder.end.setText(endString);

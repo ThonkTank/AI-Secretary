@@ -11,6 +11,7 @@
     <!-- Shared action labels used across features (task, budget, meal dialogs). -->
     <string name="action_save">Speichern</string>
     <string name="action_cancel">Abbrechen</string>
+    <string name="action_ok">OK</string>
     <string name="action_delete">Löschen</string>
     <string name="hint_date_yyyy_mm_dd">Datum (YYYY-MM-DD)</string>
 
@@ -49,4 +50,7 @@
     <string name="update_download_failed_title">Download fehlgeschlagen</string>
     <string name="update_download_failed_message">Das Update konnte nicht geladen oder installiert werden.\n\n%1$s</string>
     <string name="update_download_failed_unknown">Unbekannter Fehler</string>
+
+    <string name="action_navigate_previous">Zurück</string>
+    <string name="action_navigate_next">Weiter</string>
 </resources>
