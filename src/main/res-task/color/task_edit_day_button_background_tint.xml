@@ -3,9 +3,9 @@
 
      Used by Widget.AutoSecretary.TaskEdit.DayPickerButton.
 
-     Color scheme defined in task_colors.xml. -->
+     Color scheme references shared palette in colors.xml. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_enabled="false" android:color="@color/task_color_primary_disabled_8" />
-    <item android:state_checked="true" android:color="@color/task_color_primary" />
+    <item android:state_enabled="false" android:color="@color/color_primary_disabled_8" />
+    <item android:state_checked="true" android:color="@color/color_primary" />
     <item android:color="@color/transparent" />
 </selector>

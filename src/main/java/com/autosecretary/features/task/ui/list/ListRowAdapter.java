@@ -3,7 +3,6 @@ package com.autosecretary.features.task.ui.list;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -21,8 +20,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.autosecretary.R;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.ui.list.state.ViewSlot;
+import com.autosecretary.shared.ui.ColorUtil;
+import com.autosecretary.shared.ui.UiConstants;
 
-import com.autosecretary.shared.ui.DateFormatters;
+import com.autosecretary.shared.DateFormatters;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -45,9 +46,6 @@ import java.util.function.Function;
 public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowViewHolder> {
     private static final long CHECKBOX_SCALE_DURATION_MS = 100L;
     private static final long COMPLETION_FLASH_DURATION_MS = 300L;
-    private static final float ALPHA_ENABLED = 1.0f;
-    private static final float ALPHA_DISABLED = 0.4f;
-
     private List<ViewSlot> viewSlots;
     private final TaskRowActions actions;
     /** False when viewing a past or future day; disables checkboxes, timers, and edit buttons. */
@@ -84,11 +82,12 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     public void onAttachedToRecyclerView(RecyclerView recyclerView) {
         super.onAttachedToRecyclerView(recyclerView);
         Context ctx = recyclerView.getContext();
-        indentStepPx = ctx.getResources().getDimensionPixelSize(R.dimen.task_indent_step);
-        basePaddingStartPx = ctx.getResources().getDimensionPixelSize(R.dimen.spacing_lg);
-        rowCornerRadius = ctx.getResources().getDimension(R.dimen.corner_radius_sm);
-        rowStrokeWidth = (int) ctx.getResources().getDimension(R.dimen.task_editor_input_stroke_width);
-        colorOutlineSemi = ContextCompat.getColor(ctx, R.color.task_color_outline_semi);
+        android.content.res.Resources res = ctx.getResources();
+        indentStepPx = res.getDimensionPixelSize(R.dimen.task_indent_step);
+        basePaddingStartPx = res.getDimensionPixelSize(R.dimen.spacing_lg);
+        rowCornerRadius = res.getDimension(R.dimen.corner_radius_sm);
+        rowStrokeWidth = (int) res.getDimension(R.dimen.editor_input_stroke_width);
+        colorOutlineSemi = ContextCompat.getColor(ctx, R.color.color_outline_semi);
         colorCompletedBg = ContextCompat.getColor(ctx, R.color.task_completed_background);
         colorInProgressBg = ContextCompat.getColor(ctx, R.color.task_in_progress_background);
         colorCompletedCheckboxTint = ContextCompat.getColor(ctx, R.color.task_completed_checkbox_tint);
@@ -185,16 +184,17 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         TaskListItem item = viewSlot.getItem();
 
         holder.title.setText(item.title);
-        holder.itemView.setContentDescription(item.title);
 
         bindIndentation(holder, viewSlot.getDepth());
         bindTimeRange(holder, item);
 
         if (item.isCalendarEvent()) {
+            holder.itemView.setContentDescription(item.title);
             bindCalendarEventRow(holder);
             return;
         }
 
+        holder.itemView.setContentDescription(buildRowContentDescription(holder.itemView.getContext(), item));
         bindTaskRow(holder);
         bindGoalAppearance(holder, item);
         bindDeadline(holder, item);
@@ -235,11 +235,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         }
 
         holder.goalIcon.setText(item.goalIcon);
-        try {
-            holder.goalIcon.setTextColor(Color.parseColor(item.goalColorHex));
-        } catch (Exception ex) {
-            holder.goalIcon.setTextColor(holder.title.getCurrentTextColor());
-        }
+        holder.goalIcon.setTextColor(ColorUtil.parseColorSafe(item.goalColorHex, holder.title.getCurrentTextColor()));
         holder.goalIcon.setVisibility(View.VISIBLE);
     }
 
@@ -257,6 +253,49 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.expandToggle.setContentDescription(holder.itemView.getContext().getString(
                 expanded ? R.string.task_row_collapse_children : R.string.task_row_expand_children));
         holder.expandToggle.setOnClickListener(v -> actions.onToggleExpand.accept(viewSlot));
+    }
+
+    /**
+     * Builds a composite content description for a task row so screen readers announce the full
+     * row in a single pass: title, time range, optional deadline, optional streak, and current state.
+     *
+     * <p>Example output: "Sport, 10:00 – 11:00, Heute fällig, Streak 5, In Bearbeitung"
+     */
+    private String buildRowContentDescription(Context context, TaskListItem item) {
+        String timeRange = context.getString(R.string.task_row_time_range,
+                formatTimeOrFallback(context, item.start, R.string.task_time_fallback_start),
+                formatTimeOrFallback(context, item.end, R.string.task_time_fallback_end));
+
+        String deadlineSegment = "";
+        TaskListItem.DeadlineUrgency urgency = item.deadlineUrgency();
+        if (urgency != TaskListItem.DeadlineUrgency.NONE) {
+            String deadlineDesc;
+            if (urgency == TaskListItem.DeadlineUrgency.OVERDUE) {
+                deadlineDesc = context.getString(R.string.task_deadline_overdue_content_description);
+            } else if (urgency == TaskListItem.DeadlineUrgency.TODAY) {
+                deadlineDesc = context.getString(R.string.task_deadline_today_content_description);
+            } else {
+                deadlineDesc = context.getString(R.string.task_deadline_in_days_content_description,
+                        item.daysUntilDeadline());
+            }
+            deadlineSegment = context.getString(R.string.task_row_deadline_segment, deadlineDesc);
+        }
+
+        String streakSegment = item.streak > 0
+                ? context.getString(R.string.task_row_streak_segment, item.streak)
+                : "";
+
+        String stateLabel;
+        if (item.completed) {
+            stateLabel = context.getString(R.string.task_row_state_completed);
+        } else if (item.inProgress) {
+            stateLabel = context.getString(R.string.task_row_state_in_progress);
+        } else {
+            stateLabel = context.getString(R.string.task_row_state_pending);
+        }
+
+        return context.getString(R.string.task_row_content_description,
+                item.title, timeRange, deadlineSegment, streakSegment, stateLabel);
     }
 
     /** Configures the row as a read-only calendar event: hides all task controls, shows "Kalender" chip. */
@@ -278,17 +317,15 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         ViewCompat.setStateDescription(holder.itemView, context.getString(R.string.task_calendar_state_description));
     }
 
+    private static String formatTimeOrFallback(Context context, java.time.LocalTime time, int fallbackRes) {
+        return time != null ? time.format(DateFormatters.TIME_HH_MM) : context.getString(fallbackRes);
+    }
+
     /** Formats and displays the start/end time for the slot, with fallback text if unset. */
     private void bindTimeRange(TaskRowViewHolder holder, TaskListItem item) {
         Context context = holder.itemView.getContext();
-        String startString = item.start != null
-                ? item.start.format(DateFormatters.TIME_HH_MM)
-                : context.getString(R.string.task_time_fallback_start);
-        String endString = item.end != null
-                ? item.end.format(DateFormatters.TIME_HH_MM)
-                : context.getString(R.string.task_time_fallback_end);
-        holder.start.setText(startString);
-        holder.end.setText(endString);
+        holder.start.setText(formatTimeOrFallback(context, item.start, R.string.task_time_fallback_start));
+        holder.end.setText(formatTimeOrFallback(context, item.end, R.string.task_time_fallback_end));
     }
 
     /** Shows a deadline urgency label (overdue/today/N days) with urgency-based text color. */
@@ -404,8 +441,18 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     }
 
     private void bindCheckboxControls(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
+        Context context = holder.itemView.getContext();
         holder.checkBox.setVisibility(View.VISIBLE);
         holder.progressContainer.setVisibility(View.GONE);
+        int checkboxDescRes;
+        if (item.completed) {
+            checkboxDescRes = R.string.task_row_checkbox_done;
+        } else if (item.inProgress) {
+            checkboxDescRes = R.string.task_row_checkbox_complete;
+        } else {
+            checkboxDescRes = R.string.task_row_checkbox_start;
+        }
+        holder.checkBox.setContentDescription(context.getString(checkboxDescRes));
         holder.checkBox.setOnClickListener(v -> {
             boolean shouldAnimateCompletion = interactionsEnabled && item.slotId != null && !item.completed;
             if (shouldAnimateCompletion) {
@@ -419,7 +466,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         // checked off at all — they have no execution window to mark complete.
         boolean checkable = !item.completed && item.slotId != null && interactionsEnabled;
         holder.checkBox.setEnabled(checkable);
-        holder.checkBox.setAlpha(interactionsEnabled ? ALPHA_ENABLED : ALPHA_DISABLED);
+        holder.checkBox.setAlpha(interactionsEnabled ? UiConstants.ALPHA_ENABLED : UiConstants.ALPHA_DISABLED);
     }
 
     private void bindProgressControls(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
@@ -446,7 +493,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     private void applyProgressButtonState(ImageButton button, boolean enabled) {
         button.setEnabled(enabled);
-        button.setAlpha(enabled ? ALPHA_ENABLED : ALPHA_DISABLED);
+        button.setAlpha(enabled ? UiConstants.ALPHA_ENABLED : UiConstants.ALPHA_DISABLED);
         button.setImageTintList(ColorStateList.valueOf(
                 enabled ? colorProgressButtonTint : colorProgressButtonTintDisabled));
     }
@@ -461,7 +508,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.editButton.setOnClickListener(interactionsEnabled
                 ? v -> actions.onEdit.accept(viewSlot)
                 : null);
-        holder.editButton.setAlpha(interactionsEnabled ? ALPHA_ENABLED : ALPHA_DISABLED);
+        holder.editButton.setAlpha(interactionsEnabled ? UiConstants.ALPHA_ENABLED : UiConstants.ALPHA_DISABLED);
     }
 
     private void showDescriptionPopup(View view, TaskListItem item) {

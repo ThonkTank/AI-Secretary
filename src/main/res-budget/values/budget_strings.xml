@@ -18,8 +18,9 @@
     <string name="budget_transfer_requires_two_accounts">Für Überweisungen werden mindestens zwei Konten benötigt.</string>
     <string name="budget_transfer_same_account">Quell- und Zielkonto müssen unterschiedlich sein.</string>
     <string name="budget_transfer_invalid_date">Ungültiges Datum (erwartet: YYYY-MM-DD)</string>
-    <string name="budget_invalid_date">@string/budget_transfer_invalid_date</string>
     <string name="budget_empty_state">Noch keine Buchungen. Starte mit „Transaktion hinzufügen".</string>
+    <string name="budget_empty_state_title">Noch keine Buchungen</string>
+    <string name="budget_empty_state_subtitle">Starte mit „Transaktion hinzufügen".</string>
     <string name="budget_loading">Budget wird geladen</string>
     <string name="budget_retry">Erneut versuchen</string>
     <string name="budget_demo_transaction_label">Lebensmittel</string>
@@ -27,13 +28,13 @@
 
     <string name="budget_dialog_title">Transaktion hinzufügen</string>
     <string name="budget_dialog_edit_title">Transaktion bearbeiten</string>
+    <string name="budget_dialog_amount_label">Betrag</string>
     <string name="budget_dialog_amount_hint">Betrag (z.B. 42,90)</string>
     <string name="budget_dialog_note_hint">Beschreibung (optional)</string>
     <string name="budget_dialog_type_expense">Ausgabe</string>
     <string name="budget_dialog_type_income">Einnahme</string>
     <string name="budget_dialog_save">Hinzufügen</string>
     <string name="budget_dialog_update">@string/action_save</string>
-    <string name="budget_dialog_cancel">@string/action_cancel</string>
     <string name="budget_transaction_content_description">Transaktion: %1$s, %2$s, %3$s</string>
     <string name="budget_dialog_category_label">Kategorie</string>
     <string name="budget_dialog_account_label">Konto</string>
@@ -42,7 +43,6 @@
     <string name="budget_month_next_desc">Nächster Monat</string>
     <string name="budget_delete_title">Transaktion löschen?</string>
     <string name="budget_delete_message">Diese Buchung wirklich löschen?</string>
-    <string name="budget_delete_confirm">@string/action_delete</string>
     <string name="budget_recurring_title">Wiederkehrende Buchungen erkannt</string>
     <string name="budget_recurring_skip">Überspringen</string>
     <string name="budget_recurring_create">Erstellen (%1$d)</string>
@@ -96,4 +96,9 @@
     <string name="budget_range_30d_desc">30 Tage</string>
     <string name="budget_range_3m_desc">3 Monate</string>
     <string name="budget_range_12m_desc">12 Monate</string>
+
+    <!-- Transaction row labels used by BudgetOverviewLoader -->
+    <string name="budget_transfer_row_label">Überweisung</string>
+    <string name="budget_transfer_note_prefix">Überweisung · </string>
+    <string name="budget_default_booking_label">Buchung</string>
 </resources>

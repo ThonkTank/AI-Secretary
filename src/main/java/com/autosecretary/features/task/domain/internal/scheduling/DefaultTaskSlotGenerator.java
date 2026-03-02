@@ -17,7 +17,7 @@ import com.autosecretary.features.task.domain.scheduling.TaskSlotGenerationResul
 import com.autosecretary.features.task.domain.scheduling.TaskTransitionStatLoader;
 import com.autosecretary.features.task.domain.TaskTreeOperations;
 
-import com.autosecretary.shared.ui.DateFormatters;
+import com.autosecretary.shared.DateFormatters;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

@@ -5,26 +5,36 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 
+import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 
 import com.autosecretary.R;
+import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
+import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
+import com.autosecretary.shared.ui.SimpleItemSelectedListener;
+import com.autosecretary.shared.ui.SimpleTextWatcher;
+import com.autosecretary.shared.ui.SpinnerHelper;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 import com.google.android.material.textfield.TextInputLayout;
 
+import com.autosecretary.shared.DateFormatters;
+
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -38,9 +48,6 @@ import java.util.Objects;
  * {@link TaskEditFormValidator}.
  */
 public class TaskEditSectionBinder {
-
-    // German locale date format (day.month.year) used consistently throughout the app UI.
-    private static final DateTimeFormatter DEADLINE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final DialogFragment fragment;
     private final View rootView;
@@ -67,48 +74,19 @@ public class TaskEditSectionBinder {
         titleView.setText(editState.title);
         descriptionView.setText(editState.description);
 
-        bindEnumSpinner(priorityView, Priority.values());
+        SpinnerHelper.bindList(priorityView, Arrays.asList(Priority.values()), Object::toString, fragment.requireContext());
         priorityView.setSelection(editState.priority.ordinal());
 
         return new BasicInfoViews(titleView, descriptionView, priorityView);
     }
 
-    public SchedulingViews bindScheduling() {
-        EditText deadlineView = rootView.findViewById(R.id.EditDeadline);
+    public SchedulingViews bindScheduling(
+            List<BudgetAccountEntity> accounts,
+            List<BudgetCategoryEntity> categories) {
         TextInputLayout deadlineInputLayout = rootView.findViewById(R.id.DeadlineInputLayout);
         ImageButton clearDeadline = rootView.findViewById(R.id.ClearDeadline);
-        Spinner schedulingTypeView = rootView.findViewById(R.id.EditSchedulingType);
-        LinearLayout fixedSchedulingContainer = rootView.findViewById(R.id.FixedSchedulingContainer);
-        EditText fixedDateView = rootView.findViewById(R.id.EditFixedDate);
-        EditText fixedStartView = rootView.findViewById(R.id.EditFixedStart);
-        EditText fixedEndView = rootView.findViewById(R.id.EditFixedEnd);
-        EditText fixedDurationView = rootView.findViewById(R.id.EditFixedDuration);
-        EditText budgetRequiredCentsView = rootView.findViewById(R.id.EditBudgetRequiredCents);
-        EditText budgetAccountIdView = rootView.findViewById(R.id.EditBudgetAccountId);
-        EditText budgetCategoryIdView = rootView.findViewById(R.id.EditBudgetCategoryId);
-        CheckBox closeOnMissView = rootView.findViewById(R.id.EditCloseOnMiss);
-        EditText minDurationView = rootView.findViewById(R.id.EditMinDuration);
-        EditText maxDurationView = rootView.findViewById(R.id.EditMaxDuration);
-        EditText cooldownView = rootView.findViewById(R.id.EditCooldown);
-        CheckBox adaptiveView = rootView.findViewById(R.id.EditAdaptive);
 
-        SchedulingViews views = new SchedulingViews(
-            deadlineView,
-            schedulingTypeView,
-            fixedSchedulingContainer,
-            fixedDateView,
-            fixedStartView,
-            fixedEndView,
-            fixedDurationView,
-            budgetRequiredCentsView,
-            budgetAccountIdView,
-            budgetCategoryIdView,
-            closeOnMissView,
-            minDurationView,
-            maxDurationView,
-            cooldownView,
-            adaptiveView
-        );
+        SchedulingViews views = SchedulingViews.from(rootView, accounts, categories);
 
         updateDeadlineDisplay(views);
         bindDeadlineListeners(deadlineInputLayout, clearDeadline, views);
@@ -118,16 +96,24 @@ public class TaskEditSectionBinder {
     }
 
     private void initializeSchedulingFields(SchedulingViews views) {
-        bindEnumSpinner(views.schedulingTypeView, TaskCore.SchedulingType.values());
+        SpinnerHelper.bindList(views.schedulingTypeView, Arrays.asList(TaskCore.SchedulingType.values()), Object::toString, fragment.requireContext());
         TaskCore.SchedulingType schedulingType = Objects.requireNonNullElse(editState.schedulingType, TaskEditDefaults.SCHEDULING_TYPE);
         views.schedulingTypeView.setSelection(schedulingType.ordinal());
-        views.fixedDateView.setText(textOf(editState.fixedDate));
-        views.fixedStartView.setText(textOf(editState.fixedStart));
-        views.fixedEndView.setText(textOf(editState.fixedEnd));
-        views.fixedDurationView.setText(textOf(editState.fixedDuration));
-        views.budgetRequiredCentsView.setText(textOf(editState.budgetRequiredCents));
-        views.budgetAccountIdView.setText(textOf(editState.budgetAccountId));
-        views.budgetCategoryIdView.setText(textOf(editState.budgetCategoryId));
+        views.fixedDateView.setText(toStringOrEmpty(editState.fixedDate));
+        views.fixedStartView.setText(toStringOrEmpty(editState.fixedStart));
+        views.fixedEndView.setText(toStringOrEmpty(editState.fixedEnd));
+        views.fixedDurationView.setText(toStringOrEmpty(editState.fixedDuration));
+        views.budgetRequiredCentsView.setText(toStringOrEmpty(editState.budgetRequiredCents));
+
+        SpinnerHelper.bindListWithNone(views.budgetAccountView, views.budgetAccounts,
+                a -> a.name, fragment.getString(R.string.task_editor_budget_no_account),
+                editState.budgetAccountId, a -> a.id, fragment.requireContext());
+
+        SpinnerHelper.bindListWithNone(views.budgetCategoryView, views.budgetCategories,
+                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name),
+                fragment.getString(R.string.task_editor_budget_no_category),
+                editState.budgetCategoryId, c -> c.id, fragment.requireContext());
+
         views.fixedSchedulingContainer.setVisibility(fixedSchedulingVisibility(schedulingType));
         bindSchedulingTypeListener(views);
         views.closeOnMissView.setChecked(editState.closeOnMiss);
@@ -164,39 +150,25 @@ public class TaskEditSectionBinder {
      * uses this callback to recompute {@code repsPerDay} and rebuild the pref-slot UI.
      */
     public RepetitionViews bindRepetition(Runnable onRepetitionChanged) {
-        CheckBox toggleRepetition = rootView.findViewById(R.id.ToggleRepetition);
-        LinearLayout repetitionContainer = rootView.findViewById(R.id.RepetitionContainer);
-        EditText repsView = rootView.findViewById(R.id.EditReps);
-        EditText perPeriodView = rootView.findViewById(R.id.EditPerPeriod);
-        Spinner periodUnitView = rootView.findViewById(R.id.EditPeriodUnit);
-        CheckBox completeFirstView = rootView.findViewById(R.id.EditCompleteFirst);
-
-        RepetitionViews views = new RepetitionViews(
-            toggleRepetition,
-            repetitionContainer,
-            repsView,
-            perPeriodView,
-            periodUnitView,
-            completeFirstView
-        );
+        RepetitionViews views = RepetitionViews.from(rootView);
 
         boolean hasRepetition = editState.reps > 0;
-        toggleRepetition.setChecked(hasRepetition);
-        repetitionContainer.setVisibility(hasRepetition ? View.VISIBLE : View.GONE);
+        views.toggleRepetition.setChecked(hasRepetition);
+        views.repetitionContainer.setVisibility(hasRepetition ? View.VISIBLE : View.GONE);
 
-        repsView.setText(String.valueOf(editState.reps > 0 ? editState.reps : TaskEditDefaults.REPETITION_REPS));
-        perPeriodView.setText(String.valueOf(editState.perPeriod > 0 ? editState.perPeriod : TaskEditDefaults.REPETITION_PER_PERIOD));
+        views.repsView.setText(String.valueOf(editState.reps > 0 ? editState.reps : TaskEditDefaults.REPETITION_REPS));
+        views.perPeriodView.setText(String.valueOf(editState.perPeriod > 0 ? editState.perPeriod : TaskEditDefaults.REPETITION_PER_PERIOD));
 
-        bindEnumSpinner(periodUnitView, Period.values());
+        SpinnerHelper.bindList(views.periodUnitView, Arrays.asList(Period.values()), Object::toString, fragment.requireContext());
         Period periodUnit = Objects.requireNonNullElse(editState.periodUnit, TaskEditDefaults.REPETITION_PERIOD_UNIT);
-        periodUnitView.setSelection(periodUnit.ordinal());
-        completeFirstView.setChecked(editState.completeFirst);
+        views.periodUnitView.setSelection(periodUnit.ordinal());
+        views.completeFirstView.setChecked(editState.completeFirst);
 
         presenter.initializeRepetitionState(
-            toggleRepetition.isChecked(),
-            repsView.getText().toString(),
-            perPeriodView.getText().toString(),
-            (Period) periodUnitView.getSelectedItem()
+            views.toggleRepetition.isChecked(),
+            views.repsView.getText().toString(),
+            views.perPeriodView.getText().toString(),
+            (Period) views.periodUnitView.getSelectedItem()
         );
 
         attachRepetitionListeners(views, onRepetitionChanged);
@@ -228,51 +200,44 @@ public class TaskEditSectionBinder {
     }
 
     public ProgressViews bindProgress() {
-        CheckBox toggleProgress = rootView.findViewById(R.id.ToggleProgress);
-        LinearLayout progressContainer = rootView.findViewById(R.id.ProgressContainer);
-        EditText unitView = rootView.findViewById(R.id.EditUnit);
-        EditText targetView = rootView.findViewById(R.id.EditTarget);
-        EditText currentView = rootView.findViewById(R.id.EditCurrent);
-        CheckBox resetPerRepView = rootView.findViewById(R.id.EditResetPerRep);
-        EditText minPerRepView = rootView.findViewById(R.id.EditMinPerRep);
-        EditText maxPerRepView = rootView.findViewById(R.id.EditMaxPerRep);
-
-        ProgressViews views = new ProgressViews(
-            toggleProgress,
-            progressContainer,
-            unitView,
-            targetView,
-            currentView,
-            resetPerRepView,
-            minPerRepView,
-            maxPerRepView
-        );
+        ProgressViews views = ProgressViews.from(rootView);
 
         boolean hasProgress = !editState.unit.isEmpty();
-        toggleProgress.setChecked(hasProgress);
-        progressContainer.setVisibility(hasProgress ? View.VISIBLE : View.GONE);
+        views.toggleProgress.setChecked(hasProgress);
+        views.progressContainer.setVisibility(hasProgress ? View.VISIBLE : View.GONE);
 
-        unitView.setText(editState.unit);
-        targetView.setText(String.valueOf(editState.target));
-        currentView.setText(String.valueOf(editState.current));
-        resetPerRepView.setChecked(editState.resetPerRep);
-        minPerRepView.setText(String.valueOf(editState.minPerRep));
-        maxPerRepView.setText(String.valueOf(editState.maxPerRep));
+        views.unitView.setText(editState.unit);
+        views.targetView.setText(String.valueOf(editState.target));
+        views.currentView.setText(String.valueOf(editState.current));
+        views.resetPerRepView.setChecked(editState.resetPerRep);
+        views.minPerRepView.setText(String.valueOf(editState.minPerRep));
+        views.maxPerRepView.setText(String.valueOf(editState.maxPerRep));
 
-        toggleProgress.setOnCheckedChangeListener((btn, checked) ->
-            progressContainer.setVisibility(checked ? View.VISIBLE : View.GONE));
+        views.toggleProgress.setOnCheckedChangeListener((btn, checked) ->
+            views.progressContainer.setVisibility(checked ? View.VISIBLE : View.GONE));
 
         return views;
     }
 
-    private <E> void bindEnumSpinner(Spinner spinner, E[] values) {
-        ArrayAdapter<E> adapter = new ArrayAdapter<>(
-            fragment.requireContext(),
-            android.R.layout.simple_spinner_item,
-            values
-        );
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
+    /**
+     * Re-populates the budget account and category spinners after an asynchronous load.
+     * Updates the backing lists on {@code views} so that {@link TaskEditFormInputReader}
+     * resolves the correct IDs when the user saves the form.
+     */
+    public void rebindBudgetSpinners(SchedulingViews views,
+                                     List<BudgetAccountEntity> accounts,
+                                     List<BudgetCategoryEntity> categories) {
+        views.budgetAccounts = accounts;
+        views.budgetCategories = categories;
+
+        SpinnerHelper.bindListWithNone(views.budgetAccountView, accounts,
+                a -> a.name, fragment.getString(R.string.task_editor_budget_no_account),
+                editState.budgetAccountId, a -> a.id, fragment.requireContext());
+
+        SpinnerHelper.bindListWithNone(views.budgetCategoryView, categories,
+                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name),
+                fragment.getString(R.string.task_editor_budget_no_category),
+                editState.budgetCategoryId, c -> c.id, fragment.requireContext());
     }
 
     private static int fixedSchedulingVisibility(TaskCore.SchedulingType type) {
@@ -282,7 +247,7 @@ public class TaskEditSectionBinder {
     private void updateDeadlineDisplay(SchedulingViews views) {
         LocalDate deadline = presenter.getEditableDeadline();
         String text = deadline != null
-            ? deadline.format(DEADLINE_FORMATTER)
+            ? deadline.format(DateFormatters.DATE_SHORT)
             : fragment.getString(R.string.task_editor_deadline_none);
         views.deadlineView.setText(text);
         views.deadlineView.setContentDescription(
@@ -314,14 +279,19 @@ public class TaskEditSectionBinder {
     }
 
     /**
-     * View-handle returned by {@link #bindScheduling()}.
+     * View-handle returned by {@link #bindScheduling(List, List)}.
      *
      * <p>The three {@code budget*} fields ({@code budgetRequiredCentsView},
-     * {@code budgetAccountIdView}, {@code budgetCategoryIdView}) are logically budget
+     * {@code budgetAccountView}, {@code budgetCategoryView}) are logically budget
      * fields but live here because they are optional scheduling-time properties of a
      * task. When a task completes and {@code budgetRequiredCents > 0}, an expense is
      * automatically booked against the linked account — see
      * {@code CheckOffTaskUseCase} and {@code CLAUDE.md §Task→Budget integration}.
+     *
+     * <p>{@code budgetAccountView} and {@code budgetCategoryView} are {@link Spinner}
+     * dropdowns. Position 0 in each is the "none" sentinel (maps to {@code null} ID).
+     * The backing lists ({@code budgetAccounts}, {@code budgetCategories}) are kept here
+     * so {@link TaskEditFormInputReader} can resolve the selected position back to a UUID.
      */
     public static final class SchedulingViews {
         public final EditText deadlineView;
@@ -332,46 +302,44 @@ public class TaskEditSectionBinder {
         public final EditText fixedEndView;
         public final EditText fixedDurationView;
         public final EditText budgetRequiredCentsView;
-        public final EditText budgetAccountIdView;
-        public final EditText budgetCategoryIdView;
+        public final Spinner budgetAccountView;
+        public final Spinner budgetCategoryView;
+        /** Backing list for {@link #budgetAccountView}. Position 0 in the spinner = "none" sentinel. Updated by {@link TaskEditSectionBinder#rebindBudgetSpinners}. */
+        public List<BudgetAccountEntity> budgetAccounts;
+        /** Backing list for {@link #budgetCategoryView}. Position 0 in the spinner = "none" sentinel. Updated by {@link TaskEditSectionBinder#rebindBudgetSpinners}. */
+        public List<BudgetCategoryEntity> budgetCategories;
         public final CheckBox closeOnMissView;
         public final EditText minDurationView;
         public final EditText maxDurationView;
         public final EditText cooldownView;
         public final CheckBox adaptiveView;
 
-        private SchedulingViews(
-            EditText deadlineView,
-            Spinner schedulingTypeView,
-            LinearLayout fixedSchedulingContainer,
-            EditText fixedDateView,
-            EditText fixedStartView,
-            EditText fixedEndView,
-            EditText fixedDurationView,
-            EditText budgetRequiredCentsView,
-            EditText budgetAccountIdView,
-            EditText budgetCategoryIdView,
-            CheckBox closeOnMissView,
-            EditText minDurationView,
-            EditText maxDurationView,
-            EditText cooldownView,
-            CheckBox adaptiveView
-        ) {
-            this.deadlineView = deadlineView;
-            this.schedulingTypeView = schedulingTypeView;
-            this.fixedSchedulingContainer = fixedSchedulingContainer;
-            this.fixedDateView = fixedDateView;
-            this.fixedStartView = fixedStartView;
-            this.fixedEndView = fixedEndView;
-            this.fixedDurationView = fixedDurationView;
-            this.budgetRequiredCentsView = budgetRequiredCentsView;
-            this.budgetAccountIdView = budgetAccountIdView;
-            this.budgetCategoryIdView = budgetCategoryIdView;
-            this.closeOnMissView = closeOnMissView;
-            this.minDurationView = minDurationView;
-            this.maxDurationView = maxDurationView;
-            this.cooldownView = cooldownView;
-            this.adaptiveView = adaptiveView;
+        private SchedulingViews(View root,
+                                List<BudgetAccountEntity> accounts,
+                                List<BudgetCategoryEntity> categories) {
+            deadlineView = root.findViewById(R.id.EditDeadline);
+            schedulingTypeView = root.findViewById(R.id.EditSchedulingType);
+            fixedSchedulingContainer = root.findViewById(R.id.FixedSchedulingContainer);
+            fixedDateView = root.findViewById(R.id.EditFixedDate);
+            fixedStartView = root.findViewById(R.id.EditFixedStart);
+            fixedEndView = root.findViewById(R.id.EditFixedEnd);
+            fixedDurationView = root.findViewById(R.id.EditFixedDuration);
+            budgetRequiredCentsView = root.findViewById(R.id.EditBudgetRequiredCents);
+            budgetAccountView = root.findViewById(R.id.EditBudgetAccountId);
+            budgetCategoryView = root.findViewById(R.id.EditBudgetCategoryId);
+            budgetAccounts = accounts;
+            budgetCategories = categories;
+            closeOnMissView = root.findViewById(R.id.EditCloseOnMiss);
+            minDurationView = root.findViewById(R.id.EditMinDuration);
+            maxDurationView = root.findViewById(R.id.EditMaxDuration);
+            cooldownView = root.findViewById(R.id.EditCooldown);
+            adaptiveView = root.findViewById(R.id.EditAdaptive);
+        }
+
+        static SchedulingViews from(View root,
+                                    List<BudgetAccountEntity> accounts,
+                                    List<BudgetCategoryEntity> categories) {
+            return new SchedulingViews(root, accounts, categories);
         }
     }
 
@@ -384,21 +352,16 @@ public class TaskEditSectionBinder {
         public final Spinner periodUnitView;
         public final CheckBox completeFirstView;
 
-        private RepetitionViews(
-            CheckBox toggleRepetition,
-            LinearLayout repetitionContainer,
-            EditText repsView,
-            EditText perPeriodView,
-            Spinner periodUnitView,
-            CheckBox completeFirstView
-        ) {
-            this.toggleRepetition = toggleRepetition;
-            this.repetitionContainer = repetitionContainer;
-            this.repsView = repsView;
-            this.perPeriodView = perPeriodView;
-            this.periodUnitView = periodUnitView;
-            this.completeFirstView = completeFirstView;
+        private RepetitionViews(View root) {
+            toggleRepetition = root.findViewById(R.id.ToggleRepetition);
+            repetitionContainer = root.findViewById(R.id.RepetitionContainer);
+            repsView = root.findViewById(R.id.EditReps);
+            perPeriodView = root.findViewById(R.id.EditPerPeriod);
+            periodUnitView = root.findViewById(R.id.EditPeriodUnit);
+            completeFirstView = root.findViewById(R.id.EditCompleteFirst);
         }
+
+        static RepetitionViews from(View root) { return new RepetitionViews(root); }
     }
 
     /** View-handle returned by {@link #bindProgress()}. */
@@ -412,40 +375,23 @@ public class TaskEditSectionBinder {
         public final EditText minPerRepView;
         public final EditText maxPerRepView;
 
-        private ProgressViews(
-            CheckBox toggleProgress,
-            LinearLayout progressContainer,
-            EditText unitView,
-            EditText targetView,
-            EditText currentView,
-            CheckBox resetPerRepView,
-            EditText minPerRepView,
-            EditText maxPerRepView
-        ) {
-            this.toggleProgress = toggleProgress;
-            this.progressContainer = progressContainer;
-            this.unitView = unitView;
-            this.targetView = targetView;
-            this.currentView = currentView;
-            this.resetPerRepView = resetPerRepView;
-            this.minPerRepView = minPerRepView;
-            this.maxPerRepView = maxPerRepView;
+        private ProgressViews(View root) {
+            toggleProgress = root.findViewById(R.id.ToggleProgress);
+            progressContainer = root.findViewById(R.id.ProgressContainer);
+            unitView = root.findViewById(R.id.EditUnit);
+            targetView = root.findViewById(R.id.EditTarget);
+            currentView = root.findViewById(R.id.EditCurrent);
+            resetPerRepView = root.findViewById(R.id.EditResetPerRep);
+            minPerRepView = root.findViewById(R.id.EditMinPerRep);
+            maxPerRepView = root.findViewById(R.id.EditMaxPerRep);
         }
+
+        static ProgressViews from(View root) { return new ProgressViews(root); }
     }
 
     /** Returns {@code value.toString()} if non-null, or {@code ""} — for populating nullable fields into EditText. */
-    private static String textOf(Object value) {
+    private static String toStringOrEmpty(Object value) {
         return value != null ? value.toString() : "";
     }
 
-    /** No-op adapter so subclasses only need to override {@code afterTextChanged}. */
-    private static abstract class SimpleTextWatcher implements TextWatcher {
-        @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-        @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-    }
-
-    /** No-op adapter so subclasses only need to override {@code onItemSelected}. */
-    private static abstract class SimpleItemSelectedListener implements AdapterView.OnItemSelectedListener {
-        @Override public void onNothingSelected(AdapterView<?> parent) {}
-    }
 }

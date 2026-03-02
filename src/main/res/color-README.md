@@ -1,8 +1,12 @@
-# Color State Lists — `res/color/`
+# Color State Lists
+
+Shared ColorStateLists live in `res/color/`; task-specific ones live in `res-task/color/`.
 
 This directory contains **ColorStateList** XML files — colors that change based on view state
 (enabled, pressed, checked, selected). They are different from the static color definitions
 in `values/*_colors.xml`.
+
+Budget and meal features do not currently have feature-specific ColorStateList files.
 
 ## When to use `color/*.xml` vs `values/*_colors.xml`
 
@@ -16,7 +20,15 @@ Android resolves the correct state automatically at runtime.
 
 See: https://developer.android.com/guide/topics/resources/color-list-resource
 
-## Files in `color/`
+## Files
+
+### Shared (`res/color/`)
+
+| File | Used by | State behavior |
+|------|---------|----------------|
+| `bottom_nav_item_color.xml` | Bottom navigation bar | disabled → 50% primary; checked → primary_variant; default → primary |
+
+### Task-specific (`res-task/color/`)
 
 | File | Used by | State behavior |
 |------|---------|----------------|
@@ -24,14 +36,14 @@ See: https://developer.android.com/guide/topics/resources/color-list-resource
 | `task_edit_day_button_background_tint.xml` | `Widget.AutoSecretary.TaskEdit.DayPickerButton` | disabled → 8% primary; checked → primary; default → transparent |
 | `task_edit_day_button_stroke_color.xml` | `Widget.AutoSecretary.TaskEdit.DayPickerButton` | disabled → 25% primary; checked → primary; default → outline |
 
-The color values referenced here (`task_color_primary`, `task_color_on_primary`, etc.) are
-defined in `values/task_colors.xml`. The disabled alpha variants
-(`task_color_primary_disabled_8`, `_25`, `_50`) are pre-computed alpha-composites of the
-primary color — see the comment block in `task_colors.xml` for the calculation method.
+The color values referenced here (`color_primary`, `color_on_primary`, etc.) are
+defined in `values/colors.xml`. The disabled alpha variants
+(`color_primary_disabled_8`, `_25`, `_50`) are pre-computed alpha-composites of the
+primary color — see the comment block in `colors.xml` for the calculation method.
 
 ## Adding a new ColorStateList
 
-1. Create a new XML file in `res/color/` following the naming convention `[feature]_[component]_[property].xml`.
+1. Create a new XML file in the appropriate directory (`res/color/` for shared, `res-<feature>/color/` for feature-specific) following the naming convention `[feature]_[component]_[property].xml`.
 2. Use `<selector xmlns:android="http://schemas.android.com/apk/res/android">` as the root.
 3. Order state items from most specific to least specific — Android matches the first item whose state conditions all hold.
 4. Document the new file in the table above and reference it from the relevant style in `values/styles.xml`.

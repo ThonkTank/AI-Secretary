@@ -14,7 +14,7 @@ import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDao;
 
-import com.autosecretary.shared.ui.DateFormatters;
+import com.autosecretary.shared.DateFormatters;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -130,8 +130,15 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         }
 
         rv.setCompoundButtonChecked(R.id.WidgetRowCheckbox, item.completed);
-        rv.setContentDescription(R.id.WidgetRowCheckbox,
-                context.getString(R.string.task_widget_checkbox_content_description, item.title));
+        int checkboxDescRes;
+        if (item.completed) {
+            checkboxDescRes = R.string.task_row_checkbox_done;
+        } else if (item.inProgress) {
+            checkboxDescRes = R.string.task_row_checkbox_complete;
+        } else {
+            checkboxDescRes = R.string.task_row_checkbox_start;
+        }
+        rv.setContentDescription(R.id.WidgetRowCheckbox, context.getString(checkboxDescRes));
 
         // Only today's uncompleted scheduled tasks can be toggled via widget.
         // Past/future dates are for viewing only. Checkbox is disabled to prevent

@@ -12,6 +12,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
+import com.autosecretary.shared.ui.DialogHelper;
+
 import com.autosecretary.R;
 import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 
@@ -74,24 +76,19 @@ public class BudgetRecurringSuggestionsDialogController {
                 .setNegativeButton(R.string.budget_recurring_skip, null)
                 .create();
 
-        // setOnShowListener + null in setPositiveButton: standard pattern to prevent the
-        // AlertDialog from auto-dismissing when the positive button is tapped before we
-        // validate the selection. We attach the real click handler here instead.
-        dialog.setOnShowListener(d -> {
-            Button createButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-            createButton.setOnClickListener(v -> {
-                List<RecurringSuggestion> selected = new ArrayList<>();
-                for (int i = 0; i < suggestions.size(); i++) {
-                    if (rows.get(i).isChecked()) {
-                        selected.add(suggestions.get(i));
-                    }
+        DialogHelper.showWithValidation(dialog, () -> {
+            List<RecurringSuggestion> selected = new ArrayList<>();
+            for (int i = 0; i < suggestions.size(); i++) {
+                if (rows.get(i).isChecked()) {
+                    selected.add(suggestions.get(i));
                 }
-                if (!selected.isEmpty()) {
-                    listener.onApplyRecurringSuggestions(selected);
-                }
-                dialog.dismiss();
-            });
-
+            }
+            if (!selected.isEmpty()) {
+                listener.onApplyRecurringSuggestions(selected);
+            }
+            dialog.dismiss();
+        }, dlg -> {
+            Button createButton = dlg.getButton(AlertDialog.BUTTON_POSITIVE);
             for (int i = 0; i < rows.size(); i++) {
                 CheckBox checkbox = rows.get(i);
                 View rowView = listContainer.getChildAt(i);
@@ -102,8 +99,6 @@ public class BudgetRecurringSuggestionsDialogController {
                 });
             }
         });
-
-        dialog.show();
     }
 
     private List<CheckBox> bindSuggestionRows(Context ctx, LayoutInflater inflater,

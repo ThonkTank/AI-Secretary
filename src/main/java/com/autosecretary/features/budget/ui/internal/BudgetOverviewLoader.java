@@ -1,7 +1,8 @@
 package com.autosecretary.features.budget.ui.internal;
 
-import android.graphics.Color;
+import android.content.res.Resources;
 
+import com.autosecretary.R;
 import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.TransactionKind;
@@ -14,13 +15,15 @@ import com.autosecretary.features.budget.ui.state.TimeRangeFilter;
 import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
 import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
 import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
+import com.autosecretary.shared.ui.ColorUtil;
+
+import com.autosecretary.shared.DateFormatters;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * Assembles all data needed for the budget overview in one pass:
@@ -32,15 +35,6 @@ public class BudgetOverviewLoader {
     // 30-day window spans today back to today-29, giving 30 inclusive days.
     private static final int DAYS_30_WINDOW_OFFSET = 29;
 
-    private static final String LABEL_TRANSFER       = "Überweisung";
-    private static final String LABEL_TRANSFER_NOTE  = "Überweisung · ";
-    private static final String LABEL_DEFAULT_BOOKING = "Buchung";
-
-    private static final DateTimeFormatter DAILY_LABEL =
-            DateTimeFormatter.ofPattern("dd.MM", Locale.GERMAN);
-    private static final DateTimeFormatter MONTHLY_LABEL =
-            DateTimeFormatter.ofPattern("MMM yy", Locale.GERMAN);
-
     public record OverviewData(
             List<BudgetAccountEntity> accounts,
             String accountId,
@@ -50,12 +44,16 @@ public class BudgetOverviewLoader {
     ) {}
 
     private final BudgetRepository repository;
-    private final BudgetSummaryPresentationMapper summaryPresentationMapper;
+    private final String labelTransfer;
+    private final String labelTransferNotePrefix;
+    private final String labelDefaultBooking;
 
     public BudgetOverviewLoader(BudgetRepository repository,
-                                BudgetSummaryPresentationMapper summaryPresentationMapper) {
+                                Resources resources) {
         this.repository = repository;
-        this.summaryPresentationMapper = summaryPresentationMapper;
+        this.labelTransfer = resources.getString(R.string.budget_transfer_row_label);
+        this.labelTransferNotePrefix = resources.getString(R.string.budget_transfer_note_prefix);
+        this.labelDefaultBooking = resources.getString(R.string.budget_default_booking_label);
     }
 
     public OverviewData load(YearMonth month,
@@ -95,41 +93,37 @@ public class BudgetOverviewLoader {
     private List<BudgetTransactionRow> buildTransactionRows(List<MonthlyOverviewItem> items) {
         List<BudgetTransactionRow> rows = new ArrayList<>();
         for (MonthlyOverviewItem item : items) {
-            rows.add(BudgetTransactionRow.builder()
-                    .transactionId(item.transactionId)
-                    .label(buildTransactionLabel(item))
-                    .direction(item.direction)
-                    .categoryColorHex(item.categoryColorHex)
-                    .categoryColor(resolveColor(item.categoryColorHex))
-                    .amountCents(item.amountCents)
-                    .categoryId(item.categoryId)
-                    .note(item.note)
-                    .bookingDate(item.bookingDate)
-                    .accountId(item.accountId)
-                    .build());
+            rows.add(new BudgetTransactionRow(
+                    item.transactionId,
+                    buildTransactionLabel(item),
+                    item.direction,
+                    item.categoryColorHex,
+                    resolveColor(item.categoryColorHex),
+                    item.amountCents,
+                    item.categoryId,
+                    item.note,
+                    item.bookingDate,
+                    item.accountId));
         }
         return rows;
     }
 
     /** Pre-resolves a hex color string to an int on the background thread, avoiding work in onBindViewHolder. */
     private static int resolveColor(String colorHex) {
-        if (CurrencyFormatter.isValidColorHex(colorHex)) {
-            return Color.parseColor(colorHex);
-        }
-        return BudgetTransactionRow.NO_CATEGORY_COLOR;
+        return ColorUtil.parseColorSafe(colorHex, BudgetTransactionRow.NO_CATEGORY_COLOR);
     }
 
     private BudgetSummaryData computeSummary(List<MonthlyOverviewItem> items, String accountId) {
         BudgetAccountEntity account = repository.findAccountById(accountId);
         // "Free budget" is the account's current running balance, not income-minus-expenses.
         long freeBudgetCents = account != null ? account.currentBalanceCents : 0L;
-        return summaryPresentationMapper.toSummary(items, freeBudgetCents);
+        return BudgetSummaryPresentationMapper.toSummary(items, freeBudgetCents);
     }
 
     // Label priority: internal-transfer label > category name (with icon) > note > generic fallback.
     private String buildTransactionLabel(MonthlyOverviewItem item) {
         if (item.transactionKind == TransactionKind.INTERNAL_TRANSFER) {
-            return item.note != null && !item.note.isBlank() ? LABEL_TRANSFER_NOTE + item.note : LABEL_TRANSFER;
+            return item.note != null && !item.note.isBlank() ? labelTransferNotePrefix + item.note : labelTransfer;
         }
         if (item.categoryName != null) {
             return BudgetSummaryPresentationMapper.categoryLabel(item.categoryIcon, item.categoryName);
@@ -137,7 +131,7 @@ public class BudgetOverviewLoader {
         if (item.note != null) {
             return item.note;
         }
-        return LABEL_DEFAULT_BOOKING;
+        return labelDefaultBooking;
     }
 
     private List<BudgetChartPoint> loadBalanceChartData(String accountId, TimeRangeFilter filter) {
@@ -148,7 +142,7 @@ public class BudgetOverviewLoader {
                 ? loadDailyTimeline(accountId, now)
                 : loadMonthlyTimeline(accountId, now, resolvedFilter.months);
 
-        DateTimeFormatter labelFormat = resolvedFilter == TimeRangeFilter.DAYS_30 ? DAILY_LABEL : MONTHLY_LABEL;
+        DateTimeFormatter labelFormat = resolvedFilter == TimeRangeFilter.DAYS_30 ? DateFormatters.CHART_DAILY : DateFormatters.CHART_MONTHLY;
         List<BudgetChartPoint> points = new ArrayList<>();
         for (BalanceTimelinePoint p : series) {
             points.add(new BudgetChartPoint(p.date().format(labelFormat), p.balanceCents()));

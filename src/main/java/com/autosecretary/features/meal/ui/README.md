@@ -10,6 +10,8 @@ The meal UI is a single Android Fragment (`MealPlannerFragment`) that manages th
 
 The fragment follows the **presenter pattern**: all business logic is delegated to `MealPlannerPresenter` (in `com.autosecretary.features.meal.application`), which fetches data from the domain/data layers. The fragment is purely presentational.
 
+Meal uses a direct presenter pattern without a ViewModel or `state/` sub-package because the feature's data flow is simpler than task/budget. There is no home-screen widget for the meal feature.
+
 ## Key Classes
 
 - **`MealPlannerFragment`:** Entry point. Manages UI state, renders views, and handles user input (button clicks, dialog submissions).

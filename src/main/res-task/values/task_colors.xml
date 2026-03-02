@@ -1,73 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Task feature color palette (Material Design aliases + semantic colors).
-         Material palette tokens are defined in colors.xml and aliased here so that
-         existing task-internal references (e.g. task_completed_background referencing
-         task_color_primary) continue to resolve.
+    <!-- Task feature semantic colors.
+         References point directly to the shared palette in colors.xml.
          For new colors: use semantic names (task_[domain]_[status]).
          See colors.xml header for full color naming conventions. -->
 
-    <!-- Aliases to app-wide Material palette (source of truth: colors.xml) -->
-    <color name="task_color_background">@color/color_background</color>
-    <color name="task_color_surface">@color/color_surface</color>
-    <color name="task_color_surface_variant">@color/color_surface_variant</color>
-    <color name="task_color_on_surface">@color/color_on_surface</color>
-    <color name="task_color_on_surface_variant">@color/color_on_surface_variant</color>
-    <color name="task_color_on_surface_emphasis">@color/color_on_surface_emphasis</color>
-    <color name="task_color_on_surface_muted">@color/color_on_surface_muted</color>
-    <color name="task_color_outline">@color/color_outline</color>
-
-    <color name="task_color_primary">@color/color_primary</color>
-    <color name="task_color_primary_variant">@color/color_primary_variant</color>
-    <color name="task_color_on_primary">@color/color_on_primary</color>
-    <color name="task_color_primary_disabled_50">@color/color_primary_disabled_50</color>
-    <color name="task_color_primary_disabled_8">@color/color_primary_disabled_8</color>
-    <color name="task_color_primary_disabled_25">@color/color_primary_disabled_25</color>
-    <color name="task_color_secondary">@color/color_secondary</color>
-    <color name="task_color_accent">@color/color_accent</color>
-
-    <color name="task_color_on_primary_light">@color/color_on_primary_light</color>
-    <color name="task_color_surface_semi_transparent">@color/color_surface_semi_transparent</color>
-    <color name="task_color_outline_semi">@color/color_outline_semi</color>
-
-    <color name="task_gradient_start">@color/gradient_start</color>
-    <color name="task_gradient_center">@color/gradient_center</color>
-    <color name="task_gradient_end">@color/gradient_end</color>
-
     <!-- Deadline urgency colors -->
-    <color name="task_deadline_overdue">#FFB4543A</color>
-    <color name="task_deadline_soon">#FFC47E42</color>
-    <color name="task_deadline_future">@color/task_color_on_surface_variant</color>
+    <color name="task_deadline_overdue">@color/color_negative</color>
+    <color name="task_deadline_soon">@color/color_accent</color>
+    <color name="task_deadline_future">@color/color_on_surface_variant</color>
 
     <!-- Streak rarity tiers -->
-    <color name="task_streak_common">@color/task_color_on_surface_muted</color>
-    <color name="task_streak_rare">@color/task_color_primary</color>
-    <color name="task_streak_epic">#FF7A4DA8</color>
-    <color name="task_streak_legendary">#FFCF8F4F</color>
+    <color name="task_streak_common">@color/color_on_surface_muted</color>
+    <color name="task_streak_rare">@color/color_primary</color>
+    <color name="task_streak_epic">@color/color_tertiary</color>
+    <color name="task_streak_legendary">@color/color_accent</color>
 
     <color name="task_completion_flash">#66CF8F4F</color>
     <color name="task_completed_background">#245C7A4D</color>
-    <color name="task_completed_checkbox_tint">@color/task_color_primary</color>
+    <color name="task_completed_checkbox_tint">@color/color_primary</color>
     <color name="task_in_progress_background">#1F5C7A4D</color>
-    <color name="task_in_progress_checkbox_tint">@color/task_color_primary</color>
-    <color name="task_progress_text">@color/task_color_on_surface_emphasis</color>
-    <color name="task_progress_text_disabled">@color/task_color_on_surface_muted</color>
-    <color name="task_progress_button_tint">@color/task_color_primary</color>
-    <color name="task_progress_button_tint_disabled">@color/task_color_on_surface_muted</color>
+    <color name="task_in_progress_checkbox_tint">@color/color_primary</color>
+    <color name="task_progress_text">@color/color_on_surface_emphasis</color>
+    <color name="task_progress_text_disabled">@color/color_on_surface_muted</color>
+    <color name="task_progress_button_tint">@color/color_primary</color>
+    <color name="task_progress_button_tint_disabled">@color/color_on_surface_muted</color>
 
     <color name="task_calendar_background">#FFEAF2FA</color>
     <color name="task_calendar_outline">#FF9BB7D4</color>
     <color name="task_calendar_chip_background">#FFD6E7F7</color>
 
     <!-- Widget-specific semantic colors mapped to base palette -->
-    <color name="task_widget_surface">@color/task_color_surface</color>
-    <color name="task_widget_surface_secondary">@color/task_color_surface_variant</color>
-    <color name="task_widget_text_primary">@color/task_color_on_surface</color>
-    <color name="task_widget_text_secondary">@color/task_color_on_surface_emphasis</color>
-    <color name="task_widget_text_muted">@color/task_color_on_surface_muted</color>
+    <color name="task_widget_surface">@color/color_surface</color>
+    <color name="task_widget_surface_secondary">@color/color_surface_variant</color>
+    <color name="task_widget_text_primary">@color/color_on_surface</color>
+    <color name="task_widget_text_secondary">@color/color_on_surface_emphasis</color>
+    <color name="task_widget_text_muted">@color/color_on_surface_muted</color>
 
     <!-- Widget task row title states -->
     <color name="task_widget_title_default">@color/task_widget_text_primary</color>
-    <color name="task_widget_title_in_progress">@color/task_color_primary</color>
+    <color name="task_widget_title_in_progress">@color/color_primary</color>
     <color name="task_widget_title_completed">@color/task_widget_text_muted</color>
+
+    <!-- Goal editor colour palette (#AARRGGBB format for Color.parseColor()) -->
+    <string-array name="task_goal_palette">
+        <item>#FFE53935</item>
+        <item>#FFD81B60</item>
+        <item>#FF8E24AA</item>
+        <item>#FF5E35B1</item>
+        <item>#FF1E88E5</item>
+        <item>#FF00ACC1</item>
+        <item>#FF00897B</item>
+        <item>#FF43A047</item>
+        <item>#FFFB8C00</item>
+        <item>#FF6D4C41</item>
+    </string-array>
 </resources>

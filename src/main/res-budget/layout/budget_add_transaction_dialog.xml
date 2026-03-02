@@ -14,6 +14,7 @@
         android:layout_height="wrap_content"
         android:hint="@string/budget_dialog_amount_hint">
         <com.google.android.material.textfield.TextInputEditText
+            style="@style/Widget.AutoSecretary.Editor.TextField"
             android:id="@+id/BudgetDialogAmount"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -81,10 +82,12 @@
         android:layout_marginTop="@dimen/spacing_md"
         android:hint="@string/budget_dialog_date_hint">
         <com.google.android.material.textfield.TextInputEditText
+            style="@style/Widget.AutoSecretary.Editor.TextField"
             android:id="@+id/BudgetDialogDate"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="date" />
+            android:focusable="false"
+            android:clickable="true" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
@@ -95,6 +98,7 @@
         android:layout_marginTop="@dimen/spacing_md"
         android:hint="@string/budget_dialog_note_hint">
         <com.google.android.material.textfield.TextInputEditText
+            style="@style/Widget.AutoSecretary.Editor.TextField"
             android:id="@+id/BudgetDialogNote"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />

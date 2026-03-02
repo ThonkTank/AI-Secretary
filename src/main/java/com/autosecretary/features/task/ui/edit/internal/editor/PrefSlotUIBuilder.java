@@ -9,7 +9,7 @@ import android.widget.TextView;
 
 import com.autosecretary.R;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
-import com.autosecretary.shared.ui.DateFormatters;
+import com.autosecretary.shared.DateFormatters;
 import com.google.android.material.button.MaterialButton;
 
 import java.time.DayOfWeek;
@@ -56,12 +56,13 @@ public class PrefSlotUIBuilder {
 
     public PrefSlotUIBuilder(Context context) {
         this.context = context;
-        prefSlotHeaderPaddingTopPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_header_padding_top);
-        prefSlotHeaderPaddingBottomPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_header_padding_bottom);
-        prefSlotRowPaddingStartPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_row_padding_start);
-        prefSlotRowPaddingVerticalPx = context.getResources().getDimensionPixelSize(R.dimen.task_editor_pref_slot_row_padding_vertical);
-        prefSlotButtonSpacingPx = context.getResources().getDimensionPixelSize(R.dimen.spacing_sm);
-        prefSlotButtonMinHeightPx = context.getResources().getDimensionPixelSize(R.dimen.touch_target_min);
+        android.content.res.Resources res = context.getResources();
+        prefSlotHeaderPaddingTopPx = res.getDimensionPixelSize(R.dimen.task_editor_pref_slot_header_padding_top);
+        prefSlotHeaderPaddingBottomPx = res.getDimensionPixelSize(R.dimen.task_editor_pref_slot_header_padding_bottom);
+        prefSlotRowPaddingStartPx = res.getDimensionPixelSize(R.dimen.task_editor_pref_slot_row_padding_start);
+        prefSlotRowPaddingVerticalPx = res.getDimensionPixelSize(R.dimen.task_editor_pref_slot_row_padding_vertical);
+        prefSlotButtonSpacingPx = res.getDimensionPixelSize(R.dimen.spacing_sm);
+        prefSlotButtonMinHeightPx = res.getDimensionPixelSize(R.dimen.touch_target_min);
     }
 
     /**

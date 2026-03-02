@@ -9,7 +9,7 @@ All layout files follow `<feature>_<surface>_<kind>.xml`:
 | `app_`   | `main_activity`                                           |
 | `task_`  | `list_fragment`, `editor_dialog`, `row_item`, `row_widget`, `list_widget`, `schedule_config_dialog`, `schedule_day_item` |
 | `budget_`| `overview_fragment`, `widget`, `add_transaction_dialog`, `edit_limit_dialog`, `transfer_dialog`, `recurring_suggestions_dialog`, `recurring_suggestion_item`, `transaction_item`, `limit_bar_item` |
-| `meal_`  | `overview_fragment`, `plan_create_dialog`, `need_create_dialog`, `pantry_create_dialog`, `plan_row_item`, `recipe_row_item`, `text_row_item` |
+| `meal_`  | `overview_fragment`, `plan_create_dialog`, `need_create_dialog`, `pantry_create_dialog`, `plan_row_item`, `text_row_item` |
 
 **Kind** is one of: `activity`, `fragment`, `item`, `widget`, `dialog`.
 

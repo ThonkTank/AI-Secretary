@@ -11,18 +11,18 @@
          Naming: budget_[domain]_[role] — see colors.xml header for full naming conventions.
          For new colors, use semantic names that describe purpose, not appearance. -->
 
-    <!-- Semantic status colors -->
-    <color name="budget_positive">#FF4CAF50</color>
-    <color name="budget_negative">#FFF44336</color>
-    <color name="budget_warning">#FFFF9800</color>
-    <color name="budget_neutral">#FF9E9E9E</color>
+    <!-- Semantic status colors — aliased to app-wide nature palette for visual cohesion. -->
+    <color name="budget_positive">@color/color_primary</color>
+    <color name="budget_negative">@color/color_negative</color>
+    <color name="budget_warning">@color/color_accent</color>
+    <color name="budget_neutral">@color/color_on_surface_muted</color>
     <!-- Chart and widget tokens alias app-wide palette from colors.xml. -->
     <color name="budget_chart_line">@color/color_primary</color>
-    <color name="budget_chart_axis">#FFBDBDBD</color>
-    <color name="budget_chart_label">#FF616161</color>
+    <color name="budget_chart_axis">@color/color_outline</color>
+    <color name="budget_chart_label">@color/color_on_surface_muted</color>
     <color name="budget_divider">@color/color_outline</color>
 
     <!-- Widget semantic tokens -->
-    <color name="budget_widget_header_text">@color/color_on_primary</color>
+    <color name="budget_widget_header_text">@color/color_on_surface</color>
     <color name="budget_widget_card_text">@color/color_on_surface</color>
 </resources>

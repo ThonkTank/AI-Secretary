@@ -1,5 +1,6 @@
 package com.autosecretary.features.budget.ui.internal;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Spinner;
@@ -12,14 +13,14 @@ import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
 import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
+import com.autosecretary.shared.ui.DialogHelper;
+import com.autosecretary.shared.ui.DialogValidation;
 import com.autosecretary.shared.ui.SpinnerHelper;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.stream.Collectors;
 
 /**
  * Manages the "set/edit budget limit" dialog.
@@ -52,11 +53,11 @@ public class BudgetLimitDialogController {
 
     public void show(@Nullable String preSelectedCategoryId, long baseLimitCents,
                      List<BudgetCategoryEntity> allCategories) {
-        List<BudgetCategoryEntity> expenseCategories = allCategories.stream()
-                .filter(c -> c.direction == TransactionDirection.EXPENSE)
-                .collect(Collectors.toList());
+        Context ctx = fragment.requireContext();
+        List<BudgetCategoryEntity> expenseCategories = BudgetSummaryPresentationMapper
+                .categoriesForDirection(allCategories, TransactionDirection.EXPENSE);
 
-        View dialogView = LayoutInflater.from(fragment.requireContext())
+        View dialogView = LayoutInflater.from(ctx)
                 .inflate(R.layout.budget_edit_limit_dialog, null);
         Spinner categorySpinner = dialogView.findViewById(R.id.BudgetLimitDialogCategory);
         TextInputEditText amountInput = dialogView.findViewById(R.id.BudgetLimitDialogAmount);
@@ -68,46 +69,39 @@ public class BudgetLimitDialogController {
                 dialogView.findViewById(R.id.BudgetLimitDialogRolloverCarryoverLayout);
 
         SpinnerHelper.bindList(categorySpinner, expenseCategories,
-                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name),
-                fragment.requireContext());
+                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name), ctx);
         SpinnerHelper.setSelection(categorySpinner, expenseCategories,
                 preSelectedCategoryId, c -> c.id);
 
         // Pre-populate the amount field when editing an existing limit (baseLimitCents > 0).
         // If zero or negative (new limit), the field is intentionally left blank.
         if (baseLimitCents > 0) {
-            amountInput.setText(String.format(Locale.GERMAN, "%.2f", baseLimitCents / 100.0));
+            amountInput.setText(CurrencyFormatter.centsToDecimal(baseLimitCents));
         }
 
         // Show the carryover input only when rollover is enabled.
         rolloverSwitch.setOnCheckedChangeListener((v, checked) ->
                 rolloverCarryoverLayout.setVisibility(checked ? View.VISIBLE : View.GONE));
 
-        AlertDialog dialog = new AlertDialog.Builder(fragment.requireContext())
+        AlertDialog dialog = new AlertDialog.Builder(ctx)
                 .setTitle(R.string.budget_edit_limit_title)
                 .setView(dialogView)
                 .setPositiveButton(R.string.budget_limit_save, null)
-                .setNegativeButton(R.string.budget_dialog_cancel, null)
+                .setNegativeButton(R.string.action_cancel, null)
                 .create();
 
-        // setOnShowListener + null in setPositiveButton: standard pattern to prevent the
-        // AlertDialog from auto-dismissing before validation has a chance to show an error.
-        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String amountStr = SpinnerHelper.textOf(amountInput);
-            if (amountStr.isEmpty()) {
-                amountInput.setError(fragment.getString(R.string.budget_status_invalid_amount));
-                return;
-            }
+        DialogHelper.showWithValidation(dialog, () -> {
+            String amountStr = DialogValidation.requireNonEmpty(amountInput,
+                    ctx.getString(R.string.budget_dialog_amount_label), ctx);
+            if (amountStr == null) return;
 
             String categoryId = SpinnerHelper.idAtPosition(expenseCategories,
                     categorySpinner.getSelectedItemPosition(), c -> c.id);
             if (categoryId == null) return;
 
             listener.onSaveBudgetLimit(categoryId, amountStr,
-                    rolloverSwitch.isChecked(), SpinnerHelper.textOf(rolloverCarryoverInput));
+                    rolloverSwitch.isChecked(), DialogValidation.textOf(rolloverCarryoverInput));
             dialog.dismiss();
-        }));
-
-        dialog.show();
+        });
     }
 }

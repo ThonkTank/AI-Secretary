@@ -5,6 +5,7 @@
      Note: consuming fragments MUST set contentDescription on NavPrev/NavNext (e.g. "Vorheriger Tag"). -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/TemporalNavBar"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -21,7 +22,8 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:src="@drawable/ic_chevron_left_24"
         android:scaleType="centerInside"
-        android:tint="?attr/colorPrimary" />
+        app:tint="?attr/colorPrimary"
+        android:contentDescription="@string/action_navigate_previous" />
 
     <TextView
         android:id="@+id/NavLabel"
@@ -38,5 +40,6 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:src="@drawable/ic_chevron_right_24"
         android:scaleType="centerInside"
-        android:tint="?attr/colorPrimary" />
+        app:tint="?attr/colorPrimary"
+        android:contentDescription="@string/action_navigate_next" />
 </LinearLayout>

@@ -6,11 +6,8 @@ import android.widget.Spinner;
 
 import androidx.annotation.Nullable;
 
-import com.google.android.material.textfield.TextInputEditText;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -72,8 +69,36 @@ public class SpinnerHelper {
         }
     }
 
-    /** Returns the trimmed text of a {@link TextInputEditText}, never null. */
-    public static String textOf(TextInputEditText input) {
-        return Objects.toString(input.getText(), "").trim();
+    /**
+     * Binds a spinner with a "none" sentinel at position 0 followed by the real items.
+     * If {@code selectedId} matches an item, selects it (offset by 1 for the sentinel).
+     */
+    public static <T> void bindListWithNone(Spinner spinner, List<T> items,
+                                            Function<T, String> label, String noneLabel,
+                                            @Nullable String selectedId,
+                                            Function<T, String> idExtractor,
+                                            Context context) {
+        List<String> labels = new ArrayList<>(items.size() + 1);
+        labels.add(noneLabel);
+        for (T item : items) labels.add(label.apply(item));
+        bindList(spinner, labels, s -> s, context);
+        if (selectedId != null) {
+            for (int i = 0; i < items.size(); i++) {
+                if (selectedId.equals(idExtractor.apply(items.get(i)))) {
+                    spinner.setSelection(i + 1);
+                    return;
+                }
+            }
+        }
     }
+
+    /**
+     * Returns the enum value at the spinner's current position, or {@code null} if out of range.
+     */
+    @Nullable
+    public static <E extends Enum<E>> E enumAtPosition(Spinner spinner, E[] values) {
+        int idx = spinner.getSelectedItemPosition();
+        return (idx >= 0 && idx < values.length) ? values[idx] : null;
+    }
+
 }

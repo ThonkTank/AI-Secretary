@@ -1,5 +1,6 @@
 package com.autosecretary.features.budget.ui.internal;
 
+import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import com.autosecretary.features.budget.domain.TransactionDirection;
@@ -10,6 +11,7 @@ import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 /**
  * Maps domain/data objects to presentation-layer state objects for the budget overview.
@@ -26,10 +28,12 @@ import java.util.function.BiFunction;
  */
 public class BudgetSummaryPresentationMapper {
 
+    private BudgetSummaryPresentationMapper() {}
+
     /** Display fallback icon when a category has no configured icon. */
     public static final String DEFAULT_CATEGORY_ICON = "🏷️";
 
-    public BudgetSummaryData toSummary(List<MonthlyOverviewItem> items, long freeBudgetCents) {
+    public static BudgetSummaryData toSummary(List<MonthlyOverviewItem> items, long freeBudgetCents) {
         long totalIncomeCents = 0;
         long totalExpenseCents = 0;
 
@@ -50,8 +54,19 @@ public class BudgetSummaryPresentationMapper {
     }
 
     /**
+     * Returns the subset of {@code allCategories} whose direction matches {@code direction}.
+     * Used by dialog controllers to populate direction-specific category spinners.
+     */
+    public static List<BudgetCategoryEntity> categoriesForDirection(
+            List<BudgetCategoryEntity> allCategories, TransactionDirection direction) {
+        return allCategories.stream()
+                .filter(c -> c.direction == direction)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Builds a display label for a category, e.g. {@code "🍕 Lebensmittel"}.
-     * Falls back to {@link BudgetCategoryEntity#DEFAULT_ICON} when the icon field is blank.
+     * Falls back to {@link #DEFAULT_CATEGORY_ICON} when the icon field is blank.
      */
     public static String categoryLabel(String icon, String name) {
         String resolvedIcon = icon != null && !icon.isBlank()
@@ -71,7 +86,7 @@ public class BudgetSummaryPresentationMapper {
      * @param yearMonth              The displayed month in ISO format, passed through to
      *                               {@code effectiveLimitProvider} for rollover lookup.
      */
-    public List<BudgetLimitBar> toLimitBars(List<CategorySpendSummary> totals,
+    public static List<BudgetLimitBar> toLimitBars(List<CategorySpendSummary> totals,
                                              BiFunction<String, String, Long> effectiveLimitProvider,
                                              String yearMonth) {
         List<BudgetLimitBar> bars = new ArrayList<>();

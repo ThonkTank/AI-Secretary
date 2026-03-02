@@ -1,5 +1,7 @@
 package com.autosecretary.features.budget.ui;
 
+import android.content.res.Resources;
+
 import androidx.annotation.NonNull;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
@@ -11,7 +13,6 @@ import com.autosecretary.features.budget.application.CalculateEffectiveBudgetLim
 import com.autosecretary.features.budget.application.CreateTransferUseCase;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.ui.internal.BudgetOverviewLoader;
-import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
 
 import java.util.concurrent.ExecutorService;
 
@@ -36,27 +37,29 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
     private final CreateTransferUseCase createTransferUseCase;
+    private final Resources resources;
 
     public BudgetViewModelFactory(BudgetRepository repository,
                                   ExecutorService executor,
                                   BudgetImportUseCase importUseCase,
                                   ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
-                                  CreateTransferUseCase createTransferUseCase) {
+                                  CreateTransferUseCase createTransferUseCase,
+                                  Resources resources) {
         this.repository = repository;
         this.executor = executor;
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
         this.createTransferUseCase = createTransferUseCase;
+        this.resources = resources;
     }
 
     @NonNull
     @Override
     public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
         if (modelClass.isAssignableFrom(BudgetViewModel.class)) {
-            BudgetSummaryPresentationMapper summaryPresentationMapper = new BudgetSummaryPresentationMapper();
             BudgetOverviewLoader overviewLoader = new BudgetOverviewLoader(
                     repository,
-                    summaryPresentationMapper);
+                    resources);
             return modelClass.cast(new BudgetViewModel(
                     repository, executor,
                     importUseCase,
@@ -64,7 +67,6 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
                     createTransferUseCase,
                     new CalculateEffectiveBudgetLimitUseCase(repository),
                     overviewLoader,
-                    summaryPresentationMapper,
                     new BudgetSeedService(repository)));
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());

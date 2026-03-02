@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Single-view item: text set programmatically by MealPlannerPresenter -->
+<!-- Single-view item: text and click handler set programmatically by MealPlannerFragment/Presenter -->
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:minHeight="@dimen/row_min_height"
     android:layout_marginBottom="@dimen/spacing_xs"
     android:background="@drawable/bg_row"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
     android:gravity="start|center_vertical"
-    android:padding="@dimen/spacing_sm"
+    android:paddingStart="@dimen/spacing_lg"
+    android:paddingEnd="@dimen/spacing_sm"
+    android:paddingVertical="@dimen/spacing_sm"
     android:textAppearance="@style/TextAppearance.AutoSecretary.Meal.RowBody" />

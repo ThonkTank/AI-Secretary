@@ -8,7 +8,7 @@
     <dimen name="budget_limit_bar_height">8dp</dimen>
     <dimen name="budget_chart_height">160dp</dimen>
     <dimen name="budget_limit_bar_percent_min_width">40dp</dimen>
-    <dimen name="budget_chart_label_text_size">10sp</dimen>
+    <dimen name="budget_chart_label_text_size">@dimen/text_xs</dimen>
     <dimen name="budget_chart_line_width">2dp</dimen>
     <dimen name="budget_chart_point_radius">2.5dp</dimen>
 </resources>

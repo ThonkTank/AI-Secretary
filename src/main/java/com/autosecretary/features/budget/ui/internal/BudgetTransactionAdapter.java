@@ -10,12 +10,11 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.autosecretary.R;
+import com.autosecretary.shared.DateFormatters;
 import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
 
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * RecyclerView adapter for the budget transaction list.
@@ -29,9 +28,6 @@ public class BudgetTransactionAdapter
         void onTransactionClick(BudgetTransactionRow row);
         void onTransactionLongClick(BudgetTransactionRow row);
     }
-
-    private static final DateTimeFormatter DATE_FORMATTER =
-            DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN);
 
     private List<BudgetTransactionRow> items = new ArrayList<>();
     private final Listener listener;
@@ -71,28 +67,27 @@ public class BudgetTransactionAdapter
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         BudgetTransactionRow row = items.get(position);
-        String formattedAmount = CurrencyFormatter.eurosWithSign(row.getAmountCents(), row.getDirection());
+        String formattedAmount = CurrencyFormatter.eurosWithSign(row.amountCents(), row.direction());
 
-        holder.label.setText(row.getLabel());
+        holder.label.setText(row.label());
         holder.amount.setText(formattedAmount);
 
         // Always set label color explicitly so recycled views don't retain a stale category tint.
         // Color is pre-resolved on the background thread in BudgetOverviewLoader to avoid
         // regex matching and Color.parseColor on every bind call.
-        int categoryColor = row.getCategoryColor();
+        int categoryColor = row.categoryColor();
         holder.label.setTextColor(
                 categoryColor != BudgetTransactionRow.NO_CATEGORY_COLOR
                         ? categoryColor
                         : holder.defaultLabelColor);
 
-        holder.amount.setTextColor(ContextCompat.getColor(holder.itemView.getContext(),
-                row.isExpense() ? R.color.budget_negative : R.color.budget_positive));
+        holder.amount.setTextColor(row.isExpense() ? holder.negativeColor : holder.positiveColor);
 
-        String formattedDate = row.getBookingDate().format(DATE_FORMATTER);
+        String formattedDate = row.bookingDate().format(DateFormatters.DATE_FULL_GERMAN);
         holder.itemView.setContentDescription(
                 holder.itemView.getContext().getString(
                         R.string.budget_transaction_content_description,
-                        row.getLabel(), formattedAmount, formattedDate));
+                        row.label(), formattedAmount, formattedDate));
     }
 
     @Override
@@ -106,12 +101,16 @@ public class BudgetTransactionAdapter
         // Captured once so onBindViewHolder can reset a recycled view's color without
         // resolving the theme attribute on every bind.
         final int defaultLabelColor;
+        final int positiveColor;
+        final int negativeColor;
 
         ViewHolder(@NonNull View view) {
             super(view);
             label = view.findViewById(R.id.BudgetTransactionLabel);
             amount = view.findViewById(R.id.BudgetTransactionAmount);
             defaultLabelColor = label.getCurrentTextColor();
+            positiveColor = ContextCompat.getColor(view.getContext(), R.color.budget_positive);
+            negativeColor = ContextCompat.getColor(view.getContext(), R.color.budget_negative);
         }
     }
 

@@ -1,7 +1,6 @@
 package com.autosecretary.features.budget.ui;
 
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -37,6 +36,9 @@ import com.autosecretary.features.budget.ui.internal.BudgetRecurringSuggestionsD
 import com.autosecretary.features.budget.ui.internal.BudgetTransactionDialogController;
 import com.autosecretary.features.budget.ui.internal.BudgetTransferDialogController;
 import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
+import com.autosecretary.shared.ui.ColorUtil;
+import com.autosecretary.shared.ui.SimpleButtonCheckedListener;
+import com.autosecretary.shared.ui.SimpleItemSelectedListener;
 import com.autosecretary.shared.ui.SpinnerHelper;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
 import com.autosecretary.features.budget.ui.state.BudgetUiState;
@@ -196,6 +198,11 @@ public class BudgetFragment extends Fragment {
         v.summaryNet = rootView.findViewById(R.id.BudgetSummaryNet);
         v.summaryFreeBudget = rootView.findViewById(R.id.BudgetSummaryFreeBudget);
         v.status = rootView.findViewById(R.id.BudgetStatusMessage);
+        v.emptyStateContainer = rootView.findViewById(R.id.EmptyStateContainer);
+        v.emptyStateTitle = rootView.findViewById(R.id.EmptyStateTitle);
+        v.emptyStateSubtitle = rootView.findViewById(R.id.EmptyStateSubtitle);
+        v.emptyStateTitle.setText(R.string.budget_empty_state_title);
+        v.emptyStateSubtitle.setText(R.string.budget_empty_state_subtitle);
         v.addTransaction = rootView.findViewById(R.id.BudgetAddTransactionButton);
         v.addTransfer = rootView.findViewById(R.id.BudgetAddTransferButton);
         v.importStatement = rootView.findViewById(R.id.BudgetImportStatementButton);
@@ -219,16 +226,18 @@ public class BudgetFragment extends Fragment {
 
         budgetViewModel.getSummaryData().observe(getViewLifecycleOwner(), data -> {
             if (data == null) return;
-            views.summaryIncome.setText(CurrencyFormatter.eurosAlwaysSigned(data.getIncomeCents()));
-            views.summaryIncome.setTextColor(ContextCompat.getColor(requireContext(), R.color.budget_positive));
-            views.summaryExpense.setText(CurrencyFormatter.eurosAlwaysSigned(-data.getExpenseCents()));
-            views.summaryExpense.setTextColor(ContextCompat.getColor(requireContext(), R.color.budget_negative));
-            bindSignedAmount(views.summaryNet, data.getNetCents());
-            bindSignedAmount(views.summaryFreeBudget, data.getFreeBudgetCents());
+            bindSignedAmount(views.summaryIncome, data.incomeCents());
+            bindSignedAmount(views.summaryExpense, -data.expenseCents());
+            bindSignedAmount(views.summaryNet, data.netCents());
+            bindSignedAmount(views.summaryFreeBudget, data.freeBudgetCents());
         });
 
-        budgetViewModel.getTransactions().observe(getViewLifecycleOwner(),
-                rows -> transactionAdapter.setItems(rows));
+        budgetViewModel.getTransactions().observe(getViewLifecycleOwner(), rows -> {
+            transactionAdapter.setItems(rows);
+            boolean empty = rows == null || rows.isEmpty();
+            views.emptyStateContainer.setVisibility(empty ? View.VISIBLE : View.GONE);
+            views.transactionList.setVisibility(empty ? View.GONE : View.VISIBLE);
+        });
 
         budgetViewModel.getChartPoints().observe(getViewLifecycleOwner(), views.chartView::setPoints);
 
@@ -238,8 +247,12 @@ public class BudgetFragment extends Fragment {
             boolean isContent = state == BudgetUiState.CONTENT;
             views.loading.setVisibility(isLoading ? View.VISIBLE : View.GONE);
             views.retry.setVisibility(isError ? View.VISIBLE : View.GONE);
-            views.transactionList.setVisibility(isContent ? View.VISIBLE : View.GONE);
+            views.status.setVisibility(isLoading || isError ? View.VISIBLE : View.GONE);
             views.summaryCard.setVisibility(isContent ? View.VISIBLE : View.GONE);
+            if (!isContent) {
+                views.emptyStateContainer.setVisibility(View.GONE);
+                views.transactionList.setVisibility(View.GONE);
+            }
         });
 
         budgetViewModel.getCurrentMonth().observe(getViewLifecycleOwner(), month ->
@@ -276,26 +289,30 @@ public class BudgetFragment extends Fragment {
     }
 
     private void setupUserActions(@NonNull BudgetOverviewViews views) {
-        views.accountSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        views.accountSpinner.setOnItemSelectedListener(new SimpleItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View v, int position, long id) {
                 if (position >= 0 && position < accountItems.size()) {
                     budgetViewModel.setSelectedAccount(accountItems.get(position).id);
                 }
             }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
         });
 
-        views.rangeGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked) return;
-            TimeRangeFilter filter = checkedId == R.id.BudgetRange30d ? TimeRangeFilter.DAYS_30
-                    : checkedId == R.id.BudgetRange3m ? TimeRangeFilter.MONTHS_3
-                    : checkedId == R.id.BudgetRange12m ? TimeRangeFilter.MONTHS_12
-                    : null;
-            if (filter != null) budgetViewModel.setTimeRangeFilter(filter);
+        views.rangeGroup.addOnButtonCheckedListener(new SimpleButtonCheckedListener() {
+            @Override
+            public void onChecked(MaterialButtonToggleGroup group, int checkedId) {
+                TimeRangeFilter filter;
+                if (checkedId == R.id.BudgetRange30d) {
+                    filter = TimeRangeFilter.DAYS_30;
+                } else if (checkedId == R.id.BudgetRange3m) {
+                    filter = TimeRangeFilter.MONTHS_3;
+                } else if (checkedId == R.id.BudgetRange12m) {
+                    filter = TimeRangeFilter.MONTHS_12;
+                } else {
+                    filter = null;
+                }
+                if (filter != null) budgetViewModel.setTimeRangeFilter(filter);
+            }
         });
 
         views.monthPrev.setContentDescription(getString(R.string.budget_month_prev_desc));
@@ -331,6 +348,9 @@ public class BudgetFragment extends Fragment {
         TextView summaryNet;
         TextView summaryFreeBudget;
         TextView status;
+        View emptyStateContainer;
+        TextView emptyStateTitle;
+        TextView emptyStateSubtitle;
         Button addTransaction;
         Button addTransfer;
         Button importStatement;
@@ -401,34 +421,33 @@ public class BudgetFragment extends Fragment {
             TextView percentText = row.findViewById(R.id.BudgetLimitBarPercent);
             android.widget.ProgressBar progress = row.findViewById(R.id.BudgetLimitBarProgress);
 
-            name.setText(bar.getCategoryName());
-            String spentLabel = CurrencyFormatter.eurosMagnitude(bar.getSpentCents())
-                    + " / " + CurrencyFormatter.eurosMagnitude(bar.getEffectiveLimitCents());
+            name.setText(bar.categoryName());
+            String spentLabel = CurrencyFormatter.eurosMagnitude(bar.spentCents())
+                    + " / " + CurrencyFormatter.eurosMagnitude(bar.effectiveLimitCents());
             spentText.setText(spentLabel);
-            int pct = bar.getPercentage();
+            int pct = bar.percentage();
             percentText.setText(String.format(Locale.GERMAN, "%d%%", pct));
             progress.setProgress(Math.min(pct, 100));
             row.setContentDescription(getString(R.string.budget_limit_bar_content_description,
-                    bar.getCategoryName(), spentLabel, pct));
+                    bar.categoryName(), spentLabel, pct));
 
             // Color priority: a category's configured hex color always wins, because the user
             // deliberately chose it. Status-based colors (negative/warning/positive) are only
             // used as a fallback when no category color is configured.
             int color;
-            if (CurrencyFormatter.isValidColorHex(bar.getCategoryColorHex())) {
-                color = Color.parseColor(bar.getCategoryColorHex());
-            } else if (pct > 100) {
+            if (pct > 100) {
                 color = ContextCompat.getColor(requireContext(), R.color.budget_negative);
             } else if (pct >= 80) {
                 color = ContextCompat.getColor(requireContext(), R.color.budget_warning);
             } else {
                 color = ContextCompat.getColor(requireContext(), R.color.budget_positive);
             }
+            color = ColorUtil.parseColorSafe(bar.categoryColorHex(), color);
             progress.setProgressTintList(ColorStateList.valueOf(color));
             percentText.setTextColor(color);
 
             row.setOnClickListener(v ->
-                    showEditLimitDialog(bar.getCategoryId(), bar.getBaseLimitCents()));
+                    showEditLimitDialog(bar.categoryId(), bar.baseLimitCents()));
             container.addView(row);
         }
     }

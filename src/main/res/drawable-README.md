@@ -8,9 +8,8 @@ Vector icons and shape backgrounds used throughout the app.
 |--------|-------|---------|---------|
 | `bg_*` | App-wide | Background shapes shared across features | `bg_forest_gradient` (window/widget bg) |
 | `ic_*` | App-wide | Vector icons (toolbar, navigation, launcher) | `ic_settings_24` |
-| `task_bg_*` | Task feature | Background shapes for task UI surfaces | `task_bg_row` |
+| `task_bg_*` | Task feature | Background shapes for task UI surfaces | `task_bg_calendar_row` |
 | `task_editor_*` | Task feature | Task editor-specific drawables | `task_editor_selector_background` |
-| `meal_bg_*` | Meal feature | Background shapes for meal UI surfaces | — |
 
 Size suffix `_24` on icons indicates 24dp intrinsic size (Material standard).
 
@@ -18,7 +17,9 @@ Size suffix `_24` on icons indicates 24dp intrinsic size (Material standard).
 
 ### App-wide backgrounds
 - **`bg_forest_gradient`** — Vertical green gradient; app window background, task/budget widget background
+- **`bg_row`** — Shared row background (rounded corners + outline stroke); used by task, meal, and budget row items
 - **`bg_surface_card`** — Rounded card with outline; used for elevated card surfaces (toolbar, editor panels)
+- **`bg_temporal_nav_bar`** — Background for the shared temporal navigation bar (day/month nav)
 
 ### Icons
 - **`ic_budget_24`** — Bottom-nav wallet icon for the Budget tab
@@ -32,7 +33,6 @@ Size suffix `_24` on icons indicates 24dp intrinsic size (Material standard).
 ### Task feature backgrounds
 - **`task_bg_calendar_chip`** — Small rounded chip behind calendar labels in task rows
 - **`task_bg_calendar_row`** — Row background for calendar-view task items (set programmatically in `ListRowAdapter`)
-- **`task_bg_row`** — Default row background for task list items
 - **`task_editor_selector_background`** — Inset rounded field background for selector inputs in the task editor
 
 ## Further Reading

@@ -30,71 +30,74 @@
             android:layout_marginTop="@dimen/spacing_sm"
             android:contentDescription="@string/budget_account_selector" />
 
-        <com.google.android.material.button.MaterialButtonToggleGroup
-            android:id="@+id/BudgetRangeGroup"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_sm"
-            app:singleSelection="true"
-            app:checkedButton="@id/BudgetRange30d">
+            android:background="@drawable/bg_surface_card"
+            android:paddingHorizontal="@dimen/spacing_md"
+            android:paddingVertical="@dimen/spacing_sm"
+            android:layout_marginBottom="@dimen/spacing_md"
+            android:gravity="center">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/BudgetRange30d"
-                style="@style/Widget.AutoSecretary.ToggleButton"
-                android:layout_width="0dp"
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/BudgetRangeGroup"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:contentDescription="@string/budget_range_30d_desc"
-                android:text="@string/budget_range_30d" />
+                app:singleSelection="true"
+                app:checkedButton="@id/BudgetRange30d">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/BudgetRange3m"
-                style="@style/Widget.AutoSecretary.ToggleButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:contentDescription="@string/budget_range_3m_desc"
-                android:text="@string/budget_range_3m" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/BudgetRange30d"
+                    style="@style/Widget.AutoSecretary.ToggleButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/budget_range_30d_desc"
+                    android:text="@string/budget_range_30d" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/BudgetRange12m"
-                style="@style/Widget.AutoSecretary.ToggleButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:contentDescription="@string/budget_range_12m_desc"
-                android:text="@string/budget_range_12m" />
-        </com.google.android.material.button.MaterialButtonToggleGroup>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/BudgetRange3m"
+                    style="@style/Widget.AutoSecretary.ToggleButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/budget_range_3m_desc"
+                    android:text="@string/budget_range_3m" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/BudgetRange12m"
+                    style="@style/Widget.AutoSecretary.ToggleButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/budget_range_12m_desc"
+                    android:text="@string/budget_range_12m" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </LinearLayout>
 
         <!-- Balance chart card -->
-        <com.google.android.material.card.MaterialCardView
+        <LinearLayout
             android:id="@+id/BudgetChartCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
-            app:cardElevation="@dimen/budget_card_elevation"
-            app:cardCornerRadius="@dimen/corner_radius_sm">
+            android:background="@drawable/bg_surface_card"
+            android:orientation="vertical"
+            android:padding="@dimen/spacing_md">
 
-            <LinearLayout
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/spacing_md">
+                android:text="@string/budget_chart_title"
+                android:textAppearance="@style/TextAppearance.AutoSecretary.SectionTitle" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/budget_chart_title"
-                    android:textAppearance="@style/TextAppearance.AutoSecretary.SectionTitle" />
-
-                <com.autosecretary.features.budget.ui.internal.BudgetBalanceChartView
-                    android:id="@+id/BudgetBalanceChart"
-                    android:layout_width="match_parent"
-                    android:layout_height="@dimen/budget_chart_height"
-                    android:layout_marginTop="@dimen/spacing_sm"
-                    android:contentDescription="@string/budget_chart_title" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+            <com.autosecretary.features.budget.ui.internal.BudgetBalanceChartView
+                android:id="@+id/BudgetBalanceChart"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/budget_chart_height"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:contentDescription="@string/budget_chart_title" />
+        </LinearLayout>
 
         <!-- Month navigation -->
         <include
@@ -104,110 +107,104 @@
             android:layout_marginTop="@dimen/spacing_sm" />
 
         <!-- Monthly summary card (shown/hidden by BudgetOverviewLoader) -->
-        <com.google.android.material.card.MaterialCardView
+        <LinearLayout
             android:id="@+id/BudgetSummaryCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
-            android:visibility="gone"
-            app:cardCornerRadius="@dimen/corner_radius_sm"
-            app:cardElevation="@dimen/budget_card_elevation">
+            android:background="@drawable/bg_surface_card"
+            android:orientation="vertical"
+            android:padding="@dimen/spacing_md"
+            android:visibility="gone">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/spacing_md">
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:layout_weight="1"
+                    android:text="@string/budget_summary_income"
+                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
 
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/budget_summary_income"
-                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
-
-                    <TextView
-                        android:id="@+id/BudgetSummaryIncome"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/BudgetSummaryIncome"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacing_sm"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/budget_summary_expense"
-                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
-
-                    <TextView
-                        android:id="@+id/BudgetSummaryExpense"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacing_sm"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/budget_summary_free_budget"
-                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
-                    <TextView
-                        android:id="@+id/BudgetSummaryFreeBudget"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue" />
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="@dimen/budget_divider_height"
-                    android:layout_marginVertical="@dimen/spacing_sm"
-                    android:background="@color/budget_divider" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/budget_summary_net"
-                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.SummaryTotal" />
-
-                    <TextView
-                        android:id="@+id/BudgetSummaryNet"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.SummaryTotal" />
-                </LinearLayout>
-
+                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/budget_summary_expense"
+                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
+
+                <TextView
+                    android:id="@+id/BudgetSummaryExpense"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/budget_summary_free_budget"
+                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
+                <TextView
+                    android:id="@+id/BudgetSummaryFreeBudget"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/budget_divider_height"
+                android:layout_marginVertical="@dimen/spacing_sm"
+                android:background="@color/budget_divider" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/budget_summary_net"
+                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.SummaryTotal" />
+
+                <TextView
+                    android:id="@+id/BudgetSummaryNet"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.SummaryTotal" />
+            </LinearLayout>
+
+        </LinearLayout>
 
         <!-- Limit bars: items inflated programmatically by BudgetOverviewLoader -->
         <LinearLayout
@@ -251,14 +248,21 @@
             android:layout_marginTop="@dimen/spacing_sm"
             android:text="@string/budget_import_statement" />
 
-        <!-- Loading / error / empty states (toggled by BudgetOverviewLoader) -->
+        <!-- Empty state: shown when no transactions exist (toggled by BudgetFragment) -->
+        <include
+            layout="@layout/include_empty_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_lg" />
+
+        <!-- Loading / error status (toggled by BudgetFragment) -->
         <TextView
             android:id="@+id/BudgetStatusMessage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_lg"
-            android:text="@string/budget_empty_state"
-            android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel"
+            android:visibility="gone" />
 
         <ProgressBar
             android:id="@+id/BudgetLoading"

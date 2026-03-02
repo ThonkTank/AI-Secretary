@@ -7,22 +7,15 @@
          For new task strings, add here and reference via @string/task_[context]_[element] in Java/XML.
          See ../strings.xml for app-wide (non-feature-specific) strings. -->
     <string name="task_edit_day_picker_title">Tage auswählen</string>
-    <string name="task_edit_day_picker_positive">@string/action_save</string>
-    <string name="task_edit_day_picker_negative">@string/action_cancel</string>
     <string name="task_edit_dialog_title_create">Aufgabe erstellen</string>
     <string name="task_edit_dialog_title_edit">Aufgabe bearbeiten</string>
-    <string name="task_edit_dialog_positive">@string/action_save</string>
-    <string name="task_edit_dialog_delete">@string/action_delete</string>
-    <string name="task_edit_dialog_negative">@string/action_cancel</string>
     <string name="task_edit_delete_title">Aufgabe löschen?</string>
     <string name="task_edit_delete_message">Möchtest du diese Aufgabe wirklich löschen?</string>
-    <string name="task_edit_delete_confirm">@string/action_delete</string>
-    <string name="task_edit_delete_cancel">@string/action_cancel</string>
     <string name="task_row_edit">Aufgabe bearbeiten</string>
     <string name="task_row_expand_children">Unteraufgaben anzeigen</string>
     <string name="task_row_collapse_children">Unteraufgaben ausblenden</string>
-    <string name="task_time_fallback_start">Nicht</string>
-    <string name="task_time_fallback_end">Heute</string>
+    <string name="task_time_fallback_start">--:--</string>
+    <string name="task_time_fallback_end">--:--</string>
     <string name="task_description_fallback">Keine Beschreibung</string>
     <string name="task_deadline_overdue_label">! Fällig</string>
     <string name="task_deadline_today_label">! Heute fällig</string>
@@ -56,7 +49,7 @@
     <string name="task_list_empty_title">Noch keine Aufgaben</string>
     <string name="task_list_empty_subtitle">Erstelle deine erste Aufgabe, um deinen Tagesplan zu starten</string>
     <string name="task_list_empty_action">Erste Aufgabe erstellen</string>
-    <string name="task_list_new_task">+ Neue Task</string>
+    <string name="task_list_new_task">+ Neue Aufgabe</string>
 
     <string name="task_editor_hint_title">Titel</string>
     <string name="task_editor_hint_description">Beschreibung</string>
@@ -77,6 +70,10 @@
     <string name="task_editor_budget_required_cents_label">Budget benötigt (Cent, optional)</string>
     <string name="task_editor_budget_account_id_label">Budget-Konto-ID (optional)</string>
     <string name="task_editor_budget_category_id_label">Budget-Kategorie-ID (optional)</string>
+    <string name="task_editor_budget_no_account">Kein Konto</string>
+    <string name="task_editor_budget_no_category">Keine Kategorie</string>
+    <string name="task_editor_budget_account_content_description">Budget-Konto</string>
+    <string name="task_editor_budget_category_content_description">Budget-Kategorie</string>
     <string name="task_editor_close_on_miss">Bei Überschreitung schließen</string>
     <string name="task_editor_duration_label">Dauer (Min):</string>
     <string name="task_editor_hint_min">Min</string>
@@ -102,6 +99,9 @@
     <string name="task_editor_pref_slot_time_button">Startzeit auswählen: %1$s</string>
     <string name="task_editor_pref_slot_time_content_description">Startzeit auswählen. Aktuell: %1$s</string>
 
+    <string name="task_editor_priority_content_description">Priorität</string>
+    <string name="task_editor_scheduling_type_content_description">Planungstyp</string>
+    <string name="task_editor_period_unit_content_description">Periodeneinheit</string>
     <string name="task_editor_goal_color_content_description">Farbe %1$d</string>
     <string name="task_editor_goal_color_selected_content_description">Farbe %1$d, ausgewählt</string>
 
@@ -120,10 +120,10 @@
     </string-array>
 
     <string name="task_schedule_dialog_title">Tagesfenster konfigurieren</string>
-    <string name="task_schedule_dialog_save">@string/action_save</string>
-    <string name="task_schedule_dialog_cancel">@string/action_cancel</string>
     <string name="task_schedule_validation_error">Endzeit muss nach Startzeit liegen.</string>
     <string name="task_schedule_saved">Zeitfenster gespeichert</string>
+    <string name="task_schedule_start_desc">%1$s Startzeit: %2$s</string>
+    <string name="task_schedule_end_desc">%1$s Endzeit: %2$s</string>
 
     <string name="task_edit_validation_title_required">Titel ist erforderlich.</string>
     <string name="task_edit_validation_min_duration">Minimale Dauer muss mindestens 1 Minute sein.</string>
@@ -146,4 +146,25 @@
 
     <string name="task_row_toggle_expanded">▾</string>
     <string name="task_row_toggle_collapsed">▸</string>
+
+    <!-- Composite row content description for screen readers.
+         %1$s = title, %2$s = time range (e.g. "10:00 – 11:00"), %3$s = deadline info (or empty),
+         %4$s = streak info (or empty), %5$s = state label. -->
+    <string name="task_row_content_description">%1$s, %2$s%3$s%4$s, %5$s</string>
+    <!-- Time range segment used inside the composite row content description. -->
+    <string name="task_row_time_range">%1$s – %2$s</string>
+    <!-- Deadline segment prefix inserted into the composite row content description. -->
+    <string name="task_row_deadline_segment">, %1$s</string>
+    <!-- Streak segment inserted into the composite row content description. -->
+    <string name="task_row_streak_segment">, Streak %1$d</string>
+
+    <!-- Phase-aware checkbox content descriptions. -->
+    <string name="task_row_checkbox_start">Aufgabe starten</string>
+    <string name="task_row_checkbox_complete">Aufgabe abschliessen</string>
+    <string name="task_row_checkbox_done">Aufgabe abgeschlossen</string>
+
+    <!-- State labels used in the composite row content description. -->
+    <string name="task_row_state_pending">Ausstehend</string>
+    <string name="task_row_state_in_progress">In Bearbeitung</string>
+    <string name="task_row_state_completed">Abgeschlossen</string>
 </resources>

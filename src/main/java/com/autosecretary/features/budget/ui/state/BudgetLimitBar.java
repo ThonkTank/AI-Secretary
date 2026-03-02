@@ -9,58 +9,21 @@ package com.autosecretary.features.budget.ui.state;
  *
  * percentage is computed as (spentCents / effectiveLimitCents * 100),
  * allowing the UI to render a visually accurate progress bar that may exceed 100%.
+ *
+ * @param categoryId         Unique ID of the budget category.
+ * @param categoryName       Display name (may include emoji icon prefix).
+ * @param categoryColorHex   Hex color code for this category (e.g., "#FF5733") for visual display.
+ * @param spentCents         Total spent in this category during the current month (in cents).
+ * @param baseLimitCents     The configured monthly spending limit for this category (in cents).
+ * @param effectiveLimitCents Effective limit after applying rollover carryover from prior months;
+ *                            may exceed baseLimitCents if carryover is available.
  */
-public class BudgetLimitBar {
-    private final String categoryId;
-    private final String categoryName;
-    /** Hex color code for this category (e.g., "#FF5733") for visual display. */
-    private final String categoryColorHex;
-    /** Total spent in this category during the current month (in cents). */
-    private final long spentCents;
-    /** The configured monthly spending limit for this category (in cents). */
-    private final long baseLimitCents;
-    /** Effective limit after applying rollover carryover from prior months; may exceed baseLimitCents if carryover is available. */
-    private final long effectiveLimitCents;
-    private final int percentage;
+public record BudgetLimitBar(String categoryId, String categoryName, String categoryColorHex,
+                              long spentCents, long baseLimitCents, long effectiveLimitCents) {
 
-    public BudgetLimitBar(String categoryId, String categoryName, String categoryColorHex,
-                          long spentCents, long baseLimitCents, long effectiveLimitCents) {
-        this.categoryId = categoryId;
-        this.categoryName = categoryName;
-        this.categoryColorHex = categoryColorHex;
-        this.spentCents = spentCents;
-        this.baseLimitCents = baseLimitCents;
-        this.effectiveLimitCents = effectiveLimitCents;
-        this.percentage = effectiveLimitCents > 0
+    public int percentage() {
+        return effectiveLimitCents > 0
                 ? (int) ((double) spentCents / effectiveLimitCents * 100)
                 : 0;
-    }
-
-    public String getCategoryId() {
-        return categoryId;
-    }
-
-    public String getCategoryName() {
-        return categoryName;
-    }
-
-    public String getCategoryColorHex() {
-        return categoryColorHex;
-    }
-
-    public long getSpentCents() {
-        return spentCents;
-    }
-
-    public long getBaseLimitCents() {
-        return baseLimitCents;
-    }
-
-    public long getEffectiveLimitCents() {
-        return effectiveLimitCents;
-    }
-
-    public int getPercentage() {
-        return percentage;
     }
 }

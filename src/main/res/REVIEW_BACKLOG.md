@@ -1,16 +1,8 @@
 # src/main/res — Review Backlog
 
-## [platform] Meal tabs: three independent MaterialButtons instead of MaterialButtonToggleGroup
+## ~~[platform] Meal tabs: three independent MaterialButtons instead of MaterialButtonToggleGroup~~ — RESOLVED
 
-**Location:** `layout/meal_overview_fragment.xml:28-48`
-
-**What the visual issue is:** Three `MaterialButton` elements are used as tab switchers with no `MaterialButtonToggleGroup` wrapper. All three render identically (filled primary), so there is no visual indicator of which tab is currently active. The task list screen uses `MaterialButtonToggleGroup` with outlined buttons correctly; the meal screen does not.
-
-**Why it hurts the design:** Users cannot see the selected state at a glance. The filled style on all three makes them look like three parallel actions, not a mutually exclusive tab selection. This violates the platform's expected pattern and the app's own established convention.
-
-**Recommended change:** Wrap in `MaterialButtonToggleGroup` with `app:singleSelection="true"` and change button style to `?attr/materialButtonOutlinedStyle`. Update `MealPlannerFragment` to register an `addOnButtonCheckedListener` instead of individual click handlers.
-
-**Tradeoffs:** Requires editing Java code outside `src/main/res`; deferred to next cycle.
+Resolved: Meal tabs now use `MaterialButtonToggleGroup` with `ToggleButton` style and `addOnButtonCheckedListener`.
 
 ---
 
@@ -28,17 +20,9 @@
 
 ---
 
-## [a11y] Meal tabs: active tab communicated by color only — no screen-reader selected-state
+## ~~[a11y] Meal tabs: active tab communicated by color only — no screen-reader selected-state~~ — RESOLVED
 
-**Location:** `features/meal/ui/MealPlannerFragment.java` (switchScreen / setTabButtonColor), `layout/meal_overview_fragment.xml:29-51`
-
-**What users struggle with:** `switchScreen()` calls `setTabButtonColor()` which only changes `setTextColor()`. No `setSelected()`, `setChecked()`, or `announceForAccessibility()` is called. A screen-reader user has no way to know which tab is active.
-
-**Recommended change:** In `setTabButtonColor()`, add `button.setSelected(isActive)` and update the button style to respond to the `selected` state (or call `announceForAccessibility` on the newly-active tab).
-
-**Why it improves a11y:** Sighted users see the color change; screen-reader users currently get no feedback when switching tabs.
-
-**Tradeoffs:** Requires editing `MealPlannerFragment.java` outside `src/main/res`; deferred.
+Resolved: Meal tabs now use `MaterialButtonToggleGroup` which handles selected-state accessibility automatically.
 
 ---
 
@@ -56,37 +40,15 @@
 
 ---
 
-## [coupling] `budget_colors.xml` references `task_color_*` tokens directly
+## ~~[coupling] `budget_colors.xml` references `task_color_*` tokens directly~~ — RESOLVED
 
-**Location:** `values/budget_colors.xml:19-27`
-
-**What the coupling is:** Four budget semantic color tokens alias task-feature tokens:
-- `budget_chart_line` → `@color/task_color_primary`
-- `budget_divider` → `@color/task_color_outline`
-- `budget_widget_header_text` → `@color/task_color_on_primary`
-- `budget_widget_card_text` → `@color/task_color_on_surface`
-
-The budget feature has a direct named dependency on the task feature's color palette. If the task palette ever diverges, budget widget colors change silently.
-
-**Why it matters:** The `task_color_*` namespace implies task-feature ownership, but these tokens serve as the effective app-wide theme palette (they're mapped to `colorPrimary` etc. in `styles.xml`). The naming creates false scoping — future contributors may hesitate to change `task_color_primary` fearing it only affects tasks, unaware the budget widget inherits from it too.
-
-**Recommended change:** Move the core palette tokens (`task_color_primary`, `task_color_on_primary`, `task_color_on_surface`, `task_color_outline`, etc.) to `colors.xml` with app-wide names (e.g., `color_primary`). Keep `task_color_*` only for task-specific semantic colors (urgency, streak, progress).
-
-**Tradeoffs:** Large rename touching `styles.xml`, multiple color files, and all Java callers of `R.color.task_color_*`; deferred to avoid regression risk.
+Resolved: Core palette tokens were renamed from `task_color_*` to `color_*` (e.g. `color_primary`, `color_on_surface`). Budget colors now alias app-wide tokens. Semantic status colors (`budget_positive`, `budget_negative`, etc.) were further aligned with the nature palette.
 
 ---
 
-## [nit] `budget_overview_fragment.xml` month nav uses media-playback system icons
+## ~~[nit] `budget_overview_fragment.xml` month nav uses media-playback system icons~~ — RESOLVED
 
-**Location:** `layout/budget_overview_fragment.xml:113,129`
-
-**What the inconsistency is:** `BudgetMonthPrevButton` and `BudgetMonthNextButton` use `@android:drawable/ic_media_previous` and `@android:drawable/ic_media_next` — icons designed for audio/video media controls. The task list screen navigates days using `<` and `>` text characters in `TextViews`.
-
-**Why it matters:** The media playback icons convey the wrong semantic: a user who reads the content description (which is correct — "Vorheriger Monat") would be fine, but the visual metaphor is inconsistent with the app's other navigation affordances.
-
-**Recommended change:** Replace with `@android:drawable/ic_media_rew` / `@android:drawable/ic_media_ff` (still system, but calendar-adjacent), or custom arrow drawables, or switch to text-based TextViews matching the task-list pattern. Lowest-effort: add `ic_nav_prev_24.xml` and `ic_nav_next_24.xml` vector drawables.
-
-**Tradeoffs:** Purely cosmetic; content descriptions are already correct. Deferred — low impact.
+Resolved: Budget month navigation now uses the shared `include_temporal_nav_bar.xml` with chevron icons, matching the task list's day navigation.
 
 ---
 
@@ -111,7 +73,7 @@ The budget feature has a direct named dependency on the task feature's color pal
 
 ## [consider] Stroke width `1dp` hardcoded in four drawable files
 
-**Location:** `drawable/bg_surface_card.xml:7`, `drawable/task_bg_row.xml:7`, `drawable/task_bg_calendar_row.xml:8`, `drawable/task_editor_selector_background.xml:10`
+**Location:** `drawable/bg_surface_card.xml:7`, `drawable/bg_row.xml:7`, `drawable/task_bg_calendar_row.xml:8`, `drawable/task_editor_selector_background.xml:10`
 
 **What makes it harder than needed:** Four separate drawables each hardcode `android:width="1dp"` for their outline stroke. A named token `outline_stroke_width` in `dimens.xml` would let a single edit update all outlines consistently.
 

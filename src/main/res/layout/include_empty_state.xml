@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Reusable empty state layout: centered title + subtitle, hidden by default.
+     Fragments set the title/subtitle text programmatically and toggle visibility
+     when a list has no items. Matches the pattern established in task_list_fragment. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/EmptyStateContainer"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="@dimen/spacing_lg"
+    android:visibility="gone">
+
+    <TextView
+        android:id="@+id/EmptyStateTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.EmptyState.Title"
+        android:textAlignment="center" />
+
+    <TextView
+        android:id="@+id/EmptyStateSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.EmptyState.Subtitle"
+        android:textAlignment="center" />
+</LinearLayout>

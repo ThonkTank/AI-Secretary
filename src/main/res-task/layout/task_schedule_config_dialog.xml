@@ -5,8 +5,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minWidth="320dp"
-    android:paddingTop="@dimen/spacing_sm">
+    android:padding="@dimen/spacing_lg">
 
     <ProgressBar
         android:id="@+id/ScheduleConfigLoading"

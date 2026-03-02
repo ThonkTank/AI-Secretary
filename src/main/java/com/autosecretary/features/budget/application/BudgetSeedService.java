@@ -81,10 +81,10 @@ public class BudgetSeedService {
             return;
         }
         repository.insertCategory(new BudgetCategoryEntity(CAT_SONSTIGES,    TransactionDirection.EXPENSE, "🏷️", "#9E9E9E"));
-        repository.insertCategory(new BudgetCategoryEntity(CAT_MIETE,        TransactionDirection.EXPENSE, "🏠", "#FF7043"));
-        repository.insertCategory(new BudgetCategoryEntity(CAT_LEBENSMITTEL, TransactionDirection.EXPENSE, "🛒", "#8BC34A"));
-        repository.insertCategory(new BudgetCategoryEntity(CAT_MOBILITAET,   TransactionDirection.EXPENSE, "🚗", "#03A9F4"));
-        repository.insertCategory(new BudgetCategoryEntity(CAT_FREIZEIT,     TransactionDirection.EXPENSE, "🎉", "#AB47BC"));
+        repository.insertCategory(new BudgetCategoryEntity(CAT_MIETE,        TransactionDirection.EXPENSE, "🏠", "#CF8F4F"));
+        repository.insertCategory(new BudgetCategoryEntity(CAT_LEBENSMITTEL, TransactionDirection.EXPENSE, "🛒", "#5C7A4D"));
+        repository.insertCategory(new BudgetCategoryEntity(CAT_MOBILITAET,   TransactionDirection.EXPENSE, "🚗", "#6B8E7B"));
+        repository.insertCategory(new BudgetCategoryEntity(CAT_FREIZEIT,     TransactionDirection.EXPENSE, "🎉", "#7A4DA8"));
         repository.insertCategory(new BudgetCategoryEntity(CAT_GEHALT,       TransactionDirection.INCOME,  "💰", "#4CAF50"));
     }
 

@@ -2,6 +2,7 @@ package com.autosecretary.features.task.ui.edit.internal.editor;
 
 import android.app.TimePickerDialog;
 import android.content.Context;
+import android.content.res.Resources;
 import android.view.ContextThemeWrapper;
 import android.view.Gravity;
 import android.view.View;
@@ -9,7 +10,6 @@ import android.view.ViewGroup;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
 
-import androidx.annotation.DimenRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 
@@ -112,7 +112,7 @@ public class PrefSlotSectionController {
         new AlertDialog.Builder(fragment.requireContext())
             .setTitle(R.string.task_edit_day_picker_title)
             .setView(layout)
-            .setPositiveButton(R.string.task_edit_day_picker_positive, (d, w) -> {
+            .setPositiveButton(R.string.action_save, (d, w) -> {
                 EnumSet<DayOfWeek> newDays = EnumSet.noneOf(DayOfWeek.class);
                 for (int i = 0; i < WEEK_DAY_COUNT; i++) {
                     if (selected[i]) newDays.add(weekDays[i]);
@@ -120,21 +120,20 @@ public class PrefSlotSectionController {
                 prefSlot.days = newDays;
                 rebuildPrefSlotUI();
             })
-            .setNegativeButton(R.string.task_edit_day_picker_negative, null)
+            .setNegativeButton(R.string.action_cancel, null)
             .show();
     }
 
     private GridLayout buildDayPickerLayout(DayOfWeek[] weekDays, String[] labels,
                                             PrefSlotEditState prefSlot, Set<DayOfWeek> takenByOthers,
                                             boolean[] selected) {
-        GridLayout layout = new GridLayout(fragment.requireContext());
+        Context ctx = fragment.requireContext();
+        Resources res = ctx.getResources();
+        GridLayout layout = new GridLayout(ctx);
         layout.setColumnCount(DAY_PICKER_COLUMN_COUNT);
-        layout.setPadding(
-            dimenPx(R.dimen.spacing_sm),
-            dimenPx(R.dimen.task_editor_day_picker_vertical_padding),
-            dimenPx(R.dimen.spacing_sm),
-            dimenPx(R.dimen.task_editor_day_picker_vertical_padding)
-        );
+        int paddingH = res.getDimensionPixelSize(R.dimen.spacing_sm);
+        int paddingV = res.getDimensionPixelSize(R.dimen.task_editor_day_picker_vertical_padding);
+        layout.setPadding(paddingH, paddingV, paddingH, paddingV);
         layout.setUseDefaultMargins(false);
         layout.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
 
@@ -143,7 +142,7 @@ public class PrefSlotSectionController {
             boolean isSelected = prefSlot.days != null && prefSlot.days.contains(day);
             selected[i] = isSelected;
 
-            MaterialButton btn = createDayButton(labels[i], isSelected, i);
+            MaterialButton btn = createDayButton(ctx, res, labels[i], isSelected, i);
             if (takenByOthers.contains(day)) {
                 btn.setEnabled(false);
             } else {
@@ -158,12 +157,13 @@ public class PrefSlotSectionController {
         return layout;
     }
 
-    private MaterialButton createDayButton(String label, boolean isSelected, int gridIndex) {
+    private MaterialButton createDayButton(Context ctx, Resources res, String label,
+                                           boolean isSelected, int gridIndex) {
         // MaterialButton reads its style from the context theme at construction time.
         // Wrapping the context here is required — passing the style as a constructor argument
         // alone has no effect for programmatically-created MaterialButton instances.
         ContextThemeWrapper themedContext =
-            new ContextThemeWrapper(fragment.requireContext(), R.style.Widget_AutoSecretary_TaskEdit_DayPickerButton);
+            new ContextThemeWrapper(ctx, R.style.Widget_AutoSecretary_TaskEdit_DayPickerButton);
         MaterialButton btn = new MaterialButton(themedContext, null, 0);
         btn.setText(label);
         btn.setMaxLines(2);
@@ -173,7 +173,7 @@ public class PrefSlotSectionController {
         btn.setChecked(isSelected);
         btn.setInsetTop(0);
         btn.setInsetBottom(0);
-        int horizontalPadding = dimenPx(R.dimen.spacing_xs);
+        int horizontalPadding = res.getDimensionPixelSize(R.dimen.spacing_xs);
         btn.setPadding(horizontalPadding, 0, horizontalPadding, 0);
 
         GridLayout.LayoutParams params = new GridLayout.LayoutParams(
@@ -183,8 +183,8 @@ public class PrefSlotSectionController {
         params.width = 0;
         params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
         params.setGravity(Gravity.FILL_HORIZONTAL);
-        int horizontalMargin = dimenPx(R.dimen.task_editor_day_button_horizontal_margin);
-        int verticalMargin = dimenPx(R.dimen.task_editor_day_button_vertical_margin);
+        int horizontalMargin = res.getDimensionPixelSize(R.dimen.task_editor_day_button_horizontal_margin);
+        int verticalMargin = res.getDimensionPixelSize(R.dimen.task_editor_day_button_vertical_margin);
         params.setMargins(horizontalMargin, verticalMargin, horizontalMargin, verticalMargin);
         btn.setLayoutParams(params);
 
@@ -200,9 +200,5 @@ public class PrefSlotSectionController {
             prefSlot.start = LocalTime.of(h, m);
             rebuildPrefSlotUI();
         }, start.getHour(), start.getMinute(), /* is24HourView= */ true).show();
-    }
-
-    private int dimenPx(@DimenRes int dimenResId) {
-        return fragment.requireContext().getResources().getDimensionPixelSize(dimenResId);
     }
 }

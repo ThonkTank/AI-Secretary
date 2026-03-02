@@ -29,4 +29,8 @@
     <dimen name="text_sm">14sp</dimen>
     <dimen name="text_md">16sp</dimen>
     <dimen name="text_xl">18sp</dimen>
+
+    <!-- Editor input stroke widths (shared across all feature dialog inputs). -->
+    <dimen name="editor_input_stroke_width">1dp</dimen>
+    <dimen name="editor_input_stroke_width_focused">2dp</dimen>
 </resources>

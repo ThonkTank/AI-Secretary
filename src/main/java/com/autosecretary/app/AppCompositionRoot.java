@@ -255,7 +255,8 @@ public class AppCompositionRoot {
                     sharedExecutor,
                     importUseCase,
                     applyRecurringUseCase,
-                    createTransferUseCase
+                    createTransferUseCase,
+                    app.getResources()
             );
         }
         return budgetViewModelFactory;
@@ -265,7 +266,7 @@ public class AppCompositionRoot {
         return new LoadBudgetWidgetSummaryUseCase(getBudgetRoomRepository());
     }
 
-    private synchronized BudgetRoomRepository getBudgetRoomRepository() {
+    public synchronized BudgetRoomRepository getBudgetRoomRepository() {
         if (budgetRoomRepository == null) {
             AppDatabase db = AppDatabase.getInstance(app);
             budgetRoomRepository = new BudgetRoomRepository(

@@ -15,8 +15,9 @@ import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.app.MainActivity;
 import com.autosecretary.features.task.ui.list.TaskViewModel;
 import com.autosecretary.shared.WidgetConfiguration;
+import com.autosecretary.shared.ui.UiConstants;
 
-import com.autosecretary.shared.ui.DateFormatters;
+import com.autosecretary.shared.DateFormatters;
 
 import java.time.LocalDate;
 
@@ -39,11 +40,6 @@ import java.time.LocalDate;
 public class TaskWidgetProvider extends AppWidgetProvider {
     private static final String TAG = "TaskWidget";
 
-    // Widget update period is defined in WidgetConfiguration and configured in widget_task_info.xml.
-    // Both must be kept in sync.
-    @SuppressWarnings("unused")
-    private static final long WIDGET_UPDATE_PERIOD_MILLIS = WidgetConfiguration.WIDGET_UPDATE_PERIOD_MILLIS;
-
     static final String ACTION_TOGGLE = "com.autosecretary.widget.TOGGLE";
     private static final String ACTION_REFRESH = "com.autosecretary.widget.REFRESH";
     private static final String ACTION_PREV_DAY = "com.autosecretary.widget.PREV_DAY";
@@ -58,9 +54,6 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     private static final String PREFS_NAME = "widget_prefs";
     private static final String KEY_OFFSET = "selected_day_offset";
     private static final int MAX_OFFSET = TaskViewModel.MAX_DAY_OFFSET;
-
-    private static final float ALPHA_ENABLED = 1.0f;
-    private static final float ALPHA_DISABLED = 0.3f;
 
     /** Called by the system on widget refresh; builds RemoteViews and wires intents for each instance. */
     @Override
@@ -85,18 +78,11 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         }
 
         switch (action) {
-            case ACTION_PREV_DAY:
-                navigateDay(context, -1);
-                break;
-            case ACTION_NEXT_DAY:
-                navigateDay(context, 1);
-                break;
-            case ACTION_REFRESH:
-                notifyWidgetUpdate(context);
-                break;
-            case ACTION_TOGGLE:
-                handleToggle(context, intent);
-                break;
+            case ACTION_PREV_DAY -> navigateDay(context, -1);
+            case ACTION_NEXT_DAY -> navigateDay(context, 1);
+            case ACTION_REFRESH -> notifyWidgetUpdate(context);
+            case ACTION_TOGGLE -> handleToggle(context, intent);
+            default -> {}
         }
     }
 
@@ -113,8 +99,8 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.WidgetDateLabel, label);
 
         // Arrow states
-        views.setFloat(R.id.WidgetPrevDay, "setAlpha", isToday ? ALPHA_DISABLED : ALPHA_ENABLED);
-        views.setFloat(R.id.WidgetNextDay, "setAlpha", offset >= MAX_OFFSET ? ALPHA_DISABLED : ALPHA_ENABLED);
+        views.setFloat(R.id.WidgetPrevDay, "setAlpha", isToday ? UiConstants.ALPHA_DISABLED : UiConstants.ALPHA_ENABLED);
+        views.setFloat(R.id.WidgetNextDay, "setAlpha", offset >= MAX_OFFSET ? UiConstants.ALPHA_DISABLED : UiConstants.ALPHA_ENABLED);
 
         // Day navigation intents
         views.setOnClickPendingIntent(R.id.WidgetPrevDay,
@@ -197,14 +183,11 @@ public class TaskWidgetProvider extends AppWidgetProvider {
 
         // goAsync() extends the broadcast receiver's lifetime beyond the ~6-second Android timeout.
         // Without it, onReceive() returns and the process may be killed before the database
-        // mutation completes. A raw Thread is used here (not the shared executor) because:
-        // 1. BroadcastReceiver.onReceive() must complete quickly; queuing via executor could delay finish()
-        // 2. This is a common Android widget pattern for responsive UI updates
-        // TODO: Consider threading consistency with shared executor if widget latency becomes an issue.
+        // mutation completes.
         PendingResult result = goAsync();
-        new Thread(() -> {
+        AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
+        app.getAppCompositionRoot().getSharedExecutor().execute(() -> {
             try {
-                AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
                 app.getAppCompositionRoot().getTaskSlotToggleMutation()
                         .execute(taskId, slotId, () -> notifyWidgetUpdate(context), null);
             } catch (Exception e) {
@@ -212,7 +195,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
             } finally {
                 result.finish();
             }
-        }).start();
+        });
     }
 
     // --- Day offset persistence ---

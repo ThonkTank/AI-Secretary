@@ -29,12 +29,12 @@ import com.autosecretary.features.budget.ui.state.UiText;
 
 import com.autosecretary.R;
 
+import com.autosecretary.shared.DateFormatters;
+
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.function.LongConsumer;
 
@@ -67,9 +67,6 @@ import java.util.function.LongConsumer;
  */
 public class BudgetViewModel extends ViewModel {
 
-    private static final DateTimeFormatter MONTH_FORMATTER =
-            DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN);
-
     private final MutableLiveData<BudgetSummaryData> summaryData = new MutableLiveData<>();
     private final MutableLiveData<BudgetUiState> uiState = new MutableLiveData<>(BudgetUiState.LOADING);
     private final MutableLiveData<UiText> statusMessage = new MutableLiveData<>(UiText.raw(""));
@@ -89,7 +86,6 @@ public class BudgetViewModel extends ViewModel {
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
     private final CreateTransferUseCase createTransferUseCase;
     private final CalculateEffectiveBudgetLimitUseCase calculateEffectiveLimitUseCase;
-    private final BudgetSummaryPresentationMapper summaryPresentationMapper;
     private final BudgetSeedService budgetSeedService;
     private final BudgetOverviewLoader budgetOverviewLoader;
 
@@ -100,7 +96,6 @@ public class BudgetViewModel extends ViewModel {
                            CreateTransferUseCase createTransferUseCase,
                            CalculateEffectiveBudgetLimitUseCase calculateEffectiveLimitUseCase,
                            BudgetOverviewLoader budgetOverviewLoader,
-                           BudgetSummaryPresentationMapper summaryPresentationMapper,
                            BudgetSeedService budgetSeedService) {
         this.repository = repository;
         this.executor = executor;
@@ -108,7 +103,6 @@ public class BudgetViewModel extends ViewModel {
         this.applyRecurringUseCase = applyRecurringUseCase;
         this.createTransferUseCase = createTransferUseCase;
         this.calculateEffectiveLimitUseCase = calculateEffectiveLimitUseCase;
-        this.summaryPresentationMapper = summaryPresentationMapper;
         this.budgetSeedService = budgetSeedService;
         this.budgetOverviewLoader = budgetOverviewLoader;
         ensureDefaultData();
@@ -169,7 +163,7 @@ public class BudgetViewModel extends ViewModel {
     }
 
     public String formatMonth(YearMonth month) {
-        return month.format(MONTH_FORMATTER);
+        return month.format(DateFormatters.MONTH_LABEL);
     }
 
     public void loadOverview() {
@@ -365,7 +359,7 @@ public class BudgetViewModel extends ViewModel {
         String yearMonthStr = month.toString();
 
         List<CategorySpendSummary> totals = repository.getCategorySpendTotals(yearMonthStr);
-        List<BudgetLimitBar> bars = summaryPresentationMapper.toLimitBars(
+        List<BudgetLimitBar> bars = BudgetSummaryPresentationMapper.toLimitBars(
                 totals,
                 (catId, ym) -> calculateEffectiveLimitUseCase.execute(catId, ym).effectiveLimitCents(),
                 yearMonthStr

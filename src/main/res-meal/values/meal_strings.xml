@@ -58,7 +58,12 @@
 
     <!-- Empty state messages -->
     <string name="meal_empty_week">Noch keine Mahlzeiten geplant.\nTippe auf „+ Rezept planen" um loszulegen.</string>
+    <string name="meal_empty_week_title">Noch keine Mahlzeiten geplant</string>
+    <string name="meal_empty_week_subtitle">Tippe auf „+ Rezept planen" um loszulegen.</string>
     <string name="meal_empty_pantry">Noch keine Vorräte eingetragen.</string>
+    <string name="meal_empty_recipes">Noch keine Rezepte vorhanden.</string>
+    <string name="meal_empty_recipes_title">Noch keine Rezepte</string>
+    <string name="meal_empty_recipes_subtitle">Rezepte werden beim ersten Planen angelegt.</string>
     <string name="meal_empty_shopping">Keine Einkäufe für heute.</string>
 
     <!-- Success confirmation messages -->
@@ -72,21 +77,20 @@
     <string name="meal_pantry_row_format">%1$s \u00B7 %2$s \u00B7 %3$s</string>
     <string name="meal_shopping_row_format">%1$s \u00B7 %2$s</string>
 
+    <!-- Composite row content description for screen readers -->
+    <string name="meal_plan_row_content_description">%1$s (%2$s), %3$s, %4$d Portionen</string>
+
     <!-- Field labels for validation error messages (used in requireNonEmpty/safeParse calls) -->
-    <string name="meal_field_date">ein Datum</string>
-    <string name="meal_field_servings_count">die Anzahl der Portionen</string>
+    <string name="meal_field_date">Datum</string>
+    <string name="meal_field_servings_count">Portionsanzahl</string>
     <string name="meal_field_servings">Portionen</string>
-    <string name="meal_field_ingredient_name">einen Zutatennamen</string>
-    <string name="meal_field_amount">eine Menge</string>
+    <string name="meal_field_ingredient_name">Zutatenname</string>
+    <string name="meal_field_amount">Menge</string>
     <string name="meal_field_amount_label">Menge</string>
-    <string name="meal_field_unit">eine Einheit</string>
-    <string name="meal_field_shelf_life">die Haltbarkeitsdauer</string>
+    <string name="meal_field_unit">Einheit</string>
+    <string name="meal_field_shelf_life">Haltbarkeitsdauer</string>
     <string name="meal_field_shelf_life_label">Haltbarkeitsdauer</string>
 
-    <!-- Validation error messages -->
-    <string name="meal_error_field_required">%s ist erforderlich</string>
-    <string name="meal_error_invalid_date">Ungültiges Datum. Format: YYYY-MM-DD</string>
-    <string name="meal_error_invalid_number">%s muss eine Zahl sein</string>
     <string name="meal_error_negative_number">%s darf nicht negativ sein</string>
     <string name="meal_error_no_recipes">Keine Rezepte verfügbar. Bitte erstellen Sie zuerst ein Rezept.</string>
 </resources>

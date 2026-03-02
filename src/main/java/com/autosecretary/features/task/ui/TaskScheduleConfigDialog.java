@@ -21,7 +21,7 @@ import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
 import com.autosecretary.features.task.data.TaskScheduleConfig;
-import com.autosecretary.shared.ui.DateFormatters;
+import com.autosecretary.shared.DateFormatters;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
@@ -74,8 +74,8 @@ public class TaskScheduleConfigDialog extends DialogFragment {
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.task_schedule_dialog_title)
                 .setView(root)
-                .setPositiveButton(R.string.task_schedule_dialog_save, null)
-                .setNegativeButton(R.string.task_schedule_dialog_cancel, null)
+                .setPositiveButton(R.string.action_save, null)
+                .setNegativeButton(R.string.action_cancel, null)
                 .create();
 
         loadConfigs();
@@ -122,17 +122,18 @@ public class TaskScheduleConfigDialog extends DialogFragment {
             Button startButton = row.findViewById(R.id.ScheduleStartButton);
             Button endButton = row.findViewById(R.id.ScheduleEndButton);
 
-            dayLabel.setText(day.getDisplayName(TextStyle.FULL, Locale.GERMAN));
-            startButton.setText(rowConfig.startTime.format(DateFormatters.TIME_HH_MM));
-            endButton.setText(rowConfig.endTime.format(DateFormatters.TIME_HH_MM));
+            String dayName = day.getDisplayName(TextStyle.FULL, Locale.GERMAN);
+            dayLabel.setText(dayName);
+            updateTimeButton(startButton, rowConfig.startTime, dayName, true);
+            updateTimeButton(endButton, rowConfig.endTime, dayName, false);
 
             startButton.setOnClickListener(v -> showTimePicker(rowConfig.startTime, picked -> {
                 rowConfig.startTime = picked;
-                startButton.setText(picked.format(DateFormatters.TIME_HH_MM));
+                updateTimeButton(startButton, picked, dayName, true);
             }));
             endButton.setOnClickListener(v -> showTimePicker(rowConfig.endTime, picked -> {
                 rowConfig.endTime = picked;
-                endButton.setText(picked.format(DateFormatters.TIME_HH_MM));
+                updateTimeButton(endButton, picked, dayName, false);
             }));
 
             container.addView(row);
@@ -163,6 +164,14 @@ public class TaskScheduleConfigDialog extends DialogFragment {
                 dismiss();
             });
         });
+    }
+
+    private void updateTimeButton(Button button, LocalTime time, String dayName, boolean isStart) {
+        String formatted = time.format(DateFormatters.TIME_HH_MM);
+        button.setText(formatted);
+        button.setContentDescription(getString(
+                isStart ? R.string.task_schedule_start_desc : R.string.task_schedule_end_desc,
+                dayName, formatted));
     }
 
     private void showTimePicker(LocalTime initial, Consumer<LocalTime> callback) {

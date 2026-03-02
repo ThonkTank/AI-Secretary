@@ -15,7 +15,6 @@ Implementation helpers for `BudgetFragment` and `BudgetViewModel`. Nothing in th
 | `BudgetRecurringSuggestionsDialogController` | Manages the post-import dialog that lists detected recurring-payment patterns and lets the user select which to save as templates. |
 | `BudgetImportPickerController` | Wraps the system file picker (`OpenDocument`) for CSV/PDF import. Must be registered in `Fragment.onCreate()`. |
 | `CurrencyFormatter` | Static utility: formats cent amounts as Euro strings in various signed/unsigned styles (German locale). |
-| `SpinnerHelper` | Static utility: binds typed lists to `Spinner` widgets and reads back selections without boilerplate `ArrayAdapter` code. |
 
 ## Dialog controller pattern
 

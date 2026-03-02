@@ -3,12 +3,14 @@ package com.autosecretary.features.meal.ui.internal;
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.EditText;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
+import com.autosecretary.shared.ui.DialogHelper;
+import com.autosecretary.shared.ui.DialogValidation;
+import com.google.android.material.textfield.TextInputEditText;
 
 /**
  * Manages the "add shopping need" dialog. Validates ingredient name, amount, and unit,
@@ -31,9 +33,9 @@ public class MealNeedDialogController {
     public void show() {
         Context ctx = fragment.requireContext();
         View content = LayoutInflater.from(ctx).inflate(R.layout.meal_need_create_dialog, null);
-        EditText nameField = content.findViewById(R.id.MealNeedName);
-        EditText amountField = content.findViewById(R.id.MealNeedAmount);
-        EditText unitField = content.findViewById(R.id.MealNeedUnit);
+        TextInputEditText nameField = content.findViewById(R.id.MealNeedName);
+        TextInputEditText amountField = content.findViewById(R.id.MealNeedAmount);
+        TextInputEditText unitField = content.findViewById(R.id.MealNeedUnit);
 
         AlertDialog dialog = new AlertDialog.Builder(ctx)
                 .setTitle(R.string.meal_need_dialog_title)
@@ -41,22 +43,24 @@ public class MealNeedDialogController {
                 .setNegativeButton(R.string.action_cancel, null)
                 .setPositiveButton(R.string.meal_need_dialog_save, null)
                 .create();
-        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String ingredientName = MealDialogValidation.requireNonEmpty(nameField,
+        DialogHelper.showWithValidation(dialog, () -> {
+            String ingredientName = DialogValidation.requireNonEmpty(nameField,
                     ctx.getString(R.string.meal_field_ingredient_name), ctx);
             if (ingredientName == null) return;
-            String amountStr = MealDialogValidation.requireNonEmpty(amountField,
-                    ctx.getString(R.string.meal_field_amount), ctx);
-            if (amountStr == null) return;
-            Double amount = MealDialogValidation.parseDouble(amountField,
+            Double amount = DialogValidation.parseDouble(amountField,
                     ctx.getString(R.string.meal_field_amount_label), ctx);
-            if (amount == null || amount < 0) return;
-            String unitStr = MealDialogValidation.requireNonEmpty(unitField,
+            if (amount == null) return;
+            if (amount < 0) {
+                amountField.setError(ctx.getString(R.string.meal_error_negative_number,
+                        ctx.getString(R.string.meal_field_amount_label)));
+                amountField.requestFocus();
+                return;
+            }
+            String unitStr = DialogValidation.requireNonEmpty(unitField,
                     ctx.getString(R.string.meal_field_unit), ctx);
             if (unitStr == null) return;
             listener.onNeedSubmitted(ingredientName, amount, unitStr);
             dialog.dismiss();
-        }));
-        dialog.show();
+        });
     }
 }

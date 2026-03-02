@@ -28,7 +28,7 @@
     <color name="color_on_surface">#FF2F3A2C</color>
     <color name="color_on_surface_variant">#FF5F6C58</color>
     <color name="color_on_surface_emphasis">#FF3F4D3A</color>
-    <color name="color_on_surface_muted">#FF7E8878</color>
+    <color name="color_on_surface_muted">#FF5F6858</color>
     <color name="color_outline">#FFC5BFAF</color>
 
     <color name="color_primary">#FF5C7A4D</color>
@@ -39,6 +39,8 @@
     <color name="color_primary_disabled_25">#405C7A4D</color>
     <color name="color_secondary">#FF8DAA8C</color>
     <color name="color_accent">#FFCF8F4F</color>
+    <color name="color_negative">#FFB4543A</color>
+    <color name="color_tertiary">#FF7A4DA8</color>
 
     <!-- Opacity/transparency variants for UI elements -->
     <color name="color_on_primary_light">#4DF8F6EE</color>

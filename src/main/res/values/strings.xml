@@ -15,6 +15,11 @@
     <string name="action_delete">Löschen</string>
     <string name="hint_date_yyyy_mm_dd">Datum (YYYY-MM-DD)</string>
 
+    <!-- Shared validation error messages used by DialogValidation across all features. -->
+    <string name="error_field_required">%s ist erforderlich</string>
+    <string name="error_invalid_date">Ungültiges Datum. Format: YYYY-MM-DD</string>
+    <string name="error_invalid_number">%s muss eine Zahl sein</string>
+
     <string name="settings_title">Einstellungen</string>
     <string name="settings_option_restore_backup">Backup wiederherstellen</string>
     <string name="settings_option_manual_backup">Manuelles Backup erstellen</string>

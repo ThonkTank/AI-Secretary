@@ -23,6 +23,9 @@
             android:id="@+id/WidgetPrevDay"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minWidth="@dimen/touch_target_min"
+            android:minHeight="@dimen/touch_target_min"
+            android:gravity="center"
             android:padding="@dimen/spacing_sm"
             android:text="@string/task_list_day_nav_prev"
             android:contentDescription="@string/task_list_day_nav_prev_desc"
@@ -41,25 +44,19 @@
             android:id="@+id/WidgetNextDay"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minWidth="@dimen/touch_target_min"
+            android:minHeight="@dimen/touch_target_min"
+            android:gravity="center"
             android:padding="@dimen/spacing_sm"
             android:text="@string/task_list_day_nav_next"
             android:contentDescription="@string/task_list_day_nav_next_desc"
             android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Widget.NavAction" />
-    </LinearLayout>
-
-    <!-- Action bar: add + refresh -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="end"
-        android:paddingBottom="@dimen/spacing_xs">
 
         <ImageButton
             android:id="@+id/WidgetAdd"
-            android:layout_width="@dimen/touch_target_min"
-            android:layout_height="@dimen/touch_target_min"
-            android:layout_marginEnd="@dimen/spacing_xs"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
             android:src="@drawable/ic_add_24"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/task_widget_add_content_description"
@@ -67,8 +64,9 @@
 
         <ImageButton
             android:id="@+id/WidgetRefresh"
-            android:layout_width="@dimen/touch_target_min"
-            android:layout_height="@dimen/touch_target_min"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
             android:src="@drawable/ic_refresh_24"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/task_widget_refresh_content_description"

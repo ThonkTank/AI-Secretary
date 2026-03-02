@@ -4,17 +4,20 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Spinner;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
 import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.domain.AmountParser;
+import com.autosecretary.shared.ui.DialogHelper;
+import com.autosecretary.shared.ui.DialogValidation;
 import com.autosecretary.shared.ui.SpinnerHelper;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /**
@@ -66,17 +69,16 @@ public class BudgetTransferDialogController {
         targetAccountSpinner.setSelection(1); // Default target to second account so source ≠ target.
 
         dateInput.setText(LocalDate.now().toString());
+        DialogHelper.setupDatePicker(dateInput, ctx);
 
         AlertDialog dialog = new AlertDialog.Builder(ctx)
                 .setTitle(R.string.budget_transfer_title)
                 .setView(dialogView)
                 .setPositiveButton(R.string.budget_transfer_save, null)
-                .setNegativeButton(R.string.budget_dialog_cancel, null)
+                .setNegativeButton(R.string.action_cancel, null)
                 .create();
 
-        // setOnShowListener + null in setPositiveButton: standard pattern to prevent the
-        // AlertDialog from auto-dismissing before date validation has a chance to show an error.
-        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+        DialogHelper.showWithValidation(dialog, () -> {
             int sourceIdx = sourceAccountSpinner.getSelectedItemPosition();
             int targetIdx = targetAccountSpinner.getSelectedItemPosition();
             if (sourceIdx < 0 || sourceIdx >= accounts.size()
@@ -84,35 +86,31 @@ public class BudgetTransferDialogController {
                 return;
             }
             if (sourceIdx == targetIdx) {
-                new AlertDialog.Builder(ctx)
-                        .setMessage(R.string.budget_transfer_same_account)
-                        .setPositiveButton(R.string.action_ok, null)
-                        .show();
+                Toast.makeText(ctx, R.string.budget_transfer_same_account, Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            String dateStr = SpinnerHelper.textOf(dateInput);
-            LocalDate bookingDate;
-            try {
-                bookingDate = LocalDate.parse(dateStr);
-            } catch (DateTimeParseException ex) {
-                dateInput.setError(fragment.getString(R.string.budget_transfer_invalid_date));
+            LocalDate bookingDate = DialogValidation.parseDate(dateInput, ctx);
+            if (bookingDate == null) return;
+
+            String amountStr = DialogValidation.requireNonEmpty(amountInput,
+                    ctx.getString(R.string.budget_dialog_amount_label), ctx);
+            if (amountStr == null) return;
+            if (AmountParser.parseAmountCents(amountStr) == null) {
+                amountInput.setError(ctx.getString(R.string.budget_status_invalid_amount));
+                amountInput.requestFocus();
                 return;
             }
-
-            String amountStr = SpinnerHelper.textOf(amountInput);
-            String note = SpinnerHelper.textOf(noteInput);
+            String note = DialogValidation.textOfNullable(noteInput);
             listener.onTransferSubmitted(
                     accounts.get(sourceIdx).id,
                     accounts.get(targetIdx).id,
                     amountStr,
                     bookingDate,
-                    note.isEmpty() ? null : note
+                    note
             );
             dialog.dismiss();
-        }));
-
-        dialog.show();
+        });
     }
 
 }

@@ -1,5 +1,6 @@
 package com.autosecretary.features.budget.ui.internal;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -13,6 +14,10 @@ import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
 import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.domain.AmountParser;
+import com.autosecretary.shared.ui.DialogHelper;
+import com.autosecretary.shared.ui.DialogValidation;
+import com.autosecretary.shared.ui.SimpleButtonCheckedListener;
 import com.autosecretary.shared.ui.SpinnerHelper;
 import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
 import com.autosecretary.features.budget.domain.TransactionDirection;
@@ -20,9 +25,8 @@ import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Locale;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -61,19 +65,16 @@ public class BudgetTransactionDialogController {
     }
 
     public void showDeleteConfirmation(BudgetTransactionRow row) {
-        new AlertDialog.Builder(fragment.requireContext())
-                .setTitle(R.string.budget_delete_title)
-                .setMessage(R.string.budget_delete_message)
-                .setPositiveButton(R.string.budget_delete_confirm, (dialog, which) ->
-                        listener.onDeleteTransaction(row.getTransactionId()))
-                .setNegativeButton(R.string.budget_dialog_cancel, null)
-                .show();
+        DialogHelper.showDeleteConfirmation(fragment.requireContext(),
+                R.string.budget_delete_title, R.string.budget_delete_message,
+                () -> listener.onDeleteTransaction(row.transactionId()));
     }
 
     private void show(@Nullable BudgetTransactionRow existingRow,
                       List<BudgetCategoryEntity> allCategories,
                       List<BudgetAccountEntity> allAccounts) {
-        View dialogView = LayoutInflater.from(fragment.requireContext())
+        Context ctx = fragment.requireContext();
+        View dialogView = LayoutInflater.from(ctx)
                 .inflate(R.layout.budget_add_transaction_dialog, null);
         TextInputEditText amountInput = dialogView.findViewById(R.id.BudgetDialogAmount);
         MaterialButtonToggleGroup typeGroup = dialogView.findViewById(R.id.BudgetDialogTypeGroup);
@@ -82,39 +83,43 @@ public class BudgetTransactionDialogController {
         TextInputEditText dateInput = dialogView.findViewById(R.id.BudgetDialogDate);
         Spinner accountSpinner = dialogView.findViewById(R.id.BudgetDialogAccount);
 
-        boolean isExpense = existingRow == null || existingRow.isExpense();
-        SpinnerHelper.bindList(categorySpinner, categoriesForType(allCategories, isExpense),
-                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name),
-                fragment.requireContext());
-        SpinnerHelper.bindList(accountSpinner, activeAccounts(allAccounts),
-                a -> a.name, fragment.requireContext());
+        List<BudgetCategoryEntity> expenseCategories = BudgetSummaryPresentationMapper
+                .categoriesForDirection(allCategories, TransactionDirection.EXPENSE);
+        List<BudgetCategoryEntity> incomeCategories = BudgetSummaryPresentationMapper
+                .categoriesForDirection(allCategories, TransactionDirection.INCOME);
+        List<BudgetAccountEntity> accounts = activeAccounts(allAccounts);
 
-        typeGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked) return;
-            SpinnerHelper.bindList(categorySpinner,
-                    categoriesForType(allCategories, checkedId == R.id.BudgetDialogTypeExpense),
-                    c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name),
-                    fragment.requireContext());
+        boolean isExpense = existingRow == null || existingRow.isExpense();
+        SpinnerHelper.bindList(categorySpinner, isExpense ? expenseCategories : incomeCategories,
+                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name), ctx);
+        SpinnerHelper.bindList(accountSpinner, accounts, a -> a.name, ctx);
+
+        typeGroup.addOnButtonCheckedListener(new SimpleButtonCheckedListener() {
+            @Override
+            public void onChecked(MaterialButtonToggleGroup group, int checkedId) {
+                SpinnerHelper.bindList(categorySpinner,
+                        checkedId == R.id.BudgetDialogTypeExpense ? expenseCategories : incomeCategories,
+                        c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name), ctx);
+            }
         });
 
-        LocalDate selectedDate = existingRow != null && existingRow.getBookingDate() != null
-                ? existingRow.getBookingDate() : LocalDate.now();
+        LocalDate selectedDate = existingRow != null && existingRow.bookingDate() != null
+                ? existingRow.bookingDate() : LocalDate.now();
 
         if (existingRow != null) {
-            amountInput.setText(String.format(Locale.GERMAN, "%.2f",
-                    Math.abs(existingRow.getAmountCents()) / 100.0));
-            String existingNote = existingRow.getNote();
-            noteInput.setText(existingNote != null ? existingNote : "");
+            amountInput.setText(CurrencyFormatter.centsToDecimal(existingRow.amountCents()));
+            noteInput.setText(Objects.toString(existingRow.note(), ""));
             typeGroup.check(existingRow.isExpense()
                     ? R.id.BudgetDialogTypeExpense : R.id.BudgetDialogTypeIncome);
             SpinnerHelper.setSelection(categorySpinner,
-                    categoriesForType(allCategories, existingRow.isExpense()),
-                    existingRow.getCategoryId(), c -> c.id);
-            SpinnerHelper.setSelection(accountSpinner, activeAccounts(allAccounts),
-                    existingRow.getAccountId(), a -> a.id);
+                    existingRow.isExpense() ? expenseCategories : incomeCategories,
+                    existingRow.categoryId(), c -> c.id);
+            SpinnerHelper.setSelection(accountSpinner, accounts,
+                    existingRow.accountId(), a -> a.id);
         }
 
         dateInput.setText(selectedDate.toString());
+        DialogHelper.setupDatePicker(dateInput, ctx);
 
         int titleRes = existingRow == null
                 ? R.string.budget_dialog_title
@@ -123,71 +128,58 @@ public class BudgetTransactionDialogController {
                 ? R.string.budget_dialog_save
                 : R.string.budget_dialog_update;
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(fragment.requireContext())
+        AlertDialog.Builder builder = new AlertDialog.Builder(ctx)
                 .setTitle(titleRes)
                 .setView(dialogView)
                 .setPositiveButton(positiveRes, null)
-                .setNegativeButton(R.string.budget_dialog_cancel, null);
+                .setNegativeButton(R.string.action_cancel, null);
         if (existingRow != null) {
             // Expose delete as a neutral button so users don't need to know about long-press.
-            builder.setNeutralButton(R.string.budget_delete_confirm, null);
+            builder.setNeutralButton(R.string.action_delete, null);
         }
         AlertDialog dialog = builder.create();
 
-        // setOnShowListener + null in setPositiveButton: standard pattern to prevent the
-        // AlertDialog from auto-dismissing before date validation has a chance to show an error.
-        dialog.setOnShowListener(d -> {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                String dateStr = SpinnerHelper.textOf(dateInput);
-                LocalDate bookingDate;
-                try {
-                    bookingDate = LocalDate.parse(dateStr);
-                } catch (DateTimeParseException ex) {
-                    dateInput.setError(fragment.getString(R.string.budget_invalid_date));
-                    return;
-                }
+        DialogHelper.showWithValidation(dialog, () -> {
+            LocalDate bookingDate = DialogValidation.parseDate(dateInput, ctx);
+            if (bookingDate == null) return;
 
-                String amountStr = SpinnerHelper.textOf(amountInput);
-                boolean selectedExpense = typeGroup.getCheckedButtonId() == R.id.BudgetDialogTypeExpense;
-                String note = SpinnerHelper.textOf(noteInput);
-                String categoryId = SpinnerHelper.idAtPosition(
-                        categoriesForType(allCategories, selectedExpense),
-                        categorySpinner.getSelectedItemPosition(), c -> c.id);
-                String accountId = SpinnerHelper.idAtPosition(
-                        activeAccounts(allAccounts),
-                        accountSpinner.getSelectedItemPosition(), a -> a.id);
-
-                if (accountId == null) return;
-
-                if (existingRow == null) {
-                    listener.onAddTransaction(amountStr, selectedExpense, categoryId,
-                            note.isEmpty() ? null : note, bookingDate, accountId);
-                } else {
-                    listener.onUpdateTransaction(existingRow.getTransactionId(), amountStr,
-                            selectedExpense, categoryId, note.isEmpty() ? null : note,
-                            bookingDate, accountId);
-                }
-                dialog.dismiss();
-            });
-
-            if (existingRow != null) {
-                Button deleteButton = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
-                if (deleteButton != null) {
-                    deleteButton.setOnClickListener(v -> {
-                        dialog.dismiss();
-                        showDeleteConfirmation(existingRow);
-                    });
-                }
+            String amountStr = DialogValidation.requireNonEmpty(amountInput,
+                    ctx.getString(R.string.budget_dialog_amount_label), ctx);
+            if (amountStr == null) return;
+            if (AmountParser.parseAmountCents(amountStr) == null) {
+                amountInput.setError(ctx.getString(R.string.budget_status_invalid_amount));
+                amountInput.requestFocus();
+                return;
             }
-        });
+            boolean selectedExpense = typeGroup.getCheckedButtonId() == R.id.BudgetDialogTypeExpense;
+            String note = DialogValidation.textOfNullable(noteInput);
+            String categoryId = SpinnerHelper.idAtPosition(
+                    selectedExpense ? expenseCategories : incomeCategories,
+                    categorySpinner.getSelectedItemPosition(), c -> c.id);
+            String accountId = SpinnerHelper.idAtPosition(
+                    accounts,
+                    accountSpinner.getSelectedItemPosition(), a -> a.id);
 
-        dialog.show();
-    }
+            if (accountId == null) return;
 
-    private static List<BudgetCategoryEntity> categoriesForType(List<BudgetCategoryEntity> allCategories,
-                                                          boolean isExpense) {
-        TransactionDirection dir = isExpense ? TransactionDirection.EXPENSE : TransactionDirection.INCOME;
-        return allCategories.stream().filter(c -> c.direction == dir).collect(Collectors.toList());
+            if (existingRow == null) {
+                listener.onAddTransaction(amountStr, selectedExpense, categoryId,
+                        note, bookingDate, accountId);
+            } else {
+                listener.onUpdateTransaction(existingRow.transactionId(), amountStr,
+                        selectedExpense, categoryId, note,
+                        bookingDate, accountId);
+            }
+            dialog.dismiss();
+        }, existingRow != null ? dlg -> {
+            Button deleteButton = dlg.getButton(AlertDialog.BUTTON_NEUTRAL);
+            if (deleteButton != null) {
+                deleteButton.setOnClickListener(v -> {
+                    dlg.dismiss();
+                    showDeleteConfirmation(existingRow);
+                });
+            }
+        } : null);
     }
 
     private static List<BudgetAccountEntity> activeAccounts(List<BudgetAccountEntity> accounts) {

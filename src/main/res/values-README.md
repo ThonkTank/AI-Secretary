@@ -10,10 +10,9 @@ String, color, dimension, and style definitions used throughout the app.
 | `task_strings.xml` | Task feature | Edit dialogs, row actions, timer, deadline/streak labels, validation |
 | `budget_strings.xml` | Budget feature | Transaction dialogs, import/export, recurring patterns, chart, widget |
 | `meal_strings.xml` | Meal feature | Tabs, plan/recipe/stock labels, dialog titles, input hints, validation |
-| `colors.xml` | App-wide | Launcher icon colors, transparency constant |
-| `task_colors.xml` | Task feature | Nature-inspired palette, Material tokens, urgency/streak/widget colors |
+| `colors.xml` | App-wide | Shared palette (primary, surface, outline), launcher icon colors |
+| `task_colors.xml` | Task feature | Task-specific semantic colors (urgency, streak, progress, widget) |
 | `budget_colors.xml` | Budget feature | Semantic status colors, chart colors, widget colors |
-| `meal_colors.xml` | Meal feature | Surface overlay tint for meal row backgrounds |
 | `dimens.xml` | App-wide | Spacing scale (xxs–xl) and text scale (xs–xl) |
 | `task_dimens.xml` | Task feature | Editor, row, widget, corner radius dimensions |
 | `budget_dimens.xml` | Budget feature | Card, divider, limit bar, chart dimensions |

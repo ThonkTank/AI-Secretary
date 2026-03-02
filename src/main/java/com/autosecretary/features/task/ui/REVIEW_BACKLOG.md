@@ -2,16 +2,18 @@
 
 ## Open Issues
 
-### [inconsistent] Duplicate `TIME_FORMATTER` constants across 4 classes @skill:review-conventions
+### ~~[inconsistent] Duplicate `TIME_FORMATTER` ("HH:mm") across 4 classes @skill:review-conventions~~ — RESOLVED
+
+Resolved: All time/date formatters consolidated into `shared/DateFormatters.java`.
 
 Four classes define identical `DateTimeFormatter.ofPattern("HH:mm")` as private static constants:
 
-- `ListRowAdapter.TIME_FORMATTER` — `task/ui/list/ListRowAdapter.java:45`
-- `TaskWidgetFactory.TIME_FORMATTER` — `task/ui/widget/TaskWidgetFactory.java:29`
-- `TaskScheduleConfigDialog.TIME_FORMATTER` — `task/ui/TaskScheduleConfigDialog.java:52` (adds `Locale.GERMAN`, no behavioral difference for `HH:mm`)
-- `PrefSlotUIBuilder.TIME_FORMATTER` — `task/ui/edit/internal/editor/PrefSlotUIBuilder.java:36`
+- `ListRowAdapter.TIME_FORMATTER` — `task/ui/list/ListRowAdapter.java`
+- `TaskWidgetFactory.TIME_FORMATTER` — `task/ui/widget/TaskWidgetFactory.java`
+- `TaskScheduleConfigDialog.TIME_FORMATTER` — `task/ui/TaskScheduleConfigDialog.java`
+- `PrefSlotUIBuilder.TIME_FORMATTER` — `task/ui/edit/internal/editor/PrefSlotUIBuilder.java`
 
-**Canonical recommendation:** Extract a single shared `TIME_FORMATTER` constant. However, the project convention (CLAUDE.md) discourages adding new shared utility classes. Consider placing it on an existing shared class if one becomes available, or accept the duplication as the cost of avoiding a new file.
+**Note:** Date formatters (`DATE_FULL_GERMAN`, `DATE_SHORT`, `MONTH_LABEL`, `CHART_DAILY`, `CHART_MONTHLY`) have been consolidated into `shared/DateFormatters.java`. The time formatter could be added there as well.
 
 **Impact:** 4 files, cosmetic only — no behavioral difference.
 

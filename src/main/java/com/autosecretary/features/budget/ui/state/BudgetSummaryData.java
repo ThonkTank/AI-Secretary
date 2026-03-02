@@ -15,31 +15,9 @@ package com.autosecretary.features.budget.ui.state;
  * {@code BudgetAccountEntity.currentBalanceCents} and may be positive (surplus)
  * or negative (overdraft). See {@code BudgetOverviewLoader.computeSummary()}.
  */
-public class BudgetSummaryData {
-    private final long incomeCents;
-    private final long expenseCents;
-    /** Account running balance in cents; positive = surplus, negative = overdraft. */
-    private final long freeBudgetCents;
+public record BudgetSummaryData(long incomeCents, long expenseCents, long freeBudgetCents) {
 
-    public BudgetSummaryData(long incomeCents, long expenseCents, long freeBudgetCents) {
-        this.incomeCents = incomeCents;
-        this.expenseCents = expenseCents;
-        this.freeBudgetCents = freeBudgetCents;
-    }
-
-    public long getIncomeCents() {
-        return incomeCents;
-    }
-
-    public long getExpenseCents() {
-        return expenseCents;
-    }
-
-    public long getNetCents() {
+    public long netCents() {
         return incomeCents - expenseCents;
-    }
-
-    public long getFreeBudgetCents() {
-        return freeBudgetCents;
     }
 }

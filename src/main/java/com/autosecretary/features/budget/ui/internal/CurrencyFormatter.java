@@ -3,22 +3,12 @@ package com.autosecretary.features.budget.ui.internal;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
 import java.util.Locale;
-import java.util.regex.Pattern;
 
 /**
- * Formats cent amounts as Euro strings and validates display-related values for the budget UI.
+ * Formats cent amounts as Euro strings for the budget UI.
  */
 public final class CurrencyFormatter {
     private CurrencyFormatter() {}
-
-    private static final Pattern COLOR_HEX_PATTERN =
-            Pattern.compile("^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$");
-
-    /** Returns {@code true} if {@code colorHex} is a valid 6- or 8-digit hex color string (e.g. {@code "#FF7043"}). */
-    public static boolean isValidColorHex(String colorHex) {
-        if (colorHex == null) return false;
-        return COLOR_HEX_PATTERN.matcher(colorHex).matches();
-    }
 
     /**
      * Formats a cent value as a plain Euro amount without sign, e.g. {@code "12 €"}.
@@ -63,5 +53,13 @@ public final class CurrencyFormatter {
      */
     public static String eurosMagnitude(long amountCents) {
         return String.format(Locale.GERMAN, "%.2f €", Math.abs(amountCents) / 100.0);
+    }
+
+    /**
+     * Formats cents as a plain decimal for pre-populating input fields, e.g. {@code "150,00"}.
+     * No currency symbol, no sign — just the absolute numeric value in German locale.
+     */
+    public static String centsToDecimal(long cents) {
+        return String.format(Locale.GERMAN, "%.2f", Math.abs(cents) / 100.0);
     }
 }

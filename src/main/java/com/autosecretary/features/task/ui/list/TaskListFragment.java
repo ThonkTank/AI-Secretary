@@ -4,7 +4,9 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.text.Editable;
-import android.text.TextWatcher;
+
+import com.autosecretary.shared.ui.SimpleButtonCheckedListener;
+import com.autosecretary.shared.ui.SimpleTextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,12 +28,13 @@ import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.task.ui.edit.TaskEditDialog;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
+import com.autosecretary.shared.ui.UiConstants;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 
-import com.autosecretary.shared.ui.DateFormatters;
+import com.autosecretary.shared.DateFormatters;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -55,9 +58,6 @@ public class TaskListFragment extends Fragment {
      * the view is created. Used by the home screen widget's "new task" shortcut.
      */
     public static final String ARG_OPEN_CREATE_TASK = "open_create_task";
-
-    private static final float ALPHA_NAV_ENABLED = 1.0f;
-    private static final float ALPHA_NAV_DISABLED = 0.3f;
 
     private TaskViewModel vm;
     /** Set to true when ARG_OPEN_CREATE_TASK is present; consumed once on first view creation. */
@@ -109,7 +109,9 @@ public class TaskListFragment extends Fragment {
         ensureCalendarPermission();
 
         RecyclerView recyclerView = view.findViewById(R.id.TaskList);
-        View emptyStateContainer = view.findViewById(R.id.EmptyStateContainer);
+        View emptyStateContainer = view.findViewById(R.id.TaskEmptyState);
+        ((TextView) view.findViewById(R.id.EmptyStateTitle)).setText(R.string.task_list_empty_title);
+        ((TextView) view.findViewById(R.id.EmptyStateSubtitle)).setText(R.string.task_list_empty_subtitle);
         TextInputLayout taskSearchLayout = view.findViewById(R.id.TaskSearchLayout);
         TextInputEditText taskSearchInput = view.findViewById(R.id.TaskSearchInput);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -142,18 +144,10 @@ public class TaskListFragment extends Fragment {
             }
         });
 
-        taskSearchInput.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                vm.setSearchQuery(s == null ? "" : s.toString());
-            }
-
+        taskSearchInput.addTextChangedListener(new SimpleTextWatcher() {
             @Override
             public void afterTextChanged(Editable s) {
+                vm.setSearchQuery(s == null ? "" : s.toString());
             }
         });
 
@@ -181,11 +175,11 @@ public class TaskListFragment extends Fragment {
             dayNavLabel.setText(isToday ? getString(R.string.task_list_day_nav_today) : day.format(DateFormatters.DAY_NAV_LABEL));
 
             dayNavPrev.setEnabled(!isToday);
-            dayNavPrev.setAlpha(isToday ? ALPHA_NAV_DISABLED : ALPHA_NAV_ENABLED);
+            dayNavPrev.setAlpha(isToday ? UiConstants.ALPHA_DISABLED : UiConstants.ALPHA_ENABLED);
 
             boolean canGoForward = day.isBefore(LocalDate.now().plusDays(TaskViewModel.MAX_DAY_OFFSET));
             dayNavNext.setEnabled(canGoForward);
-            dayNavNext.setAlpha(canGoForward ? ALPHA_NAV_ENABLED : ALPHA_NAV_DISABLED);
+            dayNavNext.setAlpha(canGoForward ? UiConstants.ALPHA_ENABLED : UiConstants.ALPHA_DISABLED);
 
             newTaskButton.setVisibility(isToday ? View.VISIBLE : View.GONE);
 
@@ -193,9 +187,10 @@ public class TaskListFragment extends Fragment {
         });
 
         MaterialButtonToggleGroup toggle = view.findViewById(R.id.TaskListToggle);
-        toggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (isChecked) {
-                if (checkedId == R.id.ChecklistButton) {
+        toggle.addOnButtonCheckedListener(new SimpleButtonCheckedListener() {
+            @Override
+            public void onChecked(MaterialButtonToggleGroup group, int checkedId) {
+                if (checkedId == R.id.TaskChecklistButton) {
                     taskSearchLayout.setVisibility(View.GONE);
                     vm.applyChecklistPreset();
                 } else {
@@ -206,7 +201,7 @@ public class TaskListFragment extends Fragment {
             }
         });
 
-        taskSearchLayout.setVisibility(toggle.getCheckedButtonId() == R.id.ManagementButton ? View.VISIBLE : View.GONE);
+        taskSearchLayout.setVisibility(toggle.getCheckedButtonId() == R.id.TaskManagementButton ? View.VISIBLE : View.GONE);
     }
 
     private void ensureCalendarPermission() {

@@ -5,10 +5,11 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.material.button.MaterialButton;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -26,6 +27,9 @@ import com.autosecretary.features.meal.domain.ShoppingListItem;
 import com.autosecretary.features.meal.ui.internal.MealNeedDialogController;
 import com.autosecretary.features.meal.ui.internal.MealPantryDialogController;
 import com.autosecretary.features.meal.ui.internal.MealPlanDialogController;
+
+import com.autosecretary.shared.DateFormatters;
+import com.autosecretary.shared.ui.SimpleButtonCheckedListener;
 
 import java.time.LocalDate;
 
@@ -59,7 +63,9 @@ public class MealPlannerFragment extends Fragment {
     private View recipesScreen;
     private View stockScreen;
     private LinearLayout weekList;
+    private View weekEmptyState;
     private LinearLayout recipeList;
+    private View recipesEmptyState;
     private TextView recipeDetail;
     private LinearLayout pantryList;
     private LinearLayout shoppingList;
@@ -67,13 +73,6 @@ public class MealPlannerFragment extends Fragment {
     private MealPlanDialogController planDialogController;
     private MealNeedDialogController needDialogController;
     private MealPantryDialogController pantryDialogController;
-
-    public MealPlannerFragment(MealPlannerPresenter presenter) {
-        this.presenter = presenter;
-    }
-
-    public MealPlannerFragment() {
-    }
 
     @Nullable
     @Override
@@ -116,25 +115,33 @@ public class MealPlannerFragment extends Fragment {
         recipesScreen = view.findViewById(R.id.MealRecipeScreen);
         stockScreen = view.findViewById(R.id.MealStockScreen);
         weekList = view.findViewById(R.id.MealWeekList);
+        weekEmptyState = weekScreen.findViewById(R.id.EmptyStateContainer);
+        ((TextView) weekScreen.findViewById(R.id.EmptyStateTitle)).setText(R.string.meal_empty_week_title);
+        ((TextView) weekScreen.findViewById(R.id.EmptyStateSubtitle)).setText(R.string.meal_empty_week_subtitle);
         recipeList = view.findViewById(R.id.MealRecipeList);
+        recipesEmptyState = recipesScreen.findViewById(R.id.EmptyStateContainer);
+        ((TextView) recipesScreen.findViewById(R.id.EmptyStateTitle)).setText(R.string.meal_empty_recipes_title);
+        ((TextView) recipesScreen.findViewById(R.id.EmptyStateSubtitle)).setText(R.string.meal_empty_recipes_subtitle);
         recipeDetail = view.findViewById(R.id.MealRecipeDetail);
         pantryList = view.findViewById(R.id.MealPantryList);
         shoppingList = view.findViewById(R.id.MealShoppingList);
 
         MaterialButtonToggleGroup tabToggle = view.findViewById(R.id.MealTabToggle);
-        tabToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked) return;
-            weekScreen.setVisibility(checkedId == R.id.MealTabWeek ? View.VISIBLE : View.GONE);
-            recipesScreen.setVisibility(checkedId == R.id.MealTabRecipes ? View.VISIBLE : View.GONE);
-            stockScreen.setVisibility(checkedId == R.id.MealTabStock ? View.VISIBLE : View.GONE);
+        tabToggle.addOnButtonCheckedListener(new SimpleButtonCheckedListener() {
+            @Override
+            public void onChecked(MaterialButtonToggleGroup group, int checkedId) {
+                weekScreen.setVisibility(checkedId == R.id.MealTabWeek ? View.VISIBLE : View.GONE);
+                recipesScreen.setVisibility(checkedId == R.id.MealTabRecipes ? View.VISIBLE : View.GONE);
+                stockScreen.setVisibility(checkedId == R.id.MealTabStock ? View.VISIBLE : View.GONE);
+            }
         });
         weekScreen.setVisibility(View.VISIBLE);
         recipesScreen.setVisibility(View.GONE);
         stockScreen.setVisibility(View.GONE);
 
-        Button addMealPlan = view.findViewById(R.id.MealAddPlan);
-        Button addNeed = view.findViewById(R.id.MealAddNeed);
-        Button addPantry = view.findViewById(R.id.MealAddPantry);
+        MaterialButton addMealPlan = view.findViewById(R.id.MealAddPlan);
+        MaterialButton addNeed = view.findViewById(R.id.MealAddNeed);
+        MaterialButton addPantry = view.findViewById(R.id.MealAddPantry);
         addMealPlan.setContentDescription(getString(R.string.meal_add_plan_desc));
         addNeed.setContentDescription(getString(R.string.meal_add_need_desc));
         addPantry.setContentDescription(getString(R.string.meal_add_pantry_desc));
@@ -159,18 +166,20 @@ public class MealPlannerFragment extends Fragment {
         presenter.getWeekMealPlans(plans -> {
             if (!isAdded()) return;
             weekList.removeAllViews();
-            if (plans.isEmpty()) {
-                weekList.addView(inflateTextRow(getString(R.string.meal_empty_week), weekList));
-                return;
-            }
+            boolean empty = plans.isEmpty();
+            weekEmptyState.setVisibility(empty ? View.VISIBLE : View.GONE);
+            weekList.setVisibility(empty ? View.GONE : View.VISIBLE);
             for (MealPlan plan : plans) {
-                View planRow = inflater().inflate(R.layout.meal_plan_row_item, weekList, false);
+                View planRow = LayoutInflater.from(requireContext()).inflate(R.layout.meal_plan_row_item, weekList, false);
                 TextView title = planRow.findViewById(R.id.MealPlanRowTitle);
                 TextView subtitle = planRow.findViewById(R.id.MealPlanRowSubtitle);
-                Button done = planRow.findViewById(R.id.MealPlanRowDone);
+                MaterialButton done = planRow.findViewById(R.id.MealPlanRowDone);
 
                 title.setText(getString(R.string.meal_plan_row_title_format, plan.recipeTitle, plan.mealType.label));
-                subtitle.setText(getString(R.string.meal_plan_row_subtitle_format, plan.date.toString(), plan.plannedServings));
+                subtitle.setText(getString(R.string.meal_plan_row_subtitle_format, plan.date.format(DateFormatters.DATE_FULL_GERMAN), plan.plannedServings));
+                planRow.setContentDescription(getString(R.string.meal_plan_row_content_description,
+                        plan.recipeTitle, plan.mealType.label,
+                        plan.date.format(DateFormatters.DATE_FULL_GERMAN), plan.plannedServings));
                 setMealPlanButtonState(done, plan);
                 if (plan.id != null) {
                     done.setOnClickListener(v ->
@@ -185,13 +194,18 @@ public class MealPlannerFragment extends Fragment {
         presenter.getRecipes(recipes -> {
             if (!isAdded()) return;
             recipeList.removeAllViews();
+            boolean empty = recipes.isEmpty();
+            recipesEmptyState.setVisibility(empty ? View.VISIBLE : View.GONE);
+            recipeList.setVisibility(empty ? View.GONE : View.VISIBLE);
+            if (empty) {
+                recipeDetail.setText(null);
+                return;
+            }
             for (Recipe recipe : recipes) {
                 TextView recipeButton = inflateRecipeButton(recipe, recipeList);
                 recipeList.addView(recipeButton);
             }
-            if (!recipes.isEmpty()) {
-                recipeDetail.setText(buildRecipeDetails(recipes.get(0)));
-            }
+            recipeDetail.setText(buildRecipeDetails(recipes.get(0)));
         });
     }
 
@@ -230,19 +244,16 @@ public class MealPlannerFragment extends Fragment {
         });
     }
 
-    private void setMealPlanButtonState(Button button, MealPlan plan) {
+    private void setMealPlanButtonState(MaterialButton button, MealPlan plan) {
         button.setText(plan.isCompleted ? getString(R.string.meal_mark_open) : getString(R.string.meal_mark_done));
         button.setContentDescription(plan.isCompleted
                 ? getString(R.string.meal_mark_open_desc, plan.recipeTitle)
                 : getString(R.string.meal_mark_done_desc, plan.recipeTitle));
-    }
-
-    private LayoutInflater inflater() {
-        return LayoutInflater.from(requireContext());
+        button.setIconResource(plan.isCompleted ? R.drawable.ic_check_24 : 0);
     }
 
     private TextView inflateRecipeButton(Recipe recipe, ViewGroup parent) {
-        TextView button = (TextView) inflater().inflate(R.layout.meal_recipe_row_item, parent, false);
+        TextView button = (TextView) LayoutInflater.from(requireContext()).inflate(R.layout.meal_text_row_item, parent, false);
         button.setText(recipe.title);
         button.setContentDescription(getString(R.string.meal_recipe_select_desc, recipe.title));
         button.setOnClickListener(v -> recipeDetail.setText(buildRecipeDetails(recipe)));
@@ -250,8 +261,9 @@ public class MealPlannerFragment extends Fragment {
     }
 
     private TextView inflateTextRow(String text, ViewGroup parent) {
-        TextView row = (TextView) inflater().inflate(R.layout.meal_text_row_item, parent, false);
+        TextView row = (TextView) LayoutInflater.from(requireContext()).inflate(R.layout.meal_text_row_item, parent, false);
         row.setText(text);
+        row.setContentDescription(text);
         return row;
     }
 }

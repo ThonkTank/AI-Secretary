@@ -7,9 +7,9 @@ import com.autosecretary.shared.Priority;
 /**
  * Canonical default values for a new task's editable fields.
  * <p>
- * Both {@link TaskEditState} (field initializers) and
- * {@link com.autosecretary.features.task.ui.edit.FormInput FormInput}
- * (form-input fallbacks) reference these constants so that "default for a new task" and
+ * Used by {@link TaskEditState} (field initializers) and
+ * {@link com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormInputReader}
+ * (form-input fallbacks) so that "default for a new task" and
  * "fallback when the user enters invalid input" are always the same value.
  */
 public final class TaskEditDefaults {

@@ -15,48 +15,57 @@
         android:orientation="vertical"
         android:padding="@dimen/spacing_lg">
 
-        <com.google.android.material.button.MaterialButtonToggleGroup
-            android:id="@+id/MealTabToggle"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_md"
-            app:singleSelection="true"
-            app:checkedButton="@id/MealTabWeek">
+            android:background="@drawable/bg_surface_card"
+            android:paddingHorizontal="@dimen/spacing_md"
+            android:paddingVertical="@dimen/spacing_sm"
+            android:layout_marginBottom="@dimen/spacing_md"
+            android:gravity="center">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/MealTabWeek"
-                style="@style/Widget.AutoSecretary.ToggleButton"
-                android:layout_width="0dp"
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/MealTabToggle"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/meal_tab_week"
-                android:contentDescription="@string/meal_tab_week_desc" />
+                app:singleSelection="true"
+                app:checkedButton="@id/MealTabWeek">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/MealTabRecipes"
-                style="@style/Widget.AutoSecretary.ToggleButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/meal_tab_recipes"
-                android:contentDescription="@string/meal_tab_recipes_desc" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/MealTabWeek"
+                    style="@style/Widget.AutoSecretary.ToggleButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/meal_tab_week"
+                    android:contentDescription="@string/meal_tab_week_desc" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/MealTabStock"
-                style="@style/Widget.AutoSecretary.ToggleButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/meal_tab_stock"
-                android:contentDescription="@string/meal_tab_stock_desc" />
-        </com.google.android.material.button.MaterialButtonToggleGroup>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/MealTabRecipes"
+                    style="@style/Widget.AutoSecretary.ToggleButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/meal_tab_recipes"
+                    android:contentDescription="@string/meal_tab_recipes_desc" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/MealTabStock"
+                    style="@style/Widget.AutoSecretary.ToggleButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/meal_tab_stock"
+                    android:contentDescription="@string/meal_tab_stock_desc" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </LinearLayout>
 
         <!-- Tab: Week view -->
         <LinearLayout
             android:id="@+id/MealWeekScreen"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_lg"
+            android:layout_marginTop="@dimen/spacing_sm"
             android:orientation="vertical">
 
             <TextView
@@ -72,6 +81,12 @@
                 android:layout_marginTop="@dimen/spacing_sm"
                 android:text="@string/meal_add_plan" />
 
+            <include
+                layout="@layout/include_empty_state"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm" />
+
             <LinearLayout
                 android:id="@+id/MealWeekList"
                 android:layout_width="match_parent"
@@ -85,7 +100,7 @@
             android:id="@+id/MealRecipeScreen"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_lg"
+            android:layout_marginTop="@dimen/spacing_sm"
             android:orientation="vertical"
             android:visibility="gone">
 
@@ -94,6 +109,12 @@
                 android:layout_height="wrap_content"
                 android:text="@string/meal_recipe_title"
                 android:textAppearance="@style/TextAppearance.AutoSecretary.SectionTitle" />
+
+            <include
+                layout="@layout/include_empty_state"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm" />
 
             <LinearLayout
                 android:id="@+id/MealRecipeList"
@@ -118,7 +139,7 @@
             android:id="@+id/MealStockScreen"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_lg"
+            android:layout_marginTop="@dimen/spacing_sm"
             android:orientation="vertical"
             android:visibility="gone">
 
@@ -146,6 +167,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:layout_marginStart="@dimen/spacing_sm"
                     android:text="@string/meal_add_pantry" />
             </LinearLayout>
 
