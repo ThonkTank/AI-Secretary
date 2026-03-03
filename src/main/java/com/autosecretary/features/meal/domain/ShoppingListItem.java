@@ -29,7 +29,7 @@ public class ShoppingListItem {
     public String unit;
     public String foodGroupLabel;       // denormalized from Ingredient.FoodGroup for display
     public String suggestedStore;
-    public boolean isPurchased;
+    public ShoppingItemStatus status = ShoppingItemStatus.OPEN;
     public String periodKey;            // ISO date string for the shopping day (e.g. "2026-02-14")
     public int estimatedPriceCents;
 
@@ -54,9 +54,17 @@ public class ShoppingListItem {
         public ShoppingListItem build() { return i; }
     }
 
-    public void markPurchased() { isPurchased = true; }
+    public void markPurchased() { status = ShoppingItemStatus.DONE; }
 
-    public void togglePurchased() { isPurchased = !isPurchased; }
+    public void markOpen() { status = ShoppingItemStatus.OPEN; }
+
+    public void togglePurchased() {
+        status = status == ShoppingItemStatus.DONE ? ShoppingItemStatus.OPEN : ShoppingItemStatus.DONE;
+    }
+
+    public boolean isDone() {
+        return status == ShoppingItemStatus.DONE;
+    }
 
     public String getFormattedAmount() {
         return MealAmountFormat.format(amount, unit);

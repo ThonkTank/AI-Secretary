@@ -34,6 +34,8 @@
     <string name="meal_stock_title">Vorrat &amp; Einkauf</string>
     <string name="meal_pantry_title">Vorrat</string>
     <string name="meal_shopping_title">Einkauf heute</string>
+    <string name="meal_shopping_open_title">Offen</string>
+    <string name="meal_shopping_done_title">Erledigt</string>
     <string name="meal_add_need">+ Bedarf in Einkauf</string>
     <string name="meal_add_need_desc">Neuen Einkaufsbedarf hinzufügen</string>
     <string name="meal_add_pantry">+ Vorratseintrag</string>
@@ -71,6 +73,13 @@
     <string name="meal_empty_recipes_title">Noch keine Rezepte</string>
     <string name="meal_empty_recipes_subtitle">Rezepte werden beim ersten Planen angelegt.</string>
     <string name="meal_empty_shopping">Keine Einkäufe für heute.</string>
+    <string name="meal_empty_shopping_open">Keine offenen Einträge.</string>
+    <string name="meal_empty_shopping_done">Keine erledigten Einträge.</string>
+    <string name="meal_hide_done">Alle erledigten ausblenden</string>
+    <string name="meal_show_done">Erledigte anzeigen</string>
+    <string name="meal_shopping_row_desc">%1$s, %2$s, Status %3$s</string>
+    <string name="meal_shopping_status_open">offen</string>
+    <string name="meal_shopping_status_done">erledigt</string>
 
     <!-- Success confirmation messages -->
     <string name="meal_success_plan_created">Mahlzeit geplant</string>

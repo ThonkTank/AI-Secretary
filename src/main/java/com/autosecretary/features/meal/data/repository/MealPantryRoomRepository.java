@@ -5,6 +5,7 @@ import com.autosecretary.features.meal.data.entity.MealPantryItemEntity;
 import com.autosecretary.features.meal.data.entity.MealShoppingListItemEntity;
 import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
+import com.autosecretary.features.meal.domain.ShoppingItemStatus;
 import com.autosecretary.features.meal.domain.ShoppingListItem;
 
 import java.util.List;
@@ -81,9 +82,21 @@ public class MealPantryRoomRepository implements PantryRepository {
     }
 
     @Override
+    public List<ShoppingListItem> getShoppingListItemsByStatus(String periodKey, ShoppingItemStatus status) {
+        return pantryDao.findShoppingItemsByPeriodKeyAndStatus(periodKey, status.dbValue).stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public void saveShoppingListItem(ShoppingListItem item) {
         if (item.id == null) item.id = UUID.randomUUID().toString();
         pantryDao.insertShoppingItem(toEntity(item));
+    }
+
+    @Override
+    public void updateShoppingItemStatus(String shoppingListItemId, ShoppingItemStatus status) {
+        pantryDao.updateShoppingItemStatus(shoppingListItemId, status.dbValue);
     }
 
     @Override
@@ -102,7 +115,7 @@ public class MealPantryRoomRepository implements PantryRepository {
         s.unit = e.unit;
         s.foodGroupLabel = e.foodGroupLabel;
         s.suggestedStore = e.suggestedStore;
-        s.isPurchased = e.isPurchased;
+        s.status = ShoppingItemStatus.fromDbValue(e.status);
         s.periodKey = e.periodKey;
         s.estimatedPriceCents = e.estimatedPriceCents;
         return s;
@@ -119,7 +132,7 @@ public class MealPantryRoomRepository implements PantryRepository {
         e.unit = s.unit;
         e.foodGroupLabel = s.foodGroupLabel;
         e.suggestedStore = s.suggestedStore;
-        e.isPurchased = s.isPurchased;
+        e.status = s.status == null ? ShoppingItemStatus.OPEN.dbValue : s.status.dbValue;
         e.periodKey = s.periodKey;
         e.estimatedPriceCents = s.estimatedPriceCents;
         return e;
