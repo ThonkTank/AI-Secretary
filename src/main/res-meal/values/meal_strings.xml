@@ -93,4 +93,41 @@
 
     <string name="meal_error_negative_number">%s darf nicht negativ sein</string>
     <string name="meal_error_no_recipes">Keine Rezepte verfügbar. Bitte erstellen Sie zuerst ein Rezept.</string>
+
+    <string name="meal_management_title">Management</string>
+    <string name="meal_manage_recipes">Rezepte</string>
+    <string name="meal_manage_household">Haushalt</string>
+    <string name="meal_manage_pantry">Vorrat</string>
+    <string name="meal_manage_ingredients">Zutaten</string>
+    <string name="meal_manage_add_recipe">+ Rezept anlegen</string>
+    <string name="meal_manage_add_household">+ Mitglied anlegen</string>
+    <string name="meal_manage_add_pantry">+ Vorratseintrag</string>
+    <string name="meal_manage_add_ingredient">+ Zutat anlegen</string>
+    <string name="meal_management_empty">Noch keine Einträge vorhanden.</string>
+
+    <string name="meal_recipe_dialog_title">Rezept anlegen</string>
+    <string name="meal_recipe_dialog_save">Anlegen</string>
+    <string name="meal_ingredient_dialog_title">Zutat anlegen</string>
+    <string name="meal_ingredient_dialog_save">Speichern</string>
+    <string name="meal_household_dialog_title">Haushaltsmitglied anlegen</string>
+    <string name="meal_household_dialog_save">Speichern</string>
+
+    <string name="meal_label_recipe_title">Rezeptname *</string>
+    <string name="meal_label_recipe_description">Beschreibung</string>
+    <string name="meal_label_recipe_instructions">Anleitung</string>
+    <string name="meal_label_ingredient_group">Lebensmittelgruppe *</string>
+    <string name="meal_label_household_gender">Geschlecht *</string>
+    <string name="meal_label_birth_year">Geburtsjahr *</string>
+
+    <string name="meal_field_recipe_title">Rezeptname</string>
+    <string name="meal_field_name">Name</string>
+    <string name="meal_field_birth_year">Geburtsjahr</string>
+
+    <string name="meal_success_recipe_created">Rezept angelegt</string>
+    <string name="meal_success_ingredient_created">Zutat angelegt</string>
+    <string name="meal_success_household_created">Haushaltsmitglied angelegt</string>
+
+    <string name="meal_household_row_format">%1$s · Jahrgang %2$d</string>
+    <string name="meal_ingredient_row_format">%1$s · %2$s</string>
+
 </resources>

@@ -3,6 +3,8 @@ package com.autosecretary.features.meal.application;
 import com.autosecretary.features.meal.domain.MealPlan;
 import com.autosecretary.features.meal.domain.MealRepository;
 import com.autosecretary.features.meal.domain.MealType;
+import com.autosecretary.features.meal.domain.HouseholdMember;
+import com.autosecretary.features.meal.domain.Ingredient;
 import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.Recipe;
@@ -92,6 +94,22 @@ public class MealPlannerPresenter {
             }
             recipes.sort(Comparator.comparing(recipe -> recipe.title));
             callbackDispatcher.execute(() -> onLoaded.accept(recipes));
+        });
+    }
+
+    public void getIngredients(Consumer<List<Ingredient>> onLoaded) {
+        workerExecutor.execute(() -> {
+            List<Ingredient> items = recipeRepository.getIngredients();
+            items.sort(Comparator.comparing(i -> i.name));
+            callbackDispatcher.execute(() -> onLoaded.accept(items));
+        });
+    }
+
+    public void getHouseholdMembers(Consumer<List<HouseholdMember>> onLoaded) {
+        workerExecutor.execute(() -> {
+            List<HouseholdMember> items = mealRepository.getHouseholdMembers();
+            items.sort(Comparator.comparing(i -> i.name));
+            callbackDispatcher.execute(() -> onLoaded.accept(items));
         });
     }
 
@@ -200,6 +218,49 @@ public class MealPlannerPresenter {
                     .location(location)
                     .build();
             pantryRepository.savePantryItem(item);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+    public void createRecipe(String title,
+                             String description,
+                             String instructions,
+                             int servings,
+                             Runnable onDone) {
+        workerExecutor.execute(() -> {
+            Recipe recipe = new Recipe.Builder(title)
+                    .description(description)
+                    .instructions(instructions)
+                    .mealType(MealType.DINNER)
+                    .servings(Math.max(1, servings))
+                    .build();
+            recipeRepository.saveRecipe(recipe);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+    public void createIngredient(String name,
+                                 Ingredient.FoodGroup group,
+                                 String unit,
+                                 Runnable onDone) {
+        workerExecutor.execute(() -> {
+            Ingredient ingredient = new Ingredient.Builder(name, group)
+                    .unit(unit, 1)
+                    .build();
+            recipeRepository.saveIngredient(ingredient);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+    public void createHouseholdMember(String name,
+                                      HouseholdMember.Gender gender,
+                                      int birthYear,
+                                      Runnable onDone) {
+        workerExecutor.execute(() -> {
+            HouseholdMember member = new HouseholdMember.Builder(name, gender)
+                    .birthYear(birthYear)
+                    .build();
+            mealRepository.saveHouseholdMember(member);
             callbackDispatcher.execute(onDone);
         });
     }
