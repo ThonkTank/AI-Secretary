@@ -122,6 +122,21 @@ public class MealPlannerPresenter {
         });
     }
 
+    public void toggleShoppingItemPurchased(String shoppingItemId, Runnable onDone) {
+        workerExecutor.execute(() -> {
+            String periodKey = LocalDate.now().toString();
+            List<ShoppingListItem> items = pantryRepository.getShoppingListItems(periodKey);
+            for (ShoppingListItem item : items) {
+                if (shoppingItemId.equals(item.id)) {
+                    item.togglePurchased();
+                    pantryRepository.saveShoppingListItem(item);
+                    break;
+                }
+            }
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
     /**
      * Plans a recipe for the given date and meal type.
      *

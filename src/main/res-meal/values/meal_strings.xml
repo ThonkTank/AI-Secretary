@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Meal feature UI strings (German localization).
-         Covers: tabs (week plan, recipes, stock/shopping), dialog titles and actions,
-         plan/recipe/pantry/shopping row labels, input hints.
-         Keys are English (code references); values are German.
-         For new meal strings, add here and reference via @string/meal_[context] in Java/XML.
-         See ../strings.xml for app-wide (non-feature-specific) strings. -->
     <string name="meal_tab_week">Wochenplan</string>
     <string name="meal_tab_week_desc">Wochenplan anzeigen</string>
     <string name="meal_tab_recipes">Rezepte</string>
@@ -14,6 +8,16 @@
     <string name="meal_tab_stock_desc">Vorrat und Einkauf anzeigen</string>
 
     <string name="meal_week_title">Wochenplan</string>
+    <string name="meal_dashboard_week_title">Wochenplan (heute + kommende Tage)</string>
+    <string name="meal_dashboard_progress_title">Bedarfsfortschritt</string>
+    <string name="meal_dashboard_shopping_title">Einkaufsliste</string>
+    <string name="meal_secondary_actions_title">Sekundäre Aktionen</string>
+    <string name="meal_action_recipes">Rezepte</string>
+    <string name="meal_action_members">Haushaltsmitglieder</string>
+    <string name="meal_action_stock">Vorrat</string>
+    <string name="meal_action_ingredients">Zutaten</string>
+    <string name="meal_secondary_action_info">Diese Aktion wird als Dialog/Bottom-Sheet geöffnet.</string>
+
     <string name="meal_add_plan">+ Rezept planen</string>
     <string name="meal_add_plan_desc">Rezept-Planungs-Dialog öffnen</string>
     <string name="meal_mark_done">Erledigt</string>
@@ -28,10 +32,19 @@
     <string name="meal_stock_title">Vorrat &amp; Einkauf</string>
     <string name="meal_pantry_title">Vorrat</string>
     <string name="meal_shopping_title">Einkauf heute</string>
-    <string name="meal_add_need">+ Bedarf in Einkauf</string>
+    <string name="meal_shopping_open">Offen</string>
+    <string name="meal_shopping_done">Erledigt</string>
+    <string name="meal_shopping_open_count">Offen (%1$d)</string>
+    <string name="meal_shopping_done_count">Erledigt (%1$d)</string>
+    <string name="meal_add_need">+ Bedarf hinzufügen</string>
     <string name="meal_add_need_desc">Neuen Einkaufsbedarf hinzufügen</string>
     <string name="meal_add_pantry">+ Vorratseintrag</string>
     <string name="meal_add_pantry_desc">Neuen Vorratseintrag hinzufügen</string>
+
+    <string name="meal_calorie_progress_format">Kalorienfortschritt: %1$d / %2$d kcal (%3$d%%)</string>
+    <string name="meal_need_progress_row_format">%1$s: %2$d/%3$d erledigt</string>
+    <string name="meal_need_progress_empty">Noch keine Bedarfe für Nahrungsgruppen erfasst.</string>
+    <string name="meal_food_group_other">Sonstiges</string>
 
     <string name="meal_plan_dialog_title">Rezept planen</string>
     <string name="meal_plan_dialog_save">Planen</string>
@@ -56,8 +69,8 @@
     <string name="meal_hint_unit">Einheit</string>
     <string name="meal_hint_shelf_life_days">Haltbarkeit (Tage)</string>
 
-    <!-- Empty state messages -->
-    <string name="meal_empty_week">Noch keine Mahlzeiten geplant.\nTippe auf „+ Rezept planen" um loszulegen.</string>
+    <string name="meal_empty_week">Noch keine Mahlzeiten geplant.
+Tippe auf „+ Rezept planen" um loszulegen.</string>
     <string name="meal_empty_week_title">Noch keine Mahlzeiten geplant</string>
     <string name="meal_empty_week_subtitle">Tippe auf „+ Rezept planen" um loszulegen.</string>
     <string name="meal_empty_pantry">Noch keine Vorräte eingetragen.</string>
@@ -66,21 +79,16 @@
     <string name="meal_empty_recipes_subtitle">Rezepte werden beim ersten Planen angelegt.</string>
     <string name="meal_empty_shopping">Keine Einkäufe für heute.</string>
 
-    <!-- Success confirmation messages -->
     <string name="meal_success_plan_created">Mahlzeit geplant</string>
     <string name="meal_success_need_created">Einkaufsbedarf hinzugefügt</string>
     <string name="meal_success_pantry_created">Vorratseintrag angelegt</string>
 
-    <!-- Row format strings for meal plan list items -->
-    <string name="meal_plan_row_title_format">%1$s \u00B7 %2$s</string>
-    <string name="meal_plan_row_subtitle_format">%1$s \u00B7 %2$d Portionen</string>
-    <string name="meal_pantry_row_format">%1$s \u00B7 %2$s \u00B7 %3$s</string>
-    <string name="meal_shopping_row_format">%1$s \u00B7 %2$s</string>
-
-    <!-- Composite row content description for screen readers -->
+    <string name="meal_plan_row_title_format">%1$s · %2$s</string>
+    <string name="meal_plan_row_subtitle_format">%1$s · %2$d Portionen</string>
+    <string name="meal_pantry_row_format">%1$s · %2$s · %3$s</string>
+    <string name="meal_shopping_row_format">%1$s · %2$s</string>
     <string name="meal_plan_row_content_description">%1$s (%2$s), %3$s, %4$d Portionen</string>
 
-    <!-- Field labels for validation error messages (used in requireNonEmpty/safeParse calls) -->
     <string name="meal_field_date">Datum</string>
     <string name="meal_field_servings_count">Portionsanzahl</string>
     <string name="meal_field_servings">Portionen</string>
