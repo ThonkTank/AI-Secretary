@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Three sub-screens (Week, Recipes, Stock) live in one ScrollView.
-     Only one is visible at a time; MaterialButtonToggleGroup drives tab selection,
-     MealPlannerFragment toggles visibility in the checked-listener.
+<!-- Week plan, recipes, and stock sections are stacked in one ScrollView.
      Lists (MealWeekList, MealRecipeList, MealPantryList, MealShoppingList) are
      LinearLayouts with items inflated programmatically by MealPlannerPresenter. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -15,52 +12,7 @@
         android:orientation="vertical"
         android:padding="@dimen/spacing_lg">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_surface_card"
-            android:paddingHorizontal="@dimen/spacing_md"
-            android:paddingVertical="@dimen/spacing_sm"
-            android:layout_marginBottom="@dimen/spacing_md"
-            android:gravity="center">
-
-            <com.google.android.material.button.MaterialButtonToggleGroup
-                android:id="@+id/MealTabToggle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:singleSelection="true"
-                app:checkedButton="@id/MealTabWeek">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/MealTabWeek"
-                    style="@style/Widget.AutoSecretary.ToggleButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/meal_tab_week"
-                    android:contentDescription="@string/meal_tab_week_desc" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/MealTabRecipes"
-                    style="@style/Widget.AutoSecretary.ToggleButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/meal_tab_recipes"
-                    android:contentDescription="@string/meal_tab_recipes_desc" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/MealTabStock"
-                    style="@style/Widget.AutoSecretary.ToggleButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/meal_tab_stock"
-                    android:contentDescription="@string/meal_tab_stock_desc" />
-            </com.google.android.material.button.MaterialButtonToggleGroup>
-        </LinearLayout>
-
-        <!-- Tab: Week view -->
+        <!-- Week view -->
         <LinearLayout
             android:id="@+id/MealWeekScreen"
             android:layout_width="match_parent"
@@ -95,14 +47,13 @@
                 android:orientation="vertical" />
         </LinearLayout>
 
-        <!-- Tab: Recipes view (initially hidden) -->
+        <!-- Recipes view -->
         <LinearLayout
             android:id="@+id/MealRecipeScreen"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
-            android:orientation="vertical"
-            android:visibility="gone">
+            android:orientation="vertical">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -134,14 +85,13 @@
                 android:textAppearance="@style/TextAppearance.AutoSecretary.Meal.RowBody" />
         </LinearLayout>
 
-        <!-- Tab: Stock / Pantry view (initially hidden) -->
+        <!-- Stock / Pantry view -->
         <LinearLayout
             android:id="@+id/MealStockScreen"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
-            android:orientation="vertical"
-            android:visibility="gone">
+            android:orientation="vertical">
 
             <TextView
                 android:layout_width="wrap_content"

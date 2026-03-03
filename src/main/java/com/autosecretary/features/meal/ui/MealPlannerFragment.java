@@ -15,8 +15,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import com.google.android.material.button.MaterialButtonToggleGroup;
-
 import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.meal.application.MealPlannerPresenter;
@@ -29,14 +27,13 @@ import com.autosecretary.features.meal.ui.internal.MealPantryDialogController;
 import com.autosecretary.features.meal.ui.internal.MealPlanDialogController;
 
 import com.autosecretary.shared.DateFormatters;
-import com.autosecretary.shared.ui.SimpleButtonCheckedListener;
 
 import java.time.LocalDate;
 
 /**
  * Meal planner UI fragment — primary entry point for the meal feature.
  *
- * <p>Manages a three-tab interface:
+ * <p>Manages a three-section overview interface:
  * <ul>
  *   <li><strong>Week Plan:</strong> view and manage meal plans for the coming week (add, toggle completion)
  *   <li><strong>Recipes:</strong> browse available recipes and view details
@@ -125,19 +122,6 @@ public class MealPlannerFragment extends Fragment {
         recipeDetail = view.findViewById(R.id.MealRecipeDetail);
         pantryList = view.findViewById(R.id.MealPantryList);
         shoppingList = view.findViewById(R.id.MealShoppingList);
-
-        MaterialButtonToggleGroup tabToggle = view.findViewById(R.id.MealTabToggle);
-        tabToggle.addOnButtonCheckedListener(new SimpleButtonCheckedListener() {
-            @Override
-            public void onChecked(MaterialButtonToggleGroup group, int checkedId) {
-                weekScreen.setVisibility(checkedId == R.id.MealTabWeek ? View.VISIBLE : View.GONE);
-                recipesScreen.setVisibility(checkedId == R.id.MealTabRecipes ? View.VISIBLE : View.GONE);
-                stockScreen.setVisibility(checkedId == R.id.MealTabStock ? View.VISIBLE : View.GONE);
-            }
-        });
-        weekScreen.setVisibility(View.VISIBLE);
-        recipesScreen.setVisibility(View.GONE);
-        stockScreen.setVisibility(View.GONE);
 
         MaterialButton addMealPlan = view.findViewById(R.id.MealAddPlan);
         MaterialButton addNeed = view.findViewById(R.id.MealAddNeed);
