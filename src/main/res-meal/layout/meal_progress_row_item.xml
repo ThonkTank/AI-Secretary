@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="@dimen/spacing_sm"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/MealProgressRowTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Meal.RowTitle" />
+
+    <ProgressBar
+        android:id="@+id/MealProgressRowBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs"
+        android:max="100"
+        android:minHeight="8dp"
+        android:progress="0" />
+
+    <TextView
+        android:id="@+id/MealProgressRowDetail"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Meal.RowSubtitle" />
+</LinearLayout>

@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -64,6 +65,11 @@ public class MealPlannerFragment extends Fragment {
     private View stockScreen;
     private LinearLayout weekList;
     private View weekEmptyState;
+    private TextView progressPeriod;
+    private TextView caloriesSummary;
+    private ProgressBar caloriesProgress;
+    private TextView caloriesDetail;
+    private LinearLayout foodGroupProgressList;
     private LinearLayout recipeList;
     private View recipesEmptyState;
     private TextView recipeDetail;
@@ -116,6 +122,11 @@ public class MealPlannerFragment extends Fragment {
         stockScreen = view.findViewById(R.id.MealStockScreen);
         weekList = view.findViewById(R.id.MealWeekList);
         weekEmptyState = weekScreen.findViewById(R.id.EmptyStateContainer);
+        progressPeriod = view.findViewById(R.id.MealProgressPeriod);
+        caloriesSummary = view.findViewById(R.id.MealCaloriesSummary);
+        caloriesProgress = view.findViewById(R.id.MealCaloriesProgress);
+        caloriesDetail = view.findViewById(R.id.MealCaloriesDetail);
+        foodGroupProgressList = view.findViewById(R.id.MealFoodGroupProgressList);
         ((TextView) weekScreen.findViewById(R.id.EmptyStateTitle)).setText(R.string.meal_empty_week_title);
         ((TextView) weekScreen.findViewById(R.id.EmptyStateSubtitle)).setText(R.string.meal_empty_week_subtitle);
         recipeList = view.findViewById(R.id.MealRecipeList);
@@ -163,6 +174,11 @@ public class MealPlannerFragment extends Fragment {
     }
 
     private void renderMealPlans() {
+        presenter.getWeeklyProgressOverview(progress -> {
+            if (!isAdded()) return;
+            renderProgressSection(progress);
+        });
+
         presenter.getWeekMealPlans(plans -> {
             if (!isAdded()) return;
             weekList.removeAllViews();
@@ -188,6 +204,41 @@ public class MealPlannerFragment extends Fragment {
                 weekList.addView(planRow);
             }
         });
+    }
+
+    private void renderProgressSection(MealPlannerPresenter.WeeklyProgressOverview progress) {
+        progressPeriod.setText(getString(R.string.meal_progress_period_format,
+                progress.fromDate.format(DateFormatters.DATE_SHORT_GERMAN),
+                progress.toDate.format(DateFormatters.DATE_SHORT_GERMAN)));
+
+        caloriesSummary.setText(getString(R.string.meal_progress_calorie_summary,
+                progress.calorieActual,
+                progress.calorieTarget,
+                progress.calorieCompletionPercent));
+        caloriesProgress.setProgress(Math.max(0, Math.min(100, progress.calorieCompletionPercent)));
+        caloriesDetail.setText(getString(R.string.meal_progress_calorie_detail,
+                progress.calorieCompletionPercent,
+                progress.calorieRemaining));
+
+        foodGroupProgressList.removeAllViews();
+        for (MealPlannerPresenter.WeeklyProgressFoodGroup group : progress.foodGroups) {
+            View row = LayoutInflater.from(requireContext()).inflate(
+                    R.layout.meal_progress_row_item, foodGroupProgressList, false);
+            TextView title = row.findViewById(R.id.MealProgressRowTitle);
+            ProgressBar bar = row.findViewById(R.id.MealProgressRowBar);
+            TextView detail = row.findViewById(R.id.MealProgressRowDetail);
+
+            title.setText(getString(R.string.meal_progress_food_group_title,
+                    group.foodGroup.icon,
+                    group.foodGroup.label));
+            bar.setProgress(Math.max(0, Math.min(100, group.completionPercent)));
+            detail.setText(getString(R.string.meal_progress_food_group_detail,
+                    group.actualGrams,
+                    group.targetGrams,
+                    group.completionPercent,
+                    group.remainingGrams));
+            foodGroupProgressList.addView(row);
+        }
     }
 
     private void renderRecipes() {

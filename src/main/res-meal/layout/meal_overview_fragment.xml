@@ -81,6 +81,60 @@
                 android:layout_marginTop="@dimen/spacing_sm"
                 android:text="@string/meal_add_plan" />
 
+            <LinearLayout
+                android:id="@+id/MealProgressSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:background="@drawable/bg_surface_card"
+                android:orientation="vertical"
+                android:padding="@dimen/spacing_md">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/meal_progress_title"
+                    android:textAppearance="@style/TextAppearance.AutoSecretary.SectionTitle" />
+
+                <TextView
+                    android:id="@+id/MealProgressPeriod"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_xs"
+                    android:textAppearance="@style/TextAppearance.AutoSecretary.Meal.RowSubtitle" />
+
+                <TextView
+                    android:id="@+id/MealCaloriesSummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:textAppearance="@style/TextAppearance.AutoSecretary.Meal.RowTitle" />
+
+                <ProgressBar
+                    android:id="@+id/MealCaloriesProgress"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_xs"
+                    android:max="100"
+                    android:minHeight="8dp"
+                    android:progress="0" />
+
+                <TextView
+                    android:id="@+id/MealCaloriesDetail"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_xs"
+                    android:textAppearance="@style/TextAppearance.AutoSecretary.Meal.RowSubtitle" />
+
+                <LinearLayout
+                    android:id="@+id/MealFoodGroupProgressList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
             <include
                 layout="@layout/include_empty_state"
                 android:layout_width="match_parent"
