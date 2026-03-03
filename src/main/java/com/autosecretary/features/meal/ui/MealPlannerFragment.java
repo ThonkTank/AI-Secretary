@@ -23,6 +23,7 @@ import com.autosecretary.features.meal.application.MealPlannerPresenter;
 import com.autosecretary.features.meal.domain.MealPlan;
 import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.Recipe;
+import com.autosecretary.features.meal.domain.ShoppingItemStatus;
 import com.autosecretary.features.meal.domain.ShoppingListItem;
 import com.autosecretary.features.meal.ui.internal.MealNeedDialogController;
 import com.autosecretary.features.meal.ui.internal.MealPantryDialogController;
@@ -32,6 +33,8 @@ import com.autosecretary.shared.DateFormatters;
 import com.autosecretary.shared.ui.SimpleButtonCheckedListener;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Meal planner UI fragment — primary entry point for the meal feature.
@@ -68,7 +71,11 @@ public class MealPlannerFragment extends Fragment {
     private View recipesEmptyState;
     private TextView recipeDetail;
     private LinearLayout pantryList;
-    private LinearLayout shoppingList;
+    private LinearLayout shoppingOpenList;
+    private LinearLayout shoppingDoneList;
+    private TextView shoppingDoneTitle;
+    private MaterialButton hideDoneButton;
+    private boolean hideCompletedShoppingItems;
 
     private MealPlanDialogController planDialogController;
     private MealNeedDialogController needDialogController;
@@ -124,7 +131,10 @@ public class MealPlannerFragment extends Fragment {
         ((TextView) recipesScreen.findViewById(R.id.EmptyStateSubtitle)).setText(R.string.meal_empty_recipes_subtitle);
         recipeDetail = view.findViewById(R.id.MealRecipeDetail);
         pantryList = view.findViewById(R.id.MealPantryList);
-        shoppingList = view.findViewById(R.id.MealShoppingList);
+        shoppingOpenList = view.findViewById(R.id.MealShoppingOpenList);
+        shoppingDoneList = view.findViewById(R.id.MealShoppingDoneList);
+        shoppingDoneTitle = view.findViewById(R.id.MealShoppingDoneTitle);
+        hideDoneButton = view.findViewById(R.id.MealHideDone);
 
         MaterialButtonToggleGroup tabToggle = view.findViewById(R.id.MealTabToggle);
         tabToggle.addOnButtonCheckedListener(new SimpleButtonCheckedListener() {
@@ -152,6 +162,12 @@ public class MealPlannerFragment extends Fragment {
         }));
         addNeed.setOnClickListener(v -> needDialogController.show());
         addPantry.setOnClickListener(v -> pantryDialogController.show());
+        hideDoneButton.setOnClickListener(v -> {
+            hideCompletedShoppingItems = !hideCompletedShoppingItems;
+            updateHideDoneButton();
+            renderStock();
+        });
+        updateHideDoneButton();
 
         renderAll();
     }
@@ -232,16 +248,52 @@ public class MealPlannerFragment extends Fragment {
 
         presenter.getShoppingListItems(shoppingItems -> {
             if (!isAdded()) return;
-            shoppingList.removeAllViews();
+            shoppingOpenList.removeAllViews();
+            shoppingDoneList.removeAllViews();
             if (shoppingItems.isEmpty()) {
-                shoppingList.addView(inflateTextRow(getString(R.string.meal_empty_shopping), shoppingList));
+                shoppingOpenList.addView(inflateTextRow(getString(R.string.meal_empty_shopping), shoppingOpenList));
+                shoppingDoneTitle.setVisibility(View.GONE);
+                shoppingDoneList.setVisibility(View.GONE);
+                return;
+            }
+
+            List<ShoppingListItem> openItems = new ArrayList<>();
+            List<ShoppingListItem> doneItems = new ArrayList<>();
+            for (ShoppingListItem item : shoppingItems) {
+                if (item.isDone()) {
+                    doneItems.add(item);
+                } else {
+                    openItems.add(item);
+                }
+            }
+
+            if (openItems.isEmpty()) {
+                shoppingOpenList.addView(inflateTextRow(getString(R.string.meal_empty_shopping_open), shoppingOpenList));
             } else {
-                for (ShoppingListItem item : shoppingItems) {
-                    shoppingList.addView(inflateTextRow(getString(R.string.meal_shopping_row_format,
-                            item.ingredientName, item.getFormattedAmount()), shoppingList));
+                for (ShoppingListItem item : openItems) {
+                    shoppingOpenList.addView(inflateShoppingRow(item, shoppingOpenList));
+                }
+            }
+
+            boolean showDoneSection = !hideCompletedShoppingItems;
+            shoppingDoneTitle.setVisibility(showDoneSection ? View.VISIBLE : View.GONE);
+            shoppingDoneList.setVisibility(showDoneSection ? View.VISIBLE : View.GONE);
+            if (showDoneSection) {
+                if (doneItems.isEmpty()) {
+                    shoppingDoneList.addView(inflateTextRow(getString(R.string.meal_empty_shopping_done), shoppingDoneList));
+                } else {
+                    for (ShoppingListItem item : doneItems) {
+                        shoppingDoneList.addView(inflateShoppingRow(item, shoppingDoneList));
+                    }
                 }
             }
         });
+    }
+
+    private void updateHideDoneButton() {
+        hideDoneButton.setText(hideCompletedShoppingItems
+                ? R.string.meal_show_done
+                : R.string.meal_hide_done);
     }
 
     private void setMealPlanButtonState(MaterialButton button, MealPlan plan) {
@@ -264,6 +316,23 @@ public class MealPlannerFragment extends Fragment {
         TextView row = (TextView) LayoutInflater.from(requireContext()).inflate(R.layout.meal_text_row_item, parent, false);
         row.setText(text);
         row.setContentDescription(text);
+        return row;
+    }
+
+    private View inflateShoppingRow(ShoppingListItem item, ViewGroup parent) {
+        View row = LayoutInflater.from(requireContext()).inflate(R.layout.meal_shopping_row_item, parent, false);
+        TextView text = row.findViewById(R.id.MealShoppingRowText);
+        android.widget.CheckBox checkbox = row.findViewById(R.id.MealShoppingRowCheck);
+        String rowText = getString(R.string.meal_shopping_row_format, item.ingredientName, item.getFormattedAmount());
+        text.setText(rowText);
+        String statusLabel = getString(item.isDone() ? R.string.meal_shopping_status_done : R.string.meal_shopping_status_open);
+        row.setContentDescription(getString(R.string.meal_shopping_row_desc, item.ingredientName, item.getFormattedAmount(), statusLabel));
+        checkbox.setChecked(item.isDone());
+        checkbox.setOnClickListener(v -> {
+            if (item.id == null) return;
+            ShoppingItemStatus newStatus = checkbox.isChecked() ? ShoppingItemStatus.DONE : ShoppingItemStatus.OPEN;
+            presenter.updateShoppingItemStatus(item.id, newStatus, this::renderStock);
+        });
         return row;
     }
 }

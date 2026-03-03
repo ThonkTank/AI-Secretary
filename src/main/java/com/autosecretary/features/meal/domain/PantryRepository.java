@@ -26,6 +26,8 @@ public interface PantryRepository {
     void deletePantryItem(String pantryItemId);
 
     List<ShoppingListItem> getShoppingListItems(String periodKey);
+    List<ShoppingListItem> getShoppingListItemsByStatus(String periodKey, ShoppingItemStatus status);
     void saveShoppingListItem(ShoppingListItem shoppingListItem);
+    void updateShoppingItemStatus(String shoppingListItemId, ShoppingItemStatus status);
     void deleteShoppingListItem(String shoppingListItemId);
 }

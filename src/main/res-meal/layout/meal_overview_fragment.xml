@@ -2,7 +2,7 @@
 <!-- Three sub-screens (Week, Recipes, Stock) live in one ScrollView.
      Only one is visible at a time; MaterialButtonToggleGroup drives tab selection,
      MealPlannerFragment toggles visibility in the checked-listener.
-     Lists (MealWeekList, MealRecipeList, MealPantryList, MealShoppingList) are
+     Lists (MealWeekList, MealRecipeList, MealPantryList, MealShoppingOpenList, MealShoppingDoneList) are
      LinearLayouts with items inflated programmatically by MealPlannerPresenter. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -192,11 +192,39 @@
                 android:text="@string/meal_shopping_title"
                 android:textAppearance="@style/TextAppearance.AutoSecretary.SectionTitle" />
 
-            <LinearLayout
-                android:id="@+id/MealShoppingList"
-                android:layout_width="match_parent"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/MealHideDone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/meal_hide_done" />
+
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_sm"
+                android:text="@string/meal_shopping_open_title"
+                android:textAppearance="@style/TextAppearance.AutoSecretary.Body.Medium" />
+
+            <LinearLayout
+                android:id="@+id/MealShoppingOpenList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xs"
+                android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/MealShoppingDoneTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:text="@string/meal_shopping_done_title"
+                android:textAppearance="@style/TextAppearance.AutoSecretary.Body.Medium" />
+
+            <LinearLayout
+                android:id="@+id/MealShoppingDoneList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xs"
                 android:orientation="vertical" />
         </LinearLayout>
 

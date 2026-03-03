@@ -7,6 +7,7 @@ import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.RecipeRepository;
+import com.autosecretary.features.meal.domain.ShoppingItemStatus;
 import com.autosecretary.features.meal.domain.ShoppingListItem;
 import com.autosecretary.features.meal.domain.ShelfLifeService;
 
@@ -118,7 +119,16 @@ public class MealPlannerPresenter {
         workerExecutor.execute(() -> {
             List<ShoppingListItem> items =
                     pantryRepository.getShoppingListItems(LocalDate.now().toString());
+            items.sort(Comparator.comparing((ShoppingListItem item) -> item.status)
+                    .thenComparing(item -> item.ingredientName));
             callbackDispatcher.execute(() -> onLoaded.accept(items));
+        });
+    }
+
+    public void updateShoppingItemStatus(String shoppingItemId, ShoppingItemStatus status, Runnable onDone) {
+        workerExecutor.execute(() -> {
+            pantryRepository.updateShoppingItemStatus(shoppingItemId, status);
+            callbackDispatcher.execute(onDone);
         });
     }
 
