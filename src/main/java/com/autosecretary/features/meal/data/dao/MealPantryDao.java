@@ -28,8 +28,14 @@ public interface MealPantryDao {
     @Query("SELECT * FROM shopping_list_item WHERE periodKey = :periodKey ORDER BY ingredientName")
     List<MealShoppingListItemEntity> findShoppingItemsByPeriodKey(String periodKey);
 
+    @Query("SELECT * FROM shopping_list_item WHERE periodKey = :periodKey AND status = :status ORDER BY ingredientName")
+    List<MealShoppingListItemEntity> findShoppingItemsByPeriodKeyAndStatus(String periodKey, int status);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertShoppingItem(MealShoppingListItemEntity entity);
+
+    @Query("UPDATE shopping_list_item SET status = :status WHERE id = :id")
+    void updateShoppingItemStatus(String id, int status);
 
     @Query("DELETE FROM shopping_list_item WHERE id = :id")
     void deleteShoppingItemById(String id);

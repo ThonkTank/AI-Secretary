@@ -54,10 +54,10 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
  * SQLite database abstraction for AutoSecretary using Android Room ORM.
  * <p>
  * This is a single-instance database accessible via {@link #getInstance(Context)}.
- * Room automatically handles table creation, schema versioning (v23), and type conversion.
+ * Room automatically handles table creation, schema versioning (v24), and type conversion.
  * </p>
  * <p>
- * <strong>Database version:</strong> 23. Schema changes require only a version bump;
+ * <strong>Database version:</strong> 24. Schema changes require only a version bump;
  * {@link #getInstance(Context)} uses {@code fallbackToDestructiveMigration()}, which drops
  * and recreates all tables on schema changes — intentional in this project (manual
  * {@code Migration} subclasses are forbidden; see CLAUDE.md). Always back up user data
@@ -105,7 +105,7 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
                 MealCookingPreferencesEntity.class,
                 MealWeeklyFoodTargetEntity.class
         },
-        version = 23,
+        version = 24,
         exportSchema = false
 )
 @TypeConverters(Converters.class)

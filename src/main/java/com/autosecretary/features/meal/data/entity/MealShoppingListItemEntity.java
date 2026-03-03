@@ -38,7 +38,7 @@ public class MealShoppingListItemEntity {
 
     public String suggestedStore;
 
-    public boolean isPurchased;
+    public int status;
 
     public String periodKey;
 

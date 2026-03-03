@@ -7,6 +7,7 @@ import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.RecipeRepository;
+import com.autosecretary.features.meal.domain.ShoppingItemStatus;
 import com.autosecretary.features.meal.domain.ShoppingListItem;
 import com.autosecretary.features.meal.domain.ShelfLifeService;
 
@@ -77,6 +78,14 @@ public class MealPlannerPresenter {
         callbackDispatcher.execute(onReady);
     }
 
+    public void updateShoppingItemStatus(String shoppingItemId, ShoppingItemStatus status, Runnable onDone) {
+        workerExecutor.execute(() -> {
+            pantryRepository.updateShoppingItemStatus(shoppingItemId, status);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+
     public void planRecipe(String recipeId, LocalDate date, MealType mealType, int servings,
                            Runnable onDone) {
         workerExecutor.execute(() -> {
@@ -103,21 +112,6 @@ public class MealPlannerPresenter {
                     plan.actualServings = Math.max(1, plan.plannedServings);
                 }
                 mealRepository.saveMealPlan(plan);
-            }
-            callbackDispatcher.execute(onDone);
-        });
-    }
-
-    public void toggleShoppingDone(String shoppingItemId, Runnable onDone) {
-        workerExecutor.execute(() -> {
-            String periodKey = LocalDate.now().toString();
-            List<ShoppingListItem> shoppingItems = pantryRepository.getShoppingListItems(periodKey);
-            for (ShoppingListItem item : shoppingItems) {
-                if (shoppingItemId != null && shoppingItemId.equals(item.id)) {
-                    item.togglePurchased();
-                    pantryRepository.saveShoppingListItem(item);
-                    break;
-                }
             }
             callbackDispatcher.execute(onDone);
         });
@@ -183,7 +177,10 @@ public class MealPlannerPresenter {
     }
 
     private List<ShoppingListItem> loadShoppingList(LocalDate day) {
-        return pantryRepository.getShoppingListItems(day.toString());
+        List<ShoppingListItem> items = pantryRepository.getShoppingListItems(day.toString());
+        items.sort(Comparator.comparing((ShoppingListItem item) -> item.status)
+                .thenComparing(item -> item.ingredientName));
+        return items;
     }
 
     private MealHomeModel.WeekPlanSnapshot createWeekPlanSnapshot(List<MealPlan> plans) {
@@ -202,7 +199,7 @@ public class MealPlannerPresenter {
         for (ShoppingListItem item : shoppingItems) {
             double neededAmount = Math.max(0.0, item.neededAmount);
             totalNeeded += neededAmount;
-            if (item.isPurchased) {
+            if (item.isDone()) {
                 purchasedAmount += neededAmount;
             }
         }
@@ -214,7 +211,7 @@ public class MealPlannerPresenter {
         int openItems = 0;
         ShoppingListItem topItem = null;
         for (ShoppingListItem item : shoppingItems) {
-            if (!item.isPurchased) {
+            if (!item.isDone()) {
                 openItems++;
                 if (topItem == null || item.neededAmount > topItem.neededAmount) {
                     topItem = item;

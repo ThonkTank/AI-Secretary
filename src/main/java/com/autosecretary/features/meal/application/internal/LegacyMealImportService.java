@@ -13,6 +13,7 @@ import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.RecipeRepository;
+import com.autosecretary.features.meal.domain.ShoppingItemStatus;
 import com.autosecretary.features.meal.domain.ShoppingListItem;
 import com.autosecretary.features.meal.domain.WeeklyFoodTarget;
 
@@ -329,7 +330,9 @@ public class LegacyMealImportService {
             item.unit = asString(row.get("unit"));
             item.foodGroupLabel = asString(row.get("food_group_label"));
             item.suggestedStore = asString(row.get("suggested_store"));
-            item.isPurchased = asBoolean(row.get("is_purchased"), false);
+            item.status = asBoolean(row.get("is_purchased"), false)
+                    ? ShoppingItemStatus.DONE
+                    : ShoppingItemStatus.OPEN;
             item.estimatedPriceCents = asInt(row.get("estimated_price_cents"), 0);
 
             pantryRepository.saveShoppingListItem(item);
