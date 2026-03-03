@@ -21,16 +21,6 @@ import java.util.function.Consumer;
 
 /**
  * Application-layer coordinator for the meal-planner screen.
- *
- * <p>Called directly by {@code MealPlannerFragment}. Provides pre-sorted, ready-to-render data
- * and handles basic user actions (plan a recipe, toggle a meal done, add pantry/shopping items).
- *
- * <p><strong>Threading contract:</strong> All repository work is executed on the provided worker
- * {@link Executor}. Every completion callback is dispatched via {@code callbackDispatcher}
- * (typically main/UI thread). Callers can safely update UI in callbacks.
- *
- * <p>This class contains no persistence logic: all reads/writes delegate to repositories.
- * It is not a domain service — it exists solely to keep the fragment thin.
  */
 public class MealPlannerPresenter {
 
@@ -52,77 +42,40 @@ public class MealPlannerPresenter {
         this.callbackDispatcher = callbackDispatcher;
     }
 
-    /**
-     * Loads meal plans for a rolling window centred on today: 3 days back + today + 10 days ahead.
-     * The asymmetric window is intentional — showing recent history alongside upcoming plans.
-     * Results are sorted by date, then by MealType ordinal (BREAKFAST before LUNCH before DINNER).
-     *
-     * @param onLoaded receives the sorted list on the callback dispatcher thread
-     */
-    public void getWeekMealPlans(Consumer<List<MealPlan>> onLoaded) {
+    public void loadHome(Consumer<MealHomeModel> onLoaded) {
         workerExecutor.execute(() -> {
             LocalDate today = LocalDate.now();
-            List<MealPlan> items = mealRepository.getMealPlans(today.minusDays(3), today.plusDays(10));
-            items.sort(Comparator.comparing((MealPlan plan) -> plan.date)
-                    .thenComparing(plan -> plan.mealType));
-            callbackDispatcher.execute(() -> onLoaded.accept(items));
+            List<MealPlan> plans = loadSortedMealPlans(today);
+            List<Recipe> recipes = loadSortedRecipes();
+            List<PantryItem> pantryItems = loadSortedPantryItems();
+            List<ShoppingListItem> shoppingItems = loadShoppingList(today);
+
+            MealHomeModel homeModel = new MealHomeModel(
+                    plans,
+                    recipes,
+                    pantryItems,
+                    shoppingItems,
+                    createWeekPlanSnapshot(plans),
+                    createNeedProgress(shoppingItems),
+                    createShoppingFocus(shoppingItems)
+            );
+            callbackDispatcher.execute(() -> onLoaded.accept(homeModel));
         });
     }
 
-    /**
-     * Loads all recipes sorted by title.
-     *
-     * <p><strong>Side effect on first use:</strong> If no recipes exist yet, a demo recipe is
-     * inserted into the repository and returned. This gives a fresh install something to show and
-     * confirms the persistence layer is working. The demo is a real saved record, not a placeholder.
-     *
-     * @param onLoaded receives the sorted list on the callback dispatcher thread
-     */
-    public void getRecipes(Consumer<List<Recipe>> onLoaded) {
+    public void openManagePlan(Consumer<List<Recipe>> onReady) {
         workerExecutor.execute(() -> {
-            List<Recipe> recipes = new ArrayList<>(recipeRepository.getRecipes());
-            if (recipes.isEmpty()) {
-                Recipe demo = new Recipe.Builder("Pasta Primavera")
-                        .description("Schnelle Gemüse-Pasta")
-                        .instructions("Pasta kochen, Gemüse anbraten, mischen.")
-                        .mealType(MealType.DINNER)
-                        .servings(2)
-                        .build();
-                recipeRepository.saveRecipe(demo);
-                recipes.add(demo);
-            }
-            recipes.sort(Comparator.comparing(recipe -> recipe.title));
-            callbackDispatcher.execute(() -> onLoaded.accept(recipes));
+            List<Recipe> recipes = loadSortedRecipes();
+            callbackDispatcher.execute(() -> onReady.accept(recipes));
         });
     }
 
-    /**
-     * Loads all pantry items sorted by ingredient name.
-     *
-     * @param onLoaded receives the sorted list on the callback dispatcher thread
-     */
-    public void getPantryItems(Consumer<List<PantryItem>> onLoaded) {
-        workerExecutor.execute(() -> {
-            List<PantryItem> items = pantryRepository.getPantryItems();
-            items.sort(Comparator.comparing(item -> item.ingredientName));
-            callbackDispatcher.execute(() -> onLoaded.accept(items));
-        });
+    public void openManageNeed(Runnable onReady) {
+        callbackDispatcher.execute(onReady);
     }
 
-    /**
-     * Loads shopping-list items for the current period.
-     * Period key is an ISO-8601 date string ({@code LocalDate.toString()}, e.g. {@code "2024-12-30"}).
-     *
-     * @param onLoaded receives the list on the callback dispatcher thread
-     */
-    public void getShoppingListItems(Consumer<List<ShoppingListItem>> onLoaded) {
-        workerExecutor.execute(() -> {
-            List<ShoppingListItem> items =
-                    pantryRepository.getShoppingListItems(LocalDate.now().toString());
-            items.sort(Comparator.comparing((ShoppingListItem item) -> item.status)
-                    .thenComparing(item -> item.ingredientName));
-            callbackDispatcher.execute(() -> onLoaded.accept(items));
-        });
+    public void openManagePantry(Runnable onReady) {
+        callbackDispatcher.execute(onReady);
     }
 
     public void updateShoppingItemStatus(String shoppingItemId, ShoppingItemStatus status, Runnable onDone) {
@@ -132,12 +85,7 @@ public class MealPlannerPresenter {
         });
     }
 
-    /**
-     * Plans a recipe for the given date and meal type.
-     *
-     * @param onDone called on the callback dispatcher thread after the plan is saved,
-     *               or immediately if the recipe was not found
-     */
+
     public void planRecipe(String recipeId, LocalDate date, MealType mealType, int servings,
                            Runnable onDone) {
         workerExecutor.execute(() -> {
@@ -154,11 +102,6 @@ public class MealPlannerPresenter {
         });
     }
 
-    /**
-     * Toggles the completion state of a meal plan.
-     *
-     * @param onDone called on the callback dispatcher thread after the toggle is persisted
-     */
     public void toggleMealCompleted(String mealPlanId, Runnable onDone) {
         workerExecutor.execute(() -> {
             MealPlan plan = mealRepository.findMealPlanById(mealPlanId);
@@ -174,11 +117,6 @@ public class MealPlannerPresenter {
         });
     }
 
-    /**
-     * Creates a shopping list item from a free-text need entry.
-     *
-     * @param onDone called on the callback dispatcher thread after the item is saved
-     */
     public void createShoppingItemFromNeed(String ingredientName, double neededAmount, String unit,
                                            Runnable onDone) {
         workerExecutor.execute(() -> {
@@ -190,11 +128,6 @@ public class MealPlannerPresenter {
         });
     }
 
-    /**
-     * Creates a pantry item with the given properties.
-     *
-     * @param onDone called on the callback dispatcher thread after the item is saved
-     */
     public void createPantryItem(String ingredientName,
                                  double amount,
                                  String unit,
@@ -212,5 +145,80 @@ public class MealPlannerPresenter {
             pantryRepository.savePantryItem(item);
             callbackDispatcher.execute(onDone);
         });
+    }
+
+    private List<MealPlan> loadSortedMealPlans(LocalDate today) {
+        List<MealPlan> plans = mealRepository.getMealPlans(today.minusDays(3), today.plusDays(10));
+        plans.sort(Comparator.comparing((MealPlan plan) -> plan.date)
+                .thenComparing(plan -> plan.mealType));
+        return plans;
+    }
+
+    private List<Recipe> loadSortedRecipes() {
+        List<Recipe> recipes = new ArrayList<>(recipeRepository.getRecipes());
+        if (recipes.isEmpty()) {
+            Recipe demo = new Recipe.Builder("Pasta Primavera")
+                    .description("Schnelle Gemüse-Pasta")
+                    .instructions("Pasta kochen, Gemüse anbraten, mischen.")
+                    .mealType(MealType.DINNER)
+                    .servings(2)
+                    .build();
+            recipeRepository.saveRecipe(demo);
+            recipes.add(demo);
+        }
+        recipes.sort(Comparator.comparing(recipe -> recipe.title));
+        return recipes;
+    }
+
+    private List<PantryItem> loadSortedPantryItems() {
+        List<PantryItem> items = pantryRepository.getPantryItems();
+        items.sort(Comparator.comparing(item -> item.ingredientName));
+        return items;
+    }
+
+    private List<ShoppingListItem> loadShoppingList(LocalDate day) {
+        List<ShoppingListItem> items = pantryRepository.getShoppingListItems(day.toString());
+        items.sort(Comparator.comparing((ShoppingListItem item) -> item.status)
+                .thenComparing(item -> item.ingredientName));
+        return items;
+    }
+
+    private MealHomeModel.WeekPlanSnapshot createWeekPlanSnapshot(List<MealPlan> plans) {
+        int completedCount = 0;
+        for (MealPlan plan : plans) {
+            if (plan.isCompleted) {
+                completedCount++;
+            }
+        }
+        return new MealHomeModel.WeekPlanSnapshot(plans.size(), completedCount);
+    }
+
+    private MealHomeModel.NeedProgress createNeedProgress(List<ShoppingListItem> shoppingItems) {
+        double totalNeeded = 0.0;
+        double purchasedAmount = 0.0;
+        for (ShoppingListItem item : shoppingItems) {
+            double neededAmount = Math.max(0.0, item.neededAmount);
+            totalNeeded += neededAmount;
+            if (item.isDone()) {
+                purchasedAmount += neededAmount;
+            }
+        }
+        double completionRatio = totalNeeded <= 0.0 ? 0.0 : Math.min(1.0, purchasedAmount / totalNeeded);
+        return new MealHomeModel.NeedProgress(totalNeeded, purchasedAmount, completionRatio);
+    }
+
+    private MealHomeModel.ShoppingFocus createShoppingFocus(List<ShoppingListItem> shoppingItems) {
+        int openItems = 0;
+        ShoppingListItem topItem = null;
+        for (ShoppingListItem item : shoppingItems) {
+            if (!item.isDone()) {
+                openItems++;
+                if (topItem == null || item.neededAmount > topItem.neededAmount) {
+                    topItem = item;
+                }
+            }
+        }
+        String topIngredient = topItem != null ? topItem.ingredientName : "";
+        return new MealHomeModel.ShoppingFocus(openItems, topIngredient);
     }
 }

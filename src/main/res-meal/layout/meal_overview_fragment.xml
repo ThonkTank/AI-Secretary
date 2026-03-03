@@ -203,7 +203,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_sm"
                 android:text="@string/meal_shopping_open_title"
-                android:textAppearance="@style/TextAppearance.AutoSecretary.Body.Medium" />
+                android:textAppearance="@style/TextAppearance.AutoSecretary.Meal.RowBody" />
 
             <LinearLayout
                 android:id="@+id/MealShoppingOpenList"
@@ -218,7 +218,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_sm"
                 android:text="@string/meal_shopping_done_title"
-                android:textAppearance="@style/TextAppearance.AutoSecretary.Body.Medium" />
+                android:textAppearance="@style/TextAppearance.AutoSecretary.Meal.RowBody" />
 
             <LinearLayout
                 android:id="@+id/MealShoppingDoneList"
