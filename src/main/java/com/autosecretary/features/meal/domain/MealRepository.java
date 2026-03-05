@@ -25,6 +25,8 @@ public interface MealRepository {
     List<MealPlan> getMealPlans(LocalDate fromInclusive, LocalDate toInclusive);
     /** Returns the meal plan with the given id, or null if not found. */
     MealPlan findMealPlanById(String mealPlanId);
+    /** Returns the meal plan linked to the given task, or null if not found. */
+    MealPlan findMealPlanByItemId(String taskId);
     void saveMealPlan(MealPlan mealPlan);
     void deleteMealPlan(String mealPlanId);
 

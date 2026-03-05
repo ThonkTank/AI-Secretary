@@ -3,7 +3,9 @@ package com.autosecretary.features.task.ui.edit.internal;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
+import com.autosecretary.features.task.data.TaskRelation;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
+import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 import java.time.DayOfWeek;
@@ -51,8 +53,7 @@ public final class TaskEditStateMapper {
         state.description = task.core.description;
         state.priority = task.core.priority;
         state.schedulingType = task.core.schedulingType;
-        state.goalIcon = Objects.requireNonNullElse(task.core.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
-        state.goalColorHex = Objects.requireNonNullElse(task.core.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
+        state.parentTaskId = task.parents.isEmpty() ? null : task.parents.get(0).parent;
         state.budgetRequiredCents = task.core.budgetRequiredCents;
         state.budgetAccountId = task.core.budgetAccountId;
         state.budgetCategoryId = task.core.budgetCategoryId;
@@ -76,7 +77,7 @@ public final class TaskEditStateMapper {
         state.completeFirst = task.core.repetition.completeFirst;
         state.carryoverDebt = task.core.repetition.carryoverDebt;
 
-        state.unit = task.core.progress.unit;
+        state.unit = Objects.requireNonNullElse(task.core.progress.unit, TaskEditDefaults.UNIT);
         state.target = task.core.progress.target;
         state.current = task.core.progress.current;
         state.resetPerRep = task.core.progress.resetPerRep;
@@ -109,8 +110,6 @@ public final class TaskEditStateMapper {
         task.core.description = state.description;
         task.core.priority = state.priority;
         task.core.schedulingType = state.schedulingType;
-        task.core.goalIcon = Objects.requireNonNullElse(state.goalIcon, TaskCore.DEFAULT_GOAL_ICON);
-        task.core.goalColorHex = Objects.requireNonNullElse(state.goalColorHex, TaskCore.DEFAULT_GOAL_COLOR_HEX);
         task.core.budgetRequiredCents = state.budgetRequiredCents;
         task.core.budgetAccountId = state.budgetAccountId;
         task.core.budgetCategoryId = state.budgetCategoryId;
@@ -146,18 +145,23 @@ public final class TaskEditStateMapper {
         task.prefSlots = new ArrayList<>();
         for (PrefSlotEditState prefSlotState : state.prefSlots) {
             TaskPrefSlot prefSlot = new TaskPrefSlot();
-            prefSlot.id = prefSlotState.id; // New slots keep null IDs until persistence assigns one.
+            if (prefSlotState.id != null) prefSlot.id = prefSlotState.id;
             prefSlot.taskId = task.core.id;
             prefSlot.start = prefSlotState.start;
             prefSlot.days = copyDaysOrEmpty(prefSlotState.days);
             task.prefSlots.add(prefSlot);
         }
 
-        // Task carries several Room @Relation lists (slots, parents, prerequisites, plannedMeals).
+        // Set parent relation from edit state. Replaces whatever the base task had.
+        task.parents = new ArrayList<>();
+        if (state.parentTaskId != null) {
+            task.parents.add(new TaskRelation(state.parentTaskId, task.core.id));
+        }
+
+        // Task carries several Room @Relation lists (slots, prerequisites, plannedMeals).
         // If the base task was constructed without loading all relations these lists may be null,
         // so ensure they are non-null lists to avoid NPEs in downstream callers.
         task.slots = ensureNotNull(task.slots);
-        task.parents = ensureNotNull(task.parents);
         task.prerequisites = ensureNotNull(task.prerequisites);
         task.plannedMeals = ensureNotNull(task.plannedMeals);
         return task;

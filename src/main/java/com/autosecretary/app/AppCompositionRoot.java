@@ -16,8 +16,8 @@ import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseC
 import com.autosecretary.features.budget.data.repository.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
-import com.autosecretary.features.meal.application.TaskMealIntegrationService;
 import com.autosecretary.features.meal.application.MealPlannerPresenter;
+import com.autosecretary.features.meal.application.TaskMealIntegrationService;
 import com.autosecretary.features.meal.data.repository.MealRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealRecipeRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealPantryRoomRepository;
@@ -157,15 +157,16 @@ public class AppCompositionRoot {
         TaskListItemMapper mapper = new TaskListItemMapper();
         TaskCalendarService taskCalendarService = new CalendarReader(app);
 
+        ensureMealRepositories();
         TaskDataService taskDataService = new TaskDataService(
                 dao,
                 mapper,
                 sharedExecutor,
-                mainHandler::post
+                mainHandler::post,
+                mealRepository
         );
         BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase =
                 new BookTaskCompletionExpenseUseCase(getBudgetRoomRepository());
-        ensureMealRepositories();
         TaskMealIntegrationService taskMealIntegrationService = new TaskMealIntegrationService(
                 mealRepository, recipeRepository, pantryRepository
         );
@@ -326,6 +327,7 @@ public class AppCompositionRoot {
         }
         return mealPlannerPresenter;
     }
+
 
     private void ensureMealRepositories() {
         if (mealRepository != null) return;

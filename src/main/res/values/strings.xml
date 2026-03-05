@@ -26,6 +26,7 @@
     <string name="settings_option_factory_reset">Factory Reset</string>
     <string name="settings_option_about">Über AutoSecretary</string>
     <string name="settings_option_schedule_config">Zeitfenster konfigurieren</string>
+    <string name="settings_option_cooking_prefs">Kochpräferenzen</string>
 
     <string name="settings_no_backups">Keine Backups vorhanden.</string>
     <string name="settings_backup_item_format">%1$s (%2$s)</string>

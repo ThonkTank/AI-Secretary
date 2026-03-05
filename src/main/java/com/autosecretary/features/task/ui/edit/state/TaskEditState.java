@@ -27,8 +27,7 @@ public class TaskEditState {
     public String id;
     public String title;
     public String description;
-    public String goalIcon = TaskEditDefaults.GOAL_ICON;
-    public String goalColorHex = TaskEditDefaults.GOAL_COLOR_HEX;
+    public String parentTaskId;  // nullable; null means no parent
 
     // Scheduling & priority — user-editable
     public Priority priority = TaskEditDefaults.PRIORITY;

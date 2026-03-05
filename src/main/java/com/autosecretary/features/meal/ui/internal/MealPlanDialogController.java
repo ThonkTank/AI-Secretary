@@ -1,9 +1,14 @@
 package com.autosecretary.features.meal.ui.internal;
 
 import android.content.Context;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -12,6 +17,8 @@ import androidx.fragment.app.Fragment;
 import com.autosecretary.R;
 import com.autosecretary.features.meal.domain.MealType;
 import com.autosecretary.features.meal.domain.Recipe;
+import com.autosecretary.features.meal.domain.RecipeScalingResult;
+import com.autosecretary.features.meal.domain.RecipeScalingService;
 import com.autosecretary.shared.ui.DialogHelper;
 import com.autosecretary.shared.ui.DialogValidation;
 import com.autosecretary.shared.ui.SpinnerHelper;
@@ -23,7 +30,8 @@ import java.util.List;
 
 /**
  * Manages the "plan a recipe" dialog. Loads recipes into a spinner, validates input,
- * and notifies the listener on successful submission.
+ * and notifies the listener on successful submission. Shows a scaled ingredient preview
+ * when a recipe with ingredients is selected.
  */
 public class MealPlanDialogController {
 
@@ -53,6 +61,8 @@ public class MealPlanDialogController {
         TextInputEditText dateField = content.findViewById(R.id.MealDialogDate);
         Spinner typeSpinner = content.findViewById(R.id.MealDialogType);
         TextInputEditText servingsField = content.findViewById(R.id.MealDialogServings);
+        TextView scaledLabel = content.findViewById(R.id.MealDialogScaledLabel);
+        LinearLayout scaledContainer = content.findViewById(R.id.MealDialogScaledIngredients);
 
         SpinnerHelper.bindList(recipeSpinner, recipes, r -> r.title, ctx);
         recipeSpinner.setSelection(0);
@@ -61,6 +71,31 @@ public class MealPlanDialogController {
         SpinnerHelper.bindList(typeSpinner, Arrays.asList(MealType.values()), mt -> mt.label, ctx);
         typeSpinner.setSelection(0);
         servingsField.setText(DEFAULT_SERVINGS);
+
+        // Update scaling preview when recipe or servings change
+        Runnable updatePreview = () -> updateScalingPreview(ctx, recipes, recipeSpinner,
+                servingsField, scaledLabel, scaledContainer);
+
+        recipeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                updatePreview.run();
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+        servingsField.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                updatePreview.run();
+            }
+        });
+
+        // Initial preview
+        updatePreview.run();
 
         AlertDialog dialog = new AlertDialog.Builder(ctx)
                 .setTitle(R.string.meal_plan_dialog_title)
@@ -83,5 +118,48 @@ public class MealPlanDialogController {
             listener.onPlanSubmitted(recipeId, parsedDate, mealType, servings);
             dialog.dismiss();
         });
+    }
+
+    private void updateScalingPreview(Context ctx, List<Recipe> recipes,
+                                       Spinner recipeSpinner, TextInputEditText servingsField,
+                                       TextView scaledLabel, LinearLayout scaledContainer) {
+        int idx = recipeSpinner.getSelectedItemPosition();
+        if (idx < 0 || idx >= recipes.size()) {
+            scaledLabel.setVisibility(View.GONE);
+            scaledContainer.setVisibility(View.GONE);
+            return;
+        }
+        Recipe recipe = recipes.get(idx);
+        if (recipe.ingredients == null || recipe.ingredients.isEmpty()) {
+            scaledLabel.setVisibility(View.GONE);
+            scaledContainer.setVisibility(View.GONE);
+            return;
+        }
+
+        int servings;
+        try {
+            servings = Integer.parseInt(servingsField.getText().toString().trim());
+        } catch (NumberFormatException e) {
+            scaledLabel.setVisibility(View.GONE);
+            scaledContainer.setVisibility(View.GONE);
+            return;
+        }
+        if (servings <= 0) return;
+
+        RecipeScalingResult result = RecipeScalingService.scaleRecipe(recipe, servings);
+        scaledLabel.setText(ctx.getString(R.string.meal_plan_scaled_label, servings));
+        scaledLabel.setVisibility(View.VISIBLE);
+        scaledContainer.removeAllViews();
+        scaledContainer.setVisibility(View.VISIBLE);
+
+        for (RecipeScalingResult.ScaledIngredient ing : result.ingredients()) {
+            String amountStr = ing.amount() == (int) ing.amount()
+                    ? String.valueOf((int) ing.amount())
+                    : String.format("%.1f", ing.amount());
+            TextView line = new TextView(ctx);
+            line.setText(ctx.getString(R.string.meal_plan_scaled_ingredient_format,
+                    ing.ingredientName(), amountStr, ing.unit()));
+            scaledContainer.addView(line);
+        }
     }
 }

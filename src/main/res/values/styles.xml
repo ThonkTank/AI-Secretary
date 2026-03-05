@@ -97,6 +97,16 @@
         <item name="android:textColor">@color/color_on_surface_emphasis</item>
     </style>
 
+    <!-- Section header: used to introduce a new logical group in multi-section forms.
+         Visually distinct from Editor.Label (which labels individual fields).
+         12sp, uppercase, muted variant color — follows Material "overline" convention. -->
+    <style name="TextAppearance.AutoSecretary.Editor.SectionHeader" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textSize">@dimen/text_xs</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.08</item>
+        <item name="android:textColor">@color/color_on_surface_variant</item>
+    </style>
+
     <style name="TextAppearance.AutoSecretary.Editor.PrefSlotButton" parent="TextAppearance.MaterialComponents.Body2">
         <item name="android:textSize">@dimen/text_sm</item>
     </style>

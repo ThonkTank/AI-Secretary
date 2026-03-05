@@ -13,11 +13,15 @@ import com.autosecretary.app.update.UpdateChecker;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.ui.BudgetFragment;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
+import com.autosecretary.features.meal.application.MealPlannerPresenter;
 import com.autosecretary.features.meal.ui.MealPlannerFragment;
+import com.autosecretary.features.meal.ui.internal.MealCookingPrefsDialogController;
 import com.autosecretary.features.task.ui.TaskScheduleConfigDialog;
 import com.autosecretary.features.task.ui.list.TaskListFragment;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+
+import android.widget.Toast;
 
 /**
  * The single Activity that hosts all three feature tabs: Tasks, Budget, and Meal Planner.
@@ -59,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
         settingsController = new SettingsController(this, new SettingsDataService(this),
                 this::reloadUiStateAfterDataReset,
                 this::showScheduleConfigDialog,
+                this::showCookingPrefsDialog,
                 AutoSecretaryApplication.from(this).getAppCompositionRoot().getSharedExecutor());
 
         BottomNavigationView tabBar = findViewById(R.id.TabBar);
@@ -165,6 +170,20 @@ public class MainActivity extends AppCompatActivity {
 
     private void showScheduleConfigDialog() {
         new TaskScheduleConfigDialog().show(getSupportFragmentManager(), TaskScheduleConfigDialog.TAG);
+    }
+
+    private void showCookingPrefsDialog() {
+        MealPlannerPresenter presenter = AutoSecretaryApplication.from(this)
+                .getAppCompositionRoot().getMealPlannerPresenter();
+        presenter.loadCookingPreferences(prefs -> {
+            MealCookingPrefsDialogController controller = new MealCookingPrefsDialogController(
+                    this,
+                    savedPrefs -> presenter.saveCookingPreferences(savedPrefs, () ->
+                            Toast.makeText(this, R.string.meal_success_cooking_prefs_saved,
+                                    Toast.LENGTH_SHORT).show()
+                    ));
+            controller.show(prefs);
+        });
     }
 
     private void reloadUiStateAfterDataReset() {

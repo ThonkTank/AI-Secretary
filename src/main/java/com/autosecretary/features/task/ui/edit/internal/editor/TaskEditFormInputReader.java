@@ -1,10 +1,8 @@
 package com.autosecretary.features.task.ui.edit.internal.editor;
 
 import com.autosecretary.shared.Period;
-import com.autosecretary.features.task.data.TaskCore;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.Objects;
 import java.util.function.Function;
 import com.autosecretary.shared.Priority;
@@ -28,20 +26,17 @@ public class TaskEditFormInputReader {
     private final TaskEditSectionBinder.SchedulingViews schedulingViews;
     private final TaskEditSectionBinder.RepetitionViews repetitionViews;
     private final TaskEditSectionBinder.ProgressViews progressViews;
-    private final GoalSectionController goalSectionController;
 
     public TaskEditFormInputReader(
         TaskEditSectionBinder.BasicInfoViews basicInfoViews,
         TaskEditSectionBinder.SchedulingViews schedulingViews,
         TaskEditSectionBinder.RepetitionViews repetitionViews,
-        TaskEditSectionBinder.ProgressViews progressViews,
-        GoalSectionController goalSectionController
+        TaskEditSectionBinder.ProgressViews progressViews
     ) {
         this.basicInfoViews = basicInfoViews;
         this.schedulingViews = schedulingViews;
         this.repetitionViews = repetitionViews;
         this.progressViews = progressViews;
-        this.goalSectionController = goalSectionController;
     }
 
     /**
@@ -68,7 +63,6 @@ public class TaskEditFormInputReader {
     /** Reads all form views and writes the values directly into {@code state}. */
     public void read(TaskEditState state) {
         readBasicInfo(state);
-        readGoalSection(state);
         readSchedulingSection(state);
         readRepetitionSection(state);
         readProgressSection(state);
@@ -81,25 +75,17 @@ public class TaskEditFormInputReader {
             SpinnerHelper.enumAtPosition(basicInfoViews.priorityView, Priority.values()),
             TaskEditDefaults.PRIORITY
         );
-    }
-
-    private void readGoalSection(TaskEditState state) {
-        state.goalIcon = goalSectionController.getGoalIconText();
-        state.goalColorHex = Objects.requireNonNullElse(
-            goalSectionController.getSelectedGoalColorHex(),
-            TaskEditDefaults.GOAL_COLOR_HEX
-        );
+        int parentPos = basicInfoViews.parentTaskView.getSelectedItemPosition();
+        state.parentTaskId = (parentPos > 0 && parentPos <= basicInfoViews.parentTaskItems.size())
+                ? basicInfoViews.parentTaskItems.get(parentPos - 1).core.id : null;
     }
 
     private void readSchedulingSection(TaskEditState state) {
-        state.schedulingType = Objects.requireNonNullElse(
-            SpinnerHelper.enumAtPosition(schedulingViews.schedulingTypeView, TaskCore.SchedulingType.values()),
-            TaskEditDefaults.SCHEDULING_TYPE
-        );
-        state.fixedDate = parseSafe(schedulingViews.fixedDateView.getText().toString(), LocalDate::parse);
-        state.fixedStart = parseSafe(schedulingViews.fixedStartView.getText().toString(), LocalTime::parse);
-        state.fixedEnd = parseSafe(schedulingViews.fixedEndView.getText().toString(), LocalTime::parse);
-        state.fixedDuration = parseSafe(schedulingViews.fixedDurationView.getText().toString(), Integer::parseInt);
+        // Scheduler type spinner only contains TASK — TERMIN is not exposed in the UI.
+        // Preserve the existing schedulingType (e.g. TERMIN on legacy tasks) rather than
+        // overwriting it; only default to TASK when the field is null (new tasks).
+        if (state.schedulingType == null) state.schedulingType = TaskEditDefaults.SCHEDULING_TYPE;
+        // fixedDate, fixedStart, fixedEnd, fixedDuration: preserved from editState — not editable via UI.
         Integer budgetCents = parseSafe(schedulingViews.budgetRequiredCentsView.getText().toString(), Integer::parseInt);
         // 0 is treated as unset — only positive values are meaningful
         state.budgetRequiredCents = (budgetCents != null && budgetCents > 0) ? budgetCents : null;

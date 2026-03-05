@@ -20,11 +20,6 @@ public final class TaskEditDefaults {
     public static final Priority PRIORITY = Priority.MEDIUM;
     public static final TaskCore.SchedulingType SCHEDULING_TYPE = TaskCore.SchedulingType.TASK;
 
-    // Goal presentation
-    // These delegate to TaskCore domain defaults to ensure UI and domain are always in sync.
-    public static final String GOAL_ICON = TaskCore.DEFAULT_GOAL_ICON;
-    public static final String GOAL_COLOR_HEX = TaskCore.DEFAULT_GOAL_COLOR_HEX;
-
     // Scheduling constraints
     public static final int MIN_DURATION = 5;  // minutes; minimum duration for a slot
     public static final int MAX_DURATION = 10;  // minutes; maximum duration for a slot

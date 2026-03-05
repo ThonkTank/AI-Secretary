@@ -8,6 +8,8 @@ import android.widget.Spinner;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
+import androidx.annotation.Nullable;
+
 import com.autosecretary.R;
 import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.shared.ui.DialogHelper;
@@ -15,6 +17,7 @@ import com.autosecretary.shared.ui.DialogValidation;
 import com.autosecretary.shared.ui.SpinnerHelper;
 import com.google.android.material.textfield.TextInputEditText;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 
 /**
@@ -26,6 +29,8 @@ public class MealPantryDialogController {
     public interface Listener {
         void onPantryItemSubmitted(String name, double amount, String unit,
                                    PantryItem.StorageLocation location, int shelfLifeDays);
+        void onPantryItemUpdated(PantryItem updated);
+        void onPantryItemDeleted(String pantryItemId);
     }
 
     private final Fragment fragment;
@@ -37,6 +42,15 @@ public class MealPantryDialogController {
     }
 
     public void show() {
+        showInternal(null);
+    }
+
+    public void showEdit(PantryItem existing) {
+        showInternal(existing);
+    }
+
+    private void showInternal(@Nullable PantryItem existing) {
+        boolean isEdit = existing != null;
         Context ctx = fragment.requireContext();
         View content = LayoutInflater.from(ctx).inflate(R.layout.meal_pantry_create_dialog, null);
         TextInputEditText nameField = content.findViewById(R.id.MealPantryName);
@@ -46,10 +60,24 @@ public class MealPantryDialogController {
         Spinner locationSpinner = content.findViewById(R.id.MealPantryLocation);
         SpinnerHelper.bindList(locationSpinner, Arrays.asList(PantryItem.StorageLocation.values()),
                 sl -> sl.label, ctx);
-        locationSpinner.setSelection(0);
+
+        if (isEdit) {
+            nameField.setText(existing.ingredientName);
+            amountField.setText(String.valueOf(existing.amount));
+            unitField.setText(existing.unit);
+            if (existing.expiryDate != null) {
+                int days = (int) LocalDate.now().until(existing.expiryDate).getDays();
+                shelfLifeDaysField.setText(String.valueOf(Math.max(0, days)));
+            }
+            if (existing.location != null) {
+                locationSpinner.setSelection(existing.location.ordinal());
+            }
+        } else {
+            locationSpinner.setSelection(0);
+        }
 
         AlertDialog dialog = new AlertDialog.Builder(ctx)
-                .setTitle(R.string.meal_pantry_dialog_title)
+                .setTitle(isEdit ? R.string.meal_pantry_dialog_title_edit : R.string.meal_pantry_dialog_title)
                 .setView(content)
                 .setNegativeButton(R.string.action_cancel, null)
                 .setPositiveButton(R.string.meal_pantry_dialog_save, null)
@@ -82,8 +110,29 @@ public class MealPantryDialogController {
             PantryItem.StorageLocation location = SpinnerHelper.enumAtPosition(
                     locationSpinner, PantryItem.StorageLocation.values());
             if (location == null) return;
-            listener.onPantryItemSubmitted(ingredientName, amount, unitStr, location, shelfLifeDays);
+
+            if (isEdit) {
+                PantryItem updated = new PantryItem.Builder(
+                        existing.ingredientId, ingredientName, Math.max(0.1, amount), unitStr)
+                        .location(location)
+                        .purchaseDate(existing.purchaseDate)
+                        .expiryDate(shelfLifeDays > 0 ? LocalDate.now().plusDays(shelfLifeDays) : null)
+                        .build();
+                updated.id = existing.id;
+                listener.onPantryItemUpdated(updated);
+            } else {
+                listener.onPantryItemSubmitted(ingredientName, amount, unitStr, location, shelfLifeDays);
+            }
             dialog.dismiss();
-        });
+        }, isEdit ? dlg -> {
+            dlg.setButton(AlertDialog.BUTTON_NEUTRAL,
+                    ctx.getString(R.string.action_delete), (d, w) -> {});
+            dlg.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+                dlg.dismiss();
+                DialogHelper.showDeleteConfirmation(ctx,
+                        R.string.meal_pantry_delete_title, R.string.meal_pantry_delete_message,
+                        () -> listener.onPantryItemDeleted(existing.id));
+            });
+        } : null);
     }
 }

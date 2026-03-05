@@ -64,6 +64,12 @@ public class MealRoomRepository implements MealRepository {
     }
 
     @Override
+    public MealPlan findMealPlanByItemId(String taskId) {
+        MealPlanEntity e = mealPlanDao.findByItemId(taskId);
+        return e == null ? null : toDomain(e);
+    }
+
+    @Override
     public void saveMealPlan(MealPlan plan) {
         if (plan.id == null) plan.id = UUID.randomUUID().toString();
         mealPlanDao.insert(toEntity(plan));

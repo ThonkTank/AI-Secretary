@@ -28,7 +28,7 @@ import java.util.concurrent.ExecutorService;
  *
  * Typical usage:
  * <pre>
- *   SettingsController controller = new SettingsController(context, dataService, onDataChanged, onShowScheduleConfig, executor);
+ *   SettingsController controller = new SettingsController(context, dataService, onDataChanged, onShowScheduleConfig, onShowCookingPrefs, executor);
  *   controller.showSettingsMenu();  // Shows menu dialog on UI thread
  * </pre>
  */
@@ -36,10 +36,11 @@ public class SettingsController {
 
     /** Option indices must match the order of strings in {@link #showSettingsMenu()} */
     private static final int OPTION_SCHEDULE_CONFIG  = 0;
-    private static final int OPTION_RESTORE_BACKUP   = 1;
-    private static final int OPTION_MANUAL_BACKUP    = 2;
-    private static final int OPTION_FACTORY_RESET    = 3;
-    private static final int OPTION_ABOUT            = 4;
+    private static final int OPTION_COOKING_PREFS    = 1;
+    private static final int OPTION_RESTORE_BACKUP   = 2;
+    private static final int OPTION_MANUAL_BACKUP    = 3;
+    private static final int OPTION_FACTORY_RESET    = 4;
+    private static final int OPTION_ABOUT            = 5;
 
     /** Date format for displaying backup timestamps in the restore dialog */
     private static final SimpleDateFormat BACKUP_DATE_FORMATTER =
@@ -79,17 +80,21 @@ public class SettingsController {
     private final Runnable onDataChanged;
     /** Callback invoked to open the schedule configuration dialog */
     private final Runnable onShowScheduleConfig;
+    /** Callback invoked to open the cooking preferences dialog */
+    private final Runnable onShowCookingPrefs;
     /** Handler for posting callbacks from background threads back to the main (UI) thread */
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public SettingsController(@NonNull Context context, @NonNull SettingsDataService settingsDataService,
                               @NonNull Runnable onDataChanged, @NonNull Runnable onShowScheduleConfig,
+                              @NonNull Runnable onShowCookingPrefs,
                               @NonNull ExecutorService executorService) {
         this.context = context;
         this.settingsDataService = settingsDataService;
         this.executorService = executorService;
         this.onDataChanged = onDataChanged;
         this.onShowScheduleConfig = onShowScheduleConfig;
+        this.onShowCookingPrefs = onShowCookingPrefs;
     }
 
     /**
@@ -147,6 +152,7 @@ public class SettingsController {
     public void showSettingsMenu() {
         String[] options = {
                 context.getString(R.string.settings_option_schedule_config),
+                context.getString(R.string.settings_option_cooking_prefs),
                 context.getString(R.string.settings_option_restore_backup),
                 context.getString(R.string.settings_option_manual_backup),
                 context.getString(R.string.settings_option_factory_reset),
@@ -158,6 +164,7 @@ public class SettingsController {
                 .setItems(options, (dialog, which) -> {
                     switch (which) {
                         case OPTION_SCHEDULE_CONFIG: onShowScheduleConfig.run();  break;
+                        case OPTION_COOKING_PREFS:   onShowCookingPrefs.run();    break;
                         case OPTION_RESTORE_BACKUP:  showBackupRestoreDialog();   break;
                         case OPTION_MANUAL_BACKUP:   createManualBackup();        break;
                         case OPTION_FACTORY_RESET:   confirmFactoryReset();       break;

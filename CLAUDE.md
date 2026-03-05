@@ -79,7 +79,7 @@ Both features share a single-threaded `ExecutorService` wired in `AppComposition
   - `calendar/` — `TaskCalendarService` contract and DTOs.
   - `config/` — `TaskScheduleConfigRepository` (implements `SchedulingWindowProvider`; lazy-cached per-day scheduling windows).
   - `listmodel/` — `TaskListItem` and `TaskListItemMapper` (never `model/`).
-  - `internal/` — Android/infrastructure implementations: `alarms/` (receivers), `budget/` (`TaskBudgetEligibilityFromBudgetLookup` implements `TaskBudgetEligibilityService` + `BookTaskCompletionExpenseUseCase`), `calendar/` (`CalendarReader`, `CalendarQueryHelper`, `DeviceCalendarBlockedIntervalProvider`), `mutations/TaskSlotToggleMutation`. Root-level: `TaskSeedDataFactory` (seeds demo tasks into empty DB on first install).
+  - `internal/` — Android/infrastructure implementations: `alarms/` (receivers), `budget/` (`TaskBudgetEligibilityFromBudgetLookup` implements `TaskBudgetEligibilityService` + `BookTaskCompletionExpenseUseCase`), `calendar/` (`CalendarReader`, `CalendarQueryHelper`, `DeviceCalendarBlockedIntervalProvider`), `mutations/TaskSlotToggleMutation`.
 - **`budget/domain/timeline/`** — `AccountBalanceTimelineService` and balance chart data structures (`BalanceTimelinePoint`, `DailyDeltaPoint`, `MonthlyDeltaPoint`).
 - **`budget/domain/importing/`** — `ImportCategory` (uses `TransactionDirection`), `ImportTransactionRecord`, `ImportTransactionType` (INCOME/EXPENSE/TRANSFER; maps to `TransactionDirection`+`TransactionKind`), `ImportStatus`, `ParsedStatement`, `ParsedTransaction`.
 - **`budget/domain/recurring/`** — recurring pattern domain types: `RecurringBudgetTransaction`, `RecurringPatternDetector`, `RecurringScheduleParams`, `RecurringSuggestion`, `RecurringTemplateScheduler`, `RecurringType`, `TemplateStatusUpdate`; implementation helpers in `recurring/internal/`.
@@ -88,7 +88,7 @@ Both features share a single-threaded `ExecutorService` wired in `AppComposition
 
 ## Project Status
 
-**The app is effectively feature-complete.** The backend/domain layer is stable and not expected to grow. Do not propose new features, new abstractions "for future extensibility", or speculative infrastructure. Changes should focus on:
+**The app is in active production use.** The task feature is live; real user data is in the DB. The backend/domain layer is stable and not expected to grow. Do not propose new features, new abstractions "for future extensibility", or speculative infrastructure. Changes should focus on:
 - **Bug fixes** in existing behavior
 - **Simplification** — removing unnecessary complexity, dead code, redundant abstractions
 - **Code quality** — readability, consistency, correctness

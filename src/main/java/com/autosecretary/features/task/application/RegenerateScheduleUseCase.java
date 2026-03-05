@@ -1,6 +1,5 @@
 package com.autosecretary.features.task.application;
 
-import com.autosecretary.features.task.application.internal.TaskSeedDataFactory;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
@@ -21,8 +20,7 @@ import java.util.function.Consumer;
 /**
  * Entry point for schedule generation. Reads all tasks from the database, generates
  * a 7-day schedule (today + 6 days) using {@link TaskSlotGenerator} with cross-day state
- * tracking, and writes scheduled results back. Seeds default tasks on first run when
- * the DB is empty.
+ * tracking, and writes scheduled results back.
  *
  * <strong>Threading contract:</strong> DB work runs on the provided {@link ExecutorService};
  * the {@code onDone} callback is dispatched via {@code callbackDispatcher} (typically main/UI).
@@ -59,12 +57,6 @@ public class RegenerateScheduleUseCase {
         workerExecutor.execute(() -> {
             try {
                 List<Task> tasks = taskDao.readAll();
-                if (tasks.isEmpty()) {
-                    List<Task> seedTasks = TaskSeedDataFactory.createDefaultTasks();
-                    taskDao.writeList(TaskTreeOperations.flatten(seedTasks));
-                    tasks = taskDao.readAll();
-                }
-
                 LocalDate today = LocalDate.now();
                 LocalDate windowEnd = today.plusDays(PLANNING_DAYS);
 

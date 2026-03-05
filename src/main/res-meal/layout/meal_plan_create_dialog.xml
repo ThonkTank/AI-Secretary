@@ -69,4 +69,21 @@
             android:inputType="number" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <!-- Scaled ingredients preview (populated dynamically) -->
+    <TextView
+        android:id="@+id/MealDialogScaledLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_md"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Editor.Label"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/MealDialogScaledIngredients"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs"
+        android:orientation="vertical"
+        android:visibility="gone" />
+
 </LinearLayout>

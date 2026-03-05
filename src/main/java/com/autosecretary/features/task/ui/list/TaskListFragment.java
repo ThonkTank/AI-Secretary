@@ -214,8 +214,8 @@ public class TaskListFragment extends Fragment {
     }
 
     private void openEditDialog(TaskEditSessionController editSessionController, String taskId) {
-        editSessionController.beginEditTask(taskId);
-        new TaskEditDialog().show(getParentFragmentManager(), TaskEditDialog.TAG_EDIT);
+        editSessionController.beginEditTask(taskId, () ->
+            new TaskEditDialog().show(getParentFragmentManager(), TaskEditDialog.TAG_EDIT));
     }
 
     private void openCreateTaskDialog(TaskEditSessionController editSessionController) {

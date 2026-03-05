@@ -9,16 +9,16 @@
 # Checkpoint (init + commit + sync-main) runs every N directories.
 #
 # Skill selection per directory:
-#   1. triage (always first — backlog triage)
-#   2-3. review-ui (<500 LOC) OR review-design + review-accessibility (≥500 LOC) — if dir contains ui/res
-#   4-7. review-structure, review-architecture, review-onboarding, review-conventions (≥2000 LOC)
-#   8-9. review-security, review-performance (last 20% by LOC)
-#   10. review-quality (<500 LOC) OR review-smells + review-elegance + review-simplicity (≥500 LOC)
+#   1. triage (always first — backlog triage, uses ops/skills/triage.md)
+#   2. review-ui (design + accessibility + UX) — if dir contains ui/res
+#   3-6. review-structure, review-architecture, review-onboarding, review-conventions (≥2000 LOC)
+#   7-8. review-security, review-performance (last 20% by LOC)
+#   9. review-quality (smells + elegance + simplicity)
 #
 # Logs: $LOG_DIR/cycle_NNN/<skill>/<sanitized-path>.md  +  $LOG_DIR/_run.log
 #
-# Skill role descriptions are loaded from ops/skills/<skill>.md and injected
-# into the prompt alongside general guidelines (scope, execution mode, backlog).
+# Review agents use Claude Code's built-in Agent tool with matching subagent_type
+# (e.g. review-architecture, review-smells). Only triage still uses a local skill file.
 # The prompt instructs agents not to use plan mode (Claude-specific safeguard).
 
 # Note: -e intentionally omitted — non-zero agent exits are handled by run_with_retry, not by shell exit.
@@ -97,17 +97,12 @@ _build_skill_list() {
         echo "triage"
     fi
 
-    # 2-3. UI directories (small: single combined pass; large: two separate passes)
+    # 2. UI directories — consolidated review-ui agent (design + a11y + UX)
     if _has_ui_content "$dir"; then
-        if (( loc < 500 )); then
-            echo "review-ui"
-        else
-            echo "review-design"
-            echo "review-accessibility"
-        fi
+        echo "review-ui"
     fi
 
-    # 4-7. Large directories (≥2000 LOC recursively)
+    # 3-6. Large directories (≥2000 LOC recursively)
     if (( loc >= 2000 )); then
         echo "review-structure"
         echo "review-architecture"
@@ -115,20 +110,14 @@ _build_skill_list() {
         echo "review-conventions"
     fi
 
-    # 8-9. Last 20% by LOC
+    # 7-8. Last 20% by LOC
     if (( total_dirs > 0 && dir_i > top20_threshold )); then
         echo "review-security"
         echo "review-performance"
     fi
 
-    # 10-12. Code quality (small dirs: single combined pass; large dirs: three separate passes)
-    if (( loc < 500 )); then
-        echo "review-quality"
-    else
-        echo "review-smells"
-        echo "review-elegance"
-        echo "review-simplicity"
-    fi
+    # 9. Code quality — consolidated review-quality agent (smells + elegance + simplicity)
+    echo "review-quality"
 }
 
 # Check whether origin/main has commits we don't have, or open PRs exist.
@@ -363,12 +352,12 @@ dispatch_claude() {
 }
 
 _build_prompt() {
-    local dir=$1 skill_text=$2 loc=${3:-0}
+    local dir=$1 agent_type=$2 loc=${3:-0}
     local large_dir_hint=""
     if (( loc >= 2000 )); then
         large_dir_hint="
 ## Large Directory
-This directory contains ${loc} lines of code. Use the Task tool with Explore subagents
+This directory contains ${loc} lines of code. Use the Agent tool with Explore subagents
 to efficiently search across files instead of reading them one by one.
 "
     fi
@@ -388,6 +377,15 @@ You are running inside an automated, non-interactive script.
   the ExitPlanMode call — this is a fatal error for the entire run.
 - Read and analyse the code, plan your approach mentally, then execute directly.
 
+## Review
+Use the Agent tool with subagent_type="${agent_type}" to perform a focused review of
+all code in ${dir}. Pass a detailed prompt telling the agent to review the directory
+and return structured findings with severity, file, line, and suggested fix.
+
+After the agent returns its findings, act on them:
+- Fix all actionable issues directly by editing source files.
+- For issues you cannot fix in this run, document them in REVIEW_BACKLOG.md (see below).
+
 ## Scope
 Focus your analysis on the specified directory. You may edit files outside this
 directory when a fix requires it (e.g. updating callers, adjusting imports, fixing
@@ -395,9 +393,10 @@ method signatures in consumers). Read dependencies and surrounding context as ne
 Ignore hidden directories (.*), build output (build/), and generated files.
 
 ## Build Verification
-After making changes to source files, verify the build compiles cleanly:
-  ./gradlew assembleDebug
-Fix any compile errors your changes introduced before finishing. Do not leave a broken build.
+After making changes to source files, verify the build compiles cleanly.
+Check the project's CLAUDE.md for the correct build/compile command — do NOT assume
+gradle or any specific build tool. Fix any compile errors your changes introduced
+before finishing. Do not leave a broken build.
 ${large_dir_hint}
 ## Backlog Protocol
 Follow this exactly, in this order:
@@ -412,17 +411,25 @@ Backlog triage (promote/demote across directories) has already been handled by a
 prior agent. Do NOT move entries between backlog files. Focus on reading what exists,
 then proceed to analysis.
 
-### Step 2 — Analyse and write backlogs (MANDATORY, before any source edits)
-Analyse all code in scope and identify all findings (both from backlogs and newly found).
-Then write REVIEW_BACKLOG.md files for ALL open issues — both ones you plan to fix now
-and ones you will defer. Writing the backlog is not optional and not a checkpoint:
-it is a hard requirement. Every issue that exists must be in a file before you touch source code.
-Use the backlog entry format defined in your Role section, placed at the lowest directory
-level containing all affected files.
+### Step 2 — Dispatch review agent
+Use the Agent tool with subagent_type="${agent_type}" to review all code in ${dir}.
+The agent will return structured findings. Combine these with any existing backlog items.
+
+### Step 3 — Write backlogs (MANDATORY, before any source edits)
+Write REVIEW_BACKLOG.md files for ALL open issues — both ones you plan to fix now
+and ones you will defer. Writing the backlog is not optional:
+it is a hard requirement. Every issue must be in a file before you touch source code.
+Place each backlog at the lowest directory level containing all affected files.
+Use this format per entry:
+
+  ## [SEVERITY] Title
+  **File:** path:line
+  **Description:** what is wrong and why it matters
+  **Suggested fix:** concrete action
 
 **If you skip writing a REVIEW_BACKLOG.md for any issue, that issue is permanently lost.**
 
-### Step 3 — Implement fixes
+### Step 4 — Implement fixes
 Fix aggressively. Your goal is to resolve as many issues as possible, not to document them.
 Every issue left in the backlog has to wait for a future cycle to be picked up again — there
 is no other team. If you can fix it now, fix it now. This includes:
@@ -436,11 +443,11 @@ After implementing EACH individual fix, immediately edit the REVIEW_BACKLOG.md t
 that entry — do not batch backlog edits at the end. Removing an entry IS the resolution
 record; do not re-document fixed issues.
 
-### Step 4 — Final backlog cleanup
+### Step 5 — Final backlog cleanup
 Delete any REVIEW_BACKLOG.md that is now empty. No other backlog changes needed —
 the backlog was kept current throughout Step 3.
 
-### Step 5 — Write run summary (LAST action, always)
+### Step 6 — Write run summary (LAST action, always)
 Output a structured summary as the very last thing you write. Use exactly this format:
 
 ### Verdict: **Clean** / **N fixed · M deferred**
@@ -456,15 +463,11 @@ Mark each deferred item with:
 - **existing** = was already in a REVIEW_BACKLOG.md before this run
 
 **IMPORTANT:** Every item listed under "Deferred to backlog" MUST already exist in a
-REVIEW_BACKLOG.md file written in Step 2. If you list a deferred item here that has no
+REVIEW_BACKLOG.md file written in Step 3. If you list a deferred item here that has no
 corresponding backlog file entry, you have made an error — the item will be permanently
 lost. Do not list anything as deferred unless you have already written it to a file.
 
 Write nothing after this block. It must be the final output so the preview captures it.
-
-# Role
-
-${skill_text}
 EOF
 }
 
@@ -550,7 +553,7 @@ _dispatch_dir() {
     else
         _select_agent_config "$skill" "$dir" "$dir_i" "$total_dirs"
         model="$AGENT_MODEL"
-        prompt="$(_build_prompt "$dir" "$skill_text" "$AGENT_LINE_COUNT")"
+        prompt="$(_build_prompt "$dir" "$skill" "$AGENT_LINE_COUNT")"
     fi
     echo "══════════════════════════════════════════"
     if [[ -n "$cycle" ]]; then
@@ -805,15 +808,19 @@ while true; do
 
         for (( _sj = _skill_start; _sj < ${#_dir_skills[@]}; _sj++ )); do
             _skill="${_dir_skills[$_sj]}"
+            _skill_text=""
 
-            # Validate skill file exists
-            _skill_file="${SCRIPT_DIR}/skills/${_skill}.md"
-            if [[ ! -f "$_skill_file" ]]; then
-                echo "WARNING: Skill-Datei nicht gefunden: $_skill_file — überspringe"
-                continue
+            # Only triage still needs a local skill file; review agents use
+            # Claude Code's built-in Agent tool with matching subagent_type.
+            if [[ "$_skill" == "triage" ]]; then
+                _skill_file="${SCRIPT_DIR}/skills/${_skill}.md"
+                if [[ ! -f "$_skill_file" ]]; then
+                    echo "WARNING: Skill-Datei nicht gefunden: $_skill_file — überspringe"
+                    continue
+                fi
+                _skill_text="$(<"$_skill_file")"
             fi
 
-            _skill_text="$(<"$_skill_file")"
             _skill_log_dir="$LOG_DIR/cycle_$(printf '%03d' "$cycle")/$_skill"
             mkdir -p "$_skill_log_dir"
 

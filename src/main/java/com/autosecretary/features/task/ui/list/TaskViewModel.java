@@ -240,6 +240,10 @@ public class TaskViewModel extends AndroidViewModel {
     /**
      * Queries calendar events for the given day and caches them as ViewSlots.
      * Called when the selected day changes or during a full data refresh.
+     *
+     * <p>If the schedule config cache is cold and we're on the main thread, Room will throw.
+     * In that case we fall back to empty slots; the next refreshList() cycle will populate them
+     * once the background regeneration has warmed the cache.
      */
     private void refreshCalendarCache(LocalDate day) {
         if (day == null || !hasCalendarPermission) {
@@ -251,7 +255,15 @@ public class TaskViewModel extends AndroidViewModel {
             return;
         }
         cachedCalendarDay = day;
-        SchedulingWindowProvider.SchedulingWindow sw = scheduleConfigRepository.forDay(day);
+        SchedulingWindowProvider.SchedulingWindow sw;
+        try {
+            sw = scheduleConfigRepository.forDay(day);
+        } catch (IllegalStateException e) {
+            // Schedule config cache cold + main thread — skip until next cycle
+            Log.w("TaskViewModel", "Calendar cache skipped: schedule config not yet warm", e);
+            cachedCalendarSlots = Collections.emptyList();
+            return;
+        }
         ScheduleWindow window = new ScheduleWindow(
                 day,
                 sw.start().toLocalTime(),

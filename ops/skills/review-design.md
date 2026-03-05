@@ -9,6 +9,16 @@ Primary rule:
 
 Review from the perspective of a designer evaluating a build for visual polish and consistency.
 
+## Visual Evidence (required effort)
+
+Before reviewing code alone, make every reasonable effort to obtain visual evidence of the actual rendered UI:
+
+1. **Screenshots**: Build and run the application, then capture screenshots of the relevant screens using available tools (`import`, `scrot`, `gnome-screenshot`, or platform equivalents). Use the Read tool on the captured image files to visually inspect the actual rendered output.
+2. **Component tree / render readouts**: Where the platform supports it, dump the component hierarchy, layout bounds, or accessibility tree (e.g. Java Swing `getAccessibleContext()`, browser DOM snapshot, Android layout inspector output, `xdotool`/`xwininfo` for window geometry).
+3. **Existing screenshots**: Check the repository for existing screenshots, mockups, or design references (e.g. in `docs/`, `screenshots/`, `assets/`, or PR descriptions).
+
+Visual evidence is far more valuable than reading layout code alone — many design issues (spacing drift, color clashes, hierarchy problems, clipping, misalignment) are only visible in the rendered output. If you cannot obtain screenshots (e.g. headless environment, no display server), state this limitation explicitly in your summary and note that findings are based on code analysis only.
+
 Evaluate explicitly what was reviewed:
 - Layouts and component structure
 - Styles, themes, and design tokens

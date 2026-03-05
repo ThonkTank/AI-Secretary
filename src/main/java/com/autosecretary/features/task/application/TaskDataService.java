@@ -1,5 +1,7 @@
 package com.autosecretary.features.task.application;
 
+import com.autosecretary.features.meal.domain.MealPlan;
+import com.autosecretary.features.meal.domain.MealRepository;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.Task;
@@ -26,15 +28,18 @@ public class TaskDataService {
     private final TaskListItemMapper mapper;
     private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
+    private final MealRepository mealRepository;
 
     public TaskDataService(TaskDao taskDao,
                            TaskListItemMapper mapper,
                            ExecutorService workerExecutor,
-                           Executor callbackDispatcher) {
+                           Executor callbackDispatcher,
+                           MealRepository mealRepository) {
         this.taskDao = taskDao;
         this.mapper = mapper;
         this.workerExecutor = workerExecutor;
         this.callbackDispatcher = callbackDispatcher;
+        this.mealRepository = mealRepository;
     }
 
     /**
@@ -89,8 +94,43 @@ public class TaskDataService {
      */
     public void deleteTask(String taskId, Runnable onDeleted) {
         workerExecutor.execute(() -> {
+            unlinkMealPlan(taskId);
             taskDao.deleteTaskGraph(taskId);
             callbackDispatcher.execute(onDeleted);
         });
+    }
+
+    // ── Sync methods for callers already on the worker thread ────────────
+
+    /**
+     * Synchronous write. Must only be called from a worker-thread context (e.g. from
+     * {@code MealTaskBridgeService}, which runs on the shared worker executor).
+     */
+    public void writeSync(Task task) {
+        taskDao.write(task);
+    }
+
+    /**
+     * Synchronous read. Must only be called from a worker-thread context.
+     */
+    public Task readSync(String id) {
+        return taskDao.read(id);
+    }
+
+    /**
+     * Synchronous task-graph deletion. Must only be called from a worker-thread context.
+     * Does NOT unlink associated meal plans — callers from the meal side manage that themselves.
+     */
+    public void deleteTaskGraphSync(String taskId) {
+        taskDao.deleteTaskGraph(taskId);
+    }
+
+    /** Clears the back-link on the associated meal plan (if any) before task deletion. */
+    private void unlinkMealPlan(String taskId) {
+        MealPlan plan = mealRepository.findMealPlanByItemId(taskId);
+        if (plan != null) {
+            plan.itemId = null;
+            mealRepository.saveMealPlan(plan);
+        }
     }
 }

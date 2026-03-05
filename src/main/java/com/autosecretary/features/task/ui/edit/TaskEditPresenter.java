@@ -74,8 +74,6 @@ public class TaskEditPresenter {
             for (int i = currentSlotCount; i < newRepsPerDay; i++) {
                 editState.prefSlots.add(createDefaultPrefSlotState(editState.id));
             }
-        } else if (newRepsPerDay < currentSlotCount && newRepsPerDay > 0) {
-            editState.prefSlots.subList(newRepsPerDay, currentSlotCount).clear();
         }
         return true;
     }

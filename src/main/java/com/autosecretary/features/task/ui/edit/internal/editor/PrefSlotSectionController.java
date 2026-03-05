@@ -10,11 +10,14 @@ import android.view.ViewGroup;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
 
+import java.time.LocalTime;
+
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 
 import com.autosecretary.R;
 import com.autosecretary.shared.Period;
+import com.autosecretary.shared.ui.SpinnerHelper;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 import com.google.android.material.button.MaterialButton;
@@ -69,7 +72,7 @@ public class PrefSlotSectionController {
             repetitionViews.toggleRepetition.isChecked(),
             repetitionViews.repsView.getText().toString(),
             repetitionViews.perPeriodView.getText().toString(),
-            (Period) repetitionViews.periodUnitView.getSelectedItem()
+            SpinnerHelper.enumAtPosition(repetitionViews.periodUnitView, Period.values())
         );
 
         prefSlotUIBuilder.rebuild(prefSlotContainer, presenter.getEditablePrefSlots(), repsPerDay,
@@ -83,7 +86,32 @@ public class PrefSlotSectionController {
                 public void onTimeClicked(PrefSlotEditState prefSlot) {
                     showTimePicker(prefSlot);
                 }
+
+                @Override
+                public void onDeleteClicked(PrefSlotEditState prefSlot) {
+                    presenter.getEditablePrefSlots().remove(prefSlot);
+                    rebuildPrefSlotUI();
+                }
             });
+
+        // "Add pref slot" button — manually adds a new row independent of repsPerDay.
+        Context ctx = fragment.requireContext();
+        MaterialButton addButton = new MaterialButton(ctx, null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        addButton.setText(R.string.task_editor_add_pref_slot);
+        addButton.setAllCaps(false);
+        Resources res = ctx.getResources();
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.topMargin = res.getDimensionPixelSize(R.dimen.spacing_sm);
+        addButton.setLayoutParams(params);
+        addButton.setOnClickListener(v -> {
+            PrefSlotEditState newSlot = new PrefSlotEditState();
+            newSlot.start = LocalTime.of(6, 0);
+            presenter.getEditablePrefSlots().add(newSlot);
+            rebuildPrefSlotUI();
+        });
+        prefSlotContainer.addView(addButton);
     }
 
     public void onRepetitionChanged() {
@@ -91,7 +119,7 @@ public class PrefSlotSectionController {
             repetitionViews.toggleRepetition.isChecked(),
             repetitionViews.repsView.getText().toString(),
             repetitionViews.perPeriodView.getText().toString(),
-            (Period) repetitionViews.periodUnitView.getSelectedItem()
+            SpinnerHelper.enumAtPosition(repetitionViews.periodUnitView, Period.values())
         )) {
             rebuildPrefSlotUI();
         }

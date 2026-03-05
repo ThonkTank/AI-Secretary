@@ -39,6 +39,14 @@ public interface TaskDao {
         }
         for (Task task : tasks) {
             writeDependents(task);
+            // Update parent-of (children) relations using the in-memory children list.
+            // task.children is @Ignore and only populated by TaskTreeOperations.buildTree(),
+            // so this step belongs here (bulk regen) rather than in writeDependents (which is
+            // also called from the single-task editor path where children is always empty).
+            deleteRelationsByParentId(task.core.id);
+            for (Task child : task.children) {
+                writeRelation(new TaskRelation(task.core.id, child.core.id));
+            }
         }
     }
 
@@ -67,6 +75,12 @@ public interface TaskDao {
      *       the task is saved, the removed meal will persist as an orphan in the DB.
      *       This is intentional (meals may be pre-staged) but callers should be aware.</li>
      * </ul>
+     * <p>
+     * <strong>Parent-of (children) relations are NOT managed here.</strong>
+     * {@code task.children} is {@code @Ignore} and only populated by
+     * {@code TaskTreeOperations.buildTree()}. Managing child links here would silently wipe
+     * all grandchild relations whenever a parent task is saved from the editor.
+     * Child links are written by {@link #writeList(List)} which operates on the full tree.
      */
     default void writeDependents(Task task) {
         writeSlots(task.slots);
@@ -75,9 +89,9 @@ public interface TaskDao {
         deletePrerequisitesByTaskId(task.core.id);
         writePrerequisites(task.prerequisites);
         writePlannedMeals(task.plannedMeals);
-        deleteRelationsByParentId(task.core.id);
-        for (Task child : task.children) {
-            writeRelation(new TaskRelation(task.core.id, child.core.id));
+        deleteRelationsByChildId(task.core.id);
+        for (TaskRelation parent : task.parents) {
+            writeRelation(parent);
         }
     }
 
@@ -99,6 +113,9 @@ public interface TaskDao {
     void writePrerequisites(List<TaskPrerequisite> prerequisites);
 
     //Parent
+    @Query("DELETE FROM task_relation WHERE child = :taskId")
+    void deleteRelationsByChildId(String taskId);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writeRelation(TaskRelation relation);
 
@@ -140,6 +157,7 @@ public interface TaskDao {
     @Transaction
     default void deleteTaskGraph(String taskId) {
         deleteRelationsByParentId(taskId);
+        deleteRelationsByChildId(taskId);
         deletePrerequisitesByDependencyId(taskId);
         deleteCore(taskId);
     }

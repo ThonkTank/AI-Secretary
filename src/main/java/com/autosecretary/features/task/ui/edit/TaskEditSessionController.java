@@ -1,5 +1,8 @@
 package com.autosecretary.features.task.ui.edit;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import androidx.lifecycle.MutableLiveData;
 
 import com.autosecretary.features.task.application.TaskDataService;
@@ -19,7 +22,7 @@ import java.util.ArrayList;
  * and recreation. It tracks two modes:
  * <ul>
  *   <li><b>Create mode</b> ({@link #createNewTask()}): initialises a blank {@link TaskEditState} for a new task.
- *   <li><b>Edit mode</b> ({@link #beginEditTask(String)}): loads an existing task from the DB and
+ *   <li><b>Edit mode</b> ({@link #beginEditTask(String, Runnable)}): loads an existing task from the DB and
  *       converts it to a {@link TaskEditState} for editing.
  * </ul>
  * On save, {@link #saveEditedTask(com.autosecretary.features.task.data.Task)} persists the mapped result
@@ -46,6 +49,11 @@ public class TaskEditSessionController {
         return Boolean.TRUE.equals(isNewTask.getValue());
     }
 
+    /** Returns the current edit state, or {@code null} if no task is selected. */
+    public TaskEditState getSelectedTask() {
+        return selectedTask.getValue();
+    }
+
     /** Returns the current edit state or throws if no task is selected. Used by dialog on save. */
     public TaskEditState requireSelectedTask() {
         TaskEditState task = selectedTask.getValue();
@@ -64,12 +72,16 @@ public class TaskEditSessionController {
         return task;
     }
 
-    /** Loads an existing task from the DB and converts it to a {@link TaskEditState} for editing. */
-    public void beginEditTask(String taskId) {
+    /** Loads an existing task from the DB and converts it to a {@link TaskEditState} for editing.
+     * {@code onReady} is called on the main thread once the state is available. */
+    public void beginEditTask(String taskId, Runnable onReady) {
         taskDataService.loadTask(taskId, task -> {
             selectedBaseTask.postValue(task);
             selectedTask.postValue(TaskEditStateMapper.fromTask(task));
             isNewTask.postValue(false);
+            if (onReady != null) {
+                new Handler(Looper.getMainLooper()).post(onReady);
+            }
         });
     }
 

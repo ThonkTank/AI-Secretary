@@ -19,6 +19,9 @@ public interface MealPlanDao {
     @Query("SELECT * FROM meal_plan WHERE id = :id LIMIT 1")
     MealPlanEntity findById(String id);
 
+    @Query("SELECT * FROM meal_plan WHERE itemId = :taskId LIMIT 1")
+    MealPlanEntity findByItemId(String taskId);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(MealPlanEntity entity);
 

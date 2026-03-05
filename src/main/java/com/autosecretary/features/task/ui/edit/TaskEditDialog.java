@@ -19,8 +19,9 @@ import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
 import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
 import com.autosecretary.features.budget.domain.BudgetRepository;
+import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.ui.list.TaskViewModel;
-import com.autosecretary.features.task.ui.edit.internal.editor.GoalSectionController;
 import com.autosecretary.features.task.ui.edit.internal.editor.PrefSlotSectionController;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormInputReader;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormValidator;
@@ -54,7 +55,13 @@ public class TaskEditDialog extends DialogFragment {
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         TaskViewModel vm = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
         editSessionController = vm.getTaskEditSessionController();
-        editState = editSessionController.requireSelectedTask();
+        TaskEditState selectedTask = editSessionController.getSelectedTask();
+        if (selectedTask == null) {
+            // ViewModel was reset (e.g. after process death + fragment restore). Nothing to edit.
+            dismissAllowingStateLoss();
+            return new AlertDialog.Builder(requireContext()).create();
+        }
+        editState = selectedTask;
         presenter = new TaskEditPresenter(editState);
 
         View rootView = LayoutInflater.from(getContext()).inflate(R.layout.task_editor_dialog, null);
@@ -67,22 +74,21 @@ public class TaskEditDialog extends DialogFragment {
             () -> prefSlotSectionController.onRepetitionChanged());
         TaskEditSectionBinder.ProgressViews progress = sectionBinder.bindProgress();
 
-        GoalSectionController goalSectionController = new GoalSectionController(this, rootView, editState);
-
         prefSlotSectionController = new PrefSlotSectionController(this, rootView, presenter, repetition);
         prefSlotSectionController.rebuildPrefSlotUI();
 
         formInputReader = new TaskEditFormInputReader(
-            basicInfo, scheduling, repetition, progress, goalSectionController
+            basicInfo, scheduling, repetition, progress
         );
         formValidator = new TaskEditFormValidator(
             requireContext(), basicInfo, scheduling, repetition, progress
         );
 
-        // Load budget accounts and categories asynchronously so the dialog opens instantly.
-        // The spinners start empty and populate once the background load completes.
+        // Load data asynchronously so the dialog opens instantly.
+        // Spinners start empty and populate once the background loads complete.
         AppCompositionRoot root = AutoSecretaryApplication.from(requireContext()).getAppCompositionRoot();
         BudgetRepository budgetRepo = root.getBudgetRoomRepository();
+        TaskDao taskDao = root.getTaskDao();
         ExecutorService executor = root.getSharedExecutor();
         Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -97,6 +103,19 @@ public class TaskEditDialog extends DialogFragment {
                 });
             } catch (Exception e) {
                 Log.w("TaskEditDialog", "Failed to load budget data", e);
+            }
+        });
+
+        executor.execute(() -> {
+            try {
+                List<Task> allTasks = taskDao.readAll();
+                mainHandler.post(() -> {
+                    if (isAdded()) {
+                        sectionBinder.rebindParentSpinner(basicInfo, allTasks);
+                    }
+                });
+            } catch (Exception e) {
+                Log.w("TaskEditDialog", "Failed to load tasks for parent spinner", e);
             }
         });
 

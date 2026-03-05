@@ -7,14 +7,15 @@ import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.RecipeRepository;
+import com.autosecretary.features.meal.domain.CookingPreferences;
+import com.autosecretary.features.meal.domain.ConsumptionLog;
+import com.autosecretary.features.meal.domain.HouseholdMember;
+import com.autosecretary.features.meal.domain.Ingredient;
+import com.autosecretary.features.meal.domain.ShelfLifeService;
 import com.autosecretary.features.meal.domain.ShoppingItemStatus;
 import com.autosecretary.features.meal.domain.ShoppingListItem;
-import com.autosecretary.features.meal.domain.ShelfLifeService;
 import com.autosecretary.features.meal.domain.WeeklyFoodTarget;
 import com.autosecretary.features.meal.domain.WeeklyFoodTargetService;
-import com.autosecretary.features.meal.domain.HouseholdMember;
-import com.autosecretary.features.meal.domain.ConsumptionLog;
-import com.autosecretary.features.meal.domain.Ingredient;
 import com.autosecretary.features.meal.domain.internal.HouseholdEnergyService;
 
 import java.time.LocalDate;
@@ -244,6 +245,115 @@ public class MealPlannerPresenter {
                     .location(location)
                     .build();
             pantryRepository.savePantryItem(item);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+    // ── Management CRUD (Verwalten mode) ──────────────────────────────
+
+    public void loadRecipesForManagement(Consumer<List<Recipe>> onLoaded) {
+        workerExecutor.execute(() -> {
+            List<Recipe> recipes = loadSortedRecipes();
+            callbackDispatcher.execute(() -> onLoaded.accept(recipes));
+        });
+    }
+
+    public void loadIngredientsForManagement(Consumer<List<Ingredient>> onLoaded) {
+        workerExecutor.execute(() -> {
+            List<Ingredient> items = new ArrayList<>(recipeRepository.getIngredients());
+            items.sort(Comparator.comparing(i -> i.name));
+            callbackDispatcher.execute(() -> onLoaded.accept(items));
+        });
+    }
+
+    public void loadPantryItemsForManagement(Consumer<List<PantryItem>> onLoaded) {
+        workerExecutor.execute(() -> {
+            List<PantryItem> items = loadSortedPantryItems();
+            callbackDispatcher.execute(() -> onLoaded.accept(items));
+        });
+    }
+
+    public void loadHouseholdMembersForManagement(Consumer<List<HouseholdMember>> onLoaded) {
+        workerExecutor.execute(() -> {
+            List<HouseholdMember> members = mealRepository.getHouseholdMembers();
+            members.sort(Comparator.comparing(m -> m.name));
+            callbackDispatcher.execute(() -> onLoaded.accept(members));
+        });
+    }
+
+    public void saveRecipe(Recipe recipe, Runnable onDone) {
+        workerExecutor.execute(() -> {
+            recipeRepository.saveRecipe(recipe);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+    public void deleteRecipe(String recipeId, Runnable onDone) {
+        workerExecutor.execute(() -> {
+            recipeRepository.deleteRecipe(recipeId);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+    public void saveIngredient(Ingredient ingredient, Runnable onDone) {
+        workerExecutor.execute(() -> {
+            recipeRepository.saveIngredient(ingredient);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+    public void deleteIngredient(String ingredientId, Runnable onDone) {
+        workerExecutor.execute(() -> {
+            recipeRepository.deleteIngredient(ingredientId);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+    public void savePantryItem(PantryItem pantryItem, Runnable onDone) {
+        workerExecutor.execute(() -> {
+            pantryRepository.savePantryItem(pantryItem);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+    public void deletePantryItem(String pantryItemId, Runnable onDone) {
+        workerExecutor.execute(() -> {
+            pantryRepository.deletePantryItem(pantryItemId);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+    public void saveHouseholdMember(HouseholdMember member, Runnable onDone) {
+        workerExecutor.execute(() -> {
+            mealRepository.saveHouseholdMember(member);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+    public void deleteHouseholdMember(String memberId, Runnable onDone) {
+        workerExecutor.execute(() -> {
+            mealRepository.deleteHouseholdMember(memberId);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+    public void deleteMealPlan(String mealPlanId, Runnable onDone) {
+        workerExecutor.execute(() -> {
+            mealRepository.deleteMealPlan(mealPlanId);
+            callbackDispatcher.execute(onDone);
+        });
+    }
+
+    public void loadCookingPreferences(Consumer<CookingPreferences> onLoaded) {
+        workerExecutor.execute(() -> {
+            CookingPreferences prefs = mealRepository.getCookingPreferences();
+            callbackDispatcher.execute(() -> onLoaded.accept(prefs));
+        });
+    }
+
+    public void saveCookingPreferences(CookingPreferences prefs, Runnable onDone) {
+        workerExecutor.execute(() -> {
+            mealRepository.saveCookingPreferences(prefs);
             callbackDispatcher.execute(onDone);
         });
     }

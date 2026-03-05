@@ -80,7 +80,7 @@
     <string name="task_editor_range_separator"> - </string>
     <string name="task_schedule_range_separator">-</string>
     <string name="task_editor_hint_max">Max</string>
-    <string name="task_editor_cooldown_label">Cooldown (Tage):</string>
+    <string name="task_editor_cooldown_label">Mindestabstand (Tage):</string>
     <string name="task_editor_repetition_toggle">Wiederholung</string>
     <string name="task_editor_repetition_format"> mal pro </string>
     <string name="task_editor_complete_first">Neue Periode erst nach Abschluss der Vorperiode freigeben</string>
@@ -98,6 +98,14 @@
     <string name="task_editor_pref_slot_days_content_description">Wochentage auswählen. Aktuell: %1$s</string>
     <string name="task_editor_pref_slot_time_button">Startzeit auswählen: %1$s</string>
     <string name="task_editor_pref_slot_time_content_description">Startzeit auswählen. Aktuell: %1$s</string>
+    <string name="task_editor_add_pref_slot">Zeitfenster hinzufügen</string>
+    <string name="task_editor_pref_slots_section_label">Bevorzugte Zeitfenster</string>
+    <string name="task_editor_pref_slot_delete_content_description">Zeitfenster löschen</string>
+    <string name="task_editor_hint_reps">Wdh.</string>
+    <string name="task_editor_hint_per_period">alle</string>
+    <string name="task_editor_parent_label">Übergeordnete Aufgabe:</string>
+    <string name="task_editor_parent_none">Kein Parent</string>
+    <string name="task_editor_parent_content_description">Übergeordnete Aufgabe</string>
 
     <string name="task_editor_priority_content_description">Priorität</string>
     <string name="task_editor_scheduling_type_content_description">Planungstyp</string>

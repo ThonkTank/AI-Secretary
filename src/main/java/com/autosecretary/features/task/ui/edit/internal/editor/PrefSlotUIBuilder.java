@@ -2,8 +2,10 @@ package com.autosecretary.features.task.ui.edit.internal.editor;
 
 import android.content.Context;
 import android.graphics.Typeface;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -44,6 +46,8 @@ public class PrefSlotUIBuilder {
         void onDaysClicked(PrefSlotEditState prefSlot, Set<DayOfWeek> takenByOthers);
 
         void onTimeClicked(PrefSlotEditState prefSlot);
+
+        void onDeleteClicked(PrefSlotEditState prefSlot);
     }
 
     private final Context context;
@@ -81,11 +85,14 @@ public class PrefSlotUIBuilder {
         Map<Integer, List<PrefSlotEditState>> slotMap = groupByRepetition(sorted, repsPerDay);
 
         for (int key = 1; key <= repsPerDay; key++) {
-            TextView header = new TextView(context);
-            header.setText(context.getString(R.string.task_editor_pref_slot_header, key));
-            header.setTextAppearance(R.style.TextAppearance_AutoSecretary_Editor_Label);
-            header.setPadding(0, prefSlotHeaderPaddingTopPx, 0, prefSlotHeaderPaddingBottomPx);
-            prefSlotContainer.addView(header);
+            // Suppress the "Wiederholung N" header when there is only one rep group — it adds no information.
+            if (repsPerDay > 1) {
+                TextView header = new TextView(context);
+                header.setText(context.getString(R.string.task_editor_pref_slot_header, key));
+                header.setTextAppearance(R.style.TextAppearance_AutoSecretary_Editor_Label);
+                header.setPadding(0, prefSlotHeaderPaddingTopPx, 0, prefSlotHeaderPaddingBottomPx);
+                prefSlotContainer.addView(header);
+            }
 
             List<PrefSlotEditState> slotsInGroup = slotMap.getOrDefault(key, Collections.emptyList());
             for (PrefSlotEditState prefSlot : slotsInGroup) {
@@ -119,8 +126,20 @@ public class PrefSlotUIBuilder {
         timeView.setLayoutParams(makeWeightedButtonParams(false));
         timeView.setOnClickListener(v -> listener.onTimeClicked(prefSlot));
 
+        ImageButton deleteButton = new ImageButton(context);
+        deleteButton.setImageResource(R.drawable.ic_close_24);
+        deleteButton.setContentDescription(context.getString(R.string.task_editor_pref_slot_delete_content_description));
+        TypedValue outValue = new TypedValue();
+        context.getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, outValue, true);
+        deleteButton.setBackgroundResource(outValue.resourceId);
+        LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(
+                prefSlotButtonMinHeightPx, prefSlotButtonMinHeightPx);
+        deleteButton.setLayoutParams(deleteParams);
+        deleteButton.setOnClickListener(v -> listener.onDeleteClicked(prefSlot));
+
         row.addView(daysView);
         row.addView(timeView);
+        row.addView(deleteButton);
         return row;
     }
 
