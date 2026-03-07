@@ -120,6 +120,7 @@ public class TaskListFragment extends Fragment {
                 new ArrayList<>(),
                 new ListRowAdapter.TaskRowActions(
                         vm::checkOff,
+                        vm::undoCheckOff,
                         viewSlot -> openEditDialog(editSessionController, viewSlot.getItem().taskId),
                         vm::incrementProgress,
                         vm::decrementProgress,

@@ -28,6 +28,7 @@ import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskDataService;
+import com.autosecretary.features.task.application.UndoTaskCheckOffUseCase;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
@@ -35,6 +36,7 @@ import com.autosecretary.features.task.application.internal.budget.BookTaskCompl
 import com.autosecretary.features.task.application.internal.budget.TaskBudgetEligibilityFromBudgetLookup;
 import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
 import com.autosecretary.features.task.application.internal.calendar.DeviceCalendarBlockedIntervalProvider;
+import com.autosecretary.features.task.application.internal.mutations.TaskSlotUndoMutation;
 import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.domain.TaskCompletionService;
@@ -186,6 +188,10 @@ public class AppCompositionRoot {
                 app,
                 taskMealIntegrationService
         );
+        UndoTaskCheckOffUseCase undoTaskCheckOffUseCase = new UndoTaskCheckOffUseCase(
+                new TaskSlotUndoMutation(dao, mainHandler::post),
+                sharedExecutor
+        );
         regenerateScheduleUseCase = new RegenerateScheduleUseCase(
                 dao,
                 generator,
@@ -203,6 +209,7 @@ public class AppCompositionRoot {
                 app,
                 taskDataService,
                 checkOffTaskUseCase,
+                undoTaskCheckOffUseCase,
                 regenerateScheduleUseCase,
                 adjustTaskProgressUseCase,
                 taskCalendarService,

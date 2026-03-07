@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.Objects;
 import java.util.function.Function;
 import com.autosecretary.shared.Priority;
+import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 import com.autosecretary.shared.ui.DialogValidation;
@@ -75,17 +76,33 @@ public class TaskEditFormInputReader {
             SpinnerHelper.enumAtPosition(basicInfoViews.priorityView, Priority.values()),
             TaskEditDefaults.PRIORITY
         );
+        // Parent spinner options are loaded asynchronously. If the list is not bound yet,
+        // keep the existing parentTaskId instead of silently resetting to top-level.
+        if (!basicInfoViews.parentTaskItemsBound) {
+            return;
+        }
         int parentPos = basicInfoViews.parentTaskView.getSelectedItemPosition();
         state.parentTaskId = (parentPos > 0 && parentPos <= basicInfoViews.parentTaskItems.size())
                 ? basicInfoViews.parentTaskItems.get(parentPos - 1).core.id : null;
     }
 
     private void readSchedulingSection(TaskEditState state) {
-        // Scheduler type spinner only contains TASK — TERMIN is not exposed in the UI.
-        // Preserve the existing schedulingType (e.g. TERMIN on legacy tasks) rather than
-        // overwriting it; only default to TASK when the field is null (new tasks).
-        if (state.schedulingType == null) state.schedulingType = TaskEditDefaults.SCHEDULING_TYPE;
-        // fixedDate, fixedStart, fixedEnd, fixedDuration: preserved from editState — not editable via UI.
+        state.schedulingType = Objects.requireNonNullElse(
+            SpinnerHelper.enumAtPosition(schedulingViews.schedulingTypeView, TaskCore.SchedulingType.values()),
+            TaskEditDefaults.SCHEDULING_TYPE
+        );
+        state.fixedDuration = parseSafe(schedulingViews.fixedDurationView.getText().toString(), Integer::parseInt);
+        if (state.schedulingType == TaskCore.SchedulingType.TERMIN) {
+            // "Ab Datum" is only used for flexible TASK scheduling.
+            state.startDate = null;
+            state.fixedEnd = null;
+        } else {
+            // Fixed appointment fields are only used for TERMIN scheduling.
+            state.fixedDate = null;
+            state.fixedStart = null;
+            state.fixedEnd = null;
+            state.fixedDuration = null;
+        }
         Integer budgetCents = parseSafe(schedulingViews.budgetRequiredCentsView.getText().toString(), Integer::parseInt);
         // 0 is treated as unset — only positive values are meaningful
         state.budgetRequiredCents = (budgetCents != null && budgetCents > 0) ? budgetCents : null;

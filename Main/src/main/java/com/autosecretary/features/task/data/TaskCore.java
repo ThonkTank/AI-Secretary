@@ -47,19 +47,20 @@ public class TaskCore {
      * <ul>
      *   <li>{@code TASK} — standard repeating/one-off task; scheduler places it freely.</li>
      *   <li>{@code TERMIN} — appointment with a fixed date/time; uses {@code fixedDate},
-     *       {@code fixedStart}, {@code fixedEnd}. <em>Not yet exposed in the edit UI.</em>
-     *       See CLAUDE.md "Not Yet Implemented".</li>
+     *       {@code fixedStart}, {@code fixedDuration}.</li>
      * </ul>
      */
     public SchedulingType schedulingType = SchedulingType.TASK;
     /** Minimum gap between consecutive executions, in <strong>days</strong>. Default 1 (no gap). */
     public int cooldown = 1;
+    /** Earliest day this task may be scheduled. Null means immediately schedulable. */
+    public LocalDate startDate;
     public LocalDate deadline;
-    /** Fixed date for TERMIN tasks. Null for standard tasks. Not yet exposed in the edit UI. */
+    /** Fixed date for TERMIN tasks. Null for standard tasks. */
     public LocalDate fixedDate;
-    /** Fixed start time for TERMIN tasks. Null for standard tasks. Not yet exposed in the edit UI. */
+    /** Fixed start time for TERMIN tasks. Null for standard tasks. */
     public LocalTime fixedStart;
-    /** Fixed end time for TERMIN tasks. Null for standard tasks. Not yet exposed in the edit UI. */
+    /** Fixed end time for TERMIN tasks. Null for standard tasks (optional when duration is set). */
     public LocalTime fixedEnd;
     /** Fixed duration override for TERMIN tasks, in <strong>minutes</strong>. Null for standard tasks. */
     public Integer fixedDuration;
@@ -208,7 +209,6 @@ public class TaskCore {
         TASK,
         /**
          * Fixed-time appointment (German: "Termin"). Uses {@code fixedDate}/{@code fixedStart}/{@code fixedEnd}.
-         * <em>Not yet exposed in the edit UI</em> — see CLAUDE.md "Not Yet Implemented".
          */
         TERMIN
     }

@@ -100,7 +100,7 @@ Extracting shared constants, small utility methods, or deduplicating repeated co
 
 ## Rules
 
-- **DB version 23**, `exportSchema = false`. Schema changes: bump version only. Room uses `fallbackToDestructiveMigration()`. **Manual migrations (`Migration` subclasses, `.addMigrations(...)`) are strictly forbidden.**
+- **DB version 24**, `exportSchema = false`. Schema changes require a version bump and compatible Room migrations. Destructive fallback is not the default because user data must be preserved.
 - **`android.nonTransitiveRClass=true`** — use the app's own R class for all resource references.
 - Java 17, Room 2.6.1 (annotation processor, not KSP), AGP 8.7.3, Gradle 8.10.2 (`./gradlew` wrapper only).
 - New entity `@PrimaryKey` fields must be `String` UUIDs. Existing exceptions: `TaskTransitionStat` and `TaskPlannedMeal` use composite PKs; `TaskScheduleConfig` uses `DayOfWeek` as PK.

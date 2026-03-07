@@ -365,6 +365,9 @@ final class TaskScorer {
         int periodCompletions = 0;
 
         for (TaskSlot slot : task.slots) {
+            if (slot.day == null) {
+                continue;
+            }
             if (slot.completed) {
                 completions++;
                 if (slot.day.isAfter(lastCompletion)) {
@@ -374,7 +377,7 @@ final class TaskScorer {
                     periodCompletions++;
                 }
             }
-            if (slot.day.equals(today) && slot.scheduled) {
+            if (slot.day.equals(today) && (slot.scheduled || slot.completed || slot.realStart != null)) {
                 scheduledToday++;
             }
         }
@@ -477,6 +480,7 @@ final class TaskScorer {
     private boolean passesHardConstraintGate(ScoringContext context) {
         if (isAlreadyCompleteForCurrentCycle(context)) return false;
         if (isBudgetInsufficient(context)) return false;
+        if (isBeforeStartDate(context)) return false;
         if (hasReachedDailyRepetitionLimit(context)) return false;
         if (isWithinCooldownWindow(context)) return false;
         if (violatesMinimumInterDaySpacing(context)) return false;
@@ -494,6 +498,13 @@ final class TaskScorer {
 
     private boolean isBudgetInsufficient(ScoringContext context) {
         return !context.snapshot().budgetEligible();
+    }
+
+    private boolean isBeforeStartDate(ScoringContext context) {
+        TaskCore core = context.task().core;
+        return core.schedulingType == TaskCore.SchedulingType.TASK
+                && core.startDate != null
+                && context.start().toLocalDate().isBefore(core.startDate);
     }
 
     private boolean hasReachedDailyRepetitionLimit(ScoringContext context) {
@@ -746,4 +757,3 @@ final class TaskScorer {
      */
     record ScoringContext(Task task, TaskScoringSnapshot snapshot, LocalDateTime start, int availableMinutes) {}
 }
-

@@ -4,6 +4,9 @@ import android.content.Context;
 import android.widget.EditText;
 
 import com.autosecretary.R;
+import com.autosecretary.features.task.data.TaskCore;
+import com.autosecretary.features.task.ui.edit.state.TaskEditState;
+import com.autosecretary.shared.ui.SpinnerHelper;
 
 import java.util.Arrays;
 
@@ -25,19 +28,22 @@ public class TaskEditFormValidator {
     private final TaskEditSectionBinder.SchedulingViews schedulingViews;
     private final TaskEditSectionBinder.RepetitionViews repetitionViews;
     private final TaskEditSectionBinder.ProgressViews progressViews;
+    private final TaskEditState editState;
 
     public TaskEditFormValidator(
         Context context,
         TaskEditSectionBinder.BasicInfoViews basicInfoViews,
         TaskEditSectionBinder.SchedulingViews schedulingViews,
         TaskEditSectionBinder.RepetitionViews repetitionViews,
-        TaskEditSectionBinder.ProgressViews progressViews
+        TaskEditSectionBinder.ProgressViews progressViews,
+        TaskEditState editState
     ) {
         this.context = context;
         this.basicInfoViews = basicInfoViews;
         this.schedulingViews = schedulingViews;
         this.repetitionViews = repetitionViews;
         this.progressViews = progressViews;
+        this.editState = editState;
     }
 
     /**
@@ -63,6 +69,20 @@ public class TaskEditFormValidator {
             R.string.task_edit_validation_max_duration);
         valid &= validateIntegerField(schedulingViews.cooldownView, 0, Integer.MAX_VALUE,
             R.string.task_edit_validation_cooldown);
+
+        TaskCore.SchedulingType schedulingType = selectedSchedulingType();
+        if (schedulingType == TaskCore.SchedulingType.TERMIN) {
+            if (editState.fixedDate == null) {
+                schedulingViews.fixedDateView.setError(context.getString(R.string.task_edit_validation_fixed_date_required));
+                valid = false;
+            }
+            if (editState.fixedStart == null) {
+                schedulingViews.fixedStartView.setError(context.getString(R.string.task_edit_validation_fixed_start_required));
+                valid = false;
+            }
+            valid &= validateIntegerField(schedulingViews.fixedDurationView, 1, Integer.MAX_VALUE,
+                    R.string.task_edit_validation_fixed_duration);
+        }
 
         if (repetitionViews.toggleRepetition.isChecked()) {
             valid &= validateIntegerField(repetitionViews.repsView, 1, Integer.MAX_VALUE,
@@ -109,12 +129,23 @@ public class TaskEditFormValidator {
                 R.string.task_edit_validation_target_below_current);
         }
 
+        if (selectedSchedulingType() == TaskCore.SchedulingType.TASK
+                && editState.startDate != null
+                && editState.deadline != null
+                && editState.startDate.isAfter(editState.deadline)) {
+            schedulingViews.startDateView.setError(context.getString(R.string.task_edit_validation_start_after_deadline));
+            schedulingViews.deadlineView.setError(context.getString(R.string.task_edit_validation_deadline_before_start));
+            valid = false;
+        }
+
         return valid;
     }
 
     private void clearErrors() {
         for (EditText field : Arrays.asList(
             basicInfoViews.titleView,
+            schedulingViews.startDateView, schedulingViews.fixedDateView,
+            schedulingViews.fixedStartView, schedulingViews.fixedDurationView, schedulingViews.deadlineView,
             schedulingViews.minDurationView, schedulingViews.maxDurationView, schedulingViews.cooldownView,
             repetitionViews.repsView, repetitionViews.perPeriodView,
             progressViews.targetView, progressViews.currentView, progressViews.minPerRepView, progressViews.maxPerRepView
@@ -163,5 +194,11 @@ public class TaskEditFormValidator {
         fieldA.setError(context.getString(errorResA));
         fieldB.setError(context.getString(errorResB));
         return false;
+    }
+
+    private TaskCore.SchedulingType selectedSchedulingType() {
+        TaskCore.SchedulingType selected = SpinnerHelper.enumAtPosition(
+                schedulingViews.schedulingTypeView, TaskCore.SchedulingType.values());
+        return selected != null ? selected : TaskCore.SchedulingType.TASK;
     }
 }

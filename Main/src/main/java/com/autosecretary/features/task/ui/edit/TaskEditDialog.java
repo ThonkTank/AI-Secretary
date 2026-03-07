@@ -7,6 +7,8 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.CompoundButton;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
@@ -26,6 +28,7 @@ import com.autosecretary.features.task.ui.edit.internal.editor.PrefSlotSectionCo
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormInputReader;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormValidator;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditSectionBinder;
+import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 import java.util.Collections;
@@ -77,11 +80,14 @@ public class TaskEditDialog extends DialogFragment {
         prefSlotSectionController = new PrefSlotSectionController(this, rootView, presenter, repetition);
         prefSlotSectionController.rebuildPrefSlotUI();
 
+        setupAccordion(rootView, editState, presenter,
+                repetition.toggleRepetition, progress.toggleProgress, scheduling.toggleBudget);
+
         formInputReader = new TaskEditFormInputReader(
             basicInfo, scheduling, repetition, progress
         );
         formValidator = new TaskEditFormValidator(
-            requireContext(), basicInfo, scheduling, repetition, progress
+            requireContext(), basicInfo, scheduling, repetition, progress, editState
         );
 
         // Load data asynchronously so the dialog opens instantly.
@@ -162,6 +168,100 @@ public class TaskEditDialog extends DialogFragment {
         }
 
         deleteButton.setOnClickListener(v -> showDeleteConfirmDialog());
+    }
+
+    /**
+     * Wires four collapsible accordion sections (Weitere Details, Wiederholung, Fortschritt,
+     * Budget). Only one section is open at a time. Opening a section with a feature switch
+     * enables that feature; explicitly closing it (tapping its own header) disables it.
+     * Collapsing a section because another opened does NOT change its switch state.
+     */
+    private void setupAccordion(View rootView, TaskEditState editState, TaskEditPresenter presenter,
+                                CompoundButton toggleRepetition, CompoundButton toggleProgress,
+                                CompoundButton toggleBudget) {
+        View[] containers = {
+            rootView.findViewById(R.id.WeitereDetailsContainer),
+            rootView.findViewById(R.id.RepetitionContainer),
+            rootView.findViewById(R.id.ProgressContainer),
+            rootView.findViewById(R.id.BudgetContainer)
+        };
+        TextView[] labels = {
+            rootView.findViewById(R.id.WeitereDetailsToggle),
+            rootView.findViewById(R.id.WiederholungToggle),
+            rootView.findViewById(R.id.FortschrittToggle),
+            rootView.findViewById(R.id.BudgetToggle)
+        };
+        // null for sections without a feature switch (Weitere Details)
+        CompoundButton[] switches = { null, toggleRepetition, toggleProgress, toggleBudget };
+        int[] collapsedRes = {
+            R.string.task_editor_weitere_details_collapsed,
+            R.string.task_editor_section_wiederholung_collapsed,
+            R.string.task_editor_section_fortschritt_collapsed,
+            R.string.task_editor_section_budget_collapsed
+        };
+        int[] expandedRes = {
+            R.string.task_editor_weitere_details_expanded,
+            R.string.task_editor_section_wiederholung_expanded,
+            R.string.task_editor_section_fortschritt_expanded,
+            R.string.task_editor_section_budget_expanded
+        };
+        int[] headerIds = {
+            R.id.WeitereDetailsHeader,
+            R.id.WiederholungHeader,
+            R.id.FortschrittHeader,
+            R.id.BudgetHeader
+        };
+
+        for (int i = 0; i < containers.length; i++) {
+            final int idx = i;
+            rootView.findViewById(headerIds[i]).setOnClickListener(v -> {
+                boolean isOpen = containers[idx].getVisibility() == View.VISIBLE;
+                if (isOpen) {
+                    // Explicit close: collapse + disable feature
+                    containers[idx].setVisibility(View.GONE);
+                    labels[idx].setText(collapsedRes[idx]);
+                    if (switches[idx] != null) switches[idx].setChecked(false);
+                } else {
+                    // Collapse all other open sections without touching their switch state
+                    for (int j = 0; j < containers.length; j++) {
+                        if (j != idx && containers[j].getVisibility() == View.VISIBLE) {
+                            containers[j].setVisibility(View.GONE);
+                            labels[j].setText(collapsedRes[j]);
+                        }
+                    }
+                    // Expand this section and enable its feature
+                    containers[idx].setVisibility(View.VISIBLE);
+                    labels[idx].setText(expandedRes[idx]);
+                    if (switches[idx] != null) switches[idx].setChecked(true);
+                }
+            });
+        }
+
+        // Auto-expand the first section that has non-default data
+        boolean weitereDetailsHasData = (editState.description != null && !editState.description.isEmpty())
+                || editState.parentTaskId != null
+                || editState.startDate != null
+                || presenter.getEditableDeadline() != null
+                || editState.fixedDate != null
+                || editState.fixedStart != null
+                || (editState.fixedDuration != null && editState.fixedDuration > 0)
+                || editState.minDuration != TaskEditDefaults.MIN_DURATION
+                || editState.maxDuration != TaskEditDefaults.MAX_DURATION
+                || editState.cooldown != TaskEditDefaults.COOLDOWN
+                || !editState.closeOnMiss;
+        boolean wiederholungHasData = editState.reps > 0;
+        boolean fortschrittHasData = editState.unit != null && !editState.unit.isEmpty();
+        boolean budgetHasData = editState.budgetRequiredCents != null && editState.budgetRequiredCents > 0;
+
+        int autoExpand = weitereDetailsHasData ? 0
+                : wiederholungHasData ? 1
+                : fortschrittHasData ? 2
+                : budgetHasData ? 3
+                : -1;
+        if (autoExpand >= 0) {
+            containers[autoExpand].setVisibility(View.VISIBLE);
+            labels[autoExpand].setText(expandedRes[autoExpand]);
+        }
     }
 
     private void showDeleteConfirmDialog() {

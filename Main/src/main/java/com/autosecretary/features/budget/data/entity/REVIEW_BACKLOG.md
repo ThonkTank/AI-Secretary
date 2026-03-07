@@ -5,7 +5,7 @@
 ### [nit] `direction` column name inconsistent across entities @skill:review-architecture
 **File:** `BudgetRecurringTemplateEntity.java:97`
 **Problem:** All three budget entities expose a `TransactionDirection direction` field. In `BudgetTransactionEntity` and `BudgetCategoryEntity` the column is aliased to `"type"` via `@ColumnInfo`; in `BudgetRecurringTemplateEntity` it is aliased to `"transactionType"`. These are separate tables so there is no runtime failure, but the inconsistency is confusing for anyone writing raw queries against multiple tables.
-**Fix suggestion:** Align `BudgetRecurringTemplateEntity` to `@ColumnInfo(name = "type")` with a DB version bump. Because the project uses `fallbackToDestructiveMigration()` this is a data-loss bump — only acceptable at the right moment in development.
+**Fix suggestion:** Align `BudgetRecurringTemplateEntity` to `@ColumnInfo(name = "type")` with a DB version bump plus a compatible Room migration to preserve user data.
 
 ### [nit] `recurringValue` carries overloaded meaning depending on `recurringType` @skill:review-architecture
 **File:** `BudgetRecurringTemplateEntity.java:111`

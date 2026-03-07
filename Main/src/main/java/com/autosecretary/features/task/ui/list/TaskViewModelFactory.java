@@ -10,6 +10,7 @@ import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskDataService;
+import com.autosecretary.features.task.application.UndoTaskCheckOffUseCase;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
@@ -26,6 +27,7 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
     private final Application app;
     private final TaskDataService taskDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
+    private final UndoTaskCheckOffUseCase undoTaskCheckOffUseCase;
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
     private final AdjustTaskProgressUseCase adjustTaskProgressUseCase;
     private final TaskCalendarService taskCalendarService;
@@ -34,6 +36,7 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
     public TaskViewModelFactory(Application app,
                                 TaskDataService taskDataService,
                                 CheckOffTaskUseCase checkOffTaskUseCase,
+                                UndoTaskCheckOffUseCase undoTaskCheckOffUseCase,
                                 RegenerateScheduleUseCase regenerateScheduleUseCase,
                                 AdjustTaskProgressUseCase adjustTaskProgressUseCase,
                                 TaskCalendarService taskCalendarService,
@@ -41,6 +44,7 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
         this.app = app;
         this.taskDataService = taskDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
+        this.undoTaskCheckOffUseCase = undoTaskCheckOffUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
         this.adjustTaskProgressUseCase = adjustTaskProgressUseCase;
         this.taskCalendarService = taskCalendarService;
@@ -61,6 +65,7 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
                     app,
                     taskDataService,
                     checkOffTaskUseCase,
+                    undoTaskCheckOffUseCase,
                     regenerateScheduleUseCase,
                     adjustTaskProgressUseCase,
                     taskEditSessionController,

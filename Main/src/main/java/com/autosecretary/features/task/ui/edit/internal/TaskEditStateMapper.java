@@ -58,6 +58,7 @@ public final class TaskEditStateMapper {
         state.budgetAccountId = task.core.budgetAccountId;
         state.budgetCategoryId = task.core.budgetCategoryId;
 
+        state.startDate = task.core.startDate;
         state.deadline = task.core.deadline;
         state.fixedDate = task.core.fixedDate;
         state.fixedStart = task.core.fixedStart;
@@ -114,6 +115,7 @@ public final class TaskEditStateMapper {
         task.core.budgetAccountId = state.budgetAccountId;
         task.core.budgetCategoryId = state.budgetCategoryId;
 
+        task.core.startDate = state.startDate;
         task.core.deadline = state.deadline;
         task.core.fixedDate = state.fixedDate;
         task.core.fixedStart = state.fixedStart;

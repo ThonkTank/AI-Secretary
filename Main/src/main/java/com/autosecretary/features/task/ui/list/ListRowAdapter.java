@@ -25,7 +25,10 @@ import com.autosecretary.shared.ui.UiConstants;
 
 import com.autosecretary.shared.DateFormatters;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -71,7 +74,9 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     private int colorProgressTextDisabled;
     private int colorProgressButtonTint;
     private int colorProgressButtonTintDisabled;
+    private int colorUndoTint;
     private int[] streakTierColors;
+    private final Set<String> undoArmedSlotIds = new HashSet<>();
 
     public ListRowAdapter(List<ViewSlot> viewSlots, TaskRowActions actions) {
         this.viewSlots = viewSlots;
@@ -100,6 +105,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         colorProgressTextDisabled = ContextCompat.getColor(ctx, R.color.task_progress_text_disabled);
         colorProgressButtonTint = ContextCompat.getColor(ctx, R.color.task_progress_button_tint);
         colorProgressButtonTintDisabled = ContextCompat.getColor(ctx, R.color.task_progress_button_tint_disabled);
+        colorUndoTint = ContextCompat.getColor(ctx, R.color.color_negative);
         streakTierColors = new int[StreakTier.values().length];
         for (StreakTier tier : StreakTier.values()) {
             streakTierColors[tier.ordinal()] = ContextCompat.getColor(ctx, tier.colorRes);
@@ -108,6 +114,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     public static class TaskRowActions {
         private final Consumer<ViewSlot> onCheck;
+        private final Consumer<ViewSlot> onUndo;
         private final Consumer<ViewSlot> onEdit;
         private final Consumer<ViewSlot> onProgressPlus;
         private final Consumer<ViewSlot> onProgressMinus;
@@ -115,12 +122,14 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         private final Function<ViewSlot, Boolean> isExpanded;
 
         public TaskRowActions(Consumer<ViewSlot> onCheck,
+                              Consumer<ViewSlot> onUndo,
                               Consumer<ViewSlot> onEdit,
                               Consumer<ViewSlot> onProgressPlus,
                               Consumer<ViewSlot> onProgressMinus,
                               Consumer<ViewSlot> onToggleExpand,
                               Function<ViewSlot, Boolean> isExpanded) {
             this.onCheck = onCheck;
+            this.onUndo = onUndo;
             this.onEdit = onEdit;
             this.onProgressPlus = onProgressPlus;
             this.onProgressMinus = onProgressMinus;
@@ -136,6 +145,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         TextView start;
         TextView end;
         CheckBox checkBox;
+        ImageButton stateButton;
         View progressContainer;
         ImageButton progressMinus;
         ImageButton progressPlus;
@@ -155,6 +165,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             this.start = taskRow.findViewById(R.id.StartTime);
             this.end = taskRow.findViewById(R.id.EndTime);
             this.checkBox = taskRow.findViewById(R.id.TaskCheckBox);
+            this.stateButton = taskRow.findViewById(R.id.TaskStateButton);
             this.progressContainer = taskRow.findViewById(R.id.ProgressContainer);
             this.progressMinus = taskRow.findViewById(R.id.ProgressMinusButton);
             this.progressPlus = taskRow.findViewById(R.id.ProgressPlusButton);
@@ -218,11 +229,14 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     private void bindTaskRow(TaskRowViewHolder holder) {
         holder.root.setBackgroundResource(R.drawable.bg_row);
         holder.checkBox.setVisibility(View.VISIBLE);
+        holder.stateButton.setVisibility(View.GONE);
         holder.deadlineCountdown.setVisibility(View.VISIBLE);
         holder.streakDisplay.setVisibility(View.VISIBLE);
         holder.editButton.setVisibility(View.VISIBLE);
         holder.expandToggle.setVisibility(View.GONE);
         holder.calendarChip.setVisibility(View.GONE);
+        holder.stateButton.setOnClickListener(null);
+        holder.stateButton.setOnLongClickListener(null);
         holder.itemView.setOnClickListener(null);
         holder.itemView.setOnLongClickListener(null);
     }
@@ -303,6 +317,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         Context context = holder.itemView.getContext();
         holder.root.setBackgroundResource(R.drawable.task_bg_calendar_row);
         holder.checkBox.setVisibility(View.GONE);
+        holder.stateButton.setVisibility(View.GONE);
         holder.goalIcon.setVisibility(View.GONE);
         holder.progressContainer.setVisibility(View.GONE);
         holder.deadlineCountdown.setVisibility(View.GONE);
@@ -312,6 +327,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.calendarChip.setVisibility(View.VISIBLE);
         holder.calendarChip.setText(context.getString(R.string.task_calendar_label));
         holder.checkBox.setOnClickListener(null);
+        holder.stateButton.setOnClickListener(null);
+        holder.stateButton.setOnLongClickListener(null);
         holder.itemView.setOnLongClickListener(null);
         holder.itemView.setOnClickListener(null);
         ViewCompat.setStateDescription(holder.itemView, context.getString(R.string.task_calendar_state_description));
@@ -442,31 +459,116 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     private void bindCheckboxControls(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
         Context context = holder.itemView.getContext();
-        holder.checkBox.setVisibility(View.VISIBLE);
         holder.progressContainer.setVisibility(View.GONE);
-        int checkboxDescRes;
-        if (item.completed) {
-            checkboxDescRes = R.string.task_row_checkbox_done;
-        } else if (item.inProgress) {
-            checkboxDescRes = R.string.task_row_checkbox_complete;
-        } else {
-            checkboxDescRes = R.string.task_row_checkbox_start;
-        }
-        holder.checkBox.setContentDescription(context.getString(checkboxDescRes));
-        holder.checkBox.setOnClickListener(v -> {
-            boolean shouldAnimateCompletion = interactionsEnabled && item.slotId != null && !item.completed;
-            if (shouldAnimateCompletion) {
+
+        boolean hasSlot = item.slotId != null;
+        boolean interactionsAllowed = interactionsEnabled && hasSlot;
+        boolean stateButtonMode = item.inProgress || item.completed;
+
+        if (!stateButtonMode) {
+            clearUndoArmedState(item.slotId);
+            holder.stateButton.setVisibility(View.GONE);
+            holder.stateButton.setOnClickListener(null);
+            holder.stateButton.setOnLongClickListener(null);
+
+            holder.checkBox.setVisibility(View.VISIBLE);
+            holder.checkBox.setContentDescription(context.getString(R.string.task_row_checkbox_start));
+            holder.checkBox.setOnClickListener(v -> {
+                if (!interactionsAllowed) {
+                    return;
+                }
                 animateCompletion(holder, item);
+                actions.onCheck.accept(viewSlot);
+            });
+            holder.checkBox.setChecked(false);
+            holder.checkBox.setEnabled(interactionsAllowed);
+            holder.checkBox.setAlpha(interactionsEnabled ? UiConstants.ALPHA_ENABLED : UiConstants.ALPHA_DISABLED);
+            return;
+        }
+
+        holder.checkBox.setVisibility(View.GONE);
+        holder.checkBox.setOnClickListener(null);
+        holder.stateButton.setVisibility(View.VISIBLE);
+        holder.stateButton.setEnabled(interactionsAllowed);
+        holder.stateButton.setAlpha(interactionsEnabled ? UiConstants.ALPHA_ENABLED : UiConstants.ALPHA_DISABLED);
+
+        boolean undoArmed = isUndoArmed(item.slotId);
+        if (undoArmed) {
+            holder.stateButton.setImageResource(R.drawable.ic_close_24);
+            holder.stateButton.setImageTintList(ColorStateList.valueOf(colorUndoTint));
+            holder.stateButton.setContentDescription(context.getString(R.string.task_row_state_button_undo));
+            holder.stateButton.setOnClickListener(v -> {
+                if (!interactionsAllowed) {
+                    return;
+                }
+                clearUndoArmedState(item.slotId);
+                actions.onUndo.accept(viewSlot);
+            });
+        } else if (item.inProgress) {
+            holder.stateButton.setImageResource(R.drawable.ic_play_24);
+            holder.stateButton.setImageTintList(ColorStateList.valueOf(colorInProgressCheckboxTint));
+            holder.stateButton.setContentDescription(context.getString(R.string.task_row_state_button_in_progress));
+            holder.stateButton.setOnClickListener(v -> {
+                if (!interactionsAllowed) {
+                    return;
+                }
+                animateCompletion(holder, item);
+                actions.onCheck.accept(viewSlot);
+            });
+        } else {
+            holder.stateButton.setImageResource(R.drawable.ic_check_24);
+            holder.stateButton.setImageTintList(ColorStateList.valueOf(colorCompletedCheckboxTint));
+            holder.stateButton.setContentDescription(context.getString(R.string.task_row_state_button_completed));
+            holder.stateButton.setOnClickListener(v -> {
+                // Completed rows use long-press to arm undo.
+            });
+        }
+
+        holder.stateButton.setOnLongClickListener(interactionsAllowed
+                ? v -> {
+                    if (undoArmed) {
+                        return true;
+                    }
+                    armUndo(item.slotId);
+                    int adapterPosition = holder.getBindingAdapterPosition();
+                    if (adapterPosition != RecyclerView.NO_POSITION) {
+                        notifyItemChanged(adapterPosition);
+                    } else {
+                        notifyDataSetChanged();
+                    }
+                    return true;
+                }
+                : null);
+    }
+
+    private boolean isUndoArmed(String slotId) {
+        return slotId != null && undoArmedSlotIds.contains(slotId);
+    }
+
+    private void armUndo(String slotId) {
+        if (slotId != null) {
+            undoArmedSlotIds.add(slotId);
+        }
+    }
+
+    private void clearUndoArmedState(String slotId) {
+        if (slotId != null) {
+            undoArmedSlotIds.remove(slotId);
+        }
+    }
+
+    private void retainValidUndoSlots(List<ViewSlot> slots) {
+        Set<String> validSlotIds = new HashSet<>();
+        for (ViewSlot slot : slots) {
+            TaskListItem item = slot.getItem();
+            if (item == null || item.isCalendarEvent() || item.slotId == null) {
+                continue;
             }
-            actions.onCheck.accept(viewSlot);
-        });
-        holder.checkBox.setChecked(item.completed);
-        // Two-phase checkoff: the checkbox is disabled once completed (second tap already recorded
-        // slot.realEnd in CheckOffTaskUseCase). Unscheduled slots (slotId == null) cannot be
-        // checked off at all — they have no execution window to mark complete.
-        boolean checkable = !item.completed && item.slotId != null && interactionsEnabled;
-        holder.checkBox.setEnabled(checkable);
-        holder.checkBox.setAlpha(interactionsEnabled ? UiConstants.ALPHA_ENABLED : UiConstants.ALPHA_DISABLED);
+            if (item.inProgress || item.completed) {
+                validSlotIds.add(item.slotId);
+            }
+        }
+        undoArmedSlotIds.retainAll(validSlotIds);
     }
 
     private void bindProgressControls(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
@@ -574,7 +676,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     }
 
     public void setList(List<ViewSlot> viewSlots) {
-        this.viewSlots = viewSlots;
+        this.viewSlots = viewSlots == null ? Collections.emptyList() : viewSlots;
+        retainValidUndoSlots(this.viewSlots);
         notifyDataSetChanged();
     }
 

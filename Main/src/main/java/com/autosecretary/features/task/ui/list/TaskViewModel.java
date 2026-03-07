@@ -12,6 +12,7 @@ import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskDataService;
+import com.autosecretary.features.task.application.UndoTaskCheckOffUseCase;
 
 import android.util.Log;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
@@ -57,6 +58,7 @@ public class TaskViewModel extends AndroidViewModel {
 
     private final TaskDataService taskDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
+    private final UndoTaskCheckOffUseCase undoTaskCheckOffUseCase;
     /** Fires once during construction to auto-generate today's schedule. */
     private final RegenerateScheduleUseCase regenerateScheduleUseCase;
     private final AdjustTaskProgressUseCase adjustTaskProgressUseCase;
@@ -84,6 +86,7 @@ public class TaskViewModel extends AndroidViewModel {
     public TaskViewModel(Application app,
                          TaskDataService taskDataService,
                          CheckOffTaskUseCase checkOffTaskUseCase,
+                         UndoTaskCheckOffUseCase undoTaskCheckOffUseCase,
                          RegenerateScheduleUseCase regenerateScheduleUseCase,
                          AdjustTaskProgressUseCase adjustTaskProgressUseCase,
                          TaskEditSessionController taskEditSessionController,
@@ -92,6 +95,7 @@ public class TaskViewModel extends AndroidViewModel {
         super(app);
         this.taskDataService = taskDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
+        this.undoTaskCheckOffUseCase = undoTaskCheckOffUseCase;
         this.regenerateScheduleUseCase = regenerateScheduleUseCase;
         this.adjustTaskProgressUseCase = adjustTaskProgressUseCase;
         this.taskEditSessionController = taskEditSessionController;
@@ -288,6 +292,14 @@ public class TaskViewModel extends AndroidViewModel {
             return;
         }
         checkOffTaskUseCase.execute(viewSlot.getItem(), this::refreshList);
+    }
+
+    /** Reverts checkoff by one phase (COMPLETED -> STARTED or STARTED -> PENDING). */
+    public void undoCheckOff(ViewSlot viewSlot) {
+        if (viewSlot.getItem().isCalendarEvent()) {
+            return;
+        }
+        undoTaskCheckOffUseCase.execute(viewSlot.getItem(), this::refreshList);
     }
 
     /** Increments the progress counter for a goal-based task (e.g. 3/10 → 4/10). */

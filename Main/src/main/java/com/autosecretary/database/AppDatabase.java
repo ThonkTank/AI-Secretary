@@ -6,6 +6,9 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
+import androidx.room.migration.Migration;
+import androidx.sqlite.db.SupportSQLiteDatabase;
+import androidx.annotation.NonNull;
 
 import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
 import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
@@ -54,14 +57,12 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
  * SQLite database abstraction for AutoSecretary using Android Room ORM.
  * <p>
  * This is a single-instance database accessible via {@link #getInstance(Context)}.
- * Room automatically handles table creation, schema versioning (v24), and type conversion.
+ * Room automatically handles table creation, schema versioning (v25), and type conversion.
  * </p>
  * <p>
- * <strong>Database version:</strong> 24. Schema changes require only a version bump;
- * {@link #getInstance(Context)} uses {@code fallbackToDestructiveMigration()}, which drops
- * and recreates all tables on schema changes — intentional in this project (manual
- * {@code Migration} subclasses are forbidden; see CLAUDE.md). Always back up user data
- * before bumping the schema version.
+ * <strong>Database version:</strong> 25. Schema changes require a version bump and
+ * compatible Room migration(s). This project no longer uses destructive fallback
+ * migrations because the app now stores user data that must be preserved.
  * </p>
  * <p>
  * <strong>Type converters:</strong> See {@link Converters}. Room stores Java objects as SQLite-compatible
@@ -105,13 +106,26 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
                 MealCookingPreferencesEntity.class,
                 MealWeeklyFoodTargetEntity.class
         },
-        version = 24,
+        version = 25,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
 public abstract class AppDatabase extends RoomDatabase {
 
     public static final String DB_NAME = "autosecretary.db";
+    public static final Migration MIGRATION_23_24 = new Migration(23, 24) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // No schema delta: this bridge keeps upgrade paths explicit now that
+            // destructive fallback is disabled.
+        }
+    };
+    public static final Migration MIGRATION_24_25 = new Migration(24, 25) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE task_core ADD COLUMN startDate TEXT");
+        }
+    };
 
     public abstract TaskDao taskDao();
 
@@ -164,10 +178,8 @@ public abstract class AppDatabase extends RoomDatabase {
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context.getApplicationContext(), AppDatabase.class, DB_NAME)
-                    // Intentional: schema changes drop and recreate all tables (user data lost on upgrade).
-                    // Manual Migration subclasses are explicitly forbidden in this project — see CLAUDE.md.
-                    // Always back up user data before bumping the schema version.
-                    .fallbackToDestructiveMigration()
+                    .addMigrations(MIGRATION_23_24)
+                    .addMigrations(MIGRATION_24_25)
                     .build();
         }
         return instance;

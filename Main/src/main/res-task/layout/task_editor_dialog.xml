@@ -5,16 +5,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    android:padding="@dimen/spacing_sm">
+    android:padding="@dimen/spacing_lg">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@drawable/bg_surface_card"
-        android:padding="@dimen/spacing_lg">
+        android:orientation="vertical">
 
-        <!-- Basic Info -->
+        <!-- ─── Titel + Priorität (immer sichtbar) ───────────────────────── -->
+
         <com.google.android.material.textfield.TextInputLayout
             style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
             android:layout_width="match_parent"
@@ -28,200 +27,439 @@
                 android:layout_height="wrap_content"/>
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
-            android:layout_width="match_parent"
+        <TextView
+            style="@style/TextAppearance.AutoSecretary.Editor.Label"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_sm"
-            android:hint="@string/task_editor_hint_description">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/EditDescription"
-                style="@style/Widget.AutoSecretary.Editor.TextField"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minLines="2"/>
-        </com.google.android.material.textfield.TextInputLayout>
+            android:labelFor="@id/EditPriority"
+            android:text="@string/task_editor_priority_label"/>
 
         <Spinner
             android:id="@+id/EditPriority"
             style="@style/Widget.AutoSecretary.Editor.Spinner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_sm"
-            android:contentDescription="@string/task_editor_priority_content_description"/>
+            android:layout_marginTop="@dimen/spacing_xs"/>
 
-        <Spinner
-            android:id="@+id/EditParentTask"
-            style="@style/Widget.AutoSecretary.Editor.Spinner"
+        <!-- ─── WEITERE DETAILS ──────────────────────────────────────────── -->
+
+        <View
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_sm"
-            android:contentDescription="@string/task_editor_parent_content_description"/>
-
-        <!-- ─── PLANUNG ─────────────────────────────────────────────────── -->
-
-        <Spinner
-            android:id="@+id/EditSchedulingType"
-            style="@style/Widget.AutoSecretary.Editor.Spinner"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_xl"
-            android:contentDescription="@string/task_editor_scheduling_type_content_description"/>
-
-        <!-- Deadline -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginTop="@dimen/spacing_sm">
-
-            <TextView
-                style="@style/TextAppearance.AutoSecretary.Editor.Label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/task_editor_deadline_label"/>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/DeadlineInputLayout"
-                style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="@dimen/spacing_sm"
-                app:endIconMode="custom"
-                app:endIconDrawable="@drawable/ic_calendar_24"
-                app:endIconContentDescription="@string/task_editor_deadline_pick_content_description">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/EditDeadline"
-                    style="@style/Widget.AutoSecretary.Editor.TextField"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:focusable="false"
-                    android:focusableInTouchMode="false"
-                    android:clickable="true"
-                    android:inputType="none"
-                    android:text="@string/task_editor_deadline_none"
-                    android:contentDescription="@string/task_editor_deadline_pick_content_description"/>
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <ImageButton
-                android:id="@+id/ClearDeadline"
-                android:layout_width="@dimen/touch_target_min"
-                android:layout_height="@dimen/touch_target_min"
-                android:src="@drawable/ic_close_24"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/task_editor_deadline_clear_content_description"/>
-        </LinearLayout>
-
-        <!-- Duration -->
-        <TextView
-            style="@style/TextAppearance.AutoSecretary.Editor.SectionHeader"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="1dp"
             android:layout_marginTop="@dimen/spacing_md"
-            android:text="@string/task_editor_duration_label"/>
+            android:background="@color/color_outline"/>
 
         <LinearLayout
+            android:id="@+id/WeitereDetailsHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="@dimen/spacing_sm">
+            android:background="?attr/selectableItemBackground"
+            android:paddingTop="@dimen/spacing_sm"
+            android:paddingBottom="@dimen/spacing_sm"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:id="@+id/WeitereDetailsToggle"
+                style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/task_editor_weitere_details_collapsed"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/WeitereDetailsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="@dimen/spacing_sm"
+            android:visibility="gone">
 
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:hint="@string/task_editor_hint_min">
+                android:layout_marginTop="@dimen/spacing_xs"
+                android:hint="@string/task_editor_hint_description">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/EditMinDuration"
+                    android:id="@+id/EditDescription"
                     style="@style/Widget.AutoSecretary.Editor.TextField"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="number"/>
+                    android:minLines="2"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <TextView
                 style="@style/TextAppearance.AutoSecretary.Editor.Label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/task_editor_range_separator"
-                android:layout_marginStart="@dimen/spacing_xs"
-                android:layout_marginEnd="@dimen/spacing_xs"/>
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:labelFor="@id/EditParentTask"
+                android:text="@string/task_editor_parent_label"/>
 
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
-                android:layout_width="0dp"
+            <Spinner
+                android:id="@+id/EditParentTask"
+                style="@style/Widget.AutoSecretary.Editor.Spinner"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:hint="@string/task_editor_hint_max">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/EditMaxDuration"
-                    style="@style/Widget.AutoSecretary.Editor.TextField"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"/>
-            </com.google.android.material.textfield.TextInputLayout>
-        </LinearLayout>
-
-        <!-- Cooldown -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginTop="@dimen/spacing_sm">
+                android:layout_marginTop="@dimen/spacing_xs"/>
 
             <TextView
                 style="@style/TextAppearance.AutoSecretary.Editor.Label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/task_editor_cooldown_label"/>
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:labelFor="@id/EditSchedulingType"
+                android:text="@string/task_editor_scheduling_type_label"/>
 
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
-                android:layout_width="0dp"
+            <Spinner
+                android:id="@+id/EditSchedulingType"
+                style="@style/Widget.AutoSecretary.Editor.Spinner"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="@dimen/spacing_sm">
+                android:layout_marginTop="@dimen/spacing_xs"/>
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/EditCooldown"
-                    style="@style/Widget.AutoSecretary.Editor.TextField"
+            <!-- Start date (TASK only) -->
+            <LinearLayout
+                android:id="@+id/TaskStartDateRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="@dimen/spacing_sm">
+
+                <TextView
+                    style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_editor_start_date_label"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/StartDateInputLayout"
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="@dimen/spacing_sm"
+                    app:endIconMode="custom"
+                    app:endIconDrawable="@drawable/ic_calendar_24"
+                    app:endIconContentDescription="@string/task_editor_start_date_pick_content_description">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/EditStartDate"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:clickable="true"
+                        android:inputType="none"
+                        android:text="@string/task_editor_start_date_none"
+                        android:contentDescription="@string/task_editor_start_date_pick_content_description"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <ImageButton
+                    android:id="@+id/ClearStartDate"
+                    android:layout_width="@dimen/touch_target_min"
+                    android:layout_height="@dimen/touch_target_min"
+                    android:src="@drawable/ic_close_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/task_editor_start_date_clear_content_description"/>
+            </LinearLayout>
+
+            <!-- Termin fields (TERMIN only) -->
+            <LinearLayout
+                android:id="@+id/TerminFieldsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="number"/>
-            </com.google.android.material.textfield.TextInputLayout>
-        </LinearLayout>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="@dimen/spacing_sm">
 
-        <CheckBox
-            android:id="@+id/EditCloseOnMiss"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_sm"
-            android:text="@string/task_editor_close_on_miss"/>
+                    <TextView
+                        style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/task_editor_fixed_date_label"/>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/FixedDateInputLayout"
+                        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="@dimen/spacing_sm"
+                        app:endIconMode="custom"
+                        app:endIconDrawable="@drawable/ic_calendar_24"
+                        app:endIconContentDescription="@string/task_editor_fixed_date_pick_content_description">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/EditFixedDate"
+                            style="@style/Widget.AutoSecretary.Editor.TextField"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:clickable="true"
+                            android:inputType="none"
+                            android:text="@string/task_editor_fixed_date_none"
+                            android:contentDescription="@string/task_editor_fixed_date_pick_content_description"/>
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <ImageButton
+                        android:id="@+id/ClearFixedDate"
+                        android:layout_width="@dimen/touch_target_min"
+                        android:layout_height="@dimen/touch_target_min"
+                        android:src="@drawable/ic_close_24"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/task_editor_fixed_date_clear_content_description"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="@dimen/spacing_sm">
+
+                    <TextView
+                        style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/task_editor_fixed_start_label"/>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/FixedStartInputLayout"
+                        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="@dimen/spacing_sm"
+                        app:endIconMode="custom"
+                        app:endIconDrawable="@drawable/ic_calendar_24"
+                        app:endIconContentDescription="@string/task_editor_fixed_start_pick_content_description">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/EditFixedStart"
+                            style="@style/Widget.AutoSecretary.Editor.TextField"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:clickable="true"
+                            android:inputType="none"
+                            android:text="@string/task_editor_fixed_start_none"
+                            android:contentDescription="@string/task_editor_fixed_start_pick_content_description"/>
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <ImageButton
+                        android:id="@+id/ClearFixedStart"
+                        android:layout_width="@dimen/touch_target_min"
+                        android:layout_height="@dimen/touch_target_min"
+                        android:src="@drawable/ic_close_24"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/task_editor_fixed_start_clear_content_description"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="@dimen/spacing_sm">
+
+                    <TextView
+                        style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/task_editor_fixed_duration_label"/>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="@dimen/spacing_sm"
+                        android:hint="@string/task_editor_hint_fixed_duration">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/EditFixedDuration"
+                            style="@style/Widget.AutoSecretary.Editor.TextField"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"/>
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Deadline -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="@dimen/spacing_sm">
+
+                <TextView
+                    style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_editor_deadline_label"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/DeadlineInputLayout"
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="@dimen/spacing_sm"
+                    app:endIconMode="custom"
+                    app:endIconDrawable="@drawable/ic_calendar_24"
+                    app:endIconContentDescription="@string/task_editor_deadline_pick_content_description">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/EditDeadline"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:clickable="true"
+                        android:inputType="none"
+                        android:text="@string/task_editor_deadline_none"
+                        android:contentDescription="@string/task_editor_deadline_pick_content_description"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <ImageButton
+                    android:id="@+id/ClearDeadline"
+                    android:layout_width="@dimen/touch_target_min"
+                    android:layout_height="@dimen/touch_target_min"
+                    android:src="@drawable/ic_close_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/task_editor_deadline_clear_content_description"/>
+            </LinearLayout>
+
+            <!-- Dauer -->
+            <TextView
+                style="@style/TextAppearance.AutoSecretary.Editor.SectionHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_md"
+                android:text="@string/task_editor_duration_label"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="@dimen/spacing_xs">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/task_editor_hint_min">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/EditMinDuration"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_editor_range_separator"
+                    android:layout_marginStart="@dimen/spacing_xs"
+                    android:layout_marginEnd="@dimen/spacing_xs"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/task_editor_hint_max">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/EditMaxDuration"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"/>
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+
+            <!-- Cooldown -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="@dimen/spacing_sm">
+
+                <TextView
+                    style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/task_editor_cooldown_label"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="@dimen/spacing_sm">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/EditCooldown"
+                        style="@style/Widget.AutoSecretary.Editor.TextField"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"/>
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+
+            <CheckBox
+                android:id="@+id/EditCloseOnMiss"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:text="@string/task_editor_close_on_miss"/>
+
+        </LinearLayout>
 
         <!-- ─── WIEDERHOLUNG ─────────────────────────────────────────────── -->
 
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/color_outline"/>
+
         <LinearLayout
+            android:id="@+id/WiederholungHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="@dimen/spacing_xl">
+            android:background="?attr/selectableItemBackground"
+            android:paddingTop="@dimen/spacing_sm"
+            android:paddingBottom="@dimen/spacing_sm"
+            android:clickable="true"
+            android:focusable="true">
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/ToggleRepetition"
+            <TextView
+                android:id="@+id/WiederholungToggle"
+                style="@style/TextAppearance.AutoSecretary.Editor.Label"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/task_editor_repetition_toggle"/>
+                android:text="@string/task_editor_section_wiederholung_collapsed"/>
 
             <TextView
                 android:id="@+id/RepetitionSummary"
@@ -234,13 +472,22 @@
                 android:visibility="gone"/>
         </LinearLayout>
 
+        <!-- RepetitionContainer: accordion section body.
+             ToggleRepetition is a hidden state holder; its isChecked() value is read
+             by TaskEditFormInputReader to determine whether to save repetition data. -->
         <LinearLayout
             android:id="@+id/RepetitionContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:visibility="gone"
-            android:paddingStart="@dimen/task_editor_section_indent">
+            android:paddingBottom="@dimen/spacing_sm"
+            android:visibility="gone">
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/ToggleRepetition"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"/>
 
             <!-- Inline: [EditReps] mal pro [EditPerPeriod] [EditPeriodUnit] -->
             <LinearLayout
@@ -248,7 +495,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginTop="@dimen/spacing_sm">
+                android:layout_marginTop="@dimen/spacing_xs">
 
                 <com.google.android.material.textfield.TextInputLayout
                     style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
@@ -306,54 +553,82 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_sm"
                 android:text="@string/task_editor_complete_first"/>
+
+            <!-- Zeitfenster -->
+
+            <TextView
+                style="@style/TextAppearance.AutoSecretary.Editor.SectionHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_md"
+                android:text="@string/task_editor_pref_slots_section_label"/>
+
+            <LinearLayout
+                android:id="@+id/PrefSlotContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="@dimen/spacing_sm"/>
+
+            <CheckBox
+                android:id="@+id/EditAdaptive"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:text="@string/task_editor_adaptive_times"/>
+
         </LinearLayout>
-
-        <!-- ─── BEVORZUGTE ZEITFENSTER ───────────────────────────────────── -->
-
-        <TextView
-            style="@style/TextAppearance.AutoSecretary.Editor.SectionHeader"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_md"
-            android:text="@string/task_editor_pref_slots_section_label"/>
-
-        <!-- PrefSlots: rows inflated programmatically by PrefSlotSectionController -->
-        <LinearLayout
-            android:id="@+id/PrefSlotContainer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginTop="@dimen/spacing_sm"/>
-
-        <CheckBox
-            android:id="@+id/EditAdaptive"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_sm"
-            android:text="@string/task_editor_adaptive_times"/>
 
         <!-- ─── FORTSCHRITT ──────────────────────────────────────────────── -->
 
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/ToggleProgress"
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/color_outline"/>
+
+        <LinearLayout
+            android:id="@+id/FortschrittHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_xl"
-            android:text="@string/task_editor_progress_toggle"/>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="?attr/selectableItemBackground"
+            android:paddingTop="@dimen/spacing_sm"
+            android:paddingBottom="@dimen/spacing_sm"
+            android:clickable="true"
+            android:focusable="true">
 
+            <TextView
+                android:id="@+id/FortschrittToggle"
+                style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/task_editor_section_fortschritt_collapsed"/>
+        </LinearLayout>
+
+        <!-- ProgressContainer: accordion section body.
+             ToggleProgress is a hidden state holder; its isChecked() value is read
+             by TaskEditFormInputReader to determine whether to save progress data. -->
         <LinearLayout
             android:id="@+id/ProgressContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:visibility="gone"
-            android:paddingStart="@dimen/task_editor_section_indent">
+            android:paddingBottom="@dimen/spacing_sm"
+            android:visibility="gone">
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/ToggleProgress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                android:layout_marginTop="@dimen/spacing_xs">
 
                 <TextView
                     style="@style/TextAppearance.AutoSecretary.Editor.Label"
@@ -381,7 +656,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                android:layout_marginTop="@dimen/spacing_sm">
 
                 <TextView
                     style="@style/TextAppearance.AutoSecretary.Editor.Label"
@@ -438,12 +714,14 @@
                 android:id="@+id/EditResetPerRep"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
                 android:text="@string/task_editor_reset_per_repetition"/>
 
             <TextView
                 style="@style/TextAppearance.AutoSecretary.Editor.Label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
                 android:text="@string/task_editor_per_repetition_label"/>
 
             <LinearLayout
@@ -495,39 +773,52 @@
 
         <!-- ─── BUDGET ───────────────────────────────────────────────────── -->
 
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/color_outline"/>
+
         <LinearLayout
+            android:id="@+id/BudgetHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="@dimen/spacing_xl">
+            android:background="?attr/selectableItemBackground"
+            android:paddingTop="@dimen/spacing_sm"
+            android:paddingBottom="@dimen/spacing_sm"
+            android:clickable="true"
+            android:focusable="true">
 
             <TextView
-                style="@style/TextAppearance.AutoSecretary.Editor.SectionHeader"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/task_editor_budget_section_label"/>
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/ToggleBudget"
+                android:id="@+id/BudgetToggle"
+                style="@style/TextAppearance.AutoSecretary.Editor.Label"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:text="@string/task_editor_section_budget_collapsed"/>
         </LinearLayout>
 
+        <!-- BudgetContainer: accordion section body.
+             ToggleBudget is a hidden state holder kept for binder compatibility. -->
         <LinearLayout
             android:id="@+id/BudgetContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:visibility="gone"
-            android:paddingStart="@dimen/task_editor_section_indent">
+            android:paddingBottom="@dimen/spacing_sm"
+            android:visibility="gone">
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/ToggleBudget"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"/>
 
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_sm"
+                android:layout_marginTop="@dimen/spacing_xs"
                 android:hint="@string/task_editor_budget_required_cents_label">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -538,22 +829,42 @@
                     android:inputType="number"/>
             </com.google.android.material.textfield.TextInputLayout>
 
+            <TextView
+                style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:labelFor="@id/EditBudgetAccountId"
+                android:text="@string/task_editor_budget_account_content_description"/>
+
             <Spinner
                 android:id="@+id/EditBudgetAccountId"
                 style="@style/Widget.AutoSecretary.Editor.Spinner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xs"/>
+
+            <TextView
+                style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_sm"
-                android:contentDescription="@string/task_editor_budget_account_content_description"/>
+                android:labelFor="@id/EditBudgetCategoryId"
+                android:text="@string/task_editor_budget_category_content_description"/>
 
             <Spinner
                 android:id="@+id/EditBudgetCategoryId"
                 style="@style/Widget.AutoSecretary.Editor.Spinner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_sm"
-                android:contentDescription="@string/task_editor_budget_category_content_description"/>
+                android:layout_marginTop="@dimen/spacing_xs"/>
+
         </LinearLayout>
+
+        <!-- Bottom padding so last section isn't flush against dialog edge -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/spacing_sm"/>
 
     </LinearLayout>
 </ScrollView>

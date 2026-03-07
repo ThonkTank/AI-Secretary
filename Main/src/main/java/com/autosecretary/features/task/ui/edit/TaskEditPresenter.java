@@ -3,6 +3,7 @@ package com.autosecretary.features.task.ui.edit;
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.ui.DialogValidation;
 import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.edit.internal.TaskEditStateMapper;
@@ -11,6 +12,7 @@ import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 /**
@@ -42,6 +44,38 @@ public class TaskEditPresenter {
     /** Updates the deadline in the edit state. Mutated separately from the main form-read flow. */
     public void setEditableDeadline(LocalDate editableDeadline) {
         editState.deadline = editableDeadline;
+    }
+
+    public LocalDate getEditableStartDate() {
+        return editState.startDate;
+    }
+
+    public void setEditableStartDate(LocalDate editableStartDate) {
+        editState.startDate = editableStartDate;
+    }
+
+    public LocalDate getEditableFixedDate() {
+        return editState.fixedDate;
+    }
+
+    public void setEditableFixedDate(LocalDate editableFixedDate) {
+        editState.fixedDate = editableFixedDate;
+    }
+
+    public LocalTime getEditableFixedStart() {
+        return editState.fixedStart;
+    }
+
+    public void setEditableFixedStart(LocalTime editableFixedStart) {
+        editState.fixedStart = editableFixedStart;
+    }
+
+    public TaskCore.SchedulingType getEditableSchedulingType() {
+        return editState.schedulingType;
+    }
+
+    public void setEditableSchedulingType(TaskCore.SchedulingType schedulingType) {
+        editState.schedulingType = schedulingType;
     }
 
     /**

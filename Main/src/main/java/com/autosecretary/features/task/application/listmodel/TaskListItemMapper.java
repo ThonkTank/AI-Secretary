@@ -6,7 +6,9 @@ import com.autosecretary.features.task.data.TaskSlot;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Transforms domain Task objects into flat TaskListItem presentation models.
@@ -58,13 +60,14 @@ public class TaskListItemMapper {
      * @return a flat list of TaskListItem presentation models (never null, may be empty)
      */
     public List<TaskListItem> map(List<Task> tasks) {
+        Map<String, String> preferredSlotIdByTaskDay = buildPreferredSlotIdByTaskDay(tasks);
         List<TaskListItem> items = new ArrayList<>();
         for (Task task : tasks) {
             if (task.slots.isEmpty()) {
-                items.add(toItem(task, null));
+                items.add(toItem(task, null, preferredSlotIdByTaskDay));
             } else {
                 for (TaskSlot slot : task.slots) {
-                    items.add(toItem(task, slot));
+                    items.add(toItem(task, slot, preferredSlotIdByTaskDay));
                 }
             }
         }
@@ -97,7 +100,7 @@ public class TaskListItemMapper {
      * @param slot the slot for this occurrence, or null for unscheduled tasks
      * @return a TaskListItem with all fields populated appropriately
      */
-    private TaskListItem toItem(Task task, TaskSlot slot) {
+    private TaskListItem toItem(Task task, TaskSlot slot, Map<String, String> preferredSlotIdByTaskDay) {
         List<String> parentTaskIds = extractParentIds(task);
         boolean hasProgress = task.core.progress != null;
         boolean completed   = slot != null && slot.completed;
@@ -108,6 +111,16 @@ public class TaskListItemMapper {
         LocalTime start      = slot != null ? slot.start  : null;
         LocalTime end        = slot != null ? slot.end    : null;
         int       score      = slot != null ? slot.score  : 0;
+
+        if (slot != null && slotParentId == null && day != null && !parentTaskIds.isEmpty()) {
+            for (String parentTaskId : parentTaskIds) {
+                String candidate = preferredSlotIdByTaskDay.get(taskDayKey(parentTaskId, day));
+                if (candidate != null && !candidate.equals(slotId)) {
+                    slotParentId = candidate;
+                    break;
+                }
+            }
+        }
 
         return new TaskListItem(
                 TaskListItem.ItemType.TASK,
@@ -132,6 +145,54 @@ public class TaskListItemMapper {
                 task.core.goalIcon,
                 task.core.goalColorHex
         );
+    }
+
+    private static Map<String, String> buildPreferredSlotIdByTaskDay(List<Task> tasks) {
+        Map<String, String> byTaskDay = new HashMap<>();
+        for (Task task : tasks) {
+            for (TaskSlot slot : task.slots) {
+                if (slot == null || slot.id == null || slot.day == null) {
+                    continue;
+                }
+                String key = taskDayKey(task.core.id, slot.day);
+                String currentId = byTaskDay.get(key);
+                if (currentId == null || shouldPrefer(slot, task.findSlot(currentId))) {
+                    byTaskDay.put(key, slot.id);
+                }
+            }
+        }
+        return byTaskDay;
+    }
+
+    private static boolean shouldPrefer(TaskSlot candidate, TaskSlot current) {
+        if (current == null) return true;
+        int candidateRank = slotRank(candidate);
+        int currentRank = slotRank(current);
+        if (candidateRank != currentRank) {
+            return candidateRank > currentRank;
+        }
+        LocalTime candidateTime = preferredSortTime(candidate);
+        LocalTime currentTime = preferredSortTime(current);
+        if (candidateTime == null) return false;
+        if (currentTime == null) return true;
+        return candidateTime.isAfter(currentTime);
+    }
+
+    private static int slotRank(TaskSlot slot) {
+        if (slot.completed) return 3;
+        if (slot.realStart != null) return 2;
+        return 1;
+    }
+
+    private static LocalTime preferredSortTime(TaskSlot slot) {
+        if (slot.realEnd != null) return slot.realEnd;
+        if (slot.realStart != null) return slot.realStart;
+        if (slot.end != null) return slot.end;
+        return slot.start;
+    }
+
+    private static String taskDayKey(String taskId, LocalDate day) {
+        return taskId + "|" + day;
     }
 
 }

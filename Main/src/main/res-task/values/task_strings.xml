@@ -60,12 +60,25 @@
     <string name="task_editor_deadline_pick_content_description">Frist auswählen</string>
     <string name="task_edit_deadline_content_description">Frist auswählen. Aktuell: %1$s</string>
     <string name="task_editor_deadline_clear_content_description">Frist löschen</string>
+    <string name="task_editor_start_date_label">Ab Datum:</string>
+    <string name="task_editor_start_date_none">Sofort</string>
+    <string name="task_editor_start_date_pick_content_description">Startdatum auswählen</string>
+    <string name="task_editor_start_date_clear_content_description">Startdatum löschen</string>
+    <string name="task_edit_start_date_content_description">Startdatum auswählen. Aktuell: %1$s</string>
     <string name="task_editor_scheduling_type_label_task">Task (flexibel)</string>
     <string name="task_editor_scheduling_type_label_termin">Termin (fix)</string>
-    <string name="task_editor_fixed_date_label">Fixes Datum (YYYY-MM-DD)</string>
-    <string name="task_editor_fixed_start_label">Fixer Start (HH:MM)</string>
-    <string name="task_editor_fixed_end_label">Fixes Ende (HH:MM, optional)</string>
-    <string name="task_editor_fixed_duration_label">Fixe Dauer in Minuten (optional)</string>
+    <string name="task_editor_fixed_date_label">Termin-Datum:</string>
+    <string name="task_editor_fixed_date_none">Kein Datum</string>
+    <string name="task_editor_fixed_date_pick_content_description">Termin-Datum auswählen</string>
+    <string name="task_editor_fixed_date_clear_content_description">Termin-Datum löschen</string>
+    <string name="task_edit_fixed_date_content_description">Termin-Datum auswählen. Aktuell: %1$s</string>
+    <string name="task_editor_fixed_start_label">Termin-Start:</string>
+    <string name="task_editor_fixed_start_none">Keine Startzeit</string>
+    <string name="task_editor_fixed_start_pick_content_description">Termin-Start auswählen</string>
+    <string name="task_editor_fixed_start_clear_content_description">Termin-Start löschen</string>
+    <string name="task_edit_fixed_start_content_description">Termin-Start auswählen. Aktuell: %1$s</string>
+    <string name="task_editor_fixed_duration_label">Termin-Dauer (Min):</string>
+    <string name="task_editor_hint_fixed_duration">Dauer</string>
     <string name="task_editor_budget_section_label">Budget (optional):</string>
     <string name="task_editor_budget_required_cents_label">Budget benötigt (Cent, optional)</string>
     <string name="task_editor_budget_account_id_label">Budget-Konto-ID (optional)</string>
@@ -107,6 +120,18 @@
     <string name="task_editor_parent_none">Kein Parent</string>
     <string name="task_editor_parent_content_description">Übergeordnete Aufgabe</string>
 
+    <string name="task_editor_section_grunddaten">Grunddaten</string>
+    <string name="task_editor_section_planung">Planung</string>
+    <string name="task_editor_weitere_details_collapsed">▸ Weitere Details</string>
+    <string name="task_editor_weitere_details_expanded">▾ Weitere Details</string>
+    <string name="task_editor_section_wiederholung_collapsed">▸ Wiederholung</string>
+    <string name="task_editor_section_wiederholung_expanded">▾ Wiederholung</string>
+    <string name="task_editor_section_fortschritt_collapsed">▸ Fortschritt</string>
+    <string name="task_editor_section_fortschritt_expanded">▾ Fortschritt</string>
+    <string name="task_editor_section_budget_collapsed">▸ Budget</string>
+    <string name="task_editor_section_budget_expanded">▾ Budget</string>
+    <string name="task_editor_priority_label">Priorität</string>
+    <string name="task_editor_scheduling_type_label">Planungstyp</string>
     <string name="task_editor_priority_content_description">Priorität</string>
     <string name="task_editor_scheduling_type_content_description">Planungstyp</string>
     <string name="task_editor_period_unit_content_description">Periodeneinheit</string>
@@ -149,6 +174,11 @@
     <string name="task_edit_validation_per_rep_max_below_min">Maximum pro Wiederholung muss mindestens so groß wie das Minimum sein.</string>
     <string name="task_edit_validation_current_above_target">Aktuell darf nicht größer als Ziel sein.</string>
     <string name="task_edit_validation_target_below_current">Ziel muss mindestens so groß wie Aktuell sein.</string>
+    <string name="task_edit_validation_fixed_date_required">Für Termine ist ein Datum erforderlich.</string>
+    <string name="task_edit_validation_fixed_start_required">Für Termine ist eine Startzeit erforderlich.</string>
+    <string name="task_edit_validation_fixed_duration">Für Termine muss die Dauer mindestens 1 Minute sein.</string>
+    <string name="task_edit_validation_start_after_deadline">Ab-Datum darf nicht nach der Frist liegen.</string>
+    <string name="task_edit_validation_deadline_before_start">Frist darf nicht vor dem Ab-Datum liegen.</string>
     <string name="task_edit_validation_required_format">Pflichtfeld. %1$s</string>
     <string name="task_edit_validation_number_format">Bitte eine ganze Zahl eingeben. %1$s</string>
 
@@ -170,6 +200,9 @@
     <string name="task_row_checkbox_start">Aufgabe starten</string>
     <string name="task_row_checkbox_complete">Aufgabe abschliessen</string>
     <string name="task_row_checkbox_done">Aufgabe abgeschlossen</string>
+    <string name="task_row_state_button_in_progress">Aufgabe läuft, antippen zum Abschliessen</string>
+    <string name="task_row_state_button_completed">Aufgabe abgeschlossen, lange drücken für Rückgängig</string>
+    <string name="task_row_state_button_undo">Rückgängig: Aufgabe un-erledigen</string>
 
     <!-- State labels used in the composite row content description. -->
     <string name="task_row_state_pending">Ausstehend</string>

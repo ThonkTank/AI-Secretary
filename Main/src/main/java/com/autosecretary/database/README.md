@@ -25,14 +25,22 @@ app/AppCompositionRoot  ──creates──▶  AppDatabase.getInstance()
 
 ## Key design decisions
 
-- **Destructive migration only.** `fallbackToDestructiveMigration()` drops and recreates all tables on schema changes. Manual `Migration` subclasses are forbidden (see CLAUDE.md). Always back up user data before bumping the DB version.
-- **DB version 21.** Bump the version number in `@Database(version = ...)` for any schema change.
+- **No destructive fallback as default.** The app stores real user data, so schema changes must preserve data.
+- **DB version 24.** Bump the version number in `@Database(version = ...)` for any schema change.
+- **Schema changes require migrations.** Add compatible Room migrations for every version jump.
 - **Single-threaded access.** All database calls run on `AppCompositionRoot.databaseExecutor` — a single-threaded `ExecutorService`. Results post to the main thread via `Handler`.
 - **Type converters are global.** `@TypeConverters(Converters.class)` on `AppDatabase` makes all converters available to every DAO without per-DAO annotation.
 
+## Safe schema-change checklist
+
+1. Update entity/DAO schema and bump `@Database(version = ...)`.
+2. Implement and register the required Room migration(s) in `Room.databaseBuilder(...).addMigrations(...)`.
+3. Verify upgrade from the previous app version using a DB containing real data.
+4. Keep destructive fallback disabled; if a migration is missing, fail fast instead of deleting user data.
+
 ## Reading order
 
-1. **`AppDatabase.java`** — understand entity registry, DAO surface, singleton pattern, and the destructive-migration policy.
+1. **`AppDatabase.java`** — understand entity registry, DAO surface, singleton pattern, and migration policy.
 2. **`Converters.java`** — understand how Java types map to SQLite storage (each type has a `from*`/`to*` pair).
 3. Feature DAOs (e.g., `features/task/data/TaskDao.java`) — see how queries use these converters implicitly.
 

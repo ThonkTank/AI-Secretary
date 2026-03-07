@@ -56,23 +56,13 @@ public class RegenerateScheduleUseCase {
     public void execute(Consumer<Result> onDone) {
         workerExecutor.execute(() -> {
             try {
-                List<Task> tasks = taskDao.readAll();
                 LocalDate today = LocalDate.now();
                 LocalDate windowEnd = today.plusDays(PLANNING_DAYS);
 
-                // Clear stale future slots before regeneration. Any slot that was scheduled
-                // but not yet started (realStart == null, not completed) within the planning
-                // window is considered stale — it will be regenerated from scratch. Slots
-                // already in progress (realStart set) or completed are preserved unchanged.
-                for (Task task : tasks) {
-                    task.slots.removeIf(slot ->
-                            !slot.completed
-                                    && slot.realStart == null
-                                    && slot.scheduled
-                                    && slot.day != null
-                                    && !slot.day.isBefore(today)
-                                    && slot.day.isBefore(windowEnd));
-                }
+                // Remove stale slots in DB first so readAll() returns the true baseline.
+                // Preserves started/completed work; only untouched scheduled slots are regenerated.
+                taskDao.deleteRegeneratableSlotsInWindow(today, windowEnd);
+                List<Task> tasks = taskDao.readAll();
 
                 TaskPlanningState state = new TaskPlanningState();
                 generator.recordPreservedSlots(tasks, today, windowEnd, state);

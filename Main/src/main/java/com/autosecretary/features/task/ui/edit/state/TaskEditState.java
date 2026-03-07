@@ -32,6 +32,8 @@ public class TaskEditState {
     // Scheduling & priority — user-editable
     public Priority priority = TaskEditDefaults.PRIORITY;
     public TaskCore.SchedulingType schedulingType = TaskEditDefaults.SCHEDULING_TYPE;
+    // Earliest scheduling date for normal tasks (TASK). Null = no lower bound.
+    public LocalDate startDate;
     public LocalDate deadline;
     // Fixed-date fields — shown in the UI only when SchedulingType.TERMIN is selected.
     public LocalDate fixedDate;

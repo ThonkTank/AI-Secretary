@@ -3,7 +3,9 @@ package com.autosecretary.features.task.ui.list.state;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -104,6 +106,7 @@ public class ViewSlotList {
      * @param isExpanded determines which parent-child relationships are expanded in the flattened view
      */
     public void sortByTask(Comparator<ViewSlot> comparator, Predicate<ViewSlot> isExpanded) {
+        collapseToSingleRowPerTask();
         applySort(TREE_BY_TASK, comparator, isExpanded);
     }
 
@@ -129,6 +132,48 @@ public class ViewSlotList {
         displaySlots = flattened;
 
         hasAppendedItems = false;
+    }
+
+    /**
+     * Manage mode is task-centric; duplicate rows for the same task ID create unstable trees
+     * because task hierarchy links are also task-ID based. Keep one representative row per task.
+     */
+    private void collapseToSingleRowPerTask() {
+        Map<String, ViewSlot> bestByTaskId = new LinkedHashMap<>();
+        for (ViewSlot slot : displaySlots) {
+            String taskId = slot.getItem().taskId;
+            if (taskId == null) {
+                continue;
+            }
+            ViewSlot current = bestByTaskId.get(taskId);
+            if (current == null || isBetterManageRepresentative(slot, current)) {
+                bestByTaskId.put(taskId, slot);
+            }
+        }
+        displaySlots = new ArrayList<>(bestByTaskId.values());
+    }
+
+    private static boolean isBetterManageRepresentative(ViewSlot candidate, ViewSlot current) {
+        int candidateRank = manageRowRank(candidate);
+        int currentRank = manageRowRank(current);
+        if (candidateRank != currentRank) {
+            return candidateRank > currentRank;
+        }
+        return compareNullableTimes(candidate.getItem().start, current.getItem().start) < 0;
+    }
+
+    private static int manageRowRank(ViewSlot slot) {
+        if (slot.getItem().inProgress) return 3;
+        if (slot.getItem().completed) return 2;
+        if (slot.getItem().slotId != null) return 1;
+        return 0;
+    }
+
+    private static int compareNullableTimes(java.time.LocalTime a, java.time.LocalTime b) {
+        if (a == null && b == null) return 0;
+        if (a == null) return 1;
+        if (b == null) return -1;
+        return a.compareTo(b);
     }
 
     /**

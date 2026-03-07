@@ -139,6 +139,20 @@ public interface TaskDao {
             """)
     String readMostRecentTaskBefore(String taskId, LocalDate day, LocalTime eventTime);
 
+    /**
+     * Removes regeneratable slots in the active planning window.
+     * Preserves started/completed work; only untouched scheduled slots are removed.
+     */
+    @Query("""
+            DELETE FROM task_slots
+            WHERE scheduled = 1
+              AND completed = 0
+              AND realStart IS NULL
+              AND day >= :startInclusive
+              AND day < :endExclusive
+            """)
+    void deleteRegeneratableSlotsInWindow(LocalDate startInclusive, LocalDate endExclusive);
+
     // ============== Delete ==============
     @Query("DELETE FROM task_core WHERE id = :id")
     void deleteCore(String id);
