@@ -57,10 +57,10 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
  * SQLite database abstraction for AutoSecretary using Android Room ORM.
  * <p>
  * This is a single-instance database accessible via {@link #getInstance(Context)}.
- * Room automatically handles table creation, schema versioning (v25), and type conversion.
+ * Room automatically handles table creation, schema versioning (v27), and type conversion.
  * </p>
  * <p>
- * <strong>Database version:</strong> 25. Schema changes require a version bump and
+ * <strong>Database version:</strong> 27. Schema changes require a version bump and
  * compatible Room migration(s). This project no longer uses destructive fallback
  * migrations because the app now stores user data that must be preserved.
  * </p>
@@ -106,7 +106,7 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
                 MealCookingPreferencesEntity.class,
                 MealWeeklyFoodTargetEntity.class
         },
-        version = 25,
+        version = 27,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -124,6 +124,109 @@ public abstract class AppDatabase extends RoomDatabase {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
             database.execSQL("ALTER TABLE task_core ADD COLUMN startDate TEXT");
+        }
+    };
+    public static final Migration MIGRATION_25_26 = new Migration(25, 26) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("""
+                    CREATE TABLE task_relation_new (
+                        child TEXT NOT NULL,
+                        parent TEXT NOT NULL,
+                        PRIMARY KEY(child, parent),
+                        FOREIGN KEY(child) REFERENCES task_core(id) ON DELETE CASCADE
+                    )
+                    """);
+            database.execSQL("""
+                    INSERT OR REPLACE INTO task_relation_new (child, parent)
+                    SELECT child, parent
+                    FROM task_relation
+                    """);
+            database.execSQL("DROP TABLE task_relation");
+            database.execSQL("ALTER TABLE task_relation_new RENAME TO task_relation");
+            database.execSQL("CREATE INDEX index_task_relation_child ON task_relation(child)");
+
+            database.execSQL("""
+                    CREATE TABLE task_prerequisites_new (
+                        taskId TEXT NOT NULL,
+                        prerequisiteId TEXT NOT NULL,
+                        minGapMinutes INTEGER NOT NULL,
+                        PRIMARY KEY(taskId, prerequisiteId),
+                        FOREIGN KEY(taskId) REFERENCES task_core(id) ON DELETE CASCADE
+                    )
+                    """);
+            database.execSQL("""
+                    INSERT OR REPLACE INTO task_prerequisites_new (taskId, prerequisiteId, minGapMinutes)
+                    SELECT taskId, prerequisiteId, minGapMinutes
+                    FROM task_prerequisites
+                    """);
+            database.execSQL("DROP TABLE task_prerequisites");
+            database.execSQL("ALTER TABLE task_prerequisites_new RENAME TO task_prerequisites");
+            database.execSQL("CREATE INDEX index_task_prerequisites_taskId ON task_prerequisites(taskId)");
+        }
+    };
+    public static final Migration MIGRATION_26_27 = new Migration(26, 27) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("""
+                    CREATE TABLE budget_recurring_template_new (
+                        id TEXT NOT NULL,
+                        accountId TEXT NOT NULL,
+                        normalizedPayee TEXT NOT NULL,
+                        displayPayee TEXT,
+                        categoryId TEXT,
+                        avgAmountCents INTEGER NOT NULL,
+                        minAmountCents INTEGER NOT NULL,
+                        maxAmountCents INTEGER NOT NULL,
+                        recurringType TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        recurringValue INTEGER NOT NULL,
+                        recurringDayOfWeek TEXT,
+                        nextDue TEXT,
+                        active INTEGER NOT NULL,
+                        PRIMARY KEY(id),
+                        FOREIGN KEY(accountId) REFERENCES budget_account(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+                        FOREIGN KEY(categoryId) REFERENCES budget_category(id) ON DELETE SET NULL ON UPDATE CASCADE
+                    )
+                    """);
+            database.execSQL("""
+                    INSERT INTO budget_recurring_template_new (
+                        id,
+                        accountId,
+                        normalizedPayee,
+                        displayPayee,
+                        categoryId,
+                        avgAmountCents,
+                        minAmountCents,
+                        maxAmountCents,
+                        recurringType,
+                        type,
+                        recurringValue,
+                        recurringDayOfWeek,
+                        nextDue,
+                        active
+                    )
+                    SELECT
+                        id,
+                        accountId,
+                        normalizedPayee,
+                        displayPayee,
+                        categoryId,
+                        avgAmountCents,
+                        minAmountCents,
+                        maxAmountCents,
+                        recurringType,
+                        transactionType,
+                        recurringValue,
+                        recurringDayOfWeek,
+                        nextDue,
+                        active
+                    FROM budget_recurring_template
+                    """);
+            database.execSQL("DROP TABLE budget_recurring_template");
+            database.execSQL("ALTER TABLE budget_recurring_template_new RENAME TO budget_recurring_template");
+            database.execSQL("CREATE INDEX index_budget_recurring_template_accountId ON budget_recurring_template(accountId)");
+            database.execSQL("CREATE INDEX index_budget_recurring_template_categoryId ON budget_recurring_template(categoryId)");
         }
     };
 
@@ -180,6 +283,8 @@ public abstract class AppDatabase extends RoomDatabase {
             instance = Room.databaseBuilder(context.getApplicationContext(), AppDatabase.class, DB_NAME)
                     .addMigrations(MIGRATION_23_24)
                     .addMigrations(MIGRATION_24_25)
+                    .addMigrations(MIGRATION_25_26)
+                    .addMigrations(MIGRATION_26_27)
                     .build();
         }
         return instance;

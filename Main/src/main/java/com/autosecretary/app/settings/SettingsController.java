@@ -16,8 +16,11 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 /**
  * Controller for application settings, including schedule configuration, backup/restore and factory reset operations.
@@ -34,44 +37,9 @@ import java.util.concurrent.ExecutorService;
  */
 public class SettingsController {
 
-    /** Option indices must match the order of strings in {@link #showSettingsMenu()} */
-    private static final int OPTION_SCHEDULE_CONFIG  = 0;
-    private static final int OPTION_COOKING_PREFS    = 1;
-    private static final int OPTION_RESTORE_BACKUP   = 2;
-    private static final int OPTION_MANUAL_BACKUP    = 3;
-    private static final int OPTION_FACTORY_RESET    = 4;
-    private static final int OPTION_ABOUT            = 5;
-
     /** Date format for displaying backup timestamps in the restore dialog */
     private static final SimpleDateFormat BACKUP_DATE_FORMATTER =
             new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.GERMANY);
-
-    /**
-     * Functional interface for long-running tasks that return a boolean success flag.
-     * Used by {@link #runInBackground(int, int, BackgroundTask)} to execute work off the main thread.
-     */
-    @FunctionalInterface
-    private interface BackgroundTask {
-        /**
-         * Execute the task. The caller is responsible for exception handling and logging.
-         * @return true if the operation succeeded, false otherwise
-         */
-        boolean execute();
-    }
-
-    /**
-     * Functional interface for tasks that produce a file result (e.g., backup creation).
-     * Used by {@link #executeBackgroundFileTask(int, int, FileProducingTask)} to execute work
-     * off the main thread without triggering {@link #onDataChanged}.
-     */
-    @FunctionalInterface
-    private interface FileProducingTask {
-        /**
-         * Execute the task and produce a File result.
-         * @return the resulting file, or null if the operation failed
-         */
-        File execute();
-    }
 
     private final Context context;
     private final SettingsDataService settingsDataService;
@@ -108,9 +76,9 @@ public class SettingsController {
      * @param task               the operation to execute; should return true if successful
      */
     private void runInBackground(
-            int successMessageId, int failureMessageId, BackgroundTask task) {
+            int successMessageId, int failureMessageId, BooleanSupplier task) {
         executorService.execute(() -> {
-            boolean success = task.execute();
+            boolean success = task.getAsBoolean();
             mainHandler.post(() -> {
                 Toast.makeText(context, success ? successMessageId : failureMessageId,
                         Toast.LENGTH_LONG).show();
@@ -133,9 +101,9 @@ public class SettingsController {
      * @param task               the operation to execute; should return a File on success, null on failure
      */
     private void executeBackgroundFileTask(
-            int successMessageId, int failureMessageId, FileProducingTask task) {
+            int successMessageId, int failureMessageId, Supplier<File> task) {
         executorService.execute(() -> {
-            File result = task.execute();
+            File result = task.get();
             mainHandler.post(() ->
                     Toast.makeText(context, result != null ? successMessageId : failureMessageId,
                             Toast.LENGTH_SHORT).show()
@@ -150,30 +118,30 @@ public class SettingsController {
      * interaction with the underlying activity until dismissed.
      */
     public void showSettingsMenu() {
-        String[] options = {
-                context.getString(R.string.settings_option_schedule_config),
-                context.getString(R.string.settings_option_cooking_prefs),
-                context.getString(R.string.settings_option_restore_backup),
-                context.getString(R.string.settings_option_manual_backup),
-                context.getString(R.string.settings_option_factory_reset),
-                context.getString(R.string.settings_option_about),
-        };
+        List<SettingsMenuOption> options = List.of(
+                new SettingsMenuOption(R.string.settings_option_schedule_config, onShowScheduleConfig),
+                new SettingsMenuOption(R.string.settings_option_cooking_prefs, onShowCookingPrefs),
+                new SettingsMenuOption(R.string.settings_option_restore_backup, this::showBackupRestoreDialog),
+                new SettingsMenuOption(R.string.settings_option_manual_backup, this::createManualBackup),
+                new SettingsMenuOption(R.string.settings_option_factory_reset, this::confirmFactoryReset),
+                new SettingsMenuOption(R.string.settings_option_about, this::showAboutDialog)
+        );
+        String[] labels = options.stream()
+                .map(option -> context.getString(option.labelResId()))
+                .toArray(String[]::new);
 
         new AlertDialog.Builder(context)
                 .setTitle(R.string.settings_title)
-                .setItems(options, (dialog, which) -> {
-                    switch (which) {
-                        case OPTION_SCHEDULE_CONFIG: onShowScheduleConfig.run();  break;
-                        case OPTION_COOKING_PREFS:   onShowCookingPrefs.run();    break;
-                        case OPTION_RESTORE_BACKUP:  showBackupRestoreDialog();   break;
-                        case OPTION_MANUAL_BACKUP:   createManualBackup();        break;
-                        case OPTION_FACTORY_RESET:   confirmFactoryReset();       break;
-                        case OPTION_ABOUT:           showAboutDialog();           break;
-                        default:
-                            Log.w("SettingsController", "Unknown settings menu option: " + which);
-                    }
-                })
+                .setItems(labels, (dialog, which) -> runMenuAction(options, which))
                 .show();
+    }
+
+    private void runMenuAction(List<SettingsMenuOption> options, int which) {
+        if (which < 0 || which >= options.size()) {
+            Log.w("SettingsController", "Unknown settings menu option: " + which);
+            return;
+        }
+        options.get(which).action().run();
     }
 
     private void showBackupRestoreDialog() {
@@ -246,4 +214,5 @@ public class SettingsController {
                 .show();
     }
 
+    private record SettingsMenuOption(int labelResId, Runnable action) {}
 }

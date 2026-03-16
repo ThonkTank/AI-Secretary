@@ -18,7 +18,7 @@ Budget integration splits into two services because scheduling and completion ha
 - Scheduler asks: "Does the user have enough funds to execute this task?"
 - Decision impacts task prioritization and scheduling decisions
 
-**Returns:** `BudgetEligibility` record — passes the feasibility check plus available balance.
+**Returns:** `boolean` — `true` when the task is affordable enough to be scheduled.
 
 **Example:**
 ```
@@ -71,7 +71,7 @@ This separation allows:
 2. Scheduling runs:
    TaskBudgetEligibilityService.eligibilityFor(task)
    → Check: Is user balance >= $150?
-   → Decision: Should this task be prioritized/scheduled?
+   → Decision: Should this task be considered for scheduling?
 
 3. Task is scheduled and appears in checklist
 

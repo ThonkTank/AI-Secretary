@@ -4,10 +4,9 @@ import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskSlot;
-import com.autosecretary.features.task.domain.scheduling.TransitionStat;
 import com.autosecretary.features.task.domain.scheduling.TaskBudgetEligibilityService;
-import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.scheduling.TaskPlanningState;
+import com.autosecretary.features.task.domain.scheduling.TransitionStat;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -74,7 +73,6 @@ final class TaskScorer {
      */
     private static final int SCHEDULING_WINDOW_DAYS = 7;
 
-    private final TaskLifecycleManager lifecycleManager;
     private final double maxAgingMultiplier;
     private final double preferredStartDeviationHours;
     private final Map<String, TaskScoringSnapshot> caches = new HashMap<>();
@@ -83,16 +81,41 @@ final class TaskScorer {
     private final Consumer<String> logger;
     private final TaskBudgetEligibilityService budgetEligibilityService;
 
-    TaskScorer(TaskLifecycleManager lifecycleManager, Consumer<String> logger, TaskBudgetEligibilityService budgetEligibilityService) {
-        this(lifecycleManager, logger, budgetEligibilityService, DEFAULT_MAX_AGING_MULTIPLIER, DEFAULT_PREFERRED_START_DEVIATION_HOURS);
+    static final class Builder {
+        private Consumer<String> logger;
+        private TaskBudgetEligibilityService budgetEligibilityService;
+        private double maxAgingMultiplier = DEFAULT_MAX_AGING_MULTIPLIER;
+        private double preferredStartDeviationHours = DEFAULT_PREFERRED_START_DEVIATION_HOURS;
+
+        Builder logger(Consumer<String> logger) {
+            this.logger = logger;
+            return this;
+        }
+
+        Builder budgetEligibilityService(TaskBudgetEligibilityService budgetEligibilityService) {
+            this.budgetEligibilityService = budgetEligibilityService;
+            return this;
+        }
+
+        Builder maxAgingMultiplier(double maxAgingMultiplier) {
+            this.maxAgingMultiplier = maxAgingMultiplier;
+            return this;
+        }
+
+        Builder preferredStartDeviationHours(double preferredStartDeviationHours) {
+            this.preferredStartDeviationHours = preferredStartDeviationHours;
+            return this;
+        }
+
+        TaskScorer build() {
+            return new TaskScorer(logger, budgetEligibilityService, maxAgingMultiplier, preferredStartDeviationHours);
+        }
     }
 
-    TaskScorer(TaskLifecycleManager lifecycleManager,
-               Consumer<String> logger,
-               TaskBudgetEligibilityService budgetEligibilityService,
-               double maxAgingMultiplier,
-               double preferredStartDeviationHours) {
-        this.lifecycleManager = lifecycleManager;
+    private TaskScorer(Consumer<String> logger,
+                       TaskBudgetEligibilityService budgetEligibilityService,
+                       double maxAgingMultiplier,
+                       double preferredStartDeviationHours) {
         this.logger = logger;
         this.budgetEligibilityService = budgetEligibilityService;
         this.maxAgingMultiplier = maxAgingMultiplier;
@@ -128,18 +151,17 @@ final class TaskScorer {
      * @param completions       total all-time completions
      * @param lastCompletion    date of the most recent completion; defaults to (created − 1 day)
      *                          when there are no completions, so aging calculations never throw NPE
-     * @param periodCompletions completions within the current repetition period
      * @param isComplete        true if the task has met its quota for this cycle
-     *                          (period-based: periodCompletions ≥ reps; one-off: any completion)
+     *                          (period-based: {@code task.core.repetition.periodCompletions ≥ reps};
+     *                          one-off: any completion)
      * @param scheduledToday    number of slots already scheduled for today (including pre-existing ones)
      */
     record CompletionState(int completions,
                            LocalDate lastCompletion,
-                           int periodCompletions,
                            boolean isComplete,
                            int scheduledToday) {
         CompletionState incrementScheduledToday() {
-            return new CompletionState(completions, lastCompletion, periodCompletions, isComplete, scheduledToday + 1);
+            return new CompletionState(completions, lastCompletion, isComplete, scheduledToday + 1);
         }
     }
 
@@ -154,6 +176,15 @@ final class TaskScorer {
     record UrgencyState(double remainingDays,
                         double requiredDays,
                         boolean isDeadlineExpired) {
+    }
+
+    record EffectiveRepetitionState(LocalDate periodStart,
+                                    int periodCompletions,
+                                    int carryoverDebt,
+                                    int periodInDays) {
+        LocalDate periodEnd() {
+            return periodStart != null ? periodStart.plusDays(periodInDays) : null;
+        }
     }
 
     /**
@@ -212,7 +243,7 @@ final class TaskScorer {
      * @param sinceLast        days elapsed since last completion (used in aging formula)
      * @param agingForce       pre-computed aging multiplier: {@code min(1 + sinceLast/AGING_SCALE_DAYS, maxAgingMultiplier)}
      * @param repsPerDay       maximum slots that may be scheduled for this task today
-     *                         ({@code TaskCore.repsPerDay()})
+     *                         ({@code TaskCore.Repetition.repsPerDay()})
      * @param maxChildPriority highest {@code scoringWeight} among all descendants; 0 if no children.
      *                         A parent inherits this when it exceeds its own priority weight,
      *                         ensuring parents are pulled up by high-priority children.
@@ -279,8 +310,6 @@ final class TaskScorer {
      * <ul>
      *   <li>{@link TaskLifecycleManager#advancePeriods} — may reset {@code periodCompletions}
      *       to 0 and advance the period window if the period has turned over.</li>
-     *   <li>{@link #syncPeriodCompletions} — writes the recomputed count back into the task
-     *       domain object so lifecycle reads it correctly on the next call.</li>
      * </ul>
      */
     void maintenance(Task task, LocalDate day, TaskPlanningState state) {
@@ -296,10 +325,9 @@ final class TaskScorer {
         }
 
         lastMaintenanceDays.put(task.core.id, day);
-        lifecycleManager.advancePeriods(task, day);
-        CompletionState completionState = scanSlots(task, day);
-        syncPeriodCompletions(task, completionState);
-        UrgencyState urgencyState = computeUrgencyState(task, day);
+        EffectiveRepetitionState repetitionState = computeEffectiveRepetitionState(task, day);
+        CompletionState completionState = scanSlots(task, day, repetitionState);
+        UrgencyState urgencyState = computeUrgencyState(task, day, repetitionState);
         PreferenceFitState preferenceFitState = computePreferenceFitState(task, day.getDayOfWeek());
         MultiDayStateSnapshot multiDayStateSnapshot = computeMultiDaySnapshot(task, state, day);
 
@@ -307,7 +335,7 @@ final class TaskScorer {
         double agingForce = Math.min(1 + ((double) sinceLast / AGING_SCALE_DAYS), maxAgingMultiplier);
         int maxChildPriority = computeMaxChildPriority(task);
         boolean budgetEligible = budgetEligibilityService == null
-                || budgetEligibilityService.eligibilityFor(task).enoughBudget();
+                || budgetEligibilityService.eligibilityFor(task);
 
         TaskScoringSnapshot snapshot = new TaskScoringSnapshot(
                 completionState,
@@ -316,24 +344,11 @@ final class TaskScorer {
                 multiDayStateSnapshot,
                 sinceLast,
                 agingForce,
-                task.core.repsPerDay(),
+                task.core.repetition.repsPerDay(),
                 maxChildPriority,
                 budgetEligible
         );
         caches.put(task.core.id, snapshot);
-    }
-
-    /**
-     * Writes the recomputed period-completion count back into the domain object so that
-     * {@link TaskLifecycleManager} reads the correct value on subsequent calls.
-     * {@link TaskLifecycleManager#advancePeriods} resets {@code periodCompletions} to 0;
-     * {@link #scanSlots} recomputes it from the slot list; this method commits the result.
-     */
-    private void syncPeriodCompletions(Task task, CompletionState completionState) {
-        TaskCore.Repetition rep = task.core.repetition;
-        if (rep != null && rep.reps > 0 && rep.periodUnit != null) {
-            rep.periodCompletions = completionState.periodCompletions();
-        }
     }
 
     /**
@@ -345,25 +360,18 @@ final class TaskScorer {
      *   <li>{@code lastCompletion} — most recent completion date; defaults to
      *       {@code task.core.created − 1 day} when there are no completions, so
      *       aging calculations always have a valid reference point.</li>
-     *   <li>{@code periodCompletions} — completions within the current repetition period
-     *       window ({@code [periodStart, periodEnd)}). Only counted for tasks with an
-     *       active repetition config ({@code rep.reps > 0 && rep.periodUnit != null}).</li>
      *   <li>{@code scheduledToday} — slots already present in the task list for {@code today}
      *       (including completed and in-progress ones), used to enforce {@code repsPerDay}.</li>
      *   <li>{@code isComplete} — true if the quota is met: for periodic tasks,
-     *       {@code periodCompletions ≥ rep.reps}; for one-off tasks, any completion.</li>
+     *       {@code task.core.repetition.periodCompletions ≥ rep.reps}; for one-off tasks, any completion.</li>
      * </ul>
      */
-    private CompletionState scanSlots(Task task, LocalDate today) {
+    private CompletionState scanSlots(Task task, LocalDate today, EffectiveRepetitionState repetitionState) {
         int completions = 0;
         int scheduledToday = 0;
         LocalDate lastCompletion = task.core.created.minusDays(1);
 
         TaskCore.Repetition rep = task.core.repetition;
-        LocalDate periodStart = (rep != null && rep.periodStart != null) ? rep.periodStart : task.core.created;
-        LocalDate periodEnd = (rep != null && rep.periodUnit != null && rep.reps > 0) ? rep.periodEnd() : null;
-        int periodCompletions = 0;
-
         for (TaskSlot slot : task.slots) {
             if (slot.day == null) {
                 continue;
@@ -373,19 +381,16 @@ final class TaskScorer {
                 if (slot.day.isAfter(lastCompletion)) {
                     lastCompletion = slot.day;
                 }
-                if (periodEnd != null && !slot.day.isBefore(periodStart) && slot.day.isBefore(periodEnd)) {
-                    periodCompletions++;
-                }
             }
             if (slot.day.equals(today) && (slot.scheduled || slot.completed || slot.realStart != null)) {
                 scheduledToday++;
             }
         }
 
-        boolean isComplete = (rep != null && rep.reps > 0 && rep.periodUnit != null)
-                ? periodCompletions >= rep.reps
+        boolean isComplete = (rep != null && rep.reps > 0 && rep.periodUnit != null && repetitionState != null)
+                ? repetitionState.periodCompletions() >= rep.reps
                 : completions > 0;
-        return new CompletionState(completions, lastCompletion, periodCompletions, isComplete, scheduledToday);
+        return new CompletionState(completions, lastCompletion, isComplete, scheduledToday);
     }
 
     /**
@@ -478,84 +483,56 @@ final class TaskScorer {
     }
 
     private boolean passesHardConstraintGate(ScoringContext context) {
-        if (isAlreadyCompleteForCurrentCycle(context)) return false;
-        if (isBudgetInsufficient(context)) return false;
-        if (isBeforeStartDate(context)) return false;
-        if (hasReachedDailyRepetitionLimit(context)) return false;
-        if (isWithinCooldownWindow(context)) return false;
-        if (violatesMinimumInterDaySpacing(context)) return false;
-        if (hasReachedPeriodQuota(context)) return false;
-        if (isBlockedByIncompletePriorPeriod(context)) return false;
-        if (isBelowMinimumSlotDuration(context)) return false;
-        if (isBelowRequiredProgressDuration(context)) return false;
-        if (isPastClosableDeadline(context)) return false;
-        return true;
-    }
+        if (context.snapshot().completionState().isComplete()) return false;
+        if (!context.snapshot().budgetEligible()) return false;
 
-    private boolean isAlreadyCompleteForCurrentCycle(ScoringContext context) {
-        return context.snapshot().completionState().isComplete();
-    }
-
-    private boolean isBudgetInsufficient(ScoringContext context) {
-        return !context.snapshot().budgetEligible();
-    }
-
-    private boolean isBeforeStartDate(ScoringContext context) {
         TaskCore core = context.task().core;
-        return core.schedulingType == TaskCore.SchedulingType.TASK
+        if (core.schedulingType == TaskCore.SchedulingType.TASK
                 && core.startDate != null
-                && context.start().toLocalDate().isBefore(core.startDate);
-    }
+                && context.start().toLocalDate().isBefore(core.startDate)) {
+            return false;
+        }
 
-    private boolean hasReachedDailyRepetitionLimit(ScoringContext context) {
-        return context.snapshot().completionState().scheduledToday() >= context.snapshot().repsPerDay();
-    }
+        if (context.snapshot().completionState().scheduledToday() >= context.snapshot().repsPerDay()) return false;
+        if (context.snapshot().sinceLast() < context.task().core.cooldown) return false;
 
-    private boolean isWithinCooldownWindow(ScoringContext context) {
-        return context.snapshot().sinceLast() < context.task().core.cooldown;
-    }
-
-    private boolean violatesMinimumInterDaySpacing(ScoringContext context) {
         MultiDayStateSnapshot multiDay = context.snapshot().multiDayStateSnapshot();
-        return multiDay.minDayDistance() > 0
-                && multiDay.minDayDistance() < multiDay.expectedDayGap() * INTER_DAY_SPACING_THRESHOLD;
-    }
+        if (multiDay.minDayDistance() > 0
+                && multiDay.minDayDistance() < multiDay.expectedDayGap() * INTER_DAY_SPACING_THRESHOLD) {
+            return false;
+        }
+        if (multiDay.totalScheduledReps() >= multiDay.totalRepsInPeriod()) return false;
 
-    private boolean hasReachedPeriodQuota(ScoringContext context) {
-        MultiDayStateSnapshot multiDay = context.snapshot().multiDayStateSnapshot();
-        return multiDay.totalScheduledReps() >= multiDay.totalRepsInPeriod();
-    }
+        EffectiveRepetitionState repetitionState = computeEffectiveRepetitionState(
+                context.task(), context.start().toLocalDate());
+        if (core.repetition != null
+                && core.repetition.completeFirst
+                && repetitionState != null
+                && repetitionState.carryoverDebt() > 0) {
+            return false;
+        }
 
-    private boolean isBlockedByIncompletePriorPeriod(ScoringContext context) {
-        TaskCore.Repetition rep = context.task().core.repetition;
-        return rep != null && rep.completeFirst && rep.carryoverDebt > 0;
-    }
-
-    private boolean isBelowMinimumSlotDuration(ScoringContext context) {
-        return context.availableMinutes() < context.task().core.minDuration;
-    }
-
-    private boolean isBelowRequiredProgressDuration(ScoringContext context) {
-        return context.task().core.progress != null
-                && context.task().core.progress.hasTrackingTarget()
-                && context.availableMinutes() < context.task().core.progress.requiredTimePerRep();
-    }
-
-    private boolean isPastClosableDeadline(ScoringContext context) {
-        return context.snapshot().urgencyState().isDeadlineExpired();
+        if (context.availableMinutes() < context.task().core.minDuration) return false;
+        if (context.task().core.progress != null
+                && context.task().core.progress.target > 0
+                && context.availableMinutes() < context.task().core.progress.requiredTimePerRep()) {
+            return false;
+        }
+        if (context.snapshot().urgencyState().isDeadlineExpired()) return false;
+        return true;
     }
 
     private int applyBasePriorityAndChildInfluence(ScoringContext context) {
         return Math.max(context.task().core.priority.scoringWeight, context.snapshot().maxChildPriority());
     }
 
-    private UrgencyState computeUrgencyState(Task task, LocalDate day) {
+    private UrgencyState computeUrgencyState(Task task, LocalDate day, EffectiveRepetitionState repetitionState) {
         TaskCore.Repetition rep = task.core.repetition;
         double remainingDays;
         if (task.core.deadline != null) {
             remainingDays = (double) ChronoUnit.DAYS.between(day, task.core.deadline);
         } else if (rep != null && rep.reps > 0 && rep.periodUnit != null) {
-            LocalDate periodEnd = rep.periodEnd();
+            LocalDate periodEnd = repetitionState != null ? repetitionState.periodEnd() : rep.periodEnd();
             remainingDays = periodEnd != null
                     ? (double) ChronoUnit.DAYS.between(day, periodEnd)
                     : rep.periodInDays();
@@ -568,6 +545,44 @@ final class TaskScorer {
         // but remainingDays == 0 so applyUrgencyMultiplier will apply OVERDUE_URGENCY_FACTOR that day.
         boolean deadlineExpired = task.core.closeOnMiss && task.core.deadline != null && day.isAfter(task.core.deadline);
         return new UrgencyState(remainingDays, requiredDays, deadlineExpired);
+    }
+
+    private EffectiveRepetitionState computeEffectiveRepetitionState(Task task, LocalDate referenceDay) {
+        TaskCore.Repetition rep = task.core.repetition;
+        if (rep == null || rep.reps <= 0 || rep.periodUnit == null) {
+            return null;
+        }
+
+        LocalDate periodStart = rep.periodStart != null ? rep.periodStart : task.core.created;
+        int periodDays = rep.periodInDays();
+        if (periodStart == null || periodDays <= 0) {
+            return null;
+        }
+
+        int periodCompletions = rep.periodCompletions;
+        int carryoverDebt = rep.carryoverDebt;
+        if (referenceDay.isBefore(periodStart.plusDays(periodDays))) {
+            return new EffectiveRepetitionState(periodStart, periodCompletions, carryoverDebt, periodDays);
+        }
+
+        int missingReps = Math.max(0, rep.reps - periodCompletions);
+        long daysSinceStart = ChronoUnit.DAYS.between(periodStart, referenceDay);
+        long fullPeriods = daysSinceStart / periodDays;
+        if (rep.completeFirst) {
+            carryoverDebt += missingReps;
+            if (fullPeriods > 1) {
+                carryoverDebt += (int) ((fullPeriods - 1) * rep.reps);
+            }
+        } else {
+            carryoverDebt = 0;
+        }
+
+        return new EffectiveRepetitionState(
+                periodStart.plusDays(fullPeriods * periodDays),
+                0,
+                Math.max(0, carryoverDebt),
+                periodDays
+        );
     }
 
     private int applyUrgencyMultiplier(int score, Task task, UrgencyState urgencyState) {

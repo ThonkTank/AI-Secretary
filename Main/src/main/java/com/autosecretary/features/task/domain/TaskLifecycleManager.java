@@ -15,6 +15,9 @@ import java.time.temporal.ChronoUnit;
 /**
  * Stateless domain service managing task period advancement, streak tracking, and
  * adaptive preferred-time adjustment. All methods mutate the passed {@link Task} directly.
+ * This class is the canonical writer for the persisted repetition counter
+ * {@code task.core.repetition.periodCompletions}; schedulers read that value but do not
+ * reconstruct it from {@code task.slots}.
  * Used by {@code TaskScorer} ({@link #advancePeriods} during maintenance) and
  * {@code CheckOffTaskUseCase} ({@link #updateStreakForCompletion} and {@link #adaptPrefSlot} on completion).
  *
@@ -95,7 +98,8 @@ public class TaskLifecycleManager {
      * periods to "today", {@code periodCompletions} is incremented only when the slot day
      * belongs to the active half-open range {@code [periodStart, periodEnd)}. Then
      * {@code currentStreak} is incremented only when the period goal is exactly met
-     * ({@code periodCompletions == reps}). Streaks are period-based, not consecutive-day-based.</p>
+     * ({@code periodCompletions == reps}). Streaks are period-based, not consecutive-day-based.
+     * This is the canonical completion-time update for the persisted period counter.</p>
      */
     public void updateStreakForCompletion(Task task, TaskSlot completedSlot) {
         if (task.core.repetition == null || task.core.repetition.reps <= 0

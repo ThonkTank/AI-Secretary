@@ -61,7 +61,7 @@ Always inherit from Material parents: `Widget.MaterialComponents.*`, `TextAppear
 AutoSecretary uses a design token system for consistency:
 
 - **Spacing scale**: spacing_xxs through spacing_xl (2dp to 24dp)
-- **Text scale**: text_xs through text_xl (12sp to 18sp)
+- **Text scale**: text_xs through text_lg (12sp to 18sp)
 - **Semantic colors**: task_urgency_overdue, task_deadline_soon, budget_positive, etc.
 - **Material tokens**: task_color_primary, task_color_on_surface, etc.
 

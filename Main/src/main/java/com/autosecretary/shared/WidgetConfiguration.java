@@ -8,18 +8,15 @@ import android.content.Intent;
 
 /**
  * Shared configuration constants for app widgets (task and budget).
- * Keep these in sync with the corresponding values in the widget configuration XML files.
  *
- * <strong>WARNING — Manual XML Synchronization Required:</strong> The Android framework
- * cannot reference Java constants directly in widget configuration XML files (framework limitation).
- * If {@code WIDGET_UPDATE_PERIOD_MILLIS} is changed here, you MUST manually update the
- * {@code android:updatePeriodMillis} attribute in both widget XML files:
+ * <p>The Android framework cannot reference Java constants directly in widget configuration XML
+ * files. A Gradle verification task checks that {@code WIDGET_UPDATE_PERIOD_MILLIS} stays in sync
+ * with the {@code android:updatePeriodMillis} attribute in both widget XML files:
  * <ul>
  *   <li><code>src/main/res/xml/widget_task_info.xml</code> (android:updatePeriodMillis)
  *   <li><code>src/main/res/xml/widget_budget_info.xml</code> (android:updatePeriodMillis)
  * </ul>
- * Failure to update both files means one widget will update at a different interval,
- * causing inconsistent widget refresh behavior.
+ * The build fails on mismatch so widget refresh behavior cannot silently diverge.
  */
 public final class WidgetConfiguration {
     private WidgetConfiguration() {

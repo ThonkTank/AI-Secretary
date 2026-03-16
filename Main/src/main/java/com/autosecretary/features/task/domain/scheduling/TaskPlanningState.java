@@ -36,8 +36,12 @@ import java.util.Set;
  * @see TaskSlotGenerator
  */
 public final class TaskPlanningState {
-    private final Map<String, Set<LocalDate>> scheduledDays = new HashMap<>();
-    private final Map<String, Integer> totalScheduledReps = new HashMap<>();
+    private static final class SchedulingStats {
+        final Set<LocalDate> scheduledDays = new HashSet<>();
+        int totalScheduledReps;
+    }
+
+    private final Map<String, SchedulingStats> statsByTaskId = new HashMap<>();
 
     /**
      * Records that a task was successfully scheduled on a given day.
@@ -48,8 +52,9 @@ public final class TaskPlanningState {
      * @param day The day on which the task was placed
      */
     public void recordScheduled(String taskId, LocalDate day) {
-        scheduledDays.computeIfAbsent(taskId, k -> new HashSet<>()).add(day);
-        totalScheduledReps.merge(taskId, 1, Integer::sum);
+        SchedulingStats stats = statsByTaskId.computeIfAbsent(taskId, key -> new SchedulingStats());
+        stats.scheduledDays.add(day);
+        stats.totalScheduledReps++;
     }
 
     /**
@@ -64,17 +69,12 @@ public final class TaskPlanningState {
      * @param day The day to remove
      */
     public void removeScheduled(String taskId, LocalDate day) {
-        Set<LocalDate> days = scheduledDays.get(taskId);
-        if (days != null && days.remove(day)) {
-            if (days.isEmpty()) {
-                scheduledDays.remove(taskId);
+        SchedulingStats stats = statsByTaskId.get(taskId);
+        if (stats != null && stats.scheduledDays.remove(day)) {
+            stats.totalScheduledReps = Math.max(0, stats.totalScheduledReps - 1);
+            if (stats.scheduledDays.isEmpty() && stats.totalScheduledReps == 0) {
+                statsByTaskId.remove(taskId);
             }
-            totalScheduledReps.compute(taskId, (key, value) -> {
-                if (value == null || value <= 1) {
-                    return null;
-                }
-                return value - 1;
-            });
         }
     }
 
@@ -85,8 +85,8 @@ public final class TaskPlanningState {
      * @return Unmodifiable set of days (empty if never scheduled)
      */
     public Set<LocalDate> getScheduledDays(String taskId) {
-        Set<LocalDate> days = scheduledDays.get(taskId);
-        return days != null ? Collections.unmodifiableSet(days) : Collections.emptySet();
+        SchedulingStats stats = statsByTaskId.get(taskId);
+        return stats != null ? Collections.unmodifiableSet(stats.scheduledDays) : Collections.emptySet();
     }
 
     /**
@@ -96,7 +96,8 @@ public final class TaskPlanningState {
      * @return Number of scheduled repetitions (0 if never scheduled)
      */
     public int getTotalScheduledReps(String taskId) {
-        return totalScheduledReps.getOrDefault(taskId, 0);
+        SchedulingStats stats = statsByTaskId.get(taskId);
+        return stats != null ? stats.totalScheduledReps : 0;
     }
 
     /**
@@ -114,10 +115,10 @@ public final class TaskPlanningState {
      * @return Minimum absolute day distance (0 if task already scheduled on that day, {@code Integer.MAX_VALUE} if never scheduled)
      */
     public int minDayDistance(String taskId, LocalDate day) {
-        Set<LocalDate> days = scheduledDays.get(taskId);
-        if (days == null || days.isEmpty()) return Integer.MAX_VALUE;
+        SchedulingStats stats = statsByTaskId.get(taskId);
+        if (stats == null || stats.scheduledDays.isEmpty()) return Integer.MAX_VALUE;
         int minDistance = Integer.MAX_VALUE;
-        for (LocalDate scheduledDay : days) {
+        for (LocalDate scheduledDay : stats.scheduledDays) {
             int distance = (int) Math.abs(ChronoUnit.DAYS.between(scheduledDay, day));
             minDistance = Math.min(minDistance, distance);
         }

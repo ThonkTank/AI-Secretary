@@ -30,11 +30,13 @@ Scheduling period units (DAY, WEEK, MONTH) with fixed day counts, used for task 
 
 App-wide widget configuration constants shared between the task and budget widgets.
 
-**Important:** If you change `WIDGET_UPDATE_PERIOD_MILLIS`, you must manually update the corresponding Android widget configuration XML files:
-- `src/main/res/xml/widget_task_info.xml` (android:updatePeriodMillis attribute)
-- `src/main/res/xml/widget_budget_info.xml` (android:updatePeriodMillis attribute)
+**Important:** If you change `WIDGET_UPDATE_PERIOD_MILLIS`, also update the corresponding Android widget configuration XML files:
+- `src/main/res-task/xml/widget_task_info.xml` (android:updatePeriodMillis attribute)
+- `src/main/res-budget/xml/widget_budget_info.xml` (android:updatePeriodMillis attribute)
 
-(The Android framework cannot reference Java constants in widget XML, so synchronization must be manual.)
+The Android framework cannot reference Java constants in widget XML directly, but the Gradle task
+`validateWidgetUpdatePeriods` verifies the XML values match the shared constant and fails the build
+on mismatch.
 
 ## When to add new items
 

@@ -11,7 +11,7 @@ The importing domain layer provides:
 - **Domain contracts** between the application layer (parsing/validation) and the data layer (persistence)
 
 These types form a contract between:
-- **Upstream (application layer):** `StatementFileParser` (CSV/PDF extraction) and `BudgetTransactionMapper` (enrichment)
+- **Upstream (application layer):** `internal/StatementFileParser` (CSV/PDF extraction) and `BudgetTransactionMapper` (enrichment)
 - **Downstream (data layer):** Data access objects that persist these imports as `BudgetTransactionEntity`
 
 ## Import Pipeline Overview
@@ -19,7 +19,7 @@ These types form a contract between:
 ```
 User uploads file (CSV or PDF)
          ↓
-StatementFileParser (application/importing/)
+internal/StatementFileParser (application/importing/internal/)
     - CSV: parse locally
     - PDF: send to Claude API for extraction
          ↓
@@ -86,13 +86,13 @@ Transfers are modeled as internal account movements (not real income/expense). T
 
 ### Importing a CSV
 1. User selects a CSV file with columns: `date, amountCents, payee, description, [categoryId], [importHash]`
-2. `StatementFileParser.parse()` reads the file → emits `ParsedStatement` with `ParsedTransaction[]`
+2. `internal/StatementFileParser.parse()` reads the file → emits `ParsedStatement` with `ParsedTransaction[]`
 3. `BudgetTransactionMapper.toImportRecords()` enriches with account/category context → emits `ImportTransactionRecord[]`
 4. Data layer persists to `BudgetTransactionEntity`
 
 ### Importing a PDF
 1. User selects a PDF statement
-2. `StatementFileParser.parse()` base64-encodes the file and sends it to the Claude API (model `claude-sonnet-4-20250514`)
+2. `internal/StatementFileParser.parse()` base64-encodes the file and sends it to the Claude API (model `claude-sonnet-4-20250514`)
 3. Claude API returns extracted transactions
 4. Same enrichment and persistence as CSV
 

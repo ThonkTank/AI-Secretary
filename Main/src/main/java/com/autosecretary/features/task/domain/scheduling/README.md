@@ -20,12 +20,10 @@ A **scheduling window** is the time interval within which tasks can be scheduled
 - Source: Device calendar, user-created holds, or a no-op provider (no calendar integration)
 - Used during slot generation to reject overlapping placements with reason `CALENDAR_OVERLAP`
 
-> **Related type — [`TaskCalendarEvent`](../TaskCalendarEvent.java):** A simpler DTO (title + `LocalTime`
-> start/end) used when calendar data is passed *explicitly* to the scheduler (e.g., the single-day overload
-> in `DefaultTaskSlotGenerator`, called from `TaskCalendarService` via the UI path).
-> Contrast with `CalendarBlockedIntervalProvider.BlockedInterval`, which uses `LocalDateTime` and is
-> consumed via the *runtime provider* path. Both block the same scheduling slots; the difference is how
-> the interval data enters the scheduler.
+> **Related type — [`TaskCalendarEvent`](../TaskCalendarEvent.java):** A UI-facing DTO (title + `LocalTime`
+> start/end) used by `TaskCalendarService` when the app needs to display device calendar entries.
+> The scheduler itself consumes `CalendarBlockedIntervalProvider.BlockedInterval` so the domain path
+> only deals with timestamps, not event titles.
 
 ### Scheduling Conflict
 A **conflict** represents a constraint violation that prevented a task from being scheduled.
@@ -63,7 +61,7 @@ A task's budget requirement is checked during scheduling to gate feasibility.
 
 - Contract: [`TaskBudgetEligibilityService`](TaskBudgetEligibilityService.java)
 - Purpose: Prevent scheduling of tasks the user cannot afford
-- Example: task requires €50, user has €20 available → ineligible, conflict reported
+- Example: task requires €50, user has €20 available → ineligible for scheduling
 - Separate from booking: actual expense is booked at completion time, not scheduling time
 
 ## Reading Order (Novice Path)

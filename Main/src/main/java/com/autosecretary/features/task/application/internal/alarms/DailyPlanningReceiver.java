@@ -6,8 +6,8 @@ import android.content.Intent;
 import android.util.Log;
 
 import com.autosecretary.app.AutoSecretaryApplication;
+import com.autosecretary.app.WidgetRefreshNotifier;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
-import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 /**
  * Triggered when the daily planning alarm fires (usually at midnight).
@@ -37,6 +37,9 @@ public class DailyPlanningReceiver extends BroadcastReceiver {
         PendingResult pendingResult = goAsync();
         try {
             AutoSecretaryApplication application = AutoSecretaryApplication.from(context);
+            WidgetRefreshNotifier widgetRefreshNotifier = application
+                    .getAppCompositionRoot()
+                    .getWidgetRefreshNotifier();
             RegenerateScheduleUseCase useCase = application
                     .getAppCompositionRoot()
                     .getRegenerateScheduleUseCase();
@@ -46,7 +49,7 @@ public class DailyPlanningReceiver extends BroadcastReceiver {
             // This ensures the task list always has fresh, personalized scheduling.
             useCase.execute(result -> {
                 try {
-                    TaskWidgetProvider.notifyWidgetUpdate(context);
+                    widgetRefreshNotifier.refreshTaskWidgets();
                 } catch (Exception e) {
                     Log.e(TAG, "Widget update failed after schedule regeneration", e);
                 } finally {

@@ -12,7 +12,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
-import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
+import com.autosecretary.features.budget.domain.BudgetCategory;
 import com.autosecretary.shared.ui.DialogHelper;
 import com.autosecretary.shared.ui.DialogValidation;
 import com.autosecretary.shared.ui.SpinnerHelper;
@@ -52,9 +52,9 @@ public class BudgetLimitDialogController {
     }
 
     public void show(@Nullable String preSelectedCategoryId, long baseLimitCents,
-                     List<BudgetCategoryEntity> allCategories) {
+                     List<BudgetCategory> allCategories) {
         Context ctx = fragment.requireContext();
-        List<BudgetCategoryEntity> expenseCategories = BudgetSummaryPresentationMapper
+        List<BudgetCategory> expenseCategories = BudgetSummaryPresentationMapper
                 .categoriesForDirection(allCategories, TransactionDirection.EXPENSE);
 
         View dialogView = LayoutInflater.from(ctx)
@@ -69,9 +69,9 @@ public class BudgetLimitDialogController {
                 dialogView.findViewById(R.id.BudgetLimitDialogRolloverCarryoverLayout);
 
         SpinnerHelper.bindList(categorySpinner, expenseCategories,
-                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name), ctx);
+                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon(), c.name()), ctx);
         SpinnerHelper.setSelection(categorySpinner, expenseCategories,
-                preSelectedCategoryId, c -> c.id);
+                preSelectedCategoryId, BudgetCategory::id);
 
         // Pre-populate the amount field when editing an existing limit (baseLimitCents > 0).
         // If zero or negative (new limit), the field is intentionally left blank.
@@ -96,7 +96,7 @@ public class BudgetLimitDialogController {
             if (amountStr == null) return;
 
             String categoryId = SpinnerHelper.idAtPosition(expenseCategories,
-                    categorySpinner.getSelectedItemPosition(), c -> c.id);
+                    categorySpinner.getSelectedItemPosition(), BudgetCategory::id);
             if (categoryId == null) return;
 
             listener.onSaveBudgetLimit(categoryId, amountStr,

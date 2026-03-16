@@ -1,29 +1,28 @@
 package com.autosecretary.features.task.ui.list;
 
 import android.app.Application;
+import android.util.Log;
 
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
-import com.autosecretary.features.task.domain.scheduling.SchedulingWindowProvider;
+import com.autosecretary.app.WidgetRefreshNotifier;
 import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.UndoTaskCheckOffUseCase;
-
-import android.util.Log;
-import com.autosecretary.features.task.application.calendar.TaskCalendarService;
 import com.autosecretary.features.task.application.calendar.ScheduleWindow;
+import com.autosecretary.features.task.application.calendar.TaskCalendarService;
+import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
-import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
 import com.autosecretary.features.task.domain.TaskCalendarEvent;
+import com.autosecretary.features.task.domain.scheduling.SchedulingWindowProvider;
+import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
 import com.autosecretary.features.task.ui.edit.TaskEditSessionController;
 import com.autosecretary.features.task.ui.list.state.ViewSlotList;
 import com.autosecretary.features.task.ui.list.state.ViewSlot;
-import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -65,6 +64,7 @@ public class TaskViewModel extends AndroidViewModel {
     private final TaskEditSessionController taskEditSessionController;
     private final TaskCalendarService taskCalendarService;
     private final TaskScheduleConfigRepository scheduleConfigRepository;
+    private final WidgetRefreshNotifier widgetRefreshNotifier;
 
     /** Source of truth: holds all loaded task slots. Never filtered in place. */
     private final ViewSlotList masterList;
@@ -91,7 +91,8 @@ public class TaskViewModel extends AndroidViewModel {
                          AdjustTaskProgressUseCase adjustTaskProgressUseCase,
                          TaskEditSessionController taskEditSessionController,
                          TaskCalendarService taskCalendarService,
-                         TaskScheduleConfigRepository scheduleConfigRepository) {
+                         TaskScheduleConfigRepository scheduleConfigRepository,
+                         WidgetRefreshNotifier widgetRefreshNotifier) {
         super(app);
         this.taskDataService = taskDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
@@ -102,6 +103,7 @@ public class TaskViewModel extends AndroidViewModel {
         this.taskEditSessionController.setOnTaskChanged(this::refreshList);
         this.taskCalendarService = taskCalendarService;
         this.scheduleConfigRepository = scheduleConfigRepository;
+        this.widgetRefreshNotifier = widgetRefreshNotifier;
 
         this.masterList = new ViewSlotList();
         // Show existing data immediately while regeneration runs in background.
@@ -334,7 +336,7 @@ public class TaskViewModel extends AndroidViewModel {
             cachedCalendarDay = null; // Invalidate so filterList uses fresh calendar data
             refreshCalendarCache(selectedDay.getValue());
             filterList();
-            TaskWidgetProvider.notifyWidgetUpdate(getApplication());
+            widgetRefreshNotifier.refreshTaskWidgets();
         });
     }
 

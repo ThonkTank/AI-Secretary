@@ -2,6 +2,23 @@ plugins {
     id("com.android.application") version "8.7.3"
 }
 
+fun extractLauncherPathData(file: File): List<String> {
+    val pathRegex = Regex("""android:pathData="([^"]+)"""")
+    return pathRegex.findAll(file.readText()).map { it.groupValues[1] }.toList()
+}
+
+fun extractWidgetUpdatePeriod(file: File): Long {
+    val match = Regex("""android:updatePeriodMillis="(\d+)"""").find(file.readText())
+        ?: throw GradleException("Widget validation failed: missing android:updatePeriodMillis in ${file.path}.")
+    return match.groupValues[1].toLong()
+}
+
+fun extractWidgetUpdatePeriodConstant(file: File): Long {
+    val match = Regex("""WIDGET_UPDATE_PERIOD_MILLIS\s*=\s*(\d+)L\s*;""").find(file.readText())
+        ?: throw GradleException("Widget validation failed: missing WIDGET_UPDATE_PERIOD_MILLIS in ${file.path}.")
+    return match.groupValues[1].toLong()
+}
+
 // Versionsnummer aus ops/release/version.txt lesen und inkrementieren
 val versionFile = file("ops/release/version.txt")
 val currentVersionCode = if (versionFile.exists()) versionFile.readText().trim().toIntOrNull() ?: 0 else 0
@@ -58,6 +75,64 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
 
     annotationProcessor("androidx.room:room-compiler:2.6.1")
+}
+
+val validateLauncherIconPaths = tasks.register("validateLauncherIconPaths") {
+    group = "verification"
+    description = "Verifies that launcher foreground and monochrome icons use identical pathData."
+
+    val foregroundFile = layout.projectDirectory.file("src/main/res/drawable/ic_launcher_foreground.xml")
+    val monochromeFile = layout.projectDirectory.file("src/main/res/drawable/ic_launcher_monochrome.xml")
+
+    inputs.files(foregroundFile, monochromeFile)
+
+    doLast {
+        val foregroundPaths = extractLauncherPathData(foregroundFile.asFile)
+        val monochromePaths = extractLauncherPathData(monochromeFile.asFile)
+
+        if (foregroundPaths.isEmpty() || monochromePaths.isEmpty()) {
+            throw GradleException("Launcher icon validation failed: missing android:pathData entries.")
+        }
+        if (foregroundPaths != monochromePaths) {
+            throw GradleException(
+                "Launcher icon validation failed: ic_launcher_foreground.xml and " +
+                    "ic_launcher_monochrome.xml must keep identical pathData entries in the same order."
+            )
+        }
+    }
+}
+
+val validateWidgetUpdatePeriods = tasks.register("validateWidgetUpdatePeriods") {
+    group = "verification"
+    description = "Verifies that widget XML update periods match WidgetConfiguration.WIDGET_UPDATE_PERIOD_MILLIS."
+
+    val widgetConfigurationFile = layout.projectDirectory.file(
+        "src/main/java/com/autosecretary/shared/WidgetConfiguration.java"
+    )
+    val widgetTaskInfoFile = layout.projectDirectory.file("src/main/res-task/xml/widget_task_info.xml")
+    val widgetBudgetInfoFile = layout.projectDirectory.file("src/main/res-budget/xml/widget_budget_info.xml")
+
+    inputs.files(widgetConfigurationFile, widgetTaskInfoFile, widgetBudgetInfoFile)
+
+    doLast {
+        val expectedPeriod = extractWidgetUpdatePeriodConstant(widgetConfigurationFile.asFile)
+        val widgetFiles = listOf(widgetTaskInfoFile.asFile, widgetBudgetInfoFile.asFile)
+
+        widgetFiles.forEach { widgetFile ->
+            val actualPeriod = extractWidgetUpdatePeriod(widgetFile)
+            if (actualPeriod != expectedPeriod) {
+                throw GradleException(
+                    "Widget validation failed: ${widgetFile.path} declares android:updatePeriodMillis=$actualPeriod " +
+                        "but WidgetConfiguration.WIDGET_UPDATE_PERIOD_MILLIS is $expectedPeriod."
+                )
+            }
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(validateLauncherIconPaths)
+    dependsOn(validateWidgetUpdatePeriods)
 }
 
 // APK-Dateiname für Debug-Builds, Artifact-Tasks bleiben explizit

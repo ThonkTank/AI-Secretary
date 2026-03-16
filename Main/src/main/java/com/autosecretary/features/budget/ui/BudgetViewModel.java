@@ -10,9 +10,9 @@ import com.autosecretary.features.budget.domain.AmountParser;
 import com.autosecretary.features.budget.application.BudgetSeedService;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
-import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
-import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
-import com.autosecretary.features.budget.data.entity.BudgetLimitEntity;
+import com.autosecretary.features.budget.domain.BudgetAccount;
+import com.autosecretary.features.budget.domain.BudgetCategory;
+import com.autosecretary.features.budget.domain.BudgetLimit;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
@@ -35,6 +35,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.function.LongConsumer;
 
@@ -67,14 +68,48 @@ import java.util.function.LongConsumer;
  */
 public class BudgetViewModel extends ViewModel {
 
+    public record Infrastructure(
+            BudgetRepository repository,
+            ExecutorService executor
+    ) {
+        public Infrastructure {
+            Objects.requireNonNull(repository, "repository");
+            Objects.requireNonNull(executor, "executor");
+        }
+    }
+
+    public record UseCases(
+            BudgetImportUseCase importUseCase,
+            ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
+            CreateTransferUseCase createTransferUseCase,
+            BudgetSeedService budgetSeedService
+    ) {
+        public UseCases {
+            Objects.requireNonNull(importUseCase, "importUseCase");
+            Objects.requireNonNull(applyRecurringUseCase, "applyRecurringUseCase");
+            Objects.requireNonNull(createTransferUseCase, "createTransferUseCase");
+            Objects.requireNonNull(budgetSeedService, "budgetSeedService");
+        }
+    }
+
+    public record Presentation(
+            CalculateEffectiveBudgetLimitUseCase calculateEffectiveLimitUseCase,
+            BudgetOverviewLoader budgetOverviewLoader
+    ) {
+        public Presentation {
+            Objects.requireNonNull(calculateEffectiveLimitUseCase, "calculateEffectiveLimitUseCase");
+            Objects.requireNonNull(budgetOverviewLoader, "budgetOverviewLoader");
+        }
+    }
+
     private final MutableLiveData<BudgetSummaryData> summaryData = new MutableLiveData<>();
     private final MutableLiveData<BudgetUiState> uiState = new MutableLiveData<>(BudgetUiState.LOADING);
     private final MutableLiveData<UiText> statusMessage = new MutableLiveData<>(UiText.raw(""));
     private final MutableLiveData<List<BudgetTransactionRow>> transactions = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<List<RecurringSuggestion>> importSuggestions = new MutableLiveData<>();
     private final MutableLiveData<YearMonth> currentMonth = new MutableLiveData<>(YearMonth.now());
-    private final MutableLiveData<List<BudgetCategoryEntity>> categories = new MutableLiveData<>(new ArrayList<>());
-    private final MutableLiveData<List<BudgetAccountEntity>> accounts = new MutableLiveData<>(new ArrayList<>());
+    private final MutableLiveData<List<BudgetCategory>> categories = new MutableLiveData<>(new ArrayList<>());
+    private final MutableLiveData<List<BudgetAccount>> accounts = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<String> selectedAccountId = new MutableLiveData<>();
     private final MutableLiveData<TimeRangeFilter> timeRangeFilter = new MutableLiveData<>(TimeRangeFilter.DAYS_30);
     private final MutableLiveData<List<BudgetChartPoint>> chartPoints = new MutableLiveData<>(new ArrayList<>());
@@ -89,22 +124,17 @@ public class BudgetViewModel extends ViewModel {
     private final BudgetSeedService budgetSeedService;
     private final BudgetOverviewLoader budgetOverviewLoader;
 
-    public BudgetViewModel(BudgetRepository repository,
-                           ExecutorService executor,
-                           BudgetImportUseCase importUseCase,
-                           ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
-                           CreateTransferUseCase createTransferUseCase,
-                           CalculateEffectiveBudgetLimitUseCase calculateEffectiveLimitUseCase,
-                           BudgetOverviewLoader budgetOverviewLoader,
-                           BudgetSeedService budgetSeedService) {
-        this.repository = repository;
-        this.executor = executor;
-        this.importUseCase = importUseCase;
-        this.applyRecurringUseCase = applyRecurringUseCase;
-        this.createTransferUseCase = createTransferUseCase;
-        this.calculateEffectiveLimitUseCase = calculateEffectiveLimitUseCase;
-        this.budgetSeedService = budgetSeedService;
-        this.budgetOverviewLoader = budgetOverviewLoader;
+    public BudgetViewModel(Infrastructure infrastructure,
+                           UseCases useCases,
+                           Presentation presentation) {
+        this.repository = infrastructure.repository();
+        this.executor = infrastructure.executor();
+        this.importUseCase = useCases.importUseCase();
+        this.applyRecurringUseCase = useCases.applyRecurringUseCase();
+        this.createTransferUseCase = useCases.createTransferUseCase();
+        this.calculateEffectiveLimitUseCase = presentation.calculateEffectiveLimitUseCase();
+        this.budgetSeedService = useCases.budgetSeedService();
+        this.budgetOverviewLoader = presentation.budgetOverviewLoader();
         ensureDefaultData();
     }
 
@@ -114,8 +144,8 @@ public class BudgetViewModel extends ViewModel {
     public LiveData<List<BudgetTransactionRow>> getTransactions() { return transactions; }
     public LiveData<List<RecurringSuggestion>> getImportSuggestions() { return importSuggestions; }
     public LiveData<YearMonth> getCurrentMonth() { return currentMonth; }
-    public LiveData<List<BudgetCategoryEntity>> getCategories() { return categories; }
-    public LiveData<List<BudgetAccountEntity>> getAccounts() { return accounts; }
+    public LiveData<List<BudgetCategory>> getCategories() { return categories; }
+    public LiveData<List<BudgetAccount>> getAccounts() { return accounts; }
     public LiveData<String> getSelectedAccountId() { return selectedAccountId; }
     public LiveData<TimeRangeFilter> getTimeRangeFilter() { return timeRangeFilter; }
     public LiveData<List<BudgetChartPoint>> getChartPoints() { return chartPoints; }
@@ -272,21 +302,18 @@ public class BudgetViewModel extends ViewModel {
                 return;
             }
 
-            importUseCase.executeAsync(accountId, fileName, bytes, mimeType, new BudgetImportUseCase.ImportCallback() {
-                @Override
-                public void onSuccess(BudgetImportUseCase.ImportResult result) {
-                    loadOverview();
-                    statusMessage.postValue(UiText.of(R.string.budget_status_import_success,
-                            result.newTransactions(), result.duplicates(), result.recognizedCategories()));
-                    importSuggestions.postValue(result.recurringSuggestions());
-                }
-
-                @Override
-                public void onError(String errorMessage) {
-                    uiState.postValue(BudgetUiState.ERROR);
-                    statusMessage.postValue(UiText.of(R.string.budget_status_import_failed, errorMessage));
-                }
-            });
+            try {
+                BudgetImportUseCase.ImportResult result =
+                        importUseCase.execute(accountId, fileName, bytes, mimeType);
+                loadOverviewOnExecutor();
+                statusMessage.postValue(UiText.of(R.string.budget_status_import_success,
+                        result.newTransactions(), result.duplicates(), result.recognizedCategories()));
+                importSuggestions.postValue(result.recurringSuggestions());
+            } catch (RuntimeException e) {
+                String errorMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                uiState.postValue(BudgetUiState.ERROR);
+                statusMessage.postValue(UiText.of(R.string.budget_status_import_failed, errorMessage));
+            }
         });
     }
 
@@ -304,21 +331,13 @@ public class BudgetViewModel extends ViewModel {
             String accountId = resolveAccountId();
             if (accountId == null) return;
 
-            applyRecurringUseCase.executeAsync(
-                    accountId,
-                    suggestions,
-                    new ApplyRecurringSuggestionsUseCase.ApplyCallback() {
-                        @Override
-                        public void onSuccess() {
-                            loadOverview();
-                        }
-
-                        @Override
-                        public void onError(String errorMessage) {
-                            statusMessage.postValue(UiText.of(R.string.budget_status_error, errorMessage));
-                        }
-                    }
-            );
+            try {
+                applyRecurringUseCase.execute(accountId, suggestions);
+                loadOverviewOnExecutor();
+            } catch (RuntimeException e) {
+                String errorMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                statusMessage.postValue(UiText.of(R.string.budget_status_error, errorMessage));
+            }
         });
     }
 
@@ -349,10 +368,10 @@ public class BudgetViewModel extends ViewModel {
     // Null only when no accounts exist yet.
     // Must be called on the executor thread — performs a synchronous DB read.
     private String resolveAccountId() {
-        List<BudgetAccountEntity> accounts = repository.findActiveAccounts();
+        List<BudgetAccount> accounts = repository.findActiveAccounts();
         String current = selectedAccountId.getValue();
         if (current != null && !current.isBlank()) return current;
-        return accounts.isEmpty() ? null : accounts.get(0).id;
+        return accounts.isEmpty() ? null : accounts.get(0).id();
     }
 
     private void loadLimitsOnExecutor(YearMonth month) {
@@ -387,9 +406,8 @@ public class BudgetViewModel extends ViewModel {
             YearMonth month = currentMonth.getValue();
             if (month == null) month = YearMonth.now();
             String yearMonthStr = month.toString();
-            BudgetLimitEntity limit = new BudgetLimitEntity(categoryId, yearMonthStr, amountCents);
-            limit.rolloverEnabled = rolloverEnabled;
-            limit.rolloverCarryoverCents = rolloverCarryoverCents;
+            BudgetLimit limit = BudgetLimit.create(
+                    categoryId, yearMonthStr, amountCents, rolloverEnabled, rolloverCarryoverCents);
             repository.saveBudgetLimit(limit);
             loadOverviewOnExecutor();
         });

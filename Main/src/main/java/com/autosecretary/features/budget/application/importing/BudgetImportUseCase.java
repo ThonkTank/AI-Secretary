@@ -1,5 +1,6 @@
 package com.autosecretary.features.budget.application.importing;
 
+import com.autosecretary.features.budget.application.importing.internal.StatementFileParser;
 import com.autosecretary.features.budget.domain.BudgetImportRepository;
 import com.autosecretary.features.budget.domain.importing.ImportTransactionType;
 import com.autosecretary.features.budget.domain.importing.ParsedStatement;
@@ -18,7 +19,6 @@ import java.util.HexFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
 
 /**
  * Orchestrates the end-to-end import pipeline: parse → deduplicate → map → persist → detect patterns.
@@ -32,8 +32,8 @@ import java.util.concurrent.ExecutorService;
  *   <li>Runs pattern detection to suggest recurring transactions (best-effort; failures don't fail the import)</li>
  * </ol>
  *
- * <p>Runs asynchronously on a background executor; results via callback.
- * Callback receives either success (with import summary + recurring suggestions) or error.
+ * <p>Runs synchronously on the caller's thread. Callers are responsible for dispatching to a
+ * background executor before invoking {@link #execute(String, String, byte[], String)}.
  *
  * @see README.md for the full import pipeline documentation
  * @see BudgetImportRepository for database integration
@@ -45,32 +45,24 @@ public class BudgetImportUseCase {
 
     private final BudgetImportRepository repository;
     private final StatementFileParser parser;
-    private final ExecutorService executor;
-
     public BudgetImportUseCase(BudgetImportRepository repository,
-                               StatementFileParser parser,
-                               ExecutorService executor) {
+                               StatementFileParser parser) {
         this.repository = repository;
         this.parser = parser;
-        this.executor = executor;
     }
 
-    public void executeAsync(String accountId,
-                             String fileName,
-                             byte[] fileBytes,
-                             String mimeType,
-                             ImportCallback callback) {
-        executor.execute(() -> {
-            try {
-                ImportResult result = runImportPipeline(accountId, fileName, fileBytes, mimeType);
-                callback.onSuccess(result);
-            } catch (ImportPipelineException e) {
-                if (e.importId() != null) {
-                    repository.markImportFailed(e.importId(), e.getMessage());
-                }
-                callback.onError(e.getMessage());
+    public ImportResult execute(String accountId,
+                                String fileName,
+                                byte[] fileBytes,
+                                String mimeType) {
+        try {
+            return runImportPipeline(accountId, fileName, fileBytes, mimeType);
+        } catch (ImportPipelineException e) {
+            if (e.importId() != null) {
+                repository.markImportFailed(e.importId(), e.getMessage());
             }
-        });
+            throw e;
+        }
     }
 
     private ImportResult runImportPipeline(String accountId,
@@ -256,12 +248,6 @@ public class BudgetImportUseCase {
             Log.w(TAG, "Pattern detection failed after import, suggestions skipped", e);
             return List.of();
         }
-    }
-
-    public interface ImportCallback {
-        void onSuccess(ImportResult result);
-
-        void onError(String errorMessage);
     }
 
     public record ImportResult(

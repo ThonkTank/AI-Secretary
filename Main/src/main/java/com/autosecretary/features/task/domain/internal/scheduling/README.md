@@ -120,11 +120,11 @@ scorer.onSlotAssigned(task, assignedStart)  // mark pref slot consumed, incremen
 
 ---
 
-## Known Design Issues (see REVIEW_BACKLOG.md)
+## Design Notes
 
-- **Mutable instance state** — five fields are re-initialised per call via `initSchedulingRun`; missing one in a new code path silently corrupts state.
-- **Side-effecting evaluation** — `scorer.maintenance()` in the window path mutates task state during chain evaluation (not purely read-only).
-- **Child prerequisite chains** — `buildTaskChains` only iterates tree roots; prerequisites on child tasks are silently ignored.
+- **Per-run scheduling state** now lives behind a dedicated run context instead of being spread across mutable instance fields.
+- **Window-mode scorer maintenance** uses an effective repetition snapshot so candidate evaluation stays read-only with respect to task repetition state.
+- **Child prerequisite chains** still deserve caution when touching `buildTaskChains`; verify nested prerequisite paths explicitly if you extend the chain builder.
 
 ---
 

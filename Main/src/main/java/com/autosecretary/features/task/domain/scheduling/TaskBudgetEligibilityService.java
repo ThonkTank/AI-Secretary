@@ -25,24 +25,7 @@ public interface TaskBudgetEligibilityService {
      * Determines whether a task's budget requirement can be satisfied.
      *
      * @param task Task to evaluate (may have {@code budgetRequiredCents == 0}, indicating no constraint)
-     * @return {@code BudgetEligibility} with boolean decision and available balance for scheduling context
+     * @return {@code true} when the task is affordable enough to be considered for scheduling
      */
-    BudgetEligibility eligibilityFor(Task task);
-
-    /**
-     * Result of a budget feasibility check.
-     *
-     * @param enoughBudget {@code true} if task's budget requirement can be met (or task has no requirement)
-     * @param availableCents Current available balance in cents. Used by scheduling algorithms to rank
-     *                        tasks by affordability. Set to {@code Long.MAX_VALUE} for tasks with no budget requirement.
-     */
-    record BudgetEligibility(boolean enoughBudget, long availableCents) {
-        /**
-         * Convenience factory for tasks with no budget requirement.
-         * Passes unconditionally with sentinel availability value.
-         */
-        public static BudgetEligibility passWithoutBudgetRequirement() {
-            return new BudgetEligibility(true, Long.MAX_VALUE);
-        }
-    }
+    boolean eligibilityFor(Task task);
 }

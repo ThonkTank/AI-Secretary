@@ -66,17 +66,12 @@
     </com.google.android.material.textfield.TextInputLayout>
 
     <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        style="@style/Widget.AutoSecretary.Editor.SpinnerLabel"
         android:layout_marginTop="@dimen/spacing_md"
         android:text="@string/meal_label_location"
-        android:textAppearance="@style/TextAppearance.AutoSecretary.Editor.Label"
         android:labelFor="@id/MealPantryLocation" />
 
     <Spinner
         android:id="@+id/MealPantryLocation"
-        style="@style/Widget.AutoSecretary.Editor.Spinner"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_xs" />
+        style="@style/Widget.AutoSecretary.Editor.SpinnerField" />
 </LinearLayout>

@@ -21,7 +21,7 @@ import java.io.InputStream;
  * call {@link #launchPicker()} whenever the user taps the import button.
  *
  * <p>The actual parsing/routing of the returned bytes is handled upstream in
- * {@code StatementFileParser} ({@code features/budget/application/importing/}).
+ * {@code StatementFileParser} ({@code features/budget/application/importing/internal/}).
  */
 public class BudgetImportPickerController {
 

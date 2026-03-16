@@ -7,6 +7,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.autosecretary.R;
@@ -37,8 +38,36 @@ public class BudgetTransactionAdapter
     }
 
     public void setItems(List<BudgetTransactionRow> newItems) {
-        this.items = newItems != null ? newItems : new ArrayList<>();
-        notifyDataSetChanged();
+        List<BudgetTransactionRow> updatedItems = newItems != null ? newItems : new ArrayList<>();
+        List<BudgetTransactionRow> previousItems = this.items;
+        DiffUtil.DiffResult diff = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return previousItems.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return updatedItems.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                BudgetTransactionRow oldRow = previousItems.get(oldItemPosition);
+                BudgetTransactionRow newRow = updatedItems.get(newItemPosition);
+                if (oldRow.transactionId() == null || newRow.transactionId() == null) {
+                    return oldRow.equals(newRow);
+                }
+                return oldRow.transactionId().equals(newRow.transactionId());
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                return previousItems.get(oldItemPosition).equals(updatedItems.get(newItemPosition));
+            }
+        });
+        this.items = updatedItems;
+        diff.dispatchUpdatesTo(this);
     }
 
     @NonNull

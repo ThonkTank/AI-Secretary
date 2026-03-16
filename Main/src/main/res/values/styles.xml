@@ -118,6 +118,31 @@
         <item name="android:paddingEnd">@dimen/spacing_sm</item>
     </style>
 
+    <style name="Widget.AutoSecretary.Editor.SpinnerLabel" parent="TextAppearance.AutoSecretary.Editor.Label">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+    </style>
+
+    <style name="Widget.AutoSecretary.Editor.SpinnerField" parent="Widget.AutoSecretary.Editor.Spinner">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">@dimen/spacing_xs</item>
+    </style>
+
+    <style name="Widget.AutoSecretary.Editor.RangeRow" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+    </style>
+
+    <style name="Widget.AutoSecretary.Editor.RangeSeparator" parent="TextAppearance.AutoSecretary.Editor.Label">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">@dimen/spacing_xs</item>
+        <item name="android:layout_marginEnd">@dimen/spacing_xs</item>
+    </style>
+
     <!-- Task text appearances -->
     <style name="TextAppearance.AutoSecretary.Task.Title" parent="TextAppearance.AutoSecretary.RowPrimary" />
 
@@ -164,7 +189,7 @@
     </style>
 
     <style name="TextAppearance.AutoSecretary.Budget.Widget.CardValue" parent="TextAppearance.MaterialComponents.Body2">
-        <item name="android:textSize">@dimen/text_xl</item>
+        <item name="android:textSize">@dimen/text_lg</item>
         <item name="android:textColor">@color/budget_widget_card_text</item>
         <item name="android:textStyle">bold</item>
     </style>
@@ -213,6 +238,39 @@
 
     <style name="TextAppearance.AutoSecretary.Budget.SummaryTotal" parent="TextAppearance.MaterialComponents.Subtitle1">
         <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="Widget.AutoSecretary.Budget.SummaryRow" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
+    </style>
+
+    <style name="Widget.AutoSecretary.Budget.SummaryRow.Spaced" parent="Widget.AutoSecretary.Budget.SummaryRow">
+        <item name="android:layout_marginTop">@dimen/spacing_sm</item>
+    </style>
+
+    <style name="Widget.AutoSecretary.Budget.SummaryLabel" parent="TextAppearance.AutoSecretary.Budget.RowLabel">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+    </style>
+
+    <style name="Widget.AutoSecretary.Budget.SummaryValue" parent="TextAppearance.AutoSecretary.Budget.RowValue">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+    </style>
+
+    <style name="Widget.AutoSecretary.Budget.SummaryTotalLabel" parent="TextAppearance.AutoSecretary.Budget.SummaryTotal">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+    </style>
+
+    <style name="Widget.AutoSecretary.Budget.SummaryTotalValue" parent="TextAppearance.AutoSecretary.Budget.SummaryTotal">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
     </style>
 
 </resources>

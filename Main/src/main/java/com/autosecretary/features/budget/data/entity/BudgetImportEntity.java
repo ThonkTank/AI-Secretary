@@ -37,6 +37,7 @@ import com.autosecretary.features.budget.domain.importing.ImportStatus;
         }
 )
 public class BudgetImportEntity {
+    public record ProgressCounts(int totalTransactions, int importedTransactions, int autoCategorized) {}
 
     @PrimaryKey
     @NonNull
@@ -98,5 +99,18 @@ public class BudgetImportEntity {
         this.accountId = accountId;
         this.fileName = fileName;
         this.fileHash = fileHash;
+    }
+
+    /** Returns the three progress counters as one typed concept. */
+    @NonNull
+    public ProgressCounts progressCounts() {
+        return new ProgressCounts(totalTransactions, importedTransactions, autoCategorized);
+    }
+
+    /** Applies all progress counters together to avoid partial updates. */
+    public void applyProgressCounts(@NonNull ProgressCounts counts) {
+        this.totalTransactions = counts.totalTransactions();
+        this.importedTransactions = counts.importedTransactions();
+        this.autoCategorized = counts.autoCategorized();
     }
 }

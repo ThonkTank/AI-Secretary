@@ -1,12 +1,10 @@
 package com.autosecretary.features.task.data;
 
 import androidx.room.Entity;
-import androidx.room.PrimaryKey;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
 import androidx.annotation.NonNull;
 
-import java.util.UUID;
 import androidx.room.Ignore;
 
 /**
@@ -14,6 +12,7 @@ import androidx.room.Ignore;
  * task identified by {@code prerequisiteId} to be scheduled or completed first.
  */
 @Entity(tableName = "task_prerequisites",
+    primaryKeys = {"taskId", "prerequisiteId"},
     indices = @Index("taskId"),
     foreignKeys = @ForeignKey(
         entity = TaskCore.class,
@@ -22,9 +21,9 @@ import androidx.room.Ignore;
         onDelete = ForeignKey.CASCADE
     ))
 public class TaskPrerequisite {
-    @PrimaryKey @NonNull
-    public String id = UUID.randomUUID().toString();
+    @NonNull
     public String taskId;
+    @NonNull
     public String prerequisiteId;
     public int minGapMinutes = 0;
 

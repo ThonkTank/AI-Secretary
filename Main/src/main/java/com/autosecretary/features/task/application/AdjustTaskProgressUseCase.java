@@ -1,11 +1,14 @@
 package com.autosecretary.features.task.application;
 
+import com.autosecretary.features.task.application.internal.completion.TaskCompletionEffects;
+import com.autosecretary.features.task.application.internal.completion.TaskTransitionRecorder;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -15,10 +18,9 @@ import java.util.concurrent.ExecutorService;
  * completion flags in sync. Routes completions through {@link TaskLifecycleManager}
  * so streaks and history are updated consistently with {@code CheckOffTaskUseCase}.
  *
- * <p><strong>Scope compared to {@code CheckOffTaskUseCase}:</strong> This path handles
- * streak/history updates only. It does NOT call {@code BookTaskCompletionExpenseUseCase}
- * (no budget expense is booked) and does NOT record transition stats for scheduler learning.
- * See {@code REVIEW_BACKLOG.md} for the known gap.
+ * <p><strong>Scope compared to {@code CheckOffTaskUseCase}:</strong> This path still updates
+ * streak/history directly on the task, but now also runs the shared post-completion effects
+ * (budget booking, meal completion, transition learning) when progress reaches the target.
  *
  * <p>Contract: DAO work runs on {@code workerExecutor}; when present, {@code onChanged}
  * is dispatched via {@code callbackDispatcher}.
@@ -28,15 +30,21 @@ public class AdjustTaskProgressUseCase {
     private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
     private final TaskLifecycleManager lifecycleManager;
+    private final TaskCompletionEffects completionEffects;
+    private final TaskTransitionRecorder transitionRecorder;
 
     public AdjustTaskProgressUseCase(TaskDao taskDao,
                                      ExecutorService workerExecutor,
                                      Executor callbackDispatcher,
-                                     TaskLifecycleManager lifecycleManager) {
+                                     TaskLifecycleManager lifecycleManager,
+                                     TaskCompletionEffects completionEffects,
+                                     TaskTransitionRecorder transitionRecorder) {
         this.taskDao = taskDao;
         this.workerExecutor = workerExecutor;
         this.callbackDispatcher = callbackDispatcher;
         this.lifecycleManager = lifecycleManager;
+        this.completionEffects = completionEffects;
+        this.transitionRecorder = transitionRecorder;
     }
 
     public void execute(TaskListItem listItem, boolean increment, Runnable onChanged) {
@@ -68,12 +76,16 @@ public class AdjustTaskProgressUseCase {
                     // durationMinutes=0: progress-tracked completions don't record session time.
                     // trackDuration=false: skip persisting a duration measurement for this completion.
                     task.recordCompletion(0, false);
-                    // Note: budget expense booking (BookTaskCompletionExpenseUseCase) and
-                    // transition stat recording are intentionally absent here — see class Javadoc.
                 }
             }
 
             taskDao.write(task);
+            if (completed) {
+                if (slot != null) {
+                    transitionRecorder.recordCompleted(slot);
+                }
+                completionEffects.apply(task, slot != null ? slot.day : LocalDate.now());
+            }
 
             callbackDispatcher.execute(onChanged);
         });

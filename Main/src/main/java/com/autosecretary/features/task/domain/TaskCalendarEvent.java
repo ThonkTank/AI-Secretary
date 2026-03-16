@@ -3,18 +3,15 @@ package com.autosecretary.features.task.domain;
 import java.time.LocalTime;
 
 /**
- * Domain-level representation of a calendar event used during task scheduling and UI flows.
+ * Application-facing representation of a calendar event used for UI flows.
  *
  * <p>This is a thin domain abstraction over the device's Android calendar entries. It is
  * produced by {@code CalendarReader} (from the raw {@code CalendarContract} cursor) and
- * consumed by the package-private {@code generateSlotsForDay} overload in
- * {@code DefaultTaskSlotGenerator} that accepts an explicit list of calendar events. Events
- * are used to populate the occupied-interval list so the scheduler avoids placing task slots
- * that overlap with existing calendar commitments.
+ * consumed by UI-facing code that needs both a display title and local-time bounds.
  *
- * <p>Distinct from {@link com.autosecretary.features.task.domain.scheduling.CalendarBlockedIntervalProvider.BlockedInterval},
- * which is the runtime interface used during actual generation; this record is a simpler DTO
- * used when calendar data is passed explicitly (e.g., in tests or from the single-day path).
+ * <p>Scheduling internals use
+ * {@link com.autosecretary.features.task.domain.scheduling.CalendarBlockedIntervalProvider.BlockedInterval}
+ * instead, because they only need start/end timestamps and not the title.
  *
  * @param title Human-readable title of the calendar event
  * @param start Interval start (inclusive)

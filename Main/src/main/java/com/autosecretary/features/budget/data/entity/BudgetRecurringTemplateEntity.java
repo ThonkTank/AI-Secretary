@@ -11,6 +11,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.UUID;
 import com.autosecretary.features.budget.domain.recurring.RecurringType;
+import com.autosecretary.features.budget.domain.recurring.RecurringScheduleParams;
 import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
@@ -57,6 +58,7 @@ import com.autosecretary.features.budget.domain.TransactionDirection;
         }
 )
 public class BudgetRecurringTemplateEntity {
+    public record AmountStats(long averageCents, long minimumCents, long maximumCents) {}
 
     @PrimaryKey
     @NonNull
@@ -93,11 +95,8 @@ public class BudgetRecurringTemplateEntity {
     @NonNull
     public RecurringType recurringType;
 
-    // Column is named "transactionType" in the database. Unlike BudgetTransactionEntity and BudgetCategoryEntity
-    // which use "type" for the direction column, this template entity uses "transactionType" for historical
-    // reasons. In SQL queries against budget_recurring_template, always reference this column as "transactionType".
     @NonNull
-    @ColumnInfo(name = "transactionType")
+    @ColumnInfo(name = "type")
     public TransactionDirection direction = TransactionDirection.EXPENSE;
 
     /**
@@ -157,14 +156,49 @@ public class BudgetRecurringTemplateEntity {
         );
         entity.displayPayee = suggestion.displayPayee();
         entity.categoryId = suggestion.categoryId();
-        entity.avgAmountCents = suggestion.avgAmountCents();
-        entity.minAmountCents = suggestion.minAmountCents();
-        entity.maxAmountCents = suggestion.maxAmountCents();
+        entity.applyAmountStats(new AmountStats(
+                suggestion.avgAmountCents(),
+                suggestion.minAmountCents(),
+                suggestion.maxAmountCents()
+        ));
         entity.direction = suggestion.direction();
-        entity.recurringValue = suggestion.suggestedValue();
-        entity.recurringDayOfWeek = suggestion.suggestedDayOfWeek();
+        entity.applySchedule(suggestion.suggestedType(),
+                suggestion.suggestedDayOfWeek(),
+                suggestion.suggestedValue());
         entity.nextDue = nextDue;
         return entity;
+    }
+
+    /** Returns the three amount summary fields as one typed concept. */
+    @NonNull
+    public AmountStats amountStats() {
+        return new AmountStats(avgAmountCents, minAmountCents, maxAmountCents);
+    }
+
+    /** Applies all amount summary fields together to avoid partial updates. */
+    public void applyAmountStats(@NonNull AmountStats stats) {
+        this.avgAmountCents = stats.averageCents();
+        this.minAmountCents = stats.minimumCents();
+        this.maxAmountCents = stats.maximumCents();
+    }
+
+    /**
+     * Returns the entity's persisted schedule fields as the domain scheduling carrier used by
+     * {@code RecurringTemplateScheduler}. Centralizes the overloaded recurring-value semantics.
+     */
+    @NonNull
+    public RecurringScheduleParams toScheduleParams() {
+        return new RecurringScheduleParams(id, nextDue, recurringType, recurringDayOfWeek, recurringValue);
+    }
+
+    /**
+     * Writes the persisted schedule fields together so callers do not need to coordinate
+     * recurringType, recurringDayOfWeek, and recurringValue manually.
+     */
+    public void applySchedule(@NonNull RecurringType type, DayOfWeek dayOfWeek, int value) {
+        this.recurringType = type;
+        this.recurringDayOfWeek = dayOfWeek;
+        this.recurringValue = value;
     }
 
 }

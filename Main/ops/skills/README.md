@@ -2,11 +2,13 @@
 
 Each `.md` file here is an **AI agent role prompt** — a plain-text description of a review focus injected into `claude -p` by `apply_skill.sh`.
 
+Review skills stay at `ops/skills/`. Operational skills live under `ops/skills/ops/`.
+
 ## How skill files are used
 
 `apply_skill.sh` selects which skills to run for each source directory (based on directory size, UI content, and position in the processing order). For each selected skill it:
 
-1. Reads the skill file: `ops/skills/<skill-name>.md`
+1. Reads the skill file from `ops/skills/<skill-name>.md` for review skills or `ops/skills/ops/<skill-name>.md` for operational skills
 2. Injects its content as the `# Role` section of the prompt sent to `claude`
 3. The Claude agent receives: task description + guidelines + backlog protocol + this role text
 
@@ -31,14 +33,14 @@ The filename (without `.md`) is the skill name used in `apply_skill.sh` and in b
 | `review-accessibility.md` | Accessibility, usability, a11y compliance |
 | `review-ui.md` | Combined visual design + accessibility (for small UI dirs) |
 | `review-onboarding.md` | Missing/poor docs, onboarding friction, stale comments |
-| `triage.md` | Backlog maintenance: purge resolved items, assign skills, break down large issues |
-| `init.md` | CLAUDE.md maintenance: keep it accurate after code changes |
-| `commit.md` | Git checkpoint: build verification + commit all current changes |
-| `sync-main.md` | Sync local branch with upstream main (fetch, merge/rebase, resolve conflicts) |
+| `ops/triage.md` | Backlog maintenance: purge resolved items, assign skills, break down large issues |
+| `ops/init.md` | CLAUDE.md maintenance: keep it accurate after code changes |
+| `ops/commit.md` | Git checkpoint: build verification + commit all current changes |
+| `ops/sync-main.md` | Sync local branch with upstream main (fetch, merge/rebase, resolve conflicts) |
 
 ## Adding a new review skill
 
 1. Create `ops/skills/<your-skill-name>.md`.
 2. Write the role prompt: what to look for, what to ignore, and what format to use for backlog entries.
 3. Reference the skill name in `apply_skill.sh` `_build_skill_list()` if it should run automatically, or invoke it manually via `dispatch_claude`.
-4. Add the skill to the table in `triage.md` under "Available skills and when to assign them" so triage agents know when to use it.
+4. Add the skill to the table in `ops/triage.md` under "Available skills and when to assign them" so triage agents know when to use it.

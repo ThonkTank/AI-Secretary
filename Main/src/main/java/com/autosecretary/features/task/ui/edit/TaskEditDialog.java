@@ -18,8 +18,8 @@ import com.autosecretary.R;
 import com.autosecretary.shared.ui.DialogHelper;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.app.AppCompositionRoot;
-import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
-import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
+import com.autosecretary.features.budget.domain.BudgetAccount;
+import com.autosecretary.features.budget.domain.BudgetCategory;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDao;
@@ -100,8 +100,8 @@ public class TaskEditDialog extends DialogFragment {
 
         executor.execute(() -> {
             try {
-                List<BudgetAccountEntity> accounts = budgetRepo.findActiveAccounts();
-                List<BudgetCategoryEntity> categories = budgetRepo.findActiveCategories();
+                List<BudgetAccount> accounts = budgetRepo.findActiveAccounts();
+                List<BudgetCategory> categories = budgetRepo.findActiveCategories();
                 mainHandler.post(() -> {
                     if (isAdded()) {
                         sectionBinder.rebindBudgetSpinners(scheduling, accounts, categories);

@@ -28,19 +28,14 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
-            style="@style/TextAppearance.AutoSecretary.Editor.Label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            style="@style/Widget.AutoSecretary.Editor.SpinnerLabel"
             android:layout_marginTop="@dimen/spacing_sm"
             android:labelFor="@id/EditPriority"
             android:text="@string/task_editor_priority_label"/>
 
         <Spinner
             android:id="@+id/EditPriority"
-            style="@style/Widget.AutoSecretary.Editor.Spinner"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_xs"/>
+            style="@style/Widget.AutoSecretary.Editor.SpinnerField"/>
 
         <!-- ─── WEITERE DETAILS ──────────────────────────────────────────── -->
 
@@ -94,34 +89,24 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <TextView
-                style="@style/TextAppearance.AutoSecretary.Editor.Label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                style="@style/Widget.AutoSecretary.Editor.SpinnerLabel"
                 android:layout_marginTop="@dimen/spacing_sm"
                 android:labelFor="@id/EditParentTask"
                 android:text="@string/task_editor_parent_label"/>
 
             <Spinner
                 android:id="@+id/EditParentTask"
-                style="@style/Widget.AutoSecretary.Editor.Spinner"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_xs"/>
+                style="@style/Widget.AutoSecretary.Editor.SpinnerField"/>
 
             <TextView
-                style="@style/TextAppearance.AutoSecretary.Editor.Label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                style="@style/Widget.AutoSecretary.Editor.SpinnerLabel"
                 android:layout_marginTop="@dimen/spacing_sm"
                 android:labelFor="@id/EditSchedulingType"
                 android:text="@string/task_editor_scheduling_type_label"/>
 
             <Spinner
                 android:id="@+id/EditSchedulingType"
-                style="@style/Widget.AutoSecretary.Editor.Spinner"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_xs"/>
+                style="@style/Widget.AutoSecretary.Editor.SpinnerField"/>
 
             <!-- Start date (TASK only) -->
             <LinearLayout
@@ -350,10 +335,7 @@
                 android:text="@string/task_editor_duration_label"/>
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
+                style="@style/Widget.AutoSecretary.Editor.RangeRow"
                 android:layout_marginTop="@dimen/spacing_xs">
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -372,12 +354,8 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
-                    style="@style/TextAppearance.AutoSecretary.Editor.Label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/task_editor_range_separator"
-                    android:layout_marginStart="@dimen/spacing_xs"
-                    android:layout_marginEnd="@dimen/spacing_xs"/>
+                    style="@style/Widget.AutoSecretary.Editor.RangeSeparator"
+                    android:text="@string/task_editor_range_separator"/>
 
                 <com.google.android.material.textfield.TextInputLayout
                     style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
@@ -397,10 +375,7 @@
 
             <!-- Cooldown -->
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
+                style="@style/Widget.AutoSecretary.Editor.RangeRow"
                 android:layout_marginTop="@dimen/spacing_sm">
 
                 <TextView
@@ -747,12 +722,8 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
-                    style="@style/TextAppearance.AutoSecretary.Editor.Label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/task_editor_range_separator"
-                    android:layout_marginStart="@dimen/spacing_xs"
-                    android:layout_marginEnd="@dimen/spacing_xs"/>
+                    style="@style/Widget.AutoSecretary.Editor.RangeSeparator"
+                    android:text="@string/task_editor_range_separator"/>
 
                 <com.google.android.material.textfield.TextInputLayout
                     style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"
@@ -830,34 +801,24 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <TextView
-                style="@style/TextAppearance.AutoSecretary.Editor.Label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                style="@style/Widget.AutoSecretary.Editor.SpinnerLabel"
                 android:layout_marginTop="@dimen/spacing_sm"
                 android:labelFor="@id/EditBudgetAccountId"
                 android:text="@string/task_editor_budget_account_content_description"/>
 
             <Spinner
                 android:id="@+id/EditBudgetAccountId"
-                style="@style/Widget.AutoSecretary.Editor.Spinner"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_xs"/>
+                style="@style/Widget.AutoSecretary.Editor.SpinnerField"/>
 
             <TextView
-                style="@style/TextAppearance.AutoSecretary.Editor.Label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                style="@style/Widget.AutoSecretary.Editor.SpinnerLabel"
                 android:layout_marginTop="@dimen/spacing_sm"
                 android:labelFor="@id/EditBudgetCategoryId"
                 android:text="@string/task_editor_budget_category_content_description"/>
 
             <Spinner
                 android:id="@+id/EditBudgetCategoryId"
-                style="@style/Widget.AutoSecretary.Editor.Spinner"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_xs"/>
+                style="@style/Widget.AutoSecretary.Editor.SpinnerField"/>
 
         </LinearLayout>
 

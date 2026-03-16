@@ -9,7 +9,7 @@ Immutable view-state objects and enums posted via `LiveData` from `BudgetViewMod
 | `BudgetUiState` | Enum: `LOADING` / `EMPTY` / `CONTENT` / `ERROR` — controls which views are visible on the budget screen. |
 | `TimeRangeFilter` | Enum: `DAYS_30` / `MONTHS_3` / `MONTHS_12` — the selected lookback window for the balance chart. |
 | `BudgetSummaryData` | Monthly income, expense, net, and account running balance (all in cents). |
-| `BudgetTransactionRow` | Display model for one row in the transaction list. Built via builder pattern from `MonthlyOverviewItem`. |
+| `BudgetTransactionRow` | Display model for one row in the transaction list. Built from immutable `MonthlyOverviewItem` read models. |
 | `BudgetLimitBar` | Display model for one category spending-limit progress bar; includes spent, base limit, and rollover-adjusted effective limit. |
 | `BudgetChartPoint` | Single data point on the balance chart: a formatted date label and a balance in cents. |
 | `UiText` | Deferred string wrapper — holds either a `@StringRes` ID or a raw string, resolved to a `String` only when a `Context` is available. Keeps `BudgetViewModel` free of Android Context dependencies. |

@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.autosecretary.app.WidgetRefreshNotifier;
 import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
@@ -32,6 +33,7 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
     private final AdjustTaskProgressUseCase adjustTaskProgressUseCase;
     private final TaskCalendarService taskCalendarService;
     private final TaskScheduleConfigRepository scheduleConfigRepository;
+    private final WidgetRefreshNotifier widgetRefreshNotifier;
 
     public TaskViewModelFactory(Application app,
                                 TaskDataService taskDataService,
@@ -40,7 +42,8 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
                                 RegenerateScheduleUseCase regenerateScheduleUseCase,
                                 AdjustTaskProgressUseCase adjustTaskProgressUseCase,
                                 TaskCalendarService taskCalendarService,
-                                TaskScheduleConfigRepository scheduleConfigRepository) {
+                                TaskScheduleConfigRepository scheduleConfigRepository,
+                                WidgetRefreshNotifier widgetRefreshNotifier) {
         this.app = app;
         this.taskDataService = taskDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
@@ -49,6 +52,7 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
         this.adjustTaskProgressUseCase = adjustTaskProgressUseCase;
         this.taskCalendarService = taskCalendarService;
         this.scheduleConfigRepository = scheduleConfigRepository;
+        this.widgetRefreshNotifier = widgetRefreshNotifier;
     }
 
     @NonNull
@@ -70,7 +74,8 @@ public class TaskViewModelFactory implements ViewModelProvider.Factory {
                     adjustTaskProgressUseCase,
                     taskEditSessionController,
                     taskCalendarService,
-                    scheduleConfigRepository
+                    scheduleConfigRepository,
+                    widgetRefreshNotifier
             );
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());

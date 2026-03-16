@@ -18,8 +18,8 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 
 import com.autosecretary.R;
-import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
-import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
+import com.autosecretary.features.budget.domain.BudgetAccount;
+import com.autosecretary.features.budget.domain.BudgetCategory;
 import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.shared.Period;
@@ -107,8 +107,8 @@ public class TaskEditSectionBinder {
     }
 
     public SchedulingViews bindScheduling(
-            List<BudgetAccountEntity> accounts,
-            List<BudgetCategoryEntity> categories) {
+            List<BudgetAccount> accounts,
+            List<BudgetCategory> categories) {
         TextInputLayout startDateInputLayout = rootView.findViewById(R.id.StartDateInputLayout);
         ImageButton clearStartDate = rootView.findViewById(R.id.ClearStartDate);
         TextInputLayout fixedDateInputLayout = rootView.findViewById(R.id.FixedDateInputLayout);
@@ -153,13 +153,13 @@ public class TaskEditSectionBinder {
         views.fixedDurationView.setText(toStringOrEmpty(editState.fixedDuration));
 
         SpinnerHelper.bindListWithNone(views.budgetAccountView, views.budgetAccounts,
-                a -> a.name, fragment.getString(R.string.task_editor_budget_no_account),
-                editState.budgetAccountId, a -> a.id, fragment.requireContext());
+                BudgetAccount::name, fragment.getString(R.string.task_editor_budget_no_account),
+                editState.budgetAccountId, BudgetAccount::id, fragment.requireContext());
 
         SpinnerHelper.bindListWithNone(views.budgetCategoryView, views.budgetCategories,
-                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name),
+                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon(), c.name()),
                 fragment.getString(R.string.task_editor_budget_no_category),
-                editState.budgetCategoryId, c -> c.id, fragment.requireContext());
+                editState.budgetCategoryId, BudgetCategory::id, fragment.requireContext());
 
         boolean hasBudget = editState.budgetRequiredCents != null && editState.budgetRequiredCents > 0;
         views.toggleBudget.setChecked(hasBudget);
@@ -321,19 +321,19 @@ public class TaskEditSectionBinder {
      * resolves the correct IDs when the user saves the form.
      */
     public void rebindBudgetSpinners(SchedulingViews views,
-                                     List<BudgetAccountEntity> accounts,
-                                     List<BudgetCategoryEntity> categories) {
+                                     List<BudgetAccount> accounts,
+                                     List<BudgetCategory> categories) {
         views.budgetAccounts = accounts;
         views.budgetCategories = categories;
 
         SpinnerHelper.bindListWithNone(views.budgetAccountView, accounts,
-                a -> a.name, fragment.getString(R.string.task_editor_budget_no_account),
-                editState.budgetAccountId, a -> a.id, fragment.requireContext());
+                BudgetAccount::name, fragment.getString(R.string.task_editor_budget_no_account),
+                editState.budgetAccountId, BudgetAccount::id, fragment.requireContext());
 
         SpinnerHelper.bindListWithNone(views.budgetCategoryView, categories,
-                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name),
+                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon(), c.name()),
                 fragment.getString(R.string.task_editor_budget_no_category),
-                editState.budgetCategoryId, c -> c.id, fragment.requireContext());
+                editState.budgetCategoryId, BudgetCategory::id, fragment.requireContext());
     }
 
     /** Formats a compact repetition summary string, e.g. "3× pro Woche" or "2× pro 2 Wochen". */
@@ -490,9 +490,9 @@ public class TaskEditSectionBinder {
         public final Spinner budgetAccountView;
         public final Spinner budgetCategoryView;
         /** Backing list for {@link #budgetAccountView}. Position 0 in the spinner = "none" sentinel. Updated by {@link TaskEditSectionBinder#rebindBudgetSpinners}. */
-        public List<BudgetAccountEntity> budgetAccounts;
+        public List<BudgetAccount> budgetAccounts;
         /** Backing list for {@link #budgetCategoryView}. Position 0 in the spinner = "none" sentinel. Updated by {@link TaskEditSectionBinder#rebindBudgetSpinners}. */
-        public List<BudgetCategoryEntity> budgetCategories;
+        public List<BudgetCategory> budgetCategories;
         /** Budget section toggle; auto-expanded when editing a task with budgetRequiredCents > 0. */
         public final CompoundButton toggleBudget;
         /** Budget section container; visibility controlled by {@link #toggleBudget}. */
@@ -504,8 +504,8 @@ public class TaskEditSectionBinder {
         public final CheckBox adaptiveView;
 
         private SchedulingViews(View root,
-                                List<BudgetAccountEntity> accounts,
-                                List<BudgetCategoryEntity> categories) {
+                                List<BudgetAccount> accounts,
+                                List<BudgetCategory> categories) {
             deadlineView = root.findViewById(R.id.EditDeadline);
             startDateView = root.findViewById(R.id.EditStartDate);
             fixedDateView = root.findViewById(R.id.EditFixedDate);
@@ -529,8 +529,8 @@ public class TaskEditSectionBinder {
         }
 
         static SchedulingViews from(View root,
-                                    List<BudgetAccountEntity> accounts,
-                                    List<BudgetCategoryEntity> categories) {
+                                    List<BudgetAccount> accounts,
+                                    List<BudgetCategory> categories) {
             return new SchedulingViews(root, accounts, categories);
         }
     }

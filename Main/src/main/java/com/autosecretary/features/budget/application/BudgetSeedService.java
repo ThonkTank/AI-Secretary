@@ -1,9 +1,9 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
-import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
-import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
+import com.autosecretary.features.budget.domain.BudgetAccount;
+import com.autosecretary.features.budget.domain.BudgetCategory;
 import com.autosecretary.features.budget.domain.BudgetRepository;
+import com.autosecretary.features.budget.domain.BudgetTransaction;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
 import java.time.LocalDate;
@@ -42,8 +42,8 @@ public class BudgetSeedService {
     private static final String CAT_GEHALT       = "Gehalt";
 
     public record SeedResult(
-            List<BudgetCategoryEntity> categories,
-            List<BudgetAccountEntity> accounts,
+            List<BudgetCategory> categories,
+            List<BudgetAccount> accounts,
             String selectedAccountId
     ) {
     }
@@ -55,37 +55,37 @@ public class BudgetSeedService {
     }
 
     public SeedResult ensureDefaultData(String selectedAccountId) {
-        List<BudgetAccountEntity> accountList = repository.findActiveAccounts();
+        List<BudgetAccount> accountList = repository.findActiveAccounts();
         if (accountList.isEmpty()) {
-            repository.insertAccount(new BudgetAccountEntity("Girokonto"));
-            repository.insertAccount(new BudgetAccountEntity("Tagesgeld"));
+            repository.insertAccount(BudgetAccount.create("Girokonto"));
+            repository.insertAccount(BudgetAccount.create("Tagesgeld"));
             accountList = repository.findActiveAccounts();
         }
         ensureDefaultCategories();
         if (repository.findAllTransactions().isEmpty() && !accountList.isEmpty()) {
-            String accountId = accountList.get(0).id;
+            String accountId = accountList.get(0).id();
             seedDemoTransactions(accountId, LocalDate.now());
         }
 
-        List<BudgetCategoryEntity> categories = repository.findActiveCategories();
+        List<BudgetCategory> categories = repository.findActiveCategories();
         String effectiveAccount = (selectedAccountId == null || selectedAccountId.isBlank()) && !accountList.isEmpty()
-                ? accountList.get(0).id
+                ? accountList.get(0).id()
                 : selectedAccountId;
 
         return new SeedResult(categories, accountList, effectiveAccount);
     }
 
     private void ensureDefaultCategories() {
-        List<BudgetCategoryEntity> existing = repository.findActiveCategories();
+        List<BudgetCategory> existing = repository.findActiveCategories();
         if (!existing.isEmpty()) {
             return;
         }
-        repository.insertCategory(new BudgetCategoryEntity(CAT_SONSTIGES,    TransactionDirection.EXPENSE, "🏷️", "#9E9E9E"));
-        repository.insertCategory(new BudgetCategoryEntity(CAT_MIETE,        TransactionDirection.EXPENSE, "🏠", "#CF8F4F"));
-        repository.insertCategory(new BudgetCategoryEntity(CAT_LEBENSMITTEL, TransactionDirection.EXPENSE, "🛒", "#5C7A4D"));
-        repository.insertCategory(new BudgetCategoryEntity(CAT_MOBILITAET,   TransactionDirection.EXPENSE, "🚗", "#6B8E7B"));
-        repository.insertCategory(new BudgetCategoryEntity(CAT_FREIZEIT,     TransactionDirection.EXPENSE, "🎉", "#7A4DA8"));
-        repository.insertCategory(new BudgetCategoryEntity(CAT_GEHALT,       TransactionDirection.INCOME,  "💰", "#4CAF50"));
+        repository.insertCategory(BudgetCategory.create(CAT_SONSTIGES,    TransactionDirection.EXPENSE, "🏷️", "#9E9E9E"));
+        repository.insertCategory(BudgetCategory.create(CAT_MIETE,        TransactionDirection.EXPENSE, "🏠", "#CF8F4F"));
+        repository.insertCategory(BudgetCategory.create(CAT_LEBENSMITTEL, TransactionDirection.EXPENSE, "🛒", "#5C7A4D"));
+        repository.insertCategory(BudgetCategory.create(CAT_MOBILITAET,   TransactionDirection.EXPENSE, "🚗", "#6B8E7B"));
+        repository.insertCategory(BudgetCategory.create(CAT_FREIZEIT,     TransactionDirection.EXPENSE, "🎉", "#7A4DA8"));
+        repository.insertCategory(BudgetCategory.create(CAT_GEHALT,       TransactionDirection.INCOME,  "💰", "#4CAF50"));
     }
 
     private record DemoEntry(String categoryName, int day, TransactionDirection direction,
@@ -102,26 +102,24 @@ public class BudgetSeedService {
                 new DemoEntry(CAT_FREIZEIT,     15, TransactionDirection.EXPENSE,   3450,  "Restaurant"),
                 new DemoEntry(CAT_MOBILITAET,   18, TransactionDirection.EXPENSE,   6520,  "Tankstelle")
         );
-        List<BudgetCategoryEntity> categories = repository.findActiveCategories();
-        List<BudgetTransactionEntity> entities = new ArrayList<>();
+        List<BudgetCategory> categories = repository.findActiveCategories();
+        List<BudgetTransaction> entities = new ArrayList<>();
         for (DemoEntry entry : entries) {
             if (entry.day() > reference.getDayOfMonth()) {
                 continue;
             }
             String categoryId = findCategoryIdByName(categories, entry.categoryName());
             LocalDate date = reference.withDayOfMonth(entry.day());
-            BudgetTransactionEntity entity = new BudgetTransactionEntity(
-                    accountId, categoryId, entry.direction(), entry.amountCents(), date);
-            entity.note = entry.note();
-            entities.add(entity);
+            entities.add(BudgetTransaction.create(
+                    accountId, categoryId, entry.direction(), entry.amountCents(), date, entry.note()));
         }
         repository.saveTransactions(entities);
     }
 
-    private String findCategoryIdByName(List<BudgetCategoryEntity> categories, String name) {
+    private String findCategoryIdByName(List<BudgetCategory> categories, String name) {
         return categories.stream()
-                .filter(c -> name.equals(c.name))
-                .map(c -> c.id)
+                .filter(c -> name.equals(c.name()))
+                .map(BudgetCategory::id)
                 .findFirst()
                 .orElse(null);
     }

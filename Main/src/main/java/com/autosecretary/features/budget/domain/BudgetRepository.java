@@ -1,9 +1,4 @@
 package com.autosecretary.features.budget.domain;
-
-import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
-import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
-import com.autosecretary.features.budget.data.entity.BudgetLimitEntity;
-import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
 import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
 
@@ -33,16 +28,21 @@ import java.util.List;
  * All calls are expected to run on a background thread (see {@code AppCompositionRoot} for threading setup).
  */
 public interface BudgetRepository {
-    BudgetAccountEntity findAccountById(String accountId);
-    List<BudgetAccountEntity> findActiveAccounts();
-    void insertAccount(BudgetAccountEntity account);
-    List<BudgetCategoryEntity> findActiveCategories();
-    void insertCategory(BudgetCategoryEntity category);
-    List<BudgetTransactionEntity> findAllTransactions();
-    List<BudgetTransactionEntity> findTransactionsForAccount(String accountId);
-    BudgetTransactionEntity findTransactionById(String transactionId);
-    BudgetLimitEntity findBudgetLimit(String categoryId, String yearMonth);
-    BudgetLimitEntity findPreviousMonthLimit(String categoryId, String targetYearMonth);
+    BudgetAccount findAccountById(String accountId);
+    List<BudgetAccount> findActiveAccounts();
+
+    /** Raw pass-through write for a fully-constructed Room entity. */
+    void insertAccount(BudgetAccount account);
+
+    List<BudgetCategory> findActiveCategories();
+
+    /** Raw pass-through write for a fully-constructed Room entity. */
+    void insertCategory(BudgetCategory category);
+    List<BudgetTransaction> findAllTransactions();
+    List<BudgetTransaction> findTransactionsForAccount(String accountId);
+    BudgetTransaction findTransactionById(String transactionId);
+    BudgetLimit findBudgetLimit(String categoryId, String yearMonth);
+    BudgetLimit findPreviousMonthLimit(String categoryId, String targetYearMonth);
     long getPreviousMonthExpenseCents(String categoryId, String targetYearMonth);
     long getCategoryExpenseCents(String categoryId, String yearMonth);
 
@@ -64,13 +64,13 @@ public interface BudgetRepository {
     String findDefaultActiveAccountId();
 
     /** Persists an already-constructed transaction entity (e.g. during CSV import). */
-    void saveTransaction(BudgetTransactionEntity transaction);
+    void saveTransaction(BudgetTransaction transaction);
 
     /**
      * Atomically inserts {@code transaction} and deducts {@code expenseCents} from the
      * stored balance of {@code accountId} in a single database transaction.
      */
-    void saveTransactionAndDeductBalance(BudgetTransactionEntity transaction,
+    void saveTransactionAndDeductBalance(BudgetTransaction transaction,
                                          String accountId,
                                          long expenseCents);
 
@@ -99,7 +99,7 @@ public interface BudgetRepository {
     /** Convenience overload used by the "Add Transaction" dialog — builds the entity internally. */
     void saveTransaction(TransactionCreateDetails details);
 
-    void updateTransaction(BudgetTransactionEntity transaction);
+    void updateTransaction(BudgetTransaction transaction);
     void updateTransaction(String transactionId, TransactionCreateDetails details);
 
     /**
@@ -109,7 +109,7 @@ public interface BudgetRepository {
      * is more efficient than per-row adjustments.
      * For user-initiated transaction creation, use {@link #saveTransaction(TransactionCreateDetails)}.
      */
-    void saveTransactions(List<BudgetTransactionEntity> transactions);
+    void saveTransactions(List<BudgetTransaction> transactions);
     void deleteTransaction(String transactionId);
 
     /**
@@ -131,7 +131,7 @@ public interface BudgetRepository {
      */
     boolean updateTransfer(String transactionId, TransferDetails details);
 
-    void saveBudgetLimit(BudgetLimitEntity budgetLimit);
+    void saveBudgetLimit(BudgetLimit budgetLimit);
     List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth);
     List<MonthlyOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId);
     List<CategorySpendSummary> getCategorySpendTotals(String yearMonth);

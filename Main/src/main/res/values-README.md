@@ -13,7 +13,7 @@ String, color, dimension, and style definitions used throughout the app.
 | `colors.xml` | App-wide | Shared palette (primary, surface, outline), launcher icon colors |
 | `task_colors.xml` | Task feature | Task-specific semantic colors (urgency, streak, progress, widget) |
 | `budget_colors.xml` | Budget feature | Semantic status colors, chart colors, widget colors |
-| `dimens.xml` | App-wide | Spacing scale (xxs–xl) and text scale (xs–xl) |
+| `dimens.xml` | App-wide | Spacing scale (xxs–xl), text scale (xs–lg), shared outline stroke width |
 | `task_dimens.xml` | Task feature | Editor, row, widget, corner radius dimensions |
 | `budget_dimens.xml` | Budget feature | Card, divider, limit bar, chart dimensions |
 | `styles.xml` | App-wide | AppTheme, component styles (buttons, inputs, spinners), text appearances |
@@ -33,9 +33,8 @@ Reference: [Material Color Roles](https://m3.material.io/styles/color/the-color-
 
 ### Dimensions
 - **App-wide spacing:** `spacing_[size]` — xxs (2dp), xs (4dp), sm (8dp), md (12dp), lg (16dp), xl (24dp)
-- **App-wide text:** `text_[size]` — xs (12sp), sm (14sp), md (16sp), xl (18sp)
-  _(Note: `text_lg` does not exist — `text_xl` (18sp) is adjacent to `text_md` (16sp).
-  See REVIEW_BACKLOG.md for the tracked rename. Do not add `text_lg` without resolving that first.)_
+- **App-wide text:** `text_[size]` — xs (12sp), sm (14sp), md (16sp), lg (18sp)
+- **Shared outlines:** `outline_stroke_width` — default outline width for shape drawables (1dp)
 - **Feature-specific:** `[feature]_[component]_[property]` — e.g. `task_row_min_height`, `budget_chart_height`
 
 ### Styles

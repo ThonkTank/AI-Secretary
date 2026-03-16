@@ -10,7 +10,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
-import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.domain.BudgetAccount;
 import com.autosecretary.features.budget.domain.AmountParser;
 import com.autosecretary.shared.ui.DialogHelper;
 import com.autosecretary.shared.ui.DialogValidation;
@@ -46,7 +46,7 @@ public class BudgetTransferDialogController {
         this.listener = listener;
     }
 
-    public void show(List<BudgetAccountEntity> accounts) {
+    public void show(List<BudgetAccount> accounts) {
         Context ctx = fragment.requireContext();
         if (accounts == null || accounts.size() < 2) {
             new AlertDialog.Builder(ctx)
@@ -64,8 +64,8 @@ public class BudgetTransferDialogController {
         TextInputEditText dateInput = dialogView.findViewById(R.id.BudgetTransferDate);
         TextInputEditText noteInput = dialogView.findViewById(R.id.BudgetTransferNote);
 
-        SpinnerHelper.bindList(sourceAccountSpinner, accounts, a -> a.name, ctx);
-        SpinnerHelper.bindList(targetAccountSpinner, accounts, a -> a.name, ctx);
+        SpinnerHelper.bindList(sourceAccountSpinner, accounts, BudgetAccount::name, ctx);
+        SpinnerHelper.bindList(targetAccountSpinner, accounts, BudgetAccount::name, ctx);
         targetAccountSpinner.setSelection(1); // Default target to second account so source ≠ target.
 
         dateInput.setText(LocalDate.now().toString());
@@ -103,8 +103,8 @@ public class BudgetTransferDialogController {
             }
             String note = DialogValidation.textOfNullable(noteInput);
             listener.onTransferSubmitted(
-                    accounts.get(sourceIdx).id,
-                    accounts.get(targetIdx).id,
+                    accounts.get(sourceIdx).id(),
+                    accounts.get(targetIdx).id(),
                     amountStr,
                     bookingDate,
                     note

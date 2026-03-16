@@ -12,7 +12,6 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
-import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
 import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
 
@@ -36,6 +35,10 @@ import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
  */
 @Dao
 public interface BudgetTransactionDao {
+    String SIGNED_AMOUNT_CENTS_EXPRESSION =
+            "CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END";
+    String SUM_SIGNED_AMOUNT_CENTS_EXPRESSION =
+            "COALESCE(SUM(" + SIGNED_AMOUNT_CENTS_EXPRESSION + "), 0)";
 
     /**
      * Retrieves all transactions for a given month (optionally filtered by account).
@@ -45,7 +48,7 @@ public interface BudgetTransactionDao {
      * @param yearMonth "YYYY-MM" format
      * @param accountId account UUID, or null for all accounts. If null, returns transactions from all accounts;
      *                  if provided, filters to that account only
-     * @return list of MonthlyOverviewItem (ordered by booking date DESC, then ID DESC)
+     * @return list of Room projections (ordered by booking date DESC, then ID DESC)
      */
     @Query("""
             SELECT t.id AS transactionId,
@@ -69,7 +72,7 @@ public interface BudgetTransactionDao {
               AND (:accountId IS NULL OR t.accountId = :accountId)
             ORDER BY t.bookingDate DESC, t.id DESC
             """)
-    List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth, @Nullable String accountId);
+    List<MonthlyOverviewItemProjection> getMonthlyOverview(String yearMonth, @Nullable String accountId);
 
     /**
      * Retrieves daily balance deltas for a given account over a date range.
@@ -83,15 +86,13 @@ public interface BudgetTransactionDao {
      * @param toDate latest date (inclusive)
      * @return list of DailyDeltaPoint (ordered by date ASC)
      */
-    @Query("""
-            SELECT bookingDate AS date,
-                   SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END) AS deltaCents
-            FROM budget_transaction
-            WHERE accountId = :accountId
-              AND bookingDate BETWEEN :fromDate AND :toDate
-            GROUP BY bookingDate
-            ORDER BY bookingDate ASC
-            """)
+    @Query("SELECT bookingDate AS date, "
+            + "SUM(" + SIGNED_AMOUNT_CENTS_EXPRESSION + ") AS deltaCents "
+            + "FROM budget_transaction "
+            + "WHERE accountId = :accountId "
+            + "AND bookingDate BETWEEN :fromDate AND :toDate "
+            + "GROUP BY bookingDate "
+            + "ORDER BY bookingDate ASC")
     List<DailyDeltaPoint> getDailyDeltasForAccount(
             String accountId,
             LocalDate fromDate,
@@ -110,15 +111,13 @@ public interface BudgetTransactionDao {
      * @param toYearMonth latest month ("YYYY-MM" format, inclusive)
      * @return list of MonthlyDeltaPoint (ordered by month ASC)
      */
-    @Query("""
-            SELECT yearMonth,
-                   SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END) AS deltaCents
-            FROM budget_transaction
-            WHERE accountId = :accountId
-              AND yearMonth BETWEEN :fromYearMonth AND :toYearMonth
-            GROUP BY yearMonth
-            ORDER BY yearMonth ASC
-            """)
+    @Query("SELECT yearMonth, "
+            + "SUM(" + SIGNED_AMOUNT_CENTS_EXPRESSION + ") AS deltaCents "
+            + "FROM budget_transaction "
+            + "WHERE accountId = :accountId "
+            + "AND yearMonth BETWEEN :fromYearMonth AND :toYearMonth "
+            + "GROUP BY yearMonth "
+            + "ORDER BY yearMonth ASC")
     List<MonthlyDeltaPoint> getMonthlyDeltasForAccount(
             String accountId,
             YearMonth fromYearMonth,
@@ -135,12 +134,10 @@ public interface BudgetTransactionDao {
      * @param beforeDate cutoff date (exclusive; transactions before this date are included)
      * @return net balance in cents
      */
-    @Query("""
-            SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END), 0)
-            FROM budget_transaction
-            WHERE accountId = :accountId
-              AND bookingDate < :beforeDate
-            """)
+    @Query("SELECT " + SUM_SIGNED_AMOUNT_CENTS_EXPRESSION + " "
+            + "FROM budget_transaction "
+            + "WHERE accountId = :accountId "
+            + "AND bookingDate < :beforeDate")
     long getNetAmountBeforeDateForAccount(String accountId, LocalDate beforeDate);
 
     /**
@@ -150,17 +147,14 @@ public interface BudgetTransactionDao {
      *
      * @return net balance in cents (sum of all INCOME minus all EXPENSE)
      */
-    @Query("""
-            SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END), 0)
-            FROM budget_transaction
-            """)
+    @Query("SELECT " + SUM_SIGNED_AMOUNT_CENTS_EXPRESSION + " FROM budget_transaction")
     long getNetBalanceCents();
 
     /**
      * Retrieves all transactions (all accounts), ordered by booking date descending.
      */
     @Query("SELECT * FROM budget_transaction ORDER BY bookingDate DESC")
-    List<BudgetTransactionEntity> findAll();
+    List<BudgetTransactionEntity> readAll();
 
     /**
      * Retrieves all transactions for a given account, ordered by booking date descending.
@@ -169,7 +163,7 @@ public interface BudgetTransactionDao {
      * @return list of transactions for the account (may be empty)
      */
     @Query("SELECT * FROM budget_transaction WHERE accountId = :accountId ORDER BY bookingDate DESC")
-    List<BudgetTransactionEntity> findByAccountId(String accountId);
+    List<BudgetTransactionEntity> readByAccountId(String accountId);
 
     /**
      * Retrieves a transaction by ID.
@@ -178,7 +172,7 @@ public interface BudgetTransactionDao {
      * @return the transaction, or null if not found
      */
     @Query("SELECT * FROM budget_transaction WHERE id = :transactionId LIMIT 1")
-    BudgetTransactionEntity findById(String transactionId);
+    BudgetTransactionEntity readById(String transactionId);
 
     /**
      * Inserts or replaces a single transaction.
@@ -189,7 +183,7 @@ public interface BudgetTransactionDao {
      * @param transaction the transaction to insert
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insert(BudgetTransactionEntity transaction);
+    void write(BudgetTransactionEntity transaction);
 
     /**
      * Inserts or replaces multiple transactions in a single batch operation.
@@ -200,7 +194,7 @@ public interface BudgetTransactionDao {
      * @param transactions the transactions to insert
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertAll(List<BudgetTransactionEntity> transactions);
+    void writeAll(List<BudgetTransactionEntity> transactions);
 
     /**
      * Updates an existing transaction.
@@ -208,7 +202,7 @@ public interface BudgetTransactionDao {
      * @param transaction the transaction (ID must exist or update silently does nothing)
      */
     @Update
-    void update(BudgetTransactionEntity transaction);
+    void writeExisting(BudgetTransactionEntity transaction);
 
     /**
      * Deletes a transaction by ID.
@@ -270,8 +264,8 @@ public interface BudgetTransactionDao {
      */
     @Transaction
     default void createTransferPair(BudgetTransactionEntity debit, BudgetTransactionEntity credit) {
-        insert(debit);
-        insert(credit);
+        write(debit);
+        write(credit);
     }
 
     /**
@@ -285,8 +279,8 @@ public interface BudgetTransactionDao {
      */
     @Transaction
     default void updateTransferPair(BudgetTransactionEntity debit, BudgetTransactionEntity credit) {
-        update(debit);
-        update(credit);
+        writeExisting(debit);
+        writeExisting(credit);
     }
 
     /**
@@ -302,7 +296,7 @@ public interface BudgetTransactionDao {
      */
     @Transaction
     default void deleteWithLinked(String transactionId) {
-        BudgetTransactionEntity transaction = findById(transactionId);
+        BudgetTransactionEntity transaction = readById(transactionId);
         if (transaction == null) {
             return;
         }

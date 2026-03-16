@@ -46,8 +46,9 @@ app/ ─────────────────────────
 ```
 
 `Preferences.java` is an exception: `features/task/` imports it because it provides the
-per-day scheduling window that the task scheduler needs. A move to
-`features/task/application/internal/` has been considered but deferred (see `REVIEW_BACKLOG.md`).
+per-day scheduling window that the task scheduler needs. Keeping it in `app/` is currently
+the least disruptive option because it is an application-wide preference object rather than
+task-specific business logic.
 
 ---
 

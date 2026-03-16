@@ -7,33 +7,23 @@
     android:padding="@dimen/spacing_lg">
 
     <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        style="@style/Widget.AutoSecretary.Editor.SpinnerLabel"
         android:text="@string/budget_transfer_source_account"
-        android:textAppearance="@style/TextAppearance.AutoSecretary.Editor.Label"
         android:labelFor="@id/BudgetTransferSourceAccount" />
 
     <Spinner
         android:id="@+id/BudgetTransferSourceAccount"
-        style="@style/Widget.AutoSecretary.Editor.Spinner"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_xs" />
+        style="@style/Widget.AutoSecretary.Editor.SpinnerField" />
 
     <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        style="@style/Widget.AutoSecretary.Editor.SpinnerLabel"
         android:layout_marginTop="@dimen/spacing_md"
         android:text="@string/budget_transfer_target_account"
-        android:textAppearance="@style/TextAppearance.AutoSecretary.Editor.Label"
         android:labelFor="@id/BudgetTransferTargetAccount" />
 
     <Spinner
         android:id="@+id/BudgetTransferTargetAccount"
-        style="@style/Widget.AutoSecretary.Editor.Spinner"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_xs" />
+        style="@style/Widget.AutoSecretary.Editor.SpinnerField" />
 
     <com.google.android.material.textfield.TextInputLayout
         style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"

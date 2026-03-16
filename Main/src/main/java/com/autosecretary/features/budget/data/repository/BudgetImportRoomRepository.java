@@ -53,7 +53,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     @Override
     public ImportRecord createImport(String accountId, String fileName, String fileHash) {
         BudgetImportEntity entity = new BudgetImportEntity(accountId, fileName, fileHash);
-        importDao.insert(entity);
+        importDao.write(entity);
         return ImportRecord.pending(entity.id, entity.accountId, entity.fileName, entity.fileHash);
     }
 
@@ -83,14 +83,14 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
 
     @Override
     public Set<String> findActiveCategoryIds() {
-        return accountCategoryDao.findActiveCategories().stream()
+        return accountCategoryDao.readActiveCategories().stream()
                 .map(c -> c.id)
                 .collect(java.util.stream.Collectors.toSet());
     }
 
     @Override
     public String findDefaultCategoryId(TransactionDirection direction) {
-        return accountCategoryDao.findDefaultCategoryId(direction);
+        return accountCategoryDao.readDefaultCategoryId(direction);
     }
 
     @Override
@@ -98,25 +98,25 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
         if (categoryId == null || categoryId.isBlank()) {
             return false;
         }
-        return accountCategoryDao.findCategoryById(categoryId) != null;
+        return accountCategoryDao.readCategory(categoryId) != null;
     }
 
     @Override
     public List<ImportCategory> findActiveCategoriesForImport() {
-        return accountCategoryDao.findActiveCategories().stream()
+        return accountCategoryDao.readActiveCategories().stream()
                 .map(category -> new ImportCategory(category.id, category.name, category.direction))
                 .toList();
     }
 
     @Override
     public void saveTransactionsBatch(List<ImportTransactionRecord> transactions) {
-        transactionDao.insertAll(transactions.stream().map(this::toEntity).toList());
+        transactionDao.writeAll(transactions.stream().map(this::toEntity).toList());
         accountCategoryDao.rebuildAllAccountBalances();
     }
 
     @Override
     public List<ImportTransactionRecord> findTransactionsForAccount(String accountId) {
-        return transactionDao.findByAccountId(accountId).stream().map(this::toRecord).toList();
+        return transactionDao.readByAccountId(accountId).stream().map(this::toRecord).toList();
     }
 
     @Override
@@ -125,7 +125,7 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
         BudgetRecurringTemplateEntity entity = BudgetRecurringTemplateEntity.fromSuggestion(
                 suggestion, accountId,
                 nextDue != null ? nextDue : LocalDate.now());
-        templateDao.insert(entity);
+        templateDao.write(entity);
         return entity.id;
     }
 
@@ -157,9 +157,8 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
      */
     @Override
     public void synchronizeRecurringTemplateState(LocalDate referenceDate) {
-        List<RecurringScheduleParams> params = templateDao.findAllActiveTemplates().stream()
-                .map(t -> new RecurringScheduleParams(
-                        t.id, t.nextDue, t.recurringType, t.recurringDayOfWeek, t.recurringValue))
+        List<RecurringScheduleParams> params = templateDao.readAllActiveTemplates().stream()
+                .map(BudgetRecurringTemplateEntity::toScheduleParams)
                 .toList();
         templateDao.updateAllTemplateStatuses(
                 RecurringTemplateScheduler.computeStatusUpdates(params, referenceDate));
@@ -216,17 +215,21 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
             case STANDARD -> ImportTransactionType.fromDirection(entity.direction);
         };
         return new ImportTransactionRecord(
-                entity.id,
-                entity.accountId,
-                entity.categoryId,
-                type,
-                entity.amountCents,
-                entity.bookingDate,
-                entity.note,
-                entity.importHash,
-                entity.payee,
-                entity.importId,
-                entity.templateId
+                new ImportTransactionRecord.TransactionData(
+                        entity.id,
+                        entity.accountId,
+                        entity.categoryId,
+                        type,
+                        entity.amountCents,
+                        entity.bookingDate,
+                        entity.note,
+                        entity.payee
+                ),
+                new ImportTransactionRecord.ImportMetadata(
+                        entity.importHash,
+                        entity.importId,
+                        entity.templateId
+                )
         );
     }
 }

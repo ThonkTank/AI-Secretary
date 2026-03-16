@@ -30,7 +30,7 @@ public interface BudgetImportDao {
      * If an import with the same ID already exists, replaces it.
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insert(BudgetImportEntity importEntity);
+    void write(BudgetImportEntity importEntity);
 
     /**
      * Updates an import record with a new status and optional summary statistics.
@@ -57,13 +57,13 @@ public interface BudgetImportDao {
                 errorMessage = :errorMessage
             WHERE id = :id
             """)
-    void updateImportStatus(String id, ImportStatus status, int total, int imported, int autoCategorized,
+    void writeImportStatus(String id, ImportStatus status, int total, int imported, int autoCategorized,
                             LocalDate periodStart, LocalDate periodEnd, String errorMessage);
 
     /**
      * Marks an import as COMPLETED and records its summary statistics.
      *
-     * Convenience method that calls {@link #updateImportStatus(String, ImportStatus, int, int, int, LocalDate, LocalDate, String)}.
+     * Convenience method that calls {@link #writeImportStatus(String, ImportStatus, int, int, int, LocalDate, LocalDate, String)}.
      *
      * @param id the import ID
      * @param total total transactions found in the imported file
@@ -74,19 +74,19 @@ public interface BudgetImportDao {
      */
     default void markCompleted(String id, int total, int imported, int autoCategorized,
                                LocalDate periodStart, LocalDate periodEnd) {
-        updateImportStatus(id, ImportStatus.COMPLETED, total, imported, autoCategorized,
+        writeImportStatus(id, ImportStatus.COMPLETED, total, imported, autoCategorized,
                 periodStart, periodEnd, null);
     }
 
     /**
      * Marks an import as FAILED and stores the error message.
      *
-     * Convenience method that calls {@link #updateImportStatus(String, ImportStatus, int, int, int, LocalDate, LocalDate, String)}.
+     * Convenience method that calls {@link #writeImportStatus(String, ImportStatus, int, int, int, LocalDate, LocalDate, String)}.
      *
      * @param id the import ID
      * @param errorMessage human-readable error description for user display
      */
     default void markFailed(String id, String errorMessage) {
-        updateImportStatus(id, ImportStatus.FAILED, 0, 0, 0, null, null, errorMessage);
+        writeImportStatus(id, ImportStatus.FAILED, 0, 0, 0, null, null, errorMessage);
     }
 }

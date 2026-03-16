@@ -60,14 +60,22 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
             BudgetOverviewLoader overviewLoader = new BudgetOverviewLoader(
                     repository,
                     resources);
-            return modelClass.cast(new BudgetViewModel(
-                    repository, executor,
+            BudgetViewModel.Infrastructure infrastructure =
+                    new BudgetViewModel.Infrastructure(repository, executor);
+            BudgetViewModel.UseCases useCases = new BudgetViewModel.UseCases(
                     importUseCase,
                     applyRecurringUseCase,
                     createTransferUseCase,
+                    new BudgetSeedService(repository)
+            );
+            BudgetViewModel.Presentation presentation = new BudgetViewModel.Presentation(
                     new CalculateEffectiveBudgetLimitUseCase(repository),
-                    overviewLoader,
-                    new BudgetSeedService(repository)));
+                    overviewLoader
+            );
+            return modelClass.cast(new BudgetViewModel(
+                    infrastructure,
+                    useCases,
+                    presentation));
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
     }

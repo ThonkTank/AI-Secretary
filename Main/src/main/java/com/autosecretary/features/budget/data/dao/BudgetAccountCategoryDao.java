@@ -31,13 +31,13 @@ public interface BudgetAccountCategoryDao {
      * Retrieves all active (non-archived) categories, sorted by type then name.
      */
     @Query("SELECT * FROM budget_category WHERE archived = 0 ORDER BY type ASC, name COLLATE NOCASE ASC")
-    List<BudgetCategoryEntity> findActiveCategories();
+    List<BudgetCategoryEntity> readActiveCategories();
 
     /**
      * Retrieves all active (non-archived) accounts, sorted by name case-insensitive.
      */
     @Query("SELECT * FROM budget_account WHERE archived = 0 ORDER BY name COLLATE NOCASE ASC")
-    List<BudgetAccountEntity> findActiveAccounts();
+    List<BudgetAccountEntity> readActiveAccounts();
 
     /**
      * Retrieves a category by ID.
@@ -45,7 +45,7 @@ public interface BudgetAccountCategoryDao {
      * @return the category, or null if not found
      */
     @Query("SELECT * FROM budget_category WHERE id = :categoryId LIMIT 1")
-    BudgetCategoryEntity findCategoryById(String categoryId);
+    BudgetCategoryEntity readCategory(String categoryId);
 
     /**
      * Retrieves an account by ID.
@@ -53,7 +53,7 @@ public interface BudgetAccountCategoryDao {
      * @return the account, or null if not found
      */
     @Query("SELECT * FROM budget_account WHERE id = :accountId LIMIT 1")
-    BudgetAccountEntity findAccountById(String accountId);
+    BudgetAccountEntity readAccount(String accountId);
 
     /**
      * Returns the sum of balances across all active accounts.
@@ -61,7 +61,7 @@ public interface BudgetAccountCategoryDao {
      * Returns 0 if no accounts exist.
      */
     @Query("SELECT COALESCE(SUM(currentBalanceCents), 0) FROM budget_account WHERE archived = 0")
-    long getTotalCurrentBalanceCents();
+    long readTotalCurrentBalanceCents();
 
     /**
      * Returns the current balance for a single account.
@@ -69,7 +69,7 @@ public interface BudgetAccountCategoryDao {
      * @return the balance in cents, or null if the account does not exist
      */
     @Query("SELECT currentBalanceCents FROM budget_account WHERE id = :accountId LIMIT 1")
-    Long findCurrentBalanceCentsByAccountId(String accountId);
+    Long readCurrentBalanceCentsByAccountId(String accountId);
 
     /**
      * Atomically adjusts an account's balance by the given delta.
@@ -92,7 +92,7 @@ public interface BudgetAccountCategoryDao {
      * @return the account ID, or null if no active accounts exist
      */
     @Query("SELECT id FROM budget_account WHERE archived = 0 ORDER BY name COLLATE NOCASE ASC LIMIT 1")
-    String findFirstActiveAccountId();
+    String readFirstActiveAccountId();
 
     /**
      * Retrieves a default category ID for the given transaction direction (INCOME or EXPENSE).
@@ -103,7 +103,7 @@ public interface BudgetAccountCategoryDao {
      * @return the category ID, or null if no category of that type exists
      */
     @Query("SELECT id FROM budget_category WHERE type = :direction AND archived = 0 LIMIT 1")
-    String findDefaultCategoryId(TransactionDirection direction);
+    String readDefaultCategoryId(TransactionDirection direction);
 
     /**
      * Recalculates all account balances from scratch using transaction history.
@@ -122,15 +122,13 @@ public interface BudgetAccountCategoryDao {
      * hidden from the UI and no longer receive new transactions, so their cached balance
      * does not need to stay current.
      */
-    @Query("""
-            UPDATE budget_account
-            SET currentBalanceCents = (
-                SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amountCents ELSE -amountCents END), 0)
-                FROM budget_transaction
-                WHERE accountId = budget_account.id
-            )
-            WHERE archived = 0
-            """)
+    @Query("UPDATE budget_account "
+            + "SET currentBalanceCents = ("
+            + "SELECT " + BudgetTransactionDao.SUM_SIGNED_AMOUNT_CENTS_EXPRESSION + " "
+            + "FROM budget_transaction "
+            + "WHERE accountId = budget_account.id"
+            + ") "
+            + "WHERE archived = 0")
     void rebuildAllAccountBalances();
 
     /**

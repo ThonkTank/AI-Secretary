@@ -24,6 +24,8 @@ import com.autosecretary.features.budget.domain.recurring.TemplateStatusUpdate;
  */
 @Dao
 public interface BudgetRecurringTemplateDao {
+    String ACTIVE_EXPENSE_IN_RANGE_FILTER =
+            "active = 1 AND type = 'EXPENSE' AND nextDue BETWEEN :fromDate AND :toDate";
 
     /**
      * Inserts or replaces a recurring template.
@@ -31,7 +33,7 @@ public interface BudgetRecurringTemplateDao {
      * If a template with the same ID already exists, it is updated.
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insert(BudgetRecurringTemplateEntity template);
+    void write(BudgetRecurringTemplateEntity template);
 
     /**
      * Retrieves active EXPENSE templates for a specific account with nextDue in the given date range.
@@ -43,14 +45,10 @@ public interface BudgetRecurringTemplateDao {
      * @param toDate latest nextDue (inclusive)
      * @return list of matching templates (may be empty)
      */
-    @Query("""
-            SELECT * FROM budget_recurring_template
-            WHERE accountId = :accountId
-              AND active = 1
-              AND transactionType = 'EXPENSE'
-              AND nextDue BETWEEN :fromDate AND :toDate
-            """)
-    List<BudgetRecurringTemplateEntity> findActiveExpenseTemplatesForAccountInRange(String accountId, LocalDate fromDate, LocalDate toDate);
+    @Query("SELECT * FROM budget_recurring_template "
+            + "WHERE accountId = :accountId "
+            + "AND " + ACTIVE_EXPENSE_IN_RANGE_FILTER)
+    List<BudgetRecurringTemplateEntity> readActiveExpenseTemplatesForAccountInRange(String accountId, LocalDate fromDate, LocalDate toDate);
 
     /**
      * Retrieves active EXPENSE templates across all active accounts with nextDue in the given date range.
@@ -62,16 +60,10 @@ public interface BudgetRecurringTemplateDao {
      * @param toDate latest nextDue (inclusive)
      * @return list of matching templates (may be empty)
      */
-    @Query("""
-            SELECT t.*
-            FROM budget_recurring_template t
-            INNER JOIN budget_account a ON a.id = t.accountId
-            WHERE t.active = 1
-              AND a.archived = 0
-              AND t.transactionType = 'EXPENSE'
-              AND t.nextDue BETWEEN :fromDate AND :toDate
-            """)
-    List<BudgetRecurringTemplateEntity> findActiveExpenseTemplatesForActiveAccountsInRange(LocalDate fromDate, LocalDate toDate);
+    @Query("SELECT * FROM budget_recurring_template "
+            + "WHERE accountId IN (SELECT id FROM budget_account WHERE archived = 0) "
+            + "AND " + ACTIVE_EXPENSE_IN_RANGE_FILTER)
+    List<BudgetRecurringTemplateEntity> readActiveExpenseTemplatesForActiveAccountsInRange(LocalDate fromDate, LocalDate toDate);
 
     /**
      * Retrieves all active recurring templates (all directions, all accounts).
@@ -79,7 +71,7 @@ public interface BudgetRecurringTemplateDao {
      * @return list of all active templates
      */
     @Query("SELECT * FROM budget_recurring_template WHERE active = 1")
-    List<BudgetRecurringTemplateEntity> findAllActiveTemplates();
+    List<BudgetRecurringTemplateEntity> readAllActiveTemplates();
 
     /**
      * Updates the nextDue date and active status of a single template.
@@ -89,7 +81,7 @@ public interface BudgetRecurringTemplateDao {
      * @param active true to keep active, false to archive
      */
     @Query("UPDATE budget_recurring_template SET nextDue = :nextDue, active = :active WHERE id = :templateId")
-    void updateNextDueAndStatus(String templateId, LocalDate nextDue, boolean active);
+    void writeNextDueAndStatus(String templateId, LocalDate nextDue, boolean active);
 
     /**
      * Atomically updates the status and nextDue date for a batch of recurring templates.
@@ -103,7 +95,7 @@ public interface BudgetRecurringTemplateDao {
     @Transaction
     default void updateAllTemplateStatuses(List<TemplateStatusUpdate> updates) {
         for (TemplateStatusUpdate u : updates) {
-            updateNextDueAndStatus(u.id(), u.nextDue(), u.active());
+            writeNextDueAndStatus(u.id(), u.nextDue(), u.active());
         }
     }
 }

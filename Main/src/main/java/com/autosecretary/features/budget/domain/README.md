@@ -13,7 +13,7 @@ budget/domain/
 ├── TransactionDirection.java      — INCOME / EXPENSE enum with sign-conversion helpers
 ├── TransactionKind.java           — STANDARD vs. INTERNAL_TRANSFER discriminator
 ├── CategorySpendSummary.java      — Read projection: category name + amounts spent vs. budget limit
-├── MonthlyOverviewItem.java       — Read projection: flat transaction row for the monthly overview list
+├── MonthlyOverviewItem.java       — Immutable read model: flat transaction row for the monthly overview list
 ├── AmountParser.java              — Utility: parses bank CSV amount strings into cents
 │
 ├── importing/                     — DTOs for the import pipeline (ParsedTransaction → ImportTransactionRecord)
@@ -48,8 +48,8 @@ See [Why not use float for currency?](https://stackoverflow.com/a/3730040).
 `budget/data/repository/`. This lets domain logic stay testable and independent of Android.
 
 ### Read projections (`CategorySpendSummary`, `MonthlyOverviewItem`)
-These flat classes/records are produced by database queries (via `@Query`) and mapped directly from
-SQL result sets. They are not full domain entities — they exist purely to carry data to the UI layer.
+These flat records are produced from database query projections and carried upward as immutable
+read models. They are not full domain entities — they exist purely to carry data to the UI layer.
 
 ## Related Packages
 

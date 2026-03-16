@@ -86,9 +86,6 @@ public class TaskCore {
 
     @Embedded(prefix = "repetition_")
     public Repetition repetition = new Repetition();
-    public int repsPerDay() {
-        return repetition.repsPerDay();
-    }
 
     //completion tracking
     @Embedded(prefix = "progress_")
@@ -121,7 +118,6 @@ public class TaskCore {
         public Period periodUnit;
         public int periodInDays() {return periodUnit.dayCount * perPeriod;}
         public int repsPerDay() {return (int) Math.ceil((double) reps / periodInDays());}
-        public double daysPerRep() {return (double) periodInDays() / (double) reps;}
         public LocalDate periodEnd() {
             return periodStart != null ? periodStart.plusDays(periodInDays()) : null;
         }
@@ -150,28 +146,16 @@ public class TaskCore {
         public int totalProgress;
         public int totalTime = DEFAULT_FALLBACK_MINUTES;
 
-        public double progressTarget() {return target;}
-
-        public boolean hasTrackingTarget() {
-            return target > 0;
-        }
-
         /**
          * Uses an implicit 1-unit completion for tasks without explicit progress tracking
          * to keep legacy completion-duration learning behavior.
          */
         public int completionProgressUnits() {
-            return hasTrackingTarget() ? Math.max(1, minPerRep) : 1;
+            return target > 0 ? Math.max(1, minPerRep) : 1;
         }
 
         public void recordTimingSample(int durationMinutes) {
             int boundedDuration = Math.max(1, durationMinutes);
-            if (totalTime < 0) {
-                totalTime = DEFAULT_FALLBACK_MINUTES;
-            }
-            if (totalProgress < 0) {
-                totalProgress = 0;
-            }
             totalTime += boundedDuration;
             totalProgress += completionProgressUnits();
         }

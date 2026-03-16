@@ -6,7 +6,6 @@ import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 
 /**
  * Accepts user-approved recurring suggestions, creates persistent templates, and links existing transactions.
@@ -20,45 +19,28 @@ import java.util.concurrent.ExecutorService;
  *   <li>Notify the UI of the update</li>
  * </ol>
  *
- * <p>Runs asynchronously on a background executor; results via callback.
+ * <p>Runs synchronously on the caller's thread. Callers are responsible for dispatching to a
+ * background executor before invoking {@link #execute(String, List)}.
  *
  * @see domain/recurring/README.md for recurring type definitions and pattern detection
- * @see ApplyCallback for success/error reporting
  */
 public class ApplyRecurringSuggestionsUseCase {
     private final BudgetImportRepository repository;
-    private final ExecutorService executor;
 
-    public ApplyRecurringSuggestionsUseCase(BudgetImportRepository repository, ExecutorService executor) {
+    public ApplyRecurringSuggestionsUseCase(BudgetImportRepository repository) {
         this.repository = repository;
-        this.executor = executor;
     }
 
-    public interface ApplyCallback {
-        void onSuccess();
-        void onError(String errorMessage);
-    }
+    public void execute(String accountId, List<RecurringSuggestion> suggestions) {
+        for (RecurringSuggestion suggestion : suggestions) {
+            LocalDate nextDue = calculateNextDue(suggestion);
+            String templateId = repository.createRecurringTemplate(suggestion, accountId, nextDue);
+            repository.linkTransactionsToTemplate(suggestion.transactionIds(), templateId);
+        }
 
-    public void executeAsync(String accountId,
-                             List<RecurringSuggestion> suggestions,
-                             ApplyCallback callback) {
-        executor.execute(() -> {
-            try {
-                for (RecurringSuggestion suggestion : suggestions) {
-                    LocalDate nextDue = calculateNextDue(suggestion);
-                    String templateId = repository.createRecurringTemplate(suggestion, accountId, nextDue);
-                    repository.linkTransactionsToTemplate(suggestion.transactionIds(), templateId);
-                }
-
-                if (!suggestions.isEmpty()) {
-                    repository.synchronizeRecurringTemplateState(LocalDate.now());
-                }
-                callback.onSuccess();
-            } catch (Exception e) {
-                String msg = e.getMessage();
-                callback.onError(msg != null ? msg : e.getClass().getSimpleName());
-            }
-        });
+        if (!suggestions.isEmpty()) {
+            repository.synchronizeRecurringTemplateState(LocalDate.now());
+        }
     }
 
     /**

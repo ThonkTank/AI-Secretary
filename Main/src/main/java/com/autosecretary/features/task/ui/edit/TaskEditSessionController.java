@@ -7,12 +7,9 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskCore;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.edit.internal.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
-
-import java.util.ArrayList;
 
 /**
  * Owns the task-editing session lifecycle independently from list-screen concerns.
@@ -88,13 +85,6 @@ public class TaskEditSessionController {
     /** Initialises a blank Task with one default pref-slot and converts it to edit state for a new task. */
     public void createNewTask() {
         Task task = new Task();
-        task.core = new TaskCore();
-        task.slots = new ArrayList<>();
-        task.prefSlots = new ArrayList<>();
-        task.parents = new ArrayList<>();
-        task.prerequisites = new ArrayList<>();
-        task.plannedMeals = new ArrayList<>();
-
         task.prefSlots.add(TaskPrefSlotFactory.createDefault(task.core.id));
 
         selectedBaseTask.setValue(task);

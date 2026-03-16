@@ -122,6 +122,8 @@ public final class TaskSlotUndoMutation {
         }
 
         boolean reachedGoalBeforeUndo = repetition.periodCompletions == repetition.reps;
+        // Undo is the inverse of TaskLifecycleManager.updateStreakForCompletion(): it is the
+        // only supported path that decrements the persisted period counter.
         repetition.periodCompletions--;
         if (reachedGoalBeforeUndo && task.core.history.currentStreak > 0) {
             task.core.history.currentStreak--;

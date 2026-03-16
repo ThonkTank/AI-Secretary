@@ -1,11 +1,8 @@
 package com.autosecretary.features.task.data;
 
 import androidx.room.Entity;
-import androidx.room.PrimaryKey;
-
-import java.util.UUID;
-
 import androidx.room.ForeignKey;
+import androidx.room.Ignore;
 import androidx.room.Index;
 import androidx.annotation.NonNull;
 
@@ -16,6 +13,7 @@ import androidx.annotation.NonNull;
  * to build/flatten task trees.
  */
 @Entity (tableName = "task_relation",
+    primaryKeys = {"child", "parent"},
     indices = @Index("child"),
     foreignKeys = @ForeignKey(
         entity = TaskCore.class,
@@ -25,11 +23,14 @@ import androidx.annotation.NonNull;
     ))
 
 public class TaskRelation {
-    @PrimaryKey() @NonNull
-    public String id = UUID.randomUUID().toString();
+    @NonNull
     public String child;
+    @NonNull
     public String parent;
 
+    public TaskRelation() {}
+
+    @Ignore
     public TaskRelation(String parent, String child) {
         this.parent = parent;
         this.child = child;

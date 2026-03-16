@@ -69,7 +69,7 @@ import java.util.UUID;
                 @Index("importHash"),
                 @Index("linkedTransactionId"),
                 // Composite index for timeline queries: getDailyDeltasForAccount,
-                // getNetAmountBeforeDateForAccount, and findByAccountId all filter on
+                // getNetAmountBeforeDateForAccount, and readByAccountId all filter on
                 // (accountId, bookingDate). Without this index SQLite scans every row for
                 // the account before applying the date predicate; with it the range scan
                 // touches only the matching rows directly.

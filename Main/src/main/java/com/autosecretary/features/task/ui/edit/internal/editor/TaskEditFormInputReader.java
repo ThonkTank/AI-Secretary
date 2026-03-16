@@ -109,10 +109,10 @@ public class TaskEditFormInputReader {
         // Position 0 is the "none" sentinel; positions 1..n map to budgetAccounts/budgetCategories index n-1
         int accountPos = schedulingViews.budgetAccountView.getSelectedItemPosition();
         state.budgetAccountId = (accountPos > 0 && accountPos <= schedulingViews.budgetAccounts.size())
-                ? schedulingViews.budgetAccounts.get(accountPos - 1).id : null;
+                ? schedulingViews.budgetAccounts.get(accountPos - 1).id() : null;
         int categoryPos = schedulingViews.budgetCategoryView.getSelectedItemPosition();
         state.budgetCategoryId = (categoryPos > 0 && categoryPos <= schedulingViews.budgetCategories.size())
-                ? schedulingViews.budgetCategories.get(categoryPos - 1).id : null;
+                ? schedulingViews.budgetCategories.get(categoryPos - 1).id() : null;
         state.closeOnMiss = schedulingViews.closeOnMissView.isChecked();
         state.minDuration = DialogValidation.parseIntOrDefault(
             schedulingViews.minDurationView.getText().toString(), TaskEditDefaults.MIN_DURATION);

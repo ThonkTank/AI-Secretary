@@ -17,28 +17,40 @@ import java.time.LocalDate;
  * Field semantics (read carefully; naming is deliberately distinct):
  * </p>
  *
- * @param id              Unique transaction ID within this import (generated UUID; used as @PrimaryKey in BudgetTransactionEntity)
- * @param accountId       The account this transaction was imported into (references the BudgetAccountEntity)
- * @param categoryId      The category for this transaction (references BudgetCategoryEntity; may be empty if uncategorized)
- * @param type            Type classification: INCOME, EXPENSE, or TRANSFER (determines direction and kind)
- * @param amountCents     Transaction amount in cents (absolute value; direction comes from type)
- * @param bookingDate     The transaction date from the statement
- * @param note            Optional memo or description
- * @param importHash      Hash for deduplication (derived from statement data; prevents duplicate imports if same file is re-imported)
- * @param payee           Merchant or counterparty name
- * @param importId        Identifies the import batch/session (UUID; groups transactions imported together in one operation)
- * @param templateId      If this transaction matched a recurring pattern template, the template's UUID. Otherwise null. Used to link to RecurringBudgetTemplate for future pattern suggestions.
+ * Split into cohesive sub-records:
+ * - {@link TransactionData} contains the transaction facts needed for persistence
+ * - {@link ImportMetadata} contains import-session and matching metadata
  */
 public record ImportTransactionRecord(
-        String id,
-        String accountId,
-        String categoryId,
-        ImportTransactionType type,
-        long amountCents,
-        LocalDate bookingDate,
-        String note,
-        String importHash,
-        String payee,
-        String importId,
-        String templateId
-) {}
+        TransactionData transaction,
+        ImportMetadata metadata
+) {
+    public record TransactionData(
+            String id,
+            String accountId,
+            String categoryId,
+            ImportTransactionType type,
+            long amountCents,
+            LocalDate bookingDate,
+            String note,
+            String payee
+    ) {}
+
+    public record ImportMetadata(
+            String importHash,
+            String importId,
+            String templateId
+    ) {}
+
+    public String id() { return transaction.id(); }
+    public String accountId() { return transaction.accountId(); }
+    public String categoryId() { return transaction.categoryId(); }
+    public ImportTransactionType type() { return transaction.type(); }
+    public long amountCents() { return transaction.amountCents(); }
+    public LocalDate bookingDate() { return transaction.bookingDate(); }
+    public String note() { return transaction.note(); }
+    public String payee() { return transaction.payee(); }
+    public String importHash() { return metadata.importHash(); }
+    public String importId() { return metadata.importId(); }
+    public String templateId() { return metadata.templateId(); }
+}

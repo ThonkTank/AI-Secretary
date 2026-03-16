@@ -10,18 +10,13 @@
     android:padding="@dimen/spacing_lg">
 
     <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        style="@style/Widget.AutoSecretary.Editor.SpinnerLabel"
         android:text="@string/budget_dialog_category_label"
-        android:textAppearance="@style/TextAppearance.AutoSecretary.Editor.Label"
         android:labelFor="@id/BudgetLimitDialogCategory" />
 
     <Spinner
         android:id="@+id/BudgetLimitDialogCategory"
-        style="@style/Widget.AutoSecretary.Editor.Spinner"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_xs" />
+        style="@style/Widget.AutoSecretary.Editor.SpinnerField" />
 
     <com.google.android.material.textfield.TextInputLayout
         style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"

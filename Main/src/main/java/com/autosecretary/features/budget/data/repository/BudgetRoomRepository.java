@@ -1,25 +1,28 @@
 package com.autosecretary.features.budget.data.repository;
 
 import android.util.Log;
+import com.autosecretary.features.budget.domain.BudgetAccount;
+import com.autosecretary.features.budget.domain.BudgetCategory;
+import com.autosecretary.features.budget.domain.BudgetLimit;
 import com.autosecretary.features.budget.domain.BudgetRepository;
+import com.autosecretary.features.budget.domain.BudgetTransaction;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
+import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.domain.TransactionKind;
 import com.autosecretary.features.budget.domain.TransferDetails;
 import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
 import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
-import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.stream.Collectors;
 import androidx.room.RoomDatabase;
 import com.autosecretary.features.budget.data.dao.BudgetLimitDao;
 import com.autosecretary.features.budget.data.dao.BudgetAccountCategoryDao;
 import com.autosecretary.features.budget.data.dao.BudgetTransactionDao;
-import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
-import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
-import com.autosecretary.features.budget.data.entity.BudgetLimitEntity;
+import com.autosecretary.features.budget.data.dao.MonthlyOverviewItemProjection;
 import com.autosecretary.features.budget.data.entity.BudgetTransactionEntity;
 import com.autosecretary.features.budget.data.dao.BudgetRecurringTemplateDao;
 import com.autosecretary.features.budget.data.entity.BudgetRecurringTemplateEntity;
@@ -65,36 +68,46 @@ public class BudgetRoomRepository implements BudgetRepository {
      * queries. See {@link #isAllAccounts(String)}.
      */
 
-    @Override public BudgetAccountEntity findAccountById(String accountId) {
-        return accountCategoryDao.findAccountById(accountId);
+    @Override public BudgetAccount findAccountById(String accountId) {
+        return BudgetDomainMapper.toDomain(accountCategoryDao.readAccount(accountId));
     }
 
-    @Override public List<BudgetAccountEntity> findActiveAccounts() {
-        return accountCategoryDao.findActiveAccounts();
+    @Override public List<BudgetAccount> findActiveAccounts() {
+        return accountCategoryDao.readActiveAccounts().stream()
+                .map(BudgetDomainMapper::toDomain)
+                .collect(Collectors.toList());
     }
 
-    @Override public List<BudgetCategoryEntity> findActiveCategories() {
-        return accountCategoryDao.findActiveCategories();
+    @Override public List<BudgetCategory> findActiveCategories() {
+        return accountCategoryDao.readActiveCategories().stream()
+                .map(BudgetDomainMapper::toDomain)
+                .collect(Collectors.toList());
     }
 
-    @Override public List<BudgetTransactionEntity> findAllTransactions() {
-        return transactionDao.findAll();
+    @Override public List<BudgetTransaction> findAllTransactions() {
+        return transactionDao.readAll().stream()
+                .map(BudgetDomainMapper::toDomain)
+                .collect(Collectors.toList());
     }
 
-    @Override public List<BudgetTransactionEntity> findTransactionsForAccount(String accountId) {
-        return transactionDao.findByAccountId(accountId);
+    @Override public List<BudgetTransaction> findTransactionsForAccount(String accountId) {
+        return transactionDao.readByAccountId(accountId).stream()
+                .map(BudgetDomainMapper::toDomain)
+                .collect(Collectors.toList());
     }
 
-    @Override public BudgetTransactionEntity findTransactionById(String transactionId) {
-        return transactionDao.findById(transactionId);
+    @Override public BudgetTransaction findTransactionById(String transactionId) {
+        return BudgetDomainMapper.toDomain(transactionDao.readById(transactionId));
     }
 
-    @Override public BudgetLimitEntity findBudgetLimit(String categoryId, String yearMonth) {
-        return limitDao.findLimitForCategoryAndMonth(categoryId, yearMonth);
+    @Override public BudgetLimit findBudgetLimit(String categoryId, String yearMonth) {
+        return BudgetDomainMapper.toDomain(limitDao.readLimitForCategoryAndMonth(categoryId, yearMonth));
     }
 
-    @Override public BudgetLimitEntity findPreviousMonthLimit(String categoryId, String targetYearMonth) {
-        return limitDao.findLimitForCategoryAndMonth(categoryId, previousYearMonth(targetYearMonth));
+    @Override public BudgetLimit findPreviousMonthLimit(String categoryId, String targetYearMonth) {
+        return BudgetDomainMapper.toDomain(
+                limitDao.readLimitForCategoryAndMonth(categoryId, previousYearMonth(targetYearMonth))
+        );
     }
 
     @Override public long getPreviousMonthExpenseCents(String categoryId, String targetYearMonth) {
@@ -107,16 +120,16 @@ public class BudgetRoomRepository implements BudgetRepository {
 
     @Override public long getCurrentBalanceCents(String accountId) {
         if (isAllAccounts(accountId)) {
-            return accountCategoryDao.getTotalCurrentBalanceCents();
+            return accountCategoryDao.readTotalCurrentBalanceCents();
         }
-        Long value = accountCategoryDao.findCurrentBalanceCentsByAccountId(accountId);
+        Long value = accountCategoryDao.readCurrentBalanceCentsByAccountId(accountId);
         return value != null ? value : 0L;
     }
 
     @Override public long getUpcomingExpenseTemplateCents(String accountId, LocalDate fromDate, LocalDate toDate) {
         List<BudgetRecurringTemplateEntity> templates = isAllAccounts(accountId)
-                ? recurringTemplateDao.findActiveExpenseTemplatesForActiveAccountsInRange(fromDate, toDate)
-                : recurringTemplateDao.findActiveExpenseTemplatesForAccountInRange(accountId, fromDate, toDate);
+                ? recurringTemplateDao.readActiveExpenseTemplatesForActiveAccountsInRange(fromDate, toDate)
+                : recurringTemplateDao.readActiveExpenseTemplatesForAccountInRange(accountId, fromDate, toDate);
 
         return templates.stream().mapToLong(t -> t.avgAmountCents).sum();
     }
@@ -129,8 +142,8 @@ public class BudgetRoomRepository implements BudgetRepository {
      * For UI-originated transactions that should update the balance immediately,
      * use {@link #saveTransaction(BudgetRepository.TransactionCreateDetails)} instead.
      */
-    @Override public void saveTransaction(BudgetTransactionEntity transaction) {
-        transactionDao.insert(transaction);
+    @Override public void saveTransaction(BudgetTransaction transaction) {
+        transactionDao.write(BudgetDomainMapper.toEntity(transaction));
     }
 
     /**
@@ -145,11 +158,12 @@ public class BudgetRoomRepository implements BudgetRepository {
      * @param accountId account UUID to deduct from; null or blank means no balance adjustment
      * @param expenseCents absolute amount to deduct (positive value); 0 means no adjustment
      */
-    @Override public void saveTransactionAndDeductBalance(BudgetTransactionEntity transaction,
+    @Override public void saveTransactionAndDeductBalance(BudgetTransaction transaction,
                                                           String accountId,
                                                           long expenseCents) {
+        BudgetTransactionEntity entity = BudgetDomainMapper.toEntity(transaction);
         database.runInTransaction(() -> {
-            transactionDao.insert(transaction);
+            transactionDao.write(entity);
             if (!isAllAccounts(accountId) && expenseCents > 0) {
                 accountCategoryDao.adjustCurrentBalanceCents(accountId, -expenseCents);
             }
@@ -157,7 +171,7 @@ public class BudgetRoomRepository implements BudgetRepository {
     }
 
     @Override public String findDefaultActiveAccountId() {
-        return accountCategoryDao.findFirstActiveAccountId();
+        return accountCategoryDao.readFirstActiveAccountId();
     }
 
     /**
@@ -174,7 +188,7 @@ public class BudgetRoomRepository implements BudgetRepository {
         entity.note = normalizeNote(details.note());
         long delta = signedDelta(details.direction(), details.amountCents());
         database.runInTransaction(() -> {
-            transactionDao.insert(entity);
+            transactionDao.write(entity);
             accountCategoryDao.adjustCurrentBalanceCents(details.accountId(), delta);
         });
     }
@@ -195,14 +209,15 @@ public class BudgetRoomRepository implements BudgetRepository {
     @Override public void bookExpenseAndDeductBalance(String accountId, String categoryId,
                                                       long amountCents, LocalDate bookingDate,
                                                       String note) {
-        BudgetTransactionEntity entity = new BudgetTransactionEntity(
-                accountId, categoryId, TransactionDirection.EXPENSE, amountCents, bookingDate);
-        entity.note = normalizeNote(note);
-        saveTransactionAndDeductBalance(entity, accountId, amountCents);
+        saveTransactionAndDeductBalance(
+                BudgetTransaction.create(accountId, categoryId, TransactionDirection.EXPENSE, amountCents, bookingDate, note),
+                accountId,
+                amountCents
+        );
     }
 
-    @Override public void updateTransaction(BudgetTransactionEntity transaction) {
-        transactionDao.update(transaction);
+    @Override public void updateTransaction(BudgetTransaction transaction) {
+        transactionDao.writeExisting(BudgetDomainMapper.toEntity(transaction));
     }
 
     /**
@@ -221,7 +236,7 @@ public class BudgetRoomRepository implements BudgetRepository {
      */
     @Override public void updateTransaction(String transactionId, BudgetRepository.TransactionCreateDetails details) {
         database.runInTransaction(() -> {
-            BudgetTransactionEntity entity = transactionDao.findById(transactionId);
+            BudgetTransactionEntity entity = transactionDao.readById(transactionId);
             // Silent no-op if transaction not found. Acceptable because this method may be called
             // speculatively or during UI cleanup when the transaction may no longer exist.
             // Log at DEBUG level for troubleshooting without failing the operation.
@@ -241,7 +256,7 @@ public class BudgetRoomRepository implements BudgetRepository {
             entity.amountCents = details.amountCents();
             entity.setBookingDate(details.bookingDate());
             entity.note = normalizeNote(details.note());
-            transactionDao.update(entity);
+            transactionDao.writeExisting(entity);
 
             // Adjust balances atomically with the row update.
             if (oldAccountId.equals(details.accountId())) {
@@ -257,13 +272,13 @@ public class BudgetRoomRepository implements BudgetRepository {
 
     @Override public void deleteTransaction(String transactionId) {
         database.runInTransaction(() -> {
-            BudgetTransactionEntity tx = transactionDao.findById(transactionId);
+            BudgetTransactionEntity tx = transactionDao.readById(transactionId);
             if (tx == null) return;
 
             deleteAndReverseBalance(tx);
 
             if (tx.linkedTransactionId != null) {
-                BudgetTransactionEntity linked = transactionDao.findById(tx.linkedTransactionId);
+                BudgetTransactionEntity linked = transactionDao.readById(tx.linkedTransactionId);
                 if (linked != null) {
                     deleteAndReverseBalance(linked);
                 }
@@ -346,12 +361,12 @@ public class BudgetRoomRepository implements BudgetRepository {
      * - The linked transaction is missing (data corruption)
      */
     private TransferValidation validateTransferExists(String transactionId) {
-        BudgetTransactionEntity transaction = transactionDao.findById(transactionId);
+        BudgetTransactionEntity transaction = transactionDao.readById(transactionId);
         if (transaction == null || transaction.linkedTransactionId == null) {
             return null;
         }
 
-        BudgetTransactionEntity linked = transactionDao.findById(transaction.linkedTransactionId);
+        BudgetTransactionEntity linked = transactionDao.readById(transaction.linkedTransactionId);
         if (linked == null) {
             return null;
         }
@@ -374,28 +389,30 @@ public class BudgetRoomRepository implements BudgetRepository {
      */
     private record TransferValidation(BudgetTransactionEntity debit, BudgetTransactionEntity credit) {}
 
-    @Override public void saveBudgetLimit(BudgetLimitEntity budgetLimit) {
-        limitDao.insert(budgetLimit);
+    @Override public void saveBudgetLimit(BudgetLimit budgetLimit) {
+        limitDao.write(BudgetDomainMapper.toEntity(budgetLimit));
     }
 
-    @Override public void saveTransactions(List<BudgetTransactionEntity> transactions) {
-        transactionDao.insertAll(transactions);
+    @Override public void saveTransactions(List<BudgetTransaction> transactions) {
+        transactionDao.writeAll(transactions.stream()
+                .map(BudgetDomainMapper::toEntity)
+                .collect(Collectors.toList()));
     }
 
-    @Override public void insertAccount(BudgetAccountEntity account) {
-        accountCategoryDao.insertAccount(account);
+    @Override public void insertAccount(BudgetAccount account) {
+        accountCategoryDao.insertAccount(BudgetDomainMapper.toEntity(account));
     }
 
-    @Override public void insertCategory(BudgetCategoryEntity category) {
-        accountCategoryDao.insertCategory(category);
+    @Override public void insertCategory(BudgetCategory category) {
+        accountCategoryDao.insertCategory(BudgetDomainMapper.toEntity(category));
     }
 
     @Override public List<MonthlyOverviewItem> getMonthlyOverview(String yearMonth) {
-        return transactionDao.getMonthlyOverview(yearMonth, null); // null = all accounts
+        return mapMonthlyOverview(transactionDao.getMonthlyOverview(yearMonth, null)); // null = all accounts
     }
 
     @Override public List<MonthlyOverviewItem> getMonthlyOverviewForAccount(String yearMonth, String accountId) {
-        return transactionDao.getMonthlyOverview(yearMonth, accountId);
+        return mapMonthlyOverview(transactionDao.getMonthlyOverview(yearMonth, accountId));
     }
 
     @Override public List<CategorySpendSummary> getCategorySpendTotals(String yearMonth) {
@@ -436,6 +453,12 @@ public class BudgetRoomRepository implements BudgetRepository {
     /** Returns the ISO-8601 year-month string for the month preceding {@code targetYearMonth}. */
     private static String previousYearMonth(String targetYearMonth) {
         return YearMonth.parse(targetYearMonth).minusMonths(1).toString();
+    }
+
+    private static List<MonthlyOverviewItem> mapMonthlyOverview(List<MonthlyOverviewItemProjection> projections) {
+        return projections.stream()
+                .map(MonthlyOverviewItemProjection::toDomain)
+                .collect(Collectors.toList());
     }
 
     /** Trims whitespace from {@code note} and returns {@code null} if the result is blank. */

@@ -3,7 +3,7 @@ package com.autosecretary.features.budget.ui.internal;
 import android.content.res.Resources;
 
 import com.autosecretary.R;
-import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.domain.BudgetAccount;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.TransactionKind;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
@@ -36,7 +36,7 @@ public class BudgetOverviewLoader {
     private static final int DAYS_30_WINDOW_OFFSET = 29;
 
     public record OverviewData(
-            List<BudgetAccountEntity> accounts,
+            List<BudgetAccount> accounts,
             String accountId,
             List<BudgetTransactionRow> rows,
             BudgetSummaryData summary,
@@ -59,7 +59,7 @@ public class BudgetOverviewLoader {
     public OverviewData load(YearMonth month,
                              String selectedAccountId,
                              TimeRangeFilter filter) {
-        List<BudgetAccountEntity> accounts = repository.findActiveAccounts();
+        List<BudgetAccount> accounts = repository.findActiveAccounts();
         String accountId = resolveSelectedAccountId(selectedAccountId, accounts);
         if (accountId == null) {
             return new OverviewData(accounts, null, new ArrayList<>(), null, new ArrayList<>());
@@ -80,12 +80,12 @@ public class BudgetOverviewLoader {
      * if non-blank, otherwise the first account in {@code fallbackAccounts}, or {@code null} when
      * the account list is empty (no accounts configured yet).
      */
-    private static String resolveSelectedAccountId(String selectedAccountId, List<BudgetAccountEntity> fallbackAccounts) {
+    private static String resolveSelectedAccountId(String selectedAccountId, List<BudgetAccount> fallbackAccounts) {
         if (selectedAccountId != null && !selectedAccountId.isBlank()) {
             return selectedAccountId;
         }
         if (!fallbackAccounts.isEmpty()) {
-            return fallbackAccounts.get(0).id;
+            return fallbackAccounts.get(0).id();
         }
         return null;
     }
@@ -94,16 +94,16 @@ public class BudgetOverviewLoader {
         List<BudgetTransactionRow> rows = new ArrayList<>();
         for (MonthlyOverviewItem item : items) {
             rows.add(new BudgetTransactionRow(
-                    item.transactionId,
+                    item.transactionId(),
                     buildTransactionLabel(item),
-                    item.direction,
-                    item.categoryColorHex,
-                    resolveColor(item.categoryColorHex),
-                    item.amountCents,
-                    item.categoryId,
-                    item.note,
-                    item.bookingDate,
-                    item.accountId));
+                    item.direction(),
+                    item.categoryColorHex(),
+                    resolveColor(item.categoryColorHex()),
+                    item.amountCents(),
+                    item.categoryId(),
+                    item.note(),
+                    item.bookingDate(),
+                    item.accountId()));
         }
         return rows;
     }
@@ -114,22 +114,22 @@ public class BudgetOverviewLoader {
     }
 
     private BudgetSummaryData computeSummary(List<MonthlyOverviewItem> items, String accountId) {
-        BudgetAccountEntity account = repository.findAccountById(accountId);
+        BudgetAccount account = repository.findAccountById(accountId);
         // "Free budget" is the account's current running balance, not income-minus-expenses.
-        long freeBudgetCents = account != null ? account.currentBalanceCents : 0L;
+        long freeBudgetCents = account != null ? account.currentBalanceCents() : 0L;
         return BudgetSummaryPresentationMapper.toSummary(items, freeBudgetCents);
     }
 
     // Label priority: internal-transfer label > category name (with icon) > note > generic fallback.
     private String buildTransactionLabel(MonthlyOverviewItem item) {
-        if (item.transactionKind == TransactionKind.INTERNAL_TRANSFER) {
-            return item.note != null && !item.note.isBlank() ? labelTransferNotePrefix + item.note : labelTransfer;
+        if (item.transactionKind() == TransactionKind.INTERNAL_TRANSFER) {
+            return item.note() != null && !item.note().isBlank() ? labelTransferNotePrefix + item.note() : labelTransfer;
         }
-        if (item.categoryName != null) {
-            return BudgetSummaryPresentationMapper.categoryLabel(item.categoryIcon, item.categoryName);
+        if (item.categoryName() != null) {
+            return BudgetSummaryPresentationMapper.categoryLabel(item.categoryIcon(), item.categoryName());
         }
-        if (item.note != null) {
-            return item.note;
+        if (item.note() != null) {
+            return item.note();
         }
         return labelDefaultBooking;
     }

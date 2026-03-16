@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.application;
 
-import com.autosecretary.features.budget.data.entity.BudgetLimitEntity;
+import com.autosecretary.features.budget.domain.BudgetLimit;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 
 /**
@@ -74,34 +74,34 @@ public class CalculateEffectiveBudgetLimitUseCase {
      * @return Result with effective limit and diagnostic fields; see {@link Result} for field meanings
      */
     public Result execute(String categoryId, String targetYearMonth) {
-        BudgetLimitEntity target = repository.findBudgetLimit(categoryId, targetYearMonth);
+        BudgetLimit target = repository.findBudgetLimit(categoryId, targetYearMonth);
         long spentCents = repository.getCategoryExpenseCents(categoryId, targetYearMonth);
         if (target == null) {
             return new Result(0L, spentCents, 0L, 0L, 0L, false);
         }
 
-        long baseLimitCents = target.limitAmountCents;
-        if (!target.rolloverEnabled) {
+        long baseLimitCents = target.limitAmountCents();
+        if (!target.rolloverEnabled()) {
             // Rollover disabled: effective limit is just the base limit (clamped to 0 minimum)
             return new Result(baseLimitCents, spentCents, 0L, 0L, Math.max(baseLimitCents, 0L), false);
         }
 
         // Rollover is enabled: fetch previous month's limit and calculate the delta.
-        BudgetLimitEntity previous = repository.findPreviousMonthLimit(categoryId, targetYearMonth);
+        BudgetLimit previous = repository.findPreviousMonthLimit(categoryId, targetYearMonth);
         long rawDeltaCents = 0L;
         if (previous != null) {
             // Delta = (previous month's limit) - (previous month's spending)
             // Positive delta = unused budget (carry forward to current month)
             // Negative delta = overspend (carry backward, reducing current month's limit)
             long previousSpentCents = repository.getPreviousMonthExpenseCents(categoryId, targetYearMonth);
-            rawDeltaCents = previous.limitAmountCents - previousSpentCents;
+            rawDeltaCents = previous.limitAmountCents() - previousSpentCents;
         }
 
         // Apply rollover caps to limit how much can carry forward (positive) or backward (negative)
-        long appliedDelta = applyDeltaCaps(rawDeltaCents, target.rolloverCapPositiveCents, target.rolloverCapOverrunCents);
+        long appliedDelta = applyDeltaCaps(rawDeltaCents, target.rolloverCapPositiveCents(), target.rolloverCapOverrunCents());
 
         // Final effective limit: base + fixed carryover + capped delta
-        long effective = baseLimitCents + target.rolloverCarryoverCents + appliedDelta;
+        long effective = baseLimitCents + target.rolloverCarryoverCents() + appliedDelta;
 
         // Ensure effective limit is never negative (edge case when carryover debt is large)
         return new Result(baseLimitCents, spentCents, rawDeltaCents, appliedDelta, Math.max(0L, effective), true);

@@ -27,7 +27,7 @@ public interface BudgetLimitDao {
      * @return the limit record, or null if no limit is set for this category/month
      */
     @Query("SELECT * FROM budget_limit WHERE categoryId = :categoryId AND yearMonth = :yearMonth LIMIT 1")
-    BudgetLimitEntity findLimitForCategoryAndMonth(String categoryId, String yearMonth);
+    BudgetLimitEntity readLimitForCategoryAndMonth(String categoryId, String yearMonth);
 
     /**
      * Retrieves the total amount spent (EXPENSE only) in a category for a given month.
@@ -89,6 +89,6 @@ public interface BudgetLimitDao {
      * If a limit for the same category/month already exists, it is updated.
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insert(BudgetLimitEntity budgetLimit);
+    void write(BudgetLimitEntity budgetLimit);
 
 }

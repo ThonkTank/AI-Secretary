@@ -20,22 +20,22 @@ import com.autosecretary.shared.Period;
  */
 public class Task {
 
-    @Embedded public TaskCore core;
+    @Embedded public TaskCore core = new TaskCore();
 
     @Relation(parentColumn = "id", entityColumn = "taskId")
-    public List<TaskSlot> slots;
+    public List<TaskSlot> slots = new ArrayList<>();
 
     @Relation(parentColumn = "id", entityColumn = "taskId")
-    public List<TaskPrefSlot> prefSlots;
+    public List<TaskPrefSlot> prefSlots = new ArrayList<>();
 
     @Relation(parentColumn = "id", entityColumn = "child")
-    public List<TaskRelation> parents;
+    public List<TaskRelation> parents = new ArrayList<>();
 
     @Relation(parentColumn = "id", entityColumn = "taskId")
-    public List<TaskPrerequisite> prerequisites;
+    public List<TaskPrerequisite> prerequisites = new ArrayList<>();
 
     @Relation(parentColumn = "id", entityColumn = "taskId")
-    public List<TaskPlannedMeal> plannedMeals;
+    public List<TaskPlannedMeal> plannedMeals = new ArrayList<>();
 
     /**
      * In-memory tree representation of immediate children (not persisted).
@@ -55,7 +55,7 @@ public class Task {
      */
     public double requiredDays() {
         if (core.progress.target > 0 && core.progress.resetPerRep) {
-            return core.progress.remaining() / (core.progress.progressTarget() * core.cooldown);
+            return core.progress.remaining() / ((double) core.progress.target * core.cooldown);
         }
         if (core.repetition.reps > 0) {
             return Math.max(1, core.repetition.remainingReps()) * core.cooldown;
@@ -138,7 +138,6 @@ public class Task {
     public Task() {}
     /** Convenience constructor with default prefSlots. */
     public Task(String title, int reps, int perPeriod, Period periodUnit, LocalDate deadline, int cooldown, LocalTime start, int maxDuration) {
-        this.core = new TaskCore();
         this.core.title = title;
         this.core.cooldown = cooldown;
         this.core.deadline = deadline;
@@ -149,13 +148,7 @@ public class Task {
         this.core.repetition.periodUnit = periodUnit;
         this.core.repetition.periodStart = LocalDate.now();
 
-        this.slots = new ArrayList<>();
-        this.prefSlots = new ArrayList<>();
-        this.parents = new ArrayList<>();
-        this.prerequisites = new ArrayList<>();
-        this.plannedMeals = new ArrayList<>();
-
-        int repsPerDay = core.repsPerDay();
+        int repsPerDay = core.repetition.repsPerDay();
         for (int i = 0; i < repsPerDay; i++) {
             TaskPrefSlot prefSlot = TaskPrefSlotFactory.createDefault(this.core.id);
             prefSlot.start = start;

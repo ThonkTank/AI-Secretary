@@ -16,7 +16,7 @@ When a user uploads a bank statement (CSV or PDF), this layer:
 ```
 User selects file (CSV or PDF)
          ↓
-StatementFileParser.parse()
+internal/StatementFileParser.parse()
     ├─ CSV: parse locally using expected column format
     └─ PDF: send to Claude API (requires API key in ClaudeApiKeyStore)
          ↓
@@ -75,7 +75,7 @@ PDFs are parsed by Claude API (`ClaudeStatementApiClient`). The API key must be 
 
 ## Key Classes
 
-### StatementFileParser
+### internal/StatementFileParser
 Routes files by type and delegates to CSV or PDF parsing.
 
 **Entry point:** `parse(fileName, fileBytes, mimeType) → ParsedStatement`
@@ -87,11 +87,10 @@ Routes files by type and delegates to CSV or PDF parsing.
 ### BudgetImportUseCase
 Orchestrates the full import pipeline: parse → deduplicate → map → persist → pattern detect.
 
-**Entry point:** `executeAsync(accountId, fileName, fileBytes, mimeType, callback)`
+**Entry point:** `execute(accountId, fileName, fileBytes, mimeType) -> ImportResult`
 
-Runs on a background executor. Callback receives:
-- `onSuccess(ImportResult)` — import completed; result contains summary + recurring suggestions
-- `onError(errorMessage)` — import failed; error is logged and user is notified
+Runs synchronously on the caller's thread. The ViewModel dispatches it on the shared executor and
+posts the result back to the UI.
 
 **Key internal methods:**
 - `buildTransactions()` — deduplication and category resolution per transaction
@@ -114,9 +113,9 @@ Bidirectional mapping between domain models (for business logic) and persistence
 ### ApplyRecurringSuggestionsUseCase
 User accepts recurring suggestions → system creates templates and links existing transactions.
 
-**Entry point:** `executeAsync(accountId, suggestions, callback)`
+**Entry point:** `execute(accountId, suggestions)`
 
-Runs on background executor. For each accepted suggestion:
+Runs synchronously on the caller's thread. For each accepted suggestion:
 1. Compute the next due date based on the recurring type and today's date
 2. Create a recurring template in the database
 3. Link existing transactions to this template (for historical tracking)
@@ -131,11 +130,11 @@ Runs on background executor. For each accepted suggestion:
 ## Integration Points
 
 ### UI → Application (from `budget/ui/`)
-- Import flow triggered by file picker → `BudgetImportUseCase.executeAsync()`
-- Recurring suggestions reviewed by user → `ApplyRecurringSuggestionsUseCase.executeAsync()`
+- Import flow triggered by file picker → `BudgetImportUseCase.execute()`
+- Recurring suggestions reviewed by user → `ApplyRecurringSuggestionsUseCase.execute()`
 
 ### Application → Domain (from `budget/domain/`)
-- `StatementFileParser` delegates PDF extraction to `ClaudeStatementApiClient`
+- `internal/StatementFileParser` delegates PDF extraction to `ClaudeStatementApiClient`
 - `BudgetImportUseCase` calls `RecurringPatternDetector.detectPatterns()` after import
 - Types used: `ParsedStatement`, `ParsedTransaction`, `RecurringSuggestion`, `RecurringBudgetTransaction`
 

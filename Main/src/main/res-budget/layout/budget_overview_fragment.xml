@@ -118,64 +118,39 @@
             android:visibility="gone">
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                style="@style/Widget.AutoSecretary.Budget.SummaryRow">
 
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/budget_summary_income"
-                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
+                    style="@style/Widget.AutoSecretary.Budget.SummaryLabel"
+                    android:text="@string/budget_summary_income" />
 
                 <TextView
                     android:id="@+id/BudgetSummaryIncome"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue" />
+                    style="@style/Widget.AutoSecretary.Budget.SummaryValue" />
             </LinearLayout>
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_sm"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                style="@style/Widget.AutoSecretary.Budget.SummaryRow.Spaced">
 
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/budget_summary_expense"
-                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
+                    style="@style/Widget.AutoSecretary.Budget.SummaryLabel"
+                    android:text="@string/budget_summary_expense" />
 
                 <TextView
                     android:id="@+id/BudgetSummaryExpense"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue" />
+                    style="@style/Widget.AutoSecretary.Budget.SummaryValue" />
             </LinearLayout>
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_sm"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                style="@style/Widget.AutoSecretary.Budget.SummaryRow.Spaced">
 
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/budget_summary_free_budget"
-                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowLabel" />
+                    style="@style/Widget.AutoSecretary.Budget.SummaryLabel"
+                    android:text="@string/budget_summary_free_budget" />
+
                 <TextView
                     android:id="@+id/BudgetSummaryFreeBudget"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.RowValue" />
+                    style="@style/Widget.AutoSecretary.Budget.SummaryValue" />
             </LinearLayout>
 
             <View
@@ -185,23 +160,15 @@
                 android:background="@color/budget_divider" />
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                style="@style/Widget.AutoSecretary.Budget.SummaryRow">
 
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/budget_summary_net"
-                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.SummaryTotal" />
+                    style="@style/Widget.AutoSecretary.Budget.SummaryTotalLabel"
+                    android:text="@string/budget_summary_net" />
 
                 <TextView
                     android:id="@+id/BudgetSummaryNet"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textAppearance="@style/TextAppearance.AutoSecretary.Budget.SummaryTotal" />
+                    style="@style/Widget.AutoSecretary.Budget.SummaryTotalValue" />
             </LinearLayout>
 
         </LinearLayout>

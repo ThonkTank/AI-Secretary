@@ -17,18 +17,22 @@
     <!-- Material minimum touch target (48dp). -->
     <dimen name="touch_target_min">48dp</dimen>
 
+    <!-- Shared max height for scrollable dialog content before the container starts clipping. -->
+    <dimen name="dialog_scroll_max_height">360dp</dimen>
+
     <!-- Shared minimum row height for list items across all features. -->
     <dimen name="row_min_height">56dp</dimen>
 
     <!-- App-wide text scale tokens (sp). Feature-specific sizes live in feature_dimens.xml.
-         Scale: xs (12) → sm (14) → md (16) → xl (18).
-         Note: there is no text_lg — the naming deliberately skips it because text_xl (18sp)
-         is only 2sp above text_md. See REVIEW_BACKLOG.md (typography entry) for the tracked
-         rename task. Do not add text_lg without first resolving that rename. -->
+         Scale: xs (12) → sm (14) → md (16) → lg (18).
+         Reserve text_xl for a future display/headline step if the app needs one. -->
     <dimen name="text_xs">12sp</dimen>
     <dimen name="text_sm">14sp</dimen>
     <dimen name="text_md">16sp</dimen>
-    <dimen name="text_xl">18sp</dimen>
+    <dimen name="text_lg">18sp</dimen>
+
+    <!-- Shared stroke width for outlined shape drawables. -->
+    <dimen name="outline_stroke_width">1dp</dimen>
 
     <!-- Editor input stroke widths (shared across all feature dialog inputs). -->
     <dimen name="editor_input_stroke_width">1dp</dimen>

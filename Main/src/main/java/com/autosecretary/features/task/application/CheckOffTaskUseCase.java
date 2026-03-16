@@ -1,15 +1,9 @@
 package com.autosecretary.features.task.application;
 
-import android.content.Context;
-
-import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
-import com.autosecretary.features.meal.application.TaskMealIntegrationService;
+import com.autosecretary.features.task.application.internal.completion.TaskCompletionEffects;
 import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
-import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
-import com.autosecretary.features.task.data.TaskDao;
-
-import java.time.LocalDate;
+import com.autosecretary.features.task.data.TaskSlot;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -21,24 +15,15 @@ import java.util.concurrent.ExecutorService;
  */
 public class CheckOffTaskUseCase {
     private final TaskSlotToggleMutation mutation;
-    private final TaskDao taskDao;
     private final ExecutorService workerExecutor;
-    private final BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase;
-    private final Context appContext;
-    private final TaskMealIntegrationService taskMealIntegrationService;
+    private final TaskCompletionEffects completionEffects;
 
     public CheckOffTaskUseCase(TaskSlotToggleMutation mutation,
-                               TaskDao taskDao,
                                ExecutorService workerExecutor,
-                               BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase,
-                               Context appContext,
-                               TaskMealIntegrationService taskMealIntegrationService) {
+                               TaskCompletionEffects completionEffects) {
         this.mutation = mutation;
-        this.taskDao = taskDao;
         this.workerExecutor = workerExecutor;
-        this.bookTaskCompletionExpenseUseCase = bookTaskCompletionExpenseUseCase;
-        this.appContext = appContext;
-        this.taskMealIntegrationService = taskMealIntegrationService;
+        this.completionEffects = completionEffects;
     }
 
     /**
@@ -57,15 +42,8 @@ public class CheckOffTaskUseCase {
                 listItem.slotId,
                 onChanged,
                 task -> {
-                    boolean booked = bookTaskCompletionExpenseUseCase.execute(task, LocalDate.now());
-                    if (booked) {
-                        BudgetWidgetProvider.notifyWidgetUpdate(appContext);
-                    }
-                    // actualServingsOverride=0: use the serving size defined on the task, not a manual override.
-                    boolean mealUpdated = taskMealIntegrationService.completeMealTask(task, LocalDate.now(), 0);
-                    if (mealUpdated) {
-                        taskDao.write(task);
-                    }
+                    TaskSlot slot = task.findSlot(listItem.slotId);
+                    completionEffects.apply(task, slot != null ? slot.day : null);
                 }
         ));
     }

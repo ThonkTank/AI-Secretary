@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.application.importing;
+package com.autosecretary.features.budget.application.importing.internal;
 
 import com.autosecretary.features.budget.data.api.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.data.api.ClaudeApiKeyStore;

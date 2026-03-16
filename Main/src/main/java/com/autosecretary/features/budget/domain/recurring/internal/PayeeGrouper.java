@@ -43,7 +43,7 @@ public final class PayeeGrouper {
     public static Map<String, List<RecurringBudgetTransaction>> groupBySimilarPayee(List<RecurringBudgetTransaction> transactions) {
         Map<String, List<RecurringBudgetTransaction>> groupedByPayee = new HashMap<>();
         for (RecurringBudgetTransaction tx : transactions) {
-            String normalized = normalizePayee(tx.payee);
+            String normalized = normalizePayee(tx.payee());
             if (normalized.isEmpty()) {
                 continue;
             }

@@ -10,12 +10,13 @@ import com.autosecretary.features.budget.application.importing.ApplyRecurringSug
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.data.api.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.data.api.ClaudeApiKeyStore;
-import com.autosecretary.features.budget.application.importing.StatementFileParser;
+import com.autosecretary.features.budget.application.importing.internal.StatementFileParser;
 import com.autosecretary.features.budget.application.CreateTransferUseCase;
 import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseCase;
 import com.autosecretary.features.budget.data.repository.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
+import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
 import com.autosecretary.features.meal.application.MealPlannerPresenter;
 import com.autosecretary.features.meal.application.TaskMealIntegrationService;
 import com.autosecretary.features.meal.data.repository.MealRoomRepository;
@@ -36,16 +37,19 @@ import com.autosecretary.features.task.application.internal.budget.BookTaskCompl
 import com.autosecretary.features.task.application.internal.budget.TaskBudgetEligibilityFromBudgetLookup;
 import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
 import com.autosecretary.features.task.application.internal.calendar.DeviceCalendarBlockedIntervalProvider;
+import com.autosecretary.features.task.application.internal.completion.TaskCompletionEffects;
+import com.autosecretary.features.task.application.internal.completion.TaskTransitionRecorder;
 import com.autosecretary.features.task.application.internal.mutations.TaskSlotUndoMutation;
 import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.scheduling.TaskSlotGenerator;
+import com.autosecretary.features.task.domain.scheduling.TaskSlotGenerators;
 import com.autosecretary.features.task.domain.scheduling.TransitionStat;
 import com.autosecretary.features.task.domain.scheduling.TaskTransitionStatLoader;
-import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGenerator;
 import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
+import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -100,6 +104,7 @@ public class AppCompositionRoot {
     private MealPlannerPresenter mealPlannerPresenter;
     private final TaskCompletionService taskCompletionService;
     private final TaskLifecycleManager taskLifecycleManager;
+    private final WidgetRefreshNotifier widgetRefreshNotifier;
 
     public AppCompositionRoot(Application app) {
         this.app = app;
@@ -112,6 +117,17 @@ public class AppCompositionRoot {
         });
         this.taskCompletionService = new TaskCompletionService();
         this.taskLifecycleManager = new TaskLifecycleManager();
+        this.widgetRefreshNotifier = new WidgetRefreshNotifier() {
+            @Override
+            public void refreshTaskWidgets() {
+                TaskWidgetProvider.notifyWidgetUpdate(app);
+            }
+
+            @Override
+            public void refreshBudgetWidgets() {
+                BudgetWidgetProvider.notifyWidgetUpdate(app);
+            }
+        };
     }
 
     public ExecutorService getSharedExecutor() {
@@ -148,14 +164,13 @@ public class AppCompositionRoot {
                 db.taskTransitionStatDao().readAll().stream()
                         .map(s -> new TransitionStat(s.fromTaskId, s.toTaskId, s.weight))
                         .toList();
-        TaskSlotGenerator generator = new DefaultTaskSlotGenerator(
-                taskLifecycleManager,
-                message -> Log.d("SlotGen", message),
-                scheduleConfigRepository,
-                new DeviceCalendarBlockedIntervalProvider(app),
-                transitionStatLoader,
-                new TaskBudgetEligibilityFromBudgetLookup(getBudgetRoomRepository())
-        );
+        TaskSlotGenerator generator = TaskSlotGenerators.builder(taskLifecycleManager)
+                .logger(message -> Log.d("SlotGen", message))
+                .schedulingWindowProvider(scheduleConfigRepository)
+                .calendarBlockedIntervalProvider(new DeviceCalendarBlockedIntervalProvider(app))
+                .transitionStatLoader(transitionStatLoader)
+                .taskBudgetEligibilityService(new TaskBudgetEligibilityFromBudgetLookup(getBudgetRoomRepository()))
+                .build();
         TaskListItemMapper mapper = new TaskListItemMapper();
         TaskCalendarService taskCalendarService = new CalendarReader(app);
 
@@ -172,21 +187,26 @@ public class AppCompositionRoot {
         TaskMealIntegrationService taskMealIntegrationService = new TaskMealIntegrationService(
                 mealRepository, recipeRepository, pantryRepository
         );
+        TaskTransitionRecorder taskTransitionRecorder =
+                new TaskTransitionRecorder(dao, db.taskTransitionStatDao());
+        TaskCompletionEffects taskCompletionEffects = new TaskCompletionEffects(
+                bookTaskCompletionExpenseUseCase,
+                taskMealIntegrationService,
+                dao,
+                widgetRefreshNotifier
+        );
 
         taskSlotToggleMutation = new TaskSlotToggleMutation(
                 dao,
                 taskCompletionService,
                 taskLifecycleManager,
-                db.taskTransitionStatDao(),
+                taskTransitionRecorder,
                 mainHandler::post
         );
         CheckOffTaskUseCase checkOffTaskUseCase = new CheckOffTaskUseCase(
                 taskSlotToggleMutation,
-                dao,
                 sharedExecutor,
-                bookTaskCompletionExpenseUseCase,
-                app,
-                taskMealIntegrationService
+                taskCompletionEffects
         );
         UndoTaskCheckOffUseCase undoTaskCheckOffUseCase = new UndoTaskCheckOffUseCase(
                 new TaskSlotUndoMutation(dao, mainHandler::post),
@@ -202,7 +222,9 @@ public class AppCompositionRoot {
                 dao,
                 sharedExecutor,
                 mainHandler::post,
-                taskLifecycleManager
+                taskLifecycleManager,
+                taskCompletionEffects,
+                taskTransitionRecorder
         );
 
         taskViewModelFactory = new TaskViewModelFactory(
@@ -213,7 +235,8 @@ public class AppCompositionRoot {
                 regenerateScheduleUseCase,
                 adjustTaskProgressUseCase,
                 taskCalendarService,
-                scheduleConfigRepository
+                scheduleConfigRepository,
+                widgetRefreshNotifier
         );
     }
 
@@ -228,6 +251,10 @@ public class AppCompositionRoot {
     public synchronized RegenerateScheduleUseCase getRegenerateScheduleUseCase() {
         initTaskGraph();
         return regenerateScheduleUseCase;
+    }
+
+    public WidgetRefreshNotifier getWidgetRefreshNotifier() {
+        return widgetRefreshNotifier;
     }
 
     public synchronized BudgetViewModelFactory getBudgetViewModelFactory() {
@@ -249,11 +276,11 @@ public class AppCompositionRoot {
             );
 
             BudgetImportUseCase importUseCase = new BudgetImportUseCase(
-                    importRepository, parser, sharedExecutor
+                    importRepository, parser
             );
 
             ApplyRecurringSuggestionsUseCase applyRecurringUseCase = new ApplyRecurringSuggestionsUseCase(
-                    importRepository, sharedExecutor
+                    importRepository
             );
 
             CreateTransferUseCase createTransferUseCase = new CreateTransferUseCase(repository);

@@ -15,6 +15,7 @@ import android.widget.TextView;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.fragment.app.FragmentActivity;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.autosecretary.R;
@@ -28,6 +29,7 @@ import com.autosecretary.shared.DateFormatters;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -676,9 +678,33 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     }
 
     public void setList(List<ViewSlot> viewSlots) {
-        this.viewSlots = viewSlots == null ? Collections.emptyList() : viewSlots;
-        retainValidUndoSlots(this.viewSlots);
-        notifyDataSetChanged();
+        List<ViewSlot> updatedSlots = viewSlots == null ? Collections.emptyList() : viewSlots;
+        retainValidUndoSlots(updatedSlots);
+        List<ViewSlot> previousSlots = this.viewSlots;
+        DiffUtil.DiffResult diff = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return previousSlots.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return updatedSlots.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                return stableItemKey(previousSlots.get(oldItemPosition))
+                        .equals(stableItemKey(updatedSlots.get(newItemPosition)));
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                return hasSameRenderedContent(previousSlots.get(oldItemPosition), updatedSlots.get(newItemPosition));
+            }
+        });
+        this.viewSlots = updatedSlots;
+        diff.dispatchUpdatesTo(this);
     }
 
     public void setInteractionsEnabled(boolean enabled) {
@@ -691,5 +717,44 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     public void setManageMode(boolean manageMode) {
         this.manageMode = manageMode;
         notifyDataSetChanged();
+    }
+
+    private static String stableItemKey(ViewSlot slot) {
+        TaskListItem item = slot.getItem();
+        if (item.slotId != null) {
+            return item.slotId;
+        }
+        if (item.taskId != null) {
+            return item.taskId + "|" + item.itemType;
+        }
+        return item.title + "|" + item.day + "|" + item.start + "|" + item.end;
+    }
+
+    private static boolean hasSameRenderedContent(ViewSlot oldSlot, ViewSlot newSlot) {
+        TaskListItem oldItem = oldSlot.getItem();
+        TaskListItem newItem = newSlot.getItem();
+        return oldSlot.getDepth() == newSlot.getDepth()
+                && oldSlot.getChildren().size() == newSlot.getChildren().size()
+                && oldItem.itemType == newItem.itemType
+                && Objects.equals(oldItem.taskId, newItem.taskId)
+                && Objects.equals(oldItem.slotId, newItem.slotId)
+                && Objects.equals(oldItem.slotParentId, newItem.slotParentId)
+                && Objects.equals(oldItem.parentTaskIds, newItem.parentTaskIds)
+                && Objects.equals(oldItem.title, newItem.title)
+                && Objects.equals(oldItem.description, newItem.description)
+                && Objects.equals(oldItem.day, newItem.day)
+                && Objects.equals(oldItem.start, newItem.start)
+                && Objects.equals(oldItem.end, newItem.end)
+                && Objects.equals(oldItem.deadline, newItem.deadline)
+                && oldItem.streak == newItem.streak
+                && oldItem.score == newItem.score
+                && oldItem.completed == newItem.completed
+                && oldItem.inProgress == newItem.inProgress
+                && oldItem.progressCurrent == newItem.progressCurrent
+                && oldItem.progressTarget == newItem.progressTarget
+                && Objects.equals(oldItem.progressUnit, newItem.progressUnit)
+                && oldItem.progressStepDelta == newItem.progressStepDelta
+                && Objects.equals(oldItem.goalIcon, newItem.goalIcon)
+                && Objects.equals(oldItem.goalColorHex, newItem.goalColorHex);
     }
 }

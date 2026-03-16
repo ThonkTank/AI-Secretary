@@ -23,8 +23,8 @@ import androidx.lifecycle.ViewModelProvider;
 import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
-import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
+import com.autosecretary.features.budget.domain.BudgetAccount;
+import com.autosecretary.features.budget.domain.BudgetCategory;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -84,7 +84,7 @@ public class BudgetFragment extends Fragment {
     private BudgetRecurringSuggestionsDialogController recurringSuggestionsDialogController;
     private BudgetTransactionDialogController transactionDialogController;
     private BudgetLimitDialogController limitDialogController;
-    private List<BudgetAccountEntity> accountItems = new ArrayList<>();
+    private List<BudgetAccount> accountItems = new ArrayList<>();
     private BudgetTransactionAdapter transactionAdapter;
 
     @Override
@@ -266,7 +266,7 @@ public class BudgetFragment extends Fragment {
 
         budgetViewModel.getSelectedAccountId().observe(getViewLifecycleOwner(), selectedId -> {
             if (selectedId == null || accountItems.isEmpty()) return;
-            SpinnerHelper.setSelection(views.accountSpinner, accountItems, selectedId, a -> a.id);
+            SpinnerHelper.setSelection(views.accountSpinner, accountItems, selectedId, BudgetAccount::id);
         });
 
         budgetViewModel.getTimeRangeFilter().observe(getViewLifecycleOwner(), filter -> {
@@ -293,7 +293,7 @@ public class BudgetFragment extends Fragment {
             @Override
             public void onItemSelected(AdapterView<?> parent, View v, int position, long id) {
                 if (position >= 0 && position < accountItems.size()) {
-                    budgetViewModel.setSelectedAccount(accountItems.get(position).id);
+                    budgetViewModel.setSelectedAccount(accountItems.get(position).id());
                 }
             }
         });
@@ -367,9 +367,9 @@ public class BudgetFragment extends Fragment {
         BudgetBalanceChartView chartView;
     }
 
-    private void renderAccountSpinner(List<BudgetAccountEntity> accounts, Spinner spinner) {
+    private void renderAccountSpinner(List<BudgetAccount> accounts, Spinner spinner) {
         accountItems = accounts != null ? accounts : new ArrayList<>();
-        SpinnerHelper.bindList(spinner, accountItems, a -> a.name, requireContext());
+        SpinnerHelper.bindList(spinner, accountItems, BudgetAccount::name, requireContext());
     }
 
     // --- Transaction dialogs ---
@@ -391,13 +391,13 @@ public class BudgetFragment extends Fragment {
         limitDialogController.show(preSelectedCategoryId, baseLimitCents, categoriesValue());
     }
 
-    private List<BudgetCategoryEntity> categoriesValue() {
-        List<BudgetCategoryEntity> cats = budgetViewModel.getCategories().getValue();
+    private List<BudgetCategory> categoriesValue() {
+        List<BudgetCategory> cats = budgetViewModel.getCategories().getValue();
         return cats != null ? cats : new ArrayList<>();
     }
 
-    private List<BudgetAccountEntity> accountsValue() {
-        List<BudgetAccountEntity> accts = budgetViewModel.getAccounts().getValue();
+    private List<BudgetAccount> accountsValue() {
+        List<BudgetAccount> accts = budgetViewModel.getAccounts().getValue();
         return accts != null ? accts : new ArrayList<>();
     }
 

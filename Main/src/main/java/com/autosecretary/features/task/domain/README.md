@@ -11,7 +11,7 @@ This package contains the **core domain logic for the task feature**: lifecycle 
 | [`TaskLifecycleManager`](TaskLifecycleManager.java) | Stateless service: period advancement, streak tracking, adaptive preferred-time adjustment. Mutates `Task` domain objects. |
 | [`TaskCompletionService`](TaskCompletionService.java) | Two-phase task check-off (first tap → STARTED, second tap → COMPLETED). Calls `TaskLifecycleManager` on completion. |
 | [`TaskTreeOperations`](TaskTreeOperations.java) | Utility for building a parent-child task tree from a flat list and flattening it back to a list for DB writes. |
-| [`TaskCalendarEvent`](TaskCalendarEvent.java) | Thin DTO for Android calendar events, used when explicitly passing calendar data into the scheduler. |
+| [`TaskCalendarEvent`](TaskCalendarEvent.java) | Thin DTO for UI-facing calendar events that need a display title plus local start/end times. |
 
 ## Subpackages
 

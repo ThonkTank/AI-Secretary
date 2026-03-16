@@ -34,15 +34,17 @@ This is the most non-obvious decision in the data layer.
 `Task` is a **Room POJO** (plain Java object) assembled by Room at query time from five tables
 using `@Embedded` + `@Relation`. It is what callers actually work with because it carries all
 associated data (slots, prefSlots, prerequisites, relations, planned meals) in one object.
+Newly constructed `Task` instances also start with non-null empty relation lists so editor code
+does not need to defensively initialise them.
 
 ```java
 // Task is assembled from 5 tables — you never insert/update it directly
 public class Task {
-    @Embedded public TaskCore core;           // from task_core
-    @Relation(...) public List<TaskSlot> slots;       // from task_slots
-    @Relation(...) public List<TaskPrefSlot> prefSlots; // from task_pref_slots
-    @Relation(...) public List<TaskRelation> parents;   // from task_relation
-    @Relation(...) public List<TaskPrerequisite> prerequisites; // from task_prerequisites
+    @Embedded public TaskCore core = new TaskCore();        // from task_core
+    @Relation(...) public List<TaskSlot> slots = new ArrayList<>();
+    @Relation(...) public List<TaskPrefSlot> prefSlots = new ArrayList<>();
+    @Relation(...) public List<TaskRelation> parents = new ArrayList<>();
+    @Relation(...) public List<TaskPrerequisite> prerequisites = new ArrayList<>();
 }
 ```
 
@@ -61,6 +63,7 @@ for how Room assembles multi-table queries.
 5. **`TaskDao.java`** — the write/read interface; pay attention to the `writeDependents` javadoc
    which explains the delete-vs-upsert strategy for each sub-table.
 6. **`TaskRelation.java`**, **`TaskPrerequisite.java`** — parent-child and prerequisite links.
+   Both use composite primary keys based on the linked task IDs rather than surrogate UUIDs.
 
 ## Placement convention
 

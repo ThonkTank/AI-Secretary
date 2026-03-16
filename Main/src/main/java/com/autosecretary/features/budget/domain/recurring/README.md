@@ -59,7 +59,7 @@ LocalDate nextDue = RecurringTemplateScheduler.computeNextDue(params, LocalDate.
 ## Data Types
 
 ### RecurringBudgetTransaction
-Represents a single historical transaction with fields indicating:
+Represents a single historical transaction as an immutable record with fields indicating:
 - **`isRecurring`** — true if generated from an active template (already classified; skip detection)
 - **`isPredicted`** — true if this is a forecasted future occurrence not yet booked by the bank
 - **`parentRecurringId`** — ID of the template that produced this transaction (null for manual/imported)

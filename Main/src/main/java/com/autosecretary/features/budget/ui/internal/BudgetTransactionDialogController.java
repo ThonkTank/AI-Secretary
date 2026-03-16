@@ -13,13 +13,13 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
-import com.autosecretary.features.budget.data.entity.BudgetAccountEntity;
+import com.autosecretary.features.budget.domain.BudgetAccount;
 import com.autosecretary.features.budget.domain.AmountParser;
 import com.autosecretary.shared.ui.DialogHelper;
 import com.autosecretary.shared.ui.DialogValidation;
 import com.autosecretary.shared.ui.SimpleButtonCheckedListener;
 import com.autosecretary.shared.ui.SpinnerHelper;
-import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
+import com.autosecretary.features.budget.domain.BudgetCategory;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
 import com.google.android.material.textfield.TextInputEditText;
@@ -54,13 +54,13 @@ public class BudgetTransactionDialogController {
         this.listener = listener;
     }
 
-    public void showAdd(List<BudgetCategoryEntity> allCategories, List<BudgetAccountEntity> allAccounts) {
+    public void showAdd(List<BudgetCategory> allCategories, List<BudgetAccount> allAccounts) {
         show(null, allCategories, allAccounts);
     }
 
     public void showEdit(BudgetTransactionRow existingRow,
-                         List<BudgetCategoryEntity> allCategories,
-                         List<BudgetAccountEntity> allAccounts) {
+                         List<BudgetCategory> allCategories,
+                         List<BudgetAccount> allAccounts) {
         show(existingRow, allCategories, allAccounts);
     }
 
@@ -71,8 +71,8 @@ public class BudgetTransactionDialogController {
     }
 
     private void show(@Nullable BudgetTransactionRow existingRow,
-                      List<BudgetCategoryEntity> allCategories,
-                      List<BudgetAccountEntity> allAccounts) {
+                      List<BudgetCategory> allCategories,
+                      List<BudgetAccount> allAccounts) {
         Context ctx = fragment.requireContext();
         View dialogView = LayoutInflater.from(ctx)
                 .inflate(R.layout.budget_add_transaction_dialog, null);
@@ -83,23 +83,23 @@ public class BudgetTransactionDialogController {
         TextInputEditText dateInput = dialogView.findViewById(R.id.BudgetDialogDate);
         Spinner accountSpinner = dialogView.findViewById(R.id.BudgetDialogAccount);
 
-        List<BudgetCategoryEntity> expenseCategories = BudgetSummaryPresentationMapper
+        List<BudgetCategory> expenseCategories = BudgetSummaryPresentationMapper
                 .categoriesForDirection(allCategories, TransactionDirection.EXPENSE);
-        List<BudgetCategoryEntity> incomeCategories = BudgetSummaryPresentationMapper
+        List<BudgetCategory> incomeCategories = BudgetSummaryPresentationMapper
                 .categoriesForDirection(allCategories, TransactionDirection.INCOME);
-        List<BudgetAccountEntity> accounts = activeAccounts(allAccounts);
+        List<BudgetAccount> accounts = activeAccounts(allAccounts);
 
         boolean isExpense = existingRow == null || existingRow.isExpense();
         SpinnerHelper.bindList(categorySpinner, isExpense ? expenseCategories : incomeCategories,
-                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name), ctx);
-        SpinnerHelper.bindList(accountSpinner, accounts, a -> a.name, ctx);
+                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon(), c.name()), ctx);
+        SpinnerHelper.bindList(accountSpinner, accounts, BudgetAccount::name, ctx);
 
         typeGroup.addOnButtonCheckedListener(new SimpleButtonCheckedListener() {
             @Override
             public void onChecked(MaterialButtonToggleGroup group, int checkedId) {
                 SpinnerHelper.bindList(categorySpinner,
                         checkedId == R.id.BudgetDialogTypeExpense ? expenseCategories : incomeCategories,
-                        c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon, c.name), ctx);
+                        c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon(), c.name()), ctx);
             }
         });
 
@@ -113,9 +113,9 @@ public class BudgetTransactionDialogController {
                     ? R.id.BudgetDialogTypeExpense : R.id.BudgetDialogTypeIncome);
             SpinnerHelper.setSelection(categorySpinner,
                     existingRow.isExpense() ? expenseCategories : incomeCategories,
-                    existingRow.categoryId(), c -> c.id);
+                    existingRow.categoryId(), BudgetCategory::id);
             SpinnerHelper.setSelection(accountSpinner, accounts,
-                    existingRow.accountId(), a -> a.id);
+                    existingRow.accountId(), BudgetAccount::id);
         }
 
         dateInput.setText(selectedDate.toString());
@@ -155,10 +155,10 @@ public class BudgetTransactionDialogController {
             String note = DialogValidation.textOfNullable(noteInput);
             String categoryId = SpinnerHelper.idAtPosition(
                     selectedExpense ? expenseCategories : incomeCategories,
-                    categorySpinner.getSelectedItemPosition(), c -> c.id);
+                    categorySpinner.getSelectedItemPosition(), BudgetCategory::id);
             String accountId = SpinnerHelper.idAtPosition(
                     accounts,
-                    accountSpinner.getSelectedItemPosition(), a -> a.id);
+                    accountSpinner.getSelectedItemPosition(), BudgetAccount::id);
 
             if (accountId == null) return;
 
@@ -182,8 +182,8 @@ public class BudgetTransactionDialogController {
         } : null);
     }
 
-    private static List<BudgetAccountEntity> activeAccounts(List<BudgetAccountEntity> accounts) {
-        return accounts.stream().filter(a -> !a.archived).collect(Collectors.toList());
+    private static List<BudgetAccount> activeAccounts(List<BudgetAccount> accounts) {
+        return accounts.stream().filter(a -> !a.archived()).collect(Collectors.toList());
     }
 
 }

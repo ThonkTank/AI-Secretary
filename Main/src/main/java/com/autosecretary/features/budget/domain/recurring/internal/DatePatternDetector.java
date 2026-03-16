@@ -59,7 +59,7 @@ public final class DatePatternDetector {
             return null;
         }
         List<LocalDate> dates = transactions.stream()
-                .map(tx -> tx.bookingDate)
+                .map(RecurringBudgetTransaction::bookingDate)
                 .sorted()
                 .toList();
 

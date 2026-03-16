@@ -17,24 +17,28 @@ public class BudgetTransactionMapper {
             throw new IllegalArgumentException("domainTransaction must not be null");
         }
 
-        if (domainTransaction.accountId == null || domainTransaction.bookingDate == null) {
+        if (domainTransaction.accountId() == null || domainTransaction.bookingDate() == null) {
             throw new IllegalArgumentException("accountId and bookingDate are required");
         }
 
-        TransactionDirection direction = TransactionDirection.fromAmountCents(domainTransaction.amountCents);
+        TransactionDirection direction = TransactionDirection.fromAmountCents(domainTransaction.amountCents());
         ImportTransactionType type = ImportTransactionType.fromDirection(direction);
         return new ImportTransactionRecord(
-                domainTransaction.id,
-                domainTransaction.accountId,
-                domainTransaction.categoryId,
-                type,
-                Math.abs(domainTransaction.amountCents),
-                domainTransaction.bookingDate,
-                domainTransaction.note,
-                domainTransaction.importHash,
-                domainTransaction.payee,
-                domainTransaction.importId,
-                domainTransaction.parentRecurringId
+                new ImportTransactionRecord.TransactionData(
+                        domainTransaction.id(),
+                        domainTransaction.accountId(),
+                        domainTransaction.categoryId(),
+                        type,
+                        Math.abs(domainTransaction.amountCents()),
+                        domainTransaction.bookingDate(),
+                        domainTransaction.note(),
+                        domainTransaction.payee()
+                ),
+                new ImportTransactionRecord.ImportMetadata(
+                        domainTransaction.importHash(),
+                        domainTransaction.importId(),
+                        domainTransaction.parentRecurringId()
+                )
         );
     }
 

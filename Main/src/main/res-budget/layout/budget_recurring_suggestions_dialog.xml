@@ -19,7 +19,8 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_sm">
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:maxHeight="@dimen/dialog_scroll_max_height">
 
         <!-- Suggestion rows inflated programmatically by BudgetRecurringSuggestionsDialogController -->
         <LinearLayout

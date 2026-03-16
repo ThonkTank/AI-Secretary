@@ -51,7 +51,7 @@ public final class RecurringPatternDetector {
         boolean isConsistent(List<RecurringBudgetTransaction> txList) {
             if (avg == 0) return false;
             return txList.stream()
-                    .allMatch(tx -> Math.abs(Math.abs(tx.amountCents) - avg) <= avg * AMOUNT_VARIANCE_THRESHOLD);
+                    .allMatch(tx -> Math.abs(Math.abs(tx.amountCents()) - avg) <= avg * AMOUNT_VARIANCE_THRESHOLD);
         }
 
         /**
@@ -64,7 +64,7 @@ public final class RecurringPatternDetector {
         static AmountStats from(List<RecurringBudgetTransaction> txList) {
             long sum = 0, min = Long.MAX_VALUE, max = Long.MIN_VALUE;
             for (RecurringBudgetTransaction tx : txList) {
-                long abs = Math.abs(tx.amountCents);
+                long abs = Math.abs(tx.amountCents());
                 sum += abs;
                 if (abs < min) min = abs;
                 if (abs > max) max = abs;
@@ -74,8 +74,8 @@ public final class RecurringPatternDetector {
     }
 
     private static boolean isEligibleForDetection(RecurringBudgetTransaction tx) {
-        return !tx.isRecurring && !tx.isPredicted && tx.parentRecurringId == null
-                && tx.payee != null && !tx.payee.isBlank() && tx.bookingDate != null;
+        return !tx.isRecurring() && !tx.isPredicted() && tx.parentRecurringId() == null
+                && tx.payee() != null && !tx.payee().isBlank() && tx.bookingDate() != null;
     }
 
     private RecurringPatternDetector() {
@@ -107,7 +107,7 @@ public final class RecurringPatternDetector {
             if (txList.size() < minOccurrences) {
                 continue;
             }
-            txList.sort(Comparator.comparing(tx -> tx.bookingDate));
+            txList.sort(Comparator.comparing(RecurringBudgetTransaction::bookingDate));
             AmountStats amountStats = AmountStats.from(txList);
             if (!amountStats.isConsistent(txList)) {
                 continue;
@@ -138,14 +138,14 @@ public final class RecurringPatternDetector {
                                                       AmountStats amountStats) {
         Map<String, Integer> categoryCounts = new HashMap<>();
         List<String> txIds = new ArrayList<>();
-        String displayPayee = transactions.get(0).payee;
+        String displayPayee = transactions.get(0).payee();
 
         for (RecurringBudgetTransaction tx : transactions) {
-            if (tx.id != null) {
-                txIds.add(tx.id);
+            if (tx.id() != null) {
+                txIds.add(tx.id());
             }
-            if (tx.categoryId != null) {
-                categoryCounts.merge(tx.categoryId, 1, Integer::sum);
+            if (tx.categoryId() != null) {
+                categoryCounts.merge(tx.categoryId(), 1, Integer::sum);
             }
         }
 
@@ -154,7 +154,7 @@ public final class RecurringPatternDetector {
                 .map(Map.Entry::getKey)
                 .orElse(null);
 
-        TransactionDirection direction = TransactionDirection.fromAmountCents(transactions.get(0).amountCents);
+        TransactionDirection direction = TransactionDirection.fromAmountCents(transactions.get(0).amountCents());
 
         DatePatternDetector.PatternResult pattern = DatePatternDetector.detectDatePattern(transactions);
         if (pattern == null) {

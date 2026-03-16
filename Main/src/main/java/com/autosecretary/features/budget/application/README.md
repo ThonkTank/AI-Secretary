@@ -22,7 +22,7 @@ These are the main entry points for budget workflows, called from the UI:
 All import-related orchestration:
 
 - **`BudgetImportUseCase`** — end-to-end import pipeline: parse file → deduplicate → enrich → persist → detect patterns
-- **`StatementFileParser`** — routes parsing by file type (CSV local, PDF via Claude API)
+- **`internal/StatementFileParser`** — routes parsing by file type (CSV local, PDF via Claude API)
 - **`BudgetTransactionMapper`** — maps between domain and persistence models
 - **`ApplyRecurringSuggestionsUseCase`** — accepts detected recurring patterns and creates templates
 
@@ -42,7 +42,7 @@ CSV format, error handling, and troubleshooting.
 
 1. Read [`importing/README.md`](./importing/README.md) — it has a detailed pipeline diagram,
    error scenarios, testing instructions, and troubleshooting
-2. Drill into individual use cases (`BudgetImportUseCase`, `StatementFileParser`, etc.)
+2. Drill into individual use cases (`BudgetImportUseCase`, `internal/StatementFileParser`, etc.)
    as needed; their javadocs reference the README for context
 
 ### If you're debugging a specific use case:
@@ -105,17 +105,14 @@ The UI (fragments, dialogs, view models) calls use case methods. Example:
 
 ```java
 // UI wants to import a CSV file
-budgetImportUseCase.executeAsync(accountId, fileName, fileBytes, mimeType,
-    new ImportCallback() {
-        @Override
-        public void onSuccess(ImportResult result) {
-            // Update UI with result
-        }
-        @Override
-        public void onError(String error) {
-            // Show error to user
-        }
-    });
+executor.execute(() -> {
+    try {
+        ImportResult result = budgetImportUseCase.execute(accountId, fileName, fileBytes, mimeType);
+        // Post result back to UI
+    } catch (RuntimeException error) {
+        // Post error to UI
+    }
+});
 ```
 
 ### Application → Domain
@@ -134,27 +131,24 @@ Example: `BudgetImportRepository.saveTransactionsBatch()` persists enriched tran
 
 ## Common Patterns
 
-### Async Operations
+### Background Operations
 
-Long-running operations (import, pattern detection) use `ExecutorService` and callbacks:
+Long-running operations stay synchronous at the use-case boundary. Callers dispatch them via
+`ExecutorService` and post results back to the UI:
 
 ```java
-useCase.executeAsync(params, new Callback() {
-    @Override
-    public void onSuccess(...) { }
-
-    @Override
-    public void onError(String msg) { }
+executor.execute(() -> {
+    Result result = useCase.execute(...);
+    liveData.postValue(result);
 });
 ```
 
-Not all use cases are async. `LoadBudgetWidgetSummaryUseCase` and `CalculateEffectiveBudgetLimitUseCase`
-are synchronous and suitable for quick calculations.
+This keeps threading ownership in the ViewModel and avoids nested executor dispatch.
 
 ### Validation + Error Handling
 
 Use cases validate input and return user-facing error messages (in German).
-Errors are communicated via callback or Result record.
+Errors are communicated via thrown exceptions or Result record.
 
 Example: `CreateTransferUseCase.Result` contains a boolean `success` and optional `errorMessage`.
 
@@ -189,7 +183,7 @@ application/
 └── importing/                                   (import sub-package)
     ├── README.md                                (comprehensive import pipeline docs)
     ├── BudgetImportUseCase.java                 orchestrates end-to-end import
-    ├── StatementFileParser.java                 routes CSV/PDF parsing
+    ├── internal/StatementFileParser.java        routes CSV/PDF parsing
     ├── BudgetTransactionMapper.java             maps domain ↔ persistence models
     └── ApplyRecurringSuggestionsUseCase.java    accepts recurring patterns + creates templates
 ```

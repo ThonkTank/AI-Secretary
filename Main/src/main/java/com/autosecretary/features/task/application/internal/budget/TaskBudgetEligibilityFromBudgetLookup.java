@@ -19,9 +19,9 @@ public class TaskBudgetEligibilityFromBudgetLookup implements TaskBudgetEligibil
     }
 
     @Override
-    public BudgetEligibility eligibilityFor(Task task) {
+    public boolean eligibilityFor(Task task) {
         if (task == null || !task.hasBudgetRequirement()) {
-            return BudgetEligibility.passWithoutBudgetRequirement();
+            return true;
         }
 
         // Intentional: when budgetAccountId is null/blank, getCurrentBalanceCents aggregates
@@ -29,6 +29,6 @@ public class TaskBudgetEligibilityFromBudgetLookup implements TaskBudgetEligibil
         // "can the user afford this at all?" — the separate question of which specific account
         // to debit is resolved by BookTaskCompletionExpenseUseCase at completion time.
         long availableCents = budgetRepository.getCurrentBalanceCents(task.core.budgetAccountId);
-        return new BudgetEligibility(availableCents >= task.core.budgetRequiredCents, availableCents);
+        return availableCents >= task.core.budgetRequiredCents;
     }
 }

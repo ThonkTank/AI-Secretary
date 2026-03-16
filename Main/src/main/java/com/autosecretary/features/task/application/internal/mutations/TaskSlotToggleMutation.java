@@ -1,21 +1,19 @@
 package com.autosecretary.features.task.application.internal.mutations;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.concurrent.Executor;
-import java.util.function.Consumer;
-
 import android.util.Log;
 
+import com.autosecretary.features.task.application.internal.completion.TaskTransitionRecorder;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.data.TaskPrerequisite;
 import com.autosecretary.features.task.data.TaskSlot;
-import com.autosecretary.features.task.data.TaskTransitionStatDao;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskCompletionService.CompletionPhase;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
+
+import java.time.LocalDate;
+import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 
 /**
  * Shared operation for toggling a task slot completion state and persisting resulting writes.
@@ -38,26 +36,21 @@ import com.autosecretary.features.task.domain.TaskLifecycleManager;
 public final class TaskSlotToggleMutation {
     private static final String TAG = "TaskSlotToggle";
 
-    // Transition stat weights: completed transitions count double vs. started,
-    // so the scheduler gives stronger preference to pairs the user actually finishes.
-    private static final int TRANSITION_WEIGHT_STARTED = 1;
-    private static final int TRANSITION_WEIGHT_COMPLETED = 2;
-
     private final TaskDao taskDao;
     private final TaskCompletionService completionService;
     private final TaskLifecycleManager lifecycleManager;
-    private final TaskTransitionStatDao transitionDao;
+    private final TaskTransitionRecorder transitionRecorder;
     private final Executor callbackDispatcher;
 
     public TaskSlotToggleMutation(TaskDao taskDao,
                                   TaskCompletionService completionService,
                                   TaskLifecycleManager lifecycleManager,
-                                  TaskTransitionStatDao transitionDao,
+                                  TaskTransitionRecorder transitionRecorder,
                                   Executor callbackDispatcher) {
         this.taskDao = taskDao;
         this.completionService = completionService;
         this.lifecycleManager = lifecycleManager;
-        this.transitionDao = transitionDao;
+        this.transitionRecorder = transitionRecorder;
         this.callbackDispatcher = callbackDispatcher;
     }
 
@@ -122,24 +115,11 @@ public final class TaskSlotToggleMutation {
             }
         }
 
-        // Record the task-to-task transition for scheduler learning. This is analytics data:
-        // if recording fails, core state is already saved correctly above.
-        int weight = phase == CompletionPhase.COMPLETED ? TRANSITION_WEIGHT_COMPLETED : TRANSITION_WEIGHT_STARTED;
-        tryRecordTransition(slot, weight);
+        if (phase == CompletionPhase.STARTED) {
+            transitionRecorder.recordStarted(slot);
+        }
 
         callbackDispatcher.execute(onToggled);
-    }
-
-    /**
-     * Records a transition stat, swallowing any exception so that analytics failures
-     * never block the post-write callback from being dispatched.
-     */
-    private void tryRecordTransition(TaskSlot slot, int transitionWeight) {
-        try {
-            recordTransition(slot, transitionWeight);
-        } catch (RuntimeException e) {
-            Log.w(TAG, "Transition stat recording failed (non-critical)", e);
-        }
     }
 
     /**
@@ -187,39 +167,4 @@ public final class TaskSlotToggleMutation {
                 .findFirst()
                 .orElse(null);
     }
-
-    /**
-     * Record a task-to-task transition for the scheduler's learning algorithm.
-     * Transitions represent observed user switching patterns (previous task → current task).
-     * These are weighted by completion phase (COMPLETED = 2×, STARTED = 1×) so the scheduler
-     * learns which task orders the user actually finishes vs. merely starts.
-     *
-     * See TaskScorer for how transition statistics influence slot ranking and scheduling
-     * preference.
-     *
-     * @param slot the slot being completed/started
-     * @param transitionWeight the relative weight of this transition observation
-     */
-    private void recordTransition(TaskSlot slot, int transitionWeight) {
-        // Require both task ID and day to look up the previous task
-        if (slot.taskId == null || slot.day == null) {
-            return;
-        }
-
-        // Determine the most accurate event time for transition recording,
-        // ordered by preference: actual completion → actual start → scheduled start → current time
-        LocalTime eventTime = slot.realEnd != null ? slot.realEnd
-                : slot.realStart != null ? slot.realStart
-                : slot.start != null ? slot.start
-                : LocalTime.now();
-
-        // Find the previous task and validate the transition
-        String previousTaskId = taskDao.readMostRecentTaskBefore(slot.taskId, slot.day, eventTime);
-        if (previousTaskId == null || previousTaskId.equals(slot.taskId)) {
-            return;
-        }
-
-        transitionDao.recordTransition(previousTaskId, slot.taskId, Math.max(1, transitionWeight), LocalDateTime.now());
-    }
-
 }

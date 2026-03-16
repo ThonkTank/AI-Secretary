@@ -1,6 +1,6 @@
 package com.autosecretary.features.budget.ui.internal;
 
-import com.autosecretary.features.budget.data.entity.BudgetCategoryEntity;
+import com.autosecretary.features.budget.domain.BudgetCategory;
 import com.autosecretary.features.budget.domain.CategorySpendSummary;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import com.autosecretary.features.budget.domain.TransactionDirection;
@@ -40,13 +40,13 @@ public class BudgetSummaryPresentationMapper {
         for (MonthlyOverviewItem item : items) {
             // Internal transfers move money between accounts — they are neither income nor expense
             // and must be excluded to avoid distorting the summary totals.
-            if (item.transactionKind == TransactionKind.INTERNAL_TRANSFER) {
+            if (item.transactionKind() == TransactionKind.INTERNAL_TRANSFER) {
                 continue;
             }
-            if (item.direction == TransactionDirection.EXPENSE) {
-                totalExpenseCents += item.amountCents;
+            if (item.direction() == TransactionDirection.EXPENSE) {
+                totalExpenseCents += item.amountCents();
             } else {
-                totalIncomeCents += item.amountCents;
+                totalIncomeCents += item.amountCents();
             }
         }
 
@@ -57,10 +57,10 @@ public class BudgetSummaryPresentationMapper {
      * Returns the subset of {@code allCategories} whose direction matches {@code direction}.
      * Used by dialog controllers to populate direction-specific category spinners.
      */
-    public static List<BudgetCategoryEntity> categoriesForDirection(
-            List<BudgetCategoryEntity> allCategories, TransactionDirection direction) {
+    public static List<BudgetCategory> categoriesForDirection(
+            List<BudgetCategory> allCategories, TransactionDirection direction) {
         return allCategories.stream()
-                .filter(c -> c.direction == direction)
+                .filter(c -> c.direction() == direction)
                 .collect(Collectors.toList());
     }
 
