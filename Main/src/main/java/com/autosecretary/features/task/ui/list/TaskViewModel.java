@@ -207,7 +207,7 @@ public class TaskViewModel extends AndroidViewModel {
     /**
      * Rebuilds the display list from the master list in three steps:
      * 1. Filter allSlots by the active ListConfig predicate (and optionally a search query).
-     * 2. Append cached calendar events (if READ_CALENDAR is granted).
+     * 2. Merge cached calendar events (if READ_CALENDAR is granted).
      * 3. Sort and flatten using task-parent or slot-parent tree structure.
      *
      * <p>Calendar events are read from {@link #cachedCalendarSlots} rather than re-querying
@@ -227,18 +227,15 @@ public class TaskViewModel extends AndroidViewModel {
             }
             return true;
         };
-        masterList.filter(predicate);
-
-        if (day != null && hasCalendarPermission && !cachedCalendarSlots.isEmpty()) {
-            masterList.appendToDisplay(cachedCalendarSlots);
-        }
-
         Comparator<ViewSlot> comparator = activeListConfig.comparator();
-        if (activeListConfig.groupByTaskParent()) {
-            masterList.sortByTask(comparator, slot -> expandedByTaskId.getOrDefault(slot.getItem().taskId, true));
-        } else {
-            masterList.sortBySlot(comparator);
-        }
+        List<ViewSlot> extraItems = day != null && hasCalendarPermission ? cachedCalendarSlots : Collections.emptyList();
+        masterList.rebuildDisplay(
+                predicate,
+                extraItems,
+                comparator,
+                slot -> expandedByTaskId.getOrDefault(slot.getItem().taskId, true),
+                activeListConfig.groupByTaskParent()
+        );
 
         displayList.setValue(masterList.getDisplaySlots());
     }

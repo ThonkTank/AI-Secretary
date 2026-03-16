@@ -21,26 +21,11 @@ import com.autosecretary.util.TreeBuilder;
 public class ViewSlotList {
     // Source of truth: all task slots (never modified after fromList, used as reference for re-filtering)
     private List<ViewSlot> allSlots = new ArrayList<>();
-    // Working set: filtered/sorted task slots + appended calendar events, used for display
+    // Working set: filtered/sorted task slots plus optional calendar events, used for display
     private List<ViewSlot> displaySlots = new ArrayList<>();
-    // Tracks whether appendToDisplay() has been called, preventing unsafe filter() calls
-    private boolean hasAppendedItems = false;
 
     public List<ViewSlot> getDisplaySlots() {
         return displaySlots;
-    }
-
-    /**
-     * Appends extra items (typically calendar events) to the current displaySlots.
-     * Appended items are NOT re-sorted unless sortByTask() or sortBySlot() is called afterward.
-     * Used to add calendar data after task filtering.
-     *
-     * WARNING: Must call sortByTask() or sortBySlot() immediately after to maintain correct state.
-     * Calling filter() while appended items are pending will lose them.
-     */
-    public void appendToDisplay(List<ViewSlot> extra) {
-        displaySlots.addAll(extra);
-        hasAppendedItems = true;
     }
 
     // Two tree-building modes for different UI contexts:
@@ -77,70 +62,43 @@ public class ViewSlotList {
     }
 
     public void fromList(List<TaskListItem> items) {
-        if (hasAppendedItems) {
-            throw new IllegalStateException("Cannot call fromList() after appendToDisplay() without calling sort first");
-        }
         allSlots = items.stream().map(ViewSlot::new).collect(Collectors.toCollection(ArrayList::new));
         displaySlots = new ArrayList<>(allSlots);
-        hasAppendedItems = false;
     }
 
     /**
-     * Rebuilds displaySlots by filtering allSlots (source of truth).
-     * allSlots is never modified; re-filtering always starts from the original full list.
-     *
-     * @throws IllegalStateException if appendToDisplay() was called without a subsequent sort
+     * Rebuilds the display list from source slots in one explicit pass.
      */
-    public void filter(Predicate<ViewSlot> predicate) {
-        if (hasAppendedItems) {
-            throw new IllegalStateException("Cannot filter after appendToDisplay() without calling sort first");
+    public void rebuildDisplay(Predicate<ViewSlot> predicate,
+                               List<ViewSlot> extraItems,
+                               Comparator<ViewSlot> comparator,
+                               Predicate<ViewSlot> isExpanded,
+                               boolean groupByTaskParent) {
+        List<ViewSlot> workingSlots = allSlots.stream()
+                .filter(predicate)
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (extraItems != null && !extraItems.isEmpty()) {
+            workingSlots.addAll(extraItems);
         }
-        displaySlots = allSlots.stream().filter(predicate).collect(Collectors.toCollection(ArrayList::new));
-    }
-
-    /**
-     * Sorts displaySlots by task parent-child relationships and applies comparator within each group.
-     * Call sequence: fromList() → filter() → [appendToDisplay()] → sortByTask()
-     *
-     * @param comparator how to order slots at each tree level
-     * @param isExpanded determines which parent-child relationships are expanded in the flattened view
-     */
-    public void sortByTask(Comparator<ViewSlot> comparator, Predicate<ViewSlot> isExpanded) {
-        collapseToSingleRowPerTask();
-        applySort(TREE_BY_TASK, comparator, isExpanded);
-    }
-
-    /**
-     * Sorts displaySlots by slot parent-child relationships (calendar hierarchy).
-     * All slot parents are always expanded (calendar hierarchy is immutable in UI).
-     * Call sequence: fromList() → filter() → [appendToDisplay()] → sortBySlot()
-     *
-     * @param comparator how to order slots within the slot hierarchy
-     */
-    public void sortBySlot(Comparator<ViewSlot> comparator) {
-        applySort(TREE_BY_SLOT, comparator, ALL_EXPANDED);
-    }
-
-    private void applySort(TreeBuilder<ViewSlot> builder,
-                           Comparator<ViewSlot> comparator,
-                           Predicate<ViewSlot> isExpanded) {
-        displaySlots = builder.buildTree(displaySlots);
-        builder.sortTree(displaySlots, comparator);
-
+        if (groupByTaskParent) {
+            workingSlots = collapseToSingleRowPerTask(workingSlots);
+        }
+        TreeBuilder<ViewSlot> builder = groupByTaskParent ? TREE_BY_TASK : TREE_BY_SLOT;
+        Predicate<ViewSlot> expansionPredicate = groupByTaskParent ? isExpanded : ALL_EXPANDED;
+        List<ViewSlot> tree = builder.buildTree(workingSlots);
+        builder.sortTree(tree, comparator);
         List<ViewSlot> flattened = new ArrayList<>();
-        flattenAndAssignDepths(displaySlots, 0, isExpanded, flattened);
+        flattenAndAssignDepths(tree, 0, expansionPredicate, flattened);
         displaySlots = flattened;
-
-        hasAppendedItems = false;
     }
 
     /**
      * Manage mode is task-centric; duplicate rows for the same task ID create unstable trees
      * because task hierarchy links are also task-ID based. Keep one representative row per task.
      */
-    private void collapseToSingleRowPerTask() {
+    private List<ViewSlot> collapseToSingleRowPerTask(List<ViewSlot> slots) {
         Map<String, ViewSlot> bestByTaskId = new LinkedHashMap<>();
-        for (ViewSlot slot : displaySlots) {
+        for (ViewSlot slot : slots) {
             String taskId = slot.getItem().taskId;
             if (taskId == null) {
                 continue;
@@ -150,7 +108,7 @@ public class ViewSlotList {
                 bestByTaskId.put(taskId, slot);
             }
         }
-        displaySlots = new ArrayList<>(bestByTaskId.values());
+        return new ArrayList<>(bestByTaskId.values());
     }
 
     private static boolean isBetterManageRepresentative(ViewSlot candidate, ViewSlot current) {

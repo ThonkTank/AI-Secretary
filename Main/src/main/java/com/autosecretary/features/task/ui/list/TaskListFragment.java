@@ -100,20 +100,39 @@ public class TaskListFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        AutoSecretaryApplication app = AutoSecretaryApplication.from(requireContext());
-        AppCompositionRoot compositionRoot = app.getAppCompositionRoot();
-        TaskViewModelFactory viewModelFactory = compositionRoot.getTaskViewModelFactory();
-        vm = new ViewModelProvider(requireActivity(), viewModelFactory).get(TaskViewModel.class);
+        vm = createViewModel();
         TaskEditSessionController editSessionController = vm.getTaskEditSessionController();
 
         ensureCalendarPermission();
 
-        RecyclerView recyclerView = view.findViewById(R.id.TaskList);
+        TextInputLayout taskSearchLayout = view.findViewById(R.id.TaskSearchLayout);
+        TextInputEditText taskSearchInput = view.findViewById(R.id.TaskSearchInput);
+        View emptyStateContainer = configureEmptyState(view);
+        ListRowAdapter adapter = setupList(view, emptyStateContainer, taskSearchInput, editSessionController);
+        View newTaskButton = setupCreateTaskButton(view, editSessionController);
+        setupDayNavigation(view, adapter, newTaskButton);
+        setupModeToggle(view, taskSearchLayout, adapter);
+    }
+
+    private TaskViewModel createViewModel() {
+        AutoSecretaryApplication app = AutoSecretaryApplication.from(requireContext());
+        AppCompositionRoot compositionRoot = app.getAppCompositionRoot();
+        TaskViewModelFactory viewModelFactory = compositionRoot.getTaskViewModelFactory();
+        return new ViewModelProvider(requireActivity(), viewModelFactory).get(TaskViewModel.class);
+    }
+
+    private View configureEmptyState(View view) {
         View emptyStateContainer = view.findViewById(R.id.TaskEmptyState);
         ((TextView) view.findViewById(R.id.EmptyStateTitle)).setText(R.string.task_list_empty_title);
         ((TextView) view.findViewById(R.id.EmptyStateSubtitle)).setText(R.string.task_list_empty_subtitle);
-        TextInputLayout taskSearchLayout = view.findViewById(R.id.TaskSearchLayout);
-        TextInputEditText taskSearchInput = view.findViewById(R.id.TaskSearchInput);
+        return emptyStateContainer;
+    }
+
+    private ListRowAdapter setupList(View view,
+                                     View emptyStateContainer,
+                                     TextInputEditText taskSearchInput,
+                                     TaskEditSessionController editSessionController) {
+        RecyclerView recyclerView = view.findViewById(R.id.TaskList);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         ListRowAdapter adapter = new ListRowAdapter(
@@ -129,40 +148,43 @@ public class TaskListFragment extends Fragment {
         );
         adapter.setManageMode(vm.isManageMode());
         recyclerView.setAdapter(adapter);
+
         vm.getList().observe(getViewLifecycleOwner(), items -> {
             adapter.setList(items);
             boolean hasItems = items != null && !items.isEmpty();
             recyclerView.setVisibility(hasItems ? View.VISIBLE : View.GONE);
             emptyStateContainer.setVisibility(hasItems ? View.GONE : View.VISIBLE);
         });
-
-        vm.getSearchQuery().observe(getViewLifecycleOwner(), query -> {
-            String currentValue = taskSearchInput.getText().toString();
-            String normalizedQuery = query == null ? "" : query;
-            if (!normalizedQuery.equals(currentValue)) {
-                taskSearchInput.setText(normalizedQuery);
-                taskSearchInput.setSelection(normalizedQuery.length());
-            }
-        });
-
+        vm.getSearchQuery().observe(getViewLifecycleOwner(), query -> syncSearchInput(taskSearchInput, query));
         taskSearchInput.addTextChangedListener(new SimpleTextWatcher() {
             @Override
             public void afterTextChanged(Editable s) {
                 vm.setSearchQuery(s == null ? "" : s.toString());
             }
         });
+        return adapter;
+    }
 
+    private void syncSearchInput(TextInputEditText taskSearchInput, String query) {
+        String currentValue = taskSearchInput.getText().toString();
+        String normalizedQuery = query == null ? "" : query;
+        if (!normalizedQuery.equals(currentValue)) {
+            taskSearchInput.setText(normalizedQuery);
+            taskSearchInput.setSelection(normalizedQuery.length());
+        }
+    }
+
+    private View setupCreateTaskButton(View view, TaskEditSessionController editSessionController) {
         View newTaskButton = view.findViewById(R.id.NewTaskButton);
-        View.OnClickListener createTaskClickListener = v -> openCreateTaskDialog(editSessionController);
-
-        newTaskButton.setOnClickListener(createTaskClickListener);
-        view.findViewById(R.id.EmptyStateNewTaskButton).setOnClickListener(createTaskClickListener);
-
+        newTaskButton.setOnClickListener(v -> openCreateTaskDialog(editSessionController));
         if (shouldOpenCreateTask) {
             shouldOpenCreateTask = false;
             view.post(() -> openCreateTaskDialog(editSessionController));
         }
+        return newTaskButton;
+    }
 
+    private void setupDayNavigation(View view, ListRowAdapter adapter, View newTaskButton) {
         ImageButton dayNavPrev = view.findViewById(R.id.NavPrev);
         TextView dayNavLabel = view.findViewById(R.id.NavLabel);
         ImageButton dayNavNext = view.findViewById(R.id.NavNext);
@@ -174,7 +196,6 @@ public class TaskListFragment extends Fragment {
         vm.getSelectedDay().observe(getViewLifecycleOwner(), day -> {
             boolean isToday = day.equals(LocalDate.now());
             dayNavLabel.setText(isToday ? getString(R.string.task_list_day_nav_today) : day.format(DateFormatters.DAY_NAV_LABEL));
-
             dayNavPrev.setEnabled(!isToday);
             dayNavPrev.setAlpha(isToday ? UiConstants.ALPHA_DISABLED : UiConstants.ALPHA_ENABLED);
 
@@ -183,25 +204,25 @@ public class TaskListFragment extends Fragment {
             dayNavNext.setAlpha(canGoForward ? UiConstants.ALPHA_ENABLED : UiConstants.ALPHA_DISABLED);
 
             newTaskButton.setVisibility(isToday ? View.VISIBLE : View.GONE);
-
             adapter.setInteractionsEnabled(isToday);
         });
+    }
 
+    private void setupModeToggle(View view, TextInputLayout taskSearchLayout, ListRowAdapter adapter) {
         MaterialButtonToggleGroup toggle = view.findViewById(R.id.TaskListToggle);
         toggle.addOnButtonCheckedListener(new SimpleButtonCheckedListener() {
             @Override
             public void onChecked(MaterialButtonToggleGroup group, int checkedId) {
-                if (checkedId == R.id.TaskChecklistButton) {
-                    taskSearchLayout.setVisibility(View.GONE);
+                boolean checklistMode = checkedId == R.id.TaskChecklistButton;
+                taskSearchLayout.setVisibility(checklistMode ? View.GONE : View.VISIBLE);
+                if (checklistMode) {
                     vm.applyChecklistPreset();
                 } else {
-                    taskSearchLayout.setVisibility(View.VISIBLE);
                     vm.applyManagePreset();
                 }
                 adapter.setManageMode(vm.isManageMode());
             }
         });
-
         taskSearchLayout.setVisibility(toggle.getCheckedButtonId() == R.id.TaskManagementButton ? View.VISIBLE : View.GONE);
     }
 

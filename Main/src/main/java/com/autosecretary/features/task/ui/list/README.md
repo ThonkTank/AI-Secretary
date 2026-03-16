@@ -19,7 +19,7 @@ task management view. It is the primary surface a user interacts with every day.
 | Class | Role |
 |---|---|
 | `ViewSlot` | Wraps a `TaskListItem` with tree context (`depth`, `children`) for RecyclerView indentation and parent-child rendering. |
-| `ViewSlotList` | Manages the master slot list through the pipeline: filter → append calendar events → sort and flatten for display. |
+| `ViewSlotList` | Rebuilds the display list from the master slot list in one pass: filter, optionally merge calendar events, then sort and flatten for display. |
 
 ## Two display modes
 
@@ -52,11 +52,8 @@ TaskDataService.loadAllMapped()
     ↓
 ViewSlotList.fromList()            ← replaces the master list; never filtered in place
     ↓
-ViewSlotList.filter()              ← apply ListConfig.matches() + search query
-    ↓
-[TaskCalendarService.getEventsForDay()] ← appended if READ_CALENDAR permission is granted
-    ↓
-ViewSlotList.sortByTask() / sortBySlot()  ← build tree, sort within levels, flatten with depth
+ViewSlotList.rebuildDisplay()      ← apply ListConfig.matches() + search query,
+                                      merge calendar rows, build tree, sort, flatten
     ↓
 TaskViewModel.displayList (LiveData<List<ViewSlot>>)
     ↓

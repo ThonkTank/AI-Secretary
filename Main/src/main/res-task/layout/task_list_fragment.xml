@@ -100,14 +100,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:visibility="visible" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/EmptyStateNewTaskButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_md"
-            android:text="@string/task_list_empty_action"
-            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Widget.NewTaskCta" />
     </LinearLayout>
 
     <com.google.android.material.button.MaterialButton
