@@ -6,6 +6,7 @@ existiert hier schon als Vertrag + Integrationsdokumentation.
 
 ## Ziel
 
+- Tasks können explizit erstellt werden (inkl. Name, Parent-Beziehung, Wiederholungsregel).
 - Tagesplanung läuft **1× täglich nachts** (ähnlich Main).
 - Planung ist **kalender- und zeitbewusst** auf Bucket-Ebene.
 - Scoring nutzt Main-ähnliche Kriterien, aber **ohne Uhrzeit-Fit**.
@@ -31,7 +32,13 @@ Idempotenz-/Konsistenzregeln) ist in `docs/persistence-schema.md` dokumentiert.
 
 ## Haupt-Callchains
 
-### A) Nightly Daily Planning
+### A) Task Creation + Definition Update
+1. `TaskCreationApi.createTask(...)` validiert Name, Parent-Referenz und Wiederholungsregel.
+2. `TaskWriteGateway.createTaskDefinition(...)` persistiert Task-Stammdaten.
+3. Optional: `TaskWriteGateway.upsertTaskRecurrence(...)` persistiert/aktualisiert Wiederholungsregel.
+4. `TaskReadGateway.readTaskById(taskId)` liefert die persistierte Task-Definition als Bestätigung.
+
+### B) Nightly Daily Planning
 1. `PlanningTriggerGateway.onNightlyTrigger()` startet den Lauf.
 2. `TaskReadGateway.readPlanningCandidates(day)` lädt Task-Kandidaten (expliziter **Task-Read-Pfad**).
 3. `BucketWindowConfigGateway.readBucketWindowsForDay(day)` lädt effektive Bucket-Zeitfenster.
@@ -44,10 +51,11 @@ Idempotenz-/Konsistenzregeln) ist in `docs/persistence-schema.md` dokumentiert.
 10. `PlanWriteGateway.saveDraftPlan(day, plan, idempotencyKey)` persistiert den Entwurf idempotent (**Plan-Write-Pfad**).
 11. Optional: `TaskWriteGateway.upsertPlannedForDay(taskId, day)` persistiert Plan-Markierungen (**Task-Write-Pfad**).
 
-### B) Completion-driven Cleanup + Refill
+### C) Completion-driven Cleanup + Refill
 1. `CompletionEventIngestGateway.onTaskCompleted(...)` meldet Abschluss als typisiertes Event inkl. UTC + Idempotency-Key.
 2. `TaskWriteGateway.markCompleted(taskId, finishedAtUtc, idempotencyKey)` persistiert Task-Status (**Task-Write-Pfad**).
 3. `CompletionTrackingGateway.appendCompletion(event)` persistiert Event idempotent.
-4. `PlanReadGateway.readPlanForDay(day)` lädt aktuellen Tagesplan (**Plan-Read-Pfad**).
-5. `TaskPlanningApi.replanAfterCompletion(plan, taskId)` entfernt späte Duplikate und füllt Lücken.
-6. `PlanWriteGateway.overwritePlan(day, updatedPlan, expectedRevision, idempotencyKey)` persistiert Update mit Optimistic Locking (**Plan-Write-Pfad**).
+4. `TaskWriteGateway.updateCompletionStreakSnapshot(...)` aktualisiert abgeleitete Streak-Werte für schnelle Scoring-Zugriffe.
+5. `PlanReadGateway.readPlanForDay(day)` lädt aktuellen Tagesplan (**Plan-Read-Pfad**).
+6. `TaskPlanningApi.replanAfterCompletion(plan, taskId)` entfernt späte Duplikate und füllt Lücken.
+7. `PlanWriteGateway.overwritePlan(day, updatedPlan, expectedRevision, idempotencyKey)` persistiert Update mit Optimistic Locking (**Plan-Write-Pfad**).

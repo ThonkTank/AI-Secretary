@@ -8,6 +8,37 @@ implementierungsnahe Persistenzspezifikation.
 Die folgende Modellierung ist der Referenzzustand für relationale Stores (SQLite/Postgres).
 Bei NoSQL-Backends müssen dieselben Felder, Constraints und Semantiken abgebildet werden.
 
+### Tabelle `task_definition`
+
+- `task_id` (VARCHAR, NOT NULL)
+- `name` (VARCHAR, NOT NULL)
+- `parent_task_id` (VARCHAR, NULL) – optionaler Parent in der Task-Hierarchie
+- `is_active` (BOOLEAN, NOT NULL)
+- `created_at_utc` (TIMESTAMP WITH TIME ZONE, NOT NULL)
+- `updated_at_utc` (TIMESTAMP WITH TIME ZONE, NOT NULL)
+
+**Constraints/Indizes**
+- Primary Key: `(task_id)`
+- Check: `trim(name) <> ''` (Name ist Pflichtfeld)
+- Foreign Key: `parent_task_id -> task_definition.task_id` (self-reference)
+- Index: `(parent_task_id)` für Hierarchie-Auflösungen
+
+### Tabelle `task_recurrence_rule`
+
+- `task_id` (VARCHAR, NOT NULL)
+- `is_repeating` (BOOLEAN, NOT NULL)
+- `every_n_units` (INT, NULL) – z. B. alle 2 Tage
+- `recurrence_unit` (VARCHAR, NULL) – `DAY`, `WEEK`, `MONTH`
+- `window_start_day` (DATE, NULL) – Start des aktiven Wiederholungszeitraums
+- `window_end_day` (DATE, NULL) – optionales Ende des aktiven Wiederholungszeitraums
+- `updated_at_utc` (TIMESTAMP WITH TIME ZONE, NOT NULL)
+
+**Constraints/Indizes**
+- Primary Key: `(task_id)`
+- Foreign Key: `task_id -> task_definition.task_id`
+- Check: bei `is_repeating = true` müssen `every_n_units >= 1` und `recurrence_unit` gesetzt sein
+- Check: `window_end_day >= window_start_day` falls beide gesetzt
+
 ### Tabelle `task_bucket_plan`
 
 - `day` (DATE, NOT NULL)
@@ -47,6 +78,23 @@ Bei NoSQL-Backends müssen dieselben Felder, Constraints und Semantiken abgebild
 **Constraints/Indizes**
 - Primary Key: `(task_id, day)`
 - Index: `(day)`
+
+### Tabelle `task_completion_streak_snapshot`
+
+- `task_id` (VARCHAR, NOT NULL)
+- `current_streak_days` (INT, NOT NULL)
+- `longest_streak_days` (INT, NOT NULL)
+- `last_completed_at_utc` (TIMESTAMP WITH TIME ZONE, NULL)
+- `completion_count_7d` (INT, NOT NULL)
+- `completion_count_30d` (INT, NOT NULL)
+- `completion_count_total` (BIGINT, NOT NULL)
+- `updated_at_utc` (TIMESTAMP WITH TIME ZONE, NOT NULL)
+
+**Constraints/Indizes**
+- Primary Key: `(task_id)`
+- Foreign Key: `task_id -> task_definition.task_id`
+- Check: alle Counts/Streaks `>= 0`
+- Index: `(updated_at_utc DESC)`
 
 ## 2) Serialisierungs-/Payload-Schema
 
@@ -110,6 +158,17 @@ Events modelliert (siehe `CompletionEvent`):
 
 Damit sind Auditing, Replays und eindeutige Deduplikation stabil spezifiziert.
 
+## 4.1) Abgeleitete Completion-Statistik für Scoring
+
+Neben vollständigen Events wird pro Task ein Snapshot persistiert (`task_completion_streak_snapshot`),
+damit Scoring ohne Vollscan großer Historien auf häufig benötigte Merkmale zugreifen kann:
+
+- aktuelle Streak-Länge (`current_streak_days`)
+- längste historische Streak (`longest_streak_days`)
+- letzter Abschlusszeitpunkt (`last_completed_at_utc`)
+- Aktivität in 7/30 Tagen (`completion_count_7d`, `completion_count_30d`)
+- Gesamtanzahl (`completion_count_total`)
+
 ## 5) Idempotenz- und Konsistenzregeln
 
 ### Plan-Writes (`saveDraftPlan`, `overwritePlan`)
@@ -128,3 +187,5 @@ Damit sind Auditing, Replays und eindeutige Deduplikation stabil spezifiziert.
 
 - Doppelte Ingests desselben Nutzer-Events müssen über `idempotencyKey` dedupliziert werden.
 - Reihenfolge ist über `finishedAtUtc` fachlich, über `ingestedAtUtc` technisch nachvollziehbar.
+- Nach erfolgreichem Event-Ingest wird `task_completion_streak_snapshot` atomar mit aktualisiert
+  (oder im selben Outbox-Flow deterministisch nachgezogen), damit Streak-/Scoringdaten konsistent bleiben.

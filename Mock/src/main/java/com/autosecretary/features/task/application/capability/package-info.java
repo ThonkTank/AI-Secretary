@@ -10,6 +10,7 @@
  *
  * <h2>How capabilities interact</h2>
  * <ol>
+ *   <li>Task-definition capability validates and persists name/parent/recurrence contracts.</li>
  *   <li>Capacity is computed from user bucket windows + calendar blockers.</li>
  *   <li>Scoring computes rankable task priorities (without explicit clock-time fit).</li>
  *   <li>Slot assignment maps tasks to one-or-many eligible buckets.</li>

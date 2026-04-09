@@ -20,6 +20,9 @@ public interface TaskNode {
     /** Stable identity used across scoring, assignment, plan rows, and completion events. */
     String taskId();
 
+    /** Human-readable task title (required at creation time). */
+    String name();
+
     /** Parent relationship for optional co-planning / inheritance logic. */
     String parentTaskId();
 
@@ -34,4 +37,10 @@ public interface TaskNode {
 
     /** Optional soft hints for slot-assignment inference (can be empty). */
     Set<TimeSlot> preferredSlots();
+
+    /** Recurrence specification used to decide if/how often a task should be planned over time. */
+    TaskRecurrenceRule recurrenceRule();
+
+    /** Completion history summary (incl. streaks) used directly by scoring and planning heuristics. */
+    TaskCompletionStats completionStats();
 }

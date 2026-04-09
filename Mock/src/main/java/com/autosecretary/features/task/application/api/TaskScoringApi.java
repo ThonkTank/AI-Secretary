@@ -16,7 +16,7 @@ import java.util.Map;
  *
  * <h2>Why these parameters</h2>
  * <ul>
- *   <li>{@code tasks}: full candidate set, so scorer can evaluate relative urgency/constraints.</li>
+ *   <li>{@code tasks}: full candidate set incl. recurrence + completion streak/counter stats.</li>
  *   <li>{@code planningDay}: many Main-like factors are day-dependent (deadline, repetition state).</li>
  * </ul>
  *

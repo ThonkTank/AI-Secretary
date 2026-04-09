@@ -1,5 +1,8 @@
 package com.autosecretary.features.task.data;
 
+import com.autosecretary.features.task.domain.model.TaskCompletionStats;
+import com.autosecretary.features.task.domain.model.TaskDefinition;
+import com.autosecretary.features.task.domain.model.TaskRecurrenceRule;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -15,6 +18,16 @@ import java.time.LocalDate;
 public interface TaskWriteGateway {
 
     /**
+     * Persists a newly created task definition (name required, parent optional).
+     */
+    String createTaskDefinition(TaskDefinition definition, String idempotencyKey);
+
+    /**
+     * Upserts recurrence policy for a task (including non-repeating to repeating transitions).
+     */
+    void upsertTaskRecurrence(String taskId, TaskRecurrenceRule recurrenceRule, String idempotencyKey);
+
+    /**
      * Marks task as completed at runtime checkoff time.
      */
     void markCompleted(String taskId, Instant finishedAtUtc, String idempotencyKey);
@@ -23,4 +36,9 @@ public interface TaskWriteGateway {
      * Persists optional "planned for day" marker used by task list projections or dedup logic.
      */
     void upsertPlannedForDay(String taskId, LocalDate day);
+
+    /**
+     * Persists derived completion streak/counter snapshot used for low-latency scoring reads.
+     */
+    void updateCompletionStreakSnapshot(String taskId, TaskCompletionStats stats, String idempotencyKey);
 }

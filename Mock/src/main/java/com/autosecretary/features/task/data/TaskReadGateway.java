@@ -20,4 +20,9 @@ public interface TaskReadGateway {
      * Loads the planning candidate set for a given day as {@link TaskNode} projections.
      */
     List<TaskNode> readPlanningCandidates(LocalDate day);
+
+    /**
+     * Loads one persisted task definition for creation/update confirmation and hierarchy checks.
+     */
+    TaskNode readTaskById(String taskId);
 }
