@@ -13,6 +13,7 @@ package com.autosecretary.features.task.application.callchain;
  * <p>Call Chain A: Nightly Daily Planning
  * <pre>
  * PlanningTriggerGateway.onNightlyTrigger()
+ *   -> TaskReadGateway.readPlanningCandidates(day)
  *   -> BucketWindowConfigGateway.readBucketWindowsForDay(day)
  *   -> CalendarAvailabilityGateway.readBlockedIntervals(day)
  *   -> BucketCapacityGateway.computeAvailableMinutes(day, windows, blocked)
@@ -21,12 +22,15 @@ package com.autosecretary.features.task.application.callchain;
  *   -> TaskScoringApi.computeDailyScores(tasks, day)
  *   -> TaskPlanningApi.createBucketPlan(day, tasks, scores, freeMinutes)
  *   -> PlanWriteGateway.saveDraftPlan(day, plan)
+ *   -> TaskWriteGateway.upsertPlannedForDay(taskId, day)  // optional
  * </pre>
  *
  * <p>Call Chain B: Completion-driven Cleanup + Refill
  * <pre>
  * CompletionEventIngestGateway.onTaskCompleted(taskId, finishedAt)
+ *   -> TaskWriteGateway.markCompleted(taskId, finishedAt)
  *   -> CompletionTrackingGateway.appendCompletion(taskId, finishedAt)
+ *   -> PlanReadGateway.readPlanForDay(day)
  *   -> TaskPlanningApi.replanAfterCompletion(plan, taskId)
  *   -> PlanWriteGateway.overwritePlan(day, updatedPlan)
  * </pre>

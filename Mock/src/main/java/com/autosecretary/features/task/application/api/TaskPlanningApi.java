@@ -38,7 +38,7 @@ public interface TaskPlanningApi {
     /**
      * Removes stale later-bucket duplicates after completion and refills newly freed capacity.
      *
-     * @param existingPlan persisted current-day plan snapshot
+     * @param existingPlan persisted current-day plan snapshot (typically from PlanReadGateway)
      * @param completedTaskId task completed earlier in the day
      */
     BucketPlan replanAfterCompletion(BucketPlan existingPlan, String completedTaskId);
