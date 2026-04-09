@@ -28,17 +28,21 @@ statt „zufällige“ Rohdaten weiterzureichen, aus denen Caller erst wieder Nu
 
 ### A) Nightly Daily Planning
 1. `PlanningTriggerGateway.onNightlyTrigger()` startet den Lauf.
-2. `BucketWindowConfigGateway.readBucketWindowsForDay(day)` lädt effektive Bucket-Zeitfenster.
-3. `CalendarAvailabilityGateway.readBlockedIntervals(day)` lädt Kalenderevents.
-4. `BucketCapacityGateway.computeAvailableMinutes(...)` berechnet freie Minuten je Bucket.
-5. `CompletionTrackingGateway.readCompletionHistory(...)` lädt Historie für Slot-Inferenz/Signale.
-6. `TaskSlotAssignmentApi.assignEligibleSlots(tasks)` erzeugt Multi-Bucket-Eignung.
-7. `TaskScoringApi.computeDailyScores(tasks, day)` erzeugt Scores.
-8. `TaskPlanningApi.createBucketPlan(...)` erstellt den Tagesplan.
-9. `PlanWriteGateway.saveDraftPlan(day, plan)` persistiert den Entwurf.
+2. `TaskReadGateway.readPlanningCandidates(day)` lädt Task-Kandidaten (expliziter **Task-Read-Pfad**).
+3. `BucketWindowConfigGateway.readBucketWindowsForDay(day)` lädt effektive Bucket-Zeitfenster.
+4. `CalendarAvailabilityGateway.readBlockedIntervals(day)` lädt Kalenderevents.
+5. `BucketCapacityGateway.computeAvailableMinutes(...)` berechnet freie Minuten je Bucket.
+6. `CompletionTrackingGateway.readCompletionHistory(...)` lädt Historie für Slot-Inferenz/Signale.
+7. `TaskSlotAssignmentApi.assignEligibleSlots(tasks)` erzeugt Multi-Bucket-Eignung.
+8. `TaskScoringApi.computeDailyScores(tasks, day)` erzeugt Scores.
+9. `TaskPlanningApi.createBucketPlan(...)` erstellt den Tagesplan.
+10. `PlanWriteGateway.saveDraftPlan(day, plan)` persistiert den Entwurf (**Plan-Write-Pfad**).
+11. Optional: `TaskWriteGateway.upsertPlannedForDay(taskId, day)` persistiert Plan-Markierungen (**Task-Write-Pfad**).
 
 ### B) Completion-driven Cleanup + Refill
 1. `CompletionEventIngestGateway.onTaskCompleted(...)` meldet Abschluss.
-2. `CompletionTrackingGateway.appendCompletion(...)` persistiert Event.
-3. `TaskPlanningApi.replanAfterCompletion(plan, taskId)` entfernt späte Duplikate und füllt Lücken.
-4. `PlanWriteGateway.overwritePlan(day, updatedPlan)` persistiert Update.
+2. `TaskWriteGateway.markCompleted(taskId, finishedAt)` persistiert Task-Status (**Task-Write-Pfad**).
+3. `CompletionTrackingGateway.appendCompletion(...)` persistiert Event.
+4. `PlanReadGateway.readPlanForDay(day)` lädt aktuellen Tagesplan (**Plan-Read-Pfad**).
+5. `TaskPlanningApi.replanAfterCompletion(plan, taskId)` entfernt späte Duplikate und füllt Lücken.
+6. `PlanWriteGateway.overwritePlan(day, updatedPlan)` persistiert Update (**Plan-Write-Pfad**).

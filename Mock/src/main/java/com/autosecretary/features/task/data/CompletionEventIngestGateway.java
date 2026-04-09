@@ -8,7 +8,7 @@ package com.autosecretary.features.task.data;
  *
  * <h2>Why this exists</h2>
  * Decouples user interaction flow from replanning internals; caller emits domain event,
- * implementation decides persistence + downstream dynamic replan trigger.
+ * implementation decides task-state write, completion-event persistence, and downstream dynamic replan trigger.
  */
 public interface CompletionEventIngestGateway {
 
