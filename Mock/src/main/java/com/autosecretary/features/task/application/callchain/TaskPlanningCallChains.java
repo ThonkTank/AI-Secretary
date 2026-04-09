@@ -21,18 +21,18 @@ package com.autosecretary.features.task.application.callchain;
  *   -> TaskSlotAssignmentApi.assignEligibleSlots(tasks)
  *   -> TaskScoringApi.computeDailyScores(tasks, day)
  *   -> TaskPlanningApi.createBucketPlan(day, tasks, scores, freeMinutes)
- *   -> PlanWriteGateway.saveDraftPlan(day, plan)
+ *   -> PlanWriteGateway.saveDraftPlan(day, plan, idempotencyKey)
  *   -> TaskWriteGateway.upsertPlannedForDay(taskId, day)  // optional
  * </pre>
  *
  * <p>Call Chain B: Completion-driven Cleanup + Refill
  * <pre>
- * CompletionEventIngestGateway.onTaskCompleted(taskId, finishedAt)
- *   -> TaskWriteGateway.markCompleted(taskId, finishedAt)
- *   -> CompletionTrackingGateway.appendCompletion(taskId, finishedAt)
- *   -> PlanReadGateway.readPlanForDay(day)
+ * CompletionEventIngestGateway.onTaskCompleted(taskId, finishedAtUtc, idempotencyKey)
+ *   -> TaskWriteGateway.markCompleted(taskId, finishedAtUtc, idempotencyKey)
+ *   -> CompletionTrackingGateway.appendCompletion(event)
+ *   -> PlanReadGateway.readPlanForDay(day) // includes current revision
  *   -> TaskPlanningApi.replanAfterCompletion(plan, taskId)
- *   -> PlanWriteGateway.overwritePlan(day, updatedPlan)
+ *   -> PlanWriteGateway.overwritePlan(day, updatedPlan, expectedRevision, idempotencyKey)
  * </pre>
  */
 public interface TaskPlanningCallChains {
