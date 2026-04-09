@@ -1,5 +1,7 @@
 package com.autosecretary.features.task.data;
 
+import java.time.Instant;
+
 /**
  * Ingest seam for runtime completion events.
  *
@@ -13,5 +15,5 @@ package com.autosecretary.features.task.data;
 public interface CompletionEventIngestGateway {
 
     /** Emits a completion event for tracking and potential dynamic bucket cleanup/refill. */
-    void onTaskCompleted(String taskId, String finishedAtIso);
+    void onTaskCompleted(String taskId, Instant finishedAtUtc, String idempotencyKey);
 }

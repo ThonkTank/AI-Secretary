@@ -1,5 +1,6 @@
 package com.autosecretary.features.task.data;
 
+import com.autosecretary.features.task.domain.model.CompletionEvent;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -21,10 +22,10 @@ public interface CompletionTrackingGateway {
      *
      * <p>Why bounded dates: callers can tune recency windows for stable inference cost.
      */
-    List<String> readCompletionHistory(LocalDate fromInclusive, LocalDate toInclusive);
+    List<CompletionEvent> readCompletionHistory(LocalDate fromInclusive, LocalDate toInclusive);
 
     /**
      * Persists one completion event used by later inference and dynamic replan decisions.
      */
-    void appendCompletion(String taskId, String finishedAtIso);
+    void appendCompletion(CompletionEvent event);
 }

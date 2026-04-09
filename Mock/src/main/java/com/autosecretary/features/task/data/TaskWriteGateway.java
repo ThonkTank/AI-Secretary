@@ -1,5 +1,6 @@
 package com.autosecretary.features.task.data;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 /**
@@ -16,7 +17,7 @@ public interface TaskWriteGateway {
     /**
      * Marks task as completed at runtime checkoff time.
      */
-    void markCompleted(String taskId, String finishedAtIso);
+    void markCompleted(String taskId, Instant finishedAtUtc, String idempotencyKey);
 
     /**
      * Persists optional "planned for day" marker used by task list projections or dedup logic.

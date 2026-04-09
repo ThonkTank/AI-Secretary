@@ -1,6 +1,6 @@
 package com.autosecretary.features.task.data;
 
-import com.autosecretary.features.task.domain.model.BucketPlan;
+import com.autosecretary.features.task.domain.model.VersionedBucketPlan;
 import java.time.LocalDate;
 
 /**
@@ -18,5 +18,5 @@ public interface PlanReadGateway {
     /**
      * Returns persisted plan snapshot for day or {@code null} if no draft exists yet.
      */
-    BucketPlan readPlanForDay(LocalDate day);
+    VersionedBucketPlan readPlanForDay(LocalDate day);
 }

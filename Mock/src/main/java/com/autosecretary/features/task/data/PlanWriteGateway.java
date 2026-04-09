@@ -15,9 +15,13 @@ import java.time.LocalDate;
  */
 public interface PlanWriteGateway {
 
-    /** Writes first nightly plan snapshot for day. */
-    void saveDraftPlan(LocalDate day, BucketPlan plan);
+    /** Writes first nightly plan snapshot for day idempotently (keyed by day + idempotencyKey). */
+    void saveDraftPlan(LocalDate day, BucketPlan plan, String idempotencyKey);
 
-    /** Replaces plan after dynamic duplicate cleanup and refill. */
-    void overwritePlan(LocalDate day, BucketPlan updatedPlan);
+    /**
+     * Replaces plan after dynamic duplicate cleanup and refill with optimistic locking.
+     *
+     * @param expectedRevision revision caller read before mutation; update must fail on mismatch.
+     */
+    void overwritePlan(LocalDate day, BucketPlan updatedPlan, long expectedRevision, String idempotencyKey);
 }
