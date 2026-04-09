@@ -1,10 +1,13 @@
 package com.autosecretary.features.task.domain.model;
 
 /**
- * Placeholder enum for the future task planning time buckets.
+ * Canonical buckets for this experiment.
  *
- * <p>These slots represent the fixed daily windows used by the task feature slice:
- * MORGEN, VORMITTAG, MITTAG, NACHMITTAG, ABEND.
+ * <h2>Who uses this type</h2>
+ * Config, capacity, assignment, planning, and persisted bucket plans.
+ *
+ * <h2>Why enum</h2>
+ * Stable shared key across modules; avoids string drift and makes API contracts explicit.
  */
 public enum TimeSlot {
     MORGEN,

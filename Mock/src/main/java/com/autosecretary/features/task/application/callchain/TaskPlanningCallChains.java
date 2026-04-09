@@ -1,30 +1,41 @@
 package com.autosecretary.features.task.application.callchain;
 
 /**
- * Placeholder call-chain catalog for the task feature slice.
+ * Call-chain catalog for the target architecture.
  *
- * <p>Call Chain A: Daily Planning
+ * <h2>Who uses this placeholder</h2>
+ * Future application service/use-case that orchestrates planning and dynamic replanning.
+ *
+ * <h2>Why this exists</h2>
+ * Keeps orchestration rules explicit before implementation so each gateway/API gets the
+ * right request/response shape from the start.
+ *
+ * <p>Call Chain A: Nightly Daily Planning
  * <pre>
- * CompletionTrackingGateway.readCompletionHistory()
- *   -> TaskSlotAssignmentApi.assignSlotsFromCompletionTracking(...)
- *   -> TaskScoringApi.computeEffectiveScores(...)
- *   -> TaskPlanningApi.createSlotBoundPlan(...)
- *   -> PlanWriteGateway.saveDraftPlan(...)
+ * PlanningTriggerGateway.onNightlyTrigger()
+ *   -> BucketWindowConfigGateway.readBucketWindowsForDay(day)
+ *   -> CalendarAvailabilityGateway.readBlockedIntervals(day)
+ *   -> BucketCapacityGateway.computeAvailableMinutes(day, windows, blocked)
+ *   -> CompletionTrackingGateway.readCompletionHistory(from, to)
+ *   -> TaskSlotAssignmentApi.assignEligibleSlots(tasks)
+ *   -> TaskScoringApi.computeDailyScores(tasks, day)
+ *   -> TaskPlanningApi.createBucketPlan(day, tasks, scores, freeMinutes)
+ *   -> PlanWriteGateway.saveDraftPlan(day, plan)
  * </pre>
  *
- * <p>Call Chain B: Incremental Replan after Completion Event
+ * <p>Call Chain B: Completion-driven Cleanup + Refill
  * <pre>
- * CompletionEventIngestGateway.onTaskCompleted(...)
- *   -> CompletionTrackingGateway.appendCompletion(...)
- *   -> TaskSlotAssignmentApi.assignSlotsFromCompletionTracking(...)
- *   -> TaskPlanningApi.createSlotBoundPlan(...)
+ * CompletionEventIngestGateway.onTaskCompleted(taskId, finishedAt)
+ *   -> CompletionTrackingGateway.appendCompletion(taskId, finishedAt)
+ *   -> TaskPlanningApi.replanAfterCompletion(plan, taskId)
+ *   -> PlanWriteGateway.overwritePlan(day, updatedPlan)
  * </pre>
  */
 public interface TaskPlanningCallChains {
 
-    /** Placeholder signature for documenting daily planning orchestration. */
-    void runDailyPlanningChain();
+    /** Nightly orchestration entry point. */
+    void runNightlyPlanningChain();
 
-    /** Placeholder signature for documenting event-driven replanning orchestration. */
-    void runCompletionDrivenReplanChain();
+    /** Daytime completion-driven cleanup/refill entry point. */
+    void runCompletionDrivenCleanupAndRefillChain();
 }
