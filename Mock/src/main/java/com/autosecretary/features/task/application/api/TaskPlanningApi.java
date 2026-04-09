@@ -1,26 +1,45 @@
 package com.autosecretary.features.task.application.api;
 
+import com.autosecretary.features.task.domain.model.BucketPlan;
 import com.autosecretary.features.task.domain.model.TaskNode;
+import com.autosecretary.features.task.domain.model.TimeSlot;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Capability placeholder: score-ordered planning with slot-capacity constraints.
+ * Assembles concrete daily bucket plans from pre-computed signals.
  *
- * <p>Planned behavior:
+ * <h2>Who calls this</h2>
+ * Nightly orchestrator and daytime completion-replan path.
+ *
+ * <h2>How this API uses other APIs</h2>
+ * Consumes outputs from {@link TaskScoringApi}, {@link TaskSlotAssignmentApi}, and capacity gateway.
+ *
+ * <h2>Why these parameters</h2>
  * <ul>
- *   <li>Evaluate all tasks in one flat pass (no recursive planning-by-layer).</li>
- *   <li>Within each slot, order by effective score descending.</li>
- *   <li>Only plan tasks that fit slot duration capacity.</li>
- *   <li>If a child task is selected and parent is not planned yet, co-plan parent immediately.</li>
+ *   <li>{@code planningDay}: part of persistence key and deterministic plan identity.</li>
+ *   <li>{@code tasks}: provides durations and hierarchy context.</li>
+ *   <li>{@code scores}: direct rank order, avoids planner recomputing scoring logic.</li>
+ *   <li>{@code availableMinutesPerBucket}: direct capacity budget, avoids planner recomputing calendar math.</li>
  * </ul>
  */
 public interface TaskPlanningApi {
 
     /**
-     * Generates a concrete plan from previously scored and assigned tasks.
-     *
-     * @param tasks tasks including parent/child relationships
-     * @return placeholder ordered plan output
+     * Creates a bucket plan by descending score until bucket minutes are exhausted.
+     * Tasks may appear in multiple buckets if uncertainty policy allows.
      */
-    List<String> createSlotBoundPlan(List<TaskNode> tasks);
+    BucketPlan createBucketPlan(LocalDate planningDay,
+                                List<TaskNode> tasks,
+                                Map<String, Double> scores,
+                                Map<TimeSlot, Integer> availableMinutesPerBucket);
+
+    /**
+     * Removes stale later-bucket duplicates after completion and refills newly freed capacity.
+     *
+     * @param existingPlan persisted current-day plan snapshot
+     * @param completedTaskId task completed earlier in the day
+     */
+    BucketPlan replanAfterCompletion(BucketPlan existingPlan, String completedTaskId);
 }
