@@ -1,6 +1,7 @@
 package com.autosecretary.features.task.data;
 
 import com.autosecretary.features.task.domain.model.CompletionEvent;
+import com.autosecretary.features.task.domain.model.TaskCompletionStats;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -28,4 +29,9 @@ public interface CompletionTrackingGateway {
      * Persists one completion event used by later inference and dynamic replan decisions.
      */
     void appendCompletion(CompletionEvent event);
+
+    /**
+     * Returns scoring-facing completion summary (streaks + counters) for one task.
+     */
+    TaskCompletionStats readCompletionStats(String taskId);
 }
