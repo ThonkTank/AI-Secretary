@@ -9,6 +9,24 @@ Kein DI-Framework, keine neuen Gradle-Module, kein Event-Bus — es ist dieselbe
 Architektur, die das Projekt zu haben *behauptet*, nur vollständig definiert und
 vollständig erzwungen.
 
+**Neue, dauerhafte Projektregel (ersetzt „keine Tests"):**
+
+> *Jede geforderte Verhaltensinvariante wird sauber und auffindbar dokumentiert
+> und mit engen End-to-End-Tests abgesichert.*
+
+Die frühere Pauschalregel „No automated tests" entfällt ersatzlos — sowohl in
+`CLAUDE.md` als auch als `checkArchitecture`-Regel (`repository-no-automated-tests`).
+An ihre Stelle tritt die obige Regel. „Eng" heißt: der Test prüft eine benannte
+Verhaltensinvariante durch die Schichten hindurch am beobachtbaren Ergebnis, nicht
+Implementierungsdetails. „Auffindbar dokumentiert" heißt: die Invariante ist
+benannt (z. B. als Testname/Kommentar und, wo sinnvoll, in der Feature-`README`),
+sodass klar ist, *welches* Verhalten der Test schützt.
+
+Für dieses Vorhaben ist **Verhaltensparität** die oberste Nebenbedingung: Da an
+lebendem Produktionscode migriert wird, werden die Tests als
+**Charakterisierungstests** *vor* dem jeweiligen Umbau geschrieben (heutiges
+Verhalten einfangen) und müssen danach unverändert grün bleiben.
+
 ---
 
 ## Zielarchitektur — fünf Prinzipien
@@ -68,10 +86,50 @@ Entities bei Zwei-Modell-Features). `domain/` besitzt das fachliche Modell.
 
 ---
 
+## Arbeitsweise (verbindlich)
+
+Diese Sektion ist die Prozess-Referenz. Der Goal-Prompt bleibt statisch und
+verweist nur hierauf; **der aktuelle Fortschritt lebt ausschließlich in diesem
+Dokument** (Statustabelle + Änderungslog + `docs/roadmap/phaseN.md`), damit nach
+einer Kontext-Kompaktierung oder in einem neuen Chat kein Fortschritt verloren geht.
+
+**Pro Phase, in dieser Reihenfolge:**
+1. **Design.** Konkretes Implementationsdesign, wo die Roadmap Fragen offen lässt →
+   nach `docs/roadmap/phaseN.md` schreiben.
+2. **Vollständigkeits-Review.** Einen Subagenten (general-purpose) die
+   Entscheidungsvollständigkeit prüfen lassen (Folge-Effekte, übersehene
+   Referenzen, Risiken). Ergebnis in `docs/roadmap/phaseN.md` festhalten.
+3. **Done-When-Kriterien.** Konkret später überprüfbare Kriterien + die durch diese
+   Phase geschützten Verhaltensinvarianten benennen → `docs/roadmap/phaseN.md`.
+4. **Umsetzen.** Inklusive Tests gemäß Testregel (verhaltensberührende Phasen:
+   Charakterisierungstests zuerst).
+5. **Erfolgs-Review.** Einen Subagenten gegen die Done-When-Kriterien reviewen lassen.
+6. **Abschluss-Gate (blockierend).** Erst wenn **alle** grün sind, gilt die Phase
+   als erledigt:
+   - `./gradlew checkArchitecture` (Exit 0)
+   - `./gradlew assembleDebug` (Exit 0)
+   - `./gradlew testDebugUnitTest` (Exit 0) — **ein fehlerhafter Testlauf blockiert
+     den Abschluss.** (Vor Phase 2 existiert die Suite noch nicht; das Gate ist
+     dann ein No-op-Pass. Ab Phase 2 ist es hart.)
+7. **Fortschritt festschreiben.** Statuszelle in der Tabelle auf ✅, Änderungslog-
+   Zeile ergänzen, `docs/roadmap/phaseN.md` mit Erfolgs-Review abschließen. Phase
+   lokal committen (Konvention aus `CLAUDE.md`, Co-Authored-By-Trailer; **kein Push**).
+8. Nächste Phase lesen, wiederholen — bis alle Phasen ✅ sind.
+
+**Gesamtabschluss** ist ebenfalls durch das Abschluss-Gate blockiert: das Vorhaben
+gilt erst als fertig, wenn alle Phasen ✅ sind *und* der vollständige Testlauf grün ist.
+
 ## Phasen
 
-Jede Phase lässt den Build grün (`./gradlew checkArchitecture assembleDebug`).
+Jede Phase lässt den Build grün (`./gradlew checkArchitecture assembleDebug`) und
+ab Phase 2 auch die Testsuite (`./gradlew testDebugUnitTest`) — siehe Abschluss-Gate.
 Reihenfolge = Umsetzungsreihenfolge (risikoarm → strukturell).
+
+**Prozessregel Verhaltensparität:** Verhaltensberührende Phasen (4, 5, 6, 7)
+*erweitern zuerst* das Charakterisierungs-Testset um die konkret betroffenen
+Verhaltensweisen (Ist-Zustand einfangen), *dann* wird umgebaut; dieselben Tests
+müssen danach unverändert grün sein. Reine Struktur-/Verschiebe-Phasen (1, 3)
+fügen keine neuen Tests hinzu, dürfen die bestehende Suite aber nicht brechen.
 
 Legende Status: ⬜ offen · 🔨 in Arbeit · ✅ erledigt
 
@@ -79,18 +137,22 @@ Legende Status: ⬜ offen · 🔨 in Arbeit · ✅ erledigt
 |-------|-------|--------|
 | 0 | Baseline & Roadmap | ✅ |
 | 1 | Toten Code entfernen | ⬜ |
-| 2 | Querschnitt-Typen nach `shared/` verschieben | ⬜ |
-| 3 | Schicht-Entkopplung (application↛ui, meal↔task Port) | ⬜ |
-| 4 | Threading & DB-Lifecycle-Eigentum | ⬜ |
-| 5 | Task-Domänenmodell nach `domain/model/` | ⬜ |
-| 6 | Application-Schicht normalisieren (Presenter-Split) | ⬜ |
-| 7 | `checkArchitecture` v2 + Doku-Sync | ⬜ |
+| 2 | Test-Infrastruktur & Verhaltens-Baseline | ⬜ |
+| 3 | Querschnitt-Typen nach `shared/` verschieben | ⬜ |
+| 4 | Schicht-Entkopplung (application↛ui, meal↔task Port) | ⬜ |
+| 5 | Threading & DB-Lifecycle-Eigentum | ⬜ |
+| 6 | Task-Domänenmodell nach `domain/model/` | ⬜ |
+| 7 | Application-Schicht normalisieren (Presenter-Split) | ⬜ |
+| 8 | `checkArchitecture` v2 + Doku-Sync | ⬜ |
 
 ### Phase 0 — Baseline & Roadmap ✅
 Roadmap angelegt, Arbeitsbranch erstellt, Baseline `checkArchitecture` grün,
 `assembleDebug` als Referenz gebaut.
 
 ### Phase 1 — Toten Code entfernen
+> Design + Vollständigkeits-Review bereits erledigt → siehe `docs/roadmap/phase1.md`
+> (erweiterter Löschsatz inkl. Folge-Totcode). Umsetzung startet direkt bei Schritt 4.
+
 Ziel: ~1.200 Zeilen nicht erreichbarer Code raus, damit keine still divergierende
 Logik (v.a. duplizierte Completion-Logik) unbemerkt weiterlebt.
 - `meal/application/MealTaskBridgeService.java` (nicht verdrahtet, dupliziert
@@ -102,15 +164,43 @@ Logik (v.a. duplizierte Completion-Logik) unbemerkt weiterlebt.
   `isKnownCategory`) + Implementierungen
 - Javadoc-Referenzen auf die gelöschten Klassen bereinigen.
 
-### Phase 2 — Querschnitt-Typen nach `shared/` verschieben
+### Phase 2 — Test-Infrastruktur & Verhaltens-Baseline
+Ziel: das Migrations-Sicherheitsnetz aufbauen, bevor Verhalten umgezogen wird.
+- Test-Sourceset + Abhängigkeiten einrichten. Empfehlung (im Phasen-Design zu
+  bestätigen): JVM-Tests unter `src/test` mit **Robolectric + in-memory Room**
+  (`AppDatabase` via `Room.inMemoryDatabaseBuilder`), die durch die Schichten
+  UI-ViewModel/Presenter → application → domain → data treiben und beobachtbare
+  Ergebnisse prüfen (DB-Zustand, zurückgegebene View-States). Echte Espresso-UI-
+  Tests bleiben optional/gerätegebunden und sind nicht Teil des Netzes.
+- `checkArchitecture`-Regel `repository-no-automated-tests` (build.gradle.kts
+  ~232–240) entfernen; in `CLAUDE.md` den „No automated tests"-Absatz durch die
+  neue dauerhafte Testregel ersetzen (siehe oben) und die Test-Kommandos ergänzen.
+- **Charakterisierungs-Baseline** für genau die später berührten Verhaltensweisen
+  schreiben, jeweils gegen den *heutigen* Code grün:
+  - Budget-Übersicht laden (`LoadBudgetOverviewUseCase` → View-State) — für Phase 4.
+  - Task↔Meal-Completion-Integration (`CheckOffTaskUseCase` →
+    `TaskMealIntegrationService`, Meal-Consumption gebucht) — für Phase 4.
+  - Two-Phase-Checkoff inkl. Streak/History/Adaptive (`TaskCompletionService` end-
+    to-end über Room) — Kernverhalten, indirekt von Phase 5/6 berührt.
+  - Task-Scheduling-Roundtrip: Slots generieren + über Room persistieren/lesen —
+    für Phase 6 (Modell-Paketverschiebung, Room-Schema muss identisch bleiben).
+  - Meal-Planner-Operationen (Home-Aggregation + eine CRUD-Kette) — für Phase 7.
+- Done-When: Suite läuft via `./gradlew testDebugUnitTest` grün; jeder oben
+  genannte Bereich hat mindestens einen aussagekräftigen E2E-Test; Architektur-
+  regel für Tests ist entfernt; `checkArchitecture assembleDebug` weiterhin grün.
+
+### Phase 3 — Querschnitt-Typen nach `shared/` verschieben
 Ziel: Cross-Feature-Werttypen und -Verträge gehören in `shared/`, nicht in
 fremde Feature-`domain/` oder in `app/`.
 - `meal/domain/MealType` → `shared/` (bricht `TaskCore`→`meal.domain`-Kopplung)
 - `app/WidgetRefreshNotifier` → `shared/` (bricht `features→app`-Rückabhängigkeit)
 - Budget-Default-Icon/-Farbe: Konstante in Domain-Record, Entity/UI referenzieren.
+- Reine Verschiebung: bestehende Suite bleibt grün, keine neuen Tests nötig.
 
-### Phase 3 — Schicht-Entkopplung
+### Phase 4 — Schicht-Entkopplung
 Ziel: Abhängigkeitsrichtung UI→application→domain→data überall einhalten.
+Verhaltensparität via Charakterisierungstests aus Phase 2 (Budget-Übersicht,
+Task↔Meal-Completion) — vor Umbau ggf. um Randfälle erweitern, danach unverändert grün.
 - `LoadBudgetOverviewUseCase` von `ui.state`/`ui.internal` lösen (Domain-Rückgabe,
   Mapping im ViewModel — oder State-Typen+Mapper nach `application`).
 - meal↔task-Integration auf Consumer-Port (P2) umstellen: `TaskMealIntegrationService`
@@ -121,37 +211,50 @@ Ziel: Abhängigkeitsrichtung UI→application→domain→data überall einhalten
   schmale Application-Aufrufe.
 - Unlock-Receiver (`AutoSecretaryApplication`) über `WidgetRefreshNotifier`.
 
-### Phase 4 — Threading & DB-Lifecycle-Eigentum
+### Phase 5 — Threading & DB-Lifecycle-Eigentum
 Ziel: kein Blockieren des DB-Threads durch Netz-I/O; ein Eigentümer für DB-Lifecycle.
 - `AppCompositionRoot`: `dbExecutor` + `ioExecutor`; Claude-API/`UpdateChecker`/
   Backup auf `ioExecutor`.
 - DB-`getInstance()`/`closeAndReset()` nur noch in `AppCompositionRoot`;
   `SettingsDataService`/`MainActivity` nur triggern.
+- Verhaltensparität: Charakterisierungstests (Two-Phase-Checkoff, Restore/Reset-
+  Pfad) müssen grün bleiben; ggf. Test für Restore→Reload-Sequenz ergänzen.
 
-### Phase 5 — Task-Domänenmodell nach `domain/model/`
+### Phase 6 — Task-Domänenmodell nach `domain/model/`
 Ziel: `domain` importiert nie mehr `data`; same-feature-`data`-Ausnahme im Check
 kann entfallen.
 - `Task`, `TaskCore`, `TaskSlot`, `TaskPrefSlot`, `TaskPrefSlotFactory`,
   `TaskPrerequisite`, `TaskRelation`, `TaskPlannedMeal` → `domain/model/` (reine
   Paketverschiebung, Room-Annotationen bleiben). DAOs/Config/Transition bleiben
   in `data/`.
+- Verhaltensparität: Scheduling-Roundtrip- und Checkoff-Tests aus Phase 2 müssen
+  identisch grün bleiben — sie beweisen, dass das Room-Schema unverändert ist.
 
-### Phase 6 — Application-Schicht normalisieren
+### Phase 7 — Application-Schicht normalisieren
 Ziel: konsistentes UseCase/DataService-Muster; „Presenter" raus.
 - `MealPlannerPresenter` entlang seiner Abschnittskommentare in fokussierte
   UseCases/DataService aufteilen.
 - `TaskEditPresenter` → `TaskEditFormController` (o.ä.) umbenennen.
+- Verhaltensparität: Meal-Planner-Charakterisierungstests aus Phase 2 vor dem
+  Split ggf. erweitern, danach unverändert grün.
 
-### Phase 7 — `checkArchitecture` v2 + Doku-Sync
+### Phase 8 — `checkArchitecture` v2 + Doku-Sync
 Ziel: die fünf Prinzipien werden erzwungen, damit keine Fehlerklasse zurückkehrt.
-- Import-Matrix (P1) als Allowlist-Regel implementieren.
+- Import-Matrix (P1) als Allowlist-Regel implementieren (Test-Sourceset von der
+  Matrix ausnehmen bzw. lockerer behandeln).
 - `unreferenced-class`-Regel (P5).
 - `docs-match-code`-Regel (DB-Version).
 - `Executors.new*`-Standort-Regel (P4).
-- CLAUDE.md aktualisieren (DB-Version 24→aktuell, ApiKeyStore-Beschreibung,
-  Verweis auf diese Roadmap/Matrix).
+- CLAUDE.md final abgleichen (DB-Version 24→aktuell, ApiKeyStore-Beschreibung,
+  Verweis auf diese Roadmap/Matrix; Testregel wurde bereits in Phase 2 gesetzt).
 
 ---
 
 ## Änderungslog
 - Phase 0 abgeschlossen: Roadmap + Branch + Baseline.
+- Roadmap erweitert: „keine Tests"-Regel generell durch dauerhafte Testregel
+  ersetzt (dokumentierte, eng abgesicherte Verhaltensinvarianten); neue Phase 2
+  (Test-Infrastruktur & Verhaltens-Baseline); Folgephasen neu nummeriert
+  (alt 2–7 → neu 3–8); verbindliche Arbeitsweise-Sektion mit blockierendem
+  Abschluss-Gate (roter `testDebugUnitTest`-Lauf blockiert Phasen-/Gesamtabschluss)
+  und Fortschritts-Persistenz in diesem Dokument + `docs/roadmap/phaseN.md`.
