@@ -89,8 +89,8 @@ Orchestrates the full import pipeline: parse → deduplicate → map → persist
 
 **Entry point:** `execute(accountId, fileName, fileBytes, mimeType) -> ImportResult`
 
-Runs synchronously on the caller's thread. The ViewModel dispatches it on the shared executor and
-posts the result back to the UI.
+Runs synchronously on the caller's thread. The ViewModel creates and completes import records on
+the DB executor, runs file parsing on the I/O executor, and posts the result back to the UI.
 
 **Key internal methods:**
 - `buildTransactions()` — deduplication and category resolution per transaction
@@ -130,7 +130,8 @@ Runs synchronously on the caller's thread. For each accepted suggestion:
 ## Integration Points
 
 ### UI → Application (from `budget/ui/`)
-- Import flow triggered by file picker → `BudgetImportUseCase.execute()`
+- Import flow triggered by file picker → `BudgetViewModel.importFromCsv()`: DB setup on
+  `dbExecutor`, parsing on `ioExecutor`, DB completion back on `dbExecutor`
 - Recurring suggestions reviewed by user → `ApplyRecurringSuggestionsUseCase.execute()`
 
 ### Application → Domain (from `budget/domain/`)

@@ -90,6 +90,11 @@ The app stores its data in a single SQLite database managed by Room. The setting
 SQLite WAL (Write-Ahead Logging) requires flushing pending writes before copying the database.
 See `SettingsDataService.java` for detailed explanations of the WAL handling.
 
+`AppCompositionRoot` owns the Room lifecycle calls (`AppDatabase.getInstance()` /
+`closeAndReset()`). `SettingsDataService` only performs synchronous file/WAL operations through
+an injected lifecycle interface; `SettingsController` dispatches those operations on the app's
+`ioExecutor`.
+
 **Learn more:** [SQLite WAL mode](https://www.sqlite.org/wal.html)
 
 ---

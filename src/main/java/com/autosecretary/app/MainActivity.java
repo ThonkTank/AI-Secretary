@@ -10,7 +10,6 @@ import com.autosecretary.R;
 import com.autosecretary.app.settings.SettingsController;
 import com.autosecretary.app.settings.SettingsDataService;
 import com.autosecretary.app.update.UpdateChecker;
-import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.ui.BudgetFragment;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
 import com.autosecretary.features.meal.application.MealPlannerPresenter;
@@ -41,8 +40,8 @@ import android.widget.Toast;
  *
  * <h2>Settings</h2>
  * The settings gear in the bottom nav opens a dialog managed by {@link SettingsController}.
- * After a data reset, {@link #reloadUiStateAfterDataReset()} tears down and recreates the
- * composition root and the activity itself so all fragments re-bind to a fresh database.
+ * After a data reset, the composition root reopens the database and clears cached graph state;
+ * {@link #reloadUiStateAfterDataReset()} recreates the activity so fragments re-bind.
  *
  * <h2>Self-update</h2>
  * {@link com.autosecretary.app.update.UpdateChecker} is started once per activity lifetime
@@ -60,11 +59,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.app_main_activity);
 
-        settingsController = new SettingsController(this, new SettingsDataService(this),
+        AppCompositionRoot compositionRoot = AutoSecretaryApplication.from(this).getAppCompositionRoot();
+        settingsController = new SettingsController(this, new SettingsDataService(this, compositionRoot),
                 this::reloadUiStateAfterDataReset,
                 this::showScheduleConfigDialog,
                 this::showCookingPrefsDialog,
-                AutoSecretaryApplication.from(this).getAppCompositionRoot().getSharedExecutor());
+                compositionRoot.getIoExecutor());
 
         BottomNavigationView tabBar = findViewById(R.id.TabBar);
 
@@ -103,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
         }
         updateCheckStarted = true;
         new UpdateChecker(this,
-                AutoSecretaryApplication.from(this).getAppCompositionRoot().getSharedExecutor())
+                AutoSecretaryApplication.from(this).getAppCompositionRoot().getIoExecutor())
                 .checkForUpdate();
     }
 
@@ -187,10 +187,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void reloadUiStateAfterDataReset() {
-        AppDatabase.closeAndReset();
-        AutoSecretaryApplication.from(this)
-                .getAppCompositionRoot()
-                .resetForDataReload();
         recreate();
     }
 }

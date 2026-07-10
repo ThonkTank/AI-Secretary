@@ -60,7 +60,7 @@ features/task/
 
 - **`Task` is a Room POJO, not a `@Entity`.** Room assembles it from five tables via `@Relation`. Only `TaskCore` is the persisted entity. See `data/README.md` for details.
 - **Current persistence shape.** DAOs are still used directly from some use cases and mutations. Treat this as existing app shape unless a focused change moves a specific call path.
-- **Single-threaded executor.** All DB access runs on one shared `ExecutorService`; results post to main via `Handler`. See `app/AppCompositionRoot`.
+- **DB executor.** All task DB access runs on `AppCompositionRoot.getDbExecutor()`; file/network work uses the separate `ioExecutor`. Results post to main via `Handler`.
 - **Daily alarm.** Schedule regeneration runs at midnight via `AlarmManager`. See `application/internal/alarms/`.
 
 ## Public resources

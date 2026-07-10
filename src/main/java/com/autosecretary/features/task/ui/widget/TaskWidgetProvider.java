@@ -186,7 +186,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         // mutation completes.
         PendingResult result = goAsync();
         AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
-        app.getAppCompositionRoot().getSharedExecutor().execute(() -> {
+        app.getAppCompositionRoot().getDbExecutor().execute(() -> {
             try {
                 app.getAppCompositionRoot().getTaskSlotToggleMutation()
                         .execute(taskId, slotId, () -> notifyWidgetUpdate(context), null);

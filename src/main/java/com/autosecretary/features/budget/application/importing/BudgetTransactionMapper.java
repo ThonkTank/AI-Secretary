@@ -5,6 +5,8 @@ import com.autosecretary.features.budget.domain.importing.ImportTransactionType;
 import com.autosecretary.features.budget.domain.recurring.RecurringBudgetTransaction;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
+import java.util.UUID;
+
 /**
  * Explicit mapper between domain import/recurring model and persistence forms.
  */
@@ -25,7 +27,7 @@ public class BudgetTransactionMapper {
         ImportTransactionType type = ImportTransactionType.fromDirection(direction);
         return new ImportTransactionRecord(
                 new ImportTransactionRecord.TransactionData(
-                        domainTransaction.id(),
+                        domainTransaction.id() != null ? domainTransaction.id() : UUID.randomUUID().toString(),
                         domainTransaction.accountId(),
                         domainTransaction.categoryId(),
                         type,

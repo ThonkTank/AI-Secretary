@@ -3,6 +3,8 @@ package com.autosecretary.features.budget.ui;
 import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -91,6 +93,8 @@ public class BudgetFragment extends Fragment {
     private BudgetRecurringSuggestionsDialogController recurringSuggestionsDialogController;
     private BudgetTransactionDialogController transactionDialogController;
     private BudgetLimitDialogController limitDialogController;
+    private java.util.concurrent.ExecutorService ioExecutor;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private List<BudgetAccount> accountItems = new ArrayList<>();
     private BudgetTransactionAdapter transactionAdapter;
     private final ActivityResultLauncher<String[]> importStatementLauncher =
@@ -102,6 +106,9 @@ public class BudgetFragment extends Fragment {
         contentDocumentReader = AutoSecretaryApplication.from(requireContext())
                 .getAppCompositionRoot()
                 .getContentDocumentReader();
+        ioExecutor = AutoSecretaryApplication.from(requireContext())
+                .getAppCompositionRoot()
+                .getIoExecutor();
 
         transferDialogController = new BudgetTransferDialogController(this,
                 (sourceAccountId, targetAccountId, amount, bookingDate, note) -> {
@@ -329,27 +336,28 @@ public class BudgetFragment extends Fragment {
         if (uri == null || budgetViewModel == null) {
             return;
         }
-        contentDocumentReader.read(uri, new ContentDocumentReader.Callback() {
-            @Override
-            public void onRead(ContentDocumentReader.DocumentContents documentContents) {
-                if (budgetViewModel == null) {
-                    return;
-                }
-                budgetViewModel.setImportStatus(getString(
-                        R.string.budget_status_file_loading,
-                        documentContents.displayName()));
-                budgetViewModel.importFromCsv(
-                        documentContents.displayName(),
-                        documentContents.bytes(),
-                        documentContents.mimeType());
-            }
-
-            @Override
-            public void onReadFailed() {
-                if (budgetViewModel == null) {
-                    return;
-                }
-                budgetViewModel.onImportReadFailed();
+        ioExecutor.execute(() -> {
+            try {
+                ContentDocumentReader.DocumentContents documentContents = contentDocumentReader.read(uri);
+                mainHandler.post(() -> {
+                    if (budgetViewModel == null) {
+                        return;
+                    }
+                    budgetViewModel.setImportStatus(getString(
+                            R.string.budget_status_file_loading,
+                            documentContents.displayName()));
+                    budgetViewModel.importFromCsv(
+                            documentContents.displayName(),
+                            documentContents.bytes(),
+                            documentContents.mimeType());
+                });
+            } catch (java.io.IOException exception) {
+                mainHandler.post(() -> {
+                    if (budgetViewModel == null) {
+                        return;
+                    }
+                    budgetViewModel.onImportReadFailed();
+                });
             }
         });
     }

@@ -22,7 +22,7 @@ import java.util.concurrent.ExecutorService;
  *
  * <p>Android's {@code ViewModelProvider} requires a factory when the ViewModel has a
  * non-default constructor. This factory is created by {@code AppCompositionRoot} and
- * receives the shared infrastructure dependencies ({@code repository}, {@code executor})
+ * receives the shared infrastructure dependencies ({@code repository}, executors)
  * that are managed at the app level.
  *
  * <p>App-scoped use cases are injected from {@code AppCompositionRoot}; cheap application
@@ -32,20 +32,23 @@ import java.util.concurrent.ExecutorService;
 public class BudgetViewModelFactory implements ViewModelProvider.Factory {
 
     private final BudgetRepository repository;
-    private final ExecutorService executor;
+    private final ExecutorService dbExecutor;
+    private final ExecutorService ioExecutor;
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
     private final CreateTransferUseCase createTransferUseCase;
     private final LoadBudgetOverviewUseCase loadBudgetOverviewUseCase;
 
     public BudgetViewModelFactory(BudgetRepository repository,
-                                  ExecutorService executor,
+                                  ExecutorService dbExecutor,
+                                  ExecutorService ioExecutor,
                                   BudgetImportUseCase importUseCase,
                                   ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
                                   CreateTransferUseCase createTransferUseCase,
                                   LoadBudgetOverviewUseCase loadBudgetOverviewUseCase) {
         this.repository = repository;
-        this.executor = executor;
+        this.dbExecutor = dbExecutor;
+        this.ioExecutor = ioExecutor;
         this.importUseCase = importUseCase;
         this.applyRecurringUseCase = applyRecurringUseCase;
         this.createTransferUseCase = createTransferUseCase;
@@ -57,7 +60,7 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
     public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
         if (modelClass.isAssignableFrom(BudgetViewModel.class)) {
             BudgetViewModel.Infrastructure infrastructure =
-                    new BudgetViewModel.Infrastructure(executor);
+                    new BudgetViewModel.Infrastructure(dbExecutor, ioExecutor);
             CalculateEffectiveBudgetLimitUseCase calculateEffectiveLimitUseCase =
                     new CalculateEffectiveBudgetLimitUseCase(repository);
             BudgetViewModel.UseCases useCases = new BudgetViewModel.UseCases(

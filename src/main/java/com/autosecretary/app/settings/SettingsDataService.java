@@ -47,6 +47,13 @@ import java.util.Locale;
  * @see SettingsController
  */
 public class SettingsDataService {
+    public interface DatabaseLifecycle {
+        void runDatabaseCheckpoint();
+
+        void closeDatabaseForFileReplacement();
+
+        void openDatabaseAfterFileReplacement();
+    }
 
     private static final String TAG = "SettingsDataService";
     private static final String BACKUP_PREFIX = "backup_";
@@ -54,14 +61,11 @@ public class SettingsDataService {
     private static final String SHM_SUFFIX = "-shm";
 
     private final Context appContext;
+    private final DatabaseLifecycle databaseLifecycle;
 
-    /**
-     * Create a new SettingsDataService instance.
-     *
-     * @param context the application context (used for database and file access)
-     */
-    public SettingsDataService(@NonNull Context context) {
+    public SettingsDataService(@NonNull Context context, @NonNull DatabaseLifecycle databaseLifecycle) {
         this.appContext = context.getApplicationContext();
+        this.databaseLifecycle = databaseLifecycle;
     }
 
     /**
@@ -133,10 +137,10 @@ public class SettingsDataService {
      */
     public boolean restoreBackup(@NonNull File backupFile) {
         try {
-            AppDatabase.closeAndReset();
+            databaseLifecycle.closeDatabaseForFileReplacement();
             clearSidecarFiles();
             copyDatabaseFile(backupFile, getDatabaseFile());
-            AppDatabase.getInstance(appContext);
+            databaseLifecycle.openDatabaseAfterFileReplacement();
             return true;
         } catch (IOException ex) {
             Log.e(TAG, "Restore failed", ex);
@@ -166,10 +170,10 @@ public class SettingsDataService {
             if (backup == null) {
                 return false;
             }
-            AppDatabase.closeAndReset();
+            databaseLifecycle.closeDatabaseForFileReplacement();
             appContext.deleteDatabase(AppDatabase.DB_NAME);
             clearSidecarFiles();
-            AppDatabase.getInstance(appContext);
+            databaseLifecycle.openDatabaseAfterFileReplacement();
             return true;
         } catch (RuntimeException ex) {
             Log.e(TAG, "Factory reset failed", ex);
@@ -204,8 +208,7 @@ public class SettingsDataService {
      * @see <a href="https://www.sqlite.org/pragma.html#pragma_wal_checkpoint">PRAGMA wal_checkpoint documentation</a>
      */
     private void runCheckpoint() {
-        AppDatabase database = AppDatabase.getInstance(appContext);
-        database.getOpenHelper().getWritableDatabase().execSQL("PRAGMA wal_checkpoint(FULL)");
+        databaseLifecycle.runDatabaseCheckpoint();
     }
 
     private File getBackupDirectory() {

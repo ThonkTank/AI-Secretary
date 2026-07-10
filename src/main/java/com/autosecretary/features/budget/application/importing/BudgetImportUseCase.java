@@ -19,6 +19,7 @@ import java.util.HexFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import com.autosecretary.features.budget.domain.importing.ImportCategory;
 
 /**
  * Orchestrates the end-to-end import pipeline: parse → deduplicate → map → persist → detect patterns.
@@ -55,8 +56,11 @@ public class BudgetImportUseCase {
                                 String fileName,
                                 byte[] fileBytes,
                                 String mimeType) {
+        ImportContext context = null;
         try {
-            return runImportPipeline(accountId, fileName, fileBytes, mimeType);
+            context = beginImport(accountId, fileName, fileBytes, needsImportCategories(fileName, mimeType));
+            ParsedStatement parsed = parse(context, fileBytes, mimeType);
+            return completeImport(context, parsed);
         } catch (ImportPipelineException e) {
             if (e.importId() != null) {
                 repository.markImportFailed(e.importId(), e.getMessage());
@@ -65,24 +69,40 @@ public class BudgetImportUseCase {
         }
     }
 
-    private ImportResult runImportPipeline(String accountId,
-                                   String fileName,
-                                   byte[] fileBytes,
-                                   String mimeType) {
-        String importId = null;
+    public ImportContext beginImport(String accountId,
+                                     String fileName,
+                                     byte[] fileBytes,
+                                     boolean loadImportCategories) {
+        String fileHash = sha256(fileBytes);
+        BudgetImportRepository.ImportRecord importRecord = repository.createImport(accountId, fileName, fileHash);
+        List<ImportCategory> importCategories = loadImportCategories
+                ? repository.findActiveCategoriesForImport()
+                : List.of();
+        return new ImportContext(importRecord.id(), accountId, fileName, fileHash, importCategories);
+    }
+
+    public ParsedStatement parse(ImportContext context, byte[] fileBytes, String mimeType) {
         try {
-            String fileHash = sha256(fileBytes);
-            BudgetImportRepository.ImportRecord importRecord = repository.createImport(accountId, fileName, fileHash);
-            importId = importRecord.id();
+            return parser.parse(context.fileName(), fileBytes, mimeType, context.importCategories());
+        } catch (IllegalArgumentException e) {
+            throw new ImportPipelineException(context.importId(),
+                    "Validierungsfehler beim Import: " + safeErrorMessage(e),
+                    e);
+        } catch (Exception e) {
+            throw new ImportPipelineException(context.importId(),
+                    "Technischer Fehler beim Import: " + safeErrorMessage(e),
+                    e);
+        }
+    }
 
-            ParsedStatement parsed = parser.parse(fileName, fileBytes, mimeType);
-
-            ImportComputation computation = buildTransactions(accountId, importId, parsed.transactions());
+    public ImportResult completeImport(ImportContext context, ParsedStatement parsed) {
+        try {
+            ImportComputation computation = buildTransactions(context.accountId(), context.importId(), parsed.transactions());
             if (!computation.newTransactions.isEmpty()) {
                 repository.saveTransactionsBatch(computation.newTransactions.stream().map(BudgetTransactionMapper::toRecord).toList());
             }
 
-            repository.markImportCompleted(importId, new BudgetImportRepository.CompletionData(
+            repository.markImportCompleted(context.importId(), new BudgetImportRepository.CompletionData(
                     parsed.transactions().size(),
                     computation.newTransactions.size(),
                     computation.recognizedCategories,
@@ -92,7 +112,7 @@ public class BudgetImportUseCase {
 
             // Pattern detection runs after import is fully committed.
             // Failures here must not mark the import as failed.
-            List<RecurringSuggestion> suggestions = detectRecurringPatternsForAccount(accountId);
+            List<RecurringSuggestion> suggestions = detectRecurringPatternsForAccount(context.accountId());
 
             return new ImportResult(
                     parsed.transactions().size(),
@@ -102,14 +122,31 @@ public class BudgetImportUseCase {
                     suggestions
             );
         } catch (IllegalArgumentException e) {
-            throw new ImportPipelineException(importId,
+            throw new ImportPipelineException(context.importId(),
                     "Validierungsfehler beim Import: " + safeErrorMessage(e),
                     e);
         } catch (Exception e) {
-            throw new ImportPipelineException(importId,
+            throw new ImportPipelineException(context.importId(),
                     "Technischer Fehler beim Import: " + safeErrorMessage(e),
                     e);
         }
+    }
+
+    public void markImportFailed(String importId, String errorMessage) {
+        repository.markImportFailed(importId, errorMessage);
+    }
+
+    public static String userErrorMessage(Exception exception) {
+        if (exception instanceof ImportPipelineException pipelineException) {
+            return pipelineException.getMessage();
+        }
+        return "Technischer Fehler beim Import: " + safeErrorMessage(exception);
+    }
+
+    private static boolean needsImportCategories(String fileName, String mimeType) {
+        String name = fileName == null ? "" : fileName.toLowerCase();
+        String mime = mimeType == null ? "" : mimeType.toLowerCase();
+        return name.endsWith(".pdf") || "application/pdf".equals(mime);
     }
 
     /**
@@ -257,6 +294,14 @@ public class BudgetImportUseCase {
             int recognizedCategories,
             List<RecurringSuggestion> recurringSuggestions
     ) {
+    }
+
+    public record ImportContext(
+            String importId,
+            String accountId,
+            String fileName,
+            String fileHash,
+            List<ImportCategory> importCategories) {
     }
 
     private static class ImportPipelineException extends RuntimeException {

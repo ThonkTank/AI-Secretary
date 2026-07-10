@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import android.database.Cursor;
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
 import androidx.test.core.app.ApplicationProvider;
@@ -21,6 +22,8 @@ import com.autosecretary.features.budget.application.ResolveBudgetAccountUseCase
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.application.importing.internal.StatementFileParser;
+import com.autosecretary.features.budget.application.overview.BudgetSummaryData;
+import com.autosecretary.features.budget.application.overview.BudgetTransactionRow;
 import com.autosecretary.features.budget.data.repository.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.budget.domain.BudgetAccount;
@@ -29,8 +32,6 @@ import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.ui.BudgetViewModel;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
-import com.autosecretary.features.budget.application.overview.BudgetSummaryData;
-import com.autosecretary.features.budget.application.overview.BudgetTransactionRow;
 import com.autosecretary.features.budget.ui.state.BudgetUiState;
 import com.autosecretary.testing.AutoSecretaryRobolectricTest;
 import com.autosecretary.testing.BudgetFixtures;
@@ -141,6 +142,69 @@ public final class BudgetOverviewCharacterizationTest extends AutoSecretaryRobol
         assertEquals(61, limits.get(0).percentage());
     }
 
+    @Test
+    public void csvImportKeepsSummaryCountsDuplicatesAndSuggestionsInvariant() {
+        BudgetRoomRepository repository = BudgetFixtures.budgetRepository(db);
+        repository.insertAccount(BudgetFixtures.account("Haushalt"));
+        repository.insertCategory(BudgetFixtures.expenseCategory("Lebensmittel"));
+        BudgetAccount account = repository.findActiveAccounts().get(0);
+        BudgetCategory category = repository.findActiveCategories().get(0);
+        repository.saveTransaction(new BudgetRepository.TransactionCreateDetails(
+                account.id(),
+                category.id(),
+                TransactionDirection.INCOME,
+                1L,
+                LocalDate.now(),
+                "Baseline"));
+        BudgetViewModel viewModel = createBudgetViewModel(repository);
+        RobolectricDrain.mainLooper();
+
+        String csv = "date,amountCents,payee,description,categoryId,importHash\n"
+                + LocalDate.now() + ",-1234,Supermarkt,Wocheneinkauf," + category.id() + ",hash-1\n";
+
+        viewModel.importFromCsv(
+                "konto.csv",
+                csv.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                "text/csv");
+        RobolectricDrain.mainLooper();
+
+        assertImportCounts(1, 1, 1);
+        assertTrue(LiveDataTestUtil.valueOf(viewModel.getImportSuggestions()).isEmpty());
+        assertEquals(BudgetUiState.CONTENT, LiveDataTestUtil.valueOf(viewModel.getUiState()));
+        BudgetSummaryData summary = LiveDataTestUtil.valueOf(viewModel.getSummaryData());
+        assertNotNull(summary);
+        assertEquals(1L, summary.incomeCents());
+        assertEquals(1234L, summary.expenseCents());
+        assertEquals(-1233L, summary.freeBudgetCents());
+        List<BudgetTransactionRow> rows = LiveDataTestUtil.valueOf(viewModel.getTransactions());
+        assertEquals(2, rows.size());
+        assertTrue(rows.stream().anyMatch(row -> "Wocheneinkauf".equals(row.note())));
+
+        viewModel.importFromCsv(
+                "konto.csv",
+                csv.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                "text/csv");
+        RobolectricDrain.mainLooper();
+
+        assertImportCounts(2, 1, 0);
+        BudgetSummaryData duplicateSummary = LiveDataTestUtil.valueOf(viewModel.getSummaryData());
+        assertNotNull(duplicateSummary);
+        assertEquals(1L, duplicateSummary.incomeCents());
+        assertEquals(1234L, duplicateSummary.expenseCents());
+        assertEquals(-1233L, duplicateSummary.freeBudgetCents());
+        assertEquals(2, LiveDataTestUtil.valueOf(viewModel.getTransactions()).size());
+    }
+
+    private void assertImportCounts(int importCount, int totalTransactions, int importedTransactions) {
+        try (Cursor cursor = db.getOpenHelper().getWritableDatabase().query(
+                "SELECT totalTransactions, importedTransactions FROM budget_import ORDER BY rowid")) {
+            assertEquals(importCount, cursor.getCount());
+            assertTrue(cursor.moveToLast());
+            assertEquals(totalTransactions, cursor.getInt(0));
+            assertEquals(importedTransactions, cursor.getInt(1));
+        }
+    }
+
     private BudgetViewModel createBudgetViewModel(BudgetRoomRepository repository) {
         Context context = ApplicationProvider.getApplicationContext();
         BudgetImportRoomRepository importRepository = BudgetFixtures.budgetImportRepository(db);
@@ -148,7 +212,7 @@ public final class BudgetOverviewCharacterizationTest extends AutoSecretaryRobol
         SynchronousExecutorService executor = new SynchronousExecutorService();
 
         return new BudgetViewModel(
-                new BudgetViewModel.Infrastructure(executor),
+                new BudgetViewModel.Infrastructure(executor, executor),
                 new BudgetViewModel.UseCases(
                         new BudgetImportUseCase(importRepository, parser),
                         new ApplyRecurringSuggestionsUseCase(importRepository),

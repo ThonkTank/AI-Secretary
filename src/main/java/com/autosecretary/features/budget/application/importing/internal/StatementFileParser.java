@@ -29,19 +29,24 @@ public class StatementFileParser {
 
     private final ClaudeStatementApiClient claudeApiClient;
     private final ClaudeApiKeyStore apiKeyStore;
-    private final BudgetImportRepository importRepository;
 
     public StatementFileParser(ClaudeStatementApiClient claudeApiClient,
                                ClaudeApiKeyStore apiKeyStore,
                                BudgetImportRepository importRepository) {
         this.claudeApiClient = claudeApiClient;
         this.apiKeyStore = apiKeyStore;
-        this.importRepository = importRepository;
     }
 
     public ParsedStatement parse(String fileName, byte[] fileBytes, String mimeType) {
+        return parse(fileName, fileBytes, mimeType, List.of());
+    }
+
+    public ParsedStatement parse(String fileName,
+                                 byte[] fileBytes,
+                                 String mimeType,
+                                 List<ImportCategory> importCategories) {
         if (isPdf(fileName, mimeType)) {
-            return parsePdf(fileBytes);
+            return parsePdf(fileBytes, importCategories);
         }
         if (isCsv(fileName, mimeType)) {
             return parseCsv(fileBytes);
@@ -49,15 +54,14 @@ public class StatementFileParser {
         throw new IllegalArgumentException("Nicht unterstütztes Dateiformat: " + fileName);
     }
 
-    private ParsedStatement parsePdf(byte[] fileBytes) {
+    private ParsedStatement parsePdf(byte[] fileBytes, List<ImportCategory> importCategories) {
         String apiKey = apiKeyStore.getApiKey();
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException(
                     "Kein Claude API-Key hinterlegt. Bitte in den Budget-Einstellungen setzen."
             );
         }
-        List<ImportCategory> categories = importRepository.findActiveCategoriesForImport();
-        return claudeApiClient.parsePdf(apiKey, fileBytes, categories);
+        return claudeApiClient.parsePdf(apiKey, fileBytes, importCategories);
     }
 
     /**

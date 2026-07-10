@@ -70,7 +70,7 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
  * </p>
  * <p>
  * <strong>Architecture:</strong> App → Task/Budget feature layers → application/domain → data (DAOs here).
- * All database access is single-threaded via {@code AppCompositionRoot.databaseExecutor}.
+ * All database access is single-threaded via {@code AppCompositionRoot.getDbExecutor()}.
  * </p>
  * <p>
  * <strong>Further reading:</strong>

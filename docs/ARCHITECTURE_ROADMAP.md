@@ -127,7 +127,7 @@ Legende Status: ⬜ offen · 🔨 in Arbeit · ✅ erledigt
 | 2 | Test-Infrastruktur & Verhaltens-Baseline | ✅ |
 | 3 | Querschnitt-Typen nach `shared/` verschieben | ✅ |
 | 4 | Schicht-Entkopplung (application↛ui, meal↔task Port) | ✅ |
-| 5 | Threading & DB-Lifecycle-Eigentum | ⬜ |
+| 5 | Threading & DB-Lifecycle-Eigentum | ✅ |
 | 6 | Task-Domänenmodell nach `domain/model/` | ⬜ |
 | 7 | Application-Schicht normalisieren (Presenter-Split) | ⬜ |
 | 8 | `checkArchitecture` v2 + Doku-Sync | ⬜ |
@@ -238,6 +238,13 @@ Ziel: die fünf Prinzipien werden erzwungen, damit keine Fehlerklasse zurückkeh
 ---
 
 ## Änderungslog
+- Phase 5 abgeschlossen: `AppCompositionRoot` auf `dbExecutor`/`ioExecutor`
+  umgestellt, I/O-Klassen synchron/executor-frei gehalten, Budget-Import in
+  DB-Setup/I-O-Parse/DB-Abschluss zerlegt, PDF-Kategorie-Snapshot und
+  Import-FAILED-Fehlerpfad auf DB-Executor gesichert, DB-Lifecycle-Eigentum in
+  `AppCompositionRoot` zentralisiert, Restore/Reset- und ViewModel-CSV-Import-
+  Charakterisierungstests ergaenzt, Doku/Javadocs aktualisiert; Erfolgs-
+  Re-Review PASS; Abschluss-Gate gruen.
 - Phase 4 abgeschlossen: Budget-Overview-DTOs/Mapper aus UI in Application
   geloest, Budget-/TaskEdit-ViewModels hinter schmale Application-Aufrufe
   gestellt, Task↔Meal-Completion auf task-eigenen Consumer-Port umgestellt,

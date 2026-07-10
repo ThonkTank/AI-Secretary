@@ -6,6 +6,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.autosecretary.database.AppDatabase;
+import com.autosecretary.app.settings.SettingsDataService;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.data.api.ClaudeStatementApiClient;
@@ -79,11 +80,10 @@ import java.util.concurrent.Executors;
  *       if ever called from a background thread (e.g. from alarm receivers).</li>
  * </ul>
  *
- * <h2>Shared executor</h2>
- * A single-threaded {@link java.util.concurrent.ExecutorService} is used by all features.
- * Running all DB and network work on one thread prevents concurrent writes to Room and
- * simplifies reasoning about ordering. Results are posted back to the main thread via
- * {@link android.os.Handler}.
+ * <h2>Executors</h2>
+ * A single-threaded {@link java.util.concurrent.ExecutorService} named {@code dbExecutor}
+ * serializes Room/repository work. A separate {@code ioExecutor} owns file and network work.
+ * Results are posted back to the main thread via {@link android.os.Handler}.
  *
  * <h2>Data reload</h2>
  * After a backup restore or factory reset (see {@link com.autosecretary.app.settings.SettingsDataService}),
@@ -94,9 +94,10 @@ import java.util.concurrent.Executors;
  * Created once in {@link AutoSecretaryApplication#onCreate()}, accessed via
  * {@link AutoSecretaryApplication#from(android.content.Context)}.getAppCompositionRoot().
  */
-public class AppCompositionRoot {
+public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle {
     private final Application app;
-    private final ExecutorService sharedExecutor;
+    private final ExecutorService dbExecutor;
+    private final ExecutorService ioExecutor;
     private TaskViewModelFactory taskViewModelFactory;
     private TaskEditViewModelFactory taskEditViewModelFactory;
     private RegenerateScheduleUseCase regenerateScheduleUseCase;
@@ -118,13 +119,8 @@ public class AppCompositionRoot {
 
     public AppCompositionRoot(Application app) {
         this.app = app;
-        this.sharedExecutor = Executors.newSingleThreadExecutor(runnable -> {
-            Thread thread = new Thread(runnable);
-            thread.setUncaughtExceptionHandler((t, e) ->
-                    Log.e("SharedExecutor", "Background crash", e)
-            );
-            return thread;
-        });
+        this.dbExecutor = newSingleThreadExecutor("DbExecutor");
+        this.ioExecutor = newSingleThreadExecutor("IoExecutor");
         this.taskCompletionService = new TaskCompletionService();
         this.taskLifecycleManager = new TaskLifecycleManager();
         this.widgetRefreshNotifier = new WidgetRefreshNotifier() {
@@ -140,8 +136,22 @@ public class AppCompositionRoot {
         };
     }
 
-    public ExecutorService getSharedExecutor() {
-        return sharedExecutor;
+    private static ExecutorService newSingleThreadExecutor(String logTag) {
+        return Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable);
+            thread.setUncaughtExceptionHandler((t, e) ->
+                    Log.e(logTag, "Background crash", e)
+            );
+            return thread;
+        });
+    }
+
+    public ExecutorService getDbExecutor() {
+        return dbExecutor;
+    }
+
+    public ExecutorService getIoExecutor() {
+        return ioExecutor;
     }
 
     public synchronized TaskViewModelFactory getTaskViewModelFactory() {
@@ -193,14 +203,14 @@ public class AppCompositionRoot {
         TaskDataService taskDataService = new TaskDataService(
                 dao,
                 mapper,
-                sharedExecutor,
+                dbExecutor,
                 mainHandler::post,
                 mealRepository
         );
         taskEditViewModelFactory = new TaskEditViewModelFactory(
                 taskDataService,
                 getBudgetRoomRepository(),
-                sharedExecutor,
+                dbExecutor,
                 mainHandler::post
         );
         BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase =
@@ -226,22 +236,22 @@ public class AppCompositionRoot {
         );
         CheckOffTaskUseCase checkOffTaskUseCase = new CheckOffTaskUseCase(
                 taskSlotToggleMutation,
-                sharedExecutor,
+                dbExecutor,
                 taskCompletionEffects
         );
         UndoTaskCheckOffUseCase undoTaskCheckOffUseCase = new UndoTaskCheckOffUseCase(
                 new TaskSlotUndoMutation(dao, mainHandler::post),
-                sharedExecutor
+                dbExecutor
         );
         regenerateScheduleUseCase = new RegenerateScheduleUseCase(
                 dao,
                 generator,
-                sharedExecutor,
+                dbExecutor,
                 mainHandler::post
         );
         AdjustTaskProgressUseCase adjustTaskProgressUseCase = new AdjustTaskProgressUseCase(
                 dao,
-                sharedExecutor,
+                dbExecutor,
                 mainHandler::post,
                 taskLifecycleManager,
                 taskCompletionEffects,
@@ -273,7 +283,7 @@ public class AppCompositionRoot {
             Handler mainHandler = new Handler(Looper.getMainLooper());
             taskScheduleConfigViewModelFactory = new TaskScheduleConfigViewModelFactory(
                     getTaskScheduleConfigRepository(),
-                    sharedExecutor,
+                    dbExecutor,
                     mainHandler::post
             );
         }
@@ -321,7 +331,8 @@ public class AppCompositionRoot {
 
             budgetViewModelFactory = new BudgetViewModelFactory(
                     repository,
-                    sharedExecutor,
+                    dbExecutor,
+                    ioExecutor,
                     importUseCase,
                     applyRecurringUseCase,
                     createTransferUseCase,
@@ -333,12 +344,7 @@ public class AppCompositionRoot {
 
     public synchronized ContentDocumentReader getContentDocumentReader() {
         if (contentDocumentReader == null) {
-            Handler mainHandler = new Handler(Looper.getMainLooper());
-            contentDocumentReader = new ContentDocumentReader(
-                    app,
-                    sharedExecutor,
-                    mainHandler::post
-            );
+            contentDocumentReader = new ContentDocumentReader(app);
         }
         return contentDocumentReader;
     }
@@ -383,7 +389,7 @@ public class AppCompositionRoot {
      * <p>Call this after a backup restore or factory reset, <em>before</em> calling
      * {@link android.app.Activity#recreate()} on the hosting activity. The next call to any
      * {@code get…()} method will rebuild the full dependency graph against the new database
-     * instance. The shared executor is intentionally not reset: it has no per-database state.</p>
+     * instance. Executors are intentionally not reset: they have no per-database state.</p>
      *
      * @see com.autosecretary.app.settings.SettingsDataService
      */
@@ -411,7 +417,7 @@ public class AppCompositionRoot {
             Handler mainHandler = new Handler(Looper.getMainLooper());
             mealPlannerPresenter = new MealPlannerPresenter(
                     mealRepository, recipeRepository, pantryRepository,
-                    sharedExecutor, mainHandler::post);
+                    dbExecutor, mainHandler::post);
         }
         return mealPlannerPresenter;
     }
@@ -435,5 +441,22 @@ public class AppCompositionRoot {
                 db.mealWeeklyFoodTargetDao());
         recipeRepository = new MealRecipeRoomRepository(db.mealRecipeDao(), db.mealIngredientDao());
         pantryRepository = new MealPantryRoomRepository(db.mealPantryDao());
+    }
+
+    @Override
+    public void runDatabaseCheckpoint() {
+        AppDatabase database = AppDatabase.getInstance(app);
+        database.getOpenHelper().getWritableDatabase().execSQL("PRAGMA wal_checkpoint(FULL)");
+    }
+
+    @Override
+    public void closeDatabaseForFileReplacement() {
+        AppDatabase.closeAndReset();
+    }
+
+    @Override
+    public void openDatabaseAfterFileReplacement() {
+        AppDatabase.getInstance(app);
+        resetForDataReload();
     }
 }

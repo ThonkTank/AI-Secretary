@@ -46,7 +46,7 @@ Top-level packages under `src/main/java/com/autosecretary/`:
 - **`database/`** — `AppDatabase` (Room DB class) + `Converters` (type converters for `LocalDate`, `LocalTime`, `LocalDateTime`, `YearMonth`, `DayOfWeek`, all domain enums, and `Set<DayOfWeek>` as comma-separated string)
 - **`util/`** — `TreeBuilder<T>` generic depth-first tree traversal utility used by both task hierarchy and slot hierarchy views
 
-Both features share a single-threaded `ExecutorService` wired in `AppCompositionRoot` (`app/`). All DB access runs on this executor; results post to main via `Handler`. **`AppCompositionRoot` is the manual DI root** — read it to understand wiring. It also exposes `resetForDataReload()` to re-wire after a data import.
+`AppCompositionRoot` (`app/`) owns two named executors: `dbExecutor` for all Room/repository/DAO work and `ioExecutor` for file and network work. I/O classes stay synchronous and executor-free; callers choose the executor. Results post to main via `Handler`. **`AppCompositionRoot` is the manual DI root** — read it to understand wiring. It also owns `AppDatabase.getInstance()` / `AppDatabase.closeAndReset()` calls and exposes `resetForDataReload()` to re-wire after restore/reset.
 
 ### Key non-obvious design choices
 

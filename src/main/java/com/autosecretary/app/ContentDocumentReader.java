@@ -8,19 +8,11 @@ import android.provider.OpenableColumns;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 
 /**
  * Android content-document seam for background document reads outside the UI layer.
  */
 public class ContentDocumentReader {
-
-    public interface Callback {
-        void onRead(DocumentContents documentContents);
-
-        void onReadFailed();
-    }
 
     public record DocumentContents(
             String displayName,
@@ -29,32 +21,18 @@ public class ContentDocumentReader {
     }
 
     private final Context appContext;
-    private final ExecutorService workerExecutor;
-    private final Executor callbackDispatcher;
 
-    public ContentDocumentReader(
-            Context appContext,
-            ExecutorService workerExecutor,
-            Executor callbackDispatcher) {
+    public ContentDocumentReader(Context appContext) {
         this.appContext = appContext.getApplicationContext();
-        this.workerExecutor = workerExecutor;
-        this.callbackDispatcher = callbackDispatcher;
     }
 
-    public void read(Uri uri, Callback callback) {
-        workerExecutor.execute(() -> {
-            try {
-                ContentResolver contentResolver = appContext.getContentResolver();
-                DocumentContents documentContents = new DocumentContents(
-                        getFileName(contentResolver, uri),
-                        contentResolver.getType(uri),
-                        readUriBytes(contentResolver, uri)
-                );
-                callbackDispatcher.execute(() -> callback.onRead(documentContents));
-            } catch (IOException exception) {
-                callbackDispatcher.execute(callback::onReadFailed);
-            }
-        });
+    public DocumentContents read(Uri uri) throws IOException {
+        ContentResolver contentResolver = appContext.getContentResolver();
+        return new DocumentContents(
+                getFileName(contentResolver, uri),
+                contentResolver.getType(uri),
+                readUriBytes(contentResolver, uri)
+        );
     }
 
     private static String getFileName(ContentResolver contentResolver, Uri uri) {

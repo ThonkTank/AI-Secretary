@@ -16,6 +16,7 @@ import com.autosecretary.features.budget.application.importing.BudgetImportUseCa
 import com.autosecretary.features.budget.domain.BudgetAccount;
 import com.autosecretary.features.budget.domain.BudgetCategory;
 import com.autosecretary.features.budget.domain.BudgetLimit;
+import com.autosecretary.features.budget.domain.importing.ParsedStatement;
 import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.application.overview.BudgetChartPoint;
@@ -62,17 +63,20 @@ import java.util.function.LongConsumer;
  *   <li>{@code importSuggestions} — recurring suggestions returned after an import</li>
  * </ul>
  *
- * <p><strong>Threading:</strong> all DB operations are dispatched on {@code executor}
- * (single-threaded background). Results are posted back to the main thread via
- * {@code LiveData.postValue()}, consistent with {@code TaskViewModel}.
+ * <p><strong>Threading:</strong> DB operations are dispatched on {@code dbExecutor}
+ * (single-threaded background). Import parsing runs on {@code ioExecutor}. Results are
+ * posted back to the main thread via {@code LiveData.postValue()}, consistent with
+ * {@code TaskViewModel}.
  */
 public class BudgetViewModel extends ViewModel {
 
     public record Infrastructure(
-            ExecutorService executor
+            ExecutorService dbExecutor,
+            ExecutorService ioExecutor
     ) {
         public Infrastructure {
-            Objects.requireNonNull(executor, "executor");
+            Objects.requireNonNull(dbExecutor, "dbExecutor");
+            Objects.requireNonNull(ioExecutor, "ioExecutor");
         }
     }
 
@@ -117,7 +121,8 @@ public class BudgetViewModel extends ViewModel {
     private final MutableLiveData<List<BudgetChartPoint>> chartPoints = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<List<BudgetLimitBar>> budgetLimits = new MutableLiveData<>(new ArrayList<>());
 
-    private final ExecutorService executor;
+    private final ExecutorService dbExecutor;
+    private final ExecutorService ioExecutor;
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
     private final CreateTransferUseCase createTransferUseCase;
@@ -130,7 +135,8 @@ public class BudgetViewModel extends ViewModel {
     public BudgetViewModel(Infrastructure infrastructure,
                            UseCases useCases,
                            Presentation presentation) {
-        this.executor = infrastructure.executor();
+        this.dbExecutor = infrastructure.dbExecutor();
+        this.ioExecutor = infrastructure.ioExecutor();
         this.importUseCase = useCases.importUseCase();
         this.applyRecurringUseCase = useCases.applyRecurringUseCase();
         this.createTransferUseCase = useCases.createTransferUseCase();
@@ -177,7 +183,7 @@ public class BudgetViewModel extends ViewModel {
 
     // Seeds default account + categories on first launch (no-op if data already exists), then loads the overview.
     private void ensureDefaultData() {
-        executor.execute(() -> {
+        dbExecutor.execute(() -> {
             BudgetSeedService.SeedResult seedResult = budgetSeedService.ensureDefaultData(selectedAccountId.getValue());
             categories.postValue(seedResult.categories());
             accounts.postValue(seedResult.accounts());
@@ -202,10 +208,10 @@ public class BudgetViewModel extends ViewModel {
 
     public void loadOverview() {
         uiState.postValue(BudgetUiState.LOADING);
-        executor.execute(this::loadOverviewOnExecutor);
+        dbExecutor.execute(this::loadOverviewOnExecutor);
     }
 
-    // Called directly when already running on the executor, to avoid re-queuing via loadOverview().
+    // Called directly when already running on the DB executor, to avoid re-queuing via loadOverview().
     private void loadOverviewOnExecutor() {
         YearMonth month = currentMonth.getValue();
         if (month == null) month = YearMonth.now();
@@ -296,7 +302,7 @@ public class BudgetViewModel extends ViewModel {
     }
 
     public void deleteTransaction(String transactionId) {
-        executor.execute(() -> {
+        dbExecutor.execute(() -> {
             transactionMutationUseCase.delete(transactionId);
             loadOverviewOnExecutor();
         });
@@ -305,7 +311,7 @@ public class BudgetViewModel extends ViewModel {
     public void importFromCsv(String fileName, byte[] bytes, String mimeType) {
         uiState.postValue(BudgetUiState.LOADING);
 
-        executor.execute(() -> {
+        dbExecutor.execute(() -> {
             String accountId = resolveAccountId();
             if (accountId == null) {
                 uiState.postValue(BudgetUiState.ERROR);
@@ -314,18 +320,70 @@ public class BudgetViewModel extends ViewModel {
             }
 
             try {
-                BudgetImportUseCase.ImportResult result =
-                        importUseCase.execute(accountId, fileName, bytes, mimeType);
+                BudgetImportUseCase.ImportContext importContext = importUseCase.beginImport(
+                        accountId,
+                        fileName,
+                        bytes,
+                        shouldLoadImportCategories(fileName, mimeType));
+                parseImportOnIo(importContext, bytes, mimeType);
+            } catch (RuntimeException e) {
+                postImportError(BudgetImportUseCase.userErrorMessage(e));
+            }
+        });
+    }
+
+    private void parseImportOnIo(BudgetImportUseCase.ImportContext importContext,
+                                 byte[] bytes,
+                                 String mimeType) {
+        ioExecutor.execute(() -> {
+            try {
+                ParsedStatement parsed = importUseCase.parse(importContext, bytes, mimeType);
+                completeImportOnDb(importContext, parsed);
+            } catch (RuntimeException e) {
+                markImportFailedOnDb(importContext, BudgetImportUseCase.userErrorMessage(e));
+            }
+        });
+    }
+
+    private void completeImportOnDb(BudgetImportUseCase.ImportContext importContext,
+                                    ParsedStatement parsed) {
+        dbExecutor.execute(() -> {
+            try {
+                BudgetImportUseCase.ImportResult result = importUseCase.completeImport(importContext, parsed);
                 loadOverviewOnExecutor();
                 statusMessage.postValue(UiText.of(R.string.budget_status_import_success,
                         result.newTransactions(), result.duplicates(), result.recognizedCategories()));
                 importSuggestions.postValue(result.recurringSuggestions());
             } catch (RuntimeException e) {
-                String errorMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-                uiState.postValue(BudgetUiState.ERROR);
-                statusMessage.postValue(UiText.of(R.string.budget_status_import_failed, errorMessage));
+                markImportFailedOnCurrentDbThread(importContext, BudgetImportUseCase.userErrorMessage(e));
             }
         });
+    }
+
+    private void markImportFailedOnDb(BudgetImportUseCase.ImportContext importContext,
+                                      String errorMessage) {
+        dbExecutor.execute(() -> markImportFailedOnCurrentDbThread(importContext, errorMessage));
+    }
+
+    private void markImportFailedOnCurrentDbThread(BudgetImportUseCase.ImportContext importContext,
+                                                   String errorMessage) {
+        try {
+            importUseCase.markImportFailed(importContext.importId(), errorMessage);
+        } catch (RuntimeException ignored) {
+            // The user-visible failure should not be replaced by a secondary status-update error.
+        }
+        postImportError(errorMessage);
+    }
+
+    private void postImportError(String errorMessage) {
+        uiState.postValue(BudgetUiState.ERROR);
+        statusMessage.postValue(UiText.of(R.string.budget_status_import_failed, errorMessage));
+    }
+
+    private boolean shouldLoadImportCategories(String fileName, String mimeType) {
+        String normalizedMimeType = mimeType != null ? mimeType.toLowerCase() : "";
+        String normalizedFileName = fileName != null ? fileName.toLowerCase() : "";
+        return normalizedMimeType.contains("pdf") || normalizedFileName.endsWith(".pdf");
     }
 
     public void onImportReadFailed() {
@@ -338,7 +396,7 @@ public class BudgetViewModel extends ViewModel {
     }
 
     public void applyRecurringSuggestions(List<RecurringSuggestion> suggestions) {
-        executor.execute(() -> {
+        dbExecutor.execute(() -> {
             String accountId = resolveAccountId();
             if (accountId == null) return;
 
@@ -356,11 +414,11 @@ public class BudgetViewModel extends ViewModel {
         loadOverview();
     }
 
-    // Parses the amount string and invokes action on the executor thread (background).
+    // Parses the amount string and invokes action on the DB executor thread (background).
     // Callers must not perform any UI or main-thread operations inside the action lambda —
     // use postValue() / uiState.postValue() to post results back to the main thread.
     private void withParsedAmount(String amountStr, LongConsumer action) {
-        executor.execute(() -> {
+        dbExecutor.execute(() -> {
             Long amountCents = AmountParser.parseAmountCents(amountStr);
             if (amountCents == null) {
                 showInvalidAmountError();
@@ -377,7 +435,7 @@ public class BudgetViewModel extends ViewModel {
 
     // Returns the selected account ID, falling back to the first active account.
     // Null only when no accounts exist yet.
-    // Must be called on the executor thread — performs a synchronous DB read.
+    // Must be called on the DB executor thread — performs a synchronous DB read.
     private String resolveAccountId() {
         return resolveBudgetAccountUseCase.execute(selectedAccountId.getValue());
     }
@@ -390,7 +448,7 @@ public class BudgetViewModel extends ViewModel {
 
     public void saveBudgetLimitFromString(String categoryId, String amountStr,
                                           boolean rolloverEnabled, String rolloverCarryoverStr) {
-        executor.execute(() -> {
+        dbExecutor.execute(() -> {
             Long amountCents = AmountParser.parseAmountCents(amountStr);
             if (amountCents == null) {
                 showInvalidAmountError();
