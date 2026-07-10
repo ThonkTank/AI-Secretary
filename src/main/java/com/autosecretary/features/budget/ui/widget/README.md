@@ -91,7 +91,6 @@ User adds/edits/deletes transaction in app
 ## See Also
 
 - `CLAUDE.md` — Project glossary and architecture overview
-- `src/main/java/com/autosecretary/features/budget/ui/README.md` — Budget UI package conventions
 - `src/main/java/com/autosecretary/features/budget/application/LoadBudgetWidgetSummaryUseCase.java` — Data source for widget
 - `src/main/res/layout/budget_widget.xml` — Widget layout definition
 - `src/main/res/xml/widget_budget_info.xml` — Android widget metadata and update period

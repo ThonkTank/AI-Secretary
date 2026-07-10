@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build Commands
 
-- `./gradlew checkArchitecture` — runs blocking architecture and repository-policy checks.
+- `./gradlew checkArchitecture` — runs the ArchUnit architecture rules (alias onto `testDebugUnitTest`).
 - `./gradlew assembleDebug` — builds debug APK, no side effects.
 - `./gradlew installDebug` — builds and installs to a connected device/emulator.
 - `./gradlew copyToRelease` — copies APK to `ops/release/` and bumps version.
@@ -35,22 +35,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-**MVVM + Room**, feature-based packages, layered UI -> Application -> Domain -> Data. `./gradlew checkArchitecture` is implemented in this repository and enforces the import matrix, class reachability, DB-version documentation sync, executor ownership, application-layer naming, lifecycle, ViewModel, UI helper, package declaration, and release-task safety principles.
+**MVVM + Room**, feature-based packages, layered UI -> Application -> Domain -> Data. The layer and feature boundaries are enforced by ArchUnit rules on real bytecode (`ArchitectureRulesTest` in `src/test`; see the Conventions section) rather than a custom build-script linter.
 
 Top-level packages under `src/main/java/com/autosecretary/`:
 - **`features/task/`** — scheduling, slot generation, task lifecycle
 - **`features/budget/`** — transactions, CSV/PDF import, recurring pattern detection, balance chart, home screen widget
-- **`features/meal/`** — meal planning, recipe management, pantry, shopping lists, weekly food targets; backed by Room (same as task/budget). `MealPlannerDataService` is the application-layer facade, provided to UI through `MealPlannerDependencies`, and delegates to focused meal use cases/data services. Data layer uses `Meal*Entity` classes in `data/entity/`, `Meal*Dao` in `data/dao/`, and `Meal*RoomRepository` in `data/repository/`.
+- **`features/meal/`** — meal planning, recipe management, pantry, shopping lists, weekly food targets; backed by Room (same as task/budget). `MealPlannerDataService` is the application-layer facade (UI obtains it via `AutoSecretaryApplication.from(context)`), and delegates to focused meal use cases (`LoadMealHomeUseCase`, `LoadMealWeeklyProgressUseCase`, `MealPlanMutationUseCase`, `MealShoppingUseCase`). Data layer uses `Meal*Entity` classes in `data/entity/`, `Meal*Dao` in `data/dao/`, and `Meal*RoomRepository` in `data/repository/`.
 - **`app/`** — `AppCompositionRoot` (DI root), `MainActivity`, `AutoSecretaryApplication`, `UpdateChecker`, settings
 - **`shared/`** — cross-feature enums/contracts and neutral utilities: `Priority` (values: LOW=100, MEDIUM=200, HIGH=400, CRITICAL=10000), `Period`, `MealType`, `WidgetRefreshNotifier`, `ContentDocumentReader`; and `WidgetConfiguration` (shared update-period constant for task and budget widgets)
 - **`database/`** — `AppDatabase` (Room DB class) + `Converters` (type converters for `LocalDate`, `LocalTime`, `LocalDateTime`, `YearMonth`, `DayOfWeek`, all domain enums, and `Set<DayOfWeek>` as comma-separated string)
 - **`util/`** — `TreeBuilder<T>` generic depth-first tree traversal utility used by both task hierarchy and slot hierarchy views
 
-`AppCompositionRoot` (`app/`) owns two named executors: `dbExecutor` for all Room/repository/DAO work and `ioExecutor` for file and network work. I/O classes stay synchronous and executor-free; callers choose the executor. Results post to main via `Handler`. **`AppCompositionRoot` is the manual DI root** — read it to understand wiring. Feature entry points receive dependencies through feature-owned provider interfaces implemented by `AutoSecretaryApplication`; feature code must not import `app/`. The root also owns `AppDatabase.getInstance()` / `AppDatabase.closeAndReset()` calls and exposes `resetForDataReload()` to re-wire after restore/reset.
+`AppCompositionRoot` (`app/`) owns two named executors: `dbExecutor` for all Room/repository/DAO work and `ioExecutor` for file and network work. I/O classes stay synchronous and executor-free; callers choose the executor. Results post to main via `Handler`. **`AppCompositionRoot` is the manual DI root** — read it to understand wiring. Feature entry points receive dependencies through feature-owned provider interfaces implemented by `AutoSecretaryApplication`; feature code must not import `app/`. The root also owns `AppDatabase.getInstance()` / `AppDatabase.closeAndReset()` calls and exposes `resetForDataReload()` to re-wire after restore/reset. Feature entry points obtain their dependencies via `AutoSecretaryApplication.from(context)`, which exposes the wiring from `AppCompositionRoot`; feature code imports only `AutoSecretaryApplication` from `app/`, never `AppCompositionRoot` or other app internals.
 
 ### Key non-obvious design choices
 
-**`Task` is a Room POJO, not a `@Entity`.** Room assembles it via `@Embedded` + `@Relation` from six tables: `task_core`, `task_slots`, `task_relation`, `task_pref_slots`, `task_prerequisites`, `task_planned_meals`. `TaskCore` uses `@Embedded` for three inner classes (`Repetition`, `Progress`, `History`) with column prefixes (`repetition_`, `progress_`, `history_`). `TaskPlannedMeal` (table `task_planned_meals`, composite PK `taskId`+`day`) links a task to a planned meal for a given date; `TaskCore.mealType` identifies the associated meal type. On completion, `CheckOffTaskUseCase` calls the task-owned `TaskMealCompletionService` port; `TaskMealCompletionFromMealPlanner` records meal consumption against meal-domain repositories.
+**`Task` is a Room POJO, not a `@Entity`.** Room assembles it via `@Embedded` + `@Relation` from six tables: `task_core`, `task_slots`, `task_relation`, `task_pref_slots`, `task_prerequisites`, `task_planned_meals`. `TaskCore` uses `@Embedded` for three inner classes (`Repetition`, `Progress`, `History`) with column prefixes (`repetition_`, `progress_`, `history_`). `TaskPlannedMeal` (table `task_planned_meals`, composite PK `taskId`+`day`) links a task to a planned meal for a given date; `TaskCore.mealType` identifies the associated meal type. On completion, `TaskCompletionEffects` calls `TaskMealCompletionFromMealPlanner`, which records meal consumption directly against the meal-domain repositories (cross-feature access goes through the foreign domain layer).
 
 **`TaskListItem`** (application layer) is a flat read model produced by `TaskListItemMapper`. **`ViewSlot`** (presentation layer, in `ui/list/state/`) wraps it for RecyclerView and adds `depth` for tree indentation.
 
@@ -75,8 +75,10 @@ Top-level packages under `src/main/java/com/autosecretary/`:
 ### Conventions
 
 - **Package layout:** Public entry points stay in stable packages (`features/task/ui/list/`, `features/task/application/*UseCase`). Implementation details usually live in `internal/` sub-packages.
-- **Architecture check:** `./gradlew checkArchitecture` runs repo-local principle checks for the import matrix, reachability, docs/code DB-version sync, executor ownership, application naming, lifecycle, ViewModel, UI helper, package declaration, widget constants, and release-task safety.
-- **`task/application/` sub-packages** (see `features/task/application/README.md`):
+- **Architecture check:** the rules live in `src/test` as ArchUnit rules on real bytecode (`ArchitectureRulesTest`), run by `./gradlew checkArchitecture` (alias onto `testDebugUnitTest`) and by `check`. They enforce the import matrix / layer boundaries, domain purity, UI-host discipline, ViewModel view/infrastructure bans, cross-feature-only-via-domain, executor ownership, and the application-no-`Presenter` naming rule. Adding a rule = adding a test method (verify it fails on a deliberate violation). The widget/launcher XML validators still run on `preBuild`.
+- **UI conventions (not machine-checked):** `Fragment`/`DialogFragment` `observe(...)` calls must pass `getViewLifecycleOwner()`; `registerForActivityResult(...)` must be declared in a host field initializer or in `onCreate()`.
+- **Repository interfaces:** one-model features (task — its Room POJOs *are* the domain model) use the DAO directly and have no repository interface; two-model features (budget, meal) keep a domain `*Repository` interface implemented by a `*RoomRepository` that maps entities to domain types and is the seam cross-feature callers depend on.
+- **`task/application/` sub-packages:**
   - Root — top-level entry-point use-cases and `TaskDataService`.
   - `calendar/` — `TaskCalendarService` contract and DTOs.
   - `config/` — `TaskScheduleConfigRepository` (implements `SchedulingWindowProvider`; lazy-cached per-day scheduling windows).
@@ -102,7 +104,7 @@ Extracting shared constants, small utility methods, or deduplicating repeated co
 
 ## Rules
 
-- **DB version 27**, `exportSchema = false`. Schema changes require a version bump and compatible Room migrations. Destructive fallback is not the default because user data must be preserved.
+- **DB version:** the single source of truth is `@Database(version = …)` in `AppDatabase.java`. `exportSchema = false`. Schema changes require a version bump and compatible Room migrations. Destructive fallback is not the default because user data must be preserved.
 - **`android.nonTransitiveRClass=true`** — use the app's own R class for all resource references.
 - Java 17, Room 2.6.1 (annotation processor, not KSP), AGP 8.7.3, Gradle 8.10.2 (`./gradlew` wrapper only).
 - New entity `@PrimaryKey` fields must be `String` UUIDs. Existing exceptions: `TaskTransitionStat` and `TaskPlannedMeal` use composite PKs; `TaskScheduleConfig` uses `DayOfWeek` as PK.

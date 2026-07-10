@@ -29,7 +29,7 @@ queries; this package only wires them together.
 ## Key design decisions
 
 - **No destructive fallback as default.** The app stores real user data, so schema changes must preserve data.
-- **DB version 27.** Bump the version number in `@Database(version = ...)` for any schema change.
+- **DB version.** The single source of truth is `@Database(version = ...)` in `AppDatabase.java`; bump it for any schema change.
 - **Schema changes require migrations.** Add compatible Room migrations for every version jump.
 - **Single-threaded access.** All database calls run on `AppCompositionRoot.getDbExecutor()` — a single-threaded `ExecutorService`. File and network work runs on `getIoExecutor()`. Results post to the main thread via `Handler`.
 - **Lifecycle ownership.** Production calls to `AppDatabase.getInstance()` and `AppDatabase.closeAndReset()` belong to `AppCompositionRoot`; restore/reset services use its lifecycle interface instead of touching the singleton directly.

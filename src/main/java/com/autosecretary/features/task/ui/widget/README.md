@@ -90,5 +90,4 @@ AppWidgetManager calls TaskWidgetService.onGetViewFactory()
 ## See Also
 
 - `CLAUDE.md` — Project glossary (Slot, Streak, Period, Task, etc.)
-- `src/main/java/com/autosecretary/features/task/ui/README.md` — UI package conventions
 - `src/main/java/com/autosecretary/features/task/application/internal/mutations/TaskSlotToggleMutation.java` — What happens when user toggles

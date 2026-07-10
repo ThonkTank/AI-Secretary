@@ -11,7 +11,7 @@ Reference-only legacy snapshots are in `.history/` and are not part of the runti
 
 ## Build, Test, and Development Commands
 Use the Gradle wrapper from repo root:
-- `./gradlew checkArchitecture`: blocking architecture and repository-policy checks.
+- `./gradlew checkArchitecture`: ArchUnit architecture rules (alias onto `testDebugUnitTest`).
 - `./gradlew assembleDebug`: safe local build; creates `build/outputs/apk/debug/AutoSecretary.apk`.
 - `./gradlew installDebug`: installs debug build to a connected device/emulator.
 - `./gradlew copyToRelease`: copies APK to `ops/release/` and increments `ops/release/version.txt`.
@@ -21,14 +21,14 @@ Use the Gradle wrapper from repo root:
 ## Coding Style & Naming Conventions
 Follow existing Java style in `src/main/java`: 4-space indentation, braces on declaration lines, and descriptive class names. Keep packages fully qualified under `com.autosecretary.*`.
 
-Architecture-sensitive changes must keep `./gradlew checkArchitecture` green. That task is repo-local and enforces the import matrix, class reachability, DB-version documentation sync, executor ownership, application-layer naming, lifecycle, ViewModel, UI helper, package declaration, and release-task safety principles.
+Architecture-sensitive changes must keep `./gradlew checkArchitecture` green. The rules are ArchUnit tests on real bytecode (`ArchitectureRulesTest` in `src/test`); see `CLAUDE.md` § Conventions for the enforced boundaries.
 
 Work that uses external sources or local source evidence for decisions must use the global `source-references` skill and cite preserved local paths under `/home/aaron/Schreibtisch/projects/references/` or direct repo paths.
 
 Work on agent-facing instruction artifacts (`AGENTS.md`, `SKILL.md`, prompts, or related rule markdown) must use the global `agent-instruction-engineering` skill.
 
 ## Testing Guidelines
-Required behavior invariants must be covered by tight JVM end-to-end tests under `src/test`, as defined in `CLAUDE.md` and `docs/ARCHITECTURE_ROADMAP.md`. Use Robolectric plus in-memory Room for tests that drive UI ViewModel/DataService → application → domain → data and assert observable results.
+Required behavior invariants must be covered by tight JVM end-to-end tests under `src/test`, as defined in `CLAUDE.md`. Use Robolectric plus in-memory Room for tests that drive UI ViewModel/DataService → application → domain → data and assert observable results.
 
 Do not add instrumented/Espresso test suites under `src/androidTest` unless a future roadmap phase explicitly requires them.
 
