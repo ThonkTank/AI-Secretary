@@ -1,1 +1,0 @@
-Platzhalterordner für Muck-Inhalte.

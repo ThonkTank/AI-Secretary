@@ -1,0 +1,28 @@
+# Local Gradle and Android outputs
+.gradle/
+build/
+local.properties
+
+# Generated local app data
+autosecretary.db
+docs/references/
+
+# Local credentials
+*.keystore
+
+# IDE state
+.codex
+.idea/
+.vscode/
+*.iml
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db
+
+# Old build artifacts
+bin/
+compiled_res/
+obj/
+secretary.db
