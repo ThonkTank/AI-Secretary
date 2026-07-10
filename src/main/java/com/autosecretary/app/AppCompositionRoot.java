@@ -19,7 +19,7 @@ import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
 import com.autosecretary.features.meal.application.MealPlannerPresenter;
-import com.autosecretary.features.meal.application.TaskMealIntegrationService;
+import com.autosecretary.features.task.application.internal.meal.TaskMealCompletionFromMealPlanner;
 import com.autosecretary.features.meal.data.repository.MealRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealRecipeRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealPantryRoomRepository;
@@ -205,14 +205,14 @@ public class AppCompositionRoot {
         );
         BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase =
                 new BookTaskCompletionExpenseUseCase(getBudgetRoomRepository());
-        TaskMealIntegrationService taskMealIntegrationService = new TaskMealIntegrationService(
+        TaskMealCompletionFromMealPlanner taskMealCompletionService = new TaskMealCompletionFromMealPlanner(
                 mealRepository, recipeRepository, pantryRepository
         );
         TaskTransitionRecorder taskTransitionRecorder =
                 new TaskTransitionRecorder(dao, db.taskTransitionStatDao());
         TaskCompletionEffects taskCompletionEffects = new TaskCompletionEffects(
                 bookTaskCompletionExpenseUseCase,
-                taskMealIntegrationService,
+                taskMealCompletionService,
                 dao,
                 widgetRefreshNotifier
         );

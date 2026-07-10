@@ -7,7 +7,7 @@ import static org.junit.Assert.assertTrue;
 import com.autosecretary.shared.WidgetRefreshNotifier;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
-import com.autosecretary.features.meal.application.TaskMealIntegrationService;
+import com.autosecretary.features.task.application.internal.meal.TaskMealCompletionFromMealPlanner;
 import com.autosecretary.features.meal.data.repository.MealPantryRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealRecipeRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealRoomRepository;
@@ -123,7 +123,7 @@ public final class TaskMealCompletionCharacterizationTest extends AutoSecretaryR
         BudgetRoomRepository budgetRepository = BudgetFixtures.budgetRepository(db);
         TaskCompletionEffects effects = new TaskCompletionEffects(
                 new BookTaskCompletionExpenseUseCase(budgetRepository),
-                new TaskMealIntegrationService(mealRepository, recipeRepository, pantryRepository),
+                new TaskMealCompletionFromMealPlanner(mealRepository, recipeRepository, pantryRepository),
                 taskDao,
                 new NoOpWidgetRefreshNotifier());
         return new CheckOffTaskUseCase(mutation, executor, effects);

@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui.edit;
+package com.autosecretary.features.task.application.edit;
 
 /**
  * Simple spinner option used by the task-edit surface.

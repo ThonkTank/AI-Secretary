@@ -9,7 +9,7 @@ thin.
 - Coordinate domain services (RecipeScalingService, ShelfLifeService, etc.) across repositories
 - Translate raw UI input (IDs, raw amounts, strings) into validated domain objects
 - Provide the UI with pre-sorted, ready-to-render data (MealPlannerPresenter)
-- Handle cross-feature integration triggered by task completion (TaskMealIntegrationService)
+- Provide meal-planner application operations for the UI layer
 
 This layer contains **no persistence logic** (all DB access is in `meal.data`) and
 **no UI logic** (layouts, views, adapters). It may freely call domain services and repositories.
@@ -19,14 +19,12 @@ This layer contains **no persistence logic** (all DB access is in `meal.data`) a
 | Class | Role |
 |---|---|
 | `MealPlannerPresenter` | Thin coordinator called by `MealPlannerFragment`; feeds sorted data to the UI and handles basic user actions (plan recipe, toggle completed, add item). |
-| `TaskMealIntegrationService` | Called by the task feature on meal-task completion; reduces pantry stock, logs nutrition, and marks the matching meal-plan entry done. |
 
 ## Reading order for newcomers
 
 1. **`MealPlannerPresenter`** — best first read; shows how the UI interacts with all three
    repositories and what data-shaping happens at this layer.
-2. **`TaskMealIntegrationService`** — more complex; read after understanding the presenter.
-3. **Domain services** — read the domain README for the stateless helpers used by this layer.
+2. **Domain services** — read the domain README for the stateless helpers used by this layer.
 
 ## Key concepts
 
@@ -42,6 +40,7 @@ domain layer for the calculation formulas.
 required amount up to the nearest standard package size (e.g., 450 g → 1× 500 g bag) and
 records any leftover as `excessAmount`.
 
-**Pantry depletion** — When a meal task is completed, `TaskMealIntegrationService` reduces the
+**Pantry depletion** — When a meal task is completed, the task-owned
+`TaskMealCompletionService` adapter reduces the
 pantry stock for each ingredient used in the recipe, consuming older items first (sorted by
 expiry date). Items depleted below `DEPLETION_EPSILON` are deleted rather than saved at near-zero.

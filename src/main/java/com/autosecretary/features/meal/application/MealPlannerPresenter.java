@@ -78,6 +78,12 @@ public class MealPlannerPresenter {
         }
     }
 
+    public record HouseholdMemberOverview(
+            HouseholdMember member,
+            int age,
+            int tdee) {
+    }
+
     private final MealRepository mealRepository;
     private final RecipeRepository recipeRepository;
     private final PantryRepository pantryRepository;
@@ -277,6 +283,20 @@ public class MealPlannerPresenter {
         workerExecutor.execute(() -> {
             List<HouseholdMember> members = mealRepository.getHouseholdMembers();
             members.sort(Comparator.comparing(m -> m.name));
+            callbackDispatcher.execute(() -> onLoaded.accept(members));
+        });
+    }
+
+    public void loadHouseholdMemberOverviewsForManagement(Consumer<List<HouseholdMemberOverview>> onLoaded) {
+        workerExecutor.execute(() -> {
+            LocalDate today = LocalDate.now();
+            List<HouseholdMemberOverview> members = mealRepository.getHouseholdMembers().stream()
+                    .sorted(Comparator.comparing(member -> member.name))
+                    .map(member -> new HouseholdMemberOverview(
+                            member,
+                            HouseholdEnergyService.calculateAge(member, today),
+                            HouseholdEnergyService.calculateTdee(member, today)))
+                    .toList();
             callbackDispatcher.execute(() -> onLoaded.accept(members));
         });
     }

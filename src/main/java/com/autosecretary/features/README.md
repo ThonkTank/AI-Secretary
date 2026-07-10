@@ -19,7 +19,7 @@ AutoSecretary is organized into three self-contained features. Each follows the 
 ## Cross-feature integration points
 
 - **Task → Budget:** Tasks can have optional budget fields (`budgetRequiredCents`, `budgetAccountId`, `budgetCategoryId`). When a task completes with a budget requirement, `BookTaskCompletionExpenseUseCase` auto-books an expense. See `task/application/internal/budget/`.
-- **Task → Meal:** Tasks can reference planned meals via `TaskPlannedMeal`. `TaskMealIntegrationService` (in `meal/application/`) handles pantry depletion and consumption logging when meal tasks complete.
+- **Task → Meal:** Tasks can reference planned meals via `TaskPlannedMeal`. The task-owned `TaskMealCompletionService` port is implemented by `TaskMealCompletionFromMealPlanner` in `task/application/internal/meal/`, which handles pantry depletion and consumption logging against meal-domain repositories.
 - **Budget ↔ Meal:** No direct integration.
 
 ## Shared infrastructure

@@ -11,11 +11,11 @@ import com.autosecretary.features.budget.domain.timeline.AccountBalanceTimelineS
 import com.autosecretary.features.budget.domain.timeline.BalanceTimelinePoint;
 import com.autosecretary.features.budget.domain.timeline.DailyDeltaPoint;
 import com.autosecretary.features.budget.domain.timeline.MonthlyDeltaPoint;
-import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
-import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
-import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
-import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
-import com.autosecretary.features.budget.ui.state.TimeRangeFilter;
+import com.autosecretary.features.budget.application.overview.BudgetOverviewMapper;
+import com.autosecretary.features.budget.application.overview.BudgetChartPoint;
+import com.autosecretary.features.budget.application.overview.BudgetSummaryData;
+import com.autosecretary.features.budget.application.overview.BudgetTransactionRow;
+import com.autosecretary.features.budget.application.overview.TimeRangeFilter;
 import com.autosecretary.shared.DateFormatters;
 import com.autosecretary.shared.ui.ColorUtil;
 
@@ -103,7 +103,7 @@ public class LoadBudgetOverviewUseCase {
     private BudgetSummaryData computeSummary(List<MonthlyOverviewItem> items, String accountId) {
         BudgetAccount account = repository.findAccountById(accountId);
         long freeBudgetCents = account != null ? account.currentBalanceCents() : 0L;
-        return BudgetSummaryPresentationMapper.toSummary(items, freeBudgetCents);
+        return BudgetOverviewMapper.toSummary(items, freeBudgetCents);
     }
 
     private String buildTransactionLabel(MonthlyOverviewItem item) {
@@ -111,7 +111,7 @@ public class LoadBudgetOverviewUseCase {
             return item.note() != null && !item.note().isBlank() ? labelTransferNotePrefix + item.note() : labelTransfer;
         }
         if (item.categoryName() != null) {
-            return BudgetSummaryPresentationMapper.categoryLabel(item.categoryIcon(), item.categoryName());
+            return BudgetOverviewMapper.categoryLabel(item.categoryIcon(), item.categoryName());
         }
         if (item.note() != null) {
             return item.note();

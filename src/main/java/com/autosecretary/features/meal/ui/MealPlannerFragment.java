@@ -26,7 +26,7 @@ import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.ShoppingItemStatus;
 import com.autosecretary.features.meal.domain.ShoppingListItem;
-import com.autosecretary.features.meal.domain.internal.HouseholdEnergyService;
+import com.autosecretary.features.meal.ui.state.HouseholdMemberRowState;
 import com.autosecretary.features.meal.ui.internal.MealHouseholdDialogController;
 import com.autosecretary.features.meal.ui.internal.MealIngredientDialogController;
 import com.autosecretary.features.meal.ui.internal.MealNeedDialogController;
@@ -462,7 +462,7 @@ public class MealPlannerFragment extends Fragment {
                 });
                 break;
             case HOUSEHOLD:
-                viewModel.loadHouseholdMembersForManagement(members -> {
+                viewModel.loadHouseholdMemberRowsForManagement(members -> {
                     if (!isAdded()) return;
                     renderManageHousehold(members);
                 });
@@ -533,15 +533,15 @@ public class MealPlannerFragment extends Fragment {
         }
     }
 
-    private void renderManageHousehold(List<HouseholdMember> members) {
+    private void renderManageHousehold(List<HouseholdMemberRowState> members) {
         manageList.removeAllViews();
         boolean empty = members.isEmpty();
         manageEmptyState.setVisibility(empty ? View.VISIBLE : View.GONE);
         ((TextView) manageScreen.findViewById(R.id.EmptyStateTitle)).setText(R.string.meal_manage_empty_household);
         ((TextView) manageScreen.findViewById(R.id.EmptyStateSubtitle)).setText("");
         manageList.setVisibility(empty ? View.GONE : View.VISIBLE);
-        LocalDate today = LocalDate.now();
-        for (HouseholdMember member : members) {
+        for (HouseholdMemberRowState rowState : members) {
+            HouseholdMember member = rowState.member();
             View row = LayoutInflater.from(requireContext()).inflate(
                     R.layout.meal_household_row_item, manageList, false);
             TextView title = row.findViewById(R.id.MealHouseholdRowTitle);
@@ -549,10 +549,8 @@ public class MealPlannerFragment extends Fragment {
             String name = member.name;
             if (!member.isActive) name += " " + getString(R.string.meal_household_row_inactive);
             title.setText(name);
-            int age = today.getYear() - member.birthYear;
-            int tdee = HouseholdEnergyService.calculateTdee(member, today);
             subtitle.setText(getString(R.string.meal_household_row_subtitle_format,
-                    age, member.gender.toString(), tdee));
+                    rowState.age(), member.gender.toString(), rowState.tdee()));
             row.setOnClickListener(v -> householdDialogController.showEdit(member));
             manageList.addView(row);
         }

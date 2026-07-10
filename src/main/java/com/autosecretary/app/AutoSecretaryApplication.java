@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 
 import com.autosecretary.features.task.application.internal.alarms.DailyPlanningScheduler;
-import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 
 /**
  * Application subclass — the real entry point of the app.
@@ -57,9 +56,13 @@ public class AutoSecretaryApplication extends Application {
         registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                TaskWidgetProvider.notifyWidgetUpdate(context);
+                refreshTaskWidgetsAfterUnlock();
             }
         }, filter, Context.RECEIVER_NOT_EXPORTED);
+    }
+
+    void refreshTaskWidgetsAfterUnlock() {
+        appCompositionRoot.getWidgetRefreshNotifier().refreshTaskWidgets();
     }
 
     public AppCompositionRoot getAppCompositionRoot() {

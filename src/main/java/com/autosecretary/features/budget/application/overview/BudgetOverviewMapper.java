@@ -1,16 +1,11 @@
-package com.autosecretary.features.budget.ui.internal;
+package com.autosecretary.features.budget.application.overview;
 
 import com.autosecretary.features.budget.domain.BudgetCategory;
-import com.autosecretary.features.budget.domain.CategorySpendSummary;
 import com.autosecretary.features.budget.domain.MonthlyOverviewItem;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.features.budget.domain.TransactionKind;
-import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
-import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 /**
@@ -26,9 +21,9 @@ import java.util.stream.Collectors;
  *       display string; used across multiple dialog controllers and the overview loader.
  * </ul>
  */
-public class BudgetSummaryPresentationMapper {
+public class BudgetOverviewMapper {
 
-    private BudgetSummaryPresentationMapper() {}
+    private BudgetOverviewMapper() {}
 
     /** Display fallback icon when a category has no configured icon. */
     public static final String DEFAULT_CATEGORY_ICON = "🏷️";
@@ -72,41 +67,6 @@ public class BudgetSummaryPresentationMapper {
         String resolvedIcon = icon != null && !icon.isBlank()
                 ? icon : DEFAULT_CATEGORY_ICON;
         return resolvedIcon + " " + name;
-    }
-
-    /**
-     * Converts per-category spend totals into {@link BudgetLimitBar} display objects.
-     * Categories with no limit ({@code limitAmountCents <= 0}) are excluded.
-     *
-     * @param totals                 Spend totals per category for the selected month.
-     * @param effectiveLimitProvider Function {@code (categoryId, yearMonth) → Long} that returns
-     *                               the rollover-adjusted effective limit for a given month, or
-     *                               {@code null} if no rollover data exists (base limit is used).
-     *                               The {@code yearMonth} string is ISO format, e.g. {@code "2024-03"}.
-     * @param yearMonth              The displayed month in ISO format, passed through to
-     *                               {@code effectiveLimitProvider} for rollover lookup.
-     */
-    public static List<BudgetLimitBar> toLimitBars(List<CategorySpendSummary> totals,
-                                             BiFunction<String, String, Long> effectiveLimitProvider,
-                                             String yearMonth) {
-        List<BudgetLimitBar> bars = new ArrayList<>();
-        for (CategorySpendSummary total : totals) {
-            if (total.limitAmountCents() <= 0) {
-                continue;
-            }
-            String label = categoryLabel(total.categoryIcon(), total.categoryName());
-            Long effectiveLimitCents = effectiveLimitProvider.apply(total.categoryId(), yearMonth);
-            long effectiveCents = effectiveLimitCents != null ? effectiveLimitCents : total.limitAmountCents();
-
-            bars.add(new BudgetLimitBar(
-                    total.categoryId(),
-                    label,
-                    total.categoryColorHex(),
-                    total.spentCents(),
-                    total.limitAmountCents(),
-                    effectiveCents));
-        }
-        return bars;
     }
 
 }

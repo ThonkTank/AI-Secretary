@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.task.application.TaskDataService;
+import com.autosecretary.features.task.application.edit.TaskEditReferenceDataUseCase;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -34,7 +35,7 @@ public class TaskEditViewModelFactory implements ViewModelProvider.Factory {
         if (modelClass.isAssignableFrom(TaskEditViewModel.class)) {
             return (T) new TaskEditViewModel(
                     taskDataService,
-                    budgetRepository,
+                    new TaskEditReferenceDataUseCase(taskDataService, budgetRepository),
                     workerExecutor,
                     callbackDispatcher
             );

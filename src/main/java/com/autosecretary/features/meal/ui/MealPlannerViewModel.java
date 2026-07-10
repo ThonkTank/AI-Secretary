@@ -13,6 +13,7 @@ import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.ShoppingItemStatus;
 import com.autosecretary.features.meal.ui.state.HomeState;
+import com.autosecretary.features.meal.ui.state.HouseholdMemberRowState;
 import com.autosecretary.features.meal.ui.state.WeeklyProgressFoodGroupState;
 import com.autosecretary.features.meal.ui.state.WeeklyProgressState;
 
@@ -83,6 +84,15 @@ public class MealPlannerViewModel extends ViewModel {
 
     public void loadHouseholdMembersForManagement(Consumer<List<HouseholdMember>> onLoaded) {
         presenter.loadHouseholdMembersForManagement(onLoaded);
+    }
+
+    public void loadHouseholdMemberRowsForManagement(Consumer<List<HouseholdMemberRowState>> onLoaded) {
+        presenter.loadHouseholdMemberOverviewsForManagement(overviews -> onLoaded.accept(overviews.stream()
+                .map(overview -> new HouseholdMemberRowState(
+                        overview.member(),
+                        overview.age(),
+                        overview.tdee()))
+                .toList()));
     }
 
     public void planRecipe(

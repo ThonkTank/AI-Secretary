@@ -21,7 +21,7 @@ import com.autosecretary.features.task.data.TaskPrefSlot;
 import com.autosecretary.features.task.data.TaskSlot;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
-import com.autosecretary.features.meal.application.TaskMealIntegrationService;
+import com.autosecretary.features.task.application.internal.meal.TaskMealCompletionFromMealPlanner;
 import com.autosecretary.features.meal.data.repository.MealPantryRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealRecipeRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealRoomRepository;
@@ -114,7 +114,7 @@ public final class TaskCompletionCharacterizationTest extends AutoSecretaryRobol
         BudgetRoomRepository budgetRepository = BudgetFixtures.budgetRepository(db);
         TaskCompletionEffects effects = new TaskCompletionEffects(
                 new BookTaskCompletionExpenseUseCase(budgetRepository),
-                new TaskMealIntegrationService(
+                new TaskMealCompletionFromMealPlanner(
                         new MealRoomRepository(db.mealPlanDao(), db.mealConsumptionLogDao(),
                                 db.mealHouseholdMemberDao(), db.mealCookingPreferencesDao(),
                                 db.mealWeeklyFoodTargetDao()),

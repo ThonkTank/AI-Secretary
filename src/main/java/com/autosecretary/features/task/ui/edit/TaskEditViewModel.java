@@ -4,15 +4,14 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.autosecretary.features.budget.domain.BudgetCategory;
-import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.task.application.TaskDataService;
+import com.autosecretary.features.task.application.edit.TaskEditReferenceData;
+import com.autosecretary.features.task.application.edit.TaskEditReferenceDataUseCase;
 import com.autosecretary.features.task.data.Task;
 import com.autosecretary.features.task.data.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.edit.internal.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
-import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
@@ -22,7 +21,7 @@ import java.util.function.Consumer;
  */
 public class TaskEditViewModel extends ViewModel {
     private final TaskDataService taskDataService;
-    private final BudgetRepository budgetRepository;
+    private final TaskEditReferenceDataUseCase referenceDataUseCase;
     private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
 
@@ -33,11 +32,11 @@ public class TaskEditViewModel extends ViewModel {
 
     public TaskEditViewModel(
             TaskDataService taskDataService,
-            BudgetRepository budgetRepository,
+            TaskEditReferenceDataUseCase referenceDataUseCase,
             ExecutorService workerExecutor,
             Executor callbackDispatcher) {
         this.taskDataService = taskDataService;
-        this.budgetRepository = budgetRepository;
+        this.referenceDataUseCase = referenceDataUseCase;
         this.workerExecutor = workerExecutor;
         this.callbackDispatcher = callbackDispatcher;
     }
@@ -93,23 +92,8 @@ public class TaskEditViewModel extends ViewModel {
     public void loadReferenceData(Consumer<TaskEditReferenceData> onLoaded) {
         workerExecutor.execute(() -> {
             String currentTaskId = requireSelectedTask().id;
-            List<TaskEditOption> parentTasks = taskDataService.readAllSync().stream()
-                    .filter(task -> task.core != null
-                            && task.core.id != null
-                            && task.core.title != null
-                            && !task.core.id.equals(currentTaskId))
-                    .map(task -> new TaskEditOption(task.core.id, task.core.title))
-                    .toList();
-            List<TaskEditOption> budgetAccounts = budgetRepository.findActiveAccounts().stream()
-                    .map(account -> new TaskEditOption(account.id(), account.name()))
-                    .toList();
-            List<TaskEditOption> budgetCategories = budgetRepository.findActiveCategories().stream()
-                    .map(category -> new TaskEditOption(category.id(), formatBudgetCategoryLabel(category)))
-                    .toList();
-            callbackDispatcher.execute(() -> onLoaded.accept(new TaskEditReferenceData(
-                    parentTasks,
-                    budgetAccounts,
-                    budgetCategories)));
+            TaskEditReferenceData referenceData = referenceDataUseCase.load(currentTaskId);
+            callbackDispatcher.execute(() -> onLoaded.accept(referenceData));
         });
     }
 
@@ -136,10 +120,4 @@ public class TaskEditViewModel extends ViewModel {
         changeVersion.postValue(currentValue == null ? 1L : currentValue + 1L);
     }
 
-    private static String formatBudgetCategoryLabel(BudgetCategory category) {
-        if (category.icon() == null || category.icon().isBlank()) {
-            return category.name();
-        }
-        return category.icon() + " " + category.name();
-    }
 }

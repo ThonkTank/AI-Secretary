@@ -50,7 +50,7 @@ Both features share a single-threaded `ExecutorService` wired in `AppComposition
 
 ### Key non-obvious design choices
 
-**`Task` is a Room POJO, not a `@Entity`.** Room assembles it via `@Embedded` + `@Relation` from six tables: `task_core`, `task_slots`, `task_relation`, `task_pref_slots`, `task_prerequisites`, `task_planned_meals`. `TaskCore` uses `@Embedded` for three inner classes (`Repetition`, `Progress`, `History`) with column prefixes (`repetition_`, `progress_`, `history_`). `TaskPlannedMeal` (table `task_planned_meals`, composite PK `taskId`+`day`) links a task to a planned meal for a given date; `TaskCore.mealType` identifies the associated meal type. On completion, `CheckOffTaskUseCase` calls `TaskMealIntegrationService` to record meal consumption.
+**`Task` is a Room POJO, not a `@Entity`.** Room assembles it via `@Embedded` + `@Relation` from six tables: `task_core`, `task_slots`, `task_relation`, `task_pref_slots`, `task_prerequisites`, `task_planned_meals`. `TaskCore` uses `@Embedded` for three inner classes (`Repetition`, `Progress`, `History`) with column prefixes (`repetition_`, `progress_`, `history_`). `TaskPlannedMeal` (table `task_planned_meals`, composite PK `taskId`+`day`) links a task to a planned meal for a given date; `TaskCore.mealType` identifies the associated meal type. On completion, `CheckOffTaskUseCase` calls the task-owned `TaskMealCompletionService` port; `TaskMealCompletionFromMealPlanner` records meal consumption against meal-domain repositories.
 
 **`TaskListItem`** (application layer) is a flat read model produced by `TaskListItemMapper`. **`ViewSlot`** (presentation layer, in `ui/list/state/`) wraps it for RecyclerView and adds `depth` for tree indentation.
 

@@ -12,6 +12,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
+import com.autosecretary.features.budget.application.overview.BudgetOverviewMapper;
 import com.autosecretary.features.budget.domain.BudgetCategory;
 import com.autosecretary.shared.ui.DialogHelper;
 import com.autosecretary.shared.ui.DialogValidation;
@@ -54,7 +55,7 @@ public class BudgetLimitDialogController {
     public void show(@Nullable String preSelectedCategoryId, long baseLimitCents,
                      List<BudgetCategory> allCategories) {
         Context ctx = fragment.requireContext();
-        List<BudgetCategory> expenseCategories = BudgetSummaryPresentationMapper
+        List<BudgetCategory> expenseCategories = BudgetOverviewMapper
                 .categoriesForDirection(allCategories, TransactionDirection.EXPENSE);
 
         View dialogView = LayoutInflater.from(ctx)
@@ -69,7 +70,7 @@ public class BudgetLimitDialogController {
                 dialogView.findViewById(R.id.BudgetLimitDialogRolloverCarryoverLayout);
 
         SpinnerHelper.bindList(categorySpinner, expenseCategories,
-                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon(), c.name()), ctx);
+                c -> BudgetOverviewMapper.categoryLabel(c.icon(), c.name()), ctx);
         SpinnerHelper.setSelection(categorySpinner, expenseCategories,
                 preSelectedCategoryId, BudgetCategory::id);
 

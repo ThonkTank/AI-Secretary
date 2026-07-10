@@ -6,7 +6,7 @@ Implementation helpers for `BudgetFragment` and `BudgetViewModel`. Nothing in th
 
 | File | Role |
 |---|---|
-| `BudgetSummaryPresentationMapper` | Maps aggregated domain items to `BudgetSummaryData` and `BudgetLimitBar` state objects. Also provides the shared `categoryLabel()` utility (icon + name string). |
+| `BudgetOverviewMapper` | Maps aggregated domain items to `BudgetSummaryData` and `BudgetLimitBar` state objects. Also provides the shared `categoryLabel()` utility (icon + name string). |
 | `BudgetBalanceChartView` | Custom `View` that draws the balance line chart from a list of `BudgetChartPoint` objects. All rendering is self-contained in `onDraw`. |
 | `BudgetTransactionDialogController` | Manages add / edit / delete dialogs for individual transactions. |
 | `BudgetTransferDialogController` | Manages the account-to-account transfer dialog. Uses `setOnShowListener` to block dismiss until the date field is valid. |

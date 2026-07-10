@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.ui.edit;
+package com.autosecretary.features.task.application.edit;
 
 import java.util.List;
 

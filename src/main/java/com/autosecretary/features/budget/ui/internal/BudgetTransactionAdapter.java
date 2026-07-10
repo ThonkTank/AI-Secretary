@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.autosecretary.R;
 import com.autosecretary.shared.DateFormatters;
-import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
+import com.autosecretary.features.budget.application.overview.BudgetTransactionRow;
 
 import java.util.ArrayList;
 import java.util.List;

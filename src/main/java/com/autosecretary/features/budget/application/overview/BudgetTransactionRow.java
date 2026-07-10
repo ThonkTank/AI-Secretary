@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.ui.state;
+package com.autosecretary.features.budget.application.overview;
 
 import com.autosecretary.features.budget.domain.TransactionDirection;
 import com.autosecretary.shared.ui.UiStateCarrier;

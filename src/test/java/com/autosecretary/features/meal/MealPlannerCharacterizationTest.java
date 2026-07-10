@@ -11,6 +11,7 @@ import com.autosecretary.features.meal.data.repository.MealPantryRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealRecipeRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealRoomRepository;
 import com.autosecretary.features.meal.domain.HouseholdMember;
+import com.autosecretary.features.meal.domain.internal.HouseholdEnergyService;
 import com.autosecretary.features.meal.domain.MealPlan;
 import com.autosecretary.shared.MealType;
 import com.autosecretary.features.meal.domain.PantryItem;
@@ -91,5 +92,23 @@ public final class MealPlannerCharacterizationTest extends AutoSecretaryRobolect
         assertTrue(completed.isCompleted);
         assertEquals(3, completed.actualServings);
         assertNotNull(completed.completedAt);
+    }
+
+    @Test
+    public void householdManagementKeepsAgeGenderAndTdeeInvariant() {
+        HouseholdMember member = MealFixtures.member("Ada");
+        mealRepository.saveHouseholdMember(member);
+
+        CallbackProbe<java.util.List<HouseholdMember>> probe = new CallbackProbe<>();
+        presenter.loadHouseholdMembersForManagement(probe.consumer());
+        java.util.List<HouseholdMember> members = probe.value();
+
+        assertEquals(1, members.size());
+        HouseholdMember loaded = members.get(0);
+        assertEquals("Ada", loaded.name);
+        assertTrue(loaded.isActive);
+        LocalDate today = LocalDate.now();
+        assertEquals(today.getYear() - 1990, HouseholdEnergyService.calculateAge(loaded, today));
+        assertEquals(2204, HouseholdEnergyService.calculateTdee(loaded, LocalDate.of(2026, 7, 10)));
     }
 }

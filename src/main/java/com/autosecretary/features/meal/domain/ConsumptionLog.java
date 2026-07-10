@@ -7,7 +7,7 @@ import java.time.LocalDate;
  *
  * <p>Each {@code ConsumptionLog} is linked to a {@link MealPlan} via {@code itemId} (the
  * task feature's checklist item id). When a meal-plan task is completed,
- * {@code TaskMealIntegrationService} creates a {@code ConsumptionLog} for each active
+ * The task-owned {@code TaskMealCompletionService} adapter creates a {@code ConsumptionLog} for each active
  * household member, recording the calories and macros for that serving.
  *
  * <p>{@code calories}, {@code protein}, {@code carbs}, and {@code fat} are plain integer

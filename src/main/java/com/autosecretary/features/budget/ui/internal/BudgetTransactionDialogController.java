@@ -13,6 +13,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
+import com.autosecretary.features.budget.application.overview.BudgetOverviewMapper;
 import com.autosecretary.features.budget.domain.BudgetAccount;
 import com.autosecretary.features.budget.domain.AmountParser;
 import com.autosecretary.shared.ui.DialogHelper;
@@ -21,7 +22,7 @@ import com.autosecretary.shared.ui.SimpleButtonCheckedListener;
 import com.autosecretary.shared.ui.SpinnerHelper;
 import com.autosecretary.features.budget.domain.BudgetCategory;
 import com.autosecretary.features.budget.domain.TransactionDirection;
-import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
+import com.autosecretary.features.budget.application.overview.BudgetTransactionRow;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.time.LocalDate;
@@ -83,15 +84,15 @@ public class BudgetTransactionDialogController {
         TextInputEditText dateInput = dialogView.findViewById(R.id.BudgetDialogDate);
         Spinner accountSpinner = dialogView.findViewById(R.id.BudgetDialogAccount);
 
-        List<BudgetCategory> expenseCategories = BudgetSummaryPresentationMapper
+        List<BudgetCategory> expenseCategories = BudgetOverviewMapper
                 .categoriesForDirection(allCategories, TransactionDirection.EXPENSE);
-        List<BudgetCategory> incomeCategories = BudgetSummaryPresentationMapper
+        List<BudgetCategory> incomeCategories = BudgetOverviewMapper
                 .categoriesForDirection(allCategories, TransactionDirection.INCOME);
         List<BudgetAccount> accounts = activeAccounts(allAccounts);
 
         boolean isExpense = existingRow == null || existingRow.isExpense();
         SpinnerHelper.bindList(categorySpinner, isExpense ? expenseCategories : incomeCategories,
-                c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon(), c.name()), ctx);
+                c -> BudgetOverviewMapper.categoryLabel(c.icon(), c.name()), ctx);
         SpinnerHelper.bindList(accountSpinner, accounts, BudgetAccount::name, ctx);
 
         typeGroup.addOnButtonCheckedListener(new SimpleButtonCheckedListener() {
@@ -99,7 +100,7 @@ public class BudgetTransactionDialogController {
             public void onChecked(MaterialButtonToggleGroup group, int checkedId) {
                 SpinnerHelper.bindList(categorySpinner,
                         checkedId == R.id.BudgetDialogTypeExpense ? expenseCategories : incomeCategories,
-                        c -> BudgetSummaryPresentationMapper.categoryLabel(c.icon(), c.name()), ctx);
+                        c -> BudgetOverviewMapper.categoryLabel(c.icon(), c.name()), ctx);
             }
         });
 

@@ -126,7 +126,7 @@ Legende Status: ⬜ offen · 🔨 in Arbeit · ✅ erledigt
 | 1 | Toten Code entfernen | ✅ |
 | 2 | Test-Infrastruktur & Verhaltens-Baseline | ✅ |
 | 3 | Querschnitt-Typen nach `shared/` verschieben | ✅ |
-| 4 | Schicht-Entkopplung (application↛ui, meal↔task Port) | ⬜ |
+| 4 | Schicht-Entkopplung (application↛ui, meal↔task Port) | ✅ |
 | 5 | Threading & DB-Lifecycle-Eigentum | ⬜ |
 | 6 | Task-Domänenmodell nach `domain/model/` | ⬜ |
 | 7 | Application-Schicht normalisieren (Presenter-Split) | ⬜ |
@@ -238,6 +238,14 @@ Ziel: die fünf Prinzipien werden erzwungen, damit keine Fehlerklasse zurückkeh
 ---
 
 ## Änderungslog
+- Phase 4 abgeschlossen: Budget-Overview-DTOs/Mapper aus UI in Application
+  geloest, Budget-/TaskEdit-ViewModels hinter schmale Application-Aufrufe
+  gestellt, Task↔Meal-Completion auf task-eigenen Consumer-Port umgestellt,
+  Meal-Household-TDEE aus dem Fragment in ViewModel/Presenter verschoben und
+  Unlock-Widget-Refresh ueber `WidgetRefreshNotifier` geroutet; zusaetzliche
+  Charakterisierungstests fuer Budget-Mutation/Limit, TaskEdit-Referenzdaten,
+  Household-Management und Unlock-Delegation angelegt; Erfolgs-Review ohne
+  blockierende Befunde; Abschluss-Gate gruen.
 - Phase 3 abgeschlossen: `MealType` und `WidgetRefreshNotifier` nach `shared/`
   verschoben, Budget-Default-Icon/-Farbe dem Domain-Record `BudgetCategory`
   zugeordnet, betroffene Imports und Doku aktualisiert; Erfolgs-Review ohne

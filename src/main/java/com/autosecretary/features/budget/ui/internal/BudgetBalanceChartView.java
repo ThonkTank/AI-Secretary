@@ -10,7 +10,7 @@ import androidx.core.content.ContextCompat;
 
 import com.autosecretary.R;
 
-import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
+import com.autosecretary.features.budget.application.overview.BudgetChartPoint;
 
 import java.util.ArrayList;
 import java.util.List;

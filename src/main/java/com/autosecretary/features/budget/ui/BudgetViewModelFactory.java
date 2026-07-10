@@ -7,11 +7,13 @@ import androidx.lifecycle.ViewModelProvider;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.application.BudgetSeedService;
+import com.autosecretary.features.budget.application.BudgetTransactionMutationUseCase;
 import com.autosecretary.features.budget.application.CalculateEffectiveBudgetLimitUseCase;
 import com.autosecretary.features.budget.application.CreateTransferUseCase;
+import com.autosecretary.features.budget.application.LoadBudgetLimitOverviewUseCase;
 import com.autosecretary.features.budget.application.LoadBudgetOverviewUseCase;
+import com.autosecretary.features.budget.application.ResolveBudgetAccountUseCase;
 import com.autosecretary.features.budget.domain.BudgetRepository;
-import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
 
 import java.util.concurrent.ExecutorService;
 
@@ -23,7 +25,7 @@ import java.util.concurrent.ExecutorService;
  * receives the shared infrastructure dependencies ({@code repository}, {@code executor})
  * that are managed at the app level.
  *
- * <p>App-scoped use cases are injected from {@code AppCompositionRoot}; cheap presentation
+ * <p>App-scoped use cases are injected from {@code AppCompositionRoot}; cheap application
  * helpers ({@link CalculateEffectiveBudgetLimitUseCase}, {@link BudgetSeedService}) are still
  * created inside {@link #create} because they are stateless wrappers around the repository.
  */
@@ -55,15 +57,19 @@ public class BudgetViewModelFactory implements ViewModelProvider.Factory {
     public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
         if (modelClass.isAssignableFrom(BudgetViewModel.class)) {
             BudgetViewModel.Infrastructure infrastructure =
-                    new BudgetViewModel.Infrastructure(repository, executor);
+                    new BudgetViewModel.Infrastructure(executor);
+            CalculateEffectiveBudgetLimitUseCase calculateEffectiveLimitUseCase =
+                    new CalculateEffectiveBudgetLimitUseCase(repository);
             BudgetViewModel.UseCases useCases = new BudgetViewModel.UseCases(
                     importUseCase,
                     applyRecurringUseCase,
                     createTransferUseCase,
+                    new BudgetTransactionMutationUseCase(repository),
+                    new ResolveBudgetAccountUseCase(repository),
+                    new LoadBudgetLimitOverviewUseCase(repository, calculateEffectiveLimitUseCase),
                     new BudgetSeedService(repository)
             );
             BudgetViewModel.Presentation presentation = new BudgetViewModel.Presentation(
-                    new CalculateEffectiveBudgetLimitUseCase(repository),
                     loadBudgetOverviewUseCase
             );
             return modelClass.cast(new BudgetViewModel(

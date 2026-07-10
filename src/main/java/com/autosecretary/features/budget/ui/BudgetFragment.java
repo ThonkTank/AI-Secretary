@@ -45,8 +45,6 @@ import com.autosecretary.shared.ui.SimpleItemSelectedListener;
 import com.autosecretary.shared.ui.SpinnerHelper;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
 import com.autosecretary.features.budget.ui.state.BudgetUiState;
-import com.autosecretary.features.budget.ui.state.TimeRangeFilter;
-import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
 import com.autosecretary.features.budget.ui.state.UiText;
 
 import java.util.ArrayList;
@@ -173,12 +171,14 @@ public class BudgetFragment extends Fragment {
         BudgetOverviewViews views = bindViews(view);
         transactionAdapter = new BudgetTransactionAdapter(new BudgetTransactionAdapter.Listener() {
             @Override
-            public void onTransactionClick(BudgetTransactionRow row) {
+            public void onTransactionClick(
+                    com.autosecretary.features.budget.application.overview.BudgetTransactionRow row) {
                 showEditTransactionDialog(row);
             }
 
             @Override
-            public void onTransactionLongClick(BudgetTransactionRow row) {
+            public void onTransactionLongClick(
+                    com.autosecretary.features.budget.application.overview.BudgetTransactionRow row) {
                 transactionDialogController.showDeleteConfirmation(row);
             }
         });
@@ -300,13 +300,13 @@ public class BudgetFragment extends Fragment {
         views.rangeGroup.addOnButtonCheckedListener(new SimpleButtonCheckedListener() {
             @Override
             public void onChecked(MaterialButtonToggleGroup group, int checkedId) {
-                TimeRangeFilter filter;
+                com.autosecretary.features.budget.application.overview.TimeRangeFilter filter;
                 if (checkedId == R.id.BudgetRange30d) {
-                    filter = TimeRangeFilter.DAYS_30;
+                    filter = com.autosecretary.features.budget.application.overview.TimeRangeFilter.DAYS_30;
                 } else if (checkedId == R.id.BudgetRange3m) {
-                    filter = TimeRangeFilter.MONTHS_3;
+                    filter = com.autosecretary.features.budget.application.overview.TimeRangeFilter.MONTHS_3;
                 } else if (checkedId == R.id.BudgetRange12m) {
-                    filter = TimeRangeFilter.MONTHS_12;
+                    filter = com.autosecretary.features.budget.application.overview.TimeRangeFilter.MONTHS_12;
                 } else {
                     filter = null;
                 }
@@ -407,7 +407,8 @@ public class BudgetFragment extends Fragment {
                 categoriesValue(), accountsValue());
     }
 
-    private void showEditTransactionDialog(BudgetTransactionRow row) {
+    private void showEditTransactionDialog(
+            com.autosecretary.features.budget.application.overview.BudgetTransactionRow row) {
         transactionDialogController.showEdit(row, categoriesValue(), accountsValue());
     }
 

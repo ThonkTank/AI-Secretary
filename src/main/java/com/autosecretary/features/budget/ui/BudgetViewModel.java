@@ -4,9 +4,11 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.autosecretary.features.budget.application.CalculateEffectiveBudgetLimitUseCase;
+import com.autosecretary.features.budget.application.BudgetTransactionMutationUseCase;
 import com.autosecretary.features.budget.application.CreateTransferUseCase;
+import com.autosecretary.features.budget.application.LoadBudgetLimitOverviewUseCase;
 import com.autosecretary.features.budget.application.LoadBudgetOverviewUseCase;
+import com.autosecretary.features.budget.application.ResolveBudgetAccountUseCase;
 import com.autosecretary.features.budget.domain.AmountParser;
 import com.autosecretary.features.budget.application.BudgetSeedService;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
@@ -14,17 +16,15 @@ import com.autosecretary.features.budget.application.importing.BudgetImportUseCa
 import com.autosecretary.features.budget.domain.BudgetAccount;
 import com.autosecretary.features.budget.domain.BudgetCategory;
 import com.autosecretary.features.budget.domain.BudgetLimit;
-import com.autosecretary.features.budget.domain.CategorySpendSummary;
-import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.budget.domain.recurring.RecurringSuggestion;
 import com.autosecretary.features.budget.domain.TransactionDirection;
-import com.autosecretary.features.budget.ui.internal.BudgetSummaryPresentationMapper;
-import com.autosecretary.features.budget.ui.state.BudgetChartPoint;
+import com.autosecretary.features.budget.application.overview.BudgetChartPoint;
 import com.autosecretary.features.budget.ui.state.BudgetUiState;
-import com.autosecretary.features.budget.ui.state.TimeRangeFilter;
+import com.autosecretary.features.budget.application.overview.TimeRangeFilter;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
-import com.autosecretary.features.budget.ui.state.BudgetSummaryData;
-import com.autosecretary.features.budget.ui.state.BudgetTransactionRow;
+import com.autosecretary.features.budget.application.overview.BudgetSummaryData;
+import com.autosecretary.features.budget.application.overview.BudgetTransactionRow;
+import com.autosecretary.features.budget.ui.internal.BudgetLimitPresentationMapper;
 import com.autosecretary.features.budget.ui.state.UiText;
 
 import com.autosecretary.R;
@@ -69,11 +69,9 @@ import java.util.function.LongConsumer;
 public class BudgetViewModel extends ViewModel {
 
     public record Infrastructure(
-            BudgetRepository repository,
             ExecutorService executor
     ) {
         public Infrastructure {
-            Objects.requireNonNull(repository, "repository");
             Objects.requireNonNull(executor, "executor");
         }
     }
@@ -82,22 +80,26 @@ public class BudgetViewModel extends ViewModel {
             BudgetImportUseCase importUseCase,
             ApplyRecurringSuggestionsUseCase applyRecurringUseCase,
             CreateTransferUseCase createTransferUseCase,
+            BudgetTransactionMutationUseCase transactionMutationUseCase,
+            ResolveBudgetAccountUseCase resolveBudgetAccountUseCase,
+            LoadBudgetLimitOverviewUseCase loadBudgetLimitOverviewUseCase,
             BudgetSeedService budgetSeedService
     ) {
         public UseCases {
             Objects.requireNonNull(importUseCase, "importUseCase");
             Objects.requireNonNull(applyRecurringUseCase, "applyRecurringUseCase");
             Objects.requireNonNull(createTransferUseCase, "createTransferUseCase");
+            Objects.requireNonNull(transactionMutationUseCase, "transactionMutationUseCase");
+            Objects.requireNonNull(resolveBudgetAccountUseCase, "resolveBudgetAccountUseCase");
+            Objects.requireNonNull(loadBudgetLimitOverviewUseCase, "loadBudgetLimitOverviewUseCase");
             Objects.requireNonNull(budgetSeedService, "budgetSeedService");
         }
     }
 
     public record Presentation(
-            CalculateEffectiveBudgetLimitUseCase calculateEffectiveLimitUseCase,
             LoadBudgetOverviewUseCase loadBudgetOverviewUseCase
     ) {
         public Presentation {
-            Objects.requireNonNull(calculateEffectiveLimitUseCase, "calculateEffectiveLimitUseCase");
             Objects.requireNonNull(loadBudgetOverviewUseCase, "loadBudgetOverviewUseCase");
         }
     }
@@ -115,24 +117,26 @@ public class BudgetViewModel extends ViewModel {
     private final MutableLiveData<List<BudgetChartPoint>> chartPoints = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<List<BudgetLimitBar>> budgetLimits = new MutableLiveData<>(new ArrayList<>());
 
-    private final BudgetRepository repository;
     private final ExecutorService executor;
     private final BudgetImportUseCase importUseCase;
     private final ApplyRecurringSuggestionsUseCase applyRecurringUseCase;
     private final CreateTransferUseCase createTransferUseCase;
-    private final CalculateEffectiveBudgetLimitUseCase calculateEffectiveLimitUseCase;
+    private final BudgetTransactionMutationUseCase transactionMutationUseCase;
+    private final ResolveBudgetAccountUseCase resolveBudgetAccountUseCase;
+    private final LoadBudgetLimitOverviewUseCase loadBudgetLimitOverviewUseCase;
     private final BudgetSeedService budgetSeedService;
     private final LoadBudgetOverviewUseCase loadBudgetOverviewUseCase;
 
     public BudgetViewModel(Infrastructure infrastructure,
                            UseCases useCases,
                            Presentation presentation) {
-        this.repository = infrastructure.repository();
         this.executor = infrastructure.executor();
         this.importUseCase = useCases.importUseCase();
         this.applyRecurringUseCase = useCases.applyRecurringUseCase();
         this.createTransferUseCase = useCases.createTransferUseCase();
-        this.calculateEffectiveLimitUseCase = presentation.calculateEffectiveLimitUseCase();
+        this.transactionMutationUseCase = useCases.transactionMutationUseCase();
+        this.resolveBudgetAccountUseCase = useCases.resolveBudgetAccountUseCase();
+        this.loadBudgetLimitOverviewUseCase = useCases.loadBudgetLimitOverviewUseCase();
         this.budgetSeedService = useCases.budgetSeedService();
         this.loadBudgetOverviewUseCase = presentation.loadBudgetOverviewUseCase();
         ensureDefaultData();
@@ -244,10 +248,13 @@ public class BudgetViewModel extends ViewModel {
                                String note, LocalDate date, String accountId) {
         withParsedAmount(amountStr, amountCents -> {
             if (accountId == null) return;
-            repository.saveTransaction(new BudgetRepository.TransactionCreateDetails(
-                    accountId, categoryId,
+            transactionMutationUseCase.create(
+                    accountId,
+                    categoryId,
                     isExpense ? TransactionDirection.EXPENSE : TransactionDirection.INCOME,
-                    amountCents, date, note));
+                    amountCents,
+                    date,
+                    note);
             loadOverviewOnExecutor();
         });
     }
@@ -255,10 +262,14 @@ public class BudgetViewModel extends ViewModel {
     public void updateTransaction(String transactionId, String amountStr, boolean isExpense,
                                   String categoryId, String note, LocalDate date, String accountId) {
         withParsedAmount(amountStr, amountCents -> {
-            repository.updateTransaction(transactionId, new BudgetRepository.TransactionCreateDetails(
-                    accountId, categoryId,
+            transactionMutationUseCase.update(
+                    transactionId,
+                    accountId,
+                    categoryId,
                     isExpense ? TransactionDirection.EXPENSE : TransactionDirection.INCOME,
-                    amountCents, date, note));
+                    amountCents,
+                    date,
+                    note);
             loadOverviewOnExecutor();
         });
     }
@@ -286,7 +297,7 @@ public class BudgetViewModel extends ViewModel {
 
     public void deleteTransaction(String transactionId) {
         executor.execute(() -> {
-            repository.deleteTransaction(transactionId);
+            transactionMutationUseCase.delete(transactionId);
             loadOverviewOnExecutor();
         });
     }
@@ -368,22 +379,13 @@ public class BudgetViewModel extends ViewModel {
     // Null only when no accounts exist yet.
     // Must be called on the executor thread — performs a synchronous DB read.
     private String resolveAccountId() {
-        List<BudgetAccount> accounts = repository.findActiveAccounts();
-        String current = selectedAccountId.getValue();
-        if (current != null && !current.isBlank()) return current;
-        return accounts.isEmpty() ? null : accounts.get(0).id();
+        return resolveBudgetAccountUseCase.execute(selectedAccountId.getValue());
     }
 
     private void loadLimitsOnExecutor(YearMonth month) {
         String yearMonthStr = month.toString();
-
-        List<CategorySpendSummary> totals = repository.getCategorySpendTotals(yearMonthStr);
-        List<BudgetLimitBar> bars = BudgetSummaryPresentationMapper.toLimitBars(
-                totals,
-                (catId, ym) -> calculateEffectiveLimitUseCase.execute(catId, ym).effectiveLimitCents(),
-                yearMonthStr
-        );
-        budgetLimits.postValue(bars);
+        budgetLimits.postValue(BudgetLimitPresentationMapper.toLimitBars(
+                loadBudgetLimitOverviewUseCase.execute(yearMonthStr)));
     }
 
     public void saveBudgetLimitFromString(String categoryId, String amountStr,
@@ -408,7 +410,7 @@ public class BudgetViewModel extends ViewModel {
             String yearMonthStr = month.toString();
             BudgetLimit limit = BudgetLimit.create(
                     categoryId, yearMonthStr, amountCents, rolloverEnabled, rolloverCarryoverCents);
-            repository.saveBudgetLimit(limit);
+            loadBudgetLimitOverviewUseCase.saveBudgetLimit(limit);
             loadOverviewOnExecutor();
         });
     }

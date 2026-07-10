@@ -35,7 +35,7 @@ public class TaskCore {
     public String budgetCategoryId;
     /**
      * Optional cross-feature meal association. When set, completing this task triggers
-     * a meal consumption record via {@code TaskMealIntegrationService}. See
+     * a meal consumption record via {@code TaskMealCompletionService}. See
      * {@code features/meal/} for the meal feature domain. Null when not meal-related.
      */
     public MealType mealType;
