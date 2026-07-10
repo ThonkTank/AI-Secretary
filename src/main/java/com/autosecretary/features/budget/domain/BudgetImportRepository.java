@@ -67,8 +67,6 @@ public interface BudgetImportRepository {
 
     void markImportFailed(String importId, String errorMessage);
 
-    boolean existsTransactionByImportHash(String importHash);
-
     /**
      * Returns all known import hashes for the given account in one batch query.
      * Used to pre-load the deduplication set before processing an import batch,
@@ -83,8 +81,6 @@ public interface BudgetImportRepository {
     Set<String> findActiveCategoryIds();
 
     String findDefaultCategoryId(TransactionDirection direction);
-
-    boolean isKnownCategory(String categoryId);
 
     List<ImportCategory> findActiveCategoriesForImport();
 

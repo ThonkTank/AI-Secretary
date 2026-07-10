@@ -83,10 +83,6 @@ public class TaskDataService {
     }
 
     /**
-     * Starts a manual timer for a slot by recording the current time as its start.
-     *
-     * <p><strong>Not the same as the two-phase check-off:</strong> The two-phase check-off
-    /**
      * Deletes a task and its entire graph (slots, relations, prerequisites, planned meals).
      *
      * @param taskId    the UUID of the task to delete
@@ -100,36 +96,11 @@ public class TaskDataService {
         });
     }
 
-    // ── Sync methods for callers already on the worker thread ────────────
-
-    /**
-     * Synchronous write. Must only be called from a worker-thread context (e.g. from
-     * {@code MealTaskBridgeService}, which runs on the shared worker executor).
-     */
-    public void writeSync(Task task) {
-        taskDao.write(task);
-    }
-
-    /**
-     * Synchronous read. Must only be called from a worker-thread context.
-     */
-    public Task readSync(String id) {
-        return taskDao.read(id);
-    }
-
     /**
      * Synchronous full read. Must only be called from a worker-thread context.
      */
     public List<Task> readAllSync() {
         return taskDao.readAll();
-    }
-
-    /**
-     * Synchronous task-graph deletion. Must only be called from a worker-thread context.
-     * Does NOT unlink associated meal plans — callers from the meal side manage that themselves.
-     */
-    public void deleteTaskGraphSync(String taskId) {
-        taskDao.deleteTaskGraph(taskId);
     }
 
     /** Clears the back-link on the associated meal plan (if any) before task deletion. */

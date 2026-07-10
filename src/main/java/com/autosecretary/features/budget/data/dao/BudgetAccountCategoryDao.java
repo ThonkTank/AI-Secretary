@@ -40,14 +40,6 @@ public interface BudgetAccountCategoryDao {
     List<BudgetAccountEntity> readActiveAccounts();
 
     /**
-     * Retrieves a category by ID.
-     *
-     * @return the category, or null if not found
-     */
-    @Query("SELECT * FROM budget_category WHERE id = :categoryId LIMIT 1")
-    BudgetCategoryEntity readCategory(String categoryId);
-
-    /**
      * Retrieves an account by ID.
      *
      * @return the account, or null if not found

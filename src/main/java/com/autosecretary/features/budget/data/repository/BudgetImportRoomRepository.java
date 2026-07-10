@@ -72,11 +72,6 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     }
 
     @Override
-    public boolean existsTransactionByImportHash(String importHash) {
-        return transactionDao.existsByImportHash(importHash);
-    }
-
-    @Override
     public Set<String> findImportHashesForAccount(String accountId) {
         return new HashSet<>(transactionDao.findImportHashesByAccountId(accountId));
     }
@@ -91,14 +86,6 @@ public class BudgetImportRoomRepository implements BudgetImportRepository {
     @Override
     public String findDefaultCategoryId(TransactionDirection direction) {
         return accountCategoryDao.readDefaultCategoryId(direction);
-    }
-
-    @Override
-    public boolean isKnownCategory(String categoryId) {
-        if (categoryId == null || categoryId.isBlank()) {
-            return false;
-        }
-        return accountCategoryDao.readCategory(categoryId) != null;
     }
 
     @Override

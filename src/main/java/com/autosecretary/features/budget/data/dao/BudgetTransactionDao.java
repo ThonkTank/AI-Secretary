@@ -215,17 +215,6 @@ public interface BudgetTransactionDao {
     void deleteById(String transactionId);
 
     /**
-     * Checks if a transaction with the given import hash already exists.
-     *
-     * Used during import to detect and skip duplicate transactions (idempotency check).
-     *
-     * @param importHash the import hash (derived from transaction data to detect duplicates)
-     * @return true if a transaction with this hash exists
-     */
-    @Query("SELECT COUNT(*) > 0 FROM budget_transaction WHERE importHash = :importHash")
-    boolean existsByImportHash(String importHash);
-
-    /**
      * Returns all non-null import hashes for a given account.
      *
      * Used to batch-load known hashes before an import loop, avoiding per-transaction

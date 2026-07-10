@@ -1,6 +1,6 @@
 # Phase 1 — Toten Code entfernen
 
-Status: **designt + vollständigkeitsgeprüft**, Umsetzung ausstehend.
+Status: **abgeschlossen**.
 
 ## Design (erweiterter Löschsatz)
 
@@ -57,3 +57,30 @@ UI) nicht erreichbar. Sicher löschbar. Keine Reflection/ServiceLoader/String-Lo
 
 Keine — reine Entfernung unerreichbaren Codes. Deshalb keine neuen Tests in dieser
 Phase (Testsuite existiert ohnehin erst ab Phase 2).
+
+## Erfolgs-Review (Subagent) — Ergebnis
+
+Review-Zeitpunkt: 2026-07-10.
+
+Ergebnis gegen Done-When-Kriterien:
+- DW1: pass — `MealTaskBridgeService.java`, `MealPlanGenerator.java`,
+  `LegacyMealImportService.java` und `meal/application/internal/README.md` sind gelöscht.
+- DW2: pass — `existsTransactionByImportHash` und `isKnownCategory` sind aus
+  `BudgetImportRepository` und `BudgetImportRoomRepository` entfernt.
+- DW3: pass — Folge-Totcode `writeSync`, `readSync`, `deleteTaskGraphSync`,
+  `existsByImportHash` und `readCategory` ist entfernt; `readAllSync` bleibt live.
+- DW4: pass — Dangling-Doku in Meal- und Budget-Import-READMEs ist bereinigt.
+- DW5: pass — Symbolsuche über `src/main/java`, `src/main/res` und Manifest nach
+  den gelöschten Symbolen ergab keine Treffer.
+- DW6: im Subagenten-Review nicht ausgeführt; anschließend im Hauptlauf grün geprüft.
+- DW7: pass — der Review fand keine Verhaltensänderung an verbleibendem Live-Code.
+
+Blockierende Befunde: keine.
+
+## Abschluss-Gate
+
+2026-07-10:
+- `./gradlew checkArchitecture --console=plain` → Exit 0.
+- `./gradlew assembleDebug --console=plain` → Exit 0.
+- `./gradlew testDebugUnitTest --console=plain` → Exit 0 (`testDebugUnitTest NO-SOURCE`,
+  vor Phase 2 erwarteter No-op-Pass).

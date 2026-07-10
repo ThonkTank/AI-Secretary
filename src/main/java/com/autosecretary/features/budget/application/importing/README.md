@@ -182,7 +182,7 @@ Runs synchronously on the caller's thread. For each accepted suggestion:
 | Issue | Check |
 |-------|-------|
 | Imports hang indefinitely | Check executor service in `AppCompositionRoot`; is background thread running? |
-| Duplicate transactions appear despite same importHash | Is `existsTransactionByImportHash()` working? Check DAO query. |
+| Duplicate transactions appear despite same importHash | Check `findImportHashesForAccount()` and the import-hash query in `BudgetTransactionDao`. |
 | Recurring suggestions never appear | Is `RecurringPatternDetector` being called? Check logs for "Pattern detection failed" warning. |
 | CSV parsing fails on valid files | Check line-ending handling (split uses `\r?\n`). Verify column count ≥4. |
 | PDF parsing fails with "API key missing" | Ensure API key is set in `ClaudeApiKeyStore` via budget settings. |

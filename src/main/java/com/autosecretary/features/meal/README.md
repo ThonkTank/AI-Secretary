@@ -2,7 +2,7 @@
 
 Meal planning, recipe management, pantry tracking, and shopping lists for the household.
 Backed by an **in-memory storage layer** (not Room) — all meal data is lost when the process dies.
-Data is seeded on first use via `LegacyMealImportService` or the demo recipe in `MealPlannerPresenter`.
+Data is seeded on first use via the demo recipe in `MealPlannerPresenter`.
 
 ## Layer Overview
 
@@ -21,7 +21,7 @@ Data (Storage Repositories → RowMappers → InMemoryMealStorage)
 | Package | What lives here | README |
 |---|---|---|
 | `domain/` | Core entities (`Recipe`, `Ingredient`, `MealPlan`, `PantryItem`, …), enums (`MealType`, `FoodGroup`), stateless services, repository interfaces. No Android dependencies. | [`domain/README.md`](domain/README.md) |
-| `application/` | `MealPlannerPresenter` (UI coordinator), cross-feature integration (`TaskMealIntegrationService`), legacy import (`LegacyMealImportService`). | [`application/README.md`](application/README.md) |
+| `application/` | `MealPlannerPresenter` (UI coordinator), cross-feature integration (`TaskMealIntegrationService`). | [`application/README.md`](application/README.md) |
 | `data/` | Repository implementations, row mappers, and `InMemoryMealStorage`. All implementation is in `data/internal/`; nothing there is public API. | [`data/README.md`](data/README.md) |
 | `ui/` | `MealPlannerFragment` — three-tab UI (Week Plan, Recipes, Stock & Shopping). Purely presentational. | [`ui/README.md`](ui/README.md) |
 

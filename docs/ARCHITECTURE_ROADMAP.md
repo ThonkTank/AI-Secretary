@@ -123,7 +123,7 @@ Legende Status: ⬜ offen · 🔨 in Arbeit · ✅ erledigt
 | Phase | Titel | Status |
 |-------|-------|--------|
 | 0 | Baseline & Roadmap | ✅ |
-| 1 | Toten Code entfernen | ⬜ |
+| 1 | Toten Code entfernen | ✅ |
 | 2 | Test-Infrastruktur & Verhaltens-Baseline | ⬜ |
 | 3 | Querschnitt-Typen nach `shared/` verschieben | ⬜ |
 | 4 | Schicht-Entkopplung (application↛ui, meal↔task Port) | ⬜ |
@@ -238,6 +238,10 @@ Ziel: die fünf Prinzipien werden erzwungen, damit keine Fehlerklasse zurückkeh
 ---
 
 ## Änderungslog
+- Phase 1 abgeschlossen: unerreichbare Meal-Legacy-/Generator-/Bridge-Pfade,
+  zugehöriger Folge-Totcode und Dangling-Doku entfernt; Erfolgs-Review ohne
+  blockierende Befunde; Abschluss-Gate grün (`checkArchitecture`,
+  `assembleDebug`, `testDebugUnitTest` als NO-SOURCE-Pass vor Phase 2).
 - Phase 0 abgeschlossen: Roadmap + Branch + Baseline.
 - Roadmap erweitert: „keine Tests"-Regel generell durch dauerhafte Testregel
   ersetzt (dokumentierte, eng abgesicherte Verhaltensinvarianten); neue Phase 2

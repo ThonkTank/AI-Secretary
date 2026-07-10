@@ -26,7 +26,7 @@ This layer contains **no persistence logic** (all DB access is in `meal.data`) a
 1. **`MealPlannerPresenter`** — best first read; shows how the UI interacts with all three
    repositories and what data-shaping happens at this layer.
 2. **`TaskMealIntegrationService`** — more complex; read after understanding the presenter.
-3. **`internal/`** — implementation helpers; see `internal/README.md`.
+3. **Domain services** — read the domain README for the stateless helpers used by this layer.
 
 ## Key concepts
 
@@ -45,7 +45,3 @@ records any leftover as `excessAmount`.
 **Pantry depletion** — When a meal task is completed, `TaskMealIntegrationService` reduces the
 pantry stock for each ingredient used in the recipe, consuming older items first (sorted by
 expiry date). Items depleted below `DEPLETION_EPSILON` are deleted rather than saved at near-zero.
-
-## Internal helpers (`internal/`)
-
-See `internal/README.md` for documentation on `LegacyMealImportService`.
