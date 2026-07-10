@@ -12,7 +12,7 @@ import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.R;
-import com.autosecretary.app.AutoSecretaryApplication;
+import com.autosecretary.features.task.ui.TaskUiDependencies;
 import com.autosecretary.shared.ui.DialogHelper;
 import com.autosecretary.features.task.ui.edit.internal.editor.PrefSlotSectionController;
 import com.autosecretary.features.task.ui.edit.internal.editor.TaskEditFormInputReader;
@@ -43,8 +43,8 @@ public class TaskEditDialog extends DialogFragment {
 
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
-        TaskEditViewModelFactory factory = AutoSecretaryApplication.from(requireContext())
-                .getAppCompositionRoot()
+        TaskEditViewModelFactory factory = ((TaskUiDependencies) requireContext()
+                .getApplicationContext())
                 .getTaskEditViewModelFactory();
         editViewModel = new ViewModelProvider(requireActivity(), factory).get(TaskEditViewModel.class);
         TaskEditState selectedTask = editViewModel.getSelectedTask();
@@ -54,7 +54,7 @@ public class TaskEditDialog extends DialogFragment {
             return new AlertDialog.Builder(requireContext()).create();
         }
         editState = selectedTask;
-        formController = new TaskEditFormController(editState);
+        formController = new TaskEditFormController(editState, editViewModel::createDefaultPrefSlot);
 
         View rootView = LayoutInflater.from(getContext()).inflate(R.layout.task_editor_dialog, null);
 

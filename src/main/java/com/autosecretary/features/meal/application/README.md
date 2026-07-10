@@ -41,10 +41,6 @@ belongs to. Always use `LocalDate.now().toString()` to produce the current perio
 publishes reference values for weekly food group intake. See `WeeklyFoodTargetService` in the
 domain layer for the calculation formulas.
 
-**Package rounding** — When adding a shopping-list item, `ShoppingPackagingService` rounds the
-required amount up to the nearest standard package size (e.g., 450 g → 1× 500 g bag) and
-records any leftover as `excessAmount`.
-
 **Pantry depletion** — When a meal task is completed, the task-owned
 `TaskMealCompletionService` adapter reduces the
 pantry stock for each ingredient used in the recipe, consuming older items first (sorted by

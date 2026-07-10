@@ -1,6 +1,6 @@
 # Architektur-Roadmap AutoSecretary
 
-Status: **in Umsetzung** · Branch: `refactor/architecture-roadmap`
+Status: **abgeschlossen** · Branch: `refactor/architecture-roadmap`
 
 Diese Roadmap führt die Codebasis auf die unten definierte Zielarchitektur. Sie
 entstand aus einer Vier-Wege-Architekturanalyse (task, budget, meal, Querschnitt).
@@ -130,7 +130,7 @@ Legende Status: ⬜ offen · 🔨 in Arbeit · ✅ erledigt
 | 5 | Threading & DB-Lifecycle-Eigentum | ✅ |
 | 6 | Task-Domänenmodell nach `domain/model/` | ✅ |
 | 7 | Application-Schicht normalisieren (Presenter-Split) | ✅ |
-| 8 | `checkArchitecture` v2 + Doku-Sync | ⬜ |
+| 8 | `checkArchitecture` v2 + Doku-Sync | ✅ |
 
 ### Phase 0 — Baseline & Roadmap ✅
 Roadmap angelegt, Arbeitsbranch erstellt, Baseline `checkArchitecture` grün,
@@ -238,6 +238,16 @@ Ziel: die fünf Prinzipien werden erzwungen, damit keine Fehlerklasse zurückkeh
 ---
 
 ## Änderungslog
+- Phase 8 abgeschlossen: `checkArchitecture` auf Import-Matrix-Allowlist,
+  Reachability, DB-Doku-Sync, Executor-Eigentum, Application-Presenter-Verbot
+  und Negativ-Self-Tests erweitert; Feature-Entry-Points von direkten
+  `app/`-Imports auf feature-eigene Provider-Interfaces umgestellt,
+  `ContentDocumentReader` nach `shared/` verschoben, Widget-Launch-Intents und
+  Meal-Skalierungsvorschau app-/domain-service-neutral verdrahtet,
+  `ShoppingPackagingService` als unreferenzierten Totcode entfernt,
+  `CLAUDE.md`/`AGENTS.md`/aktuelle READMEs/Javadocs/XML-Kommentare
+  synchronisiert; Erfolgs-Review PASS nach Nachbesserungen; Abschluss-Gate
+  gruen.
 - Phase 7 abgeschlossen: `MealPlannerPresenter` in `MealPlannerDataService`
   plus fokussierte Meal-Application-UseCases/DataServices zerlegt,
   WeeklyProgress-/Household-DTOs herausgeloest, Meal-ViewModel/Factory/

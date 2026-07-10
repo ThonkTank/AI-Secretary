@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
-import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.shared.WidgetRefreshNotifier;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 
@@ -36,13 +35,10 @@ public class DailyPlanningReceiver extends BroadcastReceiver {
         // See README.md "Broadcast Receiver Lifecycle" for details.
         PendingResult pendingResult = goAsync();
         try {
-            AutoSecretaryApplication application = AutoSecretaryApplication.from(context);
-            WidgetRefreshNotifier widgetRefreshNotifier = application
-                    .getAppCompositionRoot()
-                    .getWidgetRefreshNotifier();
-            RegenerateScheduleUseCase useCase = application
-                    .getAppCompositionRoot()
-                    .getRegenerateScheduleUseCase();
+            TaskAlarmDependencies dependencies =
+                    (TaskAlarmDependencies) context.getApplicationContext();
+            WidgetRefreshNotifier widgetRefreshNotifier = dependencies.getWidgetRefreshNotifier();
+            RegenerateScheduleUseCase useCase = dependencies.getRegenerateScheduleUseCase();
 
             // Regenerate daily slots: generates new TaskSlots for today based on TaskPrefSlots,
             // adapting from recent completion history (adaptive scheduling).

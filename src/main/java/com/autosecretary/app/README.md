@@ -36,7 +36,8 @@ Top-level application package. Contains:
 ## Architecture context
 
 This package sits at the top of the dependency graph. It may import from any feature package,
-but **no feature package should import from `app/`** (except `Preferences` — see below).
+but **no feature package may import from `app/`**. Feature entry points depend on their own
+provider interfaces, implemented by `AutoSecretaryApplication`.
 
 ```
 app/ ──────────────────────────────────────────────────────────────────┐
@@ -45,10 +46,7 @@ app/ ─────────────────────────
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-`Preferences.java` is an exception: `features/task/` imports it because it provides the
-per-day scheduling window that the task scheduler needs. Keeping it in `app/` is currently
-the least disruptive option because it is an application-wide preference object rather than
-task-specific business logic.
+`AppCompositionRoot` remains the only place that wires concrete feature dependencies together.
 
 ---
 

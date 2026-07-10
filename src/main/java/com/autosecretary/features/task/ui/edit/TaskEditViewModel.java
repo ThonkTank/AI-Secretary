@@ -5,10 +5,10 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.autosecretary.features.task.application.TaskDataService;
+import com.autosecretary.features.task.application.edit.CreateDefaultTaskPrefSlotUseCase;
 import com.autosecretary.features.task.application.edit.TaskEditReferenceData;
 import com.autosecretary.features.task.application.edit.TaskEditReferenceDataUseCase;
 import com.autosecretary.features.task.domain.model.Task;
-import com.autosecretary.features.task.domain.model.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.edit.internal.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 
@@ -22,6 +22,7 @@ import java.util.function.Consumer;
 public class TaskEditViewModel extends ViewModel {
     private final TaskDataService taskDataService;
     private final TaskEditReferenceDataUseCase referenceDataUseCase;
+    private final CreateDefaultTaskPrefSlotUseCase createDefaultTaskPrefSlotUseCase;
     private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
 
@@ -33,10 +34,12 @@ public class TaskEditViewModel extends ViewModel {
     public TaskEditViewModel(
             TaskDataService taskDataService,
             TaskEditReferenceDataUseCase referenceDataUseCase,
+            CreateDefaultTaskPrefSlotUseCase createDefaultTaskPrefSlotUseCase,
             ExecutorService workerExecutor,
             Executor callbackDispatcher) {
         this.taskDataService = taskDataService;
         this.referenceDataUseCase = referenceDataUseCase;
+        this.createDefaultTaskPrefSlotUseCase = createDefaultTaskPrefSlotUseCase;
         this.workerExecutor = workerExecutor;
         this.callbackDispatcher = callbackDispatcher;
     }
@@ -82,11 +85,15 @@ public class TaskEditViewModel extends ViewModel {
 
     public void createNewTask() {
         Task task = new Task();
-        task.prefSlots.add(TaskPrefSlotFactory.createDefault(task.core.id));
+        task.prefSlots.add(createDefaultPrefSlot(task.core.id));
 
         selectedBaseTask.setValue(task);
         selectedTask.setValue(TaskEditStateMapper.fromTask(task));
         isNewTask.setValue(true);
+    }
+
+    public com.autosecretary.features.task.domain.model.TaskPrefSlot createDefaultPrefSlot(String taskId) {
+        return createDefaultTaskPrefSlotUseCase.execute(taskId);
     }
 
     public void loadReferenceData(Consumer<TaskEditReferenceData> onLoaded) {

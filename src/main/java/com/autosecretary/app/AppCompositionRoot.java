@@ -12,9 +12,14 @@ import com.autosecretary.features.budget.application.importing.BudgetImportUseCa
 import com.autosecretary.features.budget.data.api.ClaudeStatementApiClient;
 import com.autosecretary.features.budget.data.api.ClaudeApiKeyStore;
 import com.autosecretary.features.budget.application.importing.internal.StatementFileParser;
+import com.autosecretary.features.budget.application.BudgetSeedService;
+import com.autosecretary.features.budget.application.BudgetTransactionMutationUseCase;
+import com.autosecretary.features.budget.application.CalculateEffectiveBudgetLimitUseCase;
 import com.autosecretary.features.budget.application.CreateTransferUseCase;
+import com.autosecretary.features.budget.application.LoadBudgetLimitOverviewUseCase;
 import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseCase;
 import com.autosecretary.features.budget.application.LoadBudgetOverviewUseCase;
+import com.autosecretary.features.budget.application.ResolveBudgetAccountUseCase;
 import com.autosecretary.features.budget.data.repository.BudgetImportRoomRepository;
 import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
@@ -35,6 +40,8 @@ import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.UndoTaskCheckOffUseCase;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
+import com.autosecretary.features.task.application.edit.CreateDefaultTaskPrefSlotUseCase;
+import com.autosecretary.features.task.application.edit.TaskEditReferenceDataUseCase;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
 import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
@@ -57,6 +64,7 @@ import com.autosecretary.features.task.ui.edit.TaskEditViewModelFactory;
 import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 import com.autosecretary.shared.WidgetRefreshNotifier;
+import com.autosecretary.shared.ContentDocumentReader;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -209,7 +217,8 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
         );
         taskEditViewModelFactory = new TaskEditViewModelFactory(
                 taskDataService,
-                getBudgetRoomRepository(),
+                new TaskEditReferenceDataUseCase(taskDataService, getBudgetRoomRepository()),
+                new CreateDefaultTaskPrefSlotUseCase(),
                 dbExecutor,
                 mainHandler::post
         );
@@ -326,16 +335,21 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
             );
 
             CreateTransferUseCase createTransferUseCase = new CreateTransferUseCase(repository);
+            CalculateEffectiveBudgetLimitUseCase calculateEffectiveLimitUseCase =
+                    new CalculateEffectiveBudgetLimitUseCase(repository);
             LoadBudgetOverviewUseCase loadBudgetOverviewUseCase =
                     new LoadBudgetOverviewUseCase(repository, app.getResources());
 
             budgetViewModelFactory = new BudgetViewModelFactory(
-                    repository,
                     dbExecutor,
                     ioExecutor,
                     importUseCase,
                     applyRecurringUseCase,
                     createTransferUseCase,
+                    new BudgetTransactionMutationUseCase(repository),
+                    new ResolveBudgetAccountUseCase(repository),
+                    new LoadBudgetLimitOverviewUseCase(repository, calculateEffectiveLimitUseCase),
+                    new BudgetSeedService(repository),
                     loadBudgetOverviewUseCase
             );
         }

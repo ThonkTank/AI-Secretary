@@ -24,7 +24,7 @@ BudgetViewModel (ViewModel)
 All user actions (add transaction, change account, change time range) call ViewModel methods,
 which trigger a repository reload, which posts updated LiveData back to the Fragment. Statement
 import keeps the picker registration in `BudgetFragment`; URI metadata and bytes are read via the
-application-owned `ContentDocumentReader` before the ViewModel starts the import use case.
+shared `ContentDocumentReader` before the ViewModel starts the import use case.
 
 ## Sub-packages
 

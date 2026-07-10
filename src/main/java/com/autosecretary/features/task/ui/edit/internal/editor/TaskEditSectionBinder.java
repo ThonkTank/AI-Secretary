@@ -418,7 +418,7 @@ public class TaskEditSectionBinder {
 
     private void showDatePicker(SchedulingViews views) {
         showDatePicker(formController.getEditableDeadline(), picked -> {
-            // Presenter owns deadline state to preserve existing behavior.
+            // Form controller owns deadline state to preserve existing behavior.
             formController.setEditableDeadline(picked);
             updateDeadlineDisplay(views);
         });

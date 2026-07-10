@@ -24,8 +24,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.autosecretary.R;
-import com.autosecretary.app.AppCompositionRoot;
-import com.autosecretary.app.AutoSecretaryApplication;
+import com.autosecretary.features.task.ui.TaskUiDependencies;
 import com.autosecretary.features.task.ui.edit.TaskEditDialog;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModel;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModelFactory;
@@ -122,17 +121,17 @@ public class TaskListFragment extends Fragment {
     }
 
     private TaskViewModel createViewModel() {
-        AutoSecretaryApplication app = AutoSecretaryApplication.from(requireContext());
-        AppCompositionRoot compositionRoot = app.getAppCompositionRoot();
-        TaskViewModelFactory viewModelFactory = compositionRoot.getTaskViewModelFactory();
+        TaskViewModelFactory viewModelFactory = taskUiDependencies().getTaskViewModelFactory();
         return new ViewModelProvider(requireActivity(), viewModelFactory).get(TaskViewModel.class);
     }
 
     private TaskEditViewModel createTaskEditViewModel() {
-        AutoSecretaryApplication app = AutoSecretaryApplication.from(requireContext());
-        AppCompositionRoot compositionRoot = app.getAppCompositionRoot();
-        TaskEditViewModelFactory viewModelFactory = compositionRoot.getTaskEditViewModelFactory();
+        TaskEditViewModelFactory viewModelFactory = taskUiDependencies().getTaskEditViewModelFactory();
         return new ViewModelProvider(requireActivity(), viewModelFactory).get(TaskEditViewModel.class);
+    }
+
+    private TaskUiDependencies taskUiDependencies() {
+        return (TaskUiDependencies) requireContext().getApplicationContext();
     }
 
     private View configureEmptyState(View view) {

@@ -6,13 +6,12 @@ import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.util.Log;
 import android.widget.RemoteViews;
 
 import com.autosecretary.R;
-import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.app.MainActivity;
 import com.autosecretary.features.task.ui.list.TaskViewModel;
 import com.autosecretary.shared.WidgetConfiguration;
 import com.autosecretary.shared.ui.UiConstants;
@@ -159,11 +158,17 @@ public class TaskWidgetProvider extends AppWidgetProvider {
      */
     private PendingIntent buildMainActivityIntent(Context context, int requestId,
             java.util.function.Consumer<Intent> customizer) {
-        Intent intent = new Intent(context, MainActivity.class);
+        Intent intent = launchIntent(context);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         customizer.accept(intent);
         return PendingIntent.getActivity(context, requestId, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    private Intent launchIntent(Context context) {
+        PackageManager packageManager = context.getPackageManager();
+        Intent intent = packageManager.getLaunchIntentForPackage(context.getPackageName());
+        return intent != null ? intent : new Intent();
     }
 
     /** Adjusts the day offset by delta (±1), clamps to [0, MAX_OFFSET], persists, and refreshes. */
@@ -185,10 +190,11 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         // Without it, onReceive() returns and the process may be killed before the database
         // mutation completes.
         PendingResult result = goAsync();
-        AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
-        app.getAppCompositionRoot().getDbExecutor().execute(() -> {
+        TaskWidgetDependencies dependencies =
+                (TaskWidgetDependencies) context.getApplicationContext();
+        dependencies.getDbExecutor().execute(() -> {
             try {
-                app.getAppCompositionRoot().getTaskSlotToggleMutation()
+                dependencies.getTaskSlotToggleMutation()
                         .execute(taskId, slotId, () -> notifyWidgetUpdate(context), null);
             } catch (Exception e) {
                 Log.e(TAG, "Toggle failed", e);

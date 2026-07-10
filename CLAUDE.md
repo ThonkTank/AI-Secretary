@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `./gradlew copyToRelease` — copies APK to `ops/release/` and bumps version.
 - `./gradlew publishReleaseArtifact` — runs `copyToRelease` then pushes to GitHub.
 
-**Testing policy.** Every required behavior invariant must be cleanly and findably documented and covered by tight end-to-end tests (JVM tests under `src/test`, Robolectric + in-memory Room, driving UI-ViewModel/Presenter → application → domain → data and asserting observable outcomes). A test names the invariant it protects. Run with `./gradlew testDebugUnitTest`. This replaces the former "no automated tests" rule. Additional validation via `./gradlew assembleDebug` and manual scripts (`ops/check_only.sh`, `ops/test_schedule.sh`) with a connected device.
+**Testing policy.** Every required behavior invariant must be cleanly and findably documented and covered by tight end-to-end tests (JVM tests under `src/test`, Robolectric + in-memory Room, driving UI ViewModel/DataService → application → domain → data and asserting observable outcomes). A test names the invariant it protects. Run with `./gradlew testDebugUnitTest`. This replaces the former "no automated tests" rule. Additional validation via `./gradlew assembleDebug` and manual scripts (`ops/check_only.sh`, `ops/test_schedule.sh`) with a connected device.
 
 ## Glossary
 
@@ -35,18 +35,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-**MVVM + Room**, feature-based packages, layered UI -> Application -> Domain -> Data. `./gradlew checkArchitecture` is implemented in this repository and checks broad dependency, lifecycle, ViewModel, UI helper, package declaration, and release-task safety principles.
+**MVVM + Room**, feature-based packages, layered UI -> Application -> Domain -> Data. `./gradlew checkArchitecture` is implemented in this repository and enforces the import matrix, class reachability, DB-version documentation sync, executor ownership, application-layer naming, lifecycle, ViewModel, UI helper, package declaration, and release-task safety principles.
 
 Top-level packages under `src/main/java/com/autosecretary/`:
 - **`features/task/`** — scheduling, slot generation, task lifecycle
 - **`features/budget/`** — transactions, CSV/PDF import, recurring pattern detection, balance chart, home screen widget
-- **`features/meal/`** — meal planning, recipe management, pantry, shopping lists, weekly food targets; backed by Room (same as task/budget). `MealPlannerDataService` is the application-layer facade, accessed via `AppCompositionRoot.getMealPlannerDataService()`, and delegates to focused meal use cases/data services. Data layer uses `Meal*Entity` classes in `data/entity/`, `Meal*Dao` in `data/dao/`, and `Meal*RoomRepository` in `data/repository/`.
+- **`features/meal/`** — meal planning, recipe management, pantry, shopping lists, weekly food targets; backed by Room (same as task/budget). `MealPlannerDataService` is the application-layer facade, provided to UI through `MealPlannerDependencies`, and delegates to focused meal use cases/data services. Data layer uses `Meal*Entity` classes in `data/entity/`, `Meal*Dao` in `data/dao/`, and `Meal*RoomRepository` in `data/repository/`.
 - **`app/`** — `AppCompositionRoot` (DI root), `MainActivity`, `AutoSecretaryApplication`, `UpdateChecker`, settings
-- **`shared/`** — cross-feature enums/contracts: `Priority` (values: LOW=100, MEDIUM=200, HIGH=400, CRITICAL=10000), `Period`, `MealType`, `WidgetRefreshNotifier`; and `WidgetConfiguration` (shared update-period constant for task and budget widgets)
+- **`shared/`** — cross-feature enums/contracts and neutral utilities: `Priority` (values: LOW=100, MEDIUM=200, HIGH=400, CRITICAL=10000), `Period`, `MealType`, `WidgetRefreshNotifier`, `ContentDocumentReader`; and `WidgetConfiguration` (shared update-period constant for task and budget widgets)
 - **`database/`** — `AppDatabase` (Room DB class) + `Converters` (type converters for `LocalDate`, `LocalTime`, `LocalDateTime`, `YearMonth`, `DayOfWeek`, all domain enums, and `Set<DayOfWeek>` as comma-separated string)
 - **`util/`** — `TreeBuilder<T>` generic depth-first tree traversal utility used by both task hierarchy and slot hierarchy views
 
-`AppCompositionRoot` (`app/`) owns two named executors: `dbExecutor` for all Room/repository/DAO work and `ioExecutor` for file and network work. I/O classes stay synchronous and executor-free; callers choose the executor. Results post to main via `Handler`. **`AppCompositionRoot` is the manual DI root** — read it to understand wiring. It also owns `AppDatabase.getInstance()` / `AppDatabase.closeAndReset()` calls and exposes `resetForDataReload()` to re-wire after restore/reset.
+`AppCompositionRoot` (`app/`) owns two named executors: `dbExecutor` for all Room/repository/DAO work and `ioExecutor` for file and network work. I/O classes stay synchronous and executor-free; callers choose the executor. Results post to main via `Handler`. **`AppCompositionRoot` is the manual DI root** — read it to understand wiring. Feature entry points receive dependencies through feature-owned provider interfaces implemented by `AutoSecretaryApplication`; feature code must not import `app/`. The root also owns `AppDatabase.getInstance()` / `AppDatabase.closeAndReset()` calls and exposes `resetForDataReload()` to re-wire after restore/reset.
 
 ### Key non-obvious design choices
 
@@ -75,7 +75,7 @@ Top-level packages under `src/main/java/com/autosecretary/`:
 ### Conventions
 
 - **Package layout:** Public entry points stay in stable packages (`features/task/ui/list/`, `features/task/application/*UseCase`). Implementation details usually live in `internal/` sub-packages.
-- **Architecture check:** `./gradlew checkArchitecture` runs repo-local principle checks. It does not enforce standards documents, layout naming, feature-root folder sets, or exact ViewModel/state package shapes.
+- **Architecture check:** `./gradlew checkArchitecture` runs repo-local principle checks for the import matrix, reachability, docs/code DB-version sync, executor ownership, application naming, lifecycle, ViewModel, UI helper, package declaration, widget constants, and release-task safety.
 - **`task/application/` sub-packages** (see `features/task/application/README.md`):
   - Root — top-level entry-point use-cases and `TaskDataService`.
   - `calendar/` — `TaskCalendarService` contract and DTOs.

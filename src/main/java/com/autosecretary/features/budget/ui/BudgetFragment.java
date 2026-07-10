@@ -26,9 +26,6 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.R;
-import com.autosecretary.app.AppCompositionRoot;
-import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.app.ContentDocumentReader;
 import com.autosecretary.features.budget.domain.BudgetAccount;
 import com.autosecretary.features.budget.domain.BudgetCategory;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -48,6 +45,7 @@ import com.autosecretary.shared.ui.SpinnerHelper;
 import com.autosecretary.features.budget.ui.state.BudgetLimitBar;
 import com.autosecretary.features.budget.ui.state.BudgetUiState;
 import com.autosecretary.features.budget.ui.state.UiText;
+import com.autosecretary.shared.ContentDocumentReader;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -103,12 +101,9 @@ public class BudgetFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        contentDocumentReader = AutoSecretaryApplication.from(requireContext())
-                .getAppCompositionRoot()
-                .getContentDocumentReader();
-        ioExecutor = AutoSecretaryApplication.from(requireContext())
-                .getAppCompositionRoot()
-                .getIoExecutor();
+        BudgetDependencies dependencies = budgetDependencies();
+        contentDocumentReader = dependencies.getContentDocumentReader();
+        ioExecutor = dependencies.getIoExecutor();
 
         transferDialogController = new BudgetTransferDialogController(this,
                 (sourceAccountId, targetAccountId, amount, bookingDate, note) -> {
@@ -168,9 +163,7 @@ public class BudgetFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        AppCompositionRoot compositionRoot =
-                AutoSecretaryApplication.from(requireContext()).getAppCompositionRoot();
-        BudgetViewModelFactory factory = compositionRoot.getBudgetViewModelFactory();
+        BudgetViewModelFactory factory = budgetDependencies().getBudgetViewModelFactory();
         budgetViewModel = new ViewModelProvider(this, factory).get(BudgetViewModel.class);
         Bundle args = getArguments();
         shouldOpenAddTransactionDialog = args != null && args.getBoolean(ARG_OPEN_ADD_TRANSACTION, false);
@@ -194,6 +187,10 @@ public class BudgetFragment extends Fragment {
         observeViewModel(views);
         setupUserActions(views);
         restoreDeferredActions(view);
+    }
+
+    private BudgetDependencies budgetDependencies() {
+        return (BudgetDependencies) requireContext().getApplicationContext();
     }
 
     private BudgetOverviewViews bindViews(@NonNull View rootView) {

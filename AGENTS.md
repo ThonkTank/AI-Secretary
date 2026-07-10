@@ -21,14 +21,14 @@ Use the Gradle wrapper from repo root:
 ## Coding Style & Naming Conventions
 Follow existing Java style in `src/main/java`: 4-space indentation, braces on declaration lines, and descriptive class names. Keep packages fully qualified under `com.autosecretary.*`.
 
-Architecture-sensitive changes must keep `./gradlew checkArchitecture` green. That task is repo-local and checks broad dependency, lifecycle, ViewModel, UI helper, package declaration, and release-task safety principles without enforcing project documentation or file-shape standards.
+Architecture-sensitive changes must keep `./gradlew checkArchitecture` green. That task is repo-local and enforces the import matrix, class reachability, DB-version documentation sync, executor ownership, application-layer naming, lifecycle, ViewModel, UI helper, package declaration, and release-task safety principles.
 
 Work that uses external sources or local source evidence for decisions must use the global `source-references` skill and cite preserved local paths under `/home/aaron/Schreibtisch/projects/references/` or direct repo paths.
 
 Work on agent-facing instruction artifacts (`AGENTS.md`, `SKILL.md`, prompts, or related rule markdown) must use the global `agent-instruction-engineering` skill.
 
 ## Testing Guidelines
-Required behavior invariants must be covered by tight JVM end-to-end tests under `src/test`, as defined in `CLAUDE.md` and `docs/ARCHITECTURE_ROADMAP.md`. Use Robolectric plus in-memory Room for tests that drive UI-ViewModel/Presenter → application → domain → data and assert observable results.
+Required behavior invariants must be covered by tight JVM end-to-end tests under `src/test`, as defined in `CLAUDE.md` and `docs/ARCHITECTURE_ROADMAP.md`. Use Robolectric plus in-memory Room for tests that drive UI ViewModel/DataService → application → domain → data and assert observable results.
 
 Do not add instrumented/Espresso test suites under `src/androidTest` unless a future roadmap phase explicitly requires them.
 

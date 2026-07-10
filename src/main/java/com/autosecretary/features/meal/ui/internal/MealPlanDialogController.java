@@ -18,7 +18,6 @@ import com.autosecretary.R;
 import com.autosecretary.shared.MealType;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.RecipeScalingResult;
-import com.autosecretary.features.meal.domain.RecipeScalingService;
 import com.autosecretary.shared.ui.DialogHelper;
 import com.autosecretary.shared.ui.DialogValidation;
 import com.autosecretary.shared.ui.SpinnerHelper;
@@ -41,12 +40,20 @@ public class MealPlanDialogController {
         void onPlanSubmitted(String recipeId, LocalDate date, MealType mealType, int servings);
     }
 
+    public interface ScalingPreviewProvider {
+        RecipeScalingResult scale(Recipe recipe, double servings);
+    }
+
     private final Fragment fragment;
     private final Listener listener;
+    private final ScalingPreviewProvider scalingPreviewProvider;
 
-    public MealPlanDialogController(Fragment fragment, Listener listener) {
+    public MealPlanDialogController(Fragment fragment,
+                                    Listener listener,
+                                    ScalingPreviewProvider scalingPreviewProvider) {
         this.fragment = fragment;
         this.listener = listener;
+        this.scalingPreviewProvider = scalingPreviewProvider;
     }
 
     public void show(List<Recipe> recipes) {
@@ -146,7 +153,7 @@ public class MealPlanDialogController {
         }
         if (servings <= 0) return;
 
-        RecipeScalingResult result = RecipeScalingService.scaleRecipe(recipe, servings);
+        RecipeScalingResult result = scalingPreviewProvider.scale(recipe, servings);
         scaledLabel.setText(ctx.getString(R.string.meal_plan_scaled_label, servings));
         scaledLabel.setVisibility(View.VISIBLE);
         scaledContainer.removeAllViews();

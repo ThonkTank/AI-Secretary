@@ -23,7 +23,7 @@ The widget uses Android's **RemoteViews** pattern to render a scrollable list of
 
 2. **TaskWidgetService** (`RemoteViewsService`)
    - Instantiates TaskWidgetFactory on-demand
-   - Obtains `LoadTaskWidgetItemsUseCase` from AppCompositionRoot
+   - Obtains `LoadTaskWidgetItemsUseCase` from `TaskWidgetDependencies`
 
 3. **TaskWidgetFactory** (`RemoteViewsFactory`)
    - Loads the widget read model through the application layer
@@ -45,7 +45,7 @@ User clicks checkbox
   → PendingIntent fires ACTION_TOGGLE broadcast
   → TaskWidgetProvider.onReceive() → handleToggle()
   → goAsync() extends broadcast lifetime
-  → Spawn Thread to call TaskSlotToggleMutation
+  → TaskWidgetDependencies.getDbExecutor() runs TaskSlotToggleMutation
   → Notify widget update when done
   ↓
 AppWidgetManager calls TaskWidgetService.onGetViewFactory()

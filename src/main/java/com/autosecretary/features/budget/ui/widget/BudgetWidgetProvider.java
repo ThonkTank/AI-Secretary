@@ -5,14 +5,14 @@ import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.widget.RemoteViews;
 
 import androidx.annotation.Nullable;
 
 import com.autosecretary.R;
-import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.app.MainActivity;
 import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseCase;
+import com.autosecretary.features.budget.ui.BudgetDependencies;
 import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
 import com.autosecretary.shared.WidgetConfiguration;
 
@@ -51,8 +51,8 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
         // Load summary from database. Widget updates run off the main Activity thread,
         // so synchronous reads are acceptable. Keep the query fast to avoid delaying render.
         // The summary includes netBalance (sum of all account balances) and freeBudget (remaining budget).
-        AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
-        LoadBudgetWidgetSummaryUseCase useCase = app.getAppCompositionRoot().createLoadBudgetWidgetSummaryUseCase();
+        BudgetDependencies dependencies = (BudgetDependencies) context.getApplicationContext();
+        LoadBudgetWidgetSummaryUseCase useCase = dependencies.createLoadBudgetWidgetSummaryUseCase();
         LoadBudgetWidgetSummaryUseCase.BudgetWidgetSummary summary = useCase.execute();
 
         views.setTextViewText(R.id.BudgetWidgetTotalValue, CurrencyFormatter.eurosPlain(summary.netBalanceCents()));
@@ -84,7 +84,7 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
      */
     private PendingIntent buildPendingIntent(Context context, int widgetId, int actionIndex,
                                              @Nullable String budgetAction) {
-        Intent launchIntent = new Intent(context, MainActivity.class);
+        Intent launchIntent = launchIntent(context);
         launchIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         launchIntent.putExtra(EXTRA_OPEN_TAB, TAB_BUDGET);
         if (budgetAction != null) {
@@ -96,6 +96,12 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
                 launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
+    }
+
+    private Intent launchIntent(Context context) {
+        PackageManager packageManager = context.getPackageManager();
+        Intent intent = packageManager.getLaunchIntentForPackage(context.getPackageName());
+        return intent != null ? intent : new Intent();
     }
 
     public static void notifyWidgetUpdate(Context context) {

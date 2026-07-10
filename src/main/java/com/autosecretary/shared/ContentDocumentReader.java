@@ -1,4 +1,4 @@
-package com.autosecretary.app;
+package com.autosecretary.shared;
 
 import android.content.ContentResolver;
 import android.content.Context;
@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * Android content-document seam for background document reads outside the UI layer.
+ * Android content-document reader for background document reads outside the UI layer.
  */
 public class ContentDocumentReader {
 

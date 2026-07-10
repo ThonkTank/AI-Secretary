@@ -5,7 +5,6 @@ import com.autosecretary.shared.ui.DialogValidation;
 import com.autosecretary.features.task.domain.model.Task;
 import com.autosecretary.features.task.domain.model.TaskCore;
 import com.autosecretary.features.task.domain.model.TaskPrefSlot;
-import com.autosecretary.features.task.domain.model.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.edit.internal.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
@@ -23,12 +22,25 @@ import java.util.List;
 public class TaskEditFormController {
 
     private final TaskEditState editState;
+    private final DefaultPrefSlotProvider defaultPrefSlotProvider;
     // -1 sentinel: uninitialized. Set by initializeRepetitionState() during form setup;
     // onRepetitionChanged() must not be called before initializeRepetitionState() runs.
     private int lastRepsPerDay = -1;
 
     public TaskEditFormController(TaskEditState editState) {
+        this(editState, taskId -> {
+            throw new IllegalStateException("DefaultPrefSlotProvider not configured.");
+        });
+    }
+
+    public TaskEditFormController(TaskEditState editState,
+                                  DefaultPrefSlotProvider defaultPrefSlotProvider) {
         this.editState = editState;
+        this.defaultPrefSlotProvider = defaultPrefSlotProvider;
+    }
+
+    public interface DefaultPrefSlotProvider {
+        TaskPrefSlot createDefaultPrefSlot(String taskId);
     }
 
     /** Returns the mutable list of preferred-slot edit states; used by the pref-slot UI controllers. */
@@ -113,7 +125,7 @@ public class TaskEditFormController {
     }
 
     private PrefSlotEditState createDefaultPrefSlotState(String taskId) {
-        TaskPrefSlot defaultSlot = TaskPrefSlotFactory.createDefault(taskId);
+        TaskPrefSlot defaultSlot = defaultPrefSlotProvider.createDefaultPrefSlot(taskId);
         PrefSlotEditState newSlot = new PrefSlotEditState();
         newSlot.days = defaultSlot.days;
         newSlot.start = defaultSlot.start;

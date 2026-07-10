@@ -54,7 +54,6 @@ meal/domain/
 ├── RecipeScalingService.java     — Stateless service: scales a Recipe to a requested serving count
 ├── RecipeScalingResult.java      — Result of recipe scaling (factor + scaled ingredient amounts)
 ├── ShelfLifeService.java         — Stateless service: calculates and checks expiry dates (MHD)
-├── ShoppingPackagingService.java — Stateless service: rounds ingredient amounts to package sizes
 ├── WeeklyFoodTargetService.java  — Stateless service: calculates DGE targets from household members
 └── internal/
     ├── HouseholdEnergyService.java — BMR / TDEE / DGE food factor calculations (Mifflin-St Jeor)
@@ -74,15 +73,14 @@ meal/domain/
 7. **`WeeklyFoodTargetService.java`** and **`internal/HouseholdEnergyService.java`** — How targets
    are calculated from member data (TDEE → DGE food factor → scaled portions).
 8. **`PantryItem.java`** and **`ShelfLifeService.java`** — Expiry tracking (MHD semantics).
-9. **`ShoppingListItem.java`** and **`ShoppingPackagingService.java`** — Shopping list generation
-   with packaging rounding.
+9. **`ShoppingListItem.java`** — Shopping list item state.
 10. **`MealRepository.java`**, **`PantryRepository.java`**, **`RecipeRepository.java`** —
     Repository interfaces. Implementations live in `meal/data/internal/repository/`.
 
 ## Stateless Services
 
-The four `*Service` classes (`RecipeScalingService`, `ShelfLifeService`,
-`ShoppingPackagingService`, `WeeklyFoodTargetService`) are stateless utility classes with
+The three `*Service` classes (`RecipeScalingService`, `ShelfLifeService`,
+`WeeklyFoodTargetService`) are stateless utility classes with
 private constructors. Call them via static methods; never instantiate them.
 
 ## Executor / Thread Safety

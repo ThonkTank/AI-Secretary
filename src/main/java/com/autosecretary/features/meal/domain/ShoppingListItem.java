@@ -5,7 +5,7 @@ import com.autosecretary.features.meal.domain.internal.MealAmountFormat;
 /**
  * A shopping list entry for a specific ingredient and shopping period.
  *
- * <p>Three amount fields track the packaging rounding applied by {@link ShoppingPackagingService}:
+ * <p>Three amount fields track shopping amounts and any excess recorded by application logic:
  * <ul>
  *   <li>{@code neededAmount} — the raw amount actually required</li>
  *   <li>{@code excessAmount} — leftover from rounding up to whole packages</li>

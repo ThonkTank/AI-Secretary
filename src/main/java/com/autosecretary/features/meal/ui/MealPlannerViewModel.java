@@ -11,6 +11,7 @@ import com.autosecretary.features.meal.domain.MealPlan;
 import com.autosecretary.shared.MealType;
 import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.Recipe;
+import com.autosecretary.features.meal.domain.RecipeScalingResult;
 import com.autosecretary.features.meal.domain.ShoppingItemStatus;
 import com.autosecretary.features.meal.ui.state.HomeState;
 import com.autosecretary.features.meal.ui.state.HouseholdMemberRowState;
@@ -68,6 +69,10 @@ public class MealPlannerViewModel extends ViewModel {
 
     public void openManageNeed(Runnable onReady) {
         dataService.openManageNeed(onReady);
+    }
+
+    public RecipeScalingResult scaleRecipePreview(Recipe recipe, double requestedServings) {
+        return dataService.scaleRecipePreview(recipe, requestedServings);
     }
 
     public void loadRecipesForManagement(Consumer<List<Recipe>> onLoaded) {

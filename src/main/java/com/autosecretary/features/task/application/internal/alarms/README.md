@@ -124,7 +124,8 @@ Learn more about the Android APIs used here:
 
 ## Testing and Debugging
 
-**Local testing (no automated tests used in this project):**
+**Local testing:**
+- `./gradlew testDebugUnitTest` — runs JVM characterization tests
 - `./gradlew assembleDebug` — builds the app
 - `./gradlew installDebug` — installs to a connected device/emulator
 - Manually verify: set device time to 11:55 PM, watch for the daily regeneration at midnight

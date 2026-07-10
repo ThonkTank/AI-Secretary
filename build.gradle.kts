@@ -22,6 +22,25 @@ data class MethodRange(val name: String, val startLine: Int, val endLine: Int) {
     fun contains(lineNumber: Int): Boolean = lineNumber in startLine..endLine
 }
 
+enum class ArchitectureLayer {
+    APP,
+    DATABASE,
+    SHARED,
+    UTIL,
+    FEATURE_UI,
+    FEATURE_APPLICATION,
+    FEATURE_DOMAIN,
+    FEATURE_DATA
+}
+
+data class ArchitectureCell(val layer: ArchitectureLayer, val feature: String = "")
+
+data class ArchitectureClassInfo(
+    val source: ArchitectureSource,
+    val simpleName: String,
+    val qualifiedName: String
+)
+
 fun architectureSources(root: File): List<ArchitectureSource> {
     val sourceRoot = root.toPath().resolve("src/main/java")
     if (!Files.isDirectory(sourceRoot)) {
@@ -67,6 +86,126 @@ fun architectureExpectedPackage(source: ArchitectureSource): String {
         .replace('/', '.')
     val lastDot = expected.lastIndexOf('.')
     return if (lastDot < 0) "" else expected.substring(0, lastDot)
+}
+
+fun architectureCellOf(source: ArchitectureSource): ArchitectureCell? {
+    if (!source.isProductionJava || source.segments.size < 5) {
+        return null
+    }
+    val base = "src/main/java/com/autosecretary/"
+    if (!source.relativePath.startsWith(base)) {
+        return null
+    }
+    val local = source.relativePath.removePrefix(base)
+    val first = local.substringBefore("/")
+    return when (first) {
+        "app" -> ArchitectureCell(ArchitectureLayer.APP)
+        "database" -> ArchitectureCell(ArchitectureLayer.DATABASE)
+        "shared" -> ArchitectureCell(ArchitectureLayer.SHARED)
+        "util" -> ArchitectureCell(ArchitectureLayer.UTIL)
+        "features" -> {
+            val parts = local.split("/")
+            if (parts.size < 3) {
+                null
+            } else {
+                val feature = parts[1]
+                when (parts[2]) {
+                    "ui" -> ArchitectureCell(ArchitectureLayer.FEATURE_UI, feature)
+                    "application" -> ArchitectureCell(ArchitectureLayer.FEATURE_APPLICATION, feature)
+                    "domain" -> ArchitectureCell(ArchitectureLayer.FEATURE_DOMAIN, feature)
+                    "data" -> ArchitectureCell(ArchitectureLayer.FEATURE_DATA, feature)
+                    else -> null
+                }
+            }
+        }
+        else -> null
+    }
+}
+
+fun architectureClassInfo(source: ArchitectureSource): ArchitectureClassInfo? {
+    if (!source.isProductionJava || source.packageName.isBlank()) {
+        return null
+    }
+    val simpleName = source.fileName.removeSuffix(".java")
+    return ArchitectureClassInfo(source, simpleName, "${source.packageName}.$simpleName")
+}
+
+fun architectureProjectImportTarget(
+    importName: String,
+    classesByQualifiedName: Map<String, ArchitectureClassInfo>
+): ArchitectureClassInfo? {
+    if (!importName.startsWith("com.autosecretary.") || importName == "com.autosecretary.R") {
+        return null
+    }
+    var candidate = importName
+    while (candidate.startsWith("com.autosecretary.")) {
+        classesByQualifiedName[candidate]?.let { return it }
+        val lastDot = candidate.lastIndexOf('.')
+        if (lastDot <= "com.autosecretary".length) {
+            return null
+        }
+        candidate = candidate.substring(0, lastDot)
+    }
+    return null
+}
+
+fun architectureIsUiAllowedDomainValueImport(importName: String): Boolean {
+    val simpleName = importName.substringAfterLast('.')
+    val forbiddenSuffixes = listOf("Service", "Repository", "Dao", "ApiClient", "Generator", "Manager", "Factory")
+    return !importName.contains(".domain.internal.")
+        && forbiddenSuffixes.none(simpleName::endsWith)
+}
+
+fun architectureMatrixAllows(source: ArchitectureSource, sourceCell: ArchitectureCell, target: ArchitectureClassInfo): Boolean {
+    val targetCell = architectureCellOf(target.source) ?: return false
+    if (sourceCell.layer == ArchitectureLayer.APP) {
+        return true
+    }
+    if (target.qualifiedName == "com.autosecretary.R") {
+        return true
+    }
+    if (sourceCell.layer == ArchitectureLayer.SHARED || sourceCell.layer == ArchitectureLayer.UTIL) {
+        return targetCell.layer == ArchitectureLayer.SHARED
+            && sourceCell.layer == ArchitectureLayer.SHARED
+            && source.relativePath.contains("/shared/ui/")
+    }
+    if (sourceCell.layer == ArchitectureLayer.DATABASE) {
+        return targetCell.layer == ArchitectureLayer.SHARED
+            || targetCell.layer == ArchitectureLayer.FEATURE_DOMAIN
+            || targetCell.layer == ArchitectureLayer.FEATURE_DATA
+            || targetCell.layer == ArchitectureLayer.DATABASE
+    }
+    if (sourceCell.layer.name.startsWith("FEATURE_") && targetCell.layer == ArchitectureLayer.APP) {
+        return false
+    }
+    if (!sourceCell.layer.name.startsWith("FEATURE_")) {
+        return true
+    }
+    if (targetCell.layer == ArchitectureLayer.SHARED || targetCell.layer == ArchitectureLayer.UTIL) {
+        return true
+    }
+    if (!targetCell.layer.name.startsWith("FEATURE_")) {
+        return targetCell.layer == ArchitectureLayer.DATABASE && sourceCell.layer == ArchitectureLayer.FEATURE_DATA
+    }
+    val sameFeature = sourceCell.feature == targetCell.feature
+    if (!sameFeature) {
+        return (sourceCell.layer == ArchitectureLayer.FEATURE_APPLICATION
+            || sourceCell.layer == ArchitectureLayer.FEATURE_DATA)
+            && targetCell.layer == ArchitectureLayer.FEATURE_DOMAIN
+    }
+    return when (sourceCell.layer) {
+        ArchitectureLayer.FEATURE_UI -> targetCell.layer == ArchitectureLayer.FEATURE_UI
+            || targetCell.layer == ArchitectureLayer.FEATURE_APPLICATION
+            || (targetCell.layer == ArchitectureLayer.FEATURE_DOMAIN
+                && architectureIsUiAllowedDomainValueImport(target.qualifiedName))
+        ArchitectureLayer.FEATURE_APPLICATION -> targetCell.layer == ArchitectureLayer.FEATURE_APPLICATION
+            || targetCell.layer == ArchitectureLayer.FEATURE_DOMAIN
+            || targetCell.layer == ArchitectureLayer.FEATURE_DATA
+        ArchitectureLayer.FEATURE_DOMAIN -> targetCell.layer == ArchitectureLayer.FEATURE_DOMAIN
+        ArchitectureLayer.FEATURE_DATA -> targetCell.layer == ArchitectureLayer.FEATURE_DATA
+            || targetCell.layer == ArchitectureLayer.FEATURE_DOMAIN
+        else -> false
+    }
 }
 
 fun architectureIsUiHost(source: ArchitectureSource): Boolean =
@@ -174,6 +313,285 @@ fun architectureFindRegistrationLines(content: String): List<Int> =
         }
         .toList()
 
+fun architectureCodeOnly(content: String): String {
+    val result = StringBuilder(content.length)
+    var i = 0
+    var inLineComment = false
+    var inBlockComment = false
+    var inString = false
+    var inChar = false
+    var escaped = false
+    while (i < content.length) {
+        val c = content[i]
+        val next = if (i + 1 < content.length) content[i + 1] else '\u0000'
+        when {
+            inLineComment -> {
+                if (c == '\n') {
+                    inLineComment = false
+                    result.append(c)
+                } else {
+                    result.append(' ')
+                }
+            }
+            inBlockComment -> {
+                if (c == '*' && next == '/') {
+                    inBlockComment = false
+                    result.append("  ")
+                    i++
+                } else {
+                    result.append(if (c == '\n') '\n' else ' ')
+                }
+            }
+            inString -> {
+                if (!escaped && c == '"') {
+                    inString = false
+                }
+                escaped = !escaped && c == '\\'
+                result.append(if (c == '\n') '\n' else ' ')
+            }
+            inChar -> {
+                if (!escaped && c == '\'') {
+                    inChar = false
+                }
+                escaped = !escaped && c == '\\'
+                result.append(if (c == '\n') '\n' else ' ')
+            }
+            c == '/' && next == '/' -> {
+                inLineComment = true
+                result.append("  ")
+                i++
+            }
+            c == '/' && next == '*' -> {
+                inBlockComment = true
+                result.append("  ")
+                i++
+            }
+            c == '"' -> {
+                inString = true
+                escaped = false
+                result.append(' ')
+            }
+            c == '\'' -> {
+                inChar = true
+                escaped = false
+                result.append(' ')
+            }
+            else -> result.append(c)
+        }
+        i++
+    }
+    return result.toString()
+}
+
+fun architectureManifestClasses(root: File): Set<String> {
+    val manifest = root.resolve("src/main/AndroidManifest.xml")
+    if (!manifest.isFile) {
+        return emptySet()
+    }
+    return Regex("""android:name="([^"]+)"""")
+        .findAll(manifest.readText())
+        .map { it.groupValues[1] }
+        .filter { it.startsWith(".") || it.startsWith("com.autosecretary.") }
+        .map { if (it.startsWith(".")) "com.autosecretary$it" else it }
+        .toSet()
+}
+
+fun architectureRoomReachableClasses(source: ArchitectureSource): Set<String> {
+    if (source.packageName != "com.autosecretary.database" || source.fileName != "AppDatabase.java") {
+        return emptySet()
+    }
+    val imports = architectureImportsOf(source).associateBy { it.substringAfterLast('.') }
+    val reachable = mutableSetOf("com.autosecretary.database.AppDatabase", "com.autosecretary.database.Converters")
+    Regex("""\b([A-Z][A-Za-z0-9_]*)\.class""")
+        .findAll(source.content)
+        .mapNotNullTo(reachable) { imports[it.groupValues[1]] }
+    Regex("""abstract\s+([A-Z][A-Za-z0-9_]*)\s+\w+\s*\(""")
+        .findAll(source.content)
+        .mapNotNullTo(reachable) { imports[it.groupValues[1]] }
+    return reachable
+}
+
+fun architectureValidateReachability(
+    sources: List<ArchitectureSource>,
+    classInfos: List<ArchitectureClassInfo>,
+    root: File,
+    violations: MutableList<ArchitectureViolation>
+) {
+    val manifestClasses = architectureManifestClasses(root)
+    val roomReachable = sources.flatMap { architectureRoomReachableClasses(it) }.toSet()
+    val allowlist = setOf(
+        "com.autosecretary.app.AutoSecretaryApplication"
+    )
+    val codeBySource = sources.associateWith { architectureCodeOnly(it.content) }
+    for (info in classInfos) {
+        val reachable = info.qualifiedName in manifestClasses
+            || info.qualifiedName in roomReachable
+            || info.qualifiedName in allowlist
+            || sources.any { other ->
+                other != info.source && (
+                    architectureImportsOf(other).any { importName ->
+                        importName == info.qualifiedName || importName.startsWith("${info.qualifiedName}.")
+                    }
+                        || codeBySource.getValue(other).contains(Regex("""\b${Regex.escape(info.simpleName)}\b"""))
+                    )
+            }
+        if (!reachable) {
+            violations.add(ArchitectureViolation(
+                info.source.relativePath,
+                "unreferenced-class",
+                "Top-level production class is not referenced by code, manifest, or Room wiring: ${info.qualifiedName}"
+            ))
+        }
+    }
+}
+
+fun architectureExtractDatabaseVersion(text: String): String? =
+    Regex("""version\s*=\s*(\d+)""").find(text)?.groupValues?.get(1)
+
+fun architectureExtractDocumentedDbVersion(text: String): String? =
+    Regex("""DB version\s+(\d+)""").find(text)?.groupValues?.get(1)
+
+fun architectureValidateDocsMatchCode(root: File, violations: MutableList<ArchitectureViolation>) {
+    val databaseFile = root.resolve("src/main/java/com/autosecretary/database/AppDatabase.java")
+    val claudeFile = root.resolve("CLAUDE.md")
+    val databaseReadme = root.resolve("src/main/java/com/autosecretary/database/README.md")
+    if (!databaseFile.isFile || !claudeFile.isFile) {
+        return
+    }
+    val codeVersion = architectureExtractDatabaseVersion(databaseFile.readText()) ?: return
+    val claudeVersion = architectureExtractDocumentedDbVersion(claudeFile.readText())
+    if (claudeVersion != codeVersion) {
+        violations.add(ArchitectureViolation(
+            "CLAUDE.md",
+            "docs-match-code-db-version",
+            "CLAUDE.md DB version '$claudeVersion' must match AppDatabase version '$codeVersion'."
+        ))
+    }
+    if (databaseReadme.isFile) {
+        val readmeVersion = architectureExtractDocumentedDbVersion(databaseReadme.readText())
+        if (readmeVersion != codeVersion) {
+            violations.add(ArchitectureViolation(
+                "src/main/java/com/autosecretary/database/README.md",
+                "docs-match-code-db-version",
+                "database README DB version '$readmeVersion' must match AppDatabase version '$codeVersion'."
+            ))
+        }
+    }
+}
+
+fun architectureValidateExecutorOwnership(sources: List<ArchitectureSource>, violations: MutableList<ArchitectureViolation>) {
+    for (source in sources) {
+        if (source.relativePath == "src/main/java/com/autosecretary/app/AppCompositionRoot.java") {
+            continue
+        }
+        if (Regex("""\bExecutors\.new[A-Za-z0-9_]*\s*\(""").containsMatchIn(architectureCodeOnly(source.content))) {
+            violations.add(ArchitectureViolation(
+                source.relativePath,
+                "executor-owner",
+                "Executors.new* calls are owned by AppCompositionRoot."
+            ))
+        }
+    }
+}
+
+fun architectureValidateApplicationPresenterConvention(sources: List<ArchitectureSource>, violations: MutableList<ArchitectureViolation>) {
+    for (source in sources) {
+        if (!source.relativePath.contains("/features/") || !source.relativePath.contains("/application/")) {
+            continue
+        }
+        if (source.fileName.endsWith("Presenter.java")) {
+            violations.add(ArchitectureViolation(
+                source.relativePath,
+                "application-no-presenter",
+                "Application-layer files must use UseCase/DataService names, not Presenter."
+            ))
+        }
+        val code = architectureCodeOnly(source.content)
+        if (architectureImportsOf(source).any { it.substringAfterLast('.').contains("Presenter") }
+            || Regex("""\b[A-Za-z0-9_]*Presenter\b""").containsMatchIn(code)
+        ) {
+            violations.add(ArchitectureViolation(
+                source.relativePath,
+                "application-no-presenter",
+                "Application-layer code must not define or import Presenter types."
+            ))
+        }
+    }
+}
+
+fun architectureWriteFixture(root: File, relativePath: String, content: String) {
+    val file = root.resolve(relativePath)
+    file.parentFile.mkdirs()
+    file.writeText(content.trimIndent())
+}
+
+fun architectureAssertSelfTest(name: String, expectedRule: String, configure: (File) -> Unit) {
+    val root = Files.createTempDirectory("autosecretary-architecture-self-test-$name").toFile()
+    configure(root)
+    val violations = architectureViolations(root, runSelfTests = false)
+    if (violations.none { it.rule == expectedRule }) {
+        val body = violations.joinToString("; ") { "${it.rule}:${it.source}" }
+        throw GradleException(
+            "Architecture self-test '$name' did not produce expected rule '$expectedRule'. Actual: $body"
+        )
+    }
+}
+
+fun architectureRunSelfTests() {
+    architectureAssertSelfTest("source-classification", "import-matrix-source-classification") { root ->
+        architectureWriteFixture(root, "src/main/java/com/autosecretary/unknown/Unclassified.java", """
+            package com.autosecretary.unknown;
+            public class Unclassified {}
+        """)
+    }
+    architectureAssertSelfTest("matrix", "import-matrix") { root ->
+        architectureWriteFixture(root, "src/main/java/com/autosecretary/app/MainActivity.java", """
+            package com.autosecretary.app;
+            public class MainActivity {}
+        """)
+        architectureWriteFixture(root, "src/main/java/com/autosecretary/features/task/ui/BadUi.java", """
+            package com.autosecretary.features.task.ui;
+            import com.autosecretary.app.MainActivity;
+            public class BadUi {
+                MainActivity activity;
+            }
+        """)
+    }
+    architectureAssertSelfTest("reachability", "unreferenced-class") { root ->
+        architectureWriteFixture(root, "src/main/java/com/autosecretary/features/task/domain/DeadDomainType.java", """
+            package com.autosecretary.features.task.domain;
+            public class DeadDomainType {}
+        """)
+    }
+    architectureAssertSelfTest("db-docs", "docs-match-code-db-version") { root ->
+        architectureWriteFixture(root, "src/main/java/com/autosecretary/database/AppDatabase.java", """
+            package com.autosecretary.database;
+            public class AppDatabase {
+                @interface Database { int version(); }
+                @Database(version = 7)
+                static class Marker {}
+            }
+        """)
+        architectureWriteFixture(root, "CLAUDE.md", "DB version 6")
+        architectureWriteFixture(root, "src/main/java/com/autosecretary/database/README.md", "DB version 6")
+    }
+    architectureAssertSelfTest("executor", "executor-owner") { root ->
+        architectureWriteFixture(root, "src/main/java/com/autosecretary/shared/BadExecutor.java", """
+            package com.autosecretary.shared;
+            import java.util.concurrent.Executors;
+            public class BadExecutor {
+                Object executor = Executors.newSingleThreadExecutor();
+            }
+        """)
+    }
+    architectureAssertSelfTest("presenter", "application-no-presenter") { root ->
+        architectureWriteFixture(root, "src/main/java/com/autosecretary/features/task/application/BadPresenter.java", """
+            package com.autosecretary.features.task.application;
+            public class BadPresenter {}
+        """)
+    }
+}
+
 fun architectureValidateBuildFileReleaseTasks(root: File, violations: MutableList<ArchitectureViolation>) {
     val buildFile = root.resolve("build.gradle.kts")
     if (!buildFile.isFile) {
@@ -227,10 +645,12 @@ fun architectureValidateBuildFileReleaseTasks(root: File, violations: MutableLis
         }
 }
 
-fun architectureViolations(root: File): List<ArchitectureViolation> {
+fun architectureViolations(root: File, runSelfTests: Boolean = true): List<ArchitectureViolation> {
     val violations = mutableListOf<ArchitectureViolation>()
 
     val sources = architectureSources(root)
+    val classInfos = sources.mapNotNull(::architectureClassInfo)
+    val classesByQualifiedName = classInfos.associateBy(ArchitectureClassInfo::qualifiedName)
     val observeCallPattern = Regex("""\.observe\s*\(\s*([^,\n\r]+)\s*,""")
     val viewModelRenderingPattern = Regex(
         """\bnew\s+(View|TextView|Button|ImageButton|LinearLayout|RecyclerView|RemoteViews|Dialog|AlertDialog)\s*\(|\.inflate\s*\(|\.findViewById\s*\(|\bToast\.makeText\s*\(|\bandroid\.widget\.RemoteViews\b|\bandroid\.view\.LayoutInflater\b"""
@@ -304,6 +724,26 @@ fun architectureViolations(root: File): List<ArchitectureViolation> {
         }
 
         val imports = architectureImportsOf(source)
+        val sourceCell = architectureCellOf(source)
+        if (source.isProductionJava && sourceCell == null) {
+            violations.add(ArchitectureViolation(
+                source.relativePath,
+                "import-matrix-source-classification",
+                "Production source is not classified by the architecture import matrix."
+            ))
+        }
+        if (sourceCell != null) {
+            for (importName in imports) {
+                val target = architectureProjectImportTarget(importName, classesByQualifiedName)
+                if (target != null && !architectureMatrixAllows(source, sourceCell, target)) {
+                    violations.add(ArchitectureViolation(
+                        source.relativePath,
+                        "import-matrix",
+                        "Import is not allowed by the architecture matrix: $importName"
+                    ))
+                }
+            }
+        }
         if (source.isFeatureJava && source.segments.contains("domain")) {
             val isTaskDomainModel = source.featureName == "task"
                 && source.relativePath.contains("/features/task/domain/model/")
@@ -479,7 +919,22 @@ fun architectureViolations(root: File): List<ArchitectureViolation> {
         }
     }
 
+    architectureValidateReachability(sources, classInfos, root, violations)
+    architectureValidateDocsMatchCode(root, violations)
+    architectureValidateExecutorOwnership(sources, violations)
+    architectureValidateApplicationPresenterConvention(sources, violations)
     architectureValidateBuildFileReleaseTasks(root, violations)
+    if (runSelfTests) {
+        try {
+            architectureRunSelfTests()
+        } catch (exception: GradleException) {
+            violations.add(ArchitectureViolation(
+                "build.gradle.kts",
+                "architecture-self-test",
+                exception.message ?: "Architecture self-test failed."
+            ))
+        }
+    }
     return violations.sortedWith(compareBy(ArchitectureViolation::source, ArchitectureViolation::rule, ArchitectureViolation::details))
 }
 

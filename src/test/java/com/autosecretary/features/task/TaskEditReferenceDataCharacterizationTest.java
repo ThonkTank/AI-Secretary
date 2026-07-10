@@ -10,6 +10,7 @@ import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealRoomRepository;
 import com.autosecretary.features.task.application.TaskDataService;
+import com.autosecretary.features.task.application.edit.CreateDefaultTaskPrefSlotUseCase;
 import com.autosecretary.features.task.application.edit.TaskEditReferenceDataUseCase;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.domain.model.Task;
@@ -69,6 +70,7 @@ public final class TaskEditReferenceDataCharacterizationTest extends AutoSecreta
         TaskEditViewModel viewModel = new TaskEditViewModel(
                 taskDataService,
                 new TaskEditReferenceDataUseCase(taskDataService, budgetRepository),
+                new CreateDefaultTaskPrefSlotUseCase(),
                 executor,
                 executor);
         viewModel.beginEditTask(edited.core.id, () -> { });

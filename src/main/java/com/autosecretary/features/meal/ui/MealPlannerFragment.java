@@ -18,7 +18,6 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.R;
-import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.meal.domain.HouseholdMember;
 import com.autosecretary.features.meal.domain.Ingredient;
 import com.autosecretary.features.meal.domain.MealPlan;
@@ -98,8 +97,8 @@ public class MealPlannerFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         if (viewModel == null) {
-            MealPlannerViewModelFactory factory = AutoSecretaryApplication.from(requireContext())
-                    .getAppCompositionRoot()
+            MealPlannerViewModelFactory factory = ((MealPlannerDependencies) requireContext()
+                    .getApplicationContext())
                     .getMealPlannerViewModelFactory();
             viewModel = new ViewModelProvider(this, factory).get(MealPlannerViewModel.class);
         }
@@ -117,12 +116,15 @@ public class MealPlannerFragment extends Fragment {
     // ── Initialization ────────────────────────────────────────────────
 
     private void initDialogControllers() {
-        planDialogController = new MealPlanDialogController(this, (recipeId, date, mealType, servings) ->
-                viewModel.planRecipe(recipeId, date, mealType, servings, () -> {
-                    if (!isAdded()) return;
-                    Toast.makeText(requireContext(), R.string.meal_success_plan_created, Toast.LENGTH_SHORT).show();
-                    reloadManageList();
-                }));
+        planDialogController = new MealPlanDialogController(
+                this,
+                (recipeId, date, mealType, servings) ->
+                        viewModel.planRecipe(recipeId, date, mealType, servings, () -> {
+                            if (!isAdded()) return;
+                            Toast.makeText(requireContext(), R.string.meal_success_plan_created, Toast.LENGTH_SHORT).show();
+                            reloadManageList();
+                        }),
+                (recipe, servings) -> viewModel.scaleRecipePreview(recipe, servings));
 
         needDialogController = new MealNeedDialogController(this, (name, amount, unit) ->
                 viewModel.createShoppingItemFromNeed(name, amount, unit, () -> {

@@ -9,6 +9,8 @@ import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.RecipeRepository;
+import com.autosecretary.features.meal.domain.RecipeScalingResult;
+import com.autosecretary.features.meal.domain.RecipeScalingService;
 import com.autosecretary.features.meal.domain.ShoppingItemStatus;
 
 import java.time.LocalDate;
@@ -59,6 +61,10 @@ public final class MealPlannerDataService {
 
     public void openManagePantry(Runnable onReady) {
         callbackDispatcher.execute(onReady);
+    }
+
+    public RecipeScalingResult scaleRecipePreview(Recipe recipe, double requestedServings) {
+        return RecipeScalingService.scaleRecipe(recipe, requestedServings);
     }
 
     public void updateShoppingItemStatus(String shoppingItemId, ShoppingItemStatus status, Runnable onDone) {
