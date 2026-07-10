@@ -7,7 +7,7 @@ import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.RecipeRepository;
-import com.autosecretary.features.meal.domain.MealType;
+import com.autosecretary.shared.MealType;
 import com.autosecretary.features.meal.domain.RecipeScalingResult;
 import com.autosecretary.features.meal.domain.RecipeScalingService;
 import com.autosecretary.features.task.data.Task;

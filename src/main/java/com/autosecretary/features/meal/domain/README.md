@@ -41,13 +41,12 @@ stored as `125`. Calories (`caloriesPer100`) are stored as plain kcal integers (
 meal/domain/
 ├── Ingredient.java               — Core food item; has FoodGroup enum with DGE weekly amounts
 ├── Recipe.java                   — Recipe with ingredients, scaling bounds, and per-member ratings
-├── MealPlan.java                 — A planned meal: links recipe → date + MealType
+├── MealPlan.java                 — A planned meal: links recipe → date + shared MealType
 ├── ConsumptionLog.java           — Nutrition log: records what a household member actually ate
 ├── PantryItem.java               — Pantry inventory entry with expiry tracking
 ├── ShoppingListItem.java         — Shopping list entry with packaging excess tracking
 ├── HouseholdMember.java          — Person in the household; used for energy/portion calculations
 ├── WeeklyFoodTarget.java         — DGE-based weekly food group targets per household
-├── MealType.java                 — BREAKFAST / LUNCH / DINNER / SNACK enum
 ├── CookingPreferences.java       — Per-MealType cooking session limits and allowed days
 ├── MealRepository.java           — Domain repository interface: meal plans, logs, members, targets
 ├── PantryRepository.java         — Domain repository interface: pantry, shopping list
@@ -64,7 +63,7 @@ meal/domain/
 
 ## Recommended Reading Order
 
-1. **`MealType.java`** — 4 values, no dependencies. Understand the meal types first.
+1. **`shared/MealType.java`** — 4 values shared with task completion. Understand the meal types first.
 2. **`Ingredient.java`** — The atomic building block. Read the class header comment on
    nutrition encoding (×10) before reading any nutrition values.
 3. **`Recipe.java`** — How ingredients combine into a dish. Note `ScalingPrecision` modes.

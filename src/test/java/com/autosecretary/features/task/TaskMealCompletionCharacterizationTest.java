@@ -4,7 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import com.autosecretary.app.WidgetRefreshNotifier;
+import com.autosecretary.shared.WidgetRefreshNotifier;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.meal.application.TaskMealIntegrationService;
@@ -12,7 +12,7 @@ import com.autosecretary.features.meal.data.repository.MealPantryRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealRecipeRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealRoomRepository;
 import com.autosecretary.features.meal.domain.MealPlan;
-import com.autosecretary.features.meal.domain.MealType;
+import com.autosecretary.shared.MealType;
 import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;

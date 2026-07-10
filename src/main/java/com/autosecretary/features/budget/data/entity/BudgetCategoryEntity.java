@@ -6,6 +6,7 @@ import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
+import com.autosecretary.features.budget.domain.BudgetCategory;
 import com.autosecretary.features.budget.domain.TransactionDirection;
 
 import java.util.UUID;
@@ -24,11 +25,6 @@ import java.util.UUID;
  */
 @Entity(tableName = "budget_category")
 public class BudgetCategoryEntity {
-    /** Fallback icon (tag emoji) used when a category is created without an explicit icon. */
-    public static final String DEFAULT_ICON = "🏷️";
-    /** Fallback color (medium grey) used when a category is created without an explicit color. */
-    public static final String DEFAULT_COLOR_HEX = "#9E9E9E";
-
     @PrimaryKey
     @NonNull
     public String id = UUID.randomUUID().toString();
@@ -41,10 +37,10 @@ public class BudgetCategoryEntity {
     public TransactionDirection direction = TransactionDirection.EXPENSE;
 
     @NonNull
-    public String icon = DEFAULT_ICON;
+    public String icon = BudgetCategory.DEFAULT_ICON;
 
     @NonNull
-    public String colorHex = DEFAULT_COLOR_HEX;
+    public String colorHex = BudgetCategory.DEFAULT_COLOR_HEX;
 
     public boolean archived = false;
 

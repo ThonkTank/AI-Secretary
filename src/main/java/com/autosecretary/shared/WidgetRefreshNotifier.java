@@ -1,4 +1,4 @@
-package com.autosecretary.app;
+package com.autosecretary.shared;
 
 /**
  * Application-facing abstraction for triggering widget refreshes without

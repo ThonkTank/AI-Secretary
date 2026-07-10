@@ -20,7 +20,7 @@ Data (Storage Repositories → RowMappers → InMemoryMealStorage)
 
 | Package | What lives here | README |
 |---|---|---|
-| `domain/` | Core entities (`Recipe`, `Ingredient`, `MealPlan`, `PantryItem`, …), enums (`MealType`, `FoodGroup`), stateless services, repository interfaces. No Android dependencies. | [`domain/README.md`](domain/README.md) |
+| `domain/` | Core entities (`Recipe`, `Ingredient`, `MealPlan`, `PantryItem`, …), domain enums (`FoodGroup`), stateless services, repository interfaces. Shared `MealType` lives in `shared/`. No Android dependencies. | [`domain/README.md`](domain/README.md) |
 | `application/` | `MealPlannerPresenter` (UI coordinator), cross-feature integration (`TaskMealIntegrationService`). | [`application/README.md`](application/README.md) |
 | `data/` | Repository implementations, row mappers, and `InMemoryMealStorage`. All implementation is in `data/internal/`; nothing there is public API. | [`data/README.md`](data/README.md) |
 | `ui/` | `MealPlannerFragment` — three-tab UI (Week Plan, Recipes, Stock & Shopping). Purely presentational. | [`ui/README.md`](ui/README.md) |

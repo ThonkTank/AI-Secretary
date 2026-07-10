@@ -6,7 +6,7 @@ import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
 import com.autosecretary.features.meal.domain.HouseholdMember;
 import com.autosecretary.features.meal.domain.Ingredient;
-import com.autosecretary.features.meal.domain.MealType;
+import com.autosecretary.shared.MealType;
 import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.task.data.TaskCore;

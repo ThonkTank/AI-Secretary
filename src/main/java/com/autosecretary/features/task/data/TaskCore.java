@@ -6,7 +6,7 @@ import java.util.UUID;
 
 import com.autosecretary.shared.Priority;
 import com.autosecretary.shared.Period;
-import com.autosecretary.features.meal.domain.MealType;
+import com.autosecretary.shared.MealType;
 import androidx.room.Embedded;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;

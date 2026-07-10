@@ -5,7 +5,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import com.autosecretary.app.WidgetRefreshNotifier;
+import com.autosecretary.shared.WidgetRefreshNotifier;
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;

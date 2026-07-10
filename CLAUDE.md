@@ -42,7 +42,7 @@ Top-level packages under `src/main/java/com/autosecretary/`:
 - **`features/budget/`** — transactions, CSV/PDF import, recurring pattern detection, balance chart, home screen widget
 - **`features/meal/`** — meal planning, recipe management, pantry, shopping lists, weekly food targets; backed by Room (same as task/budget). `MealPlannerPresenter` is the application-layer entry point, accessed via `AppCompositionRoot.getMealPlannerPresenter()`. Data layer uses `Meal*Entity` classes in `data/entity/`, `Meal*Dao` in `data/dao/`, and `Meal*RoomRepository` in `data/repository/`.
 - **`app/`** — `AppCompositionRoot` (DI root), `MainActivity`, `AutoSecretaryApplication`, `UpdateChecker`, settings
-- **`shared/`** — cross-feature enums: `Priority` (values: LOW=100, MEDIUM=200, HIGH=400, CRITICAL=10000), `Period`; and `WidgetConfiguration` (shared update-period constant for task and budget widgets)
+- **`shared/`** — cross-feature enums/contracts: `Priority` (values: LOW=100, MEDIUM=200, HIGH=400, CRITICAL=10000), `Period`, `MealType`, `WidgetRefreshNotifier`; and `WidgetConfiguration` (shared update-period constant for task and budget widgets)
 - **`database/`** — `AppDatabase` (Room DB class) + `Converters` (type converters for `LocalDate`, `LocalTime`, `LocalDateTime`, `YearMonth`, `DayOfWeek`, all domain enums, and `Set<DayOfWeek>` as comma-separated string)
 - **`util/`** — `TreeBuilder<T>` generic depth-first tree traversal utility used by both task hierarchy and slot hierarchy views
 

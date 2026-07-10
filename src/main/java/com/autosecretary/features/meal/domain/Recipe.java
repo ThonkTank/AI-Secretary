@@ -1,5 +1,7 @@
 package com.autosecretary.features.meal.domain;
 
+import com.autosecretary.shared.MealType;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumSet;

@@ -5,7 +5,7 @@ import androidx.room.Entity;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
-import com.autosecretary.features.meal.domain.MealType;
+import com.autosecretary.shared.MealType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

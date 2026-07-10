@@ -16,7 +16,7 @@ Meal uses a direct presenter pattern without a ViewModel or `state/` sub-package
 
 - **`MealPlannerFragment`:** Entry point. Manages UI state, renders views, and handles user input (button clicks, dialog submissions).
 - **`MealPlannerPresenter`:** Application layer; provides data and commands to the fragment. See `features/meal/application/` for details.
-- **Domain classes:** `Recipe`, `MealPlan`, `MealType`, `PantryItem`, `ShoppingListItem` (in `features/meal/domain/`).
+- **Domain classes:** `Recipe`, `MealPlan`, `PantryItem`, `ShoppingListItem` (in `features/meal/domain/`) plus shared `MealType` (in `shared/`).
 
 ## How to Add a New Dialog
 

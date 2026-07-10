@@ -16,7 +16,7 @@ import androidx.fragment.app.Fragment;
 
 import com.autosecretary.R;
 import com.autosecretary.features.meal.domain.Ingredient;
-import com.autosecretary.features.meal.domain.MealType;
+import com.autosecretary.shared.MealType;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.shared.ui.DialogHelper;
 import com.autosecretary.shared.ui.DialogValidation;

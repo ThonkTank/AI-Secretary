@@ -1,4 +1,4 @@
-package com.autosecretary.features.meal.domain;
+package com.autosecretary.shared;
 
 /**
  * The four meal types used for recipe classification and meal planning.

@@ -2,7 +2,7 @@ package com.autosecretary.features.meal.application;
 
 import com.autosecretary.features.meal.domain.MealPlan;
 import com.autosecretary.features.meal.domain.MealRepository;
-import com.autosecretary.features.meal.domain.MealType;
+import com.autosecretary.shared.MealType;
 import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.PantryRepository;
 import com.autosecretary.features.meal.domain.Recipe;

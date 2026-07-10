@@ -125,7 +125,7 @@ Legende Status: ⬜ offen · 🔨 in Arbeit · ✅ erledigt
 | 0 | Baseline & Roadmap | ✅ |
 | 1 | Toten Code entfernen | ✅ |
 | 2 | Test-Infrastruktur & Verhaltens-Baseline | ✅ |
-| 3 | Querschnitt-Typen nach `shared/` verschieben | ⬜ |
+| 3 | Querschnitt-Typen nach `shared/` verschieben | ✅ |
 | 4 | Schicht-Entkopplung (application↛ui, meal↔task Port) | ⬜ |
 | 5 | Threading & DB-Lifecycle-Eigentum | ⬜ |
 | 6 | Task-Domänenmodell nach `domain/model/` | ⬜ |
@@ -238,6 +238,10 @@ Ziel: die fünf Prinzipien werden erzwungen, damit keine Fehlerklasse zurückkeh
 ---
 
 ## Änderungslog
+- Phase 3 abgeschlossen: `MealType` und `WidgetRefreshNotifier` nach `shared/`
+  verschoben, Budget-Default-Icon/-Farbe dem Domain-Record `BudgetCategory`
+  zugeordnet, betroffene Imports und Doku aktualisiert; Erfolgs-Review ohne
+  blockierende Befunde nach Gate; Abschluss-Gate gruen.
 - Phase 2 abgeschlossen: `AGENTS.md` auf die neue CLAUDE/Roadmap-Testregel
   synchronisiert, JVM-Testsetup mit Robolectric + in-memory Room eingerichtet,
   fuenf Charakterisierungstests fuer Budget-Overview, Task↔Meal-Completion,

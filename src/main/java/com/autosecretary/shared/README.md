@@ -1,10 +1,10 @@
 # Shared Package
 
-Cross-feature enums and constants used throughout the AutoSecretary app.
+Cross-feature enums, contracts, and constants used throughout the AutoSecretary app.
 
 ## Overview
 
-The `shared/` package contains definitions that are accessed by multiple features (task scheduling, budget tracking, widget configuration) and should not be tied to any single feature's domain layer.
+The `shared/` package contains definitions that are accessed by multiple features (task scheduling, meal planning, budget tracking, widget configuration) and should not be tied to any single feature's domain layer.
 
 ## Contents
 
@@ -26,6 +26,18 @@ Scheduling period units (DAY, WEEK, MONTH) with fixed day counts, used for task 
 
 **Key design note:** MONTH is fixed at 30 days, not adjusted for actual calendar month length. This simplifies scheduling logic.
 
+### MealType
+
+Meal classification values (BREAKFAST, LUNCH, DINNER, SNACK) shared by meal planning and task completion integration.
+
+**Key design note:** Labels and icons are German display strings used by the meal UI. The enum names are persisted by Room converters, so values must stay stable.
+
+### WidgetRefreshNotifier
+
+Application-facing widget refresh contract shared by task completion, task list state, alarm receivers, and the app composition root.
+
+**Key design note:** Feature code depends on this contract instead of importing app-layer widget provider classes directly.
+
 ### WidgetConfiguration
 
 App-wide widget configuration constants shared between the task and budget widgets.
@@ -40,4 +52,4 @@ on mismatch.
 
 ## When to add new items
 
-Only add to this package if the constant or enum is **truly used across multiple features**. Single-feature enums belong in that feature's domain layer (e.g., `features/task/domain/` or `features/budget/domain/`).
+Only add to this package if the constant, enum, or contract is **truly used across multiple features**. Single-feature enums belong in that feature's domain layer (e.g., `features/task/domain/` or `features/budget/domain/`).

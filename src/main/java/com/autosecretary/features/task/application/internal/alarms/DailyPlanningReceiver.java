@@ -6,7 +6,7 @@ import android.content.Intent;
 import android.util.Log;
 
 import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.app.WidgetRefreshNotifier;
+import com.autosecretary.shared.WidgetRefreshNotifier;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 
 /**

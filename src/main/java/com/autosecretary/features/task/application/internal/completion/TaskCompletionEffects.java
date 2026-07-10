@@ -1,6 +1,6 @@
 package com.autosecretary.features.task.application.internal.completion;
 
-import com.autosecretary.app.WidgetRefreshNotifier;
+import com.autosecretary.shared.WidgetRefreshNotifier;
 import com.autosecretary.features.meal.application.TaskMealIntegrationService;
 import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
 import com.autosecretary.features.task.data.Task;

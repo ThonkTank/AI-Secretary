@@ -8,7 +8,7 @@ import com.autosecretary.features.meal.application.MealPlannerPresenter;
 import com.autosecretary.features.meal.domain.HouseholdMember;
 import com.autosecretary.features.meal.domain.Ingredient;
 import com.autosecretary.features.meal.domain.MealPlan;
-import com.autosecretary.features.meal.domain.MealType;
+import com.autosecretary.shared.MealType;
 import com.autosecretary.features.meal.domain.PantryItem;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.meal.domain.ShoppingItemStatus;

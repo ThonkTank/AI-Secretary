@@ -55,6 +55,7 @@ import com.autosecretary.features.task.ui.TaskScheduleConfigViewModelFactory;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModelFactory;
 import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
+import com.autosecretary.shared.WidgetRefreshNotifier;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
