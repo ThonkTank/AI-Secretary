@@ -12,7 +12,7 @@ import com.autosecretary.app.settings.SettingsDataService;
 import com.autosecretary.app.update.UpdateChecker;
 import com.autosecretary.features.budget.ui.BudgetFragment;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
-import com.autosecretary.features.meal.application.MealPlannerPresenter;
+import com.autosecretary.features.meal.application.MealPlannerDataService;
 import com.autosecretary.features.meal.ui.MealPlannerFragment;
 import com.autosecretary.features.meal.ui.internal.MealCookingPrefsDialogController;
 import com.autosecretary.features.task.ui.TaskScheduleConfigDialog;
@@ -173,12 +173,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showCookingPrefsDialog() {
-        MealPlannerPresenter presenter = AutoSecretaryApplication.from(this)
-                .getAppCompositionRoot().getMealPlannerPresenter();
-        presenter.loadCookingPreferences(prefs -> {
+        MealPlannerDataService dataService = AutoSecretaryApplication.from(this)
+                .getAppCompositionRoot().getMealPlannerDataService();
+        dataService.loadCookingPreferences(prefs -> {
             MealCookingPrefsDialogController controller = new MealCookingPrefsDialogController(
                     this,
-                    savedPrefs -> presenter.saveCookingPreferences(savedPrefs, () ->
+                    savedPrefs -> dataService.saveCookingPreferences(savedPrefs, () ->
                             Toast.makeText(this, R.string.meal_success_cooking_prefs_saved,
                                     Toast.LENGTH_SHORT).show()
                     ));

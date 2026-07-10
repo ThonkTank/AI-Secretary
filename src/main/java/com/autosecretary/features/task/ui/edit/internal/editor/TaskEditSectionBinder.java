@@ -25,7 +25,7 @@ import com.autosecretary.shared.ui.SimpleTextWatcher;
 import com.autosecretary.shared.ui.SpinnerHelper;
 import com.autosecretary.features.task.domain.model.TaskCore;
 import com.autosecretary.features.task.application.edit.TaskEditOption;
-import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
+import com.autosecretary.features.task.ui.edit.TaskEditFormController;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 import com.google.android.material.textfield.TextInputLayout;
@@ -54,18 +54,18 @@ public class TaskEditSectionBinder {
     private final DialogFragment fragment;
     private final View rootView;
     private final TaskEditState editState;
-    private final TaskEditPresenter presenter;
+    private final TaskEditFormController formController;
 
     public TaskEditSectionBinder(
         DialogFragment fragment,
         View rootView,
         TaskEditState editState,
-        TaskEditPresenter presenter
+        TaskEditFormController formController
     ) {
         this.fragment = fragment;
         this.rootView = rootView;
         this.editState = editState;
-        this.presenter = presenter;
+        this.formController = formController;
     }
 
     public BasicInfoViews bindBasicInfo() {
@@ -130,14 +130,14 @@ public class TaskEditSectionBinder {
     private void initializeSchedulingFields(SchedulingViews views) {
         List<TaskCore.SchedulingType> selectableTypes = Arrays.asList(TaskCore.SchedulingType.values());
         SpinnerHelper.bindList(views.schedulingTypeView, selectableTypes, this::schedulingTypeLabel, fragment.requireContext());
-        TaskCore.SchedulingType schedulingType = Objects.requireNonNullElse(presenter.getEditableSchedulingType(), TaskEditDefaults.SCHEDULING_TYPE);
+        TaskCore.SchedulingType schedulingType = Objects.requireNonNullElse(formController.getEditableSchedulingType(), TaskEditDefaults.SCHEDULING_TYPE);
         int typePosition = selectableTypes.indexOf(schedulingType);
         views.schedulingTypeView.setSelection(typePosition >= 0 ? typePosition : 0);
         views.schedulingTypeView.setOnItemSelectedListener(new SimpleItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 TaskCore.SchedulingType selected = SpinnerHelper.enumAtPosition(views.schedulingTypeView, TaskCore.SchedulingType.values());
-                presenter.setEditableSchedulingType(selected != null ? selected : TaskEditDefaults.SCHEDULING_TYPE);
+                formController.setEditableSchedulingType(selected != null ? selected : TaskEditDefaults.SCHEDULING_TYPE);
                 applySchedulingTypeVisibility(views);
             }
         });
@@ -175,60 +175,60 @@ public class TaskEditSectionBinder {
                                              ImageButton clearDeadline,
                                              SchedulingViews views) {
         views.startDateView.setOnClickListener(v -> showDatePicker(
-                presenter.getEditableStartDate(),
+                formController.getEditableStartDate(),
                 picked -> {
-                    presenter.setEditableStartDate(picked);
+                    formController.setEditableStartDate(picked);
                     updateStartDateDisplay(views);
                 }));
         startDateInputLayout.setEndIconOnClickListener(v -> showDatePicker(
-                presenter.getEditableStartDate(),
+                formController.getEditableStartDate(),
                 picked -> {
-                    presenter.setEditableStartDate(picked);
+                    formController.setEditableStartDate(picked);
                     updateStartDateDisplay(views);
                 }));
         clearStartDate.setOnClickListener(v -> {
-            presenter.setEditableStartDate(null);
+            formController.setEditableStartDate(null);
             updateStartDateDisplay(views);
         });
 
         views.fixedDateView.setOnClickListener(v -> showDatePicker(
-                presenter.getEditableFixedDate(),
+                formController.getEditableFixedDate(),
                 picked -> {
-                    presenter.setEditableFixedDate(picked);
+                    formController.setEditableFixedDate(picked);
                     updateFixedDateDisplay(views);
                 }));
         fixedDateInputLayout.setEndIconOnClickListener(v -> showDatePicker(
-                presenter.getEditableFixedDate(),
+                formController.getEditableFixedDate(),
                 picked -> {
-                    presenter.setEditableFixedDate(picked);
+                    formController.setEditableFixedDate(picked);
                     updateFixedDateDisplay(views);
                 }));
         clearFixedDate.setOnClickListener(v -> {
-            presenter.setEditableFixedDate(null);
+            formController.setEditableFixedDate(null);
             updateFixedDateDisplay(views);
         });
 
         views.fixedStartView.setOnClickListener(v -> showTimePicker(
-                presenter.getEditableFixedStart(),
+                formController.getEditableFixedStart(),
                 picked -> {
-                    presenter.setEditableFixedStart(picked);
+                    formController.setEditableFixedStart(picked);
                     updateFixedStartDisplay(views);
                 }));
         fixedStartInputLayout.setEndIconOnClickListener(v -> showTimePicker(
-                presenter.getEditableFixedStart(),
+                formController.getEditableFixedStart(),
                 picked -> {
-                    presenter.setEditableFixedStart(picked);
+                    formController.setEditableFixedStart(picked);
                     updateFixedStartDisplay(views);
                 }));
         clearFixedStart.setOnClickListener(v -> {
-            presenter.setEditableFixedStart(null);
+            formController.setEditableFixedStart(null);
             updateFixedStartDisplay(views);
         });
 
         views.deadlineView.setOnClickListener(v -> showDatePicker(views));
         deadlineInputLayout.setEndIconOnClickListener(v -> showDatePicker(views));
         clearDeadline.setOnClickListener(v -> {
-            presenter.setEditableDeadline(null);
+            formController.setEditableDeadline(null);
             updateDeadlineDisplay(views);
         });
     }
@@ -261,7 +261,7 @@ public class TaskEditSectionBinder {
         views.periodUnitView.setSelection(periodUnit.ordinal());
         views.completeFirstView.setChecked(editState.completeFirst);
 
-        presenter.initializeRepetitionState(
+        formController.initializeRepetitionState(
             views.toggleRepetition.isChecked(),
             views.repsView.getText().toString(),
             views.perPeriodView.getText().toString(),
@@ -343,7 +343,7 @@ public class TaskEditSectionBinder {
     }
 
     private void updateDeadlineDisplay(SchedulingViews views) {
-        LocalDate deadline = presenter.getEditableDeadline();
+        LocalDate deadline = formController.getEditableDeadline();
         String text = deadline != null
             ? deadline.format(DateFormatters.DATE_SHORT)
             : fragment.getString(R.string.task_editor_deadline_none);
@@ -354,7 +354,7 @@ public class TaskEditSectionBinder {
     }
 
     private void updateStartDateDisplay(SchedulingViews views) {
-        LocalDate startDate = presenter.getEditableStartDate();
+        LocalDate startDate = formController.getEditableStartDate();
         String text = startDate != null
                 ? startDate.format(DateFormatters.DATE_SHORT)
                 : fragment.getString(R.string.task_editor_start_date_none);
@@ -365,7 +365,7 @@ public class TaskEditSectionBinder {
     }
 
     private void updateFixedDateDisplay(SchedulingViews views) {
-        LocalDate fixedDate = presenter.getEditableFixedDate();
+        LocalDate fixedDate = formController.getEditableFixedDate();
         String text = fixedDate != null
                 ? fixedDate.format(DateFormatters.DATE_SHORT)
                 : fragment.getString(R.string.task_editor_fixed_date_none);
@@ -376,7 +376,7 @@ public class TaskEditSectionBinder {
     }
 
     private void updateFixedStartDisplay(SchedulingViews views) {
-        LocalTime fixedStart = presenter.getEditableFixedStart();
+        LocalTime fixedStart = formController.getEditableFixedStart();
         String text = fixedStart != null
                 ? fixedStart.format(DateFormatters.TIME_HH_MM)
                 : fragment.getString(R.string.task_editor_fixed_start_none);
@@ -387,7 +387,7 @@ public class TaskEditSectionBinder {
     }
 
     private void applySchedulingTypeVisibility(SchedulingViews views) {
-        boolean isTermin = presenter.getEditableSchedulingType() == TaskCore.SchedulingType.TERMIN;
+        boolean isTermin = formController.getEditableSchedulingType() == TaskCore.SchedulingType.TERMIN;
         views.taskStartDateRow.setVisibility(isTermin ? View.GONE : View.VISIBLE);
         views.terminFieldsContainer.setVisibility(isTermin ? View.VISIBLE : View.GONE);
     }
@@ -417,9 +417,9 @@ public class TaskEditSectionBinder {
     }
 
     private void showDatePicker(SchedulingViews views) {
-        showDatePicker(presenter.getEditableDeadline(), picked -> {
+        showDatePicker(formController.getEditableDeadline(), picked -> {
             // Presenter owns deadline state to preserve existing behavior.
-            presenter.setEditableDeadline(picked);
+            formController.setEditableDeadline(picked);
             updateDeadlineDisplay(views);
         });
     }

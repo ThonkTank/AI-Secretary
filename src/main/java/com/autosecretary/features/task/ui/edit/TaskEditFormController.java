@@ -20,14 +20,14 @@ import java.util.List;
  * Handles repetition-to-prefSlot reactivity ({@link #onRepetitionChanged} recalculates repsPerDay
  * and adjusts the prefSlot count), and Task reconstitution for persistence ({@link #toTaskForSave}).
  */
-public class TaskEditPresenter {
+public class TaskEditFormController {
 
     private final TaskEditState editState;
     // -1 sentinel: uninitialized. Set by initializeRepetitionState() during form setup;
     // onRepetitionChanged() must not be called before initializeRepetitionState() runs.
     private int lastRepsPerDay = -1;
 
-    public TaskEditPresenter(TaskEditState editState) {
+    public TaskEditFormController(TaskEditState editState) {
         this.editState = editState;
     }
 

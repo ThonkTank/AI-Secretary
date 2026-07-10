@@ -8,7 +8,7 @@ thin.
 
 - Coordinate domain services (RecipeScalingService, ShelfLifeService, etc.) across repositories
 - Translate raw UI input (IDs, raw amounts, strings) into validated domain objects
-- Provide the UI with pre-sorted, ready-to-render data (MealPlannerPresenter)
+- Provide the UI with pre-sorted, ready-to-render data (`LoadMealHomeUseCase`)
 - Provide meal-planner application operations for the UI layer
 
 This layer contains **no persistence logic** (all DB access is in `meal.data`) and
@@ -18,13 +18,18 @@ This layer contains **no persistence logic** (all DB access is in `meal.data`) a
 
 | Class | Role |
 |---|---|
-| `MealPlannerPresenter` | Thin coordinator called by `MealPlannerFragment`; feeds sorted data to the UI and handles basic user actions (plan recipe, toggle completed, add item). |
+| `MealPlannerDataService` | Async UI-facing facade. Owns executor dispatching and delegates to focused application classes. |
+| `LoadMealHomeUseCase` | Builds the home payload: plans, recipes, pantry, shopping, and summary aggregates. |
+| `LoadMealWeeklyProgressUseCase` | Builds weekly calorie and food-group progress. |
+| `MealPlanMutationUseCase` | Plans recipes, toggles completion, and deletes meal plans. |
+| `MealShoppingUseCase` | Updates shopping items and creates shopping/pantry entries. |
+| `MealManagementDataService` | Management lists and CRUD for recipes, ingredients, pantry, household members, and cooking preferences. |
 
 ## Reading order for newcomers
 
-1. **`MealPlannerPresenter`** — best first read; shows how the UI interacts with all three
-   repositories and what data-shaping happens at this layer.
-2. **Domain services** — read the domain README for the stateless helpers used by this layer.
+1. **`MealPlannerDataService`** — start here to see the UI-facing callback contract.
+2. **Focused application classes** — read the class for the flow you are changing.
+3. **Domain services** — read the domain README for the stateless helpers used by this layer.
 
 ## Key concepts
 

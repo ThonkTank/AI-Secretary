@@ -8,14 +8,15 @@ The meal UI is a single Android Fragment (`MealPlannerFragment`) that manages th
 - **Recipes:** Shows available recipes in a list; clicking a recipe displays its full details (description + instructions) in a side panel.
 - **Stock & Shopping:** Displays pantry inventory items and shopping list items.
 
-The fragment follows the **presenter pattern**: all business logic is delegated to `MealPlannerPresenter` (in `com.autosecretary.features.meal.application`), which fetches data from the domain/data layers. The fragment is purely presentational.
+The fragment observes `MealPlannerViewModel`. Application work is delegated to `MealPlannerDataService`, which dispatches repository-backed use cases and returns ready-to-render data.
 
-Meal uses a direct presenter pattern without a ViewModel or `state/` sub-package because the feature's data flow is simpler than task/budget. There is no home-screen widget for the meal feature.
+Meal has no home-screen widget.
 
 ## Key Classes
 
 - **`MealPlannerFragment`:** Entry point. Manages UI state, renders views, and handles user input (button clicks, dialog submissions).
-- **`MealPlannerPresenter`:** Application layer; provides data and commands to the fragment. See `features/meal/application/` for details.
+- **`MealPlannerViewModel`:** UI state owner for home and weekly progress state.
+- **`MealPlannerDataService`:** Application-layer facade. See `features/meal/application/` for details.
 - **Domain classes:** `Recipe`, `MealPlan`, `PantryItem`, `ShoppingListItem` (in `features/meal/domain/`) plus shared `MealType` (in `shared/`).
 
 ## How to Add a New Dialog
@@ -42,8 +43,8 @@ All dialog creation in this fragment follows a shared pattern. To add a new dial
                String newTitle = titleField.getText().toString();
                // ... other values ...
 
-               // Call presenter to update data
-               presenter.updateRecipe(recipeId, newTitle, /* ... */);
+              // Call the ViewModel to update data
+              viewModel.saveRecipe(updatedRecipe, this::renderRecipes);
 
                // Re-render affected view
                renderRecipes();

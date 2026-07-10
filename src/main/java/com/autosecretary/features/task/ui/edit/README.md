@@ -10,7 +10,7 @@ The task edit UI is a `DialogFragment` that lets users create or edit a task. Th
 3. `TaskEditDialog` inflates the form, `TaskEditSectionBinder` binds views, controllers take over sections
 4. User edits fields; `PrefSlotSectionController` handles dynamic preferred-slot rows
 5. User taps Save → `TaskEditFormValidator` validates; `TaskEditFormInputReader` reads view state → `FormInput`
-6. `TaskEditPresenter.applyForm(formInput, editState)` → merges edits into `TaskEditState`
+6. `TaskEditFormController.applyForm(formInput, editState)` → merges edits into `TaskEditState`
 7. `TaskEditStateMapper.toTask(editState)` → maps edit state back to a `Task` data object
 8. `TaskEditViewModel.saveEditedTask()` persists via `TaskDataService` and bumps the list refresh version
 ```
@@ -23,7 +23,7 @@ a subset of task fields; preserved fields (like scheduler-managed state) must su
 - `TaskEditDialog` — the `DialogFragment`; assembles all helpers and drives the lifecycle.
 - `TaskEditViewModel` — owns create/edit session state, reference-data loading, and persistence.
   Shared by `TaskListFragment` and `TaskEditDialog` so the edit surface has one primary ViewModel owner.
-- `TaskEditPresenter` — applies form input to a `TaskEditState`; also owns the deadline field
+- `TaskEditFormController` — applies form input to a `TaskEditState`; also owns the deadline field
   (mutated separately outside `FormInput`).
 
 ## State
@@ -46,7 +46,7 @@ Canonical edit session state lives in `state/` (`ui/edit/state`):
 3. **`internal/TaskEditStateMapper.java`** — understand the Task → TaskEditState → Task round-trip.
 4. **`internal/editor/README.md`** — then read the editor sub-package overview before diving into individual helpers.
 5. **`TaskEditViewModel.java`** — understand the create/edit lifecycle and persistence flow.
-6. **`TaskEditPresenter.java`** — understand how form input is merged into edit state.
+6. **`TaskEditFormController.java`** — understand how form input is merged into edit state.
 
 ## Public resources
 

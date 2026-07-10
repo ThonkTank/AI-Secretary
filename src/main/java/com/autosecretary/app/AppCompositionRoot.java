@@ -19,7 +19,7 @@ import com.autosecretary.features.budget.data.repository.BudgetImportRoomReposit
 import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
 import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
-import com.autosecretary.features.meal.application.MealPlannerPresenter;
+import com.autosecretary.features.meal.application.MealPlannerDataService;
 import com.autosecretary.features.task.application.internal.meal.TaskMealCompletionFromMealPlanner;
 import com.autosecretary.features.meal.data.repository.MealRoomRepository;
 import com.autosecretary.features.meal.data.repository.MealRecipeRoomRepository;
@@ -111,7 +111,7 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
     private MealRepository mealRepository;
     private RecipeRepository recipeRepository;
     private PantryRepository pantryRepository;
-    private MealPlannerPresenter mealPlannerPresenter;
+    private MealPlannerDataService mealPlannerDataService;
     private MealPlannerViewModelFactory mealPlannerViewModelFactory;
     private final TaskCompletionService taskCompletionService;
     private final TaskLifecycleManager taskLifecycleManager;
@@ -404,27 +404,27 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
         taskDao = null;
         taskSlotToggleMutation = null;
         budgetRoomRepository = null;
-        mealPlannerPresenter = null;
+        mealPlannerDataService = null;
         mealPlannerViewModelFactory = null;
         mealRepository = null;
         recipeRepository = null;
         pantryRepository = null;
     }
 
-    public synchronized MealPlannerPresenter getMealPlannerPresenter() {
-        if (mealPlannerPresenter == null) {
+    public synchronized MealPlannerDataService getMealPlannerDataService() {
+        if (mealPlannerDataService == null) {
             ensureMealRepositories();
             Handler mainHandler = new Handler(Looper.getMainLooper());
-            mealPlannerPresenter = new MealPlannerPresenter(
+            mealPlannerDataService = new MealPlannerDataService(
                     mealRepository, recipeRepository, pantryRepository,
                     dbExecutor, mainHandler::post);
         }
-        return mealPlannerPresenter;
+        return mealPlannerDataService;
     }
 
     public synchronized MealPlannerViewModelFactory getMealPlannerViewModelFactory() {
         if (mealPlannerViewModelFactory == null) {
-            mealPlannerViewModelFactory = new MealPlannerViewModelFactory(getMealPlannerPresenter());
+            mealPlannerViewModelFactory = new MealPlannerViewModelFactory(getMealPlannerDataService());
         }
         return mealPlannerViewModelFactory;
     }

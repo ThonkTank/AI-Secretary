@@ -1,15 +1,16 @@
 # Meal Feature
 
 Meal planning, recipe management, pantry tracking, and shopping lists for the household.
-Backed by an **in-memory storage layer** (not Room) — all meal data is lost when the process dies.
-Data is seeded on first use via the demo recipe in `MealPlannerPresenter`.
+Backed by Room repositories. Recipe data is seeded on first use via `LoadMealHomeUseCase`.
 
 ## Layer Overview
 
 ```
 UI (Fragment)
     ↓ calls
-Application (Presenter + Use Cases)
+UI ViewModel
+    ↓ calls
+Application (DataService + focused UseCases)
     ↓ calls
 Domain (Entities + Stateless Services + Repository Interfaces)
     ↑ implemented by
@@ -21,7 +22,7 @@ Data (Storage Repositories → RowMappers → InMemoryMealStorage)
 | Package | What lives here | README |
 |---|---|---|
 | `domain/` | Core entities (`Recipe`, `Ingredient`, `MealPlan`, `PantryItem`, …), domain enums (`FoodGroup`), stateless services, repository interfaces. Shared `MealType` lives in `shared/`. No Android dependencies. | [`domain/README.md`](domain/README.md) |
-| `application/` | `MealPlannerPresenter` (UI coordinator for the meal-planner surface). | [`application/README.md`](application/README.md) |
+| `application/` | `MealPlannerDataService` facade plus focused home, progress, shopping, mutation, and management use cases. | [`application/README.md`](application/README.md) |
 | `data/` | Repository implementations, row mappers, and `InMemoryMealStorage`. All implementation is in `data/internal/`; nothing there is public API. | [`data/README.md`](data/README.md) |
 | `ui/` | `MealPlannerFragment` — three-tab UI (Week Plan, Recipes, Stock & Shopping). Purely presentational. | [`ui/README.md`](ui/README.md) |
 
@@ -39,6 +40,6 @@ Data (Storage Repositories → RowMappers → InMemoryMealStorage)
 - **MHD** — Mindesthaltbarkeitsdatum (best-before date); expiry date is the *last valid day*.
 - **periodKey** — ISO date string (`"2026-02-14"`) used as a storage key for shopping lists and weekly targets.
 - **x10 fixed-point** — Ingredient macro fields (`proteinPer100`, etc.) are stored as integers scaled by 10 (125 = 12.5 g). Calories are plain kcal (no scaling).
-- **InMemoryMealStorage** — All meal data is volatile; it does not persist across app restarts.
+- **Room-backed repositories** — Meal data is persisted in the shared app database.
 
 See [`domain/README.md`](domain/README.md) for detailed explanations.

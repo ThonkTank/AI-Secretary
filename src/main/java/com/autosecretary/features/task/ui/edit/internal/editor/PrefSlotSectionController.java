@@ -19,7 +19,7 @@ import com.autosecretary.R;
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.ui.SpinnerHelper;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
-import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
+import com.autosecretary.features.task.ui.edit.TaskEditFormController;
 import com.google.android.material.button.MaterialButton;
 
 import java.time.DayOfWeek;
@@ -32,7 +32,7 @@ import java.util.Set;
  *
  * <p>Responsibilities:
  * <ul>
- *   <li>Reads the current repetition-field values and asks the presenter to compute
+ *   <li>Reads the current repetition-field values and asks the formController to compute
  *       {@code repsPerDay}, which determines how many slot groups are rendered.
  *   <li>Delegates actual UI construction to {@link PrefSlotUIBuilder}.
  *   <li>Shows day-picker ({@link android.app.AlertDialog}) and time-picker
@@ -50,32 +50,32 @@ public class PrefSlotSectionController {
 
     private final DialogFragment fragment;
     private final LinearLayout prefSlotContainer;
-    private final TaskEditPresenter presenter;
+    private final TaskEditFormController formController;
     private final PrefSlotUIBuilder prefSlotUIBuilder;
     private final TaskEditSectionBinder.RepetitionViews repetitionViews;
 
     public PrefSlotSectionController(
         DialogFragment fragment,
         View rootView,
-        TaskEditPresenter presenter,
+        TaskEditFormController formController,
         TaskEditSectionBinder.RepetitionViews repetitionViews
     ) {
         this.fragment = fragment;
         this.prefSlotContainer = rootView.findViewById(R.id.PrefSlotContainer);
-        this.presenter = presenter;
+        this.formController = formController;
         this.prefSlotUIBuilder = new PrefSlotUIBuilder(fragment.requireContext());
         this.repetitionViews = repetitionViews;
     }
 
     public void rebuildPrefSlotUI() {
-        int repsPerDay = presenter.computeCurrentRepsPerDay(
+        int repsPerDay = formController.computeCurrentRepsPerDay(
             repetitionViews.toggleRepetition.isChecked(),
             repetitionViews.repsView.getText().toString(),
             repetitionViews.perPeriodView.getText().toString(),
             SpinnerHelper.enumAtPosition(repetitionViews.periodUnitView, Period.values())
         );
 
-        prefSlotUIBuilder.rebuild(prefSlotContainer, presenter.getEditablePrefSlots(), repsPerDay,
+        prefSlotUIBuilder.rebuild(prefSlotContainer, formController.getEditablePrefSlots(), repsPerDay,
             new PrefSlotUIBuilder.Listener() {
                 @Override
                 public void onDaysClicked(PrefSlotEditState prefSlot, Set<DayOfWeek> takenByOthers) {
@@ -89,7 +89,7 @@ public class PrefSlotSectionController {
 
                 @Override
                 public void onDeleteClicked(PrefSlotEditState prefSlot) {
-                    presenter.getEditablePrefSlots().remove(prefSlot);
+                    formController.getEditablePrefSlots().remove(prefSlot);
                     rebuildPrefSlotUI();
                 }
             });
@@ -108,14 +108,14 @@ public class PrefSlotSectionController {
         addButton.setOnClickListener(v -> {
             PrefSlotEditState newSlot = new PrefSlotEditState();
             newSlot.start = LocalTime.of(6, 0);
-            presenter.getEditablePrefSlots().add(newSlot);
+            formController.getEditablePrefSlots().add(newSlot);
             rebuildPrefSlotUI();
         });
         prefSlotContainer.addView(addButton);
     }
 
     public void onRepetitionChanged() {
-        if (presenter.onRepetitionChanged(
+        if (formController.onRepetitionChanged(
             repetitionViews.toggleRepetition.isChecked(),
             repetitionViews.repsView.getText().toString(),
             repetitionViews.perPeriodView.getText().toString(),

@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.autosecretary.features.meal.application.MealPlannerPresenter;
+import com.autosecretary.features.meal.application.MealPlannerDataService;
 import com.autosecretary.features.meal.domain.HouseholdMember;
 import com.autosecretary.features.meal.domain.Ingredient;
 import com.autosecretary.features.meal.domain.MealPlan;
@@ -25,13 +25,13 @@ import java.util.function.Consumer;
  * ViewModel owner for the meal-planner surface.
  */
 public class MealPlannerViewModel extends ViewModel {
-    private final MealPlannerPresenter presenter;
+    private final MealPlannerDataService dataService;
     private final MutableLiveData<HomeState> homeState = new MutableLiveData<>();
     private final MutableLiveData<WeeklyProgressState> weeklyProgress =
             new MutableLiveData<>();
 
-    public MealPlannerViewModel(MealPlannerPresenter presenter) {
-        this.presenter = presenter;
+    public MealPlannerViewModel(MealPlannerDataService dataService) {
+        this.dataService = dataService;
     }
 
     public LiveData<HomeState> getHomeState() {
@@ -43,13 +43,13 @@ public class MealPlannerViewModel extends ViewModel {
     }
 
     public void reloadHome() {
-        presenter.loadHome(home -> homeState.setValue(new HomeState(
+        dataService.loadHome(home -> homeState.setValue(new HomeState(
                 home.weekPlans,
                 home.shoppingItems)));
     }
 
     public void reloadWeeklyProgress() {
-        presenter.getWeeklyProgressOverview(progress -> weeklyProgress.setValue(new WeeklyProgressState(
+        dataService.getWeeklyProgressOverview(progress -> weeklyProgress.setValue(new WeeklyProgressState(
                 progress.fromDate,
                 progress.toDate,
                 progress.calorieActual,
@@ -63,31 +63,31 @@ public class MealPlannerViewModel extends ViewModel {
     }
 
     public void openManagePlan(Consumer<List<Recipe>> onReady) {
-        presenter.openManagePlan(onReady);
+        dataService.openManagePlan(onReady);
     }
 
     public void openManageNeed(Runnable onReady) {
-        presenter.openManageNeed(onReady);
+        dataService.openManageNeed(onReady);
     }
 
     public void loadRecipesForManagement(Consumer<List<Recipe>> onLoaded) {
-        presenter.loadRecipesForManagement(onLoaded);
+        dataService.loadRecipesForManagement(onLoaded);
     }
 
     public void loadIngredientsForManagement(Consumer<List<Ingredient>> onLoaded) {
-        presenter.loadIngredientsForManagement(onLoaded);
+        dataService.loadIngredientsForManagement(onLoaded);
     }
 
     public void loadPantryItemsForManagement(Consumer<List<PantryItem>> onLoaded) {
-        presenter.loadPantryItemsForManagement(onLoaded);
+        dataService.loadPantryItemsForManagement(onLoaded);
     }
 
     public void loadHouseholdMembersForManagement(Consumer<List<HouseholdMember>> onLoaded) {
-        presenter.loadHouseholdMembersForManagement(onLoaded);
+        dataService.loadHouseholdMembersForManagement(onLoaded);
     }
 
     public void loadHouseholdMemberRowsForManagement(Consumer<List<HouseholdMemberRowState>> onLoaded) {
-        presenter.loadHouseholdMemberOverviewsForManagement(overviews -> onLoaded.accept(overviews.stream()
+        dataService.loadHouseholdMemberOverviewsForManagement(overviews -> onLoaded.accept(overviews.stream()
                 .map(overview -> new HouseholdMemberRowState(
                         overview.member(),
                         overview.age(),
@@ -101,7 +101,7 @@ public class MealPlannerViewModel extends ViewModel {
             MealType mealType,
             int servings,
             Runnable onDone) {
-        presenter.planRecipe(recipeId, date, mealType, servings, () -> {
+        dataService.planRecipe(recipeId, date, mealType, servings, () -> {
             reloadHome();
             onDone.run();
         });
@@ -112,7 +112,7 @@ public class MealPlannerViewModel extends ViewModel {
             double neededAmount,
             String unit,
             Runnable onDone) {
-        presenter.createShoppingItemFromNeed(ingredientName, neededAmount, unit, () -> {
+        dataService.createShoppingItemFromNeed(ingredientName, neededAmount, unit, () -> {
             reloadHome();
             reloadWeeklyProgress();
             onDone.run();
@@ -126,50 +126,50 @@ public class MealPlannerViewModel extends ViewModel {
             PantryItem.StorageLocation location,
             int shelfLifeDays,
             Runnable onDone) {
-        presenter.createPantryItem(ingredientName, amount, unit, location, shelfLifeDays, onDone);
+        dataService.createPantryItem(ingredientName, amount, unit, location, shelfLifeDays, onDone);
     }
 
     public void savePantryItem(PantryItem item, Runnable onDone) {
-        presenter.savePantryItem(item, onDone);
+        dataService.savePantryItem(item, onDone);
     }
 
     public void deletePantryItem(String pantryItemId, Runnable onDone) {
-        presenter.deletePantryItem(pantryItemId, onDone);
+        dataService.deletePantryItem(pantryItemId, onDone);
     }
 
     public void saveRecipe(Recipe recipe, Runnable onDone) {
-        presenter.saveRecipe(recipe, onDone);
+        dataService.saveRecipe(recipe, onDone);
     }
 
     public void deleteRecipe(String recipeId, Runnable onDone) {
-        presenter.deleteRecipe(recipeId, onDone);
+        dataService.deleteRecipe(recipeId, onDone);
     }
 
     public void saveIngredient(Ingredient ingredient, Runnable onDone) {
-        presenter.saveIngredient(ingredient, onDone);
+        dataService.saveIngredient(ingredient, onDone);
     }
 
     public void deleteIngredient(String ingredientId, Runnable onDone) {
-        presenter.deleteIngredient(ingredientId, onDone);
+        dataService.deleteIngredient(ingredientId, onDone);
     }
 
     public void saveHouseholdMember(HouseholdMember member, Runnable onDone) {
-        presenter.saveHouseholdMember(member, onDone);
+        dataService.saveHouseholdMember(member, onDone);
     }
 
     public void deleteHouseholdMember(String memberId, Runnable onDone) {
-        presenter.deleteHouseholdMember(memberId, onDone);
+        dataService.deleteHouseholdMember(memberId, onDone);
     }
 
     public void toggleMealCompleted(String mealPlanId) {
-        presenter.toggleMealCompleted(mealPlanId, () -> {
+        dataService.toggleMealCompleted(mealPlanId, () -> {
             reloadHome();
             reloadWeeklyProgress();
         });
     }
 
     public void updateShoppingItemStatus(String shoppingItemId, ShoppingItemStatus status) {
-        presenter.updateShoppingItemStatus(shoppingItemId, status, () -> {
+        dataService.updateShoppingItemStatus(shoppingItemId, status, () -> {
             reloadHome();
             reloadWeeklyProgress();
         });

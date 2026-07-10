@@ -26,7 +26,7 @@ import java.util.Collections;
 /**
  * DialogFragment for creating and editing tasks. Manages five form sections:
  * basic info, scheduling, repetition, preferred slots, and progress.
- * Delegates form logic to {@link TaskEditPresenter}. Works with
+ * Delegates form logic to {@link TaskEditFormController}. Works with
  * {@link TaskEditState} (mutable UI model) and delegates persistence plus
  * spinner reference-data loading to the ViewModel-owned edit session.
  */
@@ -35,7 +35,7 @@ public class TaskEditDialog extends DialogFragment {
     public static final String TAG_CREATE = "create";
 
     private TaskEditViewModel editViewModel;
-    private TaskEditPresenter presenter;
+    private TaskEditFormController formController;
     private TaskEditState editState;
     private TaskEditFormValidator formValidator;
     private TaskEditFormInputReader formInputReader;
@@ -54,11 +54,11 @@ public class TaskEditDialog extends DialogFragment {
             return new AlertDialog.Builder(requireContext()).create();
         }
         editState = selectedTask;
-        presenter = new TaskEditPresenter(editState);
+        formController = new TaskEditFormController(editState);
 
         View rootView = LayoutInflater.from(getContext()).inflate(R.layout.task_editor_dialog, null);
 
-        TaskEditSectionBinder sectionBinder = new TaskEditSectionBinder(this, rootView, editState, presenter);
+        TaskEditSectionBinder sectionBinder = new TaskEditSectionBinder(this, rootView, editState, formController);
         TaskEditSectionBinder.BasicInfoViews basicInfo = sectionBinder.bindBasicInfo();
         TaskEditSectionBinder.SchedulingViews scheduling = sectionBinder.bindScheduling(
                 Collections.emptyList(), Collections.emptyList());
@@ -66,10 +66,10 @@ public class TaskEditDialog extends DialogFragment {
             () -> prefSlotSectionController.onRepetitionChanged());
         TaskEditSectionBinder.ProgressViews progress = sectionBinder.bindProgress();
 
-        prefSlotSectionController = new PrefSlotSectionController(this, rootView, presenter, repetition);
+        prefSlotSectionController = new PrefSlotSectionController(this, rootView, formController, repetition);
         prefSlotSectionController.rebuildPrefSlotUI();
 
-        setupAccordion(rootView, editState, presenter,
+        setupAccordion(rootView, editState, formController,
                 repetition.toggleRepetition, progress.toggleProgress, scheduling.toggleBudget);
 
         formInputReader = new TaskEditFormInputReader(
@@ -147,7 +147,7 @@ public class TaskEditDialog extends DialogFragment {
      * enables that feature; explicitly closing it (tapping its own header) disables it.
      * Collapsing a section because another opened does NOT change its switch state.
      */
-    private void setupAccordion(View rootView, TaskEditState editState, TaskEditPresenter presenter,
+    private void setupAccordion(View rootView, TaskEditState editState, TaskEditFormController formController,
                                 CompoundButton toggleRepetition, CompoundButton toggleProgress,
                                 CompoundButton toggleBudget) {
         View[] containers = {
@@ -212,7 +212,7 @@ public class TaskEditDialog extends DialogFragment {
         boolean weitereDetailsHasData = (editState.description != null && !editState.description.isEmpty())
                 || editState.parentTaskId != null
                 || editState.startDate != null
-                || presenter.getEditableDeadline() != null
+                || formController.getEditableDeadline() != null
                 || editState.fixedDate != null
                 || editState.fixedStart != null
                 || (editState.fixedDuration != null && editState.fixedDuration > 0)

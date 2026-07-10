@@ -129,7 +129,7 @@ Legende Status: ⬜ offen · 🔨 in Arbeit · ✅ erledigt
 | 4 | Schicht-Entkopplung (application↛ui, meal↔task Port) | ✅ |
 | 5 | Threading & DB-Lifecycle-Eigentum | ✅ |
 | 6 | Task-Domänenmodell nach `domain/model/` | ✅ |
-| 7 | Application-Schicht normalisieren (Presenter-Split) | ⬜ |
+| 7 | Application-Schicht normalisieren (Presenter-Split) | ✅ |
 | 8 | `checkArchitecture` v2 + Doku-Sync | ⬜ |
 
 ### Phase 0 — Baseline & Roadmap ✅
@@ -238,6 +238,14 @@ Ziel: die fünf Prinzipien werden erzwungen, damit keine Fehlerklasse zurückkeh
 ---
 
 ## Änderungslog
+- Phase 7 abgeschlossen: `MealPlannerPresenter` in `MealPlannerDataService`
+  plus fokussierte Meal-Application-UseCases/DataServices zerlegt,
+  WeeklyProgress-/Household-DTOs herausgeloest, Meal-ViewModel/Factory/
+  Composition Root/MainActivity/Tests neu verdrahtet, `TaskEditPresenter` zu
+  `TaskEditFormController` umbenannt, Meal-Charakterisierung fuer
+  WeeklyProgress, Shopping-Status, Need->ShoppingItem, Pantry-Expiry,
+  CookingPreferences und MealPlan-Delete erweitert, Doku/Javadocs/XML-
+  Kommentare aktualisiert; Erfolgs-Review PASS; Abschluss-Gate gruen.
 - Phase 6 abgeschlossen: Task-Domaenenmodell (`Task`, `TaskCore`, Slots,
   PrefSlots, Relationen, Prerequisites, PlannedMeals und Factory) nach
   `features/task/domain/model/` verschoben, `TaskDao`/`AppDatabase`/`Converters`

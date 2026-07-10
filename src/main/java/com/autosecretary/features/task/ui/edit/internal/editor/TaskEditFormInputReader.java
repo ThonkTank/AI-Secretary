@@ -14,7 +14,7 @@ import com.autosecretary.shared.ui.SpinnerHelper;
 
 /**
  * Reads the current state of all task-edit form views and writes it directly into a
- * {@link TaskEditState} for the presenter to persist.
+ * {@link TaskEditState} for the formController to persist.
  *
  * <p>This reader is intentionally lenient: it writes {@code null} for any field whose
  * text cannot be parsed (e.g. an invalid integer or date), rather than throwing. The

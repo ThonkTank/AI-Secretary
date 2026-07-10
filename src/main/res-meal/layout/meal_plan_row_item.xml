@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Planned meal row. Inflated programmatically by MealPlannerPresenter into MealWeekList.
+<!-- Planned meal row. Inflated programmatically by MealPlannerFragment into MealWeekList.
      Title = recipe name; Subtitle = date + meal type; Done button marks the meal consumed. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
