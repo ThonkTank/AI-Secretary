@@ -12,18 +12,23 @@ import com.autosecretary.features.meal.domain.RecipeRepository;
 import com.autosecretary.features.meal.domain.RecipeScalingResult;
 import com.autosecretary.features.meal.domain.RecipeScalingService;
 import com.autosecretary.features.meal.domain.ShoppingItemStatus;
+import com.autosecretary.features.meal.domain.internal.HouseholdEnergyService;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
 public final class MealPlannerDataService {
+    private final MealRepository mealRepository;
+    private final RecipeRepository recipeRepository;
+    private final PantryRepository pantryRepository;
     private final LoadMealHomeUseCase loadMealHomeUseCase;
     private final LoadMealWeeklyProgressUseCase loadMealWeeklyProgressUseCase;
     private final MealPlanMutationUseCase mealPlanMutationUseCase;
     private final MealShoppingUseCase mealShoppingUseCase;
-    private final MealManagementDataService mealManagementDataService;
     private final Executor workerExecutor;
     private final Executor callbackDispatcher;
 
@@ -32,6 +37,9 @@ public final class MealPlannerDataService {
                                   PantryRepository pantryRepository,
                                   Executor workerExecutor,
                                   Executor callbackDispatcher) {
+        this.mealRepository = mealRepository;
+        this.recipeRepository = recipeRepository;
+        this.pantryRepository = pantryRepository;
         this.workerExecutor = workerExecutor;
         this.callbackDispatcher = callbackDispatcher;
         this.loadMealHomeUseCase = new LoadMealHomeUseCase(
@@ -39,8 +47,6 @@ public final class MealPlannerDataService {
         this.loadMealWeeklyProgressUseCase = new LoadMealWeeklyProgressUseCase(mealRepository);
         this.mealPlanMutationUseCase = new MealPlanMutationUseCase(mealRepository, recipeRepository);
         this.mealShoppingUseCase = new MealShoppingUseCase(pantryRepository);
-        this.mealManagementDataService = new MealManagementDataService(
-                mealRepository, recipeRepository, pantryRepository, loadMealHomeUseCase);
     }
 
     public void loadHome(Consumer<MealHomeModel> onLoaded) {
@@ -52,15 +58,7 @@ public final class MealPlannerDataService {
     }
 
     public void openManagePlan(Consumer<List<Recipe>> onReady) {
-        dispatch(mealManagementDataService::loadRecipesForPlanManagement, onReady);
-    }
-
-    public void openManageNeed(Runnable onReady) {
-        callbackDispatcher.execute(onReady);
-    }
-
-    public void openManagePantry(Runnable onReady) {
-        callbackDispatcher.execute(onReady);
+        dispatch(loadMealHomeUseCase::loadSortedRecipes, onReady);
     }
 
     public RecipeScalingResult scaleRecipePreview(Recipe recipe, double requestedServings) {
@@ -96,55 +94,55 @@ public final class MealPlannerDataService {
     }
 
     public void loadRecipesForManagement(Consumer<List<Recipe>> onLoaded) {
-        dispatch(mealManagementDataService::loadRecipesForManagement, onLoaded);
+        dispatch(loadMealHomeUseCase::loadSortedRecipes, onLoaded);
     }
 
     public void loadIngredientsForManagement(Consumer<List<Ingredient>> onLoaded) {
-        dispatch(mealManagementDataService::loadIngredientsForManagement, onLoaded);
+        dispatch(this::sortedIngredients, onLoaded);
     }
 
     public void loadPantryItemsForManagement(Consumer<List<PantryItem>> onLoaded) {
-        dispatch(mealManagementDataService::loadPantryItemsForManagement, onLoaded);
+        dispatch(loadMealHomeUseCase::loadSortedPantryItems, onLoaded);
     }
 
     public void loadHouseholdMembersForManagement(Consumer<List<HouseholdMember>> onLoaded) {
-        dispatch(mealManagementDataService::loadHouseholdMembersForManagement, onLoaded);
+        dispatch(this::sortedHouseholdMembers, onLoaded);
     }
 
     public void loadHouseholdMemberOverviewsForManagement(Consumer<List<HouseholdMemberOverview>> onLoaded) {
-        dispatch(() -> mealManagementDataService.loadHouseholdMemberOverviewsForManagement(LocalDate.now()), onLoaded);
+        dispatch(() -> householdMemberOverviews(LocalDate.now()), onLoaded);
     }
 
     public void saveRecipe(Recipe recipe, Runnable onDone) {
-        runMutation(() -> mealManagementDataService.saveRecipe(recipe), onDone);
+        runMutation(() -> recipeRepository.saveRecipe(recipe), onDone);
     }
 
     public void deleteRecipe(String recipeId, Runnable onDone) {
-        runMutation(() -> mealManagementDataService.deleteRecipe(recipeId), onDone);
+        runMutation(() -> recipeRepository.deleteRecipe(recipeId), onDone);
     }
 
     public void saveIngredient(Ingredient ingredient, Runnable onDone) {
-        runMutation(() -> mealManagementDataService.saveIngredient(ingredient), onDone);
+        runMutation(() -> recipeRepository.saveIngredient(ingredient), onDone);
     }
 
     public void deleteIngredient(String ingredientId, Runnable onDone) {
-        runMutation(() -> mealManagementDataService.deleteIngredient(ingredientId), onDone);
+        runMutation(() -> recipeRepository.deleteIngredient(ingredientId), onDone);
     }
 
     public void savePantryItem(PantryItem pantryItem, Runnable onDone) {
-        runMutation(() -> mealManagementDataService.savePantryItem(pantryItem), onDone);
+        runMutation(() -> pantryRepository.savePantryItem(pantryItem), onDone);
     }
 
     public void deletePantryItem(String pantryItemId, Runnable onDone) {
-        runMutation(() -> mealManagementDataService.deletePantryItem(pantryItemId), onDone);
+        runMutation(() -> pantryRepository.deletePantryItem(pantryItemId), onDone);
     }
 
     public void saveHouseholdMember(HouseholdMember member, Runnable onDone) {
-        runMutation(() -> mealManagementDataService.saveHouseholdMember(member), onDone);
+        runMutation(() -> mealRepository.saveHouseholdMember(member), onDone);
     }
 
     public void deleteHouseholdMember(String memberId, Runnable onDone) {
-        runMutation(() -> mealManagementDataService.deleteHouseholdMember(memberId), onDone);
+        runMutation(() -> mealRepository.deleteHouseholdMember(memberId), onDone);
     }
 
     public void deleteMealPlan(String mealPlanId, Runnable onDone) {
@@ -152,11 +150,33 @@ public final class MealPlannerDataService {
     }
 
     public void loadCookingPreferences(Consumer<CookingPreferences> onLoaded) {
-        dispatch(mealManagementDataService::loadCookingPreferences, onLoaded);
+        dispatch(mealRepository::getCookingPreferences, onLoaded);
     }
 
     public void saveCookingPreferences(CookingPreferences prefs, Runnable onDone) {
-        runMutation(() -> mealManagementDataService.saveCookingPreferences(prefs), onDone);
+        runMutation(() -> mealRepository.saveCookingPreferences(prefs), onDone);
+    }
+
+    private List<Ingredient> sortedIngredients() {
+        List<Ingredient> items = new ArrayList<>(recipeRepository.getIngredients());
+        items.sort(Comparator.comparing(i -> i.name));
+        return items;
+    }
+
+    private List<HouseholdMember> sortedHouseholdMembers() {
+        List<HouseholdMember> members = mealRepository.getHouseholdMembers();
+        members.sort(Comparator.comparing(m -> m.name));
+        return members;
+    }
+
+    private List<HouseholdMemberOverview> householdMemberOverviews(LocalDate today) {
+        return mealRepository.getHouseholdMembers().stream()
+                .sorted(Comparator.comparing(member -> member.name))
+                .map(member -> new HouseholdMemberOverview(
+                        member,
+                        HouseholdEnergyService.calculateAge(member, today),
+                        HouseholdEnergyService.calculateTdee(member, today)))
+                .toList();
     }
 
     private <T> void dispatch(ThrowingSupplier<T> supplier, Consumer<T> callback) {

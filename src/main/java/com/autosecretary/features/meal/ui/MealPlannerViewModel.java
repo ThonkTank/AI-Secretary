@@ -67,10 +67,6 @@ public class MealPlannerViewModel extends ViewModel {
         dataService.openManagePlan(onReady);
     }
 
-    public void openManageNeed(Runnable onReady) {
-        dataService.openManageNeed(onReady);
-    }
-
     public RecipeScalingResult scaleRecipePreview(Recipe recipe, double requestedServings) {
         return dataService.scaleRecipePreview(recipe, requestedServings);
     }

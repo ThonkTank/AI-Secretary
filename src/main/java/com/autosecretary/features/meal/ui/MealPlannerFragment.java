@@ -290,10 +290,10 @@ public class MealPlannerFragment extends Fragment {
             if (!isAdded()) return;
             planDialogController.show(recipes);
         }));
-        addNeed.setOnClickListener(v -> viewModel.openManageNeed(() -> {
+        addNeed.setOnClickListener(v -> {
             if (!isAdded()) return;
             needDialogController.show();
-        }));
+        });
         hideDoneButton.setOnClickListener(v -> {
             hideCompletedShoppingItems = !hideCompletedShoppingItems;
             updateHideDoneButton();

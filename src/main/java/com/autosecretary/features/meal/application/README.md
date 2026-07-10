@@ -23,7 +23,6 @@ This layer contains **no persistence logic** (all DB access is in `meal.data`) a
 | `LoadMealWeeklyProgressUseCase` | Builds weekly calorie and food-group progress. |
 | `MealPlanMutationUseCase` | Plans recipes, toggles completion, and deletes meal plans. |
 | `MealShoppingUseCase` | Updates shopping items and creates shopping/pantry entries. |
-| `MealManagementDataService` | Management lists and CRUD for recipes, ingredients, pantry, household members, and cooking preferences. |
 
 ## Reading order for newcomers
 
@@ -42,6 +41,6 @@ publishes reference values for weekly food group intake. See `WeeklyFoodTargetSe
 domain layer for the calculation formulas.
 
 **Pantry depletion** — When a meal task is completed, the task-owned
-`TaskMealCompletionService` adapter reduces the
+`TaskMealCompletionFromMealPlanner` adapter reduces the
 pantry stock for each ingredient used in the recipe, consuming older items first (sorted by
 expiry date). Items depleted below `DEPLETION_EPSILON` are deleted rather than saved at near-zero.
