@@ -17,6 +17,7 @@ import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.R;
+import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.task.ui.state.DayScheduleRow;
 import com.autosecretary.shared.DateFormatters;
 
@@ -57,8 +58,7 @@ public class TaskScheduleConfigDialog extends DialogFragment {
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         if (viewModel == null) {
-            TaskScheduleConfigViewModelFactory factory = ((TaskUiDependencies) requireContext()
-                    .getApplicationContext())
+            TaskScheduleConfigViewModelFactory factory = AutoSecretaryApplication.from(requireContext())
                     .getTaskScheduleConfigViewModelFactory();
             viewModel = new ViewModelProvider(this, factory).get(TaskScheduleConfigViewModel.class);
         }

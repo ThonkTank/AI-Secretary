@@ -12,6 +12,7 @@ import android.util.Log;
 import android.widget.RemoteViews;
 
 import com.autosecretary.R;
+import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.task.ui.list.TaskViewModel;
 import com.autosecretary.shared.WidgetConfiguration;
 import com.autosecretary.shared.ui.UiConstants;
@@ -190,8 +191,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         // Without it, onReceive() returns and the process may be killed before the database
         // mutation completes.
         PendingResult result = goAsync();
-        TaskWidgetDependencies dependencies =
-                (TaskWidgetDependencies) context.getApplicationContext();
+        AutoSecretaryApplication dependencies = AutoSecretaryApplication.from(context);
         dependencies.getDbExecutor().execute(() -> {
             try {
                 dependencies.getTaskSlotToggleMutation()

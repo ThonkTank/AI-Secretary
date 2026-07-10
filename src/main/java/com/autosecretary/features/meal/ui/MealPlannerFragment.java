@@ -18,6 +18,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.R;
+import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.meal.domain.HouseholdMember;
 import com.autosecretary.features.meal.domain.Ingredient;
 import com.autosecretary.features.meal.domain.MealPlan;
@@ -97,8 +98,7 @@ public class MealPlannerFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         if (viewModel == null) {
-            MealPlannerViewModelFactory factory = ((MealPlannerDependencies) requireContext()
-                    .getApplicationContext())
+            MealPlannerViewModelFactory factory = AutoSecretaryApplication.from(requireContext())
                     .getMealPlannerViewModelFactory();
             viewModel = new ViewModelProvider(this, factory).get(MealPlannerViewModel.class);
         }

@@ -7,19 +7,14 @@ import android.content.Intent;
 import android.content.IntentFilter;
 
 import com.autosecretary.features.task.application.internal.alarms.DailyPlanningScheduler;
-import com.autosecretary.features.task.application.internal.alarms.TaskAlarmDependencies;
-import com.autosecretary.features.task.ui.TaskUiDependencies;
 import com.autosecretary.features.task.ui.TaskScheduleConfigViewModelFactory;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModelFactory;
 import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
-import com.autosecretary.features.task.ui.widget.TaskWidgetDependencies;
 import com.autosecretary.features.task.application.LoadTaskWidgetItemsUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
-import com.autosecretary.features.budget.ui.BudgetDependencies;
 import com.autosecretary.features.budget.ui.BudgetViewModelFactory;
 import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseCase;
-import com.autosecretary.features.meal.ui.MealPlannerDependencies;
 import com.autosecretary.features.meal.ui.MealPlannerViewModelFactory;
 import com.autosecretary.shared.ContentDocumentReader;
 import com.autosecretary.shared.WidgetRefreshNotifier;
@@ -40,18 +35,15 @@ import java.util.concurrent.ExecutorService;
  *   <li>Register a receiver that refreshes the home screen widget when the user unlocks.</li>
  * </ol>
  *
- * <h2>Feature dependencies</h2>
- * Feature entry points cast the application context to their own provider interface.
- * The concrete implementation stays here and delegates to {@link AppCompositionRoot}.
+ * <h2>Feature access</h2>
+ * This class is the single feature-facing accessor: feature entry points (fragments,
+ * widget providers, receivers) call {@link #from(Context)} and one of the {@code get…()}
+ * methods below, which forward to {@link AppCompositionRoot}. Feature code therefore never
+ * imports the composition root itself.
  *
  * @see AppCompositionRoot
  */
-public class AutoSecretaryApplication extends Application implements
-        BudgetDependencies,
-        MealPlannerDependencies,
-        TaskUiDependencies,
-        TaskWidgetDependencies,
-        TaskAlarmDependencies {
+public class AutoSecretaryApplication extends Application {
     private AppCompositionRoot appCompositionRoot;
 
     @Override
@@ -90,67 +82,54 @@ public class AutoSecretaryApplication extends Application implements
         return appCompositionRoot;
     }
 
-    @Override
     public BudgetViewModelFactory getBudgetViewModelFactory() {
         return appCompositionRoot.getBudgetViewModelFactory();
     }
 
-    @Override
     public ContentDocumentReader getContentDocumentReader() {
         return appCompositionRoot.getContentDocumentReader();
     }
 
-    @Override
     public ExecutorService getIoExecutor() {
         return appCompositionRoot.getIoExecutor();
     }
 
-    @Override
     public LoadBudgetWidgetSummaryUseCase createLoadBudgetWidgetSummaryUseCase() {
         return appCompositionRoot.createLoadBudgetWidgetSummaryUseCase();
     }
 
-    @Override
     public MealPlannerViewModelFactory getMealPlannerViewModelFactory() {
         return appCompositionRoot.getMealPlannerViewModelFactory();
     }
 
-    @Override
     public TaskViewModelFactory getTaskViewModelFactory() {
         return appCompositionRoot.getTaskViewModelFactory();
     }
 
-    @Override
     public TaskEditViewModelFactory getTaskEditViewModelFactory() {
         return appCompositionRoot.getTaskEditViewModelFactory();
     }
 
-    @Override
     public TaskScheduleConfigViewModelFactory getTaskScheduleConfigViewModelFactory() {
         return appCompositionRoot.getTaskScheduleConfigViewModelFactory();
     }
 
-    @Override
     public ExecutorService getDbExecutor() {
         return appCompositionRoot.getDbExecutor();
     }
 
-    @Override
     public LoadTaskWidgetItemsUseCase createLoadTaskWidgetItemsUseCase() {
         return appCompositionRoot.createLoadTaskWidgetItemsUseCase();
     }
 
-    @Override
     public TaskSlotToggleMutation getTaskSlotToggleMutation() {
         return appCompositionRoot.getTaskSlotToggleMutation();
     }
 
-    @Override
     public RegenerateScheduleUseCase getRegenerateScheduleUseCase() {
         return appCompositionRoot.getRegenerateScheduleUseCase();
     }
 
-    @Override
     public WidgetRefreshNotifier getWidgetRefreshNotifier() {
         return appCompositionRoot.getWidgetRefreshNotifier();
     }

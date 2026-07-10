@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.shared.WidgetRefreshNotifier;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 
@@ -35,8 +36,7 @@ public class DailyPlanningReceiver extends BroadcastReceiver {
         // See README.md "Broadcast Receiver Lifecycle" for details.
         PendingResult pendingResult = goAsync();
         try {
-            TaskAlarmDependencies dependencies =
-                    (TaskAlarmDependencies) context.getApplicationContext();
+            AutoSecretaryApplication dependencies = AutoSecretaryApplication.from(context);
             WidgetRefreshNotifier widgetRefreshNotifier = dependencies.getWidgetRefreshNotifier();
             RegenerateScheduleUseCase useCase = dependencies.getRegenerateScheduleUseCase();
 

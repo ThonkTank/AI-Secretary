@@ -24,7 +24,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.autosecretary.R;
-import com.autosecretary.features.task.ui.TaskUiDependencies;
+import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.task.ui.edit.TaskEditDialog;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModel;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModelFactory;
@@ -130,8 +130,8 @@ public class TaskListFragment extends Fragment {
         return new ViewModelProvider(requireActivity(), viewModelFactory).get(TaskEditViewModel.class);
     }
 
-    private TaskUiDependencies taskUiDependencies() {
-        return (TaskUiDependencies) requireContext().getApplicationContext();
+    private AutoSecretaryApplication taskUiDependencies() {
+        return AutoSecretaryApplication.from(requireContext());
     }
 
     private View configureEmptyState(View view) {

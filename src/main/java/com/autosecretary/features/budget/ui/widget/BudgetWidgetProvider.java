@@ -11,8 +11,8 @@ import android.widget.RemoteViews;
 import androidx.annotation.Nullable;
 
 import com.autosecretary.R;
+import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.budget.application.LoadBudgetWidgetSummaryUseCase;
-import com.autosecretary.features.budget.ui.BudgetDependencies;
 import com.autosecretary.features.budget.ui.internal.CurrencyFormatter;
 import com.autosecretary.shared.WidgetConfiguration;
 
@@ -51,7 +51,7 @@ public class BudgetWidgetProvider extends AppWidgetProvider {
         // Load summary from database. Widget updates run off the main Activity thread,
         // so synchronous reads are acceptable. Keep the query fast to avoid delaying render.
         // The summary includes netBalance (sum of all account balances) and freeBudget (remaining budget).
-        BudgetDependencies dependencies = (BudgetDependencies) context.getApplicationContext();
+        AutoSecretaryApplication dependencies = AutoSecretaryApplication.from(context);
         LoadBudgetWidgetSummaryUseCase useCase = dependencies.createLoadBudgetWidgetSummaryUseCase();
         LoadBudgetWidgetSummaryUseCase.BudgetWidgetSummary summary = useCase.execute();
 

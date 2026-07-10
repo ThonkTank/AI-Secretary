@@ -26,6 +26,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.R;
+import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.features.budget.domain.BudgetAccount;
 import com.autosecretary.features.budget.domain.BudgetCategory;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -101,7 +102,7 @@ public class BudgetFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        BudgetDependencies dependencies = budgetDependencies();
+        AutoSecretaryApplication dependencies = budgetDependencies();
         contentDocumentReader = dependencies.getContentDocumentReader();
         ioExecutor = dependencies.getIoExecutor();
 
@@ -189,8 +190,8 @@ public class BudgetFragment extends Fragment {
         restoreDeferredActions(view);
     }
 
-    private BudgetDependencies budgetDependencies() {
-        return (BudgetDependencies) requireContext().getApplicationContext();
+    private AutoSecretaryApplication budgetDependencies() {
+        return AutoSecretaryApplication.from(requireContext());
     }
 
     private BudgetOverviewViews bindViews(@NonNull View rootView) {
