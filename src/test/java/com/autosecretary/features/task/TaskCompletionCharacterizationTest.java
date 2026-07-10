@@ -5,30 +5,17 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import com.autosecretary.shared.WidgetRefreshNotifier;
 import com.autosecretary.database.AppDatabase;
-import com.autosecretary.features.budget.data.repository.BudgetRoomRepository;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
-import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
-import com.autosecretary.features.task.application.internal.completion.TaskCompletionEffects;
-import com.autosecretary.features.task.application.internal.completion.TaskTransitionRecorder;
-import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.domain.model.Task;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.domain.model.TaskPrefSlot;
 import com.autosecretary.features.task.domain.model.TaskSlot;
-import com.autosecretary.features.task.domain.TaskCompletionService;
-import com.autosecretary.features.task.domain.TaskLifecycleManager;
-import com.autosecretary.features.task.application.internal.meal.TaskMealCompletionFromMealPlanner;
-import com.autosecretary.features.meal.data.repository.MealPantryRoomRepository;
-import com.autosecretary.features.meal.data.repository.MealRecipeRoomRepository;
-import com.autosecretary.features.meal.data.repository.MealRoomRepository;
 import com.autosecretary.testing.AutoSecretaryRobolectricTest;
-import com.autosecretary.testing.BudgetFixtures;
 import com.autosecretary.testing.CallbackProbe;
-import com.autosecretary.testing.SynchronousExecutorService;
+import com.autosecretary.testing.TaskCheckOffFixture;
 import com.autosecretary.testing.TaskFixtures;
 import com.autosecretary.testing.TestDatabases;
 
@@ -103,39 +90,10 @@ public final class TaskCompletionCharacterizationTest extends AutoSecretaryRobol
     }
 
     private CheckOffTaskUseCase createCheckOffUseCase() {
-        SynchronousExecutorService executor = new SynchronousExecutorService();
-        TaskLifecycleManager lifecycleManager = new TaskLifecycleManager();
-        TaskSlotToggleMutation mutation = new TaskSlotToggleMutation(
-                taskDao,
-                new TaskCompletionService(),
-                lifecycleManager,
-                new TaskTransitionRecorder(taskDao, db.taskTransitionStatDao()),
-                executor);
-        BudgetRoomRepository budgetRepository = BudgetFixtures.budgetRepository(db);
-        TaskCompletionEffects effects = new TaskCompletionEffects(
-                new BookTaskCompletionExpenseUseCase(budgetRepository),
-                new TaskMealCompletionFromMealPlanner(
-                        new MealRoomRepository(db.mealPlanDao(), db.mealConsumptionLogDao(),
-                                db.mealHouseholdMemberDao(), db.mealCookingPreferencesDao(),
-                                db.mealWeeklyFoodTargetDao()),
-                        new MealRecipeRoomRepository(db.mealRecipeDao(), db.mealIngredientDao()),
-                        new MealPantryRoomRepository(db.mealPantryDao())),
-                taskDao,
-                new NoOpWidgetRefreshNotifier());
-        return new CheckOffTaskUseCase(mutation, executor, effects);
+        return TaskCheckOffFixture.create(db);
     }
 
     private TaskListItem currentItem(String taskId) {
         return new TaskListItemMapper().map(List.of(taskDao.read(taskId))).get(0);
-    }
-
-    private static final class NoOpWidgetRefreshNotifier implements WidgetRefreshNotifier {
-        @Override
-        public void refreshTaskWidgets() {
-        }
-
-        @Override
-        public void refreshBudgetWidgets() {
-        }
     }
 }
