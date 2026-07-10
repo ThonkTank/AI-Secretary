@@ -9,23 +9,10 @@ Kein DI-Framework, keine neuen Gradle-Module, kein Event-Bus — es ist dieselbe
 Architektur, die das Projekt zu haben *behauptet*, nur vollständig definiert und
 vollständig erzwungen.
 
-**Neue, dauerhafte Projektregel (ersetzt „keine Tests"):**
-
-> *Jede geforderte Verhaltensinvariante wird sauber und auffindbar dokumentiert
-> und mit engen End-to-End-Tests abgesichert.*
-
-Die frühere Pauschalregel „No automated tests" entfällt ersatzlos — sowohl in
-`CLAUDE.md` als auch als `checkArchitecture`-Regel (`repository-no-automated-tests`).
-An ihre Stelle tritt die obige Regel. „Eng" heißt: der Test prüft eine benannte
-Verhaltensinvariante durch die Schichten hindurch am beobachtbaren Ergebnis, nicht
-Implementierungsdetails. „Auffindbar dokumentiert" heißt: die Invariante ist
-benannt (z. B. als Testname/Kommentar und, wo sinnvoll, in der Feature-`README`),
-sodass klar ist, *welches* Verhalten der Test schützt.
-
-Für dieses Vorhaben ist **Verhaltensparität** die oberste Nebenbedingung: Da an
-lebendem Produktionscode migriert wird, werden die Tests als
-**Charakterisierungstests** *vor* dem jeweiligen Umbau geschrieben (heutiges
-Verhalten einfangen) und müssen danach unverändert grün bleiben.
+**Tests:** Es gilt die Testregel aus `CLAUDE.md` (dokumentierte, eng
+End-to-End-abgesicherte Verhaltensinvarianten). Für dieses Vorhaben zusätzlich:
+verhaltensberührte Bereiche bekommen neue Tests, die das heutige Verhalten *vor*
+dem Umbau einfangen und danach unverändert grün bleiben (Verhaltensparität).
 
 ---
 
@@ -172,9 +159,9 @@ Ziel: das Migrations-Sicherheitsnetz aufbauen, bevor Verhalten umgezogen wird.
   UI-ViewModel/Presenter → application → domain → data treiben und beobachtbare
   Ergebnisse prüfen (DB-Zustand, zurückgegebene View-States). Echte Espresso-UI-
   Tests bleiben optional/gerätegebunden und sind nicht Teil des Netzes.
-- `checkArchitecture`-Regel `repository-no-automated-tests` (build.gradle.kts
-  ~232–240) entfernen; in `CLAUDE.md` den „No automated tests"-Absatz durch die
-  neue dauerhafte Testregel ersetzen (siehe oben) und die Test-Kommandos ergänzen.
+- Test-Governance ist bereits gesetzt (CLAUDE.md-Testregel + Entfernen der
+  `repository-no-automated-tests`-Regel, erledigt vor Phase 1). Hier nur noch das
+  Test-Sourceset + Abhängigkeiten (JUnit/Robolectric) aufsetzen.
 - **Charakterisierungs-Baseline** für genau die später berührten Verhaltensweisen
   schreiben, jeweils gegen den *heutigen* Code grün:
   - Budget-Übersicht laden (`LoadBudgetOverviewUseCase` → View-State) — für Phase 4.
@@ -258,3 +245,7 @@ Ziel: die fünf Prinzipien werden erzwungen, damit keine Fehlerklasse zurückkeh
   (alt 2–7 → neu 3–8); verbindliche Arbeitsweise-Sektion mit blockierendem
   Abschluss-Gate (roter `testDebugUnitTest`-Lauf blockiert Phasen-/Gesamtabschluss)
   und Fortschritts-Persistenz in diesem Dokument + `docs/roadmap/phaseN.md`.
+- Test-Governance angewandt: `CLAUDE.md`-Testregel gesetzt und
+  `repository-no-automated-tests` aus `checkArchitecture` entfernt
+  (`checkArchitecture` weiterhin grün). Phase 2 muss diese Regeländerung nicht
+  mehr vornehmen, nur noch das Test-Sourceset aufsetzen.

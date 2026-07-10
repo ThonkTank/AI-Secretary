@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `./gradlew copyToRelease` — copies APK to `ops/release/` and bumps version.
 - `./gradlew publishReleaseArtifact` — runs `copyToRelease` then pushes to GitHub.
 
-**No automated tests.** Do not write tests, suggest tests, or add test dependencies. Validation is done via `./gradlew assembleDebug` and manual scripts (`ops/check_only.sh`, `ops/test_schedule.sh`) with a connected device.
+**Testing policy.** Every required behavior invariant must be cleanly and findably documented and covered by tight end-to-end tests (JVM tests under `src/test`, Robolectric + in-memory Room, driving UI-ViewModel/Presenter → application → domain → data and asserting observable outcomes). A test names the invariant it protects. Run with `./gradlew testDebugUnitTest`. This replaces the former "no automated tests" rule. Additional validation via `./gradlew assembleDebug` and manual scripts (`ops/check_only.sh`, `ops/test_schedule.sh`) with a connected device.
 
 ## Glossary
 

@@ -229,15 +229,6 @@ fun architectureValidateBuildFileReleaseTasks(root: File, violations: MutableLis
 
 fun architectureViolations(root: File): List<ArchitectureViolation> {
     val violations = mutableListOf<ArchitectureViolation>()
-    for (testRoot in listOf("src/test", "src/androidTest")) {
-        if (root.resolve(testRoot).exists()) {
-            violations.add(ArchitectureViolation(
-                testRoot,
-                "repository-no-automated-tests",
-                "Automated test source sets are intentionally out of scope for AutoSecretary."
-            ))
-        }
-    }
 
     val sources = architectureSources(root)
     val observeCallPattern = Regex("""\.observe\s*\(\s*([^,\n\r]+)\s*,""")
