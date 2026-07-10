@@ -28,11 +28,14 @@ Work that uses external sources or local source evidence for decisions must use 
 Work on agent-facing instruction artifacts (`AGENTS.md`, `SKILL.md`, prompts, or related rule markdown) must use the global `agent-instruction-engineering` skill.
 
 ## Testing Guidelines
-Automated tests are intentionally not used in this project. Do not add JUnit/instrumented test frameworks or `src/test` / `src/androidTest` suites.
+Required behavior invariants must be covered by tight JVM end-to-end tests under `src/test`, as defined in `CLAUDE.md` and `docs/ARCHITECTURE_ROADMAP.md`. Use Robolectric plus in-memory Room for tests that drive UI-ViewModel/Presenter → application → domain → data and assert observable results.
 
-Validation is manual:
+Do not add instrumented/Espresso test suites under `src/androidTest` unless a future roadmap phase explicitly requires them.
+
+Validation:
 - Architecture check: `./gradlew checkArchitecture`
 - Build check: `./gradlew assembleDebug`
+- JVM behavior tests: `./gradlew testDebugUnitTest`
 - Runtime check: launch app and verify core flows (task list, task creation/edit, schedule generation)
 - Optional script: `./test_schedule.sh`
 

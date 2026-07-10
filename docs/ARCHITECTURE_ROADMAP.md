@@ -124,7 +124,7 @@ Legende Status: ⬜ offen · 🔨 in Arbeit · ✅ erledigt
 |-------|-------|--------|
 | 0 | Baseline & Roadmap | ✅ |
 | 1 | Toten Code entfernen | ✅ |
-| 2 | Test-Infrastruktur & Verhaltens-Baseline | ⬜ |
+| 2 | Test-Infrastruktur & Verhaltens-Baseline | ✅ |
 | 3 | Querschnitt-Typen nach `shared/` verschieben | ⬜ |
 | 4 | Schicht-Entkopplung (application↛ui, meal↔task Port) | ⬜ |
 | 5 | Threading & DB-Lifecycle-Eigentum | ⬜ |
@@ -238,6 +238,11 @@ Ziel: die fünf Prinzipien werden erzwungen, damit keine Fehlerklasse zurückkeh
 ---
 
 ## Änderungslog
+- Phase 2 abgeschlossen: `AGENTS.md` auf die neue CLAUDE/Roadmap-Testregel
+  synchronisiert, JVM-Testsetup mit Robolectric + in-memory Room eingerichtet,
+  fuenf Charakterisierungstests fuer Budget-Overview, Task↔Meal-Completion,
+  Task-Completion-Kern, Scheduling-Roundtrip und Meal-Planner-CRUD angelegt;
+  Erfolgs-Review ohne blockierende Befunde; Abschluss-Gate gruen.
 - Phase 1 abgeschlossen: unerreichbare Meal-Legacy-/Generator-/Bridge-Pfade,
   zugehöriger Folge-Totcode und Dangling-Doku entfernt; Erfolgs-Review ohne
   blockierende Befunde; Abschluss-Gate grün (`checkArchitecture`,
