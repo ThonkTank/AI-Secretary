@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  *
  * <p>{@code itemId} is an opaque foreign key into the task feature's checklist system. When a
  * meal plan is integrated with task tracking, completing the checklist item triggers
- * {@code TaskMealCompletionService} adapter to mark this plan completed. If not integrated, {@code itemId}
+ * the {@code TaskMealCompletionFromMealPlanner} adapter to mark this plan completed. If not integrated, {@code itemId}
  * is null and {@code isCompleted} must be updated directly.
  *
  * <p>{@code actualServings} and {@code completedAt} are filled in on completion; they remain

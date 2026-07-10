@@ -10,7 +10,6 @@ import com.autosecretary.features.meal.domain.RecipeRepository;
 import com.autosecretary.features.meal.domain.RecipeScalingResult;
 import com.autosecretary.features.meal.domain.RecipeScalingService;
 import com.autosecretary.features.task.domain.TaskMealCompletionRequest;
-import com.autosecretary.features.task.domain.TaskMealCompletionService;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,7 +18,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
-public final class TaskMealCompletionFromMealPlanner implements TaskMealCompletionService {
+public final class TaskMealCompletionFromMealPlanner {
     private static final double DEPLETION_EPSILON = 0.00001;
 
     private final MealRepository mealRepository;
@@ -34,7 +33,6 @@ public final class TaskMealCompletionFromMealPlanner implements TaskMealCompleti
         this.pantryRepository = Objects.requireNonNull(pantryRepository, "pantryRepository");
     }
 
-    @Override
     public void completeMeal(TaskMealCompletionRequest request) {
         Recipe recipe = recipeRepository.findRecipeById(request.recipeId());
         if (recipe == null) {

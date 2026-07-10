@@ -4,9 +4,9 @@ import com.autosecretary.shared.WidgetRefreshNotifier;
 import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
 import com.autosecretary.features.task.domain.model.Task;
 import com.autosecretary.features.task.data.TaskDao;
+import com.autosecretary.features.task.application.internal.meal.TaskMealCompletionFromMealPlanner;
 import com.autosecretary.features.task.domain.model.TaskPlannedMeal;
 import com.autosecretary.features.task.domain.TaskMealCompletionRequest;
-import com.autosecretary.features.task.domain.TaskMealCompletionService;
 
 import java.time.LocalDate;
 
@@ -15,12 +15,12 @@ import java.time.LocalDate;
  */
 public final class TaskCompletionEffects {
     private final BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase;
-    private final TaskMealCompletionService taskMealCompletionService;
+    private final TaskMealCompletionFromMealPlanner taskMealCompletionService;
     private final TaskDao taskDao;
     private final WidgetRefreshNotifier widgetRefreshNotifier;
 
     public TaskCompletionEffects(BookTaskCompletionExpenseUseCase bookTaskCompletionExpenseUseCase,
-                                 TaskMealCompletionService taskMealCompletionService,
+                                 TaskMealCompletionFromMealPlanner taskMealCompletionService,
                                  TaskDao taskDao,
                                  WidgetRefreshNotifier widgetRefreshNotifier) {
         this.bookTaskCompletionExpenseUseCase = bookTaskCompletionExpenseUseCase;
