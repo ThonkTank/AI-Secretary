@@ -23,7 +23,7 @@ import com.autosecretary.shared.Priority;
 import com.autosecretary.shared.ui.SimpleItemSelectedListener;
 import com.autosecretary.shared.ui.SimpleTextWatcher;
 import com.autosecretary.shared.ui.SpinnerHelper;
-import com.autosecretary.features.task.data.TaskCore;
+import com.autosecretary.features.task.domain.model.TaskCore;
 import com.autosecretary.features.task.application.edit.TaskEditOption;
 import com.autosecretary.features.task.ui.edit.TaskEditPresenter;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;

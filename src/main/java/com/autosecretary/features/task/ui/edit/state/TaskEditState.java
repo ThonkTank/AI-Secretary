@@ -1,6 +1,6 @@
 package com.autosecretary.features.task.ui.edit.state;
 
-import com.autosecretary.features.task.data.TaskCore;
+import com.autosecretary.features.task.domain.model.TaskCore;
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
 import com.autosecretary.shared.ui.UiStateCarrier;
@@ -21,7 +21,7 @@ import java.util.List;
  * for round-trip fidelity: when the user saves without changing the repetition period,
  * the mapper writes these values back unchanged so the scheduler's active period progress
  * counters are not silently reset. These values come from the loaded task's scheduler
- * history (see {@link com.autosecretary.features.task.data.TaskCore.History TaskCore.History}).
+ * history (see {@link com.autosecretary.features.task.domain.model.TaskCore.History TaskCore.History}).
  */
 public class TaskEditState implements UiStateCarrier {
     // Basic metadata

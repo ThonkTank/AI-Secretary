@@ -15,10 +15,10 @@ import com.autosecretary.features.task.application.internal.completion.TaskTrans
 import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
-import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.domain.model.Task;
 import com.autosecretary.features.task.data.TaskDao;
-import com.autosecretary.features.task.data.TaskPrefSlot;
-import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.domain.model.TaskPrefSlot;
+import com.autosecretary.features.task.domain.model.TaskSlot;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.application.internal.meal.TaskMealCompletionFromMealPlanner;

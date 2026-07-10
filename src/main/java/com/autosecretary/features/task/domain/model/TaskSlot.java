@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.data;
+package com.autosecretary.features.task.domain.model;
 
 import java.time.LocalDate;
 import java.time.LocalTime;

@@ -1,6 +1,6 @@
 package com.autosecretary.features.task.domain.scheduling;
 
-import com.autosecretary.features.task.data.TaskPrefSlotFactory;
+import com.autosecretary.features.task.domain.model.TaskPrefSlotFactory;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

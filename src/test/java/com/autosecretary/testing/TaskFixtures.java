@@ -1,10 +1,10 @@
 package com.autosecretary.testing;
 
-import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskCore;
-import com.autosecretary.features.task.data.TaskPlannedMeal;
-import com.autosecretary.features.task.data.TaskPrefSlot;
-import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.domain.model.Task;
+import com.autosecretary.features.task.domain.model.TaskCore;
+import com.autosecretary.features.task.domain.model.TaskPlannedMeal;
+import com.autosecretary.features.task.domain.model.TaskPrefSlot;
+import com.autosecretary.features.task.domain.model.TaskSlot;
 import com.autosecretary.shared.Period;
 
 import java.time.DayOfWeek;

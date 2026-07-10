@@ -1,4 +1,4 @@
-package com.autosecretary.features.task.data;
+package com.autosecretary.features.task.domain.model;
 
 import java.util.Set;
 import java.util.UUID;

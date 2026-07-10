@@ -1,6 +1,6 @@
 package com.autosecretary.features.task.domain.scheduling;
 
-import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.domain.model.Task;
 
 import java.time.LocalDate;
 import java.util.List;

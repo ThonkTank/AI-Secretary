@@ -6,6 +6,14 @@ import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 import androidx.room.Transaction;
 
+import com.autosecretary.features.task.domain.model.Task;
+import com.autosecretary.features.task.domain.model.TaskCore;
+import com.autosecretary.features.task.domain.model.TaskPlannedMeal;
+import com.autosecretary.features.task.domain.model.TaskPrefSlot;
+import com.autosecretary.features.task.domain.model.TaskPrerequisite;
+import com.autosecretary.features.task.domain.model.TaskRelation;
+import com.autosecretary.features.task.domain.model.TaskSlot;
+
 import java.time.LocalTime;
 import java.time.LocalDate;
 import java.util.List;

@@ -1,7 +1,7 @@
 package com.autosecretary.features.task.domain;
 
-import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.domain.model.Task;
+import com.autosecretary.features.task.domain.model.TaskSlot;
 
 import java.time.Duration;
 import java.time.LocalTime;

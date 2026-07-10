@@ -8,8 +8,8 @@ import java.util.List;
 /**
  * Immutable presentation model for displaying a task or calendar event in a list.
  *
- * <p>TaskListItem flattens the domain {@link com.autosecretary.features.task.data.Task} and
- * {@link com.autosecretary.features.task.data.TaskSlot} into a single record optimized for list
+ * <p>TaskListItem flattens the domain {@link com.autosecretary.features.task.domain.model.Task} and
+ * {@link com.autosecretary.features.task.domain.model.TaskSlot} into a single record optimized for list
  * rendering. This class decouples the UI layer from domain changes.
  *
  * <p><strong>Field Semantics:</strong>

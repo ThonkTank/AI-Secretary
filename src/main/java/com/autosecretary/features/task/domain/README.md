@@ -17,6 +17,7 @@ This package contains the **core domain logic for the task feature**: lifecycle 
 
 | Package | Role |
 |---|---|
+| [`model/`](model/) | Task aggregate and Room-annotated task model (`Task`, `TaskCore`, `TaskSlot`, `TaskPrefSlot`, relations, prerequisites, planned meals). These are domain-owned even though Room persists them. |
 | [`scheduling/`](scheduling/) | **Public scheduling contracts**: interfaces and data types for slot generation (`TaskSlotGenerator`, `SchedulingWindowProvider`, `CalendarBlockedIntervalProvider`, etc.). Start here when working on scheduling. See [`scheduling/README.md`](scheduling/README.md). |
 | [`internal/scheduling/`](internal/scheduling/) | **Implementation**: `DefaultTaskSlotGenerator` (the greedy slot-placement algorithm) and `TaskScorer` (multi-layer composite scoring). Not part of the public API — depend on `scheduling/` contracts instead. |
 
@@ -46,6 +47,6 @@ Tasks form a parent-child hierarchy via `TaskRelation`. `TaskTreeOperations` use
 
 ## Related Modules
 
-- **Data layer**: [`features/task/data/`](../../data/) — `Task`, `TaskCore`, `TaskSlot`, `TaskPrefSlot`, `TaskPrerequisite` (Room entities/POJOs)
+- **Data layer**: [`features/task/data/`](../data/) — DAOs and DAO-near persistence helpers that read/write the domain model
 - **Application layer**: [`features/task/application/`](../../application/) — use cases that orchestrate domain services
 - **CLAUDE.md glossary**: Project-wide term definitions (Task, Slot, PrefSlot, Repetition, Period, Streak, Adaptive)

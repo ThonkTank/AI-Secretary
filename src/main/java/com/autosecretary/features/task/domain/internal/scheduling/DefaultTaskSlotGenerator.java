@@ -1,9 +1,9 @@
 package com.autosecretary.features.task.domain.internal.scheduling;
 
-import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskCore;
-import com.autosecretary.features.task.data.TaskPrerequisite;
-import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.domain.model.Task;
+import com.autosecretary.features.task.domain.model.TaskCore;
+import com.autosecretary.features.task.domain.model.TaskPrerequisite;
+import com.autosecretary.features.task.domain.model.TaskSlot;
 import com.autosecretary.features.task.domain.scheduling.CalendarBlockedIntervalProvider;
 import com.autosecretary.features.task.domain.scheduling.SchedulingWindowProvider;
 import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;

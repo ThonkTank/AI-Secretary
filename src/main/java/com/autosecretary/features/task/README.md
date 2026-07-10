@@ -18,11 +18,11 @@ cooldown rules, and calendar conflicts.
 
 ```
 features/task/
-├── data/          Room entities + DAOs. Task, TaskCore, TaskSlot, TaskPrefSlot, etc.
-│                  No business logic here — pure persistence.
+├── data/          DAOs and DAO-near persistence types. No business logic here.
 │
 ├── domain/        Core logic: completion service, lifecycle (streaks, periods, adaptive times),
 │                  tree operations, and scheduling contracts + implementation.
+│                  model/ contains the task aggregate and Room-annotated task model.
 │                  No Android dependencies.
 │
 ├── application/   Use cases that orchestrate domain services and data access.
@@ -41,24 +41,26 @@ features/task/
 1. **[`CLAUDE.md` — Glossary section](../../../../../../../../CLAUDE.md)** — Read the glossary first.
    Terms like "Slot", "PrefSlot", "Repetition", "Period", "Streak", and "Adaptive" appear everywhere.
 
-2. **[`data/README.md`](data/README.md)** — Understand the data model before anything else.
-   Read `Task.java` and `TaskCore.java` to see all the fields; check `data/README.md` for the Room POJO/Entity distinction.
+2. **[`domain/README.md`](domain/README.md)** — Understand the task model and core behavior before anything else.
+   Read `domain/model/Task.java` and `domain/model/TaskCore.java` to see all the fields.
 
-3. **[`domain/README.md`](domain/README.md)** — Understand two-phase check-off and period/streak tracking.
+3. **[`data/README.md`](data/README.md)** — Understand how Room DAOs persist the domain model.
+
+4. **[`domain/README.md`](domain/README.md)** — Understand two-phase check-off and period/streak tracking.
    Then follow its reading order into `domain/scheduling/README.md` for the scheduling algorithm.
 
-4. **[`application/README.md`](application/README.md)** — Understand how use cases wire domain services to data access.
+5. **[`application/README.md`](application/README.md)** — Understand how use cases wire domain services to data access.
    `RegenerateScheduleUseCase` is the most important entry point for the scheduling pipeline.
 
-5. **[`ui/list/README.md`](ui/list/README.md)** — Understand the main list screen (data flow, two modes, day navigation).
+6. **[`ui/list/README.md`](ui/list/README.md)** — Understand the main list screen (data flow, two modes, day navigation).
 
-6. **[`ui/edit/README.md`](ui/edit/README.md)** — Understand the task edit dialog.
+7. **[`ui/edit/README.md`](ui/edit/README.md)** — Understand the task edit dialog.
 
-7. **[`ui/widget/README.md`](ui/widget/README.md)** — Understand the home-screen widget (RemoteViews pattern).
+8. **[`ui/widget/README.md`](ui/widget/README.md)** — Understand the home-screen widget (RemoteViews pattern).
 
 ## Key architectural choices
 
-- **`Task` is a Room POJO, not a `@Entity`.** Room assembles it from five tables via `@Relation`. Only `TaskCore` is the persisted entity. See `data/README.md` for details.
+- **`Task` is a Room POJO, not a `@Entity`.** Room assembles it from six tables via `@Relation`. Only `TaskCore` is the primary task entity. The model lives in `domain/model`; `data/` owns the DAOs that persist it.
 - **Current persistence shape.** DAOs are still used directly from some use cases and mutations. Treat this as existing app shape unless a focused change moves a specific call path.
 - **DB executor.** All task DB access runs on `AppCompositionRoot.getDbExecutor()`; file/network work uses the separate `ioExecutor`. Results post to main via `Handler`.
 - **Daily alarm.** Schedule regeneration runs at midnight via `AlarmManager`. See `application/internal/alarms/`.

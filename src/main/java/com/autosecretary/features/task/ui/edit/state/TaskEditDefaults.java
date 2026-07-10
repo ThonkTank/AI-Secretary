@@ -1,6 +1,6 @@
 package com.autosecretary.features.task.ui.edit.state;
 
-import com.autosecretary.features.task.data.TaskCore;
+import com.autosecretary.features.task.domain.model.TaskCore;
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.Priority;
 

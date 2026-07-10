@@ -12,7 +12,7 @@ import com.autosecretary.features.meal.data.repository.MealRoomRepository;
 import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.edit.TaskEditReferenceDataUseCase;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
-import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.domain.model.Task;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.application.edit.TaskEditReferenceData;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModel;

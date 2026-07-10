@@ -2,10 +2,10 @@ package com.autosecretary.features.task.ui.edit;
 
 import com.autosecretary.shared.Period;
 import com.autosecretary.shared.ui.DialogValidation;
-import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskCore;
-import com.autosecretary.features.task.data.TaskPrefSlot;
-import com.autosecretary.features.task.data.TaskPrefSlotFactory;
+import com.autosecretary.features.task.domain.model.Task;
+import com.autosecretary.features.task.domain.model.TaskCore;
+import com.autosecretary.features.task.domain.model.TaskPrefSlot;
+import com.autosecretary.features.task.domain.model.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.edit.internal.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;

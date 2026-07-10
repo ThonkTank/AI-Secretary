@@ -2,9 +2,9 @@ package com.autosecretary.features.task.application.internal.completion;
 
 import com.autosecretary.shared.WidgetRefreshNotifier;
 import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
-import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.domain.model.Task;
 import com.autosecretary.features.task.data.TaskDao;
-import com.autosecretary.features.task.data.TaskPlannedMeal;
+import com.autosecretary.features.task.domain.model.TaskPlannedMeal;
 import com.autosecretary.features.task.domain.TaskMealCompletionRequest;
 import com.autosecretary.features.task.domain.TaskMealCompletionService;
 

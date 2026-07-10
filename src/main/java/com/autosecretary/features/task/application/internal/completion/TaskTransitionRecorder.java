@@ -3,7 +3,7 @@ package com.autosecretary.features.task.application.internal.completion;
 import android.util.Log;
 
 import com.autosecretary.features.task.data.TaskDao;
-import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.domain.model.TaskSlot;
 import com.autosecretary.features.task.data.TaskTransitionStatDao;
 
 import java.time.LocalDateTime;

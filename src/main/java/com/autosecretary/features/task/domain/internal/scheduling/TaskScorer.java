@@ -1,9 +1,9 @@
 package com.autosecretary.features.task.domain.internal.scheduling;
 
-import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskCore;
-import com.autosecretary.features.task.data.TaskPrefSlot;
-import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.domain.model.Task;
+import com.autosecretary.features.task.domain.model.TaskCore;
+import com.autosecretary.features.task.domain.model.TaskPrefSlot;
+import com.autosecretary.features.task.domain.model.TaskSlot;
 import com.autosecretary.features.task.domain.scheduling.TaskBudgetEligibilityService;
 import com.autosecretary.features.task.domain.scheduling.TaskPlanningState;
 import com.autosecretary.features.task.domain.scheduling.TransitionStat;
@@ -603,7 +603,7 @@ final class TaskScorer {
      *
      * <p><b>Day-constraint semantics:</b>
      * <ul>
-     *   <li>A {@link com.autosecretary.features.task.data.TaskPrefSlot} imposes a day constraint
+     *   <li>A {@link com.autosecretary.features.task.domain.model.TaskPrefSlot} imposes a day constraint
      *       when its {@code days} set is non-null and non-empty. Such a slot only applies on
      *       the listed days of the week.</li>
      *   <li>If <em>any</em> pref slot has day constraints ({@code hasDayConstraints == true})

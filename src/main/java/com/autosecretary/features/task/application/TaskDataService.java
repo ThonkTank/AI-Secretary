@@ -4,7 +4,7 @@ import com.autosecretary.features.meal.domain.MealPlan;
 import com.autosecretary.features.meal.domain.MealRepository;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
-import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.domain.model.Task;
 import com.autosecretary.features.task.data.TaskDao;
 
 import java.util.List;
@@ -59,7 +59,7 @@ public class TaskDataService {
      * Loads a single task by its UUID.
      *
      * @param id       the task UUID
-     * @param onLoaded receives the loaded {@link com.autosecretary.features.task.data.Task}
+     * @param onLoaded receives the loaded {@link com.autosecretary.features.task.domain.model.Task}
      *                 on the callback dispatcher thread, or {@code null} if not found
      */
     public void loadTask(String id, Consumer<Task> onLoaded) {

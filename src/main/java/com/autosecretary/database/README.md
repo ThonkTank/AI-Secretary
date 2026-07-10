@@ -21,12 +21,15 @@ app/AppCompositionRoot  ──creates──▶  AppDatabase.getInstance()
                    features/task/data   features/budget/data/dao
 ```
 
-`AppDatabase` declares all Room entities and DAO abstract methods. Feature-level DAOs (e.g., `TaskDao`, `BudgetTransactionDao`) define queries; this package only wires them together.
+`AppDatabase` declares all Room entities and DAO abstract methods. Task model entities live in
+`features/task/domain/model/` because they are domain-owned; task DAOs stay in
+`features/task/data/`. Feature-level DAOs (e.g., `TaskDao`, `BudgetTransactionDao`) define
+queries; this package only wires them together.
 
 ## Key design decisions
 
 - **No destructive fallback as default.** The app stores real user data, so schema changes must preserve data.
-- **DB version 24.** Bump the version number in `@Database(version = ...)` for any schema change.
+- **DB version 27.** Bump the version number in `@Database(version = ...)` for any schema change.
 - **Schema changes require migrations.** Add compatible Room migrations for every version jump.
 - **Single-threaded access.** All database calls run on `AppCompositionRoot.getDbExecutor()` — a single-threaded `ExecutorService`. File and network work runs on `getIoExecutor()`. Results post to the main thread via `Handler`.
 - **Lifecycle ownership.** Production calls to `AppDatabase.getInstance()` and `AppDatabase.closeAndReset()` belong to `AppCompositionRoot`; restore/reset services use its lifecycle interface instead of touching the singleton directly.

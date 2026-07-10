@@ -1,6 +1,6 @@
 package com.autosecretary.features.task.domain.scheduling;
 
-import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.domain.model.Task;
 
 /**
  * Domain contract used by task scheduling to decide whether a task's budget requirement can be met.

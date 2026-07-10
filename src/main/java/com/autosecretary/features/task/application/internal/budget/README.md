@@ -97,7 +97,7 @@ For example:
 
 - [Task Budget Integration in CLAUDE.md](../../../../../../CLAUDE.md) — Product decisions and integration overview
 - [BudgetRepository interface](../../../../budget/domain/BudgetRepository.java) — Budget data access contract
-- [Task Budget Fields](../../../data/Task.java) — TaskCore.budgetRequiredCents, budgetAccountId, budgetCategoryId
+- [Task Budget Fields](../../../domain/model/TaskCore.java) — TaskCore.budgetRequiredCents, budgetAccountId, budgetCategoryId
 
 ## Implementation Notes
 

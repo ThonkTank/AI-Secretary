@@ -1,7 +1,7 @@
 package com.autosecretary.features.task.application.internal.budget;
 
 import com.autosecretary.features.budget.domain.BudgetRepository;
-import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.domain.model.Task;
 
 import java.time.LocalDate;
 

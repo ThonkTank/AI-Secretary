@@ -305,10 +305,16 @@ fun architectureViolations(root: File): List<ArchitectureViolation> {
 
         val imports = architectureImportsOf(source)
         if (source.isFeatureJava && source.segments.contains("domain")) {
+            val isTaskDomainModel = source.featureName == "task"
+                && source.relativePath.contains("/features/task/domain/model/")
             for (importName in imports) {
                 val sameFeatureDataPrefix = "com.autosecretary.features.${source.featureName}.data."
                 val sameFeatureUiPrefix = "com.autosecretary.features.${source.featureName}.ui."
-                val forbidden = importName.startsWith("android.")
+                val allowedTaskModelRoomImport = isTaskDomainModel
+                    && (importName.startsWith("androidx.room.")
+                        || importName.startsWith("androidx.annotation."))
+                val forbidden = !allowedTaskModelRoomImport
+                    && (importName.startsWith("android.")
                     || importName.startsWith("androidx.")
                     || importName.startsWith("com.autosecretary.app.")
                     || importName.startsWith("com.autosecretary.database.")
@@ -316,7 +322,7 @@ fun architectureViolations(root: File): List<ArchitectureViolation> {
                     || importName.contains(".ui.")
                     || (importName.startsWith("com.autosecretary.features.")
                         && importName.contains(".data.")
-                        && !importName.startsWith(sameFeatureDataPrefix))
+                        && !importName.startsWith(sameFeatureDataPrefix)))
                 if (forbidden) {
                     violations.add(ArchitectureViolation(
                         source.relativePath,

@@ -1,7 +1,7 @@
 package com.autosecretary.features.task.domain;
 
-import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskRelation;
+import com.autosecretary.features.task.domain.model.Task;
+import com.autosecretary.features.task.domain.model.TaskRelation;
 import com.autosecretary.util.TreeBuilder;
 
 import java.util.List;

@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.util.Objects;
 import java.util.function.Function;
 import com.autosecretary.shared.Priority;
-import com.autosecretary.features.task.data.TaskCore;
+import com.autosecretary.features.task.domain.model.TaskCore;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 import com.autosecretary.shared.ui.DialogValidation;

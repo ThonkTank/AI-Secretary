@@ -3,7 +3,7 @@ package com.autosecretary.features.task.application;
 import com.autosecretary.features.task.application.internal.completion.TaskCompletionEffects;
 import com.autosecretary.features.task.application.internal.mutations.TaskSlotToggleMutation;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
-import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.domain.model.TaskSlot;
 import java.util.concurrent.ExecutorService;
 
 /**

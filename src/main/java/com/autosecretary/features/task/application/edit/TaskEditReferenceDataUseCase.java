@@ -3,7 +3,7 @@ package com.autosecretary.features.task.application.edit;
 import com.autosecretary.features.budget.domain.BudgetCategory;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.task.application.TaskDataService;
-import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.domain.model.Task;
 
 import java.util.List;
 import java.util.Objects;

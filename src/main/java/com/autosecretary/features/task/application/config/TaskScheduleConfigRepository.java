@@ -1,6 +1,6 @@
 package com.autosecretary.features.task.application.config;
 
-import com.autosecretary.features.task.data.TaskPrefSlotFactory;
+import com.autosecretary.features.task.domain.model.TaskPrefSlotFactory;
 import com.autosecretary.features.task.data.TaskScheduleConfig;
 import com.autosecretary.features.task.data.TaskScheduleConfigDao;
 import com.autosecretary.features.task.domain.scheduling.SchedulingWindowProvider;

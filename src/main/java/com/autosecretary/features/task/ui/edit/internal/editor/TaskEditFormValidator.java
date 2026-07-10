@@ -4,7 +4,7 @@ import android.content.Context;
 import android.widget.EditText;
 
 import com.autosecretary.R;
-import com.autosecretary.features.task.data.TaskCore;
+import com.autosecretary.features.task.domain.model.TaskCore;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 import com.autosecretary.shared.ui.SpinnerHelper;
 

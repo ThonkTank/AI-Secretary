@@ -128,7 +128,7 @@ Legende Status: ⬜ offen · 🔨 in Arbeit · ✅ erledigt
 | 3 | Querschnitt-Typen nach `shared/` verschieben | ✅ |
 | 4 | Schicht-Entkopplung (application↛ui, meal↔task Port) | ✅ |
 | 5 | Threading & DB-Lifecycle-Eigentum | ✅ |
-| 6 | Task-Domänenmodell nach `domain/model/` | ⬜ |
+| 6 | Task-Domänenmodell nach `domain/model/` | ✅ |
 | 7 | Application-Schicht normalisieren (Presenter-Split) | ⬜ |
 | 8 | `checkArchitecture` v2 + Doku-Sync | ⬜ |
 
@@ -238,6 +238,14 @@ Ziel: die fünf Prinzipien werden erzwungen, damit keine Fehlerklasse zurückkeh
 ---
 
 ## Änderungslog
+- Phase 6 abgeschlossen: Task-Domaenenmodell (`Task`, `TaskCore`, Slots,
+  PrefSlots, Relationen, Prerequisites, PlannedMeals und Factory) nach
+  `features/task/domain/model/` verschoben, `TaskDao`/`AppDatabase`/`Converters`
+  auf die Domain-Modelltypen verdrahtet, `data/` auf DAO-/Config-/Transition-
+  Persistenz reduziert, Architekturcheck fuer Room-annotierte Task-Domain-
+  Modelle eng angepasst, Schema-Snapshot-Test fuer Task-Tabellen/Spalten/
+  Indizes/FKs ergaenzt, Doku und DB-Version-Sync aktualisiert; Erfolgs-
+  Re-Review PASS; Abschluss-Gate gruen.
 - Phase 5 abgeschlossen: `AppCompositionRoot` auf `dbExecutor`/`ioExecutor`
   umgestellt, I/O-Klassen synchron/executor-frei gehalten, Budget-Import in
   DB-Setup/I-O-Parse/DB-Abschluss zerlegt, PDF-Kategorie-Snapshot und

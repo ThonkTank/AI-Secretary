@@ -1,9 +1,9 @@
 package com.autosecretary.features.task.ui.edit.internal;
 
-import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskCore;
-import com.autosecretary.features.task.data.TaskPrefSlot;
-import com.autosecretary.features.task.data.TaskRelation;
+import com.autosecretary.features.task.domain.model.Task;
+import com.autosecretary.features.task.domain.model.TaskCore;
+import com.autosecretary.features.task.domain.model.TaskPrefSlot;
+import com.autosecretary.features.task.domain.model.TaskRelation;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;

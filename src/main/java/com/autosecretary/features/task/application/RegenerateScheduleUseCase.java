@@ -1,6 +1,6 @@
 package com.autosecretary.features.task.application;
 
-import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.domain.model.Task;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
 import com.autosecretary.features.task.domain.scheduling.TaskPlanningState;

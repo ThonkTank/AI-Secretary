@@ -3,10 +3,10 @@ package com.autosecretary.features.task.application.internal.mutations;
 import android.util.Log;
 
 import com.autosecretary.features.task.application.internal.completion.TaskTransitionRecorder;
-import com.autosecretary.features.task.data.Task;
+import com.autosecretary.features.task.domain.model.Task;
 import com.autosecretary.features.task.data.TaskDao;
-import com.autosecretary.features.task.data.TaskPrerequisite;
-import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.domain.model.TaskPrerequisite;
+import com.autosecretary.features.task.domain.model.TaskSlot;
 import com.autosecretary.features.task.domain.TaskCompletionService;
 import com.autosecretary.features.task.domain.TaskCompletionService.CompletionPhase;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;

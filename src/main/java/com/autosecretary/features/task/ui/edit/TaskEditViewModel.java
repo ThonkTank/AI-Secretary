@@ -7,8 +7,8 @@ import androidx.lifecycle.ViewModel;
 import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.edit.TaskEditReferenceData;
 import com.autosecretary.features.task.application.edit.TaskEditReferenceDataUseCase;
-import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskPrefSlotFactory;
+import com.autosecretary.features.task.domain.model.Task;
+import com.autosecretary.features.task.domain.model.TaskPrefSlotFactory;
 import com.autosecretary.features.task.ui.edit.internal.TaskEditStateMapper;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
 

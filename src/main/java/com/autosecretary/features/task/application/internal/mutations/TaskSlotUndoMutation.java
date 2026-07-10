@@ -2,10 +2,10 @@ package com.autosecretary.features.task.application.internal.mutations;
 
 import android.util.Log;
 
-import com.autosecretary.features.task.data.Task;
-import com.autosecretary.features.task.data.TaskCore;
+import com.autosecretary.features.task.domain.model.Task;
+import com.autosecretary.features.task.domain.model.TaskCore;
 import com.autosecretary.features.task.data.TaskDao;
-import com.autosecretary.features.task.data.TaskSlot;
+import com.autosecretary.features.task.domain.model.TaskSlot;
 
 import java.time.Duration;
 import java.time.LocalDate;

@@ -12,7 +12,7 @@ Status: **abgeschlossen**.
    - Package auf `com.autosecretary.shared` ändern.
    - Alle Importe aktualisieren:
      - `database/Converters`
-     - `features/task/data/TaskCore`
+     - `features/task/domain/model/TaskCore`
      - Meal-Domain, Meal-Data, Meal-Application, Meal-UI und Tests.
    - Keine Enum-Werte, Labels, Icons oder `toString()` ändern; Room-Konvertierung bleibt
      String/Enum-name-basiert und damit schemaidentisch.
