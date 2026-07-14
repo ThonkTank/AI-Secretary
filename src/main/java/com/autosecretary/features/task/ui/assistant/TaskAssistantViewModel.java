@@ -10,9 +10,12 @@ import com.autosecretary.features.task.application.assistant.AssistantChatUseCas
 import com.autosecretary.features.task.application.assistant.AssistantProposals.PendingProposal;
 import com.autosecretary.features.task.application.assistant.ConfirmAssistantProposalUseCase;
 import com.autosecretary.features.task.application.UndoTaskChangesUseCase;
+import com.autosecretary.features.task.ui.assistant.AssistantUiState.ExchangeItem;
+import com.autosecretary.features.task.ui.assistant.AssistantUiState.ProposalItem;
+import com.autosecretary.features.task.ui.assistant.AssistantUiState.ProposalStatus;
+import com.autosecretary.features.task.ui.assistant.AssistantUiState.Status;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -20,105 +23,32 @@ import java.util.function.Consumer;
  * ViewModel for the assistant tab. Delegates to the chat/confirm/undo use-cases and keeps a
  * session-scoped chat history of user→assistant exchanges. The history and the underlying
  * conversation live as long as the ViewModel (activity-scoped), so they survive tab switches and
- * die with the session. Holds no persistence, view, or {@code org.json} state itself.
+ * die with the session.
+ *
+ * <p>The whole screen renders from one immutable {@link AssistantUiState} published on a single
+ * {@link LiveData}. Every event replaces the state; the view diffs it. Draft text and the attachment
+ * bytes are held outside the state (draft to avoid a TextWatcher feedback loop, bytes because they
+ * are not render data); only the attachment's display name enters the state.
  */
 public class TaskAssistantViewModel extends ViewModel {
 
-    /** Outcome of one exchange as shown in the chat history. */
-    public enum Status { PENDING, ANSWERED, ERROR }
-
-    /** Status of a single parked proposal card. */
-    public enum ProposalStatus { PENDING, APPLIED }
-
-    /** A parked proposal plus its mutable apply-state. */
-    public static final class ProposalHandle {
-        private final PendingProposal proposal;
-        private ProposalStatus status = ProposalStatus.PENDING;
-
-        ProposalHandle(PendingProposal proposal) {
-            this.proposal = proposal;
-        }
-
-        public PendingProposal proposal() {
-            return proposal;
-        }
-
-        public ProposalStatus status() {
-            return status;
-        }
-    }
-
     /** File attachment currently staged in the assistant input. */
-    public record PendingAttachment(String displayName, String mimeType, byte[] bytes) {
-    }
-
-    /** One entry in the chat history: a user message and the assistant's answer (or an error). */
-    public static final class AssistantExchange {
-        private final String userText;
-        private final String attachmentName;
-        private final String thinkingText;
-        private final String answerText;
-        private final List<ProposalHandle> proposals;
-        private final String errorMessage;
-        private final Status status;
-
-        AssistantExchange(String userText, String attachmentName, String thinkingText, String answerText,
-                          List<ProposalHandle> proposals, String errorMessage, Status status) {
-            this.userText = userText;
-            this.attachmentName = attachmentName;
-            this.thinkingText = thinkingText;
-            this.answerText = answerText;
-            this.proposals = proposals;
-            this.errorMessage = errorMessage;
-            this.status = status;
-        }
-
-        public String userText() {
-            return userText;
-        }
-
-        /** The attached file's display name, or {@code null} if none was attached. */
-        public String attachmentName() {
-            return attachmentName;
-        }
-
-        /** The assistant's thinking summary; {@code null}/blank when thinking was off or empty. */
-        public String thinkingText() {
-            return thinkingText;
-        }
-
-        public String answerText() {
-            return answerText;
-        }
-
-        /** The parked proposals for this exchange (never null; empty when the assistant only answered). */
-        public List<ProposalHandle> proposals() {
-            return proposals;
-        }
-
-        /** The error message; {@code null} unless {@link #status()} is {@link Status#ERROR}. */
-        public String errorMessage() {
-            return errorMessage;
-        }
-
-        public Status status() {
-            return status;
-        }
+    private record PendingAttachment(String displayName, String mimeType, byte[] bytes) {
     }
 
     private final AssistantChatUseCase chatUseCase;
     private final ConfirmAssistantProposalUseCase confirmUseCase;
     private final UndoTaskChangesUseCase undoUseCase;
-    private final List<AssistantExchange> history = new ArrayList<>();
+
+    private final List<ExchangeItem> history = new ArrayList<>();
     private boolean thinkingEnabled = true;
     private String draftText = "";
     private PendingAttachment pendingAttachment;
     private boolean sending;
-    private AssistantExchange pendingExchange;
-    private AssistantExchange latestExchange;
-    private String pendingProgressText;
-    private final MutableLiveData<Integer> stateVersion = new MutableLiveData<>(0);
-    private int stateCounter;
+    private long pendingId = -1;
+    private long nextId;
+
+    private final MutableLiveData<AssistantUiState> state = new MutableLiveData<>();
 
     public TaskAssistantViewModel(AssistantChatUseCase chatUseCase,
                                   ConfirmAssistantProposalUseCase confirmUseCase,
@@ -126,11 +56,12 @@ public class TaskAssistantViewModel extends ViewModel {
         this.chatUseCase = chatUseCase;
         this.confirmUseCase = confirmUseCase;
         this.undoUseCase = undoUseCase;
+        publish();
     }
 
-    /** The session chat history, oldest first. */
-    public List<AssistantExchange> getHistory() {
-        return Collections.unmodifiableList(history);
+    /** The single immutable render state of the whole screen. */
+    public LiveData<AssistantUiState> getState() {
+        return state;
     }
 
     public boolean isThinkingEnabled() {
@@ -141,10 +72,6 @@ public class TaskAssistantViewModel extends ViewModel {
         this.thinkingEnabled = enabled;
     }
 
-    public LiveData<Integer> getStateVersion() {
-        return stateVersion;
-    }
-
     public String getDraftText() {
         return draftText;
     }
@@ -153,57 +80,44 @@ public class TaskAssistantViewModel extends ViewModel {
         this.draftText = text != null ? text : "";
     }
 
-    public PendingAttachment getPendingAttachment() {
-        return pendingAttachment;
+    public boolean hasPendingAttachment() {
+        return pendingAttachment != null;
     }
 
     public void setPendingAttachment(String displayName, String mimeType, byte[] bytes) {
         pendingAttachment = new PendingAttachment(displayName, mimeType, bytes);
-        notifyStateChanged();
+        publish();
     }
 
     public void clearPendingAttachment() {
         pendingAttachment = null;
-        notifyStateChanged();
+        publish();
     }
 
     public boolean isSending() {
         return sending;
     }
 
-    /**
-     * The live progress label for the in-flight exchange (e.g. "Prüfe vorhandene Tasks…"), or
-     * {@code null} when there is nothing more specific than the default pending label to show.
-     */
-    public String getPendingProgressText() {
-        return pendingProgressText;
-    }
-
-    public AssistantExchange latestExchange() {
-        return latestExchange;
-    }
-
-    public boolean sendDraft(Consumer<AssistantExchange> onResult, Consumer<AssistantExchange> onError) {
+    public boolean sendDraft() {
         PendingAttachment attachment = pendingAttachment;
         boolean accepted = send(draftText,
                 attachment != null ? attachment.displayName() : null,
                 attachment != null ? attachment.mimeType() : null,
-                attachment != null ? attachment.bytes() : null,
-                onResult, onError);
+                attachment != null ? attachment.bytes() : null);
         if (accepted) {
             draftText = "";
             pendingAttachment = null;
-            notifyStateChanged();
+            publish();
         }
         return accepted;
     }
 
     /**
-     * Sends a user message (optionally with a file attachment). On success or failure a new exchange
-     * is appended to the history and delivered to the caller so the UI can render it.
+     * Sends a user message (optionally with a file attachment). A pending exchange is appended
+     * immediately; on completion it is replaced with the answer or an error. Rejected (returns
+     * {@code false}) while a previous send is still in flight.
      */
-    public boolean send(String userText, String attachmentName, String attachmentMime, byte[] attachmentBytes,
-                        Consumer<AssistantExchange> onResult, Consumer<AssistantExchange> onError) {
+    public boolean send(String userText, String attachmentName, String attachmentMime, byte[] attachmentBytes) {
         if (sending) {
             return false;
         }
@@ -212,74 +126,97 @@ public class TaskAssistantViewModel extends ViewModel {
                 ? new Attachment(attachmentName, attachmentMime, attachmentBytes)
                 : null;
 
-        AssistantExchange pending = new AssistantExchange(safeUserText, attachmentName,
-                null, null, new ArrayList<>(), null, Status.PENDING);
+        long id = nextId++;
+        history.add(new ExchangeItem(id, safeUserText, attachmentName,
+                null, null, null, List.of(), null, Status.PENDING));
         sending = true;
-        pendingExchange = pending;
-        latestExchange = pending;
-        history.add(pending);
-        notifyStateChanged();
+        pendingId = id;
+        publish();
 
         try {
             chatUseCase.send(safeUserText, attachment, thinkingEnabled,
-                    turn -> {
-                        AssistantExchange exchange = answered(safeUserText, attachmentName, turn);
-                        completePending(pending, exchange);
-                        onResult.accept(exchange);
-                    },
-                    message -> {
-                        AssistantExchange exchange = new AssistantExchange(safeUserText, attachmentName,
-                                null, null, new ArrayList<>(), message, Status.ERROR);
-                        completePending(pending, exchange);
-                        onError.accept(exchange);
-                    },
-                    progressText -> {
-                        if (sending && pendingExchange == pending) {
-                            pendingProgressText = progressText;
-                            notifyStateChanged();
-                        }
-                    });
+                    turn -> completePending(id, answered(id, safeUserText, attachmentName, turn)),
+                    message -> completePending(id, new ExchangeItem(id, safeUserText, attachmentName,
+                            null, null, null, List.of(), message, Status.ERROR)),
+                    progressText -> updateProgress(id, progressText));
         } catch (RuntimeException e) {
-            AssistantExchange exchange = new AssistantExchange(safeUserText, attachmentName,
-                    null, null, new ArrayList<>(), e.getMessage(), Status.ERROR);
-            completePending(pending, exchange);
-            onError.accept(exchange);
+            completePending(id, new ExchangeItem(id, safeUserText, attachmentName,
+                    null, null, null, List.of(), e.getMessage(), Status.ERROR));
         }
         return true;
     }
 
-    private static AssistantExchange answered(String userText, String attachmentName, AssistantTurn turn) {
-        List<ProposalHandle> handles = new ArrayList<>();
+    private static ExchangeItem answered(long id, String userText, String attachmentName, AssistantTurn turn) {
+        List<ProposalItem> proposals = new ArrayList<>();
         for (PendingProposal proposal : turn.proposals()) {
-            handles.add(new ProposalHandle(proposal));
+            proposals.add(new ProposalItem(proposal, ProposalStatus.PENDING));
         }
-        return new AssistantExchange(userText, attachmentName, turn.thinkingText(), turn.answerText(),
-                handles, null, Status.ANSWERED);
+        return new ExchangeItem(id, userText, attachmentName, turn.thinkingText(), turn.answerText(),
+                null, List.copyOf(proposals), null, Status.ANSWERED);
     }
 
-    private void completePending(AssistantExchange pending, AssistantExchange completed) {
-        if (pendingExchange != pending) {
+    private void updateProgress(long id, String progressText) {
+        if (!sending || pendingId != id) {
             return;
         }
-        int index = history.indexOf(pending);
+        int index = indexOf(id);
+        if (index < 0) {
+            return;
+        }
+        ExchangeItem pending = history.get(index);
+        history.set(index, new ExchangeItem(pending.id(), pending.userText(), pending.attachmentName(),
+                null, null, progressText, List.of(), null, Status.PENDING));
+        publish();
+    }
+
+    private void completePending(long id, ExchangeItem completed) {
+        if (pendingId != id) {
+            return;
+        }
+        int index = indexOf(id);
         if (index >= 0) {
             history.set(index, completed);
         } else {
             history.add(completed);
         }
         sending = false;
-        pendingExchange = null;
-        pendingProgressText = null;
-        latestExchange = completed;
-        notifyStateChanged();
+        pendingId = -1;
+        publish();
     }
 
-    /** Confirms (applies) a parked proposal; marks it {@link ProposalStatus#APPLIED} on success. */
-    public void confirm(ProposalHandle handle, Consumer<String> onApplied, Consumer<String> onError) {
-        confirmUseCase.confirm(handle.proposal(), summary -> {
-            handle.status = ProposalStatus.APPLIED;
+    /**
+     * Confirms (applies) the parked proposal at {@code proposalIndex} of the exchange with
+     * {@code exchangeId}; on success the proposal is replaced with an {@link ProposalStatus#APPLIED}
+     * copy and the state is republished.
+     */
+    public void confirm(long exchangeId, int proposalIndex, Consumer<String> onApplied, Consumer<String> onError) {
+        int index = indexOf(exchangeId);
+        if (index < 0 || proposalIndex < 0 || proposalIndex >= history.get(index).proposals().size()) {
+            return;
+        }
+        PendingProposal proposal = history.get(index).proposals().get(proposalIndex).proposal();
+        confirmUseCase.confirm(proposal, summary -> {
+            markApplied(exchangeId, proposalIndex);
             onApplied.accept(summary);
         }, onError);
+    }
+
+    private void markApplied(long exchangeId, int proposalIndex) {
+        int index = indexOf(exchangeId);
+        if (index < 0) {
+            return;
+        }
+        ExchangeItem exchange = history.get(index);
+        List<ProposalItem> proposals = new ArrayList<>(exchange.proposals());
+        if (proposalIndex >= proposals.size()) {
+            return;
+        }
+        proposals.set(proposalIndex,
+                new ProposalItem(proposals.get(proposalIndex).proposal(), ProposalStatus.APPLIED));
+        history.set(index, new ExchangeItem(exchange.id(), exchange.userText(), exchange.attachmentName(),
+                exchange.thinkingText(), exchange.answerText(), exchange.progressText(),
+                List.copyOf(proposals), exchange.errorMessage(), exchange.status()));
+        publish();
     }
 
     /** Clears the on-screen history and the underlying conversation. */
@@ -291,8 +228,7 @@ public class TaskAssistantViewModel extends ViewModel {
         history.clear();
         draftText = "";
         pendingAttachment = null;
-        latestExchange = null;
-        notifyStateChanged();
+        publish();
         return true;
     }
 
@@ -301,17 +237,27 @@ public class TaskAssistantViewModel extends ViewModel {
             onDone.accept(false);
             return;
         }
-        undoUseCase.undoLast(onDone);
+        undoUseCase.undoLast(undone -> {
+            publish(); // hasUndo may have changed
+            onDone.accept(undone);
+        });
     }
 
     public boolean hasUndo() {
-        if (undoUseCase == null) {
-            return false;
-        }
-        return undoUseCase.hasUndo();
+        return undoUseCase != null && undoUseCase.hasUndo();
     }
 
-    private void notifyStateChanged() {
-        stateVersion.setValue(++stateCounter);
+    private int indexOf(long id) {
+        for (int i = 0; i < history.size(); i++) {
+            if (history.get(i).id() == id) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void publish() {
+        state.setValue(new AssistantUiState(List.copyOf(history), sending,
+                pendingAttachment != null ? pendingAttachment.displayName() : null, hasUndo()));
     }
 }

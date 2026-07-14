@@ -28,11 +28,10 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModel.AssistantExchange;
-import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModel.PendingAttachment;
-import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModel.ProposalHandle;
-import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModel.ProposalStatus;
-import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModel.Status;
+import com.autosecretary.features.task.ui.assistant.AssistantUiState.ExchangeItem;
+import com.autosecretary.features.task.ui.assistant.AssistantUiState.ProposalItem;
+import com.autosecretary.features.task.ui.assistant.AssistantUiState.ProposalStatus;
+import com.autosecretary.features.task.ui.assistant.AssistantUiState.Status;
 import com.autosecretary.features.task.ui.list.TaskViewModel;
 import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
 import com.autosecretary.shared.ClaudeApiKeyStore;
@@ -55,9 +54,9 @@ import java.util.concurrent.ExecutorService;
  * proposes appears as a card the user confirms with "Übernehmen"; task changes stay undoable via
  * "Rückgängig".
  *
- * <p>Everything runs through {@link TaskAssistantViewModel} (activity-scoped, so its chat history
- * survives tab switches). When no Claude API key is configured, the screen shows a hint pointing to
- * settings instead of an error toast.
+ * <p>The whole screen renders from one {@link AssistantUiState} observed off
+ * {@link TaskAssistantViewModel} (activity-scoped, so its chat history survives tab switches). When
+ * no Claude API key is configured, the screen shows a hint pointing to settings instead of erroring.
  */
 public class TaskAssistantFragment extends Fragment {
 
@@ -76,6 +75,7 @@ public class TaskAssistantFragment extends Fragment {
     private ContentDocumentReader contentDocumentReader;
     private ExecutorService ioExecutor;
     private ClaudeModelStore modelStore;
+    private int lastExchangeCount;
 
     private ScrollView historyScroll;
     private ViewGroup historyContainer;
@@ -132,7 +132,7 @@ public class TaskAssistantFragment extends Fragment {
         undoButton.setOnClickListener(v -> undoLast());
         newChatButton.setOnClickListener(v -> startNewChat());
         attachButton.setOnClickListener(v -> attachmentLauncher.launch(ATTACH_MIME_TYPES));
-        attachmentClear.setOnClickListener(v -> clearAttachment());
+        attachmentClear.setOnClickListener(v -> viewModel.clearPendingAttachment());
         instructionView.addTextChangedListener(new SimpleTextWatcher() {
             @Override
             public void afterTextChanged(Editable s) {
@@ -143,16 +143,17 @@ public class TaskAssistantFragment extends Fragment {
         setupModelSpinner();
         thinkingSwitch.setChecked(viewModel.isThinkingEnabled());
         thinkingSwitch.setOnCheckedChangeListener((button, checked) -> viewModel.setThinkingEnabled(checked));
-        viewModel.getStateVersion().observe(getViewLifecycleOwner(), ignored -> renderAssistantState());
-
-        renderAssistantState();
+        viewModel.getState().observe(getViewLifecycleOwner(), this::render);
     }
 
     @Override
     public void onResume() {
         super.onResume();
         // The user may configure the key in settings and return without the fragment being recreated.
-        renderAssistantState();
+        AssistantUiState state = viewModel.getState().getValue();
+        if (state != null) {
+            render(state);
+        }
     }
 
     // ---- Model picker ------------------------------------------------------
@@ -218,22 +219,21 @@ public class TaskAssistantFragment extends Fragment {
         return new ClaudeApiKeyStore(requireContext()).getApiKey() != null;
     }
 
-    private void refreshKeyState() {
+    private void refreshChrome(AssistantUiState state) {
         boolean hasKey = hasApiKey();
-        boolean idle = !viewModel.isSending();
+        boolean idle = !state.sending();
         instructionView.setEnabled(hasKey && idle);
         attachButton.setEnabled(hasKey && idle);
         newChatButton.setEnabled(idle);
         // Undo is a header icon shown only when there is a task change to undo.
-        boolean canUndo = hasKey && viewModel.hasUndo();
+        boolean canUndo = hasKey && state.hasUndo();
         undoButton.setVisibility(canUndo ? View.VISIBLE : View.GONE);
         undoButton.setEnabled(canUndo && idle);
-        setLoading(hasKey, viewModel.isSending());
-        updateEmptyState(hasKey);
+        setLoading(hasKey, state.sending());
+        updateEmptyState(hasKey, !state.exchanges().isEmpty());
     }
 
-    private void updateEmptyState(boolean hasKey) {
-        boolean hasHistory = !viewModel.getHistory().isEmpty();
+    private void updateEmptyState(boolean hasKey, boolean hasHistory) {
         if (!hasKey) {
             emptyStateTitle.setText(R.string.task_assistant_no_key_title);
             emptyStateSubtitle.setText(R.string.task_assistant_no_key_subtitle);
@@ -281,9 +281,6 @@ public class TaskAssistantFragment extends Fragment {
             return;
         }
         viewModel.setPendingAttachment(contents.displayName(), contents.mimeType(), contents.bytes());
-        if (isAdded()) {
-            renderAssistantState();
-        }
     }
 
     private static boolean isSupportedAttachment(DocumentContents contents) {
@@ -295,16 +292,14 @@ public class TaskAssistantFragment extends Fragment {
         return mime.equals("application/pdf") || mime.startsWith("text/");
     }
 
-    private void clearAttachment() {
-        viewModel.clearPendingAttachment();
-        renderAssistantState();
-    }
-
     // ---- Sending -----------------------------------------------------------
 
     private void sendMessage() {
         if (!hasApiKey()) {
-            refreshKeyState();
+            AssistantUiState state = viewModel.getState().getValue();
+            if (state != null) {
+                refreshChrome(state);
+            }
             return;
         }
         if (viewModel.isSending()) {
@@ -313,42 +308,19 @@ public class TaskAssistantFragment extends Fragment {
         }
         String text = instructionView.getText().toString().trim();
         viewModel.setDraftText(text);
-        PendingAttachment attachment = viewModel.getPendingAttachment();
-        if (text.isEmpty() && attachment == null) {
+        if (text.isEmpty() && !viewModel.hasPendingAttachment()) {
             Toast.makeText(requireContext(), R.string.task_assistant_empty_instruction, Toast.LENGTH_SHORT).show();
             return;
         }
-        boolean accepted = viewModel.sendDraft(this::onAnswered, this::onSendError);
-        if (!accepted) {
+        if (!viewModel.sendDraft()) {
             Toast.makeText(requireContext(), R.string.task_assistant_send_in_progress, Toast.LENGTH_SHORT).show();
-            return;
         }
-        renderAssistantState();
-        scrollToBottom();
-    }
-
-    private void onAnswered(AssistantExchange exchange) {
-        if (!isAdded()) {
-            return;
-        }
-        renderAssistantState();
-        scrollToBottom();
-    }
-
-    private void onSendError(AssistantExchange exchange) {
-        if (!isAdded()) {
-            return;
-        }
-        renderAssistantState();
-        scrollToBottom();
     }
 
     private void startNewChat() {
         if (!viewModel.newChat()) {
             Toast.makeText(requireContext(), R.string.task_assistant_send_in_progress, Toast.LENGTH_SHORT).show();
-            return;
         }
-        renderAssistantState();
     }
 
     private void undoLast() {
@@ -361,9 +333,7 @@ public class TaskAssistantFragment extends Fragment {
                     Toast.LENGTH_SHORT).show();
             if (undone) {
                 taskViewModel.refreshList();
-                renderHistory();
             }
-            refreshKeyState();
         });
     }
 
@@ -378,43 +348,45 @@ public class TaskAssistantFragment extends Fragment {
 
     // ---- Rendering ---------------------------------------------------------
 
-    private void renderHistory() {
+    private void render(AssistantUiState state) {
+        if (!isAdded()) {
+            return;
+        }
+        renderInputState(state);
+        renderHistory(state);
+        refreshChrome(state);
+        if (state.exchanges().size() != lastExchangeCount) {
+            lastExchangeCount = state.exchanges().size();
+            scrollToBottom();
+        }
+    }
+
+    private void renderInputState(AssistantUiState state) {
+        String draft = viewModel.getDraftText();
+        if (!instructionView.getText().toString().equals(draft)) {
+            instructionView.setText(draft);
+            instructionView.setSelection(instructionView.getText().length());
+        }
+        if (state.attachmentName() == null) {
+            attachmentChip.setVisibility(View.GONE);
+            attachmentName.setText("");
+        } else {
+            attachmentName.setText(getString(R.string.task_assistant_attachment_label, state.attachmentName()));
+            attachmentChip.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void renderHistory(AssistantUiState state) {
         historyContainer.removeAllViews();
-        List<AssistantExchange> history = viewModel.getHistory();
         LayoutInflater inflater = LayoutInflater.from(requireContext());
-        for (AssistantExchange exchange : history) {
+        for (ExchangeItem exchange : state.exchanges()) {
             View item = inflater.inflate(R.layout.task_assistant_exchange_item, historyContainer, false);
             bindExchange(inflater, item, exchange);
             historyContainer.addView(item);
         }
     }
 
-    private void renderAssistantState() {
-        if (!isAdded()) {
-            return;
-        }
-        renderInputState();
-        renderHistory();
-        refreshKeyState();
-    }
-
-    private void renderInputState() {
-        String draft = viewModel.getDraftText();
-        if (!instructionView.getText().toString().equals(draft)) {
-            instructionView.setText(draft);
-            instructionView.setSelection(instructionView.getText().length());
-        }
-        PendingAttachment attachment = viewModel.getPendingAttachment();
-        if (attachment == null) {
-            attachmentChip.setVisibility(View.GONE);
-            attachmentName.setText("");
-        } else {
-            attachmentName.setText("📎 " + attachment.displayName());
-            attachmentChip.setVisibility(View.VISIBLE);
-        }
-    }
-
-    private void bindExchange(LayoutInflater inflater, View item, AssistantExchange exchange) {
+    private void bindExchange(LayoutInflater inflater, View item, ExchangeItem exchange) {
         TextView userText = item.findViewById(R.id.ExchangeUserText);
         TextView attachment = item.findViewById(R.id.ExchangeAttachment);
         TextView thinkingToggle = item.findViewById(R.id.ExchangeThinkingToggle);
@@ -425,7 +397,7 @@ public class TaskAssistantFragment extends Fragment {
 
         userText.setText(exchange.userText());
         if (exchange.attachmentName() != null) {
-            attachment.setText("📎 " + exchange.attachmentName());
+            attachment.setText(getString(R.string.task_assistant_attachment_label, exchange.attachmentName()));
             attachment.setVisibility(View.VISIBLE);
         } else {
             attachment.setVisibility(View.GONE);
@@ -437,7 +409,7 @@ public class TaskAssistantFragment extends Fragment {
             proposals.removeAllViews();
             // The progress channel streams the model's live thinking; show it in the roomy, selectable
             // thinking body and keep the status line as a steady "denkt nach"-style label.
-            String progress = viewModel.getPendingProgressText();
+            String progress = exchange.progressText();
             if (progress != null && !progress.isBlank()) {
                 thinkingBody.setText(progress);
                 thinkingBody.setVisibility(View.VISIBLE);
@@ -471,8 +443,9 @@ public class TaskAssistantFragment extends Fragment {
         }
 
         proposals.removeAllViews();
-        for (ProposalHandle handle : exchange.proposals()) {
-            proposals.addView(buildProposalCard(inflater, proposals, handle));
+        List<ProposalItem> items = exchange.proposals();
+        for (int i = 0; i < items.size(); i++) {
+            proposals.addView(buildProposalCard(inflater, proposals, exchange.id(), i, items.get(i)));
         }
         status.setVisibility(View.GONE);
     }
@@ -494,30 +467,29 @@ public class TaskAssistantFragment extends Fragment {
         });
     }
 
-    private View buildProposalCard(LayoutInflater inflater, ViewGroup parent, ProposalHandle handle) {
+    private View buildProposalCard(LayoutInflater inflater, ViewGroup parent,
+                                   long exchangeId, int proposalIndex, ProposalItem item) {
         View card = inflater.inflate(R.layout.task_assistant_proposal_card, parent, false);
         TextView summary = card.findViewById(R.id.ProposalSummary);
         Button applyButton = card.findViewById(R.id.ProposalApplyButton);
         TextView status = card.findViewById(R.id.ProposalStatus);
 
-        summary.setText(AssistantProposalFormatter.summary(requireContext(), handle.proposal()));
+        summary.setText(AssistantProposalFormatter.summary(requireContext(), item.proposal()));
 
-        boolean applied = handle.status() == ProposalStatus.APPLIED;
+        boolean applied = item.status() == ProposalStatus.APPLIED;
         applyButton.setVisibility(applied ? View.GONE : View.VISIBLE);
         status.setVisibility(applied ? View.VISIBLE : View.GONE);
-        applyButton.setOnClickListener(applied ? null : v -> confirmProposal(handle));
+        applyButton.setOnClickListener(applied ? null : v -> confirmProposal(exchangeId, proposalIndex));
         return card;
     }
 
-    private void confirmProposal(ProposalHandle handle) {
-        viewModel.confirm(handle, summary -> {
+    private void confirmProposal(long exchangeId, int proposalIndex) {
+        viewModel.confirm(exchangeId, proposalIndex, summary -> {
             if (!isAdded()) {
                 return;
             }
             Toast.makeText(requireContext(), summary, Toast.LENGTH_SHORT).show();
             taskViewModel.refreshList();
-            renderHistory();
-            refreshKeyState();
         }, this::showError);
     }
 

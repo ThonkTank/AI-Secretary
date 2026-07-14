@@ -2,7 +2,7 @@ package com.autosecretary.features.task;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -11,24 +11,24 @@ import com.autosecretary.features.task.application.assistant.AssistantChatUseCas
 import com.autosecretary.features.task.application.assistant.AssistantProposals.PendingProposal;
 import com.autosecretary.features.task.application.assistant.AssistantProposals.RecipesProposal;
 import com.autosecretary.features.task.application.assistant.ConfirmAssistantProposalUseCase;
+import com.autosecretary.features.task.ui.assistant.AssistantUiState;
+import com.autosecretary.features.task.ui.assistant.AssistantUiState.ExchangeItem;
+import com.autosecretary.features.task.ui.assistant.AssistantUiState.ProposalStatus;
+import com.autosecretary.features.task.ui.assistant.AssistantUiState.Status;
 import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModel;
-import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModel.AssistantExchange;
-import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModel.ProposalHandle;
-import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModel.ProposalStatus;
-import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModel.Status;
 import com.autosecretary.testing.AutoSecretaryRobolectricTest;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
 /**
  * Characterizes the assistant screen's session chat history and confirm flow: each send appends an
  * exchange with its parked proposals, confirming a proposal marks it APPLIED, and {@code newChat}
- * clears the history. Uses stub use-cases so no network/DB is exercised.
+ * clears the history. Reads the single immutable {@link AssistantUiState} the ViewModel publishes.
+ * Uses stub use-cases so no network/DB is exercised.
  */
 public final class TaskAssistantHistoryCharacterizationTest extends AutoSecretaryRobolectricTest {
 
@@ -43,34 +43,37 @@ public final class TaskAssistantHistoryCharacterizationTest extends AutoSecretar
         viewModel = new TaskAssistantViewModel(chat, confirm, null);
     }
 
+    private AssistantUiState state() {
+        return viewModel.getState().getValue();
+    }
+
     /** Invariant: two sends leave two exchanges; confirming the first proposal marks it APPLIED. */
     @Test
     public void sendConfirmSendRetainsHistoryAndMarksAppliedProposal() {
-        List<AssistantExchange> answered = new ArrayList<>();
-        viewModel.send("lege ein Rezept an", null, null, null, answered::add, e -> {});
-        assertEquals(1, viewModel.getHistory().size());
-        assertEquals(Status.ANSWERED, viewModel.getHistory().get(0).status());
+        viewModel.send("lege ein Rezept an", null, null, null);
+        assertEquals(1, state().exchanges().size());
+        assertEquals(Status.ANSWERED, state().exchanges().get(0).status());
 
-        ProposalHandle handle = viewModel.getHistory().get(0).proposals().get(0);
-        assertEquals(ProposalStatus.PENDING, handle.status());
+        ExchangeItem first = state().exchanges().get(0);
+        assertEquals(ProposalStatus.PENDING, first.proposals().get(0).status());
 
-        viewModel.confirm(handle, summary -> {}, e -> {});
-        assertEquals(ProposalStatus.APPLIED, handle.status());
+        viewModel.confirm(first.id(), 0, summary -> {}, e -> {});
+        assertEquals(ProposalStatus.APPLIED, state().exchanges().get(0).proposals().get(0).status());
 
-        viewModel.send("und noch eins", null, null, null, answered::add, e -> {});
-        assertEquals(2, viewModel.getHistory().size());
-        assertEquals(ProposalStatus.APPLIED, viewModel.getHistory().get(0).proposals().get(0).status());
-        assertEquals(ProposalStatus.PENDING, viewModel.getHistory().get(1).proposals().get(0).status());
+        viewModel.send("und noch eins", null, null, null);
+        assertEquals(2, state().exchanges().size());
+        assertEquals(ProposalStatus.APPLIED, state().exchanges().get(0).proposals().get(0).status());
+        assertEquals(ProposalStatus.PENDING, state().exchanges().get(1).proposals().get(0).status());
     }
 
     /** Invariant: newChat clears both the on-screen history and the underlying conversation. */
     @Test
     public void newChatClearsHistoryAndConversation() {
-        viewModel.send("hallo", null, null, null, e -> {}, e -> {});
-        assertTrue(!viewModel.getHistory().isEmpty());
+        viewModel.send("hallo", null, null, null);
+        assertFalse(state().exchanges().isEmpty());
 
         viewModel.newChat();
-        assertTrue(viewModel.getHistory().isEmpty());
+        assertTrue(state().exchanges().isEmpty());
         assertTrue("conversation cleared", chat.cleared);
     }
 
@@ -82,26 +85,25 @@ public final class TaskAssistantHistoryCharacterizationTest extends AutoSecretar
         viewModel.setDraftText("Pflege diese Aufgaben ein");
         viewModel.setPendingAttachment("aufgaben.md", "text/markdown", "- [ ] A".getBytes());
 
-        List<AssistantExchange> answered = new ArrayList<>();
-        assertTrue(viewModel.sendDraft(answered::add, e -> {}));
+        assertTrue(viewModel.sendDraft());
 
         assertTrue("send marked in-flight", viewModel.isSending());
+        assertTrue("send marked in-flight in state", state().sending());
         assertEquals("draft cleared after pending exchange is stored", "", viewModel.getDraftText());
-        assertNull("attachment moved into pending exchange", viewModel.getPendingAttachment());
-        assertEquals(1, viewModel.getHistory().size());
-        assertEquals(Status.PENDING, viewModel.getHistory().get(0).status());
-        assertEquals("Pflege diese Aufgaben ein", viewModel.getHistory().get(0).userText());
-        assertEquals("aufgaben.md", viewModel.getHistory().get(0).attachmentName());
+        assertFalse("attachment moved into pending exchange", viewModel.hasPendingAttachment());
+        assertEquals(1, state().exchanges().size());
+        assertEquals(Status.PENDING, state().exchanges().get(0).status());
+        assertEquals("Pflege diese Aufgaben ein", state().exchanges().get(0).userText());
+        assertEquals("aufgaben.md", state().exchanges().get(0).attachmentName());
 
         assertFalse("second send rejected while first is running",
-                viewModel.send("zweite Nachricht", null, null, null, answered::add, e -> {}));
+                viewModel.send("zweite Nachricht", null, null, null));
 
         manualChat.succeed(new AssistantTurn("Vorschlag steht bereit.", "", List.of()));
 
         assertFalse(viewModel.isSending());
-        assertEquals(1, answered.size());
-        assertEquals(Status.ANSWERED, viewModel.getHistory().get(0).status());
-        assertEquals("Vorschlag steht bereit.", viewModel.getHistory().get(0).answerText());
+        assertEquals(Status.ANSWERED, state().exchanges().get(0).status());
+        assertEquals("Vorschlag steht bereit.", state().exchanges().get(0).answerText());
     }
 
     /** Invariant: an async failure replaces the pending exchange and frees the next send. */
@@ -112,20 +114,47 @@ public final class TaskAssistantHistoryCharacterizationTest extends AutoSecretar
         viewModel.setDraftText("Importiere die Aufgaben");
         viewModel.setPendingAttachment("aufgaben.md", "text/markdown", "- [ ] A".getBytes());
 
-        List<AssistantExchange> errors = new ArrayList<>();
-        assertTrue(viewModel.sendDraft(e -> {}, errors::add));
+        assertTrue(viewModel.sendDraft());
         manualChat.fail("Timeout beim Claude-Request");
 
         assertFalse(viewModel.isSending());
-        assertEquals(1, errors.size());
-        AssistantExchange exchange = viewModel.getHistory().get(0);
+        ExchangeItem exchange = state().exchanges().get(0);
         assertEquals(Status.ERROR, exchange.status());
         assertEquals("Importiere die Aufgaben", exchange.userText());
         assertEquals("aufgaben.md", exchange.attachmentName());
         assertEquals("Timeout beim Claude-Request", exchange.errorMessage());
 
         assertTrue("next send accepted after failure",
-                viewModel.send("nochmal", null, null, null, e -> {}, e -> {}));
+                viewModel.send("nochmal", null, null, null));
+    }
+
+    /**
+     * Invariant: a progress tick replaces only the pending (last) item; earlier completed items keep
+     * their object identity across the publish. The RecyclerView adapter's DiffUtil relies on this to
+     * rebind exactly one row per streamed tick instead of the whole history.
+     */
+    @Test
+    public void progressTickReplacesOnlyPendingItem() {
+        ManualChatUseCase manualChat = new ManualChatUseCase();
+        viewModel = new TaskAssistantViewModel(manualChat, confirm, null);
+
+        viewModel.send("erste", null, null, null);
+        manualChat.succeed(new AssistantTurn("Antwort eins.", "", List.of()));
+        ExchangeItem completed = state().exchanges().get(0);
+
+        viewModel.send("zweite", null, null, null); // stays pending; manualChat holds the callbacks
+        List<ExchangeItem> before = state().exchanges();
+        assertEquals(2, before.size());
+        ExchangeItem pendingBefore = before.get(1);
+
+        manualChat.progress("Prüfe vorhandene Tasks…");
+        List<ExchangeItem> after = state().exchanges();
+
+        assertEquals(2, after.size());
+        assertSame("completed item keeps its identity across the tick", completed, after.get(0));
+        assertNotSame("pending item is replaced", pendingBefore, after.get(1));
+        assertEquals("progress text landed on the pending item",
+                "Prüfe vorhandene Tasks…", after.get(1).progressText());
     }
 
     /** Delivers a canned answer with one parked recipe proposal, standing in for the chat engine. */
@@ -154,6 +183,7 @@ public final class TaskAssistantHistoryCharacterizationTest extends AutoSecretar
     private static final class ManualChatUseCase extends AssistantChatUseCase {
         private Consumer<AssistantTurn> result;
         private Consumer<String> error;
+        private Consumer<String> progress;
 
         ManualChatUseCase() {
             super(null, null, null, null, null, null, null, null);
@@ -165,6 +195,7 @@ public final class TaskAssistantHistoryCharacterizationTest extends AutoSecretar
                          Consumer<String> onProgress) {
             this.result = onResult;
             this.error = onError;
+            this.progress = onProgress;
         }
 
         void succeed(AssistantTurn turn) {
@@ -173,6 +204,10 @@ public final class TaskAssistantHistoryCharacterizationTest extends AutoSecretar
 
         void fail(String message) {
             error.accept(message);
+        }
+
+        void progress(String text) {
+            progress.accept(text);
         }
     }
 

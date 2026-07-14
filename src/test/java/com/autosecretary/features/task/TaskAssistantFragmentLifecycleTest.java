@@ -28,9 +28,9 @@ import com.autosecretary.features.task.application.assistant.AssistantChatUseCas
 import com.autosecretary.features.task.application.assistant.ConfirmAssistantProposalUseCase;
 import com.autosecretary.features.task.application.UndoTaskChangesUseCase;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
+import com.autosecretary.features.task.ui.assistant.AssistantUiState.Status;
 import com.autosecretary.features.task.ui.assistant.TaskAssistantFragment;
 import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModel;
-import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModel.Status;
 import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModelFactory;
 import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
 import com.autosecretary.shared.WidgetRefreshNotifier;
@@ -77,9 +77,9 @@ public final class TaskAssistantFragmentLifecycleTest extends AutoSecretaryRobol
                 ((EditText) activity.findViewById(R.id.AssistantInstruction)).getText().toString());
         assertEquals(View.VISIBLE, activity.findViewById(R.id.AssistantAttachmentChip).getVisibility());
 
-        assertTrue(viewModel.sendDraft(e -> {}, e -> {}));
+        assertTrue(viewModel.sendDraft());
         assertTrue(viewModel.isSending());
-        assertEquals(Status.PENDING, viewModel.getHistory().get(0).status());
+        assertEquals(Status.PENDING, viewModel.getState().getValue().exchanges().get(0).status());
         assertPendingRendered(activity);
 
         activity.getSupportFragmentManager().beginTransaction()
@@ -93,7 +93,7 @@ public final class TaskAssistantFragmentLifecycleTest extends AutoSecretaryRobol
         chatUseCase.succeed(new AssistantTurn("Vorschlag steht bereit.", "", List.of()));
 
         assertFalse(viewModel.isSending());
-        assertEquals(Status.ANSWERED, viewModel.getHistory().get(0).status());
+        assertEquals(Status.ANSWERED, viewModel.getState().getValue().exchanges().get(0).status());
         assertEquals(View.GONE, activity.findViewById(R.id.AssistantLoading).getVisibility());
         assertEquals("Vorschlag steht bereit.",
                 ((TextView) activity.findViewById(R.id.ExchangeAnswer)).getText().toString());

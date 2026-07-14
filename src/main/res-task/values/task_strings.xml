@@ -216,6 +216,7 @@
     <string name="task_assistant_new_chat">Neuer Chat</string>
     <string name="task_assistant_attach">Datei anhängen</string>
     <string name="task_assistant_attachment_clear">Anhang entfernen</string>
+    <string name="task_assistant_attachment_label">📎 %s</string>
     <string name="task_assistant_attachment_invalid">Nur PDF-, TXT- oder MD-Dateien werden unterstützt.</string>
     <string name="task_assistant_attachment_read_error">Datei konnte nicht gelesen werden.</string>
     <string name="task_assistant_attachment_too_large">Datei ist zu groß (max. 8 MB).</string>
