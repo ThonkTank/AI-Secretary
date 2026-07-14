@@ -196,6 +196,19 @@ public class AssistantChatUseCase {
 
     private AssistantTurn runConversation(String userText, Attachment attachment, boolean thinkingEnabled,
                                           Consumer<String> progress) {
+        // On failure, the wire history must return to its pre-turn state: a dangling assistant
+        // tool_use without its tool_result makes every subsequent request fail with HTTP 400.
+        int mark = conversation.size();
+        try {
+            return runTurn(userText, attachment, thinkingEnabled, progress);
+        } catch (RuntimeException e) {
+            conversation.rollbackTo(mark);
+            throw e;
+        }
+    }
+
+    private AssistantTurn runTurn(String userText, Attachment attachment, boolean thinkingEnabled,
+                                  Consumer<String> progress) {
         appendUserMessage(userText, attachment);
 
         String model = modelStore.getModel();

@@ -48,9 +48,18 @@ public class AssistantConversation {
         return array;
     }
 
-    /** Drops the last {@code count} messages (used to roll back a user turn that failed to complete). */
-    public synchronized void dropLast(int count) {
-        for (int i = 0; i < count && !messages.isEmpty(); i++) {
+    /** Number of messages currently in the history; pair with {@link #rollbackTo(int)}. */
+    public synchronized int size() {
+        return messages.size();
+    }
+
+    /**
+     * Truncates the history back to {@code size} messages. Used to roll back a failed turn: a
+     * dangling assistant {@code tool_use} without its {@code tool_result} would make every
+     * subsequent request fail with HTTP 400.
+     */
+    public synchronized void rollbackTo(int size) {
+        while (messages.size() > size) {
             messages.remove(messages.size() - 1);
         }
     }
