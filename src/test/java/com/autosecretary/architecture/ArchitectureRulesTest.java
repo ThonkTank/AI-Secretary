@@ -2,6 +2,7 @@ package com.autosecretary.architecture;
 
 import static com.tngtech.archunit.base.DescribedPredicate.not;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.simpleNameEndingWith;
 import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.name;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -9,6 +10,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.properties.HasName;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 
@@ -191,6 +193,65 @@ public class ArchitectureRulesTest {
                 .check(PROD);
     }
 
+    /**
+     * The multi-domain assistant reaches other features only through their {@code domain} layer, with
+     * one explicit, named exception: the task feature's DAOs (task has no repository interface — its
+     * Room POJOs are the domain model, so DAO-direct is the task convention) and the Apply/Undo
+     * task-change use-cases (they own the undo snapshot the assistant must preserve). This allowlist
+     * is deliberately narrow; {@link #assistant_task_seam_classes_exist} guards it against silent
+     * widening if one of the named classes is renamed away.
+     */
+    @Test
+    public void assistant_couples_to_features_only_via_domain_except_task_seam() {
+        DescribedPredicate<JavaClass> foreignNonDomain =
+                resideInAnyPackage(foreignNonDomain("task", "budget", "meal"));
+        DescribedPredicate<HasName> seam = name(ASSISTANT_TASK_SEAM[0])
+                .or(name(ASSISTANT_TASK_SEAM[1]))
+                .or(name(ASSISTANT_TASK_SEAM[2]))
+                .or(name(ASSISTANT_TASK_SEAM[3]));
+        noClasses().that().resideInAPackage("com.autosecretary.features.assistant..")
+                .should().dependOnClassesThat(foreignNonDomain.and(not(seam)))
+                .because("the assistant reaches other features only through their domain layer, plus the "
+                        + "named task seam (task DAOs + Apply/Undo task-change use-cases)")
+                .check(PROD);
+    }
+
+    @Test
+    public void no_feature_depends_on_the_assistant() {
+        noClasses().that().resideInAnyPackage(
+                        "com.autosecretary.features.task..",
+                        "com.autosecretary.features.budget..",
+                        "com.autosecretary.features.meal..")
+                .should().dependOnClassesThat().resideInAPackage("com.autosecretary.features.assistant..")
+                .because("the assistant is a leaf consumer of the other features; nothing depends back on it")
+                .check(PROD);
+    }
+
+    @Test
+    public void assistant_task_seam_classes_exist() {
+        for (String fqn : ASSISTANT_TASK_SEAM) {
+            boolean present = false;
+            for (JavaClass javaClass : PROD) {
+                if (javaClass.getName().equals(fqn)) {
+                    present = true;
+                    break;
+                }
+            }
+            org.junit.Assert.assertTrue(
+                    fqn + " is named in the assistant task-seam allowlist and must exist; a rename here "
+                    + "would silently widen assistant_couples_to_features_only_via_domain_except_task_seam",
+                    present);
+        }
+    }
+
+    /** The concrete task classes the assistant is allowed to touch outside the domain layer. */
+    private static final String[] ASSISTANT_TASK_SEAM = {
+            "com.autosecretary.features.task.data.TaskDao",
+            "com.autosecretary.features.task.data.TaskCategoryDao",
+            "com.autosecretary.features.task.application.ApplyTaskChangesUseCase",
+            "com.autosecretary.features.task.application.UndoTaskChangesUseCase",
+    };
+
     // --- Ownership / naming -----------------------------------------------
 
     @Test
@@ -209,14 +270,13 @@ public class ArchitectureRulesTest {
                 .check(PROD);
     }
 
-    private static String[] foreignNonDomain(String featureA, String featureB) {
-        return new String[]{
-                "com.autosecretary.features." + featureA + ".ui..",
-                "com.autosecretary.features." + featureA + ".application..",
-                "com.autosecretary.features." + featureA + ".data..",
-                "com.autosecretary.features." + featureB + ".ui..",
-                "com.autosecretary.features." + featureB + ".application..",
-                "com.autosecretary.features." + featureB + ".data..",
-        };
+    private static String[] foreignNonDomain(String... features) {
+        String[] packages = new String[features.length * 3];
+        for (int i = 0; i < features.length; i++) {
+            packages[i * 3] = "com.autosecretary.features." + features[i] + ".ui..";
+            packages[i * 3 + 1] = "com.autosecretary.features." + features[i] + ".application..";
+            packages[i * 3 + 2] = "com.autosecretary.features." + features[i] + ".data..";
+        }
+        return packages;
     }
 }

@@ -18,7 +18,7 @@ import com.autosecretary.features.meal.ui.internal.MealCookingPrefsDialogControl
 import com.autosecretary.features.task.ui.TaskScheduleConfigDialog;
 import com.autosecretary.features.task.ui.TaskCategoryDialog;
 import com.autosecretary.features.task.ui.TaskCategoryWindowDialog;
-import com.autosecretary.features.task.ui.assistant.TaskAssistantFragment;
+import com.autosecretary.features.assistant.ui.AssistantFragment;
 import com.autosecretary.features.task.ui.list.TaskListFragment;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -154,7 +154,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showAssistantFragment() {
-        replaceContent(new TaskAssistantFragment());
+        replaceContent(new AssistantFragment());
     }
 
     private void replaceContent(Fragment fragment) {

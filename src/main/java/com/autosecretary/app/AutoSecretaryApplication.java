@@ -10,7 +10,7 @@ import com.autosecretary.features.task.application.internal.alarms.DailyPlanning
 import com.autosecretary.features.task.ui.TaskScheduleConfigViewModelFactory;
 import com.autosecretary.features.task.ui.TaskCategoryViewModelFactory;
 import com.autosecretary.features.task.ui.TaskCategoryWindowViewModelFactory;
-import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModelFactory;
+import com.autosecretary.features.assistant.ui.AssistantViewModelFactory;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModelFactory;
 import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
 import com.autosecretary.features.task.application.LoadTaskWidgetItemsUseCase;
@@ -125,8 +125,8 @@ public class AutoSecretaryApplication extends Application {
         return appCompositionRoot.getTaskCategoryWindowViewModelFactory();
     }
 
-    public TaskAssistantViewModelFactory getTaskAssistantViewModelFactory() {
-        return appCompositionRoot.getTaskAssistantViewModelFactory();
+    public AssistantViewModelFactory getAssistantViewModelFactory() {
+        return appCompositionRoot.getAssistantViewModelFactory();
     }
 
     public ExecutorService getDbExecutor() {

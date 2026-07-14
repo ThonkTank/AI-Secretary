@@ -62,7 +62,8 @@ android {
                 "src/main/res",
                 "src/main/res-task",
                 "src/main/res-budget",
-                "src/main/res-meal"
+                "src/main/res-meal",
+                "src/main/res-assistant"
             ))
         }
     }

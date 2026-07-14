@@ -17,19 +17,19 @@ import com.autosecretary.shared.ClaudeModelStore;
 import com.autosecretary.features.task.application.ApplyTaskChangesUseCase;
 import com.autosecretary.features.task.application.UndoTaskChangesUseCase;
 import com.autosecretary.features.task.application.TaskChangeUndoHolder;
-import com.autosecretary.features.task.application.assistant.AssistantChatUseCase;
-import com.autosecretary.features.task.application.assistant.AssistantConversation;
-import com.autosecretary.features.task.application.assistant.ConfirmAssistantProposalUseCase;
-import com.autosecretary.features.task.application.assistant.internal.AssistantTool;
-import com.autosecretary.features.task.application.assistant.internal.AssistantToolRegistry;
-import com.autosecretary.features.task.application.assistant.internal.BudgetTools;
-import com.autosecretary.features.task.application.assistant.internal.DbCalls;
-import com.autosecretary.features.task.application.assistant.internal.MealTools;
-import com.autosecretary.features.task.application.assistant.internal.TaskTools;
-import com.autosecretary.features.task.application.internal.budget.AssistantBudgetGateway;
-import com.autosecretary.features.task.application.internal.budget.AssistantTransactionImportExecutor;
-import com.autosecretary.features.task.application.internal.meal.AssistantMealGateway;
-import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModelFactory;
+import com.autosecretary.features.assistant.application.AssistantChatUseCase;
+import com.autosecretary.features.assistant.application.AssistantConversation;
+import com.autosecretary.features.assistant.application.ConfirmAssistantProposalUseCase;
+import com.autosecretary.features.assistant.application.internal.AssistantTool;
+import com.autosecretary.features.assistant.application.internal.AssistantToolRegistry;
+import com.autosecretary.features.assistant.application.internal.BudgetTools;
+import com.autosecretary.features.assistant.application.internal.DbCalls;
+import com.autosecretary.features.assistant.application.internal.MealTools;
+import com.autosecretary.features.assistant.application.internal.TaskTools;
+import com.autosecretary.features.assistant.application.internal.AssistantBudgetGateway;
+import com.autosecretary.features.assistant.application.internal.AssistantTransactionImportExecutor;
+import com.autosecretary.features.assistant.application.internal.AssistantMealGateway;
+import com.autosecretary.features.assistant.ui.AssistantViewModelFactory;
 import com.autosecretary.features.budget.application.importing.internal.StatementFileParser;
 import com.autosecretary.features.budget.application.BudgetSeedService;
 import com.autosecretary.features.budget.application.BudgetTransactionMutationUseCase;
@@ -133,7 +133,7 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
     private final ExecutorService dbExecutor;
     private final ExecutorService ioExecutor;
     private TaskViewModelFactory taskViewModelFactory;
-    private TaskAssistantViewModelFactory taskAssistantViewModelFactory;
+    private AssistantViewModelFactory assistantViewModelFactory;
     private TaskChangeUndoHolder taskChangeUndoHolder;
     private AssistantConversation assistantConversation;
     private BudgetImportRoomRepository budgetImportRoomRepository;
@@ -340,7 +340,7 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
         UndoTaskChangesUseCase undoTaskChangesUseCase = new UndoTaskChangesUseCase(
                 db, dao, db.taskCategoryDao(), db.taskCategoryWindowDao(),
                 taskChangeUndoHolder, dbExecutor, mainHandler::post);
-        taskAssistantViewModelFactory = new TaskAssistantViewModelFactory(
+        assistantViewModelFactory = new AssistantViewModelFactory(
                 assistantChatUseCase, confirmAssistantProposalUseCase, undoTaskChangesUseCase);
 
         taskViewModelFactory = new TaskViewModelFactory(
@@ -355,9 +355,9 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
         );
     }
 
-    public synchronized TaskAssistantViewModelFactory getTaskAssistantViewModelFactory() {
+    public synchronized AssistantViewModelFactory getAssistantViewModelFactory() {
         initTaskGraph();
-        return taskAssistantViewModelFactory;
+        return assistantViewModelFactory;
     }
 
     public synchronized TaskScheduleConfigRepository getTaskScheduleConfigRepository() {
@@ -547,7 +547,7 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
      */
     public synchronized void resetForDataReload() {
         taskViewModelFactory = null;
-        taskAssistantViewModelFactory = null;
+        assistantViewModelFactory = null;
         if (taskChangeUndoHolder != null) {
             taskChangeUndoHolder.clear();
         }

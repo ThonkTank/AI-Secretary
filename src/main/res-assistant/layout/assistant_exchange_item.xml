@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One assistant chat exchange, rendered as aligned bubbles: the user's message (+ optional
+     attachment) in a tinted bubble on the end (right) side, and the assistant's answer in a
+     surface bubble on the start (left) side. The answer bubble also carries the collapsible
+     thinking section and the pending/error status line. Proposal cards (assistant_proposal_item)
+     are added into ExchangeProposals in code. Inflated by AssistantFragment. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="@dimen/spacing_sm"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/ExchangeUserText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:maxWidth="@dimen/task_chat_bubble_max_width"
+        android:background="@drawable/assistant_bg_bubble_user"
+        android:paddingHorizontal="@dimen/spacing_md"
+        android:paddingVertical="@dimen/spacing_sm"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.RowPrimary" />
+
+    <TextView
+        android:id="@+id/ExchangeAttachment"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginTop="@dimen/spacing_xs"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Metadata"
+        android:visibility="gone" />
+
+    <!-- Assistant answer bubble: left-aligned; layout_marginEnd keeps even long answers short of the
+         right edge so they read as a bubble rather than a full-width block (android:maxWidth is a
+         no-op on LinearLayout, so a margin is used instead). -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:layout_marginEnd="@dimen/spacing_xl"
+        android:background="@drawable/assistant_bg_bubble_assistant"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/spacing_md"
+        android:paddingVertical="@dimen/spacing_sm">
+
+        <TextView
+            android:id="@+id/ExchangeThinkingToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/assistant_thinking_show"
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Metadata"
+            android:textColor="@color/color_primary"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/ExchangeThinkingBody"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_xs"
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Metadata"
+            android:textIsSelectable="true"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/ExchangeAnswer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.AutoSecretary.RowPrimary"
+            android:textIsSelectable="true" />
+
+        <TextView
+            android:id="@+id/ExchangeStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Metadata"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/ExchangeProposals"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+</LinearLayout>

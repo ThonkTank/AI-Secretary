@@ -24,6 +24,5 @@
 
     <!-- Assistant chat bubbles -->
     <dimen name="task_chat_bubble_max_width">300dp</dimen>
-    <dimen name="task_chat_bubble_corner">16dp</dimen>
 
 </resources>

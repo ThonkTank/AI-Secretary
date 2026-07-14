@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- User-facing strings for the multi-domain assistant tab (features/assistant/). German only. -->
+<resources>
+    <string name="assistant_title">Assistent</string>
+    <string name="assistant_instruction_hint">Frag mich etwas oder bitte mich um eine Änderung…</string>
+    <string name="assistant_send">Senden</string>
+    <string name="assistant_apply">Übernehmen</string>
+    <string name="assistant_undo">Rückgängig</string>
+    <string name="assistant_close">Schließen</string>
+    <string name="assistant_empty_instruction">Bitte zuerst eine Nachricht eingeben.</string>
+    <string name="assistant_send_in_progress">Der Assistent verarbeitet noch die aktuelle Nachricht.</string>
+    <string name="assistant_no_changes">Keine Änderungen vorgeschlagen.</string>
+    <string name="assistant_applied">Änderungen übernommen</string>
+    <string name="assistant_undone">Letzte Änderung rückgängig gemacht</string>
+    <string name="assistant_nothing_to_undo">Nichts zum Rückgängigmachen</string>
+    <!-- Top bar: model picker, thinking toggle, new chat, attachments. -->
+    <string name="assistant_model_label">Modell</string>
+    <string name="assistant_model_custom">Eigenes Modell…</string>
+    <string name="assistant_model_custom_title">Eigenes Modell</string>
+    <string name="assistant_model_custom_hint">Modell-ID, z. B. claude-sonnet-5</string>
+    <string name="assistant_thinking_toggle">Denkprozess</string>
+    <string name="assistant_thinking_show">▸ Denkprozess</string>
+    <string name="assistant_thinking_hide">▾ Denkprozess</string>
+    <string name="assistant_new_chat">Neuer Chat</string>
+    <string name="assistant_attach">Datei anhängen</string>
+    <string name="assistant_attachment_clear">Anhang entfernen</string>
+    <string name="assistant_attachment_label">📎 %s</string>
+    <string name="assistant_attachment_invalid">Nur PDF-, TXT- oder MD-Dateien werden unterstützt.</string>
+    <string name="assistant_attachment_read_error">Datei konnte nicht gelesen werden.</string>
+    <string name="assistant_attachment_too_large">Datei ist zu groß (max. 8 MB).</string>
+    <!-- Proposal card summaries for the non-task domains. -->
+    <string name="assistant_proposal_recipes">%d Rezept(e) anlegen</string>
+    <string name="assistant_proposal_ingredients">%d Zutat(en) anlegen</string>
+    <string name="assistant_proposal_meal_plans">%d Wochenplan-Eintrag/Einträge anlegen</string>
+    <string name="assistant_proposal_import">%1$d Transaktion(en) importieren (%2$d bereits vorhanden)</string>
+    <!-- Empty-state text when no Claude API key is configured. -->
+    <string name="assistant_no_key_title">Kein API-Key hinterlegt</string>
+    <string name="assistant_no_key_subtitle">Hinterlege deinen Claude API-Key unter Einstellungen → API-Key, um den Assistenten zu nutzen.</string>
+    <!-- Onboarding empty-state text when a key exists but no exchange has happened yet. -->
+    <string name="assistant_onboarding_title">Assistent</string>
+    <string name="assistant_onboarding_subtitle">Frag mich zu Aufgaben, Rezepten oder deinem Budget – oder bitte mich um eine Änderung. Ich schlage sie vor, du bestätigst.</string>
+    <!-- Per-exchange status label shown in the chat history. -->
+    <string name="assistant_status_applied">Übernommen</string>
+    <string name="assistant_status_pending">Antwort wird vorbereitet…</string>
+    <!-- Diff labels (op markers ＋/✎/－ are language-neutral and set in code). -->
+    <string name="assistant_diff_category">Kategorie:</string>
+    <string name="assistant_diff_task">Aufgabe:</string>
+    <string name="assistant_diff_leisure">[Freizeit]</string>
+    <!-- Diff attribute chips: %1$s is the date, %2$s the optional time (blank if none). -->
+    <string name="assistant_diff_termin">[Termin %1$s%2$s]</string>
+    <string name="assistant_diff_deadline">[fällig %1$s]</string>
+    <string name="assistant_diff_start">[ab %1$s]</string>
+    <!-- Preferred-time count chip: %1$d is the number of preferred slots. -->
+    <string name="assistant_diff_pref_slots">[%1$d× Zeit]</string>
+    <string name="assistant_period_day">Tag</string>
+    <string name="assistant_period_week">Woche</string>
+    <string name="assistant_period_month">Monat</string>
+
+    <string-array name="assistant_models">
+        <item>claude-sonnet-5</item>
+        <item>claude-opus-4-8</item>
+        <item>claude-haiku-4-5-20251001</item>
+    </string-array>
+</resources>

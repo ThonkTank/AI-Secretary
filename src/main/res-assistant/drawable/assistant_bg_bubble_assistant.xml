@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Assistant chat: the assistant's answer bubble. Surface fill with an outline, aligned to the
+     start (left) side; the bottom-left corner is tightened for a chat-tail feel. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/color_surface" />
+    <stroke android:width="@dimen/outline_stroke_width" android:color="@color/color_outline" />
+    <corners
+        android:topLeftRadius="@dimen/assistant_chat_bubble_corner"
+        android:topRightRadius="@dimen/assistant_chat_bubble_corner"
+        android:bottomLeftRadius="@dimen/spacing_xs"
+        android:bottomRightRadius="@dimen/assistant_chat_bubble_corner" />
+</shape>
