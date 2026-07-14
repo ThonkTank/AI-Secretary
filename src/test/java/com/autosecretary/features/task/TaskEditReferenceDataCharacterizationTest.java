@@ -14,6 +14,7 @@ import com.autosecretary.features.task.application.edit.CreateDefaultTaskPrefSlo
 import com.autosecretary.features.task.application.edit.TaskEditReferenceDataUseCase;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.domain.model.Task;
+import com.autosecretary.features.task.domain.model.TaskCategory;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.application.edit.TaskEditReferenceData;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModel;
@@ -49,18 +50,19 @@ public final class TaskEditReferenceDataCharacterizationTest extends AutoSecreta
     }
 
     @Test
-    public void taskEditReferenceDataKeepsParentAndBudgetOptionInvariant() {
+    public void taskEditReferenceDataKeepsCategoryAndBudgetOptionInvariant() {
         LocalDate today = LocalDate.now();
         Task edited = TaskFixtures.taskWithSlot("Bearbeitet", today);
-        Task parent = TaskFixtures.taskWithSlot("Elternaufgabe", today);
         taskDao.write(edited);
-        taskDao.write(parent);
+        TaskCategory category = new TaskCategory("Arbeit", "💼", "#FF3366CC");
+        db.taskCategoryDao().write(category);
         budgetRepository.insertAccount(BudgetFixtures.account("Haushalt"));
         budgetRepository.insertCategory(BudgetFixtures.expenseCategory("Lebensmittel"));
 
         SynchronousExecutorService executor = new SynchronousExecutorService();
         TaskDataService taskDataService = new TaskDataService(
                 taskDao,
+                db.taskCategoryDao(),
                 new TaskListItemMapper(),
                 executor,
                 new Handler(Looper.getMainLooper())::post,
@@ -80,9 +82,9 @@ public final class TaskEditReferenceDataCharacterizationTest extends AutoSecreta
         viewModel.loadReferenceData(probe.consumer());
         TaskEditReferenceData data = probe.value();
 
-        assertEquals(1, data.parentTasks().size());
-        assertEquals(parent.core.id, data.parentTasks().get(0).id());
-        assertEquals("Elternaufgabe", data.parentTasks().get(0).label());
+        assertEquals(1, data.categories().size());
+        assertEquals(category.id, data.categories().get(0).id());
+        assertTrue(data.categories().get(0).label().contains("Arbeit"));
         assertEquals(1, data.budgetAccounts().size());
         assertEquals("Haushalt", data.budgetAccounts().get(0).label());
         assertEquals(1, data.budgetCategories().size());

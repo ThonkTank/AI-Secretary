@@ -135,27 +135,12 @@
                     android:text="@string/meal_week_title"
                     android:textAppearance="@style/TextAppearance.AutoSecretary.SectionTitle" />
 
-                <LinearLayout
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/MealAddPlan"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/spacing_sm"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/MealAddPlan"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/meal_add_plan" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/MealGeneratePlan"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="@dimen/spacing_sm"
-                        android:text="@string/meal_generate_plan" />
-                </LinearLayout>
+                    android:text="@string/meal_add_plan" />
 
                 <include
                     layout="@layout/include_empty_state"

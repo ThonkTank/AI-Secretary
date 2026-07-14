@@ -71,8 +71,12 @@ public final class TaskSlotUndoMutation {
     }
 
     private void revertCompletedPhase(Task task, TaskSlot slot) {
-        rollbackTaskHistory(task, slot);
-        rollbackRepetitionAndStreak(task, slot);
+        // Leisure items never applied history/streak deltas on completion, so there is nothing to
+        // roll back — only reset the slot state.
+        if (!task.core.leisure) {
+            rollbackTaskHistory(task, slot);
+            rollbackRepetitionAndStreak(task, slot);
+        }
         slot.completed = false;
         slot.realEnd = null;
     }

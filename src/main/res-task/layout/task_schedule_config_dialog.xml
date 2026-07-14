@@ -1,30 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Schedule configuration dialog content.
+     SchedulingEnabledSwitch toggles daily planning on/off globally.
      ScheduleConfigLoading shows while data loads; ScheduleConfigContainer is revealed
      on success with day rows inflated programmatically by TaskScheduleConfigDialog. -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:orientation="vertical"
     android:padding="@dimen/spacing_lg">
 
-    <ProgressBar
-        android:id="@+id/ScheduleConfigLoading"
-        android:layout_width="wrap_content"
+    <com.google.android.material.switchmaterial.SwitchMaterial
+        android:id="@+id/SchedulingEnabledSwitch"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center" />
+        android:layout_marginBottom="@dimen/spacing_md"
+        android:text="@string/task_scheduling_enabled_label" />
 
-    <ScrollView
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Day rows inflated programmatically by TaskScheduleConfigDialog -->
-        <LinearLayout
-            android:id="@+id/ScheduleConfigContainer"
-            android:layout_width="match_parent"
+        <ProgressBar
+            android:id="@+id/ScheduleConfigLoading"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="@dimen/spacing_lg"
-            android:visibility="gone" />
-    </ScrollView>
+            android:layout_gravity="center" />
 
-</FrameLayout>
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <!-- Day rows inflated programmatically by TaskScheduleConfigDialog -->
+            <LinearLayout
+                android:id="@+id/ScheduleConfigContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="@dimen/spacing_lg"
+                android:visibility="gone" />
+        </ScrollView>
+    </FrameLayout>
+
+</LinearLayout>

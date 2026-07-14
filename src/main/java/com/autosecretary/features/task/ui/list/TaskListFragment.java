@@ -17,6 +17,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
@@ -25,11 +26,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
+import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
 import com.autosecretary.features.task.ui.edit.TaskEditDialog;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModel;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModelFactory;
 import com.autosecretary.shared.ui.UiConstants;
 import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -38,6 +42,7 @@ import com.autosecretary.shared.DateFormatters;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Main task list screen. Shows scheduled task slots for a selected day and lets the user
@@ -115,9 +120,54 @@ public class TaskListFragment extends Fragment {
         TextInputEditText taskSearchInput = view.findViewById(R.id.TaskSearchInput);
         View emptyStateContainer = configureEmptyState(view);
         ListRowAdapter adapter = setupList(view, emptyStateContainer, taskSearchInput);
-        View newTaskButton = setupCreateTaskButton(view);
-        setupDayNavigation(view, adapter, newTaskButton);
+        FloatingActionButton newTaskFab = setupCreateTaskButton(view);
+        setupDayNavigation(view, adapter, newTaskFab);
         setupModeToggle(view, taskSearchLayout, adapter);
+        observeSchedulingConflicts(view);
+    }
+
+    /** Surfaces regeneration conflicts once as a Snackbar with an optional detail dialog. */
+    private void observeSchedulingConflicts(View view) {
+        vm.getSchedulingConflicts().observe(getViewLifecycleOwner(), conflicts -> {
+            if (conflicts == null || conflicts.isEmpty()) {
+                return;
+            }
+            Snackbar.make(view,
+                            getResources().getQuantityString(R.plurals.task_schedule_conflicts_summary,
+                                    conflicts.size(), conflicts.size()),
+                            Snackbar.LENGTH_LONG)
+                    .setAction(R.string.task_schedule_conflicts_details, v -> showConflictDetails(conflicts))
+                    .show();
+            vm.consumeSchedulingConflicts();
+        });
+    }
+
+    private void showConflictDetails(List<SchedulingConflict> conflicts) {
+        StringBuilder message = new StringBuilder();
+        for (SchedulingConflict conflict : conflicts) {
+            message.append(getString(R.string.task_schedule_conflict_line,
+                            conflict.title(), getString(reasonLabelRes(conflict.reasonCode()))))
+                    .append('\n');
+        }
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.task_schedule_conflicts_title)
+                .setMessage(message.toString().trim())
+                .setPositiveButton(R.string.action_ok, null)
+                .show();
+    }
+
+    private static int reasonLabelRes(SchedulingConflict.ReasonCode code) {
+        switch (code) {
+            case OUTSIDE_WINDOW:
+                return R.string.task_conflict_reason_outside_window;
+            case CALENDAR_OVERLAP:
+                return R.string.task_conflict_reason_calendar_overlap;
+            case PREREQUISITE_BLOCKED:
+                return R.string.task_conflict_reason_prerequisite_blocked;
+            case NO_MATCHING_GAP:
+            default:
+                return R.string.task_conflict_reason_no_matching_gap;
+        }
     }
 
     private TaskViewModel createViewModel() {
@@ -186,17 +236,17 @@ public class TaskListFragment extends Fragment {
         }
     }
 
-    private View setupCreateTaskButton(View view) {
-        View newTaskButton = view.findViewById(R.id.NewTaskButton);
-        newTaskButton.setOnClickListener(v -> openCreateTaskDialog());
+    private FloatingActionButton setupCreateTaskButton(View view) {
+        FloatingActionButton newTaskFab = view.findViewById(R.id.NewTaskFab);
+        newTaskFab.setOnClickListener(v -> openCreateTaskDialog());
         if (shouldOpenCreateTask) {
             shouldOpenCreateTask = false;
             view.post(this::openCreateTaskDialog);
         }
-        return newTaskButton;
+        return newTaskFab;
     }
 
-    private void setupDayNavigation(View view, ListRowAdapter adapter, View newTaskButton) {
+    private void setupDayNavigation(View view, ListRowAdapter adapter, FloatingActionButton newTaskFab) {
         ImageButton dayNavPrev = view.findViewById(R.id.NavPrev);
         TextView dayNavLabel = view.findViewById(R.id.NavLabel);
         ImageButton dayNavNext = view.findViewById(R.id.NavNext);
@@ -215,7 +265,11 @@ public class TaskListFragment extends Fragment {
             dayNavNext.setEnabled(canGoForward);
             dayNavNext.setAlpha(canGoForward ? UiConstants.ALPHA_ENABLED : UiConstants.ALPHA_DISABLED);
 
-            newTaskButton.setVisibility(isToday ? View.VISIBLE : View.GONE);
+            if (isToday) {
+                newTaskFab.show();
+            } else {
+                newTaskFab.hide();
+            }
             adapter.setInteractionsEnabled(isToday);
         });
     }

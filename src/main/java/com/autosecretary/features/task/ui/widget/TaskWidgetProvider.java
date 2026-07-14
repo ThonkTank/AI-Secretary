@@ -13,26 +13,22 @@ import android.widget.RemoteViews;
 
 import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.features.task.ui.list.TaskViewModel;
+import com.autosecretary.features.task.application.LoadTaskWidgetItemsUseCase;
+import com.autosecretary.features.task.domain.model.TaskCategory;
 import com.autosecretary.shared.WidgetConfiguration;
-import com.autosecretary.shared.ui.UiConstants;
 
-import com.autosecretary.shared.DateFormatters;
-
-import java.time.LocalDate;
+import java.util.List;
 
 /**
- * {@link AppWidgetProvider} entry point for the task widget. Manages the widget lifecycle
- * (onUpdate, onReceive), user interactions (day navigation, checkbox toggle, refresh),
- * and view updates.
+ * {@link AppWidgetProvider} entry point for the task widget. The widget shows a flat,
+ * priority-sorted list of open tasks (no day scoping), optionally filtered to one category.
  *
  * <p><b>Key responsibilities:</b>
  * <ul>
- *   <li>Lifecycle: {@link #onUpdate(Context, AppWidgetManager, int[])} updates all widget instances</li>
- *   <li>Interaction: {@link #onReceive(Context, Intent)} dispatches user actions (prev/next day, toggle)</li>
- *   <li>Persistence: Selected day offset stored in SharedPreferences, survives app restart</li>
- *   <li>Async toggle: {@link #handleToggle(Context, Intent)} uses {@code goAsync()} to extend
- *       broadcast lifetime while the task mutation completes</li>
+ *   <li>Lifecycle: {@link #onUpdate} rebuilds all widget instances.</li>
+ *   <li>Interaction: {@link #onReceive} dispatches category cycling, refresh, and checkbox toggle.</li>
+ *   <li>Persistence: the selected category id (+ display label) is stored in SharedPreferences.</li>
+ *   <li>Search: a button deep-links into the app (RemoteViews cannot host a real search field).</li>
  * </ul>
  *
  * <p>See {@link README.md} for architecture and data flow.
@@ -42,18 +38,18 @@ public class TaskWidgetProvider extends AppWidgetProvider {
 
     static final String ACTION_TOGGLE = "com.autosecretary.widget.TOGGLE";
     private static final String ACTION_REFRESH = "com.autosecretary.widget.REFRESH";
-    private static final String ACTION_PREV_DAY = "com.autosecretary.widget.PREV_DAY";
-    private static final String ACTION_NEXT_DAY = "com.autosecretary.widget.NEXT_DAY";
+    private static final String ACTION_CYCLE_CATEGORY = "com.autosecretary.widget.CYCLE_CATEGORY";
     public static final String ACTION_ADD_TASK = "com.autosecretary.widget.ADD_TASK";
     public static final String EXTRA_OPEN_TASK_FLOW = "widget_open_task_flow";
+    public static final String EXTRA_FOCUS_TASK_SEARCH = "widget_focus_task_search";
 
     static final String EXTRA_ACTION = "widget_action";
     static final String EXTRA_TASK_ID = "widget_task_id";
     static final String EXTRA_SLOT_ID = "widget_slot_id";
 
     private static final String PREFS_NAME = "widget_prefs";
-    private static final String KEY_OFFSET = "selected_day_offset";
-    private static final int MAX_OFFSET = TaskViewModel.MAX_DAY_OFFSET;
+    private static final String KEY_CATEGORY_ID = "selected_category_id";
+    private static final String KEY_CATEGORY_LABEL = "selected_category_label";
 
     /** Called by the system on widget refresh; builds RemoteViews and wires intents for each instance. */
     @Override
@@ -63,7 +59,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    /** Dispatches user actions: day navigation (prev/next), refresh, and checkbox toggle. */
+    /** Dispatches user actions: category cycling, refresh, and checkbox toggle. */
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.d(TAG, "onReceive action=" + intent.getAction());
@@ -78,48 +74,36 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         }
 
         switch (action) {
-            case ACTION_PREV_DAY -> navigateDay(context, -1);
-            case ACTION_NEXT_DAY -> navigateDay(context, 1);
+            case ACTION_CYCLE_CATEGORY -> cycleCategory(context);
             case ACTION_REFRESH -> notifyWidgetUpdate(context);
             case ACTION_TOGGLE -> handleToggle(context, intent);
             default -> {}
         }
     }
 
-    /** Builds the widget's RemoteViews: date label, nav arrows, action buttons, and list adapter. */
+    /** Builds the widget's RemoteViews: category filter label, action buttons, and list adapter. */
     private void updateWidget(Context context, AppWidgetManager manager, int widgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.task_list_widget);
 
-        // Day label
-        int offset = getSelectedDayOffset(context);
-        LocalDate selectedDate = LocalDate.now().plusDays(offset);
-        boolean isToday = offset == 0;
-        String label = isToday ? context.getString(R.string.task_list_day_nav_today) : selectedDate.format(DateFormatters.DAY_NAV_LABEL);
-        Log.d(TAG, "updateWidget offset=" + offset + " label=" + label);
-        views.setTextViewText(R.id.WidgetDateLabel, label);
+        views.setTextViewText(R.id.WidgetCategoryFilter, getSelectedCategoryLabel(context));
 
-        // Arrow states
-        views.setFloat(R.id.WidgetPrevDay, "setAlpha", isToday ? UiConstants.ALPHA_DISABLED : UiConstants.ALPHA_ENABLED);
-        views.setFloat(R.id.WidgetNextDay, "setAlpha", offset >= MAX_OFFSET ? UiConstants.ALPHA_DISABLED : UiConstants.ALPHA_ENABLED);
-
-        // Day navigation intents
-        views.setOnClickPendingIntent(R.id.WidgetPrevDay,
-                buildActionIntent(context, ACTION_PREV_DAY, widgetId));
-        views.setOnClickPendingIntent(R.id.WidgetNextDay,
-                buildActionIntent(context, ACTION_NEXT_DAY, widgetId));
+        // Category filter cycles on tap.
+        views.setOnClickPendingIntent(R.id.WidgetCategoryFilter,
+                buildActionIntent(context, ACTION_CYCLE_CATEGORY, widgetId));
 
         // Refresh intent
         views.setOnClickPendingIntent(R.id.WidgetRefresh,
                 buildActionIntent(context, ACTION_REFRESH, widgetId));
 
+        // Search deep-links into the app (RemoteViews cannot host an EditText).
+        PendingIntent searchPending = buildMainActivityIntent(context, widgetId,
+                intent -> intent.putExtra(EXTRA_FOCUS_TASK_SEARCH, true));
+        views.setOnClickPendingIntent(R.id.WidgetSearch, searchPending);
+
         // Add task intent
-        PendingIntent addTaskPending = buildMainActivityIntent(context, widgetId,
+        PendingIntent addTaskPending = buildMainActivityIntent(context, widgetId + 1,
                 intent -> intent.putExtra(EXTRA_OPEN_TASK_FLOW, true));
         views.setOnClickPendingIntent(R.id.WidgetAdd, addTaskPending);
-
-        // Date label click opens the app
-        PendingIntent launchPending = buildMainActivityIntent(context, 0, intent -> {});
-        views.setOnClickPendingIntent(R.id.WidgetDateLabel, launchPending);
 
         // List adapter
         Intent serviceIntent = new Intent(context, TaskWidgetService.class);
@@ -151,11 +135,9 @@ public class TaskWidgetProvider extends AppWidgetProvider {
 
     /**
      * Builds a PendingIntent for launching MainActivity with custom intent configuration.
-     * Centralizes common intent setup: flags, PendingIntent creation.
      *
-     * @param context The context
-     * @param requestId Request ID for PendingIntent; used for the "add task" flow (widgetId) or 0 (simple app launch)
-     * @param customizer Lambda to add action, extras, or other customization to the intent
+     * @param requestId distinct request id per action so PendingIntents don't collapse
+     * @param customizer adds action/extras to the intent
      */
     private PendingIntent buildMainActivityIntent(Context context, int requestId,
             java.util.function.Consumer<Intent> customizer) {
@@ -172,14 +154,56 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         return intent != null ? intent : new Intent();
     }
 
-    /** Adjusts the day offset by delta (±1), clamps to [0, MAX_OFFSET], persists, and refreshes. */
-    private void navigateDay(Context context, int delta) {
-        int offset = getSelectedDayOffset(context);
-        int newOffset = offset + delta;
-        Log.d(TAG, "navigateDay old=" + offset + " delta=" + delta + " new=" + newOffset);
-        if (newOffset < 0 || newOffset > MAX_OFFSET) return;
-        setSelectedDayOffset(context, newOffset);
-        notifyWidgetUpdate(context);
+    /**
+     * Advances the selected category filter: All → first category → … → last → All.
+     * Runs on the DB executor since it reads the category list, then persists and refreshes.
+     */
+    private void cycleCategory(Context context) {
+        PendingResult result = goAsync();
+        AutoSecretaryApplication dependencies = AutoSecretaryApplication.from(context);
+        dependencies.getDbExecutor().execute(() -> {
+            try {
+                LoadTaskWidgetItemsUseCase useCase = dependencies.createLoadTaskWidgetItemsUseCase();
+                List<TaskCategory> categories = useCase.categories();
+                String currentId = getSelectedCategoryId(context);
+
+                String nextId;
+                String nextLabel;
+                if (LoadTaskWidgetItemsUseCase.CATEGORY_ALL.equals(currentId) || categories.isEmpty()) {
+                    if (categories.isEmpty()) {
+                        nextId = LoadTaskWidgetItemsUseCase.CATEGORY_ALL;
+                        nextLabel = context.getString(R.string.task_widget_category_all);
+                    } else {
+                        nextId = categories.get(0).id;
+                        nextLabel = categories.get(0).name;
+                    }
+                } else {
+                    int index = indexOfCategory(categories, currentId);
+                    if (index < 0 || index + 1 >= categories.size()) {
+                        nextId = LoadTaskWidgetItemsUseCase.CATEGORY_ALL;
+                        nextLabel = context.getString(R.string.task_widget_category_all);
+                    } else {
+                        nextId = categories.get(index + 1).id;
+                        nextLabel = categories.get(index + 1).name;
+                    }
+                }
+                setSelectedCategory(context, nextId, nextLabel);
+                notifyWidgetUpdate(context);
+            } catch (Exception e) {
+                Log.e(TAG, "Category cycle failed", e);
+            } finally {
+                result.finish();
+            }
+        });
+    }
+
+    private static int indexOfCategory(List<TaskCategory> categories, String id) {
+        for (int i = 0; i < categories.size(); i++) {
+            if (categories.get(i).id.equals(id)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private void handleToggle(Context context, Intent intent) {
@@ -188,8 +212,6 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         if (taskId == null || slotId == null) return;
 
         // goAsync() extends the broadcast receiver's lifetime beyond the ~6-second Android timeout.
-        // Without it, onReceive() returns and the process may be killed before the database
-        // mutation completes.
         PendingResult result = goAsync();
         AutoSecretaryApplication dependencies = AutoSecretaryApplication.from(context);
         dependencies.getDbExecutor().execute(() -> {
@@ -204,23 +226,27 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         });
     }
 
-    // --- Day offset persistence ---
+    // --- Selected category persistence ---
 
     private static SharedPreferences getWidgetPrefs(Context context) {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
-    static int getSelectedDayOffset(Context context) {
-        return getWidgetPrefs(context).getInt(KEY_OFFSET, 0);
+    static String getSelectedCategoryId(Context context) {
+        return getWidgetPrefs(context).getString(KEY_CATEGORY_ID, LoadTaskWidgetItemsUseCase.CATEGORY_ALL);
     }
 
-    private static void setSelectedDayOffset(Context context, int offset) {
-        // commit() instead of apply() to prevent race with subsequent onUpdate
-        getWidgetPrefs(context).edit().putInt(KEY_OFFSET, offset).commit();
+    private static String getSelectedCategoryLabel(Context context) {
+        return getWidgetPrefs(context).getString(KEY_CATEGORY_LABEL,
+                context.getString(R.string.task_widget_category_all));
     }
 
-    public static LocalDate getSelectedDate(Context context) {
-        return LocalDate.now().plusDays(getSelectedDayOffset(context));
+    private static void setSelectedCategory(Context context, String id, String label) {
+        // commit() instead of apply() to prevent race with the subsequent onUpdate refresh.
+        getWidgetPrefs(context).edit()
+                .putString(KEY_CATEGORY_ID, id)
+                .putString(KEY_CATEGORY_LABEL, label)
+                .commit();
     }
 
     // --- Public refresh trigger ---

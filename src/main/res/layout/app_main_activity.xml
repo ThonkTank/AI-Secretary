@@ -25,5 +25,6 @@
         android:layout_marginHorizontal="@dimen/spacing_md"
         android:layout_marginBottom="@dimen/spacing_md"
         android:paddingVertical="@dimen/spacing_xxs"
+        app:labelVisibilityMode="labeled"
         app:menu="@menu/bottom_nav" />
 </LinearLayout>

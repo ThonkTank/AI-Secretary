@@ -10,7 +10,6 @@ This package contains the **core domain logic for the task feature**: lifecycle 
 |---|---|
 | [`TaskLifecycleManager`](TaskLifecycleManager.java) | Stateless service: period advancement, streak tracking, adaptive preferred-time adjustment. Mutates `Task` domain objects. |
 | [`TaskCompletionService`](TaskCompletionService.java) | Two-phase task check-off (first tap → STARTED, second tap → COMPLETED). Calls `TaskLifecycleManager` on completion. |
-| [`TaskTreeOperations`](TaskTreeOperations.java) | Utility for building a parent-child task tree from a flat list and flattening it back to a list for DB writes. |
 | [`TaskCalendarEvent`](TaskCalendarEvent.java) | Thin DTO for UI-facing calendar events that need a display title plus local start/end times. |
 
 ## Subpackages
@@ -42,8 +41,8 @@ Tasks with a `repetition` config repeat on a `DAILY / WEEKLY / MONTHLY` period. 
 ### Adaptive Preferred Times
 When `task.core.adaptive == true`, `TaskLifecycleManager.adaptPrefSlot()` shifts the closest matching `TaskPrefSlot.start` toward the actual completion time using an exponential moving average (α = 0.2, rounded to 5-minute granularity).
 
-### Task Tree
-Tasks form a parent-child hierarchy via `TaskRelation`. `TaskTreeOperations` uses `TreeBuilder` (from `util/`) to assemble the flat Room query result into a tree and to flatten it back for bulk writes.
+### Categories
+Tasks are flat: each `TaskCore` optionally references one `TaskCategory` via `categoryId`. There is no task tree — categories are the only grouping, used by the list UI (Manage mode) and the widget filter.
 
 ## Related Modules
 

@@ -244,9 +244,6 @@ final class TaskScorer {
      * @param agingForce       pre-computed aging multiplier: {@code min(1 + sinceLast/AGING_SCALE_DAYS, maxAgingMultiplier)}
      * @param repsPerDay       maximum slots that may be scheduled for this task today
      *                         ({@code TaskCore.Repetition.repsPerDay()})
-     * @param maxChildPriority highest {@code scoringWeight} among all descendants; 0 if no children.
-     *                         A parent inherits this when it exceeds its own priority weight,
-     *                         ensuring parents are pulled up by high-priority children.
      */
     record TaskScoringSnapshot(CompletionState completionState,
                                UrgencyState urgencyState,
@@ -255,7 +252,6 @@ final class TaskScorer {
                                int sinceLast,
                                double agingForce,
                                int repsPerDay,
-                               int maxChildPriority,
                                boolean budgetEligible) {
         TaskScoringSnapshot withIncrementedScheduledToday() {
             return new TaskScoringSnapshot(
@@ -266,7 +262,6 @@ final class TaskScorer {
                     sinceLast,
                     agingForce,
                     repsPerDay,
-                    maxChildPriority,
                     budgetEligible
             );
         }
@@ -282,7 +277,6 @@ final class TaskScorer {
                     sinceLast,
                     agingForce,
                     repsPerDay,
-                    maxChildPriority,
                     budgetEligible
             );
         }
@@ -296,7 +290,6 @@ final class TaskScorer {
                     sinceLast,
                     agingForce,
                     repsPerDay,
-                    maxChildPriority,
                     budgetEligible
             );
         }
@@ -315,7 +308,7 @@ final class TaskScorer {
     void maintenance(Task task, LocalDate day, TaskPlanningState state) {
         // If already computed for this task+day, only refresh the planning-state-dependent
         // multi-day snapshot (which changes after each placement). Skip the expensive
-        // scanSlots, advancePeriods, computeMaxChildPriority, and budget eligibility checks,
+        // scanSlots, advancePeriods, and budget eligibility checks,
         // which produce identical results for repeated calls on the same task+day pair.
         LocalDate lastDay = lastMaintenanceDays.get(task.core.id);
         TaskScoringSnapshot existing = caches.get(task.core.id);
@@ -332,8 +325,10 @@ final class TaskScorer {
         MultiDayStateSnapshot multiDayStateSnapshot = computeMultiDaySnapshot(task, state, day);
 
         int sinceLast = (int) ChronoUnit.DAYS.between(completionState.lastCompletion(), day);
-        double agingForce = Math.min(1 + ((double) sinceLast / AGING_SCALE_DAYS), maxAgingMultiplier);
-        int maxChildPriority = computeMaxChildPriority(task);
+        // Leisure items feel no aging pressure: keep the aging force neutral (1.0).
+        double agingForce = task.core.leisure
+                ? 1.0
+                : Math.min(1 + ((double) sinceLast / AGING_SCALE_DAYS), maxAgingMultiplier);
         boolean budgetEligible = budgetEligibilityService == null
                 || budgetEligibilityService.eligibilityFor(task);
 
@@ -345,7 +340,6 @@ final class TaskScorer {
                 sinceLast,
                 agingForce,
                 task.core.repetition.repsPerDay(),
-                maxChildPriority,
                 budgetEligible
         );
         caches.put(task.core.id, snapshot);
@@ -391,24 +385,6 @@ final class TaskScorer {
                 ? repetitionState.periodCompletions() >= rep.reps
                 : completions > 0;
         return new CompletionState(completions, lastCompletion, isComplete, scheduledToday);
-    }
-
-    /**
-     * Recursively walks {@code task.children} to find the highest {@code scoringWeight}
-     * among all descendants. Returns 0 if the task has no children.
-     *
-     * <p>Used in {@link #applyBasePriorityAndChildInfluence}: when a child's priority exceeds
-     * the parent's own weight, the parent is scheduled as if it had the child's priority.
-     * This ensures that a low-priority parent blocking a high-priority child does not
-     * indefinitely suppress the child.
-     */
-    private int computeMaxChildPriority(Task task) {
-        int maxChildPriority = 0;
-        for (Task child : task.children) {
-            int childMax = Math.max(child.core.priority.scoringWeight, computeMaxChildPriority(child));
-            maxChildPriority = Math.max(maxChildPriority, childMax);
-        }
-        return maxChildPriority;
     }
 
     /**
@@ -472,7 +448,7 @@ final class TaskScorer {
             return 0;
         }
 
-        int totalPrio = applyBasePriorityAndChildInfluence(context);
+        int totalPrio = applyBasePriority(context);
         totalPrio = applyPreferredTimeFit(totalPrio, context);
         if (totalPrio <= 0) {
             return 0;
@@ -522,8 +498,8 @@ final class TaskScorer {
         return true;
     }
 
-    private int applyBasePriorityAndChildInfluence(ScoringContext context) {
-        return Math.max(context.task().core.priority.scoringWeight, context.snapshot().maxChildPriority());
+    private int applyBasePriority(ScoringContext context) {
+        return context.task().core.priority.scoringWeight;
     }
 
     private UrgencyState computeUrgencyState(Task task, LocalDate day, EffectiveRepetitionState repetitionState) {
@@ -543,7 +519,9 @@ final class TaskScorer {
         double requiredDays = task.requiredDays();
         // isAfter is exclusive: deadline day itself is NOT expired (can still schedule),
         // but remainingDays == 0 so applyUrgencyMultiplier will apply OVERDUE_URGENCY_FACTOR that day.
-        boolean deadlineExpired = task.core.closeOnMiss && task.core.deadline != null && day.isAfter(task.core.deadline);
+        // Leisure items never "expire": a passed deadline must not exclude them from scheduling.
+        boolean deadlineExpired = !task.core.leisure && task.core.closeOnMiss
+                && task.core.deadline != null && day.isAfter(task.core.deadline);
         return new UrgencyState(remainingDays, requiredDays, deadlineExpired);
     }
 
@@ -586,6 +564,8 @@ final class TaskScorer {
     }
 
     private int applyUrgencyMultiplier(int score, Task task, UrgencyState urgencyState) {
+        // Leisure items feel no urgency/deadline pressure: neutral multiplier (never 0, stays schedulable).
+        if (task.core.leisure) return score;
         double urgency;
         if (urgencyState.remainingDays() <= 0) {
             urgency = OVERDUE_URGENCY_FACTOR;

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Task row item. Inflated by ListRowAdapter into the TaskList RecyclerView.
-     Sections left-to-right: time column (start/end) → checkbox → optional goal icon →
+     Sections left-to-right: time range → checkbox → optional goal icon →
      optional progress controls → optional expand toggle → title (weight=1) →
-     metadata column (deadline/streak/calendar chip) → edit button.
-     Optional sections are shown/hidden by TaskListItemBinder based on ViewSlot state. -->
+     metadata row (deadline/streak/calendar chip).
+     Optional sections are shown/hidden by ListRowAdapter based on ViewSlot state.
+     Editing is reached via row long-press or the "Bearbeiten" action in the description popup. -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -20,35 +21,15 @@
     android:focusable="true"
     android:paddingStart="@dimen/spacing_lg"
     android:paddingEnd="@dimen/spacing_sm"
-    android:paddingVertical="@dimen/spacing_sm">
+    android:paddingVertical="@dimen/spacing_xs">
 
-    <LinearLayout
-        android:gravity="center_vertical"
+    <TextView
+        android:id="@+id/TimeRange"
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
-
-        <TextView
-            android:id="@+id/StartTime"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Time.Primary"/>
-
-        <View
-            android:id="@+id/TimeDivider"
-            android:layout_width="match_parent"
-            android:layout_height="@dimen/task_row_time_divider_height"
-            android:background="@color/color_outline"/>
-
-        <TextView
-            android:id="@+id/EndTime"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_xs"
-            android:gravity="center"
-            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Time.Secondary"/>
-    </LinearLayout>
+        android:layout_height="wrap_content"
+        android:minWidth="@dimen/task_row_time_column_min_width"
+        android:gravity="center"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Time.Primary"/>
 
     <CheckBox
         android:id="@+id/TaskCheckBox"
@@ -97,7 +78,7 @@
             android:layout_height="wrap_content"
             android:minWidth="@dimen/touch_target_min"
             android:minHeight="@dimen/touch_target_min"
-            android:padding="@dimen/spacing_sm"
+            android:padding="@dimen/spacing_xs"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/task_progress_decrement"
             android:src="@drawable/ic_remove_24"
@@ -118,7 +99,7 @@
             android:layout_height="wrap_content"
             android:minWidth="@dimen/touch_target_min"
             android:minHeight="@dimen/touch_target_min"
-            android:padding="@dimen/spacing_sm"
+            android:padding="@dimen/spacing_xs"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/task_progress_increment"
             android:src="@drawable/ic_add_24"
@@ -150,9 +131,9 @@
 
     <LinearLayout
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:gravity="center_vertical|end"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:paddingStart="@dimen/spacing_sm"
         android:paddingEnd="@dimen/spacing_xs">
 
@@ -167,7 +148,7 @@
             android:id="@+id/StreakDisplay"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_xs"
+            android:layout_marginStart="@dimen/spacing_sm"
             android:gravity="center"
             android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Metadata"/>
 
@@ -176,23 +157,11 @@
             android:id="@+id/CalendarChip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_sm"
             android:background="@drawable/task_bg_calendar_chip"
             android:paddingHorizontal="@dimen/spacing_sm"
             android:paddingVertical="@dimen/spacing_xxs"
             android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Metadata"
             android:visibility="gone"/>
     </LinearLayout>
-
-    <ImageButton
-        android:id="@+id/EditTaskButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:minWidth="@dimen/touch_target_min"
-        android:minHeight="@dimen/touch_target_min"
-        android:layout_marginStart="@dimen/spacing_sm"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/task_row_edit"
-        android:padding="@dimen/spacing_sm"
-        android:src="@drawable/ic_task_edit_24"
-        app:tint="@color/color_on_surface_emphasis"/>
 </LinearLayout>

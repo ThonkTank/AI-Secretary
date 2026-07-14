@@ -37,7 +37,8 @@ import java.util.function.Function;
 /**
  * RecyclerView adapter for the task list. Renders two visually distinct row types:
  * <ul>
- *   <li><b>Task rows</b> — show checkbox/progress, deadline, streak, and edit controls.</li>
+ *   <li><b>Task rows</b> — show checkbox/progress, deadline, and streak. Editing is reached
+ *       via row long-press or the description popup's "Bearbeiten" action.</li>
  *   <li><b>Calendar event rows</b> — read-only; show a "Kalender" chip, no interaction controls.</li>
  * </ul>
  *
@@ -53,7 +54,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     private static final long COMPLETION_FLASH_DURATION_MS = 300L;
     private List<ViewSlot> viewSlots;
     private final TaskRowActions actions;
-    /** False when viewing a past or future day; disables checkboxes, timers, and edit buttons. */
+    /** False when viewing a past or future day; disables checkboxes, timers, and row editing. */
     private boolean interactionsEnabled = true;
     /** True in Manage mode; enables the expand/collapse toggle on parent task rows. */
     private boolean manageMode = false;
@@ -144,8 +145,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         LinearLayout root;
         TextView title;
         TextView goalIcon;
-        TextView start;
-        TextView end;
+        TextView timeRange;
         CheckBox checkBox;
         ImageButton stateButton;
         View progressContainer;
@@ -154,7 +154,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         TextView progressText;
         TextView deadlineCountdown;
         TextView streakDisplay;
-        ImageButton editButton;
         TextView expandToggle;
         ValueAnimator completionAnimator;
         TextView calendarChip;
@@ -164,8 +163,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             this.root = taskRow.findViewById(R.id.TaskRowRoot);
             this.title = taskRow.findViewById(R.id.TaskTitle);
             this.goalIcon = taskRow.findViewById(R.id.GoalIcon);
-            this.start = taskRow.findViewById(R.id.StartTime);
-            this.end = taskRow.findViewById(R.id.EndTime);
+            this.timeRange = taskRow.findViewById(R.id.TimeRange);
             this.checkBox = taskRow.findViewById(R.id.TaskCheckBox);
             this.stateButton = taskRow.findViewById(R.id.TaskStateButton);
             this.progressContainer = taskRow.findViewById(R.id.ProgressContainer);
@@ -174,7 +172,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             this.progressText = taskRow.findViewById(R.id.ProgressText);
             this.deadlineCountdown = taskRow.findViewById(R.id.DeadlineCountdown);
             this.streakDisplay = taskRow.findViewById(R.id.StreakDisplay);
-            this.editButton = taskRow.findViewById(R.id.EditTaskButton);
             this.expandToggle = taskRow.findViewById(R.id.ExpandToggle);
             this.calendarChip = taskRow.findViewById(R.id.CalendarChip);
         }
@@ -200,6 +197,11 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
         bindIndentation(holder, viewSlot.getDepth());
         bindTimeRange(holder, item);
+
+        if (item.isCategoryHeader()) {
+            bindCategoryHeaderRow(holder, item, viewSlot);
+            return;
+        }
 
         if (item.isCalendarEvent()) {
             holder.itemView.setContentDescription(item.title);
@@ -234,7 +236,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.stateButton.setVisibility(View.GONE);
         holder.deadlineCountdown.setVisibility(View.VISIBLE);
         holder.streakDisplay.setVisibility(View.VISIBLE);
-        holder.editButton.setVisibility(View.VISIBLE);
         holder.expandToggle.setVisibility(View.GONE);
         holder.calendarChip.setVisibility(View.GONE);
         holder.stateButton.setOnClickListener(null);
@@ -314,6 +315,45 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
                 item.title, timeRange, deadlineSegment, streakSegment, stateLabel);
     }
 
+    /**
+     * Configures the row as a category group header (Manage mode): shows the category
+     * icon + name, an expand/collapse toggle for the whole group, and no task controls.
+     */
+    private void bindCategoryHeaderRow(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
+        Context context = holder.itemView.getContext();
+        holder.root.setBackgroundResource(R.drawable.bg_row);
+        holder.checkBox.setVisibility(View.GONE);
+        holder.stateButton.setVisibility(View.GONE);
+        holder.progressContainer.setVisibility(View.GONE);
+        holder.deadlineCountdown.setVisibility(View.GONE);
+        holder.streakDisplay.setVisibility(View.GONE);
+        holder.calendarChip.setVisibility(View.GONE);
+        holder.timeRange.setText("");
+
+        boolean hasIcon = item.categoryIcon != null && !item.categoryIcon.trim().isEmpty();
+        holder.goalIcon.setVisibility(hasIcon ? View.VISIBLE : View.GONE);
+        if (hasIcon) {
+            holder.goalIcon.setText(item.categoryIcon);
+            holder.goalIcon.setTextColor(
+                    ColorUtil.parseColorSafe(item.categoryColorHex, holder.title.getCurrentTextColor()));
+        }
+        holder.title.setText(item.title);
+        holder.title.setContentDescription(item.title);
+
+        // The whole header row toggles its category's expansion.
+        holder.checkBox.setOnClickListener(null);
+        holder.stateButton.setOnClickListener(null);
+        holder.stateButton.setOnLongClickListener(null);
+        holder.itemView.setOnLongClickListener(null);
+        holder.itemView.setOnClickListener(v -> actions.onToggleExpand.accept(viewSlot));
+        bindExpandToggle(holder, viewSlot);
+        holder.itemView.setContentDescription(item.title);
+        ViewCompat.setStateDescription(holder.itemView, context.getString(
+                actions.isExpanded.apply(viewSlot)
+                        ? R.string.task_row_collapse_children
+                        : R.string.task_row_expand_children));
+    }
+
     /** Configures the row as a read-only calendar event: hides all task controls, shows "Kalender" chip. */
     private void bindCalendarEventRow(TaskRowViewHolder holder) {
         Context context = holder.itemView.getContext();
@@ -324,7 +364,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.progressContainer.setVisibility(View.GONE);
         holder.deadlineCountdown.setVisibility(View.GONE);
         holder.streakDisplay.setVisibility(View.GONE);
-        holder.editButton.setVisibility(View.GONE);
         holder.expandToggle.setVisibility(View.GONE);
         holder.calendarChip.setVisibility(View.VISIBLE);
         holder.calendarChip.setText(context.getString(R.string.task_calendar_label));
@@ -340,11 +379,12 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         return time != null ? time.format(DateFormatters.TIME_HH_MM) : context.getString(fallbackRes);
     }
 
-    /** Formats and displays the start/end time for the slot, with fallback text if unset. */
+    /** Formats and displays the start–end time range for the slot, with fallback text if unset. */
     private void bindTimeRange(TaskRowViewHolder holder, TaskListItem item) {
         Context context = holder.itemView.getContext();
-        holder.start.setText(formatTimeOrFallback(context, item.start, R.string.task_time_fallback_start));
-        holder.end.setText(formatTimeOrFallback(context, item.end, R.string.task_time_fallback_end));
+        holder.timeRange.setText(context.getString(R.string.task_row_time_range_display,
+                formatTimeOrFallback(context, item.start, R.string.task_time_fallback_start),
+                formatTimeOrFallback(context, item.end, R.string.task_time_fallback_end)));
     }
 
     /** Shows a deadline urgency label (overdue/today/N days) with urgency-based text color. */
@@ -407,7 +447,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     /** Shows the streak badge (e.g. "5x") with tier-based coloring, or hides it if streak is 0. */
     private void bindStreak(TaskRowViewHolder holder, TaskListItem item) {
-        if (item.streak <= 0) {
+        if (item.streak <= 0 || item.leisure) {
             holder.streakDisplay.setVisibility(View.GONE);
             holder.streakDisplay.setContentDescription(null);
             return;
@@ -452,7 +492,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     /** Routes to either checkbox controls (standard tasks) or progress +/- controls (goal-based tasks). */
     private void bindCompletionMode(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
-        if (item.hasProgressTarget()) {
+        // Leisure tasks carry no progress metrics, so always use the simple checkbox control.
+        if (item.hasProgressTarget() && !item.leisure) {
             bindProgressControls(holder, item, viewSlot);
         } else {
             bindCheckboxControls(holder, item, viewSlot);
@@ -602,25 +643,27 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
                 enabled ? colorProgressButtonTint : colorProgressButtonTintDisabled));
     }
 
-    /** Wires click/long-click handlers for edit and title; disabled when viewing non-today dates. */
+    /**
+     * Wires row interactions: tapping the row opens the description popup (which offers an edit
+     * action when interactions are enabled), long-pressing edits directly. Edit is gated on
+     * {@link #interactionsEnabled} so past/future days stay read-only.
+     */
     private void bindInteractions(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
-        holder.title.setOnClickListener(v -> showDescriptionPopup(v, item));
+        holder.itemView.setOnClickListener(v -> showDescriptionPopup(v, item,
+                interactionsEnabled ? () -> actions.onEdit.accept(viewSlot) : null));
 
         holder.itemView.setOnLongClickListener(interactionsEnabled
                 ? v -> { actions.onEdit.accept(viewSlot); return true; }
                 : null);
-        holder.editButton.setOnClickListener(interactionsEnabled
-                ? v -> actions.onEdit.accept(viewSlot)
-                : null);
-        holder.editButton.setAlpha(interactionsEnabled ? UiConstants.ALPHA_ENABLED : UiConstants.ALPHA_DISABLED);
     }
 
-    private void showDescriptionPopup(View view, TaskListItem item) {
+    private void showDescriptionPopup(View view, TaskListItem item, Runnable onEdit) {
         if (!(view.getContext() instanceof FragmentActivity activity)) {
             return;
         }
-        TaskDescriptionDialog.newInstance(item.title, item.description)
-                .show(activity.getSupportFragmentManager(), TaskDescriptionDialog.TAG);
+        TaskDescriptionDialog dialog = TaskDescriptionDialog.newInstance(item.title, item.description);
+        dialog.setOnEdit(onEdit);
+        dialog.show(activity.getSupportFragmentManager(), TaskDescriptionDialog.TAG);
     }
 
     /** Plays a checkbox scale-bounce and background flash animation on checkoff. */
@@ -721,6 +764,9 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
 
     private static String stableItemKey(ViewSlot slot) {
         TaskListItem item = slot.getItem();
+        if (item.isCategoryHeader()) {
+            return "header|" + item.categoryId;
+        }
         if (item.slotId != null) {
             return item.slotId;
         }
@@ -739,7 +785,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
                 && Objects.equals(oldItem.taskId, newItem.taskId)
                 && Objects.equals(oldItem.slotId, newItem.slotId)
                 && Objects.equals(oldItem.slotParentId, newItem.slotParentId)
-                && Objects.equals(oldItem.parentTaskIds, newItem.parentTaskIds)
+                && Objects.equals(oldItem.categoryId, newItem.categoryId)
                 && Objects.equals(oldItem.title, newItem.title)
                 && Objects.equals(oldItem.description, newItem.description)
                 && Objects.equals(oldItem.day, newItem.day)
@@ -747,6 +793,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
                 && Objects.equals(oldItem.end, newItem.end)
                 && Objects.equals(oldItem.deadline, newItem.deadline)
                 && oldItem.streak == newItem.streak
+                && oldItem.leisure == newItem.leisure
                 && oldItem.score == newItem.score
                 && oldItem.completed == newItem.completed
                 && oldItem.inProgress == newItem.inProgress

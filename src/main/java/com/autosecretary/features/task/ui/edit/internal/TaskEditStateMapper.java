@@ -3,7 +3,6 @@ package com.autosecretary.features.task.ui.edit.internal;
 import com.autosecretary.features.task.domain.model.Task;
 import com.autosecretary.features.task.domain.model.TaskCore;
 import com.autosecretary.features.task.domain.model.TaskPrefSlot;
-import com.autosecretary.features.task.domain.model.TaskRelation;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
@@ -53,7 +52,7 @@ public final class TaskEditStateMapper {
         state.description = task.core.description;
         state.priority = task.core.priority;
         state.schedulingType = task.core.schedulingType;
-        state.parentTaskId = task.parents.isEmpty() ? null : task.parents.get(0).parent;
+        state.categoryId = task.core.categoryId;
         state.budgetRequiredCents = task.core.budgetRequiredCents;
         state.budgetAccountId = task.core.budgetAccountId;
         state.budgetCategoryId = task.core.budgetCategoryId;
@@ -69,6 +68,7 @@ public final class TaskEditStateMapper {
         state.maxDuration = task.core.maxDuration;
         state.cooldown = task.core.cooldown;
         state.adaptive = task.core.adaptive;
+        state.leisure = task.core.leisure;
 
         state.reps = task.core.repetition.reps;
         state.perPeriod = task.core.repetition.perPeriod;
@@ -111,6 +111,7 @@ public final class TaskEditStateMapper {
         task.core.description = state.description;
         task.core.priority = state.priority;
         task.core.schedulingType = state.schedulingType;
+        task.core.categoryId = state.categoryId;
         task.core.budgetRequiredCents = state.budgetRequiredCents;
         task.core.budgetAccountId = state.budgetAccountId;
         task.core.budgetCategoryId = state.budgetCategoryId;
@@ -126,6 +127,7 @@ public final class TaskEditStateMapper {
         task.core.maxDuration = state.maxDuration;
         task.core.cooldown = state.cooldown;
         task.core.adaptive = state.adaptive;
+        task.core.leisure = state.leisure;
 
         // TaskCore initializes Repetition and Progress as non-null field initializers,
         // so direct field access below is safe even for a freshly constructed TaskCore.
@@ -152,12 +154,6 @@ public final class TaskEditStateMapper {
             prefSlot.start = prefSlotState.start;
             prefSlot.days = copyDaysOrEmpty(prefSlotState.days);
             task.prefSlots.add(prefSlot);
-        }
-
-        // Set parent relation from edit state. Replaces whatever the base task had.
-        task.parents = new ArrayList<>();
-        if (state.parentTaskId != null) {
-            task.parents.add(new TaskRelation(state.parentTaskId, task.core.id));
         }
 
         // Task carries several Room @Relation lists (slots, prerequisites, plannedMeals).

@@ -28,7 +28,7 @@ public class TaskEditState implements UiStateCarrier {
     public String id;
     public String title;
     public String description;
-    public String parentTaskId;  // nullable; null means no parent
+    public String categoryId;  // nullable; null means uncategorised
 
     // Scheduling & priority — user-editable
     public Priority priority = TaskEditDefaults.PRIORITY;
@@ -46,6 +46,7 @@ public class TaskEditState implements UiStateCarrier {
     public int maxDuration = TaskEditDefaults.MAX_DURATION;  // minutes
     public int cooldown = TaskEditDefaults.COOLDOWN;  // days (minimum gap between slots)
     public boolean adaptive;  // if true, preferred times auto-adjust from real completion times
+    public boolean leisure;  // if true, leisure item: scheduled but no metrics/pressure
 
     // Budget integration (optional) — if set, task completion auto-books an expense
     public Integer budgetRequiredCents;  // required amount in cents; null means no budget link

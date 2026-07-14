@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Multi-domain assistant screen (nav_assistant tab). Managed by TaskAssistantFragment +
+     TaskAssistantViewModel. Structure:
+       1. Compact header: styled model chip (Spinner) + icon buttons for new-chat and undo
+          (undo is shown only when there is a change to undo — visibility gated in the Fragment).
+       2. "Denkprozess" toggle.
+       3. Content area (weight=1): scrolling chat history OR a centered empty state (only one visible).
+       4. Attachment chip (shown once a file is attached).
+       5. Input pill: attach icon button + message field + loading spinner + send icon button.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="@dimen/spacing_lg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <Spinner
+            android:id="@+id/AssistantModelSpinner"
+            style="@style/Widget.AutoSecretary.Editor.Spinner"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/AssistantNewChatButton"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_sm"
+            android:contentDescription="@string/task_assistant_new_chat"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="@dimen/spacing_md"
+            android:paddingEnd="@dimen/spacing_md"
+            app:icon="@drawable/ic_add_24"
+            app:iconPadding="0dp"
+            app:iconTint="@color/color_primary" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/AssistantUndoButton"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_sm"
+            android:contentDescription="@string/task_assistant_undo"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="@dimen/spacing_md"
+            android:paddingEnd="@dimen/spacing_md"
+            android:visibility="gone"
+            app:icon="@drawable/ic_undo_24"
+            app:iconPadding="0dp"
+            app:iconTint="@color/color_primary" />
+
+    </LinearLayout>
+
+    <com.google.android.material.switchmaterial.SwitchMaterial
+        android:id="@+id/AssistantThinkingSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs"
+        android:checked="true"
+        android:text="@string/task_assistant_thinking_toggle"
+        android:textAllCaps="false" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="@dimen/spacing_sm">
+
+        <ScrollView
+            android:id="@+id/AssistantHistoryScroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="@dimen/spacing_sm">
+
+            <LinearLayout
+                android:id="@+id/AssistantHistory"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </ScrollView>
+
+        <include
+            android:id="@+id/AssistantEmptyState"
+            layout="@layout/include_empty_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center" />
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/AssistantAttachmentChip"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:background="@drawable/bg_surface_card"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/spacing_md"
+        android:paddingEnd="@dimen/spacing_xs"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/AssistantAttachmentName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="middle"
+            android:singleLine="true"
+            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Metadata" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/AssistantAttachmentClear"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/task_assistant_attachment_clear"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="@dimen/spacing_md"
+            android:paddingEnd="@dimen/spacing_md"
+            android:text="✕"
+            android:textAllCaps="false" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:background="@drawable/task_bg_input_bar"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/spacing_xs"
+        android:paddingEnd="@dimen/spacing_xs">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/AssistantAttachButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/task_assistant_attach"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="@dimen/spacing_sm"
+            android:paddingEnd="@dimen/spacing_sm"
+            app:icon="@drawable/ic_attach_file_24"
+            app:iconPadding="0dp"
+            app:iconTint="@color/color_on_surface_variant" />
+
+        <EditText
+            android:id="@+id/AssistantInstruction"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:gravity="top|start"
+            android:hint="@string/task_assistant_instruction_hint"
+            android:importantForAutofill="no"
+            android:inputType="textMultiLine|textCapSentences"
+            android:maxLines="4"
+            android:minLines="1"
+            android:paddingTop="@dimen/spacing_sm"
+            android:paddingBottom="@dimen/spacing_sm" />
+
+        <ProgressBar
+            android:id="@+id/AssistantLoading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_xs"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/AssistantProposeButton"
+            style="?attr/materialButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_xs"
+            android:contentDescription="@string/task_assistant_send"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="@dimen/spacing_md"
+            android:paddingEnd="@dimen/spacing_md"
+            app:cornerRadius="@dimen/corner_radius_lg"
+            app:icon="@drawable/ic_send_24"
+            app:iconPadding="0dp"
+            app:iconTint="@color/color_on_primary" />
+
+    </LinearLayout>
+
+</LinearLayout>

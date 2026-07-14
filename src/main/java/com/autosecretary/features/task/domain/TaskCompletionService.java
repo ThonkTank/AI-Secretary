@@ -67,14 +67,19 @@ public class TaskCompletionService {
         // Only track duration in history when the elapsed time is meaningful
         boolean trackDuration = !isQuickTap && !isStale;
 
-        lifecycleManager.updateStreakForCompletion(task, slot);
-        int durationMinutes = (int) Math.ceil(durationSeconds / 60.0);
-        task.recordCompletion(durationMinutes, trackDuration);
-        if (trackDuration && task.core.progress != null) {
-            task.core.progress.recordTimingSample(durationMinutes);
-        }
-        if (trackDuration && task.core.adaptive) {
-            lifecycleManager.adaptPrefSlot(task, slot);
+        // Leisure items carry no metrics: skip streak, history, timing samples, and adaptive learning.
+        // The essential slot state (realStart/realEnd/completed) above still applies, and COMPLETED is
+        // still returned so downstream effects (budget/meal) run.
+        if (!task.core.leisure) {
+            lifecycleManager.updateStreakForCompletion(task, slot);
+            int durationMinutes = (int) Math.ceil(durationSeconds / 60.0);
+            task.recordCompletion(durationMinutes, trackDuration);
+            if (trackDuration && task.core.progress != null) {
+                task.core.progress.recordTimingSample(durationMinutes);
+            }
+            if (trackDuration && task.core.adaptive) {
+                lifecycleManager.adaptPrefSlot(task, slot);
+            }
         }
         return CompletionPhase.COMPLETED;
     }

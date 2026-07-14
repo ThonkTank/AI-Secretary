@@ -42,10 +42,6 @@
     <string name="meal_progress_food_group_title">%1$s %2$s</string>
     <string name="meal_add_plan">+ Rezept planen</string>
     <string name="meal_add_plan_desc">Rezept-Planungs-Dialog öffnen</string>
-    <string name="meal_generate_plan">Woche generieren</string>
-    <string name="meal_generate_plan_desc">Wochenplan automatisch generieren</string>
-    <string name="meal_success_plan_generated">%d Mahlzeiten generiert</string>
-    <string name="meal_generate_no_recipes">Keine Rezepte verfügbar. Bitte erstellen Sie zuerst Rezepte.</string>
     <string name="meal_mark_done">Erledigt</string>
     <string name="meal_mark_done_desc">%s als erledigt markieren</string>
     <string name="meal_mark_open">Offen</string>
@@ -81,7 +77,6 @@
     <string name="meal_label_shelf_life_days">Haltbarkeit (Tage) *</string>
     <string name="meal_label_location">Lagerort *</string>
 
-    <string name="meal_hint_date">@string/hint_date_yyyy_mm_dd</string>
     <string name="meal_hint_servings">Portionen</string>
     <string name="meal_hint_name">Name</string>
     <string name="meal_hint_amount">Menge</string>

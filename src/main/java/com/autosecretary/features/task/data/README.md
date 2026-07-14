@@ -26,11 +26,11 @@ The following Room-annotated types are intentionally in `domain/model/`:
 
 - `TaskCore` — primary task entity (`task_core`), with embedded Repetition,
   Progress, and History classes.
-- `Task` — Room POJO assembled via `@Embedded` + `@Relation` from six tables
+- `Task` — Room POJO assembled via `@Embedded` + `@Relation` from five tables
   (not an `@Entity`).
 - `TaskSlot` — scheduled execution window (`task_slots`).
 - `TaskPrefSlot` — preferred day/time pattern (`task_pref_slots`).
-- `TaskRelation` — parent-child hierarchy (`task_relation`).
+- `TaskCategory` — flat grouping of tasks (`task_category`); referenced by `TaskCore.categoryId`.
 - `TaskPrerequisite` — prerequisite links (`task_prerequisites`).
 - `TaskPlannedMeal` — task-to-meal association (`task_planned_meals`).
 - `TaskPrefSlotFactory` — creates default `TaskPrefSlot` instances for new tasks.

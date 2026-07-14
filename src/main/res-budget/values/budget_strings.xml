@@ -14,10 +14,10 @@
     <string name="budget_transfer_save">Überweisen</string>
     <string name="budget_transfer_source_account">Quellkonto</string>
     <string name="budget_transfer_target_account">Zielkonto</string>
-    <string name="budget_transfer_date_hint">@string/hint_date_yyyy_mm_dd</string>
+    <string name="budget_transfer_date_hint">@string/hint_date</string>
     <string name="budget_transfer_requires_two_accounts">Für Überweisungen werden mindestens zwei Konten benötigt.</string>
     <string name="budget_transfer_same_account">Quell- und Zielkonto müssen unterschiedlich sein.</string>
-    <string name="budget_transfer_invalid_date">Ungültiges Datum (erwartet: YYYY-MM-DD)</string>
+    <string name="budget_transfer_invalid_date">Ungültiges Datum</string>
     <string name="budget_empty_state">Noch keine Buchungen. Starte mit „Transaktion hinzufügen".</string>
     <string name="budget_empty_state_title">Noch keine Buchungen</string>
     <string name="budget_empty_state_subtitle">Starte mit „Transaktion hinzufügen".</string>
@@ -38,7 +38,7 @@
     <string name="budget_transaction_content_description">Transaktion: %1$s, %2$s, %3$s</string>
     <string name="budget_dialog_category_label">Kategorie</string>
     <string name="budget_dialog_account_label">Konto</string>
-    <string name="budget_dialog_date_hint">@string/hint_date_yyyy_mm_dd</string>
+    <string name="budget_dialog_date_hint">@string/hint_date</string>
     <string name="budget_month_prev_desc">Vorheriger Monat</string>
     <string name="budget_month_next_desc">Nächster Monat</string>
     <string name="budget_delete_title">Transaktion löschen?</string>

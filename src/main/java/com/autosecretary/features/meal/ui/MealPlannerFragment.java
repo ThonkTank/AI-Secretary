@@ -10,7 +10,7 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
+import com.google.android.material.snackbar.Snackbar;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -121,7 +121,7 @@ public class MealPlannerFragment extends Fragment {
                 (recipeId, date, mealType, servings) ->
                         viewModel.planRecipe(recipeId, date, mealType, servings, () -> {
                             if (!isAdded()) return;
-                            Toast.makeText(requireContext(), R.string.meal_success_plan_created, Toast.LENGTH_SHORT).show();
+                            showConfirmation(R.string.meal_success_plan_created);
                             reloadManageList();
                         }),
                 (recipe, servings) -> viewModel.scaleRecipePreview(recipe, servings));
@@ -129,7 +129,7 @@ public class MealPlannerFragment extends Fragment {
         needDialogController = new MealNeedDialogController(this, (name, amount, unit) ->
                 viewModel.createShoppingItemFromNeed(name, amount, unit, () -> {
                     if (!isAdded()) return;
-                    Toast.makeText(requireContext(), R.string.meal_success_need_created, Toast.LENGTH_SHORT).show();
+                    showConfirmation(R.string.meal_success_need_created);
                 }));
 
         pantryDialogController = new MealPantryDialogController(this, new MealPantryDialogController.Listener() {
@@ -138,7 +138,7 @@ public class MealPlannerFragment extends Fragment {
                                               PantryItem.StorageLocation location, int shelfLifeDays) {
                 viewModel.createPantryItem(name, amount, unit, location, shelfLifeDays, () -> {
                     if (!isAdded()) return;
-                    Toast.makeText(requireContext(), R.string.meal_success_pantry_created, Toast.LENGTH_SHORT).show();
+                    showConfirmation(R.string.meal_success_pantry_created);
                     reloadManageList();
                 });
             }
@@ -147,7 +147,7 @@ public class MealPlannerFragment extends Fragment {
             public void onPantryItemUpdated(PantryItem updated) {
                 viewModel.savePantryItem(updated, () -> {
                     if (!isAdded()) return;
-                    Toast.makeText(requireContext(), R.string.meal_success_pantry_saved, Toast.LENGTH_SHORT).show();
+                    showConfirmation(R.string.meal_success_pantry_saved);
                     reloadManageList();
                 });
             }
@@ -156,7 +156,7 @@ public class MealPlannerFragment extends Fragment {
             public void onPantryItemDeleted(String pantryItemId) {
                 viewModel.deletePantryItem(pantryItemId, () -> {
                     if (!isAdded()) return;
-                    Toast.makeText(requireContext(), R.string.meal_success_pantry_deleted, Toast.LENGTH_SHORT).show();
+                    showConfirmation(R.string.meal_success_pantry_deleted);
                     reloadManageList();
                 });
             }
@@ -167,7 +167,7 @@ public class MealPlannerFragment extends Fragment {
             public void onRecipeSaved(Recipe recipe) {
                 viewModel.saveRecipe(recipe, () -> {
                     if (!isAdded()) return;
-                    Toast.makeText(requireContext(), R.string.meal_success_recipe_saved, Toast.LENGTH_SHORT).show();
+                    showConfirmation(R.string.meal_success_recipe_saved);
                     reloadManageList();
                 });
             }
@@ -176,7 +176,7 @@ public class MealPlannerFragment extends Fragment {
             public void onRecipeDeleted(String recipeId) {
                 viewModel.deleteRecipe(recipeId, () -> {
                     if (!isAdded()) return;
-                    Toast.makeText(requireContext(), R.string.meal_success_recipe_deleted, Toast.LENGTH_SHORT).show();
+                    showConfirmation(R.string.meal_success_recipe_deleted);
                     reloadManageList();
                 });
             }
@@ -187,7 +187,7 @@ public class MealPlannerFragment extends Fragment {
             public void onIngredientSaved(Ingredient ingredient) {
                 viewModel.saveIngredient(ingredient, () -> {
                     if (!isAdded()) return;
-                    Toast.makeText(requireContext(), R.string.meal_success_ingredient_saved, Toast.LENGTH_SHORT).show();
+                    showConfirmation(R.string.meal_success_ingredient_saved);
                     reloadManageList();
                 });
             }
@@ -196,7 +196,7 @@ public class MealPlannerFragment extends Fragment {
             public void onIngredientDeleted(String ingredientId) {
                 viewModel.deleteIngredient(ingredientId, () -> {
                     if (!isAdded()) return;
-                    Toast.makeText(requireContext(), R.string.meal_success_ingredient_deleted, Toast.LENGTH_SHORT).show();
+                    showConfirmation(R.string.meal_success_ingredient_deleted);
                     reloadManageList();
                 });
             }
@@ -207,7 +207,7 @@ public class MealPlannerFragment extends Fragment {
             public void onMemberSaved(HouseholdMember member) {
                 viewModel.saveHouseholdMember(member, () -> {
                     if (!isAdded()) return;
-                    Toast.makeText(requireContext(), R.string.meal_success_household_saved, Toast.LENGTH_SHORT).show();
+                    showConfirmation(R.string.meal_success_household_saved);
                     reloadManageList();
                 });
             }
@@ -216,11 +216,16 @@ public class MealPlannerFragment extends Fragment {
             public void onMemberDeleted(String memberId) {
                 viewModel.deleteHouseholdMember(memberId, () -> {
                     if (!isAdded()) return;
-                    Toast.makeText(requireContext(), R.string.meal_success_household_deleted, Toast.LENGTH_SHORT).show();
+                    showConfirmation(R.string.meal_success_household_deleted);
                     reloadManageList();
                 });
             }
         });
+    }
+
+    /** Shows a brief success confirmation anchored to the fragment view. */
+    private void showConfirmation(int messageRes) {
+        Snackbar.make(requireView(), messageRes, Snackbar.LENGTH_SHORT).show();
     }
 
     private void bindViews(View view) {

@@ -17,6 +17,7 @@
     <string name="task_time_fallback_start">--:--</string>
     <string name="task_time_fallback_end">--:--</string>
     <string name="task_description_fallback">Keine Beschreibung</string>
+    <string name="task_description_edit_action">Bearbeiten</string>
     <string name="task_deadline_overdue_label">! Fällig</string>
     <string name="task_deadline_today_label">! Heute fällig</string>
     <string name="task_deadline_in_days_label">in %1$dd</string>
@@ -49,7 +50,20 @@
     <string name="task_list_empty_title">Noch keine Aufgaben</string>
     <string name="task_list_empty_subtitle">Erstelle deine erste Aufgabe, um deinen Tagesplan zu starten</string>
     <string name="task_list_empty_action">Erste Aufgabe erstellen</string>
-    <string name="task_list_new_task">+ Neue Aufgabe</string>
+    <string name="task_list_new_task">Neue Aufgabe</string>
+
+    <!-- Scheduling conflict surfacing (shown after a schedule regeneration). -->
+    <plurals name="task_schedule_conflicts_summary">
+        <item quantity="one">%d Aufgabe konnte nicht eingeplant werden</item>
+        <item quantity="other">%d Aufgaben konnten nicht eingeplant werden</item>
+    </plurals>
+    <string name="task_schedule_conflicts_details">Details</string>
+    <string name="task_schedule_conflicts_title">Nicht eingeplante Aufgaben</string>
+    <string name="task_schedule_conflict_line">%1$s — %2$s</string>
+    <string name="task_conflict_reason_outside_window">außerhalb des Zeitfensters</string>
+    <string name="task_conflict_reason_calendar_overlap">Kalender-Überschneidung</string>
+    <string name="task_conflict_reason_prerequisite_blocked">Voraussetzung nicht erfüllt</string>
+    <string name="task_conflict_reason_no_matching_gap">keine passende Lücke</string>
 
     <string name="task_editor_hint_title">Titel</string>
     <string name="task_editor_hint_description">Beschreibung</string>
@@ -116,20 +130,20 @@
     <string name="task_editor_pref_slot_delete_content_description">Zeitfenster löschen</string>
     <string name="task_editor_hint_reps">Wdh.</string>
     <string name="task_editor_hint_per_period">alle</string>
-    <string name="task_editor_parent_label">Übergeordnete Aufgabe:</string>
-    <string name="task_editor_parent_none">Kein Parent</string>
-    <string name="task_editor_parent_content_description">Übergeordnete Aufgabe</string>
+    <string name="task_editor_category_label">Kategorie:</string>
+    <string name="task_editor_leisure">Freizeit (ohne Metriken/Leistungsdruck)</string>
+    <string name="task_editor_category_none">Keine Kategorie</string>
+    <string name="task_editor_category_content_description">Kategorie</string>
 
     <string name="task_editor_section_grunddaten">Grunddaten</string>
     <string name="task_editor_section_planung">Planung</string>
-    <string name="task_editor_weitere_details_collapsed">▸ Weitere Details</string>
-    <string name="task_editor_weitere_details_expanded">▾ Weitere Details</string>
-    <string name="task_editor_section_wiederholung_collapsed">▸ Wiederholung</string>
-    <string name="task_editor_section_wiederholung_expanded">▾ Wiederholung</string>
-    <string name="task_editor_section_fortschritt_collapsed">▸ Fortschritt</string>
-    <string name="task_editor_section_fortschritt_expanded">▾ Fortschritt</string>
-    <string name="task_editor_section_budget_collapsed">▸ Budget</string>
-    <string name="task_editor_section_budget_expanded">▾ Budget</string>
+    <!-- "Weitere Optionen" is a plain expander (arrow indicates open/closed). -->
+    <string name="task_editor_weitere_optionen_collapsed">▸ Weitere Optionen</string>
+    <string name="task_editor_weitere_optionen_expanded">▾ Weitere Optionen</string>
+    <!-- Feature sections carry a header switch (on/off), so their titles are static. -->
+    <string name="task_editor_section_wiederholung">Wiederholung</string>
+    <string name="task_editor_section_fortschritt">Fortschritt</string>
+    <string name="task_editor_section_budget">Budget</string>
     <string name="task_editor_priority_label">Priorität</string>
     <string name="task_editor_scheduling_type_label">Planungstyp</string>
     <string name="task_editor_priority_content_description">Priorität</string>
@@ -141,6 +155,9 @@
     <string name="task_widget_checkbox_content_description">Aufgabe abhaken: %1$s</string>
     <string name="task_widget_refresh_content_description">Aktualisieren</string>
     <string name="task_widget_empty">Keine Aufgaben</string>
+    <string name="task_widget_category_all">Alle</string>
+    <string name="task_widget_search_content_description">Suchen</string>
+    <string name="task_widget_category_filter_content_description">Nach Kategorie filtern</string>
 
     <string-array name="task_edit_weekday_short_labels">
         <item>Mo</item>
@@ -152,11 +169,80 @@
         <item>So</item>
     </string-array>
 
+    <string name="task_scheduling_enabled_label">Tagesplanung aktiv</string>
     <string name="task_schedule_dialog_title">Tagesfenster konfigurieren</string>
     <string name="task_schedule_validation_error">Endzeit muss nach Startzeit liegen.</string>
     <string name="task_schedule_saved">Zeitfenster gespeichert</string>
     <string name="task_schedule_start_desc">%1$s Startzeit: %2$s</string>
     <string name="task_schedule_end_desc">%1$s Endzeit: %2$s</string>
+
+    <string name="task_category_dialog_title">Kategorien verwalten</string>
+    <string name="task_category_add">Kategorie hinzufügen</string>
+    <string name="task_category_saved">Kategorien gespeichert</string>
+    <string name="task_category_name_required">Jede Kategorie braucht einen Namen.</string>
+    <string name="task_category_name_hint">Name</string>
+    <string name="task_category_icon_hint">😀</string>
+    <string name="task_category_color_hint">#RRGGBB</string>
+    <string name="task_category_delete_desc">Kategorie löschen</string>
+
+    <string name="task_category_window_dialog_title">Kategorie-Zeitfenster</string>
+    <string name="task_category_window_add_block">Block hinzufügen</string>
+    <string name="task_category_window_delete_desc">Block löschen</string>
+    <string name="task_category_window_saved">Kategorie-Zeitfenster gespeichert</string>
+    <string name="task_category_window_category_required">Jeder Block braucht eine Kategorie.</string>
+    <string name="task_category_window_invalid_range">Endzeit muss nach Startzeit liegen.</string>
+    <string name="task_category_window_no_categories">Erst Kategorien anlegen, dann Zeitfenster zuweisen.</string>
+
+    <string name="task_assistant_title">Assistent</string>
+    <string name="task_assistant_instruction_hint">Frag mich etwas oder bitte mich um eine Änderung…</string>
+    <string name="task_assistant_send">Senden</string>
+    <string name="task_assistant_apply">Übernehmen</string>
+    <string name="task_assistant_undo">Rückgängig</string>
+    <string name="task_assistant_close">Schließen</string>
+    <string name="task_assistant_empty_instruction">Bitte zuerst eine Nachricht eingeben.</string>
+    <string name="task_assistant_send_in_progress">Der Assistent verarbeitet noch die aktuelle Nachricht.</string>
+    <string name="task_assistant_no_changes">Keine Änderungen vorgeschlagen.</string>
+    <string name="task_assistant_applied">Änderungen übernommen</string>
+    <string name="task_assistant_undone">Letzte Änderung rückgängig gemacht</string>
+    <string name="task_assistant_nothing_to_undo">Nichts zum Rückgängigmachen</string>
+    <!-- Top bar: model picker, thinking toggle, new chat, attachments. -->
+    <string name="task_assistant_model_label">Modell</string>
+    <string name="task_assistant_model_custom">Eigenes Modell…</string>
+    <string name="task_assistant_model_custom_title">Eigenes Modell</string>
+    <string name="task_assistant_model_custom_hint">Modell-ID, z. B. claude-sonnet-5</string>
+    <string name="task_assistant_thinking_toggle">Denkprozess</string>
+    <string name="task_assistant_thinking_show">▸ Denkprozess</string>
+    <string name="task_assistant_thinking_hide">▾ Denkprozess</string>
+    <string name="task_assistant_new_chat">Neuer Chat</string>
+    <string name="task_assistant_attach">Datei anhängen</string>
+    <string name="task_assistant_attachment_clear">Anhang entfernen</string>
+    <string name="task_assistant_attachment_invalid">Nur PDF-, TXT- oder MD-Dateien werden unterstützt.</string>
+    <string name="task_assistant_attachment_read_error">Datei konnte nicht gelesen werden.</string>
+    <string name="task_assistant_attachment_too_large">Datei ist zu groß (max. 8 MB).</string>
+    <!-- Proposal card summaries for the non-task domains. -->
+    <string name="task_assistant_proposal_recipes">%d Rezept(e) anlegen</string>
+    <string name="task_assistant_proposal_ingredients">%d Zutat(en) anlegen</string>
+    <string name="task_assistant_proposal_meal_plans">%d Wochenplan-Eintrag/Einträge anlegen</string>
+    <string name="task_assistant_proposal_import">%1$d Transaktion(en) importieren (%2$d bereits vorhanden)</string>
+    <!-- Empty-state text when no Claude API key is configured. -->
+    <string name="task_assistant_no_key_title">Kein API-Key hinterlegt</string>
+    <string name="task_assistant_no_key_subtitle">Hinterlege deinen Claude API-Key unter Einstellungen → API-Key, um den Assistenten zu nutzen.</string>
+    <!-- Onboarding empty-state text when a key exists but no exchange has happened yet. -->
+    <string name="task_assistant_onboarding_title">Assistent</string>
+    <string name="task_assistant_onboarding_subtitle">Frag mich zu Aufgaben, Rezepten oder deinem Budget – oder bitte mich um eine Änderung. Ich schlage sie vor, du bestätigst.</string>
+    <!-- Per-exchange status label shown in the chat history. -->
+    <string name="task_assistant_status_applied">Übernommen</string>
+    <string name="task_assistant_status_pending">Antwort wird vorbereitet…</string>
+    <!-- Diff labels (op markers ＋/✎/－ are language-neutral and set in code). -->
+    <string name="task_assistant_diff_category">Kategorie:</string>
+    <string name="task_assistant_diff_task">Aufgabe:</string>
+    <string name="task_assistant_diff_leisure">[Freizeit]</string>
+
+    <string-array name="task_assistant_models">
+        <item>claude-sonnet-5</item>
+        <item>claude-opus-4-8</item>
+        <item>claude-haiku-4-5-20251001</item>
+    </string-array>
 
     <string name="task_edit_validation_title_required">Titel ist erforderlich.</string>
     <string name="task_edit_validation_min_duration">Minimale Dauer muss mindestens 1 Minute sein.</string>
@@ -191,6 +277,8 @@
     <string name="task_row_content_description">%1$s, %2$s%3$s%4$s, %5$s</string>
     <!-- Time range segment used inside the composite row content description. -->
     <string name="task_row_time_range">%1$s – %2$s</string>
+    <!-- Compact time range shown on the task row (single line, no spaces around dash). -->
+    <string name="task_row_time_range_display">%1$s–%2$s</string>
     <!-- Deadline segment prefix inserted into the composite row content description. -->
     <string name="task_row_deadline_segment">, %1$s</string>
     <!-- Streak segment inserted into the composite row content description. -->

@@ -2,6 +2,7 @@ package com.autosecretary.features.task.ui;
 
 import androidx.lifecycle.ViewModel;
 
+import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
 import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
 import com.autosecretary.features.task.ui.state.DayScheduleRow;
 
@@ -16,16 +17,28 @@ import java.util.function.Consumer;
 public class TaskScheduleConfigViewModel extends ViewModel {
 
     private final TaskScheduleConfigRepository repository;
+    private final RegenerateScheduleUseCase regenerateScheduleUseCase;
     private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
 
     public TaskScheduleConfigViewModel(
             TaskScheduleConfigRepository repository,
+            RegenerateScheduleUseCase regenerateScheduleUseCase,
             ExecutorService workerExecutor,
             Executor callbackDispatcher) {
         this.repository = repository;
+        this.regenerateScheduleUseCase = regenerateScheduleUseCase;
         this.workerExecutor = workerExecutor;
         this.callbackDispatcher = callbackDispatcher;
+    }
+
+    /**
+     * Regenerates the schedule so a change to the global scheduling toggle takes effect at once
+     * (disabling clears the checklist; enabling rebuilds it). Result is ignored — the checklist UI
+     * refreshes through its own observation path.
+     */
+    public void regenerateSchedule() {
+        regenerateScheduleUseCase.execute(result -> {});
     }
 
     public void loadConfigs(Consumer<List<DayScheduleRow>> onLoaded) {

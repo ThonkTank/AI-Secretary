@@ -1,4 +1,4 @@
-package com.autosecretary.features.budget.data.api;
+package com.autosecretary.shared;
 
 import android.content.Context;
 import android.content.SharedPreferences;

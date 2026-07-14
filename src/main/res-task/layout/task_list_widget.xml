@@ -11,7 +11,7 @@
     android:background="@drawable/bg_forest_gradient"
     android:padding="@dimen/spacing_sm">
 
-    <!-- Day navigation header -->
+    <!-- Category filter + actions header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -20,37 +20,28 @@
         android:paddingBottom="@dimen/spacing_xs">
 
         <TextView
-            android:id="@+id/WidgetPrevDay"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minWidth="@dimen/touch_target_min"
-            android:minHeight="@dimen/touch_target_min"
-            android:gravity="center"
-            android:padding="@dimen/spacing_sm"
-            android:text="@string/task_list_day_nav_prev"
-            android:contentDescription="@string/task_list_day_nav_prev_desc"
-            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Widget.NavAction" />
-
-        <TextView
-            android:id="@+id/WidgetDateLabel"
+            android:id="@+id/WidgetCategoryFilter"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:gravity="center"
-            android:text="@string/task_list_day_nav_today"
+            android:minHeight="@dimen/touch_target_min"
+            android:gravity="center_vertical|start"
+            android:padding="@dimen/spacing_sm"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="@string/task_widget_category_all"
+            android:contentDescription="@string/task_widget_category_filter_content_description"
             android:textAppearance="@style/TextAppearance.AutoSecretary.Widget.NavLabel" />
 
-        <TextView
-            android:id="@+id/WidgetNextDay"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minWidth="@dimen/touch_target_min"
-            android:minHeight="@dimen/touch_target_min"
-            android:gravity="center"
-            android:padding="@dimen/spacing_sm"
-            android:text="@string/task_list_day_nav_next"
-            android:contentDescription="@string/task_list_day_nav_next_desc"
-            android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Widget.NavAction" />
+        <ImageButton
+            android:id="@+id/WidgetSearch"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
+            android:src="@drawable/ic_search_24"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/task_widget_search_content_description"
+            android:scaleType="fitCenter" />
 
         <ImageButton
             android:id="@+id/WidgetAdd"

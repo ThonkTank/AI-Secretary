@@ -2,6 +2,7 @@ package com.autosecretary.features.task.domain.internal.scheduling;
 
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.scheduling.CalendarBlockedIntervalProvider;
+import com.autosecretary.features.task.domain.scheduling.CategoryWindowProvider;
 import com.autosecretary.features.task.domain.scheduling.SchedulingWindowProvider;
 import com.autosecretary.features.task.domain.scheduling.TaskBudgetEligibilityService;
 import com.autosecretary.features.task.domain.scheduling.TaskSlotGenerator;
@@ -21,6 +22,7 @@ public final class DefaultTaskSlotGeneratorFactory {
                                            Consumer<String> logger,
                                            SchedulingWindowProvider schedulingWindowProvider,
                                            CalendarBlockedIntervalProvider calendarBlockedIntervalProvider,
+                                           CategoryWindowProvider categoryWindowProvider,
                                            TaskTransitionStatLoader transitionStatLoader,
                                            TaskBudgetEligibilityService taskBudgetEligibilityService) {
         return new DefaultTaskSlotGenerator(
@@ -28,6 +30,7 @@ public final class DefaultTaskSlotGeneratorFactory {
                 logger,
                 schedulingWindowProvider,
                 calendarBlockedIntervalProvider,
+                categoryWindowProvider,
                 transitionStatLoader,
                 taskBudgetEligibilityService
         );

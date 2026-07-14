@@ -29,14 +29,15 @@ public class ViewSlotList {
     }
 
     // Two tree-building modes for different UI contexts:
-    // - TREE_BY_TASK: Groups slots by task parent-child relationships (Manage mode).
-    //   Respects the isExpanded predicate to show/hide task families.
+    // - TREE_BY_CATEGORY: Groups task rows under a synthetic category-header row (Manage mode).
+    //   Respects the isExpanded predicate to collapse/expand a whole category.
     // - TREE_BY_SLOT: Groups slots by calendar event hierarchy (Checklist mode).
     //   All slot parents are always expanded (calendar hierarchy is immutable in display).
-    // A single applySort() call uses one tree builder to rebuild the hierarchy for the current mode.
-    private static final TreeBuilder<ViewSlot> TREE_BY_TASK = createTreeBuilder(
-            vs -> vs.getItem().taskId,
-            vs -> vs.getItem().parentTaskIds
+    private static final TreeBuilder<ViewSlot> TREE_BY_CATEGORY = createTreeBuilder(
+            vs -> vs.getItem().isCategoryHeader() ? vs.getItem().categoryId : vs.getItem().taskId,
+            vs -> vs.getItem().isCategoryHeader()
+                    ? Collections.emptyList()
+                    : Collections.singletonList(groupId(vs.getItem()))
     );
 
     private static final TreeBuilder<ViewSlot> TREE_BY_SLOT = createTreeBuilder(
@@ -45,6 +46,17 @@ public class ViewSlotList {
                     ? Collections.singletonList(vs.getItem().slotParentId)
                     : Collections.emptyList()
     );
+
+    /**
+     * Effective category-group id for a task/calendar row: its own category when the category
+     * is known, otherwise the synthetic "uncategorised" bucket. Keeps header injection and
+     * tree parent lookup consistent so no row is ever orphaned.
+     */
+    private static String groupId(TaskListItem item) {
+        return item.categoryId != null && item.categoryName != null
+                ? item.categoryId
+                : TaskListItem.UNCATEGORIZED_ID;
+    }
 
     // Calendar hierarchy is immutable in UI; all slot parents are always expanded
     private static final Predicate<ViewSlot> ALL_EXPANDED = slot -> true;
@@ -68,23 +80,33 @@ public class ViewSlotList {
 
     /**
      * Rebuilds the display list from source slots in one explicit pass.
+     *
+     * <p>In Manage mode ({@code groupByCategory=true}) rows are collapsed to one per task and
+     * grouped under synthetic category-header rows (which can be collapsed via {@code isExpanded}).
+     * In Checklist mode rows are grouped by the (calendar) slot hierarchy instead.
      */
     public void rebuildDisplay(Predicate<ViewSlot> predicate,
                                List<ViewSlot> extraItems,
                                Comparator<ViewSlot> comparator,
                                Predicate<ViewSlot> isExpanded,
-                               boolean groupByTaskParent) {
+                               boolean groupByCategory) {
         List<ViewSlot> workingSlots = allSlots.stream()
                 .filter(predicate)
                 .collect(Collectors.toCollection(ArrayList::new));
         if (extraItems != null && !extraItems.isEmpty()) {
             workingSlots.addAll(extraItems);
         }
-        if (groupByTaskParent) {
+        TreeBuilder<ViewSlot> builder;
+        Predicate<ViewSlot> expansionPredicate;
+        if (groupByCategory) {
             workingSlots = collapseToSingleRowPerTask(workingSlots);
+            workingSlots.addAll(buildCategoryHeaders(workingSlots));
+            builder = TREE_BY_CATEGORY;
+            expansionPredicate = isExpanded;
+        } else {
+            builder = TREE_BY_SLOT;
+            expansionPredicate = ALL_EXPANDED;
         }
-        TreeBuilder<ViewSlot> builder = groupByTaskParent ? TREE_BY_TASK : TREE_BY_SLOT;
-        Predicate<ViewSlot> expansionPredicate = groupByTaskParent ? isExpanded : ALL_EXPANDED;
         List<ViewSlot> tree = builder.buildTree(workingSlots);
         builder.sortTree(tree, comparator);
         List<ViewSlot> flattened = new ArrayList<>();
@@ -93,8 +115,28 @@ public class ViewSlotList {
     }
 
     /**
-     * Manage mode is task-centric; duplicate rows for the same task ID create unstable trees
-     * because task hierarchy links are also task-ID based. Keep one representative row per task.
+     * Creates one synthetic {@link TaskListItem.ItemType#CATEGORY_HEADER} row per distinct
+     * category present among the given task rows, reusing category metadata carried on the rows.
+     */
+    private List<ViewSlot> buildCategoryHeaders(List<ViewSlot> taskSlots) {
+        Map<String, ViewSlot> headerByGroupId = new LinkedHashMap<>();
+        for (ViewSlot slot : taskSlots) {
+            TaskListItem item = slot.getItem();
+            String group = groupId(item);
+            if (headerByGroupId.containsKey(group)) {
+                continue;
+            }
+            TaskListItem header = TaskListItem.UNCATEGORIZED_ID.equals(group)
+                    ? TaskListItem.categoryHeader(TaskListItem.UNCATEGORIZED_ID, "Ohne Kategorie", null, null)
+                    : TaskListItem.categoryHeader(group, item.categoryName, item.categoryIcon, item.categoryColorHex);
+            headerByGroupId.put(group, new ViewSlot(header));
+        }
+        return new ArrayList<>(headerByGroupId.values());
+    }
+
+    /**
+     * Manage mode shows one row per task; a task may have several slots for the selected day.
+     * Keep one representative row per task (the most advanced/earliest) for a stable tree.
      */
     private List<ViewSlot> collapseToSingleRowPerTask(List<ViewSlot> slots) {
         Map<String, ViewSlot> bestByTaskId = new LinkedHashMap<>();

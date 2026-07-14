@@ -5,12 +5,17 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
 import com.autosecretary.BuildConfig;
 import com.autosecretary.R;
+import com.autosecretary.shared.ClaudeApiKeyStore;
+import com.autosecretary.shared.ClaudeEndpointStore;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -31,7 +36,7 @@ import java.util.function.Supplier;
  *
  * Typical usage:
  * <pre>
- *   SettingsController controller = new SettingsController(context, dataService, onDataChanged, onShowScheduleConfig, onShowCookingPrefs, executor);
+ *   SettingsController controller = new SettingsController(context, dataService, callbacks..., executor);
  *   controller.showSettingsMenu();  // Shows menu dialog on UI thread
  * </pre>
  */
@@ -48,6 +53,12 @@ public class SettingsController {
     private final Runnable onDataChanged;
     /** Callback invoked to open the schedule configuration dialog */
     private final Runnable onShowScheduleConfig;
+    /** Callback invoked to open the category-management dialog */
+    private final Runnable onShowCategories;
+    /** Callback invoked to open the category time-window dialog */
+    private final Runnable onShowCategoryWindows;
+    /** Callback invoked to check GitHub Releases for app updates */
+    private final Runnable onCheckForUpdate;
     /** Callback invoked to open the cooking preferences dialog */
     private final Runnable onShowCookingPrefs;
     /** Handler for posting callbacks from background threads back to the main (UI) thread */
@@ -55,6 +66,9 @@ public class SettingsController {
 
     public SettingsController(@NonNull Context context, @NonNull SettingsDataService settingsDataService,
                               @NonNull Runnable onDataChanged, @NonNull Runnable onShowScheduleConfig,
+                              @NonNull Runnable onShowCategories,
+                              @NonNull Runnable onShowCategoryWindows,
+                              @NonNull Runnable onCheckForUpdate,
                               @NonNull Runnable onShowCookingPrefs,
                               @NonNull ExecutorService executorService) {
         this.context = context;
@@ -62,6 +76,9 @@ public class SettingsController {
         this.executorService = executorService;
         this.onDataChanged = onDataChanged;
         this.onShowScheduleConfig = onShowScheduleConfig;
+        this.onShowCategories = onShowCategories;
+        this.onShowCategoryWindows = onShowCategoryWindows;
+        this.onCheckForUpdate = onCheckForUpdate;
         this.onShowCookingPrefs = onShowCookingPrefs;
     }
 
@@ -120,6 +137,10 @@ public class SettingsController {
     public void showSettingsMenu() {
         List<SettingsMenuOption> options = List.of(
                 new SettingsMenuOption(R.string.settings_option_schedule_config, onShowScheduleConfig),
+                new SettingsMenuOption(R.string.settings_option_categories, onShowCategories),
+                new SettingsMenuOption(R.string.settings_option_category_windows, onShowCategoryWindows),
+                new SettingsMenuOption(R.string.settings_option_api_key, this::showApiKeyDialog),
+                new SettingsMenuOption(R.string.settings_option_check_update, onCheckForUpdate),
                 new SettingsMenuOption(R.string.settings_option_cooking_prefs, onShowCookingPrefs),
                 new SettingsMenuOption(R.string.settings_option_restore_backup, this::showBackupRestoreDialog),
                 new SettingsMenuOption(R.string.settings_option_manual_backup, this::createManualBackup),
@@ -211,6 +232,32 @@ public class SettingsController {
                 .setTitle(R.string.settings_about_title)
                 .setMessage(aboutText)
                 .setPositiveButton(R.string.action_ok, null)
+                .show();
+    }
+
+    /**
+     * Lets the user store the Claude API key (encrypted via {@link ClaudeApiKeyStore}) and an
+     * optional custom endpoint base URL. Leaving the key field blank keeps the existing key.
+     */
+    private void showApiKeyDialog() {
+        View view = LayoutInflater.from(context).inflate(R.layout.settings_api_key_dialog, null);
+        EditText keyInput = view.findViewById(R.id.SettingsApiKeyInput);
+        EditText endpointInput = view.findViewById(R.id.SettingsApiKeyEndpoint);
+        ClaudeEndpointStore endpointStore = new ClaudeEndpointStore(context);
+        endpointInput.setText(endpointStore.getBaseUrl());
+
+        new AlertDialog.Builder(context)
+                .setTitle(R.string.settings_api_key_title)
+                .setView(view)
+                .setPositiveButton(R.string.action_save, (dialog, which) -> {
+                    String key = keyInput.getText().toString().trim();
+                    if (!key.isEmpty()) {
+                        new ClaudeApiKeyStore(context).saveApiKey(key);
+                    }
+                    endpointStore.setBaseUrl(endpointInput.getText().toString().trim());
+                    Toast.makeText(context, R.string.settings_api_key_saved, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(R.string.action_cancel, null)
                 .show();
     }
 

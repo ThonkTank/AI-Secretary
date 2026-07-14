@@ -6,9 +6,9 @@
 
      Android framework requirement: FileProvider must declare allowed paths via this XML
      instead of allowing broad file access, as a security measure. The "update_apk" cache
-     path name is referenced in AndroidManifest.xml FileProvider configuration. -->
+     path is limited to the app cache directory where update.apk is downloaded. -->
 <paths>
     <cache-path
         name="update_apk"
-        path="update.apk" />
+        path="." />
 </paths>

@@ -5,6 +5,7 @@ import com.autosecretary.features.task.domain.model.TaskCore;
 import com.autosecretary.features.task.domain.model.TaskPrerequisite;
 import com.autosecretary.features.task.domain.model.TaskSlot;
 import com.autosecretary.features.task.domain.scheduling.CalendarBlockedIntervalProvider;
+import com.autosecretary.features.task.domain.scheduling.CategoryWindowProvider;
 import com.autosecretary.features.task.domain.scheduling.SchedulingWindowProvider;
 import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
 import static com.autosecretary.features.task.domain.scheduling.SchedulingConflict.ReasonCode.*;
@@ -14,7 +15,6 @@ import com.autosecretary.features.task.domain.scheduling.TaskPlanningState;
 import com.autosecretary.features.task.domain.scheduling.TaskSlotGenerator;
 import com.autosecretary.features.task.domain.scheduling.TaskSlotGenerationResult;
 import com.autosecretary.features.task.domain.scheduling.TaskTransitionStatLoader;
-import com.autosecretary.features.task.domain.TaskTreeOperations;
 
 import com.autosecretary.shared.DateFormatters;
 
@@ -30,6 +30,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -215,15 +216,22 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     }
 
     /**
-     * Snapshot of one day's scheduling state used during multi-day window scheduling.
+     * Snapshot of one day's scheduling (sub-)window used during multi-day window scheduling.
      * {@code occupied} is a mutable, sorted list of all intervals already claimed on
      * this day (task slots and calendar blocks); it is updated in-place as placements
-     * and displacements are applied.
+     * and displacements are applied. When a day is partitioned into category sub-windows,
+     * every sub-window context for that day shares the <em>same</em> {@code occupied} list
+     * so a slot placed in one sub-window is visible (as occupied) to the others.
+     *
+     * <p>{@code allowedCategoryIds} restricts which tasks may be placed in this (sub-)window:
+     * {@code null} means "free" (any task); a non-null set means only tasks whose category is
+     * in the set (used for category-reserved sub-windows during the first scheduling pass).
      */
     private record DaySchedulingContext(LocalDate day,
                                         LocalDateTime windowStart,
                                         LocalDateTime windowEnd,
-                                        List<OccupiedInterval> occupied) {}
+                                        List<OccupiedInterval> occupied,
+                                        Set<String> allowedCategoryIds) {}
 
     /**
      * Return value of {@link #initSchedulingRun}: the task forest (roots only) and
@@ -248,6 +256,7 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private final Consumer<String> logger;
     private final SchedulingWindowProvider schedulingWindowProvider;
     private final CalendarBlockedIntervalProvider calendarBlockedIntervalProvider;
+    private final CategoryWindowProvider categoryWindowProvider;
     private final TaskScorer scorer;
     private final TaskTransitionStatLoader transitionStatLoader;
     private SchedulingRunContext currentRunContext;
@@ -258,6 +267,7 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                              Consumer<String> logger,
                              SchedulingWindowProvider schedulingWindowProvider,
                              CalendarBlockedIntervalProvider calendarBlockedIntervalProvider,
+                             CategoryWindowProvider categoryWindowProvider,
                              TaskTransitionStatLoader transitionStatLoader,
                              TaskBudgetEligibilityService taskBudgetEligibilityService) {
         this.scorer = new TaskScorer.Builder()
@@ -270,6 +280,9 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         this.calendarBlockedIntervalProvider = calendarBlockedIntervalProvider != null
                 ? calendarBlockedIntervalProvider
                 : CalendarBlockedIntervalProvider.NONE;
+        this.categoryWindowProvider = categoryWindowProvider != null
+                ? categoryWindowProvider
+                : CategoryWindowProvider.NONE;
     }
 
     /**
@@ -330,6 +343,7 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         SchedulingRunContext runContext = init.runContext();
 
         List<DaySchedulingContext> contexts = new ArrayList<>();
+        boolean anyCategoryWindows = false;
         for (int i = 0; i < days; i++) {
             LocalDate day = startDay.plusDays(i);
             SchedulingWindowProvider.SchedulingWindow window = schedulingWindowProvider.forDay(day);
@@ -339,11 +353,28 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                 occupied.add(new OccupiedInterval(blocked.start(), blocked.end(), null));
             }
             occupied.sort(Interval::compareTo);
+            // Fixed (TERMIN) tasks are category-agnostic; pin them over the whole outer window
+            // first so they block their sub-window as occupied before category partitioning.
             scheduleFixedTasks(taskTree, window.start(), window.end(), occupied, day, runContext);
-            contexts.add(new DaySchedulingContext(day, window.start(), window.end(), occupied));
+
+            List<CategoryWindowProvider.CategoryWindow> categoryWindows = categoryWindowProvider.windowsForDay(day);
+            if (!categoryWindows.isEmpty()) {
+                anyCategoryWindows = true;
+            }
+            // Partition the outer window into disjoint category-reserved / free sub-windows that all
+            // share this day's single `occupied` list. With no category windows this yields exactly
+            // one free context spanning the outer window — identical to the pre-category behaviour.
+            contexts.addAll(partitionDayIntoContexts(day, window.start(), window.end(), occupied, categoryWindows));
         }
 
-        assignGlobalBestFitAcrossWindow(taskTree, contexts, runContext);
+        // Pass 1: category-reserved placement with displacement. Reserved sub-windows admit only
+        // their category; free sub-windows admit any task.
+        assignGlobalBestFitAcrossWindow(taskTree, contexts, runContext, true, true);
+        // Pass 2 (only when reservations exist): additive, no category filter — fills reserved time
+        // left over by pass 1 with any remaining task, without displacing pass-1 slots.
+        if (anyCategoryWindows) {
+            assignGlobalBestFitAcrossWindow(taskTree, contexts, runContext, false, false);
+        }
         appendNoGapConflictsForWindow(allTasks, startDay, days, runContext);
         logWindowSummary(allTasks, contexts, runContext);
         return new TaskSlotGenerationResult(runContext.newSlots, runContext.conflicts);
@@ -423,21 +454,19 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     }
 
     /**
-     * Resets per-run state (scorer, conflict list, counters, planning state) and builds the task
-     * tree and {@code allTasksById} index from the given flat task list. Called at the start of
-     * every public scheduling entry point to ensure a clean, consistent run context.
+     * Resets per-run state (scorer, conflict list, counters, planning state) and builds the
+     * {@code allTasksById} index from the given flat task list. Called at the start of every
+     * public scheduling entry point to ensure a clean, consistent run context.
      */
     private SchedulingRunInit initSchedulingRun(List<Task> tasks, TaskPlanningState state) {
         scorer.reset();
         scorer.setTransitionStats(transitionStatLoader != null ? transitionStatLoader.load() : List.of());
-        List<Task> taskTree = TaskTreeOperations.buildTree(tasks);
-        List<Task> allTasks = TaskTreeOperations.flatten(taskTree);
         Map<String, Task> allTasksById = new HashMap<>();
-        for (Task t : allTasks) {
+        for (Task t : tasks) {
             allTasksById.put(t.core.id, t);
         }
         currentRunContext = new SchedulingRunContext(state, allTasksById);
-        return new SchedulingRunInit(taskTree, allTasks, currentRunContext);
+        return new SchedulingRunInit(tasks, tasks, currentRunContext);
     }
 
     /**
@@ -451,16 +480,85 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                      List<OccupiedInterval> occupied,
                                      SchedulingRunContext runContext) {
         assignGlobalBestFitAcrossWindow(tasks,
-                List.of(new DaySchedulingContext(windowStart.toLocalDate(), windowStart, windowEnd, occupied)),
-                runContext);
+                List.of(new DaySchedulingContext(windowStart.toLocalDate(), windowStart, windowEnd, occupied, null)),
+                runContext, true, true);
+    }
+
+    /** A category window clipped to the day's outer scheduling window (absolute date-times). */
+    private record ClippedCategoryWindow(String categoryId, LocalDateTime start, LocalDateTime end) {}
+
+    /**
+     * Splits a day's outer scheduling window into disjoint sub-windows at every category-window
+     * boundary. Each resulting {@link DaySchedulingContext} shares the same {@code occupied} list
+     * and carries the set of category ids reserving that sub-window (null = free/any task).
+     *
+     * <p>A time span is reserved for a category iff a clipped category window fully covers it; where
+     * two category windows overlap, the covered span admits both categories. Spans not covered by
+     * any category window are free. When {@code categoryWindows} is empty this returns a single
+     * free context spanning the whole outer window, preserving the pre-category behaviour exactly.
+     */
+    private List<DaySchedulingContext> partitionDayIntoContexts(
+            LocalDate day,
+            LocalDateTime windowStart,
+            LocalDateTime windowEnd,
+            List<OccupiedInterval> occupied,
+            List<CategoryWindowProvider.CategoryWindow> categoryWindows) {
+
+        List<ClippedCategoryWindow> clipped = new ArrayList<>();
+        TreeSet<LocalDateTime> boundaries = new TreeSet<>();
+        boundaries.add(windowStart);
+        boundaries.add(windowEnd);
+        for (CategoryWindowProvider.CategoryWindow cw : categoryWindows) {
+            if (cw.categoryId() == null || cw.start() == null || cw.end() == null) {
+                continue;
+            }
+            LocalDateTime start = LocalDateTime.of(day, cw.start());
+            LocalDateTime end = LocalDateTime.of(day, cw.end());
+            if (start.isBefore(windowStart)) start = windowStart;
+            if (end.isAfter(windowEnd)) end = windowEnd;
+            if (!end.isAfter(start)) {
+                continue;
+            }
+            clipped.add(new ClippedCategoryWindow(cw.categoryId(), start, end));
+            boundaries.add(start);
+            boundaries.add(end);
+        }
+
+        List<DaySchedulingContext> result = new ArrayList<>();
+        List<LocalDateTime> points = new ArrayList<>(boundaries);
+        for (int i = 0; i + 1 < points.size(); i++) {
+            LocalDateTime a = points.get(i);
+            LocalDateTime b = points.get(i + 1);
+            Set<String> covering = new HashSet<>();
+            for (ClippedCategoryWindow cc : clipped) {
+                // cc covers [a,b) iff cc.start <= a && cc.end >= b
+                if (!cc.start().isAfter(a) && !cc.end().isBefore(b)) {
+                    covering.add(cc.categoryId());
+                }
+            }
+            result.add(new DaySchedulingContext(day, a, b, occupied, covering.isEmpty() ? null : covering));
+        }
+        return result;
     }
 
     /** Safety cap for the placement loop — prevents infinite scheduling if a bug prevents convergence. */
     private static final int MAX_PLACEMENT_ITERATIONS = 10_000;
 
+    /**
+     * Competitive best-fit placement across all (sub-)window contexts.
+     *
+     * @param allowDisplacement     when {@code false}, placements may not evict any existing slot
+     *                              (purely additive) — used by the second category-window pass.
+     * @param enforceCategoryFilter when {@code true}, a context's {@code allowedCategoryIds}
+     *                              restricts which chains may be placed there — used by the first
+     *                              (category-reserved) pass; the second pass disables it so leftover
+     *                              reserved time can be filled by any task.
+     */
     private void assignGlobalBestFitAcrossWindow(List<Task> tasks,
                                                  List<DaySchedulingContext> contexts,
-                                                 SchedulingRunContext runContext) {
+                                                 SchedulingRunContext runContext,
+                                                 boolean allowDisplacement,
+                                                 boolean enforceCategoryFilter) {
         // Chains are built from static prerequisite relationships which never change during the loop.
         List<List<ChainNode>> chains = buildTaskChains(tasks);
         int iterations = 0;
@@ -478,8 +576,11 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                 }
                 ChainPlacement dayBest = null;
                 for (List<ChainNode> chain : chains) {
+                    if (enforceCategoryFilter && !chainAllowedIn(chain, context)) {
+                        continue;
+                    }
                     ChainPlacement chainBest = evaluateChainCandidates(
-                            chain, startPoints, context.windowEnd(), context.occupied(), runContext);
+                            chain, startPoints, context.windowEnd(), context.occupied(), runContext, allowDisplacement);
                     if (chainBest != null && chainBest.netScore > 0 && (dayBest == null || chainBest.netScore > dayBest.netScore)) {
                         dayBest = chainBest;
                     }
@@ -500,6 +601,20 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         if (iterations >= MAX_PLACEMENT_ITERATIONS) {
             log("[WARN] assignGlobalBestFitAcrossWindow hit safety cap of " + MAX_PLACEMENT_ITERATIONS + " iterations");
         }
+    }
+
+    /**
+     * Whether {@code chain} may be placed in {@code context} under category reservation. A free
+     * context (null {@code allowedCategoryIds}) admits any chain; a reserved context admits only
+     * chains whose root task belongs to one of the reserved categories. The chain root determines
+     * the category because prerequisite chains are scheduled as an atomic unit led by their root.
+     */
+    private boolean chainAllowedIn(List<ChainNode> chain, DaySchedulingContext context) {
+        if (context.allowedCategoryIds() == null) {
+            return true;
+        }
+        String rootCategoryId = chain.get(0).task.core.categoryId;
+        return rootCategoryId != null && context.allowedCategoryIds().contains(rootCategoryId);
     }
 
     private void logGlobalCompetition(ChainPlacement placement, DaySchedulingContext context) {
@@ -532,7 +647,12 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private void logWindowSummary(List<Task> allTasks,
                                   List<DaySchedulingContext> contexts,
                                   SchedulingRunContext runContext) {
+        Set<LocalDate> loggedDays = new HashSet<>();
         for (DaySchedulingContext context : contexts) {
+            // A day may be split into several sub-window contexts; summarise each day only once.
+            if (!loggedDays.add(context.day())) {
+                continue;
+            }
             int totalDaySlots = logDaySummary(allTasks, context.day(), false);
             log("Gesamt: " + totalDaySlots + " slots");
         }
@@ -572,12 +692,13 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                                    List<LocalDateTime> startPoints,
                                                    LocalDateTime windowEnd,
                                                    List<OccupiedInterval> occupied,
-                                                   SchedulingRunContext runContext) {
+                                                   SchedulingRunContext runContext,
+                                                   boolean allowDisplacement) {
         ChainPlacement best = null;
         for (LocalDateTime start : startPoints) {
             for (int len = 1; len <= fullChain.size(); len++) {
                 List<ChainNode> fitting = fullChain.subList(0, len);
-                ChainPlacement candidate = tryPlaceChain(fitting, start, windowEnd, occupied, runContext);
+                ChainPlacement candidate = tryPlaceChain(fitting, start, windowEnd, occupied, runContext, allowDisplacement);
                 if (candidate == null || candidate.netScore <= 0) {
                     continue;
                 }
@@ -616,7 +737,8 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                                          LocalDateTime firstStart,
                                          LocalDateTime windowEnd,
                                          List<OccupiedInterval> occupied,
-                                         SchedulingRunContext runContext) {
+                                         SchedulingRunContext runContext,
+                                         boolean allowDisplacement) {
         List<LocalDateTime> starts = new ArrayList<>();
         List<Integer> nodeScores = new ArrayList<>();
         Set<DisplacementCandidate> toDisplace = new HashSet<>();
@@ -645,6 +767,11 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             }
 
             Set<OccupiedInterval> overlaps = findOverlappingIntervals(occupied, cursor, end);
+            // Additive pass (allowDisplacement=false): any overlap disqualifies the placement,
+            // so the second category-window pass only fills genuinely free leftover time.
+            if (!allowDisplacement && !overlaps.isEmpty()) {
+                return null;
+            }
             for (OccupiedInterval overlap : overlaps) {
                 if (!overlap.isDisplaceable()) {
                     return null;
@@ -905,9 +1032,6 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             // exactly once. Subsequent slots get 0 — they are covered by the first slot's count.
             slot.displacementScore = (i == 0) ? placement.gainScore : 0;
             finalizeAssignment(task, slot);
-            if (!task.children.isEmpty()) {
-                scheduleChildrenWithinSlot(task.children, slot, start, end);
-            }
             occupied.add(new OccupiedInterval(start, end, toCandidate(task, slot, true)));
         }
         occupied.sort(Interval::compareTo);
@@ -947,37 +1071,6 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         occupied.removeIf(interval -> interval.candidate != null
                 && interval.candidate.slot != null
                 && ids.contains(interval.candidate.slot.id));
-        removeOrphanedChildSlots(ids, runContext);
-    }
-
-    /**
-     * Removes child slots whose {@code parent} references a displaced slot.
-     * When a parent slot is evicted, its children (scheduled via
-     * {@link #scheduleChildrenWithinSlot}) become orphans and must be cleaned up.
-     * Recurses to handle grandchildren and deeper nesting.
-     *
-     * <p>Scans all tasks because child slots belong to different tasks than the
-     * parent slot — there is no single task whose slot list contains both.
-     */
-    private void removeOrphanedChildSlots(Set<String> displacedSlotIds, SchedulingRunContext runContext) {
-        Set<String> orphanedIds = new HashSet<>();
-        for (Task task : runContext.allTasksById.values()) {
-            Iterator<TaskSlot> it = task.slots.iterator();
-            while (it.hasNext()) {
-                TaskSlot slot = it.next();
-                if (slot.parent != null && displacedSlotIds.contains(slot.parent)) {
-                    orphanedIds.add(slot.id);
-                    if (runContext.planningState != null && slot.day != null) {
-                        runContext.planningState.removeScheduled(slot.taskId, slot.day);
-                    }
-                    runContext.newSlots--;
-                    it.remove();
-                }
-            }
-        }
-        if (!orphanedIds.isEmpty()) {
-            removeOrphanedChildSlots(orphanedIds, runContext);
-        }
     }
 
     /**
@@ -1070,9 +1163,6 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             slot.displacementGroupType = TaskSlot.DisplacementGroupType.FIXED;
             slot.displacementGroupId = GROUP_PREFIX_FIXED + task.core.id;
             finalizeAssignment(task, slot);
-            if (!task.children.isEmpty()) {
-                scheduleChildrenWithinSlot(task.children, slot, start, end);
-            }
             occupied.add(new OccupiedInterval(start, end, toCandidate(task, slot, false)));
             occupied.sort(Interval::compareTo);
         }
@@ -1084,7 +1174,6 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             if (task.core.schedulingType == TaskCore.SchedulingType.TERMIN) {
                 fixedTasks.add(task);
             }
-            fixedTasks.addAll(collectFixedTasks(task.children));
         }
         return fixedTasks;
     }
@@ -1304,57 +1393,6 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             currentRunContext.planningState.recordScheduled(task.core.id, slot.day);
         }
         currentRunContext.newSlots++;
-    }
-
-    /**
-     * Recursively places child-task slots within a parent's time block.
-     *
-     * <p>Children are sorted by priority (highest first) and placed sequentially within
-     * {@code [blockStart, blockEnd)}. Children that don't fit are skipped (not break),
-     * so shorter children later in the list can still be placed. Grandchildren are
-     * placed recursively within each child's sub-block.
-     *
-     * <p>Child slots are <em>not</em> added to the occupied-interval list because the
-     * parent's {@link OccupiedInterval} already covers the entire block, protecting it
-     * from displacement by unrelated tasks.
-     *
-     * <p>Each child slot inherits the parent's {@code displacementGroupId} and
-     * {@code displacementGroupType} so that displacement of the parent atomically
-     * removes all children (see {@link #removeOrphanedChildSlots}).
-     */
-    private void scheduleChildrenWithinSlot(List<Task> children, TaskSlot parentSlot,
-                                            LocalDateTime blockStart, LocalDateTime blockEnd) {
-        List<Task> sorted = new ArrayList<>(children);
-        sorted.sort(Comparator.comparingInt((Task t) -> t.core.priority.scoringWeight).reversed());
-
-        LocalDateTime cursor = blockStart;
-        for (Task child : sorted) {
-            if (child.core.completed) continue;
-            if (child.core.schedulingType == TaskCore.SchedulingType.TERMIN) continue;
-
-            int childDuration = child.core.plannedDurationMinutes();
-            if (childDuration <= 0) continue;
-
-            LocalDateTime childEnd = cursor.plusMinutes(childDuration);
-            if (childEnd.isAfter(blockEnd)) continue;
-
-            // maintenance() pre-computes scorer state (daily rep counters etc.) for this child.
-            // Child inherits parent's score: children are never displaced individually,
-            // only via parent eviction (displacementScore = 0).
-            scorer.maintenance(child, parentSlot.day, currentRunContext.planningState);
-            TaskSlot childSlot = createScheduledSlot(child, cursor, parentSlot.score);
-            childSlot.end = childEnd.toLocalTime();
-            childSlot.parent = parentSlot.id;
-            childSlot.displacementGroupId = parentSlot.displacementGroupId;
-            childSlot.displacementGroupType = parentSlot.displacementGroupType;
-            childSlot.displacementScore = 0;
-            finalizeAssignment(child, childSlot);
-            if (!child.children.isEmpty()) {
-                scheduleChildrenWithinSlot(child.children, childSlot, cursor, childEnd);
-            }
-
-            cursor = childEnd;
-        }
     }
 
     private String formatSlot(TaskSlot slot) {

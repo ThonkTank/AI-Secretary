@@ -174,20 +174,28 @@ android.applicationVariants.all {
             }
         }
 
-        tasks.register("pushToGitHub", Exec::class) {
+        tasks.register("publishGitHubRelease", Exec::class) {
             workingDir = layout.projectDirectory.asFile
-            commandLine("bash", "-c", """
-                git add ops/release/ &&
-                git commit -m "build: APK aktualisiert" --allow-empty &&
-                git push
-            """.trimIndent())
+            dependsOn(copyTask)
+            commandLine(
+                "gh",
+                "release",
+                "create",
+                "build-$nextVersionCode",
+                "ops/release/AutoSecretary.apk",
+                "ops/release/version.txt",
+                "--title",
+                "AutoSecretary Build $nextVersionCode",
+                "--notes",
+                "AutoSecretary build $nextVersionCode",
+                "--latest"
+            )
         }
 
         tasks.register("publishReleaseArtifact") {
             group = "release"
-            description = "Kopiert das APK ins ops/release-Verzeichnis und pusht die Änderungen nach GitHub."
-            dependsOn(copyTask)
-            dependsOn("pushToGitHub")
+            description = "Kopiert das APK ins ops/release-Verzeichnis und publiziert es als GitHub Release."
+            dependsOn("publishGitHubRelease")
         }
     }
 }

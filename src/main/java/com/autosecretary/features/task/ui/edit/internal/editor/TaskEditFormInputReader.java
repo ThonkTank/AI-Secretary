@@ -72,18 +72,19 @@ public class TaskEditFormInputReader {
     private void readBasicInfo(TaskEditState state) {
         state.title = basicInfoViews.titleView.getText().toString();
         state.description = basicInfoViews.descriptionView.getText().toString();
+        state.leisure = basicInfoViews.leisureView.isChecked();
         state.priority = Objects.requireNonNullElse(
             SpinnerHelper.enumAtPosition(basicInfoViews.priorityView, Priority.values()),
             TaskEditDefaults.PRIORITY
         );
-        // Parent spinner options are loaded asynchronously. If the list is not bound yet,
-        // keep the existing parentTaskId instead of silently resetting to top-level.
-        if (!basicInfoViews.parentTaskItemsBound) {
+        // Category spinner options are loaded asynchronously. If the list is not bound yet,
+        // keep the existing categoryId instead of silently resetting to uncategorised.
+        if (!basicInfoViews.categoryItemsBound) {
             return;
         }
-        int parentPos = basicInfoViews.parentTaskView.getSelectedItemPosition();
-        state.parentTaskId = (parentPos > 0 && parentPos <= basicInfoViews.parentTaskItems.size())
-                ? basicInfoViews.parentTaskItems.get(parentPos - 1).id() : null;
+        int categoryPos = basicInfoViews.categoryView.getSelectedItemPosition();
+        state.categoryId = (categoryPos > 0 && categoryPos <= basicInfoViews.categoryItems.size())
+                ? basicInfoViews.categoryItems.get(categoryPos - 1).id() : null;
     }
 
     private void readSchedulingSection(TaskEditState state) {

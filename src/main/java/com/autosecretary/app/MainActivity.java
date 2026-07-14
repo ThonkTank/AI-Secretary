@@ -16,14 +16,16 @@ import com.autosecretary.features.meal.application.MealPlannerDataService;
 import com.autosecretary.features.meal.ui.MealPlannerFragment;
 import com.autosecretary.features.meal.ui.internal.MealCookingPrefsDialogController;
 import com.autosecretary.features.task.ui.TaskScheduleConfigDialog;
+import com.autosecretary.features.task.ui.TaskCategoryDialog;
+import com.autosecretary.features.task.ui.TaskCategoryWindowDialog;
+import com.autosecretary.features.task.ui.assistant.TaskAssistantFragment;
 import com.autosecretary.features.task.ui.list.TaskListFragment;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-
-import android.widget.Toast;
+import com.google.android.material.snackbar.Snackbar;
 
 /**
- * The single Activity that hosts all three feature tabs: Tasks, Budget, and Meal Planner.
+ * The single Activity that hosts the feature tabs: Tasks, Assistant, Budget, and Meal Planner.
  *
  * <h2>Navigation</h2>
  * A {@link com.google.android.material.bottomnavigation.BottomNavigationView} switches between
@@ -51,6 +53,7 @@ import android.widget.Toast;
 public class MainActivity extends AppCompatActivity {
 
     private SettingsController settingsController;
+    private UpdateChecker updateChecker;
     /** Guards against starting a second update check if onNewIntent fires before the first finishes. */
     private boolean updateCheckStarted;
 
@@ -60,9 +63,13 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.app_main_activity);
 
         AppCompositionRoot compositionRoot = AutoSecretaryApplication.from(this).getAppCompositionRoot();
+        updateChecker = new UpdateChecker(this, compositionRoot.getIoExecutor());
         settingsController = new SettingsController(this, new SettingsDataService(this, compositionRoot),
                 this::reloadUiStateAfterDataReset,
                 this::showScheduleConfigDialog,
+                this::showCategoryDialog,
+                this::showCategoryWindowDialog,
+                this::checkForUpdateManually,
                 this::showCookingPrefsDialog,
                 compositionRoot.getIoExecutor());
 
@@ -76,6 +83,8 @@ public class MainActivity extends AppCompatActivity {
             if (item.getItemId() == R.id.nav_settings) {
                 settingsController.showSettingsMenu();
                 return false;
+            } else if (item.getItemId() == R.id.nav_assistant) {
+                showAssistantFragment();
             } else if (item.getItemId() == R.id.nav_budget) {
                 showBudgetFragment(false);
             } else if (item.getItemId() == R.id.nav_meal) {
@@ -102,9 +111,11 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         updateCheckStarted = true;
-        new UpdateChecker(this,
-                AutoSecretaryApplication.from(this).getAppCompositionRoot().getIoExecutor())
-                .checkForUpdate();
+        updateChecker.checkForUpdate();
+    }
+
+    private void checkForUpdateManually() {
+        updateChecker.checkForUpdateManually();
     }
 
     private boolean shouldOpenBudgetFromIntent(Intent intent) {
@@ -142,6 +153,10 @@ public class MainActivity extends AppCompatActivity {
         replaceContent(new MealPlannerFragment());
     }
 
+    private void showAssistantFragment() {
+        replaceContent(new TaskAssistantFragment());
+    }
+
     private void replaceContent(Fragment fragment) {
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.Container, fragment)
@@ -172,6 +187,14 @@ public class MainActivity extends AppCompatActivity {
         new TaskScheduleConfigDialog().show(getSupportFragmentManager(), TaskScheduleConfigDialog.TAG);
     }
 
+    private void showCategoryDialog() {
+        new TaskCategoryDialog().show(getSupportFragmentManager(), TaskCategoryDialog.TAG);
+    }
+
+    private void showCategoryWindowDialog() {
+        new TaskCategoryWindowDialog().show(getSupportFragmentManager(), TaskCategoryWindowDialog.TAG);
+    }
+
     private void showCookingPrefsDialog() {
         MealPlannerDataService dataService = AutoSecretaryApplication.from(this)
                 .getAppCompositionRoot().getMealPlannerDataService();
@@ -179,8 +202,9 @@ public class MainActivity extends AppCompatActivity {
             MealCookingPrefsDialogController controller = new MealCookingPrefsDialogController(
                     this,
                     savedPrefs -> dataService.saveCookingPreferences(savedPrefs, () ->
-                            Toast.makeText(this, R.string.meal_success_cooking_prefs_saved,
-                                    Toast.LENGTH_SHORT).show()
+                            Snackbar.make(findViewById(R.id.Container),
+                                    R.string.meal_success_cooking_prefs_saved,
+                                    Snackbar.LENGTH_SHORT).show()
                     ));
             controller.show(prefs);
         });

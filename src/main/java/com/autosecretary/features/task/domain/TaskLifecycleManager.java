@@ -51,6 +51,9 @@ public class TaskLifecycleManager {
      * multi-day scheduling can correctly advance periods for future days.
      */
     public void advancePeriods(Task task, LocalDate referenceDay) {
+        // Leisure items carry no metrics: no streak reset, no carryover debt, no period counters.
+        // Keeping periodCompletions at 0 also keeps them perpetually schedulable.
+        if (task.core.leisure) return;
         TaskCore.Repetition rep = task.core.repetition;
         if (rep == null || rep.reps <= 0 || rep.periodUnit == null) return;
         if (rep.periodStart == null) rep.periodStart = task.core.created;
@@ -102,6 +105,7 @@ public class TaskLifecycleManager {
      * This is the canonical completion-time update for the persisted period counter.</p>
      */
     public void updateStreakForCompletion(Task task, TaskSlot completedSlot) {
+        if (task.core.leisure) return; // leisure: no streak/period tracking
         if (task.core.repetition == null || task.core.repetition.reps <= 0
                 || task.core.repetition.periodUnit == null) return;
 
@@ -136,6 +140,7 @@ public class TaskLifecycleManager {
      * {@code alpha} controls adaptation speed (default 0.2). Result is rounded to 5 minutes.
      */
     public void adaptPrefSlot(Task task, TaskSlot slot) {
+        if (task.core.leisure) return; // leisure: no adaptive preferred-time learning
         if (slot.realStart == null || task.prefSlots == null || task.prefSlots.isEmpty()) return;
 
         DayOfWeek today = slot.day.getDayOfWeek();

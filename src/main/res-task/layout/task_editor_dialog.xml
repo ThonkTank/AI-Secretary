@@ -37,7 +37,17 @@
             android:id="@+id/EditPriority"
             style="@style/Widget.AutoSecretary.Editor.SpinnerField"/>
 
-        <!-- ─── WEITERE DETAILS ──────────────────────────────────────────── -->
+        <TextView
+            style="@style/Widget.AutoSecretary.Editor.SpinnerLabel"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:labelFor="@id/EditCategory"
+            android:text="@string/task_editor_category_label"/>
+
+        <Spinner
+            android:id="@+id/EditCategory"
+            style="@style/Widget.AutoSecretary.Editor.SpinnerField"/>
+
+        <!-- ─── WEITERE OPTIONEN ─────────────────────────────────────────── -->
 
         <View
             android:layout_width="match_parent"
@@ -62,7 +72,7 @@
                 style="@style/TextAppearance.AutoSecretary.Editor.Label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/task_editor_weitere_details_collapsed"/>
+                android:text="@string/task_editor_weitere_optionen_collapsed"/>
         </LinearLayout>
 
         <LinearLayout
@@ -88,15 +98,12 @@
                     android:minLines="2"/>
             </com.google.android.material.textfield.TextInputLayout>
 
-            <TextView
-                style="@style/Widget.AutoSecretary.Editor.SpinnerLabel"
+            <CheckBox
+                android:id="@+id/EditLeisure"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_sm"
-                android:labelFor="@id/EditParentTask"
-                android:text="@string/task_editor_parent_label"/>
-
-            <Spinner
-                android:id="@+id/EditParentTask"
-                style="@style/Widget.AutoSecretary.Editor.SpinnerField"/>
+                android:text="@string/task_editor_leisure"/>
 
             <TextView
                 style="@style/Widget.AutoSecretary.Editor.SpinnerLabel"
@@ -434,7 +441,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/task_editor_section_wiederholung_collapsed"/>
+                android:text="@string/task_editor_section_wiederholung"/>
 
             <TextView
                 android:id="@+id/RepetitionSummary"
@@ -445,11 +452,17 @@
                 android:textStyle="normal"
                 android:textColor="@color/color_on_surface_variant"
                 android:visibility="gone"/>
+
+            <!-- ToggleRepetition: on/off for the section. Its isChecked() is read by
+                 TaskEditFormInputReader to decide whether to save repetition data. -->
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/ToggleRepetition"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_sm"/>
         </LinearLayout>
 
-        <!-- RepetitionContainer: accordion section body.
-             ToggleRepetition is a hidden state holder; its isChecked() value is read
-             by TaskEditFormInputReader to determine whether to save repetition data. -->
+        <!-- RepetitionContainer: section body, shown when ToggleRepetition is on. -->
         <LinearLayout
             android:id="@+id/RepetitionContainer"
             android:layout_width="match_parent"
@@ -457,12 +470,6 @@
             android:orientation="vertical"
             android:paddingBottom="@dimen/spacing_sm"
             android:visibility="gone">
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/ToggleRepetition"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:visibility="gone"/>
 
             <!-- Inline: [EditReps] mal pro [EditPerPeriod] [EditPeriodUnit] -->
             <LinearLayout
@@ -576,14 +583,21 @@
             <TextView
                 android:id="@+id/FortschrittToggle"
                 style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/task_editor_section_fortschritt"/>
+
+            <!-- ToggleProgress: on/off for the section. Its isChecked() is read by
+                 TaskEditFormInputReader to decide whether to save progress data. -->
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/ToggleProgress"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/task_editor_section_fortschritt_collapsed"/>
+                android:layout_marginStart="@dimen/spacing_sm"/>
         </LinearLayout>
 
-        <!-- ProgressContainer: accordion section body.
-             ToggleProgress is a hidden state holder; its isChecked() value is read
-             by TaskEditFormInputReader to determine whether to save progress data. -->
+        <!-- ProgressContainer: section body, shown when ToggleProgress is on. -->
         <LinearLayout
             android:id="@+id/ProgressContainer"
             android:layout_width="match_parent"
@@ -591,12 +605,6 @@
             android:orientation="vertical"
             android:paddingBottom="@dimen/spacing_sm"
             android:visibility="gone">
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/ToggleProgress"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:visibility="gone"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -764,13 +772,21 @@
             <TextView
                 android:id="@+id/BudgetToggle"
                 style="@style/TextAppearance.AutoSecretary.Editor.Label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/task_editor_section_budget"/>
+
+            <!-- ToggleBudget: on/off for the section. Its isChecked() is read by
+                 TaskEditFormInputReader to decide whether to save budget data. -->
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/ToggleBudget"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/task_editor_section_budget_collapsed"/>
+                android:layout_marginStart="@dimen/spacing_sm"/>
         </LinearLayout>
 
-        <!-- BudgetContainer: accordion section body.
-             ToggleBudget is a hidden state holder kept for binder compatibility. -->
+        <!-- BudgetContainer: section body, shown when ToggleBudget is on. -->
         <LinearLayout
             android:id="@+id/BudgetContainer"
             android:layout_width="match_parent"
@@ -778,12 +794,6 @@
             android:orientation="vertical"
             android:paddingBottom="@dimen/spacing_sm"
             android:visibility="gone">
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/ToggleBudget"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:visibility="gone"/>
 
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.AutoSecretary.Editor.TextFieldLayout"

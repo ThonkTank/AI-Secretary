@@ -5,6 +5,8 @@ import com.autosecretary.features.meal.domain.MealRepository;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.domain.model.Task;
+import com.autosecretary.features.task.domain.model.TaskCategory;
+import com.autosecretary.features.task.data.TaskCategoryDao;
 import com.autosecretary.features.task.data.TaskDao;
 
 import java.util.List;
@@ -25,17 +27,20 @@ import java.util.function.Consumer;
  */
 public class TaskDataService {
     private final TaskDao taskDao;
+    private final TaskCategoryDao taskCategoryDao;
     private final TaskListItemMapper mapper;
     private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
     private final MealRepository mealRepository;
 
     public TaskDataService(TaskDao taskDao,
+                           TaskCategoryDao taskCategoryDao,
                            TaskListItemMapper mapper,
                            ExecutorService workerExecutor,
                            Executor callbackDispatcher,
                            MealRepository mealRepository) {
         this.taskDao = taskDao;
+        this.taskCategoryDao = taskCategoryDao;
         this.mapper = mapper;
         this.workerExecutor = workerExecutor;
         this.callbackDispatcher = callbackDispatcher;
@@ -43,15 +48,44 @@ public class TaskDataService {
     }
 
     /**
-     * Loads all tasks and maps them to {@link TaskListItem} presentation models.
+     * Loads all tasks and maps them to {@link TaskListItem} presentation models, populating
+     * each item's category metadata from {@link TaskCategoryDao}.
      *
      * @param onLoaded receives the flat mapped list on the callback dispatcher thread;
      *                 never null, but may be empty if no tasks exist
      */
     public void loadAllMapped(Consumer<List<TaskListItem>> onLoaded) {
         workerExecutor.execute(() -> {
-            List<TaskListItem> items = mapper.map(taskDao.readAll());
+            List<TaskListItem> items = mapper.map(taskDao.readAll(), taskCategoryDao.readAll());
             callbackDispatcher.execute(() -> onLoaded.accept(items));
+        });
+    }
+
+    /** Loads all task categories on the callback dispatcher thread. */
+    public void loadCategories(Consumer<List<TaskCategory>> onLoaded) {
+        workerExecutor.execute(() -> {
+            List<TaskCategory> categories = taskCategoryDao.readAll();
+            callbackDispatcher.execute(() -> onLoaded.accept(categories));
+        });
+    }
+
+    /** Persists a category (insert or replace). */
+    public void saveCategory(TaskCategory category, Runnable onSaved) {
+        workerExecutor.execute(() -> {
+            taskCategoryDao.write(category);
+            callbackDispatcher.execute(onSaved);
+        });
+    }
+
+    /**
+     * Deletes a category. Tasks referencing it are set back to uncategorised first
+     * (emulating ON DELETE SET NULL, since {@code categoryId} has no foreign key).
+     */
+    public void deleteCategory(String categoryId, Runnable onDeleted) {
+        workerExecutor.execute(() -> {
+            taskCategoryDao.clearCategoryFromTasks(categoryId);
+            taskCategoryDao.delete(categoryId);
+            callbackDispatcher.execute(onDeleted);
         });
     }
 
@@ -101,6 +135,13 @@ public class TaskDataService {
      */
     public List<Task> readAllSync() {
         return taskDao.readAll();
+    }
+
+    /**
+     * Synchronous category read. Must only be called from a worker-thread context.
+     */
+    public List<TaskCategory> readAllCategoriesSync() {
+        return taskCategoryDao.readAll();
     }
 
     /** Clears the back-link on the associated meal plan (if any) before task deletion. */

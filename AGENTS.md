@@ -15,7 +15,7 @@ Use the Gradle wrapper from repo root:
 - `./gradlew assembleDebug`: safe local build; creates `build/outputs/apk/debug/AutoSecretary.apk`.
 - `./gradlew installDebug`: installs debug build to a connected device/emulator.
 - `./gradlew copyToRelease`: copies APK to `ops/release/` and increments `ops/release/version.txt`.
-- `./gradlew publishReleaseArtifact`: runs release copy plus Git add/commit/push. Use only for intentional release publishing.
+- `./gradlew publishReleaseArtifact`: runs release copy and publishes `AutoSecretary.apk` plus `version.txt` as a GitHub Release. Use only for intentional release publishing.
 - `./test_schedule.sh`: end-to-end manual scheduling validation via `adb` and log checks.
 
 ## Coding Style & Naming Conventions

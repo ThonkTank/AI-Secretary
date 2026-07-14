@@ -68,8 +68,11 @@ public class TaskEditDialog extends DialogFragment {
         prefSlotSectionController = new PrefSlotSectionController(this, rootView, formController, repetition);
         prefSlotSectionController.rebuildPrefSlotUI();
 
-        setupAccordion(rootView, editState, formController,
+        setupFeatureSections(rootView,
                 repetition.toggleRepetition, progress.toggleProgress, scheduling.toggleBudget);
+        setupWeitereOptionen(rootView, weitereOptionenHasData(editState, formController));
+        setupLeisureToggle(rootView, basicInfo.leisureView,
+                repetition.toggleRepetition, progress.toggleProgress);
 
         formInputReader = new TaskEditFormInputReader(
             basicInfo, scheduling, repetition, progress
@@ -133,7 +136,7 @@ public class TaskEditDialog extends DialogFragment {
             if (!isAdded()) {
                 return;
             }
-            sectionBinder.rebindParentSpinner(basicInfo, referenceData.parentTasks());
+            sectionBinder.rebindCategorySpinner(basicInfo, referenceData.categories());
             sectionBinder.rebindBudgetSpinners(scheduling,
                     referenceData.budgetAccounts(),
                     referenceData.budgetCategories());
@@ -141,75 +144,58 @@ public class TaskEditDialog extends DialogFragment {
     }
 
     /**
-     * Wires four collapsible accordion sections (Weitere Details, Wiederholung, Fortschritt,
-     * Budget). Only one section is open at a time. Opening a section with a feature switch
-     * enables that feature; explicitly closing it (tapping its own header) disables it.
-     * Collapsing a section because another opened does NOT change its switch state.
+     * Wires the three feature sections (Wiederholung, Fortschritt, Budget). Each header carries a
+     * visible on/off switch; the section body is shown exactly when its switch is on. The switches
+     * are pre-set from the task's data by {@link TaskEditSectionBinder}, so a task that already has
+     * (say) repetition data opens with that section expanded.
      */
-    private void setupAccordion(View rootView, TaskEditState editState, TaskEditFormController formController,
-                                CompoundButton toggleRepetition, CompoundButton toggleProgress,
-                                CompoundButton toggleBudget) {
-        View[] containers = {
-            rootView.findViewById(R.id.WeitereDetailsContainer),
-            rootView.findViewById(R.id.RepetitionContainer),
-            rootView.findViewById(R.id.ProgressContainer),
-            rootView.findViewById(R.id.BudgetContainer)
-        };
-        TextView[] labels = {
-            rootView.findViewById(R.id.WeitereDetailsToggle),
-            rootView.findViewById(R.id.WiederholungToggle),
-            rootView.findViewById(R.id.FortschrittToggle),
-            rootView.findViewById(R.id.BudgetToggle)
-        };
-        // null for sections without a feature switch (Weitere Details)
-        CompoundButton[] switches = { null, toggleRepetition, toggleProgress, toggleBudget };
-        int[] collapsedRes = {
-            R.string.task_editor_weitere_details_collapsed,
-            R.string.task_editor_section_wiederholung_collapsed,
-            R.string.task_editor_section_fortschritt_collapsed,
-            R.string.task_editor_section_budget_collapsed
-        };
-        int[] expandedRes = {
-            R.string.task_editor_weitere_details_expanded,
-            R.string.task_editor_section_wiederholung_expanded,
-            R.string.task_editor_section_fortschritt_expanded,
-            R.string.task_editor_section_budget_expanded
-        };
-        int[] headerIds = {
-            R.id.WeitereDetailsHeader,
-            R.id.WiederholungHeader,
-            R.id.FortschrittHeader,
-            R.id.BudgetHeader
-        };
+    private void setupFeatureSections(View rootView,
+                                      CompoundButton toggleRepetition,
+                                      CompoundButton toggleProgress,
+                                      CompoundButton toggleBudget) {
+        bindFeatureSection(rootView.findViewById(R.id.WiederholungHeader), toggleRepetition,
+                rootView.findViewById(R.id.RepetitionContainer));
+        bindFeatureSection(rootView.findViewById(R.id.FortschrittHeader), toggleProgress,
+                rootView.findViewById(R.id.ProgressContainer));
+        bindFeatureSection(rootView.findViewById(R.id.BudgetHeader), toggleBudget,
+                rootView.findViewById(R.id.BudgetContainer));
+    }
 
-        for (int i = 0; i < containers.length; i++) {
-            final int idx = i;
-            rootView.findViewById(headerIds[i]).setOnClickListener(v -> {
-                boolean isOpen = containers[idx].getVisibility() == View.VISIBLE;
-                if (isOpen) {
-                    // Explicit close: collapse + disable feature
-                    containers[idx].setVisibility(View.GONE);
-                    labels[idx].setText(collapsedRes[idx]);
-                    if (switches[idx] != null) switches[idx].setChecked(false);
-                } else {
-                    // Collapse all other open sections without touching their switch state
-                    for (int j = 0; j < containers.length; j++) {
-                        if (j != idx && containers[j].getVisibility() == View.VISIBLE) {
-                            containers[j].setVisibility(View.GONE);
-                            labels[j].setText(collapsedRes[j]);
-                        }
-                    }
-                    // Expand this section and enable its feature
-                    containers[idx].setVisibility(View.VISIBLE);
-                    labels[idx].setText(expandedRes[idx]);
-                    if (switches[idx] != null) switches[idx].setChecked(true);
-                }
-            });
-        }
+    private void bindFeatureSection(View header, CompoundButton toggle, View container) {
+        Runnable sync = () -> container.setVisibility(toggle.isChecked() ? View.VISIBLE : View.GONE);
+        // Tapping the header toggles the switch; tapping the switch toggles itself. Either way the
+        // container follows. We use click (not checked-change) listeners so we don't clobber the
+        // binder's own checked-change listener on the repetition toggle.
+        header.setOnClickListener(v -> {
+            toggle.toggle();
+            sync.run();
+        });
+        toggle.setOnClickListener(v -> sync.run());
+        sync.run();
+    }
 
-        // Auto-expand the first section that has non-default data
-        boolean weitereDetailsHasData = (editState.description != null && !editState.description.isEmpty())
-                || editState.parentTaskId != null
+    /**
+     * Wires the "Weitere Optionen" expander: a plain show/hide with an arrow, no feature switch.
+     * Auto-expanded when the task already has data in that block.
+     */
+    private void setupWeitereOptionen(View rootView, boolean autoExpand) {
+        View header = rootView.findViewById(R.id.WeitereDetailsHeader);
+        View container = rootView.findViewById(R.id.WeitereDetailsContainer);
+        TextView label = rootView.findViewById(R.id.WeitereDetailsToggle);
+        Runnable updateLabel = () -> label.setText(container.getVisibility() == View.VISIBLE
+                ? R.string.task_editor_weitere_optionen_expanded
+                : R.string.task_editor_weitere_optionen_collapsed);
+        header.setOnClickListener(v -> {
+            container.setVisibility(container.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+            updateLabel.run();
+        });
+        container.setVisibility(autoExpand ? View.VISIBLE : View.GONE);
+        updateLabel.run();
+    }
+
+    /** True when the "Weitere Optionen" block holds any non-default value (category lives above it now). */
+    private boolean weitereOptionenHasData(TaskEditState editState, TaskEditFormController formController) {
+        return (editState.description != null && !editState.description.isEmpty())
                 || editState.startDate != null
                 || formController.getEditableDeadline() != null
                 || editState.fixedDate != null
@@ -219,19 +205,40 @@ public class TaskEditDialog extends DialogFragment {
                 || editState.maxDuration != TaskEditDefaults.MAX_DURATION
                 || editState.cooldown != TaskEditDefaults.COOLDOWN
                 || !editState.closeOnMiss;
-        boolean wiederholungHasData = editState.reps > 0;
-        boolean fortschrittHasData = editState.unit != null && !editState.unit.isEmpty();
-        boolean budgetHasData = editState.budgetRequiredCents != null && editState.budgetRequiredCents > 0;
+    }
 
-        int autoExpand = weitereDetailsHasData ? 0
-                : wiederholungHasData ? 1
-                : fortschrittHasData ? 2
-                : budgetHasData ? 3
-                : -1;
-        if (autoExpand >= 0) {
-            containers[autoExpand].setVisibility(View.VISIBLE);
-            labels[autoExpand].setText(expandedRes[autoExpand]);
-        }
+    /**
+     * A leisure task carries no metrics or performance pressure, so its repetition and
+     * progress sections are meaningless. When leisure is on we hide both sections (header +
+     * container) and force their feature switches off so no repetition/progress data is saved.
+     */
+    private void setupLeisureToggle(View rootView, CompoundButton leisureView,
+                                    CompoundButton toggleRepetition, CompoundButton toggleProgress) {
+        View[] metricViews = {
+            rootView.findViewById(R.id.WiederholungHeader),
+            rootView.findViewById(R.id.RepetitionContainer),
+            rootView.findViewById(R.id.FortschrittHeader),
+            rootView.findViewById(R.id.ProgressContainer)
+        };
+        Runnable apply = () -> {
+            boolean leisure = leisureView.isChecked();
+            if (leisure) {
+                toggleRepetition.setChecked(false);
+                toggleProgress.setChecked(false);
+            }
+            int visibility = leisure ? View.GONE : View.VISIBLE;
+            for (View metricView : metricViews) {
+                // Containers collapse independently; only reveal the headers here.
+                if (metricView.getId() == R.id.WiederholungHeader
+                        || metricView.getId() == R.id.FortschrittHeader) {
+                    metricView.setVisibility(visibility);
+                } else if (leisure) {
+                    metricView.setVisibility(View.GONE);
+                }
+            }
+        };
+        leisureView.setOnCheckedChangeListener((buttonView, isChecked) -> apply.run());
+        apply.run();
     }
 
     private void showDeleteConfirmDialog() {

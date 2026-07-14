@@ -8,6 +8,9 @@ import android.content.IntentFilter;
 
 import com.autosecretary.features.task.application.internal.alarms.DailyPlanningScheduler;
 import com.autosecretary.features.task.ui.TaskScheduleConfigViewModelFactory;
+import com.autosecretary.features.task.ui.TaskCategoryViewModelFactory;
+import com.autosecretary.features.task.ui.TaskCategoryWindowViewModelFactory;
+import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModelFactory;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModelFactory;
 import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
 import com.autosecretary.features.task.application.LoadTaskWidgetItemsUseCase;
@@ -112,6 +115,18 @@ public class AutoSecretaryApplication extends Application {
 
     public TaskScheduleConfigViewModelFactory getTaskScheduleConfigViewModelFactory() {
         return appCompositionRoot.getTaskScheduleConfigViewModelFactory();
+    }
+
+    public TaskCategoryViewModelFactory getTaskCategoryViewModelFactory() {
+        return appCompositionRoot.getTaskCategoryViewModelFactory();
+    }
+
+    public TaskCategoryWindowViewModelFactory getTaskCategoryWindowViewModelFactory() {
+        return appCompositionRoot.getTaskCategoryWindowViewModelFactory();
+    }
+
+    public TaskAssistantViewModelFactory getTaskAssistantViewModelFactory() {
+        return appCompositionRoot.getTaskAssistantViewModelFactory();
     }
 
     public ExecutorService getDbExecutor() {

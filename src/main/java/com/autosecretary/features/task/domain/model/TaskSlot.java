@@ -26,14 +26,9 @@ import androidx.annotation.NonNull;
  *   <li>User taps again → {@code realEnd} is recorded and {@code completed=true} (slot is DONE).</li>
  * </ol>
  *
- * <p><strong>Two kinds of hierarchy:</strong>
- * <ul>
- *   <li><em>Task hierarchy</em> — parent-child <em>tasks</em> linked via {@code TaskRelation} (separate table).</li>
- *   <li><em>Slot hierarchy</em> — when a parent task's slot is scheduled, child-task slots are
- *       nested inside the parent's time block. Each child slot's {@link #parent} points to the
- *       containing parent-task slot. Used for cascade eviction and UI tree rendering.
- *       See also {@link #chainId} for prerequisite-chain grouping (separate concept).</li>
- * </ul>
+ * <p>Slots are grouped for prerequisite chains via {@link #chainId}. The {@link #parent}
+ * field is a legacy slot-containment pointer from the (removed) task hierarchy and is now
+ * always null; it is retained only to avoid a schema migration.
  */
 @Entity(tableName = "task_slots",
     indices = @Index("taskId"),
@@ -63,13 +58,8 @@ public class TaskSlot {
     public String id = UUID.randomUUID().toString();
     public String taskId;
     /**
-     * Slot-level parent ID for child-task containment. When a parent task is scheduled,
-     * its child tasks' slots are placed within the parent's time block; each child slot's
-     * {@code parent} points to the containing parent-task slot ID. Distinct from the
-     * task-level parent-child relationship (which lives in {@code TaskRelation}).
-     * Used by {@code removeOrphanedChildSlots} for cascade eviction when the parent
-     * slot is displaced. The in-memory {@link #children} list mirrors this linkage
-     * for tree traversal.
+     * Legacy slot-containment pointer from the removed task hierarchy. No longer written by the
+     * scheduler (always null); retained only to avoid a schema migration on {@code task_slots}.
      */
     public String parent;
     /**

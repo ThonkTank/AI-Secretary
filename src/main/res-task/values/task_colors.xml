@@ -26,6 +26,13 @@
     <color name="task_progress_button_tint">@color/color_primary</color>
     <color name="task_progress_button_tint_disabled">@color/color_on_surface_muted</color>
 
+    <!-- Assistant chat bubbles. User bubble is a low-alpha primary tint over the surface
+         (same tinted-state-surface convention as task_in_progress_background); the assistant
+         bubble reuses color_surface + color_outline. The proposal card is a low-alpha accent
+         tint so it reads as a distinct "action needed" surface. -->
+    <color name="task_assistant_user_bubble">#1F5C7A4D</color>
+    <color name="task_assistant_proposal_surface">#1FCF8F4F</color>
+
     <color name="task_calendar_background">#FFEAF2FA</color>
     <color name="task_calendar_outline">#FF9BB7D4</color>
     <color name="task_calendar_chip_background">#FFD6E7F7</color>

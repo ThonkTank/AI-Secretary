@@ -1,11 +1,13 @@
 package com.autosecretary.features.task.application.listmodel;
 
 import com.autosecretary.features.task.domain.model.Task;
+import com.autosecretary.features.task.domain.model.TaskCategory;
 import com.autosecretary.features.task.domain.model.TaskSlot;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,31 +61,27 @@ public class TaskListItemMapper {
      * @param tasks the domain task list to transform
      * @return a flat list of TaskListItem presentation models (never null, may be empty)
      */
+    /** Overload for callers without category metadata (produces items with empty category fields). */
     public List<TaskListItem> map(List<Task> tasks) {
-        Map<String, String> preferredSlotIdByTaskDay = buildPreferredSlotIdByTaskDay(tasks);
+        return map(tasks, Collections.emptyList());
+    }
+
+    public List<TaskListItem> map(List<Task> tasks, List<TaskCategory> categories) {
+        Map<String, TaskCategory> categoriesById = new HashMap<>();
+        for (TaskCategory category : categories) {
+            categoriesById.put(category.id, category);
+        }
         List<TaskListItem> items = new ArrayList<>();
         for (Task task : tasks) {
             if (task.slots.isEmpty()) {
-                items.add(toItem(task, null, preferredSlotIdByTaskDay));
+                items.add(toItem(task, null, categoriesById));
             } else {
                 for (TaskSlot slot : task.slots) {
-                    items.add(toItem(task, slot, preferredSlotIdByTaskDay));
+                    items.add(toItem(task, slot, categoriesById));
                 }
             }
         }
         return items;
-    }
-
-    /**
-     * Extracts the IDs of this task's parent tasks.
-     *
-     * @param task the task to extract parents from
-     * @return a list of parent task IDs (never null, may be empty)
-     */
-    private static List<String> extractParentIds(Task task) {
-        return task.parents.stream()
-                .map(rel -> rel.parent)
-                .toList();
     }
 
     /**
@@ -100,8 +98,7 @@ public class TaskListItemMapper {
      * @param slot the slot for this occurrence, or null for unscheduled tasks
      * @return a TaskListItem with all fields populated appropriately
      */
-    private TaskListItem toItem(Task task, TaskSlot slot, Map<String, String> preferredSlotIdByTaskDay) {
-        List<String> parentTaskIds = extractParentIds(task);
+    private TaskListItem toItem(Task task, TaskSlot slot, Map<String, TaskCategory> categoriesById) {
         boolean hasProgress = task.core.progress != null;
         boolean completed   = slot != null && slot.completed;
         boolean inProgress  = slot != null && slot.realStart != null && !completed;
@@ -112,22 +109,17 @@ public class TaskListItemMapper {
         LocalTime end        = slot != null ? slot.end    : null;
         int       score      = slot != null ? slot.score  : 0;
 
-        if (slot != null && slotParentId == null && day != null && !parentTaskIds.isEmpty()) {
-            for (String parentTaskId : parentTaskIds) {
-                String candidate = preferredSlotIdByTaskDay.get(taskDayKey(parentTaskId, day));
-                if (candidate != null && !candidate.equals(slotId)) {
-                    slotParentId = candidate;
-                    break;
-                }
-            }
-        }
+        TaskCategory category = task.core.categoryId != null ? categoriesById.get(task.core.categoryId) : null;
 
         return new TaskListItem(
                 TaskListItem.ItemType.TASK,
                 task.core.id,
                 slotId,
                 slotParentId,
-                parentTaskIds,
+                task.core.categoryId,
+                category != null ? category.name : null,
+                category != null ? category.icon : null,
+                category != null ? category.colorHex : null,
                 task.core.title,
                 task.core.description,
                 day,
@@ -136,8 +128,10 @@ public class TaskListItemMapper {
                 task.core.deadline,
                 task.core.history.currentStreak,
                 score,
+                task.core.priority.scoringWeight,
                 completed,
                 inProgress,
+                task.core.leisure,
                 hasProgress ? task.core.progress.current : 0,
                 hasProgress ? task.core.progress.target : 0,
                 hasProgress ? task.core.progress.unit : null,
@@ -145,54 +139,6 @@ public class TaskListItemMapper {
                 task.core.goalIcon,
                 task.core.goalColorHex
         );
-    }
-
-    private static Map<String, String> buildPreferredSlotIdByTaskDay(List<Task> tasks) {
-        Map<String, String> byTaskDay = new HashMap<>();
-        for (Task task : tasks) {
-            for (TaskSlot slot : task.slots) {
-                if (slot == null || slot.id == null || slot.day == null) {
-                    continue;
-                }
-                String key = taskDayKey(task.core.id, slot.day);
-                String currentId = byTaskDay.get(key);
-                if (currentId == null || shouldPrefer(slot, task.findSlot(currentId))) {
-                    byTaskDay.put(key, slot.id);
-                }
-            }
-        }
-        return byTaskDay;
-    }
-
-    private static boolean shouldPrefer(TaskSlot candidate, TaskSlot current) {
-        if (current == null) return true;
-        int candidateRank = slotRank(candidate);
-        int currentRank = slotRank(current);
-        if (candidateRank != currentRank) {
-            return candidateRank > currentRank;
-        }
-        LocalTime candidateTime = preferredSortTime(candidate);
-        LocalTime currentTime = preferredSortTime(current);
-        if (candidateTime == null) return false;
-        if (currentTime == null) return true;
-        return candidateTime.isAfter(currentTime);
-    }
-
-    private static int slotRank(TaskSlot slot) {
-        if (slot.completed) return 3;
-        if (slot.realStart != null) return 2;
-        return 1;
-    }
-
-    private static LocalTime preferredSortTime(TaskSlot slot) {
-        if (slot.realEnd != null) return slot.realEnd;
-        if (slot.realStart != null) return slot.realStart;
-        if (slot.end != null) return slot.end;
-        return slot.start;
-    }
-
-    private static String taskDayKey(String taskId, LocalDate day) {
-        return taskId + "|" + day;
     }
 
 }

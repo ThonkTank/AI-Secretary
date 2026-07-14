@@ -13,16 +13,13 @@ This package integrates with external APIs to fetch and parse financial data. It
 Sends PDF bank statements to Claude's Messages API for structured transaction extraction.
 
 **Key responsibilities:**
-- Build API requests with system prompts and document uploads
-- Handle HTTP communication with Anthropic's API
+- Build the system prompt + PDF `document` attachment and delegate the call to the shared `ClaudeChatTransport` (`shared/ClaudeMessagesClient`)
 - Parse JSON responses into domain objects (`ParsedStatement`)
 - Strip markdown formatting if Claude wraps JSON in code fences
 
-**Model used:** `claude-sonnet-4-20250514` (good accuracy-to-cost ratio for financial documents)
+**Model + endpoint:** user-selectable — the model comes from `ClaudeModelStore` and the base URL from `ClaudeEndpointStore` (both in `shared/`), the same configuration the assistant chat uses. There is no hardcoded model. Default model: `claude-sonnet-5`.
 
-**Timeouts:**
-- Connect: 30 seconds (network handshake)
-- Read: 120 seconds (Claude processing PDFs can be slow)
+HTTP communication, timeouts (30 s connect / 120 s read) and error mapping live in the shared `ClaudeMessagesClient`, not here.
 
 ### ClaudeApiKeyStore
 Securely stores and retrieves Claude API keys using Android Keystore.

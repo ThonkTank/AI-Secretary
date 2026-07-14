@@ -92,7 +92,7 @@ Transfers are modeled as internal account movements (not real income/expense). T
 
 ### Importing a PDF
 1. User selects a PDF statement
-2. `internal/StatementFileParser.parse()` base64-encodes the file and sends it to the Claude API (model `claude-sonnet-4-20250514`)
+2. `internal/StatementFileParser.parse()` base64-encodes the file and sends it to the Claude API (model is user-selectable via `ClaudeModelStore`, default `claude-sonnet-5`)
 3. Claude API returns extracted transactions
 4. Same enrichment and persistence as CSV
 

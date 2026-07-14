@@ -41,12 +41,15 @@ import com.autosecretary.features.meal.data.entity.MealRecipeIngredientEntity;
 import com.autosecretary.features.meal.data.entity.MealShoppingListItemEntity;
 import com.autosecretary.features.meal.data.entity.MealStorePackageEntity;
 import com.autosecretary.features.meal.data.entity.MealWeeklyFoodTargetEntity;
+import com.autosecretary.features.task.domain.model.TaskCategory;
+import com.autosecretary.features.task.data.TaskCategoryDao;
+import com.autosecretary.features.task.domain.model.TaskCategoryWindow;
+import com.autosecretary.features.task.data.TaskCategoryWindowDao;
 import com.autosecretary.features.task.domain.model.TaskCore;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.domain.model.TaskPlannedMeal;
 import com.autosecretary.features.task.domain.model.TaskPrefSlot;
 import com.autosecretary.features.task.domain.model.TaskPrerequisite;
-import com.autosecretary.features.task.domain.model.TaskRelation;
 import com.autosecretary.features.task.data.TaskScheduleConfig;
 import com.autosecretary.features.task.data.TaskScheduleConfigDao;
 import com.autosecretary.features.task.domain.model.TaskSlot;
@@ -57,10 +60,10 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
  * SQLite database abstraction for AutoSecretary using Android Room ORM.
  * <p>
  * This is a single-instance database accessible via {@link #getInstance(Context)}.
- * Room automatically handles table creation, schema versioning (v27), and type conversion.
+ * Room automatically handles table creation, schema versioning (v29), and type conversion.
  * </p>
  * <p>
- * <strong>Database version:</strong> 27. Schema changes require a version bump and
+ * <strong>Database version:</strong> 29. Schema changes require a version bump and
  * compatible Room migration(s). This project no longer uses destructive fallback
  * migrations because the app now stores user data that must be preserved.
  * </p>
@@ -80,7 +83,8 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
 @Database(
         entities = {
                 TaskPrefSlot.class,
-                TaskRelation.class,
+                TaskCategory.class,
+                TaskCategoryWindow.class,
                 TaskCore.class,
                 TaskSlot.class,
                 TaskPrerequisite.class,
@@ -106,7 +110,7 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
                 MealCookingPreferencesEntity.class,
                 MealWeeklyFoodTargetEntity.class
         },
-        version = 27,
+        version = 29,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -230,7 +234,95 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    /**
+     * v27 → v28: introduces flat task categories and removes the parent-child task hierarchy.
+     * <p>
+     * Every task that appears as a {@code parent} in {@code task_relation} is promoted to a
+     * {@link com.autosecretary.features.task.domain.model.TaskCategory} (reusing the parent's id
+     * as the category id, and its title/icon/color). Each child task is assigned that category.
+     * The promoted parent task rows — and their slots/pref-slots/prerequisites — are deleted, and
+     * {@code task_relation} is dropped. Non-hierarchy tasks are left untouched with a NULL category.
+     * <p>
+     * Column definitions below deliberately omit {@code DEFAULT} clauses so the migrated schema
+     * matches Room's entity-derived schema exactly (the entities declare no
+     * {@code @ColumnInfo(defaultValue = ...)}).
+     */
+    public static final Migration MIGRATION_27_28 = new Migration(27, 28) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // 1. New flat-category table.
+            database.execSQL("""
+                    CREATE TABLE task_category (
+                        id TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        icon TEXT NOT NULL,
+                        colorHex TEXT NOT NULL,
+                        sortOrder INTEGER NOT NULL,
+                        PRIMARY KEY(id)
+                    )
+                    """);
+
+            // 2. New nullable category pointer on task_core.
+            database.execSQL("ALTER TABLE task_core ADD COLUMN categoryId TEXT");
+
+            // 3. Promote every distinct parent task into a category (keeping its id).
+            database.execSQL("""
+                    INSERT INTO task_category (id, name, icon, colorHex, sortOrder)
+                    SELECT c.id, COALESCE(c.title, 'Kategorie'), c.goalIcon, c.goalColorHex, 0
+                    FROM task_core c
+                    WHERE c.id IN (SELECT DISTINCT parent FROM task_relation)
+                    """);
+
+            // 4. Assign each child to its (lexicographically first) parent category.
+            database.execSQL("""
+                    UPDATE task_core
+                    SET categoryId = (SELECT MIN(r.parent) FROM task_relation r WHERE r.child = task_core.id)
+                    WHERE id IN (SELECT DISTINCT child FROM task_relation)
+                    """);
+
+            // 5. Delete the promoted parent task rows and their dependents (containers, not tasks now).
+            //    task_slots/task_pref_slots/task_prerequisites have no CASCADE from task_core, so
+            //    remove them explicitly. Do this while task_relation still exists.
+            database.execSQL("DELETE FROM task_slots WHERE taskId IN (SELECT DISTINCT parent FROM task_relation)");
+            database.execSQL("DELETE FROM task_pref_slots WHERE taskId IN (SELECT DISTINCT parent FROM task_relation)");
+            database.execSQL("DELETE FROM task_prerequisites WHERE taskId IN (SELECT DISTINCT parent FROM task_relation)");
+            database.execSQL("DELETE FROM task_core WHERE id IN (SELECT DISTINCT parent FROM task_relation)");
+
+            // 6. Null out any category pointer that ended up dangling (deep-tree edge cases).
+            database.execSQL("UPDATE task_core SET categoryId = NULL WHERE categoryId NOT IN (SELECT id FROM task_category)");
+
+            // 7. Drop the hierarchy table entirely.
+            database.execSQL("DROP TABLE task_relation");
+        }
+    };
+
+    /**
+     * v28 → v29: adds the leisure flag on tasks and the per-weekday category time-window table.
+     * Column definitions omit {@code DEFAULT} clauses (except the required NOT NULL leisure default)
+     * so the migrated schema matches Room's entity-derived schema.
+     */
+    public static final Migration MIGRATION_28_29 = new Migration(28, 29) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE task_core ADD COLUMN leisure INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("""
+                    CREATE TABLE task_category_window (
+                        id TEXT NOT NULL,
+                        dayOfWeek TEXT NOT NULL,
+                        categoryId TEXT NOT NULL,
+                        startTime TEXT NOT NULL,
+                        endTime TEXT NOT NULL,
+                        PRIMARY KEY(id)
+                    )
+                    """);
+        }
+    };
+
     public abstract TaskDao taskDao();
+
+    public abstract TaskCategoryDao taskCategoryDao();
+
+    public abstract TaskCategoryWindowDao taskCategoryWindowDao();
 
     public abstract TaskScheduleConfigDao taskScheduleConfigDao();
 
@@ -285,6 +377,8 @@ public abstract class AppDatabase extends RoomDatabase {
                     .addMigrations(MIGRATION_24_25)
                     .addMigrations(MIGRATION_25_26)
                     .addMigrations(MIGRATION_26_27)
+                    .addMigrations(MIGRATION_27_28)
+                    .addMigrations(MIGRATION_28_29)
                     .build();
         }
         return instance;

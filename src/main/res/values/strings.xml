@@ -4,6 +4,7 @@
     <string name="app_name">AutoSecretary</string>
 
     <string name="nav_tasks">Aufgaben</string>
+    <string name="nav_assistant">Assistent</string>
     <string name="nav_budget">Budget</string>
     <string name="nav_meal">Mahlzeiten</string>
     <string name="nav_settings">Einstellungen</string>
@@ -13,11 +14,11 @@
     <string name="action_cancel">Abbrechen</string>
     <string name="action_ok">OK</string>
     <string name="action_delete">Löschen</string>
-    <string name="hint_date_yyyy_mm_dd">Datum (YYYY-MM-DD)</string>
+    <string name="hint_date">Datum</string>
 
     <!-- Shared validation error messages used by DialogValidation across all features. -->
     <string name="error_field_required">%s ist erforderlich</string>
-    <string name="error_invalid_date">Ungültiges Datum. Format: YYYY-MM-DD</string>
+    <string name="error_invalid_date">Ungültiges Datum</string>
     <string name="error_invalid_number">%s muss eine Zahl sein</string>
 
     <string name="settings_title">Einstellungen</string>
@@ -26,6 +27,14 @@
     <string name="settings_option_factory_reset">Factory Reset</string>
     <string name="settings_option_about">Über AutoSecretary</string>
     <string name="settings_option_schedule_config">Zeitfenster konfigurieren</string>
+    <string name="settings_option_categories">Kategorien verwalten</string>
+    <string name="settings_option_category_windows">Kategorie-Zeitfenster</string>
+    <string name="settings_option_api_key">Claude API-Key</string>
+    <string name="settings_option_check_update">Nach Updates suchen</string>
+    <string name="settings_api_key_title">Claude API-Key</string>
+    <string name="settings_api_key_hint">API-Key (leer lassen = unverändert)</string>
+    <string name="settings_api_key_endpoint_hint">Endpoint-URL (optional)</string>
+    <string name="settings_api_key_saved">Einstellungen gespeichert</string>
     <string name="settings_option_cooking_prefs">Kochpräferenzen</string>
 
     <string name="settings_no_backups">Keine Backups vorhanden.</string>
@@ -53,6 +62,13 @@
     <string name="update_available_message">Version %1$d ist verfügbar. Jetzt herunterladen?</string>
     <string name="update_action_install">Update</string>
     <string name="update_action_later">Später</string>
+    <string name="update_no_update_title">Keine Updates</string>
+    <string name="update_no_update_message">AutoSecretary ist aktuell.</string>
+    <string name="update_check_failed_title">Update-Prüfung fehlgeschlagen</string>
+    <string name="update_check_failed_message">Die aktuelle Version konnte nicht über GitHub Releases geprüft werden.\n\n%1$s</string>
+    <string name="update_install_permission_title">Installationsberechtigung fehlt</string>
+    <string name="update_install_permission_message">Android blockiert Updates aus dieser App-Quelle. Erlaube AutoSecretary die Installation unbekannter Apps und starte die Update-Suche danach erneut.</string>
+    <string name="update_install_permission_action">Einstellung öffnen</string>
     <string name="update_download_failed_title">Download fehlgeschlagen</string>
     <string name="update_download_failed_message">Das Update konnte nicht geladen oder installiert werden.\n\n%1$s</string>
     <string name="update_download_failed_unknown">Unbekannter Fehler</string>

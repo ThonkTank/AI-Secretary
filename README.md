@@ -107,13 +107,13 @@ Use the official Android setup guides to verify your environment (JDK, SDK, emul
 > [!WARNING]
 > `copyToRelease` and `publishReleaseArtifact` have side effects:
 > - `copyToRelease` copies the debug APK to `ops/release/` **and increments** `ops/release/version.txt`.
-> - `publishReleaseArtifact` runs `copyToRelease` and then `pushToGitHub`, which executes `git add ops/release/`, `git commit --allow-empty`, and `git push`.
+> - `publishReleaseArtifact` runs `copyToRelease` and then creates a GitHub Release containing `AutoSecretary.apk` and `version.txt`.
 >
 > **Safe local build command (no version bump, commit, or push):** `./gradlew assembleDebug`
 
 - `./gradlew assembleDebug` only builds the debug APK (`AutoSecretary.apk`) and has no Git side effects.
 - `./gradlew copyToRelease` copies the built debug APK to `ops/release/` and writes the next value to `ops/release/version.txt`.
-- `./gradlew publishReleaseArtifact` depends on `copyToRelease` and `pushToGitHub`; Git push happens only when this task is run.
+- `./gradlew publishReleaseArtifact` depends on `copyToRelease` and publishes those two files as the latest GitHub Release.
 
 ## First contribution (small safe change)
 

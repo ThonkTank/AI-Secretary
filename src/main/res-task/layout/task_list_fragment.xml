@@ -4,8 +4,8 @@
        1. Day navigation bar (prev/today/next)
        2. Controls card: checklist/manage toggle, search bar
           (search bar visible only in Manage mode, toggled by TaskListFragment)
-       3. Task list (RecyclerView via ListRowAdapter) OR empty-state container — only one visible
-       4. "Neue Aufgabe" button (always visible at bottom)
+       3. Task list (RecyclerView via ListRowAdapter) OR empty-state container — only one visible,
+          with the "Neue Aufgabe" FAB overlaid bottom-end
 -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -13,7 +13,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="@dimen/spacing_lg">
+    android:paddingHorizontal="@dimen/spacing_lg"
+    android:paddingTop="@dimen/spacing_sm">
 
     <include
         layout="@layout/include_temporal_nav_bar"
@@ -24,7 +25,6 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_xs"
         android:orientation="vertical"
         android:background="@drawable/bg_surface_card"
         android:paddingHorizontal="@dimen/spacing_md"
@@ -76,39 +76,46 @@
 
     </LinearLayout>
 
-    <!-- Task list and empty state: only one visible at a time, toggled by TaskListFragment -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/TaskList"
+    <!-- Task list + empty state (only one visible), with the create FAB overlaid bottom-end -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="@dimen/spacing_sm"
-        android:clipToPadding="false"
-        android:paddingBottom="@dimen/spacing_sm"/>
+        android:layout_marginTop="@dimen/spacing_xs">
 
-    <LinearLayout
-        android:id="@+id/TaskEmptyState"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:visibility="gone">
-
-        <include
-            layout="@layout/include_empty_state"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/TaskList"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="visible" />
-    </LinearLayout>
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="@dimen/task_list_fab_clearance"/>
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/NewTaskButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="@dimen/spacing_md"
-        style="?attr/materialButtonStyle"
-        android:text="@string/task_list_new_task"
-        android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Widget.NewTaskCta"/>
+        <LinearLayout
+            android:id="@+id/TaskEmptyState"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <include
+                layout="@layout/include_empty_state"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="visible" />
+        </LinearLayout>
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/NewTaskFab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="@dimen/spacing_lg"
+            android:contentDescription="@string/task_list_new_task"
+            android:src="@drawable/ic_add_24"
+            app:backgroundTint="@color/color_primary"
+            app:tint="@color/color_on_primary" />
+
+    </FrameLayout>
 
 </LinearLayout>

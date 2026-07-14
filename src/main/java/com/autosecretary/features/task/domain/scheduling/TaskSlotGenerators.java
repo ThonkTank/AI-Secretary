@@ -21,6 +21,7 @@ public final class TaskSlotGenerators {
         private Consumer<String> logger;
         private SchedulingWindowProvider schedulingWindowProvider = SchedulingWindowProvider.DEFAULT;
         private CalendarBlockedIntervalProvider calendarBlockedIntervalProvider = CalendarBlockedIntervalProvider.NONE;
+        private CategoryWindowProvider categoryWindowProvider = CategoryWindowProvider.NONE;
         private TaskTransitionStatLoader transitionStatLoader;
         private TaskBudgetEligibilityService taskBudgetEligibilityService;
 
@@ -43,6 +44,11 @@ public final class TaskSlotGenerators {
             return this;
         }
 
+        public Builder categoryWindowProvider(CategoryWindowProvider categoryWindowProvider) {
+            this.categoryWindowProvider = categoryWindowProvider;
+            return this;
+        }
+
         public Builder transitionStatLoader(TaskTransitionStatLoader transitionStatLoader) {
             this.transitionStatLoader = transitionStatLoader;
             return this;
@@ -59,6 +65,7 @@ public final class TaskSlotGenerators {
                     logger,
                     schedulingWindowProvider,
                     calendarBlockedIntervalProvider,
+                    categoryWindowProvider,
                     transitionStatLoader,
                     taskBudgetEligibilityService
             );

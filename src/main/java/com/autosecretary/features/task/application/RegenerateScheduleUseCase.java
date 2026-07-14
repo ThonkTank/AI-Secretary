@@ -6,7 +6,6 @@ import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
 import com.autosecretary.features.task.domain.scheduling.TaskPlanningState;
 import com.autosecretary.features.task.domain.scheduling.TaskSlotGenerationResult;
 import com.autosecretary.features.task.domain.scheduling.TaskSlotGenerator;
-import com.autosecretary.features.task.domain.TaskTreeOperations;
 
 import android.util.Log;
 
@@ -15,6 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 /**
@@ -42,15 +42,18 @@ public class RegenerateScheduleUseCase {
     private final TaskSlotGenerator generator;
     private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
+    private final BooleanSupplier schedulingEnabled;
 
     public RegenerateScheduleUseCase(TaskDao taskDao,
                                      TaskSlotGenerator generator,
                                      ExecutorService workerExecutor,
-                                     Executor callbackDispatcher) {
+                                     Executor callbackDispatcher,
+                                     BooleanSupplier schedulingEnabled) {
         this.taskDao = taskDao;
         this.generator = generator;
         this.workerExecutor = workerExecutor;
         this.callbackDispatcher = callbackDispatcher;
+        this.schedulingEnabled = schedulingEnabled;
     }
 
     public void execute(Consumer<Result> onDone) {
@@ -62,21 +65,25 @@ public class RegenerateScheduleUseCase {
                 // Remove stale slots in DB first so readAll() returns the true baseline.
                 // Preserves started/completed work; only untouched scheduled slots are regenerated.
                 taskDao.deleteRegeneratableSlotsInWindow(today, windowEnd);
+
+                // Global toggle off: leave the checklist cleared (stale slots removed above) and
+                // skip generation entirely, so daily planning can be disabled without losing data.
+                if (!schedulingEnabled.getAsBoolean()) {
+                    callbackDispatcher.execute(() -> onDone.accept(new Result(0, Collections.emptyList())));
+                    return;
+                }
+
                 List<Task> tasks = taskDao.readAll();
 
                 TaskPlanningState state = new TaskPlanningState();
                 generator.recordPreservedSlots(tasks, today, windowEnd, state);
 
-                // Build the task hierarchy tree to establish parent-child ordering and
-                // propagate parent priority/constraints to children. The result is then
-                // immediately flattened because generateSlotsForWindow expects a flat list
-                // in depth-first traversal order (children after their parent).
-                List<Task> flatTasks = TaskTreeOperations.flatten(
-                        TaskTreeOperations.buildTree(tasks));
+                // Tasks are flat (grouped only by category), so no tree building is needed;
+                // the scheduler places each task independently.
                 TaskSlotGenerationResult generationResult =
-                        generator.generateSlotsForWindow(flatTasks, today, PLANNING_DAYS, state);
+                        generator.generateSlotsForWindow(tasks, today, PLANNING_DAYS, state);
 
-                taskDao.writeList(flatTasks);
+                taskDao.writeList(tasks);
                 Result result = new Result(generationResult.createdSlots(), generationResult.conflicts());
                 callbackDispatcher.execute(() -> onDone.accept(result));
             } catch (Exception e) {

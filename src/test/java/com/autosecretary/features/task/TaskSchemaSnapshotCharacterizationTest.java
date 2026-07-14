@@ -34,10 +34,10 @@ public final class TaskSchemaSnapshotCharacterizationTest extends AutoSecretaryR
     public void taskRoomSchemaKeepsTablesColumnsIndexesAndForeignKeysInvariant() {
         assertColumns("task_core",
                 "id", "title", "description", "goalIcon", "goalColorHex",
-                "budgetRequiredCents", "budgetAccountId", "budgetCategoryId", "mealType",
+                "budgetRequiredCents", "budgetAccountId", "budgetCategoryId", "categoryId", "mealType",
                 "priority", "schedulingType", "cooldown", "startDate", "deadline",
                 "fixedDate", "fixedStart", "fixedEnd", "fixedDuration", "created",
-                "closeOnMiss", "adaptive", "minDuration", "maxDuration", "completed",
+                "closeOnMiss", "adaptive", "leisure", "minDuration", "maxDuration", "completed",
                 "history_completions", "history_trackedCompletions",
                 "history_currentStreak", "history_nrStreaks", "history_totalDuration",
                 "repetition_reps", "repetition_periodCompletions",
@@ -51,20 +51,19 @@ public final class TaskSchemaSnapshotCharacterizationTest extends AutoSecretaryR
                 "scheduled", "completed", "score", "displacementScore",
                 "displacementGroupId", "displacementGroupType", "realStart", "realEnd");
         assertColumns("task_pref_slots", "id", "taskId", "days", "start");
-        assertColumns("task_relation", "child", "parent");
+        assertColumns("task_category", "id", "name", "icon", "colorHex", "sortOrder");
+        assertColumns("task_category_window", "id", "dayOfWeek", "categoryId", "startTime", "endTime");
         assertColumns("task_prerequisites", "taskId", "prerequisiteId", "minGapMinutes");
         assertColumns("task_planned_meals",
                 "taskId", "day", "recipeId", "plannedServings", "completed", "actualServings");
 
         assertHasIndex("task_slots", "taskId");
         assertHasIndex("task_pref_slots", "taskId");
-        assertHasIndex("task_relation", "child");
         assertHasIndex("task_prerequisites", "taskId");
         assertHasIndex("task_planned_meals", "taskId");
 
         assertForeignKey("task_slots", "taskId", "task_core", "id", "CASCADE");
         assertForeignKey("task_pref_slots", "taskId", "task_core", "id", "CASCADE");
-        assertForeignKey("task_relation", "child", "task_core", "id", "CASCADE");
         assertForeignKey("task_prerequisites", "taskId", "task_core", "id", "CASCADE");
         assertForeignKey("task_planned_meals", "taskId", "task_core", "id", "CASCADE");
     }

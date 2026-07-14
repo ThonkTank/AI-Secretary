@@ -13,12 +13,17 @@
     <dimen name="task_editor_pref_slot_row_padding_start">16dp</dimen>
     <dimen name="task_editor_pref_slot_row_padding_vertical">4dp</dimen>
 
-    <dimen name="task_row_time_divider_height">2dp</dimen>
+    <dimen name="task_row_time_column_min_width">76dp</dimen>
     <dimen name="task_row_expand_toggle_min_width">48dp</dimen>
+    <dimen name="task_list_fab_clearance">88dp</dimen>
 
     <dimen name="task_schedule_day_time_button_width">72dp</dimen>
 
     <dimen name="task_widget_time_column_min_width">40dp</dimen>
     <dimen name="task_widget_list_divider_height">2dp</dimen>
+
+    <!-- Assistant chat bubbles -->
+    <dimen name="task_chat_bubble_max_width">300dp</dimen>
+    <dimen name="task_chat_bubble_corner">16dp</dimen>
 
 </resources>

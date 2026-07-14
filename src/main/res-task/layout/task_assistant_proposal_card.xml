@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One proposal card inside a chat exchange: a German summary of the proposed change on an
+     accent-tinted surface that sets it apart from the plain answer bubble, a filled "Übernehmen"
+     button while pending, and an "Übernommen" label once applied. Inflated by
+     TaskAssistantFragment into the ExchangeProposals container. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="start"
+    android:layout_marginTop="@dimen/spacing_sm"
+    android:layout_marginEnd="@dimen/spacing_xl"
+    android:background="@drawable/task_bg_proposal_card"
+    android:orientation="vertical"
+    android:padding="@dimen/spacing_md">
+
+    <TextView
+        android:id="@+id/ProposalSummary"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.RowPrimary"
+        android:textIsSelectable="true" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/ProposalApplyButton"
+        style="?attr/materialButtonStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:text="@string/task_assistant_apply"
+        android:textAllCaps="false" />
+
+    <TextView
+        android:id="@+id/ProposalStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:text="@string/task_assistant_status_applied"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Metadata"
+        android:textColor="@color/color_primary"
+        android:visibility="gone" />
+
+</LinearLayout>

@@ -88,8 +88,9 @@ public final class TaskSlotToggleMutation {
 
         if (phase == CompletionPhase.COMPLETED) {
             // Adaptive tasks learn optimal prerequisite gaps from user completion patterns.
+            // Leisure items skip all adaptive learning.
             // Reads happen before the write to avoid N+1 queries inside the write transaction.
-            if (task.core != null && task.core.adaptive) {
+            if (task.core != null && task.core.adaptive && !task.core.leisure) {
                 adaptPrerequisiteGaps(task, slot);
             }
             // write(task) is @Transaction: atomically writes task core + all slots.

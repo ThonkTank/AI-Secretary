@@ -14,9 +14,9 @@ import com.autosecretary.shared.Period;
 
 /**
  * Room POJO assembled via {@code @Embedded} + {@code @Relation} from five tables
- * (TaskCore, TaskSlot, TaskPrefSlot, TaskRelation, TaskPrerequisite).
+ * (TaskCore, TaskSlot, TaskPrefSlot, TaskPrerequisite, TaskPlannedMeal).
  * Not a {@code @Entity} itself — {@link TaskCore} is the persisted entity.
- * The {@link #children} list is {@code @Ignore}, used only for in-memory tree building.
+ * Tasks are flat: grouping is expressed via {@code TaskCore.categoryId}, not a hierarchy.
  */
 public class Task {
 
@@ -28,25 +28,11 @@ public class Task {
     @Relation(parentColumn = "id", entityColumn = "taskId")
     public List<TaskPrefSlot> prefSlots = new ArrayList<>();
 
-    @Relation(parentColumn = "id", entityColumn = "child")
-    public List<TaskRelation> parents = new ArrayList<>();
-
     @Relation(parentColumn = "id", entityColumn = "taskId")
     public List<TaskPrerequisite> prerequisites = new ArrayList<>();
 
     @Relation(parentColumn = "id", entityColumn = "taskId")
     public List<TaskPlannedMeal> plannedMeals = new ArrayList<>();
-
-    /**
-     * In-memory tree representation of immediate children (not persisted).
-     * Populated during tree building operations (see {@code TaskTreeOperations} and
-     * slot generation in {@code features/task/domain/internal/scheduling/}).
-     * This field allows tree traversal without repeated lookups via {@link #parents}.
-     * Child tasks are related via {@link TaskRelation} in the database; this list
-     * reconstructs that hierarchy for UI rendering and scheduling algorithms.
-     */
-    @Ignore
-    public List<Task> children = new ArrayList<>();
 
     /**
      * Estimates how many days are needed to complete this task, factoring in
@@ -98,8 +84,7 @@ public class Task {
 
     /**
      * Sets the task ID and cascades it to all related entities
-     * (prefSlots, slots, prerequisites, plannedMeals, and parent relations)
-     * so their foreign keys stay consistent.
+     * (prefSlots, slots, prerequisites, plannedMeals) so their foreign keys stay consistent.
      */
     @Ignore
     public void setId(String id) {
@@ -115,9 +100,6 @@ public class Task {
         }
         for (TaskPlannedMeal meal : plannedMeals) {
             meal.taskId = id;
-        }
-        for (TaskRelation rel : parents) {
-            rel.child = id;
         }
     }
 

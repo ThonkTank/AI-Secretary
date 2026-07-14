@@ -67,14 +67,17 @@ public class TaskViewModel extends ViewModel {
     private final ViewSlotList masterList;
     /** Derived display list posted to the Fragment after each filter/sort pass. */
     private final MutableLiveData<List<ViewSlot>> displayList = new MutableLiveData<>();
+    /** Conflicts from the most recent regeneration; consumed once by the Fragment (then cleared). */
+    private final MutableLiveData<List<SchedulingConflict>> schedulingConflicts =
+            new MutableLiveData<>(Collections.emptyList());
     private final MutableLiveData<LocalDate> selectedDay = new MutableLiveData<>(LocalDate.now());
     private final MutableLiveData<String> searchQuery = new MutableLiveData<>("");
     /** Currently active display mode (CHECKLIST or MANAGE); drives filter and sort behaviour. */
     private ListConfig activeListConfig = ListConfig.CHECKLIST;
     /** True once READ_CALENDAR permission is granted; gates calendar event injection in filterList(). */
     private boolean hasCalendarPermission = false;
-    /** Expand/collapse state per task ID, used in Manage mode to show/hide child slot groups. */
-    private final Map<String, Boolean> expandedByTaskId = new HashMap<>();
+    /** Expand/collapse state per category ID, used in Manage mode to show/hide a category's tasks. */
+    private final Map<String, Boolean> expandedByCategoryId = new HashMap<>();
     /** Cached calendar events for the current day; avoids re-querying ContentResolver on every filterList(). */
     private List<ViewSlot> cachedCalendarSlots = Collections.emptyList();
     /** The day for which cachedCalendarSlots was fetched; null means cache is invalid. */
@@ -114,12 +117,27 @@ public class TaskViewModel extends ViewModel {
                     Log.w("TaskScheduleConflict", c.toString());
                 }
             }
+            schedulingConflicts.postValue(conflicts);
             refreshList();
         });
     }
 
     public LiveData<List<ViewSlot>> getList() {
         return displayList;
+    }
+
+    /**
+     * Conflicts from the most recent schedule regeneration. Non-empty exactly once per regeneration;
+     * the Fragment surfaces them and calls {@link #consumeSchedulingConflicts()} so they are not
+     * re-shown on re-subscription (e.g. rotation).
+     */
+    public LiveData<List<SchedulingConflict>> getSchedulingConflicts() {
+        return schedulingConflicts;
+    }
+
+    /** Clears the pending conflicts after the Fragment has surfaced them. */
+    public void consumeSchedulingConflicts() {
+        schedulingConflicts.setValue(Collections.emptyList());
     }
 
     public LiveData<LocalDate> getSelectedDay() {
@@ -221,8 +239,8 @@ public class TaskViewModel extends ViewModel {
                 predicate,
                 extraItems,
                 comparator,
-                slot -> expandedByTaskId.getOrDefault(slot.getItem().taskId, true),
-                activeListConfig.groupByTaskParent()
+                slot -> expandedByCategoryId.getOrDefault(slot.getItem().categoryId, true),
+                activeListConfig.groupByCategory()
         );
 
         displayList.setValue(masterList.getDisplaySlots());
@@ -299,19 +317,19 @@ public class TaskViewModel extends ViewModel {
         adjustTaskProgressUseCase.execute(viewSlot.getItem(), false, this::refreshList);
     }
 
-    /** Toggles expand/collapse for a parent task in Manage mode. No-op in Checklist mode or for leaf tasks. */
+    /** Toggles expand/collapse for a category header in Manage mode. No-op in Checklist mode or for non-headers. */
     public void toggleExpanded(ViewSlot viewSlot) {
         if (activeListConfig != ListConfig.MANAGE || viewSlot.getChildren().isEmpty()) {
             return;
         }
-        String taskId = viewSlot.getItem().taskId;
-        boolean currentlyExpanded = expandedByTaskId.getOrDefault(taskId, true);
-        expandedByTaskId.put(taskId, !currentlyExpanded);
+        String categoryId = viewSlot.getItem().categoryId;
+        boolean currentlyExpanded = expandedByCategoryId.getOrDefault(categoryId, true);
+        expandedByCategoryId.put(categoryId, !currentlyExpanded);
         filterList();
     }
 
     public boolean isExpanded(ViewSlot viewSlot) {
-        return expandedByTaskId.getOrDefault(viewSlot.getItem().taskId, true);
+        return expandedByCategoryId.getOrDefault(viewSlot.getItem().categoryId, true);
     }
 
     /** Reloads all tasks from the DB into the master list, re-filters, and notifies the widget. */

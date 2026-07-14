@@ -3,7 +3,6 @@ package com.autosecretary.features.task.application.edit;
 import com.autosecretary.features.budget.domain.BudgetCategory;
 import com.autosecretary.features.budget.domain.BudgetRepository;
 import com.autosecretary.features.task.application.TaskDataService;
-import com.autosecretary.features.task.domain.model.Task;
 
 import java.util.List;
 import java.util.Objects;
@@ -19,9 +18,8 @@ public final class TaskEditReferenceDataUseCase {
     }
 
     public TaskEditReferenceData load(String currentTaskId) {
-        List<TaskEditOption> parentTasks = taskDataService.readAllSync().stream()
-                .filter(task -> isParentCandidate(task, currentTaskId))
-                .map(task -> new TaskEditOption(task.core.id, task.core.title))
+        List<TaskEditOption> categories = taskDataService.readAllCategoriesSync().stream()
+                .map(category -> new TaskEditOption(category.id, formatCategoryLabel(category.icon, category.name)))
                 .toList();
         List<TaskEditOption> budgetAccounts = budgetRepository.findActiveAccounts().stream()
                 .map(account -> new TaskEditOption(account.id(), account.name()))
@@ -29,14 +27,14 @@ public final class TaskEditReferenceDataUseCase {
         List<TaskEditOption> budgetCategories = budgetRepository.findActiveCategories().stream()
                 .map(category -> new TaskEditOption(category.id(), formatBudgetCategoryLabel(category)))
                 .toList();
-        return new TaskEditReferenceData(parentTasks, budgetAccounts, budgetCategories);
+        return new TaskEditReferenceData(categories, budgetAccounts, budgetCategories);
     }
 
-    private static boolean isParentCandidate(Task task, String currentTaskId) {
-        return task.core != null
-                && task.core.id != null
-                && task.core.title != null
-                && !task.core.id.equals(currentTaskId);
+    private static String formatCategoryLabel(String icon, String name) {
+        if (icon == null || icon.isBlank()) {
+            return name;
+        }
+        return icon + " " + name;
     }
 
     private static String formatBudgetCategoryLabel(BudgetCategory category) {

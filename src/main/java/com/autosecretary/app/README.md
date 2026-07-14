@@ -99,9 +99,11 @@ an injected lifecycle interface; `SettingsController` dispatches those operation
 
 ## Self-update (`update/`)
 
-On every app start, `UpdateChecker` fetches `ops/release/version.txt` from GitHub and
-compares it to the installed version code. If the remote version is higher, it shows a
-dialog and offers to download and install the APK directly.
+On every app start, `UpdateChecker` reads the latest published GitHub Release and
+compares its `version.txt` asset to the installed version code. Users can also run
+the same check manually from Settings. If the remote version is higher, it shows a
+dialog and offers to download and install the release APK directly.
 
-This is why `./gradlew publishReleaseArtifact` increments `version.txt` and pushes to GitHub.
+This is why `./gradlew publishReleaseArtifact` publishes both `version.txt` and
+`AutoSecretary.apk` as GitHub Release assets.
 See `update/README.md` for full details.

@@ -72,32 +72,33 @@ public class TaskEditSectionBinder {
         EditText titleView = rootView.findViewById(R.id.EditTitle);
         EditText descriptionView = rootView.findViewById(R.id.EditDescription);
         Spinner priorityView = rootView.findViewById(R.id.EditPriority);
-        Spinner parentTaskView = rootView.findViewById(R.id.EditParentTask);
+        Spinner categoryView = rootView.findViewById(R.id.EditCategory);
+        CheckBox leisureView = rootView.findViewById(R.id.EditLeisure);
 
         titleView.setText(editState.title);
         descriptionView.setText(editState.description);
+        leisureView.setChecked(editState.leisure);
 
         SpinnerHelper.bindList(priorityView, Arrays.asList(Priority.values()), Object::toString, fragment.requireContext());
         priorityView.setSelection(editState.priority.ordinal());
 
-        // Initially bind with just the "none" entry; populated asynchronously after tasks load.
-        SpinnerHelper.bindListWithNone(parentTaskView, new ArrayList<TaskEditOption>(),
-                TaskEditOption::label, fragment.getString(R.string.task_editor_parent_none),
-                editState.parentTaskId, TaskEditOption::id, fragment.requireContext());
+        // Initially bind with just the "none" entry; populated asynchronously after categories load.
+        SpinnerHelper.bindListWithNone(categoryView, new ArrayList<TaskEditOption>(),
+                TaskEditOption::label, fragment.getString(R.string.task_editor_category_none),
+                editState.categoryId, TaskEditOption::id, fragment.requireContext());
 
-        return new BasicInfoViews(titleView, descriptionView, priorityView, parentTaskView);
+        return new BasicInfoViews(titleView, descriptionView, priorityView, categoryView, leisureView);
     }
 
     /**
-     * Re-populates the parent task spinner after an asynchronous load.
-     * Filters out the current task (a task cannot be its own parent).
+     * Re-populates the category spinner after an asynchronous load.
      */
-    public void rebindParentSpinner(BasicInfoViews views, List<TaskEditOption> parentTasks) {
-        views.parentTaskItems = parentTasks;
-        SpinnerHelper.bindListWithNone(views.parentTaskView, views.parentTaskItems,
-                TaskEditOption::label, fragment.getString(R.string.task_editor_parent_none),
-                editState.parentTaskId, TaskEditOption::id, fragment.requireContext());
-        views.parentTaskItemsBound = true;
+    public void rebindCategorySpinner(BasicInfoViews views, List<TaskEditOption> categories) {
+        views.categoryItems = categories;
+        SpinnerHelper.bindListWithNone(views.categoryView, views.categoryItems,
+                TaskEditOption::label, fragment.getString(R.string.task_editor_category_none),
+                editState.categoryId, TaskEditOption::id, fragment.requireContext());
+        views.categoryItemsBound = true;
     }
 
     public SchedulingViews bindScheduling(
@@ -424,29 +425,31 @@ public class TaskEditSectionBinder {
         });
     }
 
-    /** View-handle returned by {@link #bindBasicInfo()}. Holds title, description, priority, and parent task. */
+    /** View-handle returned by {@link #bindBasicInfo()}. Holds title, description, priority, category, leisure. */
     public static final class BasicInfoViews {
         public final EditText titleView;
         public final EditText descriptionView;
         public final Spinner priorityView;
-        public final Spinner parentTaskView;
-        /** Backing list for {@link #parentTaskView}. Position 0 = "none" sentinel. Updated by {@link TaskEditSectionBinder#rebindParentSpinner}. */
-        public List<TaskEditOption> parentTaskItems;
+        public final Spinner categoryView;
+        public final CheckBox leisureView;
+        /** Backing list for {@link #categoryView}. Position 0 = "none" sentinel. Updated by {@link TaskEditSectionBinder#rebindCategorySpinner}. */
+        public List<TaskEditOption> categoryItems;
         /**
-         * True once {@link TaskEditSectionBinder#rebindParentSpinner} has loaded real task data.
-         * Guards against overwriting an existing parent with "none" when the dialog is saved
+         * True once {@link TaskEditSectionBinder#rebindCategorySpinner} has loaded real category data.
+         * Guards against overwriting an existing category with "none" when the dialog is saved
          * before async spinner data has arrived.
          */
-        public boolean parentTaskItemsBound;
+        public boolean categoryItemsBound;
 
         private BasicInfoViews(EditText titleView, EditText descriptionView,
-                               Spinner priorityView, Spinner parentTaskView) {
+                               Spinner priorityView, Spinner categoryView, CheckBox leisureView) {
             this.titleView = titleView;
             this.descriptionView = descriptionView;
             this.priorityView = priorityView;
-            this.parentTaskView = parentTaskView;
-            this.parentTaskItems = new ArrayList<>();
-            this.parentTaskItemsBound = false;
+            this.categoryView = categoryView;
+            this.leisureView = leisureView;
+            this.categoryItems = new ArrayList<>();
+            this.categoryItemsBound = false;
         }
     }
 

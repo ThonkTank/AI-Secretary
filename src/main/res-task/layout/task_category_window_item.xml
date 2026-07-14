@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Single category-window block row: a category picker, a start and end time button, and a
+     delete button. Inflated programmatically by TaskCategoryWindowDialog under each weekday. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingVertical="@dimen/spacing_sm">
+
+    <Spinner
+        android:id="@+id/CategoryWindowCategory"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/CategoryWindowStart"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="@dimen/task_schedule_day_time_button_width"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/spacing_sm"
+        android:layout_marginEnd="@dimen/spacing_sm"
+        android:text="@string/task_schedule_range_separator" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/CategoryWindowEnd"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="@dimen/task_schedule_day_time_button_width"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false" />
+
+    <ImageButton
+        android:id="@+id/CategoryWindowDelete"
+        style="?attr/borderlessButtonStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/task_category_window_delete_desc"
+        android:src="@android:drawable/ic_menu_delete" />
+
+</LinearLayout>

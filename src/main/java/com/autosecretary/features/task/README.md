@@ -11,7 +11,7 @@ cooldown rules, and calendar conflicts.
 - Create / edit tasks with priority, repetition, preferred times, deadline, and optional budget requirement
 - View today's scheduled slots in the checklist (sorted by time)
 - Check off slots in two taps (first tap = start, second tap = complete)
-- See all tasks in manage mode (grouped by parent-child hierarchy)
+- See all tasks in manage mode (grouped by category)
 - Navigate up to 6 days forward; widget on the home screen mirrors the daily view
 
 ## Layer map

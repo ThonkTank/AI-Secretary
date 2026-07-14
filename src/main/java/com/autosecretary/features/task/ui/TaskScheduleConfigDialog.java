@@ -16,8 +16,11 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.google.android.material.switchmaterial.SwitchMaterial;
+
 import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
+import com.autosecretary.features.task.application.config.SchedulingSettings;
 import com.autosecretary.features.task.ui.state.DayScheduleRow;
 import com.autosecretary.shared.DateFormatters;
 
@@ -66,6 +69,15 @@ public class TaskScheduleConfigDialog extends DialogFragment {
         View root = LayoutInflater.from(requireContext()).inflate(R.layout.task_schedule_config_dialog, null, false);
         container = root.findViewById(R.id.ScheduleConfigContainer);
         loadingView = root.findViewById(R.id.ScheduleConfigLoading);
+
+        SwitchMaterial schedulingEnabledSwitch = root.findViewById(R.id.SchedulingEnabledSwitch);
+        schedulingEnabledSwitch.setChecked(SchedulingSettings.isSchedulingEnabled(requireContext()));
+        // Persist immediately and regenerate so the checklist reflects the new state at once
+        // (off clears it; on rebuilds today's schedule).
+        schedulingEnabledSwitch.setOnCheckedChangeListener((button, checked) -> {
+            SchedulingSettings.setSchedulingEnabled(requireContext(), checked);
+            viewModel.regenerateSchedule();
+        });
 
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.task_schedule_dialog_title)

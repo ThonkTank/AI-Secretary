@@ -1,7 +1,7 @@
 package com.autosecretary.features.budget.application.importing.internal;
 
 import com.autosecretary.features.budget.data.api.ClaudeStatementApiClient;
-import com.autosecretary.features.budget.data.api.ClaudeApiKeyStore;
+import com.autosecretary.shared.ClaudeApiKeyStore;
 import com.autosecretary.features.budget.domain.importing.ImportCategory;
 import com.autosecretary.features.budget.domain.importing.ParsedStatement;
 import com.autosecretary.features.budget.domain.importing.ParsedTransaction;

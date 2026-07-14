@@ -18,18 +18,18 @@ task management view. It is the primary surface a user interacts with every day.
 
 | Class | Role |
 |---|---|
-| `ViewSlot` | Wraps a `TaskListItem` with tree context (`depth`, `children`) for RecyclerView indentation and parent-child rendering. |
+| `ViewSlot` | Wraps a `TaskListItem` with tree context (`depth`, `children`) for RecyclerView indentation and category-group rendering. |
 | `ViewSlotList` | Rebuilds the display list from the master slot list in one pass: filter, optionally merge calendar events, then sort and flatten for display. |
 
 ## Two display modes
 
 **Checklist mode** (default tab): shows only the slots scheduled for the selected day,
 sorted by start time. The search bar is hidden. Each slot is an individual scheduled
-execution window; parent tasks are not shown separately.
+execution window.
 
-**Manage mode**: shows all task slots for the selected day, grouped by task parent-child
-hierarchy and sorted by title. The search bar is visible and filters by title. Parent
-tasks with children can be expanded or collapsed in place.
+**Manage mode**: shows all tasks for the selected day grouped under synthetic category
+headers and sorted by title. The search bar is visible and filters by title. Each category
+header can be expanded or collapsed in place (state keyed by category id).
 
 The user switches between modes via a `MaterialButtonToggleGroup`. Switching calls
 `vm.applyChecklistPreset()` or `vm.applyManagePreset()`, which updates `activeListConfig`

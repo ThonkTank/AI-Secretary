@@ -9,7 +9,7 @@ import java.util.Comparator;
  * Defines the two list display modes for the task list screen.
  * <p>
  * {@link #CHECKLIST} shows only slots scheduled for the selected day, sorted by time.
- * {@link #MANAGE} shows all slots for the selected day grouped by task parent, sorted by title.
+ * {@link #MANAGE} shows all tasks for the selected day grouped by category, sorted by title.
  */
 enum ListConfig {
     CHECKLIST(false) {
@@ -44,21 +44,21 @@ enum ListConfig {
     };
 
     /**
-     * When true, {@link TaskViewModel#filterList()} calls {@link state.ViewSlotList#sortByTask}
-     * to group display slots into a parent-child task tree. When false, it calls
-     * {@link state.ViewSlotList#sortBySlot} to group by slot hierarchy (e.g. calendar sub-events).
+     * When true, {@link state.ViewSlotList#rebuildDisplay} groups task rows under synthetic
+     * category-header rows (Manage mode). When false, it groups by the slot hierarchy
+     * (e.g. calendar sub-events) for Checklist mode.
      */
-    private final boolean groupByTaskParent;
+    private final boolean groupByCategory;
 
-    ListConfig(boolean groupByTaskParent) {
-        this.groupByTaskParent = groupByTaskParent;
+    ListConfig(boolean groupByCategory) {
+        this.groupByCategory = groupByCategory;
     }
 
     abstract boolean matches(ViewSlot slot, LocalDate day);
 
     abstract Comparator<ViewSlot> comparator();
 
-    boolean groupByTaskParent() {
-        return groupByTaskParent;
+    boolean groupByCategory() {
+        return groupByCategory;
     }
 }

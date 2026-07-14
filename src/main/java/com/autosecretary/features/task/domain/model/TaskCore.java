@@ -34,6 +34,12 @@ public class TaskCore {
     public String budgetAccountId;
     public String budgetCategoryId;
     /**
+     * Optional grouping into a {@link TaskCategory}. Plain nullable string (no
+     * {@code @ForeignKey}); null means uncategorised. ON DELETE SET NULL is enforced in
+     * {@code TaskCategoryDao.clearCategoryFromTasks} rather than by a DB foreign key.
+     */
+    public String categoryId;
+    /**
      * Optional cross-feature meal association. When set, completing this task triggers
      * a meal consumption record via {@code TaskMealCompletionFromMealPlanner}. See
      * {@code features/meal/} for the meal feature domain. Null when not meal-related.
@@ -75,6 +81,12 @@ public class TaskCore {
 
     /** When true, {@code TaskLifecycleManager.adaptPrefSlot()} nudges preferred times toward actual completion times (EMA α=0.2). */
     public boolean adaptive;
+    /**
+     * When true, this is a leisure/hobby item (relaxing, meals, games): it is still scheduled, but
+     * carries no metrics — no streak, history, adaptive-time learning, or deadline/urgency pressure.
+     * Two-phase check-off still records realStart/realEnd/completed; only the statistics are skipped.
+     */
+    public boolean leisure;
     /** Minimum planned slot duration, in <strong>minutes</strong>. */
     public int minDuration = 5;
     /** Maximum planned slot duration, in <strong>minutes</strong>. 0 means uncapped. */

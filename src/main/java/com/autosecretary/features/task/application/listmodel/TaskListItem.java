@@ -3,7 +3,6 @@ package com.autosecretary.features.task.application.listmodel;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 
 /**
  * Immutable presentation model for displaying a task or calendar event in a list.
@@ -25,7 +24,7 @@ import java.util.List;
  *
  * <p><strong>Field Grouping:</strong>
  * <ul>
- *   <li><strong>Identifiers:</strong> {@code taskId}, {@code slotId}, {@code slotParentId}, {@code parentTaskIds}.
+ *   <li><strong>Identifiers:</strong> {@code taskId}, {@code slotId}, {@code slotParentId}, {@code categoryId}.
  *   <li><strong>Display:</strong> {@code title}, {@code description}.
  *   <li><strong>Scheduling:</strong> {@code day}, {@code start}, {@code end}, {@code deadline}.
  *   <li><strong>Progress:</strong> {@code progressCurrent}, {@code progressTarget}, {@code progressUnit}, {@code progressStepDelta}.
@@ -49,7 +48,11 @@ public class TaskListItem {
      */
     public enum ItemType {
         TASK,
-        CALENDAR_EVENT
+        CALENDAR_EVENT,
+        /** Synthetic group header for a {@link com.autosecretary.features.task.domain.model.TaskCategory}
+         *  in Manage mode. Only {@code itemType}, {@code categoryId}, {@code title} (category name),
+         *  {@code categoryIcon}, {@code categoryColorHex} are populated. */
+        CATEGORY_HEADER
     }
 
     /**
@@ -86,7 +89,10 @@ public class TaskListItem {
     public final String taskId;
     public final String slotId;
     public final String slotParentId;
-    public final List<String> parentTaskIds;
+    public final String categoryId;
+    public final String categoryName;
+    public final String categoryIcon;
+    public final String categoryColorHex;
     public final String title;
     public final String description;
     public final LocalDate day;
@@ -95,8 +101,11 @@ public class TaskListItem {
     public final LocalDate deadline;
     public final int streak;
     public final int score;
+    public final int priorityWeight;
     public final boolean completed;
     public final boolean inProgress;
+    /** When true, this is a leisure/hobby item: no streak, progress, or scoring pressure is shown. */
+    public final boolean leisure;
     public final int progressCurrent;
     public final int progressTarget;
     public final String progressUnit;
@@ -108,7 +117,10 @@ public class TaskListItem {
                  String taskId,
                  String slotId,
                  String slotParentId,
-                 List<String> parentTaskIds,
+                 String categoryId,
+                 String categoryName,
+                 String categoryIcon,
+                 String categoryColorHex,
                  String title,
                  String description,
                  LocalDate day,
@@ -117,8 +129,10 @@ public class TaskListItem {
                  LocalDate deadline,
                  int streak,
                  int score,
+                 int priorityWeight,
                  boolean completed,
                  boolean inProgress,
+                 boolean leisure,
                  int progressCurrent,
                  int progressTarget,
                  String progressUnit,
@@ -129,7 +143,10 @@ public class TaskListItem {
         this.taskId = taskId;
         this.slotId = slotId;
         this.slotParentId = slotParentId;
-        this.parentTaskIds = parentTaskIds;
+        this.categoryId = categoryId;
+        this.categoryName = categoryName;
+        this.categoryIcon = categoryIcon;
+        this.categoryColorHex = categoryColorHex;
         this.title = title;
         this.description = description;
         this.day = day;
@@ -138,14 +155,55 @@ public class TaskListItem {
         this.deadline = deadline;
         this.streak = streak;
         this.score = score;
+        this.priorityWeight = priorityWeight;
         this.completed = completed;
         this.inProgress = inProgress;
+        this.leisure = leisure;
         this.progressCurrent = progressCurrent;
         this.progressTarget = progressTarget;
         this.progressUnit = progressUnit;
         this.progressStepDelta = progressStepDelta;
         this.goalIcon = goalIcon;
         this.goalColorHex = goalColorHex;
+    }
+
+    /** Sentinel category id for the synthetic "uncategorised" group header in Manage mode. */
+    public static final String UNCATEGORIZED_ID = "__uncategorized__";
+
+    /** Factory for a synthetic category group header (Manage mode). */
+    public static TaskListItem categoryHeader(String categoryId, String name, String icon, String colorHex) {
+        return new TaskListItem(
+                ItemType.CATEGORY_HEADER,
+                null,
+                null,
+                null,
+                categoryId,
+                name,
+                icon,
+                colorHex,
+                name,
+                null,
+                null,
+                null,
+                null,
+                null,
+                0,
+                0,
+                0,
+                false,
+                false,
+                false,
+                0,
+                0,
+                null,
+                0,
+                icon,
+                colorHex
+        );
+    }
+
+    public boolean isCategoryHeader() {
+        return itemType == ItemType.CATEGORY_HEADER;
     }
 
     /**
@@ -186,7 +244,10 @@ public class TaskListItem {
         this.taskId = eventId;
         this.slotId = eventId;
         this.slotParentId = null;
-        this.parentTaskIds = List.of();
+        this.categoryId = null;
+        this.categoryName = null;
+        this.categoryIcon = null;
+        this.categoryColorHex = null;
         this.title = title;
         this.description = null;
         this.day = day;
@@ -195,8 +256,10 @@ public class TaskListItem {
         this.deadline = null;
         this.streak = 0;
         this.score = 0;
+        this.priorityWeight = 0;
         this.completed = false;
         this.inProgress = false;
+        this.leisure = false;
         this.progressCurrent = 0;
         this.progressTarget = 0;
         this.progressUnit = null;

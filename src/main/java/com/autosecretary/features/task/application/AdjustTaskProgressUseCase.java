@@ -72,10 +72,13 @@ public class AdjustTaskProgressUseCase {
                 slot.completed = completed;
                 if (completed) {
                     if (slot.realEnd == null) slot.realEnd = LocalTime.now();
-                    lifecycleManager.updateStreakForCompletion(task, slot);
-                    // durationMinutes=0: progress-tracked completions don't record session time.
-                    // trackDuration=false: skip persisting a duration measurement for this completion.
-                    task.recordCompletion(0, false);
+                    // Leisure items carry no streak/history metrics.
+                    if (!task.core.leisure) {
+                        lifecycleManager.updateStreakForCompletion(task, slot);
+                        // durationMinutes=0: progress-tracked completions don't record session time.
+                        // trackDuration=false: skip persisting a duration measurement for this completion.
+                        task.recordCompletion(0, false);
+                    }
                 }
             }
 

@@ -11,7 +11,6 @@ import com.autosecretary.features.task.domain.model.TaskCore;
 import com.autosecretary.features.task.domain.model.TaskPlannedMeal;
 import com.autosecretary.features.task.domain.model.TaskPrefSlot;
 import com.autosecretary.features.task.domain.model.TaskPrerequisite;
-import com.autosecretary.features.task.domain.model.TaskRelation;
 import com.autosecretary.features.task.domain.model.TaskSlot;
 
 import java.time.LocalTime;
@@ -35,26 +34,17 @@ public interface TaskDao {
 
     // ============== Write ==============
     /**
-     * Bulk write for a pre-flattened list of tasks. Used by {@code RegenerateScheduleUseCase}.
-     * Callers must flatten the task tree via {@code TaskTreeOperations.flatten()} before calling.
+     * Bulk write for a list of tasks. Used by {@code RegenerateScheduleUseCase}.
      */
     @Transaction
     default void writeList(List<Task> tasks) {
         // 2-pass: insert all TaskCore rows first (they are FK targets),
-        // then write dependent entities (slots, prefSlots, prerequisites, relations).
+        // then write dependent entities (slots, prefSlots, prerequisites).
         for (Task task : tasks) {
             writeCore(task.core);
         }
         for (Task task : tasks) {
             writeDependents(task);
-            // Update parent-of (children) relations using the in-memory children list.
-            // task.children is @Ignore and only populated by TaskTreeOperations.buildTree(),
-            // so this step belongs here (bulk regen) rather than in writeDependents (which is
-            // also called from the single-task editor path where children is always empty).
-            deleteRelationsByParentId(task.core.id);
-            for (Task child : task.children) {
-                writeRelation(new TaskRelation(task.core.id, child.core.id));
-            }
         }
     }
 
@@ -83,12 +73,6 @@ public interface TaskDao {
      *       the task is saved, the removed meal will persist as an orphan in the DB.
      *       This is intentional (meals may be pre-staged) but callers should be aware.</li>
      * </ul>
-     * <p>
-     * <strong>Parent-of (children) relations are NOT managed here.</strong>
-     * {@code task.children} is {@code @Ignore} and only populated by
-     * {@code TaskTreeOperations.buildTree()}. Managing child links here would silently wipe
-     * all grandchild relations whenever a parent task is saved from the editor.
-     * Child links are written by {@link #writeList(List)} which operates on the full tree.
      */
     default void writeDependents(Task task) {
         writeSlots(task.slots);
@@ -97,10 +81,6 @@ public interface TaskDao {
         deletePrerequisitesByTaskId(task.core.id);
         writePrerequisites(task.prerequisites);
         writePlannedMeals(task.plannedMeals);
-        deleteRelationsByChildId(task.core.id);
-        for (TaskRelation parent : task.parents) {
-            writeRelation(parent);
-        }
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -119,13 +99,6 @@ public interface TaskDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writePrerequisites(List<TaskPrerequisite> prerequisites);
-
-    //Parent
-    @Query("DELETE FROM task_relation WHERE child = :taskId")
-    void deleteRelationsByChildId(String taskId);
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void writeRelation(TaskRelation relation);
 
     //Task Slots
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -165,9 +138,6 @@ public interface TaskDao {
     @Query("DELETE FROM task_core WHERE id = :id")
     void deleteCore(String id);
 
-    @Query("DELETE FROM task_relation WHERE parent = :taskId")
-    void deleteRelationsByParentId(String taskId);
-
     /**
      * Deletes all prerequisite links where {@code prerequisiteId = taskId}.
      * Removes the dependency relationships for all tasks that listed the given task as a
@@ -178,8 +148,6 @@ public interface TaskDao {
 
     @Transaction
     default void deleteTaskGraph(String taskId) {
-        deleteRelationsByParentId(taskId);
-        deleteRelationsByChildId(taskId);
         deletePrerequisitesByDependencyId(taskId);
         deleteCore(taskId);
     }

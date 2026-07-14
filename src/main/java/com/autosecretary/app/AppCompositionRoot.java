@@ -10,7 +10,20 @@ import com.autosecretary.app.settings.SettingsDataService;
 import com.autosecretary.features.budget.application.importing.ApplyRecurringSuggestionsUseCase;
 import com.autosecretary.features.budget.application.importing.BudgetImportUseCase;
 import com.autosecretary.features.budget.data.api.ClaudeStatementApiClient;
-import com.autosecretary.features.budget.data.api.ClaudeApiKeyStore;
+import com.autosecretary.shared.ClaudeApiKeyStore;
+import com.autosecretary.shared.ClaudeEndpointStore;
+import com.autosecretary.shared.ClaudeMessagesClient;
+import com.autosecretary.shared.ClaudeModelStore;
+import com.autosecretary.features.task.application.ApplyTaskChangesUseCase;
+import com.autosecretary.features.task.application.UndoTaskChangesUseCase;
+import com.autosecretary.features.task.application.TaskChangeUndoHolder;
+import com.autosecretary.features.task.application.assistant.AssistantChatUseCase;
+import com.autosecretary.features.task.application.assistant.AssistantConversation;
+import com.autosecretary.features.task.application.assistant.ConfirmAssistantProposalUseCase;
+import com.autosecretary.features.task.application.internal.budget.AssistantBudgetGateway;
+import com.autosecretary.features.task.application.internal.budget.AssistantTransactionImportExecutor;
+import com.autosecretary.features.task.application.internal.meal.AssistantMealGateway;
+import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModelFactory;
 import com.autosecretary.features.budget.application.importing.internal.StatementFileParser;
 import com.autosecretary.features.budget.application.BudgetSeedService;
 import com.autosecretary.features.budget.application.BudgetTransactionMutationUseCase;
@@ -44,6 +57,9 @@ import com.autosecretary.features.task.application.edit.CreateDefaultTaskPrefSlo
 import com.autosecretary.features.task.application.edit.TaskEditReferenceDataUseCase;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.application.config.TaskScheduleConfigRepository;
+import com.autosecretary.features.task.application.config.TaskCategoryWindowRepository;
+import com.autosecretary.features.task.application.config.TaskCategoryRepository;
+import com.autosecretary.features.task.application.config.SchedulingSettings;
 import com.autosecretary.features.task.application.internal.budget.BookTaskCompletionExpenseUseCase;
 import com.autosecretary.features.task.application.internal.budget.TaskBudgetEligibilityFromBudgetLookup;
 import com.autosecretary.features.task.application.internal.calendar.CalendarReader;
@@ -60,6 +76,8 @@ import com.autosecretary.features.task.domain.scheduling.TaskSlotGenerators;
 import com.autosecretary.features.task.domain.scheduling.TransitionStat;
 import com.autosecretary.features.task.domain.scheduling.TaskTransitionStatLoader;
 import com.autosecretary.features.task.ui.TaskScheduleConfigViewModelFactory;
+import com.autosecretary.features.task.ui.TaskCategoryViewModelFactory;
+import com.autosecretary.features.task.ui.TaskCategoryWindowViewModelFactory;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModelFactory;
 import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
 import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
@@ -107,12 +125,20 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
     private final ExecutorService dbExecutor;
     private final ExecutorService ioExecutor;
     private TaskViewModelFactory taskViewModelFactory;
+    private TaskAssistantViewModelFactory taskAssistantViewModelFactory;
+    private TaskChangeUndoHolder taskChangeUndoHolder;
+    private AssistantConversation assistantConversation;
+    private BudgetImportRoomRepository budgetImportRoomRepository;
     private TaskEditViewModelFactory taskEditViewModelFactory;
     private RegenerateScheduleUseCase regenerateScheduleUseCase;
     private BudgetViewModelFactory budgetViewModelFactory;
     private ContentDocumentReader contentDocumentReader;
     private TaskScheduleConfigRepository taskScheduleConfigRepository;
     private TaskScheduleConfigViewModelFactory taskScheduleConfigViewModelFactory;
+    private TaskCategoryViewModelFactory taskCategoryViewModelFactory;
+    private TaskCategoryRepository taskCategoryRepository;
+    private TaskCategoryWindowRepository taskCategoryWindowRepository;
+    private TaskCategoryWindowViewModelFactory taskCategoryWindowViewModelFactory;
     private TaskDao taskDao;
     private TaskSlotToggleMutation taskSlotToggleMutation;
     private BudgetRoomRepository budgetRoomRepository;
@@ -192,6 +218,8 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
 
         TaskScheduleConfigRepository scheduleConfigRepository =
                 getTaskScheduleConfigRepository();
+        TaskCategoryWindowRepository categoryWindowRepository =
+                getTaskCategoryWindowRepository();
 
         TaskTransitionStatLoader transitionStatLoader = () ->
                 db.taskTransitionStatDao().readAll().stream()
@@ -200,6 +228,7 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
         TaskSlotGenerator generator = TaskSlotGenerators.builder(taskLifecycleManager)
                 .logger(message -> Log.d("SlotGen", message))
                 .schedulingWindowProvider(scheduleConfigRepository)
+                .categoryWindowProvider(categoryWindowRepository)
                 .calendarBlockedIntervalProvider(new DeviceCalendarBlockedIntervalProvider(app))
                 .transitionStatLoader(transitionStatLoader)
                 .taskBudgetEligibilityService(new TaskBudgetEligibilityFromBudgetLookup(getBudgetRoomRepository()))
@@ -210,6 +239,7 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
         ensureMealRepositories();
         TaskDataService taskDataService = new TaskDataService(
                 dao,
+                db.taskCategoryDao(),
                 mapper,
                 dbExecutor,
                 mainHandler::post,
@@ -256,7 +286,8 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
                 dao,
                 generator,
                 dbExecutor,
-                mainHandler::post
+                mainHandler::post,
+                () -> SchedulingSettings.isSchedulingEnabled(app)
         );
         AdjustTaskProgressUseCase adjustTaskProgressUseCase = new AdjustTaskProgressUseCase(
                 dao,
@@ -266,6 +297,37 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
                 taskCompletionEffects,
                 taskTransitionRecorder
         );
+
+        // Claude multi-domain assistant: shared transport + key/endpoint/model stores, in-memory
+        // conversation + undo stack; cross-feature reads/writes go through the meal/budget gateways.
+        ClaudeApiKeyStore claudeApiKeyStore = new ClaudeApiKeyStore(app);
+        ClaudeEndpointStore claudeEndpointStore = new ClaudeEndpointStore(app);
+        ClaudeModelStore claudeModelStore = new ClaudeModelStore(app);
+        ensureMealRepositories();
+        AssistantMealGateway assistantMealGateway =
+                new AssistantMealGateway(recipeRepository, mealRepository);
+        AssistantBudgetGateway assistantBudgetGateway =
+                new AssistantBudgetGateway(getBudgetRoomRepository());
+        AssistantTransactionImportExecutor assistantImportExecutor =
+                new AssistantTransactionImportExecutor(getBudgetImportRoomRepository(), getBudgetRoomRepository());
+        assistantConversation = new AssistantConversation();
+        taskChangeUndoHolder = new TaskChangeUndoHolder();
+        AssistantChatUseCase assistantChatUseCase = new AssistantChatUseCase(
+                new ClaudeMessagesClient(), assistantConversation, dao, db.taskCategoryDao(),
+                assistantMealGateway, assistantBudgetGateway, assistantImportExecutor,
+                claudeApiKeyStore, claudeEndpointStore, claudeModelStore,
+                dbExecutor, ioExecutor, mainHandler::post);
+        ApplyTaskChangesUseCase applyTaskChangesUseCase = new ApplyTaskChangesUseCase(
+                db, dao, db.taskCategoryDao(), db.taskCategoryWindowDao(),
+                taskChangeUndoHolder, dbExecutor, mainHandler::post);
+        ConfirmAssistantProposalUseCase confirmAssistantProposalUseCase = new ConfirmAssistantProposalUseCase(
+                applyTaskChangesUseCase, assistantMealGateway, assistantImportExecutor,
+                dbExecutor, mainHandler::post);
+        UndoTaskChangesUseCase undoTaskChangesUseCase = new UndoTaskChangesUseCase(
+                db, dao, db.taskCategoryDao(), db.taskCategoryWindowDao(),
+                taskChangeUndoHolder, dbExecutor, mainHandler::post);
+        taskAssistantViewModelFactory = new TaskAssistantViewModelFactory(
+                assistantChatUseCase, confirmAssistantProposalUseCase, undoTaskChangesUseCase);
 
         taskViewModelFactory = new TaskViewModelFactory(
                 taskDataService,
@@ -279,6 +341,11 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
         );
     }
 
+    public synchronized TaskAssistantViewModelFactory getTaskAssistantViewModelFactory() {
+        initTaskGraph();
+        return taskAssistantViewModelFactory;
+    }
+
     public synchronized TaskScheduleConfigRepository getTaskScheduleConfigRepository() {
         if (taskScheduleConfigRepository == null) {
             AppDatabase db = AppDatabase.getInstance(app);
@@ -287,16 +354,60 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
         return taskScheduleConfigRepository;
     }
 
+    public synchronized TaskCategoryRepository getTaskCategoryRepository() {
+        if (taskCategoryRepository == null) {
+            AppDatabase db = AppDatabase.getInstance(app);
+            taskCategoryRepository = new TaskCategoryRepository(
+                    db.taskCategoryDao(), db.taskCategoryWindowDao());
+        }
+        return taskCategoryRepository;
+    }
+
+    public synchronized TaskCategoryWindowRepository getTaskCategoryWindowRepository() {
+        if (taskCategoryWindowRepository == null) {
+            AppDatabase db = AppDatabase.getInstance(app);
+            taskCategoryWindowRepository = new TaskCategoryWindowRepository(
+                    db.taskCategoryWindowDao(), db.taskCategoryDao());
+        }
+        return taskCategoryWindowRepository;
+    }
+
     public synchronized TaskScheduleConfigViewModelFactory getTaskScheduleConfigViewModelFactory() {
         if (taskScheduleConfigViewModelFactory == null) {
             Handler mainHandler = new Handler(Looper.getMainLooper());
             taskScheduleConfigViewModelFactory = new TaskScheduleConfigViewModelFactory(
                     getTaskScheduleConfigRepository(),
+                    getRegenerateScheduleUseCase(),
                     dbExecutor,
                     mainHandler::post
             );
         }
         return taskScheduleConfigViewModelFactory;
+    }
+
+    public synchronized TaskCategoryWindowViewModelFactory getTaskCategoryWindowViewModelFactory() {
+        if (taskCategoryWindowViewModelFactory == null) {
+            Handler mainHandler = new Handler(Looper.getMainLooper());
+            taskCategoryWindowViewModelFactory = new TaskCategoryWindowViewModelFactory(
+                    getTaskCategoryWindowRepository(),
+                    getTaskCategoryRepository(),
+                    dbExecutor,
+                    mainHandler::post
+            );
+        }
+        return taskCategoryWindowViewModelFactory;
+    }
+
+    public synchronized TaskCategoryViewModelFactory getTaskCategoryViewModelFactory() {
+        if (taskCategoryViewModelFactory == null) {
+            Handler mainHandler = new Handler(Looper.getMainLooper());
+            taskCategoryViewModelFactory = new TaskCategoryViewModelFactory(
+                    getTaskCategoryRepository(),
+                    dbExecutor,
+                    mainHandler::post
+            );
+        }
+        return taskCategoryViewModelFactory;
     }
 
     public synchronized RegenerateScheduleUseCase getRegenerateScheduleUseCase() {
@@ -310,18 +421,14 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
 
     public synchronized BudgetViewModelFactory getBudgetViewModelFactory() {
         if (budgetViewModelFactory == null) {
-            AppDatabase db = AppDatabase.getInstance(app);
             BudgetRoomRepository repository = getBudgetRoomRepository();
-
-            BudgetImportRoomRepository importRepository = new BudgetImportRoomRepository(
-                    db.budgetImportDao(),
-                    db.budgetRecurringTemplateDao(),
-                    db.budgetTransactionDao(),
-                    db.budgetAccountCategoryDao()
-            );
+            BudgetImportRoomRepository importRepository = getBudgetImportRoomRepository();
 
             StatementFileParser parser = new StatementFileParser(
-                    new ClaudeStatementApiClient(),
+                    new ClaudeStatementApiClient(
+                            new ClaudeMessagesClient(),
+                            new ClaudeEndpointStore(app),
+                            new ClaudeModelStore(app)),
                     new ClaudeApiKeyStore(app),
                     importRepository
             );
@@ -368,7 +475,10 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
     }
 
     public LoadTaskWidgetItemsUseCase createLoadTaskWidgetItemsUseCase() {
-        return new LoadTaskWidgetItemsUseCase(getTaskDao(), new TaskListItemMapper());
+        return new LoadTaskWidgetItemsUseCase(
+                getTaskDao(),
+                AppDatabase.getInstance(app).taskCategoryDao(),
+                new TaskListItemMapper());
     }
 
     public synchronized BudgetRoomRepository getBudgetRoomRepository() {
@@ -383,6 +493,20 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
             );
         }
         return budgetRoomRepository;
+    }
+
+    /** Cached import repository, shared by the budget import graph and the assistant import executor. */
+    public synchronized BudgetImportRoomRepository getBudgetImportRoomRepository() {
+        if (budgetImportRoomRepository == null) {
+            AppDatabase db = AppDatabase.getInstance(app);
+            budgetImportRoomRepository = new BudgetImportRoomRepository(
+                    db.budgetImportDao(),
+                    db.budgetRecurringTemplateDao(),
+                    db.budgetTransactionDao(),
+                    db.budgetAccountCategoryDao()
+            );
+        }
+        return budgetImportRoomRepository;
     }
 
     public synchronized TaskSlotToggleMutation getTaskSlotToggleMutation() {
@@ -409,12 +533,26 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
      */
     public synchronized void resetForDataReload() {
         taskViewModelFactory = null;
+        taskAssistantViewModelFactory = null;
+        if (taskChangeUndoHolder != null) {
+            taskChangeUndoHolder.clear();
+        }
+        taskChangeUndoHolder = null;
+        if (assistantConversation != null) {
+            assistantConversation.clear();
+        }
+        assistantConversation = null;
+        budgetImportRoomRepository = null;
         taskEditViewModelFactory = null;
         regenerateScheduleUseCase = null;
         budgetViewModelFactory = null;
         contentDocumentReader = null;
         taskScheduleConfigRepository = null;
         taskScheduleConfigViewModelFactory = null;
+        taskCategoryViewModelFactory = null;
+        taskCategoryRepository = null;
+        taskCategoryWindowRepository = null;
+        taskCategoryWindowViewModelFactory = null;
         taskDao = null;
         taskSlotToggleMutation = null;
         budgetRoomRepository = null;

@@ -14,7 +14,6 @@ import com.autosecretary.features.task.application.listmodel.TaskListItem;
 
 import com.autosecretary.shared.DateFormatters;
 
-import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,10 +40,8 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
     private final int colorInProgress;
     private final int colorCompleted;
     private final int colorDefault;
-    /** Filtered list of items scheduled for the currently selected date, sorted by start time. */
+    /** Flat, priority-sorted list of open tasks for the selected category filter. */
     private List<TaskListItem> items = new ArrayList<>();
-    /** True when the widget's selected date is today; gates interactive checkboxes (past/future = read-only). */
-    private boolean isToday;
 
     public TaskWidgetFactory(Context context, LoadTaskWidgetItemsUseCase loadTaskWidgetItemsUseCase) {
         this.context = context;
@@ -60,13 +57,12 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
     }
 
     /**
-     * Loads the widget read model for the selected date through the application layer.
+     * Loads the widget read model for the selected category filter through the application layer.
      */
     @Override
     public void onDataSetChanged() {
-        LocalDate selectedDate = TaskWidgetProvider.getSelectedDate(context);
-        isToday = selectedDate.equals(LocalDate.now());
-        items = new ArrayList<>(loadTaskWidgetItemsUseCase.execute(selectedDate));
+        String selectedCategoryId = TaskWidgetProvider.getSelectedCategoryId(context);
+        items = new ArrayList<>(loadTaskWidgetItemsUseCase.execute(selectedCategoryId));
     }
 
     @Override
@@ -105,7 +101,7 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
 
         // Streak: count of consecutive periods in which the task was completed.
         // Only shown if > 0, as a motivation badge. See CLAUDE.md glossary for details.
-        if (item.streak > 0) {
+        if (item.streak > 0 && !item.leisure) {
             rv.setTextViewText(R.id.WidgetRowStreak, item.streak + "x");
             rv.setViewVisibility(R.id.WidgetRowStreak, View.VISIBLE);
         } else {
@@ -123,10 +119,9 @@ public class TaskWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         }
         rv.setContentDescription(R.id.WidgetRowCheckbox, context.getString(checkboxDescRes));
 
-        // Only today's uncompleted scheduled tasks can be toggled via widget.
-        // Past/future dates are for viewing only. Checkbox is disabled to prevent
-        // accidental updates outside the current day context.
-        boolean isInteractive = isToday && item.slotId != null && !item.completed;
+        // A task can be checked off from the widget only when it has a concrete slot to toggle
+        // and is not already completed. Unscheduled tasks show a disabled checkbox.
+        boolean isInteractive = item.slotId != null && !item.completed;
 
         if (isInteractive) {
             // Interactive: set fill-in intent for checkbox toggle

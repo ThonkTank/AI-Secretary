@@ -1,27 +1,25 @@
 package com.autosecretary.features.budget.data.api;
 
-import android.util.Base64;
-
 import com.autosecretary.features.budget.domain.importing.ImportCategory;
 import com.autosecretary.features.budget.domain.importing.ParsedStatement;
 import com.autosecretary.features.budget.domain.importing.ParsedTransaction;
+import com.autosecretary.shared.ClaudeApiException;
+import com.autosecretary.shared.ClaudeChatMessages;
+import com.autosecretary.shared.ClaudeChatRequest;
+import com.autosecretary.shared.ClaudeChatResponse;
+import com.autosecretary.shared.ClaudeChatTransport;
+import com.autosecretary.shared.ClaudeEndpointStore;
+import com.autosecretary.shared.ClaudeMessagesClient;
+import com.autosecretary.shared.ClaudeModelStore;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Uses Claude's Messages API to extract structured transaction data from PDF bank statements.
@@ -30,114 +28,58 @@ import java.util.stream.Collectors;
  * <ol>
  *   <li>Accept a PDF byte array and a list of valid import categories</li>
  *   <li>Build a system prompt instructing Claude to extract transactions in a specific JSON schema</li>
- *   <li>Send the PDF and prompt to Claude's Messages API (via HTTPS)</li>
+ *   <li>Send the PDF + prompt via the shared {@link ClaudeChatTransport}</li>
  *   <li>Parse Claude's JSON response into a {@link ParsedStatement}</li>
  * </ol>
  *
- * <h2>API Requirements</h2>
- * Requires a valid Anthropic API key passed to {@link #parsePdf(String, byte[], List)}.
- * The key should be configured by the user in app settings and retrieved via {@link ClaudeApiKeyStore}.
- *
- * <h2>Response Parsing</h2>
- * Claude's response is expected to be a JSON object with fields: period_start, period_end, transactions.
- * If Claude wraps the JSON in markdown code fences, they are stripped automatically.
+ * <p>Transport, endpoint (via {@link ClaudeEndpointStore}) and model (via {@link ClaudeModelStore})
+ * are shared with the assistant chat — the model is user-selectable, so this path honours the same
+ * configured model and custom endpoint rather than a hardcoded one.
  *
  * @see <a href="https://docs.anthropic.com/en/api/messages">Anthropic Messages API Documentation</a>
  */
 public class ClaudeStatementApiClient {
-    private static final String API_URL = "https://api.anthropic.com/v1/messages";
-    // Claude Sonnet 4 provides good accuracy-to-cost ratio for financial document parsing.
-    // See: https://docs.anthropic.com/en/docs/about-claude/models/latest
-    private static final String MODEL = "claude-sonnet-4-20250514";
-    private static final String API_VERSION = "2023-06-01";
     // 4096 tokens comfortably covers typical bank statements (up to ~150 transactions at ~25 tokens each
-    // for the compact JSON schema). Raise this value if statements with >150 transactions produce truncated responses
-    // (symptom: JSONException on missing closing brace or incomplete transactions array in logs).
+    // for the compact JSON schema). Raise if statements with >150 transactions produce truncated responses.
     private static final int MAX_TOKENS = 4096;
-    private static final int CONNECT_TIMEOUT = 30000;
-    // Timeouts account for network latency and Claude API processing time.
-    // - Connect (30s): network handshake
-    // - Read (120s): Claude processing PDFs can be slow (PDF parsing, extraction, JSON generation)
-    // Adjust if you see frequent timeouts in logs.
-    private static final int READ_TIMEOUT = 120000;
 
-    // JSON field names reused across multiple methods (request build + response parse).
     private static final String JSON_TYPE = "type";
-    private static final String JSON_TEXT = "text";
-    private static final String JSON_CONTENT = "content";
     private static final String JSON_CATEGORY_ID = "category_id";
 
-    public ParsedStatement parsePdf(
-            String apiKey,
-            byte[] fileBytes,
-            List<ImportCategory> categories
-    ) {
+    private final ClaudeChatTransport transport;
+    private final ClaudeEndpointStore endpointStore;
+    private final ClaudeModelStore modelStore;
+
+    public ClaudeStatementApiClient(ClaudeChatTransport transport,
+                                    ClaudeEndpointStore endpointStore,
+                                    ClaudeModelStore modelStore) {
+        this.transport = transport;
+        this.endpointStore = endpointStore;
+        this.modelStore = modelStore;
+    }
+
+    public ParsedStatement parsePdf(String apiKey, byte[] fileBytes, List<ImportCategory> categories) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new ApiException("Kein Claude API-Key konfiguriert.");
         }
-
-        HttpURLConnection connection = null;
         try {
-            JSONObject requestBody = buildRequestBody(fileBytes, categories);
-            connection = (HttpURLConnection) new URL(API_URL).openConnection();
-            connection.setRequestMethod("POST");
-            connection.setDoOutput(true);
-            connection.setConnectTimeout(CONNECT_TIMEOUT);
-            connection.setReadTimeout(READ_TIMEOUT);
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("x-api-key", apiKey);
-            connection.setRequestProperty("anthropic-version", API_VERSION);
-
-            try (OutputStream os = connection.getOutputStream()) {
-                os.write(requestBody.toString().getBytes(StandardCharsets.UTF_8));
+            String system = buildSystemPrompt(buildCategoryArray(categories));
+            JSONArray messages = new JSONArray().put(ClaudeChatMessages.userWithAttachment(
+                    "Analysiere den PDF-Kontoauszug und liefere ausschließlich JSON im definierten Schema zurück.",
+                    "kontoauszug.pdf", "application/pdf", fileBytes));
+            ClaudeChatResponse response = transport.chat(new ClaudeChatRequest(
+                    endpointStore.getBaseUrl(), apiKey, modelStore.getModel(), MAX_TOKENS,
+                    system, messages, null, null));
+            String text = response.text();
+            if (text == null || text.isBlank()) {
+                throw new ApiException("Keine Text-Antwort von Claude");
             }
-
-            int responseCode = connection.getResponseCode();
-            String responseBody = readResponseBody(connection, responseCode);
-            if (responseCode != 200) {
-                throw parseErrorResponse(responseCode, responseBody);
-            }
-            return parseSuccessResponse(responseBody);
-        } catch (IOException e) {
-            throw new ApiException("Netzwerkfehler beim PDF-Import: " + e.getMessage(), e);
+            return parseStatement(ClaudeMessagesClient.extractJsonFromMarkdown(text.trim()));
+        } catch (ClaudeApiException e) {
+            throw new ApiException(e.getMessage(), e);
         } catch (JSONException e) {
             throw new ApiException("Claude-Antwort ungültig: " + e.getMessage(), e);
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
         }
-    }
-
-    private JSONObject buildRequestBody(byte[] fileBytes, List<ImportCategory> categories) throws JSONException {
-        JSONObject body = new JSONObject();
-        body.put("model", MODEL);
-        body.put("max_tokens", MAX_TOKENS);
-        body.put("system", buildSystemPrompt(buildCategoryArray(categories)));
-
-        JSONArray content = new JSONArray();
-        JSONObject promptPart = new JSONObject();
-        promptPart.put(JSON_TYPE, "text");
-        promptPart.put(JSON_TEXT, "Analysiere den PDF-Kontoauszug und liefere ausschließlich JSON im definierten Schema zurück.");
-        content.put(promptPart);
-
-        JSONObject filePart = new JSONObject();
-        filePart.put(JSON_TYPE, "document");
-        JSONObject source = new JSONObject();
-        source.put(JSON_TYPE, "base64");
-        source.put("media_type", "application/pdf");
-        source.put("data", Base64.encodeToString(fileBytes, Base64.NO_WRAP));
-        filePart.put("source", source);
-        content.put(filePart);
-
-        JSONObject userMessage = new JSONObject();
-        userMessage.put("role", "user");
-        userMessage.put(JSON_CONTENT, content);
-
-        JSONArray messages = new JSONArray();
-        messages.put(userMessage);
-        body.put("messages", messages);
-        return body;
     }
 
     private JSONArray buildCategoryArray(List<ImportCategory> categories) throws JSONException {
@@ -155,23 +97,10 @@ public class ClaudeStatementApiClient {
     }
 
     /**
-     * Builds the system prompt that instructs Claude how to parse bank statements.
+     * Builds the system prompt instructing Claude how to parse bank statements.
      *
-     * The prompt tells Claude to:
-     * <ul>
-     *   <li>Extract transactions from the PDF statement</li>
-     *   <li>Return a JSON object with period_start, period_end, and a transactions array</li>
-     *   <li>Use only valid category_id values from the provided list</li>
-     *   <li>Return plain JSON with no markdown formatting or explanation</li>
-     * </ul>
-     *
-     * <p><b>amount_cents sign convention:</b> Claude is instructed to return {@code amount_cents}
-     * as a positive integer. The sign (income vs. expense) is inferred downstream by the import
-     * pipeline from the statement context and transaction type. Do not negate {@code amount_cents}
-     * here; the downstream mapper handles direction.</p>
-     *
-     * @param categoryArray JSON array of valid categories (from buildCategoryArray)
-     * @return A German-language system prompt
+     * <p><b>amount_cents sign convention:</b> Claude returns {@code amount_cents} as a positive
+     * integer; the sign (income vs. expense) is inferred downstream by the import pipeline.
      */
     private String buildSystemPrompt(JSONArray categoryArray) {
         return "Du extrahierst Banktransaktionen aus Kontoauszügen. "
@@ -183,38 +112,11 @@ public class ClaudeStatementApiClient {
                 + " Kein Markdown, keine Kommentare.";
     }
 
-    private String extractTextFromContentBlocks(JSONArray contentBlocks) throws JSONException {
-        for (int i = 0; i < contentBlocks.length(); i++) {
-            JSONObject block = contentBlocks.getJSONObject(i);
-            if ("text".equals(block.optString(JSON_TYPE))) {
-                String text = block.optString(JSON_TEXT, null);
-                if (text != null && !text.isBlank()) {
-                    return text;
-                }
-            }
-        }
-        return null;
-    }
-
-    private ParsedStatement parseSuccessResponse(String responseBody) throws JSONException {
-        JSONObject root = new JSONObject(responseBody);
-        JSONArray contentBlocks = root.optJSONArray(JSON_CONTENT);
-        if (contentBlocks == null || contentBlocks.length() == 0) {
-            throw new ApiException("Keine Text-Antwort von Claude");
-        }
-
-        String text = extractTextFromContentBlocks(contentBlocks);
-        if (text == null || text.isBlank()) {
-            throw new ApiException("Keine Text-Antwort von Claude");
-        }
-
-        JSONObject payload = new JSONObject(extractJsonFromMarkdown(text.trim()));
+    private ParsedStatement parseStatement(String json) throws JSONException {
+        JSONObject payload = new JSONObject(json);
         LocalDate periodStart = parseOptionalDate(payload.optString("period_start", null));
         LocalDate periodEnd = parseOptionalDate(payload.optString("period_end", null));
-
-        List<ParsedTransaction> transactions = parseTransactionArray(payload);
-
-        return new ParsedStatement(transactions, periodStart, periodEnd);
+        return new ParsedStatement(parseTransactionArray(payload), periodStart, periodEnd);
     }
 
     private List<ParsedTransaction> parseTransactionArray(JSONObject payload) throws JSONException {
@@ -222,8 +124,7 @@ public class ClaudeStatementApiClient {
         JSONArray jsonTransactions = payload.optJSONArray("transactions");
         if (jsonTransactions != null) {
             for (int i = 0; i < jsonTransactions.length(); i++) {
-                JSONObject tx = jsonTransactions.getJSONObject(i);
-                transactions.add(parseTransaction(tx));
+                transactions.add(parseTransaction(jsonTransactions.getJSONObject(i)));
             }
         }
         return transactions;
@@ -245,11 +146,7 @@ public class ClaudeStatementApiClient {
         return new ParsedTransaction(bookingDate, amountCents, payee, note, categoryId, hash);
     }
 
-    /**
-     * Converts a JSON-parsed value to long.
-     * Handles both numeric types (expected) and strings (fallback for defensive parsing).
-     * The fallback covers cases where Claude or the JSON library returns a stringified number.
-     */
+    /** Converts a JSON-parsed value to long, tolerating a stringified number as a defensive fallback. */
     private long toLong(Object value) {
         if (value instanceof Number number) {
             return number.longValue();
@@ -266,74 +163,6 @@ public class ClaudeStatementApiClient {
         } catch (DateTimeParseException e) {
             return null;
         }
-    }
-
-    private String readResponseBody(HttpURLConnection connection, int responseCode) throws IOException {
-        var inputStream = (responseCode >= 200 && responseCode < 300)
-                ? connection.getInputStream()
-                : connection.getErrorStream();
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-            return reader.lines().collect(Collectors.joining("\n"));
-        }
-    }
-
-    private ApiException parseErrorResponse(int responseCode, String responseBody) {
-        String message = responseBody;
-        try {
-            JSONObject root = new JSONObject(responseBody);
-            JSONObject error = root.optJSONObject("error");
-            if (error != null) {
-                message = error.optString("message", responseBody);
-            }
-        } catch (JSONException ignored) {
-            // fallback to raw body
-        }
-
-        return switch (responseCode) {
-            case 401 -> new ApiException("Ungültiger API-Key (401)");
-            case 429 -> new ApiException("API-Limit erreicht. Bitte später erneut versuchen (429)");
-            case 500, 502, 503 -> new ApiException("Claude-Server nicht erreichbar (" + responseCode + ")");
-            default -> new ApiException("API-Fehler " + responseCode + ": " + message);
-        };
-    }
-
-    /**
-     * Strips optional markdown code fences (```json ... ```) from a Claude response and returns
-     * the raw JSON content. Handles both multi-line markdown (language identifier on first line)
-     * and inline markdown (no newline after opening fence).
-     *
-     * Examples:
-     * <ul>
-     *   <li>Input: `{"key": "value"}` → Returns: `{"key": "value"}`</li>
-     *   <li>Input: ` ```json\n{"key": "value"}\n``` ` → Returns: `{"key": "value"}`</li>
-     *   <li>Input: ` ```{"key": "value"}``` ` → Returns: `{"key": "value"}`</li>
-     * </ul>
-     *
-     * @param text already-trimmed, non-null response text from Claude
-     */
-    private String extractJsonFromMarkdown(String text) {
-        if (!text.startsWith("```")) {
-            return text;
-        }
-
-        // Skip opening fence (including optional language identifier)
-        int openingFenceEnd = 3; // length of ```
-        int newlineAfterOpening = text.indexOf('\n');
-        if (newlineAfterOpening > 0) {
-            // Multi-line markdown: skip to after the newline
-            openingFenceEnd = newlineAfterOpening + 1;
-        }
-
-        // Find and remove closing fence
-        String content = text.substring(openingFenceEnd);
-        int closingFenceIndex = content.lastIndexOf("```");
-        if (closingFenceIndex < 0) {
-            // No closing fence found, return content as-is
-            return content.trim();
-        }
-
-        return content.substring(0, closingFenceIndex).trim();
     }
 
     private static String emptyToNull(String value) {
