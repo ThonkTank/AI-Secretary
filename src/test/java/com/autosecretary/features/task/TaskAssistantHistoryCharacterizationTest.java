@@ -133,7 +133,7 @@ public final class TaskAssistantHistoryCharacterizationTest extends AutoSecretar
         boolean cleared;
 
         StubChatUseCase() {
-            super(null, null, null, null, null, null, null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null, null);
         }
 
         @Override
@@ -156,7 +156,7 @@ public final class TaskAssistantHistoryCharacterizationTest extends AutoSecretar
         private Consumer<String> error;
 
         ManualChatUseCase() {
-            super(null, null, null, null, null, null, null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null, null);
         }
 
         @Override

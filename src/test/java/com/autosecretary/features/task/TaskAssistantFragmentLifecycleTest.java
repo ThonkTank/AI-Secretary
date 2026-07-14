@@ -207,7 +207,7 @@ public final class TaskAssistantFragmentLifecycleTest extends AutoSecretaryRobol
         private Consumer<AssistantTurn> result;
 
         ManualChatUseCase() {
-            super(null, null, null, null, null, null, null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null, null);
         }
 
         @Override

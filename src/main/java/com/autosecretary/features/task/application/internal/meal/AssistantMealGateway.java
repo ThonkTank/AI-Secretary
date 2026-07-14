@@ -42,20 +42,6 @@ public class AssistantMealGateway {
         return mealRepository.getMealPlans(fromInclusive, toInclusive);
     }
 
-    /** Resolves an ingredient by exact-then-case-insensitive name, or null if none matches. */
-    public Ingredient findIngredientByName(String name) {
-        if (name == null || name.isBlank()) {
-            return null;
-        }
-        String needle = name.trim().toLowerCase(Locale.ROOT);
-        for (Ingredient ingredient : recipeRepository.getIngredients()) {
-            if (ingredient.name != null && ingredient.name.trim().toLowerCase(Locale.ROOT).equals(needle)) {
-                return ingredient;
-            }
-        }
-        return null;
-    }
-
     public void saveRecipes(List<Recipe> recipes) {
         for (Recipe recipe : recipes) {
             recipeRepository.saveRecipe(recipe);

@@ -20,6 +20,12 @@ import com.autosecretary.features.task.application.TaskChangeUndoHolder;
 import com.autosecretary.features.task.application.assistant.AssistantChatUseCase;
 import com.autosecretary.features.task.application.assistant.AssistantConversation;
 import com.autosecretary.features.task.application.assistant.ConfirmAssistantProposalUseCase;
+import com.autosecretary.features.task.application.assistant.internal.AssistantTool;
+import com.autosecretary.features.task.application.assistant.internal.AssistantToolRegistry;
+import com.autosecretary.features.task.application.assistant.internal.BudgetTools;
+import com.autosecretary.features.task.application.assistant.internal.DbCalls;
+import com.autosecretary.features.task.application.assistant.internal.MealTools;
+import com.autosecretary.features.task.application.assistant.internal.TaskTools;
 import com.autosecretary.features.task.application.internal.budget.AssistantBudgetGateway;
 import com.autosecretary.features.task.application.internal.budget.AssistantTransactionImportExecutor;
 import com.autosecretary.features.task.application.internal.meal.AssistantMealGateway;
@@ -84,6 +90,8 @@ import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
 import com.autosecretary.shared.WidgetRefreshNotifier;
 import com.autosecretary.shared.ContentDocumentReader;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -312,11 +320,17 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
                 new AssistantTransactionImportExecutor(getBudgetImportRoomRepository(), getBudgetRoomRepository());
         assistantConversation = new AssistantConversation();
         taskChangeUndoHolder = new TaskChangeUndoHolder();
+        DbCalls assistantDbCalls = new DbCalls(dbExecutor);
+        List<AssistantTool> assistantTools = new ArrayList<>();
+        assistantTools.addAll(new TaskTools(dao, db.taskCategoryDao(), assistantDbCalls).tools());
+        assistantTools.addAll(new MealTools(assistantMealGateway, assistantDbCalls).tools());
+        assistantTools.addAll(new BudgetTools(assistantBudgetGateway, assistantImportExecutor,
+                assistantConversation::currentStatement, assistantDbCalls).tools());
         AssistantChatUseCase assistantChatUseCase = new AssistantChatUseCase(
-                new ClaudeMessagesClient(), assistantConversation, dao, db.taskCategoryDao(),
-                assistantMealGateway, assistantBudgetGateway, assistantImportExecutor,
+                new ClaudeMessagesClient(), assistantConversation,
+                new AssistantToolRegistry(assistantTools),
                 claudeApiKeyStore, claudeEndpointStore, claudeModelStore,
-                dbExecutor, ioExecutor, mainHandler::post);
+                ioExecutor, mainHandler::post);
         ApplyTaskChangesUseCase applyTaskChangesUseCase = new ApplyTaskChangesUseCase(
                 db, dao, db.taskCategoryDao(), db.taskCategoryWindowDao(),
                 taskChangeUndoHolder, dbExecutor, mainHandler::post);

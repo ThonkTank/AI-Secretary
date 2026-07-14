@@ -17,6 +17,12 @@ import com.autosecretary.features.task.application.TaskChangeUndoHolder;
 import com.autosecretary.features.task.application.assistant.AssistantChatUseCase;
 import com.autosecretary.features.task.application.assistant.AssistantChatUseCase.AssistantTurn;
 import com.autosecretary.features.task.application.assistant.AssistantConversation;
+import com.autosecretary.features.task.application.assistant.internal.AssistantTool;
+import com.autosecretary.features.task.application.assistant.internal.AssistantToolRegistry;
+import com.autosecretary.features.task.application.assistant.internal.BudgetTools;
+import com.autosecretary.features.task.application.assistant.internal.DbCalls;
+import com.autosecretary.features.task.application.assistant.internal.MealTools;
+import com.autosecretary.features.task.application.assistant.internal.TaskTools;
 import com.autosecretary.features.task.application.assistant.AssistantProposals.PendingProposal;
 import com.autosecretary.features.task.application.assistant.ConfirmAssistantProposalUseCase;
 import com.autosecretary.features.task.application.internal.budget.AssistantBudgetGateway;
@@ -267,15 +273,21 @@ public final class AssistantTaskFieldParityTest extends AutoSecretaryRobolectric
     }
 
     private AssistantChatUseCase engine(ClaudeChatTransport transport) {
+        AssistantConversation conversation = new AssistantConversation();
         AssistantBudgetGateway budgetGateway = new AssistantBudgetGateway(BudgetFixtures.budgetRepository(db));
         AssistantTransactionImportExecutor importExecutor = new AssistantTransactionImportExecutor(
                 BudgetFixtures.budgetImportRepository(db), BudgetFixtures.budgetRepository(db));
-        return new AssistantChatUseCase(transport, new AssistantConversation(),
-                db.taskDao(), db.taskCategoryDao(), mealGateway, budgetGateway, importExecutor,
+        DbCalls dbCalls = new DbCalls(exec);
+        List<AssistantTool> tools = new ArrayList<>();
+        tools.addAll(new TaskTools(db.taskDao(), db.taskCategoryDao(), dbCalls).tools());
+        tools.addAll(new MealTools(mealGateway, dbCalls).tools());
+        tools.addAll(new BudgetTools(budgetGateway, importExecutor,
+                conversation::currentStatement, dbCalls).tools());
+        return new AssistantChatUseCase(transport, conversation, new AssistantToolRegistry(tools),
                 new ClaudeApiKeyStore(ApplicationProvider.getApplicationContext()),
                 new ClaudeEndpointStore(ApplicationProvider.getApplicationContext()),
                 new ClaudeModelStore(ApplicationProvider.getApplicationContext()),
-                exec, exec, exec);
+                exec, exec);
     }
 
     private static ClaudeChatResponse toolUse(String name, JSONObject input) throws JSONException {

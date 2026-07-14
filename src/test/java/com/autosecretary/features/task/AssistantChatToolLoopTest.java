@@ -1,6 +1,7 @@
 package com.autosecretary.features.task;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -13,6 +14,12 @@ import com.autosecretary.features.task.application.assistant.AssistantChatUseCas
 import com.autosecretary.features.task.application.assistant.AssistantChatUseCase.AssistantTurn;
 import com.autosecretary.features.task.application.assistant.AssistantConversation;
 import com.autosecretary.features.task.application.assistant.AssistantProposals.RecipesProposal;
+import com.autosecretary.features.task.application.assistant.internal.AssistantTool;
+import com.autosecretary.features.task.application.assistant.internal.AssistantToolRegistry;
+import com.autosecretary.features.task.application.assistant.internal.BudgetTools;
+import com.autosecretary.features.task.application.assistant.internal.DbCalls;
+import com.autosecretary.features.task.application.assistant.internal.MealTools;
+import com.autosecretary.features.task.application.assistant.internal.TaskTools;
 import com.autosecretary.features.task.application.internal.budget.AssistantBudgetGateway;
 import com.autosecretary.features.task.application.internal.budget.AssistantTransactionImportExecutor;
 import com.autosecretary.features.task.application.internal.meal.AssistantMealGateway;
@@ -95,6 +102,24 @@ public final class AssistantChatToolLoopTest extends AutoSecretaryRobolectricTes
         assertTrue("periodUnit value present", secondRequest.contains("WEEK"));
         assertTrue("streak present", secondRequest.contains("currentStreak"));
         assertEquals("Deine Morgenroutine wiederholt sich wöchentlich.", result.get().answerText());
+    }
+
+    /** Invariant: get_tasks with a category name that matches nothing returns an empty task list. */
+    @Test
+    public void getTasksWithUnknownCategoryReturnsNoTasks() throws JSONException {
+        Task task = new Task();
+        task.core.title = "Zähneputzen";
+        db.taskDao().write(task);
+
+        ScriptedTransport transport = new ScriptedTransport(
+                toolUse("get_tasks", new JSONObject().put("categoryName", "Gibtsnicht")),
+                end("Keine Tasks in dieser Kategorie."));
+
+        engine(transport).send("Tasks in Kategorie Gibtsnicht?", null, false, t -> {}, e -> {}, p -> {});
+
+        String toolResult = transport.requests.get(1).messages().toString();
+        assertTrue("empty task array in the tool result", toolResult.contains("\\\"tasks\\\":[]"));
+        assertFalse("the real task is not leaked", toolResult.contains("Zähneputzen"));
     }
 
     /** Invariant: propose_recipes parks a proposal but writes nothing until confirmed. */
@@ -300,15 +325,21 @@ public final class AssistantChatToolLoopTest extends AutoSecretaryRobolectricTes
 
     private AssistantChatUseCase engine(ClaudeChatTransport transport) {
         SynchronousExecutorService exec = new SynchronousExecutorService();
+        AssistantConversation conversation = new AssistantConversation();
         AssistantBudgetGateway budgetGateway = new AssistantBudgetGateway(BudgetFixtures.budgetRepository(db));
         AssistantTransactionImportExecutor importExecutor = new AssistantTransactionImportExecutor(
                 BudgetFixtures.budgetImportRepository(db), BudgetFixtures.budgetRepository(db));
-        return new AssistantChatUseCase(transport, new AssistantConversation(),
-                db.taskDao(), db.taskCategoryDao(), mealGateway, budgetGateway, importExecutor,
+        DbCalls dbCalls = new DbCalls(exec);
+        List<AssistantTool> tools = new ArrayList<>();
+        tools.addAll(new TaskTools(db.taskDao(), db.taskCategoryDao(), dbCalls).tools());
+        tools.addAll(new MealTools(mealGateway, dbCalls).tools());
+        tools.addAll(new BudgetTools(budgetGateway, importExecutor,
+                conversation::currentStatement, dbCalls).tools());
+        return new AssistantChatUseCase(transport, conversation, new AssistantToolRegistry(tools),
                 new ClaudeApiKeyStore(ApplicationProvider.getApplicationContext()),
                 new ClaudeEndpointStore(ApplicationProvider.getApplicationContext()),
                 new ClaudeModelStore(ApplicationProvider.getApplicationContext()),
-                exec, exec, exec);
+                exec, exec);
     }
 
     private static ClaudeChatResponse toolUse(String name, JSONObject input) throws JSONException {
