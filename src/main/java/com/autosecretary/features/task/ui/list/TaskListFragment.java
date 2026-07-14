@@ -124,6 +124,11 @@ public class TaskListFragment extends Fragment {
         setupDayNavigation(view, adapter, newTaskFab);
         setupModeToggle(view, taskSearchLayout, adapter);
         observeSchedulingConflicts(view);
+
+        // The fragment is recreated on every tab switch while the ViewModel is activity-scoped, so a
+        // refresh here reflects any mutation made elsewhere (e.g. an assistant task change or undo)
+        // without cross-ViewModel wiring.
+        vm.refreshList();
     }
 
     /** Surfaces regeneration conflicts once as a Snackbar with an optional detail dialog. */

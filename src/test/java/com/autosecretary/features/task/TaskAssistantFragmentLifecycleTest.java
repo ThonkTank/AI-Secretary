@@ -16,24 +16,20 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.test.core.app.ApplicationProvider;
 
 import com.autosecretary.R;
 import com.autosecretary.app.AppCompositionRoot;
 import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
-import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.assistant.AssistantChatUseCase;
 import com.autosecretary.features.task.application.assistant.AssistantChatUseCase.AssistantTurn;
 import com.autosecretary.features.task.application.assistant.ConfirmAssistantProposalUseCase;
 import com.autosecretary.features.task.application.UndoTaskChangesUseCase;
-import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.ui.assistant.AssistantUiState.Status;
 import com.autosecretary.features.task.ui.assistant.TaskAssistantFragment;
 import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModel;
 import com.autosecretary.features.task.ui.assistant.TaskAssistantViewModelFactory;
-import com.autosecretary.features.task.ui.list.TaskViewModelFactory;
-import com.autosecretary.shared.WidgetRefreshNotifier;
 import com.autosecretary.testing.AutoSecretaryRobolectricTest;
 import com.autosecretary.testing.SynchronousExecutorService;
 
@@ -44,7 +40,6 @@ import org.robolectric.Robolectric;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
 public final class TaskAssistantFragmentLifecycleTest extends AutoSecretaryRobolectricTest {
@@ -95,11 +90,13 @@ public final class TaskAssistantFragmentLifecycleTest extends AutoSecretaryRobol
         assertFalse(viewModel.isSending());
         assertEquals(Status.ANSWERED, viewModel.getState().getValue().exchanges().get(0).status());
         assertEquals(View.GONE, activity.findViewById(R.id.AssistantLoading).getVisibility());
+        layoutHistory(activity);
         assertEquals("Vorschlag steht bereit.",
                 ((TextView) activity.findViewById(R.id.ExchangeAnswer)).getText().toString());
     }
 
     private static void assertPendingRendered(HostActivity activity) {
+        layoutHistory(activity);
         assertEquals("Pflege diese Aufgaben ein",
                 ((TextView) activity.findViewById(R.id.ExchangeUserText)).getText().toString());
         assertTrue(((TextView) activity.findViewById(R.id.ExchangeAttachment))
@@ -107,6 +104,15 @@ public final class TaskAssistantFragmentLifecycleTest extends AutoSecretaryRobol
         assertEquals(View.VISIBLE, activity.findViewById(R.id.AssistantLoading).getVisibility());
         assertEquals(activity.getString(R.string.task_assistant_status_pending),
                 ((TextView) activity.findViewById(R.id.ExchangeStatus)).getText().toString());
+    }
+
+    /** Robolectric does not lay out a RecyclerView's children automatically; force a measure/layout. */
+    private static void layoutHistory(HostActivity activity) {
+        RecyclerView history = activity.findViewById(R.id.AssistantHistory);
+        history.measure(
+                View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY));
+        history.layout(0, 0, 1080, 1920);
     }
 
     private static void showAssistant(HostActivity activity) {
@@ -140,7 +146,6 @@ public final class TaskAssistantFragmentLifecycleTest extends AutoSecretaryRobol
 
     private static final class TestCompositionRoot extends AppCompositionRoot {
         private final TaskAssistantViewModelFactory assistantFactory;
-        private final TaskViewModelFactory taskFactory;
         private final SynchronousExecutorService ioExecutor = new SynchronousExecutorService();
 
         TestCompositionRoot(Application application, ManualChatUseCase chatUseCase) {
@@ -149,7 +154,6 @@ public final class TaskAssistantFragmentLifecycleTest extends AutoSecretaryRobol
                     chatUseCase,
                     (ConfirmAssistantProposalUseCase) null,
                     (UndoTaskChangesUseCase) null);
-            taskFactory = new NoopTaskViewModelFactory();
         }
 
         @Override
@@ -158,48 +162,8 @@ public final class TaskAssistantFragmentLifecycleTest extends AutoSecretaryRobol
         }
 
         @Override
-        public synchronized TaskViewModelFactory getTaskViewModelFactory() {
-            return taskFactory;
-        }
-
-        @Override
         public SynchronousExecutorService getIoExecutor() {
             return ioExecutor;
-        }
-    }
-
-    private static final class NoopTaskViewModelFactory extends TaskViewModelFactory {
-        NoopTaskViewModelFactory() {
-            super(noopTaskDataService(), null, null, noopRegenerateUseCase(), null, null, null,
-                    new WidgetRefreshNotifier() {
-                        @Override
-                        public void refreshTaskWidgets() {
-                        }
-
-                        @Override
-                        public void refreshBudgetWidgets() {
-                        }
-                    });
-        }
-
-        private static TaskDataService noopTaskDataService() {
-            Executor direct = Runnable::run;
-            return new TaskDataService(null, null, null, new SynchronousExecutorService(), direct, null) {
-                @Override
-                public void loadAllMapped(Consumer<List<TaskListItem>> onLoaded) {
-                    onLoaded.accept(List.of());
-                }
-            };
-        }
-
-        private static RegenerateScheduleUseCase noopRegenerateUseCase() {
-            return new RegenerateScheduleUseCase(null, null, new SynchronousExecutorService(),
-                    Runnable::run, () -> false) {
-                @Override
-                public void execute(Consumer<Result> onDone) {
-                    onDone.accept(new Result(0, List.of()));
-                }
-            };
         }
     }
 

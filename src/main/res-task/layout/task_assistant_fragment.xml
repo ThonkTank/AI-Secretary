@@ -78,19 +78,12 @@
         android:layout_weight="1"
         android:layout_marginTop="@dimen/spacing_sm">
 
-        <ScrollView
-            android:id="@+id/AssistantHistoryScroll"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/AssistantHistory"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingBottom="@dimen/spacing_sm">
-
-            <LinearLayout
-                android:id="@+id/AssistantHistory"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical" />
-        </ScrollView>
+            android:paddingBottom="@dimen/spacing_sm" />
 
         <include
             android:id="@+id/AssistantEmptyState"

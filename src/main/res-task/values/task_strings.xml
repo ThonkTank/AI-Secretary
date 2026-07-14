@@ -238,6 +238,15 @@
     <string name="task_assistant_diff_category">Kategorie:</string>
     <string name="task_assistant_diff_task">Aufgabe:</string>
     <string name="task_assistant_diff_leisure">[Freizeit]</string>
+    <!-- Diff attribute chips: %1$s is the date, %2$s the optional time (blank if none). -->
+    <string name="task_assistant_diff_termin">[Termin %1$s%2$s]</string>
+    <string name="task_assistant_diff_deadline">[fällig %1$s]</string>
+    <string name="task_assistant_diff_start">[ab %1$s]</string>
+    <!-- Preferred-time count chip: %1$d is the number of preferred slots. -->
+    <string name="task_assistant_diff_pref_slots">[%1$d× Zeit]</string>
+    <string name="task_assistant_period_day">Tag</string>
+    <string name="task_assistant_period_week">Woche</string>
+    <string name="task_assistant_period_month">Monat</string>
 
     <string-array name="task_assistant_models">
         <item>claude-sonnet-5</item>

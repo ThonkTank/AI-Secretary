@@ -101,31 +101,32 @@ final class TaskAssistantDiffFormatter {
         if (Boolean.TRUE.equals(change.leisure())) {
             sb.append(' ').append(context.getString(R.string.task_assistant_diff_leisure));
         }
-        appendRepetition(sb, change.repetition());
+        appendRepetition(context, sb, change.repetition());
         if (change.schedulingType() == TaskCore.SchedulingType.TERMIN && change.fixedDate() != null) {
-            sb.append(" [Termin ").append(change.fixedDate());
-            if (change.fixedStart() != null) {
-                sb.append(' ').append(change.fixedStart());
-            }
-            sb.append(']');
+            String time = change.fixedStart() != null ? " " + change.fixedStart() : "";
+            sb.append(' ').append(context.getString(
+                    R.string.task_assistant_diff_termin, change.fixedDate(), time));
         }
         if (change.deadline() != null) {
-            sb.append(" [fällig ").append(change.deadline()).append(']');
+            sb.append(' ').append(context.getString(
+                    R.string.task_assistant_diff_deadline, change.deadline()));
         }
         if (change.startDate() != null) {
-            sb.append(" [ab ").append(change.startDate()).append(']');
+            sb.append(' ').append(context.getString(
+                    R.string.task_assistant_diff_start, change.startDate()));
         }
         if (change.prefSlots() != null && !change.prefSlots().isEmpty()) {
-            sb.append(" [").append(change.prefSlots().size()).append("× Zeit]");
+            sb.append(' ').append(context.getString(
+                    R.string.task_assistant_diff_pref_slots, change.prefSlots().size()));
         }
     }
 
-    private static void appendRepetition(StringBuilder sb, RepetitionChange rep) {
+    private static void appendRepetition(Context context, StringBuilder sb, RepetitionChange rep) {
         if (rep == null || rep.reps() == null || rep.reps() <= 0) {
             return;
         }
         sb.append(" [").append(rep.reps()).append('×');
-        String unit = periodLabel(rep.periodUnit());
+        String unit = periodLabel(context, rep.periodUnit());
         if (unit != null) {
             sb.append('/');
             if (rep.perPeriod() != null && rep.perPeriod() > 1) {
@@ -136,14 +137,14 @@ final class TaskAssistantDiffFormatter {
         sb.append(']');
     }
 
-    private static String periodLabel(Period period) {
+    private static String periodLabel(Context context, Period period) {
         if (period == null) {
             return null;
         }
         return switch (period) {
-            case DAY -> "Tag";
-            case WEEK -> "Woche";
-            case MONTH -> "Monat";
+            case DAY -> context.getString(R.string.task_assistant_period_day);
+            case WEEK -> context.getString(R.string.task_assistant_period_week);
+            case MONTH -> context.getString(R.string.task_assistant_period_month);
         };
     }
 
