@@ -21,8 +21,8 @@ Sends PDF bank statements to Claude's Messages API for structured transaction ex
 
 HTTP communication, timeouts (30 s connect / 120 s read) and error mapping live in the shared `ClaudeMessagesClient`, not here.
 
-### ClaudeApiKeyStore
-Securely stores and retrieves Claude API keys using Android Keystore.
+### ClaudeApiKeyStore (lives in `shared/`)
+Securely stores and retrieves the Claude API key using the Android Keystore. It is **not** in this package — it lives in `shared/` because both this PDF importer and the assistant chat (`features/assistant/`) use it. Documented here because the import flow depends on it.
 
 **Security:**
 - AES-256-GCM authenticated encryption
@@ -38,10 +38,13 @@ Domain Layer (features/budget/domain/)
 
 Data Layer (features/budget/data/)
   ├─ data/dao/ (DAO interfaces), data/entity/ (Room entities)
-  ├─ data/api/ (this — HTTP integration)
-  │  ├─ ClaudeStatementApiClient (HTTP → JSON)
-  │  └─ ClaudeApiKeyStore (encryption/decryption)
+  ├─ data/api/ (this — statement request building)
+  │  └─ ClaudeStatementApiClient (builds request → parses JSON)
   └─ data/repository (Room database)
+
+shared/
+  ├─ ClaudeMessagesClient (HTTP transport, timeouts, error mapping)
+  └─ ClaudeApiKeyStore (encryption/decryption)
 
 Application Layer (features/budget/application/)
   └─ StatementFileParser (routes by file type: CSV vs. PDF)
