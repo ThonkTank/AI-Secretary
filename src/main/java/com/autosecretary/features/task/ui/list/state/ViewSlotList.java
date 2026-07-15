@@ -19,6 +19,17 @@ import com.autosecretary.util.TreeBuilder;
  * See TreeBuilder.java for tree-building and sorting semantics.
  */
 public class ViewSlotList {
+
+    /**
+     * How {@link #rebuildDisplay} structures the filtered rows:
+     * <ul>
+     *   <li>{@link #BY_SLOT} — group by the (calendar) slot hierarchy (Checklist mode).</li>
+     *   <li>{@link #BY_CATEGORY} — one row per task under synthetic category headers (Manage mode).</li>
+     *   <li>{@link #FLAT_TASKS} — one row per task, no headers, no hierarchy (urgency/deadline modes).</li>
+     * </ul>
+     */
+    public enum Grouping { BY_SLOT, BY_CATEGORY, FLAT_TASKS }
+
     // Source of truth: all task slots (never modified after fromList, used as reference for re-filtering)
     private List<ViewSlot> allSlots = new ArrayList<>();
     // Working set: filtered/sorted task slots plus optional calendar events, used for display
@@ -81,15 +92,17 @@ public class ViewSlotList {
     /**
      * Rebuilds the display list from source slots in one explicit pass.
      *
-     * <p>In Manage mode ({@code groupByCategory=true}) rows are collapsed to one per task and
+     * <p>With {@link Grouping#BY_CATEGORY} (Manage mode) rows are collapsed to one per task and
      * grouped under synthetic category-header rows (which can be collapsed via {@code isExpanded}).
-     * In Checklist mode rows are grouped by the (calendar) slot hierarchy instead.
+     * With {@link Grouping#BY_SLOT} (Checklist mode) rows are grouped by the (calendar) slot
+     * hierarchy instead. With {@link Grouping#FLAT_TASKS} rows are collapsed to one per task and
+     * rendered as a flat list without headers.
      */
     public void rebuildDisplay(Predicate<ViewSlot> predicate,
                                List<ViewSlot> extraItems,
                                Comparator<ViewSlot> comparator,
                                Predicate<ViewSlot> isExpanded,
-                               boolean groupByCategory) {
+                               Grouping grouping) {
         List<ViewSlot> workingSlots = allSlots.stream()
                 .filter(predicate)
                 .collect(Collectors.toCollection(ArrayList::new));
@@ -98,12 +111,15 @@ public class ViewSlotList {
         }
         TreeBuilder<ViewSlot> builder;
         Predicate<ViewSlot> expansionPredicate;
-        if (groupByCategory) {
+        if (grouping == Grouping.BY_CATEGORY) {
             workingSlots = collapseToSingleRowPerTask(workingSlots);
             workingSlots.addAll(buildCategoryHeaders(workingSlots));
             builder = TREE_BY_CATEGORY;
             expansionPredicate = isExpanded;
         } else {
+            if (grouping == Grouping.FLAT_TASKS) {
+                workingSlots = collapseToSingleRowPerTask(workingSlots);
+            }
             builder = TREE_BY_SLOT;
             expansionPredicate = ALL_EXPANDED;
         }

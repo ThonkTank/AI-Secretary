@@ -24,6 +24,7 @@
     <string name="task_deadline_overdue_content_description">Überfällig</string>
     <string name="task_deadline_today_content_description">Heute fällig</string>
     <string name="task_deadline_in_days_content_description">Fällig in %1$d Tagen</string>
+    <string name="task_deadline_bar_content_description">Verbleibende Zeit bis zur Frist: %1$d%% verstrichen</string>
     <string name="task_streak_display">%1$dx</string>
     <string name="task_streak_content_description">Streak %1$d, Tier %2$s</string>
     <string name="task_streak_tier_common">Gewöhnlich</string>
@@ -46,6 +47,8 @@
     <string name="task_list_day_nav_next_desc">Nächster Tag</string>
     <string name="task_list_toggle_checklist">Checkliste</string>
     <string name="task_list_toggle_manage">Verwalten</string>
+    <string name="task_list_toggle_urgency">Prio</string>
+    <string name="task_list_toggle_deadline">Frist</string>
     <string name="task_list_search_hint">Aufgaben suchen</string>
     <string name="task_list_empty_title">Noch keine Aufgaben</string>
     <string name="task_list_empty_subtitle">Erstelle deine erste Aufgabe, um deinen Tagesplan zu starten</string>

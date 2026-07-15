@@ -106,6 +106,10 @@ public class TaskListItem {
     public final boolean inProgress;
     /** When true, this is a leisure/hobby item: no streak, progress, or scoring pressure is shown. */
     public final boolean leisure;
+    /** True when the task repeats (repetition reps &gt; 0); false for one-off tasks. */
+    public final boolean repeating;
+    /** Task creation date; start of the created→deadline span used by {@link #deadlineElapsedPercent()}. */
+    public final LocalDate created;
     public final int progressCurrent;
     public final int progressTarget;
     public final String progressUnit;
@@ -133,6 +137,8 @@ public class TaskListItem {
                  boolean completed,
                  boolean inProgress,
                  boolean leisure,
+                 boolean repeating,
+                 LocalDate created,
                  int progressCurrent,
                  int progressTarget,
                  String progressUnit,
@@ -159,6 +165,8 @@ public class TaskListItem {
         this.completed = completed;
         this.inProgress = inProgress;
         this.leisure = leisure;
+        this.repeating = repeating;
+        this.created = created;
         this.progressCurrent = progressCurrent;
         this.progressTarget = progressTarget;
         this.progressUnit = progressUnit;
@@ -193,6 +201,8 @@ public class TaskListItem {
                 false,
                 false,
                 false,
+                false,
+                null,
                 0,
                 0,
                 null,
@@ -260,6 +270,8 @@ public class TaskListItem {
         this.completed = false;
         this.inProgress = false;
         this.leisure = false;
+        this.repeating = false;
+        this.created = null;
         this.progressCurrent = 0;
         this.progressTarget = 0;
         this.progressUnit = null;
@@ -307,6 +319,28 @@ public class TaskListItem {
             return Long.MAX_VALUE;
         }
         return ChronoUnit.DAYS.between(LocalDate.now(), deadline);
+    }
+
+    /**
+     * Returns how much of the created→deadline span has already elapsed, as a percentage (0–100).
+     *
+     * <p>Basis for the visual remaining-time bar in the deadline list mode. Overdue items and
+     * items whose span is empty or inverted (deadline on or before creation) return 100.
+     * Items without a deadline return 0.
+     *
+     * @return elapsed percentage, clamped to 0–100
+     */
+    public int deadlineElapsedPercent() {
+        if (deadline == null) {
+            return 0;
+        }
+        LocalDate base = created != null ? created : LocalDate.now();
+        long totalDays = ChronoUnit.DAYS.between(base, deadline);
+        if (totalDays <= 0) {
+            return 100;
+        }
+        long elapsedDays = ChronoUnit.DAYS.between(base, LocalDate.now());
+        return (int) Math.max(0, Math.min(100, (elapsedDays * 100) / totalDays));
     }
 
     /**

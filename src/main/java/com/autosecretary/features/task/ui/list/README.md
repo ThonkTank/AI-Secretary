@@ -12,7 +12,7 @@ task management view. It is the primary surface a user interacts with every day.
 | `ListRowAdapter` | RecyclerView adapter. Binds `ViewSlot` items to task or calendar row views. |
 | `TaskViewModelFactory` | `ViewModelProvider.Factory` that wires dependencies into `TaskViewModel`. Used by `AppCompositionRoot`. |
 | `TaskDescriptionDialog` | Popup dialog shown when the user taps a task title; displays title and description. |
-| `ListConfig` | Enum for the two display modes (CHECKLIST / MANAGE). Defines the filter predicate and sort comparator for each mode. |
+| `ListConfig` | Enum for the display modes (CHECKLIST / MANAGE / URGENCY / DEADLINE). Defines the filter predicate, sort comparator, and row grouping for each mode. |
 
 `state/` sub-package:
 
@@ -21,7 +21,7 @@ task management view. It is the primary surface a user interacts with every day.
 | `ViewSlot` | Wraps a `TaskListItem` with tree context (`depth`, `children`) for RecyclerView indentation and category-group rendering. |
 | `ViewSlotList` | Rebuilds the display list from the master slot list in one pass: filter, optionally merge calendar events, then sort and flatten for display. |
 
-## Two display modes
+## Four display modes
 
 **Checklist mode** (default tab): shows only the slots scheduled for the selected day,
 sorted by start time. The search bar is hidden. Each slot is an individual scheduled
@@ -31,9 +31,18 @@ execution window.
 headers and sorted by title. The search bar is visible and filters by title. Each category
 header can be expanded or collapsed in place (state keyed by category id).
 
-The user switches between modes via a `MaterialButtonToggleGroup`. Switching calls
-`vm.applyChecklistPreset()` or `vm.applyManagePreset()`, which updates `activeListConfig`
-in `TaskViewModel` and triggers `filterList()`.
+**Urgency mode** ("Prio"): shows all open tasks day-independently as a flat list, one row
+per task, sorted by priority, then nearest deadline, then title (same order as the home
+screen widget, via `TaskListItemComparators.BY_PRIORITY`).
+
+**Deadline mode** ("Frist"): shows all open one-off (non-repeating) tasks with a deadline,
+day-independently and flat, sorted by nearest deadline. Each row shows a remaining-time bar
+(elapsed share of the created→deadline span, `TaskListItem.deadlineElapsedPercent()`).
+
+The user switches between modes via a `MaterialButtonToggleGroup`. Switching calls the
+matching `vm.apply*Preset()`, which updates `activeListConfig` in `TaskViewModel` and
+triggers `filterList()`. Calendar events appear only in the day-scoped modes
+(Checklist/Manage).
 
 ## Two-phase checkoff
 

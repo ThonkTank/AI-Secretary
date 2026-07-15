@@ -132,6 +132,8 @@ public class TaskListItemMapper {
                 completed,
                 inProgress,
                 task.core.leisure,
+                task.core.repetition != null && task.core.repetition.reps > 0,
+                task.core.created,
                 hasProgress ? task.core.progress.current : 0,
                 hasProgress ? task.core.progress.target : 0,
                 hasProgress ? task.core.progress.unit : null,

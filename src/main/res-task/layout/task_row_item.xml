@@ -137,6 +137,16 @@
         android:paddingStart="@dimen/spacing_sm"
         android:paddingEnd="@dimen/spacing_xs">
 
+        <!-- Remaining-time bar: shown only in Deadline mode (elapsed share of created→deadline) -->
+        <ProgressBar
+            android:id="@+id/DeadlineProgressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="@dimen/task_row_deadline_bar_width"
+            android:layout_height="@dimen/task_row_deadline_bar_height"
+            android:layout_marginEnd="@dimen/spacing_sm"
+            android:max="100"
+            android:visibility="gone"/>
+
         <TextView
             android:id="@+id/DeadlineCountdown"
             android:layout_width="wrap_content"

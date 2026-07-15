@@ -56,6 +56,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
     private final TaskRowActions actions;
     /** False when viewing a past or future day; disables checkboxes, timers, and row editing. */
     private boolean interactionsEnabled = true;
+    /** Active display mode; drives Manage-only affordances and the deadline remaining-time bar. */
+    private ListConfig displayMode = ListConfig.CHECKLIST;
     /** True in Manage mode; enables the expand/collapse toggle on parent task rows. */
     private boolean manageMode = false;
 
@@ -152,6 +154,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         ImageButton progressMinus;
         ImageButton progressPlus;
         TextView progressText;
+        android.widget.ProgressBar deadlineBar;
         TextView deadlineCountdown;
         TextView streakDisplay;
         TextView expandToggle;
@@ -170,6 +173,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             this.progressMinus = taskRow.findViewById(R.id.ProgressMinusButton);
             this.progressPlus = taskRow.findViewById(R.id.ProgressPlusButton);
             this.progressText = taskRow.findViewById(R.id.ProgressText);
+            this.deadlineBar = taskRow.findViewById(R.id.DeadlineProgressBar);
             this.deadlineCountdown = taskRow.findViewById(R.id.DeadlineCountdown);
             this.streakDisplay = taskRow.findViewById(R.id.StreakDisplay);
             this.expandToggle = taskRow.findViewById(R.id.ExpandToggle);
@@ -213,6 +217,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         bindTaskRow(holder);
         bindGoalAppearance(holder, item);
         bindDeadline(holder, item);
+        bindDeadlineBar(holder, item);
         bindStreak(holder, item);
         bindProgressState(holder, item);
         bindCompletionMode(holder, item, viewSlot);
@@ -325,6 +330,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.checkBox.setVisibility(View.GONE);
         holder.stateButton.setVisibility(View.GONE);
         holder.progressContainer.setVisibility(View.GONE);
+        holder.deadlineBar.setVisibility(View.GONE);
         holder.deadlineCountdown.setVisibility(View.GONE);
         holder.streakDisplay.setVisibility(View.GONE);
         holder.calendarChip.setVisibility(View.GONE);
@@ -362,6 +368,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         holder.stateButton.setVisibility(View.GONE);
         holder.goalIcon.setVisibility(View.GONE);
         holder.progressContainer.setVisibility(View.GONE);
+        holder.deadlineBar.setVisibility(View.GONE);
         holder.deadlineCountdown.setVisibility(View.GONE);
         holder.streakDisplay.setVisibility(View.GONE);
         holder.expandToggle.setVisibility(View.GONE);
@@ -414,6 +421,36 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
             countdown.setContentDescription(context.getString(R.string.task_deadline_in_days_content_description, daysUntil));
         }
         countdown.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * Shows the remaining-time bar in Deadline mode: the filled fraction is the elapsed share of
+     * the created→deadline span, tinted by urgency (full and red when overdue). Hidden in all
+     * other modes; the textual "in Nd" label from {@link #bindDeadline} stays alongside.
+     */
+    private void bindDeadlineBar(TaskRowViewHolder holder, TaskListItem item) {
+        android.widget.ProgressBar bar = holder.deadlineBar;
+        if (displayMode != ListConfig.DEADLINE || item.deadline == null) {
+            bar.setVisibility(View.GONE);
+            bar.setContentDescription(null);
+            return;
+        }
+
+        Context context = holder.itemView.getContext();
+        int percent = item.deadlineElapsedPercent();
+        TaskListItem.DeadlineUrgency urgency = item.deadlineUrgency();
+        int barColor;
+        if (urgency == TaskListItem.DeadlineUrgency.OVERDUE) {
+            barColor = colorDeadlineOverdue;
+        } else if (urgency == TaskListItem.DeadlineUrgency.TODAY || urgency == TaskListItem.DeadlineUrgency.SOON) {
+            barColor = colorDeadlineSoon;
+        } else {
+            barColor = colorDeadlineFuture;
+        }
+        bar.setProgress(percent);
+        bar.setProgressTintList(ColorStateList.valueOf(barColor));
+        bar.setContentDescription(context.getString(R.string.task_deadline_bar_content_description, percent));
+        bar.setVisibility(View.VISIBLE);
     }
 
     /**
@@ -757,8 +794,9 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
         }
     }
 
-    public void setManageMode(boolean manageMode) {
-        this.manageMode = manageMode;
+    void setDisplayMode(ListConfig displayMode) {
+        this.displayMode = displayMode;
+        this.manageMode = displayMode == ListConfig.MANAGE;
         notifyDataSetChanged();
     }
 
@@ -792,6 +830,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<ListRowAdapter.TaskRowV
                 && Objects.equals(oldItem.start, newItem.start)
                 && Objects.equals(oldItem.end, newItem.end)
                 && Objects.equals(oldItem.deadline, newItem.deadline)
+                && Objects.equals(oldItem.created, newItem.created)
+                && oldItem.repeating == newItem.repeating
                 && oldItem.streak == newItem.streak
                 && oldItem.leisure == newItem.leisure
                 && oldItem.score == newItem.score

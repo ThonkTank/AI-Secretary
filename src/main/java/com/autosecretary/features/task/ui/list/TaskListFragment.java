@@ -48,10 +48,13 @@ import java.util.List;
  * Main task list screen. Shows scheduled task slots for a selected day and lets the user
  * check them off, track progress, start/stop timers, and open the task editor.
  *
- * <p>Two display modes are available via a toggle:
+ * <p>Four display modes are available via a toggle:
  * <ul>
  *   <li><b>Checklist mode</b> — slots scheduled for the selected day, sorted by time.</li>
  *   <li><b>Manage mode</b> — all tasks grouped by parent-child hierarchy, with search.</li>
+ *   <li><b>Urgency mode</b> — all open tasks flat, sorted by priority, then deadline.</li>
+ *   <li><b>Deadline mode</b> — open one-off tasks with a deadline, nearest first, with a
+ *       remaining-time bar.</li>
  * </ul>
  *
  * <p>See {@link TaskViewModel} for the data flow, {@link ListConfig} for mode definitions,
@@ -213,7 +216,7 @@ public class TaskListFragment extends Fragment {
                         vm::toggleExpanded,
                         vm::isExpanded)
         );
-        adapter.setManageMode(vm.isManageMode());
+        adapter.setDisplayMode(vm.activeListConfig());
         recyclerView.setAdapter(adapter);
 
         vm.getList().observe(getViewLifecycleOwner(), items -> {
@@ -284,17 +287,37 @@ public class TaskListFragment extends Fragment {
         toggle.addOnButtonCheckedListener(new SimpleButtonCheckedListener() {
             @Override
             public void onChecked(MaterialButtonToggleGroup group, int checkedId) {
-                boolean checklistMode = checkedId == R.id.TaskChecklistButton;
-                taskSearchLayout.setVisibility(checklistMode ? View.GONE : View.VISIBLE);
-                if (checklistMode) {
+                if (checkedId == R.id.TaskChecklistButton) {
                     vm.applyChecklistPreset();
-                } else {
+                } else if (checkedId == R.id.TaskManagementButton) {
                     vm.applyManagePreset();
+                } else if (checkedId == R.id.TaskUrgencyButton) {
+                    vm.applyUrgencyPreset();
+                } else {
+                    vm.applyDeadlinePreset();
                 }
-                adapter.setManageMode(vm.isManageMode());
+                taskSearchLayout.setVisibility(vm.isManageMode() ? View.VISIBLE : View.GONE);
+                adapter.setDisplayMode(vm.activeListConfig());
             }
         });
-        taskSearchLayout.setVisibility(toggle.getCheckedButtonId() == R.id.TaskManagementButton ? View.VISIBLE : View.GONE);
+        // The activity-scoped ViewModel keeps its mode across fragment recreation (tab switches),
+        // while the XML default re-checks the checklist button — sync the toggle to the ViewModel.
+        toggle.check(toggleButtonIdFor(vm.activeListConfig()));
+        taskSearchLayout.setVisibility(vm.isManageMode() ? View.VISIBLE : View.GONE);
+    }
+
+    private static int toggleButtonIdFor(ListConfig config) {
+        switch (config) {
+            case MANAGE:
+                return R.id.TaskManagementButton;
+            case URGENCY:
+                return R.id.TaskUrgencyButton;
+            case DEADLINE:
+                return R.id.TaskDeadlineButton;
+            case CHECKLIST:
+            default:
+                return R.id.TaskChecklistButton;
+        }
     }
 
     private void ensureCalendarPermission() {

@@ -1,13 +1,13 @@
 package com.autosecretary.features.task.application;
 
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
+import com.autosecretary.features.task.application.listmodel.TaskListItemComparators;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.data.TaskCategoryDao;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.domain.model.TaskCategory;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,12 +23,6 @@ import java.util.Map;
 public class LoadTaskWidgetItemsUseCase {
     /** Selected-category sentinel meaning "no filter" (show every category). */
     public static final String CATEGORY_ALL = "__all__";
-
-    /** Highest priority first, then nearest deadline, then title. */
-    private static final Comparator<TaskListItem> BY_PRIORITY =
-            Comparator.comparingInt((TaskListItem item) -> item.priorityWeight).reversed()
-                    .thenComparing(item -> item.deadline, Comparator.nullsLast(Comparator.naturalOrder()))
-                    .thenComparing(item -> item.title, Comparator.nullsLast(Comparator.naturalOrder()));
 
     private final TaskDao taskDao;
     private final TaskCategoryDao taskCategoryDao;
@@ -71,7 +65,7 @@ public class LoadTaskWidgetItemsUseCase {
             }
             result.add(item);
         }
-        result.sort(BY_PRIORITY);
+        result.sort(TaskListItemComparators.BY_PRIORITY);
         return result;
     }
 

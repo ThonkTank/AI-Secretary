@@ -36,7 +36,7 @@ import java.util.function.Predicate;
  * ViewModel for the task list screen ({@link TaskListFragment}).
  *
  * <p>Owns the entire display state for the list: the master slot list, the current display mode
- * (CHECKLIST or MANAGE), day navigation, search query, and expand/collapse state for task parents.
+ * (see {@link ListConfig}), day navigation, search query, and expand/collapse state for task parents.
  *
  * <p>Data flow on every update:
  * <ol>
@@ -72,7 +72,7 @@ public class TaskViewModel extends ViewModel {
             new MutableLiveData<>(Collections.emptyList());
     private final MutableLiveData<LocalDate> selectedDay = new MutableLiveData<>(LocalDate.now());
     private final MutableLiveData<String> searchQuery = new MutableLiveData<>("");
-    /** Currently active display mode (CHECKLIST or MANAGE); drives filter and sort behaviour. */
+    /** Currently active display mode (see {@link ListConfig}); drives filter and sort behaviour. */
     private ListConfig activeListConfig = ListConfig.CHECKLIST;
     /** True once READ_CALENDAR permission is granted; gates calendar event injection in filterList(). */
     private boolean hasCalendarPermission = false;
@@ -201,6 +201,16 @@ public class TaskViewModel extends ViewModel {
         applyPreset(ListConfig.MANAGE);
     }
 
+    /** Switches to the flat urgency mode: all open tasks sorted by priority, then deadline. */
+    public void applyUrgencyPreset() {
+        applyPreset(ListConfig.URGENCY);
+    }
+
+    /** Switches to the deadline mode: open one-off tasks with a deadline, nearest first. */
+    public void applyDeadlinePreset() {
+        applyPreset(ListConfig.DEADLINE);
+    }
+
     private void applyPreset(ListConfig config) {
         this.activeListConfig = config;
         filterList();
@@ -208,6 +218,11 @@ public class TaskViewModel extends ViewModel {
 
     public boolean isManageMode() {
         return activeListConfig == ListConfig.MANAGE;
+    }
+
+    /** The currently active display mode; used by the Fragment to sync toggle and adapter state. */
+    ListConfig activeListConfig() {
+        return activeListConfig;
     }
 
     /**
@@ -234,13 +249,14 @@ public class TaskViewModel extends ViewModel {
             return true;
         };
         Comparator<ViewSlot> comparator = activeListConfig.comparator();
-        List<ViewSlot> extraItems = day != null && hasCalendarPermission ? cachedCalendarSlots : Collections.emptyList();
+        List<ViewSlot> extraItems = day != null && hasCalendarPermission && activeListConfig.showsCalendarEvents()
+                ? cachedCalendarSlots : Collections.emptyList();
         masterList.rebuildDisplay(
                 predicate,
                 extraItems,
                 comparator,
                 slot -> expandedByCategoryId.getOrDefault(slot.getItem().categoryId, true),
-                activeListConfig.groupByCategory()
+                activeListConfig.grouping()
         );
 
         displayList.setValue(masterList.getDisplaySlots());

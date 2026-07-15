@@ -37,12 +37,16 @@
             app:singleSelection="true"
             app:checkedButton="@id/TaskChecklistButton">
 
+            <!-- Four segments share the row; tightened horizontal padding keeps the
+                 longer labels ("Checkliste", "Verwalten") from ellipsizing at 25% width. -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/TaskChecklistButton"
                 style="@style/Widget.AutoSecretary.ToggleButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:paddingStart="@dimen/spacing_xs"
+                android:paddingEnd="@dimen/spacing_xs"
                 android:text="@string/task_list_toggle_checklist" />
 
             <com.google.android.material.button.MaterialButton
@@ -51,7 +55,29 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:paddingStart="@dimen/spacing_xs"
+                android:paddingEnd="@dimen/spacing_xs"
                 android:text="@string/task_list_toggle_manage" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/TaskUrgencyButton"
+                style="@style/Widget.AutoSecretary.ToggleButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingStart="@dimen/spacing_xs"
+                android:paddingEnd="@dimen/spacing_xs"
+                android:text="@string/task_list_toggle_urgency" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/TaskDeadlineButton"
+                style="@style/Widget.AutoSecretary.ToggleButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingStart="@dimen/spacing_xs"
+                android:paddingEnd="@dimen/spacing_xs"
+                android:text="@string/task_list_toggle_deadline" />
 
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
