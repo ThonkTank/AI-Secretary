@@ -175,6 +175,8 @@
     <string name="task_scheduling_enabled_label">Tagesplanung aktiv</string>
     <string name="task_scheduling_pause_label">Pause zwischen Aufgaben (Minuten)</string>
     <string name="task_scheduling_lead_label">Vorlaufzeit vor Terminen (Minuten)</string>
+    <string name="task_scheduling_max_work_label">Max. Arbeitszeit pro Tag (Minuten, 0 = aus)</string>
+    <string name="task_scheduling_min_leisure_label">Garantierte Freizeit pro Tag (Minuten, 0 = aus)</string>
     <string name="task_schedule_dialog_title">Tagesfenster konfigurieren</string>
     <string name="task_schedule_validation_error">Endzeit muss nach Startzeit liegen.</string>
     <string name="task_schedule_saved">Zeitfenster gespeichert</string>

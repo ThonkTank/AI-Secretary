@@ -108,7 +108,7 @@ public final class TaskSchedulingBufferCharacterizationTest extends AutoSecretar
         TaskSlotGenerator generator = generator(
                 window(LocalTime.of(9, 0), LocalTime.of(12, 0)),
                 CalendarBlockedIntervalProvider.NONE,
-                new SchedulingTuning(15, 0));
+                new SchedulingTuning(15, 0, 0, 0));
         generator.generateSlotsForWindow(List.of(first, second), today, 1, new TaskPlanningState());
 
         List<TaskSlot> slots = scheduledSlotsSortedByStart(List.of(first, second));
@@ -132,7 +132,7 @@ public final class TaskSchedulingBufferCharacterizationTest extends AutoSecretar
         TaskSlotGenerator generator = generator(
                 window(LocalTime.of(9, 0), LocalTime.of(12, 0)),
                 CalendarBlockedIntervalProvider.NONE,
-                new SchedulingTuning(10, 0));
+                new SchedulingTuning(10, 0, 0, 0));
         generator.generateSlotsForWindow(List.of(before, after), today, 1, new TaskPlanningState());
 
         TaskSlot beforeSlot = before.slots.stream().filter(s -> s.scheduled).findFirst().orElse(null);
@@ -159,7 +159,7 @@ public final class TaskSchedulingBufferCharacterizationTest extends AutoSecretar
         TaskSlotGenerator generator = generator(
                 window(LocalTime.of(9, 0), LocalTime.of(16, 0)),
                 CalendarBlockedIntervalProvider.NONE,
-                new SchedulingTuning(0, 30));
+                new SchedulingTuning(0, 30, 0, 0));
         generator.generateSlotsForWindow(all, today, 1, new TaskPlanningState());
 
         LocalTime leadZoneStart = LocalTime.of(13, 30);
@@ -194,7 +194,7 @@ public final class TaskSchedulingBufferCharacterizationTest extends AutoSecretar
         TaskSlotGenerator generator = generator(
                 window(LocalTime.of(9, 0), LocalTime.of(16, 0)),
                 calendarEvent,
-                new SchedulingTuning(0, 30));
+                new SchedulingTuning(0, 30, 0, 0));
         generator.generateSlotsForWindow(new ArrayList<>(fillers), today, 1, new TaskPlanningState());
 
         LocalTime leadZoneStart = LocalTime.of(13, 30);
@@ -220,7 +220,7 @@ public final class TaskSchedulingBufferCharacterizationTest extends AutoSecretar
         TaskSlotGenerator generator = generator(
                 window(LocalTime.of(9, 0), LocalTime.of(16, 0)),
                 CalendarBlockedIntervalProvider.NONE,
-                new SchedulingTuning(10, 30));
+                new SchedulingTuning(10, 30, 0, 0));
         TaskSlotGenerationResult result = generator.generateSlotsForWindow(
                 List.of(firstAppointment, secondAppointment), today, 1, new TaskPlanningState());
 

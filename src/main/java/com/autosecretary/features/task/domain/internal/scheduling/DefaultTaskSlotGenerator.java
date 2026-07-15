@@ -781,6 +781,7 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         Set<DisplacementCandidate> toDisplace = new HashSet<>();
         int gain = 0;
         boolean incomingContainsFixed = false;
+        int pendingWorkMinutes = 0;
 
         LocalDateTime cursor = firstStart;
         for (int i = 0; i < chain.size(); i++) {
@@ -826,6 +827,10 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             if (score <= 0) {
                 return null;
             }
+            score = applyDailyBalanceModifier(score, task, taskDuration, occupied, pendingWorkMinutes);
+            if (!task.core.leisure) {
+                pendingWorkMinutes += taskDuration;
+            }
             gain += score;
             starts.add(cursor);
             nodeScores.add(score);
@@ -853,6 +858,59 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         }
 
         return new ChainPlacement(new ArrayList<>(chain), starts, nodeScores, toDisplace, gain, loss, firstStart.toLocalDate());
+    }
+
+    /** Score divisor for non-leisure placements once the day's work budget is exceeded. */
+    private static final int WORK_OVERLOAD_PENALTY_DIVISOR = 4;
+    /** Score factor for leisure placements while the day's leisure quota is unmet. */
+    private static final int LEISURE_UNDER_QUOTA_BOOST = 2;
+
+    /**
+     * Soft daily balance constraint ({@link SchedulingTuning#maxWorkMinutesPerDay()} /
+     * {@link SchedulingTuning#minLeisureMinutesPerDay()}, 0 = disabled): once a day's accumulated
+     * non-leisure minutes would exceed the work budget, further non-leisure placements score at a
+     * quarter — urgent or high-priority work can still exceed the budget, but a day without
+     * overload wins the cross-day competition, so surplus work spills to other days. While the
+     * day's leisure quota is unmet, leisure placements score double.
+     *
+     * <p>Day totals are read from the day's shared {@code occupied} list (which already includes
+     * preserved slots and TERMINE; calendar blocks count as neither). The result flows into
+     * {@code slot.score}/{@code displacementScore}, keeping the displacement loss math consistent.
+     * Order-dependence (early evaluations see a lower accumulated total) is an accepted property
+     * of the soft heuristic.
+     */
+    private int applyDailyBalanceModifier(int score,
+                                          Task task,
+                                          int taskDurationMinutes,
+                                          List<OccupiedInterval> occupied,
+                                          int pendingWorkMinutes) {
+        if (task.core.leisure) {
+            int minLeisure = activeTuning.minLeisureMinutesPerDay();
+            if (minLeisure > 0 && dayTaskMinutes(occupied, true) < minLeisure) {
+                return score * LEISURE_UNDER_QUOTA_BOOST;
+            }
+            return score;
+        }
+        int maxWork = activeTuning.maxWorkMinutesPerDay();
+        if (maxWork > 0
+                && dayTaskMinutes(occupied, false) + pendingWorkMinutes + taskDurationMinutes > maxWork) {
+            return Math.max(1, score / WORK_OVERLOAD_PENALTY_DIVISOR);
+        }
+        return score;
+    }
+
+    /** Sum of task-slot minutes in {@code occupied} that are leisure ({@code true}) or work. */
+    private static int dayTaskMinutes(List<OccupiedInterval> occupied, boolean leisure) {
+        int minutes = 0;
+        for (OccupiedInterval interval : occupied) {
+            if (interval.candidate == null || interval.candidate.task == null) {
+                continue;
+            }
+            if (interval.candidate.task.core.leisure == leisure) {
+                minutes += (int) ChronoUnit.MINUTES.between(interval.start, interval.end);
+            }
+        }
+        return minutes;
     }
 
     /**

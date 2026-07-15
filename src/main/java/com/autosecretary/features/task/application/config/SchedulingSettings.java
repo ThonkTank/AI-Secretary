@@ -17,9 +17,14 @@ public final class SchedulingSettings {
     private static final String KEY_ENABLED = "scheduling_enabled";
     private static final String KEY_SLOT_PAUSE_MINUTES = "slot_pause_minutes";
     private static final String KEY_APPOINTMENT_LEAD_MINUTES = "appointment_lead_minutes";
+    private static final String KEY_MAX_WORK_MINUTES_PER_DAY = "max_work_minutes_per_day";
+    private static final String KEY_MIN_LEISURE_MINUTES_PER_DAY = "min_leisure_minutes_per_day";
 
     static final int DEFAULT_SLOT_PAUSE_MINUTES = 10;
     static final int DEFAULT_APPOINTMENT_LEAD_MINUTES = 30;
+    /** Balance budgets default to 0 = disabled — opt-in, no behaviour change until configured. */
+    static final int DEFAULT_MAX_WORK_MINUTES_PER_DAY = 0;
+    static final int DEFAULT_MIN_LEISURE_MINUTES_PER_DAY = 0;
 
     private SchedulingSettings() {}
 
@@ -47,9 +52,29 @@ public final class SchedulingSettings {
         prefs(context).edit().putInt(KEY_APPOINTMENT_LEAD_MINUTES, Math.max(0, minutes)).apply();
     }
 
-    /** The current buffer configuration as the domain value consumed by the slot generator. */
+    public static int getMaxWorkMinutesPerDay(Context context) {
+        return prefs(context).getInt(KEY_MAX_WORK_MINUTES_PER_DAY, DEFAULT_MAX_WORK_MINUTES_PER_DAY);
+    }
+
+    public static void setMaxWorkMinutesPerDay(Context context, int minutes) {
+        prefs(context).edit().putInt(KEY_MAX_WORK_MINUTES_PER_DAY, Math.max(0, minutes)).apply();
+    }
+
+    public static int getMinLeisureMinutesPerDay(Context context) {
+        return prefs(context).getInt(KEY_MIN_LEISURE_MINUTES_PER_DAY, DEFAULT_MIN_LEISURE_MINUTES_PER_DAY);
+    }
+
+    public static void setMinLeisureMinutesPerDay(Context context, int minutes) {
+        prefs(context).edit().putInt(KEY_MIN_LEISURE_MINUTES_PER_DAY, Math.max(0, minutes)).apply();
+    }
+
+    /** The current tuning configuration as the domain value consumed by the slot generator. */
     public static SchedulingTuning tuning(Context context) {
-        return new SchedulingTuning(getSlotPauseMinutes(context), getAppointmentLeadMinutes(context));
+        return new SchedulingTuning(
+                getSlotPauseMinutes(context),
+                getAppointmentLeadMinutes(context),
+                getMaxWorkMinutesPerDay(context),
+                getMinLeisureMinutesPerDay(context));
     }
 
     private static SharedPreferences prefs(Context context) {

@@ -59,6 +59,8 @@ public class TaskScheduleConfigDialog extends DialogFragment {
     private View loadingView;
     private TextInputEditText pauseInput;
     private TextInputEditText leadInput;
+    private TextInputEditText maxWorkInput;
+    private TextInputEditText minLeisureInput;
 
     @NonNull
     @Override
@@ -84,8 +86,12 @@ public class TaskScheduleConfigDialog extends DialogFragment {
 
         pauseInput = root.findViewById(R.id.SchedulingPauseInput);
         leadInput = root.findViewById(R.id.SchedulingLeadInput);
+        maxWorkInput = root.findViewById(R.id.SchedulingMaxWorkInput);
+        minLeisureInput = root.findViewById(R.id.SchedulingMinLeisureInput);
         pauseInput.setText(String.valueOf(SchedulingSettings.getSlotPauseMinutes(requireContext())));
         leadInput.setText(String.valueOf(SchedulingSettings.getAppointmentLeadMinutes(requireContext())));
+        maxWorkInput.setText(String.valueOf(SchedulingSettings.getMaxWorkMinutesPerDay(requireContext())));
+        minLeisureInput.setText(String.valueOf(SchedulingSettings.getMinLeisureMinutesPerDay(requireContext())));
 
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.task_schedule_dialog_title)
@@ -163,7 +169,7 @@ public class TaskScheduleConfigDialog extends DialogFragment {
                 Toast.LENGTH_SHORT).show());
     }
 
-    /** Persists the buffer fields; a blank or unparsable field keeps the stored value. */
+    /** Persists the buffer/balance fields; a blank or unparsable field keeps the stored value. */
     private void saveBufferSettings() {
         Integer pause = parseMinutes(pauseInput);
         if (pause != null) {
@@ -172,6 +178,14 @@ public class TaskScheduleConfigDialog extends DialogFragment {
         Integer lead = parseMinutes(leadInput);
         if (lead != null) {
             SchedulingSettings.setAppointmentLeadMinutes(requireContext(), lead);
+        }
+        Integer maxWork = parseMinutes(maxWorkInput);
+        if (maxWork != null) {
+            SchedulingSettings.setMaxWorkMinutesPerDay(requireContext(), maxWork);
+        }
+        Integer minLeisure = parseMinutes(minLeisureInput);
+        if (minLeisure != null) {
+            SchedulingSettings.setMinLeisureMinutesPerDay(requireContext(), minLeisure);
         }
     }
 
