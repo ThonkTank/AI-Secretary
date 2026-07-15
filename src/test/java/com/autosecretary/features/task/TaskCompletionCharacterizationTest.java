@@ -7,6 +7,8 @@ import static org.junit.Assert.assertTrue;
 
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
+import com.autosecretary.features.task.application.UndoTaskCheckOffUseCase;
+import com.autosecretary.features.task.application.internal.mutations.TaskSlotUndoMutation;
 import com.autosecretary.features.task.application.listmodel.TaskListItem;
 import com.autosecretary.features.task.application.listmodel.TaskListItemMapper;
 import com.autosecretary.features.task.domain.model.Task;
@@ -15,6 +17,7 @@ import com.autosecretary.features.task.domain.model.TaskPrefSlot;
 import com.autosecretary.features.task.domain.model.TaskSlot;
 import com.autosecretary.testing.AutoSecretaryRobolectricTest;
 import com.autosecretary.testing.CallbackProbe;
+import com.autosecretary.testing.SynchronousExecutorService;
 import com.autosecretary.testing.TaskCheckOffFixture;
 import com.autosecretary.testing.TaskFixtures;
 import com.autosecretary.testing.TestDatabases;
@@ -87,6 +90,71 @@ public final class TaskCompletionCharacterizationTest extends AutoSecretaryRobol
                 .findFirst()
                 .orElseThrow();
         assertNotEquals(LocalTime.of(10, 0), adapted.start);
+    }
+
+    /**
+     * Invariant: a task without any slot (non-repeating tasks are never auto-scheduled) can be
+     * checked off from the list — the first tap creates an ad-hoc unscheduled slot for today and
+     * starts it, the second tap completes it and records history.
+     */
+    @Test
+    public void slotlessTaskChecksOffViaAdHocSlotInvariant() {
+        LocalDate today = LocalDate.now();
+        Task oneOff = new Task();
+        oneOff.core.title = "Einmalige Aufgabe";
+        oneOff.core.created = today;
+        taskDao.write(oneOff);
+
+        CheckOffTaskUseCase useCase = createCheckOffUseCase();
+
+        CallbackProbe<Void> startProbe = new CallbackProbe<>();
+        useCase.execute(currentItem(oneOff.core.id), startProbe.runnable());
+        startProbe.assertCalled();
+
+        Task afterStart = taskDao.read(oneOff.core.id);
+        assertEquals(1, afterStart.slots.size());
+        TaskSlot adHoc = afterStart.slots.get(0);
+        assertEquals(today, adHoc.day);
+        assertEquals(false, adHoc.scheduled);
+        assertNotNull(adHoc.realStart);
+        assertEquals(false, adHoc.completed);
+
+        CallbackProbe<Void> completeProbe = new CallbackProbe<>();
+        useCase.execute(currentItem(oneOff.core.id), completeProbe.runnable());
+        completeProbe.assertCalled();
+
+        Task completed = taskDao.read(oneOff.core.id);
+        assertTrue(completed.slots.get(0).completed);
+        assertNotNull(completed.slots.get(0).realEnd);
+        assertEquals(1, completed.core.history.completions);
+    }
+
+    /**
+     * Invariant: undoing the STARTED phase of an ad-hoc check-off removes the ad-hoc slot
+     * entirely instead of leaving an empty pending slot behind.
+     */
+    @Test
+    public void undoingAdHocStartRemovesTheAdHocSlotInvariant() {
+        LocalDate today = LocalDate.now();
+        Task oneOff = new Task();
+        oneOff.core.title = "Einmalige Aufgabe";
+        oneOff.core.created = today;
+        taskDao.write(oneOff);
+
+        CheckOffTaskUseCase useCase = createCheckOffUseCase();
+        CallbackProbe<Void> startProbe = new CallbackProbe<>();
+        useCase.execute(currentItem(oneOff.core.id), startProbe.runnable());
+        startProbe.assertCalled();
+
+        SynchronousExecutorService executor = new SynchronousExecutorService();
+        UndoTaskCheckOffUseCase undoUseCase = new UndoTaskCheckOffUseCase(
+                new TaskSlotUndoMutation(taskDao, executor), executor);
+        CallbackProbe<Void> undoProbe = new CallbackProbe<>();
+        undoUseCase.execute(currentItem(oneOff.core.id), undoProbe.runnable());
+        undoProbe.assertCalled();
+
+        Task afterUndo = taskDao.read(oneOff.core.id);
+        assertTrue("the ad-hoc slot is removed on undo", afterUndo.slots.isEmpty());
     }
 
     private CheckOffTaskUseCase createCheckOffUseCase() {

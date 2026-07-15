@@ -13,7 +13,7 @@ import com.autosecretary.features.task.domain.TaskLifecycleManager;
 
 import java.time.LocalDate;
 import java.util.concurrent.Executor;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * Shared operation for toggling a task slot completion state and persisting resulting writes.
@@ -57,17 +57,22 @@ public final class TaskSlotToggleMutation {
     /**
      * Execute the two-phase slot toggle (STARTED → COMPLETED).
      *
+     * <p>When {@code slotId} is null (the task has no slot — e.g. a non-repeating task in the
+     * flat list views, which the scheduler never plans), an <em>ad-hoc</em> unscheduled slot
+     * for today is created and the same two-phase flow runs over it, so every open task can
+     * be checked off from any list view.
+     *
      * @param taskId the task UUID
-     * @param slotId the slot UUID
+     * @param slotId the slot UUID, or null to check off a task without a slot
      * @param onToggled runnable fired after successful writes (always dispatched if writes succeed)
-     * @param completedPhaseHook consumer fired only when phase is COMPLETED and writes succeed;
-     *        used for side effects like budget booking. May be null if no completion hook is needed.
+     * @param completedPhaseHook hook fired with the task and the toggled slot only when phase is
+     *        COMPLETED and writes succeed; used for side effects like budget booking. May be null.
      */
     public void execute(String taskId,
                         String slotId,
                         Runnable onToggled,
-                        Consumer<Task> completedPhaseHook) {
-        if (taskId == null || slotId == null) {
+                        BiConsumer<Task, TaskSlot> completedPhaseHook) {
+        if (taskId == null) {
             return;
         }
 
@@ -76,7 +81,7 @@ public final class TaskSlotToggleMutation {
             return;
         }
 
-        TaskSlot slot = task.findSlot(slotId);
+        TaskSlot slot = slotId != null ? task.findSlot(slotId) : createAdHocSlot(task);
         if (slot == null) {
             return;
         }
@@ -103,7 +108,7 @@ public final class TaskSlotToggleMutation {
                 return;
             }
             if (completedPhaseHook != null) {
-                completedPhaseHook.accept(task);
+                completedPhaseHook.accept(task, slot);
             }
         } else {
             // STARTED only touches the slot (set realStart), so writing just the slot
@@ -121,6 +126,19 @@ public final class TaskSlotToggleMutation {
         }
 
         callbackDispatcher.execute(onToggled);
+    }
+
+    /**
+     * Creates an unscheduled slot for today so a slotless task can run the two-phase
+     * check-off. The slot carries no planned times; only the real execution times matter.
+     */
+    private static TaskSlot createAdHocSlot(Task task) {
+        TaskSlot slot = new TaskSlot();
+        slot.taskId = task.core.id;
+        slot.day = LocalDate.now();
+        slot.scheduled = false;
+        task.slots.add(slot);
+        return slot;
     }
 
     /**

@@ -105,6 +105,9 @@ public interface TaskDao {
     void writeSlots(List<TaskSlot> slots);
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writeSlot(TaskSlot slot);
+    /** Removes a single slot; used to clean up ad-hoc check-off slots when their start is undone. */
+    @Query("DELETE FROM task_slots WHERE id = :slotId")
+    void deleteSlotById(String slotId);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void writePlannedMeals(List<TaskPlannedMeal> plannedMeals);

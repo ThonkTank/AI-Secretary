@@ -33,6 +33,9 @@ public class CheckOffTaskUseCase {
      * Second call: transitions to COMPLETED (records {@code realEnd}), then runs
      * post-completion side effects — budget expense booking and meal integration.
      *
+     * <p>Items without a slot (non-repeating tasks, which the scheduler never plans) are
+     * checked off via an ad-hoc slot for today, created by the mutation on the first call.
+     *
      * @param listItem  the task list item containing the task and slot IDs to toggle
      * @param onChanged callback dispatched on the main thread after all writes succeed
      */
@@ -41,10 +44,7 @@ public class CheckOffTaskUseCase {
                 listItem.taskId,
                 listItem.slotId,
                 onChanged,
-                task -> {
-                    TaskSlot slot = task.findSlot(listItem.slotId);
-                    completionEffects.apply(task, slot != null ? slot.day : null);
-                }
+                (task, slot) -> completionEffects.apply(task, slot != null ? slot.day : null)
         ));
     }
 }

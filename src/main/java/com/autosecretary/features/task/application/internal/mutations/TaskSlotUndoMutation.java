@@ -61,13 +61,25 @@ public final class TaskSlotUndoMutation {
             slot.realEnd = null;
             slot.completed = false;
             try {
-                taskDao.writeSlot(slot);
+                if (isAdHocSlot(slot)) {
+                    // An ad-hoc check-off slot (created for a slotless task) has no planned
+                    // times; once its start is undone it carries no information — remove it
+                    // instead of leaving an empty pending slot behind.
+                    taskDao.deleteSlotById(slot.id);
+                } else {
+                    taskDao.writeSlot(slot);
+                }
             } catch (RuntimeException e) {
                 Log.e(TAG, "Undo start write failed", e);
                 return;
             }
             callbackDispatcher.execute(onUndone);
         }
+    }
+
+    /** True for slots created ad hoc by a slotless check-off: unscheduled, no planned times. */
+    private static boolean isAdHocSlot(TaskSlot slot) {
+        return !slot.scheduled && slot.start == null && slot.end == null;
     }
 
     private void revertCompletedPhase(Task task, TaskSlot slot) {

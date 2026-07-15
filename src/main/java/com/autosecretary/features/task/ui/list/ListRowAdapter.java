@@ -634,8 +634,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         Context context = holder.itemView.getContext();
         holder.progressContainer.setVisibility(View.GONE);
 
-        boolean hasSlot = item.slotId != null;
-        boolean interactionsAllowed = interactionsEnabled && hasSlot;
+        // Slotless items are checkable too: the use case creates an ad-hoc slot for today.
+        boolean interactionsAllowed = interactionsEnabled;
         boolean stateButtonMode = item.inProgress || item.completed;
 
         if (!stateButtonMode) {
