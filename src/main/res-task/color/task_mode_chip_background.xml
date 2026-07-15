@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Background of the task list mode chips: filled primary when selected, surface otherwise. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true" android:color="@color/color_primary" />
+    <item android:color="@color/color_surface" />
+</selector>

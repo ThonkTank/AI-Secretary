@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Category section header (Manage mode). Inflated by ListRowAdapter (VIEW_TYPE_HEADER).
+     Slim, card-free row: category emoji + name + expand/collapse chevron; the whole row
+     toggles the category's expansion. -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/HeaderRowRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/spacing_xs"
+    android:minHeight="@dimen/touch_target_min"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:foreground="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:paddingStart="@dimen/spacing_xs"
+    android:paddingEnd="@dimen/spacing_xs">
+
+    <TextView
+        android:id="@+id/HeaderIcon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/spacing_sm"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Title"
+        android:visibility="gone"/>
+
+    <TextView
+        android:id="@+id/HeaderTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.SectionTitle"/>
+
+    <TextView
+        android:id="@+id/HeaderChevron"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:minWidth="@dimen/touch_target_min"
+        android:minHeight="@dimen/touch_target_min"
+        android:textAppearance="@style/TextAppearance.AutoSecretary.Task.Time.Primary"
+        android:textColor="@color/color_on_surface_emphasis"/>
+</LinearLayout>

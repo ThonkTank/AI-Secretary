@@ -5,7 +5,6 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.text.Editable;
 
-import com.autosecretary.shared.ui.SimpleButtonCheckedListener;
 import com.autosecretary.shared.ui.SimpleTextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -31,7 +30,7 @@ import com.autosecretary.features.task.ui.edit.TaskEditDialog;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModel;
 import com.autosecretary.features.task.ui.edit.TaskEditViewModelFactory;
 import com.autosecretary.shared.ui.UiConstants;
-import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
@@ -48,14 +47,18 @@ import java.util.List;
  * Main task list screen. Shows scheduled task slots for a selected day and lets the user
  * check them off, track progress, start/stop timers, and open the task editor.
  *
- * <p>Four display modes are available via a toggle:
+ * <p>Four display modes are available via a scrollable chip row:
  * <ul>
- *   <li><b>Checklist mode</b> — slots scheduled for the selected day, sorted by time.</li>
- *   <li><b>Manage mode</b> — all tasks grouped by parent-child hierarchy, with search.</li>
- *   <li><b>Urgency mode</b> — all open tasks flat, sorted by priority, then deadline.</li>
- *   <li><b>Deadline mode</b> — open one-off tasks with a deadline, nearest first, with a
+ *   <li><b>Checkliste</b> — the day's agenda: slots for the selected day, sorted by time.</li>
+ *   <li><b>Verwalten</b> — all tasks grouped under category headers, with search.</li>
+ *   <li><b>Priorität</b> — all open tasks flat, sorted by priority, then deadline.</li>
+ *   <li><b>Frist</b> — open one-off tasks with a deadline, nearest first, with a
  *       remaining-time bar.</li>
  * </ul>
+ *
+ * <p>The header shows the selected day (with prev/next chevrons) in the day-scoped modes and
+ * the mode title in the flat modes, where day navigation is hidden and the list stays
+ * interactive regardless of the selected day.</p>
  *
  * <p>See {@link TaskViewModel} for the data flow, {@link ListConfig} for mode definitions,
  * and {@code README.md} in this package for an overview.
@@ -103,8 +106,7 @@ public class TaskListFragment extends Fragment {
      * 3. LiveData observers (display list, schedule conflicts, search query sync)
      * 4. Search bar text watcher
      * 5. Action buttons (new task)
-     * 6. Day navigation (prev/next arrows, date label, interaction gate)
-     * 7. Checklist/Manage mode toggle
+     * 6. Header (headline, day chevrons) + mode chips + interaction gating
      */
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
@@ -124,8 +126,7 @@ public class TaskListFragment extends Fragment {
         View emptyStateContainer = configureEmptyState(view);
         ListRowAdapter adapter = setupList(view, emptyStateContainer, taskSearchInput);
         FloatingActionButton newTaskFab = setupCreateTaskButton(view);
-        setupDayNavigation(view, adapter, newTaskFab);
-        setupModeToggle(view, taskSearchLayout, adapter);
+        setupHeaderAndModeChips(view, taskSearchLayout, adapter, newTaskFab);
         observeSchedulingConflicts(view);
 
         // The fragment is recreated on every tab switch while the ViewModel is activity-scoped, so a
@@ -254,70 +255,114 @@ public class TaskListFragment extends Fragment {
         return newTaskFab;
     }
 
-    private void setupDayNavigation(View view, ListRowAdapter adapter, FloatingActionButton newTaskFab) {
-        ImageButton dayNavPrev = view.findViewById(R.id.NavPrev);
-        TextView dayNavLabel = view.findViewById(R.id.NavLabel);
-        ImageButton dayNavNext = view.findViewById(R.id.NavNext);
-        dayNavPrev.setContentDescription(getString(R.string.task_list_day_nav_prev_desc));
-        dayNavNext.setContentDescription(getString(R.string.task_list_day_nav_next_desc));
-        dayNavPrev.setOnClickListener(v -> vm.navigatePreviousDay());
-        dayNavNext.setOnClickListener(v -> vm.navigateNextDay());
+    /**
+     * Wires the header (headline + day chevrons), the mode chip row, and the shared
+     * interaction gate. The headline and chevrons render from the active mode and selected
+     * day via {@link #renderHeaderState}; the flat modes (Priorität/Frist) hide the chevrons
+     * and keep the list interactive regardless of the selected day.
+     */
+    private void setupHeaderAndModeChips(View view,
+                                         TextInputLayout taskSearchLayout,
+                                         ListRowAdapter adapter,
+                                         FloatingActionButton newTaskFab) {
+        TextView headerTitle = view.findViewById(R.id.TaskHeaderTitle);
+        ImageButton dayPrev = view.findViewById(R.id.TaskDayPrev);
+        ImageButton dayNext = view.findViewById(R.id.TaskDayNext);
+        ChipGroup modeChips = view.findViewById(R.id.TaskModeChips);
 
-        vm.getSelectedDay().observe(getViewLifecycleOwner(), day -> {
-            boolean isToday = day.equals(LocalDate.now());
-            dayNavLabel.setText(isToday ? getString(R.string.task_list_day_nav_today) : day.format(DateFormatters.DAY_NAV_LABEL));
-            dayNavPrev.setEnabled(!isToday);
-            dayNavPrev.setAlpha(isToday ? UiConstants.ALPHA_DISABLED : UiConstants.ALPHA_ENABLED);
+        dayPrev.setOnClickListener(v -> vm.navigatePreviousDay());
+        dayNext.setOnClickListener(v -> vm.navigateNextDay());
 
-            boolean canGoForward = day.isBefore(LocalDate.now().plusDays(TaskViewModel.MAX_DAY_OFFSET));
-            dayNavNext.setEnabled(canGoForward);
-            dayNavNext.setAlpha(canGoForward ? UiConstants.ALPHA_ENABLED : UiConstants.ALPHA_DISABLED);
+        Runnable renderHeader = () -> renderHeaderState(headerTitle, dayPrev, dayNext, adapter, newTaskFab);
 
-            if (isToday) {
-                newTaskFab.show();
-            } else {
-                newTaskFab.hide();
+        modeChips.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (checkedIds.isEmpty()) {
+                return;
             }
-            adapter.setInteractionsEnabled(isToday);
+            applyModeForChip(checkedIds.get(0));
+            taskSearchLayout.setVisibility(vm.isManageMode() ? View.VISIBLE : View.GONE);
+            adapter.setDisplayMode(vm.activeListConfig());
+            renderHeader.run();
         });
-    }
 
-    private void setupModeToggle(View view, TextInputLayout taskSearchLayout, ListRowAdapter adapter) {
-        MaterialButtonToggleGroup toggle = view.findViewById(R.id.TaskListToggle);
-        toggle.addOnButtonCheckedListener(new SimpleButtonCheckedListener() {
-            @Override
-            public void onChecked(MaterialButtonToggleGroup group, int checkedId) {
-                if (checkedId == R.id.TaskChecklistButton) {
-                    vm.applyChecklistPreset();
-                } else if (checkedId == R.id.TaskManagementButton) {
-                    vm.applyManagePreset();
-                } else if (checkedId == R.id.TaskUrgencyButton) {
-                    vm.applyUrgencyPreset();
-                } else {
-                    vm.applyDeadlinePreset();
-                }
-                taskSearchLayout.setVisibility(vm.isManageMode() ? View.VISIBLE : View.GONE);
-                adapter.setDisplayMode(vm.activeListConfig());
-            }
-        });
         // The activity-scoped ViewModel keeps its mode across fragment recreation (tab switches),
-        // while the XML default re-checks the checklist button — sync the toggle to the ViewModel.
-        toggle.check(toggleButtonIdFor(vm.activeListConfig()));
+        // while the XML default re-checks the checklist chip — sync the chips to the ViewModel.
+        modeChips.check(chipIdFor(vm.activeListConfig()));
         taskSearchLayout.setVisibility(vm.isManageMode() ? View.VISIBLE : View.GONE);
+
+        vm.getSelectedDay().observe(getViewLifecycleOwner(), day -> renderHeader.run());
+        renderHeader.run();
     }
 
-    private static int toggleButtonIdFor(ListConfig config) {
+    private void applyModeForChip(int chipId) {
+        if (chipId == R.id.TaskModeManageChip) {
+            vm.applyManagePreset();
+        } else if (chipId == R.id.TaskModeUrgencyChip) {
+            vm.applyUrgencyPreset();
+        } else if (chipId == R.id.TaskModeDeadlineChip) {
+            vm.applyDeadlinePreset();
+        } else {
+            vm.applyChecklistPreset();
+        }
+    }
+
+    private static int chipIdFor(ListConfig config) {
         switch (config) {
             case MANAGE:
-                return R.id.TaskManagementButton;
+                return R.id.TaskModeManageChip;
             case URGENCY:
-                return R.id.TaskUrgencyButton;
+                return R.id.TaskModeUrgencyChip;
             case DEADLINE:
-                return R.id.TaskDeadlineButton;
+                return R.id.TaskModeDeadlineChip;
             case CHECKLIST:
             default:
-                return R.id.TaskChecklistButton;
+                return R.id.TaskModeChecklistChip;
         }
+    }
+
+    /**
+     * Renders the header and the interaction gate from the active mode and selected day.
+     * Day-scoped modes show "Heute"/the date plus chevrons and are read-only on other days;
+     * the flat modes show their title, hide the chevrons, and stay interactive (task creation
+     * and checkoff are day-independent there).
+     */
+    private void renderHeaderState(TextView headerTitle,
+                                   ImageButton dayPrev,
+                                   ImageButton dayNext,
+                                   ListRowAdapter adapter,
+                                   FloatingActionButton newTaskFab) {
+        ListConfig config = vm.activeListConfig();
+        LocalDate day = vm.getSelectedDay().getValue();
+        boolean dayScoped = config.isDayScoped();
+        boolean isToday = day != null && day.equals(LocalDate.now());
+
+        if (!dayScoped) {
+            headerTitle.setText(config == ListConfig.URGENCY
+                    ? R.string.task_list_header_urgency
+                    : R.string.task_list_header_deadline);
+            dayPrev.setVisibility(View.GONE);
+            dayNext.setVisibility(View.GONE);
+        } else {
+            headerTitle.setText(day == null || isToday
+                    ? getString(R.string.task_list_day_nav_today)
+                    : day.format(DateFormatters.DAY_NAV_LABEL));
+            dayPrev.setVisibility(View.VISIBLE);
+            dayNext.setVisibility(View.VISIBLE);
+            dayPrev.setEnabled(!isToday);
+            dayPrev.setAlpha(isToday ? UiConstants.ALPHA_DISABLED : UiConstants.ALPHA_ENABLED);
+            boolean canGoForward = day != null
+                    && day.isBefore(LocalDate.now().plusDays(TaskViewModel.MAX_DAY_OFFSET));
+            dayNext.setEnabled(canGoForward);
+            dayNext.setAlpha(canGoForward ? UiConstants.ALPHA_ENABLED : UiConstants.ALPHA_DISABLED);
+        }
+
+        boolean interactive = !dayScoped || isToday;
+        if (interactive) {
+            newTaskFab.show();
+        } else {
+            newTaskFab.hide();
+        }
+        adapter.setInteractionsEnabled(interactive);
     }
 
     private void ensureCalendarPermission() {

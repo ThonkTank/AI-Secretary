@@ -45,10 +45,12 @@
     <string name="task_list_day_nav_today">Heute</string>
     <string name="task_list_day_nav_next">▶</string>
     <string name="task_list_day_nav_next_desc">Nächster Tag</string>
-    <string name="task_list_toggle_checklist">Checkliste</string>
-    <string name="task_list_toggle_manage">Verwalten</string>
-    <string name="task_list_toggle_urgency">Prio</string>
-    <string name="task_list_toggle_deadline">Frist</string>
+    <string name="task_list_mode_checklist">Checkliste</string>
+    <string name="task_list_mode_manage">Verwalten</string>
+    <string name="task_list_mode_urgency">Priorität</string>
+    <string name="task_list_mode_deadline">Frist</string>
+    <string name="task_list_header_urgency">Nach Priorität</string>
+    <string name="task_list_header_deadline">Nach Frist</string>
     <string name="task_list_search_hint">Aufgaben suchen</string>
     <string name="task_list_empty_title">Noch keine Aufgaben</string>
     <string name="task_list_empty_subtitle">Erstelle deine erste Aufgabe, um deinen Tagesplan zu starten</string>

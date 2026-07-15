@@ -96,4 +96,14 @@ enum ListConfig {
     boolean showsCalendarEvents() {
         return this == CHECKLIST || this == MANAGE;
     }
+
+    /**
+     * Whether this mode renders one selected day (day navigation, today-gating) — the flat
+     * modes ignore the day cursor entirely. Kept separate from {@link #showsCalendarEvents()}:
+     * the sets coincide today (calendar rows only exist where a day cursor exists), but the
+     * semantics differ.
+     */
+    boolean isDayScoped() {
+        return this == CHECKLIST || this == MANAGE;
+    }
 }

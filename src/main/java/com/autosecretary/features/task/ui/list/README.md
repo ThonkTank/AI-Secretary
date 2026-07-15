@@ -9,10 +9,10 @@ task management view. It is the primary surface a user interacts with every day.
 |---|---|
 | `TaskListFragment` | Fragment. Inflates the layout, wires views to `TaskViewModel`, forwards user interactions. |
 | `TaskViewModel` | Owns the display state. Fetches data via `TaskDataService`, applies filters and sorting, exposes `LiveData` for the Fragment. |
-| `ListRowAdapter` | RecyclerView adapter. Binds `ViewSlot` items to task or calendar row views. |
+| `ListRowAdapter` | RecyclerView adapter with two view types: agenda rows (`task_row_item.xml` — time rail + state line + two-line card, shared by task and calendar rows) and category section headers (`task_row_header_item.xml`). |
 | `TaskViewModelFactory` | `ViewModelProvider.Factory` that wires dependencies into `TaskViewModel`. Used by `AppCompositionRoot`. |
 | `TaskDescriptionDialog` | Popup dialog shown when the user taps a task title; displays title and description. |
-| `ListConfig` | Enum for the display modes (CHECKLIST / MANAGE / URGENCY / DEADLINE). Defines the filter predicate, sort comparator, and row grouping for each mode. |
+| `ListConfig` | Enum for the display modes (CHECKLIST / MANAGE / URGENCY / DEADLINE). Defines the filter predicate, sort comparator, row grouping, and day-scoping for each mode. |
 
 `state/` sub-package:
 
@@ -31,18 +31,39 @@ execution window.
 headers and sorted by title. The search bar is visible and filters by title. Each category
 header can be expanded or collapsed in place (state keyed by category id).
 
-**Urgency mode** ("Prio"): shows all open tasks day-independently as a flat list, one row
-per task, sorted by priority, then nearest deadline, then title (same order as the home
+**Urgency mode** ("Priorität"): shows all open tasks day-independently as a flat list, one
+row per task, sorted by priority, then nearest deadline, then title (same order as the home
 screen widget, via `TaskListItemComparators.BY_PRIORITY`).
 
 **Deadline mode** ("Frist"): shows all open one-off (non-repeating) tasks with a deadline,
 day-independently and flat, sorted by nearest deadline. Each row shows a remaining-time bar
 (elapsed share of the created→deadline span, `TaskListItem.deadlineElapsedPercent()`).
 
-The user switches between modes via a `MaterialButtonToggleGroup`. Switching calls the
-matching `vm.apply*Preset()`, which updates `activeListConfig` in `TaskViewModel` and
-triggers `filterList()`. Calendar events appear only in the day-scoped modes
-(Checklist/Manage).
+The user switches between modes via a horizontally scrollable single-select `ChipGroup`.
+Switching calls the matching `vm.apply*Preset()`, which updates `activeListConfig` in
+`TaskViewModel` and triggers `filterList()`. Calendar events appear only in the day-scoped
+modes (Checklist/Manage).
+
+## Header and gating
+
+The tab header shows a headline plus day chevrons: "Heute"/the formatted date in the
+day-scoped modes (`ListConfig.isDayScoped()`), the mode title ("Nach Priorität"/"Nach Frist")
+with hidden chevrons in the flat modes. `TaskListFragment.renderHeaderState()` derives the
+interaction gate from the same state: `interactive = !dayScoped || isToday` controls both the
+FAB and `ListRowAdapter.setInteractionsEnabled()` — the flat modes stay interactive
+regardless of the selected day.
+
+## Row anatomy (agenda layout)
+
+A row (`task_row_item.xml`) is: optional **time rail** (start time stacked over end time) +
+**state line** (thin vertical line tinted open/in-progress/completed/calendar — Checklist
+mode only) next to the **card** (`@id/TaskCard`), which is the single click, accessibility,
+state-background, and flash-animation target. The card has two lines: the title line
+(checkbox or state button or expand toggle + title with `maxLines=2` + compact progress
+stepper for goal tasks) and the metadata line (goal icon, time range outside Checklist mode,
+remaining-time bar in Frist mode, deadline label, streak, calendar chip), hidden when empty.
+Category headers use their own view type (`task_row_header_item.xml`): card-free icon +
+name + chevron rows that toggle the category's expansion.
 
 ## Two-phase checkoff
 

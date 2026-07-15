@@ -126,6 +126,21 @@ public final class TaskListViewModesCharacterizationTest {
     }
 
     @Test
+    public void dayScopedGatingInvariant() {
+        // Day-scoped modes render one selected day (day navigation, today-gating);
+        // the flat modes ignore the day cursor and stay interactive.
+        assertEquals(true, ListConfig.CHECKLIST.isDayScoped());
+        assertEquals(true, ListConfig.MANAGE.isDayScoped());
+        assertEquals(false, ListConfig.URGENCY.isDayScoped());
+        assertEquals(false, ListConfig.DEADLINE.isDayScoped());
+        // The sets coincide today: calendar rows only exist where a day cursor exists.
+        for (ListConfig config : ListConfig.values()) {
+            assertEquals("day scope and calendar visibility coincide for " + config,
+                    config.isDayScoped(), config.showsCalendarEvents());
+        }
+    }
+
+    @Test
     public void deadlineElapsedPercentClampsAndMarksOverdueAsFullInvariant() {
         LocalDate today = LocalDate.now();
 
