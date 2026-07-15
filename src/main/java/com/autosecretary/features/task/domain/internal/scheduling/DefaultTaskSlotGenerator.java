@@ -590,11 +590,11 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                     }
                     ChainPlacement chainBest = evaluateChainCandidates(
                             chain, startPoints, context.windowEnd(), context.occupied(), runContext, allowDisplacement);
-                    if (chainBest != null && chainBest.netScore > 0 && (dayBest == null || chainBest.netScore > dayBest.netScore)) {
+                    if (chainBest != null && chainBest.netScore > 0 && (dayBest == null || placementPreferred(chainBest, dayBest))) {
                         dayBest = chainBest;
                     }
                 }
-                if (dayBest != null && (best == null || dayBest.netScore > best.netScore)) {
+                if (dayBest != null && (best == null || placementPreferred(dayBest, best))) {
                     best = dayBest;
                     bestContext = context;
                 }
@@ -610,6 +610,34 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         if (iterations >= MAX_PLACEMENT_ITERATIONS) {
             log("[WARN] assignGlobalBestFitAcrossWindow hit safety cap of " + MAX_PLACEMENT_ITERATIONS + " iterations");
         }
+    }
+
+    /**
+     * A chain competes at the priority tier of its highest-priority member (a chain containing
+     * a HIGH prerequisite competes as HIGH).
+     */
+    private static int chainTier(List<ChainNode> chain) {
+        int tier = 0;
+        for (ChainNode node : chain) {
+            tier = Math.max(tier, node.task.core.priority.scoringWeight);
+        }
+        return tier;
+    }
+
+    /**
+     * Placement ordering for the competitive loop: priority tier first — every net-positive
+     * placement of a higher tier anywhere in the window is applied before any lower-tier one —
+     * and net score second, so within a tier the existing fit/urgency/aging competition orders
+     * placements exactly as before. This makes priority the dominant scheduling principle
+     * instead of one multiplicative factor among many.
+     */
+    private static boolean placementPreferred(ChainPlacement candidate, ChainPlacement incumbent) {
+        int candidateTier = chainTier(candidate.chain);
+        int incumbentTier = chainTier(incumbent.chain);
+        if (candidateTier != incumbentTier) {
+            return candidateTier > incumbentTier;
+        }
+        return candidate.netScore > incumbent.netScore;
     }
 
     /**
@@ -802,6 +830,20 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             starts.add(cursor);
             nodeScores.add(score);
             cursor = end;
+        }
+
+        // Tier displacement guard: a chain may never evict a slot of a strictly higher priority
+        // tier, no matter how inflated its own urgency-driven score is. Checked over the full
+        // eviction set (including atomic-group siblings pulled in by expandToFullChains).
+        // TERMIN-containing chains keep their own TERMIN-vs-TERMIN displacement semantics.
+        if (!incomingContainsFixed) {
+            int incomingTier = chainTier(chain);
+            for (DisplacementCandidate candidate : toDisplace) {
+                if (candidate.task != null
+                        && candidate.task.core.priority.scoringWeight > incomingTier) {
+                    return null;
+                }
+            }
         }
 
         gain += chain.size() * CHAIN_COMPLETION_BONUS_PER_SLOT;

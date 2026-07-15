@@ -55,8 +55,29 @@ final class TaskScorer {
     private static final double FOLLOW_UP_ADDITIVE_PER_WEIGHT = 120.0;
     private static final double FOLLOW_UP_MULTIPLIER_CAP = 1.6;
     private static final double FOLLOW_UP_ADDITIVE_CAP = 1800.0;
-    /** Urgency multiplier applied when a task's deadline has already passed. */
-    private static final double OVERDUE_URGENCY_FACTOR = 100.0;
+    /**
+     * Urgency multipliers — a capped ramp instead of a cliff, continuous at the due date.
+     *
+     * <p>With time remaining: {@code min(URGENCY_CAP, 1 + requiredDays/remainingDays)}.
+     * Overdue: {@code min(OVERDUE_URGENCY_MAX, OVERDUE_URGENCY_BASE + overdueDays × OVERDUE_URGENCY_PER_DAY)}
+     * — at {@code remainingDays == 0} the ramp starts exactly at the cap, then grows gently per
+     * overdue day. Since placement selection is priority-tier-first (see
+     * {@code DefaultTaskSlotGenerator.placementPreferred}), urgency only orders tasks
+     * <em>within</em> a tier, so these moderate magnitudes cannot invert priorities.
+     */
+    private static final double URGENCY_CAP = 10.0;
+    private static final double OVERDUE_URGENCY_BASE = 10.0;
+    private static final double OVERDUE_URGENCY_PER_DAY = 2.0;
+    private static final double OVERDUE_URGENCY_MAX = 30.0;
+    /**
+     * Mild urgency for one-off tasks without a deadline, growing with days since creation/last
+     * completion so they do not starve behind deadline-driven work:
+     * {@code min(ONE_OFF_URGENCY_CAP, 1 + sinceLast/ONE_OFF_URGENCY_SCALE_DAYS)}. Note that
+     * tasks without repetition ({@code reps == 0}) currently never pass the hard gate
+     * ({@code repsPerDay() == 0}), so this only takes effect for paths that score such tasks.
+     */
+    private static final double ONE_OFF_URGENCY_SCALE_DAYS = 14.0;
+    private static final double ONE_OFF_URGENCY_CAP = 2.5;
     /** Minimum spread factor — a task with zero day distance still receives this fraction of its score. */
     private static final double SPREAD_FLOOR = 0.1;
     /** Complementary spread range — fraction of score that scales linearly with day-distance ratio. */
@@ -428,13 +449,15 @@ final class TaskScorer {
      *   <li><b>Hard constraints</b> — returns 0 if cooldown unmet, slot too short, progress needs
      *       more time, deadline expired with closeOnMiss, already complete, or daily reps exhausted.</li>
      *   <li><b>Priority base</b> — {@code task.core.priority.scoringWeight} (LOW=100 .. CRITICAL=10000).</li>
-     *   <li><b>Child influence</b> — parent inherits the highest child priority when it exceeds its own.</li>
      *   <li><b>Day constraint</b> — returns 0 if prefSlots specify days but none match today.</li>
      *   <li><b>Preferred time fit</b> — linear decay from 1.0 at exact match to 0.0 at
      *       TaskScorer's configured preferred start deviation hours.</li>
-     *   <li><b>Urgency</b> — {@code 1 + requiredDays / remainingDays}; overdue tasks use a fixed high value.</li>
+     *   <li><b>Urgency</b> — capped ramp {@code min(cap, 1 + requiredDays / remainingDays)};
+     *       overdue tasks ramp gently per overdue day instead of jumping to a cliff value.</li>
      *   <li><b>Aging</b> — snapshot aging force, pre-computed in maintenance, capped at {@link #maxAgingMultiplier}.</li>
      * </ol>
+     * Priority dominance across tiers is enforced by the generator's tier-first placement
+     * selection, not by the score magnitude.
      */
     int score(Task task, LocalDateTime start, LocalDateTime end, String previousTaskId) {
         TaskScoringSnapshot snapshot = caches.get(task.core.id);
@@ -453,7 +476,7 @@ final class TaskScorer {
         if (totalPrio <= 0) {
             return 0;
         }
-        totalPrio = applyUrgencyMultiplier(totalPrio, context.task(), context.snapshot().urgencyState());
+        totalPrio = applyUrgencyMultiplier(totalPrio, context);
         totalPrio = applyFollowUpBoost(totalPrio, context, previousTaskId);
         return applyAgingAndSpreadModifiers(totalPrio, context);
     }
@@ -518,7 +541,7 @@ final class TaskScorer {
 
         double requiredDays = task.requiredDays();
         // isAfter is exclusive: deadline day itself is NOT expired (can still schedule),
-        // but remainingDays == 0 so applyUrgencyMultiplier will apply OVERDUE_URGENCY_FACTOR that day.
+        // but remainingDays == 0 so applyUrgencyMultiplier starts the overdue ramp that day.
         // Leisure items never "expire": a passed deadline must not exclude them from scheduling.
         boolean deadlineExpired = !task.core.leisure && task.core.closeOnMiss
                 && task.core.deadline != null && day.isAfter(task.core.deadline);
@@ -563,16 +586,25 @@ final class TaskScorer {
         );
     }
 
-    private int applyUrgencyMultiplier(int score, Task task, UrgencyState urgencyState) {
+    private int applyUrgencyMultiplier(int score, ScoringContext context) {
+        Task task = context.task();
         // Leisure items feel no urgency/deadline pressure: neutral multiplier (never 0, stays schedulable).
         if (task.core.leisure) return score;
+
+        UrgencyState urgencyState = context.snapshot().urgencyState();
+        boolean hasDeadlinePressure = task.core.deadline != null
+                || (task.core.repetition != null && task.core.repetition.reps > 0);
         double urgency;
-        if (urgencyState.remainingDays() <= 0) {
-            urgency = OVERDUE_URGENCY_FACTOR;
-        } else if (task.core.deadline != null || (task.core.repetition != null && task.core.repetition.reps > 0)) {
-            urgency = 1.0 + urgencyState.requiredDays() / urgencyState.remainingDays();
+        if (!hasDeadlinePressure) {
+            // One-off task without deadline: mild pressure growing with age so it doesn't starve.
+            urgency = Math.min(ONE_OFF_URGENCY_CAP,
+                    1.0 + context.snapshot().sinceLast() / ONE_OFF_URGENCY_SCALE_DAYS);
+        } else if (urgencyState.remainingDays() <= 0) {
+            urgency = Math.min(OVERDUE_URGENCY_MAX,
+                    OVERDUE_URGENCY_BASE + (-urgencyState.remainingDays()) * OVERDUE_URGENCY_PER_DAY);
         } else {
-            urgency = 1.0;
+            urgency = Math.min(URGENCY_CAP,
+                    1.0 + urgencyState.requiredDays() / urgencyState.remainingDays());
         }
         return (int) (score * urgency);
     }
