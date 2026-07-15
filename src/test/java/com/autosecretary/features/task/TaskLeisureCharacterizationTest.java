@@ -141,7 +141,8 @@ public final class TaskLeisureCharacterizationTest extends AutoSecretaryRobolect
                 CalendarBlockedIntervalProvider.NONE,
                 categoryWindowProvider,
                 () -> List.of(),
-                candidate -> true);
+                candidate -> true,
+                () -> com.autosecretary.features.task.domain.scheduling.SchedulingTuning.NONE);
     }
 
     private static boolean hasScheduledSlot(Task task) {

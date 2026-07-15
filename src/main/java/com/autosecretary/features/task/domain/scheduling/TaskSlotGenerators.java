@@ -4,6 +4,7 @@ import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.internal.scheduling.DefaultTaskSlotGeneratorFactory;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Public factory for creating task slot generators without exposing internal implementations.
@@ -24,6 +25,7 @@ public final class TaskSlotGenerators {
         private CategoryWindowProvider categoryWindowProvider = CategoryWindowProvider.NONE;
         private TaskTransitionStatLoader transitionStatLoader;
         private TaskBudgetEligibilityService taskBudgetEligibilityService;
+        private Supplier<SchedulingTuning> tuningSupplier = () -> SchedulingTuning.NONE;
 
         private Builder(TaskLifecycleManager lifecycleManager) {
             this.lifecycleManager = lifecycleManager;
@@ -59,6 +61,12 @@ public final class TaskSlotGenerators {
             return this;
         }
 
+        /** Buffer configuration, re-read at the start of every generation run. */
+        public Builder tuningSupplier(Supplier<SchedulingTuning> tuningSupplier) {
+            this.tuningSupplier = tuningSupplier;
+            return this;
+        }
+
         public TaskSlotGenerator build() {
             return DefaultTaskSlotGeneratorFactory.create(
                     lifecycleManager,
@@ -67,7 +75,8 @@ public final class TaskSlotGenerators {
                     calendarBlockedIntervalProvider,
                     categoryWindowProvider,
                     transitionStatLoader,
-                    taskBudgetEligibilityService
+                    taskBudgetEligibilityService,
+                    tuningSupplier
             );
         }
     }

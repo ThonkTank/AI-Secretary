@@ -3,12 +3,14 @@ package com.autosecretary.features.task.domain.internal.scheduling;
 import com.autosecretary.features.task.domain.TaskLifecycleManager;
 import com.autosecretary.features.task.domain.scheduling.CalendarBlockedIntervalProvider;
 import com.autosecretary.features.task.domain.scheduling.CategoryWindowProvider;
+import com.autosecretary.features.task.domain.scheduling.SchedulingTuning;
 import com.autosecretary.features.task.domain.scheduling.SchedulingWindowProvider;
 import com.autosecretary.features.task.domain.scheduling.TaskBudgetEligibilityService;
 import com.autosecretary.features.task.domain.scheduling.TaskSlotGenerator;
 import com.autosecretary.features.task.domain.scheduling.TaskTransitionStatLoader;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Internal construction bridge so external callers can obtain a generator without
@@ -24,7 +26,8 @@ public final class DefaultTaskSlotGeneratorFactory {
                                            CalendarBlockedIntervalProvider calendarBlockedIntervalProvider,
                                            CategoryWindowProvider categoryWindowProvider,
                                            TaskTransitionStatLoader transitionStatLoader,
-                                           TaskBudgetEligibilityService taskBudgetEligibilityService) {
+                                           TaskBudgetEligibilityService taskBudgetEligibilityService,
+                                           Supplier<SchedulingTuning> tuningSupplier) {
         return new DefaultTaskSlotGenerator(
                 lifecycleManager,
                 logger,
@@ -32,7 +35,8 @@ public final class DefaultTaskSlotGeneratorFactory {
                 calendarBlockedIntervalProvider,
                 categoryWindowProvider,
                 transitionStatLoader,
-                taskBudgetEligibilityService
+                taskBudgetEligibilityService,
+                tuningSupplier
         );
     }
 }

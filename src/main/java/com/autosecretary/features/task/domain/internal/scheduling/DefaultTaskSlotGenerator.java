@@ -6,6 +6,7 @@ import com.autosecretary.features.task.domain.model.TaskPrerequisite;
 import com.autosecretary.features.task.domain.model.TaskSlot;
 import com.autosecretary.features.task.domain.scheduling.CalendarBlockedIntervalProvider;
 import com.autosecretary.features.task.domain.scheduling.CategoryWindowProvider;
+import com.autosecretary.features.task.domain.scheduling.SchedulingTuning;
 import com.autosecretary.features.task.domain.scheduling.SchedulingWindowProvider;
 import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
 import static com.autosecretary.features.task.domain.scheduling.SchedulingConflict.ReasonCode.*;
@@ -33,6 +34,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Internal implementation of {@link TaskSlotGenerator} that assigns tasks to time slots
@@ -259,7 +261,10 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private final CategoryWindowProvider categoryWindowProvider;
     private final TaskScorer scorer;
     private final TaskTransitionStatLoader transitionStatLoader;
+    private final Supplier<SchedulingTuning> tuningSupplier;
     private SchedulingRunContext currentRunContext;
+    /** Buffer configuration for the current run; resolved once in {@link #initSchedulingRun}. */
+    private SchedulingTuning activeTuning = SchedulingTuning.NONE;
 
     private static final java.time.format.DateTimeFormatter HMM = DateFormatters.TIME_HH_MM;
 
@@ -269,7 +274,8 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                              CalendarBlockedIntervalProvider calendarBlockedIntervalProvider,
                              CategoryWindowProvider categoryWindowProvider,
                              TaskTransitionStatLoader transitionStatLoader,
-                             TaskBudgetEligibilityService taskBudgetEligibilityService) {
+                             TaskBudgetEligibilityService taskBudgetEligibilityService,
+                             Supplier<SchedulingTuning> tuningSupplier) {
         this.scorer = new TaskScorer.Builder()
                 .logger(logger)
                 .budgetEligibilityService(taskBudgetEligibilityService)
@@ -283,6 +289,7 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         this.categoryWindowProvider = categoryWindowProvider != null
                 ? categoryWindowProvider
                 : CategoryWindowProvider.NONE;
+        this.tuningSupplier = tuningSupplier != null ? tuningSupplier : () -> SchedulingTuning.NONE;
     }
 
     /**
@@ -461,6 +468,8 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     private SchedulingRunInit initSchedulingRun(List<Task> tasks, TaskPlanningState state) {
         scorer.reset();
         scorer.setTransitionStats(transitionStatLoader != null ? transitionStatLoader.load() : List.of());
+        SchedulingTuning tuning = tuningSupplier.get();
+        activeTuning = tuning != null ? tuning : SchedulingTuning.NONE;
         Map<String, Task> allTasksById = new HashMap<>();
         for (Task t : tasks) {
             allTasksById.put(t.core.id, t);
@@ -753,7 +762,9 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                 incomingContainsFixed = true;
             }
             if (i > 0) {
-                cursor = cursor.plusMinutes(node.minGapFromPrevious);
+                // The configured pause applies between chain slots too; a larger prerequisite
+                // minGap subsumes it (never additive).
+                cursor = cursor.plusMinutes(Math.max(activeTuning.slotPauseMinutes(), node.minGapFromPrevious));
             }
 
             if (hasUnmetPrerequisites(task, cursor, starts, chain, i)) {
@@ -766,7 +777,7 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                 return null;
             }
 
-            Set<OccupiedInterval> overlaps = findOverlappingIntervals(occupied, cursor, end);
+            Set<OccupiedInterval> overlaps = findOverlappingIntervalsPadded(occupied, cursor, end);
             // Additive pass (allowDisplacement=false): any overlap disqualifies the placement,
             // so the second category-window pass only fills genuinely free leftover time.
             if (!allowDisplacement && !overlaps.isEmpty()) {
@@ -1187,17 +1198,48 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
     }
 
     /**
+     * Buffer (minutes) that a movable placement must keep <em>before</em> {@code interval}:
+     * the appointment lead time before hard calendar blocks and TERMIN slots (preparation/
+     * travel), the inter-task pause before normal task slots.
+     */
+    private int bufferBeforeMinutes(OccupiedInterval interval) {
+        boolean appointment = interval.candidate == null || interval.candidate.protectedFromNormalTasks;
+        return appointment ? activeTuning.appointmentLeadMinutes() : activeTuning.slotPauseMinutes();
+    }
+
+    /**
+     * Buffer (minutes) that a movable placement must keep <em>after</em> {@code interval}:
+     * the inter-task pause after any task slot; nothing after a calendar block ends.
+     */
+    private int bufferAfterMinutes(OccupiedInterval interval) {
+        return interval.candidate != null ? activeTuning.slotPauseMinutes() : 0;
+    }
+
+    /**
      * Returns the free time intervals within {@code [windowStart, windowEnd)} that are not
-     * covered by any entry in {@code occupied}.
+     * covered by any entry in {@code occupied} — each entry expanded by its required buffers
+     * ({@link #bufferBeforeMinutes}/{@link #bufferAfterMinutes}), so gap starts land after a
+     * predecessor's pause and gaps end before an appointment's lead zone. With
+     * {@link SchedulingTuning#NONE} this degenerates to the plain raw-interval complement.
      *
      * <p><b>Precondition:</b> {@code occupied} must be sorted by {@link Interval#compareTo}
      * (start time ascending). All callers maintain this invariant via
-     * {@code occupied.sort(Interval::compareTo)} after every mutation.
+     * {@code occupied.sort(Interval::compareTo)} after every mutation. Because differing
+     * buffer sizes can reorder the <em>expanded</em> intervals, they are re-sorted locally
+     * before the sweep.
      */
     private List<Interval> findGaps(List<OccupiedInterval> occupied, LocalDateTime windowStart, LocalDateTime windowEnd) {
+        List<Interval> expanded = new ArrayList<>(occupied.size());
+        for (OccupiedInterval interval : occupied) {
+            expanded.add(new Interval(
+                    interval.start.minusMinutes(bufferBeforeMinutes(interval)),
+                    interval.end.plusMinutes(bufferAfterMinutes(interval))));
+        }
+        expanded.sort(Interval::compareTo);
+
         List<Interval> gaps = new ArrayList<>();
         LocalDateTime cursor = windowStart;
-        for (OccupiedInterval interval : occupied) {
+        for (Interval interval : expanded) {
             if (interval.start.isAfter(cursor)) {
                 gaps.add(new Interval(cursor, interval.start));
             }
@@ -1239,10 +1281,34 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
         return sorted;
     }
 
+    /**
+     * Raw overlap test on real interval bounds. Used by {@link #scheduleFixedTasks} so that
+     * back-to-back appointments (and appointments snug against calendar events) never become
+     * false conflicts — the buffers constrain movable tasks only.
+     */
     private Set<OccupiedInterval> findOverlappingIntervals(List<OccupiedInterval> occupied, LocalDateTime start, LocalDateTime end) {
         Set<OccupiedInterval> result = new HashSet<>();
         for (OccupiedInterval interval : occupied) {
             if (start.isBefore(interval.end) && end.isAfter(interval.start)) {
+                result.add(interval);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Overlap test used by the competitive loop ({@link #tryPlaceChain}): each existing interval
+     * is expanded by its required buffers, so a movable placement that would sit inside an
+     * appointment's lead zone or a neighbouring slot's pause counts as overlapping — it must
+     * either displace that neighbour (net-positive) or be rejected. The incoming interval itself
+     * stays unpadded; pauses between the chain's own slots are enforced by the cursor advance.
+     */
+    private Set<OccupiedInterval> findOverlappingIntervalsPadded(List<OccupiedInterval> occupied, LocalDateTime start, LocalDateTime end) {
+        Set<OccupiedInterval> result = new HashSet<>();
+        for (OccupiedInterval interval : occupied) {
+            LocalDateTime effectiveStart = interval.start.minusMinutes(bufferBeforeMinutes(interval));
+            LocalDateTime effectiveEnd = interval.end.plusMinutes(bufferAfterMinutes(interval));
+            if (start.isBefore(effectiveEnd) && end.isAfter(effectiveStart)) {
                 result.add(interval);
             }
         }

@@ -240,6 +240,7 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
                 .calendarBlockedIntervalProvider(new DeviceCalendarBlockedIntervalProvider(app))
                 .transitionStatLoader(transitionStatLoader)
                 .taskBudgetEligibilityService(new TaskBudgetEligibilityFromBudgetLookup(getBudgetRoomRepository()))
+                .tuningSupplier(() -> SchedulingSettings.tuning(app))
                 .build();
         TaskListItemMapper mapper = new TaskListItemMapper();
         TaskCalendarService taskCalendarService = new CalendarReader(app);

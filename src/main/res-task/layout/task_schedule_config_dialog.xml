@@ -16,6 +16,40 @@
         android:layout_marginBottom="@dimen/spacing_md"
         android:text="@string/task_scheduling_enabled_label" />
 
+    <!-- Global buffer settings: pause between task slots, lead time before appointments.
+         Persisted in SchedulingSettings on save; applied on the next regeneration. -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/spacing_sm"
+        android:hint="@string/task_scheduling_pause_label"
+        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/SchedulingPauseInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:imeOptions="actionNext"
+            style="@style/Widget.AutoSecretary.Editor.TextField" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/spacing_md"
+        android:hint="@string/task_scheduling_lead_label"
+        style="@style/Widget.AutoSecretary.Editor.TextFieldLayout">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/SchedulingLeadInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:imeOptions="actionDone"
+            style="@style/Widget.AutoSecretary.Editor.TextField" />
+    </com.google.android.material.textfield.TextInputLayout>
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">

@@ -66,7 +66,8 @@ public final class TaskSchedulingRoundtripCharacterizationTest extends AutoSecre
                 CalendarBlockedIntervalProvider.NONE,
                 com.autosecretary.features.task.domain.scheduling.CategoryWindowProvider.NONE,
                 () -> java.util.List.of(),
-                taskCandidate -> true);
+                taskCandidate -> true,
+                () -> com.autosecretary.features.task.domain.scheduling.SchedulingTuning.NONE);
         RegenerateScheduleUseCase useCase = new RegenerateScheduleUseCase(
                 taskDao,
                 generator,

@@ -17,6 +17,7 @@ import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.textfield.TextInputEditText;
 
 import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
@@ -56,6 +57,8 @@ public class TaskScheduleConfigDialog extends DialogFragment {
     private TaskScheduleConfigViewModel viewModel;
     private LinearLayout container;
     private View loadingView;
+    private TextInputEditText pauseInput;
+    private TextInputEditText leadInput;
 
     @NonNull
     @Override
@@ -78,6 +81,11 @@ public class TaskScheduleConfigDialog extends DialogFragment {
             SchedulingSettings.setSchedulingEnabled(requireContext(), checked);
             viewModel.regenerateSchedule();
         });
+
+        pauseInput = root.findViewById(R.id.SchedulingPauseInput);
+        leadInput = root.findViewById(R.id.SchedulingLeadInput);
+        pauseInput.setText(String.valueOf(SchedulingSettings.getSlotPauseMinutes(requireContext())));
+        leadInput.setText(String.valueOf(SchedulingSettings.getAppointmentLeadMinutes(requireContext())));
 
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.task_schedule_dialog_title)
@@ -146,12 +154,40 @@ public class TaskScheduleConfigDialog extends DialogFragment {
     }
 
     private void save() {
+        saveBufferSettings();
         viewModel.saveRows(new ArrayList<>(draftByDay.values()), () -> {
             Toast.makeText(requireContext(), R.string.task_schedule_saved, Toast.LENGTH_SHORT).show();
             dismiss();
         }, () -> Toast.makeText(requireContext(),
                 R.string.task_schedule_validation_error,
                 Toast.LENGTH_SHORT).show());
+    }
+
+    /** Persists the buffer fields; a blank or unparsable field keeps the stored value. */
+    private void saveBufferSettings() {
+        Integer pause = parseMinutes(pauseInput);
+        if (pause != null) {
+            SchedulingSettings.setSlotPauseMinutes(requireContext(), pause);
+        }
+        Integer lead = parseMinutes(leadInput);
+        if (lead != null) {
+            SchedulingSettings.setAppointmentLeadMinutes(requireContext(), lead);
+        }
+    }
+
+    private static Integer parseMinutes(TextInputEditText input) {
+        if (input == null || input.getText() == null) {
+            return null;
+        }
+        String text = input.getText().toString().trim();
+        if (text.isEmpty()) {
+            return null;
+        }
+        try {
+            return Math.max(0, Integer.parseInt(text));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private void updateDraftRow(DayOfWeek day, LocalTime startTime, LocalTime endTime) {
