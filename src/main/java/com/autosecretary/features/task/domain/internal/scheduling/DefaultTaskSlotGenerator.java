@@ -1215,9 +1215,49 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
                 continue;
             }
             LocalDate conflictDay = task.core.fixedDate != null ? task.core.fixedDate : startDay;
-            addConflict(task, conflictDay, NO_MATCHING_GAP,
-                    "Keine passende Lücke im Planungsfenster gefunden");
+            String blockingPrerequisiteTitle = findUnplacedPrerequisiteTitle(task, startDay, endExclusive);
+            if (blockingPrerequisiteTitle != null) {
+                addConflict(task, conflictDay, PREREQUISITE_BLOCKED,
+                        "Voraussetzung nicht eingeplant: " + blockingPrerequisiteTitle);
+            } else {
+                addConflict(task, conflictDay, NO_MATCHING_GAP,
+                        "Keine passende Lücke im Planungsfenster gefunden");
+            }
         }
+    }
+
+    /**
+     * Returns the title of a prerequisite task that is neither scheduled inside the window nor
+     * completed at any time up to the window's end — meaning the dependent task could never have
+     * been chained after it — or {@code null} when the task has no unsatisfied prerequisite.
+     * Used to report {@code PREREQUISITE_BLOCKED} instead of the generic no-gap conflict.
+     */
+    private String findUnplacedPrerequisiteTitle(Task task, LocalDate startDay, LocalDate endExclusive) {
+        if (task.prerequisites == null || task.prerequisites.isEmpty()) {
+            return null;
+        }
+        for (TaskPrerequisite prereq : task.prerequisites) {
+            Task prereqTask = currentRunContext.allTasksById.get(prereq.prerequisiteId);
+            if (prereqTask == null) {
+                continue;
+            }
+            boolean satisfied = false;
+            for (TaskSlot slot : prereqTask.slots) {
+                if (slot.day == null || !slot.day.isBefore(endExclusive)) {
+                    continue;
+                }
+                // A completion before the window satisfies the prerequisite as well;
+                // a merely scheduled slot only counts inside the window.
+                if (slot.completed || (slot.scheduled && !slot.day.isBefore(startDay))) {
+                    satisfied = true;
+                    break;
+                }
+            }
+            if (!satisfied) {
+                return prereqTask.core.title;
+            }
+        }
+        return null;
     }
 
     private void addConflict(Task task, LocalDate day, SchedulingConflict.ReasonCode reasonCode, String details) {

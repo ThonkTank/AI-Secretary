@@ -12,6 +12,7 @@ import com.autosecretary.features.task.domain.model.TaskPrerequisite;
 import com.autosecretary.features.task.domain.model.TaskSlot;
 import com.autosecretary.features.task.domain.scheduling.CalendarBlockedIntervalProvider;
 import com.autosecretary.features.task.domain.scheduling.CategoryWindowProvider;
+import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
 import com.autosecretary.features.task.domain.scheduling.SchedulingTuning;
 import com.autosecretary.features.task.domain.scheduling.SchedulingWindowProvider;
 import com.autosecretary.features.task.domain.scheduling.TaskPlanningState;
@@ -229,6 +230,31 @@ public final class TaskSchedulingBufferCharacterizationTest extends AutoSecretar
         assertTrue("second appointment is pinned back-to-back without a lead-time conflict",
                 secondAppointment.slots.stream().anyMatch(slot -> slot.scheduled));
         assertTrue("no conflicts for back-to-back appointments", result.conflicts().isEmpty());
+    }
+
+    @Test
+    public void unplacedTaskWithUnplacedPrerequisiteReportsPrerequisiteBlockedInvariant() {
+        LocalDate today = LocalDate.now();
+        // The prerequisite is too long for the window; the dependent would fit but is blocked.
+        Task tooLong = dailyTask("Zu lange Voraussetzung", today, 120);
+        Task dependent = dailyTask("Abhängig", today, 30);
+        dependent.prerequisites.add(new TaskPrerequisite(dependent.core.id, tooLong.core.id, 0));
+
+        TaskSlotGenerator generator = generator(
+                window(LocalTime.of(9, 0), LocalTime.of(10, 0)),
+                CalendarBlockedIntervalProvider.NONE,
+                SchedulingTuning.NONE);
+        TaskSlotGenerationResult result = generator.generateSlotsForWindow(
+                List.of(tooLong, dependent), today, 1, new TaskPlanningState());
+
+        assertTrue("the blocked dependent reports PREREQUISITE_BLOCKED",
+                result.conflicts().stream().anyMatch(conflict ->
+                        conflict.taskId().equals(dependent.core.id)
+                                && conflict.reasonCode() == SchedulingConflict.ReasonCode.PREREQUISITE_BLOCKED));
+        assertTrue("the unplaceable prerequisite itself reports a non-prerequisite reason",
+                result.conflicts().stream().anyMatch(conflict ->
+                        conflict.taskId().equals(tooLong.core.id)
+                                && conflict.reasonCode() == SchedulingConflict.ReasonCode.NO_MATCHING_GAP));
     }
 
     @Test
