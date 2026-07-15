@@ -75,6 +75,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
 
     // Cached resource values — resolved once in onAttachedToRecyclerView to avoid per-bind lookups.
     private int indentStepPx;
+    private int leadingControlWidthPx;
     private float rowCornerRadius;
     private int rowStrokeWidth;
     private int colorOutlineSemi;
@@ -109,6 +110,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         Context ctx = recyclerView.getContext();
         android.content.res.Resources res = ctx.getResources();
         indentStepPx = res.getDimensionPixelSize(R.dimen.task_indent_step);
+        leadingControlWidthPx = res.getDimensionPixelSize(R.dimen.touch_target_min);
         rowCornerRadius = res.getDimension(R.dimen.corner_radius_sm);
         rowStrokeWidth = (int) res.getDimension(R.dimen.editor_input_stroke_width);
         colorOutlineSemi = ContextCompat.getColor(ctx, R.color.color_outline_semi);
@@ -268,9 +270,9 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         bindDeadline(holder, item);
         bindDeadlineBar(holder, item);
         bindStreak(holder, item);
-        syncMetadataLine(holder);
         bindProgressState(holder, item);
         bindCompletionMode(holder, item, viewSlot);
+        syncMetadataLine(holder);
         bindExpandToggle(holder, viewSlot);
         bindInteractions(holder, item, viewSlot);
         holder.card.setContentDescription(buildRowContentDescription(holder.itemView.getContext(), item));
@@ -327,7 +329,11 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         holder.metaTimeRange.setVisibility(View.VISIBLE);
     }
 
-    /** Shows the metadata line only when at least one of its children is visible. */
+    /**
+     * Shows the metadata line only when at least one of its children is visible, indented to
+     * align with the title column when a leading control (checkbox/state button) is present.
+     * Must run after the completion-mode bind, which decides the leading control's visibility.
+     */
     private void syncMetadataLine(TaskRowViewHolder holder) {
         boolean anyVisible = holder.goalIcon.getVisibility() == View.VISIBLE
                 || holder.metaTimeRange.getVisibility() == View.VISIBLE
@@ -335,6 +341,13 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
                 || holder.deadlineCountdown.getVisibility() == View.VISIBLE
                 || holder.streakDisplay.getVisibility() == View.VISIBLE
                 || holder.calendarChip.getVisibility() == View.VISIBLE;
+        boolean hasLeadingControl = holder.checkBox.getVisibility() == View.VISIBLE
+                || holder.stateButton.getVisibility() == View.VISIBLE;
+        holder.metadataLine.setPaddingRelative(
+                hasLeadingControl ? leadingControlWidthPx : 0,
+                holder.metadataLine.getPaddingTop(),
+                holder.metadataLine.getPaddingEnd(),
+                holder.metadataLine.getPaddingBottom());
         holder.metadataLine.setVisibility(anyVisible ? View.VISIBLE : View.GONE);
     }
 
