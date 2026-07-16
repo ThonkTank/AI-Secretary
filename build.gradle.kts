@@ -163,11 +163,15 @@ tasks.named("check").configure {
 // APK-Dateiname für Debug-Builds, Artifact-Tasks bleiben explizit
 android.applicationVariants.all {
     if (buildType.name != "debug") return@all
+    val variant = this
     outputs.all {
         val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
         output.outputFileName = "AutoSecretary.apk"
 
         val copyTask = tasks.register("copyToRelease", Copy::class) {
+            // copyToRelease consumes the packaged APK; declare that dependency explicitly so
+            // `publishReleaseArtifact` builds the APK itself and runs as a single invocation.
+            dependsOn(variant.packageApplicationProvider)
             from(outputFile)
             into(layout.projectDirectory.dir("ops/release"))
             doLast {
