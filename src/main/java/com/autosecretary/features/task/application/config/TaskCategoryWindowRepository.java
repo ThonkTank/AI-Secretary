@@ -52,6 +52,16 @@ public class TaskCategoryWindowRepository implements CategoryWindowProvider {
         for (TaskCategoryWindow window : windows) {
             windowDao.write(window);
         }
+        invalidateCache();
+    }
+
+    /**
+     * Drops the per-weekday cache so the next {@link #windowsForDay} rebuild reflects the current
+     * rows. Call after mutating windows through a path other than {@link #saveWindows} — e.g. the
+     * assistant's {@code ApplyTaskChangesUseCase} writes/deletes windows directly via the DAO and
+     * shares this instance with the scheduler.
+     */
+    public void invalidateCache() {
         cachedByDay = null;
     }
 

@@ -59,8 +59,8 @@
 
     <!-- Scheduling conflict surfacing (shown after a schedule regeneration). -->
     <plurals name="task_schedule_conflicts_summary">
-        <item quantity="one">%d Aufgabe konnte nicht eingeplant werden</item>
-        <item quantity="other">%d Aufgaben konnten nicht eingeplant werden</item>
+        <item quantity="one">%d Aufgabe passte heute nicht mehr in den Plan</item>
+        <item quantity="other">%d Aufgaben passten heute nicht mehr in den Plan</item>
     </plurals>
     <string name="task_schedule_conflicts_details">Details</string>
     <string name="task_schedule_conflicts_title">Nicht eingeplante Aufgaben</string>
@@ -246,8 +246,11 @@
     <string name="task_row_checkbox_complete">Aufgabe abschliessen</string>
     <string name="task_row_checkbox_done">Aufgabe abgeschlossen</string>
     <string name="task_row_state_button_in_progress">Aufgabe läuft, antippen zum Abschliessen</string>
-    <string name="task_row_state_button_completed">Aufgabe abgeschlossen, lange drücken für Rückgängig</string>
-    <string name="task_row_state_button_undo">Rückgängig: Aufgabe un-erledigen</string>
+    <string name="task_row_state_button_completed">Aufgabe abgeschlossen, antippen für Details und Rückgängig</string>
+
+    <!-- Undo actions offered in the task detail popup for started/completed rows. -->
+    <string name="task_undo_revert_completion">Erledigung zurücknehmen</string>
+    <string name="task_undo_revert_start">Start zurücknehmen</string>
 
     <!-- State labels used in the composite row content description. -->
     <string name="task_row_state_pending">Ausstehend</string>

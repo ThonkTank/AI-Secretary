@@ -93,6 +93,23 @@ ListRowAdapter.setList()           ← notifyDataSetChanged(), RecyclerView redr
 The master list (`allSlots` inside `ViewSlotList`) is never modified after `fromList()`.
 Every `filterList()` call rebuilds `displaySlots` from scratch.
 
+## Re-planning (responsiveness)
+
+Re-planning no longer happens directly in the ViewModel. All schedule regeneration funnels
+through `ScheduleReplanCoordinator` (task `application/`), which coalesces requests and runs
+`RegenerateScheduleUseCase` off the main thread:
+
+- On construction, `TaskViewModel` registers a listener on the coordinator and requests one
+  re-plan (covers cold start, a new day, and inputs that changed while the app was closed).
+- Any scheduling-input change — task created/edited/deleted, an assistant apply/undo, reserved
+  category windows, per-weekday scheduling windows, buffer/tuning settings, or an external
+  device-calendar change (via a `ContentObserver` wired in `AppCompositionRoot`) — calls
+  `coordinator.requestReplan()`. The coordinator re-plans even when this tab is not visible; the
+  listener then refreshes the list once the schedule is rebuilt (`onReplanned` → `refreshList()`).
+- **Checking off, undoing, or adjusting progress do NOT re-plan** — the open day's remaining
+  plan stays stable while the user works. Started and completed slots are preserved by
+  `RegenerateScheduleUseCase` regardless, so a re-plan never replaces work in progress.
+
 ## Calendar events
 
 Calendar events appear as read-only rows in Checklist mode. They are injected after the

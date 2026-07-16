@@ -21,6 +21,7 @@ import com.autosecretary.features.task.ui.edit.TaskEditViewModel;
 import com.autosecretary.testing.AutoSecretaryRobolectricTest;
 import com.autosecretary.testing.BudgetFixtures;
 import com.autosecretary.testing.CallbackProbe;
+import com.autosecretary.testing.ReplanCoordinators;
 import com.autosecretary.testing.RobolectricDrain;
 import com.autosecretary.testing.SynchronousExecutorService;
 import com.autosecretary.testing.TaskFixtures;
@@ -73,6 +74,7 @@ public final class TaskEditReferenceDataCharacterizationTest extends AutoSecreta
                 taskDataService,
                 new TaskEditReferenceDataUseCase(taskDataService, budgetRepository),
                 new CreateDefaultTaskPrefSlotUseCase(),
+                ReplanCoordinators.inert(),
                 executor,
                 executor);
         viewModel.beginEditTask(edited.core.id, () -> { });

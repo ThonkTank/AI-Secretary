@@ -6,6 +6,7 @@ import com.autosecretary.features.task.domain.model.TaskPrefSlot;
 import com.autosecretary.features.task.ui.edit.state.PrefSlotEditState;
 import com.autosecretary.features.task.ui.edit.state.TaskEditDefaults;
 import com.autosecretary.features.task.ui.edit.state.TaskEditState;
+import com.autosecretary.shared.Period;
 
 import java.time.DayOfWeek;
 import java.util.ArrayList;
@@ -132,8 +133,10 @@ public final class TaskEditStateMapper {
         // TaskCore initializes Repetition and Progress as non-null field initializers,
         // so direct field access below is safe even for a freshly constructed TaskCore.
         task.core.repetition.reps = state.reps;
-        task.core.repetition.perPeriod = state.perPeriod;
-        task.core.repetition.periodUnit = state.periodUnit;
+        task.core.repetition.perPeriod = state.perPeriod > 0 ? state.perPeriod : 1;
+        // Never write a null period unit: it would make schedule generation NPE. Default to DAY
+        // (a reps=0 task stays non-schedulable regardless).
+        task.core.repetition.periodUnit = state.periodUnit != null ? state.periodUnit : Period.DAY;
         task.core.repetition.periodCompletions = state.periodCompletions;
         task.core.repetition.periodStart = state.periodStart;
         task.core.repetition.completeFirst = state.completeFirst;

@@ -71,7 +71,8 @@ public final class AssistantToolsWireShapeTest extends AutoSecretaryRobolectricT
                 BudgetFixtures.budgetImportRepository(db), BudgetFixtures.budgetRepository(db));
         DbCalls dbCalls = new DbCalls(exec);
         List<AssistantTool> tools = new ArrayList<>();
-        tools.addAll(new TaskTools(db.taskDao(), db.taskCategoryDao(), dbCalls).tools());
+        tools.addAll(new TaskTools(
+                db.taskDao(), db.taskCategoryDao(), db.taskCategoryWindowDao(), dbCalls).tools());
         tools.addAll(new MealTools(mealGateway, dbCalls).tools());
         tools.addAll(new BudgetTools(budgetGateway, importExecutor,
                 conversation::currentStatement, dbCalls).tools());

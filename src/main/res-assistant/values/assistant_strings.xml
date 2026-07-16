@@ -55,6 +55,19 @@
     <string name="assistant_period_day">Tag</string>
     <string name="assistant_period_week">Woche</string>
     <string name="assistant_period_month">Monat</string>
+    <!-- Reserved category window diff. %1$s category, %2$s weekday, %3$s start, %4$s end. -->
+    <string name="assistant_diff_window">Reservierung:</string>
+    <string name="assistant_diff_window_span">%1$s %2$s %3$s–%4$s</string>
+    <!-- Short weekday names, indexed by DayOfWeek (Monday first). -->
+    <string-array name="assistant_weekdays">
+        <item>Mo</item>
+        <item>Di</item>
+        <item>Mi</item>
+        <item>Do</item>
+        <item>Fr</item>
+        <item>Sa</item>
+        <item>So</item>
+    </string-array>
 
     <string-array name="assistant_models">
         <item>claude-sonnet-5</item>

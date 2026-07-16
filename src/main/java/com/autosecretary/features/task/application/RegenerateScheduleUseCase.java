@@ -1,5 +1,7 @@
 package com.autosecretary.features.task.application;
 
+import androidx.room.RoomDatabase;
+
 import com.autosecretary.features.task.domain.model.Task;
 import com.autosecretary.features.task.data.TaskDao;
 import com.autosecretary.features.task.domain.scheduling.SchedulingConflict;
@@ -38,17 +40,20 @@ public class RegenerateScheduleUseCase {
      */
     public record Result(int createdSlots, List<SchedulingConflict> conflicts) {}
 
+    private final RoomDatabase database;
     private final TaskDao taskDao;
     private final TaskSlotGenerator generator;
     private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
     private final BooleanSupplier schedulingEnabled;
 
-    public RegenerateScheduleUseCase(TaskDao taskDao,
+    public RegenerateScheduleUseCase(RoomDatabase database,
+                                     TaskDao taskDao,
                                      TaskSlotGenerator generator,
                                      ExecutorService workerExecutor,
                                      Executor callbackDispatcher,
                                      BooleanSupplier schedulingEnabled) {
+        this.database = database;
         this.taskDao = taskDao;
         this.generator = generator;
         this.workerExecutor = workerExecutor;
@@ -62,31 +67,38 @@ public class RegenerateScheduleUseCase {
                 LocalDate today = LocalDate.now();
                 LocalDate windowEnd = today.plusDays(PLANNING_DAYS);
 
-                // Remove stale slots in DB first so readAll() returns the true baseline.
-                // Preserves started/completed work; only untouched scheduled slots are regenerated.
-                taskDao.deleteRegeneratableSlotsInWindow(today, windowEnd);
+                // Delete + read + generate + write run in ONE transaction so a failure (e.g. a
+                // malformed task) rolls back the delete instead of leaving the plan wiped. The
+                // holder carries the result out of the Runnable.
+                Result[] holder = { new Result(0, Collections.emptyList()) };
+                database.runInTransaction(() -> {
+                    // Remove stale slots first so readAll() returns the true baseline.
+                    // Preserves started/completed work; only untouched scheduled slots are regenerated.
+                    taskDao.deleteRegeneratableSlotsInWindow(today, windowEnd);
 
-                // Global toggle off: leave the checklist cleared (stale slots removed above) and
-                // skip generation entirely, so daily planning can be disabled without losing data.
-                if (!schedulingEnabled.getAsBoolean()) {
-                    callbackDispatcher.execute(() -> onDone.accept(new Result(0, Collections.emptyList())));
-                    return;
-                }
+                    // Global toggle off: leave the checklist cleared (stale slots removed above) and
+                    // skip generation entirely, so daily planning can be disabled without losing data.
+                    if (!schedulingEnabled.getAsBoolean()) {
+                        return;
+                    }
 
-                List<Task> tasks = taskDao.readAll();
+                    List<Task> tasks = taskDao.readAll();
 
-                TaskPlanningState state = new TaskPlanningState();
-                generator.recordPreservedSlots(tasks, today, windowEnd, state);
+                    TaskPlanningState state = new TaskPlanningState();
+                    generator.recordPreservedSlots(tasks, today, windowEnd, state);
 
-                // Tasks are flat (grouped only by category), so no tree building is needed;
-                // the scheduler places each task independently.
-                TaskSlotGenerationResult generationResult =
-                        generator.generateSlotsForWindow(tasks, today, PLANNING_DAYS, state);
+                    // Tasks are flat (grouped only by category), so no tree building is needed;
+                    // the scheduler places each task independently.
+                    TaskSlotGenerationResult generationResult =
+                            generator.generateSlotsForWindow(tasks, today, PLANNING_DAYS, state);
 
-                taskDao.writeList(tasks);
-                Result result = new Result(generationResult.createdSlots(), generationResult.conflicts());
+                    taskDao.writeList(tasks);
+                    holder[0] = new Result(generationResult.createdSlots(), generationResult.conflicts());
+                });
+                Result result = holder[0];
                 callbackDispatcher.execute(() -> onDone.accept(result));
             } catch (Exception e) {
+                // Transaction rolled back — the previous plan is intact. Report an empty run.
                 Log.e("RegenerateSchedule", "Schedule regeneration failed", e);
                 callbackDispatcher.execute(() -> onDone.accept(new Result(0, Collections.emptyList())));
             }

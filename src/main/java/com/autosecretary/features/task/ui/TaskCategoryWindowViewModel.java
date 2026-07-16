@@ -2,6 +2,7 @@ package com.autosecretary.features.task.ui;
 
 import androidx.lifecycle.ViewModel;
 
+import com.autosecretary.features.task.application.ScheduleReplanCoordinator;
 import com.autosecretary.features.task.application.config.TaskCategoryRepository;
 import com.autosecretary.features.task.application.config.TaskCategoryWindowRepository;
 import com.autosecretary.features.task.domain.model.TaskCategory;
@@ -20,16 +21,19 @@ public class TaskCategoryWindowViewModel extends ViewModel {
 
     private final TaskCategoryWindowRepository windowRepository;
     private final TaskCategoryRepository categoryRepository;
+    private final ScheduleReplanCoordinator scheduleReplanCoordinator;
     private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
 
     public TaskCategoryWindowViewModel(
             TaskCategoryWindowRepository windowRepository,
             TaskCategoryRepository categoryRepository,
+            ScheduleReplanCoordinator scheduleReplanCoordinator,
             ExecutorService workerExecutor,
             Executor callbackDispatcher) {
         this.windowRepository = windowRepository;
         this.categoryRepository = categoryRepository;
+        this.scheduleReplanCoordinator = scheduleReplanCoordinator;
         this.workerExecutor = workerExecutor;
         this.callbackDispatcher = callbackDispatcher;
     }
@@ -46,6 +50,8 @@ public class TaskCategoryWindowViewModel extends ViewModel {
     public void save(List<TaskCategoryWindow> windows, List<String> deletedIds, Runnable onSaved) {
         workerExecutor.execute(() -> {
             windowRepository.saveWindows(windows, deletedIds);
+            // Reserved category windows are a scheduler input — re-plan so placements respect them.
+            scheduleReplanCoordinator.requestReplan();
             callbackDispatcher.execute(onSaved);
         });
     }

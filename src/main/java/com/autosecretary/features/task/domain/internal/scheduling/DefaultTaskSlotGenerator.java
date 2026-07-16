@@ -1204,6 +1204,13 @@ final class DefaultTaskSlotGenerator implements TaskSlotGenerator {
             if (task.core == null || task.core.id == null || task.core.completed) {
                 continue;
             }
+            // Only tasks that are schedulable in principle can be a genuine "couldn't place"
+            // conflict. reps==0 one-offs and invalid repetitions have repsPerDay()==0 and are never
+            // auto-scheduled (they live in Manage/priority views), so they must not inflate the
+            // unplaced-tasks report — otherwise the count conflates "not schedulable" with "no room".
+            if (task.core.repetition == null || task.core.repetition.repsPerDay() == 0) {
+                continue;
+            }
             boolean hasWindowSlot = false;
             for (TaskSlot slot : task.slots) {
                 if (slot.day != null && !slot.day.isBefore(startDay) && slot.day.isBefore(endExclusive) && slot.scheduled) {

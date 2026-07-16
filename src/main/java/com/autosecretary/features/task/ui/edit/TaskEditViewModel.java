@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.autosecretary.features.task.application.ScheduleReplanCoordinator;
 import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.edit.CreateDefaultTaskPrefSlotUseCase;
 import com.autosecretary.features.task.application.edit.TaskEditReferenceData;
@@ -23,6 +24,7 @@ public class TaskEditViewModel extends ViewModel {
     private final TaskDataService taskDataService;
     private final TaskEditReferenceDataUseCase referenceDataUseCase;
     private final CreateDefaultTaskPrefSlotUseCase createDefaultTaskPrefSlotUseCase;
+    private final ScheduleReplanCoordinator scheduleReplanCoordinator;
     private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
 
@@ -35,11 +37,13 @@ public class TaskEditViewModel extends ViewModel {
             TaskDataService taskDataService,
             TaskEditReferenceDataUseCase referenceDataUseCase,
             CreateDefaultTaskPrefSlotUseCase createDefaultTaskPrefSlotUseCase,
+            ScheduleReplanCoordinator scheduleReplanCoordinator,
             ExecutorService workerExecutor,
             Executor callbackDispatcher) {
         this.taskDataService = taskDataService;
         this.referenceDataUseCase = referenceDataUseCase;
         this.createDefaultTaskPrefSlotUseCase = createDefaultTaskPrefSlotUseCase;
+        this.scheduleReplanCoordinator = scheduleReplanCoordinator;
         this.workerExecutor = workerExecutor;
         this.callbackDispatcher = callbackDispatcher;
     }
@@ -109,6 +113,8 @@ public class TaskEditViewModel extends ViewModel {
         taskDataService.saveTask(mappedTask, () -> {
             isNewTask.postValue(false);
             incrementChangeVersion();
+            // A changed task set changes what should be planned — re-plan (started/completed work is kept).
+            scheduleReplanCoordinator.requestReplan();
         });
     }
 
@@ -116,6 +122,7 @@ public class TaskEditViewModel extends ViewModel {
         String taskId = requireSelectedBaseTask().core.id;
         taskDataService.deleteTask(taskId, () -> {
             incrementChangeVersion();
+            scheduleReplanCoordinator.requestReplan();
             if (onDeleted != null) {
                 onDeleted.run();
             }

@@ -10,6 +10,7 @@ import com.autosecretary.shared.WidgetRefreshNotifier;
 import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
+import com.autosecretary.features.task.application.ScheduleReplanCoordinator;
 import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.UndoTaskCheckOffUseCase;
 import com.autosecretary.features.task.application.calendar.ScheduleWindow;
@@ -56,8 +57,12 @@ public class TaskViewModel extends ViewModel {
     private final TaskDataService taskDataService;
     private final CheckOffTaskUseCase checkOffTaskUseCase;
     private final UndoTaskCheckOffUseCase undoTaskCheckOffUseCase;
-    /** Fires once during construction to auto-generate today's schedule. */
-    private final RegenerateScheduleUseCase regenerateScheduleUseCase;
+    /**
+     * Coalescing re-plan channel. The VM requests one re-plan on construction (cold start / no plan)
+     * and registers {@link #replanListener} so any later input change — from this or another tab —
+     * refreshes the list once the schedule is rebuilt.
+     */
+    private final ScheduleReplanCoordinator scheduleReplanCoordinator;
     private final AdjustTaskProgressUseCase adjustTaskProgressUseCase;
     private final TaskCalendarService taskCalendarService;
     private final TaskScheduleConfigRepository scheduleConfigRepository;
@@ -83,10 +88,13 @@ public class TaskViewModel extends ViewModel {
     /** The day for which cachedCalendarSlots was fetched; null means cache is invalid. */
     private LocalDate cachedCalendarDay = null;
 
+    /** Stable reference so {@link ScheduleReplanCoordinator#clearListener} matches on {@link #onCleared()}. */
+    private final java.util.function.Consumer<RegenerateScheduleUseCase.Result> replanListener = this::onReplanned;
+
     public TaskViewModel(TaskDataService taskDataService,
                          CheckOffTaskUseCase checkOffTaskUseCase,
                          UndoTaskCheckOffUseCase undoTaskCheckOffUseCase,
-                         RegenerateScheduleUseCase regenerateScheduleUseCase,
+                         ScheduleReplanCoordinator scheduleReplanCoordinator,
                          AdjustTaskProgressUseCase adjustTaskProgressUseCase,
                          TaskCalendarService taskCalendarService,
                          TaskScheduleConfigRepository scheduleConfigRepository,
@@ -94,32 +102,37 @@ public class TaskViewModel extends ViewModel {
         this.taskDataService = taskDataService;
         this.checkOffTaskUseCase = checkOffTaskUseCase;
         this.undoTaskCheckOffUseCase = undoTaskCheckOffUseCase;
-        this.regenerateScheduleUseCase = regenerateScheduleUseCase;
+        this.scheduleReplanCoordinator = scheduleReplanCoordinator;
         this.adjustTaskProgressUseCase = adjustTaskProgressUseCase;
         this.taskCalendarService = taskCalendarService;
         this.scheduleConfigRepository = scheduleConfigRepository;
         this.widgetRefreshNotifier = widgetRefreshNotifier;
 
         this.masterList = new ViewSlotList();
-        // Show existing data immediately while regeneration runs in background.
+        // Show existing data immediately while re-planning runs in the background.
         refreshList();
-        // Auto-regenerate on ViewModel creation (once per Activity lifecycle).
-        // Previously triggered by the manual "Generieren" button.
-        regenerateAndLoad();
+        // Listen for any re-plan (from this or another tab) so the list refreshes when the schedule
+        // changes, then request one now to cover cold start / a new day / inputs changed while closed.
+        scheduleReplanCoordinator.setListener(replanListener);
+        scheduleReplanCoordinator.requestReplan();
     }
 
-    /** Regenerates the daily schedule and refreshes the display list on completion. */
-    private void regenerateAndLoad() {
-        regenerateScheduleUseCase.execute(result -> {
-            List<SchedulingConflict> conflicts = result.conflicts();
-            if (!conflicts.isEmpty()) {
-                for (SchedulingConflict c : conflicts) {
-                    Log.w("TaskScheduleConflict", c.toString());
-                }
+    /** Coordinator callback after each re-plan: surfaces conflicts and refreshes the display list. */
+    private void onReplanned(RegenerateScheduleUseCase.Result result) {
+        List<SchedulingConflict> conflicts = result.conflicts();
+        if (!conflicts.isEmpty()) {
+            for (SchedulingConflict c : conflicts) {
+                Log.w("TaskScheduleConflict", c.toString());
             }
-            schedulingConflicts.postValue(conflicts);
-            refreshList();
-        });
+        }
+        schedulingConflicts.postValue(conflicts);
+        refreshList();
+    }
+
+    @Override
+    protected void onCleared() {
+        scheduleReplanCoordinator.clearListener(replanListener);
+        super.onCleared();
     }
 
     public LiveData<List<ViewSlot>> getList() {

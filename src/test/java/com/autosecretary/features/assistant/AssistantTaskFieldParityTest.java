@@ -41,6 +41,7 @@ import com.autosecretary.shared.ClaudeModelStore;
 import com.autosecretary.shared.Period;
 import com.autosecretary.testing.AutoSecretaryRobolectricTest;
 import com.autosecretary.testing.BudgetFixtures;
+import com.autosecretary.testing.ReplanCoordinators;
 import com.autosecretary.testing.SynchronousExecutorService;
 import com.autosecretary.testing.TestDatabases;
 
@@ -85,7 +86,9 @@ public final class AssistantTaskFieldParityTest extends AutoSecretaryRobolectric
                 BudgetFixtures.budgetImportRepository(db), BudgetFixtures.budgetRepository(db));
         ApplyTaskChangesUseCase applyUseCase = new ApplyTaskChangesUseCase(
                 db, db.taskDao(), db.taskCategoryDao(), db.taskCategoryWindowDao(),
-                new TaskChangeUndoHolder(), exec, exec);
+                new com.autosecretary.features.task.application.config.TaskCategoryWindowRepository(
+                        db.taskCategoryWindowDao(), db.taskCategoryDao()),
+                new TaskChangeUndoHolder(), ReplanCoordinators.inert(), exec, exec);
         confirmUseCase = new ConfirmAssistantProposalUseCase(applyUseCase, mealGateway, importExecutor, exec, exec);
     }
 
@@ -279,7 +282,8 @@ public final class AssistantTaskFieldParityTest extends AutoSecretaryRobolectric
                 BudgetFixtures.budgetImportRepository(db), BudgetFixtures.budgetRepository(db));
         DbCalls dbCalls = new DbCalls(exec);
         List<AssistantTool> tools = new ArrayList<>();
-        tools.addAll(new TaskTools(db.taskDao(), db.taskCategoryDao(), dbCalls).tools());
+        tools.addAll(new TaskTools(
+                db.taskDao(), db.taskCategoryDao(), db.taskCategoryWindowDao(), dbCalls).tools());
         tools.addAll(new MealTools(mealGateway, dbCalls).tools());
         tools.addAll(new BudgetTools(budgetGateway, importExecutor,
                 conversation::currentStatement, dbCalls).tools());

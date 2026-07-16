@@ -80,7 +80,8 @@ public class ConfirmAssistantProposalUseCase {
     }
 
     private static String taskSummary(TaskChangesProposal task) {
-        int count = task.proposal().categoryChanges().size() + task.proposal().taskChanges().size();
+        int count = task.proposal().categoryChanges().size() + task.proposal().taskChanges().size()
+                + task.proposal().windowChanges().size();
         return count + " Änderung(en) übernommen.";
     }
 }

@@ -110,7 +110,7 @@ import com.autosecretary.features.task.data.TaskTransitionStatDao;
                 MealCookingPreferencesEntity.class,
                 MealWeeklyFoodTargetEntity.class
         },
-        version = 29,
+        version = 30,
         exportSchema = false
 )
 @TypeConverters(Converters.class)
@@ -318,6 +318,20 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    /**
+     * Heals tasks whose repetition period unit is missing. The assistant omits {@code periodUnit}
+     * for one-off tasks, which persisted as NULL and made schedule generation crash
+     * ({@code Repetition.periodInDays()} dereferenced it). DAY is the safe default: a reps=0 task
+     * stays non-schedulable, and a repeating task whose unit was lost becomes schedulable again.
+     */
+    public static final Migration MIGRATION_29_30 = new Migration(29, 30) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                    "UPDATE task_core SET repetition_periodUnit = 'DAY' WHERE repetition_periodUnit IS NULL");
+        }
+    };
+
     public abstract TaskDao taskDao();
 
     public abstract TaskCategoryDao taskCategoryDao();
@@ -379,6 +393,7 @@ public abstract class AppDatabase extends RoomDatabase {
                     .addMigrations(MIGRATION_26_27)
                     .addMigrations(MIGRATION_27_28)
                     .addMigrations(MIGRATION_28_29)
+                    .addMigrations(MIGRATION_29_30)
                     .build();
         }
         return instance;

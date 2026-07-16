@@ -156,7 +156,7 @@ public final class TaskPriorityDominanceCharacterizationTest extends AutoSecreta
                 candidate -> true,
                 () -> SchedulingTuning.NONE);
         RegenerateScheduleUseCase useCase = new RegenerateScheduleUseCase(
-                taskDao, generator, executor, executor, () -> true);
+                db, taskDao, generator, executor, executor, () -> true);
 
         CallbackProbe<RegenerateScheduleUseCase.Result> probe = new CallbackProbe<>();
         useCase.execute(probe.consumer());

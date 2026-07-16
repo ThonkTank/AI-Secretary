@@ -12,6 +12,7 @@ import com.autosecretary.features.meal.data.repository.MealRoomRepository;
 import com.autosecretary.features.meal.domain.Recipe;
 import com.autosecretary.features.task.application.ApplyTaskChangesUseCase;
 import com.autosecretary.features.task.application.TaskChangeUndoHolder;
+import com.autosecretary.features.task.application.config.TaskCategoryWindowRepository;
 import com.autosecretary.features.assistant.application.AssistantProposals.RecipesProposal;
 import com.autosecretary.features.assistant.application.AssistantProposals.TaskChangesProposal;
 import com.autosecretary.features.assistant.application.AssistantProposals.TransactionDraft;
@@ -26,6 +27,7 @@ import com.autosecretary.features.task.domain.assistant.TaskSnapshot;
 import com.autosecretary.shared.Priority;
 import com.autosecretary.testing.AutoSecretaryRobolectricTest;
 import com.autosecretary.testing.BudgetFixtures;
+import com.autosecretary.testing.ReplanCoordinators;
 import com.autosecretary.testing.SynchronousExecutorService;
 import com.autosecretary.testing.TestDatabases;
 
@@ -64,8 +66,11 @@ public final class AssistantProposalConfirmTest extends AutoSecretaryRobolectric
         BudgetImportRoomRepository importRepo = BudgetFixtures.budgetImportRepository(db);
         importExecutor = new AssistantTransactionImportExecutor(importRepo, budgetRepo);
         undoHolder = new TaskChangeUndoHolder();
+        TaskCategoryWindowRepository windowRepository =
+                new TaskCategoryWindowRepository(db.taskCategoryWindowDao(), db.taskCategoryDao());
         ApplyTaskChangesUseCase applyUseCase = new ApplyTaskChangesUseCase(
-                db, db.taskDao(), db.taskCategoryDao(), db.taskCategoryWindowDao(), undoHolder, exec, exec);
+                db, db.taskDao(), db.taskCategoryDao(), db.taskCategoryWindowDao(), windowRepository,
+                undoHolder, ReplanCoordinators.inert(), exec, exec);
         confirmUseCase = new ConfirmAssistantProposalUseCase(applyUseCase, mealGateway, importExecutor, exec, exec);
     }
 

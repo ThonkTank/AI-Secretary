@@ -8,8 +8,10 @@ import static org.junit.Assert.assertTrue;
 
 import com.autosecretary.database.AppDatabase;
 import com.autosecretary.features.task.application.ApplyTaskChangesUseCase;
+import com.autosecretary.features.task.application.ScheduleReplanCoordinator;
 import com.autosecretary.features.task.application.TaskChangeUndoHolder;
 import com.autosecretary.features.task.application.UndoTaskChangesUseCase;
+import com.autosecretary.features.task.application.config.TaskCategoryWindowRepository;
 import com.autosecretary.features.task.data.TaskCategoryDao;
 import com.autosecretary.features.task.data.TaskCategoryWindowDao;
 import com.autosecretary.features.task.data.TaskDao;
@@ -22,6 +24,7 @@ import com.autosecretary.features.task.domain.model.TaskCategory;
 import com.autosecretary.features.task.domain.model.TaskCategoryWindow;
 import com.autosecretary.shared.Priority;
 import com.autosecretary.testing.AutoSecretaryRobolectricTest;
+import com.autosecretary.testing.ReplanCoordinators;
 import com.autosecretary.testing.SynchronousExecutorService;
 import com.autosecretary.testing.TestDatabases;
 
@@ -51,9 +54,14 @@ public final class AssistantApplyUndoCharacterizationTest extends AutoSecretaryR
         categoryDao = db.taskCategoryDao();
         windowDao = db.taskCategoryWindowDao();
         undoHolder = new TaskChangeUndoHolder();
+        TaskCategoryWindowRepository windowRepository =
+                new TaskCategoryWindowRepository(windowDao, categoryDao);
         SynchronousExecutorService exec = new SynchronousExecutorService();
-        applyUseCase = new ApplyTaskChangesUseCase(db, taskDao, categoryDao, windowDao, undoHolder, exec, exec);
-        undoUseCase = new UndoTaskChangesUseCase(db, taskDao, categoryDao, windowDao, undoHolder, exec, exec);
+        ScheduleReplanCoordinator replan = ReplanCoordinators.inert();
+        applyUseCase = new ApplyTaskChangesUseCase(
+                db, taskDao, categoryDao, windowDao, windowRepository, undoHolder, replan, exec, exec);
+        undoUseCase = new UndoTaskChangesUseCase(
+                db, taskDao, categoryDao, windowDao, windowRepository, undoHolder, replan, exec, exec);
     }
 
     @After
@@ -95,7 +103,7 @@ public final class AssistantApplyUndoCharacterizationTest extends AutoSecretaryR
         // Apply #1: rename t1, create a second task.
         applyOk(new TaskAssistantProposal(List.of(), List.of(
                 new TaskChange(ChangeOp.UPDATE, "t1", "Neu", null, null, null, null),
-                new TaskChange(ChangeOp.CREATE, null, "Zweite", null, "c1", Priority.HIGH, null))));
+                new TaskChange(ChangeOp.CREATE, null, "Zweite", null, "Arbeit", Priority.HIGH, null))));
         assertEquals("Neu", taskDao.read("t1").core.title);
         assertEquals(2, taskDao.readAll().size());
 

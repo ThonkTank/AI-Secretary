@@ -9,6 +9,7 @@ import com.autosecretary.features.task.domain.model.TaskSlot;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.concurrent.Executor;
 
 /**
@@ -29,8 +30,13 @@ public final class TaskSlotUndoMutation {
         this.callbackDispatcher = callbackDispatcher;
     }
 
+    /**
+     * Reverts one check-off phase. When {@code slotId} is null (e.g. the undo snackbar after an
+     * ad-hoc check-off, whose list item predates the created slot), the most recently
+     * checked-off slot of the task is reverted instead.
+     */
     public void execute(String taskId, String slotId, Runnable onUndone) {
-        if (taskId == null || slotId == null) {
+        if (taskId == null) {
             return;
         }
 
@@ -39,7 +45,7 @@ public final class TaskSlotUndoMutation {
             return;
         }
 
-        TaskSlot slot = task.findSlot(slotId);
+        TaskSlot slot = slotId != null ? task.findSlot(slotId) : findLatestCheckedOffSlot(task);
         if (slot == null) {
             return;
         }
@@ -80,6 +86,18 @@ public final class TaskSlotUndoMutation {
     /** True for slots created ad hoc by a slotless check-off: unscheduled, no planned times. */
     private static boolean isAdHocSlot(TaskSlot slot) {
         return !slot.scheduled && slot.start == null && slot.end == null;
+    }
+
+    /** The task's most recently checked-off slot (started or completed): latest day, then latest start. */
+    private static TaskSlot findLatestCheckedOffSlot(Task task) {
+        return task.slots.stream()
+                .filter(slot -> slot.realStart != null || slot.completed)
+                .max(Comparator
+                        .comparing((TaskSlot slot) -> slot.day,
+                                Comparator.nullsFirst(Comparator.naturalOrder()))
+                        .thenComparing(slot -> slot.realStart,
+                                Comparator.nullsFirst(Comparator.naturalOrder())))
+                .orElse(null);
     }
 
     private void revertCompletedPhase(Task task, TaskSlot slot) {

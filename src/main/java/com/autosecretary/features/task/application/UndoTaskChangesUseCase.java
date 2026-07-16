@@ -2,6 +2,7 @@ package com.autosecretary.features.task.application;
 
 import androidx.room.RoomDatabase;
 
+import com.autosecretary.features.task.application.config.TaskCategoryWindowRepository;
 import com.autosecretary.features.task.data.TaskCategoryDao;
 import com.autosecretary.features.task.data.TaskCategoryWindowDao;
 import com.autosecretary.features.task.data.TaskDao;
@@ -24,7 +25,9 @@ public class UndoTaskChangesUseCase {
     private final TaskDao taskDao;
     private final TaskCategoryDao categoryDao;
     private final TaskCategoryWindowDao windowDao;
+    private final TaskCategoryWindowRepository windowRepository;
     private final TaskChangeUndoHolder undoHolder;
+    private final ScheduleReplanCoordinator scheduleReplanCoordinator;
     private final ExecutorService dbExecutor;
     private final Executor callbackDispatcher;
 
@@ -32,14 +35,18 @@ public class UndoTaskChangesUseCase {
                                   TaskDao taskDao,
                                   TaskCategoryDao categoryDao,
                                   TaskCategoryWindowDao windowDao,
+                                  TaskCategoryWindowRepository windowRepository,
                                   TaskChangeUndoHolder undoHolder,
+                                  ScheduleReplanCoordinator scheduleReplanCoordinator,
                                   ExecutorService dbExecutor,
                                   Executor callbackDispatcher) {
         this.database = database;
         this.taskDao = taskDao;
         this.categoryDao = categoryDao;
         this.windowDao = windowDao;
+        this.windowRepository = windowRepository;
         this.undoHolder = undoHolder;
+        this.scheduleReplanCoordinator = scheduleReplanCoordinator;
         this.dbExecutor = dbExecutor;
         this.callbackDispatcher = callbackDispatcher;
     }
@@ -57,6 +64,10 @@ public class UndoTaskChangesUseCase {
                 return;
             }
             database.runInTransaction(() -> restore(snapshot));
+            // The scheduler shares the window repository's cache; refresh it after the restore.
+            windowRepository.invalidateCache();
+            // Restoring tasks/windows changes the scheduling inputs — re-plan to match.
+            scheduleReplanCoordinator.requestReplan();
             callbackDispatcher.execute(() -> onDone.accept(true));
         });
     }
@@ -70,6 +81,9 @@ public class UndoTaskChangesUseCase {
             categoryDao.clearCategoryFromTasks(categoryId);
             windowDao.deleteByCategory(categoryId);
             categoryDao.delete(categoryId);
+        }
+        for (String windowId : snapshot.createdWindowIds()) {
+            windowDao.delete(windowId);
         }
         // Restore prior categories/windows first, then tasks (recreates deleted rows, reverts updates,
         // and restores categoryIds that were cascade-cleared when a category was deleted).

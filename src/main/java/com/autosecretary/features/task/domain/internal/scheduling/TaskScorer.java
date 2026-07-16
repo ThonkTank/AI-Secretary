@@ -426,7 +426,7 @@ final class TaskScorer {
         int totalRepsInPeriod;
         double expectedDayGap;
 
-        if (rep != null && rep.reps > 0) {
+        if (rep != null && rep.reps > 0 && rep.periodInDays() > 0) {
             int periodsInWindow = Math.max(1, (int) Math.ceil((double) SCHEDULING_WINDOW_DAYS / rep.periodInDays()));
             totalRepsInPeriod = rep.reps * periodsInWindow;
             expectedDayGap = (double) rep.periodInDays() / rep.reps;
@@ -493,7 +493,11 @@ final class TaskScorer {
         }
 
         if (context.snapshot().completionState().scheduledToday() >= context.snapshot().repsPerDay()) return false;
-        if (context.snapshot().sinceLast() < context.task().core.cooldown) return false;
+        // Cooldown is the minimum spacing *between completions*; with no completion yet there is
+        // nothing to space from. A never-completed task must be schedulable regardless of cooldown
+        // (otherwise a fresh weekly task with cooldown=7 stays unschedulable for its first 6 days).
+        if (context.snapshot().completionState().completions() > 0
+                && context.snapshot().sinceLast() < context.task().core.cooldown) return false;
 
         MultiDayStateSnapshot multiDay = context.snapshot().multiDayStateSnapshot();
         if (multiDay.minDayDistance() > 0
@@ -543,7 +547,11 @@ final class TaskScorer {
         // isAfter is exclusive: deadline day itself is NOT expired (can still schedule),
         // but remainingDays == 0 so applyUrgencyMultiplier starts the overdue ramp that day.
         // Leisure items never "expire": a passed deadline must not exclude them from scheduling.
-        boolean deadlineExpired = !task.core.leisure && task.core.closeOnMiss
+        // Recurring tasks never "expire" either: a repeating task rolls with its period, so a passed
+        // (often stale) deadline must not permanently exclude it — the deadline still drives urgency
+        // via remainingDays above. Only genuine one-off tasks hard-expire on a missed deadline.
+        boolean oneOff = rep == null || rep.reps <= 0;
+        boolean deadlineExpired = oneOff && !task.core.leisure && task.core.closeOnMiss
                 && task.core.deadline != null && day.isAfter(task.core.deadline);
         return new UrgencyState(remainingDays, requiredDays, deadlineExpired);
     }

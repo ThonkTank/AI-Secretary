@@ -69,6 +69,7 @@ public final class TaskSchedulingRoundtripCharacterizationTest extends AutoSecre
                 taskCandidate -> true,
                 () -> com.autosecretary.features.task.domain.scheduling.SchedulingTuning.NONE);
         RegenerateScheduleUseCase useCase = new RegenerateScheduleUseCase(
+                db,
                 taskDao,
                 generator,
                 executor,

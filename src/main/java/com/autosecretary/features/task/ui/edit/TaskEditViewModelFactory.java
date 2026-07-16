@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.autosecretary.features.task.application.ScheduleReplanCoordinator;
 import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.edit.CreateDefaultTaskPrefSlotUseCase;
 import com.autosecretary.features.task.application.edit.TaskEditReferenceDataUseCase;
@@ -15,6 +16,7 @@ public class TaskEditViewModelFactory implements ViewModelProvider.Factory {
     private final TaskDataService taskDataService;
     private final TaskEditReferenceDataUseCase referenceDataUseCase;
     private final CreateDefaultTaskPrefSlotUseCase createDefaultTaskPrefSlotUseCase;
+    private final ScheduleReplanCoordinator scheduleReplanCoordinator;
     private final ExecutorService workerExecutor;
     private final Executor callbackDispatcher;
 
@@ -22,11 +24,13 @@ public class TaskEditViewModelFactory implements ViewModelProvider.Factory {
             TaskDataService taskDataService,
             TaskEditReferenceDataUseCase referenceDataUseCase,
             CreateDefaultTaskPrefSlotUseCase createDefaultTaskPrefSlotUseCase,
+            ScheduleReplanCoordinator scheduleReplanCoordinator,
             ExecutorService workerExecutor,
             Executor callbackDispatcher) {
         this.taskDataService = taskDataService;
         this.referenceDataUseCase = referenceDataUseCase;
         this.createDefaultTaskPrefSlotUseCase = createDefaultTaskPrefSlotUseCase;
+        this.scheduleReplanCoordinator = scheduleReplanCoordinator;
         this.workerExecutor = workerExecutor;
         this.callbackDispatcher = callbackDispatcher;
     }
@@ -40,6 +44,7 @@ public class TaskEditViewModelFactory implements ViewModelProvider.Factory {
                     taskDataService,
                     referenceDataUseCase,
                     createDefaultTaskPrefSlotUseCase,
+                    scheduleReplanCoordinator,
                     workerExecutor,
                     callbackDispatcher
             );

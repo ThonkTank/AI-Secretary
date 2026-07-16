@@ -126,12 +126,29 @@ public class TaskCore {
 
         public int remainingReps() {return reps - periodCompletions;}
 
-        public int perPeriod;
-        public Period periodUnit;
-        public int periodInDays() {return periodUnit.dayCount * perPeriod;}
-        public int repsPerDay() {return (int) Math.ceil((double) reps / periodInDays());}
+        // Defaults keep a freshly constructed Repetition valid (reps=0 → non-schedulable, never null):
+        // the assistant CREATE path leaves these untouched for one-off tasks, so a null periodUnit here
+        // used to NPE the whole scheduler. See periodInDays().
+        public int perPeriod = 1;
+        public Period periodUnit = Period.DAY;
+
+        /**
+         * Length of one repetition period in days, or {@code 0} when the repetition is unset/invalid
+         * (null {@code periodUnit} or non-positive {@code perPeriod}). Returning 0 makes such a task
+         * non-schedulable ({@link #repsPerDay()} == 0) instead of throwing — a malformed task must
+         * never crash schedule generation.
+         */
+        public int periodInDays() {
+            if (periodUnit == null || perPeriod <= 0) return 0;
+            return periodUnit.dayCount * perPeriod;
+        }
+        public int repsPerDay() {
+            int days = periodInDays();
+            return (reps <= 0 || days <= 0) ? 0 : (int) Math.ceil((double) reps / days);
+        }
         public LocalDate periodEnd() {
-            return periodStart != null ? periodStart.plusDays(periodInDays()) : null;
+            int days = periodInDays();
+            return (periodStart != null && days > 0) ? periodStart.plusDays(days) : null;
         }
     }
 

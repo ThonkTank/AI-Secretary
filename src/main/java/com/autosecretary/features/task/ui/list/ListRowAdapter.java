@@ -28,10 +28,8 @@ import com.autosecretary.shared.ui.UiConstants;
 import com.autosecretary.shared.DateFormatters;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -91,13 +89,11 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     private int colorProgressTextDisabled;
     private int colorProgressButtonTint;
     private int colorProgressButtonTintDisabled;
-    private int colorUndoTint;
     private int colorStateLineOpen;
     private int colorStateLineInProgress;
     private int colorStateLineCompleted;
     private int colorStateLineCalendar;
     private int[] streakTierColors;
-    private final Set<String> undoArmedSlotIds = new HashSet<>();
 
     public ListRowAdapter(List<ViewSlot> viewSlots, TaskRowActions actions) {
         this.viewSlots = viewSlots;
@@ -126,7 +122,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         colorProgressTextDisabled = ContextCompat.getColor(ctx, R.color.task_progress_text_disabled);
         colorProgressButtonTint = ContextCompat.getColor(ctx, R.color.task_progress_button_tint);
         colorProgressButtonTintDisabled = ContextCompat.getColor(ctx, R.color.task_progress_button_tint_disabled);
-        colorUndoTint = ContextCompat.getColor(ctx, R.color.color_negative);
         colorStateLineOpen = ContextCompat.getColor(ctx, R.color.color_outline);
         colorStateLineInProgress = ContextCompat.getColor(ctx, R.color.color_primary);
         colorStateLineCompleted = ContextCompat.getColor(ctx, R.color.color_primary_variant);
@@ -359,7 +354,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         holder.expandToggle.setVisibility(View.GONE);
         holder.calendarChip.setVisibility(View.GONE);
         holder.stateButton.setOnClickListener(null);
-        holder.stateButton.setOnLongClickListener(null);
         holder.card.setOnClickListener(null);
         holder.card.setOnLongClickListener(null);
     }
@@ -476,7 +470,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         syncMetadataLine(holder);
         holder.checkBox.setOnClickListener(null);
         holder.stateButton.setOnClickListener(null);
-        holder.stateButton.setOnLongClickListener(null);
         holder.card.setOnLongClickListener(null);
         holder.card.setOnClickListener(null);
         holder.card.setContentDescription(item.title);
@@ -639,10 +632,8 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         boolean stateButtonMode = item.inProgress || item.completed;
 
         if (!stateButtonMode) {
-            clearUndoArmedState(item.slotId);
             holder.stateButton.setVisibility(View.GONE);
             holder.stateButton.setOnClickListener(null);
-            holder.stateButton.setOnLongClickListener(null);
 
             holder.checkBox.setVisibility(View.VISIBLE);
             holder.checkBox.setContentDescription(context.getString(R.string.task_row_checkbox_start));
@@ -665,19 +656,7 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         holder.stateButton.setEnabled(interactionsAllowed);
         holder.stateButton.setAlpha(interactionsEnabled ? UiConstants.ALPHA_ENABLED : UiConstants.ALPHA_DISABLED);
 
-        boolean undoArmed = isUndoArmed(item.slotId);
-        if (undoArmed) {
-            holder.stateButton.setImageResource(R.drawable.ic_close_24);
-            holder.stateButton.setImageTintList(ColorStateList.valueOf(colorUndoTint));
-            holder.stateButton.setContentDescription(context.getString(R.string.task_row_state_button_undo));
-            holder.stateButton.setOnClickListener(v -> {
-                if (!interactionsAllowed) {
-                    return;
-                }
-                clearUndoArmedState(item.slotId);
-                actions.onUndo.accept(viewSlot);
-            });
-        } else if (item.inProgress) {
+        if (item.inProgress) {
             holder.stateButton.setImageResource(R.drawable.ic_play_24);
             holder.stateButton.setImageTintList(ColorStateList.valueOf(colorInProgressCheckboxTint));
             holder.stateButton.setContentDescription(context.getString(R.string.task_row_state_button_in_progress));
@@ -689,59 +668,12 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
                 actions.onCheck.accept(viewSlot);
             });
         } else {
+            // Completed rows: tapping the check opens the popup, which offers the undo action.
             holder.stateButton.setImageResource(R.drawable.ic_check_24);
             holder.stateButton.setImageTintList(ColorStateList.valueOf(colorCompletedCheckboxTint));
             holder.stateButton.setContentDescription(context.getString(R.string.task_row_state_button_completed));
-            holder.stateButton.setOnClickListener(v -> {
-                // Completed rows use long-press to arm undo.
-            });
+            holder.stateButton.setOnClickListener(v -> showDescriptionPopup(v, item, viewSlot));
         }
-
-        holder.stateButton.setOnLongClickListener(interactionsAllowed
-                ? v -> {
-                    if (undoArmed) {
-                        return true;
-                    }
-                    armUndo(item.slotId);
-                    int adapterPosition = holder.getBindingAdapterPosition();
-                    if (adapterPosition != RecyclerView.NO_POSITION) {
-                        notifyItemChanged(adapterPosition);
-                    } else {
-                        notifyDataSetChanged();
-                    }
-                    return true;
-                }
-                : null);
-    }
-
-    private boolean isUndoArmed(String slotId) {
-        return slotId != null && undoArmedSlotIds.contains(slotId);
-    }
-
-    private void armUndo(String slotId) {
-        if (slotId != null) {
-            undoArmedSlotIds.add(slotId);
-        }
-    }
-
-    private void clearUndoArmedState(String slotId) {
-        if (slotId != null) {
-            undoArmedSlotIds.remove(slotId);
-        }
-    }
-
-    private void retainValidUndoSlots(List<ViewSlot> slots) {
-        Set<String> validSlotIds = new HashSet<>();
-        for (ViewSlot slot : slots) {
-            TaskListItem item = slot.getItem();
-            if (item == null || item.isCalendarEvent() || item.slotId == null) {
-                continue;
-            }
-            if (item.inProgress || item.completed) {
-                validSlotIds.add(item.slotId);
-            }
-        }
-        undoArmedSlotIds.retainAll(validSlotIds);
     }
 
     private void bindProgressControls(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
@@ -774,25 +706,32 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     }
 
     /**
-     * Wires card interactions: tapping the card opens the description popup (which offers an edit
-     * action when interactions are enabled), long-pressing edits directly. Edit is gated on
-     * {@link #interactionsEnabled} so read-only days stay read-only.
+     * Wires card interactions: tapping the card opens the description popup (which offers an
+     * edit action and, for started/completed rows, a clearly labelled undo action),
+     * long-pressing edits directly. Both are gated on {@link #interactionsEnabled} so
+     * read-only days stay read-only.
      */
     private void bindInteractions(TaskRowViewHolder holder, TaskListItem item, ViewSlot viewSlot) {
-        holder.card.setOnClickListener(v -> showDescriptionPopup(v, item,
-                interactionsEnabled ? () -> actions.onEdit.accept(viewSlot) : null));
+        holder.card.setOnClickListener(v -> showDescriptionPopup(v, item, viewSlot));
 
         holder.card.setOnLongClickListener(interactionsEnabled
                 ? v -> { actions.onEdit.accept(viewSlot); return true; }
                 : null);
     }
 
-    private void showDescriptionPopup(View view, TaskListItem item, Runnable onEdit) {
+    private void showDescriptionPopup(View view, TaskListItem item, ViewSlot viewSlot) {
         if (!(view.getContext() instanceof FragmentActivity activity)) {
             return;
         }
         TaskDescriptionDialog dialog = TaskDescriptionDialog.newInstance(item.title, item.description);
-        dialog.setOnEdit(onEdit);
+        dialog.setOnEdit(interactionsEnabled ? () -> actions.onEdit.accept(viewSlot) : null);
+        if (interactionsEnabled && !item.isCalendarEvent() && (item.inProgress || item.completed)) {
+            int undoLabelRes = item.completed
+                    ? R.string.task_undo_revert_completion
+                    : R.string.task_undo_revert_start;
+            dialog.setOnUndo(view.getContext().getString(undoLabelRes),
+                    () -> actions.onUndo.accept(viewSlot));
+        }
         dialog.show(activity.getSupportFragmentManager(), TaskDescriptionDialog.TAG);
     }
 
@@ -852,7 +791,6 @@ public class ListRowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
 
     public void setList(List<ViewSlot> viewSlots) {
         List<ViewSlot> updatedSlots = viewSlots == null ? Collections.emptyList() : viewSlots;
-        retainValidUndoSlots(updatedSlots);
         List<ViewSlot> previousSlots = this.viewSlots;
         DiffUtil.DiffResult diff = DiffUtil.calculateDiff(new DiffUtil.Callback() {
             @Override

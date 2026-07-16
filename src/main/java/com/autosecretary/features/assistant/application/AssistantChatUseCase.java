@@ -80,8 +80,9 @@ public class AssistantChatUseCase {
 
     private static final String SYSTEM_PROMPT =
             "Du bist der Assistent der App AutoSecretary. Du hilfst bei Tasks (To-dos mit Wiederholung, "
-            + "Streaks, Terminen), beim Kochen (Rezepte, Zutaten, Wochenpläne) und beim Budget "
-            + "(Konten, Kategorien, Transaktionen, Kontoauszüge). "
+            + "Streaks, Terminen, sowie reservierten Kategorie-Zeitblöcken pro Wochentag – lesen mit "
+            + "get_category_windows, ändern mit propose_category_window_changes), beim Kochen (Rezepte, "
+            + "Zutaten, Wochenpläne) und beim Budget (Konten, Kategorien, Transaktionen, Kontoauszüge). "
             + "Nutze die get_*-Tools, um Fragen zu echten Nutzerdaten zu beantworten – rate nie. "
             + "Wenn du Daten prüfen musst, rufe das passende get_*-Tool SOFORT im selben Zug auf – "
             + "kündige es nicht bloß an. Beende deinen Zug NIE mit einer reinen Absichtserklärung "

@@ -205,10 +205,10 @@ public class ArchitectureRulesTest {
     public void assistant_couples_to_features_only_via_domain_except_task_seam() {
         DescribedPredicate<JavaClass> foreignNonDomain =
                 resideInAnyPackage(foreignNonDomain("task", "budget", "meal"));
-        DescribedPredicate<HasName> seam = name(ASSISTANT_TASK_SEAM[0])
-                .or(name(ASSISTANT_TASK_SEAM[1]))
-                .or(name(ASSISTANT_TASK_SEAM[2]))
-                .or(name(ASSISTANT_TASK_SEAM[3]));
+        DescribedPredicate<HasName> seam = name(ASSISTANT_TASK_SEAM[0]);
+        for (int i = 1; i < ASSISTANT_TASK_SEAM.length; i++) {
+            seam = seam.or(name(ASSISTANT_TASK_SEAM[i]));
+        }
         noClasses().that().resideInAPackage("com.autosecretary.features.assistant..")
                 .should().dependOnClassesThat(foreignNonDomain.and(not(seam)))
                 .because("the assistant reaches other features only through their domain layer, plus the "
@@ -248,6 +248,7 @@ public class ArchitectureRulesTest {
     private static final String[] ASSISTANT_TASK_SEAM = {
             "com.autosecretary.features.task.data.TaskDao",
             "com.autosecretary.features.task.data.TaskCategoryDao",
+            "com.autosecretary.features.task.data.TaskCategoryWindowDao",
             "com.autosecretary.features.task.application.ApplyTaskChangesUseCase",
             "com.autosecretary.features.task.application.UndoTaskChangesUseCase",
     };

@@ -23,14 +23,16 @@ public class TaskChangeUndoHolder {
     /**
      * The prior state needed to reverse one apply: full prior rows of every updated/deleted task
      * (plus tasks whose category was deleted, so their cleared {@code categoryId} is restored) and
-     * category, the ids the apply created (to delete on undo), and the windows of deleted categories
-     * (to re-insert on undo).
+     * category, the ids the apply created (to delete on undo), and the prior rows of every
+     * updated/deleted or category-cascade-deleted window (to re-insert/revert on undo) alongside the
+     * window ids the apply created (to delete on undo).
      */
     public record Snapshot(List<Task> priorTasks,
                            List<String> createdTaskIds,
                            List<TaskCategory> priorCategories,
                            List<String> createdCategoryIds,
-                           List<TaskCategoryWindow> priorWindows) {}
+                           List<TaskCategoryWindow> priorWindows,
+                           List<String> createdWindowIds) {}
 
     private final Deque<Snapshot> stack = new ArrayDeque<>();
 

@@ -1,8 +1,11 @@
 package com.autosecretary.app;
 
 import android.app.Application;
+import android.database.ContentObserver;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.CalendarContract;
 import android.util.Log;
 
 import com.autosecretary.database.AppDatabase;
@@ -56,6 +59,7 @@ import com.autosecretary.features.task.application.AdjustTaskProgressUseCase;
 import com.autosecretary.features.task.application.CheckOffTaskUseCase;
 import com.autosecretary.features.task.application.LoadTaskWidgetItemsUseCase;
 import com.autosecretary.features.task.application.RegenerateScheduleUseCase;
+import com.autosecretary.features.task.application.ScheduleReplanCoordinator;
 import com.autosecretary.features.task.application.TaskDataService;
 import com.autosecretary.features.task.application.UndoTaskCheckOffUseCase;
 import com.autosecretary.features.task.application.calendar.TaskCalendarService;
@@ -139,6 +143,7 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
     private BudgetImportRoomRepository budgetImportRoomRepository;
     private TaskEditViewModelFactory taskEditViewModelFactory;
     private RegenerateScheduleUseCase regenerateScheduleUseCase;
+    private ScheduleReplanCoordinator scheduleReplanCoordinator;
     private BudgetViewModelFactory budgetViewModelFactory;
     private ContentDocumentReader contentDocumentReader;
     private TaskScheduleConfigRepository taskScheduleConfigRepository;
@@ -186,6 +191,25 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
             );
             return thread;
         });
+    }
+
+    /**
+     * Registers a {@link ContentObserver} on the system calendar so external appointment changes
+     * (events added/edited/deleted in another app) trigger a coalesced re-plan — device-calendar
+     * events are reserved intervals the scheduler must plan around. Registered once for the process
+     * lifetime (never unregistered, matching the unlock receiver in {@code AutoSecretaryApplication});
+     * the OS reclaims it on process death. Without READ_CALENDAR the calendar provider yields no
+     * events, so the resulting re-plan is harmless.
+     */
+    private void registerCalendarReplanObserver(ScheduleReplanCoordinator coordinator) {
+        ContentObserver observer = new ContentObserver(new Handler(Looper.getMainLooper())) {
+            @Override
+            public void onChange(boolean selfChange, Uri uri) {
+                coordinator.requestReplan();
+            }
+        };
+        app.getContentResolver().registerContentObserver(
+                CalendarContract.Events.CONTENT_URI, true, observer);
     }
 
     public ExecutorService getDbExecutor() {
@@ -245,6 +269,20 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
         TaskListItemMapper mapper = new TaskListItemMapper();
         TaskCalendarService taskCalendarService = new CalendarReader(app);
 
+        // Re-planning + its coalescing coordinator are built first: mutation use cases and view-model
+        // factories below all funnel schedule changes through the coordinator.
+        regenerateScheduleUseCase = new RegenerateScheduleUseCase(
+                db,
+                dao,
+                generator,
+                dbExecutor,
+                mainHandler::post,
+                () -> SchedulingSettings.isSchedulingEnabled(app)
+        );
+        scheduleReplanCoordinator = new ScheduleReplanCoordinator(
+                regenerateScheduleUseCase, widgetRefreshNotifier);
+        registerCalendarReplanObserver(scheduleReplanCoordinator);
+
         ensureMealRepositories();
         TaskDataService taskDataService = new TaskDataService(
                 dao,
@@ -258,6 +296,7 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
                 taskDataService,
                 new TaskEditReferenceDataUseCase(taskDataService, getBudgetRoomRepository()),
                 new CreateDefaultTaskPrefSlotUseCase(),
+                scheduleReplanCoordinator,
                 dbExecutor,
                 mainHandler::post
         );
@@ -291,13 +330,6 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
                 new TaskSlotUndoMutation(dao, mainHandler::post),
                 dbExecutor
         );
-        regenerateScheduleUseCase = new RegenerateScheduleUseCase(
-                dao,
-                generator,
-                dbExecutor,
-                mainHandler::post,
-                () -> SchedulingSettings.isSchedulingEnabled(app)
-        );
         AdjustTaskProgressUseCase adjustTaskProgressUseCase = new AdjustTaskProgressUseCase(
                 dao,
                 dbExecutor,
@@ -323,7 +355,8 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
         taskChangeUndoHolder = new TaskChangeUndoHolder();
         DbCalls assistantDbCalls = new DbCalls(dbExecutor);
         List<AssistantTool> assistantTools = new ArrayList<>();
-        assistantTools.addAll(new TaskTools(dao, db.taskCategoryDao(), assistantDbCalls).tools());
+        assistantTools.addAll(new TaskTools(
+                dao, db.taskCategoryDao(), db.taskCategoryWindowDao(), assistantDbCalls).tools());
         assistantTools.addAll(new MealTools(assistantMealGateway, assistantDbCalls).tools());
         assistantTools.addAll(new BudgetTools(assistantBudgetGateway, assistantImportExecutor,
                 assistantConversation::currentStatement, assistantDbCalls).tools());
@@ -333,14 +366,14 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
                 claudeApiKeyStore, claudeEndpointStore, claudeModelStore,
                 ioExecutor, mainHandler::post);
         ApplyTaskChangesUseCase applyTaskChangesUseCase = new ApplyTaskChangesUseCase(
-                db, dao, db.taskCategoryDao(), db.taskCategoryWindowDao(),
-                taskChangeUndoHolder, dbExecutor, mainHandler::post);
+                db, dao, db.taskCategoryDao(), db.taskCategoryWindowDao(), getTaskCategoryWindowRepository(),
+                taskChangeUndoHolder, scheduleReplanCoordinator, dbExecutor, mainHandler::post);
         ConfirmAssistantProposalUseCase confirmAssistantProposalUseCase = new ConfirmAssistantProposalUseCase(
                 applyTaskChangesUseCase, assistantMealGateway, assistantImportExecutor,
                 dbExecutor, mainHandler::post);
         UndoTaskChangesUseCase undoTaskChangesUseCase = new UndoTaskChangesUseCase(
-                db, dao, db.taskCategoryDao(), db.taskCategoryWindowDao(),
-                taskChangeUndoHolder, dbExecutor, mainHandler::post);
+                db, dao, db.taskCategoryDao(), db.taskCategoryWindowDao(), getTaskCategoryWindowRepository(),
+                taskChangeUndoHolder, scheduleReplanCoordinator, dbExecutor, mainHandler::post);
         assistantViewModelFactory = new AssistantViewModelFactory(
                 assistantChatUseCase, confirmAssistantProposalUseCase, undoTaskChangesUseCase);
 
@@ -348,7 +381,7 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
                 taskDataService,
                 checkOffTaskUseCase,
                 undoTaskCheckOffUseCase,
-                regenerateScheduleUseCase,
+                scheduleReplanCoordinator,
                 adjustTaskProgressUseCase,
                 taskCalendarService,
                 scheduleConfigRepository,
@@ -392,7 +425,7 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
             Handler mainHandler = new Handler(Looper.getMainLooper());
             taskScheduleConfigViewModelFactory = new TaskScheduleConfigViewModelFactory(
                     getTaskScheduleConfigRepository(),
-                    getRegenerateScheduleUseCase(),
+                    getScheduleReplanCoordinator(),
                     dbExecutor,
                     mainHandler::post
             );
@@ -406,6 +439,7 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
             taskCategoryWindowViewModelFactory = new TaskCategoryWindowViewModelFactory(
                     getTaskCategoryWindowRepository(),
                     getTaskCategoryRepository(),
+                    getScheduleReplanCoordinator(),
                     dbExecutor,
                     mainHandler::post
             );
@@ -428,6 +462,11 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
     public synchronized RegenerateScheduleUseCase getRegenerateScheduleUseCase() {
         initTaskGraph();
         return regenerateScheduleUseCase;
+    }
+
+    public synchronized ScheduleReplanCoordinator getScheduleReplanCoordinator() {
+        initTaskGraph();
+        return scheduleReplanCoordinator;
     }
 
     public WidgetRefreshNotifier getWidgetRefreshNotifier() {
@@ -560,6 +599,7 @@ public class AppCompositionRoot implements SettingsDataService.DatabaseLifecycle
         budgetImportRoomRepository = null;
         taskEditViewModelFactory = null;
         regenerateScheduleUseCase = null;
+        scheduleReplanCoordinator = null;
         budgetViewModelFactory = null;
         contentDocumentReader = null;
         taskScheduleConfigRepository = null;

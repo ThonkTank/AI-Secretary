@@ -129,7 +129,7 @@ public final class TaskCategoryWindowSchedulingCharacterizationTest extends Auto
                 window(today, LocalTime.of(9, 0), LocalTime.of(11, 0)),
                 CategoryWindowProvider.NONE);
         RegenerateScheduleUseCase useCase = new RegenerateScheduleUseCase(
-                taskDao, generator, executor, executor, () -> false); // scheduling OFF
+                db, taskDao, generator, executor, executor, () -> false); // scheduling OFF
 
         CallbackProbe<RegenerateScheduleUseCase.Result> probe = new CallbackProbe<>();
         useCase.execute(probe.consumer());
