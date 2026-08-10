@@ -5,6 +5,7 @@ on:
     branches:
       - "codex/**"
       - "agent/**"
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -30,6 +31,7 @@ jobs:
           path: AutoSecretary.apk
           if-no-files-found: error
       - name: Publish phone-test prerelease
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
           TEST_TAG: test-${{ github.run_id }}-${{ github.run_attempt }}
