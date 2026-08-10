@@ -1,0 +1,83 @@
+package com.autosecretary.app;
+
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.autosecretary.R;
+import com.autosecretary.core.PlanItem;
+import com.google.android.material.button.MaterialButton;
+
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+
+final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
+    interface Listener {
+        void onComplete(PlanItem item);
+        void onLater(PlanItem item);
+    }
+
+    private final Listener listener;
+    private List<PlanItem> items = new ArrayList<>();
+
+    FocusAdapter(Listener listener) {
+        this.listener = listener;
+    }
+
+    void submit(List<PlanItem> values) {
+        items = new ArrayList<>(values);
+        notifyDataSetChanged();
+    }
+
+    @NonNull
+    @Override
+    public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        return new Holder(LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.row_focus, parent, false));
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull Holder holder, int position) {
+        PlanItem item = items.get(position);
+        holder.position.setText(position == 0 ? R.string.now : position == 1 ? R.string.next : R.string.later);
+        holder.title.setText(item.obligation().title);
+        holder.steps.setVisibility(item.steps().isEmpty() ? View.GONE : View.VISIBLE);
+        holder.steps.setText(String.join("  →  ", item.steps()));
+        String time = item.suggestedStart() == null
+                ? "Heute, sobald Platz ist"
+                : item.suggestedStart().format(DateTimeFormatter.ofPattern("HH:mm"))
+                    + "–" + item.suggestedEnd().format(DateTimeFormatter.ofPattern("HH:mm"));
+        holder.meta.setText(time + " · " + item.obligation().durationMinutes + " Min");
+        holder.done.setOnClickListener(view -> listener.onComplete(item));
+        holder.later.setOnClickListener(view -> listener.onLater(item));
+    }
+
+    @Override
+    public int getItemCount() {
+        return items.size();
+    }
+
+    static final class Holder extends RecyclerView.ViewHolder {
+        final TextView position;
+        final TextView title;
+        final TextView steps;
+        final TextView meta;
+        final MaterialButton done;
+        final MaterialButton later;
+
+        Holder(View view) {
+            super(view);
+            position = view.findViewById(R.id.FocusPosition);
+            title = view.findViewById(R.id.FocusTitle);
+            steps = view.findViewById(R.id.FocusSteps);
+            meta = view.findViewById(R.id.FocusMeta);
+            done = view.findViewById(R.id.FocusDone);
+            later = view.findViewById(R.id.FocusLater);
+        }
+    }
+}

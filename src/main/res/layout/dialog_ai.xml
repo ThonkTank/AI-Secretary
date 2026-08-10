@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <EditText
+        android:id="@+id/AiInstruction"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="top|start"
+        android:hint="@string/ai_instruction_hint"
+        android:inputType="textCapSentences|textMultiLine"
+        android:minLines="5" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:text="Jede Änderung erscheint zuerst als Vorschau und wird nur nach deiner Bestätigung gespeichert."
+        android:textColor="@color/ink_muted"
+        android:textSize="12sp" />
+</LinearLayout>

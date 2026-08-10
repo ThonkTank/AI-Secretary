@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Assistant chat bubble colors (features/assistant/). User bubble is a low-alpha primary tint over
-     the surface (same tinted-state-surface convention as task_in_progress_background); the assistant
-     bubble reuses color_surface + color_outline. The proposal card is a low-alpha accent tint so it
-     reads as a distinct "action needed" surface. -->
-<resources>
-    <color name="assistant_user_bubble">#1F5C7A4D</color>
-    <color name="assistant_proposal_surface">#1FCF8F4F</color>
-</resources>

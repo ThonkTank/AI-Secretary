@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Vertical state line between the time rail and the task card (checklist agenda view).
-     White base shape; ListRowAdapter tints it at runtime by task state
-     (open = outline, in progress = primary, completed = primary variant, calendar = muted blue). -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <solid android:color="@android:color/white" />
-    <corners android:radius="@dimen/task_row_state_line_radius" />
-</shape>

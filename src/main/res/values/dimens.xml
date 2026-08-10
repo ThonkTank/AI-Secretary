@@ -1,40 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Global rule: app-wide tokens stay in generic files; feature-specific resources belong in feature-prefixed files (for example task_dimens.xml). -->
-    <dimen name="spacing_xxs">2dp</dimen>
-    <dimen name="spacing_xs">4dp</dimen>
-    <dimen name="spacing_sm">8dp</dimen>
-    <dimen name="spacing_md">12dp</dimen>
-    <dimen name="spacing_lg">16dp</dimen>
-    <dimen name="spacing_xl">24dp</dimen>
-
-    <!-- App-wide corner radius scale shared across features.
-         sm = small elements (chips, buttons, calendar items, row backgrounds)
-         lg = containers (surface cards, nav bar, dialogs) -->
-    <dimen name="corner_radius_sm">12dp</dimen>
-    <dimen name="corner_radius_lg">20dp</dimen>
-
-    <!-- Material minimum touch target (48dp). -->
-    <dimen name="touch_target_min">48dp</dimen>
-
-    <!-- Shared max height for scrollable dialog content before the container starts clipping. -->
-    <dimen name="dialog_scroll_max_height">360dp</dimen>
-
-    <!-- Shared minimum row height for list items across all features. -->
-    <dimen name="row_min_height">56dp</dimen>
-
-    <!-- App-wide text scale tokens (sp). Feature-specific sizes live in feature_dimens.xml.
-         Scale: xs (12) → sm (14) → md (16) → lg (18).
-         Reserve text_xl for a future display/headline step if the app needs one. -->
-    <dimen name="text_xs">12sp</dimen>
-    <dimen name="text_sm">14sp</dimen>
-    <dimen name="text_md">16sp</dimen>
-    <dimen name="text_lg">18sp</dimen>
-
-    <!-- Shared stroke width for outlined shape drawables. -->
-    <dimen name="outline_stroke_width">1dp</dimen>
-
-    <!-- Editor input stroke widths (shared across all feature dialog inputs). -->
-    <dimen name="editor_input_stroke_width">1dp</dimen>
-    <dimen name="editor_input_stroke_width_focused">2dp</dimen>
+    <dimen name="space_xs">4dp</dimen>
+    <dimen name="space_s">8dp</dimen>
+    <dimen name="space_m">16dp</dimen>
+    <dimen name="space_l">24dp</dimen>
+    <dimen name="corner">20dp</dimen>
 </resources>

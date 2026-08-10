@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Dimensions for the assistant chat surface (features/assistant/). -->
-<resources>
-    <dimen name="assistant_chat_bubble_corner">16dp</dimen>
-</resources>
