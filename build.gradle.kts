@@ -1,3 +1,6 @@
+import java.net.URI
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 
 plugins {
@@ -45,18 +48,18 @@ val prepareBundledModel = tasks.register("prepareBundledModel") {
         val temporary = File(target.parentFile, target.name + ".partial")
         temporary.delete()
         try {
-            java.net.URI(bundledModelUrl.get()).toURL().openStream().buffered().use { input ->
+            URI(bundledModelUrl.get()).toURL().openStream().buffered().use { input ->
                 temporary.outputStream().buffered().use { output -> input.copyTo(output) }
             }
             val actual = sha256(temporary)
             check(actual == bundledModelSha256) {
                 "Bundled model checksum mismatch: expected $bundledModelSha256, got $actual"
             }
-            java.nio.file.Files.move(
+            Files.move(
                 temporary.toPath(),
                 target.toPath(),
-                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                java.nio.file.StandardCopyOption.ATOMIC_MOVE
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE
             )
         } finally {
             temporary.delete()
