@@ -7,6 +7,7 @@ import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.content.res.ColorStateList;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -52,15 +53,36 @@ final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
         PlanItem item = items.get(position);
         holder.position.setText(position == 0 ? R.string.now : position == 1 ? R.string.next : R.string.later);
         holder.title.setText(item.obligation().title);
-        holder.steps.setVisibility(item.steps().isEmpty() ? View.GONE : View.VISIBLE);
+        boolean anchor = position == 0;
+        holder.leaf.setBackgroundResource(anchor
+                ? R.drawable.bg_leaf_focus
+                : position == 1 ? R.drawable.bg_leaf_middle : R.drawable.bg_leaf_low);
+        holder.leaf.setRotation(anchor ? -0.7f : position == 1 ? 1.1f : -0.8f);
+        holder.leaf.setElevation(dp(holder.itemView, anchor ? 10 : 5));
+        holder.title.setTextSize(anchor ? 34 : 23);
+        holder.steps.setVisibility(anchor && !item.steps().isEmpty() ? View.VISIBLE : View.GONE);
         holder.steps.removeAllViews();
-        for (PlanStep step : item.steps()) {
+        int shownSteps = Math.min(5, item.steps().size());
+        for (int index = 0; index < shownSteps; index++) {
+            PlanStep step = item.steps().get(index);
             CheckBox checkBox = new CheckBox(holder.itemView.getContext());
             checkBox.setText(step.title());
+            checkBox.setTextSize(19);
+            checkBox.setTextColor(holder.itemView.getContext().getColor(
+                    step.completed() ? R.color.completed : R.color.ink));
             checkBox.setChecked(step.completed());
             checkBox.setOnCheckedChangeListener((button, completed) ->
                     listener.onStepChanged(item, step, completed));
             holder.steps.addView(checkBox);
+        }
+        if (anchor && item.steps().size() > shownSteps) {
+            TextView more = new TextView(holder.itemView.getContext());
+            more.setText("und " + (item.steps().size() - shownSteps) + " weitere Schritte");
+            more.setTextColor(holder.itemView.getContext().getColor(R.color.marker));
+            more.setTextSize(15);
+            more.setTypeface(android.graphics.Typeface.SERIF, android.graphics.Typeface.ITALIC);
+            more.setPadding(dp(holder.itemView, 8), dp(holder.itemView, 5), 0, 0);
+            holder.steps.addView(more);
         }
         String time = item.suggestedStart() == null
                 ? "Heute, sobald Platz ist"
@@ -69,10 +91,26 @@ final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
         String calendarContext = item.precedingCalendarBlock() == null
                 ? ""
                 : " · nach " + item.precedingCalendarBlock().title();
-        holder.meta.setText(time + " · " + item.obligation().durationMinutes + " Min" + calendarContext);
+        holder.meta.setText(time + " · ca. " + item.obligation().durationMinutes + " Min" + calendarContext);
         holder.done.setOnClickListener(view -> listener.onComplete(item));
         holder.later.setOnClickListener(view -> listener.onMove(item, PlanMove.LAST));
         holder.order.setOnClickListener(view -> showOrderMenu(holder.order, item));
+        holder.later.setVisibility(anchor ? View.VISIBLE : View.GONE);
+        if (anchor) {
+            long completedSteps = item.steps().stream().filter(PlanStep::completed).count();
+            String label = item.steps().isEmpty() ? "Erledigt"
+                    : completedSteps == 0 ? "Alle erledigen"
+                    : item.steps().size() - completedSteps == 1 ? "letzten Schritt erledigen"
+                    : "Rest erledigen";
+            holder.done.setText(label);
+            holder.done.setTextColor(holder.itemView.getContext().getColor(R.color.white));
+            holder.done.setBackgroundTintList(ColorStateList.valueOf(
+                    holder.itemView.getContext().getColor(R.color.forest)));
+        } else {
+            holder.done.setText("○");
+            holder.done.setTextColor(holder.itemView.getContext().getColor(R.color.outline));
+            holder.done.setBackgroundTintList(ColorStateList.valueOf(android.graphics.Color.TRANSPARENT));
+        }
     }
 
     private void showOrderMenu(View anchor, PlanItem item) {
@@ -94,8 +132,13 @@ final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
         return items.size();
     }
 
+    private static int dp(View view, int value) {
+        return Math.round(value * view.getResources().getDisplayMetrics().density);
+    }
+
     static final class Holder extends RecyclerView.ViewHolder {
         final TextView position;
+        final View leaf;
         final TextView title;
         final LinearLayout steps;
         final TextView meta;
@@ -106,6 +149,7 @@ final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
         Holder(View view) {
             super(view);
             position = view.findViewById(R.id.FocusPosition);
+            leaf = view.findViewById(R.id.FocusLeaf);
             title = view.findViewById(R.id.FocusTitle);
             steps = view.findViewById(R.id.FocusSteps);
             meta = view.findViewById(R.id.FocusMeta);

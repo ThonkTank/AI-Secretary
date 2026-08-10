@@ -19,9 +19,9 @@
     <string name="gemma_terms_title">Lokale KI aktivieren</string>
     <string name="gemma_terms_message">Die mitgelieferte KI nutzt Gemma 3 270M von Google und arbeitet vollständig auf diesem Gerät. Gemma unterliegt den Gemma-Nutzungsbedingungen und der Prohibited Use Policy. Mit „Akzeptieren“ stimmst du diesen Bedingungen zu. Eine Kopie liegt in der App; Original: ai.google.dev/gemma/terms</string>
     <string name="accept">Akzeptieren</string>
-    <string name="now">JETZT</string>
-    <string name="next">DANACH</string>
-    <string name="later">SPÄTER</string>
+    <string name="now">jetzt</string>
+    <string name="next">danach</string>
+    <string name="later">später</string>
     <string name="done">Erledigt</string>
     <string name="postpone">Später</string>
     <string name="reorder">Sortieren</string>
@@ -42,7 +42,7 @@
     <string name="steps_hint">Ein Schritt pro Zeile\nDuschen\nHaare waschen | Mo,Do\nPeeling | So</string>
     <string name="steps_help">Die Reihenfolge bleibt exakt so. Nach | gelten optionale Wochentage (Mo–So). Schritte lassen sich später einzeln oder gemeinsam abhaken.</string>
     <string-array name="time_preferences">
-        <item>Automatisch lernen</item>
+        <item>Keine Präferenz</item>
         <item>Morgens</item>
         <item>Mittags</item>
         <item>Abends</item>

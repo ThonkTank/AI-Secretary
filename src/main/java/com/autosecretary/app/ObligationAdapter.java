@@ -3,7 +3,6 @@ package com.autosecretary.app;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.TextView;
@@ -52,21 +51,26 @@ final class ObligationAdapter extends RecyclerView.Adapter<ObligationAdapter.Hol
     @Override
     public void onBindViewHolder(@NonNull Holder holder, int position) {
         Obligation item = items.get(position);
+        holder.leaf.setBackgroundResource(position % 2 == 0
+                ? R.drawable.bg_leaf_middle : R.drawable.bg_leaf_low);
+        holder.leaf.setRotation(position % 2 == 0 ? 0.7f : -0.7f);
+        holder.group.setText(group(item));
         holder.title.setText(item.title);
         holder.meta.setText(metadata(item));
         List<PlanStep> steps = item.planStepsFor(java.time.LocalDate.now());
         holder.steps.setVisibility(steps.isEmpty() ? View.GONE : View.VISIBLE);
         holder.steps.removeAllViews();
-        for (PlanStep step : steps) {
-            CheckBox checkBox = new CheckBox(holder.itemView.getContext());
-            checkBox.setText(step.title());
-            checkBox.setChecked(step.completed());
-            checkBox.setEnabled(item.isOpenOn(java.time.LocalDate.now()));
-            checkBox.setOnCheckedChangeListener((button, completed) ->
-                    listener.onStepChanged(item, step, completed));
-            holder.steps.addView(checkBox);
+        if (!steps.isEmpty()) {
+            long completed = steps.stream().filter(PlanStep::completed).count();
+            TextView progress = new TextView(holder.itemView.getContext());
+            progress.setText(completed + " von " + steps.size() + " Schritten");
+            progress.setTextColor(holder.itemView.getContext().getColor(R.color.marker));
+            progress.setTextSize(14);
+            progress.setTypeface(android.graphics.Typeface.SERIF, android.graphics.Typeface.ITALIC);
+            holder.steps.addView(progress);
         }
         holder.done.setEnabled(item.isOpenOn(java.time.LocalDate.now()));
+        holder.done.setText(item.completed ? "●" : "○");
         holder.done.setOnClickListener(view -> listener.onComplete(item));
         holder.order.setVisibility(item.isOpenOn(java.time.LocalDate.now()) ? View.VISIBLE : View.GONE);
         holder.order.setOnClickListener(view -> showOrderMenu(holder.order, item));
@@ -89,15 +93,29 @@ final class ObligationAdapter extends RecyclerView.Adapter<ObligationAdapter.Hol
 
     private String metadata(Obligation item) {
         String preference = timePreference(item.timePreference);
+        String flexibility = item.flexible ? " · flexibel" : "";
         if (item.isRoutine()) {
             String due = item.nextDueDate == null ? "heute" : item.nextDueDate.toString();
-            String streak = item.currentStreak > 0 ? " · 🔥 " + item.currentStreak : "";
-            return "Alle " + item.cadenceDays + " Tage · fällig " + due + preference + streak;
+            String streak = item.currentStreak > 0 ? " · " + item.currentStreak + " Ringe" : "";
+            return "alle " + item.cadenceDays + " Tage · nächste Fälligkeit "
+                    + due + preference + flexibility + streak;
         }
         if (item.completed) return "Erledigt";
-        if (item.deadlineAt == null) return item.durationMinutes + " Min · ohne Deadline" + preference;
-        return item.durationMinutes + " Min · bis "
-                + item.deadlineAt.format(DateTimeFormatter.ofPattern("dd.MM. HH:mm")) + preference;
+        if (item.deadlineAt == null) return "ca. " + item.durationMinutes
+                + " Min · ohne Deadline" + preference + flexibility;
+        return "ca. " + item.durationMinutes + " Min · bis "
+                + item.deadlineAt.format(DateTimeFormatter.ofPattern("dd.MM. HH:mm"))
+                + preference + flexibility;
+    }
+
+    private String group(Obligation item) {
+        java.time.LocalDate today = java.time.LocalDate.now();
+        if (item.completed) return "heute erledigt";
+        if (item.deadlineAt != null && item.deadlineAt.toLocalDate().isBefore(today)) return "überfällig";
+        if (item.isRoutine() && item.nextDueDate != null && item.nextDueDate.isBefore(today)) return "überfällig";
+        if (item.isRoutine()) return item.isOpenOn(today) ? "heute fällig" : "seltener";
+        if (item.deadlineAt == null) return "ohne Termin";
+        return item.deadlineAt.toLocalDate().equals(today) ? "heute" : "diese Woche";
     }
 
     private String timePreference(TimePreference preference) {
@@ -116,6 +134,8 @@ final class ObligationAdapter extends RecyclerView.Adapter<ObligationAdapter.Hol
 
     static final class Holder extends RecyclerView.ViewHolder {
         final TextView title;
+        final TextView group;
+        final View leaf;
         final TextView meta;
         final LinearLayout steps;
         final MaterialButton done;
@@ -124,6 +144,8 @@ final class ObligationAdapter extends RecyclerView.Adapter<ObligationAdapter.Hol
         Holder(View view) {
             super(view);
             title = view.findViewById(R.id.RowTitle);
+            group = view.findViewById(R.id.RowGroup);
+            leaf = view.findViewById(R.id.ObligationLeaf);
             meta = view.findViewById(R.id.RowMeta);
             steps = view.findViewById(R.id.RowSteps);
             done = view.findViewById(R.id.RowDone);

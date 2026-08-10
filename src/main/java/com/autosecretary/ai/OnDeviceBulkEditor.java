@@ -136,6 +136,7 @@ public final class OnDeviceBulkEditor {
             value.put("nextDueDate", item.nextDueDate == null ? JSONObject.NULL : item.nextDueDate.toString());
             value.put("timePreference", item.timePreference == null
                     ? JSONObject.NULL : item.timePreference.name());
+            value.put("flexible", item.flexible);
             state.put(value);
         }
         return String.format(Locale.ROOT, """
@@ -148,6 +149,7 @@ public final class OnDeviceBulkEditor {
                    "deadline":"YYYY-MM-DDTHH:MM:SS oder null","cadenceDays":7,
                    "nextDueDate":"YYYY-MM-DD oder null",
                    "timePreference":"MORNING|MIDDAY|EVENING oder null",
+                   "flexible":true,
                    "steps":[{"title":"Schritt","days":["MONDAY","TUESDAY"]}]}
                 ]}
                 Regeln: Keine nicht verlangten Änderungen. Bei Unsicherheit keine Aktion erzeugen und dies
@@ -214,6 +216,7 @@ public final class OnDeviceBulkEditor {
             item.timePreference = action.isNull("timePreference")
                     ? null : TimePreference.valueOf(action.getString("timePreference"));
         }
+        if (action.has("flexible")) item.flexible = action.getBoolean("flexible");
         if (action.has("steps")) {
             List<RoutineStep> previousSteps = item.steps;
             item.steps = new ArrayList<>();
@@ -244,7 +247,6 @@ public final class OnDeviceBulkEditor {
         } else {
             item.cadenceDays = 0;
             item.nextDueDate = null;
-            item.steps.clear();
         }
     }
 
@@ -266,6 +268,7 @@ public final class OnDeviceBulkEditor {
         copy.cadenceDays = source.cadenceDays;
         copy.nextDueDate = source.nextDueDate;
         copy.timePreference = source.timePreference;
+        copy.flexible = source.flexible;
         copy.steps = source.steps.stream().map(RoutineStep::copy).collect(java.util.stream.Collectors.toList());
         copy.createdAt = source.createdAt;
         copy.completed = source.completed;

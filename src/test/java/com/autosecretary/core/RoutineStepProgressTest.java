@@ -55,6 +55,23 @@ public final class RoutineStepProgressTest {
         assertFalse(routine.planStepsFor(LocalDate.parse("2026-08-11")).get(0).completed());
     }
 
+    @Test
+    public void oneOffTaskStepsRemainCheckedUntilTheTaskIsCompleted() {
+        Obligation task = new Obligation();
+        task.kind = Obligation.Kind.TASK;
+        RoutineStep first = new RoutineStep("Recherche", EnumSet.noneOf(DayOfWeek.class));
+        RoutineStep second = new RoutineStep("Abgeben", EnumSet.noneOf(DayOfWeek.class));
+        task.steps.add(first);
+        task.steps.add(second);
+
+        first.setCompletedFor(null, true, LocalDateTime.parse("2026-08-10T08:00:00"));
+
+        assertTrue(task.planStepsFor(LocalDate.parse("2026-08-11")).get(0).completed());
+        assertFalse(task.allActiveStepsCompleted(LocalDate.parse("2026-08-11")));
+        second.setCompletedFor(null, true, LocalDateTime.parse("2026-08-11T09:00:00"));
+        assertTrue(task.allActiveStepsCompleted(LocalDate.parse("2026-08-11")));
+    }
+
     private static Obligation routine(LocalDate due) {
         Obligation routine = new Obligation();
         routine.kind = Obligation.Kind.ROUTINE;
