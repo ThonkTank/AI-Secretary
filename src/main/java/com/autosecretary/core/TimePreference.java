@@ -1,6 +1,6 @@
 package com.autosecretary.core;
 
-/** Optional user-provided anchor; null means the planner learns from completions. */
+/** Optional user-provided time-of-day anchor; learning is controlled separately by flexibility. */
 public enum TimePreference {
     MORNING(8 * 60),
     MIDDAY(13 * 60),

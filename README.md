@@ -5,12 +5,13 @@ Auto Secretary is a deliberately small Android app for ADHD time blindness and f
 ## Product rules
 
 - The focus surface shows at most three blocks.
-- A routine is one planning block with a complete, manually ordered step sequence.
-- Steps have stable identities, can apply only on selected weekdays, and can be completed individually. Completing the final active step completes the routine occurrence; the block-level action remains a shortcut for completing all steps.
+- Tasks and routines can both contain a stable, manually ordered step sequence. Routine steps may additionally apply only on selected weekdays.
+- Steps can be completed individually. Completing the final step completes the task or routine occurrence; the block-level action remains a shortcut for completing all remaining steps.
 - A missed recurring routine stays due until completed. Only one occurrence can be open, so missed weeks never create a backlog pile.
-- Completion time and adjacent completion order are learned locally and influence later plans. An optional morning, midday, or evening preference overrides learned timing for that item.
+- Flexibility and time-of-day preference are independent. Flexible items learn completion time and adjacent order locally; an optional morning, midday, or evening preference remains a stronger soft anchor around which learning may move the item. Inflexible items ignore learned timing.
 - Today's open work can be manually moved first, one position earlier/later, or last. **Später** is the shortcut for moving an item last without changing its real due date.
 - Calendar events are read as titled busy intervals and their titles are shown as planning context. The app has no calendar write permission and never creates calendar events.
+- The Waldmorgen interface follows local sunrise and sunset using approximate device location. Automatic, fixed light and fixed dark modes are available; location is never stored with task data.
 - Local AI changes are generated on the phone by the bundled Gemma 3 270M IT model. Every mutation is shown as a preview and requires explicit confirmation. A custom MediaPipe `.task` model remains an optional replacement.
 
 ## Architecture
@@ -44,7 +45,7 @@ The build pins the official model artifact's SHA-256 (`0f7147f1…f2265ef5`). Be
 
 The bundled weights remain subject to the [Gemma Terms of Use](https://ai.google.dev/gemma/terms) and [Gemma Prohibited Use Policy](https://ai.google.dev/gemma/prohibited_use_policy). Required copies and notices ship in `src/main/assets/`.
 
-The model deliberately produces only a structured proposal. The app validates it, shows additions/updates/deletions in a confirmation dialog, and applies nothing until the user taps **Änderungen übernehmen**.
+The model deliberately produces only a structured proposal. The app validates it, lets the user include or exclude every addition/update/deletion, and applies nothing until the selected changes are confirmed. The last confirmed AI block can be undone as one operation.
 
 ## Publishing
 

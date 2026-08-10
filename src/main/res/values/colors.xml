@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ink">#17241F</color>
-    <color name="ink_muted">#5B6862</color>
-    <color name="forest">#28644C</color>
-    <color name="forest_soft">#D8EEE2</color>
-    <color name="cream">#FFFDF6</color>
-    <color name="mist">#F1F5EF</color>
-    <color name="outline">#D9E2DA</color>
-    <color name="amber">#F6C453</color>
+    <color name="ink">#1A2618</color>
+    <color name="ink_secondary">#4E5A48</color>
+    <color name="ink_muted">#586250</color>
+    <color name="marker">#6D7860</color>
+    <color name="completed">#A79A7C</color>
+    <color name="forest">#2E6B44</color>
+    <color name="forest_soft">#D8E7D7</color>
+    <color name="cream">#FCF6E8</color>
+    <color name="leaf_middle">#F1E8D2</color>
+    <color name="leaf_low">#E2D7BC</color>
+    <color name="mist">#EEF0E6</color>
+    <color name="outline">#B0A385</color>
+    <color name="amber">#E3A542</color>
+    <color name="calendar_leaf">#DFE9EC</color>
+    <color name="calendar_ink">#2B5666</color>
+    <color name="calendar_label">#4F7482</color>
+    <color name="danger">#9E4F3A</color>
+    <color name="danger_soft">#1A9E4F3A</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="transparent">#00000000</color>
 </resources>

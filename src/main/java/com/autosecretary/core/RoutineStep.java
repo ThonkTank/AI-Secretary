@@ -7,7 +7,7 @@ import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
 
-/** One independently completable child task inside a routine block. */
+/** One independently completable child task inside a task or routine block. */
 public final class RoutineStep {
     public String id;
     public String title;
@@ -39,7 +39,7 @@ public final class RoutineStep {
     }
 
     public boolean isCompletedFor(LocalDate occurrenceDate) {
-        return occurrenceDate != null && occurrenceDate.equals(completedFor);
+        return occurrenceDate == null ? completedAt != null : occurrenceDate.equals(completedFor);
     }
 
     public void setCompletedFor(LocalDate occurrenceDate, boolean completed, LocalDateTime at) {

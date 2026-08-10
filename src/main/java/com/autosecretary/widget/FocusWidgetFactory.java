@@ -49,7 +49,7 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
             PlanStep planStep = item.steps().get(index);
             RemoteViews step = new RemoteViews(context.getPackageName(), R.layout.widget_focus_step);
             step.setTextViewText(R.id.WidgetStepToggle,
-                    (planStep.completed() ? "☑  " : "☐  ") + planStep.title());
+                    (planStep.completed() ? "●  " : "○  ") + planStep.title());
             Intent toggle = new Intent().setAction(FocusWidgetProvider.ACTION_TOGGLE_STEP)
                     .putExtra(FocusWidgetProvider.EXTRA_ID, item.obligation().id)
                     .putExtra(FocusWidgetProvider.EXTRA_STEP_ID, planStep.id())
@@ -60,17 +60,22 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         if (item.steps().size() > displayedSteps) {
             RemoteViews more = new RemoteViews(context.getPackageName(), R.layout.widget_focus_step);
             more.setTextViewText(R.id.WidgetStepToggle,
-                    "+" + (item.steps().size() - displayedSteps) + " weitere");
+                    "und " + (item.steps().size() - displayedSteps) + " weitere");
             row.addView(R.id.WidgetSteps, more);
         }
         String time = item.suggestedStart() == null
                 ? context.getString(R.string.as_soon_as_possible)
-                : item.suggestedStart().format(DateTimeFormatter.ofPattern("HH:mm"));
+                : "voraussichtlich ab " + item.suggestedStart().format(DateTimeFormatter.ofPattern("HH:mm"));
         String calendarContext = item.precedingCalendarBlock() == null
                 ? ""
                 : " · nach " + item.precedingCalendarBlock().title();
         row.setTextViewText(R.id.WidgetMeta,
-                time + " · " + item.obligation().durationMinutes + " Min" + calendarContext);
+                time + " · ca. " + item.obligation().durationMinutes + " Min" + calendarContext);
+        long completedSteps = item.steps().stream().filter(PlanStep::completed).count();
+        row.setTextViewText(R.id.WidgetDone, item.steps().isEmpty() ? "Erledigt"
+                : completedSteps == 0 ? "Alle erledigen"
+                : item.steps().size() - completedSteps == 1 ? "letzten Schritt erledigen"
+                : "Rest erledigen");
 
         Intent complete = new Intent().setAction(FocusWidgetProvider.ACTION_COMPLETE)
                 .putExtra(FocusWidgetProvider.EXTRA_ID, item.obligation().id);

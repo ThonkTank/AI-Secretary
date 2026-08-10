@@ -75,6 +75,33 @@ public final class FocusPlannerTest {
     }
 
     @Test
+    public void inflexibleItemIgnoresLearnedCompletionTime() {
+        LocalDate today = LocalDate.parse("2026-08-10");
+        Obligation fixed = routine("fixed", "Feste Routine", today);
+        fixed.flexible = false;
+
+        PlanItem item = planner.plan(
+                List.of(fixed), List.of(completion("fixed", "2026-08-03T18:30:00")), List.of(),
+                LocalDateTime.parse("2026-08-10T09:00:00"), 3).get(0);
+
+        assertEquals(LocalDateTime.parse("2026-08-10T09:00:00"), item.suggestedStart());
+    }
+
+    @Test
+    public void flexiblePreferenceKeepsLearningNearPreferredWindow() {
+        LocalDate today = LocalDate.parse("2026-08-10");
+        Obligation anchored = routine("anchored", "Flexible Morgenroutine", today);
+        anchored.timePreference = TimePreference.MORNING;
+        anchored.flexible = true;
+
+        PlanItem item = planner.plan(
+                List.of(anchored), List.of(completion("anchored", "2026-08-03T18:30:00")), List.of(),
+                LocalDateTime.parse("2026-08-10T06:00:00"), 3).get(0);
+
+        assertEquals(LocalDateTime.parse("2026-08-10T08:40:00"), item.suggestedStart());
+    }
+
+    @Test
     public void planningAvoidsCalendarConflictsWithoutMutatingCalendar() {
         LocalDate today = LocalDate.parse("2026-08-10");
         Obligation task = routine("focus", "Fokus", today);

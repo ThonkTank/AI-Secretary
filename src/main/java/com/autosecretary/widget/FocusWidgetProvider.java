@@ -7,6 +7,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Bundle;
 import android.widget.RemoteViews;
 
 import com.autosecretary.R;
@@ -26,6 +27,15 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] widgetIds) {
         for (int widgetId : widgetIds) update(context, manager, widgetId);
+    }
+
+    @Override
+    public void onAppWidgetOptionsChanged(
+            Context context,
+            AppWidgetManager manager,
+            int appWidgetId,
+            Bundle newOptions) {
+        update(context, manager, appWidgetId);
     }
 
     @Override
@@ -53,7 +63,12 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
     }
 
     private void update(Context context, AppWidgetManager manager, int widgetId) {
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_focus);
+        Bundle options = manager.getAppWidgetOptions(widgetId);
+        int minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 280);
+        int minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 384);
+        boolean compact = minWidth < 240 && minHeight < 240;
+        RemoteViews views = new RemoteViews(context.getPackageName(),
+                compact ? R.layout.widget_focus_compact : R.layout.widget_focus);
         Intent service = new Intent(context, FocusWidgetService.class);
         service.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
         service.setData(Uri.parse("widget://focus/" + widgetId + "/" + System.currentTimeMillis()));

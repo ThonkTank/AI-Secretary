@@ -64,7 +64,7 @@ public final class FocusPlanner {
                 .thenComparingLong(item -> hasManualOrder(item, day) ? item.manualOrderRank : 0L)
                 .thenComparing(Comparator.comparingInt((Obligation item) -> urgency(item, day)).reversed())
                 .thenComparing(Comparator.comparingInt(
-                        (Obligation item) -> behavior.transitionStrength(item.id)).reversed())
+                        (Obligation item) -> item.flexible ? behavior.transitionStrength(item.id) : 0).reversed())
                 .thenComparingInt(item -> preferredMinute(item, behavior))
                 .thenComparing(item -> item.createdAt)
                 .thenComparing(item -> item.title, String.CASE_INSENSITIVE_ORDER);
@@ -92,24 +92,31 @@ public final class FocusPlanner {
     }
 
     private int preferredMinute(Obligation item, BehaviorProfile behavior) {
-        return item.timePreference == null
-                ? behavior.learnedMinute(item.id)
-                : item.timePreference.preferredMinute();
+        Integer minute = effectivePreferredMinute(item, behavior);
+        return minute == null ? 12 * 60 : minute;
     }
 
     private LocalDateTime preferredStart(
             LocalDateTime cursor,
             Obligation item,
             BehaviorProfile behavior) {
-        Integer minute = null;
-        if (item.timePreference != null) {
-            minute = item.timePreference.preferredMinute();
-        } else if (behavior.hasLearnedMinute(item.id)) {
-            minute = behavior.learnedMinute(item.id);
-        }
+        Integer minute = effectivePreferredMinute(item, behavior);
         if (minute == null) return cursor;
         LocalDateTime preferred = cursor.toLocalDate().atStartOfDay().plusMinutes(minute);
         return preferred.isAfter(cursor) ? preferred : cursor;
+    }
+
+    /** A preference stays the stronger signal while flexible items may learn around it. */
+    private Integer effectivePreferredMinute(Obligation item, BehaviorProfile behavior) {
+        Integer preferred = item.timePreference == null
+                ? null
+                : item.timePreference.preferredMinute();
+        if (!item.flexible) return preferred;
+        if (!behavior.hasLearnedMinute(item.id)) return preferred;
+        int learned = behavior.learnedMinute(item.id);
+        if (preferred == null) return learned;
+        int boundedLearned = Math.max(preferred - 120, Math.min(preferred + 120, learned));
+        return (preferred * 2 + boundedLearned) / 3;
     }
 
     private Placement nextFree(

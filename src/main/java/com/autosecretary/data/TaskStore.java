@@ -29,7 +29,7 @@ import java.util.UUID;
 /** The app's complete persistence surface: obligations, completion evidence and one legacy import. */
 public final class TaskStore extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "autosecretary.db";
-    private static final int DATABASE_VERSION = 32;
+    private static final int DATABASE_VERSION = 33;
 
     public TaskStore(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -48,6 +48,9 @@ public final class TaskStore extends SQLiteOpenHelper {
             addColumnIfMissing(db, "obligations", "manualOrderOn", "TEXT");
             addColumnIfMissing(db, "obligations", "manualOrderRank", "INTEGER NOT NULL DEFAULT 0");
         }
+        if (oldVersion < 33) {
+            addColumnIfMissing(db, "obligations", "flexible", "INTEGER NOT NULL DEFAULT 1");
+        }
         if (oldVersion < DATABASE_VERSION) {
             migrateLegacyTasksOnce(db);
         }
@@ -64,6 +67,7 @@ public final class TaskStore extends SQLiteOpenHelper {
                     cadenceDays INTEGER NOT NULL,
                     nextDueDate TEXT,
                     preferredTime TEXT,
+                    flexible INTEGER NOT NULL DEFAULT 1,
                     stepsJson TEXT,
                     createdAt TEXT NOT NULL,
                     completed INTEGER NOT NULL,
@@ -107,14 +111,14 @@ public final class TaskStore extends SQLiteOpenHelper {
         db.execSQL(String.format(Locale.ROOT, """
                 INSERT OR IGNORE INTO obligations (
                     id, kind, title, durationMinutes, deadlineAt, cadenceDays, nextDueDate,
-                    preferredTime, stepsJson, createdAt, completed, currentStreak, bestStreak,
+                    preferredTime, flexible, stepsJson, createdAt, completed, currentStreak, bestStreak,
                     totalCompletions, manualOrderOn, manualOrderRank)
                 SELECT %s,
                     CASE WHEN %s > 0 THEN 'ROUTINE' ELSE 'TASK' END,
                     COALESCE(%s, 'Aufgabe'), MAX(5, COALESCE(%s, 30)), %s,
                     CASE %s WHEN 'WEEK' THEN 7 WHEN 'MONTH' THEN 30 ELSE 1 END,
                     CASE WHEN %s > 0 THEN COALESCE(%s, date('now')) ELSE NULL END,
-                    NULL, NULL, COALESCE(%s, date('now')) || 'T00:00:00', %s,
+                    NULL, 1, NULL, COALESCE(%s, date('now')) || 'T00:00:00', %s,
                     COALESCE(%s, 0), COALESCE(%s, 0), COALESCE(%s, 0), NULL, 0
                 FROM task_core
                 """,
@@ -178,6 +182,10 @@ public final class TaskStore extends SQLiteOpenHelper {
             if (obligation == null || !obligation.isOpenOn(completedAt.toLocalDate())) {
                 return null;
             }
+            LocalDate occurrence = obligation.occurrenceDate(completedAt.toLocalDate());
+            for (RoutineStep step : obligation.activeStepsFor(completedAt.toLocalDate())) {
+                step.setCompletedFor(occurrence, true, completedAt);
+            }
             completeInTransaction(db, obligation, completedAt);
             db.setTransactionSuccessful();
             return obligation;
@@ -196,7 +204,7 @@ public final class TaskStore extends SQLiteOpenHelper {
         try {
             Obligation obligation = read(obligationId);
             LocalDate day = changedAt.toLocalDate();
-            if (obligation == null || !obligation.isRoutine() || !obligation.isOpenOn(day)) {
+            if (obligation == null || !obligation.isOpenOn(day)) {
                 return null;
             }
             LocalDate occurrence = obligation.occurrenceDate(day);
@@ -270,6 +278,7 @@ public final class TaskStore extends SQLiteOpenHelper {
         values.put("cadenceDays", item.isRoutine() ? Math.max(1, item.cadenceDays) : 0);
         putNullable(values, "nextDueDate", item.isRoutine() ? item.nextDueDate : null);
         putNullable(values, "preferredTime", item.timePreference);
+        values.put("flexible", item.flexible ? 1 : 0);
         values.put("stepsJson", encodeSteps(item.steps));
         values.put("createdAt", item.createdAt.toString());
         values.put("completed", item.completed ? 1 : 0);
@@ -291,6 +300,7 @@ public final class TaskStore extends SQLiteOpenHelper {
         item.cadenceDays = integer(cursor, "cadenceDays");
         item.nextDueDate = parseDate(nullableText(cursor, "nextDueDate"));
         item.timePreference = parseTimePreference(nullableText(cursor, "preferredTime"));
+        item.flexible = integer(cursor, "flexible") != 0;
         item.steps = decodeSteps(nullableText(cursor, "stepsJson"), item.id);
         item.createdAt = LocalDateTime.parse(text(cursor, "createdAt"));
         item.completed = integer(cursor, "completed") != 0;

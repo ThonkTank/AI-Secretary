@@ -4,6 +4,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.autosecretary.core.FocusPlanner;
+import com.autosecretary.core.CalendarBlock;
 import com.autosecretary.core.Obligation;
 import com.autosecretary.core.PlanItem;
 import com.autosecretary.core.PlanMove;
@@ -53,10 +54,11 @@ public final class SecretaryRepository {
     private Dashboard buildDashboard(int focusLimit) {
         List<Obligation> obligations = store.readAll();
         LocalDate day = LocalDate.now();
+        List<CalendarBlock> calendarBlocks = calendar.read(day);
         List<PlanItem> fullPlan = planner.plan(
                 obligations,
                 store.readRecentCompletions(200),
-                calendar.read(day),
+                calendarBlocks,
                 LocalDateTime.now(),
                 obligations.size());
         List<PlanItem> focus = new ArrayList<>(
@@ -70,7 +72,7 @@ public final class SecretaryRepository {
         for (Obligation obligation : obligations) {
             if (!openIds.contains(obligation.id)) ordered.add(obligation);
         }
-        return new Dashboard(focus, ordered);
+        return new Dashboard(focus, ordered, calendarBlocks);
     }
 
     public void save(Obligation obligation, Runnable callback) {

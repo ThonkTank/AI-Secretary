@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_widget"
+    android:padding="10dp">
+
+    <ImageView android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" android:scaleType="fitXY" android:src="@drawable/widget_forest" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingStart="22dp">
+        <LinearLayout android:id="@+id/WidgetHeader" android:layout_width="match_parent" android:layout_height="34dp" android:gravity="center_vertical" android:orientation="horizontal">
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="serif" android:text="jetzt" android:textColor="@color/marker" android:textSize="14sp" android:textStyle="italic" />
+            <TextView android:id="@+id/WidgetAdd" android:layout_width="32dp" android:layout_height="32dp" android:gravity="center" android:text="＋" android:textColor="@color/forest" android:textSize="20sp" />
+        </LinearLayout>
+        <ListView android:id="@+id/WidgetList" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:divider="@android:color/transparent" android:dividerHeight="5dp" android:scrollbars="none" />
+        <TextView android:id="@+id/WidgetEmpty" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:fontFamily="serif" android:gravity="center" android:text="Etwas anlegen" android:textColor="@color/ink" android:textSize="18sp" />
+    </LinearLayout>
+</FrameLayout>

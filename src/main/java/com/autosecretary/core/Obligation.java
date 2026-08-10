@@ -20,6 +20,8 @@ public final class Obligation {
     public int cadenceDays;
     public LocalDate nextDueDate;
     public TimePreference timePreference;
+    /** Enables learned time/order movement independently from the optional time preference. */
+    public boolean flexible = true;
     public List<RoutineStep> steps = new ArrayList<>();
     public LocalDateTime createdAt = LocalDateTime.now();
     public boolean completed;
@@ -47,8 +49,13 @@ public final class Obligation {
     }
 
     public List<RoutineStep> activeStepsFor(LocalDate day) {
-        if (!isRoutine() || steps == null) {
+        if (steps == null) {
             return Collections.emptyList();
+        }
+        if (!isRoutine()) {
+            return steps.stream()
+                    .filter(step -> step != null && step.title != null && !step.title.trim().isEmpty())
+                    .collect(Collectors.toList());
         }
         LocalDate occurrence = occurrenceDate(day);
         return steps.stream()
