@@ -101,9 +101,12 @@ public final class FocusPlanner {
             LocalDateTime cursor,
             Obligation item,
             BehaviorProfile behavior) {
-        Integer minute = item.timePreference != null
-                ? item.timePreference.preferredMinute()
-                : behavior.hasLearnedMinute(item.id) ? behavior.learnedMinute(item.id) : null;
+        Integer minute = null;
+        if (item.timePreference != null) {
+            minute = item.timePreference.preferredMinute();
+        } else if (behavior.hasLearnedMinute(item.id)) {
+            minute = behavior.learnedMinute(item.id);
+        }
         if (minute == null) return cursor;
         LocalDateTime preferred = cursor.toLocalDate().atStartOfDay().plusMinutes(minute);
         return preferred.isAfter(cursor) ? preferred : cursor;
