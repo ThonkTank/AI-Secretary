@@ -77,9 +77,7 @@ public final class OnDeviceBulkEditor {
                 LlmInference.LlmInferenceOptions options = LlmInference.LlmInferenceOptions.builder()
                         .setModelPath(modelFile().getAbsolutePath())
                         .setMaxTokens(2048)
-                        .setTopK(20)
-                        .setTemperature(0.1f)
-                        .setRandomSeed(7)
+                        .setMaxTopK(20)
                         .build();
                 String response;
                 try (LlmInference inference = LlmInference.createFromOptions(context, options)) {
