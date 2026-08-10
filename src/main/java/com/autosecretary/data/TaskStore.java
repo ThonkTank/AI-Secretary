@@ -10,11 +10,13 @@ import com.autosecretary.core.Completion;
 import com.autosecretary.core.Obligation;
 import com.autosecretary.core.RoutineCadence;
 import com.autosecretary.core.RoutineStep;
+import com.autosecretary.core.TimePreference;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -24,10 +26,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-/** The app's complete persistence surface: two tables and one legacy import. */
+/** The app's complete persistence surface: obligations, completion evidence and one legacy import. */
 public final class TaskStore extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "autosecretary.db";
-    private static final int DATABASE_VERSION = 31;
+    private static final int DATABASE_VERSION = 32;
 
     public TaskStore(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -41,6 +43,11 @@ public final class TaskStore extends SQLiteOpenHelper {
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         createCoreTables(db);
+        if (oldVersion < 32) {
+            addColumnIfMissing(db, "obligations", "preferredTime", "TEXT");
+            addColumnIfMissing(db, "obligations", "manualOrderOn", "TEXT");
+            addColumnIfMissing(db, "obligations", "manualOrderRank", "INTEGER NOT NULL DEFAULT 0");
+        }
         if (oldVersion < DATABASE_VERSION) {
             migrateLegacyTasksOnce(db);
         }
@@ -56,14 +63,15 @@ public final class TaskStore extends SQLiteOpenHelper {
                     deadlineAt TEXT,
                     cadenceDays INTEGER NOT NULL,
                     nextDueDate TEXT,
+                    preferredTime TEXT,
                     stepsJson TEXT,
                     createdAt TEXT NOT NULL,
                     completed INTEGER NOT NULL,
                     currentStreak INTEGER NOT NULL,
                     bestStreak INTEGER NOT NULL,
                     totalCompletions INTEGER NOT NULL,
-                    postponedOn TEXT,
-                    postponedRank INTEGER NOT NULL
+                    manualOrderOn TEXT,
+                    manualOrderRank INTEGER NOT NULL
                 )
                 """);
         db.execSQL("""
@@ -99,14 +107,14 @@ public final class TaskStore extends SQLiteOpenHelper {
         db.execSQL(String.format(Locale.ROOT, """
                 INSERT OR IGNORE INTO obligations (
                     id, kind, title, durationMinutes, deadlineAt, cadenceDays, nextDueDate,
-                    stepsJson, createdAt, completed, currentStreak, bestStreak,
-                    totalCompletions, postponedOn, postponedRank)
+                    preferredTime, stepsJson, createdAt, completed, currentStreak, bestStreak,
+                    totalCompletions, manualOrderOn, manualOrderRank)
                 SELECT %s,
                     CASE WHEN %s > 0 THEN 'ROUTINE' ELSE 'TASK' END,
                     COALESCE(%s, 'Aufgabe'), MAX(5, COALESCE(%s, 30)), %s,
                     CASE %s WHEN 'WEEK' THEN 7 WHEN 'MONTH' THEN 30 ELSE 1 END,
                     CASE WHEN %s > 0 THEN COALESCE(%s, date('now')) ELSE NULL END,
-                    NULL, COALESCE(%s, date('now')) || 'T00:00:00', %s,
+                    NULL, NULL, COALESCE(%s, date('now')) || 'T00:00:00', %s,
                     COALESCE(%s, 0), COALESCE(%s, 0), COALESCE(%s, 0), NULL, 0
                 FROM task_core
                 """,
@@ -170,17 +178,7 @@ public final class TaskStore extends SQLiteOpenHelper {
             if (obligation == null || !obligation.isOpenOn(completedAt.toLocalDate())) {
                 return null;
             }
-            RoutineCadence.complete(obligation, completedAt.toLocalDate());
-            obligation.postponedOn = null;
-            obligation.postponedRank = 0;
-            db.insertWithOnConflict(
-                    "obligations", null, values(obligation), SQLiteDatabase.CONFLICT_REPLACE);
-
-            ContentValues completion = new ContentValues();
-            completion.put("id", UUID.randomUUID().toString());
-            completion.put("obligationId", id);
-            completion.put("completedAt", completedAt.toString());
-            db.insertOrThrow("completions", null, completion);
+            completeInTransaction(db, obligation, completedAt);
             db.setTransactionSuccessful();
             return obligation;
         } finally {
@@ -188,17 +186,78 @@ public final class TaskStore extends SQLiteOpenHelper {
         }
     }
 
-    public synchronized void postpone(String id, LocalDate day) {
-        long rank = 1;
-        try (Cursor cursor = getReadableDatabase().rawQuery(
-                "SELECT COALESCE(MAX(postponedRank), 0) + 1 FROM obligations WHERE postponedOn = ?",
-                new String[]{day.toString()})) {
-            if (cursor.moveToFirst()) rank = cursor.getLong(0);
+    public synchronized Obligation setStepCompleted(
+            String obligationId,
+            String stepId,
+            boolean completed,
+            LocalDateTime changedAt) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            Obligation obligation = read(obligationId);
+            LocalDate day = changedAt.toLocalDate();
+            if (obligation == null || !obligation.isRoutine() || !obligation.isOpenOn(day)) {
+                return null;
+            }
+            LocalDate occurrence = obligation.occurrenceDate(day);
+            RoutineStep target = null;
+            for (RoutineStep step : obligation.activeStepsFor(day)) {
+                if (step.id.equals(stepId)) {
+                    target = step;
+                    break;
+                }
+            }
+            if (target == null) return null;
+
+            target.setCompletedFor(occurrence, completed, changedAt);
+            if (completed && obligation.allActiveStepsCompleted(day)) {
+                completeInTransaction(db, obligation, changedAt);
+            } else {
+                db.insertWithOnConflict(
+                        "obligations", null, values(obligation), SQLiteDatabase.CONFLICT_REPLACE);
+            }
+            db.setTransactionSuccessful();
+            return obligation;
+        } finally {
+            db.endTransaction();
         }
-        ContentValues values = new ContentValues();
-        values.put("postponedOn", day.toString());
-        values.put("postponedRank", rank);
-        getWritableDatabase().update("obligations", values, "id = ?", new String[]{id});
+    }
+
+    public synchronized void saveManualOrder(LocalDate day, List<String> orderedIds) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            ContentValues clear = new ContentValues();
+            clear.putNull("manualOrderOn");
+            clear.put("manualOrderRank", 0);
+            db.update(
+                    "obligations", clear, "manualOrderOn = ?", new String[]{day.toString()});
+
+            long rank = 1;
+            for (String id : orderedIds) {
+                ContentValues order = new ContentValues();
+                order.put("manualOrderOn", day.toString());
+                order.put("manualOrderRank", rank++);
+                db.update("obligations", order, "id = ?", new String[]{id});
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    private void completeInTransaction(SQLiteDatabase db, Obligation obligation, LocalDateTime completedAt) {
+        RoutineCadence.complete(obligation, completedAt.toLocalDate());
+        obligation.manualOrderOn = null;
+        obligation.manualOrderRank = 0;
+        db.insertWithOnConflict(
+                "obligations", null, values(obligation), SQLiteDatabase.CONFLICT_REPLACE);
+
+        ContentValues completion = new ContentValues();
+        completion.put("id", UUID.randomUUID().toString());
+        completion.put("obligationId", obligation.id);
+        completion.put("completedAt", completedAt.toString());
+        db.insertOrThrow("completions", null, completion);
     }
 
     private ContentValues values(Obligation item) {
@@ -210,14 +269,15 @@ public final class TaskStore extends SQLiteOpenHelper {
         putNullable(values, "deadlineAt", item.deadlineAt);
         values.put("cadenceDays", item.isRoutine() ? Math.max(1, item.cadenceDays) : 0);
         putNullable(values, "nextDueDate", item.isRoutine() ? item.nextDueDate : null);
+        putNullable(values, "preferredTime", item.timePreference);
         values.put("stepsJson", encodeSteps(item.steps));
         values.put("createdAt", item.createdAt.toString());
         values.put("completed", item.completed ? 1 : 0);
         values.put("currentStreak", item.currentStreak);
         values.put("bestStreak", item.bestStreak);
         values.put("totalCompletions", item.totalCompletions);
-        putNullable(values, "postponedOn", item.postponedOn);
-        values.put("postponedRank", item.postponedRank);
+        putNullable(values, "manualOrderOn", item.manualOrderOn);
+        values.put("manualOrderRank", item.manualOrderRank);
         return values;
     }
 
@@ -230,14 +290,15 @@ public final class TaskStore extends SQLiteOpenHelper {
         item.deadlineAt = parseDateTime(nullableText(cursor, "deadlineAt"));
         item.cadenceDays = integer(cursor, "cadenceDays");
         item.nextDueDate = parseDate(nullableText(cursor, "nextDueDate"));
-        item.steps = decodeSteps(nullableText(cursor, "stepsJson"));
+        item.timePreference = parseTimePreference(nullableText(cursor, "preferredTime"));
+        item.steps = decodeSteps(nullableText(cursor, "stepsJson"), item.id);
         item.createdAt = LocalDateTime.parse(text(cursor, "createdAt"));
         item.completed = integer(cursor, "completed") != 0;
         item.currentStreak = integer(cursor, "currentStreak");
         item.bestStreak = integer(cursor, "bestStreak");
         item.totalCompletions = integer(cursor, "totalCompletions");
-        item.postponedOn = parseDate(nullableText(cursor, "postponedOn"));
-        item.postponedRank = cursor.getLong(cursor.getColumnIndexOrThrow("postponedRank"));
+        item.manualOrderOn = parseDate(nullableText(cursor, "manualOrderOn"));
+        item.manualOrderRank = cursor.getLong(cursor.getColumnIndexOrThrow("manualOrderRank"));
         return item;
     }
 
@@ -252,8 +313,13 @@ public final class TaskStore extends SQLiteOpenHelper {
                 if (step.days.contains(day)) days.put(day.name());
             }
             try {
+                value.put("id", step.id);
                 value.put("title", step.title);
                 value.put("days", days);
+                value.put("completedFor", step.completedFor == null
+                        ? JSONObject.NULL : step.completedFor.toString());
+                value.put("completedAt", step.completedAt == null
+                        ? JSONObject.NULL : step.completedAt.toString());
             } catch (JSONException error) {
                 throw new IllegalStateException("Routineschritte konnten nicht gespeichert werden", error);
             }
@@ -262,7 +328,7 @@ public final class TaskStore extends SQLiteOpenHelper {
         return encoded.length() == 0 ? null : encoded.toString();
     }
 
-    private List<RoutineStep> decodeSteps(String json) {
+    private List<RoutineStep> decodeSteps(String json, String obligationId) {
         List<RoutineStep> result = new ArrayList<>();
         if (json == null || json.trim().isEmpty()) return result;
         try {
@@ -276,7 +342,21 @@ public final class TaskStore extends SQLiteOpenHelper {
                         days.add(DayOfWeek.valueOf(encodedDays.getString(day)));
                     }
                 }
-                result.add(new RoutineStep(value.optString("title"), days));
+                String title = value.optString("title");
+                String id = value.optString("id");
+                if (id.isBlank()) {
+                    id = UUID.nameUUIDFromBytes(
+                            (obligationId + ":" + index + ":" + title)
+                                    .getBytes(StandardCharsets.UTF_8)).toString();
+                }
+                result.add(new RoutineStep(
+                        id,
+                        title,
+                        days,
+                        parseDate(value.isNull("completedFor")
+                                ? null : value.optString("completedFor", null)),
+                        parseDateTime(value.isNull("completedAt")
+                                ? null : value.optString("completedAt", null))));
             }
         } catch (JSONException | IllegalArgumentException error) {
             throw new IllegalStateException("Routineschritte konnten nicht gelesen werden", error);
@@ -307,6 +387,20 @@ public final class TaskStore extends SQLiteOpenHelper {
 
     private static LocalDateTime parseDateTime(String value) {
         return value == null ? null : LocalDateTime.parse(value);
+    }
+
+    private static TimePreference parseTimePreference(String value) {
+        return value == null ? null : TimePreference.valueOf(value);
+    }
+
+    private static void addColumnIfMissing(
+            SQLiteDatabase db,
+            String table,
+            String column,
+            String declaration) {
+        if (!columnExists(db, table, column)) {
+            db.execSQL("ALTER TABLE " + table + " ADD COLUMN " + column + " " + declaration);
+        }
     }
 
     private static boolean tableExists(SQLiteDatabase db, String table) {

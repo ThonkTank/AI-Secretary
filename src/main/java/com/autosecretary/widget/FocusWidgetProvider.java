@@ -12,12 +12,16 @@ import android.widget.RemoteViews;
 import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.app.MainActivity;
+import com.autosecretary.core.PlanMove;
 
-/** Homescreen behavior anchor: complete the whole block or explicitly move it behind today. */
+/** Homescreen behavior anchor: complete a block or step and move blocks behind today. */
 public final class FocusWidgetProvider extends AppWidgetProvider {
     static final String ACTION_COMPLETE = "com.autosecretary.COMPLETE";
     static final String ACTION_LATER = "com.autosecretary.LATER";
+    static final String ACTION_TOGGLE_STEP = "com.autosecretary.TOGGLE_STEP";
     static final String EXTRA_ID = "obligation_id";
+    static final String EXTRA_STEP_ID = "step_id";
+    static final String EXTRA_STEP_COMPLETED = "step_completed";
 
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] widgetIds) {
@@ -34,7 +38,15 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
         if (ACTION_COMPLETE.equals(intent.getAction())) {
             app.repository().complete(id, ignored -> result.finish());
         } else if (ACTION_LATER.equals(intent.getAction())) {
-            app.repository().postpone(id, result::finish);
+            app.repository().move(id, PlanMove.LAST, result::finish);
+        } else if (ACTION_TOGGLE_STEP.equals(intent.getAction())) {
+            String stepId = intent.getStringExtra(EXTRA_STEP_ID);
+            if (stepId == null) {
+                result.finish();
+                return;
+            }
+            boolean completed = intent.getBooleanExtra(EXTRA_STEP_COMPLETED, true);
+            app.repository().setStepCompleted(id, stepId, completed, ignored -> result.finish());
         } else {
             result.finish();
         }

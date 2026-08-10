@@ -3,6 +3,9 @@ package com.autosecretary.app;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CheckBox;
+import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -10,6 +13,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.autosecretary.R;
 import com.autosecretary.core.PlanItem;
+import com.autosecretary.core.PlanMove;
+import com.autosecretary.core.PlanStep;
 import com.google.android.material.button.MaterialButton;
 
 import java.time.format.DateTimeFormatter;
@@ -19,7 +24,8 @@ import java.util.List;
 final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
     interface Listener {
         void onComplete(PlanItem item);
-        void onLater(PlanItem item);
+        void onStepChanged(PlanItem item, PlanStep step, boolean completed);
+        void onMove(PlanItem item, PlanMove move);
     }
 
     private final Listener listener;
@@ -47,14 +53,40 @@ final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
         holder.position.setText(position == 0 ? R.string.now : position == 1 ? R.string.next : R.string.later);
         holder.title.setText(item.obligation().title);
         holder.steps.setVisibility(item.steps().isEmpty() ? View.GONE : View.VISIBLE);
-        holder.steps.setText(String.join("  →  ", item.steps()));
+        holder.steps.removeAllViews();
+        for (PlanStep step : item.steps()) {
+            CheckBox checkBox = new CheckBox(holder.itemView.getContext());
+            checkBox.setText(step.title());
+            checkBox.setChecked(step.completed());
+            checkBox.setOnCheckedChangeListener((button, completed) ->
+                    listener.onStepChanged(item, step, completed));
+            holder.steps.addView(checkBox);
+        }
         String time = item.suggestedStart() == null
                 ? "Heute, sobald Platz ist"
                 : item.suggestedStart().format(DateTimeFormatter.ofPattern("HH:mm"))
                     + "–" + item.suggestedEnd().format(DateTimeFormatter.ofPattern("HH:mm"));
-        holder.meta.setText(time + " · " + item.obligation().durationMinutes + " Min");
+        String calendarContext = item.precedingCalendarBlock() == null
+                ? ""
+                : " · nach " + item.precedingCalendarBlock().title();
+        holder.meta.setText(time + " · " + item.obligation().durationMinutes + " Min" + calendarContext);
         holder.done.setOnClickListener(view -> listener.onComplete(item));
-        holder.later.setOnClickListener(view -> listener.onLater(item));
+        holder.later.setOnClickListener(view -> listener.onMove(item, PlanMove.LAST));
+        holder.order.setOnClickListener(view -> showOrderMenu(holder.order, item));
+    }
+
+    private void showOrderMenu(View anchor, PlanItem item) {
+        PopupMenu menu = new PopupMenu(anchor.getContext(), anchor);
+        menu.getMenu().add(R.string.move_first).setOnMenuItemClickListener(ignored -> move(item, PlanMove.FIRST));
+        menu.getMenu().add(R.string.move_earlier).setOnMenuItemClickListener(ignored -> move(item, PlanMove.EARLIER));
+        menu.getMenu().add(R.string.move_later).setOnMenuItemClickListener(ignored -> move(item, PlanMove.LATER));
+        menu.getMenu().add(R.string.move_last).setOnMenuItemClickListener(ignored -> move(item, PlanMove.LAST));
+        menu.show();
+    }
+
+    private boolean move(PlanItem item, PlanMove move) {
+        listener.onMove(item, move);
+        return true;
     }
 
     @Override
@@ -65,10 +97,11 @@ final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
     static final class Holder extends RecyclerView.ViewHolder {
         final TextView position;
         final TextView title;
-        final TextView steps;
+        final LinearLayout steps;
         final TextView meta;
         final MaterialButton done;
         final MaterialButton later;
+        final MaterialButton order;
 
         Holder(View view) {
             super(view);
@@ -78,6 +111,7 @@ final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
             meta = view.findViewById(R.id.FocusMeta);
             done = view.findViewById(R.id.FocusDone);
             later = view.findViewById(R.id.FocusLater);
+            order = view.findViewById(R.id.FocusOrder);
         }
     }
 }

@@ -5,12 +5,12 @@ Auto Secretary is a deliberately small Android app for ADHD time blindness and f
 ## Product rules
 
 - The focus surface shows at most three blocks.
-- A routine is one atomic block with its complete, manually ordered step sequence.
-- Steps can apply only on selected weekdays; checking the block once completes every displayed step.
+- A routine is one planning block with a complete, manually ordered step sequence.
+- Steps have stable identities, can apply only on selected weekdays, and can be completed individually. Completing the final active step completes the routine occurrence; the block-level action remains a shortcut for completing all steps.
 - A missed recurring routine stays due until completed. Only one occurrence can be open, so missed weeks never create a backlog pile.
-- Completion time and adjacent completion order are learned locally and influence later plans. A learned morning block stays before a learned lunch block even when the morning got delayed until noon.
-- **Später** moves an item behind today's other open work without changing its real due date.
-- Calendar events are read as busy intervals. The app has no calendar write permission and never creates calendar events.
+- Completion time and adjacent completion order are learned locally and influence later plans. An optional morning, midday, or evening preference overrides learned timing for that item.
+- Today's open work can be manually moved first, one position earlier/later, or last. **Später** is the shortcut for moving an item last without changing its real due date.
+- Calendar events are read as titled busy intervals and their titles are shown as planning context. The app has no calendar write permission and never creates calendar events.
 - Local AI changes are generated on the phone from a user-selected MediaPipe `.task` model. Every mutation is shown as a preview and requires explicit confirmation.
 
 ## Architecture

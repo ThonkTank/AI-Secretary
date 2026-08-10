@@ -44,7 +44,8 @@ public final class DeviceCalendarReader {
         String[] projection = {
                 CalendarContract.Instances.BEGIN,
                 CalendarContract.Instances.END,
-                CalendarContract.Instances.ALL_DAY
+                CalendarContract.Instances.ALL_DAY,
+                CalendarContract.Instances.TITLE
         };
         try (Cursor cursor = context.getContentResolver().query(
                 builder.build(), projection, null, null, CalendarContract.Instances.BEGIN)) {
@@ -55,7 +56,8 @@ public final class DeviceCalendarReader {
                         Instant.ofEpochMilli(cursor.getLong(0)), zone);
                 LocalDateTime finish = LocalDateTime.ofInstant(
                         Instant.ofEpochMilli(cursor.getLong(1)), zone);
-                if (finish.isAfter(start)) result.add(new CalendarBlock(start, finish));
+                String title = cursor.isNull(3) ? null : cursor.getString(3);
+                if (finish.isAfter(start)) result.add(new CalendarBlock(start, finish, title));
             }
         }
         return result;

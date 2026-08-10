@@ -7,6 +7,7 @@ import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,7 +24,10 @@ import com.autosecretary.ai.BulkChangeProposal;
 import com.autosecretary.ai.OnDeviceBulkEditor;
 import com.autosecretary.core.Obligation;
 import com.autosecretary.core.PlanItem;
+import com.autosecretary.core.PlanMove;
+import com.autosecretary.core.PlanStep;
 import com.autosecretary.core.RoutineStep;
+import com.autosecretary.core.TimePreference;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.time.DayOfWeek;
@@ -83,8 +87,11 @@ public final class MainActivity extends AppCompatActivity {
 
         focusAdapter = new FocusAdapter(new FocusAdapter.Listener() {
             @Override public void onComplete(PlanItem item) { complete(item.obligation()); }
-            @Override public void onLater(PlanItem item) {
-                repository.postpone(item.obligation().id, MainActivity.this::reload);
+            @Override public void onStepChanged(PlanItem item, PlanStep step, boolean completed) {
+                setStepCompleted(item.obligation(), step, completed);
+            }
+            @Override public void onMove(PlanItem item, PlanMove move) {
+                repository.move(item.obligation().id, move, MainActivity.this::reload);
             }
         });
         RecyclerView focusList = findViewById(R.id.FocusList);
@@ -94,6 +101,12 @@ public final class MainActivity extends AppCompatActivity {
 
         obligationAdapter = new ObligationAdapter(new ObligationAdapter.Listener() {
             @Override public void onComplete(Obligation obligation) { complete(obligation); }
+            @Override public void onStepChanged(Obligation obligation, PlanStep step, boolean completed) {
+                setStepCompleted(obligation, step, completed);
+            }
+            @Override public void onMove(Obligation obligation, PlanMove move) {
+                repository.move(obligation.id, move, MainActivity.this::reload);
+            }
             @Override public void onEdit(Obligation obligation) { showEditor(obligation.isRoutine(), obligation); }
         });
         RecyclerView obligations = findViewById(R.id.ObligationList);
@@ -141,6 +154,24 @@ public final class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void setStepCompleted(Obligation obligation, PlanStep step, boolean completed) {
+        repository.setStepCompleted(obligation.id, step.id(), completed, updated -> {
+            if (updated == null) {
+                reload();
+                return;
+            }
+            if (!updated.isOpenOn(LocalDate.now())) {
+                celebration.burst();
+                celebration.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+                String message = updated.currentStreak > 0
+                        ? "Routine erledigt · 🔥 " + updated.currentStreak
+                        : "Routine erledigt";
+                Snackbar.make(findViewById(R.id.Root), message, Snackbar.LENGTH_SHORT).show();
+            }
+            reload();
+        });
+    }
+
     private void showEditor(boolean routine, Obligation existing) {
         View view = getLayoutInflater().inflate(R.layout.dialog_obligation, null);
         EditText title = view.findViewById(R.id.EditTitle);
@@ -149,6 +180,7 @@ public final class MainActivity extends AppCompatActivity {
         EditText cadence = view.findViewById(R.id.EditCadence);
         EditText nextDue = view.findViewById(R.id.EditNextDue);
         EditText steps = view.findViewById(R.id.EditSteps);
+        Spinner timePreference = view.findViewById(R.id.EditTimePreference);
         View taskFields = view.findViewById(R.id.TaskFields);
         View routineFields = view.findViewById(R.id.RoutineFields);
         taskFields.setVisibility(routine ? View.GONE : View.VISIBLE);
@@ -161,6 +193,7 @@ public final class MainActivity extends AppCompatActivity {
         cadence.setText(Integer.toString(source.cadenceDays > 0 ? source.cadenceDays : routine ? 1 : 0));
         nextDue.setText(source.nextDueDate == null ? LocalDate.now().toString() : source.nextDueDate.toString());
         steps.setText(formatSteps(source.steps));
+        timePreference.setSelection(timePreferenceSelection(source.timePreference));
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(routine ? R.string.edit_routine : R.string.edit_task)
@@ -176,11 +209,12 @@ public final class MainActivity extends AppCompatActivity {
                     edited.kind = routine ? Obligation.Kind.ROUTINE : Obligation.Kind.TASK;
                     edited.title = required(title, "Titel");
                     edited.durationMinutes = parseInt(duration, "Dauer", 5, 480);
+                    edited.timePreference = selectedTimePreference(timePreference.getSelectedItemPosition());
                     if (routine) {
                         edited.cadenceDays = parseInt(cadence, "Rhythmus", 1, 365);
                         edited.nextDueDate = LocalDate.parse(required(nextDue, "Nächste Fälligkeit"));
                         edited.deadlineAt = null;
-                        edited.steps = parseSteps(steps.getText().toString());
+                        edited.steps = parseSteps(steps.getText().toString(), source.steps);
                     } else {
                         edited.deadlineAt = deadline.getText().toString().trim().isEmpty()
                                 ? null
@@ -284,7 +318,7 @@ public final class MainActivity extends AppCompatActivity {
         modelPicker.launch(new String[]{"application/octet-stream", "*/*"});
     }
 
-    private List<RoutineStep> parseSteps(String value) {
+    private List<RoutineStep> parseSteps(String value, List<RoutineStep> existing) {
         List<RoutineStep> result = new ArrayList<>();
         for (String rawLine : value.split("\\R")) {
             if (rawLine.trim().isEmpty()) continue;
@@ -299,9 +333,34 @@ public final class MainActivity extends AppCompatActivity {
                     days.add(day);
                 }
             }
-            result.add(new RoutineStep(title, days));
+            int index = result.size();
+            if (existing != null && index < existing.size()) {
+                RoutineStep previous = existing.get(index);
+                result.add(new RoutineStep(
+                        previous.id, title, days, previous.completedFor, previous.completedAt));
+            } else {
+                result.add(new RoutineStep(title, days));
+            }
         }
         return result;
+    }
+
+    private int timePreferenceSelection(TimePreference preference) {
+        if (preference == null) return 0;
+        return switch (preference) {
+            case MORNING -> 1;
+            case MIDDAY -> 2;
+            case EVENING -> 3;
+        };
+    }
+
+    private TimePreference selectedTimePreference(int selection) {
+        return switch (selection) {
+            case 1 -> TimePreference.MORNING;
+            case 2 -> TimePreference.MIDDAY;
+            case 3 -> TimePreference.EVENING;
+            default -> null;
+        };
     }
 
     private String formatSteps(List<RoutineStep> steps) {
@@ -325,14 +384,15 @@ public final class MainActivity extends AppCompatActivity {
         copy.deadlineAt = source.deadlineAt;
         copy.cadenceDays = source.cadenceDays;
         copy.nextDueDate = source.nextDueDate;
-        copy.steps = new ArrayList<>(source.steps);
+        copy.timePreference = source.timePreference;
+        copy.steps = source.steps.stream().map(RoutineStep::copy).collect(java.util.stream.Collectors.toList());
         copy.createdAt = source.createdAt;
         copy.completed = source.completed;
         copy.currentStreak = source.currentStreak;
         copy.bestStreak = source.bestStreak;
         copy.totalCompletions = source.totalCompletions;
-        copy.postponedOn = source.postponedOn;
-        copy.postponedRank = source.postponedRank;
+        copy.manualOrderOn = source.manualOrderOn;
+        copy.manualOrderRank = source.manualOrderRank;
         return copy;
     }
 

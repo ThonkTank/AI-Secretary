@@ -5,6 +5,7 @@ import android.net.Uri;
 
 import com.autosecretary.core.Obligation;
 import com.autosecretary.core.RoutineStep;
+import com.autosecretary.core.TimePreference;
 import com.google.mediapipe.tasks.genai.llminference.LlmInference;
 
 import org.json.JSONArray;
@@ -101,6 +102,8 @@ public final class OnDeviceBulkEditor {
             value.put("deadline", item.deadlineAt == null ? JSONObject.NULL : item.deadlineAt.toString());
             value.put("cadenceDays", item.cadenceDays);
             value.put("nextDueDate", item.nextDueDate == null ? JSONObject.NULL : item.nextDueDate.toString());
+            value.put("timePreference", item.timePreference == null
+                    ? JSONObject.NULL : item.timePreference.name());
             state.put(value);
         }
         return String.format(Locale.ROOT, """
@@ -112,6 +115,7 @@ public final class OnDeviceBulkEditor {
                    "kind":"TASK|ROUTINE","title":"Titel","durationMinutes":30,
                    "deadline":"YYYY-MM-DDTHH:MM:SS oder null","cadenceDays":7,
                    "nextDueDate":"YYYY-MM-DD oder null",
+                   "timePreference":"MORNING|MIDDAY|EVENING oder null",
                    "steps":[{"title":"Schritt","days":["MONDAY","TUESDAY"]}]}
                 ]}
                 Regeln: Keine nicht verlangten Änderungen. Bei Unsicherheit keine Aktion erzeugen und dies
@@ -174,7 +178,12 @@ public final class OnDeviceBulkEditor {
         if (action.has("nextDueDate")) {
             item.nextDueDate = action.isNull("nextDueDate") ? null : LocalDate.parse(action.getString("nextDueDate"));
         }
+        if (action.has("timePreference")) {
+            item.timePreference = action.isNull("timePreference")
+                    ? null : TimePreference.valueOf(action.getString("timePreference"));
+        }
         if (action.has("steps")) {
+            List<RoutineStep> previousSteps = item.steps;
             item.steps = new ArrayList<>();
             JSONArray steps = action.getJSONArray("steps");
             for (int index = 0; index < steps.length(); index++) {
@@ -186,7 +195,14 @@ public final class OnDeviceBulkEditor {
                         days.add(DayOfWeek.valueOf(encodedDays.getString(day)));
                     }
                 }
-                item.steps.add(new RoutineStep(encoded.getString("title"), days));
+                String title = encoded.getString("title");
+                if (index < previousSteps.size()) {
+                    RoutineStep previous = previousSteps.get(index);
+                    item.steps.add(new RoutineStep(
+                            previous.id, title, days, previous.completedFor, previous.completedAt));
+                } else {
+                    item.steps.add(new RoutineStep(title, days));
+                }
             }
         }
         if (item.isRoutine()) {
@@ -217,14 +233,15 @@ public final class OnDeviceBulkEditor {
         copy.deadlineAt = source.deadlineAt;
         copy.cadenceDays = source.cadenceDays;
         copy.nextDueDate = source.nextDueDate;
-        copy.steps = new ArrayList<>(source.steps);
+        copy.timePreference = source.timePreference;
+        copy.steps = source.steps.stream().map(RoutineStep::copy).collect(java.util.stream.Collectors.toList());
         copy.createdAt = source.createdAt;
         copy.completed = source.completed;
         copy.currentStreak = source.currentStreak;
         copy.bestStreak = source.bestStreak;
         copy.totalCompletions = source.totalCompletions;
-        copy.postponedOn = source.postponedOn;
-        copy.postponedRank = source.postponedRank;
+        copy.manualOrderOn = source.manualOrderOn;
+        copy.manualOrderRank = source.manualOrderRank;
         return copy;
     }
 

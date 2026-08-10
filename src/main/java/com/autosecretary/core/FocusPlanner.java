@@ -14,6 +14,9 @@ import java.util.stream.Collectors;
 public final class FocusPlanner {
     private static final int TRANSITION_MINUTES = 15;
 
+    private record Placement(LocalDateTime start, CalendarBlock precedingCalendarBlock) {
+    }
+
     public List<PlanItem> plan(
             List<Obligation> obligations,
             List<Completion> completions,
@@ -38,9 +41,16 @@ public final class FocusPlanner {
             if (result.size() >= Math.max(0, limit)) {
                 break;
             }
-            LocalDateTime start = nextFree(cursor, obligation.durationMinutes, busy);
+            LocalDateTime earliest = preferredStart(cursor, obligation, behavior);
+            Placement placement = nextFree(earliest, obligation.durationMinutes, busy);
+            LocalDateTime start = placement.start();
             LocalDateTime end = start == null ? null : start.plusMinutes(obligation.durationMinutes);
-            result.add(new PlanItem(obligation, start, end, obligation.stepTitlesFor(day)));
+            result.add(new PlanItem(
+                    obligation,
+                    start,
+                    end,
+                    obligation.planStepsFor(day),
+                    placement.precedingCalendarBlock()));
             if (end != null) {
                 cursor = end.plusMinutes(TRANSITION_MINUTES);
             }
@@ -50,12 +60,12 @@ public final class FocusPlanner {
 
     private Comparator<Obligation> order(LocalDate day, BehaviorProfile behavior) {
         return Comparator
-                .comparing((Obligation item) -> isPostponedToday(item, day))
-                .thenComparingLong(item -> isPostponedToday(item, day) ? item.postponedRank : 0L)
+                .comparing((Obligation item) -> !hasManualOrder(item, day))
+                .thenComparingLong(item -> hasManualOrder(item, day) ? item.manualOrderRank : 0L)
                 .thenComparing(Comparator.comparingInt((Obligation item) -> urgency(item, day)).reversed())
                 .thenComparing(Comparator.comparingInt(
                         (Obligation item) -> behavior.transitionStrength(item.id)).reversed())
-                .thenComparingInt(item -> behavior.learnedMinute(item.id))
+                .thenComparingInt(item -> preferredMinute(item, behavior))
                 .thenComparing(item -> item.createdAt)
                 .thenComparing(item -> item.title, String.CASE_INSENSITIVE_ORDER);
     }
@@ -77,15 +87,34 @@ public final class FocusPlanner {
         return 10_000;
     }
 
-    private boolean isPostponedToday(Obligation item, LocalDate day) {
-        return day.equals(item.postponedOn) && item.postponedRank > 0;
+    private boolean hasManualOrder(Obligation item, LocalDate day) {
+        return day.equals(item.manualOrderOn) && item.manualOrderRank > 0;
     }
 
-    private LocalDateTime nextFree(
+    private int preferredMinute(Obligation item, BehaviorProfile behavior) {
+        return item.timePreference == null
+                ? behavior.learnedMinute(item.id)
+                : item.timePreference.preferredMinute();
+    }
+
+    private LocalDateTime preferredStart(
+            LocalDateTime cursor,
+            Obligation item,
+            BehaviorProfile behavior) {
+        Integer minute = item.timePreference != null
+                ? item.timePreference.preferredMinute()
+                : behavior.hasLearnedMinute(item.id) ? behavior.learnedMinute(item.id) : null;
+        if (minute == null) return cursor;
+        LocalDateTime preferred = cursor.toLocalDate().atStartOfDay().plusMinutes(minute);
+        return preferred.isAfter(cursor) ? preferred : cursor;
+    }
+
+    private Placement nextFree(
             LocalDateTime earliest,
             int durationMinutes,
             List<CalendarBlock> busy) {
         LocalDateTime cursor = earliest;
+        CalendarBlock preceding = null;
         for (CalendarBlock block : busy) {
             if (!block.start().toLocalDate().equals(earliest.toLocalDate())) {
                 continue;
@@ -96,11 +125,14 @@ public final class FocusPlanner {
             if (!block.start().isAfter(cursor)
                     || Duration.between(cursor, block.start()).toMinutes() < durationMinutes) {
                 cursor = block.end().plusMinutes(TRANSITION_MINUTES);
+                preceding = block;
             } else {
                 break;
             }
         }
         LocalDateTime dayEnd = LocalDateTime.of(earliest.toLocalDate(), LocalTime.of(22, 0));
-        return cursor.plusMinutes(durationMinutes).isAfter(dayEnd) ? null : cursor;
+        return new Placement(
+                cursor.plusMinutes(durationMinutes).isAfter(dayEnd) ? null : cursor,
+                preceding);
     }
 }
