@@ -11,7 +11,7 @@ Auto Secretary is a deliberately small Android app for ADHD time blindness and f
 - Completion time and adjacent completion order are learned locally and influence later plans. An optional morning, midday, or evening preference overrides learned timing for that item.
 - Today's open work can be manually moved first, one position earlier/later, or last. **Später** is the shortcut for moving an item last without changing its real due date.
 - Calendar events are read as titled busy intervals and their titles are shown as planning context. The app has no calendar write permission and never creates calendar events.
-- Local AI changes are generated on the phone from a user-selected MediaPipe `.task` model. Every mutation is shown as a preview and requires explicit confirmation.
+- Local AI changes are generated on the phone by the bundled Gemma 3 270M IT model. Every mutation is shown as a preview and requires explicit confirmation. A custom MediaPipe `.task` model remains an optional replacement.
 
 ## Architecture
 
@@ -27,18 +27,22 @@ Historical source remains under `.history/` for reference but is not part of the
 
 ## Build and test
 
-Requirements: JDK 21 (required by the on-device GenAI dependency), Android SDK 35, and the included Gradle wrapper. App source and bytecode compatibility remain Java 17.
+Requirements: JDK 21 (required by the on-device GenAI dependency), Android SDK 35, the included Gradle wrapper, and network access for the first model-backed build. App source and bytecode compatibility remain Java 17.
 
 ```bash
 ./gradlew checkArchitecture
 ./gradlew assembleDebug
 ```
 
-The APK is written to `build/outputs/apk/debug/AutoSecretary.apk`.
+The first asset merge downloads the 304 MB Gemma task bundle into `build/bundled-ai/`, verifies its pinned SHA-256, and embeds it uncompressed in the APK. Later builds reuse the local file; CI caches it. The APK is written to `build/outputs/apk/debug/AutoSecretary.apk`.
 
 ## Local model
 
-Open the app, choose **Modell wählen**, and select a MediaPipe LLM Inference-compatible `.task` model stored on the device. The model is copied into app-private storage. Neither prompts nor task data are sent to a server.
+Gemma 3 270M IT is included in every complete APK. On first AI use, the app asks for acceptance of the Gemma terms and copies the verified model from the APK into app-private storage. No model download or file picker is required on the phone. Neither prompts nor task data are sent to a server.
+
+The build pins the official model artifact's SHA-256 (`0f7147f1…f2265ef5`). Because Google's canonical Hugging Face repository is gated, the bytes are fetched from a public mirror and accepted only when they match that official hash. **Modell austauschen** can still install another compatible `.task` file as an explicit override.
+
+The bundled weights remain subject to the [Gemma Terms of Use](https://ai.google.dev/gemma/terms) and [Gemma Prohibited Use Policy](https://ai.google.dev/gemma/prohibited_use_policy). Required copies and notices ship in `src/main/assets/`.
 
 The model deliberately produces only a structured proposal. The app validates it, shows additions/updates/deletions in a confirmation dialog, and applies nothing until the user taps **Änderungen übernehmen**.
 

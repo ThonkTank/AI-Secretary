@@ -14,6 +14,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.security.MessageDigest;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,9 +27,13 @@ import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.Locale;
 
-/** Runs a user-selected MediaPipe-compatible model file entirely on the phone. */
+/** Runs the bundled or optionally user-replaced MediaPipe model entirely on the phone. */
 public final class OnDeviceBulkEditor {
     private static final String MODEL_FILE = "autosecretary-model.task";
+    private static final String BUNDLED_MODEL_ASSET =
+            "models/autosecretary-gemma3-270m-it-q8.task";
+    private static final String BUNDLED_MODEL_SHA256 =
+            "0f7147f1c22eaf758b819bbf7841793e4c90096c9352cde7fbe5c631f2265ef5";
 
     private final Context context;
     private final Executor executor;
@@ -40,6 +45,36 @@ public final class OnDeviceBulkEditor {
 
     public boolean hasModel() {
         return modelFile().isFile() && modelFile().length() > 0;
+    }
+
+    public void installBundledModel(Runnable onSuccess, Consumer<Throwable> onError) {
+        executor.execute(() -> {
+            if (hasModel()) {
+                onSuccess.run();
+                return;
+            }
+            File target = modelFile();
+            File temporary = new File(context.getFilesDir(), MODEL_FILE + ".partial");
+            try (InputStream input = context.getAssets().open(BUNDLED_MODEL_ASSET);
+                 FileOutputStream output = new FileOutputStream(temporary)) {
+                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                byte[] buffer = new byte[1024 * 1024];
+                int read;
+                while ((read = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, read);
+                    digest.update(buffer, 0, read);
+                }
+                String actual = hex(digest.digest());
+                if (!BUNDLED_MODEL_SHA256.equals(actual)) {
+                    throw new IllegalStateException("Mitgeliefertes KI-Modell ist beschädigt");
+                }
+                replaceModel(temporary, target);
+                onSuccess.run();
+            } catch (Throwable error) {
+                temporary.delete();
+                onError.accept(error);
+            }
+        });
     }
 
     public void importModel(Uri source, Runnable onSuccess, Consumer<Throwable> onError) {
@@ -55,10 +90,7 @@ public final class OnDeviceBulkEditor {
                     output.write(buffer, 0, read);
                 }
                 if (temporary.length() == 0) throw new IllegalArgumentException("Modelldatei ist leer");
-                if (target.exists() && !target.delete()) {
-                    throw new IllegalStateException("Vorheriges Modell konnte nicht ersetzt werden");
-                }
-                if (!temporary.renameTo(target)) throw new IllegalStateException("Modell konnte nicht gespeichert werden");
+                replaceModel(temporary, target);
                 onSuccess.run();
             } catch (Throwable error) {
                 temporary.delete();
@@ -127,7 +159,7 @@ public final class OnDeviceBulkEditor {
     }
 
     private BulkChangeProposal parse(String raw, List<Obligation> current) throws Exception {
-        String json = stripCodeFence(raw);
+        String json = extractJsonObject(raw);
         JSONObject root = new JSONObject(json);
         JSONArray actions = root.optJSONArray("actions");
         Map<String, Obligation> existing = new HashMap<>();
@@ -250,7 +282,37 @@ public final class OnDeviceBulkEditor {
         return item.title + " · alle " + item.cadenceDays + " Tage · " + item.steps.size() + " Schritte";
     }
 
-    private String stripCodeFence(String value) {
+    static String extractJsonObject(String value) {
+        String candidate = stripCodeFenceStatic(value);
+        int start = candidate.indexOf('{');
+        if (start < 0) return candidate;
+        int depth = 0;
+        boolean inString = false;
+        boolean escaped = false;
+        for (int index = start; index < candidate.length(); index++) {
+            char current = candidate.charAt(index);
+            if (inString) {
+                if (escaped) {
+                    escaped = false;
+                } else if (current == '\\') {
+                    escaped = true;
+                } else if (current == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (current == '"') {
+                inString = true;
+            } else if (current == '{') {
+                depth++;
+            } else if (current == '}' && --depth == 0) {
+                return candidate.substring(start, index + 1);
+            }
+        }
+        return candidate.substring(start);
+    }
+
+    private static String stripCodeFenceStatic(String value) {
         String trimmed = value == null ? "" : value.trim();
         if (!trimmed.startsWith("```")) return trimmed;
         int firstBreak = trimmed.indexOf('\n');
@@ -262,5 +324,20 @@ public final class OnDeviceBulkEditor {
 
     private File modelFile() {
         return new File(context.getFilesDir(), MODEL_FILE);
+    }
+
+    private void replaceModel(File temporary, File target) {
+        if (target.exists() && !target.delete()) {
+            throw new IllegalStateException("Vorheriges Modell konnte nicht ersetzt werden");
+        }
+        if (!temporary.renameTo(target)) {
+            throw new IllegalStateException("Modell konnte nicht gespeichert werden");
+        }
+    }
+
+    private static String hex(byte[] bytes) {
+        StringBuilder result = new StringBuilder(bytes.length * 2);
+        for (byte value : bytes) result.append(String.format(Locale.ROOT, "%02x", value));
+        return result.toString();
     }
 }
