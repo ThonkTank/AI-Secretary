@@ -1,3 +1,5 @@
+import java.security.MessageDigest
+
 plugins {
     id("com.android.application") version "8.7.3"
 }
@@ -7,6 +9,60 @@ val currentVersionCode = versionFile.readText().trim().toIntOrNull() ?: 0
 val nextVersionCode = currentVersionCode + 1
 val ciVersionCode = providers.gradleProperty("ciVersionCode").orNull?.toIntOrNull()
 val previewApplicationId = providers.gradleProperty("previewApplicationId").orNull
+val bundledModelSha256 = "0f7147f1c22eaf758b819bbf7841793e4c90096c9352cde7fbe5c631f2265ef5"
+val bundledModelUrl = providers.gradleProperty("bundledModelUrl").orElse(
+    "https://huggingface.co/72fstudio/gemma-3-270m-it/resolve/main/gemma3-270m-it-q8.task?download=true"
+)
+val bundledAssetsDirectory = layout.buildDirectory.dir("bundled-ai/assets")
+val bundledModelFile = bundledAssetsDirectory.map {
+    it.file("models/autosecretary-gemma3-270m-it-q8.task")
+}
+
+fun sha256(file: File): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    file.inputStream().buffered().use { input ->
+        val buffer = ByteArray(1024 * 1024)
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            digest.update(buffer, 0, read)
+        }
+    }
+    return digest.digest().joinToString("") { "%02x".format(it) }
+}
+
+val prepareBundledModel = tasks.register("prepareBundledModel") {
+    group = "build setup"
+    description = "Downloads and verifies the local Gemma model embedded in the APK."
+    inputs.property("modelUrl", bundledModelUrl)
+    inputs.property("modelSha256", bundledModelSha256)
+    outputs.file(bundledModelFile)
+    doLast {
+        val target = bundledModelFile.get().asFile
+        if (target.isFile && sha256(target) == bundledModelSha256) return@doLast
+
+        target.parentFile.mkdirs()
+        val temporary = File(target.parentFile, target.name + ".partial")
+        temporary.delete()
+        try {
+            java.net.URI(bundledModelUrl.get()).toURL().openStream().buffered().use { input ->
+                temporary.outputStream().buffered().use { output -> input.copyTo(output) }
+            }
+            val actual = sha256(temporary)
+            check(actual == bundledModelSha256) {
+                "Bundled model checksum mismatch: expected $bundledModelSha256, got $actual"
+            }
+            java.nio.file.Files.move(
+                temporary.toPath(),
+                target.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE
+            )
+        } finally {
+            temporary.delete()
+        }
+    }
+}
 
 android {
     namespace = "com.autosecretary"
@@ -30,8 +86,20 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    androidResources {
+        noCompress += "task"
+    }
+
+    sourceSets.getByName("main").assets.srcDir(bundledAssetsDirectory)
+
     testOptions {
         unitTests.isIncludeAndroidResources = true
+    }
+}
+
+tasks.configureEach {
+    if (name.startsWith("merge") && name.endsWith("Assets")) {
+        dependsOn(prepareBundledModel)
     }
 }
 

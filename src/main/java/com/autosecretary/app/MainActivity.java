@@ -52,6 +52,7 @@ public final class MainActivity extends AppCompatActivity {
     private CelebrationView celebration;
     private TextView emptyFocus;
     private TextView modelStatus;
+    private boolean modelInstallRunning;
 
     private final ActivityResultLauncher<String[]> modelPicker = registerForActivityResult(
             new ActivityResultContracts.OpenDocument(), uri -> {
@@ -83,7 +84,13 @@ public final class MainActivity extends AppCompatActivity {
         celebration = findViewById(R.id.Celebration);
         emptyFocus = findViewById(R.id.EmptyFocus);
         modelStatus = findViewById(R.id.ModelStatus);
-        modelStatus.setText(bulkEditor.hasModel() ? R.string.model_ready : R.string.model_missing);
+        if (bulkEditor.hasModel()) {
+            modelStatus.setText(R.string.model_ready);
+        } else if (gemmaTermsAccepted()) {
+            installBundledAi(null);
+        } else {
+            modelStatus.setText(R.string.model_bundled);
+        }
 
         focusAdapter = new FocusAdapter(new FocusAdapter.Listener() {
             @Override public void onComplete(PlanItem item) { complete(item.obligation()); }
@@ -116,7 +123,7 @@ public final class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.AddTask).setOnClickListener(view -> showEditor(false, null));
         findViewById(R.id.AddRoutine).setOnClickListener(view -> showEditor(true, null));
-        findViewById(R.id.AiBulkEdit).setOnClickListener(view -> showAiDialog());
+        findViewById(R.id.AiBulkEdit).setOnClickListener(view -> ensureAiReady(this::showAiDialog));
         findViewById(R.id.SelectModel).setOnClickListener(view -> selectModel());
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR)
@@ -252,15 +259,6 @@ public final class MainActivity extends AppCompatActivity {
     }
 
     private void showAiDialog() {
-        if (!bulkEditor.hasModel()) {
-            new AlertDialog.Builder(this)
-                    .setTitle(R.string.local_ai)
-                    .setMessage(R.string.model_needed_explanation)
-                    .setPositiveButton(R.string.select_model, (dialog, which) -> selectModel())
-                    .setNegativeButton(R.string.cancel, null)
-                    .show();
-            return;
-        }
         View view = getLayoutInflater().inflate(R.layout.dialog_ai, null);
         EditText instruction = view.findViewById(R.id.AiInstruction);
         AlertDialog dialog = new AlertDialog.Builder(this)
@@ -316,6 +314,52 @@ public final class MainActivity extends AppCompatActivity {
 
     private void selectModel() {
         modelPicker.launch(new String[]{"application/octet-stream", "*/*"});
+    }
+
+    private void ensureAiReady(Runnable continuation) {
+        if (bulkEditor.hasModel()) {
+            continuation.run();
+            return;
+        }
+        if (!gemmaTermsAccepted()) {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.gemma_terms_title)
+                    .setMessage(R.string.gemma_terms_message)
+                    .setPositiveButton(R.string.accept, (dialog, which) -> {
+                        getSharedPreferences(AI_PREFERENCES, MODE_PRIVATE)
+                                .edit().putBoolean(GEMMA_TERMS_ACCEPTED, true).apply();
+                        installBundledAi(continuation);
+                    })
+                    .setNegativeButton(R.string.cancel, null)
+                    .show();
+            return;
+        }
+        installBundledAi(continuation);
+    }
+
+    private void installBundledAi(Runnable continuation) {
+        if (modelInstallRunning) {
+            Toast.makeText(this, R.string.model_importing, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        modelInstallRunning = true;
+        modelStatus.setText(R.string.model_importing);
+        bulkEditor.installBundledModel(
+                () -> runOnUiThread(() -> {
+                    modelInstallRunning = false;
+                    modelStatus.setText(R.string.model_ready);
+                    if (continuation != null) continuation.run();
+                }),
+                error -> runOnUiThread(() -> {
+                    modelInstallRunning = false;
+                    modelStatus.setText(R.string.model_missing);
+                    showError(error);
+                }));
+    }
+
+    private boolean gemmaTermsAccepted() {
+        return getSharedPreferences(AI_PREFERENCES, MODE_PRIVATE)
+                .getBoolean(GEMMA_TERMS_ACCEPTED, false);
     }
 
     private List<RoutineStep> parseSteps(String value, List<RoutineStep> existing) {
@@ -422,6 +466,8 @@ public final class MainActivity extends AppCompatActivity {
     }
 
     private static final DateTimeFormatter INPUT_DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final String AI_PREFERENCES = "local_ai";
+    private static final String GEMMA_TERMS_ACCEPTED = "gemma_terms_accepted";
     private static final Map<String, DayOfWeek> DAY_NAMES = new HashMap<>();
     private static final Map<DayOfWeek, String> DAY_LABELS = new HashMap<>();
 
