@@ -27,7 +27,7 @@ Historical source remains under `.history/` for reference but is not part of the
 
 ## Build and test
 
-Requirements: JDK 17, Android SDK 35, and the included Gradle wrapper.
+Requirements: JDK 21 (required by the on-device GenAI dependency), Android SDK 35, and the included Gradle wrapper. App source and bytecode compatibility remain Java 17.
 
 ```bash
 ./gradlew checkArchitecture
