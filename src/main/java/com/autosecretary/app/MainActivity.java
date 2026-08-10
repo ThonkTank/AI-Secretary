@@ -1,196 +1,376 @@
 package com.autosecretary.app;
 
-import android.content.Intent;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
-
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
-
-import com.autosecretary.R;
-import com.autosecretary.app.settings.SettingsController;
-import com.autosecretary.app.settings.SettingsDataService;
-import com.autosecretary.app.update.UpdateChecker;
-import com.autosecretary.database.AppDatabase;
-import com.autosecretary.features.budget.ui.BudgetFragment;
-import com.autosecretary.features.budget.ui.widget.BudgetWidgetProvider;
-import com.autosecretary.features.meal.application.MealPlannerPresenter;
-import com.autosecretary.features.meal.ui.MealPlannerFragment;
-import com.autosecretary.features.meal.ui.internal.MealCookingPrefsDialogController;
-import com.autosecretary.features.task.ui.TaskScheduleConfigDialog;
-import com.autosecretary.features.task.ui.list.TaskListFragment;
-import com.autosecretary.features.task.ui.widget.TaskWidgetProvider;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
-
+import android.view.HapticFeedbackConstants;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
-/**
- * The single Activity that hosts all three feature tabs: Tasks, Budget, and Meal Planner.
- *
- * <h2>Navigation</h2>
- * A {@link com.google.android.material.bottomnavigation.BottomNavigationView} switches between
- * {@link com.autosecretary.features.task.ui.list.TaskListFragment},
- * {@link com.autosecretary.features.budget.ui.BudgetFragment}, and
- * {@link com.autosecretary.features.meal.ui.MealPlannerFragment} by replacing the central
- * container fragment. Each tab switch creates a fresh fragment instance.
- *
- * <h2>Deep-link handling</h2>
- * Home-screen widgets can launch the app with special extras that open a specific tab or dialog
- * immediately. {@link #navigateToIntentTarget(android.content.Intent, com.google.android.material.bottomnavigation.BottomNavigationView)}
- * inspects the launch intent on first start and also handles {@link #onNewIntent(android.content.Intent)}
- * for subsequent launches from the widget while the activity is already running.
- *
- * <h2>Settings</h2>
- * The settings gear in the bottom nav opens a dialog managed by {@link SettingsController}.
- * After a data reset, {@link #reloadUiStateAfterDataReset()} tears down and recreates the
- * composition root and the activity itself so all fragments re-bind to a fresh database.
- *
- * <h2>Self-update</h2>
- * {@link com.autosecretary.app.update.UpdateChecker} is started once per activity lifetime
- * from {@link #startUpdateCheckIfNeeded()}. The boolean guard prevents a second check if the
- * activity is re-delivered an intent (onNewIntent) without being recreated.
- */
-public class MainActivity extends AppCompatActivity {
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
-    private SettingsController settingsController;
-    /** Guards against starting a second update check if onNewIntent fires before the first finishes. */
-    private boolean updateCheckStarted;
+import com.autosecretary.R;
+import com.autosecretary.ai.BulkChangeProposal;
+import com.autosecretary.ai.OnDeviceBulkEditor;
+import com.autosecretary.core.Obligation;
+import com.autosecretary.core.PlanItem;
+import com.autosecretary.core.RoutineStep;
+import com.google.android.material.snackbar.Snackbar;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+/** One screen: focus anchor, complete list, direct editors and confirmed local-AI bulk changes. */
+public final class MainActivity extends AppCompatActivity {
+    private SecretaryRepository repository;
+    private OnDeviceBulkEditor bulkEditor;
+    private FocusAdapter focusAdapter;
+    private ObligationAdapter obligationAdapter;
+    private Dashboard dashboard = new Dashboard(Collections.emptyList(), Collections.emptyList());
+    private CelebrationView celebration;
+    private TextView emptyFocus;
+    private TextView modelStatus;
+
+    private final ActivityResultLauncher<String[]> modelPicker = registerForActivityResult(
+            new ActivityResultContracts.OpenDocument(), uri -> {
+                if (uri == null) return;
+                modelStatus.setText(R.string.model_importing);
+                bulkEditor.importModel(
+                        uri,
+                        () -> runOnUiThread(() -> {
+                            modelStatus.setText(R.string.model_ready);
+                            Toast.makeText(this, R.string.model_imported, Toast.LENGTH_SHORT).show();
+                        }),
+                        error -> runOnUiThread(() -> {
+                            modelStatus.setText(R.string.model_missing);
+                            showError(error);
+                        }));
+            });
+
+    private final ActivityResultLauncher<String> calendarPermission = registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(), granted -> reload());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.app_main_activity);
+        setContentView(R.layout.activity_main);
+        AutoSecretaryApplication app = AutoSecretaryApplication.from(this);
+        repository = app.repository();
+        bulkEditor = app.bulkEditor();
 
-        settingsController = new SettingsController(this, new SettingsDataService(this),
-                this::reloadUiStateAfterDataReset,
-                this::showScheduleConfigDialog,
-                this::showCookingPrefsDialog,
-                AutoSecretaryApplication.from(this).getAppCompositionRoot().getSharedExecutor());
+        celebration = findViewById(R.id.Celebration);
+        emptyFocus = findViewById(R.id.EmptyFocus);
+        modelStatus = findViewById(R.id.ModelStatus);
+        modelStatus.setText(bulkEditor.hasModel() ? R.string.model_ready : R.string.model_missing);
 
-        BottomNavigationView tabBar = findViewById(R.id.TabBar);
-
-        if (savedInstanceState == null) {
-            navigateToIntentTarget(getIntent(), tabBar);
-        }
-
-        tabBar.setOnItemSelectedListener(item -> {
-            if (item.getItemId() == R.id.nav_settings) {
-                settingsController.showSettingsMenu();
-                return false;
-            } else if (item.getItemId() == R.id.nav_budget) {
-                showBudgetFragment(false);
-            } else if (item.getItemId() == R.id.nav_meal) {
-                showMealFragment();
-            } else {
-                showTaskFragment(false);
+        focusAdapter = new FocusAdapter(new FocusAdapter.Listener() {
+            @Override public void onComplete(PlanItem item) { complete(item.obligation()); }
+            @Override public void onLater(PlanItem item) {
+                repository.postpone(item.obligation().id, MainActivity.this::reload);
             }
-            return true;
         });
+        RecyclerView focusList = findViewById(R.id.FocusList);
+        focusList.setLayoutManager(new LinearLayoutManager(this));
+        focusList.setAdapter(focusAdapter);
+        focusList.setNestedScrollingEnabled(false);
 
-        startUpdateCheckIfNeeded();
-    }
+        obligationAdapter = new ObligationAdapter(new ObligationAdapter.Listener() {
+            @Override public void onComplete(Obligation obligation) { complete(obligation); }
+            @Override public void onEdit(Obligation obligation) { showEditor(obligation.isRoutine(), obligation); }
+        });
+        RecyclerView obligations = findViewById(R.id.ObligationList);
+        obligations.setLayoutManager(new LinearLayoutManager(this));
+        obligations.setAdapter(obligationAdapter);
+        obligations.setNestedScrollingEnabled(false);
 
-    /**
-     * Start the background update check, at most once per activity lifetime.
-     *
-     * <p>{@link #onNewIntent(android.content.Intent)} is called when the activity is already
-     * running and a widget launches it again. Without the {@code updateCheckStarted} guard,
-     * each widget tap would spawn a new network request. The guard limits the check to one
-     * per activity instance.</p>
-     */
-    private void startUpdateCheckIfNeeded() {
-        if (updateCheckStarted) {
-            return;
+        findViewById(R.id.AddTask).setOnClickListener(view -> showEditor(false, null));
+        findViewById(R.id.AddRoutine).setOnClickListener(view -> showEditor(true, null));
+        findViewById(R.id.AiBulkEdit).setOnClickListener(view -> showAiDialog());
+        findViewById(R.id.SelectModel).setOnClickListener(view -> selectModel());
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR)
+                != PackageManager.PERMISSION_GRANTED) {
+            calendarPermission.launch(Manifest.permission.READ_CALENDAR);
         }
-        updateCheckStarted = true;
-        new UpdateChecker(this,
-                AutoSecretaryApplication.from(this).getAppCompositionRoot().getSharedExecutor())
-                .checkForUpdate();
-    }
-
-    private boolean shouldOpenBudgetFromIntent(Intent intent) {
-        return BudgetWidgetProvider.TAB_BUDGET.equals(
-                intent.getStringExtra(BudgetWidgetProvider.EXTRA_OPEN_TAB)
-        );
-    }
-
-    private boolean shouldOpenTaskCreateFromIntent(Intent intent) {
-        return TaskWidgetProvider.ACTION_ADD_TASK.equals(intent.getAction())
-                || intent.getBooleanExtra(TaskWidgetProvider.EXTRA_OPEN_TASK_FLOW, false);
-    }
-
-    private void showTaskFragment(boolean openCreateDialog) {
-        TaskListFragment fragment = new TaskListFragment();
-        if (openCreateDialog) {
-            Bundle args = new Bundle();
-            args.putBoolean(TaskListFragment.ARG_OPEN_CREATE_TASK, true);
-            fragment.setArguments(args);
-        }
-        replaceContent(fragment);
-    }
-
-    private void showBudgetFragment(boolean openAddDialog) {
-        BudgetFragment fragment = new BudgetFragment();
-        if (openAddDialog) {
-            Bundle args = new Bundle();
-            args.putBoolean(BudgetFragment.ARG_OPEN_ADD_TRANSACTION, true);
-            fragment.setArguments(args);
-        }
-        replaceContent(fragment);
-    }
-
-    private void showMealFragment() {
-        replaceContent(new MealPlannerFragment());
-    }
-
-    private void replaceContent(Fragment fragment) {
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.Container, fragment)
-                .commit();
+        reload();
     }
 
     @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-        BottomNavigationView tabBar = findViewById(R.id.TabBar);
-        navigateToIntentTarget(intent, tabBar);
+    protected void onResume() {
+        super.onResume();
+        if (repository != null) reload();
     }
 
-    private void navigateToIntentTarget(Intent intent, BottomNavigationView tabBar) {
-        if (shouldOpenBudgetFromIntent(intent)) {
-            boolean openAddDialog = BudgetWidgetProvider.ACTION_ADD_TRANSACTION.equals(
-                    intent.getStringExtra(BudgetWidgetProvider.EXTRA_BUDGET_ACTION));
-            showBudgetFragment(openAddDialog);
-            tabBar.setSelectedItemId(R.id.nav_budget);
-        } else {
-            showTaskFragment(shouldOpenTaskCreateFromIntent(intent));
-            tabBar.setSelectedItemId(R.id.nav_schedule);
-        }
-    }
-
-    private void showScheduleConfigDialog() {
-        new TaskScheduleConfigDialog().show(getSupportFragmentManager(), TaskScheduleConfigDialog.TAG);
-    }
-
-    private void showCookingPrefsDialog() {
-        MealPlannerPresenter presenter = AutoSecretaryApplication.from(this)
-                .getAppCompositionRoot().getMealPlannerPresenter();
-        presenter.loadCookingPreferences(prefs -> {
-            MealCookingPrefsDialogController controller = new MealCookingPrefsDialogController(
-                    this,
-                    savedPrefs -> presenter.saveCookingPreferences(savedPrefs, () ->
-                            Toast.makeText(this, R.string.meal_success_cooking_prefs_saved,
-                                    Toast.LENGTH_SHORT).show()
-                    ));
-            controller.show(prefs);
+    private void reload() {
+        repository.loadDashboard(3, result -> {
+            dashboard = result;
+            focusAdapter.submit(result.focus());
+            obligationAdapter.submit(result.obligations());
+            emptyFocus.setVisibility(result.focus().isEmpty() ? View.VISIBLE : View.GONE);
         });
     }
 
-    private void reloadUiStateAfterDataReset() {
-        AppDatabase.closeAndReset();
-        AutoSecretaryApplication.from(this)
-                .getAppCompositionRoot()
-                .resetForDataReload();
-        recreate();
+    private void complete(Obligation obligation) {
+        repository.complete(obligation.id, completed -> {
+            if (completed == null) return;
+            celebration.burst();
+            celebration.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+            String message = completed.isRoutine() && completed.currentStreak > 0
+                    ? "Erledigt · 🔥 " + completed.currentStreak
+                    : "Erledigt";
+            Snackbar.make(findViewById(R.id.Root), message, Snackbar.LENGTH_SHORT).show();
+            reload();
+        });
+    }
+
+    private void showEditor(boolean routine, Obligation existing) {
+        View view = getLayoutInflater().inflate(R.layout.dialog_obligation, null);
+        EditText title = view.findViewById(R.id.EditTitle);
+        EditText duration = view.findViewById(R.id.EditDuration);
+        EditText deadline = view.findViewById(R.id.EditDeadline);
+        EditText cadence = view.findViewById(R.id.EditCadence);
+        EditText nextDue = view.findViewById(R.id.EditNextDue);
+        EditText steps = view.findViewById(R.id.EditSteps);
+        View taskFields = view.findViewById(R.id.TaskFields);
+        View routineFields = view.findViewById(R.id.RoutineFields);
+        taskFields.setVisibility(routine ? View.GONE : View.VISIBLE);
+        routineFields.setVisibility(routine ? View.VISIBLE : View.GONE);
+
+        Obligation source = existing != null ? existing : new Obligation();
+        title.setText(source.title);
+        duration.setText(Integer.toString(source.durationMinutes));
+        deadline.setText(source.deadlineAt == null ? "" : source.deadlineAt.format(INPUT_DATE_TIME));
+        cadence.setText(Integer.toString(source.cadenceDays > 0 ? source.cadenceDays : routine ? 1 : 0));
+        nextDue.setText(source.nextDueDate == null ? LocalDate.now().toString() : source.nextDueDate.toString());
+        steps.setText(formatSteps(source.steps));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(routine ? R.string.edit_routine : R.string.edit_task)
+                .setView(view)
+                .setPositiveButton(R.string.save, null)
+                .setNegativeButton(R.string.cancel, null)
+                .setNeutralButton(existing == null ? R.string.empty : R.string.delete, null)
+                .create();
+        dialog.setOnShowListener(ignored -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(button -> {
+                try {
+                    Obligation edited = copy(source);
+                    edited.kind = routine ? Obligation.Kind.ROUTINE : Obligation.Kind.TASK;
+                    edited.title = required(title, "Titel");
+                    edited.durationMinutes = parseInt(duration, "Dauer", 5, 480);
+                    if (routine) {
+                        edited.cadenceDays = parseInt(cadence, "Rhythmus", 1, 365);
+                        edited.nextDueDate = LocalDate.parse(required(nextDue, "Nächste Fälligkeit"));
+                        edited.deadlineAt = null;
+                        edited.steps = parseSteps(steps.getText().toString());
+                    } else {
+                        edited.deadlineAt = deadline.getText().toString().trim().isEmpty()
+                                ? null
+                                : LocalDateTime.parse(deadline.getText().toString().trim(), INPUT_DATE_TIME);
+                        edited.cadenceDays = 0;
+                        edited.nextDueDate = null;
+                        edited.steps.clear();
+                    }
+                    repository.save(edited, this::reload);
+                    dialog.dismiss();
+                } catch (RuntimeException error) {
+                    Snackbar.make(view, error.getMessage(), Snackbar.LENGTH_LONG).show();
+                }
+            });
+            Button neutral = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
+            if (existing == null) {
+                neutral.setVisibility(View.GONE);
+            } else {
+                neutral.setOnClickListener(button -> confirmDelete(existing, dialog));
+            }
+        });
+        dialog.show();
+    }
+
+    private void confirmDelete(Obligation existing, AlertDialog editor) {
+        new AlertDialog.Builder(this)
+                .setMessage(getString(R.string.confirm_delete, existing.title))
+                .setPositiveButton(R.string.delete, (dialog, which) ->
+                        repository.delete(existing.id, () -> {
+                            editor.dismiss();
+                            reload();
+                        }))
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void showAiDialog() {
+        if (!bulkEditor.hasModel()) {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.local_ai)
+                    .setMessage(R.string.model_needed_explanation)
+                    .setPositiveButton(R.string.select_model, (dialog, which) -> selectModel())
+                    .setNegativeButton(R.string.cancel, null)
+                    .show();
+            return;
+        }
+        View view = getLayoutInflater().inflate(R.layout.dialog_ai, null);
+        EditText instruction = view.findViewById(R.id.AiInstruction);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.ai_bulk_title)
+                .setView(view)
+                .setPositiveButton(R.string.create_preview, null)
+                .setNegativeButton(R.string.cancel, null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(button -> {
+                    String command = instruction.getText().toString().trim();
+                    if (command.isEmpty()) return;
+                    button.setEnabled(false);
+                    ((TextView) button).setText(R.string.ai_working);
+                    bulkEditor.propose(
+                            command,
+                            dashboard.obligations(),
+                            proposal -> runOnUiThread(() -> {
+                                dialog.dismiss();
+                                showProposal(proposal);
+                            }),
+                            error -> runOnUiThread(() -> {
+                                button.setEnabled(true);
+                                ((TextView) button).setText(R.string.create_preview);
+                                showError(error);
+                            }));
+                }));
+        dialog.show();
+    }
+
+    private void showProposal(BulkChangeProposal proposal) {
+        String details = proposal.previewLines().isEmpty()
+                ? "Keine Änderungen vorgeschlagen."
+                : String.join("\n\n", proposal.previewLines());
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.confirm_changes)
+                .setMessage(proposal.summary() + "\n\n" + details)
+                .setPositiveButton(R.string.apply_changes, null)
+                .setNegativeButton(R.string.cancel, null)
+                .create();
+        dialog.setOnShowListener(ignored -> {
+            Button positive = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            positive.setEnabled(!proposal.previewLines().isEmpty());
+            positive.setOnClickListener(view -> repository.apply(
+                    proposal.upserts(), proposal.deletions(), () -> {
+                        dialog.dismiss();
+                        Snackbar.make(findViewById(R.id.Root), R.string.changes_applied, Snackbar.LENGTH_SHORT).show();
+                        reload();
+                    }));
+        });
+        dialog.show();
+    }
+
+    private void selectModel() {
+        modelPicker.launch(new String[]{"application/octet-stream", "*/*"});
+    }
+
+    private List<RoutineStep> parseSteps(String value) {
+        List<RoutineStep> result = new ArrayList<>();
+        for (String rawLine : value.split("\\R")) {
+            if (rawLine.trim().isEmpty()) continue;
+            String[] parts = rawLine.split("\\|", 2);
+            String title = parts[0].trim();
+            if (title.isEmpty()) continue;
+            EnumSet<DayOfWeek> days = EnumSet.noneOf(DayOfWeek.class);
+            if (parts.length == 2) {
+                for (String token : parts[1].split(",")) {
+                    DayOfWeek day = DAY_NAMES.get(token.trim().toLowerCase(Locale.GERMAN));
+                    if (day == null) throw new IllegalArgumentException("Unbekannter Wochentag: " + token.trim());
+                    days.add(day);
+                }
+            }
+            result.add(new RoutineStep(title, days));
+        }
+        return result;
+    }
+
+    private String formatSteps(List<RoutineStep> steps) {
+        List<String> lines = new ArrayList<>();
+        for (RoutineStep step : steps) {
+            String line = step.title;
+            if (!step.days.isEmpty()) {
+                line += " | " + step.days.stream().map(DAY_LABELS::get).reduce((a, b) -> a + "," + b).orElse("");
+            }
+            lines.add(line);
+        }
+        return String.join("\n", lines);
+    }
+
+    private Obligation copy(Obligation source) {
+        Obligation copy = new Obligation();
+        copy.id = source.id;
+        copy.kind = source.kind;
+        copy.title = source.title;
+        copy.durationMinutes = source.durationMinutes;
+        copy.deadlineAt = source.deadlineAt;
+        copy.cadenceDays = source.cadenceDays;
+        copy.nextDueDate = source.nextDueDate;
+        copy.steps = new ArrayList<>(source.steps);
+        copy.createdAt = source.createdAt;
+        copy.completed = source.completed;
+        copy.currentStreak = source.currentStreak;
+        copy.bestStreak = source.bestStreak;
+        copy.totalCompletions = source.totalCompletions;
+        copy.postponedOn = source.postponedOn;
+        copy.postponedRank = source.postponedRank;
+        return copy;
+    }
+
+    private String required(EditText field, String label) {
+        String value = field.getText().toString().trim();
+        if (value.isEmpty()) throw new IllegalArgumentException(label + " fehlt");
+        return value;
+    }
+
+    private int parseInt(EditText field, String label, int min, int max) {
+        try {
+            int value = Integer.parseInt(required(field, label));
+            if (value < min || value > max) throw new NumberFormatException();
+            return value;
+        } catch (NumberFormatException error) {
+            throw new IllegalArgumentException(label + ": " + min + "–" + max);
+        }
+    }
+
+    private void showError(Throwable error) {
+        String message = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.error)
+                .setMessage(message)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
+    private static final DateTimeFormatter INPUT_DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final Map<String, DayOfWeek> DAY_NAMES = new HashMap<>();
+    private static final Map<DayOfWeek, String> DAY_LABELS = new HashMap<>();
+
+    static {
+        String[] labels = {"Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"};
+        DayOfWeek[] days = DayOfWeek.values();
+        for (int index = 0; index < days.length; index++) {
+            DAY_NAMES.put(labels[index].toLowerCase(Locale.GERMAN), days[index]);
+            DAY_LABELS.put(days[index], labels[index]);
+        }
     }
 }

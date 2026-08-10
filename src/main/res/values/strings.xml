@@ -1,62 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Global rule: app-wide tokens stay in generic files; feature-specific resources belong in feature-prefixed files (for example task_strings.xml). -->
-    <string name="app_name">AutoSecretary</string>
-
-    <string name="nav_tasks">Aufgaben</string>
-    <string name="nav_budget">Budget</string>
-    <string name="nav_meal">Mahlzeiten</string>
-    <string name="nav_settings">Einstellungen</string>
-
-    <!-- Shared action labels used across features (task, budget, meal dialogs). -->
-    <string name="action_save">Speichern</string>
-    <string name="action_cancel">Abbrechen</string>
-    <string name="action_ok">OK</string>
-    <string name="action_delete">Löschen</string>
-    <string name="hint_date_yyyy_mm_dd">Datum (YYYY-MM-DD)</string>
-
-    <!-- Shared validation error messages used by DialogValidation across all features. -->
-    <string name="error_field_required">%s ist erforderlich</string>
-    <string name="error_invalid_date">Ungültiges Datum. Format: YYYY-MM-DD</string>
-    <string name="error_invalid_number">%s muss eine Zahl sein</string>
-
-    <string name="settings_title">Einstellungen</string>
-    <string name="settings_option_restore_backup">Backup wiederherstellen</string>
-    <string name="settings_option_manual_backup">Manuelles Backup erstellen</string>
-    <string name="settings_option_factory_reset">Factory Reset</string>
-    <string name="settings_option_about">Über AutoSecretary</string>
-    <string name="settings_option_schedule_config">Zeitfenster konfigurieren</string>
-    <string name="settings_option_cooking_prefs">Kochpräferenzen</string>
-
-    <string name="settings_no_backups">Keine Backups vorhanden.</string>
-    <string name="settings_backup_item_format">%1$s (%2$s)</string>
-    <string name="settings_restore_dialog_title">Backup auswählen</string>
-    <string name="settings_restore_confirm_title">Backup wiederherstellen?</string>
-    <string name="settings_restore_confirm_message">Alle aktuellen Daten werden durch das gewählte Backup ersetzt.</string>
-    <string name="settings_restore_action">Wiederherstellen</string>
-    <string name="settings_restore_success">Backup erfolgreich wiederhergestellt.</string>
-    <string name="settings_restore_failure">Backup konnte nicht wiederhergestellt werden.</string>
-
-    <string name="settings_backup_success">Backup wurde erstellt.</string>
-    <string name="settings_backup_failure">Backup konnte nicht erstellt werden.</string>
-
-    <string name="settings_reset_confirm_title">Alle Daten löschen?</string>
-    <string name="settings_reset_confirm_message">ACHTUNG: Alle Daten werden gelöscht. Vorher wird automatisch ein Backup erstellt.</string>
-    <string name="settings_reset_action">Löschen</string>
-    <string name="settings_reset_success">Factory Reset abgeschlossen.</string>
-    <string name="settings_reset_failure">Factory Reset fehlgeschlagen.</string>
-
-    <string name="settings_about_title">Über AutoSecretary</string>
-    <string name="settings_about_message">Version: %1$s (Build %2$d)</string>
-
-    <string name="update_available_title">Update verfügbar</string>
-    <string name="update_available_message">Version %1$d ist verfügbar. Jetzt herunterladen?</string>
-    <string name="update_action_install">Update</string>
-    <string name="update_action_later">Später</string>
-    <string name="update_download_failed_title">Download fehlgeschlagen</string>
-    <string name="update_download_failed_message">Das Update konnte nicht geladen oder installiert werden.\n\n%1$s</string>
-    <string name="update_download_failed_unknown">Unbekannter Fehler</string>
-
-    <string name="action_navigate_previous">Zurück</string>
-    <string name="action_navigate_next">Weiter</string>
+    <string name="app_name">Auto Secretary</string>
+    <string name="focus_title">Jetzt wichtig</string>
+    <string name="focus_subtitle">Nur drei Anker. Der Rest darf warten.</string>
+    <string name="all_title">Aufgaben &amp; Routinen</string>
+    <string name="empty_focus">Alles ruhig. Du hast gerade nichts Fälliges.</string>
+    <string name="add_task">Aufgabe</string>
+    <string name="add_routine">Routine</string>
+    <string name="ai_bulk">Mit lokaler KI ändern</string>
+    <string name="local_ai">Lokale KI</string>
+    <string name="model_ready">Modell bereit · bleibt auf diesem Gerät</string>
+    <string name="model_missing">Kein lokales Modell gewählt</string>
+    <string name="model_importing">Modell wird importiert …</string>
+    <string name="select_model">Modell wählen</string>
+    <string name="model_imported">Lokales Modell importiert</string>
+    <string name="model_needed_explanation">Wähle einmal eine MediaPipe-kompatible .task-Modelldatei. Aufgaben und Prompts verlassen das Gerät nicht.</string>
+    <string name="now">JETZT</string>
+    <string name="next">DANACH</string>
+    <string name="later">SPÄTER</string>
+    <string name="done">Erledigt</string>
+    <string name="postpone">Später</string>
+    <string name="as_soon_as_possible">Heute, sobald Platz ist</string>
+    <string name="edit_task">Aufgabe</string>
+    <string name="edit_routine">Routine</string>
+    <string name="title_hint">Titel</string>
+    <string name="duration_hint">Dauer in Minuten</string>
+    <string name="deadline_hint">Deadline · 2026-08-10 18:00 (optional)</string>
+    <string name="cadence_hint">Alle wie viele Tage?</string>
+    <string name="next_due_hint">Nächste Fälligkeit · 2026-08-10</string>
+    <string name="steps_hint">Ein Schritt pro Zeile\nDuschen\nHaare waschen | Mo,Do\nPeeling | So</string>
+    <string name="steps_help">Die Reihenfolge bleibt exakt so. Nach | gelten optionale Wochentage (Mo–So). Der gesamte Block wird gemeinsam abgehakt.</string>
+    <string name="save">Speichern</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="delete">Löschen</string>
+    <string name="empty"> </string>
+    <string name="confirm_delete">„%1$s“ wirklich löschen?</string>
+    <string name="ai_bulk_title">Viele Aufgaben auf einmal ändern</string>
+    <string name="ai_instruction_hint">Zum Beispiel: Verschiebe alle Uni-Deadlines auf Freitag und lege eine wöchentliche Sonntagsroutine mit drei Schritten an.</string>
+    <string name="create_preview">Vorschau erstellen</string>
+    <string name="ai_working">Lokales Modell arbeitet …</string>
+    <string name="confirm_changes">Änderungen prüfen</string>
+    <string name="apply_changes">Änderungen übernehmen</string>
+    <string name="changes_applied">Änderungen übernommen</string>
+    <string name="error">Das hat nicht geklappt</string>
+    <string name="ok">OK</string>
+    <string name="widget_title">Jetzt wichtig</string>
+    <string name="widget_empty">Gerade nichts fällig ✓</string>
+    <string name="widget_add">＋</string>
 </resources>

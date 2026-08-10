@@ -11,28 +11,31 @@ Reference-only legacy snapshots are in `.history/` and are not part of the runti
 
 ## Build, Test, and Development Commands
 Use the Gradle wrapper from repo root:
-- `./gradlew checkArchitecture`: blocking architecture and repository-policy checks.
+- `./gradlew checkArchitecture`: ArchUnit architecture rules (alias onto `testDebugUnitTest`).
 - `./gradlew assembleDebug`: safe local build; creates `build/outputs/apk/debug/AutoSecretary.apk`.
 - `./gradlew installDebug`: installs debug build to a connected device/emulator.
 - `./gradlew copyToRelease`: copies APK to `ops/release/` and increments `ops/release/version.txt`.
-- `./gradlew publishReleaseArtifact`: runs release copy plus Git add/commit/push. Use only for intentional release publishing.
+- `./gradlew publishReleaseArtifact`: runs release copy and publishes `AutoSecretary.apk` plus `version.txt` as a GitHub Release. Use only for intentional release publishing.
 - `./test_schedule.sh`: end-to-end manual scheduling validation via `adb` and log checks.
 
 ## Coding Style & Naming Conventions
 Follow existing Java style in `src/main/java`: 4-space indentation, braces on declaration lines, and descriptive class names. Keep packages fully qualified under `com.autosecretary.*`.
 
-Architecture-sensitive changes must keep `./gradlew checkArchitecture` green. That task is repo-local and checks broad dependency, lifecycle, ViewModel, UI helper, package declaration, and release-task safety principles without enforcing project documentation or file-shape standards.
+Architecture-sensitive changes must keep `./gradlew checkArchitecture` green. The rules are ArchUnit tests on real bytecode (`ArchitectureRulesTest` in `src/test`); see `CLAUDE.md` § Conventions for the enforced boundaries.
 
 Work that uses external sources or local source evidence for decisions must use the global `source-references` skill and cite preserved local paths under `/home/aaron/Schreibtisch/projects/references/` or direct repo paths.
 
 Work on agent-facing instruction artifacts (`AGENTS.md`, `SKILL.md`, prompts, or related rule markdown) must use the global `agent-instruction-engineering` skill.
 
 ## Testing Guidelines
-Automated tests are intentionally not used in this project. Do not add JUnit/instrumented test frameworks or `src/test` / `src/androidTest` suites.
+Required behavior invariants must be covered by tight JVM end-to-end tests under `src/test`, as defined in `CLAUDE.md`. Use Robolectric plus in-memory Room for tests that drive UI ViewModel/DataService → application → domain → data and assert observable results.
 
-Validation is manual:
+Do not add instrumented/Espresso test suites under `src/androidTest` unless a future roadmap phase explicitly requires them.
+
+Validation:
 - Architecture check: `./gradlew checkArchitecture`
 - Build check: `./gradlew assembleDebug`
+- JVM behavior tests: `./gradlew testDebugUnitTest`
 - Runtime check: launch app and verify core flows (task list, task creation/edit, schedule generation)
 - Optional script: `./test_schedule.sh`
 
