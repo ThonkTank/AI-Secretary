@@ -26,13 +26,12 @@
             android:textSize="17sp"
             android:textStyle="bold" />
 
-        <TextView
+        <LinearLayout
             android:id="@+id/RowSteps"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:textColor="@color/ink"
-            android:textSize="13sp" />
+            android:orientation="vertical" />
 
         <TextView
             android:id="@+id/RowMeta"
@@ -42,6 +41,14 @@
             android:textColor="@color/ink_muted"
             android:textSize="12sp" />
     </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/RowOrder"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/reorder_short"
+        app:icon="@null" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/RowDone"

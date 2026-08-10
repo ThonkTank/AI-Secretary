@@ -32,12 +32,14 @@ public final class FocusPlannerTest {
     }
 
     @Test
-    public void laterAlwaysMovesTheItemBehindOtherOpenWorkToday() {
+    public void manualOrderOverridesCalculatedUrgencyForToday() {
         LocalDate today = LocalDate.parse("2026-08-10");
         Obligation first = routine("first", "Erste Routine", today);
-        first.postponedOn = today;
-        first.postponedRank = 1;
         Obligation second = routine("second", "Zweite Routine", today);
+        first.manualOrderOn = today;
+        first.manualOrderRank = 2;
+        second.manualOrderOn = today;
+        second.manualOrderRank = 1;
 
         List<PlanItem> plan = planner.plan(
                 List.of(first, second), List.of(), List.of(),
@@ -48,13 +50,39 @@ public final class FocusPlannerTest {
     }
 
     @Test
+    public void explicitEveningPreferenceDelaysSuggestionUntilEvening() {
+        LocalDate today = LocalDate.parse("2026-08-10");
+        Obligation evening = routine("evening", "Abendroutine", today);
+        evening.timePreference = TimePreference.EVENING;
+
+        PlanItem item = planner.plan(
+                List.of(evening), List.of(), List.of(),
+                LocalDateTime.parse("2026-08-10T09:00:00"), 3).get(0);
+
+        assertEquals(LocalDateTime.parse("2026-08-10T18:00:00"), item.suggestedStart());
+    }
+
+    @Test
+    public void learnedCompletionTimeDelaysSuggestionWhenNoPreferenceWasSet() {
+        LocalDate today = LocalDate.parse("2026-08-10");
+        Obligation learned = routine("learned", "Gelernte Routine", today);
+
+        PlanItem item = planner.plan(
+                List.of(learned), List.of(completion("learned", "2026-08-03T08:30:00")), List.of(),
+                LocalDateTime.parse("2026-08-10T07:00:00"), 3).get(0);
+
+        assertEquals(LocalDateTime.parse("2026-08-10T08:30:00"), item.suggestedStart());
+    }
+
+    @Test
     public void planningAvoidsCalendarConflictsWithoutMutatingCalendar() {
         LocalDate today = LocalDate.parse("2026-08-10");
         Obligation task = routine("focus", "Fokus", today);
         task.durationMinutes = 30;
         CalendarBlock appointment = new CalendarBlock(
                 LocalDateTime.parse("2026-08-10T09:10:00"),
-                LocalDateTime.parse("2026-08-10T10:00:00"));
+                LocalDateTime.parse("2026-08-10T10:00:00"),
+                "Arzttermin");
 
         PlanItem item = planner.plan(
                 List.of(task), List.of(), List.of(appointment),
@@ -62,9 +90,11 @@ public final class FocusPlannerTest {
 
         assertEquals(LocalDateTime.parse("2026-08-10T10:15:00"), item.suggestedStart());
         assertEquals(LocalDateTime.parse("2026-08-10T10:45:00"), item.suggestedEnd());
+        assertEquals("Arzttermin", item.precedingCalendarBlock().title());
         assertEquals(appointment, new CalendarBlock(
                 LocalDateTime.parse("2026-08-10T09:10:00"),
-                LocalDateTime.parse("2026-08-10T10:00:00")));
+                LocalDateTime.parse("2026-08-10T10:00:00"),
+                "Arzttermin"));
     }
 
     @Test

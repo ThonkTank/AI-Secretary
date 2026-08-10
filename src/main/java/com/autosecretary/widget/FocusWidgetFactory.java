@@ -9,6 +9,7 @@ import android.widget.RemoteViewsService;
 import com.autosecretary.R;
 import com.autosecretary.app.SecretaryRepository;
 import com.autosecretary.core.PlanItem;
+import com.autosecretary.core.PlanStep;
 
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -42,11 +43,34 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
                 context.getString(position == 0 ? R.string.now : position == 1 ? R.string.next : R.string.later));
         row.setTextViewText(R.id.WidgetTitle, item.obligation().title);
         row.setViewVisibility(R.id.WidgetSteps, item.steps().isEmpty() ? View.GONE : View.VISIBLE);
-        row.setTextViewText(R.id.WidgetSteps, String.join("  →  ", item.steps()));
+        row.removeAllViews(R.id.WidgetSteps);
+        int displayedSteps = Math.min(3, item.steps().size());
+        for (int index = 0; index < displayedSteps; index++) {
+            PlanStep planStep = item.steps().get(index);
+            RemoteViews step = new RemoteViews(context.getPackageName(), R.layout.widget_focus_step);
+            step.setTextViewText(R.id.WidgetStepToggle,
+                    (planStep.completed() ? "☑  " : "☐  ") + planStep.title());
+            Intent toggle = new Intent().setAction(FocusWidgetProvider.ACTION_TOGGLE_STEP)
+                    .putExtra(FocusWidgetProvider.EXTRA_ID, item.obligation().id)
+                    .putExtra(FocusWidgetProvider.EXTRA_STEP_ID, planStep.id())
+                    .putExtra(FocusWidgetProvider.EXTRA_STEP_COMPLETED, !planStep.completed());
+            step.setOnClickFillInIntent(R.id.WidgetStepToggle, toggle);
+            row.addView(R.id.WidgetSteps, step);
+        }
+        if (item.steps().size() > displayedSteps) {
+            RemoteViews more = new RemoteViews(context.getPackageName(), R.layout.widget_focus_step);
+            more.setTextViewText(R.id.WidgetStepToggle,
+                    "+" + (item.steps().size() - displayedSteps) + " weitere");
+            row.addView(R.id.WidgetSteps, more);
+        }
         String time = item.suggestedStart() == null
                 ? context.getString(R.string.as_soon_as_possible)
                 : item.suggestedStart().format(DateTimeFormatter.ofPattern("HH:mm"));
-        row.setTextViewText(R.id.WidgetMeta, time + " · " + item.obligation().durationMinutes + " Min");
+        String calendarContext = item.precedingCalendarBlock() == null
+                ? ""
+                : " · nach " + item.precedingCalendarBlock().title();
+        row.setTextViewText(R.id.WidgetMeta,
+                time + " · " + item.obligation().durationMinutes + " Min" + calendarContext);
 
         Intent complete = new Intent().setAction(FocusWidgetProvider.ACTION_COMPLETE)
                 .putExtra(FocusWidgetProvider.EXTRA_ID, item.obligation().id);

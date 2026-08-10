@@ -47,6 +47,10 @@ public final class BehaviorProfile {
         return medianMinute.getOrDefault(obligationId, 12 * 60);
     }
 
+    public boolean hasLearnedMinute(String obligationId) {
+        return medianMinute.containsKey(obligationId);
+    }
+
     public int transitionStrength(String obligationId) {
         if (lastCompletedToday == null) {
             return 0;

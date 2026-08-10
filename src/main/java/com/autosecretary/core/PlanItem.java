@@ -8,5 +8,6 @@ public record PlanItem(
         Obligation obligation,
         LocalDateTime suggestedStart,
         LocalDateTime suggestedEnd,
-        List<String> steps) {
+        List<PlanStep> steps,
+        CalendarBlock precedingCalendarBlock) {
 }
