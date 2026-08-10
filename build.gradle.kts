@@ -5,17 +5,24 @@ plugins {
 val versionFile = file("ops/release/version.txt")
 val currentVersionCode = versionFile.readText().trim().toIntOrNull() ?: 0
 val nextVersionCode = currentVersionCode + 1
+val ciVersionCode = providers.gradleProperty("ciVersionCode").orNull?.toIntOrNull()
+val previewApplicationId = providers.gradleProperty("previewApplicationId").orNull
 
 android {
     namespace = "com.autosecretary"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.autosecretary"
+        applicationId = previewApplicationId ?: "com.autosecretary"
         minSdk = 26
         targetSdk = 35
-        versionCode = nextVersionCode
-        versionName = "2.0.0"
+        versionCode = ciVersionCode ?: nextVersionCode
+        versionName = if (ciVersionCode == null) "2.0.0" else "2.0.0-preview.$ciVersionCode"
+        manifestPlaceholders["appLabel"] = if (previewApplicationId == null) {
+            "Auto Secretary"
+        } else {
+            "Auto Secretary Preview"
+        }
     }
 
     compileOptions {

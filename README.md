@@ -49,4 +49,4 @@ The existing release tasks remain available:
 - `./gradlew copyToRelease` builds and copies `AutoSecretary.apk` to `ops/release/`, then increments `ops/release/version.txt`.
 - `./gradlew publishReleaseArtifact` uses the existing GitHub release path to publish the APK and version file.
 
-Additionally, pushes to `codex/**` or `agent/**` run the Android test workflow, upload the APK as a workflow artifact, and create a uniquely tagged prerelease for direct phone installation.
+Additionally, pushes to `codex/**` or `agent/**` run the Android test workflow and publish a monotonically versioned latest release containing `AutoSecretary.apk` and `version.txt`. CI phone-test builds use the separate package `com.autosecretary.preview`, so they install alongside an existing production/debug build despite differing signing keys.
