@@ -49,9 +49,8 @@ increasing Android `versionCode` sequence. Pushes to `agent/**` or `codex/**` pu
 prerelease for phone testing. A deliberate workflow dispatch from `main` with `stable=true` marks
 the same kind of build as stable; this label does not create a different app or update channel.
 
-The workflow uses the permanent `PRODUCTION_KEYSTORE_BASE64`, `PRODUCTION_STORE_PASSWORD`,
-`PRODUCTION_KEY_ALIAS` and `PRODUCTION_KEY_PASSWORD` repository secrets, verifies the expected
-certificate fingerprint, and publishes:
+The workflow uses the permanent `KEYSTORE_BASE64` and `KEYSTORE_PASSWORD` repository secrets,
+verifies the expected certificate fingerprint, and publishes:
 
 - `AutoSecretary.apk`
 - `AutoSecretary.apk.sha256`

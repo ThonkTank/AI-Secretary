@@ -26,11 +26,9 @@ jobs:
     permissions:
       contents: write
     env:
-      EXPECTED_CERT_SHA256: 1e0e90509d79efacebaec1af024f2577d7799cf5534e841db7417184287dbfb2
-      KEYSTORE_BASE64: ${{ secrets.PRODUCTION_KEYSTORE_BASE64 }}
-      KEYSTORE_PASSWORD: ${{ secrets.PRODUCTION_STORE_PASSWORD }}
-      KEY_ALIAS: ${{ secrets.PRODUCTION_KEY_ALIAS }}
-      KEY_PASSWORD: ${{ secrets.PRODUCTION_KEY_PASSWORD }}
+      EXPECTED_CERT_SHA256: 79eb85409ede6aa014b125dd6190206c9809f0b948a5f92342a99376f81d0fef
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v5
@@ -60,15 +58,13 @@ jobs:
         run: |
           test -n "$KEYSTORE_BASE64"
           test -n "$KEYSTORE_PASSWORD"
-          test -n "$KEY_ALIAS"
-          test -n "$KEY_PASSWORD"
           printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' \
             | base64 --decode > "$RUNNER_TEMP/autosecretary.jks"
           chmod 600 "$RUNNER_TEMP/autosecretary.jks"
           printf 'PRODUCTION_KEYSTORE=%s\n' "$RUNNER_TEMP/autosecretary.jks" >> "$GITHUB_ENV"
           printf 'PRODUCTION_STORE_PASSWORD=%s\n' "$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-          printf 'PRODUCTION_KEY_ALIAS=%s\n' "$KEY_ALIAS" >> "$GITHUB_ENV"
-          printf 'PRODUCTION_KEY_PASSWORD=%s\n' "$KEY_PASSWORD" >> "$GITHUB_ENV"
+          printf 'PRODUCTION_KEY_ALIAS=release\n' >> "$GITHUB_ENV"
+          printf 'PRODUCTION_KEY_PASSWORD=%s\n' "$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
 
       - name: Test, lint and build the model-complete APK
         run: >-
