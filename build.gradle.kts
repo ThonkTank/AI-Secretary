@@ -11,8 +11,10 @@ plugins {
 val versionProperties = Properties().apply {
     file("version.properties").inputStream().use(::load)
 }
-val releaseVersionCode = versionProperties.getProperty("VERSION_CODE").toInt()
-val releaseVersionName = versionProperties.getProperty("VERSION_NAME")
+val releaseVersionCode = providers.gradleProperty("versionCode")
+    .orElse(versionProperties.getProperty("VERSION_CODE")).get().toInt()
+val releaseVersionName = providers.gradleProperty("versionName")
+    .orElse(versionProperties.getProperty("VERSION_NAME")).get()
 val productionKeystore = providers.gradleProperty("productionKeystore").orNull
     ?: System.getenv("PRODUCTION_KEYSTORE")
 val productionStorePassword = providers.gradleProperty("productionStorePassword").orNull
@@ -146,18 +148,6 @@ android {
         }
     }
 
-    flavorDimensions += "model"
-    productFlavors {
-        create("dev") {
-            dimension = "model"
-            buildConfigField("boolean", "BUNDLED_MODEL", "false")
-        }
-        create("full") {
-            dimension = "model"
-            buildConfigField("boolean", "BUNDLED_MODEL", "true")
-        }
-    }
-
     signingConfigs {
         if (productionSigningReady) {
             create("production") {
@@ -171,9 +161,6 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".preview"
-            versionNameSuffix = "-preview"
-            manifestPlaceholders["appLabel"] = "Auto Secretary Preview"
         }
         release {
             isMinifyEnabled = false
@@ -195,7 +182,7 @@ android {
         noCompress += "task"
     }
 
-    sourceSets.getByName("full").assets.srcDir(bundledAssetsDirectory)
+    sourceSets.getByName("main").assets.srcDir(bundledAssetsDirectory)
 
     buildFeatures {
         buildConfig = true
@@ -208,21 +195,9 @@ android {
 }
 
 tasks.configureEach {
-    if (name.contains("Full")) {
+    if (name.startsWith("merge") && name.endsWith("Assets")
+            || name.lowercase().contains("lint")) {
         dependsOn(prepareBundledModel)
-    }
-}
-
-androidComponents {
-    beforeVariants(selector().withFlavor("model" to "dev").withBuildType("release")) {
-        it.enable = false
-    }
-    onVariants(selector().withBuildType("debug")) { variant ->
-        variant.outputs.forEach { output ->
-            // Preview is a separate package and keeps a separate monotonic version namespace.
-            // This remains above every historical 10xxx preview without affecting production.
-            output.versionCode.set(1_000_000 + releaseVersionCode)
-        }
     }
 }
 
@@ -255,14 +230,8 @@ dependencies {
 
 tasks.register("checkArchitecture") {
     group = "verification"
-    description = "Runs behavior tests and the real ArchUnit boundary rules."
-    dependsOn(tasks.named("testDevDebugUnitTest"))
-}
-
-tasks.register("testDebugUnitTest") {
-    group = "verification"
-    description = "Stable fast-test alias for the model-free devDebug JVM suite."
-    dependsOn(tasks.named("testDevDebugUnitTest"))
+    description = "Runs behavior tests and the small set of safety-boundary rules."
+    dependsOn(tasks.named("testDebugUnitTest"))
 }
 
 tasks.named("check").configure {
@@ -273,7 +242,7 @@ android.applicationVariants.all {
     val variant = this
     outputs.all {
         val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-        output.outputFileName = if (variant.name == "fullRelease") {
+        output.outputFileName = if (variant.name == "release") {
             "AutoSecretary.apk"
         } else {
             "AutoSecretary-${variant.name}.apk"

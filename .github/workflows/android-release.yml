@@ -1,44 +1,34 @@
-name: Android production release
+name: Android build and release
 
 on:
+  push:
+    branches:
+      - "agent/**"
+      - "codex/**"
   workflow_dispatch:
     inputs:
-      release_version:
-        description: Exact VERSION_NAME from version.properties
+      stable:
+        description: Publish a stable release (allowed only from main)
         required: true
-        type: string
-      signing_identity:
-        description: Build-4 upgrades directly; fallback requires the completed ADB bridge gate
-        required: true
-        default: fallback
-        type: choice
-        options:
-          - build4
-          - fallback
-      upgrade_gate_evidence:
-        description: Device-gate run URL or fixture report; UNVERIFIED is rejected
-        required: true
-        type: string
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: android-production-release
+  group: android-build-and-release
   cancel-in-progress: false
 
 jobs:
-  build-and-verify:
+  build-test-sign-publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
-      BUILD4_CERT_SHA256: 1e0e90509d79efacebaec1af024f2577d7799cf5534e841db7417184287dbfb2
-      FALLBACK_CERT_SHA256: 79eb85409ede6aa014b125dd6190206c9809f0b948a5f92342a99376f81d0fef
-      BUILD4_KEYSTORE_BASE64: ${{ secrets.PRODUCTION_KEYSTORE_BASE64 }}
-      BUILD4_STORE_PASSWORD: ${{ secrets.PRODUCTION_STORE_PASSWORD }}
-      BUILD4_KEY_ALIAS: ${{ secrets.PRODUCTION_KEY_ALIAS }}
-      BUILD4_KEY_PASSWORD: ${{ secrets.PRODUCTION_KEY_PASSWORD }}
-      FALLBACK_KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-      FALLBACK_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      EXPECTED_CERT_SHA256: 79eb85409ede6aa014b125dd6190206c9809f0b948a5f92342a99376f81d0fef
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v5
@@ -50,172 +40,98 @@ jobs:
         with:
           path: .gradle/bundled-ai
           key: bundled-ai-gemma3-270m-q8-0f7147f1
-      - name: Verify explicit release and upgrade gates
-        env:
-          REQUESTED_VERSION: ${{ inputs.release_version }}
-          UPGRADE_GATE_EVIDENCE: ${{ inputs.upgrade_gate_evidence }}
-          SIGNING_IDENTITY: ${{ inputs.signing_identity }}
-        run: |
-          test "$GITHUB_REF" = "refs/heads/main"
-          VERSION_NAME=$(sed -n 's/^VERSION_NAME=//p' version.properties)
-          VERSION_CODE=$(sed -n 's/^VERSION_CODE=//p' version.properties)
-          test "$REQUESTED_VERSION" = "$VERSION_NAME"
-          test -n "$UPGRADE_GATE_EVIDENCE"
-          test "$UPGRADE_GATE_EVIDENCE" != "UNVERIFIED"
-          gate() { sed -n "s/^$1=//p" ops/release/upgrade-gate.properties; }
-          test "$(gate status)" = "PASSED"
-          test "$(gate targetVersionCode)" = "$VERSION_CODE"
-          test "$(gate signingIdentity)" = "$SIGNING_IDENTITY"
-          test "$(gate evidence)" = "$UPGRADE_GATE_EVIDENCE"
-          for hash_key in targetApkSha256 nextGateApkSha256 sourceArchiveSha256; do
-            hash=$(gate "$hash_key")
-            grep -Eq '^[0-9a-f]{64}$' <<< "$hash" || {
-              echo "Invalid $hash_key in reviewed device gate" >&2
-              exit 1
-            }
-          done
-          test "$(gate build4Upgrade)" = "PASSED"
-          test "$(gate databaseVersion)" = "34"
-          test "$(gate reboot)" = "PASSED"
-          test "$(gate dayRollover)" = "PASSED"
-          test "$(gate calendarRefresh)" = "PASSED"
-          test "$(gate updateToNextVersion)" = "PASSED"
-          test "$(gate restoredTargetVersion)" = "PASSED"
-          test "$(gate aiGermanCases)" = "PASSED"
-          test "$(gate aiInvalidOutputRejection)" = "PASSED"
-          test "$(gate aiNoMutationBeforeConfirmation)" = "PASSED"
-      - name: Restore selected permanent keystore
-        env:
-          SIGNING_IDENTITY: ${{ inputs.signing_identity }}
-        run: |
-          if [ "$SIGNING_IDENTITY" = "build4" ]; then
-            KEYSTORE_BASE64="$BUILD4_KEYSTORE_BASE64"
-            STORE_PASSWORD="$BUILD4_STORE_PASSWORD"
-            KEY_ALIAS="$BUILD4_KEY_ALIAS"
-            KEY_PASSWORD="$BUILD4_KEY_PASSWORD"
-            EXPECTED_CERT="$BUILD4_CERT_SHA256"
-          else
-            KEYSTORE_BASE64="$FALLBACK_KEYSTORE_BASE64"
-            STORE_PASSWORD="$FALLBACK_STORE_PASSWORD"
-            KEY_ALIAS="release"
-            KEY_PASSWORD="$FALLBACK_STORE_PASSWORD"
-            EXPECTED_CERT="$FALLBACK_CERT_SHA256"
-          fi
-          test -n "$KEYSTORE_BASE64"
-          test -n "$STORE_PASSWORD"
-          test -n "$KEY_ALIAS"
-          test -n "$KEY_PASSWORD"
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/production.jks"
-          chmod 600 "$RUNNER_TEMP/production.jks"
-          printf 'PRODUCTION_STORE_PASSWORD=%s\n' "$STORE_PASSWORD" >> "$GITHUB_ENV"
-          printf 'PRODUCTION_KEY_ALIAS=%s\n' "$KEY_ALIAS" >> "$GITHUB_ENV"
-          printf 'PRODUCTION_KEY_PASSWORD=%s\n' "$KEY_PASSWORD" >> "$GITHUB_ENV"
-          printf 'EXPECTED_CERT_SHA256=%s\n' "$EXPECTED_CERT" >> "$GITHUB_ENV"
-      - name: Enforce stable signer after the first repaired production release
+
+      - name: Choose the one monotonic Android version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          latest="$RUNNER_TEMP/latest-release.json"
-          if ! gh api "repos/$GITHUB_REPOSITORY/releases/latest" > "$latest" 2>/dev/null; then
-            exit 0
-          fi
-          version_asset=$(jq -r '.assets[] | select(.name == "version.txt") | .id' "$latest")
-          if [ -z "$version_asset" ]; then
-            exit 0
-          fi
-          gh api -H 'Accept: application/octet-stream' \
-            "repos/$GITHUB_REPOSITORY/releases/assets/$version_asset" \
-            > "$RUNNER_TEMP/previous-version.txt"
-          previous_code=$(tr -d '[:space:]' < "$RUNNER_TEMP/previous-version.txt")
-          case "$previous_code" in (*[!0-9]*|'') exit 1;; esac
-          if [ "$previous_code" -lt 6 ]; then
-            exit 0
-          fi
-          signer_asset=$(jq -r '.assets[] | select(.name == "signer-sha256.txt") | .id' "$latest")
-          test -n "$signer_asset"
-          gh api -H 'Accept: application/octet-stream' \
-            "repos/$GITHUB_REPOSITORY/releases/assets/$signer_asset" \
-            > "$RUNNER_TEMP/previous-signer.txt"
-          previous_signer=$(tr -d '[:space:]' < "$RUNNER_TEMP/previous-signer.txt" \
-            | tr '[:upper:]' '[:lower:]')
-          test "$previous_signer" = "$EXPECTED_CERT_SHA256"
-      - name: Test and build signed production APK
-        env:
-          PRODUCTION_KEYSTORE: ${{ runner.temp }}/production.jks
+          VERSION_NAME="2.0.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+          LATEST_CODE=$(gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '[.[][] | .tag_name | select(startswith("android-")) | ltrimstr("android-") | tonumber] | max // 0')
+          VERSION_FLOOR=$((2000000 + GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT))
+          VERSION_CODE=$((VERSION_FLOOR > LATEST_CODE ? VERSION_FLOOR : LATEST_CODE + 1))
+          printf 'VERSION_CODE=%s\nVERSION_NAME=%s\n' "$VERSION_CODE" "$VERSION_NAME" \
+            >> "$GITHUB_ENV"
+
+      - name: Restore the permanent signing key
+        run: |
+          test -n "$KEYSTORE_BASE64"
+          test -n "$KEYSTORE_PASSWORD"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/autosecretary.jks"
+          chmod 600 "$RUNNER_TEMP/autosecretary.jks"
+          printf 'PRODUCTION_KEYSTORE=%s\n' "$RUNNER_TEMP/autosecretary.jks" >> "$GITHUB_ENV"
+          printf 'PRODUCTION_STORE_PASSWORD=%s\n' "$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          printf 'PRODUCTION_KEY_ALIAS=release\n' >> "$GITHUB_ENV"
+          printf 'PRODUCTION_KEY_PASSWORD=%s\n' "$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Test, lint and build the model-complete APK
         run: >-
           ./gradlew --no-daemon --max-workers=1
-          checkArchitecture lintDevDebug lintFullRelease
-          compileFullDebugAndroidTestJavaWithJavac assembleFullRelease
+          checkArchitecture lintDebug lintRelease assembleDebugAndroidTest assembleRelease
+          -PversionCode=$VERSION_CODE -PversionName=$VERSION_NAME
           -PrequireProductionSigning=true
-      - name: Verify package and signing identity
+
+      - name: Verify package, version, model and signature
         run: |
-          APK=build/outputs/apk/full/release/AutoSecretary.apk
+          APK=build/outputs/apk/release/AutoSecretary.apk
           APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           test -f "$APK"
+          unzip -l "$APK" | grep -q 'assets/models/autosecretary-gemma3-270m-it-q8.task'
           "$APKSIGNER" verify --verbose "$APK"
-          ACTUAL=$("$APKSIGNER" verify --print-certs "$APK" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr '[:upper:]' '[:lower:]')
-          test "$ACTUAL" = "$EXPECTED_CERT_SHA256"
-          EXPECTED_CODE=$(sed -n 's/^VERSION_CODE=//p' version.properties)
-          EXPECTED_NAME=$(sed -n 's/^VERSION_NAME=//p' version.properties)
+          ACTUAL_CERT=$("$APKSIGNER" verify --print-certs "$APK" \
+            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+            | tr '[:upper:]' '[:lower:]')
+          test "$ACTUAL_CERT" = "$EXPECTED_CERT_SHA256"
           BADGING=$("$AAPT" dump badging "$APK" | sed -n '1p')
           case "$BADGING" in
-            *"package: name='com.autosecretary'"*"versionCode='$EXPECTED_CODE'"*"versionName='$EXPECTED_NAME'"*) ;;
-            *) echo "Unexpected production package/version: $BADGING" >&2; exit 1;;
+            *"package: name='com.autosecretary'"*"versionCode='$VERSION_CODE'"*"versionName='$VERSION_NAME'"*) ;;
+            *) echo "Unexpected package/version: $BADGING" >&2; exit 1 ;;
           esac
-          TESTED_SHA=$(sed -n 's/^targetApkSha256=//p' ops/release/upgrade-gate.properties)
-          ACTUAL_SHA=$(sha256sum "$APK" | awk '{print $1}')
-          test "$ACTUAL_SHA" = "$TESTED_SHA"
-      - name: Stage immutable release assets
+
+      - name: Create release assets
         run: |
-          cp build/outputs/apk/full/release/AutoSecretary.apk AutoSecretary.apk
-          VERSION_CODE=$(sed -n 's/^VERSION_CODE=//p' version.properties)
-          VERSION_NAME=$(sed -n 's/^VERSION_NAME=//p' version.properties)
-          test -n "$VERSION_CODE"
-          test -n "$VERSION_NAME"
-          printf '%s\n' "$VERSION_CODE" > version.txt
+          cp build/outputs/apk/release/AutoSecretary.apk AutoSecretary.apk
+          SHA256=$(sha256sum AutoSecretary.apk | awk '{print $1}')
+          printf '%s  AutoSecretary.apk\n' "$SHA256" > AutoSecretary.apk.sha256
+          printf 'versionCode=%s\nversionName=%s\npackageName=com.autosecretary\n' \
+            "$VERSION_CODE" "$VERSION_NAME" > version.txt
           printf '%s\n' "$EXPECTED_CERT_SHA256" > signer-sha256.txt
-          sha256sum AutoSecretary.apk > AutoSecretary.apk.sha256
-          printf '%s' "$VERSION_NAME" > release-name.txt
-      - name: Upload verified production candidate
-        uses: actions/upload-artifact@v4
+          jq -n \
+            --argjson versionCode "$VERSION_CODE" \
+            --arg versionName "$VERSION_NAME" \
+            --arg packageName com.autosecretary \
+            --arg apkAsset AutoSecretary.apk \
+            --arg sha256 "$SHA256" \
+            --arg signerSha256 "$EXPECTED_CERT_SHA256" \
+            '{versionCode:$versionCode,versionName:$versionName,packageName:$packageName,apkAsset:$apkAsset,sha256:$sha256,signerSha256:$signerSha256}' \
+            > release-metadata.json
+          sha256sum -c AutoSecretary.apk.sha256
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: production-release-${{ github.run_id }}
+          name: AutoSecretary-${{ env.VERSION_CODE }}
           path: |
             AutoSecretary.apk
             AutoSecretary.apk.sha256
+            release-metadata.json
             version.txt
             signer-sha256.txt
-            release-name.txt
-          retention-days: 1
           if-no-files-found: error
 
-  publish:
-    needs: build-and-verify
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: production-release-${{ github.run_id }}
-      - name: Recheck immutable candidate and publish production release
+      - name: Publish the build
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+          STABLE: ${{ inputs.stable }}
         run: |
-          sha256sum -c AutoSecretary.apk.sha256
-          test "$(tr -d '[:space:]' < version.txt)" -ge 6
-          grep -Eq '^[0-9a-f]{64}$' signer-sha256.txt
-          VERSION_NAME=$(cat release-name.txt)
-          test -n "$VERSION_NAME"
-          TAG="v$VERSION_NAME"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists; increment version.properties" >&2
-            exit 1
+          TAG="android-$VERSION_CODE"
+          ASSETS=(AutoSecretary.apk AutoSecretary.apk.sha256 release-metadata.json version.txt signer-sha256.txt)
+          if [[ "$GITHUB_EVENT_NAME" = workflow_dispatch && "$STABLE" = true ]]; then
+            test "$GITHUB_REF" = refs/heads/main
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --title "Auto Secretary $VERSION_NAME" --generate-notes --latest
+          else
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --title "Auto Secretary $VERSION_NAME (Test)" --generate-notes --prerelease
           fi
-          gh release create "$TAG" AutoSecretary.apk AutoSecretary.apk.sha256 version.txt \
-            signer-sha256.txt \
-            --title "Auto Secretary $VERSION_NAME" \
-            --generate-notes \
-            --latest

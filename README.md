@@ -1,134 +1,68 @@
 # Auto Secretary
 
-Auto Secretary turns immutable tasks, due routines, local completion evidence and a read-only
-calendar into a calm, multi-day Now → Next → Later plan. Tasks and routines can contain stable,
-independently completed steps. Local AI may propose typed changes, but only an explicit user
-confirmation writes an atomic change set.
-
-## Active architecture
-
-This remains one Android module. Package boundaries inside it are enforced by ArchUnit:
-
-- `domain/`: immutable `Task`, `Routine`, `Step`, time windows and the deterministic planner
-- `application/`: repository/platform contracts and atomic use cases
-- `data/`: Room v34, normalized step/completion tables and tested v27–33 migrations
-- `platform/`: calendar, clock, preferences and signed-update adapters
-- `ui/`: the Activity host, retained ViewModels, pure rendering adapters, immutable editor state and lifecycle-safe DialogFragments
-- `ai/`: on-device inference and typed proposals; no persistence dependency
-- `background/`: configured-day-start planning plus periodic calendar/widget refresh via WorkManager
-- `app/`: only application startup, dependency wiring, ViewModel factories and executor ownership
-- `widget/`: the home-screen rendering and actions
+Auto Secretary is a single-user Android app for tasks, routines and a chronological
+Now → Next → Later day plan. It reads the device calendar without writing to it, keeps task and
+step changes in Room transactions, refreshes the home-screen widget, and runs the bundled Gemma 3
+270M model locally. AI changes are previews until confirmed and create a persistent undo entry.
 
 ## Build and test
 
-Requirements are JDK 21, Android SDK 35 and the checked-in Gradle wrapper. Source/bytecode
-compatibility is Java 17.
+The project needs JDK 21, Android SDK 35 and the checked-in Gradle wrapper. Every APK has package
+ID `com.autosecretary` and contains the pinned local model.
 
 ```bash
-./gradlew checkArchitecture       # all JVM/Robolectric tests plus real ArchUnit rules
-./gradlew testDebugUnitTest       # stable model-free debug test alias
-./gradlew lintDevDebug            # min-SDK, manifest and Android resource checks
-./gradlew assembleDevDebug        # fast preview build, no 304 MB model download
-./gradlew assembleFullDebug       # complete preview build with the pinned local model
+./gradlew testDebugUnitTest
+./gradlew lintDebug
+./gradlew assembleDebug
 ```
 
-The fast APK is `build/outputs/apk/dev/debug/AutoSecretary-devDebug.apk` and installs as
-`com.autosecretary.preview`. Preview builds use a separate 1,000,000+ versionCode namespace so they
-can upgrade older 10xxx previews without changing production version ordering. `full` variant tasks
-prepare the pinned model, use explicit network
-timeouts, verify SHA-256, and reuse the ignored `.gradle/bundled-ai/` cache even after `clean`;
-`dev` tasks never depend on it.
+`assembleDebug` is for local development and uses the local debug key. Phone releases are built
+only by `.github/workflows/android-release.yml`; local debug builds are not a second distribution
+channel.
 
-## Persistence and upgrades
+## Data format
 
-Room schema history is exported to `schemas/`. Before opening a v27–33 database, the app creates a
-byte-for-byte recovery copy (including WAL/SHM when present) under its private files directory. The
-migration imports the current focus core, completion evidence and compatible preferences. Complex
-old recurrence rules and fixed appointments are quarantined as migration candidates instead of
-being silently reinterpreted. A visible report explains what was imported and what remains only in
-the recovery copy. Its hash-documented ZIP can be saved outside the app through Android's system
-share chooser before lossy migration decisions are confirmed.
+Room v35 is the clean pre-stable schema. There is no historical data migration or archive importer.
+During the initial test weeks, a fundamental schema change may deliberately clear test data by
+using Room's destructive fallback. Once this schema is declared stable, every later schema change
+must add a specific Room migration so normal app updates retain installed data.
 
-The fixed upgrade fixture at `src/test/resources/fixtures/build4-v27.db` uses the exact 27-table
-schema generated from tag `build-4` (`f5d9d0bc49b1caf690bb12a8a57f193042428db9`); its synthetic
-rows, Room identity hash and fixture SHA-256 are pinned in the adjacent properties file. A real,
-authorized Pixel 8 subsequently proved that the currently installed production-signed app had
-already advanced to database v30, Room identity `51ffa9b42fba4bd0b74c6eb9d8809c00`, and versionCode 5.
-`build4-v30.db` is a schema-identical reconstruction containing synthetic rows only. Both v27 and
-v30 are therefore exact upgrade fixtures; v28/v29 remain explicit direct migration paths.
+Builds that keep the same schema update the installed app in place and retain its Room database,
+preferences, undo journal and locally prepared model.
 
-Steps live in normalized `steps`, `step_days` and `step_completions` tables. IDs are independent of
-positions. AI batches, manual order directives and their bounded undo payloads are committed in
-Room transactions; undo survives process restarts and refuses to overwrite newer edits.
+## Planning and background work
 
-## Planning and background behavior
+The planner orders work by urgency and user directives, then places it into calendar gaps inside
+the configured day. Calendar access is read-only. Explicit morning/midday/evening preferences bound
+learned completion times; learning can be enabled or disabled independently for each task or
+routine. Coarse location is observed only while the app is active and the last value is stored
+locally for travel-aware daylight rendering.
 
-The planner first orders candidates, then places each one into globally available gaps. Output is
-chronological. Day bounds, morning/midday/evening windows, transition time, calendar buffers and the
-1–14 day horizon are user-configurable. Learning requires at least three recent observations and is
-bounded by explicit time preferences.
+Planning runs when the app opens and after relevant user actions. Calendar changes are observed
+while the activity is active. One 30-minute WorkManager job refreshes widgets and is allowed to
+show a day transition slightly late.
 
-WorkManager refreshes the plan at the configured local day start (07:00 by default) and schedules
-the following wall-clock occurrence, including across DST changes. A separate 30-minute safety
-loop refreshes calendar-derived planning and widgets. Boot, date, package replacement, clock and
-timezone changes re-register both paths. While the process is alive, a permission-aware debounced
-calendar observer refreshes immediately.
+## Releases and updates
 
-## Local AI
+There is one release workflow, one package, one permanent signing identity and one monotonically
+increasing Android `versionCode` sequence. Pushes to `agent/**` or `codex/**` publish a GitHub
+prerelease for phone testing. A deliberate workflow dispatch from `main` with `stable=true` marks
+the same kind of build as stable; this label does not create a different app or update channel.
 
-The `dev` flavor accepts a user-selected MediaPipe `.task` model but embeds none. The `full` flavor
-ships the revision- and hash-pinned Gemma 3 270M IT asset. Inference, prompts and task state remain
-on-device.
-Explicit supported German commands are first compiled into typed proposals without guessing;
-unrecognized wording falls through to the local model and the same strict parser. Existing step IDs
-and revisions are included in proposals. Selected changes are applied in one transaction and
-produce one persistent undo entry.
+The workflow uses the permanent `KEYSTORE_BASE64` and `KEYSTORE_PASSWORD` repository secrets,
+verifies the expected certificate fingerprint, and publishes:
 
-The weights remain subject to the [Gemma Terms of Use](https://ai.google.dev/gemma/terms) and
+- `AutoSecretary.apk`
+- `AutoSecretary.apk.sha256`
+- `release-metadata.json` with package, version, hash and signer
+- `version.txt`
+- `signer-sha256.txt`
+
+The in-app updater examines releases including prereleases, selects the highest compatible
+`versionCode`, and rejects an APK unless its package ID, SHA-256, version and signer match. If the
+previous installation used another signing key, Android requires one uninstall and clean install
+of this app. Every release after that uses the permanent key and updates in place.
+
+The Gemma weights remain subject to the [Gemma Terms of Use](https://ai.google.dev/gemma/terms) and
 [Gemma Prohibited Use Policy](https://ai.google.dev/gemma/prohibited_use_policy); notices ship in
 `src/main/assets/`.
-
-## Production releases and updates
-
-`version.properties` is the only app-version input. Production publishing is manual-only through
-the `Android production release` workflow. The workflow additionally requires a reviewed
-`ops/release/upgrade-gate.properties` with every device/upgrade check set to `PASSED`; the checked-in
-gate intentionally remains `BLOCKED` until a real device run exists.
-
-When the Build-4 key is recovered, its secrets are:
-
-- `PRODUCTION_KEYSTORE_BASE64`
-- `PRODUCTION_STORE_PASSWORD`
-- `PRODUCTION_KEY_ALIAS`
-- `PRODUCTION_KEY_PASSWORD`
-
-The first repaired production target is v2.0.0 with versionCode 6: the authorized physical-device
-baseline already uses versionCode 5, so reusing 5 would not be discoverable as an update. The
-preferred identity is the Build-4 fingerprint
-`1e0e90509d79efacebaec1af024f2577d7799cf5534e841db7417184287dbfb2`. Since that private key was not
-found locally—and the historical APK identifies it as an Android Debug certificate—the only
-permitted fallback first exports and verifies the exactly Build-4-signed v27 or v30 database,
-then uses the already-established permanent key
-`79eb85409ede6aa014b125dd6190206c9809f0b948a5f92342a99376f81d0fef`. CI verifies the selected
-certificate exactly. It publishes `AutoSecretary.apk`, its SHA-256 file and `version.txt`. Preview
-CI creates only prereleases and can never update `Latest`. Starting with versionCode 6, each
-production release also publishes its signer fingerprint; CI rejects every later attempt to switch
-the permanent production identity.
-
-The app checks the latest non-prerelease GitHub release. Before opening Android's installer it
-verifies the version, SHA-256, package ID and signer equality with the installed app. If the original
-Build-4 key cannot be recovered, use `ops/adb_database_bridge.sh` to create the verified archive and
-select it in the new app's first-run importer. `ops/device_release_gate.sh` then proves migration,
-reboot, day/calendar autonomy, a 2.0.0→2.0.1 update and the 20-case `fullDebug` on-device AI
-command evaluation plus a real bundled-model inference. No production release is allowed before
-its reviewed report exists.
-After the ephemeral code-7 update proof, the gate restores the externally secured source archive
-under code 6 and verifies Room v34 again; it never leaves the production device on an unpublished
-future version.
-The reviewed gate also records SHA-256 for that source archive and both tested APKs. Release CI
-publishes only when its newly built code-6 APK is byte-identical to the device-tested candidate.
-
-Because that update proof needs two identically signed APKs before publishing is allowed, the
-manual `Android upgrade-gate APKs` workflow creates code 6 and an ephemeral code 7 as a short-lived
-CI artifact with read-only repository permissions. It never creates a Release. The production
-workflow remains the only publisher and still rejects an unreviewed device-gate report.
