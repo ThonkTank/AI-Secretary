@@ -46,9 +46,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION_NAME="2.0.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
-          LATEST_CODE=$(gh api --paginate --slurp \
+          LATEST_CODE=$(gh api --paginate \
             "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-            --jq '[.[][] | .tag_name | select(startswith("android-")) | ltrimstr("android-") | tonumber] | max // 0')
+            | jq -s '[.[][] | .tag_name | select(startswith("android-")) | ltrimstr("android-") | tonumber] | max // 0')
           VERSION_FLOOR=$((2000000 + GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT))
           VERSION_CODE=$((VERSION_FLOOR > LATEST_CODE ? VERSION_FLOOR : LATEST_CODE + 1))
           printf 'VERSION_CODE=%s\nVERSION_NAME=%s\n' "$VERSION_CODE" "$VERSION_NAME" \
