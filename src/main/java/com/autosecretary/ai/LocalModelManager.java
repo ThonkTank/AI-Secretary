@@ -2,7 +2,6 @@ package com.autosecretary.ai;
 
 import android.content.Context;
 
-import com.autosecretary.BuildConfig;
 import com.google.mediapipe.tasks.genai.llminference.LlmInference;
 
 import java.io.File;
@@ -58,18 +57,9 @@ final class LocalModelManager {
                 return;
             } catch (InterruptedException cancelled) {
                 throw cancelled;
-            } catch (Exception legacyValidationFailure) {
-                if (!BuildConfig.BUNDLED_MODEL) {
-                    throw new IllegalStateException(
-                            "Das vorhandene Modell ist nicht verwendbar; bitte neu auswählen",
-                            legacyValidationFailure);
-                }
-                // A full build may safely fall back to its checksum-pinned bundled model. The
-                // existing file is left untouched until the replacement has been fully copied.
+            } catch (Exception invalidExistingModel) {
+                // The existing file stays untouched until the bundled replacement is fully copied.
             }
-        }
-        if (!BuildConfig.BUNDLED_MODEL) {
-            throw new IllegalStateException("Dieses schnelle Entwicklungs-Build enthält kein Modell");
         }
         File temporary = temporary();
         try {
@@ -84,25 +74,8 @@ final class LocalModelManager {
             }
             requireNotInterrupted();
             replace(temporary, file());
-            markValidated(file());
-        } catch (Exception error) {
-            temporary.delete();
-            throw error;
-        }
-    }
-
-    void importFrom(InputStream source) throws Exception {
-        File temporary = temporary();
-        try {
-            if (source == null) throw new IllegalArgumentException("Modelldatei ist nicht lesbar");
-            try (FileOutputStream output = new FileOutputStream(temporary)) {
-                copy(source, output, null);
-            }
+            validate(file());
             requireNotInterrupted();
-            if (temporary.length() == 0) throw new IllegalArgumentException("Modelldatei ist leer");
-            validate(temporary);
-            requireNotInterrupted();
-            replace(temporary, file());
             markValidated(file());
         } catch (Exception error) {
             temporary.delete();

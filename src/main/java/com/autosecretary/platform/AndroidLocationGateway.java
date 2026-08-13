@@ -17,6 +17,9 @@ import com.autosecretary.application.LocationPort;
 import java.util.function.Consumer;
 
 public final class AndroidLocationGateway implements LocationPort {
+    private static final String PREFERENCES = "last_location";
+    private static final String LATITUDE = "latitude";
+    private static final String LONGITUDE = "longitude";
     private final Context context;
     private final LocationManager manager;
     private Consumer<Position> consumer;
@@ -30,14 +33,19 @@ public final class AndroidLocationGateway implements LocationPort {
 
     @Override
     public Position lastKnown() {
-        if (!permitted() || manager == null) return null;
-        try {
-            Location location = manager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-            if (location == null) location = manager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            return location == null ? null : position(location);
-        } catch (SecurityException ignored) {
-            return null;
+        if (permitted() && manager != null) {
+            try {
+                Location location = manager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                if (location == null) {
+                    location = manager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                }
+                if (location != null) return remember(position(location));
+            } catch (SecurityException ignored) { }
         }
+        var preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE);
+        if (!preferences.contains(LATITUDE) || !preferences.contains(LONGITUDE)) return null;
+        return new Position(Double.longBitsToDouble(preferences.getLong(LATITUDE, 0)),
+                Double.longBitsToDouble(preferences.getLong(LONGITUDE, 0)));
     }
 
     @Override
@@ -79,7 +87,7 @@ public final class AndroidLocationGateway implements LocationPort {
 
     private void deliver(Location location) {
         Consumer<Position> target = consumer;
-        if (target != null && location != null) target.accept(position(location));
+        if (target != null && location != null) target.accept(remember(position(location)));
     }
 
     private boolean permitted() {
@@ -106,5 +114,13 @@ public final class AndroidLocationGateway implements LocationPort {
 
     private static Position position(Location location) {
         return new Position(location.getLatitude(), location.getLongitude());
+    }
+
+    private Position remember(Position position) {
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
+                .putLong(LATITUDE, Double.doubleToRawLongBits(position.latitude()))
+                .putLong(LONGITUDE, Double.doubleToRawLongBits(position.longitude()))
+                .apply();
+        return position;
     }
 }

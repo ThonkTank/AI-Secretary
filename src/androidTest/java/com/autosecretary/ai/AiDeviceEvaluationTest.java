@@ -9,7 +9,6 @@ import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import com.autosecretary.BuildConfig;
 import com.autosecretary.application.ai.BulkChangeProposal;
 import com.autosecretary.application.ai.BulkChange;
 import com.autosecretary.domain.CompletionStats;
@@ -20,7 +19,6 @@ import com.autosecretary.domain.WorkItem;
 import com.google.mediapipe.tasks.genai.llminference.LlmInference;
 
 import org.json.JSONArray;
-import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -34,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** Manual release gate: executes the bundled model on a fullDebug Android device. */
+/** Optional device evaluation of the model bundled into every APK. */
 @RunWith(AndroidJUnit4.class)
 public final class AiDeviceEvaluationTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 11, 8, 0);
@@ -42,7 +40,6 @@ public final class AiDeviceEvaluationTest {
     @Test
     public void twentyGermanCommandsYieldAtLeastNinetyPercentValidTypedProposals()
             throws Exception {
-        Assume.assumeTrue("Nur fullDebug bündelt das Produktionsmodell", BuildConfig.BUNDLED_MODEL);
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
         var executor = Executors.newSingleThreadExecutor();
         try {
@@ -93,7 +90,6 @@ public final class AiDeviceEvaluationTest {
 
     @Test
     public void bundledProductionModelLoadsAndPerformsRealInference() throws Exception {
-        Assume.assumeTrue("Nur fullDebug bündelt das Produktionsmodell", BuildConfig.BUNDLED_MODEL);
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
         LocalModelManager models = new LocalModelManager(app);
         models.installBundled();

@@ -7,11 +7,9 @@ import androidx.lifecycle.ViewModel;
 
 import com.autosecretary.application.MoveWorkItemUseCase;
 import com.autosecretary.application.PlanFocusUseCase;
-import com.autosecretary.application.WorkItemCommands;
-import com.autosecretary.application.ResolveMigrationCandidateUseCase;
-import com.autosecretary.application.MigrationCandidateResolution;
 import com.autosecretary.application.AppClock;
-import com.autosecretary.application.PlanningSettingsUseCase;
+import com.autosecretary.application.PlanningSettingsRepository;
+import com.autosecretary.application.WorkItemRepository;
 import com.autosecretary.application.ai.BulkChange;
 import com.autosecretary.domain.WorkItem;
 import com.autosecretary.ui.editor.ObligationEditorState;
@@ -34,11 +32,10 @@ public final class MainViewModel extends ViewModel {
 
     private final SavedStateHandle savedState;
     private final PlanFocusUseCase planFocus;
-    private final WorkItemCommands commands;
+    private final WorkItemRepository repository;
     private final MoveWorkItemUseCase moveWorkItem;
-    private final ResolveMigrationCandidateUseCase resolveMigrationCandidate;
     private final AppClock clock;
-    private final PlanningSettingsUseCase planningSettings;
+    private final PlanningSettingsRepository planningSettings;
     private final ExecutorService databaseExecutor;
     private final Executor uiExecutor;
     private final Runnable changeNotifier;
@@ -49,19 +46,17 @@ public final class MainViewModel extends ViewModel {
     public MainViewModel(
             SavedStateHandle savedState,
             PlanFocusUseCase planFocus,
-            WorkItemCommands commands,
+            WorkItemRepository repository,
             MoveWorkItemUseCase moveWorkItem,
-            ResolveMigrationCandidateUseCase resolveMigrationCandidate,
             AppClock clock,
-            PlanningSettingsUseCase planningSettings,
+            PlanningSettingsRepository planningSettings,
             ExecutorService databaseExecutor,
             Executor uiExecutor,
             Runnable changeNotifier) {
         this.savedState = savedState;
         this.planFocus = planFocus;
-        this.commands = commands;
+        this.repository = repository;
         this.moveWorkItem = moveWorkItem;
-        this.resolveMigrationCandidate = resolveMigrationCandidate;
         this.clock = clock;
         this.planningSettings = planningSettings;
         this.databaseExecutor = databaseExecutor;
@@ -94,11 +89,11 @@ public final class MainViewModel extends ViewModel {
     public void reload() {
         update(current().dashboard(), current().surface(), current().filter(), true, null,
                 current().completionSignal());
-        submit(() -> planFocus.execute(20, true), false);
+        submit(() -> planFocus.execute(20), false);
     }
 
     public void save(WorkItem item) {
-        mutate(() -> commands.save(item), false);
+        mutate(() -> repository.save(item), false);
     }
 
     public void openEditor(boolean routine, String existingId) {
@@ -128,13 +123,13 @@ public final class MainViewModel extends ViewModel {
         ObligationEditorState checked = form.validated(clock.now());
         setEditor(checked);
         if (!checked.valid()) return;
-        mutate(() -> commands.save(checked.toWorkItem()), false, () -> setEditor(null));
+        mutate(() -> repository.save(checked.toWorkItem()), false, () -> setEditor(null));
     }
 
     public void deleteEditor() {
         ObligationEditorState editor = current().editor();
         if (editor == null || editor.existingId() == null) return;
-        mutate(() -> commands.delete(editor.existingId()), false, () -> setEditor(null));
+        mutate(() -> repository.delete(editor.existingId()), false, () -> setEditor(null));
     }
 
     public void closeEditor() { setEditor(null); }
@@ -156,27 +151,27 @@ public final class MainViewModel extends ViewModel {
             savedState.set(PLANNING_EDITOR, null);
             state.setValue(new MainUiState(current.dashboard(), current.surface(), current.filter(),
                     current.loading(), current.error(), current.completionSignal(), current.editor(),
-                    null, current.planningSettingsSignal() + 1));
+                    null));
         });
     }
 
     public void closePlanningSettings() { setPlanningEditor(null); }
 
     public void delete(String id) {
-        mutate(() -> commands.delete(id), false);
+        mutate(() -> repository.delete(id), false);
     }
 
     public void deleteAll(List<String> ids) {
         if (ids.isEmpty()) return;
-        mutate(() -> commands.deleteAll(ids), false);
+        mutate(() -> repository.deleteAll(List.copyOf(ids)), false);
     }
 
     public void complete(String id) {
-        mutate(() -> commands.complete(id), true);
+        mutate(() -> repository.complete(id, clock.now()), true);
     }
 
     public void setStepCompleted(String itemId, String stepId, boolean completed) {
-        mutate(() -> commands.setStepCompleted(itemId, stepId, completed),
+        mutate(() -> repository.setStepCompleted(itemId, stepId, completed, clock.now()),
                 completed);
     }
 
@@ -205,7 +200,7 @@ public final class MainViewModel extends ViewModel {
     }
 
     public void undo() {
-        mutate(commands::undo, false);
+        mutate(() -> repository.undoLatest(clock.now()), false);
     }
 
     public void consumeError() {
@@ -213,16 +208,11 @@ public final class MainViewModel extends ViewModel {
         if (value.error() == null) return;
         state.setValue(new MainUiState(value.dashboard(), value.surface(), value.filter(),
                 value.loading(), null, value.completionSignal(), value.editor(),
-                value.planningEditor(), value.planningSettingsSignal()));
-    }
-
-    public void resolveMigrationCandidates(
-            List<MigrationCandidateResolution> resolutions, long reportId) {
-        mutate(() -> resolveMigrationCandidate.execute(resolutions, reportId), false);
+                value.planningEditor()));
     }
 
     public void applyChangeSet(List<BulkChange> changes, String undoLabel) {
-        mutate(() -> commands.applyChangeSet(changes, undoLabel), false);
+        mutate(() -> repository.applyChangeSet(changes, undoLabel, clock.now()), false);
     }
 
     private void mutate(Runnable action, boolean completion) {
@@ -236,7 +226,7 @@ public final class MainViewModel extends ViewModel {
                 try {
                     action.run();
                     changeNotifier.run();
-                    var dashboard = planFocus.execute(20, true);
+                    var dashboard = planFocus.execute(20);
                     dispatch(() -> {
                         update(dashboard, current().surface(), current().filter(), false,
                                 null, current().completionSignal() + (completion ? 1 : 0));
@@ -291,8 +281,7 @@ public final class MainViewModel extends ViewModel {
             String error,
             long completionSignal) {
         state.setValue(new MainUiState(dashboard, surface, filter, loading, error,
-                completionSignal, current().editor(), current().planningEditor(),
-                current().planningSettingsSignal()));
+                completionSignal, current().editor(), current().planningEditor()));
     }
 
     private void setEditor(ObligationEditorState editor) {
@@ -300,7 +289,7 @@ public final class MainViewModel extends ViewModel {
         MainUiState current = current();
         state.setValue(new MainUiState(current.dashboard(), current.surface(), current.filter(),
                 current.loading(), current.error(), current.completionSignal(), editor,
-                current.planningEditor(), current.planningSettingsSignal()));
+                current.planningEditor()));
     }
 
     private void setPlanningEditor(PlanningSettingsEditorState editor) {
@@ -308,7 +297,7 @@ public final class MainViewModel extends ViewModel {
         MainUiState current = current();
         state.setValue(new MainUiState(current.dashboard(), current.surface(), current.filter(),
                 current.loading(), current.error(), current.completionSignal(), current.editor(),
-                editor, current.planningSettingsSignal()));
+                editor));
     }
 
     @Override

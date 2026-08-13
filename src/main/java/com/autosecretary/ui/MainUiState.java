@@ -12,14 +12,12 @@ public record MainUiState(
         String error,
         long completionSignal,
         ObligationEditorState editor,
-        PlanningSettingsEditorState planningEditor,
-        long planningSettingsSignal) {
+        PlanningSettingsEditorState planningEditor) {
     public static MainUiState initial(
             String surface,
             String filter,
             ObligationEditorState editor,
             PlanningSettingsEditorState planningEditor) {
-        return new MainUiState(null, surface, filter, true, null, 0, editor,
-                planningEditor, 0);
+        return new MainUiState(null, surface, filter, true, null, 0, editor, planningEditor);
     }
 }

@@ -11,10 +11,6 @@ import androidx.room.Upsert;
 
 import com.autosecretary.data.entity.CompletionEntity;
 import com.autosecretary.data.entity.DayPlanDirectiveEntity;
-import com.autosecretary.data.entity.MigrationCandidateEntity;
-import com.autosecretary.data.entity.MigrationReportEntity;
-import com.autosecretary.data.entity.PlannedSlotEntity;
-import com.autosecretary.data.entity.PlanningConflictEntity;
 import com.autosecretary.data.entity.StepCompletionEntity;
 import com.autosecretary.data.entity.StepDayEntity;
 import com.autosecretary.data.entity.StepEntity;
@@ -51,35 +47,11 @@ public interface FocusDao {
     @Query("SELECT * FROM work_item_completions ORDER BY completedAt")
     List<CompletionEntity> readCompletions();
 
-    @Query("SELECT * FROM work_item_completions WHERE completedAt >= :since ORDER BY completedAt")
-    List<CompletionEntity> readCompletionsSince(String since);
-
     @Query("SELECT * FROM day_plan_directives WHERE day = :day ORDER BY updatedAt")
     List<DayPlanDirectiveEntity> readDirectives(String day);
 
     @Query("SELECT * FROM day_plan_directives WHERE day = :day AND workItemId = :workItemId LIMIT 1")
     DayPlanDirectiveEntity readDirective(String day, String workItemId);
-
-    @Query("SELECT * FROM planned_slots WHERE day = :day ORDER BY startAt")
-    List<PlannedSlotEntity> readPlannedSlots(String day);
-
-    @Query("SELECT * FROM planning_conflicts ORDER BY computedAt DESC")
-    List<PlanningConflictEntity> readPlanningConflicts();
-
-    @Query("SELECT * FROM migration_reports ORDER BY id DESC LIMIT 1")
-    MigrationReportEntity readLatestMigrationReport();
-
-    @Query("SELECT * FROM migration_candidates ORDER BY title")
-    List<MigrationCandidateEntity> readMigrationCandidates();
-
-    @Query("SELECT * FROM migration_candidates WHERE id = :id LIMIT 1")
-    MigrationCandidateEntity readMigrationCandidate(String id);
-
-    @Query("DELETE FROM migration_candidates WHERE id = :id")
-    int deleteMigrationCandidate(String id);
-
-    @Query("UPDATE migration_reports SET acknowledged = 1 WHERE id = :id")
-    int acknowledgeMigration(long id);
 
     @Query("SELECT * FROM undo_journal WHERE undoneAt IS NULL ORDER BY createdAt DESC LIMIT 1")
     UndoJournalEntity readLatestUndo();
@@ -108,12 +80,6 @@ public interface FocusDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertUndo(UndoJournalEntity undo);
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertPlannedSlots(List<PlannedSlotEntity> slots);
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertPlanningConflicts(List<PlanningConflictEntity> conflicts);
-
     @Query("DELETE FROM work_items WHERE id = :id")
     void deleteWorkItem(String id);
 
@@ -131,12 +97,6 @@ public interface FocusDao {
 
     @Query("DELETE FROM day_plan_directives WHERE day = :day AND workItemId = :workItemId")
     void deleteDirective(String day, String workItemId);
-
-    @Query("DELETE FROM planned_slots")
-    void deletePlannedSlots();
-
-    @Query("DELETE FROM planning_conflicts")
-    void deletePlanningConflicts();
 
     @Query("UPDATE undo_journal SET undoneAt = :undoneAt WHERE id = :id AND undoneAt IS NULL")
     int markUndone(String id, String undoneAt);
@@ -162,13 +122,4 @@ public interface FocusDao {
         upsertStepDays(days);
     }
 
-    @Transaction
-    default void replacePlan(
-            List<PlannedSlotEntity> slots,
-            List<PlanningConflictEntity> conflicts) {
-        deletePlannedSlots();
-        deletePlanningConflicts();
-        insertPlannedSlots(slots);
-        insertPlanningConflicts(conflicts);
-    }
 }

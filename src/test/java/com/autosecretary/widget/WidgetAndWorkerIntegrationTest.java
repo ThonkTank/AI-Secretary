@@ -13,7 +13,9 @@ import androidx.work.ListenableWorker;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.background.FocusRefreshWorker;
 import com.autosecretary.domain.CompletionStats;
+import com.autosecretary.domain.PlanningSettings;
 import com.autosecretary.domain.Task;
+import com.autosecretary.domain.TimeWindow;
 
 import org.junit.After;
 import org.junit.Before;
@@ -24,6 +26,7 @@ import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.concurrent.Callable;
@@ -37,9 +40,14 @@ public final class WidgetAndWorkerIntegrationTest {
     @Before public void setUp() {
         app = ApplicationProvider.getApplicationContext();
         app.deleteDatabase("autosecretary.db");
-        if (app.legacyImports().requiresUserDecision()) app.legacyImports().chooseEmptyDatabase();
+        app.graph().planningSettings().save(new PlanningSettings(
+                new TimeWindow(LocalTime.MIN, LocalTime.MAX),
+                new TimeWindow(LocalTime.MIN, LocalTime.of(8, 0)),
+                new TimeWindow(LocalTime.of(8, 0), LocalTime.of(16, 0)),
+                new TimeWindow(LocalTime.of(16, 0), LocalTime.MAX),
+                0, 0, 0, 1));
         database(() -> {
-            app.graph().workItemCommands().save(new Task(ID, "Widget-Aufgabe", 30, null, null,
+            app.graph().workItems().save(new Task(ID, "Widget-Aufgabe", 5, null, null,
                     true, List.of(), LocalDateTime.now().minusDays(1), false,
                     CompletionStats.empty(), 0));
             return null;
@@ -58,8 +66,9 @@ public final class WidgetAndWorkerIntegrationTest {
 
         FocusWidgetFactory factory = new FocusWidgetFactory(app, app.graph());
         database(() -> { factory.onDataSetChanged(); return null; });
-        assertEquals(1, factory.getCount());
-        assertTrue(factory.getViewAt(0) != null);
+        int expectedTodayRows = LocalTime.now().isBefore(LocalTime.of(23, 54)) ? 1 : 0;
+        assertEquals(expectedTodayRows, factory.getCount());
+        if (expectedTodayRows > 0) assertTrue(factory.getViewAt(0) != null);
     }
 
     @Test

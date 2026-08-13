@@ -2,14 +2,11 @@ package com.autosecretary.app;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class AppExecutorsTest {
@@ -19,28 +16,19 @@ public final class AppExecutorsTest {
     @After public void tearDown() { executors.close(); }
 
     @Test
-    public void failedPreparationPermanentlyRejectsDatabaseCommands() {
-        CompletableFuture<Void> preparation = new CompletableFuture<>();
-        preparation.completeExceptionally(new IllegalStateException("backup failed"));
-        executors.setDatabaseGate(preparation);
-        AtomicInteger mutations = new AtomicInteger();
+    public void databaseLaneExecutesCommandsSerially() throws Exception {
+        AtomicInteger next = new AtomicInteger();
+        var first = executors.database().submit(next::incrementAndGet);
+        var second = executors.database().submit(next::incrementAndGet);
 
-        ExecutionException first = assertThrows(ExecutionException.class,
-                () -> executors.database().submit(mutations::incrementAndGet).get());
-        ExecutionException second = assertThrows(ExecutionException.class,
-                () -> executors.database().submit(mutations::incrementAndGet).get());
-
-        assertEquals(0, mutations.get());
-        assertEquals("Datenbankvorbereitung ist fehlgeschlagen",
-                first.getCause().getMessage());
-        assertEquals("Datenbankvorbereitung ist fehlgeschlagen",
-                second.getCause().getMessage());
+        assertEquals(1, first.get().intValue());
+        assertEquals(2, second.get().intValue());
     }
 
     @Test
-    public void completedPreparationAllowsDatabaseCommands() throws Exception {
-        executors.setDatabaseGate(CompletableFuture.completedFuture(null));
-        assertEquals(7, executors.database().submit(() -> 7).get().intValue());
+    public void callDatabaseIsSafeFromInsideDatabaseLane() throws Exception {
+        int result = executors.database().submit(() -> executors.callDatabase(() -> 7)).get();
+        assertEquals(7, result);
         assertFalse(executors.database().isShutdown());
     }
 }

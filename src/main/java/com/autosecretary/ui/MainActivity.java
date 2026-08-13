@@ -18,7 +18,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
-import androidx.core.content.FileProvider;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -30,8 +29,8 @@ import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.databinding.ActivityMainBinding;
 import com.autosecretary.databinding.RowCalendarBinding;
 import com.autosecretary.application.MoveWorkItemUseCase;
-import com.autosecretary.application.MigrationReview;
 import com.autosecretary.domain.PlanConflict;
+import com.autosecretary.platform.CalendarChangeObserver;
 import com.autosecretary.ui.editor.ObligationEditorDialogFragment;
 import com.autosecretary.ui.settings.PlanningSettingsDialogFragment;
 import com.autosecretary.ui.ai.AiUiState;
@@ -42,9 +41,6 @@ import com.autosecretary.ui.ai.AiTermsDialogFragment;
 import com.autosecretary.ui.editor.AddWorkItemDialogFragment;
 import com.autosecretary.ui.update.UpdateUiState;
 import com.autosecretary.ui.update.UpdateViewModel;
-import com.autosecretary.ui.migration.LegacyImportDialogFragment;
-import com.autosecretary.ui.migration.LegacyImportViewModel;
-import com.autosecretary.ui.migration.MigrationReviewDialogFragment;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.time.LocalDate;
@@ -55,8 +51,7 @@ import java.util.List;
 
 /** One screen: focus anchor, complete list, direct editors and confirmed local-AI bulk changes. */
 public final class MainActivity extends AppCompatActivity implements
-        LegacyImportDialogFragment.Host, ObligationEditorDialogFragment.Host,
-        PlanningSettingsDialogFragment.Host, MigrationReviewDialogFragment.Host,
+        ObligationEditorDialogFragment.Host, PlanningSettingsDialogFragment.Host,
         AddWorkItemDialogFragment.Host, AiInstructionDialogFragment.Host,
         AiProposalDialogFragment.Host, AiTermsDialogFragment.Host {
     private MainViewModel viewModel;
@@ -81,27 +76,19 @@ public final class MainActivity extends AppCompatActivity implements
     private View allPanel;
     private View aiPanel;
     private DaylightController daylightController;
+    private CalendarChangeObserver calendarObserver;
     private String listFilter = "open";
     private String currentSurface = "today";
     private long renderedCompletionSignal;
-    private long renderedPlanningSettingsSignal;
     private Bundle creationState;
     private View root;
     private ActivityMainBinding binding;
-    private LegacyImportViewModel legacyImportViewModel;
     private boolean calendarCardDismissed;
-
-    private final ActivityResultLauncher<String[]> modelPicker = registerForActivityResult(
-            new ActivityResultContracts.OpenDocument(), uri -> {
-                if (uri == null || aiViewModel == null) return;
-                android.content.Context app = getApplicationContext();
-                aiViewModel.importModel(() -> app.getContentResolver().openInputStream(uri));
-            });
 
     private final ActivityResultLauncher<String> calendarPermission = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
                 if (viewModel == null) return;
-                AutoSecretaryApplication.from(this).refreshCalendarObservation();
+                if (calendarObserver != null) calendarObserver.start();
                 updateCalendarPermissionCard();
                 reload();
             });
@@ -118,32 +105,21 @@ public final class MainActivity extends AppCompatActivity implements
         creationState = savedInstanceState;
         if (savedInstanceState != null) {
             renderedCompletionSignal = savedInstanceState.getLong(RENDERED_COMPLETION_SIGNAL);
-            renderedPlanningSettingsSignal = savedInstanceState.getLong(
-                    RENDERED_PLANNING_SETTINGS_SIGNAL);
         }
         root = binding.Root;
         AutoSecretaryApplication app = AutoSecretaryApplication.from(this);
         root.setContentDescription("Auto Secretary · Initialisierung");
-        legacyImportViewModel = new ViewModelProvider(this,
-                app.legacyImportViewModelFactory()).get(LegacyImportViewModel.class);
-        if (app.legacyImports().requiresUserDecision()) {
-            if (getSupportFragmentManager().findFragmentByTag(LegacyImportDialogFragment.TAG) == null) {
-                new LegacyImportDialogFragment().show(
-                        getSupportFragmentManager(), LegacyImportDialogFragment.TAG);
-            }
-            return;
-        }
         initializeCore(app);
     }
 
     private void initializeCore(AutoSecretaryApplication app) {
         if (viewModel != null) return;
-        viewModel = new ViewModelProvider(this,
-                app.mainViewModelFactory(this, creationState))
+        ViewModelProvider.Factory factory = app.viewModelFactory(this, creationState);
+        viewModel = new ViewModelProvider(this, factory)
                 .get(MainViewModel.class);
-        updateViewModel = new ViewModelProvider(this, app.updateViewModelFactory())
+        updateViewModel = new ViewModelProvider(this, factory)
                 .get(UpdateViewModel.class);
-        aiViewModel = new ViewModelProvider(this, app.aiViewModelFactory())
+        aiViewModel = new ViewModelProvider(this, factory)
                 .get(AiViewModel.class);
         celebration = binding.Celebration;
         emptyFocus = binding.EmptyFocus;
@@ -163,6 +139,10 @@ public final class MainActivity extends AppCompatActivity implements
                 app.location(),
                 () -> locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION),
                 this::refreshEveningPalette);
+        calendarObserver = new CalendarChangeObserver(this, app.executors().main(), () -> {
+            reload();
+            app.graph().refreshWidgets();
+        });
         daylightController.configure();
 
         FocusAdapter.Listener focusListener = new FocusAdapter.Listener() {
@@ -208,7 +188,6 @@ public final class MainActivity extends AppCompatActivity implements
 
         binding.AddFab.setOnClickListener(view -> showAddMenu());
         binding.AiBulkEdit.setOnClickListener(view -> ensureAiReady(this::showAiInstruction));
-        binding.SelectModel.setOnClickListener(view -> selectModel());
         binding.AiProgressCancel.setOnClickListener(view -> aiViewModel.cancel());
         binding.PlanningSettings.setOnClickListener(
                 view -> viewModel.openPlanningSettings());
@@ -236,8 +215,9 @@ public final class MainActivity extends AppCompatActivity implements
             aiViewModel.installBundledModel(false);
         }
         if (BuildConfig.DEBUG) {
-            updateStatus.setText("Preview-Build · Produktionsupdates sind deaktiviert");
+            updateStatus.setText("Lokaler Debug-Build · Updates sind deaktiviert");
             updateAction.setVisibility(View.GONE);
+            binding.UpdateProgress.setVisibility(View.GONE);
         } else if (updateViewModel.state().getValue() == null
                 || !updateViewModel.state().getValue().checked()) {
             updateViewModel.check();
@@ -251,6 +231,7 @@ public final class MainActivity extends AppCompatActivity implements
     @Override
     protected void onStart() {
         super.onStart();
+        if (calendarObserver != null) calendarObserver.start();
         if (daylightController != null) daylightController.onStart();
     }
 
@@ -258,7 +239,6 @@ public final class MainActivity extends AppCompatActivity implements
     protected void onResume() {
         super.onResume();
         if (viewModel != null) {
-            AutoSecretaryApplication.from(this).refreshCalendarObservation();
             updateCalendarPermissionCard();
             reload();
         }
@@ -266,8 +246,16 @@ public final class MainActivity extends AppCompatActivity implements
 
     @Override
     protected void onStop() {
+        if (calendarObserver != null) calendarObserver.stop();
         if (daylightController != null) daylightController.onStop();
         super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (calendarObserver != null) calendarObserver.close();
+        calendarObserver = null;
+        super.onDestroy();
     }
 
     private void reload() {
@@ -308,15 +296,10 @@ public final class MainActivity extends AppCompatActivity implements
             undoAction.setContentDescription(undoLabel);
             binding.TodayUndoRow.setVisibility(undoLabel != null
                     && undoLabel.startsWith("Aus heute genommen") ? View.VISIBLE : View.GONE);
-            showMigrationReview(state.dashboard().migrationReview());
             renderPlanningConflicts(state.dashboard().conflicts());
             renderEditor(state);
         }
         renderPlanningSettings(state);
-        if (state.planningSettingsSignal() > renderedPlanningSettingsSignal) {
-            renderedPlanningSettingsSignal = state.planningSettingsSignal();
-            AutoSecretaryApplication.from(this).scheduleBackground();
-        }
         if (state.completionSignal() > renderedCompletionSignal) {
             renderedCompletionSignal = state.completionSignal();
             celebration.burst();
@@ -334,7 +317,6 @@ public final class MainActivity extends AppCompatActivity implements
     @Override
     protected void onSaveInstanceState(@androidx.annotation.NonNull Bundle outState) {
         outState.putLong(RENDERED_COMPLETION_SIGNAL, renderedCompletionSignal);
-        outState.putLong(RENDERED_PLANNING_SETTINGS_SIGNAL, renderedPlanningSettingsSignal);
         super.onSaveInstanceState(outState);
     }
 
@@ -359,34 +341,7 @@ public final class MainActivity extends AppCompatActivity implements
     }
 
     @Override
-    public LegacyImportViewModel legacyImportViewModel() {
-        return legacyImportViewModel;
-    }
-
-    @Override
-    public void onLegacyImportReady() {
-        initializeCore(AutoSecretaryApplication.from(this));
-    }
-
-    @Override
     public MainViewModel mainViewModel() { return viewModel; }
-
-    @Override
-    public void shareMigrationBackup() {
-        java.io.File backup = AutoSecretaryApplication.from(this)
-                .migrationBackupArchive();
-        if (backup == null || !backup.isFile()) {
-            showError("Migrationsbackup wurde nicht gefunden");
-            return;
-        }
-        Uri uri = FileProvider.getUriForFile(this,
-                BuildConfig.APPLICATION_ID + ".files", backup);
-        Intent share = new Intent(Intent.ACTION_SEND)
-                .setType("application/zip")
-                .putExtra(Intent.EXTRA_STREAM, uri)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        startActivity(Intent.createChooser(share, "Migrationsbackup sichern"));
-    }
 
     @Override
     public AiViewModel aiViewModel() { return aiViewModel; }
@@ -503,14 +458,6 @@ public final class MainActivity extends AppCompatActivity implements
         binding.CompletedToday.setVisibility(View.VISIBLE);
     }
 
-    private void showMigrationReview(MigrationReview review) {
-        if (review == null || getSupportFragmentManager().findFragmentByTag(
-                MigrationReviewDialogFragment.TAG) != null
-                || getSupportFragmentManager().isStateSaved()) return;
-        new MigrationReviewDialogFragment().show(
-                getSupportFragmentManager(), MigrationReviewDialogFragment.TAG);
-    }
-
     private void handleUpdateAction() {
         UpdateUiState state = updateViewModel.state().getValue();
         if (state == null || state.busy()) return;
@@ -527,9 +474,10 @@ public final class MainActivity extends AppCompatActivity implements
     private void renderUpdate(UpdateUiState state) {
         if (BuildConfig.DEBUG || state == null) return;
         updateAction.setEnabled(!state.busy());
+        binding.UpdateProgress.setVisibility(state.busy() ? View.VISIBLE : View.GONE);
         if (state.busy()) {
             updateStatus.setText(state.available() == null
-                    ? "Suche nach Produktionsupdate …" : "Update wird geladen und geprüft …");
+                    ? "Suche nach veröffentlichtem Update …" : "Update wird geladen und geprüft …");
             return;
         }
         if (state.error() != null) {
@@ -546,7 +494,7 @@ public final class MainActivity extends AppCompatActivity implements
             updateStatus.setText("Diese Version ist aktuell");
             updateAction.setText("Erneut prüfen");
         } else {
-            updateStatus.setText("Signierte Produktionsupdates");
+            updateStatus.setText("Signierte Updates, Testversionen eingeschlossen");
             updateAction.setText("Nach Updates suchen");
         }
     }
@@ -557,23 +505,21 @@ public final class MainActivity extends AppCompatActivity implements
         binding.AiAnnualRings.setRunning(state.busy());
         if (state.busy()) {
             binding.AiProgressText.setText(switch (state.operation()) {
-                case INSTALL, IMPORT -> "Das Modell wird lokal geprüft. Der Import läuft im Hintergrund weiter.";
+                case INSTALL -> "Das mitgelieferte Modell wird lokal geprüft.";
                 case INFERENCE -> "liest die Einträge und den Kalender …";
                 case NONE -> "bereitet die lokale KI vor …";
             });
         }
         binding.AiProgressCancel.setVisibility(state.busy()
-                && (state.operation() == AiUiState.Operation.INSTALL
-                || state.operation() == AiUiState.Operation.IMPORT) ? View.VISIBLE : View.GONE);
+                && state.operation() == AiUiState.Operation.INSTALL ? View.VISIBLE : View.GONE);
         if (state.busy()) {
             modelStatus.setText(switch (state.operation()) {
-                case INSTALL, IMPORT -> R.string.model_importing;
+                case INSTALL -> R.string.model_importing;
                 case INFERENCE -> R.string.ai_working;
                 case NONE -> R.string.model_importing;
             });
         } else {
-            modelStatus.setText(state.modelReady() ? R.string.model_ready
-                    : BuildConfig.BUNDLED_MODEL ? R.string.model_bundled : R.string.model_missing);
+            modelStatus.setText(state.modelReady() ? R.string.model_ready : R.string.model_bundled);
         }
         if (state.error() != null) {
             showError(state.error());
@@ -938,16 +884,6 @@ public final class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private void selectModel() {
-        new AlertDialog.Builder(this)
-                .setTitle("Modell wählen")
-                .setMessage("Wähle eine MediaPipe-.task-Datei. Bis etwa 0,8 GB passt gut; größere Modelle können auf Geräten mit 4 GB Arbeitsspeicher zu knapp sein.")
-                .setPositiveButton("Datei wählen", (dialog, which) ->
-                        modelPicker.launch(new String[]{"application/octet-stream", "*/*"}))
-                .setNegativeButton("später", null)
-                .show();
-    }
-
     private void ensureAiReady(Runnable continuation) {
         AiUiState state = aiViewModel.state().getValue();
         if (state != null && state.modelReady()) {
@@ -976,6 +912,4 @@ public final class MainActivity extends AppCompatActivity implements
     private static final String UI_PREFERENCES = "waldmorgen_ui";
     private static final String CALENDAR_ASKED = "calendar_asked";
     private static final String RENDERED_COMPLETION_SIGNAL = "renderedCompletionSignal";
-    private static final String RENDERED_PLANNING_SETTINGS_SIGNAL =
-            "renderedPlanningSettingsSignal";
 }

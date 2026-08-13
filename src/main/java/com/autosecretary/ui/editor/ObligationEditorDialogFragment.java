@@ -171,6 +171,8 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
             binding.EditCadence.requestFocus();
             sync();
         });
+        binding.PreferenceChoices.setOnCheckedStateChangeListener((group, checkedIds) -> sync());
+        binding.EditLearning.setOnCheckedChangeListener((button, checked) -> sync());
     }
 
     private void durationChip(Chip chip, String value) {
@@ -197,7 +199,7 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
         viewModel.editEditor(source.edit(
                 binding.EditTitle.getText().toString(),
                 binding.EditDuration.getText().toString(),
-                value, "", true,
+                value, source.timePreferenceInput(), source.flexible(),
                 binding.EditCadence.getText().toString(),
                 binding.EditNextDue.getText().toString(), currentSteps()));
     }
@@ -242,6 +244,8 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
             selectDuration(state.durationInput());
             selectDeadline(state.deadlineInput());
             selectCadence(state.cadenceInput());
+            selectPreference(state.timePreferenceInput());
+            binding.EditLearning.setChecked(state.flexible());
             showError(binding.TitleError, state.errors().get("title"));
             showError(binding.DurationError, state.errors().get("duration"));
             showError(binding.DeadlineError, state.errors().get("deadline"));
@@ -400,6 +404,7 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
             binding.WhatFields.setVisibility(View.VISIBLE);
             binding.TaskFields.setVisibility(state.routine() ? View.GONE : View.VISIBLE);
             binding.RoutineFields.setVisibility(state.routine() ? View.VISIBLE : View.GONE);
+            binding.PlanningFields.setVisibility(View.VISIBLE);
             binding.StepSection.setVisibility(state.routine() ? View.VISIBLE : View.GONE);
             binding.EditorInference.setVisibility(View.VISIBLE);
             binding.SaveEditor.setText("Speichern");
@@ -411,6 +416,7 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
         binding.WhatFields.setVisibility(page == 0 ? View.VISIBLE : View.GONE);
         binding.TaskFields.setVisibility(View.GONE);
         binding.RoutineFields.setVisibility(page == 1 ? View.VISIBLE : View.GONE);
+        binding.PlanningFields.setVisibility(page == 1 ? View.VISIBLE : View.GONE);
         binding.StepSection.setVisibility(page == 2 ? View.VISIBLE : View.GONE);
         binding.EditorInference.setVisibility(page == 0 ? View.VISIBLE : View.GONE);
         binding.SaveEditor.setText(page == 2 ? "Speichern" : "Weiter");
@@ -458,7 +464,7 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
                 binding.EditTitle.getText().toString(),
                 binding.EditDuration.getText().toString(),
                 source.routine() ? "" : source.deadlineInput(),
-                "", true,
+                selectedPreference(), binding.EditLearning.isChecked(),
                 binding.EditCadence.getText().toString(),
                 binding.EditNextDue.getText().toString(), currentSteps()));
     }
@@ -501,6 +507,24 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
         };
         binding.CadenceChoices.check(id);
         binding.EditCadence.setVisibility(id == R.id.CadenceCustom ? View.VISIBLE : View.GONE);
+    }
+
+    private void selectPreference(String value) {
+        int id = switch (value) {
+            case "MORNING" -> R.id.PreferenceMorning;
+            case "MIDDAY" -> R.id.PreferenceMidday;
+            case "EVENING" -> R.id.PreferenceEvening;
+            default -> R.id.PreferenceAny;
+        };
+        binding.PreferenceChoices.check(id);
+    }
+
+    private String selectedPreference() {
+        int id = binding.PreferenceChoices.getCheckedChipId();
+        if (id == R.id.PreferenceMorning) return "MORNING";
+        if (id == R.id.PreferenceMidday) return "MIDDAY";
+        if (id == R.id.PreferenceEvening) return "EVENING";
+        return "";
     }
 
     private void selectDeadline(String value) {
@@ -553,6 +577,8 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
         return left.titleInput().equals(right.titleInput())
                 && left.durationInput().equals(right.durationInput())
                 && left.deadlineInput().equals(right.deadlineInput())
+                && left.timePreferenceInput().equals(right.timePreferenceInput())
+                && left.flexible() == right.flexible()
                 && left.cadenceInput().equals(right.cadenceInput())
                 && left.nextDueInput().equals(right.nextDueInput())
                 && left.steps().equals(right.steps());

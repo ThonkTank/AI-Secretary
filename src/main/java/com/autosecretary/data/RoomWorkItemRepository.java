@@ -4,28 +4,19 @@ import com.autosecretary.application.CompletionRecord;
 import com.autosecretary.application.DayPlanDirective;
 import com.autosecretary.application.FocusSnapshot;
 import com.autosecretary.application.StepCompletion;
-import com.autosecretary.application.StoredPlanSlot;
-import com.autosecretary.application.StoredPlanningConflict;
 import com.autosecretary.application.WorkItemRepository;
-import com.autosecretary.application.MigrationReview;
-import com.autosecretary.application.MigrationCandidate;
-import com.autosecretary.application.MigrationCandidateResolution;
 import com.autosecretary.application.ai.BulkChange;
 import com.autosecretary.data.entity.CompletionEntity;
 import com.autosecretary.data.entity.DayPlanDirectiveEntity;
-import com.autosecretary.data.entity.PlannedSlotEntity;
-import com.autosecretary.data.entity.PlanningConflictEntity;
 import com.autosecretary.data.entity.StepCompletionEntity;
 import com.autosecretary.data.entity.StepDayEntity;
 import com.autosecretary.data.entity.StepEntity;
 import com.autosecretary.data.entity.UndoJournalEntity;
 import com.autosecretary.data.entity.WorkItemEntity;
-import com.autosecretary.data.entity.MigrationCandidateEntity;
 import com.autosecretary.domain.CompletionStats;
 import com.autosecretary.domain.Routine;
 import com.autosecretary.domain.Step;
 import com.autosecretary.domain.Task;
-import com.autosecretary.domain.TimePreference;
 import com.autosecretary.domain.WorkItem;
 
 import org.json.JSONObject;
@@ -33,11 +24,9 @@ import org.json.JSONArray;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.DayOfWeek;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -208,22 +197,6 @@ public final class RoomWorkItemRepository implements WorkItemRepository {
     }
 
     @Override
-    public void replacePlan(
-            List<StoredPlanSlot> slots,
-            List<StoredPlanningConflict> conflicts) {
-        dao.replacePlan(slots.stream().map(this::toEntity).collect(Collectors.toList()),
-                conflicts.stream().map(this::toEntity).collect(Collectors.toList()));
-    }
-
-    @Override
-    public List<StoredPlanSlot> storedPlan(LocalDate day) {
-        return dao.readPlannedSlots(day.toString()).stream().map(entity -> new StoredPlanSlot(
-                entity.id, entity.workItemId, entity.occurrenceKey,
-                LocalDateTime.parse(entity.startAt), LocalDateTime.parse(entity.endAt),
-                LocalDateTime.parse(entity.computedAt))).collect(Collectors.toList());
-    }
-
-    @Override
     public String latestUndoLabel() {
         UndoJournalEntity undo = dao.readLatestUndo();
         return undo == null ? null : undo.label;
@@ -261,166 +234,6 @@ public final class RoomWorkItemRepository implements WorkItemRepository {
                 throw new IllegalStateException("Undo ist beschädigt", error);
             }
         });
-    }
-
-    @Override
-    public MigrationReview migrationReview() {
-        var report = dao.readLatestMigrationReport();
-        if (report == null || report.acknowledged) return null;
-        List<MigrationCandidate> candidates = dao.readMigrationCandidates().stream()
-                .map(value -> new MigrationCandidate(value.id, value.title, value.durationMinutes,
-                        value.deadlineAt == null ? null : LocalDateTime.parse(value.deadlineAt),
-                        value.reason, migrationSummary(value)))
-                .collect(Collectors.toList());
-        return new MigrationReview(report.id, report.sourceVersion, report.importedItems,
-                report.importedCompletions, candidates, report.warningsJson);
-    }
-
-    @Override
-    public void resolveMigrationCandidates(
-            List<MigrationCandidateResolution> resolutions,
-            long reportId,
-            LocalDateTime at) {
-        database.runInTransaction(() -> {
-            Set<String> resolvedIds = new HashSet<>();
-            for (MigrationCandidateResolution resolution : resolutions) {
-                if (!resolvedIds.add(resolution.candidateId())) {
-                    throw new IllegalStateException("Migrationsentscheidung ist doppelt");
-                }
-                resolveMigrationCandidate(resolution, at);
-            }
-            if (!dao.readMigrationCandidates().isEmpty()) {
-                throw new IllegalStateException("Nicht alle Migrationskandidaten wurden entschieden");
-            }
-            if (dao.acknowledgeMigration(reportId) != 1) {
-                throw new IllegalStateException("Migrationsbericht existiert nicht mehr");
-            }
-        });
-    }
-
-    private void resolveMigrationCandidate(
-            MigrationCandidateResolution resolution, LocalDateTime at) {
-        MigrationCandidateEntity candidate = dao.readMigrationCandidate(resolution.candidateId());
-        if (candidate == null) {
-            throw new IllegalStateException("Migrationskandidat existiert nicht mehr");
-        }
-        if (resolution.kind() != MigrationCandidateResolution.Kind.DISCARD) {
-            JSONObject payload;
-            try { payload = new JSONObject(candidate.legacyPayloadJson); }
-            catch (Exception error) {
-                throw new IllegalStateException("Migrationskandidat ist beschädigt", error);
-            }
-            LocalDateTime deadline = candidate.deadlineAt == null
-                    ? null : LocalDateTime.parse(candidate.deadlineAt);
-            TimePreference preference = candidatePreference(payload);
-            LocalDateTime createdAt = candidateCreatedAt(payload, at);
-            JSONArray evidence = payload.optJSONArray("completionEvidence");
-            int evidenceCount = evidence == null ? 0 : evidence.length();
-            int currentStreak = Math.max(0, payload.optInt("currentStreak", 0));
-            int bestStreak = Math.max(currentStreak, payload.optInt("bestStreak", currentStreak));
-            int totalCompletions = Math.max(Math.max(bestStreak, evidenceCount),
-                    payload.optInt("totalCompletions", 0));
-            CompletionStats stats = new CompletionStats(
-                    currentStreak, bestStreak, totalCompletions);
-            boolean flexible = payload.optBoolean("flexible", true);
-            List<Step> steps = candidateSteps(payload);
-            WorkItem item = resolution.kind() == MigrationCandidateResolution.Kind.TASK
-                    ? new Task(candidate.id, candidate.title, candidate.durationMinutes, deadline,
-                            preference, flexible, steps, createdAt,
-                            payload.optBoolean("completed", false), stats, 0)
-                    : new Routine(candidate.id, candidate.title, candidate.durationMinutes,
-                            null, preference, flexible, steps, createdAt,
-                            resolution.cadenceDays(), candidateDueDate(payload, at.toLocalDate()),
-                            stats, 0);
-            saveChecked(item);
-            restoreCandidateCompletions(candidate.id, evidence);
-            restoreCandidateStepCompletions(candidate.id, payload.optJSONArray("steps"));
-        }
-        if (dao.deleteMigrationCandidate(candidate.id) != 1) {
-            throw new IllegalStateException("Migrationskandidat konnte nicht abgeschlossen werden");
-        }
-    }
-
-    private static TimePreference candidatePreference(JSONObject payload) {
-        if (payload.isNull("timePreference")) return null;
-        String value = payload.optString("timePreference", "");
-        if (value.isBlank()) return null;
-        try { return TimePreference.valueOf(value); }
-        catch (IllegalArgumentException ignored) { return null; }
-    }
-
-    private static LocalDateTime candidateCreatedAt(
-            JSONObject payload, LocalDateTime fallback) {
-        try { return LocalDateTime.parse(payload.getString("createdAt")); }
-        catch (Exception ignored) { return fallback; }
-    }
-
-    private static LocalDate candidateDueDate(JSONObject payload, LocalDate fallback) {
-        try { return LocalDate.parse(payload.getString("suggestedDueDate")); }
-        catch (Exception ignored) { return fallback; }
-    }
-
-    private void restoreCandidateCompletions(String workItemId, JSONArray evidence) {
-        if (evidence == null) return;
-        for (int index = 0; index < evidence.length(); index++) {
-            try {
-                JSONObject value = evidence.getJSONObject(index);
-                LocalDateTime.parse(value.getString("completedAt"));
-                CompletionEntity completion = new CompletionEntity();
-                completion.id = value.getString("id");
-                completion.workItemId = workItemId;
-                completion.occurrenceKey = value.getString("occurrenceKey");
-                completion.completedAt = value.getString("completedAt");
-                dao.upsertCompletion(completion);
-            } catch (Exception corruptEvidence) {
-                // One malformed legacy completion must not block the explicit candidate decision.
-            }
-        }
-    }
-
-    private static List<Step> candidateSteps(JSONObject payload) {
-        JSONArray encoded = payload.optJSONArray("steps");
-        if (encoded == null) return List.of();
-        List<Step> result = new ArrayList<>();
-        for (int index = 0; index < encoded.length(); index++) {
-            try {
-                JSONObject value = encoded.getJSONObject(index);
-                EnumSet<DayOfWeek> days = EnumSet.noneOf(DayOfWeek.class);
-                JSONArray encodedDays = value.optJSONArray("days");
-                if (encodedDays != null) {
-                    for (int day = 0; day < encodedDays.length(); day++) {
-                        days.add(DayOfWeek.valueOf(encodedDays.getString(day)));
-                    }
-                }
-                result.add(new Step(value.getString("id"), value.getString("title"), days,
-                        result.size()));
-            } catch (Exception corruptStep) {
-                // The preserved database backup remains authoritative for a damaged child.
-            }
-        }
-        return List.copyOf(result);
-    }
-
-    private void restoreCandidateStepCompletions(String workItemId, JSONArray steps) {
-        if (steps == null) return;
-        for (int index = 0; index < steps.length(); index++) {
-            try {
-                JSONObject value = steps.getJSONObject(index);
-                if (!value.has("completedAt")) continue;
-                String stepId = value.getString("id");
-                StepEntity step = dao.readStep(stepId);
-                if (step == null || !workItemId.equals(step.workItemId)) continue;
-                LocalDateTime.parse(value.getString("completedAt"));
-                StepCompletionEntity completion = new StepCompletionEntity();
-                completion.id = value.getString("completionId");
-                completion.stepId = stepId;
-                completion.occurrenceKey = value.getString("occurrenceKey");
-                completion.completedAt = value.getString("completedAt");
-                dao.upsertStepCompletion(completion);
-            } catch (Exception corruptEvidence) {
-                // One malformed child completion does not invalidate the explicit resolution.
-            }
-        }
     }
 
     @Override
@@ -677,29 +490,6 @@ public final class RoomWorkItemRepository implements WorkItemRepository {
         return entity;
     }
 
-    private PlannedSlotEntity toEntity(StoredPlanSlot slot) {
-        PlannedSlotEntity entity = new PlannedSlotEntity();
-        entity.id = slot.id();
-        entity.workItemId = slot.workItemId();
-        entity.occurrenceKey = slot.occurrenceKey();
-        entity.day = slot.start().toLocalDate().toString();
-        entity.startAt = slot.start().toString();
-        entity.endAt = slot.end().toString();
-        entity.computedAt = slot.computedAt().toString();
-        return entity;
-    }
-
-    private PlanningConflictEntity toEntity(StoredPlanningConflict conflict) {
-        PlanningConflictEntity entity = new PlanningConflictEntity();
-        entity.id = conflict.id();
-        entity.workItemId = conflict.workItemId();
-        entity.occurrenceKey = conflict.occurrenceKey();
-        entity.reason = conflict.reason();
-        entity.detail = conflict.detail();
-        entity.computedAt = conflict.computedAt().toString();
-        return entity;
-    }
-
     private static JSONObject directiveJson(DayPlanDirectiveEntity value) throws Exception {
         return new JSONObject()
                 .put("id", value.id)
@@ -766,38 +556,6 @@ public final class RoomWorkItemRepository implements WorkItemRepository {
         result.occurrenceKey = value.getString("occurrenceKey");
         result.completedAt = value.getString("completedAt");
         return result;
-    }
-
-    private static String migrationSummary(MigrationCandidateEntity value) {
-        try {
-            JSONObject payload = new JSONObject(value.legacyPayloadJson);
-            if ("FIXED_APPOINTMENT_UNSUPPORTED".equals(value.reason)) {
-                String date = payload.optString("fixedDate", "?");
-                String start = payload.optString("fixedStart", "?");
-                String end = payload.optString("fixedEnd", "");
-                return "Termin " + date + " " + start
-                        + (end.isBlank() ? "" : "–" + end);
-            }
-            if ("ROUTINE_DEADLINE_UNSUPPORTED".equals(value.reason)) {
-                return "Wiederholung und End-Deadline " + value.deadlineAt;
-            }
-            if ("CORRUPT_LEGACY_CORE_UNSUPPORTED".equals(value.reason)) {
-                return "Kerndaten sind widersprüchlich; Rohwerte bleiben im Migrationsbackup";
-            }
-            if ("CORRUPT_PROTOTYPE_UNSUPPORTED".equals(value.reason)) {
-                return "Preview-Kerndaten sind widersprüchlich; das Original bleibt im Migrationsbackup";
-            }
-            int repetitions = payload.optInt("repetitions", 0);
-            int perPeriod = payload.optInt("perPeriod", 1);
-            String unit = switch (payload.optString("periodUnit", "DAY")) {
-                case "WEEK" -> "Woche(n)";
-                case "MONTH" -> "Kalendermonat(e)";
-                default -> "Tag(e)";
-            };
-            return repetitions + "× pro " + perPeriod + " " + unit;
-        } catch (Exception error) {
-            return "Legacy-Regel ist nur im gesicherten Original vollständig verfügbar";
-        }
     }
 
     private <T> T transactionResult(Supplier<T> supplier) {

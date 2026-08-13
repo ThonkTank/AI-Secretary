@@ -18,16 +18,7 @@ public interface WorkItemRepository {
     WorkItem setStepCompleted(String workItemId, String stepId, boolean completed, LocalDateTime at);
     List<DayPlanDirective> directives(LocalDate day);
     void saveDirective(DayPlanDirective directive, String undoLabel);
-    void replacePlan(List<StoredPlanSlot> slots, List<StoredPlanningConflict> conflicts);
-    List<StoredPlanSlot> storedPlan(LocalDate day);
     String latestUndoLabel();
     boolean undoLatest(LocalDateTime at);
-
-    MigrationReview migrationReview();
-
-    void resolveMigrationCandidates(
-            List<MigrationCandidateResolution> resolutions,
-            long reportId,
-            LocalDateTime at);
     void applyChangeSet(List<BulkChange> changes, String label, LocalDateTime at);
 }

@@ -12,12 +12,9 @@ public final class FocusWidgetService extends RemoteViewsService {
     static final String EXTRA_PALETTE = "palette";
     @Override
     public RemoteViewsFactory onGetViewFactory(Intent intent) {
-        com.autosecretary.app.AppGraph graph = null;
-        try { graph = AutoSecretaryApplication.from(this).graph(); }
-        catch (IllegalStateException ignored) { }
         return new FocusWidgetFactory(
                 getApplicationContext(),
-                graph,
+                AutoSecretaryApplication.from(this).graph(),
                 Math.max(1, intent.getIntExtra(EXTRA_MAX_ROWS, 3)),
                 intent.getBooleanExtra(EXTRA_SHOW_STEPS, true),
                 intent.getBooleanExtra(EXTRA_WIDE, false),

@@ -347,6 +347,55 @@
                             android:textSize="14sp" />
                     </LinearLayout>
 
+                    <LinearLayout
+                        android:id="@+id/PlanningFields"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:fontFamily="@font/newsreader_light_italic"
+                            android:text="bevorzugte Tageszeit"
+                            android:textColor="@color/marker"
+                            android:textSize="17sp" />
+
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/PreferenceChoices"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            app:chipSpacingHorizontal="8dp"
+                            app:chipSpacingVertical="8dp"
+                            app:selectionRequired="true"
+                            app:singleSelection="true">
+
+                            <com.google.android.material.chip.Chip android:id="@+id/PreferenceAny" style="@style/WaldChoiceChip" android:text="egal" />
+                            <com.google.android.material.chip.Chip android:id="@+id/PreferenceMorning" style="@style/WaldChoiceChip" android:text="morgens" />
+                            <com.google.android.material.chip.Chip android:id="@+id/PreferenceMidday" style="@style/WaldChoiceChip" android:text="mittags" />
+                            <com.google.android.material.chip.Chip android:id="@+id/PreferenceEvening" style="@style/WaldChoiceChip" android:text="abends" />
+                        </com.google.android.material.chip.ChipGroup>
+
+                        <com.google.android.material.switchmaterial.SwitchMaterial
+                            android:id="@+id/EditLearning"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:minHeight="48dp"
+                            android:text="Aus meinen Erledigungszeiten lernen"
+                            android:textColor="@color/ink_secondary"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Das Lernen lässt sich je Eintrag unabhängig von der Tageszeit ein- oder ausschalten. Eine gewählte Tageszeit bleibt dabei die Grenze."
+                            android:textColor="@color/ink_muted"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
                     <TextView
                         android:id="@+id/EditorInference"
                         style="@style/WaldMarker"

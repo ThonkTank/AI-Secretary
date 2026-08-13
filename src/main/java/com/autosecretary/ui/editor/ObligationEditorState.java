@@ -124,8 +124,8 @@ public record ObligationEditorState(
         if (titleInput.trim().isEmpty()) problems.put("title", routine
                 ? "Ohne Titel lässt sich die Routine nicht speichern."
                 : "Ohne Titel lässt sich die Aufgabe nicht speichern.");
-        parseInt(durationInput, 1, 480,
-                "Die Dauer braucht mindestens eine Minute.", "duration", problems);
+        parseInt(durationInput, 5, 480,
+                "Die Dauer braucht mindestens fünf Minuten.", "duration", problems);
         if (routine) {
             parseInt(cadenceInput, 1, 365,
                     "Der Rhythmus braucht zwischen einem und 365 Tagen.",

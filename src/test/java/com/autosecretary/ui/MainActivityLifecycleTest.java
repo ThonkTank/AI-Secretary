@@ -28,7 +28,6 @@ public final class MainActivityLifecycleTest {
     public void recreationKeepsNavigationFilterDialogAndRawEditorInput() {
         AutoSecretaryApplication app = ApplicationProvider.getApplicationContext();
         app.deleteDatabase("autosecretary.db");
-        if (app.legacyImports().requiresUserDecision()) app.legacyImports().chooseEmptyDatabase();
         app.getSharedPreferences("waldmorgen_ui", AutoSecretaryApplication.MODE_PRIVATE)
                 .edit().putBoolean("location_asked", true).commit();
         Shadows.shadowOf(app).denyPermissions(

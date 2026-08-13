@@ -48,16 +48,6 @@ public final class AiViewModel extends ViewModel {
                 this::postError);
     }
 
-    public void importModel(AiProposalGateway.ModelSource source) {
-        if (current().busy()) return;
-        start(AiUiState.Operation.IMPORT);
-        running = editor.importModel(source,
-                () -> dispatch(() -> state.setValue(new AiUiState(false,
-                        AiUiState.Operation.NONE, true, null, current().proposalId(),
-                        current().openEditorId(), current().instruction(), null))),
-                this::postError);
-    }
-
     public void propose(String instruction, List<WorkItem> currentItems) {
         if (current().busy() || !current().modelReady()) return;
         AiUiState value = current();
@@ -118,10 +108,10 @@ public final class AiViewModel extends ViewModel {
                 .toLowerCase(java.util.Locale.ROOT);
         if (normalized.contains("memory") || normalized.contains("speicher")
                 || error instanceof OutOfMemoryError) {
-            return "Beim Rechnen ging der Speicher aus. Auf diesem Gerät ist das gewählte Modell wahrscheinlich zu groß. Bitte ein kleineres Modell wählen.";
+            return "Beim Rechnen ging der Speicher aus. Bitte die App neu starten und den Wunsch kürzer formulieren.";
         }
         if (normalized.contains("empty") || normalized.contains("leer")) {
-            return "Die Modelldatei enthält keine verwendbaren Daten. Bitte die Datei erneut oder ein anderes Modell wählen.";
+            return "Das mitgelieferte Modell konnte nicht gelesen werden. Bitte die App neu installieren.";
         }
         if (normalized.contains("format") || normalized.contains("parse")) {
             return "Das Modell hat keinen verlässlichen Vorschlag erzeugt. Der Wunsch wurde nicht übernommen; bitte einfacher formulieren und noch einmal versuchen.";

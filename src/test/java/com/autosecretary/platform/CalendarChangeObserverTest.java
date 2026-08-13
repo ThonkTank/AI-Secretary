@@ -40,11 +40,11 @@ public final class CalendarChangeObserverTest {
     public void denialDoesNotRegisterAndGrantRegisters() {
         CalendarChangeObserver observer = new CalendarChangeObserver(
                 application, Runnable::run, () -> { });
-        observer.refreshRegistration();
+        observer.start();
         assertFalse(observer.isRegistered());
 
         Shadows.shadowOf(application).grantPermissions(Manifest.permission.READ_CALENDAR);
-        observer.refreshRegistration();
+        observer.start();
         assertTrue(observer.isRegistered());
         observer.close();
         assertFalse(observer.isRegistered());
@@ -56,7 +56,7 @@ public final class CalendarChangeObserverTest {
         AtomicInteger refreshes = new AtomicInteger();
         CalendarChangeObserver observer = new CalendarChangeObserver(
                 application, Runnable::run, refreshes::incrementAndGet);
-        observer.refreshRegistration();
+        observer.start();
 
         application.getContentResolver().notifyChange(CalendarContract.Events.CONTENT_URI, null);
         application.getContentResolver().notifyChange(CalendarContract.Events.CONTENT_URI, null);
@@ -69,5 +69,20 @@ public final class CalendarChangeObserverTest {
         observer.close();
         Shadows.shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1));
         assertEquals(1, refreshes.get());
+    }
+
+    @Test
+    public void stopUnregistersUntilActiveUseStartsAgain() {
+        Shadows.shadowOf(application).grantPermissions(Manifest.permission.READ_CALENDAR);
+        CalendarChangeObserver observer = new CalendarChangeObserver(
+                application, Runnable::run, () -> { });
+
+        observer.start();
+        assertTrue(observer.isRegistered());
+        observer.stop();
+        assertFalse(observer.isRegistered());
+        observer.start();
+        assertTrue(observer.isRegistered());
+        observer.close();
     }
 }

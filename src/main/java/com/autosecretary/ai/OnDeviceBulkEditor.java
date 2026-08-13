@@ -53,14 +53,6 @@ public final class OnDeviceBulkEditor implements AiProposalGateway {
         return ioExecutor.submit(() -> run(() -> models.installBundled(), onSuccess, onError));
     }
 
-    public Future<?> importModel(ModelSource source, Runnable onSuccess, Consumer<Throwable> onError) {
-        return ioExecutor.submit(() -> run(() -> {
-            try (java.io.InputStream input = source.open()) {
-                models.importFrom(input);
-            }
-        }, onSuccess, onError));
-    }
-
     public Future<?> propose(
             String instruction,
             List<WorkItem> current,
@@ -74,7 +66,7 @@ public final class OnDeviceBulkEditor implements AiProposalGateway {
                     return;
                 }
                 if (!models.hasModel()) {
-                    throw new IllegalStateException("Zuerst ein lokales .task-Modell auswählen");
+                    throw new IllegalStateException("Das mitgelieferte Modell ist noch nicht bereit");
                 }
                 LlmInference.LlmInferenceOptions options = LlmInference.LlmInferenceOptions.builder()
                         .setModelPath(models.file().getAbsolutePath())

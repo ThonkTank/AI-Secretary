@@ -1,6 +1,7 @@
 package com.autosecretary.ui.editor;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import com.autosecretary.domain.Step;
 
@@ -62,5 +63,19 @@ public final class ObligationEditorStateTest {
 
         assertEquals(List.of(TWO, ONE), parsed.stream().map(Step::id).toList());
         assertEquals("Zwei neu", parsed.get(0).title());
+    }
+
+    @Test
+    public void routineLearningToggleIsIndependentFromTimePreference() {
+        ObligationEditorState state = ObligationEditorState.initial(
+                true, null, LocalDateTime.of(2026, 8, 11, 8, 0));
+
+        state = state.edit("Lesen", "30", "", "MORNING", false, "7", "2026-08-11",
+                List.of()).validated(LocalDateTime.of(2026, 8, 11, 8, 0));
+        var routine = (com.autosecretary.domain.Routine) state.toWorkItem();
+
+        assertEquals(com.autosecretary.domain.TimePreference.MORNING,
+                routine.timePreference());
+        assertFalse(routine.flexible());
     }
 }

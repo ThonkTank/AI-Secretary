@@ -4,8 +4,8 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.autosecretary.application.update.UpdateGateway;
 import com.autosecretary.application.update.UpdateInfo;
+import com.autosecretary.platform.update.GitHubReleaseUpdater;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,15 +14,15 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
 public final class UpdateViewModel extends ViewModel {
-    private final UpdateGateway gateway;
+    private final GitHubReleaseUpdater updater;
     private final ExecutorService io;
     private final Executor uiExecutor;
     private final MutableLiveData<UpdateUiState> state = new MutableLiveData<>(UpdateUiState.initial());
     private final List<Future<?>> running = new ArrayList<>();
     private volatile boolean cleared;
 
-    public UpdateViewModel(UpdateGateway gateway, ExecutorService io, Executor uiExecutor) {
-        this.gateway = gateway;
+    public UpdateViewModel(GitHubReleaseUpdater updater, ExecutorService io, Executor uiExecutor) {
+        this.updater = updater;
         this.io = io;
         this.uiExecutor = uiExecutor;
     }
@@ -35,7 +35,7 @@ public final class UpdateViewModel extends ViewModel {
         state.setValue(new UpdateUiState(true, current.checked(), current.available(),
                 current.verified(), null));
         submit(() -> {
-            UpdateInfo update = gateway.check();
+            UpdateInfo update = updater.check();
             dispatch(() -> state.setValue(new UpdateUiState(false, true, update, null, null)));
         });
     }
@@ -45,7 +45,7 @@ public final class UpdateViewModel extends ViewModel {
         if (current.busy() || current.available() == null) return;
         state.setValue(new UpdateUiState(true, true, current.available(), null, null));
         submit(() -> {
-            var verified = gateway.downloadAndVerify(current.available());
+            var verified = updater.downloadAndVerify(current.available());
             dispatch(() -> state.setValue(new UpdateUiState(
                     false, true, current.available(), verified, null)));
         });

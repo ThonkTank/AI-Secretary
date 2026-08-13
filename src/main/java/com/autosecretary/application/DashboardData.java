@@ -14,8 +14,7 @@ public record DashboardData(
         List<PlanConflict> conflicts,
         List<CompletionRecord> completions,
         List<StepCompletion> stepCompletions,
-        String undoLabel,
-        MigrationReview migrationReview) {
+        String undoLabel) {
     public DashboardData {
         focus = List.copyOf(focus);
         workItems = List.copyOf(workItems);

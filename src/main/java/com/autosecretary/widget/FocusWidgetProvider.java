@@ -51,26 +51,20 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
         if (id == null && !undo) return;
         PendingResult result = goAsync();
         AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
-        com.autosecretary.app.AppGraph graph;
-        try {
-            graph = app.graph();
-        } catch (RuntimeException pendingImport) {
-            result.finish();
-            return;
-        }
+        com.autosecretary.app.AppGraph graph = app.graph();
         graph.executors().database().execute(() -> {
             try {
                 if (undo) {
-                    graph.workItemCommands().undo();
+                    graph.workItems().undoLatest(graph.clock().now());
                 } else if (ACTION_COMPLETE.equals(intent.getAction())) {
-                    graph.workItemCommands().complete(id);
+                    graph.workItems().complete(id, graph.clock().now());
                 } else if (ACTION_LATER.equals(intent.getAction())) {
                     graph.moveWorkItem().omitToday(id);
                 } else if (ACTION_TOGGLE_STEP.equals(intent.getAction())) {
                     String stepId = intent.getStringExtra(EXTRA_STEP_ID);
                     if (stepId == null) return;
                     boolean completed = intent.getBooleanExtra(EXTRA_STEP_COMPLETED, true);
-                    graph.workItemCommands().setStepCompleted(id, stepId, completed);
+                    graph.workItems().setStepCompleted(id, stepId, completed, graph.clock().now());
                 }
                 graph.refreshWidgets();
             } finally {
@@ -111,12 +105,7 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
                 : scene.palette() == 1 ? 0xFFE8A83E : 0xFF2E6B44);
         views.setTextColor(R.id.WidgetEmpty, scene.palette() == 2 ? 0xFFF8ECD2
                 : scene.palette() == 1 ? 0xFFF4EEDA : 0xFF1A2618);
-        try {
-            AutoSecretaryApplication.from(context).graph();
-            views.setTextViewText(R.id.WidgetEmpty, "Heute darf ein neues Blatt wachsen.");
-        } catch (RuntimeException unavailable) {
-            views.setTextViewText(R.id.WidgetEmpty, "Nicht geladen · Neu laden");
-        }
+        views.setTextViewText(R.id.WidgetEmpty, "Heute darf ein neues Blatt wachsen.");
         Intent service = new Intent(context, FocusWidgetService.class);
         service.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
         service.putExtra(FocusWidgetService.EXTRA_MAX_ROWS, maxRows);

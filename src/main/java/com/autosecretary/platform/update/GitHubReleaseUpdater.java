@@ -1,19 +1,18 @@
 package com.autosecretary.platform.update;
 
 import android.app.DownloadManager;
-import android.database.ContentObserver;
-import android.database.Cursor;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
+import android.database.ContentObserver;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.SystemClock;
 
 import com.autosecretary.BuildConfig;
-import com.autosecretary.application.update.UpdateGateway;
 import com.autosecretary.application.update.UpdateInfo;
 import com.autosecretary.application.update.VerifiedUpdate;
 
@@ -22,23 +21,27 @@ import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-/** GitHub production channel with size limits, pinned asset names and local APK verification. */
-public final class GitHubReleaseUpdateGateway implements UpdateGateway {
-    private static final String RELEASE_API =
-            "https://api.github.com/repos/ThonkTank/AI-Secretary/releases/latest";
+/** The single GitHub release lookup, download and verification path used by the app. */
+public final class GitHubReleaseUpdater {
+    private static final String RELEASES_API =
+            "https://api.github.com/repos/ThonkTank/AI-Secretary/releases?per_page=100";
+    private static final String METADATA_ASSET = "release-metadata.json";
+    private static final String APK_ASSET = "AutoSecretary.apk";
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int READ_TIMEOUT_MS = 20_000;
     private static final int METADATA_LIMIT = 1_000_000;
@@ -47,30 +50,39 @@ public final class GitHubReleaseUpdateGateway implements UpdateGateway {
 
     private final Context context;
 
-    public GitHubReleaseUpdateGateway(Context context) {
+    public GitHubReleaseUpdater(Context context) {
         this.context = context.getApplicationContext();
     }
 
-    @Override
     public UpdateInfo check() {
         try {
-            JSONObject release = new JSONObject(readText(RELEASE_API, METADATA_LIMIT));
-            if (release.optBoolean("draft") || release.optBoolean("prerelease")) return null;
-            Map<String, String> assets = assetUrls(release.getJSONArray("assets"));
-            String versionUrl = requiredAsset(assets, "version.txt");
-            int remoteVersion = Integer.parseInt(readText(versionUrl, 64).trim());
-            if (remoteVersion <= BuildConfig.VERSION_CODE) return null;
-            String checksum = readText(requiredAsset(assets, "AutoSecretary.apk.sha256"), 256)
-                    .trim().split("\\s+")[0];
-            String tag = release.optString("tag_name", Integer.toString(remoteVersion));
-            return new UpdateInfo(remoteVersion, tag.startsWith("v") ? tag.substring(1) : tag,
-                    requiredAsset(assets, "AutoSecretary.apk"), checksum);
+            PackageEvidence installed = installedPackage();
+            JSONArray releases = new JSONArray(readText(RELEASES_API, METADATA_LIMIT));
+            List<ReleaseMetadata> candidates = new ArrayList<>();
+            for (int index = 0; index < releases.length(); index++) {
+                JSONObject release = releases.getJSONObject(index);
+                if (release.optBoolean("draft")) continue;
+                Map<String, String> assets = assetUrls(release.getJSONArray("assets"));
+                String metadataUrl = assets.get(METADATA_ASSET);
+                if (metadataUrl == null) continue;
+                requireRepositoryUrl(metadataUrl, METADATA_ASSET);
+                JSONObject metadata = new JSONObject(readText(metadataUrl, 16_384));
+                String apkName = metadata.getString("apkAsset");
+                if (!APK_ASSET.equals(apkName)) {
+                    throw new IllegalStateException("Update-Metadaten nennen ein unbekanntes APK");
+                }
+                String apkUrl = requiredAsset(assets, apkName);
+                candidates.add(ReleaseMetadata.from(metadata, apkUrl,
+                        release.optBoolean("prerelease")));
+            }
+            ReleaseMetadata selected = selectHighestCompatible(candidates,
+                    installed.versionCode(), BuildConfig.APPLICATION_ID, installed.signers());
+            return selected == null ? null : selected.toUpdateInfo();
         } catch (Exception error) {
             throw new IllegalStateException("Update-Prüfung fehlgeschlagen", error);
         }
     }
 
-    @Override
     public VerifiedUpdate downloadAndVerify(UpdateInfo update) {
         File external = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
         if (external == null) {
@@ -97,6 +109,59 @@ public final class GitHubReleaseUpdateGateway implements UpdateGateway {
         }
     }
 
+    static ReleaseMetadata selectHighestCompatible(
+            List<ReleaseMetadata> releases,
+            long installedVersion,
+            String expectedPackage,
+            Set<String> installedSigners) {
+        return releases.stream()
+                .filter(release -> release.versionCode() > installedVersion)
+                .filter(release -> expectedPackage.equals(release.packageName()))
+                .filter(release -> installedSigners.contains(release.signerSha256()))
+                .max(Comparator.comparingInt(ReleaseMetadata::versionCode))
+                .orElse(null);
+    }
+
+    static record ReleaseMetadata(
+            int versionCode,
+            String versionName,
+            String packageName,
+            String apkUrl,
+            String sha256,
+            String signerSha256,
+            boolean prerelease) {
+        ReleaseMetadata {
+            if (versionCode < 1) throw new IllegalArgumentException("versionCode fehlt");
+            if (versionName == null || versionName.isBlank()) {
+                throw new IllegalArgumentException("versionName fehlt");
+            }
+            if (packageName == null || packageName.isBlank()) {
+                throw new IllegalArgumentException("Paket-ID fehlt");
+            }
+            if (sha256 == null || !sha256.matches("[0-9a-fA-F]{64}")) {
+                throw new IllegalArgumentException("APK-Hash ist ungültig");
+            }
+            if (signerSha256 == null || !signerSha256.matches("[0-9a-fA-F]{64}")) {
+                throw new IllegalArgumentException("Signaturfingerabdruck ist ungültig");
+            }
+            requireRepositoryUrl(apkUrl, APK_ASSET);
+            sha256 = sha256.toLowerCase(Locale.ROOT);
+            signerSha256 = signerSha256.toLowerCase(Locale.ROOT);
+        }
+
+        static ReleaseMetadata from(JSONObject source, String apkUrl, boolean prerelease)
+                throws Exception {
+            return new ReleaseMetadata(source.getInt("versionCode"),
+                    source.getString("versionName"), source.getString("packageName"), apkUrl,
+                    source.getString("sha256"), source.getString("signerSha256"), prerelease);
+        }
+
+        UpdateInfo toUpdateInfo() {
+            return new UpdateInfo(versionCode, versionName, packageName, apkUrl, sha256,
+                    signerSha256, prerelease);
+        }
+    }
+
     private void downloadWithSystemManager(String url, File target) throws Exception {
         Uri source = Uri.parse(url);
         if (!"https".equals(source.getScheme())) throw new SecurityException("Unsichere Update-URL");
@@ -108,8 +173,7 @@ public final class GitHubReleaseUpdateGateway implements UpdateGateway {
                 .setMimeType("application/vnd.android.package-archive")
                 .setAllowedOverMetered(true)
                 .setAllowedOverRoaming(false)
-                .setNotificationVisibility(
-                        DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                 .setDestinationUri(Uri.fromFile(target));
         request.addRequestHeader("Accept", "application/vnd.android.package-archive");
         request.addRequestHeader("User-Agent", "AutoSecretary/" + BuildConfig.VERSION_NAME);
@@ -133,7 +197,9 @@ public final class GitHubReleaseUpdateGateway implements UpdateGateway {
                     throw new IllegalStateException("Systemdownload fehlgeschlagen: " + state.reason());
                 }
                 long remaining = deadline - SystemClock.elapsedRealtime();
-                if (remaining <= 0) throw new IllegalStateException("Systemdownload hat Zeitlimit überschritten");
+                if (remaining <= 0) {
+                    throw new IllegalStateException("Systemdownload hat Zeitlimit überschritten");
+                }
                 changed.tryAcquire(Math.min(remaining, 30_000), TimeUnit.MILLISECONDS);
                 if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
             }
@@ -159,17 +225,34 @@ public final class GitHubReleaseUpdateGateway implements UpdateGateway {
     }
 
     private record DownloadState(int status, int reason) { }
+    private record PackageEvidence(long versionCode, Set<String> signers) { }
+
+    private PackageEvidence installedPackage() throws Exception {
+        PackageInfo info = packageInfo(BuildConfig.APPLICATION_ID, null);
+        if (info == null || !BuildConfig.APPLICATION_ID.equals(info.packageName)) {
+            throw new SecurityException("Installiertes App-Paket ist nicht lesbar");
+        }
+        long version = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                ? info.getLongVersionCode() : info.versionCode;
+        Set<String> signers = certificateDigests(info);
+        if (signers.isEmpty()) throw new SecurityException("Installierte Signatur ist nicht lesbar");
+        return new PackageEvidence(version, signers);
+    }
 
     private void verifyPackage(File apk, UpdateInfo update) throws Exception {
+        PackageInfo archive = packageInfo(null, apk);
+        PackageInfo installed = packageInfo(BuildConfig.APPLICATION_ID, null);
+        UpdatePackageVerifier.verify(apk, update, BuildConfig.VERSION_CODE,
+                BuildConfig.APPLICATION_ID, evidence(installed), evidence(archive));
+    }
+
+    private PackageInfo packageInfo(String packageName, File archive) throws Exception {
         PackageManager manager = context.getPackageManager();
         int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
                 ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
-        PackageInfo archive = manager.getPackageArchiveInfo(apk.getAbsolutePath(), flags);
-        PackageInfo installed = manager.getPackageInfo(BuildConfig.APPLICATION_ID, flags);
-        UpdatePackageVerifier.PackageEvidence installedEvidence = evidence(installed);
-        UpdatePackageVerifier.PackageEvidence archiveEvidence = evidence(archive);
-        UpdatePackageVerifier.verify(apk, update, BuildConfig.VERSION_CODE,
-                BuildConfig.APPLICATION_ID, installedEvidence, archiveEvidence);
+        return archive == null
+                ? manager.getPackageInfo(packageName, flags)
+                : manager.getPackageArchiveInfo(archive.getAbsolutePath(), flags);
     }
 
     private static UpdatePackageVerifier.PackageEvidence evidence(PackageInfo info) throws Exception {
@@ -208,10 +291,15 @@ public final class GitHubReleaseUpdateGateway implements UpdateGateway {
 
     private static String requiredAsset(Map<String, String> assets, String name) {
         String value = assets.get(name);
-        if (value == null || !value.startsWith("https://github.com/ThonkTank/AI-Secretary/")) {
-            throw new IllegalStateException("Produktions-Asset fehlt: " + name);
-        }
+        requireRepositoryUrl(value, name);
         return value;
+    }
+
+    private static void requireRepositoryUrl(String value, String asset) {
+        String prefix = "https://github.com/ThonkTank/AI-Secretary/releases/download/";
+        if (value == null || !value.startsWith(prefix) || !value.endsWith("/" + asset)) {
+            throw new IllegalArgumentException("Release-Asset stammt nicht aus diesem Repository");
+        }
     }
 
     private static String readText(String url, int limit) throws Exception {

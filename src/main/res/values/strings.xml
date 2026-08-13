@@ -9,11 +9,7 @@
     <string name="local_ai">Lokale KI</string>
     <string name="model_ready">Lokale KI bereit · bleibt auf diesem Gerät</string>
     <string name="model_bundled">Gemma 3 270M ist mitgeliefert · einmalig einrichten</string>
-    <string name="model_missing">Mitgelieferte KI konnte nicht vorbereitet werden</string>
     <string name="model_importing">Lokale KI wird einmalig vorbereitet …</string>
-    <string name="select_model">Modell austauschen</string>
-    <string name="model_imported">Lokales Modell importiert</string>
-    <string name="model_needed_explanation">Wähle einmal eine MediaPipe-kompatible .task-Modelldatei. Aufgaben und Prompts verlassen das Gerät nicht.</string>
     <string name="gemma_terms_title">Lokale KI aktivieren</string>
     <string name="gemma_terms_message">Die mitgelieferte KI nutzt Gemma 3 270M von Google und arbeitet vollständig auf diesem Gerät. Gemma unterliegt den Gemma-Nutzungsbedingungen und der Prohibited Use Policy. Mit „Akzeptieren“ stimmst du diesen Bedingungen zu. Eine Kopie liegt in der App; Original: ai.google.dev/gemma/terms</string>
     <string name="accept">Akzeptieren</string>

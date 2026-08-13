@@ -16,9 +16,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
-/** Builds and atomically stores the multi-day plan, then derives the calm focus surface. */
+/** Derives the current multi-day plan and calm focus surface from source data. */
 public final class PlanFocusUseCase {
     private final WorkItemRepository repository;
     private final CalendarPort calendar;
@@ -39,7 +38,7 @@ public final class PlanFocusUseCase {
         this.planner = planner;
     }
 
-    public DashboardData execute(int focusLimit, boolean persistPlan) {
+    public DashboardData execute(int focusLimit) {
         LocalDateTime now = clock.now();
         PlanningSettings settings = settingsRepository.load();
         FocusSnapshot snapshot = repository.loadSnapshot();
@@ -55,8 +54,6 @@ public final class PlanFocusUseCase {
                 .collect(java.util.stream.Collectors.toList());
         PlanningResult result = planner.plan(snapshot.workItems(), evidence, busy,
                 directives, settings, now);
-        if (persistPlan) persist(result, now);
-
         List<PlanAssignment> today = result.assignments().stream()
                 .filter(value -> value.start().toLocalDate().equals(now.toLocalDate()))
                 .filter(value -> !value.end().isBefore(now))
@@ -70,20 +67,7 @@ public final class PlanFocusUseCase {
         for (WorkItem item : snapshot.workItems()) if (seen.add(item.id())) ordered.add(item);
         return new DashboardData(today, ordered, busy, result.conflicts(),
                 snapshot.completions(),
-                snapshot.stepCompletions(), repository.latestUndoLabel(),
-                repository.migrationReview());
+                snapshot.stepCompletions(), repository.latestUndoLabel());
     }
 
-    private void persist(PlanningResult result, LocalDateTime computedAt) {
-        List<StoredPlanSlot> slots = result.assignments().stream()
-                .map(value -> new StoredPlanSlot(UUID.randomUUID().toString(),
-                        value.workItem().id(), value.occurrenceKey(), value.start(), value.end(), computedAt))
-                .collect(java.util.stream.Collectors.toList());
-        List<StoredPlanningConflict> conflicts = result.conflicts().stream()
-                .map(value -> new StoredPlanningConflict(UUID.randomUUID().toString(),
-                        value.workItem().id(), value.occurrenceKey(), value.reason().name(),
-                        value.detail(), computedAt))
-                .collect(java.util.stream.Collectors.toList());
-        repository.replacePlan(slots, conflicts);
-    }
 }

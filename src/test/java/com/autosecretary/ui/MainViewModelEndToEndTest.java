@@ -14,8 +14,7 @@ import androidx.test.core.app.ApplicationProvider;
 
 import com.autosecretary.application.MoveWorkItemUseCase;
 import com.autosecretary.application.PlanFocusUseCase;
-import com.autosecretary.application.ResolveMigrationCandidateUseCase;
-import com.autosecretary.application.WorkItemCommands;
+import com.autosecretary.application.PlanningSettingsRepository;
 import com.autosecretary.data.FocusDatabase;
 import com.autosecretary.data.RoomWorkItemRepository;
 import com.autosecretary.domain.CompletionStats;
@@ -51,7 +50,7 @@ public final class MainViewModelEndToEndTest {
     private RoomWorkItemRepository repository;
     private LocalDateTime now;
     private PlanFocusUseCase planning;
-    private com.autosecretary.application.PlanningSettingsUseCase settings;
+    private PlanningSettingsRepository settings;
     private SavedStateHandle savedState;
 
     @Before
@@ -60,20 +59,13 @@ public final class MainViewModelEndToEndTest {
         database = Room.inMemoryDatabaseBuilder(context, FocusDatabase.class).build();
         repository = new RoomWorkItemRepository(database);
         now = LocalDateTime.of(2026, 8, 11, 8, 0);
-        planning = new PlanFocusUseCase(repository,
-                (start, end) -> List.of(),
-                new com.autosecretary.application.PlanningSettingsRepository() {
-                    @Override public PlanningSettings load() { return PlanningSettings.defaults(); }
-                    @Override public void save(PlanningSettings settings) { }
-                },
-                () -> now,
-                new FocusPlanner());
+        settings = new PlanningSettingsRepository() {
+            @Override public PlanningSettings load() { return PlanningSettings.defaults(); }
+            @Override public void save(PlanningSettings settings) { }
+        };
+        planning = new PlanFocusUseCase(repository, (start, end) -> List.of(), settings,
+                () -> now, new FocusPlanner());
         executor = Executors.newSingleThreadExecutor();
-        settings = new com.autosecretary.application.PlanningSettingsUseCase(
-                new com.autosecretary.application.PlanningSettingsRepository() {
-                    @Override public PlanningSettings load() { return PlanningSettings.defaults(); }
-                    @Override public void save(PlanningSettings settings) { }
-                });
         savedState = new SavedStateHandle();
         viewModel = createViewModel(savedState);
         viewModel.state().observeForever(ignored -> { });
@@ -81,10 +73,8 @@ public final class MainViewModelEndToEndTest {
     }
 
     private MainViewModel createViewModel(SavedStateHandle handle) {
-        return new MainViewModel(handle, planning,
-                new WorkItemCommands(repository, () -> now),
-                new MoveWorkItemUseCase(repository, () -> now),
-                new ResolveMigrationCandidateUseCase(repository, () -> now), () -> now,
+        return new MainViewModel(handle, planning, repository,
+                new MoveWorkItemUseCase(repository, () -> now), () -> now,
                 settings, executor, Runnable::run, () -> { });
     }
 

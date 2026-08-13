@@ -31,6 +31,9 @@ public final class UpdatePackageVerifier {
         if (!sha256(apk).equals(update.sha256())) {
             throw new SecurityException("APK-Prüfsumme stimmt nicht");
         }
+        if (!expectedPackage.equals(update.packageName())) {
+            throw new SecurityException("Freigabe gehört nicht zu dieser App");
+        }
         if (archive == null || !expectedPackage.equals(archive.packageName())) {
             throw new SecurityException("APK gehört nicht zu dieser App");
         }
@@ -40,6 +43,7 @@ public final class UpdatePackageVerifier {
         }
         if (installed == null || !expectedPackage.equals(installed.packageName())
                 || installed.signers().isEmpty()
+                || !installed.signers().contains(update.signerSha256())
                 || !installed.signers().equals(archive.signers())) {
             throw new SecurityException("APK-Signatur stimmt nicht mit der installierten App überein");
         }

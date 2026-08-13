@@ -12,7 +12,7 @@ import androidx.core.content.ContextCompat;
 
 import java.util.concurrent.Executor;
 
-/** Process-scope, permission-aware and debounced calendar invalidation source. */
+/** Activity-scoped, permission-aware and debounced calendar invalidation source. */
 public final class CalendarChangeObserver implements AutoCloseable {
     private static final long DEBOUNCE_MS = 750;
 
@@ -37,26 +37,27 @@ public final class CalendarChangeObserver implements AutoCloseable {
         };
     }
 
-    public synchronized void refreshRegistration() {
+    public synchronized void start() {
         boolean permitted = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR)
                 == PackageManager.PERMISSION_GRANTED;
         if (permitted && !registered) {
             context.getContentResolver().registerContentObserver(
                     CalendarContract.Events.CONTENT_URI, true, observer);
             registered = true;
-        } else if (!permitted && registered) {
-            context.getContentResolver().unregisterContentObserver(observer);
-            handler.removeCallbacks(dispatch);
-            registered = false;
         }
+    }
+
+    public synchronized void stop() {
+        if (registered) context.getContentResolver().unregisterContentObserver(observer);
+        handler.removeCallbacks(dispatch);
+        registered = false;
     }
 
     public synchronized boolean isRegistered() { return registered; }
 
     @Override
     public synchronized void close() {
-        if (registered) context.getContentResolver().unregisterContentObserver(observer);
+        stop();
         handler.removeCallbacksAndMessages(null);
-        registered = false;
     }
 }

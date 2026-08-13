@@ -238,6 +238,23 @@ public final class RoomWorkItemRepositoryTest {
     }
 
     @Test
+    public void currentSchemaPreservesTasksRoutinesAndStepsAfterReopen() {
+        repository.save(task("persisted-task", "Bleibende Aufgabe", List.of(
+                new Step(id("persisted-step"), "Bleibender Schritt", Set.of(), 0)), 0));
+        repository.save(new Routine(id("persisted-routine"), "Bleibende Routine", 15,
+                null, null, false, List.of(), LocalDateTime.of(2026, 8, 1, 10, 0),
+                7, LocalDate.of(2026, 8, 14), CompletionStats.empty(), 0));
+
+        database.close();
+        open();
+
+        assertEquals("Bleibende Aufgabe", repository.find(id("persisted-task")).title());
+        assertEquals("Bleibender Schritt",
+                repository.find(id("persisted-task")).steps().get(0).title());
+        assertEquals("Bleibende Routine", repository.find(id("persisted-routine")).title());
+    }
+
+    @Test
     public void typedAddCannotOverwriteAnItemThatAppearedAfterPreview() {
         repository.save(task("collision", "Schon vorhanden", List.of(), 0));
         Task replacement = task("collision", "Darf nicht überschreiben", List.of(), 0);

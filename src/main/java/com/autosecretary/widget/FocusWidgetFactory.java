@@ -76,7 +76,7 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         DashboardData dashboard;
         try {
             dashboard = graph.executors().callDatabase(
-                    () -> graph.planFocus().execute(maxRows, false));
+                    () -> graph.planFocus().execute(maxRows));
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
             rows = new ArrayList<>();
