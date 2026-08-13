@@ -151,8 +151,10 @@ jobs:
           if [[ "$GITHUB_EVENT_NAME" = workflow_dispatch && "$STABLE" = true ]]; then
             test "$GITHUB_REF" = refs/heads/main
             gh release create "$TAG" "${ASSETS[@]}" \
+              --target "$GITHUB_SHA" \
               --title "Auto Secretary $VERSION_NAME" --generate-notes --latest
           else
             gh release create "$TAG" "${ASSETS[@]}" \
+              --target "$GITHUB_SHA" \
               --title "Auto Secretary $VERSION_NAME (Test)" --generate-notes --prerelease
           fi
