@@ -51,7 +51,7 @@ Rules:
      - Resolve conflicts per section **Conflict Strategy**.
      - Mandatory verification before push:
        - `git diff --name-only --diff-filter=U` must be empty.
-       - Android: `./gradlew assembleDebug`.
+       - Android: `./gradlew assembleDevDebug`.
        - Run focused API contract scan on changed files:
          - constructors/factory signatures
          - repository/service interface methods
@@ -107,7 +107,7 @@ Rules:
 
 10. Mandatory post-sync validation (always)
 - Always run at least one integration-safety check:
-  - Android: `./gradlew assembleDebug`
+  - Android: `./gradlew assembleDevDebug`
   - Non-Android: project-equivalent compile check
 - If this fails, sync is not complete:
   - continue fixing until green, or

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="22dp">
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Planbarer Tag" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <EditText android:id="@+id/DayStart" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:hint="07:00" android:inputType="time" />
+            <EditText android:id="@+id/DayEnd" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:hint="22:00" android:inputType="time" />
+        </LinearLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Morgens" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <EditText android:id="@+id/MorningStart" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="time" />
+            <EditText android:id="@+id/MorningEnd" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="time" />
+        </LinearLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Mittags" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <EditText android:id="@+id/MiddayStart" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="time" />
+            <EditText android:id="@+id/MiddayEnd" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="time" />
+        </LinearLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Abends" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <EditText android:id="@+id/EveningStart" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="time" />
+            <EditText android:id="@+id/EveningEnd" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="time" />
+        </LinearLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="Minuten für Übergang, Kalenderpuffer davor / danach" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <EditText android:id="@+id/TaskTransition" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="number" />
+            <EditText android:id="@+id/CalendarBefore" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="number" />
+            <EditText android:id="@+id/CalendarAfter" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="number" />
+        </LinearLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="Planungshorizont in Tagen (1–14)" />
+        <EditText android:id="@+id/PlanningHorizon" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="number" />
+    </LinearLayout>
+</ScrollView>

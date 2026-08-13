@@ -12,8 +12,9 @@ import android.widget.RemoteViews;
 
 import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.app.MainActivity;
-import com.autosecretary.core.PlanMove;
+import com.autosecretary.ui.MainActivity;
+import com.autosecretary.application.MoveWorkItemUseCase;
+
 
 /** Homescreen behavior anchor: complete a block or step and move blocks behind today. */
 public final class FocusWidgetProvider extends AppWidgetProvider {
@@ -45,21 +46,33 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
         if (id == null) return;
         PendingResult result = goAsync();
         AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
-        if (ACTION_COMPLETE.equals(intent.getAction())) {
-            app.repository().complete(id, ignored -> result.finish());
-        } else if (ACTION_LATER.equals(intent.getAction())) {
-            app.repository().move(id, PlanMove.LAST, result::finish);
-        } else if (ACTION_TOGGLE_STEP.equals(intent.getAction())) {
-            String stepId = intent.getStringExtra(EXTRA_STEP_ID);
-            if (stepId == null) {
-                result.finish();
-                return;
-            }
-            boolean completed = intent.getBooleanExtra(EXTRA_STEP_COMPLETED, true);
-            app.repository().setStepCompleted(id, stepId, completed, ignored -> result.finish());
-        } else {
+        com.autosecretary.app.AppGraph graph;
+        try {
+            graph = app.graph();
+        } catch (RuntimeException pendingImport) {
             result.finish();
+            return;
         }
+        graph.executors().database().execute(() -> {
+            try {
+                if (ACTION_COMPLETE.equals(intent.getAction())) {
+                    graph.workItemCommands().complete(id);
+                } else if (ACTION_LATER.equals(intent.getAction())) {
+                    var dashboard = graph.planFocus().execute(Integer.MAX_VALUE, false);
+                    graph.moveWorkItem().executeToday(id, MoveWorkItemUseCase.Direction.LAST,
+                            dashboard.focus().stream().map(value -> value.workItem().id())
+                                    .collect(java.util.stream.Collectors.toList()));
+                } else if (ACTION_TOGGLE_STEP.equals(intent.getAction())) {
+                    String stepId = intent.getStringExtra(EXTRA_STEP_ID);
+                    if (stepId == null) return;
+                    boolean completed = intent.getBooleanExtra(EXTRA_STEP_COMPLETED, true);
+                    graph.workItemCommands().setStepCompleted(id, stepId, completed);
+                }
+                graph.refreshWidgets();
+            } finally {
+                result.finish();
+            }
+        });
     }
 
     private void update(Context context, AppWidgetManager manager, int widgetId) {

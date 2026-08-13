@@ -1,70 +1,51 @@
-# ops/
+# Operations
 
-Operational scripts and AI review automation for the AutoSecretary project.
+- `test_schedule.sh`: runs all JVM/architecture tests, builds and installs `devDebug`, launches it,
+  checks the main navigation and fails on a crash. It never uninstalls production.
+- `check_only.sh`: verifies an already running preview process and crash buffer.
+- `adb_database_bridge.sh`: verifies the production package/certificate and exact v27/v30 schema,
+  exports DB/WAL/SHM with
+  hashes, and stages the archive for the first-run app importer. Exports go to ignored
+  `ops/local-backups/`.
+- `device_release_gate.sh`: verifies both signed APKs and exercises the real upgrade, schema marker,
+  reboot, day/calendar refresh, next-version update, 20 typed German commands and a real local-model
+  inference. After proving the code-7 update it reinstalls code 6 and reimports the same externally
+  secured Build-4 archive, so the device is not stranded on an unpublished future version.
+  `device_release_gate.sh ai` runs only the non-destructive side-by-side Preview gate.
+  Reports from complete production runs go to ignored `ops/local-gates/`.
+- `apply_skill.sh` and `skills/`: optional local review automation, unrelated to app runtime.
 
-## Files at a glance
+All device scripts discover `adb` from `PATH`; override with `ADB=/absolute/path/to/adb`.
 
-| File / Directory | What it does |
-|---|---|
-| `apply_skill.sh` | Long-running autonomous review loop. Iterates over every source directory, runs AI agents (Claude) with focused review skills, and checkpoints progress to git. Designed to run unattended for hours or days. |
-| `test_schedule.sh` | Full integration test for the task scheduler. Builds the APK, installs it on a connected Android device, triggers slot generation, and checks the resulting 7-day schedule against expected constraints. Requires a connected device with USB debugging enabled. |
-| `check_only.sh` | Like `test_schedule.sh` but skips the build and install steps. Reads logcat from an already-running app and checks the scheduling output. Useful for quick re-checks without rebuilding. |
-| `lib/common.sh` | Shared shell utilities sourced by both test scripts (e.g. `count_days_with_task`). |
-| `skills/` | AI agent role prompts. Each `.md` file defines the focus and output format for one review type (e.g. `review-security.md`, `review-performance.md`). See `skills/README.md` for details. |
-| `release/` | Release artifacts: `AutoSecretary.apk` and `version.txt`. Managed by `./gradlew copyToRelease` — do not edit manually. |
+## Safe upgrade fallback
 
-## Prerequisites
+Export first:
 
-### For test_schedule.sh / check_only.sh
-- Android device with **USB debugging enabled**, connected via USB
-- `adb` from the Android SDK platform-tools — install Android Studio or the standalone SDK
-- Both scripts hardcode an absolute ADB path (`/home/aaron/Android/Sdk/platform-tools/adb`). **Adjust this path** to match your local SDK installation before running. Find yours with: `which adb` or `locate adb`.
-
-### For apply_skill.sh
-- `claude` CLI (Claude Code) installed and authenticated
-- `git` and `gh` (GitHub CLI) for checkpoint commits and sync
-- `systemd-inhibit` (optional, Linux-only) — prevents system sleep during long runs
-
-## How to run
-
-### Run the full schedule test (with build + install)
-```sh
-# From the project root:
-./gradlew assembleDebug          # build first
-ops/test_schedule.sh             # then test
-ops/test_schedule.sh --verbose   # include full logcat output
-ops/test_schedule.sh --pull-db   # also dump the SQLite DB from the device
+```bash
+ops/adb_database_bridge.sh export com.autosecretary
 ```
 
-### Run the check without rebuilding (device must already be running the app)
-```sh
-ops/check_only.sh
+Copy the archive and its `.sha256` outside the repository. Stage it for Android's document picker:
+
+```bash
+ops/adb_database_bridge.sh stage ops/local-backups/AutoSecretary-build4-TIMESTAMP.zip
 ```
 
-### Start the autonomous review loop
-```sh
-ops/apply_skill.sh               # start (runs indefinitely, cycling through all source dirs)
-ops/apply_skill.sh --autonomous  # same (flag is accepted but currently a no-op)
-ops/apply_skill.sh close         # signal the loop to stop after the current agent finishes
-ops/apply_skill.sh refresh       # stop after current agent, then restart the loop
-```
+The new app accepts the archive only on first run before its focus database exists, verifies every
+hash, the Build-4 certificate marker and the matching exact v27/v30 Room identity, checkpoints
+captured WAL data in isolation, then installs
+the consolidated database with one atomic rename. WorkManager or other unrelated databases remain
+untouched. Room then migrates and the importer compares the expected and actual core counts.
+`device_release_gate.sh fallback ...` is the only scripted path that offers an uninstall, and it
+requires the literal interactive confirmation `ARCHIV-EXTERN-GESICHERT`.
+The direct, same-signer path requires the same confirmation before installing over production,
+although it never uninstalls the package.
 
-The review loop saves state in `.git/apply_skill_state` so it survives interruptions and resumes where it left off.
+Production artifacts are created only by the manual signed GitHub workflow after the reviewed gate.
+No APK is checked in under `ops/release/`.
 
-## What the review loop does
-
-1. Scans all source directories (sorted by size, smallest first).
-2. For each directory, selects which review skills to run based on directory size and content (UI, LOC thresholds).
-3. Launches a Claude agent with the skill's role prompt and the directory as scope.
-4. Every 5 directories, runs a checkpoint: commits all changes to git.
-5. After all directories are processed, starts a new cycle from the beginning.
-
-See the header comment in `apply_skill.sh` for the full skill-selection logic.
-
-## Troubleshooting
-
-**"No SlotGen logs found"** — The app may not have started, the "Generieren" button may not have been found, or generation took longer than the 10-second wait. Run with `--verbose` to see the full logcat.
-
-**"Kein Geraet verbunden"** — No Android device detected. Check USB cable, enable USB debugging in developer options, and confirm `adb devices` lists your device.
-
-**apply_skill.sh crashes repeatedly** — The self-watchdog supervisor will attempt a Claude diagnostic and restart. Check `/tmp/apply_skill_diag_*.log` for the diagnosis. If the issue requires human intervention, the watchdog outputs `WATCHDOG_ACTION: HUMAN_NEEDED` and stops.
+The manual `Android upgrade-gate APKs` workflow is the non-publishing exception needed to exercise
+the real v2.0.0 → v2.0.1 device update before production can be released. It has read-only repository
+permissions, signs both APKs with the selected permanent identity, uploads them as a one-day CI
+artifact and never creates or updates a GitHub Release. Feed those two verified APKs to
+`device_release_gate.sh`; do not publish either gate artifact.

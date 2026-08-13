@@ -8,8 +8,11 @@ import com.autosecretary.app.AutoSecretaryApplication;
 public final class FocusWidgetService extends RemoteViewsService {
     @Override
     public RemoteViewsFactory onGetViewFactory(Intent intent) {
+        com.autosecretary.app.AppGraph graph = null;
+        try { graph = AutoSecretaryApplication.from(this).graph(); }
+        catch (IllegalStateException ignored) { }
         return new FocusWidgetFactory(
                 getApplicationContext(),
-                AutoSecretaryApplication.from(this).repository());
+                graph);
     }
 }

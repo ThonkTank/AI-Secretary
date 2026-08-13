@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 build_debug_apk() {
-    info "Baue APK (assembleDebug)..."
+    info "Baue Preview-APK (assembleDevDebug)..."
     (
         cd "$PROJECT_ROOT" || exit 1
-        ./gradlew assembleDebug
+        ./gradlew assembleDevDebug
     )
     ok "Build abgeschlossen"
 }

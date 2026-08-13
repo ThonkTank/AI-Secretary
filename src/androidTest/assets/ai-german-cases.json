@@ -1,0 +1,22 @@
+[
+  {"name":"Aufgabe anlegen","instruction":"Lege eine Aufgabe Steuerunterlagen sortieren mit 45 Minuten an.","minChanges":1,"maxChanges":1,"type":"ADD"},
+  {"name":"Deadline","instruction":"Lege eine Aufgabe Bericht abgeben mit 30 Minuten und Deadline 2026-08-20T18:00:00 an.","minChanges":1,"maxChanges":1,"type":"ADD"},
+  {"name":"Morgenpräferenz","instruction":"Lege eine flexible Aufgabe Meditation mit 15 Minuten am Morgen an.","minChanges":1,"maxChanges":1,"type":"ADD"},
+  {"name":"Abendpräferenz","instruction":"Lege eine Aufgabe Küche aufräumen mit 25 Minuten am Abend an.","minChanges":1,"maxChanges":1,"type":"ADD"},
+  {"name":"Routine täglich","instruction":"Lege eine Routine Wasserpflanzen alle 1 Tage mit 10 Minuten an, nächste Fälligkeit 2026-08-12.","minChanges":1,"maxChanges":1,"type":"ADD"},
+  {"name":"Routine wöchentlich","instruction":"Lege eine Routine Wochenrückblick alle 7 Tage mit 40 Minuten an, nächste Fälligkeit 2026-08-14.","minChanges":1,"maxChanges":1,"type":"ADD"},
+  {"name":"Routine vierzehntägig","instruction":"Lege eine Routine Papiermüll alle 14 Tage mit 20 Minuten an, nächste Fälligkeit 2026-08-18.","minChanges":1,"maxChanges":1,"type":"ADD"},
+  {"name":"Titel ändern","instruction":"Benenne die vorhandene Aufgabe Einkauf in Wochenendeinkauf um.","minChanges":1,"maxChanges":1,"type":"UPDATE"},
+  {"name":"Dauer ändern","instruction":"Setze die Dauer der vorhandenen Aufgabe Einkauf auf 50 Minuten.","minChanges":1,"maxChanges":1,"type":"UPDATE"},
+  {"name":"Zeitpräferenz ändern","instruction":"Plane die vorhandene Aufgabe Einkauf bevorzugt am Abend.","minChanges":1,"maxChanges":1,"type":"UPDATE"},
+  {"name":"Flexibilität ändern","instruction":"Schalte bei der vorhandenen Aufgabe Einkauf flexibles Lernen aus.","minChanges":1,"maxChanges":1,"type":"UPDATE"},
+  {"name":"Schritt ergänzen","instruction":"Ergänze bei Einkauf einen neuen Schritt Einkaufsliste schreiben.","minChanges":1,"maxChanges":1,"type":"UPDATE"},
+  {"name":"Schritt umbenennen","instruction":"Benenne den vorhandenen Schritt Milch kaufen bei Einkauf in Hafermilch kaufen um und behalte seine ID.","minChanges":1,"maxChanges":1,"type":"UPDATE"},
+  {"name":"Schritte sortieren","instruction":"Setze bei Einkauf den vorhandenen Schritt Milch kaufen an die erste Position und behalte alle Schritt-IDs.","minChanges":1,"maxChanges":1,"type":"UPDATE"},
+  {"name":"Aufgabe löschen","instruction":"Schlage vor, die vorhandene Aufgabe Einkauf zu löschen.","minChanges":1,"maxChanges":1,"type":"DELETE"},
+  {"name":"Routine ändern","instruction":"Ändere die vorhandene Routine Lüften auf alle 2 Tage.","minChanges":1,"maxChanges":1,"type":"UPDATE"},
+  {"name":"Routine Fälligkeit","instruction":"Setze die nächste Fälligkeit der vorhandenen Routine Lüften auf 2026-08-13.","minChanges":1,"maxChanges":1,"type":"UPDATE"},
+  {"name":"Mehrere Ergänzungen","instruction":"Lege zwei Aufgaben an: Post holen mit 10 Minuten und Rechnung prüfen mit 20 Minuten.","minChanges":2,"maxChanges":2,"type":"ADD"},
+  {"name":"Mehrere Änderungen","instruction":"Benenne Einkauf in Großeinkauf um und setze die Dauer auf 60 Minuten.","minChanges":1,"maxChanges":1,"type":"UPDATE"},
+  {"name":"Keine Änderung bei Unsicherheit","instruction":"Ändere nur dann etwas, wenn du sicher bist: Die Aufgabe soll irgendwie besser werden.","minChanges":0,"maxChanges":0}
+]

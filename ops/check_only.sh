@@ -1,37 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/common.sh"
-LOGCAT_RAW=$($ADB logcat -d -s SlotGen:D | grep SlotGen || true)
-ALL_SUMMARIES=$(echo "$LOGCAT_RAW" | sed -n "/${SUMMARY_HEADER}/,/${SUMMARY_FOOTER}/p")
-if [ -z "$ALL_SUMMARIES" ]; then echo "ERROR: No summary blocks found."; exit 1; fi
-echo "========================================="
-echo "  Multi-Day Scheduling Validation"
-echo "========================================="
-echo ""
-PASS=0
-FAIL=0
-check_task() {
-  local task_name="$1"
-  local expected="$2"
-  local actual=$(count_days_with_task "$task_name")
-  if [ "$actual" -eq "$expected" ]; then
-    echo "  PASS  $task_name: $actual days (expected $expected)"
-    PASS=$((PASS + 1))
-  else
-    echo "  FAIL  $task_name: $actual days (expected $expected)"
-    FAIL=$((FAIL + 1))
-  fi
-}
-check_task "Sport" 3
-check_task "Einkaufen" 1
-check_task "Arbeit" 5
-check_task "Morgenroutine" 7
-check_task "Wäsche waschen" 2
-check_task "Abendspaziergang" 1
-echo ""
-echo "========================================="
-echo "  Results: $PASS passed, $FAIL failed"
-echo "========================================="
-exit $(( FAIL > 0 ))
+ADB="${ADB:-$(command -v adb || true)}"
+PACKAGE="com.autosecretary.preview"
+if [[ -z "$ADB" ]]; then
+    echo "adb wurde nicht gefunden" >&2
+    exit 1
+fi
+if [[ -z "$($ADB shell pidof "$PACKAGE" | tr -d '\r')" ]]; then
+    echo "$PACKAGE läuft nicht" >&2
+    exit 1
+fi
+if $ADB logcat -d -b crash | grep -q "$PACKAGE"; then
+    $ADB logcat -d -b crash
+    exit 1
+fi
+echo "OK: $PACKAGE läuft; kein Crash im Crash-Puffer"

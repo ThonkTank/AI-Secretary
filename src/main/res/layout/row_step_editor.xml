@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="10dp"
+    android:orientation="vertical">
+
+    <EditText
+        android:id="@+id/StepTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Schritt"
+        android:inputType="textCapSentences"
+        android:textColor="@color/ink"
+        android:textColorHint="@color/marker" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/StepDays"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Tage, z. B. Mo,Mi"
+            android:inputType="text"
+            android:textColor="@color/ink"
+            android:textColorHint="@color/marker" />
+
+        <Button
+            android:id="@+id/StepEarlier"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:contentDescription="Schritt nach oben"
+            android:minWidth="0dp"
+            android:text="↑" />
+
+        <Button
+            android:id="@+id/StepLater"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:contentDescription="Schritt nach unten"
+            android:minWidth="0dp"
+            android:text="↓" />
+
+        <Button
+            android:id="@+id/StepDelete"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:contentDescription="Schritt entfernen"
+            android:minWidth="0dp"
+            android:text="×" />
+    </LinearLayout>
+</LinearLayout>

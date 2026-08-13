@@ -1,50 +1,51 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
-This is a single-module Android app (no `app/` subdirectory). Active code lives in `src/main/`:
-- `src/main/java/com/autosecretary/`: Java source, organized by feature (`features/task`, `features/budget`) and layer (`ui`, `application`, `domain`, `data`).
-- `src/main/res/`: layouts, drawables, values, and widget resources.
-- `src/main/AndroidManifest.xml`: app manifest.
-- `/home/aaron/Schreibtisch/projects/references/`: global local-only third-party source mirror and readable extracts for source-backed decisions. It is ignored by Git and must not be staged or pushed unless the user explicitly approves a specific source file.
+## Structure
 
-Reference-only legacy snapshots are in `.history/` and are not part of the runtime source set. Release artifacts and version metadata are in `ops/release/`.
+This is a single-module Android app. Active code is under `src/main/` and follows inward-facing
+layers: `domain` ← `application` ← `data`/`platform`/`ui`, composed only in `app`. `ai` produces
+typed proposals without persistence access. `background` and `widget` are Android entry points.
+Reference-only history is under `.history/`. Never stage the local evidence mirror at
+`/home/aaron/Schreibtisch/projects/references/` without explicit approval.
 
-## Build, Test, and Development Commands
-Use the Gradle wrapper from repo root:
-- `./gradlew checkArchitecture`: ArchUnit architecture rules (alias onto `testDebugUnitTest`).
-- `./gradlew assembleDebug`: safe local build; creates `build/outputs/apk/debug/AutoSecretary.apk`.
-- `./gradlew installDebug`: installs debug build to a connected device/emulator.
-- `./gradlew copyToRelease`: copies APK to `ops/release/` and increments `ops/release/version.txt`.
-- `./gradlew publishReleaseArtifact`: runs release copy and publishes `AutoSecretary.apk` plus `version.txt` as a GitHub Release. Use only for intentional release publishing.
-- `./test_schedule.sh`: end-to-end manual scheduling validation via `adb` and log checks.
+## Safe commands
 
-## Coding Style & Naming Conventions
-Follow existing Java style in `src/main/java`: 4-space indentation, braces on declaration lines, and descriptive class names. Keep packages fully qualified under `com.autosecretary.*`.
+- `./gradlew checkArchitecture`: JVM, Robolectric, Room migration and ArchUnit tests
+- `./gradlew testDebugUnitTest`: stable alias for the model-free `devDebug` behavior suite
+- `./gradlew lintDevDebug`: Android API, manifest and resource validation for minSdk 26
+- `./gradlew assembleDevDebug`: fast preview APK without the bundled model
+- `./gradlew assembleFullDebug`: complete preview APK; may download the pinned model
+- `./gradlew installDevDebug`: install the side-by-side preview build
+- `ops/test_schedule.sh`: optional connected-device preview smoke test
+- `ops/device_release_gate.sh`: destructive-by-confirmation production upgrade/device gate
 
-Architecture-sensitive changes must keep `./gradlew checkArchitecture` green. The rules are ArchUnit tests on real bytecode (`ArchitectureRulesTest` in `src/test`); see `CLAUDE.md` § Conventions for the enforced boundaries.
+There is intentionally no local publish/version-bump Gradle task. Production releases are signed and
+published only by `.github/workflows/android-release.yml`. Do not invoke or emulate that workflow
+unless the task is explicitly a release.
 
-Work that uses external sources or local source evidence for decisions must use the global `source-references` skill and cite preserved local paths under `/home/aaron/Schreibtisch/projects/references/` or direct repo paths.
+## Conventions
 
-Work on agent-facing instruction artifacts (`AGENTS.md`, `SKILL.md`, prompts, or related rule markdown) must use the global `agent-instruction-engineering` skill.
+Use Java 17 style already present: four spaces, declaration-line braces and descriptive names under
+`com.autosecretary.*`. Domain models are immutable. Business mutations go through application
+contracts and Room transactions; Activities/adapters render state only. `AppExecutors` is the sole
+production thread-pool owner. Keep `checkArchitecture` green.
 
-## Testing Guidelines
-Required behavior invariants must be covered by tight JVM end-to-end tests under `src/test`, as defined in `CLAUDE.md`. Use Robolectric plus in-memory Room for tests that drive UI ViewModel/DataService → application → domain → data and assert observable results.
+External-source decisions must use the `source-references` skill when it is available and preserve a
+local citation path. Changes to agent-facing instructions must use `agent-instruction-engineering`
+when that skill is available. If a required global skill is unavailable, state that limitation and
+make only the smallest evidence-backed instruction correction.
 
-Do not add instrumented/Espresso test suites under `src/androidTest` unless a future roadmap phase explicitly requires them.
+## Tests
 
-Validation:
-- Architecture check: `./gradlew checkArchitecture`
-- Build check: `./gradlew assembleDebug`
-- JVM behavior tests: `./gradlew testDebugUnitTest`
-- Runtime check: launch app and verify core flows (task list, task creation/edit, schedule generation)
-- Optional script: `./test_schedule.sh`
+Required invariants belong in `src/test`. Prefer pure domain tests, then Robolectric + in-memory or
+file-backed Room for ViewModel → application → domain → data flows. `src/androidTest` is reserved
+for the explicitly required `fullDebug` 20-case typed-command suite, strict parser rejection and
+real bundled-model smoke inference; do not expand it into a general Espresso suite. Migration tests
+must open an actual old-version SQLite file through Room so schema validation runs. Name tests after
+the invariant they protect.
 
-## Commit & Pull Request Guidelines
-Recent history favors short, imperative commit messages, with occasional Conventional Commit prefixes (for example, `fix(build): ...`, `feat(ui): ...`). Keep subject lines specific and scoped.
+## Commits and PRs
 
-For PRs:
-- Describe behavior changes and touched areas (`features/task/...`, `features/budget/...`).
-- Link related issues/tasks when applicable.
-- Include manual validation steps and results.
-- Add screenshots for UI-visible changes.
-- Avoid running release side-effect tasks unless the PR is explicitly a release update.
+Use short imperative subjects. Describe affected layers, behavior, migrations and validation. Add
+screenshots for visible UI changes. Never stage local backups, keystores, model files or source
+evidence.

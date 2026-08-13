@@ -6,7 +6,7 @@ Your sole task: verify the build and commit all current working-tree changes as 
 
 1. Run `git status` and `git diff --stat` to understand what changed.
 2. If the working tree is clean (nothing to commit), exit immediately — no action needed.
-3. Run `./gradlew assembleDebug` to verify the build is clean.
+3. Run `./gradlew assembleDevDebug` to verify the model-free preview build is clean.
    - If the build fails, fix the compile errors before committing. Do not commit broken code.
 4. Stage all changes: `git add -A`
 5. Write a short commit message summarising what was changed (1 sentence, imperative mood).

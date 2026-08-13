@@ -63,7 +63,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:backgroundTint="@color/outline"
-                android:focusable="false"
                 android:hint="@string/deadline_hint"
                 android:inputType="text"
                 android:textColor="@color/ink"
@@ -78,28 +77,31 @@
 
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Rhythmus" android:textColor="@color/marker" android:textSize="15sp" />
             <EditText android:id="@+id/EditCadence" android:layout_width="match_parent" android:layout_height="wrap_content" android:backgroundTint="@color/outline" android:hint="@string/cadence_hint" android:inputType="number" android:textColor="@color/ink" android:textColorHint="@color/marker" />
-            <EditText android:id="@+id/EditNextDue" android:layout_width="match_parent" android:layout_height="wrap_content" android:backgroundTint="@color/outline" android:focusable="false" android:hint="@string/next_due_hint" android:inputType="text" android:textColor="@color/ink" android:textColorHint="@color/marker" />
+            <EditText android:id="@+id/EditNextDue" android:layout_width="match_parent" android:layout_height="wrap_content" android:backgroundTint="@color/outline" android:hint="@string/next_due_hint" android:inputType="text" android:textColor="@color/ink" android:textColorHint="@color/marker" />
         </LinearLayout>
 
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="Schritte" android:textColor="@color/marker" android:textSize="15sp" />
-        <EditText
-            android:id="@+id/EditSteps"
+        <LinearLayout
+            android:id="@+id/StepList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_dashed_leaf"
-            android:gravity="top|start"
-            android:hint="@string/steps_hint"
-            android:inputType="textCapSentences|textMultiLine"
-            android:minLines="4"
+            android:orientation="vertical"
             android:padding="16dp"
-            android:textColor="@color/ink"
-            android:textColorHint="@color/marker" />
+            android:minHeight="72dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/AddStep"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Schritt hinzufügen" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:paddingTop="6dp"
-            android:text="@string/steps_help"
+            android:text="Tage optional als Mo,Di,… · Reihenfolge und IDs bleiben beim Verschieben erhalten."
             android:textColor="@color/ink_muted"
             android:textSize="13sp" />
     </LinearLayout>

@@ -2,6 +2,8 @@
 .gradle/
 build/
 local.properties
+ops/local-backups/
+ops/local-gates/
 
 # Generated local app data
 autosecretary.db
@@ -9,6 +11,7 @@ docs/references/
 
 # Local credentials
 *.keystore
+*.jks
 
 # IDE state
 .codex
