@@ -41,6 +41,26 @@ jobs:
           path: .gradle/bundled-ai
           key: bundled-ai-gemma3-270m-q8-0f7147f1
 
+      - name: Restore the pinned model cache
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          MODEL=.gradle/bundled-ai/autosecretary-gemma3-270m-it-q8.task
+          MODEL_SHA=0f7147f1c22eaf758b819bbf7841793e4c90096c9352cde7fbe5c631f2265ef5
+          if [[ -f "$MODEL" && "$(sha256sum "$MODEL" | awk '{print $1}')" = "$MODEL_SHA" ]]; then
+            exit 0
+          fi
+          mkdir -p "$(dirname "$MODEL")"
+          SOURCE_APK="$RUNNER_TEMP/model-source.apk"
+          gh api -H 'Accept: application/octet-stream' \
+            repos/ThonkTank/AI-Secretary/releases/assets/509391676 > "$SOURCE_APK"
+          test "$(sha256sum "$SOURCE_APK" | awk '{print $1}')" \
+            = 33c4c7ef92b039070dc1691126dd357d57def2bcf2b207eec99e70272dfcb03a
+          unzip -p "$SOURCE_APK" \
+            assets/models/autosecretary-gemma3-270m-it-q8.task > "$MODEL.partial"
+          test "$(sha256sum "$MODEL.partial" | awk '{print $1}')" = "$MODEL_SHA"
+          mv "$MODEL.partial" "$MODEL"
+
       - name: Choose the one monotonic Android version
         env:
           GH_TOKEN: ${{ github.token }}
