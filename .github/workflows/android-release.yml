@@ -26,7 +26,7 @@ jobs:
     permissions:
       contents: write
     env:
-      EXPECTED_CERT_SHA256: 79eb85409ede6aa014b125dd6190206c9809f0b948a5f92342a99376f81d0fef
+      EXPECTED_CERT_SHA256: de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da
       KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
       KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
     steps:
