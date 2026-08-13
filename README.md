@@ -19,8 +19,6 @@ This remains one Android module. Package boundaries inside it are enforced by Ar
 - `app/`: only application startup, dependency wiring, ViewModel factories and executor ownership
 - `widget/`: the home-screen rendering and actions
 
-Legacy snapshots under `.history/` are reference-only. They are not in the runtime source set.
-
 ## Build and test
 
 Requirements are JDK 21, Android SDK 35 and the checked-in Gradle wrapper. Source/bytecode

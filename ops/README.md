@@ -13,7 +13,6 @@
   secured Build-4 archive, so the device is not stranded on an unpublished future version.
   `device_release_gate.sh ai` runs only the non-destructive side-by-side Preview gate.
   Reports from complete production runs go to ignored `ops/local-gates/`.
-- `apply_skill.sh` and `skills/`: optional local review automation, unrelated to app runtime.
 
 All device scripts discover `adb` from `PATH`; override with `ADB=/absolute/path/to/adb`.
 
