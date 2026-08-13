@@ -24,7 +24,7 @@ The active app is intentionally one module and five small packages:
 - `widget/` — the home-screen behavior anchor
 - `ai/` — local bulk-edit proposal generation; never writes directly
 
-Historical source remains under `.history/` for reference but is not part of the build. An upgrade imports compatible facts from the old `task_core` table once; old feature tables are left untouched.
+An upgrade imports compatible facts from the old `task_core` table once; old feature tables are left untouched.
 
 ## Build and test
 
