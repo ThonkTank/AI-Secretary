@@ -141,6 +141,22 @@ public final class FocusPlannerTest {
     }
 
     @Test
+    public void omittedItemLeavesTodayWithoutBeingCompletedOrDeleted() {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 11, 7, 0);
+        Task omitted = task("omitted", "Heute nicht", 30, null, null);
+        Task retained = task("retained", "Bleibt", 30, null, null);
+        PlanOrderDirective directive = new PlanOrderDirective(now.toLocalDate(), omitted.id(),
+                PlanOrderDirective.Relation.OMIT, null, now);
+
+        PlanningResult result = planner.plan(List.of(omitted, retained), List.of(), List.of(),
+                List.of(directive), PlanningSettings.defaults(), now);
+
+        assertEquals(List.of(retained.id()), result.assignments().stream()
+                .map(value -> value.workItem().id()).toList());
+        assertTrue(!omitted.completed());
+    }
+
+    @Test
     public void transitionBoostNeedsThreeObservationsAndSixtyPercentConfidence() {
         LocalDateTime now = LocalDateTime.of(2026, 8, 11, 7, 0);
         Task next = task("next", "Zulu", 30, null, null);

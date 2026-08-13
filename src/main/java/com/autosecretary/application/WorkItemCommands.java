@@ -19,6 +19,8 @@ public final class WorkItemCommands {
 
     public void delete(String id) { repository.delete(id); }
 
+    public void deleteAll(List<String> ids) { repository.deleteAll(List.copyOf(ids)); }
+
     public void complete(String id) { repository.complete(id, clock.now()); }
 
     public void setStepCompleted(String itemId, String stepId, boolean completed) {

@@ -45,11 +45,11 @@ public final class DeviceCalendarGateway implements CalendarPort {
                 builder.build(), projection, null, null, CalendarContract.Instances.BEGIN)) {
             if (cursor == null) return result;
             while (cursor.moveToNext()) {
-                if (cursor.getInt(2) != 0) continue;
                 LocalDateTime start = LocalDateTime.ofInstant(Instant.ofEpochMilli(cursor.getLong(0)), zone);
                 LocalDateTime finish = LocalDateTime.ofInstant(Instant.ofEpochMilli(cursor.getLong(1)), zone);
                 if (finish.isAfter(start)) result.add(new BusyInterval(start, finish,
-                        cursor.isNull(3) ? "Termin" : cursor.getString(3)));
+                        cursor.isNull(3) || cursor.getString(3).isBlank()
+                                ? "Kalendertermin" : cursor.getString(3)));
             }
         }
         return result;

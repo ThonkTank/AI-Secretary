@@ -13,7 +13,10 @@ import android.widget.RemoteViews;
 import com.autosecretary.R;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.ui.MainActivity;
-import com.autosecretary.application.MoveWorkItemUseCase;
+import com.autosecretary.domain.SolarDaylight;
+
+import java.time.LocalDate;
+import java.time.ZoneId;
 
 
 /** Homescreen behavior anchor: complete a block or step and move blocks behind today. */
@@ -21,6 +24,7 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
     static final String ACTION_COMPLETE = "com.autosecretary.COMPLETE";
     static final String ACTION_LATER = "com.autosecretary.LATER";
     static final String ACTION_TOGGLE_STEP = "com.autosecretary.TOGGLE_STEP";
+    static final String ACTION_UNDO = "com.autosecretary.UNDO";
     static final String EXTRA_ID = "obligation_id";
     static final String EXTRA_STEP_ID = "step_id";
     static final String EXTRA_STEP_COMPLETED = "step_completed";
@@ -43,7 +47,8 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
         String id = intent.getStringExtra(EXTRA_ID);
-        if (id == null) return;
+        boolean undo = ACTION_UNDO.equals(intent.getAction());
+        if (id == null && !undo) return;
         PendingResult result = goAsync();
         AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
         com.autosecretary.app.AppGraph graph;
@@ -55,13 +60,12 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
         }
         graph.executors().database().execute(() -> {
             try {
-                if (ACTION_COMPLETE.equals(intent.getAction())) {
+                if (undo) {
+                    graph.workItemCommands().undo();
+                } else if (ACTION_COMPLETE.equals(intent.getAction())) {
                     graph.workItemCommands().complete(id);
                 } else if (ACTION_LATER.equals(intent.getAction())) {
-                    var dashboard = graph.planFocus().execute(Integer.MAX_VALUE, false);
-                    graph.moveWorkItem().executeToday(id, MoveWorkItemUseCase.Direction.LAST,
-                            dashboard.focus().stream().map(value -> value.workItem().id())
-                                    .collect(java.util.stream.Collectors.toList()));
+                    graph.moveWorkItem().omitToday(id);
                 } else if (ACTION_TOGGLE_STEP.equals(intent.getAction())) {
                     String stepId = intent.getStringExtra(EXTRA_STEP_ID);
                     if (stepId == null) return;
@@ -79,11 +83,46 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
         Bundle options = manager.getAppWidgetOptions(widgetId);
         int minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 280);
         int minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 384);
-        boolean compact = minWidth < 240 && minHeight < 240;
-        RemoteViews views = new RemoteViews(context.getPackageName(),
-                compact ? R.layout.widget_focus_compact : R.layout.widget_focus);
+        boolean shortWidget = minHeight < 240;
+        boolean wideWidget = shortWidget && minWidth >= 260;
+        int layout = shortWidget
+                ? minWidth < 260 ? R.layout.widget_focus_compact : R.layout.widget_focus_wide
+                : minWidth < 340 ? R.layout.widget_focus_tall : R.layout.widget_focus;
+        int maxRows = shortWidget ? 1 : minWidth < 340 ? 2 : 3;
+        boolean showSteps = !(shortWidget && minWidth < 260);
+        RemoteViews views = new RemoteViews(context.getPackageName(), layout);
+        WidgetScene scene = widgetScene(context);
+        views.setImageViewResource(R.id.WidgetDaylight, scene.daylight());
+        views.setImageViewResource(R.id.WidgetForest, switch (scene.palette()) {
+            case 1 -> R.drawable.widget_forest_dark;
+            case 2 -> R.drawable.widget_forest_evening;
+            default -> R.drawable.widget_forest;
+        });
+        views.setInt(R.id.WidgetRoot, "setBackgroundResource", switch (scene.palette()) {
+            case 1 -> R.drawable.bg_widget_dark;
+            case 2 -> R.drawable.bg_widget_evening;
+            default -> R.drawable.bg_widget;
+        });
+        views.setTextViewText(R.id.WidgetGreeting,
+                shortWidget ? "jetzt" : greeting(java.time.LocalTime.now()));
+        views.setTextColor(R.id.WidgetGreeting, scene.palette() == 2 ? 0xFFBCAB8C
+                : scene.palette() == 1 ? 0xFFA9B9AC : 0xFF6D7860);
+        views.setTextColor(R.id.WidgetAdd, scene.palette() == 2 ? 0xFFF0A03C
+                : scene.palette() == 1 ? 0xFFE8A83E : 0xFF2E6B44);
+        views.setTextColor(R.id.WidgetEmpty, scene.palette() == 2 ? 0xFFF8ECD2
+                : scene.palette() == 1 ? 0xFFF4EEDA : 0xFF1A2618);
+        try {
+            AutoSecretaryApplication.from(context).graph();
+            views.setTextViewText(R.id.WidgetEmpty, "Heute darf ein neues Blatt wachsen.");
+        } catch (RuntimeException unavailable) {
+            views.setTextViewText(R.id.WidgetEmpty, "Nicht geladen · Neu laden");
+        }
         Intent service = new Intent(context, FocusWidgetService.class);
         service.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
+        service.putExtra(FocusWidgetService.EXTRA_MAX_ROWS, maxRows);
+        service.putExtra(FocusWidgetService.EXTRA_SHOW_STEPS, showSteps);
+        service.putExtra(FocusWidgetService.EXTRA_WIDE, wideWidget);
+        service.putExtra(FocusWidgetService.EXTRA_PALETTE, scene.palette());
         service.setData(Uri.parse("widget://focus/" + widgetId + "/" + System.currentTimeMillis()));
         views.setRemoteAdapter(R.id.WidgetList, service);
         views.setEmptyView(R.id.WidgetList, R.id.WidgetEmpty);
@@ -102,6 +141,7 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.WidgetHeader, openPending);
         views.setOnClickPendingIntent(R.id.WidgetAdd, openPending);
+        views.setOnClickPendingIntent(R.id.WidgetEmpty, openPending);
         manager.updateAppWidget(widgetId, views);
         manager.notifyAppWidgetViewDataChanged(widgetId, R.id.WidgetList);
     }
@@ -115,5 +155,55 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
                 .setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
         context.sendBroadcast(update);
+    }
+
+    private static WidgetScene widgetScene(Context context) {
+        double latitude = 51.20;
+        double longitude = 6.69;
+        try {
+            var position = AutoSecretaryApplication.from(context).location().lastKnown();
+            if (position != null) {
+                latitude = position.latitude();
+                longitude = position.longitude();
+            }
+        } catch (RuntimeException ignored) { }
+        var window = SolarDaylight.forDate(
+                LocalDate.now(), latitude, longitude, ZoneId.systemDefault());
+        int sunrise = window.sunrise().getHour() * 60 + window.sunrise().getMinute();
+        int sunset = window.sunset().getHour() * 60 + window.sunset().getMinute();
+        int daylight = Math.max(1, sunset - sunrise);
+        int[] marks = {sunrise - 130, sunrise,
+                sunrise + Math.round(daylight * .242f),
+                sunrise + Math.round(daylight * .503f),
+                sunrise + Math.round(daylight * .815f),
+                sunset, sunset + 125, sunset + 255};
+        int minute = java.time.LocalTime.now().getHour() * 60
+                + java.time.LocalTime.now().getMinute();
+        int index = 7;
+        for (int candidate = 0; candidate < marks.length; candidate++) {
+            if (minute <= marks[candidate]) {
+                index = candidate;
+                break;
+            }
+        }
+        int daylightDrawable = new int[] {R.drawable.widget_daylight_0, R.drawable.widget_daylight_1,
+                R.drawable.widget_daylight_2, R.drawable.widget_daylight_3,
+                R.drawable.widget_daylight_4, R.drawable.widget_daylight_5,
+                R.drawable.widget_daylight_6, R.drawable.widget_daylight_7}[index];
+        int palette = index >= 2 && index <= 4 ? 0 : index == 5 ? 2 : 1;
+        return new WidgetScene(daylightDrawable, palette);
+    }
+
+    private record WidgetScene(int daylight, int palette) { }
+
+    private static String greeting(java.time.LocalTime time) {
+        int minute = time.getHour() * 60 + time.getMinute();
+        return minute < 5 * 60 ? "Noch früh"
+                : minute < 9 * 60 ? "Guten Morgen"
+                : minute < 12 * 60 ? "Vormittag"
+                : minute < 14 * 60 ? "Mittag"
+                : minute < 18 * 60 ? "Nachmittag"
+                : minute < 21 * 60 ? "Guten Abend"
+                : minute < 23 * 60 ? "Es wird spät" : "Gute Nacht";
     }
 }

@@ -109,6 +109,11 @@ public final class RoomWorkItemRepository implements WorkItemRepository {
     }
 
     @Override
+    public void deleteAll(List<String> ids) {
+        database.runInTransaction(() -> ids.forEach(dao::deleteWorkItem));
+    }
+
+    @Override
     public WorkItem complete(String id, LocalDateTime at) {
         return transactionResult(() -> completeInternal(id, at));
     }

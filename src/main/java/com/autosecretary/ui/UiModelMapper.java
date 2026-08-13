@@ -6,17 +6,13 @@ import com.autosecretary.domain.BusyInterval;
 import com.autosecretary.domain.PlanAssignment;
 import com.autosecretary.domain.Routine;
 import com.autosecretary.domain.Task;
-import com.autosecretary.domain.TimePreference;
 import com.autosecretary.domain.WorkItem;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /** Maps application data into complete presentation rows before adapter binding. */
 public final class UiModelMapper {
-    private static final DateTimeFormatter DEADLINE = DateTimeFormatter.ofPattern("dd.MM. HH:mm");
-
     private UiModelMapper() { }
 
     public static Dashboard dashboard(DashboardData data, LocalDate today) {
@@ -24,7 +20,8 @@ public final class UiModelMapper {
                 .map(assignment -> focusRow(assignment, data, today))
                 .collect(java.util.stream.Collectors.toList());
         List<WorkItemRow> rows = data.workItems().stream()
-                .map(item -> workItemRow(item, data.stepCompletions(), today))
+                .map(item -> workItemRow(item, data.stepCompletions(),
+                        data.completions(), today))
                 .collect(java.util.stream.Collectors.toList());
         List<CalendarRow> calendar = data.calendar().stream()
                 .map(item -> new CalendarRow(item.start(), item.end(), item.title()))
@@ -42,19 +39,28 @@ public final class UiModelMapper {
                 .filter(value -> value.end().toLocalDate().equals(assignment.start().toLocalDate()))
                 .reduce((left, right) -> right).map(BusyInterval::title).orElse(null);
         return new FocusRow(item.id(), item.title(), item.durationMinutes(),
-                assignment.start(), assignment.end(), steps, preceding);
+                assignment.start(), assignment.end(), steps, preceding,
+                item instanceof Routine,
+                item instanceof Routine routine && routine.nextDueDate().isBefore(today)
+                        || item.deadlineAt() != null
+                        && item.deadlineAt().toLocalDate().isBefore(today));
     }
 
     private static WorkItemRow workItemRow(
-            WorkItem item, List<StepCompletion> completions, LocalDate today) {
+            WorkItem item,
+            List<StepCompletion> stepCompletions,
+            List<com.autosecretary.application.CompletionRecord> completions,
+            LocalDate today) {
         String occurrenceKey = item instanceof Routine routine
                 ? routine.nextDueDate().toString() : "TASK";
-        List<StepRow> steps = stepRows(item, occurrenceKey, today, completions);
+        List<StepRow> steps = stepRows(item, occurrenceKey, today, stepCompletions);
         int completedSteps = (int) steps.stream().filter(StepRow::completed).count();
         boolean completed = item instanceof Task task && task.completed();
         return new WorkItemRow(item.id(), item instanceof Routine, item.title(),
-                group(item, today), metadata(item), item.isOpenOn(today), completed,
-                completedSteps, steps.size());
+                group(item, completions, today), metadata(item, completions, today),
+                item.isOpenOn(today), completed,
+                completedSteps, steps.size(), completed
+                ? completionDate(item.id(), completions) : null);
     }
 
     private static List<StepRow> stepRows(
@@ -70,42 +76,70 @@ public final class UiModelMapper {
                 .collect(java.util.stream.Collectors.toList());
     }
 
-    private static String metadata(WorkItem item) {
-        String preference = preference(item.timePreference());
-        String flexibility = item.flexible() ? " · flexibel" : "";
+    private static String metadata(
+            WorkItem item,
+            List<com.autosecretary.application.CompletionRecord> completions,
+            LocalDate today) {
         if (item instanceof Routine routine) {
             String streak = routine.stats().currentStreak() > 0
                     ? " · " + routine.stats().currentStreak() + " Ringe" : "";
-            return "alle " + routine.cadenceDays() + " Tage · nächste Fälligkeit "
-                    + routine.nextDueDate() + preference + flexibility + streak;
+            String due = routine.nextDueDate().isBefore(today) ? "seit gestern offen"
+                    : routine.nextDueDate().equals(today) ? "heute fällig"
+                    : routine.nextDueDate().equals(today.plusDays(1)) ? "morgen"
+                    : "wieder in " + java.time.temporal.ChronoUnit.DAYS.between(
+                            today, routine.nextDueDate()) + " Tagen";
+            return "alle " + routine.cadenceDays() + " Tage · " + due + streak;
         }
         Task task = (Task) item;
-        if (task.completed()) return "Erledigt";
-        if (task.deadlineAt() == null) return "ca. " + task.durationMinutes()
-                + " Min · ohne Deadline" + preference + flexibility;
-        return "ca. " + task.durationMinutes() + " Min · bis "
-                + task.deadlineAt().format(DEADLINE) + preference + flexibility;
+        if (task.completed()) return completionGroup(item.id(), completions, today);
+        String duration = "ca. " + task.durationMinutes() + " Min";
+        if (task.deadlineAt() == null) return duration + " · ohne Termin";
+        LocalDate deadline = task.deadlineAt().toLocalDate();
+        if (deadline.isBefore(today)) return duration + " · seit gestern offen";
+        if (deadline.equals(today)) return duration + " · heute";
+        if (deadline.equals(today.plusDays(1))) return duration + " · morgen";
+        if (!deadline.isAfter(today.plusDays(7))) return duration + " · diese Woche";
+        return duration + " · mit Deadline";
     }
 
-    private static String group(WorkItem item, LocalDate today) {
-        if (item instanceof Task task && task.completed()) return "heute erledigt";
+    private static String group(
+            WorkItem item,
+            List<com.autosecretary.application.CompletionRecord> completions,
+            LocalDate today) {
+        if (item instanceof Task task && task.completed()) {
+            return completionGroup(item.id(), completions, today);
+        }
         if (item.deadlineAt() != null && item.deadlineAt().toLocalDate().isBefore(today)) {
             return "überfällig";
         }
         if (item instanceof Routine routine) {
             if (routine.nextDueDate().isBefore(today)) return "überfällig";
-            return routine.isOpenOn(today) ? "heute fällig" : "seltener";
+            if (routine.isOpenOn(today)) return "heute fällig";
+            return !routine.nextDueDate().isAfter(today.plusDays(7))
+                    ? "diese Woche" : "seltener";
         }
         if (item.deadlineAt() == null) return "ohne Termin";
         return item.deadlineAt().toLocalDate().equals(today) ? "heute" : "diese Woche";
     }
 
-    private static String preference(TimePreference value) {
-        if (value == null) return "";
-        return switch (value) {
-            case MORNING -> " · morgens";
-            case MIDDAY -> " · mittags";
-            case EVENING -> " · abends";
-        };
+    private static String completionGroup(
+            String itemId,
+            List<com.autosecretary.application.CompletionRecord> completions,
+            LocalDate today) {
+        LocalDate completed = completionDate(itemId, completions);
+        if (completed == null) completed = today;
+        if (completed.equals(today)) return "heute";
+        if (completed.equals(today.minusDays(1))) return "gestern";
+        return "älter";
     }
+
+    private static LocalDate completionDate(
+            String itemId,
+            List<com.autosecretary.application.CompletionRecord> completions) {
+        return completions.stream()
+                .filter(value -> value.workItemId().equals(itemId))
+                .map(value -> value.completedAt().toLocalDate())
+                .max(LocalDate::compareTo).orElse(null);
+    }
+
 }

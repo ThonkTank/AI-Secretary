@@ -94,7 +94,7 @@ public final class MainViewModel extends ViewModel {
     public void reload() {
         update(current().dashboard(), current().surface(), current().filter(), true, null,
                 current().completionSignal());
-        submit(() -> planFocus.execute(3, true), false);
+        submit(() -> planFocus.execute(20, true), false);
     }
 
     public void save(WorkItem item) {
@@ -166,6 +166,11 @@ public final class MainViewModel extends ViewModel {
         mutate(() -> commands.delete(id), false);
     }
 
+    public void deleteAll(List<String> ids) {
+        if (ids.isEmpty()) return;
+        mutate(() -> commands.deleteAll(ids), false);
+    }
+
     public void complete(String id) {
         mutate(() -> commands.complete(id), true);
     }
@@ -193,6 +198,10 @@ public final class MainViewModel extends ViewModel {
         List<String> order = visible.stream().map(WorkItem::id)
                 .collect(java.util.stream.Collectors.toList());
         mutate(() -> moveWorkItem.execute(id, direction, day, order), false);
+    }
+
+    public void omitToday(String id) {
+        mutate(() -> moveWorkItem.omitToday(id), false);
     }
 
     public void undo() {
@@ -227,7 +236,7 @@ public final class MainViewModel extends ViewModel {
                 try {
                     action.run();
                     changeNotifier.run();
-                    var dashboard = planFocus.execute(3, true);
+                    var dashboard = planFocus.execute(20, true);
                     dispatch(() -> {
                         update(dashboard, current().surface(), current().filter(), false,
                                 null, current().completionSignal() + (completion ? 1 : 0));

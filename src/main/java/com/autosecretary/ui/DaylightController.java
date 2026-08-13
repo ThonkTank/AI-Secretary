@@ -26,6 +26,7 @@ public final class DaylightController {
     private final TextView themeAction;
     private final TextView greeting;
     private final Runnable requestLocationPermission;
+    private final Runnable paletteRefresh;
     private final LocationPort location;
     private boolean started;
     private final Runnable minuteRefresh = new Runnable() {
@@ -33,6 +34,7 @@ public final class DaylightController {
             updateGreeting();
             DaylightBackdropView.Mode mode = storedMode();
             if (mode == DaylightBackdropView.Mode.AUTO) applyCardMode(mode);
+            paletteRefresh.run();
             root.postDelayed(this, 60_000L);
         }
     };
@@ -44,7 +46,8 @@ public final class DaylightController {
             TextView themeAction,
             TextView greeting,
             LocationPort location,
-            Runnable requestLocationPermission) {
+            Runnable requestLocationPermission,
+            Runnable paletteRefresh) {
         this.activity = activity;
         this.root = root;
         this.backdrop = backdrop;
@@ -52,6 +55,7 @@ public final class DaylightController {
         this.greeting = greeting;
         this.location = location;
         this.requestLocationPermission = requestLocationPermission;
+        this.paletteRefresh = paletteRefresh;
     }
 
     public void configure() {
@@ -70,6 +74,7 @@ public final class DaylightController {
         }
         applyCardMode(mode);
         updateGreeting();
+        paletteRefresh.run();
     }
 
     public void onStart() {
@@ -118,6 +123,7 @@ public final class DaylightController {
         backdrop.setCoordinates(location.latitude(), location.longitude());
         DaylightBackdropView.Mode mode = storedMode();
         if (mode == DaylightBackdropView.Mode.AUTO) applyCardMode(mode);
+        paletteRefresh.run();
     }
 
     private void updateGreeting() {

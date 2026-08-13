@@ -44,4 +44,11 @@ public final class MoveWorkItemUseCase {
     public void executeToday(String id, Direction direction, List<String> visibleOrder) {
         execute(id, direction, clock.now().toLocalDate(), visibleOrder);
     }
+
+    /** Removes one occurrence from today's plan without changing or completing its work item. */
+    public void omitToday(String id) {
+        repository.saveDirective(new DayPlanDirective(UUID.randomUUID().toString(),
+                clock.now().toLocalDate(), id, DayPlanDirective.Relation.OMIT, null, clock.now()),
+                "Aus heute genommen · zurückholen");
+    }
 }

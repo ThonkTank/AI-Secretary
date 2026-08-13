@@ -13,6 +13,7 @@ public interface WorkItemRepository {
     WorkItem find(String id);
     void save(WorkItem item);
     void delete(String id);
+    void deleteAll(List<String> ids);
     WorkItem complete(String id, LocalDateTime at);
     WorkItem setStepCompleted(String workItemId, String stepId, boolean completed, LocalDateTime at);
     List<DayPlanDirective> directives(LocalDate day);

@@ -94,7 +94,7 @@ public final class DaylightControllerTest {
         FrameLayout root = new FrameLayout(activity);
         return new DaylightController(activity, root, new DaylightBackdropView(activity, null),
                 new TextView(activity), new TextView(activity), location,
-                requests::incrementAndGet);
+                requests::incrementAndGet, () -> { });
     }
 
     public static final class TestActivity extends AppCompatActivity {

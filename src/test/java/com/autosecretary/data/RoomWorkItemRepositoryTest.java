@@ -89,6 +89,22 @@ public final class RoomWorkItemRepositoryTest {
     }
 
     @Test
+    public void confirmedHistoryCleanupDeletesOnlyTheSelectedCompletedTasks() {
+        repository.save(task("old-one", "Alt eins", List.of(), 0));
+        repository.save(task("old-two", "Alt zwei", List.of(), 0));
+        repository.save(task("keep", "Bleibt", List.of(), 0));
+        repository.complete(id("old-one"), LocalDateTime.of(2026, 6, 1, 9, 0));
+        repository.complete(id("old-two"), LocalDateTime.of(2026, 6, 2, 9, 0));
+
+        repository.deleteAll(List.of(id("old-one"), id("old-two")));
+
+        assertNull(repository.find(id("old-one")));
+        assertNull(repository.find(id("old-two")));
+        assertNotNull(repository.find(id("keep")));
+        assertTrue(repository.loadSnapshot().completions().isEmpty());
+    }
+
+    @Test
     public void staleMemberRollsBackEntireAiChangeSet() {
         repository.save(task("one", "Eins", List.of(), 0));
         repository.save(task("two", "Zwei", List.of(), 0));

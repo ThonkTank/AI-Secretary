@@ -31,18 +31,18 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="9dp"
             android:layout_weight="1"
-            android:fontFamily="serif"
+            android:fontFamily="@font/newsreader"
             android:textColor="@color/calendar_ink"
             android:textSize="22sp" />
     </LinearLayout>
 
     <TextView
+        android:id="@+id/CalendarLabel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:fontFamily="serif"
+        android:fontFamily="@font/newsreader_light_italic"
         android:text="im Kalender, fest"
         android:textColor="@color/calendar_label"
-        android:textSize="15sp"
-        android:textStyle="italic" />
+        android:textSize="15sp" />
 </LinearLayout>

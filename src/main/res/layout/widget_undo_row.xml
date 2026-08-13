@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/WidgetUndo"
+    android:layout_width="match_parent"
+    android:layout_height="52dp"
+    android:background="@drawable/bg_dashed_leaf"
+    android:fontFamily="@font/newsreader_light_italic"
+    android:gravity="center_vertical"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:text="aus heute genommen · zurückholen"
+    android:textColor="@color/marker"
+    android:textSize="15sp" />

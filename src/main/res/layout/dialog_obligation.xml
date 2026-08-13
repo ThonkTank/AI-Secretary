@@ -1,108 +1,455 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/EditorRoot"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="match_parent">
+
+    <com.autosecretary.ui.DaylightBackdropView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@drawable/bg_leaf_focus"
+        android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="22dp">
-
-        <EditText
-            android:id="@+id/EditTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:backgroundTint="@color/outline"
-            android:fontFamily="serif"
-            android:hint="@string/title_hint"
-            android:inputType="textCapSentences|textMultiLine"
-            android:maxLines="3"
-            android:textColor="@color/ink"
-            android:textColorHint="@color/marker"
-            android:textSize="28sp" />
-
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="geschätzte Dauer" android:textColor="@color/marker" android:textSize="15sp" />
-        <EditText
-            android:id="@+id/EditDuration"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:backgroundTint="@color/outline"
-            android:hint="@string/duration_hint"
-            android:inputType="number"
-            android:textColor="@color/ink"
-            android:textColorHint="@color/marker" />
-
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="Tageszeitpräferenz" android:textColor="@color/marker" android:textSize="15sp" />
-        <Spinner
-            android:id="@+id/EditTimePreference"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:entries="@array/time_preferences" />
-
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/EditFlexible"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:text="flexibel · aus Verhalten lernen"
-            android:textColor="@color/ink_secondary"
-            android:textSize="16sp"
-            app:useMaterialThemeColors="true" />
+        android:paddingTop="24dp">
 
         <LinearLayout
-            android:id="@+id/TaskFields"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_height="64dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="76dp"
+            android:paddingEnd="22dp">
 
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Deadline · Datum und optionale Uhrzeit" android:textColor="@color/marker" android:textSize="15sp" />
-            <EditText
-                android:id="@+id/EditDeadline"
+            <TextView
+                android:id="@+id/CancelEditor"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text="abbrechen"
+                android:textColor="@color/ink_muted"
+                android:textSize="17sp" />
+
+            <TextView
+                android:id="@+id/EditorKind"
+                style="@style/WaldMarker"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="neue Aufgabe" />
+        </LinearLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:fillViewport="true">
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/outline"
-                android:hint="@string/deadline_hint"
-                android:inputType="text"
-                android:textColor="@color/ink"
-                android:textColorHint="@color/marker" />
-        </LinearLayout>
+                android:orientation="vertical"
+                android:paddingStart="60dp"
+                android:paddingTop="12dp"
+                android:paddingEnd="22dp"
+                android:paddingBottom="24dp">
+
+                <LinearLayout
+                    android:id="@+id/ProgressTips"
+                    android:layout_width="wrap_content"
+                    android:layout_height="6dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginBottom="16dp"
+                    android:orientation="horizontal">
+
+                    <View android:id="@+id/ProgressTipOne" android:layout_width="34dp" android:layout_height="6dp" android:background="@drawable/bg_progress_tip_active" />
+                    <View android:id="@+id/ProgressTipTwo" android:layout_width="34dp" android:layout_height="6dp" android:layout_marginStart="8dp" android:background="@drawable/bg_progress_tip_active" />
+                    <View android:id="@+id/ProgressTipThree" android:layout_width="34dp" android:layout_height="6dp" android:layout_marginStart="8dp" android:background="@drawable/bg_progress_tip_active" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/EditorLeaf"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_leaf_focus"
+                    android:elevation="12dp"
+                    android:orientation="vertical"
+                    android:paddingStart="24dp"
+                    android:paddingTop="24dp"
+                    android:paddingEnd="26dp"
+                    android:paddingBottom="24dp"
+                    android:rotation="-0.7">
+
+                    <LinearLayout
+                        android:id="@+id/WhatFields"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/WhatMarker"
+                        style="@style/WaldMarker"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="was steht an"
+                        android:textColor="@color/forest"
+                        android:textSize="20sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:fontFamily="@font/newsreader_light_italic"
+                        android:text="Titel"
+                        android:textColor="@color/marker"
+                        android:textSize="17sp" />
+
+                    <EditText
+                        android:id="@+id/EditTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:backgroundTint="@color/outline"
+                        android:fontFamily="@font/newsreader_extra_light"
+                        android:hint="Was möchtest du erledigen?"
+                        android:inputType="textCapSentences|textMultiLine"
+                        android:maxLines="3"
+                        android:minHeight="52dp"
+                        android:textColor="@color/ink"
+                        android:textColorHint="@color/marker"
+                        android:textSize="28sp" />
+
+                    <TextView
+                        android:id="@+id/TitleError"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_error_message"
+                        android:padding="12dp"
+                        android:textColor="@color/danger"
+                        android:textSize="14sp"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:fontFamily="@font/newsreader_light_italic"
+                        android:text="geschätzte Dauer"
+                        android:textColor="@color/marker"
+                        android:textSize="17sp" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/DurationChoices"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        app:chipSpacingHorizontal="8dp"
+                        app:chipSpacingVertical="8dp"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                        <com.google.android.material.chip.Chip android:id="@+id/Duration15" style="@style/WaldChoiceChip" android:text="15 Min" />
+                        <com.google.android.material.chip.Chip android:id="@+id/Duration30" style="@style/WaldChoiceChip" android:text="30 Min" />
+                        <com.google.android.material.chip.Chip android:id="@+id/Duration45" style="@style/WaldChoiceChip" android:text="45 Min" />
+                        <com.google.android.material.chip.Chip android:id="@+id/Duration60" style="@style/WaldChoiceChip" android:text="1 Std" />
+                        <com.google.android.material.chip.Chip android:id="@+id/DurationCustom" style="@style/WaldChoiceChip" android:text="Minuten…" />
+                    </com.google.android.material.chip.ChipGroup>
+
+                    <EditText
+                        android:id="@+id/EditDuration"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:backgroundTint="@color/outline"
+                        android:fontFamily="@font/newsreader_extra_light"
+                        android:hint="Minuten"
+                        android:inputType="number"
+                        android:textColor="@color/ink"
+                        android:textColorHint="@color/marker"
+                        android:textSize="34sp"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/DurationError"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_error_message"
+                        android:padding="12dp"
+                        android:textColor="@color/danger"
+                        android:textSize="14sp"
+                        android:visibility="gone" />
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/TaskFields"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:fontFamily="@font/newsreader_light_italic"
+                            android:text="Deadline"
+                            android:textColor="@color/marker"
+                            android:textSize="17sp" />
+
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/DeadlineChoices"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            app:chipSpacingHorizontal="8dp"
+                            app:chipSpacingVertical="8dp"
+                            app:selectionRequired="true"
+                            app:singleSelection="true">
+
+                            <com.google.android.material.chip.Chip android:id="@+id/DeadlineNone" style="@style/WaldChoiceChip" android:text="ohne Deadline" />
+                            <com.google.android.material.chip.Chip android:id="@+id/DeadlineToday" style="@style/WaldChoiceChip" android:text="heute" />
+                            <com.google.android.material.chip.Chip android:id="@+id/DeadlineTomorrow" style="@style/WaldChoiceChip" android:text="morgen" />
+                            <com.google.android.material.chip.Chip android:id="@+id/DeadlineDate" style="@style/WaldChoiceChip" android:text="Datum…" />
+                        </com.google.android.material.chip.ChipGroup>
+
+                        <TextView
+                            android:id="@+id/DeadlineError"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/bg_error_message"
+                            android:padding="12dp"
+                            android:textColor="@color/danger"
+                            android:textSize="14sp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/RoutineFields"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <TextView
+                            style="@style/WaldMarker"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="22dp"
+                            android:text="wann"
+                            android:textColor="@color/forest"
+                            android:textSize="20sp" />
+
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/CadenceChoices"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            app:chipSpacingHorizontal="8dp"
+                            app:chipSpacingVertical="8dp"
+                            app:selectionRequired="true"
+                            app:singleSelection="true">
+
+                            <com.google.android.material.chip.Chip android:id="@+id/CadenceDaily" style="@style/WaldChoiceChip" android:text="täglich" />
+                            <com.google.android.material.chip.Chip android:id="@+id/CadenceWeekly" style="@style/WaldChoiceChip" android:text="wöchentlich" />
+                            <com.google.android.material.chip.Chip android:id="@+id/CadenceFortnightly" style="@style/WaldChoiceChip" android:text="alle 14 Tage" />
+                            <com.google.android.material.chip.Chip android:id="@+id/CadenceCustom" style="@style/WaldChoiceChip" android:text="alle … Tage" />
+                        </com.google.android.material.chip.ChipGroup>
+
+                        <EditText
+                            android:id="@+id/EditCadence"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:backgroundTint="@color/outline"
+                            android:fontFamily="@font/newsreader_extra_light"
+                            android:hint="Tage"
+                            android:inputType="number"
+                            android:textColor="@color/ink"
+                            android:textColorHint="@color/marker"
+                            android:textSize="30sp"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/CadenceError"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/bg_error_message"
+                            android:padding="12dp"
+                            android:textColor="@color/danger"
+                            android:textSize="14sp"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="18dp"
+                            android:fontFamily="@font/newsreader_light_italic"
+                            android:text="nächste Fälligkeit"
+                            android:textColor="@color/marker"
+                            android:textSize="17sp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/bg_leaf_middle"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingStart="18dp"
+                            android:paddingEnd="12dp">
+
+                            <EditText
+                                android:id="@+id/EditNextDue"
+                                android:layout_width="0dp"
+                                android:layout_height="56dp"
+                                android:layout_weight="1"
+                                android:background="@null"
+                                android:fontFamily="@font/newsreader"
+                                android:inputType="date"
+                                android:textColor="@color/ink"
+                                android:textSize="21sp" />
+
+                            <TextView
+                                android:id="@+id/NextDuePick"
+                                android:layout_width="wrap_content"
+                                android:layout_height="48dp"
+                                android:gravity="center"
+                                android:paddingStart="10dp"
+                                android:paddingEnd="6dp"
+                                android:text="ändern"
+                                android:textColor="@color/forest"
+                                android:textSize="16sp" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/NextDueError"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/bg_error_message"
+                            android:padding="12dp"
+                            android:textColor="@color/danger"
+                            android:textSize="14sp"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="Danach rückt die Fälligkeit ab dem Abhaken weiter. Eine feste Uhrzeit brauchst du nicht; die App sucht das Fenster selbst."
+                            android:textColor="@color/ink_muted"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/EditorInference"
+                        style="@style/WaldMarker"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:paddingTop="14dp"
+                        android:text="Wird vorgeschlagen, sobald Platz ist."
+                        android:textSize="17sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/StepSection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="22dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/WaldMarker"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="4dp"
+                        android:text="woraus"
+                        android:textColor="@color/forest"
+                        android:textSize="20sp" />
+
+                    <LinearLayout
+                        android:id="@+id/StepList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="vertical" />
+
+                    <TextView
+                        android:id="@+id/AddStep"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="2dp"
+                        android:background="@drawable/bg_dashed_leaf"
+                        android:gravity="center_vertical"
+                        android:paddingStart="16dp"
+                        android:text="＋  Schritt hinzufügen"
+                        android:textColor="@color/ink_muted"
+                        android:textSize="17sp" />
+
+                    <LinearLayout
+                        android:id="@+id/StepUndoBar"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="6dp"
+                        android:visibility="gone">
+
+                        <TextView style="@style/WaldMarker" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Reihenfolge geändert" android:textSize="17sp" />
+                        <TextView android:id="@+id/UndoStepOrder" android:layout_width="wrap_content" android:layout_height="48dp" android:gravity="center" android:text="zurücknehmen" android:textColor="@color/ink_secondary" android:textSize="16sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
 
         <LinearLayout
-            android:id="@+id/RoutineFields"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_height="88dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="60dp"
+            android:paddingEnd="22dp"
+            android:paddingBottom="18dp">
 
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Rhythmus" android:textColor="@color/marker" android:textSize="15sp" />
-            <EditText android:id="@+id/EditCadence" android:layout_width="match_parent" android:layout_height="wrap_content" android:backgroundTint="@color/outline" android:hint="@string/cadence_hint" android:inputType="number" android:textColor="@color/ink" android:textColorHint="@color/marker" />
-            <EditText android:id="@+id/EditNextDue" android:layout_width="match_parent" android:layout_height="wrap_content" android:backgroundTint="@color/outline" android:hint="@string/next_due_hint" android:inputType="text" android:textColor="@color/ink" android:textColorHint="@color/marker" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/SaveEditor"
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:text="Speichern" />
+
+            <TextView
+                android:id="@+id/DiscardEditor"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:layout_marginStart="12dp"
+                android:gravity="center"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:text="verwerfen"
+                android:textColor="@color/ink_muted"
+                android:textSize="17sp" />
+
+            <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/DeleteEditor"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_danger_outline"
+                android:gravity="center"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="Löschen"
+                android:textColor="@color/danger"
+                android:textSize="16sp" />
         </LinearLayout>
-
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="Schritte" android:textColor="@color/marker" android:textSize="15sp" />
-        <LinearLayout
-            android:id="@+id/StepList"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_dashed_leaf"
-            android:orientation="vertical"
-            android:padding="16dp"
-            android:minHeight="72dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/AddStep"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Schritt hinzufügen" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingTop="6dp"
-            android:text="Tage optional als Mo,Di,… · Reihenfolge und IDs bleiben beim Verschieben erhalten."
-            android:textColor="@color/ink_muted"
-            android:textSize="13sp" />
     </LinearLayout>
-</ScrollView>
+</FrameLayout>

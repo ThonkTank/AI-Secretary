@@ -121,10 +121,15 @@ public record ObligationEditorState(
 
     public ObligationEditorState validated(LocalDateTime now) {
         Map<String, String> problems = new LinkedHashMap<>();
-        if (titleInput.trim().isEmpty()) problems.put("title", "Titel fehlt");
-        parseInt(durationInput, 5, 480, "Dauer", "duration", problems);
+        if (titleInput.trim().isEmpty()) problems.put("title", routine
+                ? "Ohne Titel lässt sich die Routine nicht speichern."
+                : "Ohne Titel lässt sich die Aufgabe nicht speichern.");
+        parseInt(durationInput, 1, 480,
+                "Die Dauer braucht mindestens eine Minute.", "duration", problems);
         if (routine) {
-            parseInt(cadenceInput, 1, 365, "Rhythmus", "cadence", problems);
+            parseInt(cadenceInput, 1, 365,
+                    "Der Rhythmus braucht zwischen einem und 365 Tagen.",
+                    "cadence", problems);
             try { LocalDate.parse(nextDueInput.trim()); }
             catch (RuntimeException error) {
                 problems.put("nextDue", "Datum bitte als JJJJ-MM-TT eingeben");
@@ -133,7 +138,7 @@ public record ObligationEditorState(
             try {
                 LocalDateTime deadline = parseDeadline(deadlineInput);
                 if (deadline.isBefore(now)) problems.put("deadline",
-                        "Die Deadline liegt in der Vergangenheit");
+                        "Die Deadline liegt in der Vergangenheit.");
             } catch (RuntimeException error) {
                 problems.put("deadline", "Deadline: JJJJ-MM-TT oder JJJJ-MM-TT HH:mm");
             }
@@ -141,8 +146,8 @@ public record ObligationEditorState(
         List<StepEditorState> checkedSteps = steps.stream()
                 .map(StepEditorState::validated)
                 .collect(java.util.stream.Collectors.toList());
-        if (checkedSteps.stream().anyMatch(step -> !step.valid())) {
-            problems.put("steps", "Bitte fehlerhafte Schritte korrigieren");
+        if (checkedSteps.stream().anyMatch(step -> step.daysError() != null)) {
+            problems.put("steps", "Bitte die Wochentage an den Schritten prüfen.");
         }
         return new ObligationEditorState(routine, id, existingId, titleInput, durationInput,
                 deadlineInput, timePreferenceInput, flexible, checkedSteps, createdAtInput,
@@ -151,14 +156,15 @@ public record ObligationEditorState(
     }
 
     public boolean valid() {
-        return errors.isEmpty() && steps.stream().allMatch(StepEditorState::valid);
+        return errors.isEmpty() && steps.stream().allMatch(step -> step.daysError() == null);
     }
 
     public WorkItem toWorkItem() {
         if (!valid()) throw new IllegalStateException("Editorzustand wurde nicht validiert");
         List<Step> domainSteps = new ArrayList<>();
-        for (int index = 0; index < steps.size(); index++) {
-            domainSteps.add(steps.get(index).toStep(index));
+        for (StepEditorState step : steps) {
+            if (step.titleInput().trim().isEmpty()) continue;
+            domainSteps.add(step.toStep(domainSteps.size()));
         }
         CompletionStats stats = new CompletionStats(
                 currentStreak, bestStreak, totalCompletions);
@@ -183,7 +189,7 @@ public record ObligationEditorState(
             if (value < min || value > max) throw new NumberFormatException();
             return value;
         } catch (RuntimeException error) {
-            errors.put(key, label + ": " + min + "–" + max);
+            errors.put(key, label);
             return min;
         }
     }
@@ -191,14 +197,14 @@ public record ObligationEditorState(
     private static LocalDateTime parseDeadline(String raw) {
         String value = raw.trim();
         if (value.matches("\\d{4}-\\d{2}-\\d{2}")) {
-            return LocalDate.parse(value).atTime(23, 59);
+            return LocalDate.parse(value).atTime(18, 0);
         }
         return LocalDateTime.parse(value, INPUT_DATE_TIME);
     }
 
     private static String formatDeadline(LocalDateTime value) {
         if (value == null) return "";
-        if (value.toLocalTime().equals(java.time.LocalTime.of(23, 59))) {
+        if (value.toLocalTime().equals(java.time.LocalTime.of(18, 0))) {
             return value.toLocalDate().toString();
         }
         return value.format(INPUT_DATE_TIME);

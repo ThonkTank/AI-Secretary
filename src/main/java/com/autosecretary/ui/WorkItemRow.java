@@ -1,5 +1,7 @@
 package com.autosecretary.ui;
 
+import java.time.LocalDate;
+
 public record WorkItemRow(
         String id,
         boolean routine,
@@ -9,4 +11,5 @@ public record WorkItemRow(
         boolean open,
         boolean completed,
         int completedSteps,
-        int totalSteps) { }
+        int totalSteps,
+        LocalDate completedAt) { }

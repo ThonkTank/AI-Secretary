@@ -51,7 +51,8 @@ public record StepEditorState(
     }
 
     public StepEditorState validated() {
-        String titleProblem = titleInput.trim().isEmpty() ? "Schritttitel fehlt" : null;
+        String titleProblem = titleInput.trim().isEmpty()
+                ? "Ein Schritt ohne Text wird beim Speichern verworfen." : null;
         String daysProblem = null;
         try { parseDays(daysInput); }
         catch (IllegalArgumentException error) { daysProblem = error.getMessage(); }

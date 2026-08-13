@@ -6,18 +6,24 @@
     <color name="marker">#8E9A84</color>
     <color name="completed">#6B7458</color>
     <color name="forest">#E8A83E</color>
+    <color name="action_text">#14201A</color>
     <color name="forest_soft">#303A28</color>
     <color name="cream">#243322</color>
     <color name="leaf_middle">#1C2A1A</color>
     <color name="leaf_low">#162113</color>
+    <color name="leaf_edge_top">#6BF0B258</color>
+    <color name="leaf_edge_middle">#33F0B258</color>
+    <color name="leaf_edge_low">#24F0B258</color>
     <color name="mist">#080F0B</color>
     <color name="outline">#68715A</color>
     <color name="amber">#E8A83E</color>
     <color name="calendar_leaf">#0B171C</color>
     <color name="calendar_ink">#8FBACB</color>
     <color name="calendar_label">#7096A6</color>
+    <color name="calendar_edge">#528FBACB</color>
     <color name="danger">#C96A4E</color>
     <color name="danger_soft">#24C96A4E</color>
     <color name="white">#FFFFFFFF</color>
     <color name="transparent">#00000000</color>
+    <color name="widget_forest">#010302</color>
 </resources>

@@ -91,16 +91,67 @@
                     android:paddingEnd="22dp"
                     android:paddingBottom="20dp">
 
-                    <TextView
+                    <LinearLayout
                         android:id="@+id/EmptyFocus"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/bg_dashed_leaf"
-                        android:fontFamily="serif"
-                        android:padding="26dp"
-                        android:text="@string/empty_focus"
-                        android:textColor="@color/ink"
-                        android:textSize="26sp"
+                        android:background="@drawable/bg_leaf_focus"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="24dp"
+                        android:visibility="gone">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/EmptyFocusMarker"
+                                style="@style/WaldMarker"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="heute" />
+
+                            <TextView
+                                android:id="@+id/EmptyFocusTitle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:fontFamily="@font/newsreader_extra_light"
+                                android:text="@string/empty_focus"
+                                android:textColor="@color/ink"
+                                android:textSize="30sp" />
+
+                            <TextView
+                                android:id="@+id/EmptyFocusDetail"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="7dp"
+                                android:text="Mit ＋ wächst eine neue Aufgabe."
+                                android:textColor="@color/ink_muted"
+                                android:textSize="16sp" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/EmptyAnnualRing"
+                            android:layout_width="58dp"
+                            android:layout_height="58dp"
+                            android:background="@drawable/bg_annual_rings"
+                            android:fontFamily="@font/newsreader"
+                            android:gravity="center"
+                            android:textColor="@color/amber"
+                            android:textSize="17sp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/CompletedToday"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:orientation="vertical"
                         android:visibility="gone" />
 
                     <TextView
@@ -113,6 +164,34 @@
                         android:textColor="@color/ink_muted"
                         android:textSize="14sp"
                         android:visibility="gone" />
+
+                    <FrameLayout
+                        android:id="@+id/FocusStack"
+                        android:layout_width="match_parent"
+                        android:layout_height="112dp"
+                        android:visibility="gone">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="82dp"
+                            android:layout_gravity="bottom"
+                            android:layout_marginStart="18dp"
+                            android:layout_marginEnd="4dp"
+                            android:background="@drawable/bg_leaf_low"
+                            android:elevation="4dp"
+                            android:rotation="2.2" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="88dp"
+                            android:layout_gravity="top"
+                            android:layout_marginStart="8dp"
+                            android:layout_marginTop="18dp"
+                            android:layout_marginEnd="12dp"
+                            android:background="@drawable/bg_leaf_middle_mirror"
+                            android:elevation="5dp"
+                            android:rotation="-1.5" />
+                    </FrameLayout>
 
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/FocusList"
@@ -137,14 +216,16 @@
                         android:visibility="gone">
 
                         <TextView
+                            android:id="@+id/CalendarPermissionTitle"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:fontFamily="serif"
+                            android:fontFamily="@font/newsreader"
                             android:text="Kalender als Umgebung"
                             android:textColor="@color/calendar_ink"
                             android:textSize="22sp" />
 
                         <TextView
+                            android:id="@+id/CalendarPermissionBody"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="5dp"
@@ -158,6 +239,64 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="12dp"
                             android:text="Kalender freigeben" />
+
+                        <TextView
+                            android:id="@+id/CalendarPermissionSkip"
+                            android:layout_width="wrap_content"
+                            android:layout_height="48dp"
+                            android:gravity="center_vertical"
+                            android:text="ohne weitermachen"
+                            android:textColor="@color/calendar_label"
+                            android:textSize="16sp" />
+                    </LinearLayout>
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/FocusLaterList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/FocusMore"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:background="@android:color/transparent"
+                        android:fontFamily="@font/newsreader_light_italic"
+                        android:gravity="center_vertical"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="22dp"
+                        android:textColor="@color/marker"
+                        android:textSize="17sp"
+                        android:visibility="gone" />
+
+                    <LinearLayout
+                        android:id="@+id/TodayUndoRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_dashed_leaf"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/newsreader_light_italic"
+                            android:text="aus heute genommen"
+                            android:textColor="@color/marker"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:id="@+id/TodayUndoAction"
+                            android:layout_width="wrap_content"
+                            android:layout_height="48dp"
+                            android:gravity="center"
+                            android:text="zurückholen"
+                            android:textColor="@color/ink_secondary"
+                            android:textSize="16sp" />
                     </LinearLayout>
                 </LinearLayout>
             </androidx.core.widget.NestedScrollView>
@@ -197,6 +336,34 @@
                     android:layout_weight="1"
                     android:clipToPadding="false"
                     android:paddingBottom="18dp" />
+
+                <LinearLayout
+                    android:id="@+id/CompletedCleanup"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/newsreader_light_italic"
+                        android:text="Erledigtes älter als 30 Tage"
+                        android:textColor="@color/marker"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/CompletedCleanupAction"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:text="aufräumen"
+                        android:textColor="@color/ink_secondary"
+                        android:textSize="16sp" />
+                </LinearLayout>
             </LinearLayout>
 
             <androidx.core.widget.NestedScrollView
@@ -225,6 +392,43 @@
                         android:layout_marginTop="3dp" />
 
                     <LinearLayout
+                        android:id="@+id/AiProgress"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="18dp"
+                        android:background="@drawable/bg_leaf_middle"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="18dp"
+                        android:visibility="gone">
+
+                        <com.autosecretary.ui.AnnualRingProgressView
+                            android:id="@+id/AiAnnualRings"
+                            android:layout_width="92dp"
+                            android:layout_height="92dp" />
+
+                        <TextView
+                            android:id="@+id/AiProgressText"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_weight="1"
+                            android:textColor="@color/ink_muted"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:id="@+id/AiProgressCancel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="48dp"
+                            android:gravity="center"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="6dp"
+                            android:text="Abbrechen"
+                            android:textColor="@color/marker"
+                            android:textSize="15sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="18dp"
@@ -235,7 +439,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:fontFamily="serif"
+                            android:fontFamily="@font/newsreader_extra_light"
                             android:text="Was soll sich ändern?"
                             android:textColor="@color/ink"
                             android:textSize="27sp" />

@@ -31,6 +31,12 @@ public final class FocusPlanner {
                 .filter(item -> isCandidate(item, today, horizonEnd))
                 .sorted(order(today, behavior))
                 .collect(Collectors.toCollection(ArrayList::new));
+        java.util.Set<String> omitted = directives.stream()
+                .filter(value -> today.equals(value.day()))
+                .filter(value -> value.relation() == PlanOrderDirective.Relation.OMIT)
+                .map(PlanOrderDirective::workItemId)
+                .collect(Collectors.toSet());
+        candidates.removeIf(item -> omitted.contains(item.id()));
         applyDirectives(candidates, directives, today);
 
         List<Gap> gaps = buildGaps(calendar, settings, now);
@@ -233,6 +239,7 @@ public final class FocusPlanner {
             LocalDate today) {
         directives.stream()
                 .filter(value -> today.equals(value.day()))
+                .filter(value -> value.relation() != PlanOrderDirective.Relation.OMIT)
                 .sorted(Comparator.comparing(PlanOrderDirective::updatedAt))
                 .forEach(value -> {
                     WorkItem item = items.stream()
@@ -257,6 +264,7 @@ public final class FocusPlanner {
                             yield value.relation() == PlanOrderDirective.Relation.BEFORE
                                     ? anchor : anchor + 1;
                         }
+                        case OMIT -> throw new IllegalStateException("OMIT wurde nicht gefiltert");
                     };
                     items.add(Math.max(0, Math.min(target, items.size())), item);
                 });

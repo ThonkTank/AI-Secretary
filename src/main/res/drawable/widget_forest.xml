@@ -4,7 +4,7 @@
     android:height="384dp"
     android:viewportWidth="384"
     android:viewportHeight="384">
-    <path android:fillColor="#182418" android:fillAlpha="0.08" android:pathData="M76,0 L84,0 L86,384 L72,384 Z M188,0 L194,0 L199,384 L184,384 Z M306,0 L314,0 L319,384 L301,384 Z" />
-    <path android:fillColor="#182418" android:fillAlpha="0.16" android:pathData="M42,0 L56,0 L66,384 L36,384 Z M330,0 L344,0 L350,384 L321,384 Z M50,170 L112,132 L116,141 L54,190 Z M335,222 L277,190 L280,180 L340,205 Z" />
-    <path android:fillColor="#182418" android:fillAlpha="0.48" android:pathData="M0,0 L34,0 L57,384 L0,384 Z M24,135 L103,96 L108,108 L27,158 Z M34,242 L105,282 L99,294 L30,264 Z" />
+    <path android:fillColor="@color/widget_forest" android:fillAlpha="0.08" android:pathData="M76,0 L84,0 L86,384 L72,384 Z M188,0 L194,0 L199,384 L184,384 Z M306,0 L314,0 L319,384 L301,384 Z" />
+    <path android:fillColor="@color/widget_forest" android:fillAlpha="0.16" android:pathData="M42,0 L56,0 L66,384 L36,384 Z M330,0 L344,0 L350,384 L321,384 Z M50,170 L112,132 L116,141 L54,190 Z M335,222 L277,190 L280,180 L340,205 Z" />
+    <path android:fillColor="@color/widget_forest" android:fillAlpha="0.48" android:pathData="M0,0 L34,0 L57,384 L0,384 Z M24,135 L103,96 L108,108 L27,158 Z M34,242 L105,282 L99,294 L30,264 Z" />
 </vector>

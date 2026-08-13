@@ -2,86 +2,170 @@ package com.autosecretary.ui.ai;
 
 import android.app.Dialog;
 import android.os.Bundle;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 
 import com.autosecretary.R;
 import com.autosecretary.application.ai.BulkChange;
 import com.autosecretary.application.ai.BulkChangeProposal;
+import com.autosecretary.databinding.DialogAiProposalBinding;
+import com.autosecretary.databinding.RowAiChangeBinding;
 import com.autosecretary.ui.MainViewModel;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/** Preview selection is keyed by typed change entries, never label prefixes. */
+/** Typed proposal rows expose symbol, word, color and optional per-change selection. */
 public final class AiProposalDialogFragment extends DialogFragment {
     public static final String TAG = "ai-proposal";
     private static final String SELECTED = "selected";
+    private static final String REVIEWING = "reviewing";
 
     public interface Host {
         MainViewModel mainViewModel();
         AiViewModel aiViewModel();
     }
 
+    private DialogAiProposalBinding binding;
+    private boolean[] selected;
+    private boolean reviewing;
+    private final List<RowAiChangeBinding> rows = new ArrayList<>();
+
     @NonNull
     @Override public Dialog onCreateDialog(Bundle state) {
         Host host = (Host) requireActivity();
         BulkChangeProposal proposal = requireProposal(host.aiViewModel());
-        String[] labels = proposal.changes().stream().map(BulkChange::previewLabel)
-                .toArray(String[]::new);
-        boolean[] selected = state == null ? null : state.getBooleanArray(SELECTED);
-        if (selected == null || selected.length != labels.length) {
-            selected = new boolean[labels.length];
+        binding = DialogAiProposalBinding.inflate(requireActivity().getLayoutInflater());
+        selected = state == null ? null : state.getBooleanArray(SELECTED);
+        if (selected == null || selected.length != proposal.changes().size()) {
+            selected = new boolean[proposal.changes().size()];
             Arrays.fill(selected, true);
         }
-        boolean[] selection = selected;
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.confirm_changes)
-                .setMessage(proposal.summary())
-                .setMultiChoiceItems(labels, selection,
-                        (ignored, which, checked) -> selection[which] = checked)
-                .setPositiveButton(R.string.apply_changes, null)
-                .setNegativeButton(R.string.cancel,
-                        (ignored, which) -> host.aiViewModel().consumeProposal())
-                .create();
-        dialog.setOnShowListener(ignored -> {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(!proposal.changes().isEmpty());
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
-                List<BulkChange> changes = new ArrayList<>();
-                for (int index = 0; index < selection.length; index++) {
-                    if (selection[index]) changes.add(proposal.changes().get(index));
-                }
-                if (changes.isEmpty()) {
-                    dialog.setMessage(proposal.summary() + "\n\nBitte mindestens eine Änderung auswählen.");
-                    return;
-                }
-                host.mainViewModel().applyChangeSet(changes,
-                        "KI-Änderungen rückgängig machen");
-                host.aiViewModel().consumeProposal();
-                dialog.dismiss();
-            });
+        reviewing = state != null && state.getBoolean(REVIEWING);
+        Dialog dialog = new Dialog(requireContext(), R.style.WaldEditorDialog);
+        dialog.setContentView(binding.getRoot());
+        AiUiState aiState = host.aiViewModel().state().getValue();
+        binding.ProposalWish.setText(aiState == null ? "" : aiState.instruction());
+        binding.ProposalSummary.setText(proposal.summary());
+        for (int index = 0; index < proposal.changes().size(); index++) {
+            addRow(proposal.changes().get(index), index);
+        }
+        renderSelection();
+        binding.ProposalReview.setOnClickListener(view -> {
+            reviewing = true;
+            renderSelection();
         });
+        binding.ProposalBack.setOnClickListener(view -> discard(host));
+        binding.ProposalDiscard.setOnClickListener(view -> discard(host));
+        binding.ProposalApply.setOnClickListener(view -> apply(host, proposal));
         return dialog;
     }
 
-    @Override public void onSaveInstanceState(@NonNull Bundle outState) {
-        AlertDialog dialog = (AlertDialog) getDialog();
-        if (dialog != null && dialog.getListView() != null) {
-            boolean[] selected = new boolean[dialog.getListView().getCount()];
-            for (int index = 0; index < selected.length; index++) {
-                selected[index] = dialog.getListView().isItemChecked(index);
-            }
-            outState.putBooleanArray(SELECTED, selected);
+    @Override public void onStart() {
+        super.onStart();
+        Window window = requireDialog().getWindow();
+        if (window != null) {
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         }
+    }
+
+    private void addRow(BulkChange change, int index) {
+        RowAiChangeBinding row = RowAiChangeBinding.inflate(
+                getLayoutInflater(), binding.ProposalChanges, false);
+        int color = switch (change.type()) {
+            case ADD -> requireContext().getColor(R.color.forest);
+            case UPDATE -> requireContext().getColor(R.color.calendar_ink);
+            case DELETE -> requireContext().getColor(R.color.danger);
+        };
+        row.ChangeStripe.setBackgroundColor(color);
+        row.ChangeSymbol.setText(switch (change.type()) {
+            case ADD -> "＋";
+            case UPDATE -> "≠";
+            case DELETE -> "−";
+        });
+        row.ChangeKind.setText(switch (change.type()) {
+            case ADD -> "neu";
+            case UPDATE -> "ändern";
+            case DELETE -> "löschen";
+        });
+        row.ChangeSymbol.setTextColor(color);
+        row.ChangeKind.setTextColor(color);
+        row.ChangeTitle.setText(change.upsert() == null
+                ? change.previewLabel() : change.upsert().title());
+        row.ChangeDetail.setText(change.previewLabel());
+        row.ChangeSelected.setOnCheckedChangeListener((button, checked) -> {
+            selected[index] = checked;
+            row.getRoot().setAlpha(checked ? 1f : .45f);
+            updateApplyLabel();
+        });
+        row.getRoot().setRotation(index % 2 == 0 ? 0.7f : -0.7f);
+        rows.add(row);
+        binding.ProposalChanges.addView(row.getRoot());
+    }
+
+    private void renderSelection() {
+        for (int index = 0; index < rows.size(); index++) {
+            RowAiChangeBinding row = rows.get(index);
+            row.ChangeSelected.setVisibility(reviewing ? View.VISIBLE : View.GONE);
+            row.ChangeSelected.setChecked(selected[index]);
+            row.getRoot().setAlpha(selected[index] ? 1f : .45f);
+        }
+        binding.ProposalReview.setVisibility(reviewing ? View.GONE : View.VISIBLE);
+        updateApplyLabel();
+    }
+
+    private void updateApplyLabel() {
+        int count = 0;
+        for (boolean value : selected) if (value) count++;
+        binding.ProposalApply.setText(reviewing ? count + " übernehmen" : "Übernehmen");
+        binding.ProposalNothing.setVisibility(count == 0 ? View.VISIBLE : View.GONE);
+    }
+
+    private void apply(Host host, BulkChangeProposal proposal) {
+        List<BulkChange> changes = new ArrayList<>();
+        for (int index = 0; index < selected.length; index++) {
+            if (selected[index]) changes.add(proposal.changes().get(index));
+        }
+        if (changes.isEmpty()) {
+            binding.ProposalNothing.setVisibility(View.VISIBLE);
+            return;
+        }
+        host.mainViewModel().applyChangeSet(changes, "KI-Änderungen zurücknehmen");
+        host.aiViewModel().consumeProposal();
+        Snackbar.make(requireActivity().findViewById(R.id.Root),
+                changes.size() == 1 ? "Eine Änderung übernommen."
+                        : changes.size() + " Änderungen übernommen.", Snackbar.LENGTH_LONG)
+                .setAction("zurücknehmen", view -> host.mainViewModel().undo()).show();
+        dismiss();
+    }
+
+    private void discard(Host host) {
+        host.aiViewModel().consumeProposal();
+        Snackbar.make(requireActivity().findViewById(R.id.Root),
+                "Nichts wurde geändert.", Snackbar.LENGTH_SHORT).show();
+        dismiss();
+    }
+
+    @Override public void onSaveInstanceState(@NonNull Bundle outState) {
+        outState.putBooleanArray(SELECTED, selected);
+        outState.putBoolean(REVIEWING, reviewing);
         super.onSaveInstanceState(outState);
     }
 
     @Override public void onCancel(@NonNull android.content.DialogInterface dialog) {
         ((Host) requireActivity()).aiViewModel().consumeProposal();
-        super.onCancel(dialog);
+    }
+
+    @Override public void onDestroyView() {
+        binding = null;
+        rows.clear();
+        super.onDestroyView();
     }
 
     private static BulkChangeProposal requireProposal(AiViewModel viewModel) {

@@ -1,10 +1,9 @@
 package com.autosecretary.ui;
 
 import android.view.LayoutInflater;
+import android.graphics.Paint;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.PopupMenu;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -23,15 +22,24 @@ final class ObligationAdapter extends RecyclerView.Adapter<ObligationAdapter.Hol
         void onComplete(String id);
         void onMove(String id, MoveWorkItemUseCase.Direction direction);
         void onEdit(String id, boolean routine);
+        void onOmit(String id);
+        void onDelete(WorkItemRow item);
     }
 
     private final Listener listener;
     private List<WorkItemRow> items = List.of();
+    private boolean evening;
 
     ObligationAdapter(Listener listener) { this.listener = listener; }
 
     void submit(List<WorkItemRow> values) {
         items = new ArrayList<>(values);
+        notifyDataSetChanged();
+    }
+
+    void setEvening(boolean value) {
+        if (evening == value) return;
+        evening = value;
         notifyDataSetChanged();
     }
 
@@ -44,45 +52,56 @@ final class ObligationAdapter extends RecyclerView.Adapter<ObligationAdapter.Hol
     @Override public void onBindViewHolder(@NonNull Holder holder, int position) {
         WorkItemRow item = items.get(position);
         RowObligationBinding row = holder.binding;
-        row.ObligationLeaf.setBackgroundResource(position % 2 == 0
-                ? R.drawable.bg_leaf_middle : R.drawable.bg_leaf_low);
+        row.ObligationLeaf.setBackgroundResource("überfällig".equals(item.group())
+                ? R.drawable.bg_leaf_overdue
+                : position % 2 == 0
+                ? evening ? R.drawable.bg_leaf_middle_evening : R.drawable.bg_leaf_middle
+                : evening ? R.drawable.bg_leaf_low_evening : R.drawable.bg_leaf_low);
         row.ObligationLeaf.setRotation(position % 2 == 0 ? 0.7f : -0.7f);
+        boolean firstInGroup = position == 0
+                || !items.get(position - 1).group().equals(item.group());
         row.RowGroup.setText(item.group());
+        row.RowGroup.setTextColor(evening ? 0xFFA08B62
+                : row.getRoot().getContext().getColor(R.color.marker));
+        row.RowGroup.setVisibility(firstInGroup ? View.VISIBLE : View.GONE);
         row.RowTitle.setText(item.title());
+        row.RowTitle.setPaintFlags(item.completed()
+                ? row.RowTitle.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG
+                : row.RowTitle.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+        row.RowTitle.setTextColor(evening
+                ? item.completed() ? 0xFF7A6742 : 0xFFF8ECD2
+                : row.getRoot().getContext().getColor(
+                item.completed() ? R.color.completed : R.color.ink));
         row.RowMeta.setText(item.metadata());
-        row.RowSteps.setVisibility(item.totalSteps() == 0 ? View.GONE : View.VISIBLE);
+        row.RowMeta.setTextColor(evening ? 0xFFC3AE86
+                : row.getRoot().getContext().getColor(R.color.ink_muted));
+        row.RowSteps.setVisibility(View.GONE);
         row.RowSteps.removeAllViews();
-        if (item.totalSteps() > 0) {
-            TextView progress = new TextView(row.getRoot().getContext());
-            progress.setText(item.completedSteps() + " von " + item.totalSteps() + " Schritten");
-            progress.setTextColor(row.getRoot().getContext().getColor(R.color.marker));
-            progress.setTextSize(14);
-            progress.setTypeface(android.graphics.Typeface.SERIF, android.graphics.Typeface.ITALIC);
-            row.RowSteps.addView(progress);
-        }
+        row.RowProgress.setVisibility(item.totalSteps() == 0 ? View.GONE : View.VISIBLE);
+        row.RowProgressBar.setMax(Math.max(1, item.totalSteps()));
+        row.RowProgressBar.setProgress(item.completedSteps());
+        row.RowProgressLabel.setText(item.completedSteps() + " von " + item.totalSteps());
+        row.RowToday.setVisibility(item.group().contains("heute") ? View.VISIBLE : View.GONE);
         row.RowDone.setEnabled(item.open());
         row.RowDone.setText(item.completed() ? "●" : "○");
         row.RowDone.setOnClickListener(view -> listener.onComplete(item.id()));
         row.RowOrder.setVisibility(item.open() ? View.VISIBLE : View.GONE);
-        row.RowOrder.setOnClickListener(view -> showOrderMenu(row.RowOrder, item.id()));
+        row.RowOrder.setOnClickListener(view -> showRowMenu(row.RowOrder, item));
         row.getRoot().setOnClickListener(view -> listener.onEdit(item.id(), item.routine()));
     }
 
-    private void showOrderMenu(View anchor, String id) {
-        PopupMenu menu = new PopupMenu(anchor.getContext(), anchor);
-        addMove(menu, R.string.move_first, id, MoveWorkItemUseCase.Direction.FIRST);
-        addMove(menu, R.string.move_earlier, id, MoveWorkItemUseCase.Direction.EARLIER);
-        addMove(menu, R.string.move_later, id, MoveWorkItemUseCase.Direction.LATER);
-        addMove(menu, R.string.move_last, id, MoveWorkItemUseCase.Direction.LAST);
-        menu.show();
-    }
-
-    private void addMove(PopupMenu menu, int label, String id,
-                         MoveWorkItemUseCase.Direction direction) {
-        menu.getMenu().add(label).setOnMenuItemClickListener(ignored -> {
-            listener.onMove(id, direction);
-            return true;
-        });
+    private void showRowMenu(View anchor, WorkItemRow item) {
+        LeafActionMenu.show(anchor, List.of(
+                new LeafActionMenu.Action("Bearbeiten", false,
+                        () -> listener.onEdit(item.id(), item.routine())),
+                new LeafActionMenu.Action("Für heute holen", false,
+                        () -> listener.onMove(item.id(), MoveWorkItemUseCase.Direction.FIRST)),
+                new LeafActionMenu.Action("Diesmal aussetzen", false,
+                        () -> listener.onOmit(item.id())),
+                new LeafActionMenu.Action("Reihenfolge heute", false,
+                        () -> listener.onMove(item.id(), MoveWorkItemUseCase.Direction.LAST)),
+                new LeafActionMenu.Action("Löschen", true,
+                        () -> listener.onDelete(item))));
     }
 
     @Override public int getItemCount() { return items.size(); }

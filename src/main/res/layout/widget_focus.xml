@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/WidgetRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_widget"
     android:padding="12dp">
 
     <ImageView
+        android:id="@+id/WidgetDaylight"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY" />
+
+    <ImageView
+        android:id="@+id/WidgetForest"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:importantForAccessibility="no"
@@ -26,14 +35,14 @@
             android:orientation="horizontal">
 
             <TextView
+                android:id="@+id/WidgetGreeting"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:fontFamily="serif"
+                android:fontFamily="@font/newsreader_light_italic"
                 android:text="Guten Morgen"
                 android:textColor="@color/marker"
-                android:textSize="16sp"
-                android:textStyle="italic" />
+                android:textSize="16sp" />
 
             <TextView
                 android:id="@+id/WidgetAdd"
@@ -42,7 +51,7 @@
                 android:background="@drawable/bg_chip_selected"
                 android:gravity="center"
                 android:text="＋"
-                android:textColor="@color/white"
+                android:textColor="@color/action_text"
                 android:textSize="20sp" />
         </LinearLayout>
 
@@ -61,7 +70,7 @@
             android:layout_height="0dp"
             android:layout_weight="1"
             android:background="@drawable/bg_dashed_leaf"
-            android:fontFamily="serif"
+            android:fontFamily="@font/newsreader"
             android:gravity="center"
             android:padding="18dp"
             android:text="Heute darf ein neues Blatt wachsen."

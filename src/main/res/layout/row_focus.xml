@@ -27,11 +27,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:fontFamily="serif"
-        android:lineSpacingMultiplier="0.96"
+        android:fontFamily="@font/newsreader"
+        android:lineSpacingMultiplier="1.04"
         android:maxLines="3"
         android:textColor="@color/ink"
-        android:textSize="34sp" />
+        android:textSize="37sp" />
 
     <TextView
         android:id="@+id/FocusMeta"

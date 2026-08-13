@@ -12,6 +12,7 @@ public record DashboardData(
         List<WorkItem> workItems,
         List<BusyInterval> calendar,
         List<PlanConflict> conflicts,
+        List<CompletionRecord> completions,
         List<StepCompletion> stepCompletions,
         String undoLabel,
         MigrationReview migrationReview) {
@@ -20,6 +21,7 @@ public record DashboardData(
         workItems = List.copyOf(workItems);
         calendar = List.copyOf(calendar);
         conflicts = List.copyOf(conflicts);
+        completions = List.copyOf(completions);
         stepCompletions = List.copyOf(stepCompletions);
     }
 }

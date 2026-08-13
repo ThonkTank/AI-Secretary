@@ -69,6 +69,7 @@ public final class PlanFocusUseCase {
         }
         for (WorkItem item : snapshot.workItems()) if (seen.add(item.id())) ordered.add(item);
         return new DashboardData(today, ordered, busy, result.conflicts(),
+                snapshot.completions(),
                 snapshot.stepCompletions(), repository.latestUndoLabel(),
                 repository.migrationReview());
     }

@@ -10,6 +10,8 @@ public record FocusRow(
         LocalDateTime suggestedStart,
         LocalDateTime suggestedEnd,
         List<StepRow> steps,
-        String precedingCalendarTitle) {
+        String precedingCalendarTitle,
+        boolean routine,
+        boolean overdue) {
     public FocusRow { steps = List.copyOf(steps); }
 }

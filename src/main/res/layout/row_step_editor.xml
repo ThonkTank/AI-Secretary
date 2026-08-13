@@ -1,57 +1,201 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="10dp"
     android:orientation="vertical">
 
-    <EditText
-        android:id="@+id/StepTitle"
+    <LinearLayout
+        android:id="@+id/StepSummary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Schritt"
-        android:inputType="textCapSentences"
-        android:textColor="@color/ink"
-        android:textColorHint="@color/marker" />
+        android:background="@drawable/bg_leaf_middle"
+        android:gravity="center_vertical"
+        android:minHeight="58dp"
+        android:orientation="horizontal"
+        android:paddingStart="14dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="10dp">
+
+        <TextView
+            android:id="@+id/StepNumber"
+            android:layout_width="18dp"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/newsreader_light_italic"
+            android:text="1"
+            android:textColor="@color/marker"
+            android:textSize="15sp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/StepTitleDisplay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/newsreader"
+                android:textColor="@color/ink"
+                android:textSize="19sp" />
+
+            <TextView
+                android:id="@+id/StepDaysDisplay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="@font/newsreader_light_italic"
+                android:textColor="@color/forest"
+                android:textSize="14sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/StepReorder"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="Schritt verschieben"
+            android:gravity="center"
+            android:text="↑↓"
+            android:textColor="@color/outline"
+            android:textSize="17sp" />
+
+        <TextView
+            android:id="@+id/StepMenu"
+            android:layout_width="40dp"
+            android:layout_height="48dp"
+            android:contentDescription="Schrittmenü"
+            android:gravity="center"
+            android:text="⋮"
+            android:textColor="@color/outline"
+            android:textSize="20sp" />
+    </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/StepEditorPanel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_leaf_focus"
+        android:elevation="8dp"
+        android:orientation="vertical"
+        android:padding="20dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/newsreader_light_italic"
+            android:text="Schritt"
+            android:textColor="@color/marker"
+            android:textSize="17sp" />
+
+        <EditText
+            android:id="@+id/StepTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/outline"
+            android:fontFamily="@font/newsreader_extra_light"
+            android:hint="Was gehört dazu?"
+            android:inputType="textCapSentences"
+            android:textColor="@color/ink"
+            android:textColorHint="@color/marker"
+            android:textSize="24sp" />
+
+        <TextView
+            android:id="@+id/StepTitleError"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_error_message"
+            android:padding="12dp"
+            android:text="Ein Schritt ohne Text wird beim Speichern verworfen."
+            android:textColor="@color/danger"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:fontFamily="@font/newsreader_light_italic"
+            android:text="nur an diesen Tagen"
+            android:textColor="@color/marker"
+            android:textSize="17sp" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/StepDayChoices"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:chipSpacingHorizontal="5dp"
+            app:singleLine="true">
+
+            <com.google.android.material.chip.Chip android:id="@+id/DayMo" style="@style/WaldDayChip" android:text="Mo" />
+            <com.google.android.material.chip.Chip android:id="@+id/DayDi" style="@style/WaldDayChip" android:text="Di" />
+            <com.google.android.material.chip.Chip android:id="@+id/DayMi" style="@style/WaldDayChip" android:text="Mi" />
+            <com.google.android.material.chip.Chip android:id="@+id/DayDo" style="@style/WaldDayChip" android:text="Do" />
+            <com.google.android.material.chip.Chip android:id="@+id/DayFr" style="@style/WaldDayChip" android:text="Fr" />
+            <com.google.android.material.chip.Chip android:id="@+id/DaySa" style="@style/WaldDayChip" android:text="Sa" />
+            <com.google.android.material.chip.Chip android:id="@+id/DaySo" style="@style/WaldDayChip" android:text="So" />
+        </com.google.android.material.chip.ChipGroup>
 
         <EditText
             android:id="@+id/StepDays"
-            android:layout_width="0dp"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:importantForAccessibility="no"
+            android:visibility="invisible" />
+
+        <TextView
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="Tage, z. B. Mo,Mi"
-            android:inputType="text"
-            android:textColor="@color/ink"
-            android:textColorHint="@color/marker" />
+            android:layout_marginTop="8dp"
+            android:text="Kein Tag ausgewählt heißt: bei jedem Durchlauf dabei."
+            android:textColor="@color/ink_muted"
+            android:textSize="14sp" />
 
-        <Button
-            android:id="@+id/StepEarlier"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:contentDescription="Schritt nach oben"
-            android:minWidth="0dp"
-            android:text="↑" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/StepLater"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:contentDescription="Schritt nach unten"
-            android:minWidth="0dp"
-            android:text="↓" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/StepApply"
+                android:layout_width="wrap_content"
+                android:layout_height="46dp"
+                android:text="Übernehmen" />
 
-        <Button
-            android:id="@+id/StepDelete"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:contentDescription="Schritt entfernen"
-            android:minWidth="0dp"
-            android:text="×" />
+            <TextView
+                android:id="@+id/StepCancel"
+                android:layout_width="wrap_content"
+                android:layout_height="46dp"
+                android:gravity="center"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="abbrechen"
+                android:textColor="@color/ink_muted"
+                android:textSize="16sp" />
+
+            <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/StepDelete"
+                android:layout_width="wrap_content"
+                android:layout_height="46dp"
+                android:background="@drawable/bg_danger_outline"
+                android:gravity="center"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="Schritt löschen"
+                android:textColor="@color/danger"
+                android:textSize="14sp" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>

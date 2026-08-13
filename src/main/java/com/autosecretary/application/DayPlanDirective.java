@@ -10,5 +10,5 @@ public record DayPlanDirective(
         Relation relation,
         String anchorWorkItemId,
         LocalDateTime updatedAt) {
-    public enum Relation { FIRST, BEFORE, AFTER, LAST }
+    public enum Relation { FIRST, BEFORE, AFTER, LAST, OMIT }
 }
