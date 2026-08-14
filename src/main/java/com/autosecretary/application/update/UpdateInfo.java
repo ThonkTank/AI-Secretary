@@ -6,8 +6,7 @@ public record UpdateInfo(
         String packageName,
         String apkUrl,
         String sha256,
-        String signerSha256,
-        boolean prerelease) {
+        String signerSha256) {
     public UpdateInfo {
         if (versionCode < 1) throw new IllegalArgumentException("versionCode muss positiv sein");
         if (versionName == null || versionName.isBlank()) versionName = Integer.toString(versionCode);

@@ -1,23 +1,13 @@
-name: Android build and release
+name: Publish phone update
 
 on:
-  push:
-    branches:
-      - "agent/**"
-      - "codex/**"
   workflow_dispatch:
-    inputs:
-      stable:
-        description: Publish a stable release (allowed only from main)
-        required: true
-        default: false
-        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: android-build-and-release
+  group: android-phone-update
   cancel-in-progress: false
 
 jobs:
@@ -41,36 +31,12 @@ jobs:
           path: .gradle/bundled-ai
           key: bundled-ai-gemma3-270m-q8-0f7147f1
 
-      - name: Restore the pinned model cache
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Choose the monotonic Android version
         run: |
-          MODEL=.gradle/bundled-ai/autosecretary-gemma3-270m-it-q8.task
-          MODEL_SHA=0f7147f1c22eaf758b819bbf7841793e4c90096c9352cde7fbe5c631f2265ef5
-          if [[ -f "$MODEL" && "$(sha256sum "$MODEL" | awk '{print $1}')" = "$MODEL_SHA" ]]; then
-            exit 0
-          fi
-          mkdir -p "$(dirname "$MODEL")"
-          SOURCE_APK="$RUNNER_TEMP/model-source.apk"
-          gh api -H 'Accept: application/octet-stream' \
-            repos/ThonkTank/AI-Secretary/releases/assets/509391676 > "$SOURCE_APK"
-          test "$(sha256sum "$SOURCE_APK" | awk '{print $1}')" \
-            = 33c4c7ef92b039070dc1691126dd357d57def2bcf2b207eec99e70272dfcb03a
-          unzip -p "$SOURCE_APK" \
-            assets/models/autosecretary-gemma3-270m-it-q8.task > "$MODEL.partial"
-          test "$(sha256sum "$MODEL.partial" | awk '{print $1}')" = "$MODEL_SHA"
-          mv "$MODEL.partial" "$MODEL"
-
-      - name: Choose the one monotonic Android version
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
+          test "$GITHUB_RUN_ATTEMPT" -lt 100
           VERSION_NAME="2.0.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
-          LATEST_CODE=$(gh api --paginate \
-            "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-            | jq -s '[.[][] | .tag_name | select(startswith("android-")) | ltrimstr("android-") | tonumber] | max // 0')
-          VERSION_FLOOR=$((2000000 + GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT))
-          VERSION_CODE=$((VERSION_FLOOR > LATEST_CODE ? VERSION_FLOOR : LATEST_CODE + 1))
+          VERSION_CODE=$((2000000 + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
+          test "$VERSION_CODE" -le 2100000000
           printf 'VERSION_CODE=%s\nVERSION_NAME=%s\n' "$VERSION_CODE" "$VERSION_NAME" \
             >> "$GITHUB_ENV"
 
@@ -111,14 +77,10 @@ jobs:
             *) echo "Unexpected package/version: $BADGING" >&2; exit 1 ;;
           esac
 
-      - name: Create release assets
+      - name: Create the updater assets
         run: |
           cp build/outputs/apk/release/AutoSecretary.apk AutoSecretary.apk
           SHA256=$(sha256sum AutoSecretary.apk | awk '{print $1}')
-          printf '%s  AutoSecretary.apk\n' "$SHA256" > AutoSecretary.apk.sha256
-          printf 'versionCode=%s\nversionName=%s\npackageName=com.autosecretary\n' \
-            "$VERSION_CODE" "$VERSION_NAME" > version.txt
-          printf '%s\n' "$EXPECTED_CERT_SHA256" > signer-sha256.txt
           jq -n \
             --argjson versionCode "$VERSION_CODE" \
             --arg versionName "$VERSION_NAME" \
@@ -128,33 +90,12 @@ jobs:
             --arg signerSha256 "$EXPECTED_CERT_SHA256" \
             '{versionCode:$versionCode,versionName:$versionName,packageName:$packageName,apkAsset:$apkAsset,sha256:$sha256,signerSha256:$signerSha256}' \
             > release-metadata.json
-          sha256sum -c AutoSecretary.apk.sha256
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: AutoSecretary-${{ env.VERSION_CODE }}
-          path: |
-            AutoSecretary.apk
-            AutoSecretary.apk.sha256
-            release-metadata.json
-            version.txt
-            signer-sha256.txt
-          if-no-files-found: error
-
-      - name: Publish the build
+      - name: Publish the latest phone update
         env:
           GH_TOKEN: ${{ github.token }}
-          STABLE: ${{ inputs.stable }}
         run: |
           TAG="android-$VERSION_CODE"
-          ASSETS=(AutoSecretary.apk AutoSecretary.apk.sha256 release-metadata.json version.txt signer-sha256.txt)
-          if [[ "$GITHUB_EVENT_NAME" = workflow_dispatch && "$STABLE" = true ]]; then
-            test "$GITHUB_REF" = refs/heads/main
-            gh release create "$TAG" "${ASSETS[@]}" \
-              --target "$GITHUB_SHA" \
-              --title "Auto Secretary $VERSION_NAME" --generate-notes --latest
-          else
-            gh release create "$TAG" "${ASSETS[@]}" \
-              --target "$GITHUB_SHA" \
-              --title "Auto Secretary $VERSION_NAME (Test)" --generate-notes --prerelease
-          fi
+          gh release create "$TAG" AutoSecretary.apk release-metadata.json \
+            --target "$GITHUB_SHA" \
+            --title "Auto Secretary $VERSION_NAME" --generate-notes --latest

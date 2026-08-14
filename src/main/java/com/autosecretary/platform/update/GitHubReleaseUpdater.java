@@ -25,11 +25,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.security.MessageDigest;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -38,8 +35,8 @@ import java.util.concurrent.TimeUnit;
 
 /** The single GitHub release lookup, download and verification path used by the app. */
 public final class GitHubReleaseUpdater {
-    private static final String RELEASES_API =
-            "https://api.github.com/repos/ThonkTank/AI-Secretary/releases?per_page=100";
+    private static final String LATEST_RELEASE_API =
+            "https://api.github.com/repos/ThonkTank/AI-Secretary/releases/latest";
     private static final String METADATA_ASSET = "release-metadata.json";
     private static final String APK_ASSET = "AutoSecretary.apk";
     private static final int CONNECT_TIMEOUT_MS = 10_000;
@@ -57,27 +54,24 @@ public final class GitHubReleaseUpdater {
     public UpdateInfo check() {
         try {
             PackageEvidence installed = installedPackage();
-            JSONArray releases = new JSONArray(readText(RELEASES_API, METADATA_LIMIT));
-            List<ReleaseMetadata> candidates = new ArrayList<>();
-            for (int index = 0; index < releases.length(); index++) {
-                JSONObject release = releases.getJSONObject(index);
-                if (release.optBoolean("draft")) continue;
-                Map<String, String> assets = assetUrls(release.getJSONArray("assets"));
-                String metadataUrl = assets.get(METADATA_ASSET);
-                if (metadataUrl == null) continue;
-                requireRepositoryUrl(metadataUrl, METADATA_ASSET);
-                JSONObject metadata = new JSONObject(readText(metadataUrl, 16_384));
-                String apkName = metadata.getString("apkAsset");
-                if (!APK_ASSET.equals(apkName)) {
-                    throw new IllegalStateException("Update-Metadaten nennen ein unbekanntes APK");
-                }
-                String apkUrl = requiredAsset(assets, apkName);
-                candidates.add(ReleaseMetadata.from(metadata, apkUrl,
-                        release.optBoolean("prerelease")));
+            JSONObject release = new JSONObject(
+                    readText(LATEST_RELEASE_API, METADATA_LIMIT));
+            if (release.optBoolean("draft") || release.optBoolean("prerelease")) {
+                throw new SecurityException("Das neueste Update ist nicht regulär veröffentlicht");
             }
-            ReleaseMetadata selected = selectHighestCompatible(candidates,
-                    installed.versionCode(), BuildConfig.APPLICATION_ID, installed.signers());
-            return selected == null ? null : selected.toUpdateInfo();
+            Map<String, String> assets = assetUrls(release.getJSONArray("assets"));
+            String metadataUrl = requiredAsset(assets, METADATA_ASSET);
+            JSONObject metadata = new JSONObject(readText(metadataUrl, 16_384));
+            String apkName = metadata.getString("apkAsset");
+            if (!APK_ASSET.equals(apkName)) {
+                throw new SecurityException("Update-Metadaten nennen ein unbekanntes APK");
+            }
+            ReleaseMetadata latest = ReleaseMetadata.from(
+                    metadata, requiredAsset(assets, apkName));
+            validateLatest(release.getString("tag_name"), latest,
+                    BuildConfig.APPLICATION_ID, installed.signers());
+            return latest.versionCode() <= installed.versionCode()
+                    ? null : latest.toUpdateInfo();
         } catch (Exception error) {
             throw new IllegalStateException("Update-Prüfung fehlgeschlagen", error);
         }
@@ -109,17 +103,20 @@ public final class GitHubReleaseUpdater {
         }
     }
 
-    static ReleaseMetadata selectHighestCompatible(
-            List<ReleaseMetadata> releases,
-            long installedVersion,
+    static void validateLatest(
+            String tag,
+            ReleaseMetadata release,
             String expectedPackage,
             Set<String> installedSigners) {
-        return releases.stream()
-                .filter(release -> release.versionCode() > installedVersion)
-                .filter(release -> expectedPackage.equals(release.packageName()))
-                .filter(release -> installedSigners.contains(release.signerSha256()))
-                .max(Comparator.comparingInt(ReleaseMetadata::versionCode))
-                .orElse(null);
+        if (!("android-" + release.versionCode()).equals(tag)) {
+            throw new SecurityException("Release-Tag und Android-Version widersprechen sich");
+        }
+        if (!expectedPackage.equals(release.packageName())) {
+            throw new SecurityException("Freigabe gehört nicht zu dieser App");
+        }
+        if (!installedSigners.contains(release.signerSha256())) {
+            throw new SecurityException("Freigabe verwendet nicht die installierte Signatur");
+        }
     }
 
     static record ReleaseMetadata(
@@ -128,8 +125,7 @@ public final class GitHubReleaseUpdater {
             String packageName,
             String apkUrl,
             String sha256,
-            String signerSha256,
-            boolean prerelease) {
+            String signerSha256) {
         ReleaseMetadata {
             if (versionCode < 1) throw new IllegalArgumentException("versionCode fehlt");
             if (versionName == null || versionName.isBlank()) {
@@ -149,16 +145,16 @@ public final class GitHubReleaseUpdater {
             signerSha256 = signerSha256.toLowerCase(Locale.ROOT);
         }
 
-        static ReleaseMetadata from(JSONObject source, String apkUrl, boolean prerelease)
+        static ReleaseMetadata from(JSONObject source, String apkUrl)
                 throws Exception {
             return new ReleaseMetadata(source.getInt("versionCode"),
                     source.getString("versionName"), source.getString("packageName"), apkUrl,
-                    source.getString("sha256"), source.getString("signerSha256"), prerelease);
+                    source.getString("sha256"), source.getString("signerSha256"));
         }
 
         UpdateInfo toUpdateInfo() {
             return new UpdateInfo(versionCode, versionName, packageName, apkUrl, sha256,
-                    signerSha256, prerelease);
+                    signerSha256);
         }
     }
 

@@ -44,24 +44,24 @@ show a day transition slightly late.
 
 ## Releases and updates
 
-There is one release workflow, one package, one permanent signing identity and one monotonically
-increasing Android `versionCode` sequence. Pushes to `agent/**` or `codex/**` publish a GitHub
-prerelease for phone testing. A deliberate workflow dispatch from `main` with `stable=true` marks
-the same kind of build as stable; this label does not create a different app or update channel.
+There is one phone-update workflow, one package, one permanent signing identity and one
+monotonically increasing Android `versionCode` sequence. After a completed implementation passes
+the full local gate, the current branch is pushed and `Publish phone update` is explicitly
+dispatched for that exact commit. Normal pushes do not publish large APKs. The workflow publishes
+only after its own test, lint, package, model and signing checks succeed.
 
 The workflow uses the permanent `KEYSTORE_BASE64` and `KEYSTORE_PASSWORD` repository secrets,
-verifies the expected certificate fingerprint, and publishes:
+verifies the expected certificate fingerprint, and publishes one normal GitHub `Latest` release
+with:
 
 - `AutoSecretary.apk`
-- `AutoSecretary.apk.sha256`
 - `release-metadata.json` with package, version, hash and signer
-- `version.txt`
-- `signer-sha256.txt`
 
-The in-app updater examines releases including prereleases, selects the highest compatible
-`versionCode`, and rejects an APK unless its package ID, SHA-256, version and signer match. If the
-previous installation used another signing key, Android requires one uninstall and clean install
-of this app. Every release after that uses the permanent key and updates in place.
+The in-app updater examines only that canonical latest release. One tap downloads and verifies the
+APK, then opens Android's package installer. The app rejects an APK unless its package ID,
+SHA-256, version and signer match. Android still requires its own installation confirmation and,
+the first time, permission to install apps from this source. Every release uses the permanent key
+and updates in place.
 
 The Gemma weights remain subject to the [Gemma Terms of Use](https://ai.google.dev/gemma/terms) and
 [Gemma Prohibited Use Policy](https://ai.google.dev/gemma/prohibited_use_policy); notices ship in

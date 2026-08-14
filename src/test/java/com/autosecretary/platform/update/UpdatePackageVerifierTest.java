@@ -28,7 +28,7 @@ public final class UpdatePackageVerifierTest {
     public void rejectsHashMismatch() throws Exception {
         File apk = apk();
         UpdateInfo update = new UpdateInfo(6, "2.0.1", "com.autosecretary",
-                url(), "0".repeat(64), SIGNER, true);
+                url(), "0".repeat(64), SIGNER);
         assertThrows(SecurityException.class, () -> verify(apk, update,
                 evidence("com.autosecretary", 6, SIGNER)));
     }
@@ -82,7 +82,7 @@ public final class UpdatePackageVerifierTest {
     private static UpdateInfo update(
             File apk, int version, String packageName, String signer) throws Exception {
         return new UpdateInfo(version, "2.0.1", packageName, url(),
-                UpdatePackageVerifier.sha256(apk), signer, true);
+                UpdatePackageVerifier.sha256(apk), signer);
     }
 
     private static String url() {

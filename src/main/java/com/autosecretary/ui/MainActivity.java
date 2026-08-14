@@ -82,6 +82,7 @@ public final class MainActivity extends AppCompatActivity implements
     private ActivityMainBinding binding;
     private boolean calendarCardDismissed;
     private boolean todayExpanded;
+    private UpdateInstallFlow updateInstallFlow;
 
     private final ActivityResultLauncher<String> calendarPermission = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
@@ -101,6 +102,13 @@ public final class MainActivity extends AppCompatActivity implements
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         creationState = savedInstanceState;
+        updateInstallFlow = new UpdateInstallFlow(
+                savedInstanceState == null ? 0
+                        : savedInstanceState.getInt(PENDING_UPDATE_VERSION),
+                savedInstanceState == null ? 0
+                        : savedInstanceState.getInt(OPENED_INSTALLER_VERSION),
+                savedInstanceState != null
+                        && savedInstanceState.getBoolean(UPDATE_SETTINGS_OPENED));
         if (savedInstanceState != null) {
             renderedCompletionSignal = savedInstanceState.getLong(RENDERED_COMPLETION_SIGNAL);
             todayExpanded = savedInstanceState.getBoolean(TODAY_EXPANDED);
@@ -234,6 +242,7 @@ public final class MainActivity extends AppCompatActivity implements
         if (viewModel != null) {
             updateCalendarPermissionCard();
             reload();
+            openPendingVerifiedUpdate();
         }
     }
 
@@ -296,6 +305,9 @@ public final class MainActivity extends AppCompatActivity implements
     protected void onSaveInstanceState(@androidx.annotation.NonNull Bundle outState) {
         outState.putLong(RENDERED_COMPLETION_SIGNAL, renderedCompletionSignal);
         outState.putBoolean(TODAY_EXPANDED, todayExpanded);
+        outState.putInt(PENDING_UPDATE_VERSION, updateInstallFlow.pendingVersion());
+        outState.putInt(OPENED_INSTALLER_VERSION, updateInstallFlow.openedVersion());
+        outState.putBoolean(UPDATE_SETTINGS_OPENED, updateInstallFlow.settingsOpened());
         super.onSaveInstanceState(outState);
     }
 
@@ -452,9 +464,10 @@ public final class MainActivity extends AppCompatActivity implements
         UpdateUiState state = updateViewModel.state().getValue();
         if (state == null || state.busy()) return;
         if (state.verified() != null) {
-            startActivity(AutoSecretaryApplication.from(this)
-                    .updateIntent(this, state.verified()));
+            updateInstallFlow.request(state.verified().info().versionCode());
+            openPendingVerifiedUpdate();
         } else if (state.available() != null) {
+            updateInstallFlow.request(state.available().versionCode());
             updateViewModel.download();
         } else {
             updateViewModel.check();
@@ -476,17 +489,30 @@ public final class MainActivity extends AppCompatActivity implements
         } else if (state.verified() != null) {
             updateStatus.setText("Version " + state.verified().info().versionName()
                     + " ist signiert und bereit");
-            updateAction.setText("System-Installer öffnen");
+            updateAction.setText("Installer erneut öffnen");
+            openPendingVerifiedUpdate();
         } else if (state.available() != null) {
             updateStatus.setText("Version " + state.available().versionName() + " ist verfügbar");
-            updateAction.setText("Update laden und prüfen");
+            updateAction.setText("Update installieren");
         } else if (state.checked()) {
             updateStatus.setText("Diese Version ist aktuell");
             updateAction.setText("Erneut prüfen");
         } else {
-            updateStatus.setText("Signierte Updates, Testversionen eingeschlossen");
+            updateStatus.setText("Signierte Updates aus diesem Repository");
             updateAction.setText("Nach Updates suchen");
         }
+    }
+
+    private void openPendingVerifiedUpdate() {
+        if (updateViewModel == null || updateInstallFlow == null) return;
+        UpdateUiState state = updateViewModel.state().getValue();
+        if (state == null || state.verified() == null) return;
+        int version = state.verified().info().versionCode();
+        UpdateInstallFlow.Action action = updateInstallFlow.ready(version,
+                getPackageManager().canRequestPackageInstalls());
+        if (action == UpdateInstallFlow.Action.NONE) return;
+        startActivity(AutoSecretaryApplication.from(this)
+                .updateIntent(this, state.verified()));
     }
 
     private void renderAi(AiUiState state) {
@@ -857,4 +883,7 @@ public final class MainActivity extends AppCompatActivity implements
     private static final String CALENDAR_ASKED = "calendar_asked";
     private static final String RENDERED_COMPLETION_SIGNAL = "renderedCompletionSignal";
     private static final String TODAY_EXPANDED = "todayExpanded";
+    private static final String PENDING_UPDATE_VERSION = "pendingUpdateVersion";
+    private static final String OPENED_INSTALLER_VERSION = "openedInstallerVersion";
+    private static final String UPDATE_SETTINGS_OPENED = "updateSettingsOpened";
 }
