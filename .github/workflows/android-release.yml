@@ -1,4 +1,4 @@
-name: Publish phone update
+name: Handy-Update veröffentlichen
 
 on:
   workflow_dispatch:

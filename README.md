@@ -46,7 +46,7 @@ show a day transition slightly late.
 
 There is one phone-update workflow, one package, one permanent signing identity and one
 monotonically increasing Android `versionCode` sequence. After a completed implementation passes
-the full local gate, the current branch is pushed and `Publish phone update` is explicitly
+the full local gate, the current branch is pushed and `Handy-Update veröffentlichen` is explicitly
 dispatched for that exact commit. Normal pushes do not publish large APKs. The workflow publishes
 only after its own test, lint, package, model and signing checks succeed.
 
