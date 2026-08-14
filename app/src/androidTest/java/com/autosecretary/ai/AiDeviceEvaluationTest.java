@@ -12,6 +12,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.autosecretary.application.ai.BulkChangeProposal;
 import com.autosecretary.application.ai.BulkChange;
+import com.autosecretary.application.TimeProvider;
 import com.autosecretary.domain.CompletionStats;
 import com.autosecretary.domain.Routine;
 import com.autosecretary.domain.Step;
@@ -27,16 +28,13 @@ import org.junit.runner.RunWith;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import com.autosecretary.platform.model.LocalModelManager;
-import com.autosecretary.application.TimeProvider;
-import java.time.Instant;
-import java.time.ZoneId;
 
 /** Optional device evaluation of the separately provisioned production model. */
 @RunWith(AndroidJUnit4.class)

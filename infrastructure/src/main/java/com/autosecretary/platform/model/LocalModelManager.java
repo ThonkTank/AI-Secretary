@@ -189,6 +189,7 @@ public final class LocalModelManager implements ModelRepository {
                 throw new SecurityException("Heruntergeladenes Modell ist beschädigt");
             }
             if (ticket.id() == 0) {
+                if (hasModel()) return active.toPath();
                 validate(active);
                 markValidated(active);
                 return active.toPath();
@@ -218,6 +219,7 @@ public final class LocalModelManager implements ModelRepository {
 
     /** Reuses a legacy installed model or resumes the one persisted system download. */
     public void install() throws Exception {
+        if (hasModel()) return;
         ModelDownloadTicket ticket = enqueue();
         while (!(query(ticket) instanceof ModelDownloadProgress.Complete)) {
             if (query(ticket) instanceof ModelDownloadProgress.Failed failed) {
