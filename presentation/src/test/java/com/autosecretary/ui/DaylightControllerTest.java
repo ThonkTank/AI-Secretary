@@ -95,7 +95,15 @@ public final class DaylightControllerTest {
         FrameLayout root = new FrameLayout(activity);
         return new DaylightController(activity, root, new DaylightBackdropView(activity, null),
                 new TextView(activity), new TextView(activity), location,
-                () -> LocalDateTime.of(2026, 8, 14, 10, 0),
+                new com.autosecretary.application.TimeProvider() {
+                    @Override public java.time.Instant now() {
+                        return LocalDateTime.of(2026, 8, 14, 10, 0)
+                                .toInstant(java.time.ZoneOffset.UTC);
+                    }
+                    @Override public java.time.ZoneId zone() {
+                        return java.time.ZoneOffset.UTC;
+                    }
+                },
                 requests::incrementAndGet, () -> { });
     }
 

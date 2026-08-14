@@ -11,11 +11,10 @@ import android.os.Bundle;
 import android.widget.RemoteViews;
 
 import com.autosecretary.presentation.R;
-import com.autosecretary.app.AutoSecretaryApplication;
-import com.autosecretary.ui.MainActivity;
 import com.autosecretary.domain.SolarDaylight;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 
 
@@ -50,24 +49,25 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
         boolean undo = ACTION_UNDO.equals(intent.getAction());
         if (id == null && !undo) return;
         PendingResult result = goAsync();
-        AutoSecretaryApplication app = AutoSecretaryApplication.from(context);
-        com.autosecretary.app.AppGraph graph = app.graph();
-        graph.executors().database().execute(() -> {
+        WidgetDependencies dependencies = WidgetDependencies.from(context);
+        dependencies.executeDatabase(() -> {
             try {
+                LocalDateTime now = LocalDateTime.ofInstant(
+                        dependencies.time().now(), dependencies.time().zone());
                 if (undo) {
-                    graph.workItems().undoLatest(graph.clock().localNow());
+                    dependencies.workItems().undoLatest(now);
                 } else if (ACTION_COMPLETE.equals(intent.getAction())) {
-                    graph.workItems().complete(id, graph.clock().localNow());
+                    dependencies.workItems().complete(id, now);
                 } else if (ACTION_LATER.equals(intent.getAction())) {
-                    graph.moveWorkItem().omitToday(id);
+                    dependencies.moveWorkItem().omitToday(id);
                 } else if (ACTION_TOGGLE_STEP.equals(intent.getAction())) {
                     String stepId = intent.getStringExtra(EXTRA_STEP_ID);
                     if (stepId == null) return;
                     boolean completed = intent.getBooleanExtra(EXTRA_STEP_COMPLETED, true);
-                    graph.workItems().setStepCompleted(
-                            id, stepId, completed, graph.clock().localNow());
+                    dependencies.workItems().setStepCompleted(
+                            id, stepId, completed, now);
                 }
-                graph.refreshWidgets();
+                dependencies.refreshWidgets();
             } finally {
                 result.finish();
             }
@@ -98,8 +98,9 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
             case 2 -> R.drawable.bg_widget_evening;
             default -> R.drawable.bg_widget;
         });
+        var clock = WidgetDependencies.from(context).time();
         views.setTextViewText(R.id.WidgetGreeting, shortWidget ? "jetzt" : greeting(
-                AutoSecretaryApplication.from(context).graph().clock().localNow().toLocalTime()));
+                LocalDateTime.ofInstant(clock.now(), clock.zone()).toLocalTime()));
         views.setTextColor(R.id.WidgetGreeting, scene.palette() == 2 ? 0xFFBCAB8C
                 : scene.palette() == 1 ? 0xFFA9B9AC : 0xFF6D7860);
         views.setTextColor(R.id.WidgetAdd, scene.palette() == 2 ? 0xFFF0A03C
@@ -124,8 +125,9 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
         views.setPendingIntentTemplate(R.id.WidgetList, templatePending);
 
-        Intent open = new Intent(context, MainActivity.class)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        Intent open = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+        if (open == null) open = new Intent();
+        open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent openPending = PendingIntent.getActivity(
                 context, widgetId, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -148,18 +150,20 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
     }
 
     private static WidgetScene widgetScene(Context context) {
-        var time = AutoSecretaryApplication.from(context).graph().clock();
+        WidgetDependencies dependencies = WidgetDependencies.from(context);
+        var time = dependencies.time();
         double latitude = 51.20;
         double longitude = 6.69;
         try {
-            var position = AutoSecretaryApplication.from(context).location().lastKnown();
+            var position = dependencies.location().lastKnown();
             if (position != null) {
                 latitude = position.latitude();
                 longitude = position.longitude();
             }
         } catch (RuntimeException ignored) { }
+        LocalDateTime now = LocalDateTime.ofInstant(time.now(), time.zone());
         var window = SolarDaylight.forDate(
-                time.localNow().toLocalDate(), latitude, longitude, time.zone());
+                now.toLocalDate(), latitude, longitude, time.zone());
         int sunrise = window.sunrise().getHour() * 60 + window.sunrise().getMinute();
         int sunset = window.sunset().getHour() * 60 + window.sunset().getMinute();
         int daylight = Math.max(1, sunset - sunrise);
@@ -168,7 +172,7 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
                 sunrise + Math.round(daylight * .503f),
                 sunrise + Math.round(daylight * .815f),
                 sunset, sunset + 125, sunset + 255};
-        int minute = time.localNow().getHour() * 60 + time.localNow().getMinute();
+        int minute = now.getHour() * 60 + now.getMinute();
         int index = 7;
         for (int candidate = 0; candidate < marks.length; candidate++) {
             if (minute <= marks[candidate]) {

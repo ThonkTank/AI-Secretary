@@ -10,57 +10,52 @@ import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
 
 import com.autosecretary.presentation.R;
-import com.autosecretary.app.AppGraph;
 import com.autosecretary.application.DashboardData;
-import com.autosecretary.application.StepCompletion;
-import com.autosecretary.application.TodayTimeline;
-import com.autosecretary.domain.BusyInterval;
-import com.autosecretary.domain.PlanAssignment;
-import com.autosecretary.domain.Routine;
-import com.autosecretary.domain.Step;
+import com.autosecretary.application.TodayEntry;
+import com.autosecretary.application.GetTodayTimeline;
+import com.autosecretary.application.TimeProvider;
+import com.autosecretary.ui.CalendarRow;
+import com.autosecretary.ui.FocusRow;
+import com.autosecretary.ui.StepRow;
+import com.autosecretary.ui.TodayPresenter;
+import com.autosecretary.ui.TodayRow;
+import com.autosecretary.ui.TodayViewData;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
 final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory {
-    private record Row(PlanAssignment assignment, List<Step> steps, List<StepCompletion> completions,
-                       BusyInterval preceding, BusyInterval calendar, boolean undo) {
-        static Row focus(PlanAssignment assignment, List<Step> steps,
-                         List<StepCompletion> completions, BusyInterval preceding) {
-            return new Row(assignment, steps, completions, preceding, null, false);
-        }
-        static Row calendar(BusyInterval calendar) {
-            return new Row(null, List.of(), List.of(), null, calendar, false);
-        }
-        static Row undoRow() {
-            return new Row(null, List.of(), List.of(), null, null, true);
-        }
+    private record Row(TodayRow value, boolean undo, boolean error) {
+        static Row value(TodayRow value) { return new Row(value, false, false); }
+        static Row undoRow() { return new Row(null, true, false); }
+        static Row errorRow() { return new Row(null, false, true); }
     }
 
     private final Context context;
-    private final AppGraph graph;
+    private final WidgetDependencies dependencies;
     private final int maxRows;
     private final boolean showSteps;
     private final boolean wide;
     private final int palette;
     private List<Row> rows = new ArrayList<>();
 
-    FocusWidgetFactory(Context context, AppGraph graph) {
-        this(context, graph, 3, true, false, 0);
+    FocusWidgetFactory(Context context, WidgetDependencies dependencies) {
+        this(context, dependencies, 3, true, false, 0);
     }
 
     FocusWidgetFactory(
             Context context,
-            AppGraph graph,
+            WidgetDependencies dependencies,
             int maxRows,
             boolean showSteps,
             boolean wide,
             int palette) {
         this.context = context;
-        this.graph = graph;
+        this.dependencies = dependencies;
         this.maxRows = maxRows;
         this.showSteps = showSteps;
         this.wide = wide;
@@ -71,29 +66,29 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
 
     @Override
     public void onDataSetChanged() {
-        if (graph == null) {
-            rows = new ArrayList<>();
+        if (dependencies == null) {
+            rows = new ArrayList<>(List.of(Row.errorRow()));
             return;
         }
         DashboardData dashboard;
         try {
-            dashboard = graph.executors().callDatabase(
-                    () -> graph.planFocus().execute(maxRows));
+            dashboard = dependencies.loadDashboard();
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
-            rows = new ArrayList<>();
+            rows = new ArrayList<>(List.of(Row.errorRow()));
             return;
-        } catch (java.util.concurrent.ExecutionException error) {
-            rows = new ArrayList<>();
+        } catch (Exception error) {
+            rows = new ArrayList<>(List.of(Row.errorRow()));
             return;
         }
-        rows = orderedEntries(dashboard, graph.clock().localNow(), maxRows).stream()
-                .map(entry -> entry instanceof TodayTimeline.Calendar calendar
-                        ? Row.calendar(calendar.value())
-                        : focusRow((TodayTimeline.Assignment) entry, dashboard))
+        TodayViewData today = new TodayPresenter().present(
+                dashboard, dependencies.today(dashboard), dependencies.time().zone(),
+                context.getString(R.string.calendar_private));
+        rows = today.rows().stream()
+                .limit(Math.max(0, maxRows))
+                .map(Row::value)
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
-        if (dashboard.undoLabel() != null
-                && dashboard.undoLabel().startsWith("Aus heute genommen")) {
+        if (today.undoAvailable() && maxRows > 0) {
             while (rows.size() >= maxRows) rows.remove(rows.size() - 1);
             rows.add(Row.undoRow());
         }
@@ -105,34 +100,36 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
     public RemoteViews getViewAt(int position) {
         if (position < 0 || position >= rows.size()) return null;
         Row rowData = rows.get(position);
+        if (rowData.error()) return errorView();
         if (rowData.undo()) return undoView();
-        if (rowData.calendar() != null) return calendarView(rowData.calendar(), position);
-        PlanAssignment assignment = rowData.assignment();
+        if (rowData.value() instanceof TodayRow.Calendar calendar) {
+            return calendarView(calendar.value(), position);
+        }
+        FocusRow focus = ((TodayRow.Focus) rowData.value()).value();
         RemoteViews row = new RemoteViews(context.getPackageName(), wide
                 ? R.layout.widget_focus_row_wide : R.layout.widget_focus_row);
         row.setInt(R.id.WidgetRowRoot, "setBackgroundResource", rowBackground(position));
         row.setTextViewText(R.id.WidgetPosition,
                 context.getString(position == 0 ? R.string.now : position == 1
                         ? R.string.next : R.string.later));
-        row.setTextViewText(R.id.WidgetTitle, assignment.workItem().title());
+        row.setTextViewText(R.id.WidgetTitle, focus.title());
         row.setTextColor(R.id.WidgetPosition, actionColor());
         row.setTextColor(R.id.WidgetTitle, inkColor());
         row.setTextColor(R.id.WidgetMeta, mutedColor());
         row.setTextColor(R.id.WidgetDone, actionColor());
         row.setTextColor(R.id.WidgetLater, mutedColor());
-        long completedSteps = rowData.steps().stream()
-                .filter(step -> isCompleted(rowData, step.id())).count();
+        long completedSteps = focus.steps().stream().filter(StepRow::completed).count();
         row.setViewVisibility(R.id.WidgetProgress,
-                rowData.steps().isEmpty() ? View.GONE : View.VISIBLE);
-        row.setProgressBar(R.id.WidgetProgress, Math.max(1, rowData.steps().size()),
+                focus.steps().isEmpty() ? View.GONE : View.VISIBLE);
+        row.setProgressBar(R.id.WidgetProgress, Math.max(1, focus.steps().size()),
                 (int) completedSteps, false);
         row.setViewVisibility(R.id.WidgetSteps,
-                !showSteps || rowData.steps().isEmpty() ? View.GONE : View.VISIBLE);
+                !showSteps || focus.steps().isEmpty() ? View.GONE : View.VISIBLE);
         row.removeAllViews(R.id.WidgetSteps);
-        int displayedSteps = showSteps ? Math.min(3, rowData.steps().size()) : 0;
+        int displayedSteps = showSteps ? Math.min(3, focus.steps().size()) : 0;
         for (int index = 0; index < displayedSteps; index++) {
-            Step stepValue = rowData.steps().get(index);
-            boolean completed = isCompleted(rowData, stepValue.id());
+            StepRow stepValue = focus.steps().get(index);
+            boolean completed = stepValue.completed();
             RemoteViews step = new RemoteViews(context.getPackageName(), R.layout.widget_focus_step);
             SpannableString stepLabel = new SpannableString(
                     (completed ? "●  " : "○  ") + stepValue.title());
@@ -142,64 +139,51 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
             step.setTextColor(R.id.WidgetStepToggle,
                     completed ? completedColor() : inkColor());
             Intent toggle = new Intent().setAction(FocusWidgetProvider.ACTION_TOGGLE_STEP)
-                    .putExtra(FocusWidgetProvider.EXTRA_ID, assignment.workItem().id())
+                    .putExtra(FocusWidgetProvider.EXTRA_ID, focus.id())
                     .putExtra(FocusWidgetProvider.EXTRA_STEP_ID, stepValue.id())
                     .putExtra(FocusWidgetProvider.EXTRA_STEP_COMPLETED, !completed);
             step.setOnClickFillInIntent(R.id.WidgetStepToggle, toggle);
             row.addView(R.id.WidgetSteps, step);
         }
-        if (rowData.steps().size() > displayedSteps) {
+        if (focus.steps().size() > displayedSteps) {
             RemoteViews more = new RemoteViews(context.getPackageName(), R.layout.widget_focus_step);
-            int remaining = rowData.steps().size() - displayedSteps;
+            int remaining = focus.steps().size() - displayedSteps;
             more.setTextViewText(R.id.WidgetStepToggle,
                     "und " + countWord(remaining) + " weitere");
             more.setTextColor(R.id.WidgetStepToggle, markerColor());
             row.addView(R.id.WidgetSteps, more);
         }
         String time = "voraussichtlich ab "
-                + assignment.start().format(DateTimeFormatter.ofPattern("HH:mm"));
-        String calendarContext = rowData.preceding() == null ? ""
-                : " · nach " + rowData.preceding().title();
+                + focus.suggestedStart().format(DateTimeFormatter.ofPattern("HH:mm"));
+        String calendarContext = focus.precedingCalendarTitle() == null ? ""
+                : " · nach " + focus.precedingCalendarTitle();
         row.setTextViewText(R.id.WidgetMeta, time + " · ca. "
-                + assignment.workItem().durationMinutes() + " Min" + calendarContext);
-        row.setTextViewText(R.id.WidgetDone, rowData.steps().isEmpty() ? "Erledigt"
+                + focus.durationMinutes() + " Min" + calendarContext);
+        row.setTextViewText(R.id.WidgetDone, focus.steps().isEmpty() ? "Erledigt"
                 : completedSteps == 0 ? "Alle erledigen"
-                : rowData.steps().size() - completedSteps == 1 ? "letzten Schritt erledigen"
+                : focus.steps().size() - completedSteps == 1 ? "letzten Schritt erledigen"
                 : "Rest erledigen");
 
         Intent complete = new Intent().setAction(FocusWidgetProvider.ACTION_COMPLETE)
-                .putExtra(FocusWidgetProvider.EXTRA_ID, assignment.workItem().id());
+                .putExtra(FocusWidgetProvider.EXTRA_ID, focus.id());
         row.setOnClickFillInIntent(R.id.WidgetDone, complete);
         Intent later = new Intent().setAction(FocusWidgetProvider.ACTION_LATER)
-                .putExtra(FocusWidgetProvider.EXTRA_ID, assignment.workItem().id());
+                .putExtra(FocusWidgetProvider.EXTRA_ID, focus.id());
         row.setOnClickFillInIntent(R.id.WidgetLater, later);
         return row;
     }
 
-    private static List<Step> activeSteps(PlanAssignment assignment) {
-        LocalDate effective = assignment.workItem() instanceof Routine routine
-                ? routine.nextDueDate() : assignment.start().toLocalDate();
-        return assignment.workItem().steps().stream()
-                .filter(step -> step.appliesOn(effective.getDayOfWeek()))
-                .collect(java.util.stream.Collectors.toList());
-    }
-
-    static List<TodayTimeline.Entry> orderedEntries(
+    static List<TodayEntry> orderedEntries(
             DashboardData dashboard, LocalDateTime now, int maximum) {
-        return TodayTimeline.from(dashboard, now).entries().stream()
+        TimeProvider fixed = new TimeProvider() {
+            @Override public Instant now() { return now.toInstant(java.time.ZoneOffset.UTC); }
+            @Override public ZoneId zone() { return java.time.ZoneOffset.UTC; }
+        };
+        return new GetTodayTimeline(fixed).execute(dashboard).entries().stream()
                 .limit(Math.max(0, maximum)).collect(java.util.stream.Collectors.toList());
     }
 
-    private static Row focusRow(TodayTimeline.Assignment entry, DashboardData dashboard) {
-        PlanAssignment assignment = entry.value();
-        return Row.focus(assignment, activeSteps(assignment),
-                dashboard.stepCompletions().stream()
-                        .filter(value -> value.occurrenceKey().equals(assignment.occurrenceKey()))
-                        .collect(java.util.stream.Collectors.toList()),
-                entry.precedingCalendar());
-    }
-
-    private RemoteViews calendarView(BusyInterval calendar, int position) {
+    private RemoteViews calendarView(CalendarRow calendar, int position) {
         RemoteViews row = new RemoteViews(
                 context.getPackageName(), R.layout.widget_calendar_row);
         row.setInt(R.id.WidgetCalendarRoot, "setBackgroundResource", palette == 2
@@ -218,7 +202,7 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         String marker = context.getString(position == 0 ? R.string.now
                 : position == 1 ? R.string.next : R.string.later);
         row.setTextViewText(R.id.WidgetCalendarLabel, marker + " · "
-                + (calendar.titleVisibility() == BusyInterval.TitleVisibility.HIDDEN
+                + (calendar.titleHidden()
                 ? "privat · Titel nicht lesbar" : "im Kalender, fest"));
         return row;
     }
@@ -231,8 +215,8 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         return row;
     }
 
-    private static boolean isCompleted(Row row, String stepId) {
-        return row.completions().stream().anyMatch(value -> value.stepId().equals(stepId));
+    private RemoteViews errorView() {
+        return new RemoteViews(context.getPackageName(), R.layout.widget_error_row);
     }
 
     private static String countWord(int value) {
@@ -284,12 +268,13 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
     @Override public RemoteViews getLoadingView() {
         return new RemoteViews(context.getPackageName(), R.layout.widget_loading_row);
     }
-    @Override public int getViewTypeCount() { return 3; }
+    @Override public int getViewTypeCount() { return 4; }
     @Override public long getItemId(int position) {
         Row row = rows.get(position);
+        if (row.error()) return -2;
         if (row.undo()) return -1;
-        return row.calendar() == null ? row.assignment().workItem().id().hashCode()
-                : (row.calendar().start().toString() + row.calendar().title()).hashCode();
+        if (row.value() instanceof TodayRow.Focus focus) return focus.value().id().hashCode();
+        return ((TodayRow.Calendar) row.value()).value().stableId().hashCode();
     }
     @Override public boolean hasStableIds() { return true; }
     @Override public void onDestroy() { rows = List.of(); }

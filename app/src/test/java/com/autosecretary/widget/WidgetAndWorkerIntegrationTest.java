@@ -64,7 +64,7 @@ public final class WidgetAndWorkerIntegrationTest {
         ListenableWorker.Result result = database(() -> FocusRefreshWorker.refresh(app, 0));
         assertTrue(result instanceof ListenableWorker.Result.Success);
 
-        FocusWidgetFactory factory = new FocusWidgetFactory(app, app.graph());
+        FocusWidgetFactory factory = new FocusWidgetFactory(app, app.widgetDependencies());
         database(() -> { factory.onDataSetChanged(); return null; });
         int expectedTodayRows = LocalTime.now().isBefore(LocalTime.of(23, 54)) ? 1 : 0;
         assertEquals(expectedTodayRows, factory.getCount());

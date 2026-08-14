@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="74dp"
+    android:background="@drawable/bg_dashed_leaf"
+    android:fontFamily="@font/newsreader_light_italic"
+    android:gravity="center_vertical"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:text="@string/agenda_error"
+    android:textColor="@color/marker"
+    android:textSize="15sp" />

@@ -19,7 +19,7 @@ The four production modules have one-way dependencies:
 - `core`: domain and application ports; plain Java without Android
 - `infrastructure`: Room, calendar/location, model and GitHub/Android update adapters
 - `presentation`: Java/XML UI, ViewModels and feature dialogs against application ports
-- `app`: Android composition root, activity shell, worker and widget entry points
+- `app`: Android composition root, manifest, worker and thin activity host
 
 `checkArchitecture` enforces these package directions and rejects direct production wall-clock
 access outside `SystemTimeProvider`. See [docs/architecture.md](docs/architecture.md).
@@ -34,6 +34,9 @@ deterministic.
 Room v35 is the stable schema baseline. Obsolete prototypes older than v35 may still be reset, but
 every schema change from v35 onward must provide and test an explicit migration. Normal app updates
 retain the Room database, preferences, undo journal and separately downloaded model.
+PR CI proves this with a two-stage emulator run: it seeds version N, installs N+1 using
+`adb install -r`, and checks package ID, UID, Room data, preferences, undo state and the model file.
+The immutable v35 schema file also has a pinned compatibility hash.
 
 The planner orders work by urgency and user directives, then places it into calendar gaps inside
 the configured day. Its canonical `TodayTimeline` owns remaining-event selection, stable ordering,
@@ -60,13 +63,13 @@ contract lives in `release/release.properties` and `release/release-metadata.sch
 for an already published commit is a no-op; a matching unfinished draft is resumed only while its
 version still exceeds all published versions.
 
-For a connected-device recovery or development check, `tools/update-connected-phone` installs the
+For a connected-device recovery or development check, `tools/phone-update` installs the
 latest published APK with `adb install -r`. Pass `--fresh` explicitly only when deleting the app and
 all local app data is intended. The normal laptop-free path is the app's update button.
 
-The release signer is permanent. CI accepts the explicit `ANDROID_RELEASE_*` secrets and retains
-the old keystore secret names only as a temporary migration fallback. Android still requires its
-own installation confirmation and, once, permission to install apps from this source.
+The release signer is permanent. CI requires exactly four explicit `ANDROID_RELEASE_*` secrets:
+keystore, store password, alias and key password. Android still requires its own installation
+confirmation and, once, permission to install apps from this source.
 
 The Gemma weights remain subject to the [Gemma Terms of Use](https://ai.google.dev/gemma/terms) and
 [Gemma Prohibited Use Policy](https://ai.google.dev/gemma/prohibited_use_policy); notices ship in

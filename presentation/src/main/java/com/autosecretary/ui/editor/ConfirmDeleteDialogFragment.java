@@ -9,7 +9,6 @@ import androidx.fragment.app.DialogFragment;
 
 import com.autosecretary.presentation.R;
 import com.autosecretary.ui.FeatureViewModels;
-import com.autosecretary.ui.MainViewModel;
 
 /** Confirmation stays attached to the editor's child FragmentManager. */
 public final class ConfirmDeleteDialogFragment extends DialogFragment {
@@ -18,14 +17,13 @@ public final class ConfirmDeleteDialogFragment extends DialogFragment {
     @NonNull
     @Override
     public Dialog onCreateDialog(Bundle state) {
-        MainViewModel viewModel = FeatureViewModels.main(this);
-        ObligationEditorState editor = viewModel.state().getValue() == null
-                ? null : viewModel.state().getValue().editor();
+        EditorViewModel viewModel = FeatureViewModels.editor(this);
+        ObligationEditorState editor = viewModel.editor();
         String title = editor == null ? "diesen Eintrag" : editor.titleInput();
         return new AlertDialog.Builder(requireContext())
                 .setMessage(getString(R.string.confirm_delete, title))
                 .setPositiveButton(R.string.delete,
-                        (dialog, which) -> viewModel.deleteEditor())
+                        (dialog, which) -> viewModel.delete())
                 .setNegativeButton(R.string.cancel, null)
                 .create();
     }

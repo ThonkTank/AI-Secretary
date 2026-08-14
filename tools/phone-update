@@ -11,7 +11,7 @@ if [[ ${1:-} == "--fresh" ]]; then
   shift
 fi
 if [[ $# -ne 0 ]]; then
-  echo "usage: tools/update-connected-phone [--fresh]" >&2
+  echo "usage: tools/phone-update [--fresh]" >&2
   exit 2
 fi
 
@@ -68,6 +68,22 @@ fi
 ACTUAL_SIGNER=$($APKSIGNER verify --print-certs "$APK" \
   | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr '[:upper:]' '[:lower:]')
 test "$ACTUAL_SIGNER" = "$EXPECTED_SIGNER"
+
+AAPT=${SDK_ROOT:+$SDK_ROOT/build-tools/$BUILD_TOOLS/aapt}
+if [[ -z ${AAPT:-} || ! -x $AAPT ]]; then
+  AAPT=$(command -v aapt || true)
+fi
+if [[ -z $AAPT ]]; then
+  echo "aapt $BUILD_TOOLS was not found" >&2
+  exit 1
+fi
+BADGING=$($AAPT dump badging "$APK" | sed -n '1p')
+VERSION_CODE=$(jq -r .versionCode "$METADATA")
+VERSION_NAME=$(jq -r .versionName "$METADATA")
+case "$BADGING" in
+  *"package: name='$PACKAGE_NAME'"*"versionCode='$VERSION_CODE'"*"versionName='$VERSION_NAME'"*) ;;
+  *) echo "APK package or version does not match metadata: $BADGING" >&2; exit 1 ;;
+esac
 
 if $FRESH; then
   echo "--fresh: removing $PACKAGE_NAME and all of its local data"

@@ -23,7 +23,7 @@ public record BusyInterval(
             throw new IllegalArgumentException("Ungültiger Kalenderblock");
         }
         if (titleVisibility == null) titleVisibility = TitleVisibility.VISIBLE;
-        if (titleVisibility == TitleVisibility.HIDDEN) title = "Kalendertermin";
+        if (titleVisibility == TitleVisibility.HIDDEN) title = null;
         else if (title == null || title.isBlank()) title = "Termin";
     }
 }

@@ -3,16 +3,22 @@ package com.autosecretary.ui.update;
 import com.autosecretary.application.update.UpdateFailure;
 import com.autosecretary.application.update.UpdateInfo;
 import com.autosecretary.application.update.VerifiedUpdate;
+import com.autosecretary.application.update.DownloadTicket;
+import com.autosecretary.application.update.DownloadProgress;
 
 /** Mutually exclusive states for the complete phone-update interaction. */
 public sealed interface UpdateUiState permits UpdateUiState.Idle, UpdateUiState.Checking,
         UpdateUiState.Current, UpdateUiState.Available, UpdateUiState.Downloading,
-        UpdateUiState.Ready, UpdateUiState.Error {
-    default boolean busy() { return this instanceof Checking || this instanceof Downloading; }
+        UpdateUiState.Verifying, UpdateUiState.Ready, UpdateUiState.Error {
+    default boolean busy() {
+        return this instanceof Checking || this instanceof Downloading
+                || this instanceof Verifying;
+    }
     default boolean checked() { return !(this instanceof Idle || this instanceof Checking); }
     default UpdateInfo available() {
         if (this instanceof Available value) return value.update();
         if (this instanceof Downloading value) return value.update();
+        if (this instanceof Verifying value) return value.update();
         if (this instanceof Error value) return value.update();
         return null;
     }
@@ -34,8 +40,22 @@ public sealed interface UpdateUiState permits UpdateUiState.Idle, UpdateUiState.
     record Available(UpdateInfo update) implements UpdateUiState {
         public Available { if (update == null) throw new IllegalArgumentException("Update fehlt"); }
     }
-    record Downloading(UpdateInfo update) implements UpdateUiState {
-        public Downloading { if (update == null) throw new IllegalArgumentException("Update fehlt"); }
+    record Downloading(
+            UpdateInfo update,
+            DownloadTicket ticket,
+            DownloadProgress progress) implements UpdateUiState {
+        public Downloading {
+            if (update == null || ticket == null || progress == null) {
+                throw new IllegalArgumentException("Downloadzustand fehlt");
+            }
+        }
+    }
+    record Verifying(UpdateInfo update, DownloadTicket ticket) implements UpdateUiState {
+        public Verifying {
+            if (update == null || ticket == null) {
+                throw new IllegalArgumentException("Prüfzustand fehlt");
+            }
+        }
     }
     record Ready(VerifiedUpdate update) implements UpdateUiState {
         public Ready { if (update == null) throw new IllegalArgumentException("Update fehlt"); }

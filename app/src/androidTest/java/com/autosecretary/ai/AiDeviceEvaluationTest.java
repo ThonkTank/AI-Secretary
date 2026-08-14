@@ -33,6 +33,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import com.autosecretary.platform.model.LocalModelManager;
+import com.autosecretary.application.TimeProvider;
+import java.time.Instant;
+import java.time.ZoneId;
 
 /** Optional device evaluation of the separately provisioned production model. */
 @RunWith(AndroidJUnit4.class)
@@ -46,14 +50,15 @@ public final class AiDeviceEvaluationTest {
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
         var executor = Executors.newSingleThreadExecutor();
         try {
+            LocalModelManager models = new LocalModelManager(app);
+            models.install();
+            TimeProvider time = new TimeProvider() {
+                @Override public Instant now() { return NOW.toInstant(java.time.ZoneOffset.UTC); }
+                @Override public ZoneId zone() { return java.time.ZoneOffset.UTC; }
+            };
             OnDeviceBulkEditor editor = new OnDeviceBulkEditor(
-                    app, executor, executor, () -> NOW);
-            AtomicBoolean installed = new AtomicBoolean();
-            AtomicReference<Throwable> installError = new AtomicReference<>();
-            editor.installModel(() -> installed.set(true), installError::set)
-                    .get(5, TimeUnit.MINUTES);
-            if (installError.get() != null) throw new AssertionError(installError.get());
-            assertTrue(installed.get());
+                    app, executor, executor, time, models);
+            assertTrue(models.hasModel());
 
             List<WorkItem> current = currentItems();
             List<WorkItem> before = List.copyOf(current);

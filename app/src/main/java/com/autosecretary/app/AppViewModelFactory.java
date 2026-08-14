@@ -10,6 +10,8 @@ import androidx.savedstate.SavedStateRegistryOwner;
 
 import com.autosecretary.ui.MainViewModel;
 import com.autosecretary.ui.ai.AiViewModel;
+import com.autosecretary.ui.editor.EditorViewModel;
+import com.autosecretary.ui.settings.PlanningSettingsViewModel;
 import com.autosecretary.ui.update.UpdateViewModel;
 
 /** The one ViewModel construction entry point for the single-activity app. */
@@ -30,13 +32,22 @@ public final class AppViewModelFactory extends AbstractSavedStateViewModelFactor
             @NonNull SavedStateHandle handle) {
         if (modelClass == MainViewModel.class) {
             return (T) new MainViewModel(handle, graph.planFocus(), graph.workItems(),
-                    graph.moveWorkItem(), graph.clock(), graph.planningSettings(),
+                    graph.moveWorkItem(), graph.clock(),
                     graph.executors().database(), graph.executors().main(),
                     graph::refreshWidgets);
         }
+        if (modelClass == EditorViewModel.class) {
+            return (T) new EditorViewModel(handle, graph.workItems(), graph.clock(),
+                    graph.executors().database(), graph.executors().main());
+        }
+        if (modelClass == PlanningSettingsViewModel.class) {
+            return (T) new PlanningSettingsViewModel(handle, graph.planningSettings(),
+                    graph.executors().database(), graph.executors().main());
+        }
         if (modelClass == AiViewModel.class) {
             return (T) new AiViewModel(
-                    graph.bulkEditor(), graph.aiConsent(), graph.executors().main());
+                    graph.bulkEditor(), graph.aiConsent(), graph.models(),
+                    graph.executors().io(), graph.executors().main());
         }
         if (modelClass == UpdateViewModel.class) {
             return (T) new UpdateViewModel(

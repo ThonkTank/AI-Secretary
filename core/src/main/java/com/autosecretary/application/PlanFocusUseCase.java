@@ -12,6 +12,7 @@ import com.autosecretary.domain.WorkItem;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -24,6 +25,7 @@ public final class PlanFocusUseCase {
     private final PlanningSettingsRepository settingsRepository;
     private final TimeProvider clock;
     private final FocusPlanner planner;
+    private final CalendarPolicy calendarPolicy;
 
     public PlanFocusUseCase(
             WorkItemRepository repository,
@@ -36,14 +38,23 @@ public final class PlanFocusUseCase {
         this.settingsRepository = settingsRepository;
         this.clock = clock;
         this.planner = planner;
+        this.calendarPolicy = new CalendarPolicy();
     }
 
     public DashboardData execute(int focusLimit) {
-        LocalDateTime now = clock.localNow();
+        Instant generatedAt = clock.now();
+        LocalDateTime now = LocalDateTime.ofInstant(generatedAt, clock.zone());
         PlanningSettings settings = settingsRepository.load();
         FocusSnapshot snapshot = repository.loadSnapshot();
-        List<BusyInterval> busy = calendar.read(now.toLocalDate(),
-                now.toLocalDate().plusDays(settings.horizonDays()));
+        LocalDate startDay = now.toLocalDate();
+        TimeRange calendarRange = new TimeRange(
+                startDay.atStartOfDay(clock.zone()).toInstant(),
+                startDay.plusDays(settings.horizonDays()).atStartOfDay(clock.zone()).toInstant());
+        CalendarReadResult calendarResult = calendar.read(calendarRange);
+        boolean permissionMissing = calendarResult instanceof CalendarReadResult.PermissionMissing;
+        List<CalendarOccurrence> occurrences = calendarResult instanceof CalendarReadResult.Available available
+                ? calendarPolicy.relevantOccurrences(available.occurrences()) : List.of();
+        List<BusyInterval> busy = calendarPolicy.busyIntervals(occurrences, clock.zone());
         List<CompletionEvidence> evidence = snapshot.completions().stream()
                 .map(value -> new CompletionEvidence(value.workItemId(), value.completedAt()))
                 .collect(java.util.stream.Collectors.toList());
@@ -65,7 +76,8 @@ public final class PlanFocusUseCase {
             if (seen.add(assignment.workItem().id())) ordered.add(assignment.workItem());
         }
         for (WorkItem item : snapshot.workItems()) if (seen.add(item.id())) ordered.add(item);
-        return new DashboardData(today, ordered, busy, result.conflicts(),
+        return new DashboardData(today, ordered, occurrences, busy, permissionMissing,
+                result.conflicts(),
                 snapshot.completions(),
                 snapshot.stepCompletions(), repository.latestUndoLabel());
     }

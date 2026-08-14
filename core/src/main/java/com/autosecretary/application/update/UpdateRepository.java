@@ -2,7 +2,10 @@ package com.autosecretary.application.update;
 
 /** Application-facing update port. Android and GitHub details stay behind this boundary. */
 public interface UpdateRepository {
-    UpdateInfo check();
-    VerifiedUpdate downloadAndVerify(UpdateInfo update);
+    UpdateCheckResult check();
+    DownloadTicket enqueue(UpdateInfo update);
+    DownloadProgress query(DownloadTicket ticket);
+    VerifiedUpdate verify(DownloadTicket ticket);
+    void cancel(DownloadTicket ticket);
     void cleanup(long installedVersionCode);
 }

@@ -5,7 +5,13 @@ import static org.junit.Assert.assertTrue;
 
 import com.autosecretary.application.DashboardData;
 import com.autosecretary.application.TodayTimeline;
-import com.autosecretary.domain.BusyInterval;
+import com.autosecretary.application.TodayEntry;
+import com.autosecretary.application.CalendarOccurrence;
+import com.autosecretary.application.CalendarOccurrenceId;
+import com.autosecretary.application.CalendarAvailability;
+import com.autosecretary.application.CalendarStatus;
+import com.autosecretary.application.CalendarParticipation;
+import com.autosecretary.application.CalendarVisibility;
 import com.autosecretary.domain.CompletionStats;
 import com.autosecretary.domain.PlanAssignment;
 import com.autosecretary.domain.Task;
@@ -13,7 +19,10 @@ import com.autosecretary.domain.Task;
 import org.junit.Test;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 public final class FocusWidgetFactoryTest {
     @Test
@@ -25,17 +34,26 @@ public final class FocusWidgetFactoryTest {
         PlanAssignment assignment = new PlanAssignment(task, "TASK",
                 now.plusHours(2), now.plusHours(2).plusMinutes(30));
         DashboardData dashboard = new DashboardData(List.of(assignment), List.of(task), List.of(
-                new BusyInterval(now.plusMinutes(30), now.plusHours(1), "Termin A"),
-                new BusyInterval(now.plusHours(1), now.plusHours(1).plusMinutes(30), "Termin B"),
-                new BusyInterval(now.plusHours(3), now.plusHours(4), "Termin C")),
-                List.of(), List.of(), List.of(), null);
+                occurrence(1, now.plusMinutes(30), now.plusHours(1), "Termin A"),
+                occurrence(2, now.plusHours(1), now.plusHours(1).plusMinutes(30), "Termin B"),
+                occurrence(3, now.plusHours(3), now.plusHours(4), "Termin C")),
+                List.of(), false, List.of(), List.of(), List.of(), null);
 
-        List<TodayTimeline.Entry> entries =
+        List<TodayEntry> entries =
                 FocusWidgetFactory.orderedEntries(dashboard, now, 3);
 
         assertEquals(List.of("Termin A", "Termin B", "Aufgabe"),
-                entries.stream().map(TodayTimeline.Entry::title).toList());
-        assertTrue(entries.get(0) instanceof TodayTimeline.Calendar);
-        assertTrue(entries.get(2) instanceof TodayTimeline.Assignment);
+                entries.stream().map(value -> value.title().orElse("privat")).toList());
+        assertTrue(entries.get(0) instanceof TodayEntry.Calendar);
+        assertTrue(entries.get(2) instanceof TodayEntry.Focus);
+    }
+
+    private static CalendarOccurrence occurrence(
+            long id, LocalDateTime start, LocalDateTime end, String title) {
+        Instant instant = start.toInstant(ZoneOffset.UTC);
+        return new CalendarOccurrence(new CalendarOccurrenceId(1, id, instant), instant,
+                end.toInstant(ZoneOffset.UTC), false, CalendarAvailability.BUSY,
+                CalendarStatus.CONFIRMED, CalendarParticipation.ACCEPTED,
+                CalendarVisibility.VISIBLE, Optional.of(title));
     }
 }

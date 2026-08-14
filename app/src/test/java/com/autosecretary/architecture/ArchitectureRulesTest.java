@@ -1,8 +1,11 @@
 package com.autosecretary.architecture;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.core.importer.Location;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.junit.ArchUnitRunner;
@@ -14,8 +17,16 @@ import org.junit.runner.RunWith;
 @RunWith(ArchUnitRunner.class)
 @AnalyzeClasses(
         packages = "com.autosecretary",
-        importOptions = ImportOption.DoNotIncludeTests.class)
+        importOptions = {ImportOption.DoNotIncludeTests.class,
+                ArchitectureRulesTest.ExcludeUnitTestOutput.class})
 public final class ArchitectureRulesTest {
+    public static final class ExcludeUnitTestOutput implements ImportOption {
+        @Override public boolean includes(Location location) {
+            String value = location.asURI().toString();
+            return !value.contains("UnitTest") && !value.contains("test-classes")
+                    && !value.contains("/test/");
+        }
+    }
     @ArchTest
     static final ArchRule core_is_platform_and_adapter_free = noClasses()
             .that().resideInAnyPackage(
@@ -52,4 +63,23 @@ public final class ArchitectureRulesTest {
             .should().dependOnClassesThat().resideInAnyPackage(
                     "com.autosecretary.data..", "android.database..",
                     "androidx.room..", "androidx.sqlite..");
+
+    @ArchTest
+    static final ArchRule production_packages_are_cycle_free = slices()
+            .matching("com.autosecretary.(*)..")
+            .should().beFreeOfCycles()
+            // ViewBinding is generated in the resource namespace and references custom UI views.
+            .ignoreDependency(
+                    JavaClass.Predicates.resideInAPackage("com.autosecretary.presentation.."),
+                    JavaClass.Predicates.resideInAPackage("com.autosecretary.ui.."))
+            .ignoreDependency(
+                    JavaClass.Predicates.resideInAPackage("com.autosecretary.ui.."),
+                    JavaClass.Predicates.resideInAPackage("com.autosecretary.presentation.."));
+
+    @ArchTest
+    static final ArchRule widgets_use_injected_ports_not_the_composition_root = noClasses()
+            .that().resideInAPackage("com.autosecretary.widget..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "com.autosecretary.app..", "com.autosecretary.data..",
+                    "com.autosecretary.platform..");
 }

@@ -3,8 +3,6 @@ package com.autosecretary.widget;
 import android.content.Intent;
 import android.widget.RemoteViewsService;
 
-import com.autosecretary.app.AutoSecretaryApplication;
-
 public final class FocusWidgetService extends RemoteViewsService {
     static final String EXTRA_MAX_ROWS = "max_rows";
     static final String EXTRA_SHOW_STEPS = "show_steps";
@@ -14,7 +12,7 @@ public final class FocusWidgetService extends RemoteViewsService {
     public RemoteViewsFactory onGetViewFactory(Intent intent) {
         return new FocusWidgetFactory(
                 getApplicationContext(),
-                AutoSecretaryApplication.from(this).graph(),
+                WidgetDependencies.from(this),
                 Math.max(1, intent.getIntExtra(EXTRA_MAX_ROWS, 3)),
                 intent.getBooleanExtra(EXTRA_SHOW_STEPS, true),
                 intent.getBooleanExtra(EXTRA_WIDE, false),

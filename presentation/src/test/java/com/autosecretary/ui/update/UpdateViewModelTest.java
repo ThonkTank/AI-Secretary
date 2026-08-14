@@ -10,6 +10,9 @@ import androidx.lifecycle.SavedStateHandle;
 import com.autosecretary.application.update.UpdateInfo;
 import com.autosecretary.application.update.UpdateRepository;
 import com.autosecretary.application.update.VerifiedUpdate;
+import com.autosecretary.application.update.UpdateCheckResult;
+import com.autosecretary.application.update.DownloadTicket;
+import com.autosecretary.application.update.DownloadProgress;
 
 import org.junit.After;
 import org.junit.Rule;
@@ -105,10 +108,19 @@ public final class UpdateViewModelTest {
     }
 
     private record FakeRepository(UpdateInfo update, File apk) implements UpdateRepository {
-        @Override public UpdateInfo check() { return update; }
-        @Override public VerifiedUpdate downloadAndVerify(UpdateInfo ignored) {
+        @Override public UpdateCheckResult check() {
+            return new UpdateCheckResult.Available(update);
+        }
+        @Override public DownloadTicket enqueue(UpdateInfo ignored) {
+            return new DownloadTicket(7, update.versionCode());
+        }
+        @Override public DownloadProgress query(DownloadTicket ticket) {
+            return new DownloadProgress.Complete();
+        }
+        @Override public VerifiedUpdate verify(DownloadTicket ticket) {
             return new VerifiedUpdate(update, apk);
         }
+        @Override public void cancel(DownloadTicket ticket) { }
         @Override public void cleanup(long installedVersionCode) { }
     }
 }

@@ -40,4 +40,7 @@
     <string name="error">Das hat nicht geklappt</string>
     <string name="ok">OK</string>
     <string name="widget_add">＋</string>
+    <string name="calendar_private">Kalendertermin</string>
+    <string name="calendar_permission_missing">Kalenderzugriff fehlt</string>
+    <string name="agenda_error">Termine konnten nicht geladen werden.</string>
 </resources>

@@ -19,7 +19,6 @@ import androidx.fragment.app.DialogFragment;
 import com.autosecretary.presentation.R;
 import com.autosecretary.presentation.databinding.DialogObligationBinding;
 import com.autosecretary.presentation.databinding.RowStepEditorBinding;
-import com.autosecretary.ui.MainViewModel;
 import com.autosecretary.ui.FeatureViewModels;
 import com.autosecretary.ui.LeafActionMenu;
 import com.google.android.material.chip.Chip;
@@ -36,7 +35,7 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
     private static final DateTimeFormatter DISPLAY_DATE = DateTimeFormatter.ofPattern("dd.MM.");
 
     private DialogObligationBinding binding;
-    private MainViewModel viewModel;
+    private EditorViewModel viewModel;
     private ObligationEditorState initial;
     private ObligationEditorState previousStepOrder;
     private final List<StepRow> rows = new ArrayList<>();
@@ -46,7 +45,7 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
     @NonNull
     @Override
     public Dialog onCreateDialog(Bundle state) {
-        viewModel = FeatureViewModels.main(this);
+        viewModel = FeatureViewModels.editor(this);
         binding = DialogObligationBinding.inflate(requireActivity().getLayoutInflater());
         initial = requireEditor();
         page = state == null ? 0 : Math.max(0, Math.min(2, state.getInt(EDITOR_PAGE, 0)));
@@ -70,16 +69,29 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
         installInputListeners();
         render(initial, true);
         viewModel.state().observe(this, value -> {
-            ObligationEditorState editor = value.editor();
-            if (editor == null) {
+            ObligationEditorState editor = viewModel.editor();
+            if (value instanceof EditorUiState.Closed) {
                 dismissAllowingStateLoss();
                 return;
             }
+            if (editor == null) return;
             List<String> ids = editor.steps().stream().map(StepEditorState::id)
                     .collect(java.util.stream.Collectors.toList());
             List<String> currentIds = rows.stream().map(row -> row.state().id())
                     .collect(java.util.stream.Collectors.toList());
             render(editor, !ids.equals(currentIds));
+        });
+        viewModel.effects().observe(this, effect -> {
+            if (effect == null) return;
+            viewModel.consumeEffect(effect.id());
+            if (effect instanceof EditorUiEffect.Saved
+                    || effect instanceof EditorUiEffect.Deleted) {
+                getParentFragmentManager().setFragmentResult(
+                        EditorResultContract.CHANGED, new Bundle());
+            } else if (effect instanceof EditorUiEffect.Error error) {
+                new AlertDialog.Builder(requireContext()).setMessage(error.message())
+                        .setPositiveButton(android.R.string.ok, null).show();
+            }
         });
         return dialog;
     }
@@ -128,11 +140,11 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
                         getChildFragmentManager(), ConfirmDeleteDialogFragment.TAG));
         binding.AddStep.setOnClickListener(view -> {
             sync();
-            viewModel.addEditorStep();
+            viewModel.addStep();
         });
         binding.UndoStepOrder.setOnClickListener(view -> {
             if (previousStepOrder == null) return;
-            viewModel.editEditor(previousStepOrder);
+            viewModel.edit(previousStepOrder);
             previousStepOrder = null;
             binding.StepUndoBar.setVisibility(View.GONE);
         });
@@ -195,7 +207,7 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
     private void setDeadline(String value) {
         if (rendering) return;
         ObligationEditorState source = requireEditor();
-        viewModel.editEditor(source.edit(
+        viewModel.edit(source.edit(
                 binding.EditTitle.getText().toString(),
                 binding.EditDuration.getText().toString(),
                 value, source.timePreferenceInput(), source.flexible(),
@@ -347,18 +359,18 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
     private void moveStep(String id, int delta) {
         sync();
         previousStepOrder = requireEditor();
-        viewModel.moveEditorStep(id, delta);
+        viewModel.moveStep(id, delta);
         binding.StepUndoBar.setVisibility(View.VISIBLE);
     }
 
     private void deleteStep(String id) {
         sync();
-        viewModel.removeEditorStep(id);
+        viewModel.removeStep(id);
     }
 
     private void submit() {
         sync();
-        viewModel.submitEditor(requireEditor());
+        viewModel.submit(requireEditor());
     }
 
     private void advanceOrSubmit() {
@@ -436,7 +448,7 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
         sync();
         ObligationEditorState current = requireEditor();
         if (sameInputs(initial, current)) {
-            viewModel.closeEditor();
+            viewModel.close();
             return;
         }
         String changed = current.routine()
@@ -447,7 +459,7 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
                 .setMessage(changed)
                 .setPositiveButton("Speichern", (dialog, which) -> submit())
                 .setNegativeButton("weiter bearbeiten", null)
-                .setNeutralButton("Verwerfen", (dialog, which) -> viewModel.closeEditor())
+                .setNeutralButton("Verwerfen", (dialog, which) -> viewModel.close())
                 .create();
         warning.show();
         warning.getButton(AlertDialog.BUTTON_NEUTRAL)
@@ -456,10 +468,9 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
 
     private void sync() {
         if (rendering || binding == null || viewModel == null
-                || viewModel.state().getValue() == null
-                || viewModel.state().getValue().editor() == null) return;
-        ObligationEditorState source = viewModel.state().getValue().editor();
-        viewModel.editEditor(source.edit(
+                || viewModel.editor() == null) return;
+        ObligationEditorState source = viewModel.editor();
+        viewModel.edit(source.edit(
                 binding.EditTitle.getText().toString(),
                 binding.EditDuration.getText().toString(),
                 source.routine() ? "" : source.deadlineInput(),
@@ -601,11 +612,10 @@ public final class ObligationEditorDialogFragment extends DialogFragment {
     }
 
     private ObligationEditorState requireEditor() {
-        if (viewModel == null || viewModel.state().getValue() == null
-                || viewModel.state().getValue().editor() == null) {
+        if (viewModel == null || viewModel.editor() == null) {
             throw new IllegalStateException("Editorzustand fehlt");
         }
-        return viewModel.state().getValue().editor();
+        return viewModel.editor();
     }
 
     private static final class StepRow {

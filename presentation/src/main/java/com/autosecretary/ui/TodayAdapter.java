@@ -14,6 +14,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.ListAdapter;
+import androidx.recyclerview.widget.DiffUtil;
 
 import com.autosecretary.presentation.R;
 import com.autosecretary.application.MoveWorkItemUseCase;
@@ -21,11 +23,10 @@ import com.autosecretary.presentation.databinding.RowCalendarBinding;
 import com.autosecretary.presentation.databinding.RowFocusBinding;
 
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 
 /** Pure heterogeneous renderer for the shared task and calendar timeline. */
-final class TodayAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+final class TodayAdapter extends ListAdapter<TodayRow, RecyclerView.ViewHolder> {
     interface Listener {
         void onComplete(String id);
         void onStepChanged(String id, String stepId, boolean completed);
@@ -35,18 +36,40 @@ final class TodayAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final int FOCUS = 0;
     private static final int CALENDAR = 1;
+    private static final DiffUtil.ItemCallback<TodayRow> DIFFERENCE =
+            new DiffUtil.ItemCallback<>() {
+                @Override public boolean areItemsTheSame(
+                        @NonNull TodayRow oldItem, @NonNull TodayRow newItem) {
+                    return oldItem.stableId().equals(newItem.stableId());
+                }
+
+                @Override public boolean areContentsTheSame(
+                        @NonNull TodayRow oldItem, @NonNull TodayRow newItem) {
+                    if (oldItem instanceof TodayRow.Focus oldFocus
+                            && newItem instanceof TodayRow.Focus newFocus) {
+                        return oldFocus.value().equals(newFocus.value());
+                    }
+                    if (oldItem instanceof TodayRow.Calendar oldCalendar
+                            && newItem instanceof TodayRow.Calendar newCalendar) {
+                        return oldCalendar.value().equals(newCalendar.value());
+                    }
+                    return false;
+                }
+            };
     private final Listener listener;
-    private List<TodayRow> items = List.of();
     private boolean evening;
     private String movedId;
     private String movedLabel;
     private long movedUntil;
 
-    TodayAdapter(Listener listener) { this.listener = listener; }
+    TodayAdapter(Listener listener) {
+        super(DIFFERENCE);
+        this.listener = listener;
+        setHasStableIds(true);
+    }
 
     void submit(List<TodayRow> values) {
-        items = new ArrayList<>(values);
-        notifyDataSetChanged();
+        submitList(List.copyOf(values));
     }
 
     void setEvening(boolean value) {
@@ -56,7 +79,11 @@ final class TodayAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     @Override public int getItemViewType(int position) {
-        return items.get(position) instanceof TodayRow.Calendar ? CALENDAR : FOCUS;
+        return getItem(position) instanceof TodayRow.Calendar ? CALENDAR : FOCUS;
+    }
+
+    @Override public long getItemId(int position) {
+        return getItem(position).stableId().hashCode();
     }
 
     @NonNull
@@ -71,7 +98,7 @@ final class TodayAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     @Override public void onBindViewHolder(
             @NonNull RecyclerView.ViewHolder holder, int position) {
-        TodayRow item = items.get(position);
+        TodayRow item = getItem(position);
         if (item instanceof TodayRow.Calendar calendar) {
             bindCalendar((CalendarHolder) holder, calendar.value(), position);
         } else {
@@ -91,7 +118,7 @@ final class TodayAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         row.CalendarTime.setText(item.start().format(DateTimeFormatter.ofPattern("HH:mm")));
         row.CalendarTitle.setText(item.title());
         row.CalendarLabel.setText(marker(row.getRoot(), position) + " · "
-                + ("Kalendertermin".equals(item.title())
+                + (item.titleHidden()
                 ? "privat · Titel nicht lesbar" : "im Kalender, fest"));
         if (evening) {
             row.CalendarTime.setTextColor(Color.rgb(147, 195, 210));
@@ -132,7 +159,7 @@ final class TodayAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         row.FocusTitle.setTextColor(evening ? 0xFFF8ECD2
                 : row.getRoot().getContext().getColor(R.color.ink));
         boolean anchor = position == 0;
-        boolean secondFullBlock = position == 1 && items.size() == 2;
+        boolean secondFullBlock = position == 1 && getCurrentList().size() == 2;
         row.FocusLeaf.setBackgroundResource(item.overdue() ? R.drawable.bg_leaf_overdue
                 : anchor ? evening ? R.drawable.bg_leaf_focus_evening : R.drawable.bg_leaf_focus
                 : position == 1
@@ -240,8 +267,6 @@ final class TodayAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         movedUntil = android.os.SystemClock.uptimeMillis() + 1_000L;
         listener.onMove(id, direction);
     }
-
-    @Override public int getItemCount() { return items.size(); }
 
     private static String durationCopy(int minutes) {
         return switch (minutes) {

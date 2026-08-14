@@ -6,20 +6,20 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.LifecycleOwner;
 
 import com.autosecretary.presentation.R;
-import com.autosecretary.presentation.databinding.ActivityMainBinding;
+import com.autosecretary.presentation.databinding.FragmentAiBinding;
 
 import java.util.function.Consumer;
 
 /** Owns local-AI panel rendering and dialog transitions. */
 public final class AiPanelController {
     private final AppCompatActivity activity;
-    private final ActivityMainBinding binding;
+    private final FragmentAiBinding binding;
     private final AiViewModel viewModel;
     private final Consumer<String> errorHandler;
 
     public AiPanelController(
             AppCompatActivity activity,
-            ActivityMainBinding binding,
+            FragmentAiBinding binding,
             AiViewModel viewModel,
             Consumer<String> errorHandler) {
         this.activity = activity;
@@ -32,6 +32,7 @@ public final class AiPanelController {
 
     public void bind(LifecycleOwner owner) {
         viewModel.state().observe(owner, this::render);
+        viewModel.effects().observe(owner, this::handleEffect);
     }
 
     private void render(AiUiState state) {
@@ -51,16 +52,17 @@ public final class AiPanelController {
                 ? state.operation() == AiUiState.Operation.INFERENCE
                         ? R.string.ai_working : R.string.model_importing
                 : state.modelReady() ? R.string.model_ready : R.string.model_download);
-        if (state.error() != null) {
-            errorHandler.accept(state.error());
+    }
+
+    private void handleEffect(AiUiEffect effect) {
+        if (effect == null) return;
+        viewModel.consumeEffect(effect.id());
+        if (effect instanceof AiUiEffect.ShowError error) {
+            errorHandler.accept(error.message());
             viewModel.consumeError();
-            return;
-        }
-        if (state.openEditorId() > 0) {
-            viewModel.consumeOpenEditor();
+        } else if (effect instanceof AiUiEffect.OpenInstruction) {
             showInstruction();
-        }
-        if (state.proposal() != null
+        } else if (effect instanceof AiUiEffect.OpenProposal
                 && activity.getSupportFragmentManager().findFragmentByTag(
                         AiProposalDialogFragment.TAG) == null
                 && !activity.getSupportFragmentManager().isStateSaved()) {

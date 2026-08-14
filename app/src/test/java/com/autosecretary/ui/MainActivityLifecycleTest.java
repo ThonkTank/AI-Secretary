@@ -10,7 +10,9 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.test.core.app.ApplicationProvider;
 
 import com.autosecretary.app.AutoSecretaryApplication;
+import com.autosecretary.app.MainActivity;
 import com.autosecretary.ui.editor.ObligationEditorDialogFragment;
+import com.autosecretary.ui.editor.EditorViewModel;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -37,27 +39,30 @@ public final class MainActivityLifecycleTest {
         var controller = Robolectric.buildActivity(MainActivity.class).setup();
         MainActivity activity = controller.get();
         MainViewModel initialViewModel = viewModel(activity);
-        await(() -> initialViewModel.state().getValue() != null
-                && initialViewModel.state().getValue().dashboard() != null);
+        await(() -> initialViewModel.state().getValue() instanceof MainUiState.Ready);
         initialViewModel.selectSurface(Surface.ALL);
         initialViewModel.selectFilter(WorkItemFilter.ROUTINES);
-        initialViewModel.openEditor(false, null);
-        var editor = initialViewModel.state().getValue().editor();
-        initialViewModel.editEditor(editor.edit("Rohentwurf", "noch offen", "",
+        EditorViewModel initialEditor = editorViewModel(activity);
+        initialEditor.open(false, null);
+        var editor = initialEditor.editor();
+        initialEditor.edit(editor.edit("Rohentwurf", "noch offen", "",
                 "", true, "", "", List.of()));
+        new ObligationEditorDialogFragment().show(
+                activity.getSupportFragmentManager(), ObligationEditorDialogFragment.TAG);
         Shadows.shadowOf(Looper.getMainLooper()).idle();
 
         activity = controller.recreate().get();
         MainActivity recreated = activity;
         MainViewModel recreatedViewModel = viewModel(recreated);
+        EditorViewModel recreatedEditor = editorViewModel(recreated);
         await(() -> recreatedViewModel.state().getValue() != null);
 
         assertEquals(Surface.ALL, recreatedViewModel.state().getValue().surface());
         assertEquals(WorkItemFilter.ROUTINES, recreatedViewModel.state().getValue().filter());
         assertEquals("Rohentwurf",
-                recreatedViewModel.state().getValue().editor().titleInput());
+                recreatedEditor.editor().titleInput());
         assertEquals("noch offen",
-                recreatedViewModel.state().getValue().editor().durationInput());
+                recreatedEditor.editor().durationInput());
         assertNotNull(recreated.getSupportFragmentManager().findFragmentByTag(
                 ObligationEditorDialogFragment.TAG));
         controller.pause().stop().destroy();
@@ -67,6 +72,11 @@ public final class MainActivityLifecycleTest {
     private static MainViewModel viewModel(MainActivity activity) {
         return new ViewModelProvider(activity, activity.featureViewModelFactory())
                 .get(MainViewModel.class);
+    }
+
+    private static EditorViewModel editorViewModel(MainActivity activity) {
+        return new ViewModelProvider(activity, activity.featureViewModelFactory())
+                .get(EditorViewModel.class);
     }
 
     private static void await(BooleanSupplier condition) {

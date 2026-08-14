@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/CompletedTitle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="11dp"
+    android:background="@drawable/bg_leaf_middle"
+    android:fontFamily="@font/newsreader"
+    android:paddingStart="22dp"
+    android:paddingTop="15dp"
+    android:paddingEnd="22dp"
+    android:paddingBottom="15dp"
+    android:textColor="@color/ink_secondary"
+    android:textSize="21sp" />

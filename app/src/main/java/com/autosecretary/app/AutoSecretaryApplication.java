@@ -15,9 +15,11 @@ import com.autosecretary.application.LocationPort;
 import com.autosecretary.application.update.VerifiedUpdate;
 import com.autosecretary.background.BackgroundScheduler;
 
-public final class AutoSecretaryApplication extends Application implements Configuration.Provider {
+public final class AutoSecretaryApplication extends Application implements Configuration.Provider,
+        com.autosecretary.widget.WidgetDependencies.Provider {
     private AppGraph graph;
     private AppExecutors executors;
+    private com.autosecretary.widget.WidgetDependencies widgetDependencies;
 
     @Override
     public void onCreate() {
@@ -45,6 +47,10 @@ public final class AutoSecretaryApplication extends Application implements Confi
         return graph().updateInstaller().installerIntent(host, update);
     }
     public AiProposalGateway bulkEditor() { return graph().bulkEditor(); }
+    @Override public synchronized com.autosecretary.widget.WidgetDependencies widgetDependencies() {
+        if (widgetDependencies == null) widgetDependencies = new AppWidgetDependencies(graph());
+        return widgetDependencies;
+    }
     @Override
     public void onTerminate() {
         if (graph != null) graph.close();

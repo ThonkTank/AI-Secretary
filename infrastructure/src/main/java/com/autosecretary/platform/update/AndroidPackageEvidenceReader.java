@@ -21,7 +21,7 @@ final class AndroidPackageEvidenceReader {
         this.packageName = packageName;
     }
 
-    UpdatePackageVerifier.PackageEvidence installed() throws Exception {
+    UpdateArtifactVerifier.PackageEvidence installed() throws Exception {
         PackageInfo info = packageInfo(packageName, null);
         var evidence = evidence(info);
         if (evidence == null || !packageName.equals(evidence.packageName())
@@ -31,7 +31,7 @@ final class AndroidPackageEvidenceReader {
         return evidence;
     }
 
-    UpdatePackageVerifier.PackageEvidence archive(File apk) throws Exception {
+    UpdateArtifactVerifier.PackageEvidence archive(File apk) throws Exception {
         return evidence(packageInfo(null, apk));
     }
 
@@ -43,12 +43,12 @@ final class AndroidPackageEvidenceReader {
                 : manager.getPackageArchiveInfo(archive.getAbsolutePath(), flags);
     }
 
-    private static UpdatePackageVerifier.PackageEvidence evidence(PackageInfo info)
+    private static UpdateArtifactVerifier.PackageEvidence evidence(PackageInfo info)
             throws Exception {
         if (info == null) return null;
         long version = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
                 ? info.getLongVersionCode() : info.versionCode;
-        return new UpdatePackageVerifier.PackageEvidence(
+        return new UpdateArtifactVerifier.PackageEvidence(
                 info.packageName, version, certificateDigests(info));
     }
 

@@ -5,9 +5,12 @@ import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Environment;
-import android.os.SystemClock;
 
 import com.google.mediapipe.tasks.genai.llminference.LlmInference;
+import com.autosecretary.application.model.ModelDownloadProgress;
+import com.autosecretary.application.model.ModelDownloadTicket;
+import com.autosecretary.application.model.ModelRepository;
+import com.autosecretary.application.model.ModelStatus;
 
 import org.json.JSONObject;
 
@@ -21,18 +24,17 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 
 /** Owns the resumable, verified local model lifecycle; it performs no thread creation. */
-public final class LocalModelManager {
+public final class LocalModelManager implements ModelRepository {
     private static final String MANIFEST_ASSET = "model-manifest.json";
     private static final String PREFERENCES = "validated_local_model";
     private static final String VALIDATED_FINGERPRINT = "fingerprint";
     private static final String VALIDATED_SHA256 = "manifest_sha256";
     private static final String PENDING_DOWNLOAD_ID = "pending_download_id";
     private static final String PENDING_MODEL_ID = "pending_model_id";
+    private static final String PENDING_REVISION = "pending_revision";
     private static final long MAX_MODEL_BYTES = 800L * 1024L * 1024L;
-    private static final long DOWNLOAD_TIMEOUT_MS = TimeUnit.HOURS.toMillis(2);
     public static final String VALIDATION_PROMPT = """
             Output exactly one JSON object and no other text.
             Example: {"status":"ok"}
@@ -97,56 +99,137 @@ public final class LocalModelManager {
         return new File(context.getFilesDir(), manifest.fileName());
     }
 
-    /** Reuses a legacy installed model or resumes the one persisted system download. */
-    public void install() throws Exception {
-        if (hasModel()) return;
-        File existing = file();
-        if (existing.isFile() && existing.length() == manifest.sizeBytes()
-                && sha256(existing).equals(manifest.sha256())) {
-            validate(existing);
-            requireNotInterrupted();
-            markValidated(existing);
-            return;
+    @Override public ModelStatus status() {
+        if (hasModel()) return new ModelStatus.Ready(file().toPath(), manifest.sizeBytes());
+        long id = pendingDownloadId();
+        if (id > 0 && manifest.modelId().equals(pendingModelId())
+                && manifest.revision().equals(pendingRevision())) {
+            ModelDownloadTicket ticket = ticket(id);
+            ModelDownloadProgress progress = query(ticket);
+            return progress instanceof ModelDownloadProgress.Failed failed
+                    ? new ModelStatus.Failed(failed.detail(), manifest.sizeBytes())
+                    : new ModelStatus.Downloading(ticket, progress, manifest.sizeBytes());
         }
+        return new ModelStatus.Missing(manifest.sizeBytes());
+    }
 
-        File downloaded = downloadTarget();
-        long downloadId = pendingDownloadId();
-        if (downloadId < 1 || !manifest.modelId().equals(pendingModelId())) {
-            clearPendingDownload(false);
+    @Override public ModelDownloadTicket enqueue() {
+        try {
+            File existing = file();
+            if (hasModel() || existing.isFile() && existing.length() == manifest.sizeBytes()
+                    && sha256(existing).equals(manifest.sha256())) {
+                return ticket(0);
+            }
+            long current = pendingDownloadId();
+            if (current > 0 && manifest.modelId().equals(pendingModelId())
+                    && manifest.revision().equals(pendingRevision())) {
+                ModelDownloadTicket ticket = ticket(current);
+                if (!(query(ticket) instanceof ModelDownloadProgress.Failed)) return ticket;
+            }
+            clearPendingDownload(true);
+            File downloaded = downloadTarget();
             if (downloaded.exists() && !downloaded.delete()) {
                 throw new IllegalStateException("Alte Modelldatei konnte nicht entfernt werden");
             }
-            downloadId = enqueue(downloaded);
-            rememberDownload(downloadId);
-        }
-
-        try {
-            await(downloadId, downloaded);
-            requireNotInterrupted();
-            if (downloaded.length() != manifest.sizeBytes()) {
-                throw new SecurityException("Heruntergeladenes Modell hat eine unerwartete Größe");
-            }
-            if (!sha256(downloaded).equals(manifest.sha256())) {
-                throw new SecurityException("Heruntergeladenes Modell ist beschädigt");
-            }
-            File temporary = new File(context.getFilesDir(), manifest.fileName() + ".partial");
-            copyVerified(downloaded, temporary);
-            validate(temporary);
-            requireNotInterrupted();
-            replace(temporary, existing);
-            markValidated(existing);
-            clearPendingDownload(true);
-        } catch (InterruptedException cancelled) {
-            clearPendingDownload(true);
-            Thread.currentThread().interrupt();
-            throw cancelled;
-        } catch (Exception error) {
-            clearPendingDownload(true);
+            long id = enqueueDownload(downloaded);
+            rememberDownload(id);
+            return ticket(id);
+        } catch (RuntimeException error) {
             throw error;
+        } catch (Exception error) {
+            throw new IllegalStateException("Modelldownload konnte nicht gestartet werden", error);
         }
     }
 
-    private long enqueue(File destination) {
+    @Override public ModelDownloadProgress query(ModelDownloadTicket ticket) {
+        if (!matches(ticket)) {
+            return new ModelDownloadProgress.Failed(
+                    "Modelldownload ist verschwunden oder gehört zu einer anderen Revision", true);
+        }
+        if (ticket.id() == 0) return new ModelDownloadProgress.Complete();
+        try (Cursor cursor = manager().query(
+                new DownloadManager.Query().setFilterById(ticket.id()))) {
+            if (cursor == null || !cursor.moveToFirst()) {
+                return new ModelDownloadProgress.Failed("Modelldownload ist verschwunden", true);
+            }
+            int status = cursor.getInt(cursor.getColumnIndexOrThrow(
+                    DownloadManager.COLUMN_STATUS));
+            long downloaded = Math.max(0, cursor.getLong(cursor.getColumnIndexOrThrow(
+                    DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)));
+            long total = cursor.getLong(cursor.getColumnIndexOrThrow(
+                    DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+            return switch (status) {
+                case DownloadManager.STATUS_PENDING, DownloadManager.STATUS_PAUSED ->
+                        new ModelDownloadProgress.Pending();
+                case DownloadManager.STATUS_RUNNING ->
+                        new ModelDownloadProgress.Running(downloaded, total);
+                case DownloadManager.STATUS_SUCCESSFUL -> new ModelDownloadProgress.Complete();
+                case DownloadManager.STATUS_FAILED -> new ModelDownloadProgress.Failed(
+                        "Modelldownload ist fehlgeschlagen: " + cursor.getInt(
+                                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)), true);
+                default -> new ModelDownloadProgress.Failed(
+                        "Unbekannter Modelldownload-Zustand: " + status, true);
+            };
+        }
+    }
+
+    @Override public java.nio.file.Path verifyAndActivate(ModelDownloadTicket ticket) {
+        if (!matches(ticket)) throw new IllegalStateException("Modelldownload-Ticket ist ungültig");
+        File active = file();
+        File candidate = ticket.id() == 0 ? active : downloadTarget();
+        File temporary = new File(context.getFilesDir(), manifest.fileName() + ".partial");
+        try {
+            if (!(query(ticket) instanceof ModelDownloadProgress.Complete)) {
+                throw new IllegalStateException("Modelldownload ist noch nicht vollständig");
+            }
+            if (!candidate.isFile() || candidate.length() != manifest.sizeBytes()) {
+                throw new SecurityException("Heruntergeladenes Modell hat eine unerwartete Größe");
+            }
+            if (!sha256(candidate).equals(manifest.sha256())) {
+                throw new SecurityException("Heruntergeladenes Modell ist beschädigt");
+            }
+            if (ticket.id() == 0) {
+                validate(active);
+                markValidated(active);
+                return active.toPath();
+            }
+            copyVerified(candidate, temporary);
+            validate(temporary);
+            replace(temporary, active);
+            markValidated(active);
+            clearPendingDownload(true);
+            cleanupObsolete(active);
+            return active.toPath();
+        } catch (RuntimeException error) {
+            temporary.delete();
+            if (ticket.id() > 0) clearPendingDownload(true);
+            throw error;
+        } catch (Exception error) {
+            temporary.delete();
+            if (ticket.id() > 0) clearPendingDownload(true);
+            throw new IllegalStateException("Modell konnte nicht aktiviert werden", error);
+        }
+    }
+
+    @Override public void cancel(ModelDownloadTicket ticket) {
+        if (ticket.id() > 0 && matches(ticket)) clearPendingDownload(true);
+        new File(context.getFilesDir(), manifest.fileName() + ".partial").delete();
+    }
+
+    /** Reuses a legacy installed model or resumes the one persisted system download. */
+    public void install() throws Exception {
+        ModelDownloadTicket ticket = enqueue();
+        while (!(query(ticket) instanceof ModelDownloadProgress.Complete)) {
+            if (query(ticket) instanceof ModelDownloadProgress.Failed failed) {
+                throw new IllegalStateException(failed.detail());
+            }
+            requireNotInterrupted();
+            Thread.sleep(1_000);
+        }
+        verifyAndActivate(ticket);
+    }
+
+    private long enqueueDownload(File destination) {
         DownloadManager manager = manager();
         DownloadManager.Request request = new DownloadManager.Request(Uri.parse(manifest.url()))
                 .setTitle("Auto Secretary · Lokale KI")
@@ -160,41 +243,10 @@ public final class LocalModelManager {
         return manager.enqueue(request);
     }
 
-    private void await(long downloadId, File destination) throws Exception {
-        long deadline = SystemClock.elapsedRealtime() + DOWNLOAD_TIMEOUT_MS;
-        while (true) {
-            DownloadState state = query(manager(), downloadId);
-            if (state.status() == DownloadManager.STATUS_SUCCESSFUL) {
-                if (!destination.isFile()) {
-                    throw new IllegalStateException("Systemdownload meldet keine Modelldatei");
-                }
-                return;
-            }
-            if (state.status() == DownloadManager.STATUS_FAILED || state.status() == 0) {
-                throw new IllegalStateException(
-                        "Modelldownload ist fehlgeschlagen: " + state.reason());
-            }
-            requireNotInterrupted();
-            if (SystemClock.elapsedRealtime() >= deadline) {
-                throw new IllegalStateException("Modelldownload hat das Zeitlimit überschritten");
-            }
-            Thread.sleep(1_000);
-        }
-    }
-
     private DownloadManager manager() {
         DownloadManager manager = context.getSystemService(DownloadManager.class);
         if (manager == null) throw new IllegalStateException("DownloadManager ist nicht verfügbar");
         return manager;
-    }
-
-    private static DownloadState query(DownloadManager manager, long id) {
-        try (Cursor cursor = manager.query(new DownloadManager.Query().setFilterById(id))) {
-            if (cursor == null || !cursor.moveToFirst()) return new DownloadState(0, 0);
-            return new DownloadState(
-                    cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)),
-                    cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)));
-        }
     }
 
     private File downloadTarget() {
@@ -217,10 +269,16 @@ public final class LocalModelManager {
                 .getString(PENDING_MODEL_ID, "");
     }
 
+    private String pendingRevision() {
+        return context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+                .getString(PENDING_REVISION, "");
+    }
+
     private void rememberDownload(long id) {
         if (!context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
                 .putLong(PENDING_DOWNLOAD_ID, id)
-                .putString(PENDING_MODEL_ID, manifest.modelId()).commit()) {
+                .putString(PENDING_MODEL_ID, manifest.modelId())
+                .putString(PENDING_REVISION, manifest.revision()).commit()) {
             manager().remove(id);
             throw new IllegalStateException("Modelldownload konnte nicht gespeichert werden");
         }
@@ -230,7 +288,8 @@ public final class LocalModelManager {
         long id = pendingDownloadId();
         if (id > 0) manager().remove(id);
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
-                .remove(PENDING_DOWNLOAD_ID).remove(PENDING_MODEL_ID).commit();
+                .remove(PENDING_DOWNLOAD_ID).remove(PENDING_MODEL_ID)
+                .remove(PENDING_REVISION).commit();
         if (removeFile) downloadTarget().delete();
     }
 
@@ -329,11 +388,29 @@ public final class LocalModelManager {
         }
     }
 
+    private ModelDownloadTicket ticket(long id) {
+        return new ModelDownloadTicket(id, manifest.modelId(), manifest.revision());
+    }
+
+    private boolean matches(ModelDownloadTicket ticket) {
+        if (!manifest.modelId().equals(ticket.modelId())
+                || !manifest.revision().equals(ticket.revision())) return false;
+        return ticket.id() == 0 || ticket.id() == pendingDownloadId()
+                && manifest.modelId().equals(pendingModelId())
+                && manifest.revision().equals(pendingRevision());
+    }
+
+    private void cleanupObsolete(File active) {
+        File[] files = context.getFilesDir().listFiles((directory, name) ->
+                name.endsWith(".task") || name.endsWith(".partial"));
+        if (files == null) return;
+        for (File candidate : files) if (!candidate.equals(active)) candidate.delete();
+    }
+
     private static String hex(byte[] bytes) {
         StringBuilder result = new StringBuilder(bytes.length * 2);
         for (byte value : bytes) result.append(String.format(Locale.ROOT, "%02x", value));
         return result.toString();
     }
 
-    private record DownloadState(int status, int reason) { }
 }

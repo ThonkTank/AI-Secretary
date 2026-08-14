@@ -10,7 +10,9 @@ import java.util.List;
 public record DashboardData(
         List<PlanAssignment> focus,
         List<WorkItem> workItems,
-        List<BusyInterval> calendar,
+        List<CalendarOccurrence> calendarOccurrences,
+        List<BusyInterval> busyIntervals,
+        boolean calendarPermissionMissing,
         List<PlanConflict> conflicts,
         List<CompletionRecord> completions,
         List<StepCompletion> stepCompletions,
@@ -18,7 +20,8 @@ public record DashboardData(
     public DashboardData {
         focus = List.copyOf(focus);
         workItems = List.copyOf(workItems);
-        calendar = List.copyOf(calendar);
+        calendarOccurrences = List.copyOf(calendarOccurrences);
+        busyIntervals = List.copyOf(busyIntervals);
         conflicts = List.copyOf(conflicts);
         completions = List.copyOf(completions);
         stepCompletions = List.copyOf(stepCompletions);

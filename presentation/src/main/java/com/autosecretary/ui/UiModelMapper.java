@@ -2,54 +2,31 @@ package com.autosecretary.ui;
 
 import com.autosecretary.application.DashboardData;
 import com.autosecretary.application.StepCompletion;
-import com.autosecretary.application.TodayTimeline;
-import com.autosecretary.domain.BusyInterval;
-import com.autosecretary.domain.PlanAssignment;
 import com.autosecretary.domain.Routine;
 import com.autosecretary.domain.Task;
 import com.autosecretary.domain.WorkItem;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /** Maps application data into complete presentation rows before adapter binding. */
 public final class UiModelMapper {
     private UiModelMapper() { }
 
-    public static Dashboard dashboard(DashboardData data, LocalDateTime now) {
-        LocalDate today = now.toLocalDate();
-        List<TodayRow> timeline = TodayTimeline.from(data, now).entries().stream()
-                .map(entry -> entry instanceof TodayTimeline.Assignment assignment
-                        ? new TodayRow.Focus(focusRow(assignment.value(), data, today,
-                                assignment.precedingCalendar()))
-                        : new TodayRow.Calendar(calendarRow(
-                                ((TodayTimeline.Calendar) entry).value())))
-                .collect(java.util.stream.Collectors.toList());
+    public static Dashboard dashboard(
+            DashboardData data,
+            com.autosecretary.application.TodayTimeline timeline,
+            ZoneId zone,
+            String hiddenCalendarTitle) {
+        LocalDate today = timeline.day();
+        List<TodayRow> todayRows = new TodayPresenter().present(
+                data, timeline, zone, hiddenCalendarTitle).rows();
         List<WorkItemRow> rows = data.workItems().stream()
                 .map(item -> workItemRow(item, data.stepCompletions(),
                         data.completions(), today))
                 .collect(java.util.stream.Collectors.toList());
-        return new Dashboard(timeline, rows);
-    }
-
-    private static CalendarRow calendarRow(BusyInterval item) {
-        return new CalendarRow(item.start(), item.end(), item.title());
-    }
-
-    private static FocusRow focusRow(
-            PlanAssignment assignment, DashboardData data, LocalDate today,
-            BusyInterval precedingCalendar) {
-        WorkItem item = assignment.workItem();
-        List<StepRow> steps = stepRows(item, assignment.occurrenceKey(),
-                assignment.start().toLocalDate(), data.stepCompletions());
-        String preceding = precedingCalendar == null ? null : precedingCalendar.title();
-        return new FocusRow(item.id(), item.title(), item.durationMinutes(),
-                assignment.start(), assignment.end(), steps, preceding,
-                item instanceof Routine,
-                item instanceof Routine routine && routine.nextDueDate().isBefore(today)
-                        || item.deadlineAt() != null
-                        && item.deadlineAt().toLocalDate().isBefore(today));
+        return new Dashboard(todayRows, rows);
     }
 
     private static WorkItemRow workItemRow(
@@ -69,7 +46,7 @@ public final class UiModelMapper {
                 ? completionDate(item.id(), completions) : null);
     }
 
-    private static List<StepRow> stepRows(
+    static List<StepRow> stepRows(
             WorkItem item,
             String occurrenceKey,
             LocalDate effectiveDay,

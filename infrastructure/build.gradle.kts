@@ -1,11 +1,8 @@
-plugins { id("com.android.library") }
+plugins { id("autosecretary.android-library") }
 
 android {
     namespace = "com.autosecretary.infrastructure"
-    compileSdk = 35
-
     defaultConfig {
-        minSdk = 26
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments["room.schemaLocation"] = rootProject.file("schemas").absolutePath
@@ -14,12 +11,6 @@ android {
         }
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
 dependencies {

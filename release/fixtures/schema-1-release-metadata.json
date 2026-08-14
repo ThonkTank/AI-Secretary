@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "versionCode": 2001202,
+  "versionName": "2.1.1",
+  "packageName": "com.autosecretary",
+  "apkAsset": "AutoSecretary.apk",
+  "apkSizeBytes": 60000000,
+  "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "signerSha256": "de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da",
+  "commitSha": "cccccccccccccccccccccccccccccccccccccccc"
+}

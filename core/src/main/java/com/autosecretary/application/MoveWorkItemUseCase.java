@@ -37,18 +37,24 @@ public final class MoveWorkItemUseCase {
             }
             default -> throw new IllegalStateException("Unbekannte Verschiebung");
         }
+        LocalDateTime now = LocalDateTime.ofInstant(clock.now(), clock.zone());
         repository.saveDirective(new DayPlanDirective(UUID.randomUUID().toString(), day, id,
-                relation, anchor, clock.localNow()), "Sortierung rückgängig machen");
+                relation, anchor, now), "Sortierung rückgängig machen");
     }
 
     public void executeToday(String id, Direction direction, List<String> visibleOrder) {
-        execute(id, direction, clock.localNow().toLocalDate(), visibleOrder);
+        execute(id, direction, now().toLocalDate(), visibleOrder);
     }
 
     /** Removes one occurrence from today's plan without changing or completing its work item. */
     public void omitToday(String id) {
+        LocalDateTime now = now();
         repository.saveDirective(new DayPlanDirective(UUID.randomUUID().toString(),
-                clock.localNow().toLocalDate(), id, DayPlanDirective.Relation.OMIT, null, clock.localNow()),
+                now.toLocalDate(), id, DayPlanDirective.Relation.OMIT, null, now),
                 "Aus heute genommen · zurückholen");
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.ofInstant(clock.now(), clock.zone());
     }
 }

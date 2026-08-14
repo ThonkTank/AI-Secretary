@@ -19,7 +19,7 @@ public final class UpdatePackageVerifierTest {
     public void acceptsOnlyMatchingNewerPackageHashAndSigner() throws Exception {
         File apk = apk();
         UpdateInfo update = update(apk, 6, "com.autosecretary", SIGNER);
-        UpdatePackageVerifier.verify(apk, update, 5, "com.autosecretary",
+        UpdateArtifactVerifier.verify(apk, update, 5, "com.autosecretary",
                 evidence("com.autosecretary", 5, SIGNER),
                 evidence("com.autosecretary", 6, SIGNER));
     }
@@ -74,8 +74,8 @@ public final class UpdatePackageVerifierTest {
     }
 
     private void verify(File apk, UpdateInfo update,
-                        UpdatePackageVerifier.PackageEvidence archive) throws Exception {
-        UpdatePackageVerifier.verify(apk, update, 5, "com.autosecretary",
+                        UpdateArtifactVerifier.PackageEvidence archive) throws Exception {
+        UpdateArtifactVerifier.verify(apk, update, 5, "com.autosecretary",
                 evidence("com.autosecretary", 5, SIGNER), archive);
     }
 
@@ -90,15 +90,15 @@ public final class UpdatePackageVerifierTest {
     private static UpdateInfo update(
             File apk, int version, String packageName, String signer) throws Exception {
         return new UpdateInfo(version, "2.0.1", packageName, url(),
-                UpdatePackageVerifier.sha256(apk), signer);
+                UpdateArtifactVerifier.sha256(apk), signer);
     }
 
     private static String url() {
         return "https://github.com/ThonkTank/AI-Secretary/releases/download/android-6/AutoSecretary.apk";
     }
 
-    private static UpdatePackageVerifier.PackageEvidence evidence(
+    private static UpdateArtifactVerifier.PackageEvidence evidence(
             String packageName, long version, String signer) {
-        return new UpdatePackageVerifier.PackageEvidence(packageName, version, Set.of(signer));
+        return new UpdateArtifactVerifier.PackageEvidence(packageName, version, Set.of(signer));
     }
 }

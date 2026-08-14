@@ -1,74 +1,7 @@
-import java.util.Properties
-
-plugins { id("com.android.application") }
-
-val versionProperties = Properties().apply {
-    rootProject.file("version.properties").inputStream().use(::load)
-}
-val releaseVersionCode = providers.gradleProperty("versionCode")
-    .orElse(versionProperties.getProperty("VERSION_CODE")).get().toInt()
-val releaseVersionName = providers.gradleProperty("versionName")
-    .orElse(versionProperties.getProperty("VERSION_NAME")).get()
-val productionKeystore = providers.gradleProperty("productionKeystore").orNull
-    ?: System.getenv("PRODUCTION_KEYSTORE")
-val productionStorePassword = providers.gradleProperty("productionStorePassword").orNull
-    ?: System.getenv("PRODUCTION_STORE_PASSWORD")
-val productionKeyAlias = providers.gradleProperty("productionKeyAlias").orNull
-    ?: System.getenv("PRODUCTION_KEY_ALIAS")
-val productionKeyPassword = providers.gradleProperty("productionKeyPassword").orNull
-    ?: System.getenv("PRODUCTION_KEY_PASSWORD")
-val productionSigningReady = listOf(
-    productionKeystore, productionStorePassword, productionKeyAlias, productionKeyPassword
-).all { !it.isNullOrBlank() }
-val requireProductionSigning = providers.gradleProperty("requireProductionSigning")
-    .map(String::toBoolean).orElse(false).get()
-if (requireProductionSigning && !productionSigningReady) {
-    throw GradleException("Production signing was required, but its four credentials are incomplete")
-}
+plugins { id("autosecretary.android-application") }
 
 android {
     namespace = "com.autosecretary"
-    compileSdk = 35
-
-    defaultConfig {
-        applicationId = "com.autosecretary"
-        minSdk = 26
-        targetSdk = 35
-        versionCode = releaseVersionCode
-        versionName = releaseVersionName
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        manifestPlaceholders["appLabel"] = "Auto Secretary"
-    }
-
-    signingConfigs {
-        if (productionSigningReady) {
-            create("production") {
-                storeFile = file(productionKeystore!!)
-                storePassword = productionStorePassword
-                keyAlias = productionKeyAlias
-                keyPassword = productionKeyPassword
-            }
-        }
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            if (productionSigningReady) signingConfig = signingConfigs.getByName("production")
-            vcsInfo { include = false }
-        }
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    buildFeatures {
-        buildConfig = true
-        viewBinding = true
-    }
-    testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
 dependencies {
@@ -92,5 +25,6 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.14.1")
 
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:core:1.6.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
 }

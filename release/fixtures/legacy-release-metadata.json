@@ -1,0 +1,8 @@
+{
+  "versionCode": 2001201,
+  "versionName": "2.0.0",
+  "packageName": "com.autosecretary",
+  "apkAsset": "AutoSecretary.apk",
+  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "signerSha256": "de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da"
+}

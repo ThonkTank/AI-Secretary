@@ -40,9 +40,7 @@ public final class AiInstructionDialogFragment extends DialogFragment {
                 binding.AiInstruction.setError("Ein Wunsch fehlt noch.");
                 return;
             }
-            List<WorkItem> items = mainViewModel.state().getValue() == null
-                    || mainViewModel.state().getValue().dashboard() == null
-                    ? List.of() : mainViewModel.state().getValue().dashboard().workItems();
+            List<WorkItem> items = mainViewModel.workItems();
             aiViewModel.propose(command, items);
             dialog.dismiss();
         });

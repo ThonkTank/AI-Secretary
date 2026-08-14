@@ -22,6 +22,9 @@ import com.autosecretary.platform.AndroidLocationGateway;
 import com.autosecretary.platform.PreferencesAiConsentGateway;
 import com.autosecretary.application.LocationPort;
 import com.autosecretary.application.TimeProvider;
+import com.autosecretary.application.GetTodayTimeline;
+import com.autosecretary.application.model.ModelRepository;
+import com.autosecretary.platform.model.LocalModelManager;
 import com.autosecretary.platform.update.AndroidUpdateRepository;
 import com.autosecretary.application.update.UpdateRepository;
 import com.autosecretary.platform.update.UpdateInstaller;
@@ -42,6 +45,8 @@ public final class AppGraph {
     private final UpdateInstaller updateInstaller;
     private final LocationPort location;
     private final TimeProvider clock;
+    private final GetTodayTimeline todayTimeline;
+    private final ModelRepository models;
 
     public AppGraph(Context context, AppExecutors executors) {
         Context app = context.getApplicationContext();
@@ -51,14 +56,20 @@ public final class AppGraph {
         workItems = new RoomWorkItemRepository(database);
         planningSettings = new PreferencesPlanningSettingsRepository(app);
         clock = new SystemTimeProvider();
-        planFocus = new PlanFocusUseCase(workItems, new DeviceCalendarGateway(app, clock),
+        todayTimeline = new GetTodayTimeline(clock);
+        LocalModelManager localModels = new LocalModelManager(app);
+        models = localModels;
+        planFocus = new PlanFocusUseCase(workItems, new DeviceCalendarGateway(app),
                 planningSettings, clock,
                 new FocusPlanner());
         moveWorkItem = new MoveWorkItemUseCase(workItems, clock);
-        bulkEditor = new OnDeviceBulkEditor(app, executors.io(), executors.ai(), clock);
+        bulkEditor = new OnDeviceBulkEditor(
+                app, executors.io(), executors.ai(), clock, localModels);
         aiConsent = new PreferencesAiConsentGateway(app);
-        updates = new AndroidUpdateRepository(app, "ThonkTank", "AI-Secretary",
-                BuildConfig.APPLICATION_ID, BuildConfig.VERSION_NAME);
+        updates = new AndroidUpdateRepository(app, BuildConfig.REPOSITORY_OWNER,
+                BuildConfig.REPOSITORY_NAME, BuildConfig.APPLICATION_ID,
+                BuildConfig.VERSION_NAME, BuildConfig.UPDATE_METADATA_ASSET,
+                BuildConfig.UPDATE_APK_ASSET);
         updates.cleanup(BuildConfig.VERSION_CODE);
         updateInstaller = new UpdateInstaller();
         location = new AndroidLocationGateway(app);
@@ -76,6 +87,9 @@ public final class AppGraph {
     public UpdateInstaller updateInstaller() { return updateInstaller; }
     public LocationPort location() { return location; }
     public TimeProvider clock() { return clock; }
+    public GetTodayTimeline todayTimeline() { return todayTimeline; }
+    public ModelRepository models() { return models; }
     public void refreshWidgets() { FocusWidgetProvider.refreshAll(context); }
+    Context context() { return context; }
     void close() { database.close(); }
 }

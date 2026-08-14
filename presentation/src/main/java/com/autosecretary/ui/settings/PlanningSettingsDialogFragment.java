@@ -12,46 +12,56 @@ import androidx.fragment.app.DialogFragment;
 
 import com.autosecretary.presentation.R;
 import com.autosecretary.presentation.databinding.DialogPlanningSettingsBinding;
-import com.autosecretary.ui.MainViewModel;
 import com.autosecretary.ui.FeatureViewModels;
 
-/** Lifecycle-safe raw settings editor backed by MainViewModel SavedStateHandle. */
+/** Lifecycle-safe raw settings editor backed by its own SavedStateHandle. */
 public final class PlanningSettingsDialogFragment extends DialogFragment {
     public static final String TAG = "planning-settings";
 
-    private MainViewModel viewModel;
+    private PlanningSettingsViewModel viewModel;
     private DialogPlanningSettingsBinding binding;
     private boolean rendering;
+    private boolean saving;
 
     @NonNull
     @Override
     public Dialog onCreateDialog(Bundle state) {
-        viewModel = FeatureViewModels.main(this);
+        viewModel = FeatureViewModels.planningSettings(this);
         binding = DialogPlanningSettingsBinding.inflate(requireActivity().getLayoutInflater());
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle("Planungszeiten")
                 .setView(binding.getRoot())
                 .setPositiveButton(R.string.save, null)
                 .setNegativeButton(R.string.cancel,
-                        (ignored, which) -> viewModel.closePlanningSettings())
+                        (ignored, which) -> viewModel.close())
                 .create();
         installWatchers();
         render(requireState());
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
                 .setOnClickListener(view -> {
                     sync();
-                    viewModel.submitPlanningSettings(requireState());
+                    PlanningSettingsEditorState candidate = requireState();
+                    saving = candidate.validated().valid();
+                    viewModel.submit(candidate);
                 }));
         viewModel.state().observe(this, value -> {
-            if (value.planningEditor() == null) dismissAllowingStateLoss();
-            else render(value.planningEditor());
+            if (value instanceof PlanningSettingsUiState.Closed) {
+                if (saving) getParentFragmentManager().setFragmentResult(
+                        PlanningSettingsResultContract.CHANGED, new Bundle());
+                dismissAllowingStateLoss();
+            } else if (value instanceof PlanningSettingsUiState.Failed failed) {
+                saving = false;
+                render(failed.editor());
+            } else if (viewModel.editor() != null) {
+                render(viewModel.editor());
+            }
         });
         return dialog;
     }
 
     @Override
     public void onCancel(@NonNull android.content.DialogInterface dialog) {
-        viewModel.closePlanningSettings();
+        viewModel.close();
         super.onCancel(dialog);
     }
 
@@ -103,9 +113,8 @@ public final class PlanningSettingsDialogFragment extends DialogFragment {
 
     private void sync() {
         if (rendering || binding == null || viewModel == null
-                || viewModel.state().getValue() == null
-                || viewModel.state().getValue().planningEditor() == null) return;
-        viewModel.editPlanningSettings(requireState().edit(
+                || viewModel.editor() == null) return;
+        viewModel.edit(requireState().edit(
                 text(binding.DayStart), text(binding.DayEnd),
                 text(binding.MorningStart), text(binding.MorningEnd),
                 text(binding.MiddayStart), text(binding.MiddayEnd),
@@ -115,11 +124,10 @@ public final class PlanningSettingsDialogFragment extends DialogFragment {
     }
 
     private PlanningSettingsEditorState requireState() {
-        if (viewModel == null || viewModel.state().getValue() == null
-                || viewModel.state().getValue().planningEditor() == null) {
+        if (viewModel == null || viewModel.editor() == null) {
             throw new IllegalStateException("Planungseinstellungen fehlen");
         }
-        return viewModel.state().getValue().planningEditor();
+        return viewModel.editor();
     }
 
     private static void set(EditText field, String value) {

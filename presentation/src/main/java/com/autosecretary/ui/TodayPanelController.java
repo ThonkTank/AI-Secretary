@@ -1,19 +1,9 @@
 package com.autosecretary.ui;
 
-import android.graphics.Typeface;
-import android.text.SpannableString;
-import android.text.Spanned;
-import android.text.style.AbsoluteSizeSpan;
-import android.text.style.ForegroundColorSpan;
-import android.text.style.StrikethroughSpan;
-import android.text.style.StyleSpan;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
-import androidx.core.content.res.ResourcesCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.autosecretary.application.DashboardData;
@@ -22,7 +12,7 @@ import com.autosecretary.application.TimeProvider;
 import com.autosecretary.domain.PlanConflict;
 import com.autosecretary.domain.WorkItem;
 import com.autosecretary.presentation.R;
-import com.autosecretary.presentation.databinding.ActivityMainBinding;
+import com.autosecretary.presentation.databinding.FragmentTodayBinding;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.time.LocalDate;
@@ -38,15 +28,16 @@ public final class TodayPanelController {
         void undo();
     }
 
-    private final ActivityMainBinding binding;
+    private final FragmentTodayBinding binding;
     private final TimeProvider time;
     private final Actions actions;
     private final TodayAdapter adapter;
+    private final CompletedTodayAdapter completedAdapter;
     private Dashboard dashboard = new Dashboard(List.of(), List.of());
     private boolean expanded;
 
     public TodayPanelController(
-            ActivityMainBinding binding, TimeProvider time, boolean expanded, Actions actions) {
+            FragmentTodayBinding binding, TimeProvider time, boolean expanded, Actions actions) {
         this.binding = binding;
         this.time = time;
         this.expanded = expanded;
@@ -67,6 +58,10 @@ public final class TodayPanelController {
         binding.FocusList.setLayoutManager(new LinearLayoutManager(binding.Root.getContext()));
         binding.FocusList.setAdapter(adapter);
         binding.FocusList.setNestedScrollingEnabled(false);
+        completedAdapter = new CompletedTodayAdapter();
+        binding.CompletedToday.setLayoutManager(
+                new LinearLayoutManager(binding.Root.getContext()));
+        binding.CompletedToday.setAdapter(completedAdapter);
         binding.FocusMore.setOnClickListener(view -> {
             this.expanded = !this.expanded;
             submitRows();
@@ -124,11 +119,12 @@ public final class TodayPanelController {
     private void renderEmpty(DashboardData source) {
         boolean empty = dashboard.today().isEmpty();
         binding.EmptyFocus.setVisibility(empty ? View.VISIBLE : View.GONE);
-        binding.CompletedToday.removeAllViews();
+        completedAdapter.submitList(List.of());
         binding.CompletedToday.setVisibility(View.GONE);
         if (!empty) return;
 
-        LocalDate today = time.localNow().toLocalDate();
+        LocalDate today = java.time.LocalDateTime.ofInstant(
+                time.now(), time.zone()).toLocalDate();
         List<String> completedIds = source.completions().stream()
                 .filter(value -> value.completedAt().toLocalDate().equals(today))
                 .map(com.autosecretary.application.CompletionRecord::workItemId)
@@ -147,7 +143,9 @@ public final class TodayPanelController {
                     : completedItems.size() + " Blätter, ca. " + minutes + " Min");
             binding.EmptyAnnualRing.setText(Integer.toString(Math.max(1, weeks)));
             binding.EmptyAnnualRing.setVisibility(View.VISIBLE);
-            renderCompleted(completedItems);
+            completedAdapter.submitList(completedItems.stream().limit(2)
+                    .collect(java.util.stream.Collectors.toList()));
+            binding.CompletedToday.setVisibility(View.VISIBLE);
         } else {
             binding.EmptyAnnualRing.setVisibility(View.GONE);
             binding.EmptyFocusMarker.setText("heute");
@@ -179,42 +177,6 @@ public final class TodayPanelController {
         binding.FocusMore.setText(expanded ? "wieder auf drei reduzieren"
                 : additional == 1 ? "und ein weiterer heute · zeigen"
                 : "und " + additional + " weitere heute · zeigen");
-    }
-
-    private void renderCompleted(List<WorkItem> completedItems) {
-        for (int index = 0; index < Math.min(2, completedItems.size()); index++) {
-            WorkItem item = completedItems.get(index);
-            String text = "heute erledigt\n" + item.title();
-            SpannableString styled = new SpannableString(text);
-            int split = text.indexOf('\n') + 1;
-            styled.setSpan(new StyleSpan(Typeface.ITALIC), 0, split - 1,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            styled.setSpan(new AbsoluteSizeSpan(16, true), 0, split - 1,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            styled.setSpan(new ForegroundColorSpan(ContextCompat.getColor(
-                    binding.Root.getContext(), R.color.marker)), 0, split - 1,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            styled.setSpan(new StrikethroughSpan(), split, text.length(),
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            TextView leaf = new TextView(binding.Root.getContext());
-            leaf.setText(styled);
-            leaf.setTextSize(21);
-            leaf.setTextColor(ContextCompat.getColor(
-                    binding.Root.getContext(), R.color.ink_secondary));
-            leaf.setTypeface(ResourcesCompat.getFont(
-                    binding.Root.getContext(), R.font.newsreader));
-            boolean evening = binding.DaylightBackdrop.usesEveningPalette();
-            leaf.setBackgroundResource(index % 2 == 0
-                    ? evening ? R.drawable.bg_leaf_middle_evening : R.drawable.bg_leaf_middle
-                    : evening ? R.drawable.bg_leaf_low_evening : R.drawable.bg_leaf_low);
-            leaf.setRotation(index % 2 == 0 ? 1.1f : -1.0f);
-            leaf.setPadding(dp(22), dp(15), dp(22), dp(15));
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            params.bottomMargin = dp(11);
-            binding.CompletedToday.addView(leaf, params);
-        }
-        binding.CompletedToday.setVisibility(View.VISIBLE);
     }
 
     private int dp(int value) {

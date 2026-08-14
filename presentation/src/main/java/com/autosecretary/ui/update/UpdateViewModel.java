@@ -5,20 +5,24 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.ViewModel;
 
+import com.autosecretary.application.update.DownloadProgress;
+import com.autosecretary.application.update.DownloadTicket;
+import com.autosecretary.application.update.UpdateCheckResult;
+import com.autosecretary.application.update.UpdateException;
 import com.autosecretary.application.update.UpdateFailure;
 import com.autosecretary.application.update.UpdateInfo;
 import com.autosecretary.application.update.UpdateRepository;
 import com.autosecretary.application.update.VerifiedUpdate;
 
 import java.io.File;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
+/** Restorable update state machine. Rendering never launches Android intents. */
 public final class UpdateViewModel extends ViewModel {
     private static final String VERSION_CODE = "update.versionCode";
     private static final String VERSION_NAME = "update.versionName";
@@ -27,11 +31,13 @@ public final class UpdateViewModel extends ViewModel {
     private static final String APK_SIZE = "update.apkSize";
     private static final String SHA256 = "update.sha256";
     private static final String SIGNER = "update.signer";
+    private static final String DOWNLOAD_ID = "update.downloadId";
     private static final String VERIFIED_PATH = "update.verifiedPath";
     private static final String INSTALL_PENDING = "update.installPending";
     private static final String SETTINGS_OPENED = "update.settingsOpened";
     private static final String OPENED_VERSION = "update.openedVersion";
     private static final String EFFECT_SEQUENCE = "update.effectSequence";
+    private static final String LAST_CONSUMED_EFFECT = "update.lastConsumedEffect";
 
     private final SavedStateHandle savedState;
     private final UpdateRepository updater;
@@ -52,10 +58,19 @@ public final class UpdateViewModel extends ViewModel {
         this.io = io;
         this.uiExecutor = uiExecutor;
         UpdateInfo pending = restorePending();
+        DownloadTicket ticket = restoreTicket(pending);
         VerifiedUpdate verified = restoreVerified(pending);
-        state = new MutableLiveData<>(verified != null ? new UpdateUiState.Ready(verified)
-                : pending == null ? UpdateUiState.initial() : new UpdateUiState.Available(pending));
-        if (pending != null && verified == null) download();
+        if (verified != null) {
+            state = new MutableLiveData<>(new UpdateUiState.Ready(verified));
+        } else if (pending == null) {
+            state = new MutableLiveData<>(UpdateUiState.initial());
+        } else if (ticket == null) {
+            state = new MutableLiveData<>(new UpdateUiState.Available(pending));
+        } else {
+            DownloadProgress progress = updater.query(ticket);
+            state = new MutableLiveData<>(stateFor(pending, ticket, progress));
+            resume(pending, ticket, progress);
+        }
     }
 
     public LiveData<UpdateUiState> state() { return state; }
@@ -65,9 +80,10 @@ public final class UpdateViewModel extends ViewModel {
         if (current().busy()) return;
         state.setValue(new UpdateUiState.Checking());
         submit(() -> {
-            UpdateInfo update = updater.check();
-            dispatch(() -> state.setValue(update == null
-                    ? new UpdateUiState.Current() : new UpdateUiState.Available(update)));
+            UpdateCheckResult result = updater.check();
+            dispatch(() -> state.setValue(result instanceof UpdateCheckResult.Available available
+                    ? new UpdateUiState.Available(available.update())
+                    : new UpdateUiState.Current()));
         }, null);
     }
 
@@ -75,14 +91,26 @@ public final class UpdateViewModel extends ViewModel {
         UpdateInfo update = current().available();
         if (current().busy() || update == null) return;
         remember(update);
-        state.setValue(new UpdateUiState.Downloading(update));
         submit(() -> {
-            var verified = updater.downloadAndVerify(update);
-            dispatch(() -> {
-                savedState.set(VERIFIED_PATH, verified.apk().getAbsolutePath());
-                state.setValue(new UpdateUiState.Ready(verified));
-            });
+            DownloadTicket ticket = updater.enqueue(update);
+            savedState.set(DOWNLOAD_ID, ticket.id());
+            dispatch(() -> state.setValue(new UpdateUiState.Downloading(
+                    update, ticket, new DownloadProgress.Pending())));
+            observe(update, ticket);
         }, update);
+    }
+
+    public void cancelDownload() {
+        UpdateUiState current = current();
+        DownloadTicket ticket = current instanceof UpdateUiState.Downloading value
+                ? value.ticket() : current instanceof UpdateUiState.Verifying value
+                ? value.ticket() : null;
+        if (ticket == null) return;
+        updater.cancel(ticket);
+        UpdateInfo update = current.available();
+        clearTicket();
+        state.setValue(update == null ? UpdateUiState.initial()
+                : new UpdateUiState.Available(update));
     }
 
     public void requestInstall(boolean canInstallPackages) {
@@ -115,11 +143,63 @@ public final class UpdateViewModel extends ViewModel {
     }
 
     public void consumeEffect(long id) {
+        Long consumed = savedState.get(LAST_CONSUMED_EFFECT);
+        if (consumed == null || id > consumed) savedState.set(LAST_CONSUMED_EFFECT, id);
         UpdateUiEffect value = effects.getValue();
         if (value != null && value.id() == id) effects.setValue(null);
     }
 
-    private void emit(UpdateUiEffect effect) { effects.setValue(effect); }
+    private void resume(UpdateInfo update, DownloadTicket ticket, DownloadProgress progress) {
+        if (progress instanceof DownloadProgress.Complete) verify(update, ticket);
+        else if (progress instanceof DownloadProgress.Pending
+                || progress instanceof DownloadProgress.Running) observe(update, ticket);
+    }
+
+    private void observe(UpdateInfo update, DownloadTicket ticket) {
+        submit(() -> {
+            while (!cleared && !Thread.currentThread().isInterrupted()) {
+                DownloadProgress progress = updater.query(ticket);
+                dispatch(() -> state.setValue(stateFor(update, ticket, progress)));
+                if (progress instanceof DownloadProgress.Complete) {
+                    verify(update, ticket);
+                    return;
+                }
+                if (progress instanceof DownloadProgress.Failed) return;
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }, update);
+    }
+
+    private void verify(UpdateInfo update, DownloadTicket ticket) {
+        dispatch(() -> state.setValue(new UpdateUiState.Verifying(update, ticket)));
+        submit(() -> {
+            VerifiedUpdate verified = updater.verify(ticket);
+            savedState.set(VERIFIED_PATH, verified.apk().getAbsolutePath());
+            clearTicket();
+            dispatch(() -> state.setValue(new UpdateUiState.Ready(verified)));
+        }, update);
+    }
+
+    private static UpdateUiState stateFor(
+            UpdateInfo update, DownloadTicket ticket, DownloadProgress progress) {
+        if (progress instanceof DownloadProgress.Complete) {
+            return new UpdateUiState.Verifying(update, ticket);
+        }
+        if (progress instanceof DownloadProgress.Failed failed) {
+            return new UpdateUiState.Error(update, null, failed.failure());
+        }
+        return new UpdateUiState.Downloading(update, ticket, progress);
+    }
+
+    private void emit(UpdateUiEffect effect) {
+        Long consumed = savedState.get(LAST_CONSUMED_EFFECT);
+        if (consumed == null || effect.id() > consumed) effects.setValue(effect);
+    }
 
     private long nextEffectId() {
         Long current = savedState.get(EFFECT_SEQUENCE);
@@ -136,42 +216,28 @@ public final class UpdateViewModel extends ViewModel {
                     work.run();
                 } catch (Throwable error) {
                     UpdateFailure failure = failure(error);
-                    dispatch(() -> {
-                        if (!failure.retryable()) clearPending();
-                        state.setValue(new UpdateUiState.Error(
-                                update, current().verified(), failure));
-                    });
+                    dispatch(() -> state.setValue(new UpdateUiState.Error(
+                            update, current().verified(), failure)));
                 }
             }));
         }
     }
 
     private static UpdateFailure failure(Throwable error) {
+        if (error instanceof UpdateException typed) return typed.failure();
         Throwable source = error;
         while (source.getCause() != null && source.getCause() != source) source = source.getCause();
         String message = source.getMessage() == null
                 ? source.getClass().getSimpleName() : source.getMessage();
         String normalized = (source.getClass().getSimpleName() + " " + message)
                 .toLowerCase(Locale.ROOT);
-        UpdateFailure.Kind kind;
-        boolean retryable;
-        if (normalized.contains("429") || normalized.contains("rate")) {
-            kind = UpdateFailure.Kind.RATE_LIMITED; retryable = true;
-        } else if (normalized.contains("network") || normalized.contains("timeout")
-                || normalized.contains("timed out") || normalized.contains("unknownhost")) {
-            kind = UpdateFailure.Kind.NETWORK; retryable = true;
-        } else if (source instanceof SecurityException) {
-            kind = UpdateFailure.Kind.SECURITY_REJECTED; retryable = false;
-        } else if (normalized.contains("download")) {
-            kind = UpdateFailure.Kind.DOWNLOAD_FAILED; retryable = true;
-        } else if (normalized.contains("speicher") || normalized.contains("space")) {
-            kind = UpdateFailure.Kind.STORAGE; retryable = true;
-        } else if (normalized.contains("metadata") || normalized.contains("release")) {
-            kind = UpdateFailure.Kind.INVALID_RELEASE; retryable = false;
-        } else {
-            kind = UpdateFailure.Kind.INTERNAL; retryable = true;
+        if (source instanceof SecurityException) {
+            return new UpdateFailure(UpdateFailure.Kind.SECURITY_REJECTED, message, false);
         }
-        return new UpdateFailure(kind, message, retryable);
+        if (normalized.contains("network") || normalized.contains("timeout")) {
+            return new UpdateFailure(UpdateFailure.Kind.NETWORK, message, true);
+        }
+        return new UpdateFailure(UpdateFailure.Kind.INTERNAL, message, true);
     }
 
     private void remember(UpdateInfo update) {
@@ -198,6 +264,13 @@ public final class UpdateViewModel extends ViewModel {
         }
     }
 
+    private DownloadTicket restoreTicket(UpdateInfo pending) {
+        Long id = savedState.get(DOWNLOAD_ID);
+        if (pending == null || id == null || id < 1) return null;
+        try { return new DownloadTicket(id, pending.versionCode()); }
+        catch (RuntimeException invalid) { clearTicket(); return null; }
+    }
+
     private VerifiedUpdate restoreVerified(UpdateInfo pending) {
         String path = savedState.get(VERIFIED_PATH);
         if (pending == null || path == null) return null;
@@ -210,6 +283,8 @@ public final class UpdateViewModel extends ViewModel {
         catch (RuntimeException invalid) { return null; }
     }
 
+    private void clearTicket() { savedState.remove(DOWNLOAD_ID); }
+
     private void clearPending() {
         savedState.remove(VERSION_CODE);
         savedState.remove(VERSION_NAME);
@@ -219,6 +294,7 @@ public final class UpdateViewModel extends ViewModel {
         savedState.remove(SHA256);
         savedState.remove(SIGNER);
         savedState.remove(VERIFIED_PATH);
+        clearTicket();
     }
 
     private UpdateUiState current() {

@@ -11,37 +11,39 @@ import android.provider.CalendarContract;
 import androidx.core.content.ContextCompat;
 
 import com.autosecretary.application.CalendarPort;
-import com.autosecretary.application.TimeProvider;
-import com.autosecretary.domain.BusyInterval;
+import com.autosecretary.application.CalendarAvailability;
+import com.autosecretary.application.CalendarOccurrence;
+import com.autosecretary.application.CalendarOccurrenceId;
+import com.autosecretary.application.CalendarParticipation;
+import com.autosecretary.application.CalendarReadResult;
+import com.autosecretary.application.CalendarStatus;
+import com.autosecretary.application.CalendarVisibility;
+import com.autosecretary.application.TimeRange;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /** Read-only calendar adapter for the complete planner horizon. */
 public final class DeviceCalendarGateway implements CalendarPort {
     private final Context context;
-    private final TimeProvider time;
 
-    public DeviceCalendarGateway(Context context, TimeProvider time) {
+    public DeviceCalendarGateway(Context context) {
         this.context = context.getApplicationContext();
-        this.time = time;
     }
 
     @Override
-    public List<BusyInterval> read(LocalDate fromInclusive, LocalDate toExclusive) {
+    public CalendarReadResult read(TimeRange range) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR)
-                != PackageManager.PERMISSION_GRANTED) return List.of();
-        ZoneId zone = time.zone();
-        long begin = fromInclusive.atStartOfDay(zone).toInstant().toEpochMilli();
-        long end = toExclusive.atStartOfDay(zone).toInstant().toEpochMilli();
+                != PackageManager.PERMISSION_GRANTED) {
+            return new CalendarReadResult.PermissionMissing();
+        }
+        long begin = range.startInclusive().toEpochMilli();
+        long end = range.endExclusive().toEpochMilli();
         Uri.Builder builder = CalendarContract.Instances.CONTENT_URI.buildUpon();
         ContentUris.appendId(builder, begin);
         ContentUris.appendId(builder, end);
@@ -54,59 +56,89 @@ public final class DeviceCalendarGateway implements CalendarPort {
                 CalendarContract.Instances.CALENDAR_ID};
         try (Cursor cursor = context.getContentResolver().query(
                 builder.build(), projection, null, null, CalendarContract.Instances.BEGIN)) {
-            return cursor == null ? List.of() : intervals(cursor, zone);
+            return new CalendarReadResult.Available(
+                    cursor == null ? List.of() : occurrences(cursor));
         }
     }
 
-    static List<BusyInterval> intervals(Cursor cursor, ZoneId zone) {
-        Map<String, BusyInterval> unique = new LinkedHashMap<>();
+    static List<CalendarOccurrence> occurrences(Cursor cursor) {
+        Map<CalendarOccurrenceId, CalendarOccurrence> unique = new LinkedHashMap<>();
         while (cursor.moveToNext()) {
-            if (!shouldInclude(cursor)) continue;
             Instant startInstant = Instant.ofEpochMilli(cursor.getLong(
                     cursor.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN)));
             Instant finishInstant = Instant.ofEpochMilli(cursor.getLong(
                     cursor.getColumnIndexOrThrow(CalendarContract.Instances.END)));
             if (!finishInstant.isAfter(startInstant)) continue;
-            LocalDateTime start = LocalDateTime.ofInstant(startInstant, zone);
-            LocalDateTime finish = LocalDateTime.ofInstant(finishInstant, zone);
-            // LocalDateTime cannot represent the repeated offset during the autumn DST overlap.
-            // Preserve the real positive duration so the planner never drops that occurrence.
-            if (!finish.isAfter(start)) {
-                finish = start.plus(Duration.between(startInstant, finishInstant));
-            }
             int titleColumn = cursor.getColumnIndexOrThrow(CalendarContract.Instances.TITLE);
-            boolean hidden = cursor.isNull(titleColumn) || cursor.getString(titleColumn).isBlank();
-            String title = hidden ? "Kalendertermin" : cursor.getString(titleColumn);
+            Optional<String> title = cursor.isNull(titleColumn) ? Optional.empty()
+                    : Optional.ofNullable(cursor.getString(titleColumn))
+                            .filter(value -> !value.isBlank());
             long eventId = cursor.getLong(
                     cursor.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_ID));
             long calendarId = cursor.getLong(
                     cursor.getColumnIndexOrThrow(CalendarContract.Instances.CALENDAR_ID));
-            String id = calendarId + ":" + eventId + ":" + startInstant;
-            BusyInterval interval = new BusyInterval(id, start, finish, title,
-                    hidden ? BusyInterval.TitleVisibility.HIDDEN
-                            : BusyInterval.TitleVisibility.VISIBLE);
-            unique.putIfAbsent(id, interval);
+            CalendarOccurrenceId id = new CalendarOccurrenceId(
+                    calendarId, eventId, startInstant);
+            boolean providerVisible = intValue(cursor, CalendarContract.Instances.VISIBLE)
+                    .map(value -> value != 0).orElse(true);
+            CalendarVisibility visibility = !providerVisible ? CalendarVisibility.HIDDEN
+                    : title.isEmpty() ? CalendarVisibility.TITLE_HIDDEN
+                    : CalendarVisibility.VISIBLE;
+            CalendarOccurrence occurrence = new CalendarOccurrence(id, startInstant,
+                    finishInstant,
+                    intValue(cursor, CalendarContract.Instances.ALL_DAY)
+                            .map(value -> value != 0).orElse(false),
+                    availability(intValue(cursor, CalendarContract.Instances.AVAILABILITY)),
+                    status(intValue(cursor, CalendarContract.Instances.STATUS)),
+                    participation(intValue(cursor,
+                            CalendarContract.Instances.SELF_ATTENDEE_STATUS)),
+                    visibility, title);
+            unique.putIfAbsent(id, occurrence);
         }
-        ArrayList<BusyInterval> result = new ArrayList<>(unique.values());
-        result.sort(Comparator.comparing(BusyInterval::start)
-                .thenComparing(BusyInterval::end).thenComparing(BusyInterval::id));
+        ArrayList<CalendarOccurrence> result = new ArrayList<>(unique.values());
+        result.sort(Comparator.comparing(CalendarOccurrence::start)
+                .thenComparing(CalendarOccurrence::end)
+                .thenComparing(value -> value.id().stableValue()));
         return result;
     }
 
-    private static boolean shouldInclude(Cursor cursor) {
-        int allDay = cursor.getColumnIndexOrThrow(CalendarContract.Instances.ALL_DAY);
-        int availability = cursor.getColumnIndexOrThrow(CalendarContract.Instances.AVAILABILITY);
-        int status = cursor.getColumnIndexOrThrow(CalendarContract.Instances.STATUS);
-        int attendee = cursor.getColumnIndexOrThrow(
-                CalendarContract.Instances.SELF_ATTENDEE_STATUS);
-        int visible = cursor.getColumnIndexOrThrow(CalendarContract.Instances.VISIBLE);
-        if (!cursor.isNull(allDay) && cursor.getInt(allDay) != 0) return false;
-        if (!cursor.isNull(availability) && cursor.getInt(availability)
-                == CalendarContract.Events.AVAILABILITY_FREE) return false;
-        if (!cursor.isNull(status) && cursor.getInt(status)
-                == CalendarContract.Events.STATUS_CANCELED) return false;
-        if (!cursor.isNull(attendee) && cursor.getInt(attendee)
-                == CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED) return false;
-        return cursor.isNull(visible) || cursor.getInt(visible) != 0;
+    private static Optional<Integer> intValue(Cursor cursor, String column) {
+        int index = cursor.getColumnIndexOrThrow(column);
+        return cursor.isNull(index) ? Optional.empty() : Optional.of(cursor.getInt(index));
+    }
+
+    private static CalendarAvailability availability(Optional<Integer> value) {
+        if (value.isEmpty()) return CalendarAvailability.UNKNOWN;
+        return switch (value.get()) {
+            case CalendarContract.Events.AVAILABILITY_BUSY -> CalendarAvailability.BUSY;
+            case CalendarContract.Events.AVAILABILITY_TENTATIVE -> CalendarAvailability.TENTATIVE;
+            case CalendarContract.Events.AVAILABILITY_FREE -> CalendarAvailability.FREE;
+            default -> CalendarAvailability.UNKNOWN;
+        };
+    }
+
+    private static CalendarStatus status(Optional<Integer> value) {
+        if (value.isEmpty()) return CalendarStatus.UNKNOWN;
+        return switch (value.get()) {
+            case CalendarContract.Events.STATUS_CONFIRMED -> CalendarStatus.CONFIRMED;
+            case CalendarContract.Events.STATUS_TENTATIVE -> CalendarStatus.TENTATIVE;
+            case CalendarContract.Events.STATUS_CANCELED -> CalendarStatus.CANCELED;
+            default -> CalendarStatus.UNKNOWN;
+        };
+    }
+
+    private static CalendarParticipation participation(Optional<Integer> value) {
+        if (value.isEmpty()) return CalendarParticipation.UNKNOWN;
+        return switch (value.get()) {
+            case CalendarContract.Attendees.ATTENDEE_STATUS_ACCEPTED ->
+                    CalendarParticipation.ACCEPTED;
+            case CalendarContract.Attendees.ATTENDEE_STATUS_TENTATIVE ->
+                    CalendarParticipation.TENTATIVE;
+            case CalendarContract.Attendees.ATTENDEE_STATUS_NONE ->
+                    CalendarParticipation.NONE;
+            case CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED ->
+                    CalendarParticipation.DECLINED;
+            default -> CalendarParticipation.UNKNOWN;
+        };
     }
 }

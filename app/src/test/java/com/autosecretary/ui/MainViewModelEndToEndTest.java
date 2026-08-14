@@ -15,6 +15,8 @@ import androidx.test.core.app.ApplicationProvider;
 import com.autosecretary.application.MoveWorkItemUseCase;
 import com.autosecretary.application.PlanFocusUseCase;
 import com.autosecretary.application.PlanningSettingsRepository;
+import com.autosecretary.application.CalendarReadResult;
+import com.autosecretary.application.TimeProvider;
 import com.autosecretary.data.FocusDatabase;
 import com.autosecretary.data.RoomWorkItemRepository;
 import com.autosecretary.domain.CompletionStats;
@@ -22,6 +24,7 @@ import com.autosecretary.domain.FocusPlanner;
 import com.autosecretary.domain.PlanningSettings;
 import com.autosecretary.domain.Task;
 import com.autosecretary.ui.editor.StepEditorState;
+import com.autosecretary.ui.editor.EditorViewModel;
 
 import org.junit.After;
 import org.junit.Before;
@@ -33,6 +36,8 @@ import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
 
 import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -63,19 +68,29 @@ public final class MainViewModelEndToEndTest {
             @Override public PlanningSettings load() { return PlanningSettings.defaults(); }
             @Override public void save(PlanningSettings settings) { }
         };
-        planning = new PlanFocusUseCase(repository, (start, end) -> List.of(), settings,
-                () -> now, new FocusPlanner());
+        planning = new PlanFocusUseCase(repository,
+                range -> new CalendarReadResult.Available(List.of()), settings,
+                time(), new FocusPlanner());
         executor = Executors.newSingleThreadExecutor();
         savedState = new SavedStateHandle();
         viewModel = createViewModel(savedState);
         viewModel.state().observeForever(ignored -> { });
-        await(() -> ready() && viewModel.state().getValue().dashboard().workItems().isEmpty());
+        await(() -> ready() && dashboard().workItems().isEmpty());
     }
 
     private MainViewModel createViewModel(SavedStateHandle handle) {
         return new MainViewModel(handle, planning, repository,
-                new MoveWorkItemUseCase(repository, () -> now), () -> now,
-                settings, executor, Runnable::run, () -> { });
+                new MoveWorkItemUseCase(repository, time()), time(),
+                executor, Runnable::run, () -> { });
+    }
+
+    private TimeProvider time() {
+        return new TimeProvider() {
+            @Override public Instant now() {
+                return now.atZone(ZoneId.of("Europe/Berlin")).toInstant();
+            }
+            @Override public ZoneId zone() { return ZoneId.of("Europe/Berlin"); }
+        };
     }
 
     @After
@@ -92,44 +107,53 @@ public final class MainViewModelEndToEndTest {
         viewModel.selectSurface(Surface.ALL);
         viewModel.selectFilter(WorkItemFilter.DONE);
         viewModel.save(task);
-        await(() -> ready() && viewModel.state().getValue().dashboard().workItems().size() == 1);
+        await(() -> ready() && dashboard().workItems().size() == 1);
         assertEquals(Surface.ALL, viewModel.state().getValue().surface());
         assertEquals(WorkItemFilter.DONE, viewModel.state().getValue().filter());
-        assertFalse(((Task) viewModel.state().getValue().dashboard().workItems().get(0)).completed());
+        assertFalse(((Task) dashboard().workItems().get(0)).completed());
 
         viewModel.complete(TASK_ID);
-        await(() -> ready() && ((Task) viewModel.state().getValue().dashboard()
-                .workItems().get(0)).completed());
+        await(() -> ready() && ((Task) dashboard()
+                .workItems().get(0)).completed()
+                && viewModel.effects().getValue() instanceof MainUiEffect.Completion);
 
-        assertTrue(((Task) viewModel.state().getValue().dashboard().workItems().get(0)).completed());
-        assertEquals(1, viewModel.state().getValue().completionSignal());
+        assertTrue(((Task) dashboard().workItems().get(0)).completed());
+        assertTrue(viewModel.effects().getValue() instanceof MainUiEffect.Completion);
     }
 
     @Test
     public void savedStateRestoresSurfaceFilterOpenDialogAndRawInputs() {
         viewModel.selectSurface(Surface.ALL);
         viewModel.selectFilter(WorkItemFilter.ROUTINES);
-        viewModel.openEditor(false, null);
-        var editor = viewModel.state().getValue().editor();
-        viewModel.editEditor(editor.edit("Unfertiger Titel", "abc", "2026-08-20",
+        EditorViewModel editorViewModel = new EditorViewModel(
+                savedState, repository, time(), executor, Runnable::run);
+        editorViewModel.open(false, null);
+        var editor = editorViewModel.editor();
+        editorViewModel.edit(editor.edit("Unfertiger Titel", "abc", "2026-08-20",
                 "EVENING", false, "", "", List.of(
                         StepEditorState.empty().edit("Erster Schritt", "Mo,Mi"))));
 
         MainViewModel recreated = createViewModel(savedState);
+        EditorViewModel recreatedEditor = new EditorViewModel(
+                savedState, repository, time(), executor, Runnable::run);
         recreated.state().observeForever(ignored -> { });
         viewModel = recreated;
 
         assertEquals(Surface.ALL, viewModel.state().getValue().surface());
         assertEquals(WorkItemFilter.ROUTINES, viewModel.state().getValue().filter());
-        assertEquals("Unfertiger Titel", viewModel.state().getValue().editor().titleInput());
-        assertEquals("abc", viewModel.state().getValue().editor().durationInput());
+        assertEquals("Unfertiger Titel", recreatedEditor.editor().titleInput());
+        assertEquals("abc", recreatedEditor.editor().durationInput());
         assertEquals("Erster Schritt",
-                viewModel.state().getValue().editor().steps().get(0).titleInput());
+                recreatedEditor.editor().steps().get(0).titleInput());
     }
 
     private boolean ready() {
         MainUiState state = viewModel.state().getValue();
-        return state != null && !state.loading() && state.dashboard() != null;
+        return state instanceof MainUiState.Ready;
+    }
+
+    private com.autosecretary.application.DashboardData dashboard() {
+        return ((MainUiState.Ready) viewModel.state().getValue()).dashboard();
     }
 
     private static void await(BooleanSupplier condition) {

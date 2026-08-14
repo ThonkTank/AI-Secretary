@@ -30,10 +30,10 @@ jobs:
     permissions:
       contents: write
     env:
-      KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}
-      KEYSTORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}
-      KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS || 'release' }}
-      KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD || secrets.ANDROID_RELEASE_STORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}
+      KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -48,7 +48,7 @@ jobs:
           set -euo pipefail
           while IFS='=' read -r key value; do
             case "$key" in
-              repositoryOwner|repositoryName|packageName|apkAsset|metadataAsset|expectedSignerSha256|versionSeries|versionCodeFloor|androidBuildTools|keyAlias)
+              repositoryOwner|repositoryName|packageName|apkAsset|metadataAsset|expectedSignerSha256|versionSeries|versionCodeFloor|androidBuildTools)
                 printf '%s=%s\n' "$key" "$value" >> "$GITHUB_ENV"
                 ;;
             esac
@@ -91,6 +91,27 @@ jobs:
         if: env.ALREADY_PUBLISHED == 'true'
         run: echo "Commit $GITHUB_SHA is already published as $TAG"
 
+      - name: Enable KVM for the Android emulator
+        if: env.ALREADY_PUBLISHED != 'true'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the same real-device smoke gate
+        if: env.ALREADY_PUBLISHED != 'true'
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: >-
+            ./gradlew --no-daemon --max-workers=1 :app:connectedDebugAndroidTest
+            -Pandroid.testInstrumentationRunnerArguments.notAnnotation=androidx.test.filters.LargeTest
+            && tools/verify-data-migration
+
       - name: Restore the permanent signing key
         if: env.ALREADY_PUBLISHED != 'true'
         run: |
@@ -110,7 +131,7 @@ jobs:
       - name: Test and stage the small signed APK
         if: env.ALREADY_PUBLISHED != 'true'
         run: >-
-          ./gradlew --no-daemon --max-workers=1 qualityGate stagePhoneRelease
+          ./gradlew --no-daemon --max-workers=1 qualityGate verifyPhoneRelease
           -PversionCode=$VERSION_CODE -PversionName=$VERSION_NAME
           -PrequireProductionSigning=true
 
@@ -175,11 +196,26 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/release-proof"
+          LOCAL_METADATA_SHA=$(sha256sum "$metadataAsset" | awk '{print $1}')
           gh release download "$TAG" --dir "$RUNNER_TEMP/release-proof" \
             --pattern "$apkAsset" --pattern "$metadataAsset" --clobber
+          test "$(sha256sum "$RUNNER_TEMP/release-proof/$metadataAsset" | awk '{print $1}')" \
+            = "$LOCAL_METADATA_SHA"
           EXPECTED=$(jq -r .sha256 "$RUNNER_TEMP/release-proof/$metadataAsset")
           ACTUAL=$(sha256sum "$RUNNER_TEMP/release-proof/$apkAsset" | awk '{print $1}')
           test "$EXPECTED" = "$ACTUAL"
           test "$(jq -r .commitSha "$RUNNER_TEMP/release-proof/$metadataAsset")" = "$GITHUB_SHA"
+          RELEASE_ID=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -n 1)
+          test -n "$RELEASE_ID"
+          while read -r ASSET_ID; do
+            test -z "$ASSET_ID" || gh api --method DELETE \
+              "repos/$GITHUB_REPOSITORY/releases/assets/$ASSET_ID"
+          done < <(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" \
+            --jq ".[] | select(.name != \"$apkAsset\" and .name != \"$metadataAsset\") | .id")
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" \
+            --jq 'length')" = 2
           gh release edit "$TAG" --draft=false --latest
           test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = "$TAG"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" \
+            --jq .target_commitish)" = "$GITHUB_SHA"

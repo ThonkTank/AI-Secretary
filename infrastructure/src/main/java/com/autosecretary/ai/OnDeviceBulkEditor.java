@@ -3,6 +3,7 @@ package com.autosecretary.ai;
 import android.content.Context;
 import com.autosecretary.application.ai.AiProposalGateway;
 import com.autosecretary.application.TimeProvider;
+import com.autosecretary.application.model.ModelStatus;
 import com.autosecretary.application.ai.BulkChangeProposal;
 import com.autosecretary.platform.model.LocalModelManager;
 import com.autosecretary.domain.Routine;
@@ -40,18 +41,13 @@ public final class OnDeviceBulkEditor implements AiProposalGateway {
             Context context,
             ExecutorService ioExecutor,
             ExecutorService aiExecutor,
-            TimeProvider clock) {
+            TimeProvider clock,
+            LocalModelManager models) {
         this.context = context.getApplicationContext();
         this.ioExecutor = ioExecutor;
         this.aiExecutor = aiExecutor;
         this.clock = clock;
-        models = new LocalModelManager(context);
-    }
-
-    public boolean hasModel() { return models.hasModel(); }
-
-    public Future<?> installModel(Runnable onSuccess, Consumer<Throwable> onError) {
-        return ioExecutor.submit(() -> run(() -> models.install(), onSuccess, onError));
+        this.models = models;
     }
 
     public Future<?> propose(
@@ -61,16 +57,16 @@ public final class OnDeviceBulkEditor implements AiProposalGateway {
             Consumer<Throwable> onError) {
         return aiExecutor.submit(() -> {
             try {
-                BulkChangeProposal compiled = commands.compile(instruction, current, clock.localNow());
+                BulkChangeProposal compiled = commands.compile(instruction, current, localNow());
                 if (compiled != null) {
                     if (!Thread.currentThread().isInterrupted()) onSuccess.accept(compiled);
                     return;
                 }
-                if (!models.hasModel()) {
+                if (!(models.status() instanceof ModelStatus.Ready ready)) {
                     throw new IllegalStateException("Das lokale Modell ist noch nicht bereit");
                 }
                 LlmInference.LlmInferenceOptions options = LlmInference.LlmInferenceOptions.builder()
-                        .setModelPath(models.file().getAbsolutePath())
+                        .setModelPath(ready.path().toString())
                         .setMaxTokens(MAX_MODEL_TOKENS).setMaxTopK(20).build();
                 String response;
                 try (LlmInference inference = LlmInference.createFromOptions(context, options)) {
@@ -81,12 +77,16 @@ public final class OnDeviceBulkEditor implements AiProposalGateway {
                     }
                     response = inference.generateResponse(prompt);
                 }
-                BulkChangeProposal proposal = parser.parse(response, current, clock.localNow());
+                BulkChangeProposal proposal = parser.parse(response, current, localNow());
                 if (!Thread.currentThread().isInterrupted()) onSuccess.accept(proposal);
             } catch (Throwable error) {
                 if (!Thread.currentThread().isInterrupted()) onError.accept(error);
             }
         });
+    }
+
+    private java.time.LocalDateTime localNow() {
+        return java.time.LocalDateTime.ofInstant(clock.now(), clock.zone());
     }
 
     private static void run(

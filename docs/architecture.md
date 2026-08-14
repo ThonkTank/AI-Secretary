@@ -22,14 +22,15 @@ rejects direct default-zone or wall-clock reads outside `SystemTimeProvider`.
 
 ## UI state and effects
 
-Top-level destinations and work-item filters are enums with stable serialized values. Dialogs use
-an activity-scoped `ViewModelProvider.Factory` capability rather than requiring the activity to
-implement feature-specific host interfaces. The update flow is a sealed state machine; settings
-and installer launches are identified one-shot effects persisted through `SavedStateHandle`.
+Top-level destinations and work-item filters are enums with stable serialized values. Dashboard,
+editor, planning settings, AI and update each own mutually exclusive sealed states. Editor and
+planning dialogs have dedicated activity-scoped ViewModels and report committed changes through
+Fragment Results. Snackbar, error/dialog and installer transitions use consumable effects instead
+of nullable render flags; update effects persist their consumption through `SavedStateHandle`.
 
-`MainActivity` is the Android lifecycle/composition shell for the existing XML screen. Dedicated
-Today, complete-list, navigation, AI and update controllers own their bindings and rendering;
-ViewModels remain the only retained state owners. Dialog fragments obtain activity-scoped
+`MainActivity` only hosts and navigates. `TodayFragment`, `WorkItemsFragment`, `AiFragment` and
+`UpdatePanelFragment` own independent XML/ViewBinding feature trees and rendering; ViewModels
+remain the only retained state owners. Dialog fragments obtain activity-scoped
 ViewModels through the narrow factory capability instead of feature-specific activity interfaces.
 
 ## Time and calendar
@@ -46,8 +47,10 @@ sentinels.
 ## Data evolution
 
 Schema 35 is the stable Room baseline. Destructive fallback is constrained to prototype schemas
-1–34. Every future schema version requires an explicit migration and upgrade test. Updates use the
-same package and permanent signer, so Android retains the database and preferences.
+1–34, and a pinned schema hash rejects accidental edits to that baseline. Every future schema
+version requires an explicit migration and upgrade test. PR CI additionally performs a real
+N→N+1 `adb install -r` and verifies package/UID, Room, preferences, undo and model retention.
+Updates use the same package and permanent signer, so Android retains the application data.
 
 ## Distribution contracts
 

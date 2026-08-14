@@ -8,15 +8,15 @@ import java.security.MessageDigest;
 import java.util.Locale;
 import java.util.Set;
 
-/** Pure validation policy separated from Android package/archive inspection. */
-public final class UpdatePackageVerifier {
+/** Pure APK validation policy separated from Android package/archive inspection. */
+public final class UpdateArtifactVerifier {
     public record PackageEvidence(String packageName, long versionCode, Set<String> signers) {
         public PackageEvidence {
             signers = Set.copyOf(signers == null ? Set.of() : signers);
         }
     }
 
-    private UpdatePackageVerifier() { }
+    private UpdateArtifactVerifier() { }
 
     public static void verify(
             File apk,
@@ -56,12 +56,10 @@ public final class UpdatePackageVerifier {
             int read;
             while ((read = input.read(buffer)) >= 0) digest.update(buffer, 0, read);
         }
-        return hex(digest.digest());
-    }
-
-    private static String hex(byte[] value) {
-        StringBuilder result = new StringBuilder(value.length * 2);
-        for (byte part : value) result.append(String.format(Locale.ROOT, "%02x", part));
+        StringBuilder result = new StringBuilder();
+        for (byte part : digest.digest()) {
+            result.append(String.format(Locale.ROOT, "%02x", part));
+        }
         return result.toString();
     }
 }

@@ -5,6 +5,9 @@ import static org.junit.Assert.assertEquals;
 import android.database.MatrixCursor;
 import android.provider.CalendarContract;
 
+import com.autosecretary.application.CalendarOccurrence;
+import com.autosecretary.application.CalendarPolicy;
+import com.autosecretary.application.CalendarVisibility;
 import com.autosecretary.domain.BusyInterval;
 
 import org.junit.Test;
@@ -54,10 +57,14 @@ public final class DeviceCalendarGatewayTest {
                 CalendarContract.Events.STATUS_TENTATIVE, null, 1);
         add(cursor, 16, 17, 0, "", null, null, null, null);
 
-        List<BusyInterval> intervals = DeviceCalendarGateway.intervals(cursor, ZoneOffset.UTC);
+        List<CalendarOccurrence> occurrences = DeviceCalendarGateway.occurrences(cursor);
+        var intervals = new CalendarPolicy().busyIntervals(occurrences, ZoneOffset.UTC);
 
-        assertEquals(List.of("Beschäftigt", "Vorläufig", "Kalendertermin"),
+        assertEquals(8, occurrences.size());
+        assertEquals(java.util.Arrays.asList("Beschäftigt", "Vorläufig", null),
                 intervals.stream().map(BusyInterval::title).toList());
+        assertEquals(CalendarVisibility.TITLE_HIDDEN,
+                occurrences.get(occurrences.size() - 1).visibility());
     }
 
     @Test
@@ -71,8 +78,9 @@ public final class DeviceCalendarGatewayTest {
         long secondEnd = Instant.parse("2026-10-25T02:00:00Z").toEpochMilli();
         cursor.addRow(row(secondStart, secondEnd, "Zweites 02:30", 42));
 
-        List<BusyInterval> intervals = DeviceCalendarGateway.intervals(
-                cursor, ZoneId.of("Europe/Berlin"));
+        List<CalendarOccurrence> occurrences = DeviceCalendarGateway.occurrences(cursor);
+        var intervals = new CalendarPolicy().busyIntervals(
+                occurrences, ZoneId.of("Europe/Berlin"));
 
         assertEquals(2, intervals.size());
         BusyInterval overlap = intervals.stream()
@@ -80,7 +88,7 @@ public final class DeviceCalendarGatewayTest {
                 .findFirst().orElseThrow();
         assertEquals(60, java.time.Duration.between(
                 overlap.start(), overlap.end()).toMinutes());
-        assertEquals(List.of("1:42:2026-10-25T01:30:00Z", "1:41:2026-10-25T00:30:00Z"),
+        assertEquals(List.of("1:41:2026-10-25T00:30:00Z", "1:42:2026-10-25T01:30:00Z"),
                 intervals.stream().map(BusyInterval::id).toList());
     }
 

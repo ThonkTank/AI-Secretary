@@ -133,7 +133,8 @@ public final class DaylightController {
     }
 
     private void updateGreeting() {
-        LocalTime now = time.localNow().toLocalTime();
+        LocalTime now = java.time.LocalDateTime.ofInstant(
+                time.now(), time.zone()).toLocalTime();
         int minute = now.getHour() * 60 + now.getMinute();
         greeting.setText(minute < 5 * 60 ? "Noch früh"
                 : minute < 9 * 60 ? "Guten Morgen"
@@ -145,7 +146,7 @@ public final class DaylightController {
     }
 
     private void updateTime() {
-        backdrop.setTime(time.localNow(), time.zone());
+        backdrop.setTime(java.time.LocalDateTime.ofInstant(time.now(), time.zone()), time.zone());
     }
 
     private void applyCardMode(DaylightBackdropView.Mode mode) {

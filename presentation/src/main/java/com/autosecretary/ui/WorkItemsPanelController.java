@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.autosecretary.application.MoveWorkItemUseCase;
 import com.autosecretary.application.TimeProvider;
 import com.autosecretary.presentation.R;
-import com.autosecretary.presentation.databinding.ActivityMainBinding;
+import com.autosecretary.presentation.databinding.FragmentWorkItemsBinding;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.time.LocalDate;
@@ -30,14 +30,14 @@ public final class WorkItemsPanelController {
         void deleteAll(List<String> ids);
     }
 
-    private final ActivityMainBinding binding;
+    private final FragmentWorkItemsBinding binding;
     private final TimeProvider time;
     private final Actions actions;
     private final ObligationAdapter adapter;
     private Dashboard dashboard = new Dashboard(List.of(), List.of());
 
     public WorkItemsPanelController(
-            ActivityMainBinding binding, TimeProvider time, Actions actions) {
+            FragmentWorkItemsBinding binding, TimeProvider time, Actions actions) {
         this.binding = binding;
         this.time = time;
         this.actions = actions;
@@ -102,7 +102,8 @@ public final class WorkItemsPanelController {
     }
 
     private List<String> completedCleanupIds() {
-        LocalDate cutoff = time.localNow().toLocalDate().minusDays(30);
+        LocalDate cutoff = java.time.LocalDateTime.ofInstant(
+                time.now(), time.zone()).toLocalDate().minusDays(30);
         return dashboard.workItems().stream()
                 .filter(WorkItemRow::completed)
                 .filter(item -> item.completedAt() != null && item.completedAt().isBefore(cutoff))

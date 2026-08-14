@@ -1,6 +1,25 @@
 plugins {
+    id("autosecretary.release")
     id("com.android.application") version "8.7.3" apply false
     id("com.android.library") version "8.7.3" apply false
+}
+
+val checkRoomSchemaBaseline = tasks.register("checkRoomSchemaBaseline") {
+    group = "verification"
+    description = "Keeps the immutable Room v35 baseline stable; later schemas require migrations."
+    doLast {
+        val compatibility = java.util.Properties().apply {
+            file("release/compatibility.properties").inputStream().use(::load)
+        }
+        val version = compatibility.getProperty("roomBaselineSchema")
+        val schema = file("schemas/com.autosecretary.data.FocusDatabase/$version.json")
+        check(schema.isFile) { "Room baseline schema $version is missing" }
+        val actual = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(schema.readBytes()).joinToString("") { "%02x".format(it) }
+        check(actual == compatibility.getProperty("roomBaselineSchemaSha256")) {
+            "Room v$version changed without a new schema version and explicit migration"
+        }
+    }
 }
 
 val checkClockBoundary = tasks.register("checkClockBoundary") {
@@ -31,7 +50,8 @@ val checkClockBoundary = tasks.register("checkClockBoundary") {
 tasks.register("checkArchitecture") {
     group = "verification"
     description = "Runs behavior tests and enforced architecture-boundary rules."
-    dependsOn(checkClockBoundary, ":core:test", ":infrastructure:testDebugUnitTest",
+    dependsOn(checkClockBoundary, checkRoomSchemaBaseline,
+        ":core:test", ":infrastructure:testDebugUnitTest",
         ":presentation:testDebugUnitTest", ":app:testDebugUnitTest")
 }
 
@@ -41,19 +61,4 @@ tasks.register("qualityGate") {
     dependsOn("checkArchitecture", ":infrastructure:lintDebug", ":presentation:lintDebug",
         ":app:lintDebug", ":app:lintRelease", ":app:assembleDebugAndroidTest",
         ":app:assembleRelease")
-}
-
-tasks.register<Copy>("stagePhoneRelease") {
-    group = "distribution"
-    description = "Stages the signed release APK under its stable public asset name."
-    dependsOn(":app:assembleRelease")
-    from(layout.projectDirectory.file("app/build/outputs/apk/release/app-release.apk"))
-    into(layout.buildDirectory.dir("phone-release"))
-    rename { "AutoSecretary.apk" }
-    doLast {
-        val apk = layout.buildDirectory.file("phone-release/AutoSecretary.apk").get().asFile
-        check(apk.isFile && apk.length() > 0) {
-            "Signed release APK was not staged; production signing is probably missing"
-        }
-    }
 }

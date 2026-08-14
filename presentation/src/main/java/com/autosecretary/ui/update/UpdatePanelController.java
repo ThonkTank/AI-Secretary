@@ -4,21 +4,21 @@ import android.view.View;
 
 import androidx.lifecycle.LifecycleOwner;
 
-import com.autosecretary.presentation.databinding.ActivityMainBinding;
+import com.autosecretary.presentation.databinding.FragmentUpdatePanelBinding;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 /** Binds the update state machine to its XML panel without owning installer side effects. */
 public final class UpdatePanelController {
-    private final ActivityMainBinding binding;
+    private final FragmentUpdatePanelBinding binding;
     private final UpdateViewModel viewModel;
     private final boolean enabled;
     private final BooleanSupplier canInstallPackages;
     private final Consumer<UpdateUiEffect> effectHandler;
 
     public UpdatePanelController(
-            ActivityMainBinding binding,
+            FragmentUpdatePanelBinding binding,
             UpdateViewModel viewModel,
             boolean enabled,
             BooleanSupplier canInstallPackages,
@@ -66,10 +66,23 @@ public final class UpdatePanelController {
         if (!enabled || state == null) return;
         binding.UpdateAction.setEnabled(!state.busy());
         binding.UpdateProgress.setVisibility(state.busy() ? View.VISIBLE : View.GONE);
+        if (state instanceof UpdateUiState.Downloading downloading
+                && downloading.progress()
+                instanceof com.autosecretary.application.update.DownloadProgress.Running running
+                && running.totalBytes() > 0) {
+            binding.UpdateProgress.setIndeterminate(false);
+            binding.UpdateProgress.setMax(1000);
+            binding.UpdateProgress.setProgress((int) Math.min(1000,
+                    running.downloadedBytes() * 1000 / running.totalBytes()));
+        } else {
+            binding.UpdateProgress.setIndeterminate(true);
+        }
         if (state.busy()) {
             binding.UpdateStatus.setText(state.available() == null
                     ? "Suche nach veröffentlichtem Update …"
-                    : "Update wird geladen und geprüft …");
+                    : state instanceof UpdateUiState.Verifying
+                    ? "Signatur und Paket werden geprüft …"
+                    : "Update wird geladen …");
         } else if (state.error() != null) {
             binding.UpdateStatus.setText(state.error());
             binding.UpdateAction.setText(state.retryable()

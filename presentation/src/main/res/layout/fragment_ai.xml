@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/Root" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="28dp" android:paddingTop="28dp" android:paddingEnd="22dp" android:paddingBottom="24dp">
+        <TextView style="@style/WaldTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Lokale KI" />
+        <TextView android:id="@+id/ModelStatus" style="@style/WaldMarker" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" />
+        <LinearLayout android:id="@+id/AiProgress" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:background="@drawable/bg_leaf_middle" android:gravity="center_vertical" android:orientation="horizontal" android:padding="18dp" android:visibility="gone">
+            <com.autosecretary.ui.AnnualRingProgressView android:id="@+id/AiAnnualRings" android:layout_width="92dp" android:layout_height="92dp" />
+            <TextView android:id="@+id/AiProgressText" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:layout_weight="1" android:textColor="@color/ink_muted" />
+            <TextView android:id="@+id/AiProgressCancel" android:layout_width="wrap_content" android:layout_height="48dp" android:gravity="center" android:text="Abbrechen" android:textColor="@color/marker" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:background="@drawable/bg_leaf_focus" android:orientation="vertical" android:padding="24dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="@font/newsreader_extra_light" android:text="Was soll sich ändern?" android:textColor="@color/ink" android:textSize="27sp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Ein Wunsch wird lokal gelesen. Du prüfst jede Änderung vor dem Speichern." android:textColor="@color/ink_muted" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/AiBulkEdit" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:text="Wunsch eingeben" />
+        </LinearLayout>
+        <TextView android:id="@+id/PlanningSettings" android:layout_width="wrap_content" android:layout_height="48dp" android:gravity="center_vertical" android:text="Planungszeiten und Puffer" android:textColor="@color/marker" />
+        <androidx.fragment.app.FragmentContainerView android:id="@+id/UpdatePanelHost" android:name="com.autosecretary.ui.update.UpdatePanelFragment" android:layout_width="match_parent" android:layout_height="wrap_content" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

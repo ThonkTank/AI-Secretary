@@ -24,9 +24,11 @@ public record UpdateInfo(
         if (packageName == null || packageName.isBlank()) {
             throw new IllegalArgumentException("Paket-ID fehlt");
         }
-        if (apkUrl == null || !apkUrl.startsWith(
-                "https://github.com/ThonkTank/AI-Secretary/releases/download/")) {
-            throw new IllegalArgumentException("APK-URL muss aus diesem Repository stammen");
+        java.net.URI source;
+        try { source = java.net.URI.create(apkUrl); }
+        catch (RuntimeException error) { throw new IllegalArgumentException("APK-URL ist ungültig", error); }
+        if (!"https".equalsIgnoreCase(source.getScheme()) || source.getHost() == null) {
+            throw new IllegalArgumentException("APK-URL muss HTTPS verwenden");
         }
         if (apkSizeBytes < 0 || apkSizeBytes > 80L * 1024L * 1024L) {
             throw new IllegalArgumentException("Ungültige APK-Größe");
