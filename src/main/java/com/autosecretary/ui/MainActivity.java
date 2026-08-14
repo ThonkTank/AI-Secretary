@@ -27,7 +27,6 @@ import com.autosecretary.R;
 import com.autosecretary.BuildConfig;
 import com.autosecretary.app.AutoSecretaryApplication;
 import com.autosecretary.databinding.ActivityMainBinding;
-import com.autosecretary.databinding.RowCalendarBinding;
 import com.autosecretary.application.MoveWorkItemUseCase;
 import com.autosecretary.domain.PlanConflict;
 import com.autosecretary.platform.CalendarChangeObserver;
@@ -44,7 +43,7 @@ import com.autosecretary.ui.update.UpdateViewModel;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -57,11 +56,10 @@ public final class MainActivity extends AppCompatActivity implements
     private MainViewModel viewModel;
     private UpdateViewModel updateViewModel;
     private AiViewModel aiViewModel;
-    private FocusAdapter focusAdapter;
-    private FocusAdapter laterFocusAdapter;
+    private TodayAdapter todayAdapter;
     private ObligationAdapter obligationAdapter;
     private Dashboard dashboard = new Dashboard(
-            Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+            Collections.emptyList(), Collections.emptyList());
     private CelebrationView celebration;
     private View emptyFocus;
     private TextView modelStatus;
@@ -70,7 +68,6 @@ public final class MainActivity extends AppCompatActivity implements
     private TextView updateStatus;
     private TextView planningConflicts;
     private android.widget.Button updateAction;
-    private LinearLayout calendarContext;
     private View calendarPermissionCard;
     private View todayPanel;
     private View allPanel;
@@ -84,6 +81,7 @@ public final class MainActivity extends AppCompatActivity implements
     private View root;
     private ActivityMainBinding binding;
     private boolean calendarCardDismissed;
+    private boolean todayExpanded;
 
     private final ActivityResultLauncher<String> calendarPermission = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
@@ -105,6 +103,7 @@ public final class MainActivity extends AppCompatActivity implements
         creationState = savedInstanceState;
         if (savedInstanceState != null) {
             renderedCompletionSignal = savedInstanceState.getLong(RENDERED_COMPLETION_SIGNAL);
+            todayExpanded = savedInstanceState.getBoolean(TODAY_EXPANDED);
         }
         root = binding.Root;
         AutoSecretaryApplication app = AutoSecretaryApplication.from(this);
@@ -129,7 +128,6 @@ public final class MainActivity extends AppCompatActivity implements
         updateStatus = binding.UpdateStatus;
         planningConflicts = binding.PlanningConflicts;
         updateAction = binding.UpdateAction;
-        calendarContext = binding.CalendarContext;
         calendarPermissionCard = binding.CalendarPermissionCard;
         todayPanel = binding.TodayPanel;
         allPanel = binding.AllPanel;
@@ -145,7 +143,7 @@ public final class MainActivity extends AppCompatActivity implements
         });
         daylightController.configure();
 
-        FocusAdapter.Listener focusListener = new FocusAdapter.Listener() {
+        TodayAdapter.Listener focusListener = new TodayAdapter.Listener() {
             @Override public void onComplete(String id) { complete(id); }
             @Override public void onStepChanged(String id, String stepId, boolean completed) {
                 setStepCompleted(id, stepId, completed);
@@ -157,16 +155,11 @@ public final class MainActivity extends AppCompatActivity implements
             }
             @Override public void onOmit(String id) { omitToday(id); }
         };
-        focusAdapter = new FocusAdapter(focusListener);
-        laterFocusAdapter = new FocusAdapter(focusListener);
+        todayAdapter = new TodayAdapter(focusListener);
         RecyclerView focusList = binding.FocusList;
         focusList.setLayoutManager(new LinearLayoutManager(this));
-        focusList.setAdapter(focusAdapter);
+        focusList.setAdapter(todayAdapter);
         focusList.setNestedScrollingEnabled(false);
-        RecyclerView laterFocusList = binding.FocusLaterList;
-        laterFocusList.setLayoutManager(new LinearLayoutManager(this));
-        laterFocusList.setAdapter(laterFocusAdapter);
-        laterFocusList.setNestedScrollingEnabled(false);
 
         obligationAdapter = new ObligationAdapter(new ObligationAdapter.Listener() {
             @Override public void onComplete(String id) { complete(id); }
@@ -270,26 +263,11 @@ public final class MainActivity extends AppCompatActivity implements
         showSurface(state.surface());
         setListFilter(state.filter());
         if (state.dashboard() != null) {
-            dashboard = UiModelMapper.dashboard(state.dashboard(), LocalDate.now());
+            dashboard = UiModelMapper.dashboard(state.dashboard(), LocalDateTime.now());
             refreshEveningPalette();
             submitTodayRows();
-            int additional = Math.max(0, dashboard.focus().size() - 3);
-            binding.FocusStack.setVisibility(additional == 0 ? View.GONE : View.VISIBLE);
-            ViewGroup.MarginLayoutParams focusMargins =
-                    (ViewGroup.MarginLayoutParams) binding.FocusList.getLayoutParams();
-            int wantedTopMargin = additional == 0 ? 0 : -dp(92);
-            if (focusMargins.topMargin != wantedTopMargin) {
-                focusMargins.topMargin = wantedTopMargin;
-                binding.FocusList.setLayoutParams(focusMargins);
-            }
-            binding.FocusMore.setVisibility(additional == 0 ? View.GONE : View.VISIBLE);
-            binding.FocusMore.setText(additional == 1
-                    ? "und ein weiteres Blatt heute · zeigen"
-                    : "und " + additional + " weitere heute · zeigen");
-            binding.FocusMore.setOnClickListener(view -> viewModel.selectSurface("all"));
             submitFilteredObligations();
             renderEmptyFocus(state.dashboard());
-            renderCalendar(dashboard.calendar());
             allHeading.setText("Alles · " + dashboard.workItems().size());
             String undoLabel = state.dashboard().undoLabel();
             undoAction.setVisibility(undoLabel == null ? View.GONE : View.VISIBLE);
@@ -317,6 +295,7 @@ public final class MainActivity extends AppCompatActivity implements
     @Override
     protected void onSaveInstanceState(@androidx.annotation.NonNull Bundle outState) {
         outState.putLong(RENDERED_COMPLETION_SIGNAL, renderedCompletionSignal);
+        outState.putBoolean(TODAY_EXPANDED, todayExpanded);
         super.onSaveInstanceState(outState);
     }
 
@@ -366,7 +345,7 @@ public final class MainActivity extends AppCompatActivity implements
     }
 
     private void renderEmptyFocus(com.autosecretary.application.DashboardData data) {
-        boolean empty = dashboard.focus().isEmpty();
+        boolean empty = dashboard.today().isEmpty();
         emptyFocus.setVisibility(empty ? View.VISIBLE : View.GONE);
         binding.CompletedToday.removeAllViews();
         binding.CompletedToday.setVisibility(View.GONE);
@@ -408,20 +387,31 @@ public final class MainActivity extends AppCompatActivity implements
     }
 
     private void submitTodayRows() {
-        List<FocusRow> visible = dashboard.focus().stream().limit(3)
-                .collect(java.util.stream.Collectors.toList());
-        java.time.LocalDateTime nextCalendar = dashboard.calendar().stream()
-                .filter(value -> value.end().isAfter(java.time.LocalDateTime.now()))
-                .map(CalendarRow::start).min(java.time.LocalDateTime::compareTo).orElse(null);
-        int split = visible.size();
-        if (nextCalendar != null && visible.size() > 1) {
-            split = 1;
-            while (split < visible.size()
-                    && visible.get(split).suggestedStart().isBefore(nextCalendar)) split++;
+        int additional = Math.max(0, dashboard.today().size() - 3);
+        if (additional == 0) todayExpanded = false;
+        todayAdapter.submit(visibleTodayRows(dashboard, todayExpanded));
+        boolean stackVisible = !todayExpanded && additional > 0;
+        binding.FocusStack.setVisibility(stackVisible ? View.VISIBLE : View.GONE);
+        ViewGroup.MarginLayoutParams focusMargins =
+                (ViewGroup.MarginLayoutParams) binding.FocusList.getLayoutParams();
+        int wantedTopMargin = stackVisible ? -dp(92) : 0;
+        if (focusMargins.topMargin != wantedTopMargin) {
+            focusMargins.topMargin = wantedTopMargin;
+            binding.FocusList.setLayoutParams(focusMargins);
         }
-        focusAdapter.submit(visible.subList(0, split), 0, visible.size());
-        laterFocusAdapter.submit(visible.subList(split, visible.size()), split, visible.size());
-        binding.FocusLaterList.setVisibility(split == visible.size() ? View.GONE : View.VISIBLE);
+        binding.FocusMore.setVisibility(additional == 0 ? View.GONE : View.VISIBLE);
+        binding.FocusMore.setText(todayExpanded ? "wieder auf drei reduzieren"
+                : additional == 1 ? "und ein weiterer heute · zeigen"
+                : "und " + additional + " weitere heute · zeigen");
+        binding.FocusMore.setOnClickListener(view -> {
+            todayExpanded = !todayExpanded;
+            submitTodayRows();
+        });
+    }
+
+    static List<TodayRow> visibleTodayRows(Dashboard dashboard, boolean expanded) {
+        return expanded ? dashboard.today()
+                : dashboard.today().subList(0, Math.min(3, dashboard.today().size()));
     }
 
     private void renderCompletedToday(List<com.autosecretary.domain.WorkItem> completedItems) {
@@ -578,8 +568,6 @@ public final class MainActivity extends AppCompatActivity implements
             appendChildren(leaves, binding.ObligationList, 5);
         } else {
             appendChildren(leaves, binding.FocusList, 5);
-            appendChildren(leaves, binding.CalendarContext, 5);
-            appendChildren(leaves, binding.FocusLaterList, 5);
         }
         int count = leaves.size();
         if (count == 0) {
@@ -694,50 +682,10 @@ public final class MainActivity extends AppCompatActivity implements
                 .setTextColor(ContextCompat.getColor(this, R.color.danger));
     }
 
-    private void renderCalendar(List<CalendarRow> blocks) {
-        calendarContext.removeAllViews();
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR)
-                != PackageManager.PERMISSION_GRANTED) return;
-        if (blocks.isEmpty()) {
-            TextView empty = new TextView(this);
-            empty.setText("●  heute keine Termine im Kalender");
-            empty.setTextColor(ContextCompat.getColor(this, R.color.calendar_label));
-            empty.setTextSize(15);
-            empty.setTypeface(ResourcesCompat.getFont(
-                    this, R.font.newsreader_light_italic));
-            empty.setPadding(dp(6), dp(10), dp(6), dp(12));
-            calendarContext.addView(empty);
-            return;
-        }
-        DateTimeFormatter time = DateTimeFormatter.ofPattern("HH:mm");
-        for (CalendarRow block : blocks) {
-            RowCalendarBinding row = RowCalendarBinding.inflate(
-                    getLayoutInflater(), calendarContext, false);
-            boolean evening = binding.DaylightBackdrop.usesEveningPalette();
-            row.getRoot().setBackgroundResource(evening
-                    ? R.drawable.bg_calendar_leaf_evening : R.drawable.bg_calendar_leaf);
-            row.CalendarTime.setText(block.start().format(time));
-            row.CalendarTitle.setText(block.title());
-            if (evening) {
-                row.CalendarTime.setTextColor(android.graphics.Color.rgb(147, 195, 210));
-                row.CalendarTitle.setTextColor(android.graphics.Color.rgb(147, 195, 210));
-                row.CalendarLabel.setTextColor(android.graphics.Color.rgb(112, 153, 168));
-            }
-            boolean allDay = java.time.Duration.between(block.start(), block.end()).toHours() >= 23;
-            row.CalendarTime.setVisibility(allDay ? View.GONE : View.VISIBLE);
-            row.CalendarLabel.setText(allDay ? "ganztägig gesperrt"
-                    : "Kalendertermin".equals(block.title())
-                    ? "privat · Titel nicht lesbar" : "im Kalender, fest");
-            row.getRoot().setRotation(calendarContext.getChildCount() % 2 == 0 ? -0.8f : 0.8f);
-            calendarContext.addView(row.getRoot());
-        }
-    }
-
     private void refreshEveningPalette() {
         if (binding == null || binding.DaylightBackdrop == null) return;
         boolean evening = binding.DaylightBackdrop.usesEveningPalette();
-        if (focusAdapter != null) focusAdapter.setEvening(evening);
-        if (laterFocusAdapter != null) laterFocusAdapter.setEvening(evening);
+        if (todayAdapter != null) todayAdapter.setEvening(evening);
         if (obligationAdapter != null) obligationAdapter.setEvening(evening);
         binding.FocusStack.getChildAt(0).setBackgroundResource(evening
                 ? R.drawable.bg_leaf_low_evening : R.drawable.bg_leaf_low);
@@ -749,7 +697,6 @@ public final class MainActivity extends AppCompatActivity implements
                 : ContextCompat.getColor(this, R.color.marker));
         binding.FocusMore.setTextColor(evening ? 0xFFA08B62
                 : ContextCompat.getColor(this, R.color.marker));
-        if (dashboard != null && calendarContext != null) renderCalendar(dashboard.calendar());
     }
 
     private void updateCalendarPermissionCard() {
@@ -812,11 +759,8 @@ public final class MainActivity extends AppCompatActivity implements
     private void animateTodayOmission(String id, Runnable after) {
         List<View> leaves = new ArrayList<>();
         View target = findTaggedChild(binding.FocusList, id);
-        if (target == null) target = findTaggedChild(binding.FocusLaterList, id);
         if (target != null) leaves.add(target);
         appendDistinctChildren(leaves, binding.FocusList, 5);
-        appendDistinctChildren(leaves, binding.CalendarContext, 5);
-        appendDistinctChildren(leaves, binding.FocusLaterList, 5);
         if (binding.FocusStack.getVisibility() == View.VISIBLE) {
             appendDistinctChildren(leaves, binding.FocusStack, 5);
         }
@@ -912,4 +856,5 @@ public final class MainActivity extends AppCompatActivity implements
     private static final String UI_PREFERENCES = "waldmorgen_ui";
     private static final String CALENDAR_ASKED = "calendar_asked";
     private static final String RENDERED_COMPLETION_SIGNAL = "renderedCompletionSignal";
+    private static final String TODAY_EXPANDED = "todayExpanded";
 }

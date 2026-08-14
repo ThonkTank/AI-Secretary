@@ -89,7 +89,7 @@ public final class MainViewModel extends ViewModel {
     public void reload() {
         update(current().dashboard(), current().surface(), current().filter(), true, null,
                 current().completionSignal());
-        submit(() -> planFocus.execute(20), false);
+        submit(() -> planFocus.execute(Integer.MAX_VALUE), false);
     }
 
     public void save(WorkItem item) {
@@ -226,7 +226,7 @@ public final class MainViewModel extends ViewModel {
                 try {
                     action.run();
                     changeNotifier.run();
-                    var dashboard = planFocus.execute(20);
+                    var dashboard = planFocus.execute(Integer.MAX_VALUE);
                     dispatch(() -> {
                         update(dashboard, current().surface(), current().filter(), false,
                                 null, current().completionSignal() + (completion ? 1 : 0));

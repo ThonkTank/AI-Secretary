@@ -11,21 +11,21 @@ import android.widget.CheckBox;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.autosecretary.R;
 import com.autosecretary.application.MoveWorkItemUseCase;
+import com.autosecretary.databinding.RowCalendarBinding;
 import com.autosecretary.databinding.RowFocusBinding;
-import com.autosecretary.ui.FocusRow;
-import com.autosecretary.ui.StepRow;
 
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Pure renderer: all domain decisions already live in FocusRow. */
-final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
+/** Pure heterogeneous renderer for the shared task and calendar timeline. */
+final class TodayAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     interface Listener {
         void onComplete(String id);
         void onStepChanged(String id, String stepId, boolean completed);
@@ -33,19 +33,20 @@ final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
         void onOmit(String id);
     }
 
+    private static final int FOCUS = 0;
+    private static final int CALENDAR = 1;
     private final Listener listener;
-    private List<FocusRow> items = List.of();
-    private int startPosition;
-    private int totalVisible;
+    private List<TodayRow> items = List.of();
     private boolean evening;
     private String movedId;
     private String movedLabel;
     private long movedUntil;
 
-    FocusAdapter(Listener listener) { this.listener = listener; }
+    TodayAdapter(Listener listener) { this.listener = listener; }
 
-    void submit(List<FocusRow> values) {
-        submit(values, 0, values.size());
+    void submit(List<TodayRow> values) {
+        items = new ArrayList<>(values);
+        notifyDataSetChanged();
     }
 
     void setEvening(boolean value) {
@@ -54,37 +55,72 @@ final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
         notifyDataSetChanged();
     }
 
-    void submit(List<FocusRow> values, int firstPosition, int total) {
-        items = new ArrayList<>(values);
-        startPosition = firstPosition;
-        totalVisible = total;
-        notifyDataSetChanged();
+    @Override public int getItemViewType(int position) {
+        return items.get(position) instanceof TodayRow.Calendar ? CALENDAR : FOCUS;
     }
 
     @NonNull
-    @Override public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        return new Holder(RowFocusBinding.inflate(
-                LayoutInflater.from(parent.getContext()), parent, false));
+    @Override public RecyclerView.ViewHolder onCreateViewHolder(
+            @NonNull ViewGroup parent, int viewType) {
+        LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+        if (viewType == CALENDAR) {
+            return new CalendarHolder(RowCalendarBinding.inflate(inflater, parent, false));
+        }
+        return new FocusHolder(RowFocusBinding.inflate(inflater, parent, false));
     }
 
-    @Override public void onBindViewHolder(@NonNull Holder holder, int position) {
-        FocusRow item = items.get(position);
-        int visualPosition = startPosition + position;
+    @Override public void onBindViewHolder(
+            @NonNull RecyclerView.ViewHolder holder, int position) {
+        TodayRow item = items.get(position);
+        if (item instanceof TodayRow.Calendar calendar) {
+            bindCalendar((CalendarHolder) holder, calendar.value(), position);
+        } else {
+            bindFocus((FocusHolder) holder, ((TodayRow.Focus) item).value(), position);
+        }
+    }
+
+    private void bindCalendar(CalendarHolder holder, CalendarRow item, int position) {
+        RowCalendarBinding row = holder.binding;
+        row.getRoot().animate().cancel();
+        row.getRoot().setTranslationX(0f);
+        row.getRoot().setTranslationY(0f);
+        row.getRoot().setAlpha(1f);
+        row.getRoot().setBackgroundResource(evening
+                ? R.drawable.bg_calendar_leaf_evening : R.drawable.bg_calendar_leaf);
+        row.CalendarTime.setVisibility(View.VISIBLE);
+        row.CalendarTime.setText(item.start().format(DateTimeFormatter.ofPattern("HH:mm")));
+        row.CalendarTitle.setText(item.title());
+        row.CalendarLabel.setText(marker(row.getRoot(), position) + " · "
+                + ("Kalendertermin".equals(item.title())
+                ? "privat · Titel nicht lesbar" : "im Kalender, fest"));
+        if (evening) {
+            row.CalendarTime.setTextColor(Color.rgb(147, 195, 210));
+            row.CalendarTitle.setTextColor(Color.rgb(147, 195, 210));
+            row.CalendarLabel.setTextColor(Color.rgb(112, 153, 168));
+        } else {
+            row.CalendarTime.setTextColor(row.getRoot().getContext().getColor(R.color.calendar_ink));
+            row.CalendarTitle.setTextColor(row.getRoot().getContext().getColor(R.color.calendar_ink));
+            row.CalendarLabel.setTextColor(row.getRoot().getContext().getColor(R.color.calendar_label));
+        }
+        row.getRoot().setRotation(position % 2 == 0 ? -0.8f : 0.8f);
+        row.getRoot().setTag("calendar:" + item.start() + ":" + item.title());
+    }
+
+    private void bindFocus(FocusHolder holder, FocusRow item, int position) {
         RowFocusBinding row = holder.binding;
         row.FocusLeaf.animate().cancel();
         row.FocusLeaf.setTranslationX(0f);
         row.FocusLeaf.setTranslationY(0f);
         row.FocusLeaf.setAlpha(1f);
-        String marker = item.overdue() ? "überfällig"
-                : row.getRoot().getContext().getString(visualPosition == 0 ? R.string.now
-                : visualPosition == 1 ? R.string.next : R.string.later);
+        String marker = item.overdue() ? "überfällig" : marker(row.getRoot(), position);
         boolean highlighted = item.id().equals(movedId)
                 && android.os.SystemClock.uptimeMillis() < movedUntil;
         row.FocusPosition.setText(highlighted ? marker + " · " + movedLabel : marker);
         row.FocusPosition.setTextColor(evening ? 0xFFF0A03C
                 : row.getRoot().getContext().getColor(R.color.forest));
         row.FocusLeaf.setForeground(highlighted
-                ? row.getRoot().getContext().getDrawable(R.drawable.bg_leaf_highlight) : null);
+                ? AppCompatResources.getDrawable(
+                        row.getRoot().getContext(), R.drawable.bg_leaf_highlight) : null);
         if (highlighted) row.FocusLeaf.postDelayed(() -> {
             if (item.id().equals(movedId)) {
                 movedId = null;
@@ -95,14 +131,14 @@ final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
         row.FocusTitle.setText(item.title());
         row.FocusTitle.setTextColor(evening ? 0xFFF8ECD2
                 : row.getRoot().getContext().getColor(R.color.ink));
-        boolean anchor = visualPosition == 0;
-        boolean secondFullBlock = visualPosition == 1 && totalVisible == 2;
+        boolean anchor = position == 0;
+        boolean secondFullBlock = position == 1 && items.size() == 2;
         row.FocusLeaf.setBackgroundResource(item.overdue() ? R.drawable.bg_leaf_overdue
                 : anchor ? evening ? R.drawable.bg_leaf_focus_evening : R.drawable.bg_leaf_focus
-                : visualPosition == 1
+                : position == 1
                 ? evening ? R.drawable.bg_leaf_middle_evening : R.drawable.bg_leaf_middle
                 : evening ? R.drawable.bg_leaf_low_evening : R.drawable.bg_leaf_low);
-        row.FocusLeaf.setRotation(anchor ? -0.7f : visualPosition == 1 ? 1.1f : -0.8f);
+        row.FocusLeaf.setRotation(anchor ? -0.7f : position == 1 ? 1.1f : -0.8f);
         row.FocusLeaf.setElevation(dp(row.getRoot(), anchor ? 10 : 5));
         row.FocusTitle.setTextSize(anchor ? (item.title().length() > 42 ? 30 : 37)
                 : secondFullBlock ? 28 : 23);
@@ -180,6 +216,11 @@ final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
         }
     }
 
+    private static String marker(View view, int position) {
+        return view.getContext().getString(position == 0 ? R.string.now
+                : position == 1 ? R.string.next : R.string.later);
+    }
+
     private void showOrderMenu(View anchor, String id) {
         LeafActionMenu.show(anchor, List.of(
                 new LeafActionMenu.Action("Zuerst · ganz nach vorn", false,
@@ -216,9 +257,17 @@ final class FocusAdapter extends RecyclerView.Adapter<FocusAdapter.Holder> {
         return Math.round(value * view.getResources().getDisplayMetrics().density);
     }
 
-    static final class Holder extends RecyclerView.ViewHolder {
+    static final class FocusHolder extends RecyclerView.ViewHolder {
         final RowFocusBinding binding;
-        Holder(RowFocusBinding binding) {
+        FocusHolder(RowFocusBinding binding) {
+            super(binding.getRoot());
+            this.binding = binding;
+        }
+    }
+
+    static final class CalendarHolder extends RecyclerView.ViewHolder {
+        final RowCalendarBinding binding;
+        CalendarHolder(RowCalendarBinding binding) {
             super(binding.getRoot());
             this.binding = binding;
         }

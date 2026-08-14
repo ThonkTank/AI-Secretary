@@ -13,12 +13,14 @@ import com.autosecretary.R;
 import com.autosecretary.app.AppGraph;
 import com.autosecretary.application.DashboardData;
 import com.autosecretary.application.StepCompletion;
+import com.autosecretary.application.TodayTimeline;
 import com.autosecretary.domain.BusyInterval;
 import com.autosecretary.domain.PlanAssignment;
 import com.autosecretary.domain.Routine;
 import com.autosecretary.domain.Step;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -85,28 +87,11 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
             rows = new ArrayList<>();
             return;
         }
-        rows = dashboard.focus().stream().map(assignment -> Row.focus(
-                assignment,
-                activeSteps(assignment),
-                dashboard.stepCompletions().stream()
-                        .filter(value -> value.occurrenceKey().equals(assignment.occurrenceKey()))
-                        .collect(java.util.stream.Collectors.toList()),
-                dashboard.calendar().stream()
-                        .filter(value -> !value.end().isAfter(assignment.start()))
-                        .filter(value -> value.end().toLocalDate().equals(
-                                assignment.start().toLocalDate()))
-                        .reduce((left, right) -> right).orElse(null)))
-                .collect(java.util.stream.Collectors.toList());
-        if (maxRows > 1) {
-            BusyInterval nextCalendar = dashboard.calendar().stream()
-                    .filter(value -> value.end().isAfter(java.time.LocalDateTime.now()))
-                    .filter(value -> value.start().toLocalDate().equals(LocalDate.now()))
-                    .findFirst().orElse(null);
-            if (nextCalendar != null) {
-                while (rows.size() >= maxRows) rows.remove(rows.size() - 1);
-                rows.add(Row.calendar(nextCalendar));
-            }
-        }
+        rows = orderedEntries(dashboard, graph.clock().now(), maxRows).stream()
+                .map(entry -> entry instanceof TodayTimeline.Calendar calendar
+                        ? Row.calendar(calendar.value())
+                        : focusRow(((TodayTimeline.Assignment) entry).value(), dashboard))
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         if (dashboard.undoLabel() != null
                 && dashboard.undoLabel().startsWith("Aus heute genommen")) {
             while (rows.size() >= maxRows) rows.remove(rows.size() - 1);
@@ -121,7 +106,7 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         if (position < 0 || position >= rows.size()) return null;
         Row rowData = rows.get(position);
         if (rowData.undo()) return undoView();
-        if (rowData.calendar() != null) return calendarView(rowData.calendar());
+        if (rowData.calendar() != null) return calendarView(rowData.calendar(), position);
         PlanAssignment assignment = rowData.assignment();
         RemoteViews row = new RemoteViews(context.getPackageName(), wide
                 ? R.layout.widget_focus_row_wide : R.layout.widget_focus_row);
@@ -199,7 +184,25 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
                 .collect(java.util.stream.Collectors.toList());
     }
 
-    private RemoteViews calendarView(BusyInterval calendar) {
+    static List<TodayTimeline.Entry> orderedEntries(
+            DashboardData dashboard, LocalDateTime now, int maximum) {
+        return TodayTimeline.from(dashboard, now).entries().stream()
+                .limit(Math.max(0, maximum)).collect(java.util.stream.Collectors.toList());
+    }
+
+    private static Row focusRow(PlanAssignment assignment, DashboardData dashboard) {
+        return Row.focus(assignment, activeSteps(assignment),
+                dashboard.stepCompletions().stream()
+                        .filter(value -> value.occurrenceKey().equals(assignment.occurrenceKey()))
+                        .collect(java.util.stream.Collectors.toList()),
+                dashboard.calendar().stream()
+                        .filter(value -> !value.end().isAfter(assignment.start()))
+                        .filter(value -> value.end().toLocalDate().equals(
+                                assignment.start().toLocalDate()))
+                        .reduce((left, right) -> right).orElse(null));
+    }
+
+    private RemoteViews calendarView(BusyInterval calendar, int position) {
         RemoteViews row = new RemoteViews(
                 context.getPackageName(), R.layout.widget_calendar_row);
         row.setInt(R.id.WidgetCalendarRoot, "setBackgroundResource", palette == 2
@@ -211,14 +214,15 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
         row.setTextColor(R.id.WidgetCalendarTime, calendarInk);
         row.setTextColor(R.id.WidgetCalendarTitle, calendarInk);
         row.setTextColor(R.id.WidgetCalendarLabel, calendarLabel);
-        boolean allDay = java.time.Duration.between(calendar.start(), calendar.end()).toHours() >= 23;
-        row.setViewVisibility(R.id.WidgetCalendarTime, allDay ? View.GONE : View.VISIBLE);
+        row.setViewVisibility(R.id.WidgetCalendarTime, View.VISIBLE);
         row.setTextViewText(R.id.WidgetCalendarTime,
                 calendar.start().format(DateTimeFormatter.ofPattern("HH:mm")));
         row.setTextViewText(R.id.WidgetCalendarTitle, calendar.title());
-        row.setTextViewText(R.id.WidgetCalendarLabel, allDay ? "ganztägig gesperrt"
-                : "Kalendertermin".equals(calendar.title())
-                ? "privat · Titel nicht lesbar" : "im Kalender, fest");
+        String marker = context.getString(position == 0 ? R.string.now
+                : position == 1 ? R.string.next : R.string.later);
+        row.setTextViewText(R.id.WidgetCalendarLabel, marker + " · "
+                + ("Kalendertermin".equals(calendar.title())
+                ? "privat · Titel nicht lesbar" : "im Kalender, fest"));
         return row;
     }
 

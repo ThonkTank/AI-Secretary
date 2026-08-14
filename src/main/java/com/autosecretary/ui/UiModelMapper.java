@@ -2,6 +2,7 @@ package com.autosecretary.ui;
 
 import com.autosecretary.application.DashboardData;
 import com.autosecretary.application.StepCompletion;
+import com.autosecretary.application.TodayTimeline;
 import com.autosecretary.domain.BusyInterval;
 import com.autosecretary.domain.PlanAssignment;
 import com.autosecretary.domain.Routine;
@@ -9,24 +10,30 @@ import com.autosecretary.domain.Task;
 import com.autosecretary.domain.WorkItem;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /** Maps application data into complete presentation rows before adapter binding. */
 public final class UiModelMapper {
     private UiModelMapper() { }
 
-    public static Dashboard dashboard(DashboardData data, LocalDate today) {
-        List<FocusRow> focus = data.focus().stream()
-                .map(assignment -> focusRow(assignment, data, today))
+    public static Dashboard dashboard(DashboardData data, LocalDateTime now) {
+        LocalDate today = now.toLocalDate();
+        List<TodayRow> timeline = TodayTimeline.from(data, now).entries().stream()
+                .map(entry -> entry instanceof TodayTimeline.Assignment assignment
+                        ? new TodayRow.Focus(focusRow(assignment.value(), data, today))
+                        : new TodayRow.Calendar(calendarRow(
+                                ((TodayTimeline.Calendar) entry).value())))
                 .collect(java.util.stream.Collectors.toList());
         List<WorkItemRow> rows = data.workItems().stream()
                 .map(item -> workItemRow(item, data.stepCompletions(),
                         data.completions(), today))
                 .collect(java.util.stream.Collectors.toList());
-        List<CalendarRow> calendar = data.calendar().stream()
-                .map(item -> new CalendarRow(item.start(), item.end(), item.title()))
-                .collect(java.util.stream.Collectors.toList());
-        return new Dashboard(focus, rows, calendar);
+        return new Dashboard(timeline, rows);
+    }
+
+    private static CalendarRow calendarRow(BusyInterval item) {
+        return new CalendarRow(item.start(), item.end(), item.title());
     }
 
     private static FocusRow focusRow(
