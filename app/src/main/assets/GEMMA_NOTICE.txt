@@ -3,6 +3,8 @@ https://ai.google.dev/gemma/terms
 
 Separately downloaded model: Gemma 3 270M IT, dynamic INT8 MediaPipe task bundle.
 The pinned model file is downloaded from the source named in model-manifest.json.
+That source is a byte-identical public mirror of litert-community/gemma-3-270m-it;
+the app requires the pinned official artifact's exact size and SHA-256 before activation.
 
 Use of the downloaded model is also subject to the Gemma Prohibited Use Policy:
 https://ai.google.dev/gemma/prohibited_use_policy
