@@ -1,7 +1,21 @@
 name: Handy-Update veröffentlichen
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "app/**"
+      - "core/**"
+      - "infrastructure/**"
+      - "presentation/**"
+      - "build-logic/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "gradle/**"
+      - "gradlew"
+      - "release/**"
 
 permissions:
   contents: read
@@ -16,86 +30,156 @@ jobs:
     permissions:
       contents: write
     env:
-      EXPECTED_CERT_SHA256: de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da
-      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS || 'release' }}
+      KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD || secrets.ANDROID_RELEASE_STORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: "21"
-      - uses: gradle/actions/setup-gradle@v4
-      - uses: actions/cache@v4
-        with:
-          path: .gradle/bundled-ai
-          key: bundled-ai-gemma3-270m-q8-0f7147f1
+      - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
 
-      - name: Choose the monotonic Android version
+      - name: Read the release contract and reserve an idempotent version
         run: |
-          test "$GITHUB_RUN_ATTEMPT" -lt 100
-          VERSION_NAME="2.0.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
-          VERSION_CODE=$((2000000 + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
+          set -euo pipefail
+          while IFS='=' read -r key value; do
+            case "$key" in
+              repositoryOwner|repositoryName|packageName|apkAsset|metadataAsset|expectedSignerSha256|versionSeries|versionCodeFloor|androidBuildTools|keyAlias)
+                printf '%s=%s\n' "$key" "$value" >> "$GITHUB_ENV"
+                ;;
+            esac
+          done < release/release.properties
+          REPOSITORY=$(sed -n 's/^repositoryOwner=//p' release/release.properties)/$(sed -n 's/^repositoryName=//p' release/release.properties)
+          RELEASES="$RUNNER_TEMP/releases.json"
+          gh api --paginate --slurp "repos/$REPOSITORY/releases?per_page=100" > "$RELEASES"
+          PUBLISHED_TAG=$(jq -r --arg sha "$GITHUB_SHA" \
+            '[.[][] | select(.draft == false and .target_commitish == $sha) | .tag_name][0] // ""' \
+            "$RELEASES")
+          if [ -n "$PUBLISHED_TAG" ]; then
+            printf 'ALREADY_PUBLISHED=true\nTAG=%s\n' "$PUBLISHED_TAG" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          DRAFT_TAG=$(jq -r --arg sha "$GITHUB_SHA" \
+            '[.[][] | select(.draft == true and .target_commitish == $sha) | .tag_name][0] // ""' \
+            "$RELEASES")
+          FLOOR=$(sed -n 's/^versionCodeFloor=//p' release/release.properties)
+          MAX_CODE=$(jq -r --argjson floor "$FLOOR" \
+            '[.[][] | .tag_name | select(test("^android-[0-9]+$"))
+              | sub("android-"; "") | tonumber] | max // $floor' "$RELEASES")
+          MAX_PUBLISHED_CODE=$(jq -r --argjson floor "$FLOOR" \
+            '[.[][] | select(.draft == false) | .tag_name
+              | select(test("^android-[0-9]+$")) | sub("android-"; "") | tonumber]
+              | max // $floor' "$RELEASES")
+          if [ -n "$DRAFT_TAG" ]; then
+            VERSION_CODE=${DRAFT_TAG#android-}
+            test "$VERSION_CODE" -gt "${MAX_PUBLISHED_CODE:-$FLOOR}"
+          else
+            VERSION_CODE=$((MAX_CODE + 1))
+          fi
+          test "$VERSION_CODE" -gt "$FLOOR"
           test "$VERSION_CODE" -le 2100000000
-          printf 'VERSION_CODE=%s\nVERSION_NAME=%s\n' "$VERSION_CODE" "$VERSION_NAME" \
-            >> "$GITHUB_ENV"
+          SERIES=$(sed -n 's/^versionSeries=//p' release/release.properties)
+          VERSION_NAME="$SERIES.$((VERSION_CODE - FLOOR))"
+          printf 'ALREADY_PUBLISHED=false\nVERSION_CODE=%s\nVERSION_NAME=%s\nTAG=android-%s\n' \
+            "$VERSION_CODE" "$VERSION_NAME" "$VERSION_CODE" >> "$GITHUB_ENV"
+
+      - name: Stop when this exact commit is already published
+        if: env.ALREADY_PUBLISHED == 'true'
+        run: echo "Commit $GITHUB_SHA is already published as $TAG"
 
       - name: Restore the permanent signing key
+        if: env.ALREADY_PUBLISHED != 'true'
         run: |
+          set -euo pipefail
           test -n "$KEYSTORE_BASE64"
           test -n "$KEYSTORE_PASSWORD"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASSWORD"
           printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' \
             | base64 --decode > "$RUNNER_TEMP/autosecretary.jks"
           chmod 600 "$RUNNER_TEMP/autosecretary.jks"
           printf 'PRODUCTION_KEYSTORE=%s\n' "$RUNNER_TEMP/autosecretary.jks" >> "$GITHUB_ENV"
           printf 'PRODUCTION_STORE_PASSWORD=%s\n' "$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-          printf 'PRODUCTION_KEY_ALIAS=release\n' >> "$GITHUB_ENV"
-          printf 'PRODUCTION_KEY_PASSWORD=%s\n' "$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          printf 'PRODUCTION_KEY_ALIAS=%s\n' "$KEY_ALIAS" >> "$GITHUB_ENV"
+          printf 'PRODUCTION_KEY_PASSWORD=%s\n' "$KEY_PASSWORD" >> "$GITHUB_ENV"
 
-      - name: Test, lint and build the model-complete APK
+      - name: Test and stage the small signed APK
+        if: env.ALREADY_PUBLISHED != 'true'
         run: >-
-          ./gradlew --no-daemon --max-workers=1
-          checkArchitecture lintDebug lintRelease assembleDebugAndroidTest assembleRelease
+          ./gradlew --no-daemon --max-workers=1 qualityGate stagePhoneRelease
           -PversionCode=$VERSION_CODE -PversionName=$VERSION_NAME
           -PrequireProductionSigning=true
 
-      - name: Verify package, version, model and signature
+      - name: Verify package, version, size and signature
+        if: env.ALREADY_PUBLISHED != 'true'
         run: |
-          APK=build/outputs/apk/release/AutoSecretary.apk
-          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
-          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          set -euo pipefail
+          APK=build/phone-release/AutoSecretary.apk
+          APKSIGNER="$ANDROID_HOME/build-tools/$androidBuildTools/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/$androidBuildTools/aapt"
           test -f "$APK"
-          unzip -l "$APK" | grep -q 'assets/models/autosecretary-gemma3-270m-it-q8.task'
+          test "$(stat -c %s "$APK")" -lt 83886080
+          if unzip -l "$APK" | grep -q '\.task$'; then
+            echo "Release APK unexpectedly contains model weights" >&2
+            exit 1
+          fi
+          unzip -l "$APK" | grep -q 'assets/model-manifest.json'
           "$APKSIGNER" verify --verbose "$APK"
-          ACTUAL_CERT=$("$APKSIGNER" verify --print-certs "$APK" \
+          ACTUAL_CERT=$($APKSIGNER verify --print-certs "$APK" \
             | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
             | tr '[:upper:]' '[:lower:]')
-          test "$ACTUAL_CERT" = "$EXPECTED_CERT_SHA256"
-          BADGING=$("$AAPT" dump badging "$APK" | sed -n '1p')
+          test "$ACTUAL_CERT" = "$expectedSignerSha256"
+          BADGING=$($AAPT dump badging "$APK" | sed -n '1p')
           case "$BADGING" in
-            *"package: name='com.autosecretary'"*"versionCode='$VERSION_CODE'"*"versionName='$VERSION_NAME'"*) ;;
+            *"package: name='$packageName'"*"versionCode='$VERSION_CODE'"*"versionName='$VERSION_NAME'"*) ;;
             *) echo "Unexpected package/version: $BADGING" >&2; exit 1 ;;
           esac
 
-      - name: Create the updater assets
+      - name: Generate the versioned updater metadata
+        if: env.ALREADY_PUBLISHED != 'true'
         run: |
-          cp build/outputs/apk/release/AutoSecretary.apk AutoSecretary.apk
-          SHA256=$(sha256sum AutoSecretary.apk | awk '{print $1}')
+          set -euo pipefail
+          cp build/phone-release/AutoSecretary.apk "$apkAsset"
+          SHA256=$(sha256sum "$apkAsset" | awk '{print $1}')
+          SIZE=$(stat -c %s "$apkAsset")
           jq -n \
+            --argjson schemaVersion 1 \
             --argjson versionCode "$VERSION_CODE" \
             --arg versionName "$VERSION_NAME" \
-            --arg packageName com.autosecretary \
-            --arg apkAsset AutoSecretary.apk \
+            --arg packageName "$packageName" \
+            --arg apkAsset "$apkAsset" \
+            --argjson apkSizeBytes "$SIZE" \
             --arg sha256 "$SHA256" \
-            --arg signerSha256 "$EXPECTED_CERT_SHA256" \
-            '{versionCode:$versionCode,versionName:$versionName,packageName:$packageName,apkAsset:$apkAsset,sha256:$sha256,signerSha256:$signerSha256}' \
-            > release-metadata.json
+            --arg signerSha256 "$expectedSignerSha256" \
+            --arg commitSha "$GITHUB_SHA" \
+            '{schemaVersion:$schemaVersion,versionCode:$versionCode,versionName:$versionName,packageName:$packageName,apkAsset:$apkAsset,apkSizeBytes:$apkSizeBytes,sha256:$sha256,signerSha256:$signerSha256,commitSha:$commitSha}' \
+            > "$metadataAsset"
+          jq -e '.schemaVersion == 1 and .versionCode > 0 and .packageName == "com.autosecretary" and .apkAsset == "AutoSecretary.apk" and (.sha256 | test("^[0-9a-f]{64}$")) and (.signerSha256 | test("^[0-9a-f]{64}$")) and (.commitSha | test("^[0-9a-f]{40}$"))' "$metadataAsset"
 
-      - name: Publish the latest phone update
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Stage or resume the draft release
+        if: env.ALREADY_PUBLISHED != 'true'
         run: |
-          TAG="android-$VERSION_CODE"
-          gh release create "$TAG" AutoSecretary.apk release-metadata.json \
-            --target "$GITHUB_SHA" \
-            --title "Auto Secretary $VERSION_NAME" --generate-notes --latest
+          set -euo pipefail
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --draft --target "$GITHUB_SHA" \
+              --title "Auto Secretary $VERSION_NAME" --generate-notes
+          fi
+          gh release upload "$TAG" "$apkAsset" "$metadataAsset" --clobber
+
+      - name: Verify the staged assets and atomically publish Latest
+        if: env.ALREADY_PUBLISHED != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/release-proof"
+          gh release download "$TAG" --dir "$RUNNER_TEMP/release-proof" \
+            --pattern "$apkAsset" --pattern "$metadataAsset" --clobber
+          EXPECTED=$(jq -r .sha256 "$RUNNER_TEMP/release-proof/$metadataAsset")
+          ACTUAL=$(sha256sum "$RUNNER_TEMP/release-proof/$apkAsset" | awk '{print $1}')
+          test "$EXPECTED" = "$ACTUAL"
+          test "$(jq -r .commitSha "$RUNNER_TEMP/release-proof/$metadataAsset")" = "$GITHUB_SHA"
+          gh release edit "$TAG" --draft=false --latest
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = "$TAG"

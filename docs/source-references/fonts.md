@@ -2,7 +2,7 @@
 
 The bundled font files were downloaded from the official Google Fonts repository on
 2026-08-13. Their SIL Open Font License texts are packaged under
-`src/main/assets/licenses/`.
+`app/src/main/assets/licenses/`.
 
 - Newsreader: https://github.com/google/fonts/tree/main/ofl/newsreader
   - `Newsreader[opsz,wght].ttf`

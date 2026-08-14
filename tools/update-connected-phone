@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+PROJECT_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
+CONTRACT="$PROJECT_DIR/release/release.properties"
+FRESH=false
+
+if [[ ${1:-} == "--fresh" ]]; then
+  FRESH=true
+  shift
+fi
+if [[ $# -ne 0 ]]; then
+  echo "usage: tools/update-connected-phone [--fresh]" >&2
+  exit 2
+fi
+
+for command in adb gh jq sha256sum; do
+  command -v "$command" >/dev/null || {
+    echo "missing command: $command" >&2
+    exit 1
+  }
+done
+
+value() { sed -n "s/^$1=//p" "$CONTRACT"; }
+REPOSITORY="$(value repositoryOwner)/$(value repositoryName)"
+PACKAGE_NAME=$(value packageName)
+APK_ASSET=$(value apkAsset)
+METADATA_ASSET=$(value metadataAsset)
+EXPECTED_SIGNER=$(value expectedSignerSha256)
+BUILD_TOOLS=$(value androidBuildTools)
+
+mapfile -t CONNECTED_DEVICES < <(adb devices | awk '$2 == "device" { print $1 }')
+if [[ -n ${ANDROID_SERIAL:-} ]]; then
+  ADB=(adb -s "$ANDROID_SERIAL")
+elif [[ ${#CONNECTED_DEVICES[@]} -eq 1 ]]; then
+  ADB=(adb -s "${CONNECTED_DEVICES[0]}")
+else
+  echo "expected exactly one authorized phone; set ANDROID_SERIAL when several are connected" >&2
+  exit 1
+fi
+
+PHONE_UPDATE_TMP=$(mktemp -d)
+trap 'rm -rf -- "$PHONE_UPDATE_TMP"' EXIT
+gh release download --repo "$REPOSITORY" --dir "$PHONE_UPDATE_TMP" \
+  --pattern "$APK_ASSET" --pattern "$METADATA_ASSET"
+
+APK="$PHONE_UPDATE_TMP/$APK_ASSET"
+METADATA="$PHONE_UPDATE_TMP/$METADATA_ASSET"
+jq -e --arg package "$PACKAGE_NAME" --arg asset "$APK_ASSET" \
+  '.schemaVersion == 1 and .packageName == $package and .apkAsset == $asset
+   and (.versionCode | type == "number")
+   and (.sha256 | test("^[0-9a-f]{64}$"))
+   and (.signerSha256 | test("^[0-9a-f]{64}$"))' "$METADATA" >/dev/null
+test "$(jq -r .sha256 "$METADATA")" = "$(sha256sum "$APK" | awk '{print $1}')"
+test "$(jq -r .apkSizeBytes "$METADATA")" = "$(stat -c %s "$APK")"
+test "$(jq -r .signerSha256 "$METADATA")" = "$EXPECTED_SIGNER"
+
+SDK_ROOT=${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}
+APKSIGNER=${SDK_ROOT:+$SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner}
+if [[ -z ${APKSIGNER:-} || ! -x $APKSIGNER ]]; then
+  APKSIGNER=$(command -v apksigner || true)
+fi
+if [[ -z $APKSIGNER ]]; then
+  echo "apksigner $BUILD_TOOLS was not found" >&2
+  exit 1
+fi
+ACTUAL_SIGNER=$($APKSIGNER verify --print-certs "$APK" \
+  | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr '[:upper:]' '[:lower:]')
+test "$ACTUAL_SIGNER" = "$EXPECTED_SIGNER"
+
+if $FRESH; then
+  echo "--fresh: removing $PACKAGE_NAME and all of its local data"
+  if "${ADB[@]}" shell pm path "$PACKAGE_NAME" >/dev/null 2>&1; then
+    "${ADB[@]}" uninstall "$PACKAGE_NAME"
+  fi
+  "${ADB[@]}" install "$APK"
+else
+  "${ADB[@]}" install -r "$APK"
+fi
+
+echo "installed $(jq -r .versionName "$METADATA") ($(jq -r .versionCode "$METADATA"))"

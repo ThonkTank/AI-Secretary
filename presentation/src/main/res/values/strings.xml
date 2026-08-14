@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Auto Secretary</string>
+    <string name="focus_subtitle">Eine Sache nach der anderen.</string>
+    <string name="empty_focus">Heute darf ein neues Blatt wachsen.</string>
+    <string name="add_task">Aufgabe</string>
+    <string name="add_routine">Routine</string>
+    <string name="ai_bulk">Mit lokaler KI ändern</string>
+    <string name="local_ai">Lokale KI</string>
+    <string name="model_ready">Lokale KI bereit · bleibt auf diesem Gerät</string>
+    <string name="model_download">Gemma 3 270M · einmalig 304 MB herunterladen</string>
+    <string name="model_importing">Lokale KI wird heruntergeladen und geprüft …</string>
+    <string name="gemma_terms_title">Lokale KI aktivieren</string>
+    <string name="gemma_terms_message">Die lokale KI nutzt Gemma 3 270M von Google. Nach deiner Zustimmung werden einmalig 304 MB heruntergeladen, kryptografisch geprüft und nur auf diesem Gerät ausgeführt. Das Modell bleibt bei App-Updates erhalten. Gemma unterliegt den Gemma-Nutzungsbedingungen und der Prohibited Use Policy. Mit „Akzeptieren“ stimmst du diesen Bedingungen zu. Eine Kopie liegt in der App; Original: ai.google.dev/gemma/terms</string>
+    <string name="accept">Akzeptieren</string>
+    <string name="now">jetzt</string>
+    <string name="next">danach</string>
+    <string name="later">später</string>
+    <string name="done">Erledigt</string>
+    <string name="postpone">Später</string>
+    <string name="move_first">Zuerst</string>
+    <string name="move_earlier">Eins nach vorne</string>
+    <string name="move_later">Eins nach hinten</string>
+    <string name="move_last">Zuletzt</string>
+    <string name="edit_task">Aufgabe</string>
+    <string name="edit_routine">Routine</string>
+    <string name="title_hint">Titel</string>
+    <string name="save">Speichern</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="delete">Löschen</string>
+    <string name="empty"> </string>
+    <string name="confirm_delete">„%1$s“ wirklich löschen?</string>
+    <string name="ai_bulk_title">Viele Aufgaben auf einmal ändern</string>
+    <string name="ai_instruction_hint">Zum Beispiel: Verschiebe alle Uni-Deadlines auf Freitag und lege eine wöchentliche Sonntagsroutine mit drei Schritten an.</string>
+    <string name="create_preview">Vorschau erstellen</string>
+    <string name="ai_working">Lokales Modell arbeitet …</string>
+    <string name="confirm_changes">Änderungen prüfen</string>
+    <string name="apply_changes">Änderungen übernehmen</string>
+    <string name="changes_applied">Änderungen übernommen</string>
+    <string name="error">Das hat nicht geklappt</string>
+    <string name="ok">OK</string>
+    <string name="widget_add">＋</string>
+</resources>

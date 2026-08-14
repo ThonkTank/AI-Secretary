@@ -15,3 +15,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "AutoSecretary"
+
+include(":core", ":infrastructure", ":presentation", ":app")

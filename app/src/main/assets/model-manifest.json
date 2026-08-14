@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "modelId": "autosecretary-gemma3-270m-it-q8",
+  "revision": "8018587998a60359c204699be38bc8940f5379a4",
+  "url": "https://huggingface.co/litert-community/gemma-3-270m-it/resolve/8018587998a60359c204699be38bc8940f5379a4/gemma3-270m-it-q8.task?download=true",
+  "fileName": "autosecretary-model.task",
+  "sizeBytes": 303950933,
+  "sha256": "0f7147f1c22eaf758b819bbf7841793e4c90096c9352cde7fbe5c631f2265ef5"
+}
