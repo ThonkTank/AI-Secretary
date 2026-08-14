@@ -295,7 +295,9 @@ public final class LocalModelManager implements ModelRepository {
 
     private void validate(File candidate) throws Exception {
         LlmInference.LlmInferenceOptions options = LlmInference.LlmInferenceOptions.builder()
-                .setModelPath(candidate.getAbsolutePath()).setMaxTokens(256).setMaxTopK(20).build();
+                .setModelPath(candidate.getAbsolutePath())
+                .setPreferredBackend(LlmInference.Backend.CPU)
+                .setMaxTokens(256).setMaxTopK(20).build();
         try (LlmInference inference = LlmInference.createFromOptions(context, options)) {
             String response = inference.generateResponse(VALIDATION_PROMPT);
             if (response == null || response.isBlank()) {

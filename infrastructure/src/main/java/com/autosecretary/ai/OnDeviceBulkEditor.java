@@ -67,6 +67,7 @@ public final class OnDeviceBulkEditor implements AiProposalGateway {
                 }
                 LlmInference.LlmInferenceOptions options = LlmInference.LlmInferenceOptions.builder()
                         .setModelPath(ready.path().toString())
+                        .setPreferredBackend(LlmInference.Backend.CPU)
                         .setMaxTokens(MAX_MODEL_TOKENS).setMaxTopK(20).build();
                 String response;
                 try (LlmInference inference = LlmInference.createFromOptions(context, options)) {

@@ -104,6 +104,7 @@ public final class AiDeviceEvaluationTest {
         models.install();
         var options = LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(models.file().getAbsolutePath())
+                .setPreferredBackend(LlmInference.Backend.CPU)
                 .setMaxTokens(256)
                 .setMaxTopK(20)
                 .build();
