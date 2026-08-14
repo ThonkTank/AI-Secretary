@@ -58,11 +58,19 @@ public final class UpdatePackageVerifierTest {
     }
 
     @Test
-    public void rejectsNonNewerOrMetadataVersionMismatch() throws Exception {
+    public void rejectsAnOtherwiseMatchingEqualVersion() throws Exception {
+        File apk = apk();
+        assertThrows(SecurityException.class, () -> verify(apk,
+                update(apk, 5, "com.autosecretary", SIGNER),
+                evidence("com.autosecretary", 5, SIGNER)));
+    }
+
+    @Test
+    public void rejectsMetadataAndArchiveVersionMismatch() throws Exception {
         File apk = apk();
         assertThrows(SecurityException.class, () -> verify(apk,
                 update(apk, 6, "com.autosecretary", SIGNER),
-                evidence("com.autosecretary", 5, SIGNER)));
+                evidence("com.autosecretary", 7, SIGNER)));
     }
 
     private void verify(File apk, UpdateInfo update,

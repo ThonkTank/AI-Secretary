@@ -2,6 +2,7 @@ package com.autosecretary.ui;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import android.Manifest;
 import android.os.Looper;
@@ -60,6 +61,30 @@ public final class MainActivityLifecycleTest {
                 recreated.mainViewModel().state().getValue().editor().durationInput());
         assertNotNull(recreated.getSupportFragmentManager().findFragmentByTag(
                 ObligationEditorDialogFragment.TAG));
+        controller.pause().stop().destroy();
+        app.onTerminate();
+    }
+
+    @Test
+    public void recreationKeepsThePendingInstallerPermissionHandoff() {
+        AutoSecretaryApplication app = ApplicationProvider.getApplicationContext();
+        app.deleteDatabase("autosecretary.db");
+        app.getSharedPreferences("waldmorgen_ui", AutoSecretaryApplication.MODE_PRIVATE)
+                .edit().putBoolean("location_asked", true).commit();
+        Shadows.shadowOf(app).denyPermissions(
+                Manifest.permission.READ_CALENDAR, Manifest.permission.ACCESS_COARSE_LOCATION);
+
+        var controller = Robolectric.buildActivity(MainActivity.class).setup();
+        MainActivity activity = controller.get();
+        activity.updateInstallFlow().request(2001001);
+        assertEquals(UpdateInstallFlow.Action.OPEN_SETTINGS,
+                activity.updateInstallFlow().ready(2001001, false));
+
+        MainActivity recreated = controller.recreate().get();
+
+        assertEquals(2001001, recreated.updateInstallFlow().pendingVersion());
+        assertEquals(0, recreated.updateInstallFlow().openedVersion());
+        assertTrue(recreated.updateInstallFlow().settingsOpened());
         controller.pause().stop().destroy();
         app.onTerminate();
     }

@@ -30,7 +30,7 @@ public final class UpdateInstallFlowTest {
     }
 
     @Test
-    public void restoredStateDoesNotOpenTheSameInstallerTwice() {
+    public void screenRotationDoesNotOpenTheSameInstallerTwice() {
         UpdateInstallFlow original = new UpdateInstallFlow(0, 0, false);
         original.request(2001001);
         assertEquals(UpdateInstallFlow.Action.OPEN_INSTALLER,
@@ -40,6 +40,22 @@ public final class UpdateInstallFlowTest {
                 original.openedVersion(), original.settingsOpened());
 
         assertEquals(UpdateInstallFlow.Action.NONE,
+                restored.ready(2001001, true));
+    }
+
+    @Test
+    public void screenRotationWhileSettingsAreOpenDoesNotLoopAndStillContinues() {
+        UpdateInstallFlow original = new UpdateInstallFlow(0, 0, false);
+        original.request(2001001);
+        assertEquals(UpdateInstallFlow.Action.OPEN_SETTINGS,
+                original.ready(2001001, false));
+
+        UpdateInstallFlow restored = new UpdateInstallFlow(original.pendingVersion(),
+                original.openedVersion(), original.settingsOpened());
+
+        assertEquals(UpdateInstallFlow.Action.NONE,
+                restored.ready(2001001, false));
+        assertEquals(UpdateInstallFlow.Action.OPEN_INSTALLER,
                 restored.ready(2001001, true));
     }
 

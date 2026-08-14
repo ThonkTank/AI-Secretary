@@ -1,6 +1,7 @@
 package com.autosecretary.platform.update;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 
 import org.json.JSONObject;
@@ -18,11 +19,23 @@ public final class GitHubReleaseUpdaterTest {
     private static final String SIGNER = "a".repeat(64);
 
     @Test
-    public void acceptsTheOneCanonicalLatestRelease() {
+    public void returnsTheOneCanonicalLatestReleaseWhenItIsNewer() {
         GitHubReleaseUpdater.ReleaseMetadata latest = candidate(2001001, PACKAGE, SIGNER);
 
-        GitHubReleaseUpdater.validateLatest(
-                "android-2001001", latest, PACKAGE, Set.of(SIGNER));
+        var update = GitHubReleaseUpdater.selectLatestUpdate(
+                "android-2001001", latest, 2000081, PACKAGE, Set.of(SIGNER));
+
+        assertEquals(2001001, update.versionCode());
+    }
+
+    @Test
+    public void equalLatestReleaseMeansTheInstalledAppIsCurrent() {
+        GitHubReleaseUpdater.ReleaseMetadata latest = candidate(2001001, PACKAGE, SIGNER);
+
+        var update = GitHubReleaseUpdater.selectLatestUpdate(
+                "android-2001001", latest, 2001001, PACKAGE, Set.of(SIGNER));
+
+        assertNull(update);
     }
 
     @Test
@@ -66,6 +79,22 @@ public final class GitHubReleaseUpdaterTest {
         assertEquals(2001001, parsed.versionCode());
         assertEquals(PACKAGE, parsed.packageName());
         assertEquals(SIGNER, parsed.signerSha256());
+    }
+
+    @Test
+    public void rejectsMalformedLatestMetadata() throws Exception {
+        JSONObject metadata = new JSONObject()
+                .put("versionCode", 2001001)
+                .put("versionName", "2.0.10.1")
+                .put("packageName", PACKAGE)
+                .put("apkAsset", "AutoSecretary.apk")
+                .put("sha256", "not-a-sha256")
+                .put("signerSha256", SIGNER);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> GitHubReleaseUpdater.ReleaseMetadata.from(metadata,
+                        "https://github.com/ThonkTank/AI-Secretary/releases/download/"
+                                + "android-2001001/AutoSecretary.apk"));
     }
 
     private static GitHubReleaseUpdater.ReleaseMetadata candidate(

@@ -337,6 +337,8 @@ public final class MainActivity extends AppCompatActivity implements
     @Override
     public AiViewModel aiViewModel() { return aiViewModel; }
 
+    UpdateInstallFlow updateInstallFlow() { return updateInstallFlow; }
+
     private void renderPlanningConflicts(List<PlanConflict> conflicts) {
         if (conflicts.isEmpty()) {
             planningConflicts.setVisibility(View.GONE);

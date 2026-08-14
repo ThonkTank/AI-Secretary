@@ -68,10 +68,8 @@ public final class GitHubReleaseUpdater {
             }
             ReleaseMetadata latest = ReleaseMetadata.from(
                     metadata, requiredAsset(assets, apkName));
-            validateLatest(release.getString("tag_name"), latest,
-                    BuildConfig.APPLICATION_ID, installed.signers());
-            return latest.versionCode() <= installed.versionCode()
-                    ? null : latest.toUpdateInfo();
+            return selectLatestUpdate(release.getString("tag_name"), latest,
+                    installed.versionCode(), BuildConfig.APPLICATION_ID, installed.signers());
         } catch (Exception error) {
             throw new IllegalStateException("Update-Prüfung fehlgeschlagen", error);
         }
@@ -117,6 +115,16 @@ public final class GitHubReleaseUpdater {
         if (!installedSigners.contains(release.signerSha256())) {
             throw new SecurityException("Freigabe verwendet nicht die installierte Signatur");
         }
+    }
+
+    static UpdateInfo selectLatestUpdate(
+            String tag,
+            ReleaseMetadata release,
+            long installedVersion,
+            String expectedPackage,
+            Set<String> installedSigners) {
+        validateLatest(tag, release, expectedPackage, installedSigners);
+        return release.versionCode() <= installedVersion ? null : release.toUpdateInfo();
     }
 
     static record ReleaseMetadata(
