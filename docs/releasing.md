@@ -1,8 +1,8 @@
 # Auto Secretary – Builds und Updates veröffentlichen
 
-Jeder Push auf `main` durchläuft Unit-Tests, Lint und die Instrumentierungstests auf API 26
-und API 35. Nur wenn alle Prüfungen erfolgreich sind, baut GitHub eine signierte APK und
-veröffentlicht sie als stabiles GitHub Release.
+Jeder Push auf `main` durchläuft Unit-Tests, Lint, Instrumentierungstests und einen echten
+Produktions-Upgrade-Test auf API 26 und API 35. Nur wenn alle Prüfungen erfolgreich sind, baut
+GitHub eine signierte APK und veröffentlicht sie als stabiles GitHub Release.
 
 ## Dauerhafter Signaturschlüssel
 
@@ -24,12 +24,22 @@ nicht als Update installieren.
 2. `.github/workflows/verify.yml` führt das vollständige Quality-Gate aus.
 3. Die Pipeline vergibt einen eindeutigen `versionCode` und einen sichtbaren Namen wie `0.2.17`.
 4. Die APK wird signiert und auf Paketname, Version, Größe und Zertifikat geprüft.
-5. Ein Draft-Release erhält genau `AutoSecretary.apk` und `release-metadata.json`.
-6. GitHub lädt beide Dateien zur Gegenprüfung erneut herunter und veröffentlicht erst danach das
+5. Die vorige Produktions-APK wird installiert und mit Aufgaben-, Schritt-, Statistik- und
+   Einstellungsdaten befüllt. `adb install -r` aktualisiert sie auf den Kandidaten; anschließend
+   müssen App-Start, höherer Versionscode, Room-Schema und alle Testdaten erhalten sein.
+6. Ein Draft-Release erhält genau `AutoSecretary.apk` und `release-metadata.json`.
+7. GitHub lädt beide Dateien zur Gegenprüfung erneut herunter und veröffentlicht erst danach das
    Release. Der höchste Build wird als „Latest“ markiert.
 
 Ein fehlgeschlagener Build veröffentlicht nichts. Eine Wiederholung für einen bereits
 veröffentlichten Commit erzeugt kein Duplikat.
+
+Der Upgrade-Test wählt dynamisch den höchsten bereits veröffentlichten `forest-android-`-Build
+unterhalb des Kandidaten. Das Test-APK wird mit demselben Produktionsschlüssel signiert, damit es
+den nicht-debugbaren Releaseprozess vor und nach dem Android-Upgrade prüfen kann. Bis zur
+Extraktion eines einmalig gebauten Releaseartefakts wird der signierte Kandidat für diesen Test je
+API-Stufe separat gebaut; Signatur, Paket und Versionscode entsprechen dem späteren Release, die
+Dateiidentität wird in der nächsten Releasewerkzeug-Phase vereinheitlicht.
 
 ## Update in der App
 

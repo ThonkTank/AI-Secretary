@@ -75,9 +75,124 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: ./gradlew connectedDebugAndroidTest
 
-  publish:
+  upgrade:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: [quality, instrumentation]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api-level: 26
+            target: default
+            arch: x86_64
+          - api-level: 35
+            target: google_apis
+            arch: x86_64
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Prepare previous and candidate production APKs
+        run: |
+          set -euo pipefail
+          while IFS='=' read -r key value; do
+            case "$key" in
+              packageName|apkAsset|tagPrefix|versionSeries|versionCodeFloor|expectedSignerSha256|androidBuildTools)
+                printf -v "$key" '%s' "$value"
+                ;;
+            esac
+          done < release/release.properties
+          test -n "$KEYSTORE_BASE64"
+          test -n "$KEYSTORE_PASSWORD"
+          test "$GITHUB_RUN_ATTEMPT" -lt 100
+          VERSION_CODE=$((versionCodeFloor + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
+          VERSION_NAME="$versionSeries.$GITHUB_RUN_NUMBER"
+          if [ "$GITHUB_RUN_ATTEMPT" -gt 1 ]; then
+            VERSION_NAME="$VERSION_NAME-r$GITHUB_RUN_ATTEMPT"
+          fi
+          KEYSTORE="$RUNNER_TEMP/autosecretary.jks"
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          ACTUAL_CERT=$(keytool -list -v -keystore "$KEYSTORE" \
+            -storepass "$KEYSTORE_PASSWORD" -alias release \
+            | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]')
+          test "$ACTUAL_CERT" = "$expectedSignerSha256"
+          export SIGNING_STORE_FILE="$KEYSTORE"
+          export SIGNING_STORE_PASSWORD="$KEYSTORE_PASSWORD"
+          export SIGNING_KEY_ALIAS=release
+          export SIGNING_KEY_PASSWORD="$KEYSTORE_PASSWORD"
+          ./gradlew assembleRelease assembleDebugAndroidTest \
+            -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME" \
+            -PrequireReleaseSigning=true
+
+          PREVIOUS_TAG=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            | jq -s -r --arg prefix "$tagPrefix" --argjson candidate "$VERSION_CODE" \
+              '[.[][] | select(.draft == false and .prerelease == false)
+                | select(.tag_name | startswith($prefix))
+                | . + {versionCode:(try (.tag_name | ltrimstr($prefix) | tonumber) catch null)}
+                | select(.versionCode != null and .versionCode < $candidate)]
+                | max_by(.versionCode).tag_name // empty')
+          test -n "$PREVIOUS_TAG"
+          PREVIOUS_DIR="$RUNNER_TEMP/previous-release"
+          mkdir -p "$PREVIOUS_DIR"
+          gh release download "$PREVIOUS_TAG" --dir "$PREVIOUS_DIR" --pattern "$apkAsset"
+
+          CANDIDATE_APK="$GITHUB_WORKSPACE/app/build/outputs/apk/release/app-release.apk"
+          TEST_APK_UNSIGNED="$GITHUB_WORKSPACE/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
+          TEST_APK="$RUNNER_TEMP/upgrade-test.apk"
+          APKSIGNER="$ANDROID_HOME/build-tools/$androidBuildTools/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/$androidBuildTools/aapt"
+          PREVIOUS_APK="$PREVIOUS_DIR/$apkAsset"
+          "$APKSIGNER" sign --ks "$KEYSTORE" --ks-key-alias release \
+            --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEYSTORE_PASSWORD \
+            --out "$TEST_APK" "$TEST_APK_UNSIGNED"
+          "$APKSIGNER" verify --verbose "$PREVIOUS_APK"
+          "$APKSIGNER" verify --verbose "$CANDIDATE_APK"
+          "$APKSIGNER" verify --verbose "$TEST_APK"
+          for SIGNED_APK in "$PREVIOUS_APK" "$CANDIDATE_APK" "$TEST_APK"; do
+            APK_CERT=$($APKSIGNER verify --print-certs "$SIGNED_APK" \
+              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+              | tr '[:upper:]' '[:lower:]')
+            test "$APK_CERT" = "$expectedSignerSha256"
+          done
+          PREVIOUS_BADGING=$($AAPT dump badging "$PREVIOUS_APK" | sed -n '1p')
+          CANDIDATE_BADGING=$($AAPT dump badging "$CANDIDATE_APK" | sed -n '1p')
+          case "$PREVIOUS_BADGING" in *"package: name='$packageName'"*) ;; *) exit 1 ;; esac
+          case "$CANDIDATE_BADGING" in
+            *"package: name='$packageName'"*"versionCode='$VERSION_CODE'"*) ;;
+            *) exit 1 ;;
+          esac
+          PREVIOUS_VERSION=$(printf '%s\n' "$PREVIOUS_BADGING" \
+            | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
+          test -n "$PREVIOUS_VERSION"
+          test "$PREVIOUS_VERSION" -lt "$VERSION_CODE"
+          printf 'PREVIOUS_APK=%s\nCANDIDATE_APK=%s\nTEST_APK=%s\n' \
+            "$PREVIOUS_APK" "$CANDIDATE_APK" "$TEST_APK" >> "$GITHUB_ENV"
+          printf 'PACKAGE_NAME=%s\nCANDIDATE_VERSION=%s\n' \
+            "$packageName" "$VERSION_CODE" >> "$GITHUB_ENV"
+      - name: Upgrade production APK and verify persisted state on API ${{ matrix.api-level }}
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: ${{ matrix.arch }}
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: ./scripts/ci/run-upgrade-test.sh "$PREVIOUS_APK" "$CANDIDATE_APK" "$TEST_APK" "$PACKAGE_NAME" "$CANDIDATE_VERSION"
+
+  publish:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [quality, instrumentation, upgrade]
     runs-on: ubuntu-latest
     permissions:
       contents: write
