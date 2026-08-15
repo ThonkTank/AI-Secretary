@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 
 import androidx.room.Room;
+import androidx.room.migration.Migration;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -16,12 +18,23 @@ final class DatabaseProvider {
     private static final String MARKER_PREFS = "stability_refactor";
     private static final String DONE = "legacy_reset_done";
     private static volatile AppDatabase instance;
+    private static final Migration MIGRATION_1_2 = new Migration(1, 2) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE tasks ADD COLUMN routineStreakWeeks INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN lastStreakWeek TEXT NOT NULL DEFAULT ''");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN displayOrder INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("UPDATE tasks SET routineStreakWeeks = CASE WHEN routineStreak > 0 THEN 1 ELSE 0 END, "
+                    + "lastStreakWeek = lastCompletedOn, displayOrder = "
+                    + "(CASE slot WHEN 'Morgen' THEN 1000000 WHEN 'Mittag' THEN 2000000 WHEN 'Abend' THEN 3000000 ELSE 4000000 END) + rowid");
+        }
+    };
     static AppDatabase get(Context context) {
         if (instance == null) synchronized (DatabaseProvider.class) {
             if (instance == null) {
                 Context app = context.getApplicationContext();
                 clearPrototypeStateOnce(app);
-                instance = Room.databaseBuilder(app, AppDatabase.class, "auto_secretary.db").build();
+                instance = Room.databaseBuilder(app, AppDatabase.class, "auto_secretary.db")
+                        .addMigrations(MIGRATION_1_2).build();
             }
         }
         return instance;

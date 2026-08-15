@@ -2,17 +2,42 @@ package de.thonktank.autosecretary;
 
 import androidx.annotation.NonNull;
 
-/** Read model shared by the activity and home-screen widget. */
+import java.util.List;
+
+/** Rich read model shared by the activity and the home-screen widget. */
 public final class TaskSnapshot {
     @NonNull public final String taskId;
     @NonNull public final String occurrenceId;
     @NonNull public final String title;
     @NonNull public final String slot;
+    @NonNull public final String softTime;
     @NonNull public final String nextAction;
+    @NonNull public final String recurrence;
+    @NonNull public final List<TaskStepSnapshot> steps;
     public final int remainingSteps;
     public final boolean terminalCondition;
-    TaskSnapshot(String taskId, String occurrenceId, String title, String slot, String nextAction, int remainingSteps, boolean terminalCondition) {
+    public final boolean ongoing;
+    public final boolean done;
+    public final boolean overdue;
+    public final int ringWeeks;
+    public final long displayOrder;
+
+    TaskSnapshot(@NonNull String taskId, @NonNull String occurrenceId, @NonNull String title,
+                 @NonNull String slot, @NonNull String softTime, @NonNull String nextAction,
+                 @NonNull String recurrence, @NonNull List<TaskStepSnapshot> steps,
+                 int remainingSteps, boolean terminalCondition, boolean ongoing, boolean done,
+                 boolean overdue, int ringWeeks, long displayOrder) {
         this.taskId = taskId; this.occurrenceId = occurrenceId; this.title = title; this.slot = slot;
-        this.nextAction = nextAction; this.remainingSteps = remainingSteps; this.terminalCondition = terminalCondition;
+        this.softTime = softTime; this.nextAction = nextAction; this.recurrence = recurrence;
+        this.steps = steps; this.remainingSteps = remainingSteps; this.terminalCondition = terminalCondition;
+        this.ongoing = ongoing; this.done = done; this.overdue = overdue; this.ringWeeks = ringWeeks;
+        this.displayOrder = displayOrder;
+    }
+
+    public boolean routine() { return !"ONCE".equals(recurrence); }
+    public String actionLabel() {
+        if (terminalCondition) return "Bedingung erfüllt";
+        if (steps.isEmpty()) return "erledigen";
+        return remainingSteps == 0 ? "Alle erledigen" : "Rest erledigen";
     }
 }

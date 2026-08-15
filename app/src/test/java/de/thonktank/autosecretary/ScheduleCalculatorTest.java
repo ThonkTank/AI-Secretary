@@ -11,7 +11,7 @@ import java.time.LocalDate;
 public class ScheduleCalculatorTest {
     private TaskEntity task(String recurrence, int interval, int mask) {
         return new TaskEntity("id", "Test", TaskSlots.MORNING, recurrence, interval, mask, false, "", false, false,
-                "2026-08-15", "", "", 1, 0, false);
+                "2026-08-15", "", "", 1, 0, 0, "", 1_001_000L, false);
     }
 
     @Test public void intervalIsAnchoredToActualCompletion() {

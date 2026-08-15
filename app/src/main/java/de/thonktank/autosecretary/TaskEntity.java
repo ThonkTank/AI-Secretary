@@ -21,18 +21,22 @@ public class TaskEntity {
     @NonNull public String lastCompletedOn;
     public int routineLevel;
     public int routineStreak;
+    public int routineStreakWeeks;
+    @NonNull public String lastStreakWeek;
+    public long displayOrder;
     public boolean hasCompletedOccurrence;
 
     public TaskEntity(@NonNull String id, @NonNull String title, @NonNull String slot, @NonNull String recurrence,
                       int intervalDays, int weekdayMask, boolean ongoing, @NonNull String conditionText,
                       boolean conditionDone, boolean archived, @NonNull String nextDueOn,
                       @NonNull String lastScheduledOn, @NonNull String lastCompletedOn, int routineLevel, int routineStreak,
-                      boolean hasCompletedOccurrence) {
+                      int routineStreakWeeks, @NonNull String lastStreakWeek, long displayOrder, boolean hasCompletedOccurrence) {
         this.id = id; this.title = title; this.slot = slot; this.recurrence = recurrence;
         this.intervalDays = intervalDays; this.weekdayMask = weekdayMask; this.ongoing = ongoing;
         this.conditionText = conditionText; this.conditionDone = conditionDone; this.archived = archived;
         this.nextDueOn = nextDueOn; this.lastScheduledOn = lastScheduledOn; this.lastCompletedOn = lastCompletedOn;
         this.routineLevel = routineLevel; this.routineStreak = routineStreak;
+        this.routineStreakWeeks = routineStreakWeeks; this.lastStreakWeek = lastStreakWeek; this.displayOrder = displayOrder;
         this.hasCompletedOccurrence = hasCompletedOccurrence;
     }
 }
