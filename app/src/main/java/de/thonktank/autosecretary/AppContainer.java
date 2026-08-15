@@ -15,6 +15,9 @@ import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
+import de.thonktank.autosecretary.update.GitHubUpdateRepository;
+import de.thonktank.autosecretary.update.UpdateInstaller;
+import de.thonktank.autosecretary.update.UpdateRepository;
 
 public final class AppContainer {
     public final AppDatabase database;
@@ -30,6 +33,8 @@ public final class AppContainer {
     public final UiTextProvider texts;
     public final AppExecutors executors;
     public final WidgetUpdateCoordinator widgetUpdates;
+    public final UpdateRepository updates;
+    public final UpdateInstaller updateInstaller;
 
     public AppContainer(Context context, Clock clock, ZoneIdProvider zones,
                         IdGenerator ids, AppLogger logger, DatabaseFactory databases) {
@@ -49,6 +54,10 @@ public final class AppContainer {
                 tasks.materializeDue, new DashboardUiMapper(texts));
         this.executors = new AppExecutors();
         this.widgetUpdates = WidgetUpdateCoordinator.create(app, this, executors.widgetSerial);
+        this.updates = new GitHubUpdateRepository(app, BuildConfig.UPDATE_REPOSITORY_OWNER,
+                BuildConfig.UPDATE_REPOSITORY_NAME, BuildConfig.UPDATE_METADATA_ASSET,
+                BuildConfig.UPDATE_APK_ASSET, BuildConfig.UPDATE_TAG_PREFIX);
+        this.updateInstaller = new UpdateInstaller();
     }
 
     public static AppContainer create(Context context, AppLogger logger) {

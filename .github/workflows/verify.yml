@@ -1,16 +1,17 @@
-name: Verify Android app
+name: Verify and publish Android app
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: verify-${{ github.ref }}
-  cancel-in-progress: true
+  group: verify-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   quality:
@@ -73,3 +74,146 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: ./gradlew connectedDebugAndroidTest
+
+  publish:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [quality, instrumentation]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Read release contract and choose a unique version
+        run: |
+          set -euo pipefail
+          while IFS='=' read -r key value; do
+            case "$key" in
+              repositoryOwner|repositoryName|packageName|apkAsset|metadataAsset|tagPrefix|versionSeries|versionCodeFloor|expectedSignerSha256|androidBuildTools)
+                printf -v "$key" '%s' "$value"
+                printf '%s=%s\n' "$key" "$value" >> "$GITHUB_ENV"
+                ;;
+            esac
+          done < release/release.properties
+          test "$GITHUB_RUN_ATTEMPT" -lt 100
+          VERSION_CODE=$((versionCodeFloor + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
+          VERSION_NAME="$versionSeries.${GITHUB_RUN_NUMBER}"
+          if [ "$GITHUB_RUN_ATTEMPT" -gt 1 ]; then
+            VERSION_NAME="$VERSION_NAME-r$GITHUB_RUN_ATTEMPT"
+          fi
+          test "$VERSION_CODE" -gt "$versionCodeFloor"
+          test "$VERSION_CODE" -le 2100000000
+          printf 'VERSION_CODE=%s\nVERSION_NAME=%s\nTAG=%s%s\n' \
+            "$VERSION_CODE" "$VERSION_NAME" "$tagPrefix" "$VERSION_CODE" >> "$GITHUB_ENV"
+      - name: Stop when this commit is already published
+        run: |
+          set -euo pipefail
+          EXISTING=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq ".[] | select(.draft == false and .target_commitish == \"$GITHUB_SHA\") | .tag_name" \
+            | head -n 1)
+          if [ -n "$EXISTING" ]; then
+            printf 'ALREADY_PUBLISHED=true\nTAG=%s\n' "$EXISTING" >> "$GITHUB_ENV"
+          else
+            printf 'ALREADY_PUBLISHED=false\n' >> "$GITHUB_ENV"
+          fi
+      - name: Restore and validate the permanent signing key
+        if: env.ALREADY_PUBLISHED != 'true'
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64"
+          test -n "$KEYSTORE_PASSWORD"
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' \
+            | base64 --decode > "$RUNNER_TEMP/autosecretary.jks"
+          chmod 600 "$RUNNER_TEMP/autosecretary.jks"
+          ACTUAL_CERT=$(keytool -list -v -keystore "$RUNNER_TEMP/autosecretary.jks" \
+            -storepass "$KEYSTORE_PASSWORD" -alias release \
+            | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]')
+          test "$ACTUAL_CERT" = "$expectedSignerSha256"
+          printf 'SIGNING_STORE_FILE=%s\n' "$RUNNER_TEMP/autosecretary.jks" >> "$GITHUB_ENV"
+          printf 'SIGNING_STORE_PASSWORD=%s\n' "$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          printf 'SIGNING_KEY_ALIAS=release\n' >> "$GITHUB_ENV"
+          printf 'SIGNING_KEY_PASSWORD=%s\n' "$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+      - name: Build the signed release APK
+        if: env.ALREADY_PUBLISHED != 'true'
+        run: >-
+          ./gradlew assembleRelease
+          -PversionCode=$VERSION_CODE -PversionName=$VERSION_NAME
+          -PrequireReleaseSigning=true
+      - name: Verify package, version, size and signature
+        if: env.ALREADY_PUBLISHED != 'true'
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/release/app-release.apk
+          APKSIGNER="$ANDROID_HOME/build-tools/$androidBuildTools/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/$androidBuildTools/aapt"
+          test -f "$APK"
+          test "$(stat -c%s "$APK")" -lt 10485760
+          "$APKSIGNER" verify --verbose "$APK"
+          ACTUAL_CERT=$($APKSIGNER verify --print-certs "$APK" \
+            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+            | tr '[:upper:]' '[:lower:]')
+          test "$ACTUAL_CERT" = "$expectedSignerSha256"
+          BADGING=$($AAPT dump badging "$APK" | sed -n '1p')
+          case "$BADGING" in
+            *"package: name='$packageName'"*"versionCode='$VERSION_CODE'"*"versionName='$VERSION_NAME'"*) ;;
+            *) echo "Unexpected package/version: $BADGING" >&2; exit 1 ;;
+          esac
+      - name: Create updater assets
+        if: env.ALREADY_PUBLISHED != 'true'
+        run: |
+          set -euo pipefail
+          cp app/build/outputs/apk/release/app-release.apk "$apkAsset"
+          SHA256=$(sha256sum "$apkAsset" | awk '{print $1}')
+          SIZE=$(stat -c%s "$apkAsset")
+          jq -n \
+            --argjson schemaVersion 1 \
+            --argjson versionCode "$VERSION_CODE" \
+            --arg versionName "$VERSION_NAME" \
+            --arg packageName "$packageName" \
+            --arg apkAsset "$apkAsset" \
+            --argjson apkSizeBytes "$SIZE" \
+            --arg sha256 "$SHA256" \
+            --arg signerSha256 "$expectedSignerSha256" \
+            --arg commitSha "$GITHUB_SHA" \
+            '{schemaVersion:$schemaVersion,versionCode:$versionCode,versionName:$versionName,packageName:$packageName,apkAsset:$apkAsset,apkSizeBytes:$apkSizeBytes,sha256:$sha256,signerSha256:$signerSha256,commitSha:$commitSha}' \
+            > "$metadataAsset"
+          jq -e --arg package "$packageName" --arg asset "$apkAsset" \
+            '.schemaVersion == 1 and .versionCode > 0 and .packageName == $package and .apkAsset == $asset and (.sha256 | test("^[0-9a-f]{64}$")) and (.signerSha256 | test("^[0-9a-f]{64}$")) and (.commitSha | test("^[0-9a-f]{40}$"))' \
+            "$metadataAsset"
+      - name: Stage, prove and publish the release
+        if: env.ALREADY_PUBLISHED != 'true'
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" --draft --target "$GITHUB_SHA" \
+            --title "Auto Secretary $VERSION_NAME" --generate-notes
+          gh release upload "$TAG" "$apkAsset" "$metadataAsset" --clobber
+          PROOF="$RUNNER_TEMP/release-proof"
+          mkdir -p "$PROOF"
+          gh release download "$TAG" --dir "$PROOF" \
+            --pattern "$apkAsset" --pattern "$metadataAsset"
+          test "$(sha256sum "$PROOF/$apkAsset" | awk '{print $1}')" \
+            = "$(jq -r .sha256 "$PROOF/$metadataAsset")"
+          test "$(jq -r .commitSha "$PROOF/$metadataAsset")" = "$GITHUB_SHA"
+          RELEASE_ID=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -n 1)
+          test -n "$RELEASE_ID"
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+            -f draft=false -f prerelease=false -f make_latest=false >/dev/null
+          HIGHEST_ID=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            | jq -s --arg prefix "$tagPrefix" \
+              '[.[][] | select(.draft == false and .prerelease == false)
+                | select(.tag_name | startswith($prefix))
+                | . + {versionCode:(.tag_name | ltrimstr($prefix) | tonumber)}]
+                | max_by(.versionCode).id')
+          test -n "$HIGHEST_ID"
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$HIGHEST_ID" \
+            -f make_latest=true >/dev/null
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" --jq 'length')" = 2

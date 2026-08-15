@@ -166,7 +166,8 @@ ViewModel-Saved-State- sowie Migrationstest-Code verwendet die aktuellen APIs.
 
 Das Verify-Workflow baut Debug-, Instrumentierungs- und unsigned Release-APK, führt Unit-,
 Golden- und Linttests aus, prüft Größenbudgets und startet die Instrumentierungsmatrix auf
-API 26 und API 35. Die Release-Pipeline wiederholt Tests und Lint vor dem signierten Build.
+API 26 und API 35. Erst nach allen grünen Gates baut derselbe Workflow die dauerhaft signierte
+APK, prüft Paket, Version und Zertifikat und veröffentlicht sie mit Updater-Metadaten.
 Das Launcher-Icon besitzt ab API 26 eine adaptive Vorder-/Hintergrunddefinition. Die vier
 lokalen Fonts inklusive Lizenzen belegen zusammen rund 1,5 MB; CI begrenzt sie auf 1,6 MiB
 und die Debug-APK auf 5 MiB. `DebugPreviewFixtures` stellt reproduzierbare volle und leere

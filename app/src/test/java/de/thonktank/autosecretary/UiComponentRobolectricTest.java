@@ -20,6 +20,7 @@ import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.calendar.CalendarResult;
+import de.thonktank.autosecretary.update.UpdateUiState;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -96,13 +97,13 @@ public final class UiComponentRobolectricTest {
         DayPalette morning = DayPalette.at(LocalTime.of(8, 0), DayPalette.Mode.AUTO);
         DashboardUiState first = state(morning);
 
-        renderer.render(first, UiThemeMode.AUTO);
+        renderer.render(first, UiThemeMode.AUTO, UpdateUiState.idle());
         View focus = content.getChildAt(1);
         focus.setFocusableInTouchMode(true);
         focus.requestFocus();
 
         renderer.render(state(DayPalette.at(LocalTime.of(8, 1), DayPalette.Mode.AUTO)),
-                UiThemeMode.AUTO);
+                UiThemeMode.AUTO, UpdateUiState.idle());
 
         assertSame(focus, content.getChildAt(1));
         assertSame(focus, content.findFocus());

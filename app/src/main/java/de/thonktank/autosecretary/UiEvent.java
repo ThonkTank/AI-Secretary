@@ -8,8 +8,7 @@ public final class UiEvent {
         CONFIRM_DELETE,
         CONFIRM_CLOSE,
         REQUEST_CALENDAR_PERMISSION,
-        OPEN_APP_SETTINGS,
-        OPEN_RELEASES
+        OPEN_APP_SETTINGS
     }
 
     public final Type type;

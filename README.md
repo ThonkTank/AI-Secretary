@@ -11,9 +11,9 @@ Eine kleine, private ADHS-Task-App für Android: nur **jetzt**, **danach** und e
 - Uhrzeitabhängiger Heute-Screen im Design „Tiefer Wald, goldener Sonnenaufgang“
 - Vier responsive Homescreen-Widgetgrößen mit direkten Schritt- und Abschlussaktionen
 - Rein lesende Einbindung aller sichtbaren Kalender über die Android-Kalenderfreigabe
-- Optionen für automatische, helle oder dunkle Darstellung und den GitHub-Updatekanal
+- Optionen für automatische, helle oder dunkle Darstellung und einen geprüften GitHub-Updatekanal
 - Keine Benachrichtigungen im Stabilitäts-Release: Das Widget bleibt die einzige proaktive Erinnerung
-- Button zu den GitHub Releases für Updates
+- Tägliche und manuelle Updateprüfung mit signiertem In-App-Download und Android-Installer
 
 ## Lokal testen
 
@@ -36,3 +36,7 @@ Die Release-Einrichtung ist in [docs/releasing.md](docs/releasing.md) beschriebe
 Produktentscheidung ist in [docs/produktziele.md](docs/produktziele.md) festgehalten. Die
 verbindlichen Architekturentscheidungen und visuellen Referenzen beginnen unter
 [docs/architecture](docs/architecture/README.md).
+
+Jeder grüne Push auf `main` wird automatisch als installierbarer Build veröffentlicht. Beim
+ersten Wechsel von einem Debug-Build ist wegen der dauerhaft anderen Signatur eine einmalige
+Neuinstallation nötig; danach bleiben Aufgaben bei Updates erhalten.

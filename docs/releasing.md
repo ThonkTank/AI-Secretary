@@ -1,35 +1,55 @@
-# Auto Secretary – Release-APK veröffentlichen
+# Auto Secretary – Builds und Updates veröffentlichen
 
-Die App ist für direkte Installationen aus GitHub Releases eingerichtet. Damit Android jede neue APK als **Update** erkennt und die Aufgaben behalten kann, muss GitHub immer denselben Signaturschlüssel verwenden.
+Jeder Push auf `main` durchläuft Unit-Tests, Lint und die Instrumentierungstests auf API 26
+und API 35. Nur wenn alle Prüfungen erfolgreich sind, baut GitHub eine signierte APK und
+veröffentlicht sie als stabiles GitHub Release.
 
-## Einmalig: Repository-Secrets setzen
+## Dauerhafter Signaturschlüssel
 
-Erzeuge den Schlüssel an einem sicheren Ort (nicht im Repository):
+Das Repository verwendet die bestehenden Actions-Secrets:
+
+| Secret | Inhalt |
+| --- | --- |
+| `KEYSTORE_BASE64` | Base64-kodierter Produktions-Keystore |
+| `KEYSTORE_PASSWORD` | Store- und Schlüsselpasswort |
+
+Der Schlüsselalias ist `release`. Die Pipeline akzeptiert nur den in
+`release/release.properties` festgehaltenen Zertifikat-Fingerprint. App-ID, Keystore und Alias
+dürfen nach der ersten Installation nicht mehr geändert werden, sonst kann Android spätere APKs
+nicht als Update installieren.
+
+## Automatischer Ablauf
+
+1. Eine abgeschlossene Änderung wird auf `main` gepusht.
+2. `.github/workflows/verify.yml` führt das vollständige Quality-Gate aus.
+3. Die Pipeline vergibt einen eindeutigen `versionCode` und einen sichtbaren Namen wie `0.2.17`.
+4. Die APK wird signiert und auf Paketname, Version, Größe und Zertifikat geprüft.
+5. Ein Draft-Release erhält genau `AutoSecretary.apk` und `release-metadata.json`.
+6. GitHub lädt beide Dateien zur Gegenprüfung erneut herunter und veröffentlicht erst danach das
+   Release. Der höchste Build wird als „Latest“ markiert.
+
+Ein fehlgeschlagener Build veröffentlicht nichts. Eine Wiederholung für einen bereits
+veröffentlichten Commit erzeugt kein Duplikat.
+
+## Update in der App
+
+Die App prüft höchstens einmal täglich nach dem Start und jederzeit manuell unter
+**Optionen → Updates**. Ein Download wird vor der Installation auf Größe, SHA-256, Paketname,
+Versionscode und dieselbe Android-Signatur wie die installierte App geprüft. Anschließend öffnet
+die App den Android-Systeminstaller; dessen Bestätigung kann und soll nicht umgangen werden.
+
+Beim ersten Wechsel von einem lokal oder durch CI debug-signierten Build muss dieser Build
+einmalig deinstalliert werden. Ab der Installation des ersten Produktions-Releases bleiben lokale
+Aufgaben bei allen folgenden Updates erhalten.
+
+## Release lokal prüfen
+
+Der lokale Quality-Gate bleibt:
 
 ```bash
-keytool -genkeypair -v -keystore jetzt-release.keystore -alias jetzt -keyalg RSA -keysize 2048 -validity 10000
-base64 -w 0 jetzt-release.keystore
+./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease
 ```
 
-In GitHub unter **Settings → Secrets and variables → Actions** vier Repository-Secrets anlegen:
-
-| Secret | Wert |
-| --- | --- |
-| `ANDROID_KEYSTORE_BASE64` | Ausgabe des zweiten Befehls |
-| `ANDROID_KEYSTORE_PASSWORD` | Keystore-Passwort |
-| `ANDROID_KEY_ALIAS` | `jetzt` (oder der gewählte Alias) |
-| `ANDROID_KEY_PASSWORD` | Schlüsselpasswort |
-
-Den Keystore sicher aufbewahren. Ohne exakt diesen Schlüssel kann eine spätere APK nicht über eine vorhandene Installation aktualisiert werden.
-
-## Release erstellen
-
-1. `versionCode`, `versionName` und `CHANGELOG.md` gemeinsam erhöhen.
-2. Lokal `./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease` ausführen.
-3. Den grünen Stand committen und pushen.
-4. Einen passenden Tag wie `v0.2.0` pushen.
-
-Die GitHub Action wiederholt Unit-/Golden-Tests und Lint, baut danach die signierte APK und
-hängt sie an das GitHub Release an. Der normale Verify-Workflow führt zusätzlich die
-Migrationstests auf API 26 und API 35 aus. Auf dem Handy die APK aus dem Release
-herunterladen und installieren; bei Updates bleiben die lokalen Daten erhalten.
+Ein lokaler `assembleRelease` bleibt absichtlich unsigned. Ein signierter Build erfordert den
+Produktionsschlüssel und `-PrequireReleaseSigning=true`; reguläre signierte Builds entstehen nur
+in GitHub Actions.

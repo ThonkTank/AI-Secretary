@@ -7,6 +7,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
+import de.thonktank.autosecretary.update.UpdateUiState;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -46,12 +47,13 @@ public final class DashboardRenderer {
         style = new UiStyle(context);
     }
 
-    public void render(DashboardUiState state, UiThemeMode themeMode) {
+    public void render(DashboardUiState state, UiThemeMode themeMode, UpdateUiState updateState) {
         if (mounted != state.navigation) mount(state.navigation);
         if (state.navigation == NavigationDestination.TODAY) bindToday(state.dashboard, state.palette);
         else if (state.navigation == NavigationDestination.ALL_TASKS)
             allPlaceholder.bind(state.palette, true);
-        else options.bind(state.palette, themeMode, state.calendarPermission, state.calendar, version);
+        else options.bind(state.palette, themeMode, state.calendarPermission, state.calendar,
+                    version, updateState);
     }
 
     private void mount(NavigationDestination destination) {

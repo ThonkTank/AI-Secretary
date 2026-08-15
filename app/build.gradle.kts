@@ -1,5 +1,25 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
+}
+
+val releaseContract = Properties().apply {
+    rootProject.file("release/release.properties").inputStream().use(::load)
+}
+val configuredVersionCode = providers.gradleProperty("versionCode").orElse("2").get().toInt()
+val configuredVersionName = providers.gradleProperty("versionName").orElse("0.2.0").get()
+val requireReleaseSigning = providers.gradleProperty("requireReleaseSigning")
+    .map(String::toBoolean).orElse(false).get()
+val signingStoreFile = System.getenv("SIGNING_STORE_FILE")
+val signingStorePassword = System.getenv("SIGNING_STORE_PASSWORD")
+val signingKeyAlias = System.getenv("SIGNING_KEY_ALIAS")
+val signingKeyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+val signingReady = listOf(signingStoreFile, signingStorePassword, signingKeyAlias,
+    signingKeyPassword).all { !it.isNullOrBlank() }
+
+if (requireReleaseSigning && !signingReady) {
+    throw GradleException("Release signing was required, but its credentials are incomplete")
 }
 
 android {
@@ -10,9 +30,19 @@ android {
         applicationId = "de.thonktank.autosecretary"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = configuredVersionCode
+        versionName = configuredVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "UPDATE_REPOSITORY_OWNER",
+            "\"${releaseContract.getProperty("repositoryOwner")}\"")
+        buildConfigField("String", "UPDATE_REPOSITORY_NAME",
+            "\"${releaseContract.getProperty("repositoryName")}\"")
+        buildConfigField("String", "UPDATE_APK_ASSET",
+            "\"${releaseContract.getProperty("apkAsset")}\"")
+        buildConfigField("String", "UPDATE_METADATA_ASSET",
+            "\"${releaseContract.getProperty("metadataAsset")}\"")
+        buildConfigField("String", "UPDATE_TAG_PREFIX",
+            "\"${releaseContract.getProperty("tagPrefix")}\"")
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments += mapOf("room.schemaLocation" to "$projectDir/schemas")
@@ -27,21 +57,24 @@ android {
 
     signingConfigs {
         create("release") {
-            val storePath = System.getenv("SIGNING_STORE_FILE")
-            if (!storePath.isNullOrBlank()) {
-                storeFile = file(storePath)
-                storePassword = System.getenv("SIGNING_STORE_PASSWORD")
-                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
-                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+            if (signingReady) {
+                storeFile = file(signingStoreFile!!)
+                storePassword = signingStorePassword
+                keyAlias = signingKeyAlias
+                keyPassword = signingKeyPassword
             }
         }
     }
 
     buildTypes {
         getByName("release") {
-            // CI supplies this signing configuration. A local release can still be built for testing.
-            if (!System.getenv("SIGNING_STORE_FILE").isNullOrBlank()) signingConfig = signingConfigs.getByName("release")
+            // CI supplies this signing configuration. A local release stays unsigned for testing.
+            if (signingReady) signingConfig = signingConfigs.getByName("release")
         }
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     testOptions {
@@ -64,6 +97,8 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    //noinspection GradleDependency -- newer Core releases require a newer compile SDK.
+    implementation("androidx.core:core:1.13.1")
     implementation("androidx.room:room-runtime:2.8.4")
     annotationProcessor("androidx.room:room-compiler:2.8.4")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.11.0")

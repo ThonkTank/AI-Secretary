@@ -9,6 +9,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
+import de.thonktank.autosecretary.update.UpdateUiState;
 
 import java.util.function.Consumer;
 
@@ -83,7 +84,7 @@ public final class OptionsView extends LinearLayout {
 
     public void bind(DayPalette palette, UiThemeMode mode,
                      CalendarPermissionStatus permission, CalendarUiState calendarState,
-                     String version) {
+                     String version, UpdateUiState updateState) {
         heading.setTextColor(palette.accent);
         appearance.bind(palette, getContext().getString(R.string.options_appearance_description));
         UiThemeMode[] modes = UiThemeMode.values();
@@ -106,10 +107,44 @@ public final class OptionsView extends LinearLayout {
         calendarButton.setText(granted || settings
                 ? R.string.open_app_settings : R.string.calendar_grant);
         bindOutline(calendarButton, palette);
-        updates.bind(palette, getContext().getString(R.string.installed_version, version));
+        updates.bind(palette, updateDescription(version, updateState));
+        bindUpdateButton(updateState);
         updateButton.setTextColor(palette.accentText);
         updateButton.setBackground(style.pill(palette.accent, 26));
         updateButton.setElevation(style.dp(5));
+    }
+
+    private String updateDescription(String installed, UpdateUiState state) {
+        if (state == null || state.status == UpdateUiState.Status.IDLE)
+            return getContext().getString(R.string.installed_version, installed);
+        if (state.status == UpdateUiState.Status.CHECKING)
+            return getContext().getString(R.string.update_checking, installed);
+        if (state.status == UpdateUiState.Status.CURRENT)
+            return getContext().getString(R.string.update_current, installed);
+        if (state.status == UpdateUiState.Status.AVAILABLE)
+            return getContext().getString(R.string.update_available,
+                    state.update.versionName, installed);
+        if (state.status == UpdateUiState.Status.DOWNLOADING)
+            return getContext().getString(R.string.update_downloading,
+                    state.update.versionName, state.progress);
+        if (state.status == UpdateUiState.Status.READY)
+            return getContext().getString(R.string.update_ready, state.update.versionName);
+        return state.message == null ? getContext().getString(R.string.error_update_check)
+                : state.message;
+    }
+
+    private void bindUpdateButton(UpdateUiState state) {
+        boolean busy = state != null && (state.status == UpdateUiState.Status.CHECKING
+                || state.status == UpdateUiState.Status.DOWNLOADING);
+        updateButton.setEnabled(!busy);
+        updateButton.setAlpha(busy ? .65f : 1f);
+        if (busy) updateButton.setText(R.string.update_busy);
+        else if (state != null && state.status == UpdateUiState.Status.AVAILABLE)
+            updateButton.setText(getContext().getString(
+                    R.string.download_update, state.update.versionName));
+        else if (state != null && state.status == UpdateUiState.Status.READY)
+            updateButton.setText(R.string.install_update);
+        else updateButton.setText(R.string.check_updates);
     }
 
     private void addLeaf(OptionLeaf leaf) {

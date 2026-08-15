@@ -12,6 +12,10 @@ public final class UiPreferences {
     private static final String THEME_MODE = "theme_mode";
     private static final String CALENDAR_ASKED = "calendar_asked";
     private static final String CALENDAR_POLICY = "calendar_policy";
+    private static final String LAST_UPDATE_CHECK = "last_update_check";
+    private static final String POSTPONED_UPDATE_CODE = "postponed_update_code";
+    private static final String POSTPONED_UPDATE_AT = "postponed_update_at";
+    private static final long UPDATE_INTERVAL_MS = 24L * 60L * 60L * 1000L;
 
     private final SharedPreferences preferences;
     private final AppLogger logger;
@@ -56,5 +60,26 @@ public final class UiPreferences {
 
     public void setCalendarPolicy(CalendarPolicy policy) {
         preferences.edit().putString(CALENDAR_POLICY, policy.name()).apply();
+    }
+
+    public boolean shouldCheckUpdates(long nowMillis) {
+        long previous = preferences.getLong(LAST_UPDATE_CHECK, 0L);
+        return previous <= 0L || nowMillis < previous || nowMillis - previous >= UPDATE_INTERVAL_MS;
+    }
+
+    public void markUpdateCheck(long nowMillis) {
+        preferences.edit().putLong(LAST_UPDATE_CHECK, nowMillis).apply();
+    }
+
+    public boolean shouldPromptForUpdate(long versionCode, long nowMillis) {
+        long postponedCode = preferences.getLong(POSTPONED_UPDATE_CODE, -1L);
+        long postponedAt = preferences.getLong(POSTPONED_UPDATE_AT, 0L);
+        return postponedCode != versionCode || nowMillis < postponedAt
+                || nowMillis - postponedAt >= UPDATE_INTERVAL_MS;
+    }
+
+    public void postponeUpdate(long versionCode, long nowMillis) {
+        preferences.edit().putLong(POSTPONED_UPDATE_CODE, versionCode)
+                .putLong(POSTPONED_UPDATE_AT, nowMillis).apply();
     }
 }

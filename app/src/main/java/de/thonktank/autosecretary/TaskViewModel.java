@@ -188,10 +188,6 @@ public final class TaskViewModel extends ViewModel {
         }
     }
 
-    void openReleases() {
-        events.setValue(UiEvent.action(UiEvent.Type.OPEN_RELEASES));
-    }
-
     void requestDelete(TaskSnapshot task) {
         events.setValue(UiEvent.confirmDelete(task));
     }
