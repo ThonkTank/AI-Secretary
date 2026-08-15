@@ -41,6 +41,10 @@ public final class UpgradePersistenceTest {
     private static final String STEP_TEXT = "Persistierten Schritt lesen";
     private static final String PROBE_PREFERENCES = "upgrade_e2e_probe";
     private static final String PREVIOUS_VERSION = "previous_version";
+    private static final long DEDICATED_UPDATE_PREFERENCES_VERSION = 1_002_301L;
+    private static final long SEEDED_LAST_CHECK = 123_456_789L;
+    private static final long SEEDED_POSTPONED_CODE = 987_654L;
+    private static final long SEEDED_POSTPONED_AT = 123_450_000L;
 
     @Test public void seedPreviousVersion() throws Exception {
         requirePhase("seed");
@@ -68,16 +72,27 @@ public final class UpgradePersistenceTest {
             }
         }
 
-        context.getSharedPreferences("forest_ui", Context.MODE_PRIVATE).edit()
+        long previousVersion = installedVersion(context);
+        assertTrue("Could not seed UI and legacy update preferences",
+                context.getSharedPreferences("forest_ui", Context.MODE_PRIVATE).edit()
                 .putString("theme_mode", UiThemeMode.DARK.name())
                 .putString("calendar_policy", CalendarPolicy.GOOGLE_ONLY.name())
-                .putLong("last_update_check", 123_456_789L)
-                .putLong("postponed_update_code", 987_654L)
-                .putLong("postponed_update_at", 123_450_000L)
-                .commit();
-        context.getSharedPreferences(PROBE_PREFERENCES, Context.MODE_PRIVATE).edit()
-                .putLong(PREVIOUS_VERSION, installedVersion(context))
-                .commit();
+                .putLong("last_update_check", SEEDED_LAST_CHECK)
+                .putLong("postponed_update_code", SEEDED_POSTPONED_CODE)
+                .putLong("postponed_update_at", SEEDED_POSTPONED_AT)
+                .commit());
+        if (previousVersion >= DEDICATED_UPDATE_PREFERENCES_VERSION) {
+            assertTrue("Could not seed dedicated update preferences",
+                    context.getSharedPreferences("forest_updates", Context.MODE_PRIVATE).edit()
+                    .putLong("last_update_check", SEEDED_LAST_CHECK)
+                    .putLong("postponed_update_code", SEEDED_POSTPONED_CODE)
+                    .putLong("postponed_update_at", SEEDED_POSTPONED_AT)
+                    .commit());
+        }
+        assertTrue("Could not seed the previous-version marker",
+                context.getSharedPreferences(PROBE_PREFERENCES, Context.MODE_PRIVATE).edit()
+                .putLong(PREVIOUS_VERSION, previousVersion)
+                .commit());
     }
 
     @Test public void currentVersionStartsAndReadsPreviousData() throws Exception {
@@ -120,9 +135,9 @@ public final class UpgradePersistenceTest {
                 application.container().uiPreferences.calendarPolicy());
         SharedPreferences updates = context.getSharedPreferences(
                 "forest_updates", Context.MODE_PRIVATE);
-        assertEquals(123_456_789L, updates.getLong("last_update_check", -1L));
-        assertEquals(987_654L, updates.getLong("postponed_update_code", -1L));
-        assertEquals(123_450_000L, updates.getLong("postponed_update_at", -1L));
+        assertEquals(SEEDED_LAST_CHECK, updates.getLong("last_update_check", -1L));
+        assertEquals(SEEDED_POSTPONED_CODE, updates.getLong("postponed_update_code", -1L));
+        assertEquals(SEEDED_POSTPONED_AT, updates.getLong("postponed_update_at", -1L));
         SharedPreferences ui = context.getSharedPreferences("forest_ui", Context.MODE_PRIVATE);
         assertTrue(!ui.contains("last_update_check"));
         assertTrue(!ui.contains("postponed_update_code"));
