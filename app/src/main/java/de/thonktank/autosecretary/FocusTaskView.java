@@ -128,7 +128,7 @@ public final class FocusTaskView extends FrameLayout {
         later.setVisibility(allowDefer ? VISIBLE : GONE);
         later.setTextColor(palette.hint);
         later.setOnClickListener(view -> {
-            card.animate().rotation(1.5f).alpha(.78f).setDuration(180)
+            card.animate().rotation(1.5f).alpha(.78f).setDuration(palette.motion.deferDurationMs)
                     .withEndAction(() -> callbacks.onDefer(task));
         });
     }

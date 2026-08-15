@@ -1,5 +1,6 @@
 package de.thonktank.autosecretary;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
@@ -9,43 +10,166 @@ import android.graphics.RadialGradient;
 import android.graphics.Shader;
 import android.view.View;
 
-/** Three quiet forest depths and the moving clock-driven light. */
+/** Cached three-depth forest derived from the approved handoff silhouettes. */
 final class ForestBackdropView extends View {
-    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private DayPalette palette = DayPalette.at(java.time.LocalTime.now(), DayPalette.Mode.AUTO);
+    private final Paint sunPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint treePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint veilPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Path farTrunks = new Path();
+    private final Path middleTrunks = new Path();
+    private final Path frontTrunk = new Path();
+    private final float[][] farBranches = new float[5][5];
+    private final float[][] middleBranches = new float[2][5];
+    private final float[][] frontBranches = new float[3][5];
+    private DayPalette palette;
+    private ValueAnimator breathing;
+    private int width;
+    private int height;
 
-    ForestBackdropView(Context context) { super(context); setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO); }
-    void setPalette(DayPalette palette) { this.palette = palette; invalidate(); }
+    ForestBackdropView(Context context) {
+        super(context);
+        setWillNotDraw(false);
+        setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+        treePaint.setStyle(Paint.Style.FILL);
+        treePaint.setStrokeCap(Paint.Cap.SQUARE);
+    }
+
+    void setPalette(DayPalette palette) {
+        this.palette = palette;
+        rebuildShaders();
+        invalidate();
+    }
+
+    @Override protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        updateBreathing();
+    }
+
+    @Override protected void onDetachedFromWindow() {
+        stopBreathing();
+        super.onDetachedFromWindow();
+    }
+
+    @Override protected void onVisibilityChanged(View changedView, int visibility) {
+        super.onVisibilityChanged(changedView, visibility);
+        if (isAttachedToWindow()) updateBreathing();
+    }
+
+    @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
+        this.width = width;
+        this.height = height;
+        rebuildGeometry();
+        rebuildShaders();
+    }
 
     @Override protected void onDraw(Canvas canvas) {
-        int w = getWidth(), h = getHeight(); if (w == 0 || h == 0) return; canvas.drawColor(palette.background);
-        paint.setShader(new RadialGradient(w * palette.sunX / 100f, -h * .1f, w * palette.sunWidth,
-                palette.sunColor, 0x00000000, Shader.TileMode.CLAMP)); canvas.drawRect(0, 0, w, h * .62f, paint);
-        paint.setShader(null); drawLayer(canvas, w, h, palette.farAlpha, 0); drawLayer(canvas, w, h, palette.middleAlpha, 1);
-        drawLayer(canvas, w, h, palette.frontAlpha, 2);
-        paint.setShader(new LinearGradient(0, 0, 0, h * .12f, palette.background & 0x00ffffff,
-                palette.background, Shader.TileMode.CLAMP)); canvas.drawRect(0, 0, w, h * .12f, paint); paint.setShader(null);
+        if (palette == null || width == 0 || height == 0) return;
+        canvas.drawColor(palette.background);
+        canvas.drawRect(0, 0, width, height * .62f, sunPaint);
+        drawLayer(canvas, farTrunks, farBranches, palette.farAlpha);
+        drawLayer(canvas, middleTrunks, middleBranches, palette.middleAlpha);
+        drawLayer(canvas, frontTrunk, frontBranches, palette.frontAlpha);
+        canvas.drawRect(0, 0, width, height * .12f, veilPaint);
     }
 
-    private void drawLayer(Canvas canvas, int w, int h, float alpha, int depth) {
-        paint.setColor(palette.tree); paint.setAlpha(Math.round(alpha * 255)); paint.setStyle(Paint.Style.FILL);
-        if (depth == 2) {
-            Path trunk = new Path(); trunk.moveTo(-dp(42), h); trunk.lineTo(dp(62), h); trunk.lineTo(dp(42), -dp(40));
-            trunk.lineTo(dp(8), -dp(40)); trunk.close(); canvas.drawPath(trunk, paint);
-            branch(canvas, dp(34), h * .39f, dp(98), h * .31f, 10); branch(canvas, dp(30), h * .60f, dp(92), h * .68f, 9);
-            branch(canvas, dp(37), h * .29f, dp(80), h * .23f, 7); return;
-        }
-        float[] xs = depth == 0 ? new float[]{.12f,.28f,.46f,.66f,.86f} : new float[]{.19f,.78f};
-        for (int i = 0; i < xs.length; i++) { float x = w * xs[i], half = dp(depth == 0 ? 3 : 7);
-            Path trunk = new Path(); trunk.moveTo(x-half,h); trunk.lineTo(x+half,h); trunk.lineTo(x+half-dp(7),-dp(20));
-            trunk.lineTo(x-half-dp(4),-dp(20)); trunk.close(); canvas.drawPath(trunk,paint);
-            branch(canvas,x,h*(.38f+i*.045f),x+(i%2==0?dp(42):-dp(42)),h*(.31f+i*.04f),depth==0?3:5);
+    private void drawLayer(Canvas canvas, Path trunks, float[][] branches, float alpha) {
+        treePaint.setColor(palette.tree);
+        treePaint.setAlpha(Math.round(alpha * 255));
+        treePaint.setStyle(Paint.Style.FILL);
+        canvas.drawPath(trunks, treePaint);
+        treePaint.setStyle(Paint.Style.STROKE);
+        for (float[] branch : branches) {
+            treePaint.setStrokeWidth(branch[4]);
+            canvas.drawLine(branch[0], branch[1], branch[2], branch[3], treePaint);
         }
     }
 
-    private void branch(Canvas canvas, float x1, float y1, float x2, float y2, float width) {
-        paint.setStyle(Paint.Style.STROKE); paint.setStrokeCap(Paint.Cap.SQUARE); paint.setStrokeWidth(dp(width));
-        canvas.drawLine(x1,y1,x2,y2,paint); paint.setStyle(Paint.Style.FILL);
+    private void rebuildGeometry() {
+        farTrunks.reset();
+        middleTrunks.reset();
+        frontTrunk.reset();
+        float[] farXs = {.12f, .28f, .46f, .66f, .86f};
+        for (int i = 0; i < farXs.length; i++) {
+            float x = width * farXs[i];
+            addTrunk(farTrunks, x, dp(3));
+            branch(farBranches[i], x, height * (.38f + i * .045f),
+                    x + (i % 2 == 0 ? dp(42) : -dp(42)),
+                    height * (.31f + i * .04f), dp(3));
+        }
+        float[] middleXs = {.19f, .78f};
+        for (int i = 0; i < middleXs.length; i++) {
+            float x = width * middleXs[i];
+            addTrunk(middleTrunks, x, dp(7));
+            branch(middleBranches[i], x, height * (.38f + i * .045f),
+                    x + (i % 2 == 0 ? dp(42) : -dp(42)),
+                    height * (.31f + i * .04f), dp(5));
+        }
+        frontTrunk.moveTo(-dp(42), height);
+        frontTrunk.lineTo(dp(62), height);
+        frontTrunk.lineTo(dp(42), -dp(40));
+        frontTrunk.lineTo(dp(8), -dp(40));
+        frontTrunk.close();
+        branch(frontBranches[0], dp(34), height * .39f, dp(98), height * .31f, dp(10));
+        branch(frontBranches[1], dp(30), height * .60f, dp(92), height * .68f, dp(9));
+        branch(frontBranches[2], dp(37), height * .29f, dp(80), height * .23f, dp(7));
     }
-    private float dp(float value) { return value * getResources().getDisplayMetrics().density; }
+
+    private void addTrunk(Path path, float x, float half) {
+        path.moveTo(x - half, height);
+        path.lineTo(x + half, height);
+        path.lineTo(x + half - dp(7), -dp(20));
+        path.lineTo(x - half - dp(4), -dp(20));
+        path.close();
+    }
+
+    private static void branch(float[] target, float x1, float y1, float x2, float y2,
+                               float strokeWidth) {
+        target[0] = x1;
+        target[1] = y1;
+        target[2] = x2;
+        target[3] = y2;
+        target[4] = strokeWidth;
+    }
+
+    private void rebuildShaders() {
+        if (palette == null || width == 0 || height == 0) return;
+        sunPaint.setShader(new RadialGradient(width * palette.sunX / 100f, -height * .1f,
+                width * palette.sunWidth, palette.sunColor, 0x00000000, Shader.TileMode.CLAMP));
+        veilPaint.setShader(new LinearGradient(0, 0, 0, height * .12f,
+                palette.background & 0x00ffffff, palette.background, Shader.TileMode.CLAMP));
+    }
+
+    private void updateBreathing() {
+        stopBreathing();
+        if (!isShown() || !ValueAnimator.areAnimatorsEnabled()) {
+            setAlpha(1f);
+            return;
+        }
+        MotionTokens motion = palette == null ? MotionTokens.standard() : palette.motion;
+        breathing = ValueAnimator.ofFloat(0f, 1f);
+        breathing.setDuration(motion.forestBreathDurationMs);
+        breathing.setRepeatCount(ValueAnimator.INFINITE);
+        breathing.setRepeatMode(ValueAnimator.REVERSE);
+        breathing.addUpdateListener(animation -> {
+            float progress = (float) animation.getAnimatedValue();
+            setAlpha(1f - motion.forestBreathAlpha + progress * motion.forestBreathAlpha);
+        });
+        breathing.start();
+    }
+
+    private void stopBreathing() {
+        if (breathing != null) {
+            breathing.cancel();
+            breathing = null;
+        }
+        setAlpha(1f);
+    }
+
+    boolean isBreathing() {
+        return breathing != null && breathing.isStarted();
+    }
+
+    private float dp(float value) {
+        return value * getResources().getDisplayMetrics().density;
+    }
 }

@@ -53,6 +53,12 @@ android {
     }
 }
 
+val robolectricTempDir = layout.buildDirectory.dir("tmp/robolectric")
+tasks.withType<Test>().configureEach {
+    doFirst { robolectricTempDir.get().asFile.mkdirs() }
+    systemProperty("java.io.tmpdir", robolectricTempDir.get().asFile.absolutePath)
+}
+
 dependencies {
     implementation("androidx.room:room-runtime:2.6.1")
     annotationProcessor("androidx.room:room-compiler:2.6.1")

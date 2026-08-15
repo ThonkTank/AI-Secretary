@@ -103,3 +103,23 @@ Das Repository cached ein Ergebnis anhand von Datum, Zone, Policy und
 Berechtigungszustand. Activity und alle Widgets verwenden die gleiche Instanz aus dem
 `AppContainer`. Ein `ContentObserver` auf Kalenderereignisse invalidiert den Cache und
 stößt über die DataSource-Subscription einen Presentation-Refresh an.
+
+## Strukturiertes Designsystem und Wald-Rendering
+
+`DayPalette` besteht aus benannten `SurfaceTokens`, `TypographyTokens`, `ForestTokens`
+und `MotionTokens`; der frühere lange positionale Konstruktor ist damit aus den Aufrufern
+verschwunden. `DayPaletteInterpolator` interpoliert zwischen acht expliziten Zeitankern.
+Token- und Rendering-Goldens fixieren diese Referenzpunkte, während Kontrasttests die
+zentralen Text-/Flächen-Kombinationen zusätzlich über den ganzen Tag prüfen.
+
+Die festen Modi frieren Flächen, Typografie, Baumfarbe und Tiefenstaffelung ein. Position,
+Breite und Farbe der Sonne bleiben bewusst zeitabhängig, damit der Tagesfortschritt auch
+in einem erzwungenen Hell- oder Dunkelmodus erkennbar bleibt. Ein nicht verwendeter
+Schattenparameter wurde entfernt.
+
+Der Wald zeichnet die drei Tiefenebenen aus der freigegebenen Silhouetten-Referenz.
+Pfade, Astkoordinaten, Shader und Paints werden nur bei Größen- oder Palettenänderungen
+neu aufgebaut; `onDraw` allokiert keine dieser Objekte. Die sehr zurückhaltende
+Breathing-Animation läuft ausschließlich bei angehängter, sichtbarer View und beachtet
+die systemweite Einstellung für reduzierte beziehungsweise deaktivierte Animationen.
+App und Widget beziehen ihre Farben über dieselbe `DayPalette`-Definition.

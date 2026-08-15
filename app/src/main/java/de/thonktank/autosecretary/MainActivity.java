@@ -102,7 +102,7 @@ public class MainActivity extends ComponentActivity {
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setLayoutTransition(new LayoutTransition());
-        content.getLayoutTransition().setDuration(240);
+        content.getLayoutTransition().setDuration(MotionTokens.standard().stateChangeDurationMs);
         scroll.addView(content, new ScrollView.LayoutParams(-1, -2));
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         footer = new FooterNavigationView(this, destination -> viewModel.navigate(destination));
