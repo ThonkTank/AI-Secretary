@@ -25,6 +25,8 @@ konkreten Konstanten bleibt `release/release.properties`.
 - Die aktuelle sichtbare Versionsreihe ist `0.2`.
 - GitHub Actions vergibt pro Lauf einen Versionscode oberhalb von `1000000` nach
   `versionCodeFloor + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT`.
+- Ein neuer Versionscode muss größer als jeder bereits vorhandene Tag des aktuellen Updatekanals
+  sein; andernfalls bricht die Planung ab.
 - Ein wiederholter Workflowlauf erhält einen eigenen Versionscode und den Suffix `-rN` im
   sichtbaren Versionsnamen. Bereits veröffentlichte Commits werden nicht erneut veröffentlicht.
 - Lokale Builds verwenden nur Entwicklungswerte. Sie sind keine Quelle für die nächste
@@ -71,9 +73,17 @@ Das Metadatenformat hat `schemaVersion` 1 und enthält:
 - den kleingeschriebenen Zertifikat-Fingerprint `signerSha256`
 - den vollständigen Git-Commit `commitSha`
 
-Die Pipeline erstellt zunächst einen Draft, lädt beide Assets hoch, lädt sie als Beweis erneut
-herunter und veröffentlicht erst nach erfolgreicher Hash- und Commitprüfung. Der Release mit dem
-höchsten Versionscode im gültigen Tagformat wird als `Latest` markiert.
+Die Pipeline baut und signiert einen Produktionskandidaten genau einmal. API 26, API 35 und der
+Veröffentlichungsschritt verwenden dieses interne Workflow-Artefakt. Die Pipeline erstellt oder
+übernimmt anschließend einen Draft, lädt beide öffentlichen Assets hoch, lädt sie als Beweis
+erneut herunter und veröffentlicht erst nach erfolgreicher Hash-, Commit- und Byteprüfung. Der
+Release mit dem höchsten Versionscode im gültigen Tagformat wird als `Latest` markiert.
+
+Die fachliche Releaseplanung und Metadatenprüfung liegt in
+`scripts/release/release_tool.py`. Das Werkzeug ist lokal ausführbar, verwendet dieselbe
+`release/release.properties` wie GitHub Actions und unterscheidet neue Drafts, wiederaufzunehmende
+Drafts und bereits veröffentlichte Commits. Vorhandene Tags werden nur übernommen, wenn sie auf
+den geplanten Commit zeigen. Die Workflow-Actions sind auf vollständige Commit-SHAs gepinnt.
 
 ### Updateverhalten
 
@@ -100,6 +110,8 @@ Jeder Push auf `main` muss vor einer Veröffentlichung folgende Prüfungen beste
 - Instrumentierungstests auf API 26 und API 35
 - Größenlimit für Installationsartefakt und eingebettete Schriftarten
 - Paket-, Versions- und Signaturprüfung der Produktions-APK
+- Upgrade der vorherigen signierten Produktions-APK auf exakt den später veröffentlichten
+  Kandidaten auf API 26 und API 35
 
 Ein Pull Request führt dieselben Qualitäts- und Instrumentierungsgates aus, veröffentlicht aber
 kein Release. Ein lokaler Release-Build bleibt ohne ausdrücklich bereitgestellte

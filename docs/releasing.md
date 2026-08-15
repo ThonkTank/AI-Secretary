@@ -1,8 +1,10 @@
 # Auto Secretary – Builds und Updates veröffentlichen
 
 Jeder Push auf `main` durchläuft Unit-Tests, Lint, Instrumentierungstests und einen echten
-Produktions-Upgrade-Test auf API 26 und API 35. Nur wenn alle Prüfungen erfolgreich sind, baut
-GitHub eine signierte APK und veröffentlicht sie als stabiles GitHub Release.
+Produktions-Upgrade-Test auf API 26 und API 35. Nur wenn die unabhängigen Qualitätsprüfungen
+erfolgreich sind, baut GitHub genau einmal einen signierten Produktionskandidaten. Derselbe
+Kandidat wird auf beiden API-Stufen getestet und anschließend bytegleich als stabiles GitHub
+Release veröffentlicht.
 
 ## Dauerhafter Signaturschlüssel
 
@@ -22,24 +24,45 @@ nicht als Update installieren.
 
 1. Eine abgeschlossene Änderung wird auf `main` gepusht.
 2. `.github/workflows/verify.yml` führt das vollständige Quality-Gate aus.
-3. Die Pipeline vergibt einen eindeutigen `versionCode` und einen sichtbaren Namen wie `0.2.17`.
-4. Die APK wird signiert und auf Paketname, Version, Größe und Zertifikat geprüft.
+3. `scripts/release/release_tool.py` vergibt einen eindeutigen, gegenüber allen vorhandenen
+   Kanal-Tags höheren `versionCode` und einen sichtbaren Namen wie `0.2.20`.
+4. Die Produktions-APK wird einmal signiert und auf Paketname, Version, Größe, Hash und
+   Zertifikat geprüft. APK, Metadaten, Releaseplan und signiertes Test-APK werden als kurzlebiges
+   internes Workflow-Artefakt weitergereicht.
 5. Die vorige Produktions-APK wird installiert und mit Aufgaben-, Schritt-, Statistik- und
    Einstellungsdaten befüllt. `adb install -r` aktualisiert sie auf den Kandidaten; anschließend
    müssen App-Start, höherer Versionscode, Room-Schema und alle Testdaten erhalten sein.
-6. Ein Draft-Release erhält genau `AutoSecretary.apk` und `release-metadata.json`.
-7. GitHub lädt beide Dateien zur Gegenprüfung erneut herunter und veröffentlicht erst danach das
-   Release. Der höchste Build wird als „Latest“ markiert.
+6. Ein neuer oder nach einem Fehler wiederaufgenommener Draft erhält genau
+   `AutoSecretary.apk` und `release-metadata.json`; vorhandene Assets werden kontrolliert ersetzt.
+7. GitHub lädt beide Dateien zur Gegenprüfung erneut herunter, vergleicht die APK byteweise mit
+   dem getesteten Kandidaten und veröffentlicht erst danach. Der höchste Build wird als „Latest“
+   markiert.
 
-Ein fehlgeschlagener Build veröffentlicht nichts. Eine Wiederholung für einen bereits
-veröffentlichten Commit erzeugt kein Duplikat.
+Ein Fehler vor der abschließenden Prüfung veröffentlicht nichts. Ein Wiederanlauf verwendet einen
+vorhandenen Draft, Tag und Assets desselben Commits weiter. Ein bereits veröffentlichter Commit
+erzeugt kein Duplikat. Das interne Artefakt trägt zusätzlich die Workflow-Versuchsnummer, damit
+auch ein GitHub-Rerun nicht mit einem unveränderlichen Artefakt des vorigen Versuchs kollidiert.
 
 Der Upgrade-Test wählt dynamisch den höchsten bereits veröffentlichten `forest-android-`-Build
 unterhalb des Kandidaten. Das Test-APK wird mit demselben Produktionsschlüssel signiert, damit es
-den nicht-debugbaren Releaseprozess vor und nach dem Android-Upgrade prüfen kann. Bis zur
-Extraktion eines einmalig gebauten Releaseartefakts wird der signierte Kandidat für diesen Test je
-API-Stufe separat gebaut; Signatur, Paket und Versionscode entsprechen dem späteren Release, die
-Dateiidentität wird in der nächsten Releasewerkzeug-Phase vereinheitlicht.
+den nicht-debugbaren Releaseprozess vor und nach dem Android-Upgrade prüfen kann. API 26, API 35
+und der Veröffentlichungsschritt laden dasselbe interne Produktionsartefakt herunter; der
+Veröffentlichungsschritt beweist die Bytegleichheit zusätzlich mit `cmp`.
+
+## Releasewerkzeug lokal prüfen
+
+Die versionierte Python-Implementierung ist die gemeinsame Vertragslogik für lokale Prüfungen und
+GitHub Actions. Sie benötigt nur Python aus der Standardbibliothek:
+
+```bash
+python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
+python3 scripts/release/release_tool.py --help
+```
+
+Das Werkzeug validiert `release/release.properties`, plant neue oder wiederaufzunehmende Releases,
+erzeugt und prüft Metadaten, wählt den vorherigen stabilen Build und validiert bereits vorhandene
+Git-Tags. GitHub-spezifische Zugriffe bleiben bewusst im Workflow; die fachlichen Entscheidungen
+liegen im lokal testbaren Werkzeug.
 
 ## Update in der App
 
@@ -57,6 +80,7 @@ Aufgaben bei allen folgenden Updates erhalten.
 Der lokale Quality-Gate bleibt:
 
 ```bash
+python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
 ./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease
 ```
 

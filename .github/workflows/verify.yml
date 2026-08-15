@@ -17,19 +17,21 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: "21"
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@4733eaac7c1b0da527e4206b7671e0061de1ce37 # v6
+      - name: Test release contract tool
+        run: python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
       - name: Compile, unit tests, goldens, lint and APKs
         run: ./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease
       - name: Enforce compact install artifacts
         run: |
           test "$(stat -c%s app/build/outputs/apk/debug/app-debug.apk)" -lt 5242880
           test "$(du -cb app/src/main/res/font/*.ttf | tail -1 | cut -f1)" -lt 1677722
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: quality-reports-and-apks
@@ -53,12 +55,12 @@ jobs:
             target: google_apis
             arch: x86_64
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: "21"
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@4733eaac7c1b0da527e4206b7671e0061de1ce37 # v6
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
@@ -66,7 +68,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Instrumentation and migration tests on API ${{ matrix.api-level }}
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
         with:
           api-level: ${{ matrix.api-level }}
           target: ${{ matrix.target }}
@@ -75,9 +77,110 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: ./gradlew connectedDebugAndroidTest
 
-  upgrade:
+  package:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: [quality, instrumentation]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      already_published: ${{ steps.plan.outputs.already_published }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@4733eaac7c1b0da527e4206b7671e0061de1ce37 # v6
+      - name: Determine or resume the release plan
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          RELEASES="$RUNNER_TEMP/releases.json"
+          PLAN="$RUNNER_TEMP/release-plan.json"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -s 'add' > "$RELEASES"
+          python3 scripts/release/release_tool.py plan \
+            --properties release/release.properties \
+            --run-number "$GITHUB_RUN_NUMBER" --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --commit "$GITHUB_SHA" --releases "$RELEASES" --output "$PLAN"
+          ACTION=$(jq -r .action "$PLAN")
+          if [ "$ACTION" = already_published ]; then
+            printf 'already_published=true\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'already_published=false\n' >> "$GITHUB_OUTPUT"
+          fi
+          printf 'PLAN=%s\n' "$PLAN" >> "$GITHUB_ENV"
+          printf 'VERSION_CODE=%s\n' "$(jq -r .versionCode "$PLAN")" >> "$GITHUB_ENV"
+          printf 'VERSION_NAME=%s\n' "$(jq -r .versionName "$PLAN")" >> "$GITHUB_ENV"
+          printf 'APK_ASSET=%s\n' "$(jq -r .apkAsset "$PLAN")" >> "$GITHUB_ENV"
+          printf 'METADATA_ASSET=%s\n' "$(jq -r .metadataAsset "$PLAN")" >> "$GITHUB_ENV"
+          printf 'EXPECTED_SIGNER=%s\n' "$(jq -r .signerSha256 "$PLAN")" >> "$GITHUB_ENV"
+          printf 'ANDROID_BUILD_TOOLS=%s\n' "$(jq -r .androidBuildTools "$PLAN")" >> "$GITHUB_ENV"
+      - name: Build, sign and validate the production candidate once
+        if: steps.plan.outputs.already_published != 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64"
+          test -n "$KEYSTORE_PASSWORD"
+          KEYSTORE="$RUNNER_TEMP/autosecretary.jks"
+          trap 'rm -f "$KEYSTORE"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          ACTUAL_CERT=$(keytool -list -v -keystore "$KEYSTORE" \
+            -storepass "$KEYSTORE_PASSWORD" -alias release \
+            | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]')
+          test "$ACTUAL_CERT" = "$EXPECTED_SIGNER"
+          export SIGNING_STORE_FILE="$KEYSTORE"
+          export SIGNING_STORE_PASSWORD="$KEYSTORE_PASSWORD"
+          export SIGNING_KEY_ALIAS=release
+          export SIGNING_KEY_PASSWORD="$KEYSTORE_PASSWORD"
+          ./gradlew assembleRelease assembleDebugAndroidTest \
+            -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME" \
+            -PrequireReleaseSigning=true
+          CANDIDATE="$RUNNER_TEMP/release-candidate"
+          mkdir -p "$CANDIDATE"
+          cp app/build/outputs/apk/release/app-release.apk "$CANDIDATE/$APK_ASSET"
+          APKSIGNER="$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS/aapt"
+          "$APKSIGNER" sign --ks "$KEYSTORE" --ks-key-alias release \
+            --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEYSTORE_PASSWORD \
+            --out "$CANDIDATE/upgrade-test.apk" \
+            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          for SIGNED_APK in "$CANDIDATE/$APK_ASSET" "$CANDIDATE/upgrade-test.apk"; do
+            "$APKSIGNER" verify --verbose "$SIGNED_APK"
+            APK_CERT=$($APKSIGNER verify --print-certs "$SIGNED_APK" \
+              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+              | tr '[:upper:]' '[:lower:]')
+            test "$APK_CERT" = "$EXPECTED_SIGNER"
+          done
+          BADGING=$($AAPT dump badging "$CANDIDATE/$APK_ASSET" | sed -n '1p')
+          PACKAGE_NAME=$(jq -r .packageName "$PLAN")
+          case "$BADGING" in
+            *"package: name='$PACKAGE_NAME'"*"versionCode='$VERSION_CODE'"*"versionName='$VERSION_NAME'"*) ;;
+            *) echo "Unexpected package/version: $BADGING" >&2; exit 1 ;;
+          esac
+          cp "$PLAN" "$CANDIDATE/release-plan.json"
+          python3 scripts/release/release_tool.py metadata --plan "$PLAN" \
+            --apk "$CANDIDATE/$APK_ASSET" --output "$CANDIDATE/$METADATA_ASSET"
+          python3 scripts/release/release_tool.py validate --plan "$PLAN" \
+            --metadata "$CANDIDATE/$METADATA_ASSET" --apk "$CANDIDATE/$APK_ASSET"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: steps.plan.outputs.already_published != 'true'
+        with:
+          name: production-release-candidate-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-candidate/
+          compression-level: 0
+          retention-days: 2
+          if-no-files-found: error
+
+  upgrade:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.package.outputs.already_published != 'true'
+    needs: [instrumentation, package]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -91,103 +194,62 @@ jobs:
           - api-level: 35
             target: google_apis
             arch: x86_64
-    env:
-      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-      GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          distribution: temurin
-          java-version: "21"
-      - uses: gradle/actions/setup-gradle@v6
+          name: production-release-candidate-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-candidate
+      - name: Validate candidate and fetch the previous production APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          CANDIDATE="$RUNNER_TEMP/release-candidate"
+          PLAN="$CANDIDATE/release-plan.json"
+          RELEASES="$RUNNER_TEMP/releases.json"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -s 'add' > "$RELEASES"
+          PREVIOUS_TAG=$(python3 scripts/release/release_tool.py previous \
+            --plan "$PLAN" --releases "$RELEASES")
+          APK_ASSET=$(jq -r .apkAsset "$PLAN")
+          METADATA_ASSET=$(jq -r .metadataAsset "$PLAN")
+          PACKAGE_NAME=$(jq -r .packageName "$PLAN")
+          CANDIDATE_VERSION=$(jq -r .versionCode "$PLAN")
+          EXPECTED_SIGNER=$(jq -r .signerSha256 "$PLAN")
+          BUILD_TOOLS=$(jq -r .androidBuildTools "$PLAN")
+          python3 scripts/release/release_tool.py validate --plan "$PLAN" \
+            --metadata "$CANDIDATE/$METADATA_ASSET" --apk "$CANDIDATE/$APK_ASSET"
+          PREVIOUS_DIR="$RUNNER_TEMP/previous-release"
+          mkdir -p "$PREVIOUS_DIR"
+          gh release download "$PREVIOUS_TAG" --dir "$PREVIOUS_DIR" --pattern "$APK_ASSET"
+          PREVIOUS_APK="$PREVIOUS_DIR/$APK_ASSET"
+          APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/$BUILD_TOOLS/aapt"
+          for SIGNED_APK in "$PREVIOUS_APK" "$CANDIDATE/$APK_ASSET" "$CANDIDATE/upgrade-test.apk"; do
+            "$APKSIGNER" verify --verbose "$SIGNED_APK"
+            APK_CERT=$($APKSIGNER verify --print-certs "$SIGNED_APK" \
+              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+              | tr '[:upper:]' '[:lower:]')
+            test "$APK_CERT" = "$EXPECTED_SIGNER"
+          done
+          PREVIOUS_BADGING=$($AAPT dump badging "$PREVIOUS_APK" | sed -n '1p')
+          case "$PREVIOUS_BADGING" in *"package: name='$PACKAGE_NAME'"*) ;; *) exit 1 ;; esac
+          PREVIOUS_VERSION=$(printf '%s\n' "$PREVIOUS_BADGING" \
+            | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
+          test -n "$PREVIOUS_VERSION"
+          test "$PREVIOUS_VERSION" -lt "$CANDIDATE_VERSION"
+          printf 'PREVIOUS_APK=%s\nCANDIDATE_APK=%s\nTEST_APK=%s\n' \
+            "$PREVIOUS_APK" "$CANDIDATE/$APK_ASSET" "$CANDIDATE/upgrade-test.apk" >> "$GITHUB_ENV"
+          printf 'PACKAGE_NAME=%s\nCANDIDATE_VERSION=%s\n' \
+            "$PACKAGE_NAME" "$CANDIDATE_VERSION" >> "$GITHUB_ENV"
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
             | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Prepare previous and candidate production APKs
-        run: |
-          set -euo pipefail
-          while IFS='=' read -r key value; do
-            case "$key" in
-              packageName|apkAsset|tagPrefix|versionSeries|versionCodeFloor|expectedSignerSha256|androidBuildTools)
-                printf -v "$key" '%s' "$value"
-                ;;
-            esac
-          done < release/release.properties
-          test -n "$KEYSTORE_BASE64"
-          test -n "$KEYSTORE_PASSWORD"
-          test "$GITHUB_RUN_ATTEMPT" -lt 100
-          VERSION_CODE=$((versionCodeFloor + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
-          VERSION_NAME="$versionSeries.$GITHUB_RUN_NUMBER"
-          if [ "$GITHUB_RUN_ATTEMPT" -gt 1 ]; then
-            VERSION_NAME="$VERSION_NAME-r$GITHUB_RUN_ATTEMPT"
-          fi
-          KEYSTORE="$RUNNER_TEMP/autosecretary.jks"
-          printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$KEYSTORE"
-          chmod 600 "$KEYSTORE"
-          ACTUAL_CERT=$(keytool -list -v -keystore "$KEYSTORE" \
-            -storepass "$KEYSTORE_PASSWORD" -alias release \
-            | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]')
-          test "$ACTUAL_CERT" = "$expectedSignerSha256"
-          export SIGNING_STORE_FILE="$KEYSTORE"
-          export SIGNING_STORE_PASSWORD="$KEYSTORE_PASSWORD"
-          export SIGNING_KEY_ALIAS=release
-          export SIGNING_KEY_PASSWORD="$KEYSTORE_PASSWORD"
-          ./gradlew assembleRelease assembleDebugAndroidTest \
-            -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME" \
-            -PrequireReleaseSigning=true
-
-          PREVIOUS_TAG=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-            | jq -s -r --arg prefix "$tagPrefix" --argjson candidate "$VERSION_CODE" \
-              '[.[][] | select(.draft == false and .prerelease == false)
-                | select(.tag_name | startswith($prefix))
-                | . + {versionCode:(try (.tag_name | ltrimstr($prefix) | tonumber) catch null)}
-                | select(.versionCode != null and .versionCode < $candidate)]
-                | max_by(.versionCode).tag_name // empty')
-          test -n "$PREVIOUS_TAG"
-          PREVIOUS_DIR="$RUNNER_TEMP/previous-release"
-          mkdir -p "$PREVIOUS_DIR"
-          gh release download "$PREVIOUS_TAG" --dir "$PREVIOUS_DIR" --pattern "$apkAsset"
-
-          CANDIDATE_APK="$GITHUB_WORKSPACE/app/build/outputs/apk/release/app-release.apk"
-          TEST_APK_UNSIGNED="$GITHUB_WORKSPACE/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
-          TEST_APK="$RUNNER_TEMP/upgrade-test.apk"
-          APKSIGNER="$ANDROID_HOME/build-tools/$androidBuildTools/apksigner"
-          AAPT="$ANDROID_HOME/build-tools/$androidBuildTools/aapt"
-          PREVIOUS_APK="$PREVIOUS_DIR/$apkAsset"
-          "$APKSIGNER" sign --ks "$KEYSTORE" --ks-key-alias release \
-            --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEYSTORE_PASSWORD \
-            --out "$TEST_APK" "$TEST_APK_UNSIGNED"
-          "$APKSIGNER" verify --verbose "$PREVIOUS_APK"
-          "$APKSIGNER" verify --verbose "$CANDIDATE_APK"
-          "$APKSIGNER" verify --verbose "$TEST_APK"
-          for SIGNED_APK in "$PREVIOUS_APK" "$CANDIDATE_APK" "$TEST_APK"; do
-            APK_CERT=$($APKSIGNER verify --print-certs "$SIGNED_APK" \
-              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
-              | tr '[:upper:]' '[:lower:]')
-            test "$APK_CERT" = "$expectedSignerSha256"
-          done
-          PREVIOUS_BADGING=$($AAPT dump badging "$PREVIOUS_APK" | sed -n '1p')
-          CANDIDATE_BADGING=$($AAPT dump badging "$CANDIDATE_APK" | sed -n '1p')
-          case "$PREVIOUS_BADGING" in *"package: name='$packageName'"*) ;; *) exit 1 ;; esac
-          case "$CANDIDATE_BADGING" in
-            *"package: name='$packageName'"*"versionCode='$VERSION_CODE'"*) ;;
-            *) exit 1 ;;
-          esac
-          PREVIOUS_VERSION=$(printf '%s\n' "$PREVIOUS_BADGING" \
-            | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
-          test -n "$PREVIOUS_VERSION"
-          test "$PREVIOUS_VERSION" -lt "$VERSION_CODE"
-          printf 'PREVIOUS_APK=%s\nCANDIDATE_APK=%s\nTEST_APK=%s\n' \
-            "$PREVIOUS_APK" "$CANDIDATE_APK" "$TEST_APK" >> "$GITHUB_ENV"
-          printf 'PACKAGE_NAME=%s\nCANDIDATE_VERSION=%s\n' \
-            "$packageName" "$VERSION_CODE" >> "$GITHUB_ENV"
-      - name: Upgrade production APK and verify persisted state on API ${{ matrix.api-level }}
-        uses: reactivecircus/android-emulator-runner@v2
+      - name: Upgrade the exact production candidate on API ${{ matrix.api-level }}
+        uses: reactivecircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
         with:
           api-level: ${{ matrix.api-level }}
           target: ${{ matrix.target }}
@@ -197,144 +259,84 @@ jobs:
           script: ./scripts/ci/run-upgrade-test.sh "$PREVIOUS_APK" "$CANDIDATE_APK" "$TEST_APK" "$PACKAGE_NAME" "$CANDIDATE_VERSION"
 
   publish:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: [quality, instrumentation, upgrade]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.package.outputs.already_published != 'true'
+    needs: [package, upgrade]
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    env:
-      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-      GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          distribution: temurin
-          java-version: "21"
-      - uses: gradle/actions/setup-gradle@v6
-      - name: Read release contract and choose a unique version
+          name: production-release-candidate-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-candidate
+      - name: Resume, prove and publish the tested release candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          while IFS='=' read -r key value; do
-            case "$key" in
-              repositoryOwner|repositoryName|packageName|apkAsset|metadataAsset|tagPrefix|versionSeries|versionCodeFloor|expectedSignerSha256|androidBuildTools)
-                printf -v "$key" '%s' "$value"
-                printf '%s=%s\n' "$key" "$value" >> "$GITHUB_ENV"
-                ;;
-            esac
-          done < release/release.properties
-          test "$GITHUB_RUN_ATTEMPT" -lt 100
-          VERSION_CODE=$((versionCodeFloor + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
-          VERSION_NAME="$versionSeries.${GITHUB_RUN_NUMBER}"
-          if [ "$GITHUB_RUN_ATTEMPT" -gt 1 ]; then
-            VERSION_NAME="$VERSION_NAME-r$GITHUB_RUN_ATTEMPT"
+          CANDIDATE="$RUNNER_TEMP/release-candidate"
+          ARTIFACT_PLAN="$CANDIDATE/release-plan.json"
+          RELEASES="$RUNNER_TEMP/releases.json"
+          CURRENT_PLAN="$RUNNER_TEMP/current-release-plan.json"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -s 'add' > "$RELEASES"
+          python3 scripts/release/release_tool.py plan \
+            --properties release/release.properties \
+            --run-number "$GITHUB_RUN_NUMBER" --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --commit "$GITHUB_SHA" --releases "$RELEASES" --output "$CURRENT_PLAN"
+          ACTION=$(jq -r .action "$CURRENT_PLAN")
+          if [ "$ACTION" = already_published ]; then
+            exit 0
           fi
-          test "$VERSION_CODE" -gt "$versionCodeFloor"
-          test "$VERSION_CODE" -le 2100000000
-          printf 'VERSION_CODE=%s\nVERSION_NAME=%s\nTAG=%s%s\n' \
-            "$VERSION_CODE" "$VERSION_NAME" "$tagPrefix" "$VERSION_CODE" >> "$GITHUB_ENV"
-      - name: Stop when this commit is already published
-        run: |
-          set -euo pipefail
-          EXISTING=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-            --jq ".[] | select(.draft == false and .target_commitish == \"$GITHUB_SHA\") | .tag_name" \
-            | head -n 1)
-          if [ -n "$EXISTING" ]; then
-            printf 'ALREADY_PUBLISHED=true\nTAG=%s\n' "$EXISTING" >> "$GITHUB_ENV"
-          else
-            printf 'ALREADY_PUBLISHED=false\n' >> "$GITHUB_ENV"
+          for FIELD in tag versionCode versionName packageName apkAsset metadataAsset signerSha256 commitSha; do
+            test "$(jq -r ".$FIELD" "$CURRENT_PLAN")" = "$(jq -r ".$FIELD" "$ARTIFACT_PLAN")"
+          done
+          TAG=$(jq -r .tag "$ARTIFACT_PLAN")
+          VERSION_NAME=$(jq -r .versionName "$ARTIFACT_PLAN")
+          APK_ASSET=$(jq -r .apkAsset "$ARTIFACT_PLAN")
+          METADATA_ASSET=$(jq -r .metadataAsset "$ARTIFACT_PLAN")
+          python3 scripts/release/release_tool.py validate --plan "$ARTIFACT_PLAN" \
+            --metadata "$CANDIDATE/$METADATA_ASSET" --apk "$CANDIDATE/$APK_ASSET"
+
+          if [ "$ACTION" = create_draft ]; then
+            TAG_REF="$RUNNER_TEMP/tag-ref.json"
+            if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" > "$TAG_REF" 2>/dev/null; then
+              python3 scripts/release/release_tool.py tag \
+                --plan "$ARTIFACT_PLAN" --ref-json "$TAG_REF"
+            fi
+            gh release create "$TAG" --draft --target "$GITHUB_SHA" \
+              --title "Auto Secretary $VERSION_NAME" --generate-notes
+          elif [ "$ACTION" != resume_draft ]; then
+            echo "Unsupported release action: $ACTION" >&2
+            exit 1
           fi
-      - name: Restore and validate the permanent signing key
-        if: env.ALREADY_PUBLISHED != 'true'
-        run: |
-          set -euo pipefail
-          test -n "$KEYSTORE_BASE64"
-          test -n "$KEYSTORE_PASSWORD"
-          printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' \
-            | base64 --decode > "$RUNNER_TEMP/autosecretary.jks"
-          chmod 600 "$RUNNER_TEMP/autosecretary.jks"
-          ACTUAL_CERT=$(keytool -list -v -keystore "$RUNNER_TEMP/autosecretary.jks" \
-            -storepass "$KEYSTORE_PASSWORD" -alias release \
-            | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]')
-          test "$ACTUAL_CERT" = "$expectedSignerSha256"
-          printf 'SIGNING_STORE_FILE=%s\n' "$RUNNER_TEMP/autosecretary.jks" >> "$GITHUB_ENV"
-          printf 'SIGNING_STORE_PASSWORD=%s\n' "$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-          printf 'SIGNING_KEY_ALIAS=release\n' >> "$GITHUB_ENV"
-          printf 'SIGNING_KEY_PASSWORD=%s\n' "$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-      - name: Build the signed release APK
-        if: env.ALREADY_PUBLISHED != 'true'
-        run: >-
-          ./gradlew assembleRelease
-          -PversionCode=$VERSION_CODE -PversionName=$VERSION_NAME
-          -PrequireReleaseSigning=true
-      - name: Verify package, version, size and signature
-        if: env.ALREADY_PUBLISHED != 'true'
-        run: |
-          set -euo pipefail
-          APK=app/build/outputs/apk/release/app-release.apk
-          APKSIGNER="$ANDROID_HOME/build-tools/$androidBuildTools/apksigner"
-          AAPT="$ANDROID_HOME/build-tools/$androidBuildTools/aapt"
-          test -f "$APK"
-          test "$(stat -c%s "$APK")" -lt 10485760
-          "$APKSIGNER" verify --verbose "$APK"
-          ACTUAL_CERT=$($APKSIGNER verify --print-certs "$APK" \
-            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
-            | tr '[:upper:]' '[:lower:]')
-          test "$ACTUAL_CERT" = "$expectedSignerSha256"
-          BADGING=$($AAPT dump badging "$APK" | sed -n '1p')
-          case "$BADGING" in
-            *"package: name='$packageName'"*"versionCode='$VERSION_CODE'"*"versionName='$VERSION_NAME'"*) ;;
-            *) echo "Unexpected package/version: $BADGING" >&2; exit 1 ;;
-          esac
-      - name: Create updater assets
-        if: env.ALREADY_PUBLISHED != 'true'
-        run: |
-          set -euo pipefail
-          cp app/build/outputs/apk/release/app-release.apk "$apkAsset"
-          SHA256=$(sha256sum "$apkAsset" | awk '{print $1}')
-          SIZE=$(stat -c%s "$apkAsset")
-          jq -n \
-            --argjson schemaVersion 1 \
-            --argjson versionCode "$VERSION_CODE" \
-            --arg versionName "$VERSION_NAME" \
-            --arg packageName "$packageName" \
-            --arg apkAsset "$apkAsset" \
-            --argjson apkSizeBytes "$SIZE" \
-            --arg sha256 "$SHA256" \
-            --arg signerSha256 "$expectedSignerSha256" \
-            --arg commitSha "$GITHUB_SHA" \
-            '{schemaVersion:$schemaVersion,versionCode:$versionCode,versionName:$versionName,packageName:$packageName,apkAsset:$apkAsset,apkSizeBytes:$apkSizeBytes,sha256:$sha256,signerSha256:$signerSha256,commitSha:$commitSha}' \
-            > "$metadataAsset"
-          jq -e --arg package "$packageName" --arg asset "$apkAsset" \
-            '.schemaVersion == 1 and .versionCode > 0 and .packageName == $package and .apkAsset == $asset and (.sha256 | test("^[0-9a-f]{64}$")) and (.signerSha256 | test("^[0-9a-f]{64}$")) and (.commitSha | test("^[0-9a-f]{40}$"))' \
-            "$metadataAsset"
-      - name: Stage, prove and publish the release
-        if: env.ALREADY_PUBLISHED != 'true'
-        run: |
-          set -euo pipefail
-          gh release create "$TAG" --draft --target "$GITHUB_SHA" \
-            --title "Auto Secretary $VERSION_NAME" --generate-notes
-          gh release upload "$TAG" "$apkAsset" "$metadataAsset" --clobber
+
+          gh release upload "$TAG" "$CANDIDATE/$APK_ASSET" \
+            "$CANDIDATE/$METADATA_ASSET" --clobber
           PROOF="$RUNNER_TEMP/release-proof"
           mkdir -p "$PROOF"
           gh release download "$TAG" --dir "$PROOF" \
-            --pattern "$apkAsset" --pattern "$metadataAsset"
-          test "$(sha256sum "$PROOF/$apkAsset" | awk '{print $1}')" \
-            = "$(jq -r .sha256 "$PROOF/$metadataAsset")"
-          test "$(jq -r .commitSha "$PROOF/$metadataAsset")" = "$GITHUB_SHA"
+            --pattern "$APK_ASSET" --pattern "$METADATA_ASSET"
+          python3 scripts/release/release_tool.py validate --plan "$ARTIFACT_PLAN" \
+            --metadata "$PROOF/$METADATA_ASSET" --apk "$PROOF/$APK_ASSET"
+          cmp "$CANDIDATE/$APK_ASSET" "$PROOF/$APK_ASSET"
+
           RELEASE_ID=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
             --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -n 1)
           test -n "$RELEASE_ID"
+          ASSETS=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets")
+          test "$(printf '%s' "$ASSETS" | jq 'length')" = 2
+          printf '%s' "$ASSETS" | jq -e --arg apk "$APK_ASSET" --arg metadata "$METADATA_ASSET" \
+            'map(.name) | sort == ([$apk, $metadata] | sort)'
           gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
             -f draft=false -f prerelease=false -f make_latest=false >/dev/null
+          TAG_PREFIX=$(jq -r .tagPrefix "$ARTIFACT_PLAN")
           HIGHEST_ID=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-            | jq -s --arg prefix "$tagPrefix" \
+            | jq -s --arg prefix "$TAG_PREFIX" \
               '[.[][] | select(.draft == false and .prerelease == false)
                 | select(.tag_name | startswith($prefix))
-                | . + {versionCode:(.tag_name | ltrimstr($prefix) | tonumber)}]
-                | max_by(.versionCode).id')
+                | . + {versionCode:(try (.tag_name | ltrimstr($prefix) | tonumber) catch null)}
+                | select(.versionCode != null)] | max_by(.versionCode).id')
           test -n "$HIGHEST_ID"
           gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$HIGHEST_ID" \
             -f make_latest=true >/dev/null
-          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" --jq 'length')" = 2
