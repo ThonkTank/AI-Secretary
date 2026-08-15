@@ -24,4 +24,12 @@ Den Keystore sicher aufbewahren. Ohne exakt diesen Schlüssel kann eine spätere
 
 ## Release erstellen
 
-Die Versionsnummer in `app/build.gradle.kts` erhöhen, committen und einen Tag wie `v0.1.1` pushen. Die GitHub Action baut die signierte APK und hängt sie an den GitHub Release an. Auf dem Handy die APK aus dem Release herunterladen und installieren; bei Updates bleiben die lokalen Daten erhalten.
+1. `versionCode`, `versionName` und `CHANGELOG.md` gemeinsam erhöhen.
+2. Lokal `./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease` ausführen.
+3. Den grünen Stand committen und pushen.
+4. Einen passenden Tag wie `v0.2.0` pushen.
+
+Die GitHub Action wiederholt Unit-/Golden-Tests und Lint, baut danach die signierte APK und
+hängt sie an das GitHub Release an. Der normale Verify-Workflow führt zusätzlich die
+Migrationstests auf API 26 und API 35 aus. Auf dem Handy die APK aus dem Release
+herunterladen und installieren; bei Updates bleiben die lokalen Daten erhalten.

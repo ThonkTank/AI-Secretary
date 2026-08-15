@@ -148,3 +148,33 @@ werden geloggt und ändern keine Daten. Eine endgültige ongoing-Bedingung wird 
 im Receiver ausgeführt, sondern öffnet den bestehenden Bestätigungsdialog in der App.
 Bedienbare Widget-Flächen sind, soweit das RemoteViews-Layout sie kontrollieren kann,
 mindestens 48 dp groß.
+
+## Qualitäts- und Release-Gates
+
+Version 0.2.0 verwendet Room 2.8.4, Lifecycle 2.11.0, Activity 1.10.1 und AndroidX Test
+1.7.0/1.3.0. Activity bleibt bewusst auf der letzten mit compileSdk 35 und AGP 8.7.3
+kompatiblen Linie; neuere Activity-Versionen würden einen separaten Toolchain- und
+compileSdk-36-Sprung erzwingen. Java-Kompilierung meldet Deprecations explizit und der
+ViewModel-Saved-State- sowie Migrationstest-Code verwendet die aktuellen APIs.
+
+Das Verify-Workflow baut Debug-, Instrumentierungs- und unsigned Release-APK, führt Unit-,
+Golden- und Linttests aus, prüft Größenbudgets und startet die Instrumentierungsmatrix auf
+API 26 und API 35. Die Release-Pipeline wiederholt Tests und Lint vor dem signierten Build.
+Das Launcher-Icon besitzt ab API 26 eine adaptive Vorder-/Hintergrunddefinition. Die vier
+lokalen Fonts inklusive Lizenzen belegen zusammen rund 1,5 MB; CI begrenzt sie auf 1,6 MiB
+und die Debug-APK auf 5 MiB. `DebugPreviewFixtures` stellt reproduzierbare volle und leere
+Dashboardzustände für Layout Inspector und weitere Preview-Screens bereit.
+
+### Lokale Geräteprüfung
+
+Die installierte Emulatorversion 37.1.11 wurde mit den vorhandenen AVDs
+`codex_autosecretary_api26` und `codex_autosecretary_api35` geprüft. API 26 stürzt sowohl
+mit KVM/SwiftShader nach etwa zehn Sekunden als auch ohne Beschleunigung nach ungefähr
+einer Minute im nativen Prozess `qemu-system-x86_64-headless` mit `SIGSEGV` ab. API 35
+erreicht ohne Beschleunigung nach rund 80 Sekunden ADB, stürzt aber vor dem Start des
+Package-Managers ebenfalls mit `SIGSEGV` ab. Ein physisches Gerät ist nicht verbunden;
+lokale Instrumentierung konnte deshalb nicht ehrlich als ausgeführt markiert werden.
+
+Als sichere Alternativen laufen Robolectric-Tests ausdrücklich auf API 26 und API 35,
+beide Instrumentierungs-APKs werden lokal gebaut, und die CI enthält echte Emulatorjobs
+für beide API-Stufen. Emulator- und ADB-Prozesse werden nach den Versuchen beendet.

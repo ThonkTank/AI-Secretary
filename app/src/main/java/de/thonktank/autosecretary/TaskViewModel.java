@@ -1,15 +1,14 @@
 package de.thonktank.autosecretary;
 
-import android.os.Bundle;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.lifecycle.AbstractSavedStateViewModelFactory;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.SavedStateHandle;
+import androidx.lifecycle.SavedStateHandleSupport;
 import androidx.lifecycle.ViewModel;
-import androidx.savedstate.SavedStateRegistryOwner;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.viewmodel.CreationExtras;
 
 import de.thonktank.autosecretary.calendar.CalendarDataSource;
 import de.thonktank.autosecretary.calendar.CalendarResult;
@@ -333,20 +332,20 @@ public final class TaskViewModel extends ViewModel {
         }
     }
 
-    public static final class Factory extends AbstractSavedStateViewModelFactory {
+    public static final class Factory implements ViewModelProvider.Factory {
         private final AppContainer container;
 
-        public Factory(SavedStateRegistryOwner owner, @Nullable Bundle defaultArgs,
-                       AppContainer container) {
-            super(owner, defaultArgs);
+        public Factory(AppContainer container) {
             this.container = container;
         }
 
         @NonNull @Override @SuppressWarnings("unchecked")
-        protected <T extends ViewModel> T create(@NonNull String key,
-                                                  @NonNull Class<T> modelClass,
-                                                  @NonNull SavedStateHandle handle) {
-            return (T) new TaskViewModel(container, handle);
+        public <T extends ViewModel> T create(@NonNull Class<T> modelClass,
+                                              @NonNull CreationExtras extras) {
+            if (!modelClass.isAssignableFrom(TaskViewModel.class))
+                throw new IllegalArgumentException("Unsupported ViewModel " + modelClass);
+            return (T) new TaskViewModel(container,
+                    SavedStateHandleSupport.createSavedStateHandle(extras));
         }
     }
 }

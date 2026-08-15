@@ -1,11 +1,11 @@
 <resources>
     <string name="app_name">Auto Secretary</string>
+    <string name="widget_name">Auto Secretary – Aufgaben</string>
     <string name="nav_today">heute</string>
     <string name="nav_all">alles ansehen</string>
     <string name="nav_options">optionen</string>
     <string name="action_add_task">Aufgabe anlegen</string>
     <string name="widget_empty_title">Gerade ist nichts offen.</string>
-    <string name="widget_more_steps">und %1$d weitere</string>
     <string name="widget_open_dashboard">Dashboard öffnen</string>
     <string name="widget_toggle_step">Schritt „%1$s“ umschalten</string>
     <string name="widget_confirm_close">„%1$s“ in der App abschließen</string>
@@ -32,8 +32,6 @@
     <string name="action_complete_all">Alle erledigen</string>
     <string name="action_complete_rest">Rest erledigen</string>
     <string name="xp_summary">%1$d XP · jeder Schritt zählt</string>
-    <string name="more_items">%1$d weitere – sie laufen nicht weg.</string>
-    <string name="step_progress">%1$d von %2$d</string>
     <string name="soft_time_ongoing">fortlaufend, bis die Bedingung erfüllt ist</string>
     <string name="soft_time_morning">heute am Morgen</string>
     <string name="soft_time_midday">um die Mittagszeit</string>
@@ -74,11 +72,9 @@
     <string name="condition_met">Bedingung erfüllt</string>
     <string name="delete_task_title">„%1$s“ löschen?</string>
     <string name="delete_task_loss">Die Aufgabe geht verloren.</string>
-    <string name="delete_routine_loss">Die Routine und ihr Jahresring von %1$d Wochen gehen verloren.</string>
     <string name="close_task_title">Vorhaben abschließen?</string>
     <string name="this_project">dieses Vorhaben</string>
     <string name="close_task_message">„%1$s“ wird geschlossen.%2$s</string>
-    <string name="close_ring_suffix"> Der Jahresring von %1$d Wochen bleibt als Fortschritt gespeichert.</string>
     <string name="editor_new_title">Neue Aufgabe</string>
     <string name="editor_edit_title">Aufgabe bearbeiten</string>
     <string name="editor_name_hint">Name der Aufgabe, z. B. Morgenroutine</string>
@@ -116,4 +112,24 @@
     <string name="legacy_reset_message">Die Testdaten der ersten Version wurden bewusst zurückgesetzt. Neue Aufgaben werden jetzt zuverlässig lokal gespeichert.</string>
     <string name="understood">Verstanden</string>
     <string name="okay">Okay</string>
+    <plurals name="widget_more_steps">
+        <item quantity="one">und %1$d weiterer</item>
+        <item quantity="other">und %1$d weitere</item>
+    </plurals>
+    <plurals name="more_items">
+        <item quantity="one">%1$d weitere – sie läuft nicht weg.</item>
+        <item quantity="other">%1$d weitere – sie laufen nicht weg.</item>
+    </plurals>
+    <plurals name="step_progress">
+        <item quantity="one">%1$d von %2$d</item>
+        <item quantity="other">%1$d von %2$d</item>
+    </plurals>
+    <plurals name="delete_routine_loss">
+        <item quantity="one">Die Routine und ihr Jahresring von %1$d Woche gehen verloren.</item>
+        <item quantity="other">Die Routine und ihr Jahresring von %1$d Wochen gehen verloren.</item>
+    </plurals>
+    <plurals name="close_ring_suffix">
+        <item quantity="one"> Der Jahresring von %1$d Woche bleibt als Fortschritt gespeichert.</item>
+        <item quantity="other"> Der Jahresring von %1$d Wochen bleibt als Fortschritt gespeichert.</item>
+    </plurals>
 </resources>

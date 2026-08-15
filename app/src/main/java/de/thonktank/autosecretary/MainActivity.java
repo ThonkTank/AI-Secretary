@@ -58,7 +58,7 @@ public class MainActivity extends ComponentActivity {
         EdgeToEdge.enable(this);
         buildShell();
         viewModel = new ViewModelProvider(this,
-                new TaskViewModel.Factory(this, null, container)).get(TaskViewModel.class);
+                new TaskViewModel.Factory(container)).get(TaskViewModel.class);
         viewModel.state().observe(this, this::render);
         viewModel.events().observe(this, this::handleEvent);
         showLegacyResetNotice();
@@ -186,7 +186,8 @@ public class MainActivity extends ComponentActivity {
 
     private void confirmDelete(TaskSnapshot task) {
         String loss = task.routine()
-                ? getString(R.string.delete_routine_loss, task.ringWeeks)
+                ? getResources().getQuantityString(R.plurals.delete_routine_loss,
+                        task.ringWeeks, task.ringWeeks)
                 : getString(R.string.delete_task_loss);
         new AlertDialog.Builder(this).setTitle(getString(R.string.delete_task_title, task.title))
                 .setMessage(loss).setNegativeButton(R.string.keep, null)
@@ -195,7 +196,8 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void confirmClose(String taskId, String title, int ringWeeks) {
-        String suffix = ringWeeks > 0 ? getString(R.string.close_ring_suffix, ringWeeks) : "";
+        String suffix = ringWeeks > 0 ? getResources().getQuantityString(
+                R.plurals.close_ring_suffix, ringWeeks, ringWeeks) : "";
         new AlertDialog.Builder(this).setTitle(R.string.close_task_title)
                 .setMessage(getString(R.string.close_task_message, title, suffix))
                 .setNegativeButton(R.string.cancel, null)

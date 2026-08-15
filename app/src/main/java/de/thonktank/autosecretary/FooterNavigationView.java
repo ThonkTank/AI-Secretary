@@ -26,6 +26,7 @@ public final class FooterNavigationView extends LinearLayout {
         for (int i = 0; i < labels.length; i++) {
             TextView label = style.sans(context.getString(names[i]), 17, 0, false);
             label.setGravity(Gravity.CENTER);
+            label.setMinWidth(style.dp(48));
             label.setMinHeight(style.dp(48));
             NavigationDestination destination = destinations[i];
             label.setOnClickListener(view -> navigate.accept(destination));

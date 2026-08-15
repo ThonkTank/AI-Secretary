@@ -99,7 +99,8 @@ public final class TaskLeafView extends LinearLayout {
             bars.get(i).setBackground(style.pill(done ? palette.accent
                     : UiStyle.alpha(palette.dot, .4f), 3));
         }
-        progressLabel.setText(getContext().getString(R.string.step_progress, complete, task.steps.size()));
+        progressLabel.setText(getResources().getQuantityString(R.plurals.step_progress,
+                task.steps.size(), complete, task.steps.size()));
         progressLabel.setTextColor(palette.muted);
     }
 

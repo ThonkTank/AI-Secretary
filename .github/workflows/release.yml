@@ -24,7 +24,8 @@ jobs:
         run: |
           test -n "$KEYSTORE_BASE64" || (echo "Missing ANDROID_KEYSTORE_BASE64 repository secret" && exit 1)
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
-      - run: ./gradlew assembleRelease
+      - name: Verify and build signed release
+        run: ./gradlew testDebugUnitTest lintDebug assembleRelease
         env:
           SIGNING_STORE_FILE: ${{ runner.temp }}/release.keystore
           SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

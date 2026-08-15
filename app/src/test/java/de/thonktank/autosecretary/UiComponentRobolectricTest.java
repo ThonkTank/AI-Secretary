@@ -2,6 +2,7 @@ package de.thonktank.autosecretary;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.view.View;
@@ -71,6 +72,25 @@ public final class UiComponentRobolectricTest {
 
         assertSame(focus, content.getChildAt(1));
         assertSame(focus, content.findFocus());
+    }
+
+    @Test public void primaryNavigationControlsMeetAccessibilityContracts() {
+        Context context = ApplicationProvider.getApplicationContext();
+        int target = context.getResources().getDimensionPixelSize(R.dimen.touch_target);
+        HeaderView header = new HeaderView(context, () -> { });
+        View add = header.getChildAt(1);
+        assertTrue(((android.widget.TextView) add).getMinWidth() >= target);
+        assertTrue(((android.widget.TextView) add).getMinHeight() >= target);
+        assertEquals(context.getString(R.string.content_add_task), add.getContentDescription());
+
+        FooterNavigationView footer = new FooterNavigationView(context, destination -> { });
+        for (int index = 0; index < footer.getChildCount(); index++) {
+            View item = footer.getChildAt(index);
+            android.widget.TextView text = (android.widget.TextView) item;
+            assertTrue(text.getMinWidth() >= target);
+            assertTrue(text.getMinHeight() >= target);
+            assertTrue(text.getText().length() > 0);
+        }
     }
 
     private static DashboardUiState state(DayPalette palette) {

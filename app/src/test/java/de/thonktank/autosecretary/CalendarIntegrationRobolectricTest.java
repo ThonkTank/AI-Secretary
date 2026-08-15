@@ -2,6 +2,7 @@ package de.thonktank.autosecretary;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.Manifest;
@@ -101,7 +102,7 @@ public final class CalendarIntegrationRobolectricTest {
         assertEquals(0, result.events().get(0).minuteOfDay);
         assertEquals("08:30", result.events().get(1).time);
         assertTrue(!provider.selection.contains(CalendarContract.Calendars.ACCOUNT_TYPE));
-        assertEquals(null, provider.selectionArgs);
+        assertNull(provider.selectionArgs);
     }
 
     @Test public void googleOnlyIsAnExplicitPolicy() {

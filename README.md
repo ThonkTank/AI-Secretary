@@ -10,7 +10,7 @@ Eine kleine, private ADHS-Task-App für Android: nur **jetzt**, **danach** und e
 - Sanftes Verschieben mit „Später“, XP und Routine-Level ohne Levelverlust
 - Uhrzeitabhängiger Heute-Screen im Design „Tiefer Wald, goldener Sonnenaufgang“
 - Vier responsive Homescreen-Widgetgrößen mit direkten Schritt- und Abschlussaktionen
-- Rein lesende Einbindung aller sichtbaren Google-Kalender über die Android-Kalenderfreigabe
+- Rein lesende Einbindung aller sichtbaren Kalender über die Android-Kalenderfreigabe
 - Optionen für automatische, helle oder dunkle Darstellung und den GitHub-Updatekanal
 - Keine Benachrichtigungen im Stabilitäts-Release: Das Widget bleibt die einzige proaktive Erinnerung
 - Button zu den GitHub Releases für Updates
@@ -21,6 +21,16 @@ Eine kleine, private ADHS-Task-App für Android: nur **jetzt**, **danach** und e
 ./gradlew assembleDebug
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
+
+Der vollständige lokale Quality-Gate ist:
+
+```bash
+./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease
+```
+
+Deterministische Zustände für Layout Inspector und Preview-Werkzeuge liegen im Debug-Build
+unter `DebugPreviewFixtures`. Die CI führt die Room-Migrationstests zusätzlich auf API 26
+und API 35 aus.
 
 Die Release-Einrichtung ist in [docs/releasing.md](docs/releasing.md) beschrieben. Die
 Produktentscheidung ist in [docs/produktziele.md](docs/produktziele.md) festgehalten. Die

@@ -7,7 +7,6 @@ import android.database.Cursor;
 
 import androidx.room.testing.MigrationTestHelper;
 import androidx.sqlite.db.SupportSQLiteDatabase;
-import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -26,8 +25,7 @@ public final class DatabaseMigrationTest {
 
     @Rule public final MigrationTestHelper helper = new MigrationTestHelper(
             InstrumentationRegistry.getInstrumentation(),
-            AppDatabase.class.getCanonicalName(),
-            new FrameworkSQLiteOpenHelperFactory());
+            AppDatabase.class);
 
     @After public void deleteDatabase() {
         InstrumentationRegistry.getInstrumentation().getTargetContext().deleteDatabase(DATABASE);

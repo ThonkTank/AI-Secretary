@@ -92,7 +92,8 @@ public final class WidgetRemoteViewsFactory {
         boolean showMore = model.additionalStepCount > 0;
         views.setViewVisibility(R.id.widget_more, showMore ? View.VISIBLE : View.GONE);
         if (showMore) views.setTextViewText(R.id.widget_more,
-                context.getString(R.string.widget_more_steps, model.additionalStepCount));
+                context.getResources().getQuantityString(R.plurals.widget_more_steps,
+                        model.additionalStepCount, model.additionalStepCount));
         bindPrimaryAction(views, model);
     }
 

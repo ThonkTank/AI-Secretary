@@ -3,8 +3,8 @@
     <application
         android:name=".AutoSecretaryApplication"
         android:allowBackup="true"
-        android:icon="@drawable/ic_launcher"
-        android:label="Auto Secretary"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
         android:theme="@style/AppTheme">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
@@ -14,7 +14,7 @@
         </activity>
 
         <receiver android:name=".TaskActionReceiver" android:exported="false" />
-        <receiver android:name=".TaskWidgetProvider" android:exported="true" android:label="Auto Secretary – Aufgaben">
+        <receiver android:name=".TaskWidgetProvider" android:exported="true" android:label="@string/widget_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

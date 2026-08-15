@@ -115,7 +115,8 @@ public final class DashboardRenderer {
         focus.bind(focusTask, dashboard.timeline.size() > 0, open > 1, palette, actions);
         bindTimeline(dashboard.timeline, focusTask.overdue, palette);
         int remaining = dashboard.timeline.size() - Math.min(3, dashboard.timeline.size());
-        more.setText(context.getString(R.string.more_items, remaining));
+        more.setText(context.getResources().getQuantityString(
+                R.plurals.more_items, remaining, remaining));
         more.setTextColor(palette.muted);
     }
 
